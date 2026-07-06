@@ -55,6 +55,7 @@ from the practice's primary contact page:
 - Fax number ((813) 920-5800 vs 813-920-8883)
 - Office hours (site says Mon–Fri 8:00–4:30; door signage differs)
 - Facebook / Yelp profiles (links held until confirmed live)
-- Physician bios (2–3 sentences each), current PDFs for the document registry
+- Physician bios (2–3 sentences each)
+- Current PDFs for the document registry — confirmed wanted; the practice is emailing them (drop-in steps above)
 - Appointment/contact form delivery (submissions confirm on-page; wire to the scheduling
   inbox before launch)
