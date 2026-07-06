@@ -220,7 +220,7 @@ export const es: Dictionary = {
     conditionsHeading: "Condiciones que tratamos",
     proceduresHeading: "Procedimientos que realizamos",
     proceduresIntro:
-      "Nuestros médicos certificados también realizan los siguientes procedimientos en afiliación con Tampa Bay Endoscopy Center, Tampa Community Hospital, Tampa Outpatient Surgical Facility y Memorial Hospital:",
+      "Nuestros médicos certificados también realizan los siguientes procedimientos en afiliación con AdventHealth Surgery Center Wellswood y AdventHealth Carrollwood:",
     prepNote: "¿Se está preparando para un procedimiento?",
     prepNoteBody: "Encuentre sus instrucciones de preparación o solicítelas a nuestro equipo.",
     prepNoteCta: "Preparación para procedimientos",

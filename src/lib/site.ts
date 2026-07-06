@@ -28,8 +28,10 @@ export const site = {
   // depend on the domain's mail setup.
   email: "fdhswestchase@fdhs.com",
   hours: { opens: "08:00", closes: "16:30" },
+  // Confirmed by the practice 2026-07-05: these are the ONLY current procedure
+  // locations (the four facilities on the old site are outdated).
   affiliations:
-    "Tampa Bay Endoscopy Center, Tampa Community Hospital, Tampa Outpatient Surgical Facility, & Memorial Hospital",
+    "AdventHealth Surgery Center Wellswood & AdventHealth Carrollwood",
   locations: [
     {
       id: "tampa",

@@ -216,7 +216,7 @@ export const en = {
     conditionsHeading: "Conditions we treat",
     proceduresHeading: "Procedures we perform",
     proceduresIntro:
-      "Our board-certified physicians also perform the following procedures in affiliation with Tampa Bay Endoscopy Center, Tampa Community Hospital, Tampa Outpatient Surgical Facility, & Memorial Hospital:",
+      "Our board-certified physicians also perform the following procedures in affiliation with AdventHealth Surgery Center Wellswood & AdventHealth Carrollwood:",
     prepNote: "Preparing for a procedure?",
     prepNoteBody: "Find your preparation instructions or request them from our team.",
     prepNoteCta: "Procedure preparation",
