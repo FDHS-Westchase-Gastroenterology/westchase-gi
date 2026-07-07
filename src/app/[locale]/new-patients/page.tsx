@@ -5,6 +5,7 @@ import { site, type Locale } from "@/lib/site";
 import { PageHero } from "@/components/PageHero";
 import { Reveal } from "@/components/Reveal";
 import { DocumentList } from "@/components/DocumentList";
+import { LocationMaps } from "@/components/LocationMaps";
 import { TextBand } from "@/components/TextBand";
 import { ExternalLink, FileText } from "@/components/icons";
 
@@ -97,6 +98,20 @@ export default async function NewPatientsPage({ params }: PageProps) {
             <h2 className="h3 heading-tick">{t.expectHeading}</h2>
             <p className="mt-4">{t.expectBody}</p>
           </Reveal>
+        </div>
+      </section>
+
+      {/* The map and directions the page intro promises (the old site
+          delivered this with a Leaflet embed; here both offices get one). */}
+      <section className="section">
+        <div className="container-x">
+          <Reveal>
+            <h2 className="h2 heading-tick">{dict.common.maps.heading}</h2>
+            <p className="lead measure-sm mt-3 text-[var(--color-body)]">{dict.common.maps.lead}</p>
+          </Reveal>
+          <div className="mt-9">
+            <LocationMaps locale={locale} dict={dict} />
+          </div>
         </div>
       </section>
 

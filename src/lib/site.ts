@@ -77,6 +77,12 @@ export function mapsUrl(query: string): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
+/** Keyless Google Maps iframe embed, localized. Verified live 2026-07-07:
+ *  resolves 200 to /maps/embed for both office queries in en and es. */
+export function mapEmbedUrl(query: string, locale: Locale): string {
+  return `https://www.google.com/maps?q=${encodeURIComponent(query)}&z=15&output=embed&hl=${locale}`;
+}
+
 export function directionsUrl(query: string): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}`;
 }

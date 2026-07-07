@@ -4,9 +4,11 @@ import { pageMetadata } from "@/lib/metadata";
 import type { Locale } from "@/lib/site";
 import { PageHero } from "@/components/PageHero";
 import { LocationCards } from "@/components/LocationCards";
+import { LocationMaps } from "@/components/LocationMaps";
 import { HoursTable } from "@/components/HoursTable";
 import { AppointmentForm } from "@/components/AppointmentForm";
 import { TextBand } from "@/components/TextBand";
+import { Reveal } from "@/components/Reveal";
 
 type PageProps = { params: Promise<{ locale: string }> };
 
@@ -44,6 +46,20 @@ export default async function ContactPage({ params }: PageProps) {
             <div className="mt-7">
               <AppointmentForm locale={locale} dict={dict} />
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* The homepage's "Maps & Directions" tile lands here; back the
+          label with live maps, not just address cards. */}
+      <section className="border-t border-[var(--color-line)]">
+        <div className="container-x section">
+          <Reveal>
+            <h2 className="h2 heading-tick">{dict.common.maps.heading}</h2>
+            <p className="lead measure-sm mt-3 text-[var(--color-body)]">{dict.common.maps.lead}</p>
+          </Reveal>
+          <div className="mt-9">
+            <LocationMaps locale={locale} dict={dict} />
           </div>
         </div>
       </section>

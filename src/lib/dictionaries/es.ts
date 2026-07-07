@@ -162,6 +162,14 @@ export const es: Dictionary = {
       body: "Envíenos un mensaje al (813) 564-0315. Un miembro de nuestro equipo, no un robot, lee y responde los textos todos los días que la oficina está abierta.",
       cta: "Texto al (813) 564-0315",
     },
+    maps: {
+      heading: "Mapas y Direcciones",
+      lead: "Encuéntrenos en Westchase y Lutz. Explore el mapa o abra las direcciones paso a paso en su aplicación de mapas.",
+      titles: {
+        tampa: "Mapa a nuestra oficina de Tampa, 11912 Sheldon Road",
+        lutz: "Mapa a nuestra oficina de Lutz, 4695 Van Dyke Road",
+      },
+    },
   },
 
   home: {

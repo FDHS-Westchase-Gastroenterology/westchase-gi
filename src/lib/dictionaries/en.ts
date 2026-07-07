@@ -159,6 +159,14 @@ export const en = {
       body: "Send us a message at (813) 564-0315. A member of our team, not a bot, reads and answers texts every day the office is open.",
       cta: "Text (813) 564-0315",
     },
+    maps: {
+      heading: "Maps & Directions",
+      lead: "Find us in Westchase and Lutz. Explore the map, or open turn-by-turn directions in your own maps app.",
+      titles: {
+        tampa: "Map to our Tampa office at 11912 Sheldon Road",
+        lutz: "Map to our Lutz office at 4695 Van Dyke Road",
+      },
+    },
   },
 
   home: {
