@@ -69,6 +69,6 @@ from the practice's primary contact page:
 - Office hours (site says Mon–Fri 8:00–4:30; door signage differs)
 - Facebook / Yelp profiles (links held until confirmed live)
 - Physician bios (2–3 sentences each)
-- Current PDFs for the document registry — confirmed wanted; the practice is emailing them (drop-in steps above)
+- Current PDFs for the document registry — **asked again 2026-07-06 evening** (PROJECT-LOG row 21); on arrival use the drop-in steps above. Disease-information *content* is already on-site; PDFs become printable downloads.
 - Appointment/contact form delivery (submissions confirm on-page; wire to the scheduling
   inbox before launch)

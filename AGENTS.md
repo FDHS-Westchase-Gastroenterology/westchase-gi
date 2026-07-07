@@ -29,7 +29,8 @@ practice's existing site: same identity, verified facts, zero broken links.
    reverse expectation into this codebase; it's owned by the other project.
 7. **No invented facts.** Unconfirmed details (see `NEEDS CONFIRMATION` comments in
    `src/lib/site.ts` and the README) render as honest fallbacks, not guesses. Patient documents
-   without a file in `public/documents/` automatically render as "request from the office".
+   without a file in `public/documents/` fall back to the staffed text line (forms/prep) or
+   "printable version on the way" (disease sheets that already have on-site education pages).
 8. **Compliance:** conservative medical phrasing; no outcome guarantees; the appointment form
    must keep its "do not submit PHI" warning; no PHI is ever collected or stored.
 9. **The "accepting new patients" notice** is a dismissible banner shown once per visitor
