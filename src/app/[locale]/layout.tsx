@@ -44,7 +44,15 @@ export async function generateMetadata({
       template: `%s | ${site.name}`,
     },
     description: dict.meta.home.description,
-    icons: { icon: "/images/brand/footer-icon.webp" },
+    // FDHS's own published favicon set (the teal Florida network mark),
+    // matching the Florida inside the header logo.
+    icons: {
+      icon: [
+        { url: "/images/brand/favicon-fdhs-32.png", sizes: "32x32", type: "image/png" },
+        { url: "/images/brand/favicon-fdhs-192.png", sizes: "192x192", type: "image/png" },
+      ],
+      apple: { url: "/images/brand/favicon-fdhs-180.png", sizes: "180x180", type: "image/png" },
+    },
     robots: { index: true, follow: true },
   };
 }

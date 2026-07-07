@@ -36,11 +36,11 @@ export function Footer({ locale, dict }: FooterProps) {
         <div>
           <div className="flex items-center gap-3">
             <Image
-              src="/images/brand/footer-icon.webp"
+              src="/images/brand/favicon-fdhs-192.png"
               alt=""
               width={50}
               height={50}
-              className="h-11 w-11 rounded-full"
+              className="h-11 w-11 rounded-full bg-white/95 p-1.5"
             />
             <p className="font-[var(--font-display)] text-xl leading-tight text-[var(--color-on-dark)]">
               {site.headerName}
