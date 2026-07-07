@@ -6,6 +6,7 @@ import { pageMetadata } from "@/lib/metadata";
 import { localePath, locales, site, type Locale } from "@/lib/site";
 import { blogPosts, formatPosted, getPost } from "@/lib/content/blog";
 import { ArticleBody } from "@/components/ArticleBody";
+import { JsonLd } from "@/components/JsonLd";
 import { Reveal } from "@/components/Reveal";
 import { TextBand } from "@/components/TextBand";
 import { ArrowRight } from "@/components/icons";
@@ -38,9 +39,7 @@ function PostSchema({ slug }: { slug: string }) {
     publisher: { "@type": "MedicalClinic", name: site.name, url: site.url },
     mainEntityOfPage: `${site.url}/en/blog/${post.slug}`,
   };
-  return (
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(json) }} />
-  );
+  return <JsonLd data={json} />;
 }
 
 export default async function BlogPostPage({ params }: PageProps) {

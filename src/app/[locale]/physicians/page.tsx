@@ -4,6 +4,7 @@ import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
 import { site, type Locale } from "@/lib/site";
 import { physicians, nursePractitioners, infusionNurse, team } from "@/lib/providers";
+import { JsonLd } from "@/components/JsonLd";
 import { PageHero } from "@/components/PageHero";
 import { Reveal } from "@/components/Reveal";
 import { TextBand } from "@/components/TextBand";
@@ -29,9 +30,7 @@ function PhysicianSchema() {
       worksFor: { "@type": "MedicalClinic", name: site.name, url: site.url },
     })),
   };
-  return (
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(json) }} />
-  );
+  return <JsonLd data={json} />;
 }
 
 export default async function PhysiciansPage({ params }: PageProps) {

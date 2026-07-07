@@ -18,11 +18,14 @@ export function LocationMaps({ locale, dict }: LocationMapsProps) {
           key={loc.id}
           className="overflow-hidden rounded-[var(--radius-lg)] bg-white shadow-[var(--shadow-soft)]"
         >
+          {/* Sandboxed without allow-same-origin (scripts + popups only);
+              verified 2026-07-07 the embed renders fully under this set. */}
           <iframe
             src={mapEmbedUrl(loc.mapsQuery, locale)}
             title={c.maps.titles[loc.id]}
             loading="lazy"
             allowFullScreen
+            sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
             referrerPolicy="no-referrer-when-downgrade"
             className="block h-72 w-full border-0 sm:h-80"
           />

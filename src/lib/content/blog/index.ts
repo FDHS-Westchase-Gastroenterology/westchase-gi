@@ -19,13 +19,14 @@ export function getPost(slug: string): BlogPost | undefined {
   return blogPosts.find((p) => p.slug === slug);
 }
 
+// Built once per locale; constructing an Intl formatter is expensive and
+// formatPosted runs for every post card on every list render.
+const postedFormat: Record<"en" | "es", Intl.DateTimeFormat> = {
+  en: new Intl.DateTimeFormat("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }),
+  es: new Intl.DateTimeFormat("es-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }),
+};
+
 export function formatPosted(iso: string, locale: "en" | "es"): string {
   const [y, m, d] = iso.split("-").map(Number);
-  const date = new Date(Date.UTC(y, m - 1, d));
-  return new Intl.DateTimeFormat(locale === "es" ? "es-US" : "en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(date);
+  return postedFormat[locale].format(new Date(Date.UTC(y, m - 1, d)));
 }

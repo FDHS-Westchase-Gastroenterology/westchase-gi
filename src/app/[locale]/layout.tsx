@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Lato, Trocchi } from "next/font/google";
 import "../globals.css";
 import { Header } from "@/components/Header";
+import { JsonLd } from "@/components/JsonLd";
 import { Footer } from "@/components/Footer";
 import { NoticeBanner } from "@/components/NoticeBanner";
 import { getDictionary, isLocale } from "@/lib/i18n";
@@ -109,9 +110,7 @@ function ClinicSchema() {
       ...clinics,
     ],
   };
-  return (
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(json) }} />
-  );
+  return <JsonLd data={json} />;
 }
 
 export default async function LocaleLayout({
@@ -127,7 +126,11 @@ export default async function LocaleLayout({
     <html lang={locale} className={`${lato.variable} ${trocchi.variable}`} suppressHydrationWarning>
       <body>
         {/* Pre-paint: enable reveal-on-scroll only with JS, and hide the
-            once-per-visitor banner for returning visitors without a flash. */}
+            once-per-visitor banner for returning visitors without a flash.
+            Deliberately a native <script>: it must run before first paint,
+            and next/script can't do that for inline code (beforeInteractive
+            only supports external src; verified against Next.js docs 2026-07-07). */}
+        {/* oxlint-disable-next-line react-doctor/nextjs-no-native-script */}
         <script
           dangerouslySetInnerHTML={{
             __html: `document.documentElement.classList.add('js');try{var v=+localStorage.getItem('${BANNER_KEY}');if(v&&Date.now()<v)document.documentElement.classList.add('banner-dismissed')}catch(e){}`,

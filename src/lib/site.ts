@@ -73,10 +73,6 @@ export const site = {
 
 export type SiteLocation = (typeof site.locations)[number];
 
-export function mapsUrl(query: string): string {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
-}
-
 /** Keyless Google Maps iframe embed, localized. Verified live 2026-07-07:
  *  resolves 200 to /maps/embed for both office queries in en and es. */
 export function mapEmbedUrl(query: string, locale: Locale): string {
