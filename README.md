@@ -12,8 +12,11 @@ Built with Next.js 16 (App Router) + Tailwind CSS 4. Deployed on Vercel; goes li
 - **33 dead patient PDFs** (new-patient forms, colonoscopy prep instructions, disease sheets)
   are now a registry (`src/lib/documents.ts`): each renders a real download link only once the
   current PDF exists in `public/documents/`. Disease-information topics are readable ON the
-  site today (`/patient-education`); forms and prep sheets offer the staffed text line until
-  the practice's PDFs arrive.
+  site today (`/patient-education`), and **every procedure prep the practice currently
+  prescribes is readable AND printable on-site** (`/procedure-prep`, 13 handouts × EN/ES,
+  print styled as a letterheaded handout — content module: `src/lib/content/preps/`, from
+  the practice's 2026-07-07 scan, dose timings human-verified). New-patient forms offer the
+  staffed text line until the practice's PDFs arrive.
 - **The blog is on-site** (`/blog`): the old blog's 16 current posts (Nov 2025 – Jun 2026),
   same titles and dates, bilingual, with original bodies (the old bodies were vendor-licensed
   text that doesn't transfer). The 2019–2025 archive is catalogued in the repo-root parity
@@ -69,6 +72,14 @@ from the practice's primary contact page:
 - Office hours (site says Mon–Fri 8:00–4:30; door signage differs)
 - Facebook / Yelp profiles (links held until confirmed live)
 - Physician bios (2–3 sentences each)
-- Current PDFs for the document registry — **asked again 2026-07-06 evening** (PROJECT-LOG row 21); on arrival use the drop-in steps above. Disease-information *content* is already on-site; PDFs become printable downloads.
+- Current PDFs for the document registry — procedure preps ARRIVED + shipped on-site
+  2026-07-07; still awaited: patient-registration packet + printable disease-sheet PDFs
+  (on arrival use the drop-in steps above). Prep pages print natively; their `file:` slots
+  stay open only for clean per-document PDFs if the practice supplies them.
+- Prep wording questions for the practice (originals reproduced verbatim meanwhile, flagged
+  in `src/lib/content/preps/` comments): the split-dose MiraLAX English vs Spanish sheets
+  disagree on afternoon timings (2/4/6 PM vs 1/3/5 PM); the Spanish colonoscopy sheet's
+  GLP-1 hold instruction names the drugs but no day count (English says 7 days); the
+  Golytely split-dose sheet's "one hour after completing step 4" forward reference.
 - Appointment/contact form delivery (submissions confirm on-page; wire to the scheduling
   inbox before launch)
