@@ -11,9 +11,11 @@ practice's existing site: same identity, verified facts, zero broken links.
 
 ## Hard rules
 
-1. **Provider credentials are verbatim and load-bearing.** Chang and Awad are "MD, FACG";
+1. **Provider credentials are verbatim and load-bearing.** Chang is "MD, FACG"; Awad is "MD"
+   (client-corrected 2026-07-06 — he is NOT FACG, and his own FDHS card graphic says MD only);
    Mendoza is "MD, MS" (never FACG); NPs are "MSN, APRN, FNP-C" (Family Nurse Practitioner);
-   Juliet Oliva is "Infusion Nurse". Never edit, reorder, or "simplify" titles.
+   Juliet Oliva is "Practice Manager & Infusion Nurse" (manager credit added at her request
+   2026-07-06). Never edit, reorder, or "simplify" titles.
    Source of truth: `src/lib/providers.ts`.
 2. **Practice-owned images in `public/images/` are byte-exact copies** of the practice's own
    graphics (SHA-verified at import). Never re-encode, resize on disk, or "optimize" them;

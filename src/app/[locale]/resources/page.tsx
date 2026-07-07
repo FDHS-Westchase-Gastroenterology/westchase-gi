@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
-import type { Locale } from "@/lib/site";
+import { localePath, type Locale } from "@/lib/site";
 import { patientResources, professionalOrgs, patientEducation } from "@/lib/resources";
 import { PageHero } from "@/components/PageHero";
 import { Reveal } from "@/components/Reveal";
 import { DocumentList } from "@/components/DocumentList";
 import { TextBand } from "@/components/TextBand";
-import { ExternalLink } from "@/components/icons";
+import { ArrowRight, ExternalLink } from "@/components/icons";
 
 type PageProps = { params: Promise<{ locale: string }> };
 
@@ -28,7 +29,8 @@ export default async function ResourcesPage({ params }: PageProps) {
     <>
       <PageHero title={t.title} lead={t.intro} />
 
-      {/* ASGE patient education (replaces the vendor-hosted article library). */}
+      {/* Our own on-site education library (ported from the old site's
+          17-topic library; ASGE's public hub remains the "more" pointer). */}
       <section className="section-sm">
         <div className="container-x">
           <Reveal className="card-lined flex flex-wrap items-center justify-between gap-6 bg-[var(--color-mint)] p-7 sm:p-8">
@@ -36,25 +38,35 @@ export default async function ResourcesPage({ params }: PageProps) {
               <h2 className="h3 font-[var(--font-display)]">{t.educationHeading}</h2>
               <p className="mt-2 text-[var(--color-body)]">{t.educationBody}</p>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <Link href={localePath(locale, "/patient-education")} className="btn btn-navy">
+              {t.educationCta} <ArrowRight className="h-4 w-4" />
+            </Link>
+          </Reveal>
+
+          <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-3">
+            <p className="text-[0.95rem] text-[var(--color-body)]">
+              <span className="font-extrabold text-[var(--color-ink)]">{t.asgeHeading}:</span>{" "}
+              {t.asgeBody}
+            </p>
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
               <a
                 href={patientEducation.conditionsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn btn-navy"
+                className="link-plain inline-flex items-center gap-1.5 text-[0.95rem]"
               >
-                {t.educationCtaConditions} <ExternalLink className="h-4 w-4" />
+                {t.educationCtaConditions} <ExternalLink className="h-3.5 w-3.5" />
               </a>
               <a
                 href={patientEducation.proceduresUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn btn-outline"
+                className="link-plain inline-flex items-center gap-1.5 text-[0.95rem]"
               >
-                {t.educationCtaProcedures} <ExternalLink className="h-4 w-4" />
+                {t.educationCtaProcedures} <ExternalLink className="h-3.5 w-3.5" />
               </a>
             </div>
-          </Reveal>
+          </div>
         </div>
       </section>
 

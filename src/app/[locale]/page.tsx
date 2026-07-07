@@ -40,8 +40,11 @@ export default async function HomePage({ params }: PageProps) {
     <>
       {/* Hero: the practice's own team photo (the composite the practice
           publishes), not the old template's stock imagery. */}
-      <section className="bg-[var(--color-navy)] text-[var(--color-on-dark)]">
-        <div className="container-x section grid items-center gap-x-14 gap-y-10 lg:grid-cols-[1.05fr_1fr]">
+      <section className="overflow-x-clip bg-[var(--color-navy)] text-[var(--color-on-dark)]">
+        {/* Photo column widened + right-edge breakout at xl: the team photo
+            reads noticeably larger (client ask) without shrinking the
+            headline column below a comfortable measure. */}
+        <div className="container-x section grid items-center gap-x-12 gap-y-10 lg:grid-cols-[1fr_1.2fr]">
           <div>
             <p className="flex items-center gap-2 font-bold text-[var(--color-amber)]">
               <Heart className="h-4.5 w-4.5" />
@@ -67,15 +70,15 @@ export default async function HomePage({ params }: PageProps) {
               {dict.common.textLine}: {site.textLine.display} · {dict.common.textLineHuman}
             </a>
           </div>
-          <Reveal variant="fade">
+          <Reveal variant="fade" className="xl:-mr-12 2xl:-mr-20">
             <Image
               src="/images/staff/group-lobby-sign.webp"
               alt={t.heroPhoto}
               width={1784}
               height={882}
               priority
-              sizes="(min-width: 1024px) 44rem, 100vw"
-              className="rounded-[var(--radius-lg)] shadow-[var(--shadow-card)]"
+              sizes="(min-width: 1024px) 48rem, 100vw"
+              className="w-full rounded-[var(--radius-lg)] shadow-[var(--shadow-card)]"
             />
           </Reveal>
         </div>

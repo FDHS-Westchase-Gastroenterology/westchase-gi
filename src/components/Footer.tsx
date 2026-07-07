@@ -17,12 +17,14 @@ export function Footer({ locale, dict }: FooterProps) {
     { label: c.nav.services, href: p("/services") },
     { label: c.nav.physicians, href: p("/physicians") },
     { label: c.nav.gallery, href: p("/office-gallery") },
+    { label: c.nav.blog, href: p("/blog") },
     { label: c.nav.contact, href: p("/contact") },
   ];
   const patients = [
     { label: c.nav.newPatients, href: p("/new-patients") },
     { label: c.nav.existingPatients, href: p("/existing-patients") },
     { label: c.nav.procedurePrep, href: p("/procedure-prep") },
+    { label: c.nav.patientEducation, href: p("/patient-education") },
     { label: c.nav.resources, href: p("/resources") },
     { label: c.nav.appointment, href: p("/appointment") },
   ];

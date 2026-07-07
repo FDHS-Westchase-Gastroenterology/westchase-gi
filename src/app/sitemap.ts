@@ -1,5 +1,7 @@
 import type { MetadataRoute } from "next";
 import { site, localePath, locales } from "@/lib/site";
+import { blogPosts } from "@/lib/content/blog";
+import { educationTopics } from "@/lib/content/education";
 
 const paths = [
   "/",
@@ -11,6 +13,10 @@ const paths = [
   "/existing-patients",
   "/procedure-prep",
   "/resources",
+  "/patient-education",
+  ...educationTopics.map((t) => `/patient-education/${t.slug}`),
+  "/blog",
+  ...blogPosts.map((p) => `/blog/${p.slug}`),
   "/contact",
   "/appointment",
 ];

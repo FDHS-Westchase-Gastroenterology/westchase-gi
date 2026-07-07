@@ -1,7 +1,9 @@
 // Provider roster with VERBATIM credentials (practice directive: titles are
-// specific and must not be changed). Sources: the practice's own door sign and
-// nurse-practitioner brochure. Chang and Awad are MD, FACG; Mendoza is MD, MS
-// (never FACG). Card artwork is the practice's own graphics, byte-exact.
+// specific and must not be changed). Sources: the practice's own door sign,
+// nurse-practitioner brochure, and the practice's 2026-07-06 correction:
+// Awad is MD only (his own FDHS card graphic agrees — never FACG);
+// Chang is MD, FACG; Mendoza is MD, MS (never FACG). Card artwork is the
+// practice's own graphics, byte-exact.
 
 export type Provider = {
   id: string;
@@ -31,12 +33,12 @@ export const physicians: Provider[] = [
   {
     id: "amir-awad",
     name: "Amir Awad",
-    credentials: "MD, FACG",
+    credentials: "MD",
     role: { en: "Gastroenterologist", es: "Gastroenterólogo" },
     image: { src: "/images/staff/dr-awad.png", width: 1024, height: 1535 },
     alt: {
-      en: "Dr. Amir Awad, MD, FACG, gastroenterologist at Westchase Gastroenterology",
-      es: "Dr. Amir Awad, MD, FACG, gastroenterólogo de Westchase Gastroenterology",
+      en: "Dr. Amir Awad, MD, gastroenterologist at Westchase Gastroenterology",
+      es: "Dr. Amir Awad, MD, gastroenterólogo de Westchase Gastroenterology",
     },
     bio: null,
   },
@@ -69,12 +71,17 @@ export const nursePractitioners = {
 export const infusionNurse = {
   id: "juliet-oliva",
   name: "Juliet Oliva",
-  role: { en: "Infusion Nurse", es: "Enfermera de Infusión" },
+  // Practice-manager credit added at the practice's request (2026-07-06);
+  // she runs the office in addition to infusion services.
+  role: {
+    en: "Practice Manager & Infusion Nurse",
+    es: "Gerente de la Oficina y Enfermera de Infusión",
+  },
   motto: "Comfort. Care. Compassion.",
   image: { src: "/images/staff/juliet-infusion-nurse.png", width: 1536, height: 1024 },
   alt: {
-    en: "Juliet Oliva, infusion nurse at Westchase Gastroenterology",
-    es: "Juliet Oliva, enfermera de infusión de Westchase Gastroenterology",
+    en: "Juliet Oliva, practice manager and infusion nurse at Westchase Gastroenterology",
+    es: "Juliet Oliva, gerente de la oficina y enfermera de infusión de Westchase Gastroenterology",
   },
 } as const;
 

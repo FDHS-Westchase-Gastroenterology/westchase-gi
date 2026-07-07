@@ -18,12 +18,12 @@ export const en = {
     services: {
       title: "Services",
       description:
-        "Conditions we treat and procedures we perform: colonoscopy, upper endoscopy, ERCP, endoscopic ultrasound, hemorrhoid banding, and more in Tampa and Lutz, FL.",
+        "Conditions we treat and procedures we perform: colonoscopy, upper endoscopy, ERCP, endoscopic ultrasound, liver elastography, hemorrhoid banding, and more in Tampa and Lutz, FL.",
     },
     physicians: {
       title: "Physicians",
       description:
-        "Meet the physicians of Westchase Gastroenterology: John Chang, MD, FACG; Amir Awad, MD, FACG; and Alfredo Mendoza, MD, MS, with our nurse practitioners and staff.",
+        "Meet the physicians of Westchase Gastroenterology: John Chang, MD, FACG; Amir Awad, MD; and Alfredo Mendoza, MD, MS, with our nurse practitioners and staff.",
     },
     gallery: {
       title: "Office Gallery",
@@ -60,6 +60,16 @@ export const en = {
       description:
         "Request an appointment with Westchase Gastroenterology in Tampa or Lutz, FL. Our scheduling coordinator will contact you to confirm.",
     },
+    blog: {
+      title: "Blog",
+      description:
+        "Digestive health articles from Westchase Gastroenterology: colonoscopy, screening, nutrition, reflux, and everyday gut health, in English and Spanish.",
+    },
+    patientEducation: {
+      title: "Patient Education",
+      description:
+        "Plain-language patient education from Westchase Gastroenterology: GI procedures like colonoscopy and endoscopy, and digestive conditions from GERD to Crohn's disease.",
+    },
   },
 
   common: {
@@ -94,6 +104,8 @@ export const en = {
       existingPatients: "Existing Patients",
       procedurePrep: "Procedure Preparation",
       resources: "Patient Resources",
+      patientEducation: "Patient Education",
+      blog: "Blog",
       contact: "Contact Us",
       appointment: "Request Appointment",
       formsEn: "Online New Patient Forms (English)",
@@ -124,6 +136,8 @@ export const en = {
       pendingExplainer:
         "This document is being updated. Text us and we'll send you the current version, or pick one up at the front desk.",
       requestByText: "Request by text",
+      readOnline: "Read online",
+      printablePending: "Printable version on the way",
       newPatientHeading: "Printable new-patient forms",
       prepHeading: "Preparation instructions",
       diseaseHeading: "Disease information sheets",
@@ -317,17 +331,53 @@ export const en = {
   resources: {
     title: "Patient Resources",
     intro:
-      "Trusted organizations our physicians recommend for learning more about digestive conditions, plus our own patient information sheets.",
-    educationHeading: "Patient education library",
+      "Trusted organizations our physicians recommend for learning more about digestive conditions, plus our own patient education library and information sheets.",
+    educationHeading: "Our patient education library",
     educationBody:
-      "The American Society for Gastrointestinal Endoscopy publishes plain-language guides to GI conditions, procedures, and colorectal cancer screening.",
+      "Plain-language pages on the procedures we perform and the conditions we treat — written for patients, in English and Spanish.",
+    educationCta: "Browse patient education",
+    asgeHeading: "More from the ASGE",
+    asgeBody:
+      "The American Society for Gastrointestinal Endoscopy also publishes patient guides to GI conditions and procedures.",
     educationCtaConditions: "ASGE guides: conditions",
     educationCtaProcedures: "ASGE guides: procedures and treatments",
     orgsHeading: "Organizations by topic",
     professionalHeading: "Professional organizations",
     sheetsHeading: "Disease information sheets",
     sheetsIntro:
-      "Printable information sheets from our office. Titles marked as being updated are available from the front desk or by text.",
+      "Every topic below is readable right here on the site. Printable take-home versions are being refreshed by our office and will appear as download links as they're ready.",
+  },
+
+  blog: {
+    title: "Blog",
+    intro:
+      "Practical articles on digestive health from our practice: screenings, symptoms worth checking, and the everyday habits that keep your gut comfortable.",
+    postedLabel: "Posted",
+    readPost: "Read article",
+    backToBlog: "All articles",
+    moreHeading: "Keep reading",
+    archiveNote:
+      "Looking for an older article? Text or call the office and we'll be glad to help.",
+  },
+
+  education: {
+    title: "Patient Education",
+    intro:
+      "Plain-language explanations of the procedures we perform and the conditions we treat. Every page is available in English and Spanish.",
+    proceduresHeading: "Procedures and tests",
+    proceduresIntro: "What to expect before, during, and after common GI procedures.",
+    conditionsHeading: "Conditions",
+    conditionsIntro: "Symptoms, diagnosis, and management of common digestive conditions.",
+    backToLibrary: "All education topics",
+    sheetHeading: "Take-home information sheet",
+    sheetBodyAvailable: "Download the printable version of this topic to keep or share.",
+    sheetBodyPending:
+      "A printable version from our office is on the way. In the meantime, this page has the same information — or ask at the front desk.",
+    relatedHeading: "Related",
+    prepCta: "Preparing for a procedure? See preparation instructions",
+    questionsHeading: "Questions about your care?",
+    questionsBody:
+      "This page is general education, not personal medical advice. Your care team is happy to talk through what it means for you.",
   },
 
   contact: {

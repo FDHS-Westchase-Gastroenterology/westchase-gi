@@ -11,18 +11,30 @@ Built with Next.js 16 (App Router) + Tailwind CSS 4. Deployed on Vercel; goes li
 
 - **33 dead patient PDFs** (new-patient forms, colonoscopy prep instructions, disease sheets)
   are now a registry (`src/lib/documents.ts`): each renders a real download link only once the
-  current PDF exists in `public/documents/`, and offers the staffed text line until then.
+  current PDF exists in `public/documents/`. Disease-information topics are readable ON the
+  site today (`/patient-education`); forms and prep sheets offer the staffed text line until
+  the practice's PDFs arrive.
+- **The blog is on-site** (`/blog`): the old blog's 16 current posts (Nov 2025 – Jun 2026),
+  same titles and dates, bilingual, with original bodies (the old bodies were vendor-licensed
+  text that doesn't transfer). The 2019–2025 archive is catalogued in the repo-root parity
+  matrix, not ported. Old post URLs 301 to the new slugs.
+- **The patient-education library is on-site** (`/patient-education`): all 17 topics from the
+  old ASGE-licensed library rebuilt as original bilingual pages (same titles), plus one page
+  per disease-information sheet, each with a printable-PDF slot. Old category URLs 301.
 - **"Accepting new patients" popup** fired as a full-screen modal on every page, every day.
   Now a dismissible banner shown once per visitor (30-day localStorage).
 - **Spanish is a first-class mode** (`/en` + `/es` with hreflang), not a fragment.
 - **Per-page titles and descriptions** (the old site repeated one meta description on all 64
-  pages), JSON-LD for both offices (Lutz was missing), physician schema, sitemap, redirects
-  for every legacy URL.
+  pages), JSON-LD for both offices (Lutz was missing), physician schema, blog-post schema,
+  sitemap, redirects for every legacy URL.
 - Dead links repaired or removed (Facebook/Yelp held pending live profiles; ccfa.org updated to
-  crohnscolitisfoundation.org; the vendor-hosted article library replaced with ASGE's own
-  patient hub), typos fixed ("Practicies", "Barret", "un able to each"), `callto:` → `sms:`/`tel:`.
+  crohnscolitisfoundation.org; ASGE's public patient hub linked as the "more" layer), typos
+  fixed ("Practicies", "Barret", "un able to each"), `callto:` → `sms:`/`tel:`.
 - Empty physician bio pages are gone; bios slot into `src/lib/providers.ts` when the practice
   supplies them.
+
+Content parity with the old site's 64 captured pages is tracked in `WGI-CONTENT-PARITY.md`
+at the workspace root (local doc, not in this repo).
 
 ## Non-negotiables (see AGENTS.md)
 
@@ -44,7 +56,8 @@ resources, testimonials). Pages in `src/app/[locale]/` render both locales from 
 
 1. Drop the file in `public/documents/`, e.g. `public/documents/prep-miralax.pdf`.
 2. In `src/lib/documents.ts`, set that entry's `file: "/documents/prep-miralax.pdf"`.
-3. Done: the row switches from "Request by text" to a download link in both languages.
+3. Done: the row (and, for disease sheets, the education page's take-home box) switches
+   to a download link in both languages.
 
 ## Pending practice confirmations
 

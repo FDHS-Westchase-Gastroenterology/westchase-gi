@@ -22,6 +22,9 @@ function buildNav(locale: Locale, dict: Dictionary): NavGroup[] {
       children: [
         { label: n.aboutUs, href: p("/about") },
         { label: n.gallery, href: p("/office-gallery") },
+        // The blog lives here like the old site's "More" menu — the header
+        // can't take a seventh top-level item without crowding the lockup.
+        { label: n.blog, href: p("/blog") },
       ],
     },
     { label: n.services, href: p("/services") },
@@ -32,6 +35,7 @@ function buildNav(locale: Locale, dict: Dictionary): NavGroup[] {
         { label: n.newPatients, href: p("/new-patients") },
         { label: n.existingPatients, href: p("/existing-patients") },
         { label: n.procedurePrep, href: p("/procedure-prep") },
+        { label: n.patientEducation, href: p("/patient-education") },
         { label: n.resources, href: p("/resources") },
         {
           label: locale === "es" ? n.formsEs : n.formsEn,
@@ -138,10 +142,13 @@ export function Header({ locale, dict }: HeaderProps) {
         </div>
       </div>
 
-      {/* Main bar */}
+      {/* Main bar. Height +~30% over the original 4.5rem (client directive
+          2026-07-05/06: give the FDHS lockup more presence). The logo grows
+          faster than the bar so the network mark, not empty space, absorbs
+          the new height. */}
       <div className="border-b border-[var(--color-line)] bg-white/95 backdrop-blur-sm">
-        <div className="container-x flex h-[4.5rem] items-center justify-between gap-4">
-          <Link href={localePath(locale, "/")} className="flex min-w-0 items-center gap-3" aria-label={site.headerName}>
+        <div className="container-x flex h-[5.5rem] items-center justify-between gap-3 lg:h-24">
+          <Link href={localePath(locale, "/")} className="flex min-w-0 items-center gap-3.5" aria-label={site.headerName}>
             {/* The FDHS header logo, byte-exact from the practice (keep-list). */}
             <Image
               src="/images/brand/header-logo-fdhs.webp"
@@ -149,19 +156,19 @@ export function Header({ locale, dict }: HeaderProps) {
               width={300}
               height={146}
               priority
-              className="h-11 w-auto flex-none sm:h-12"
+              className="h-14 w-auto flex-none sm:h-[4.25rem]"
             />
             <span className="min-w-0 leading-tight">
               <span className="block truncate font-[var(--font-display)] text-[1.05rem] text-[var(--color-navy)] sm:text-[1.2rem]">
                 Westchase Gastroenterology
               </span>
-              <span className="block truncate text-[0.72rem] font-bold text-[var(--color-teal-ink)]">
+              <span className="block truncate text-[0.72rem] font-bold tracking-[0.01em] text-[var(--color-teal-ink)] sm:text-[0.8rem]">
                 Florida Digestive Health Specialists
               </span>
             </span>
           </Link>
 
-          <nav className="hidden items-center gap-1 lg:flex" aria-label={c.menu}>
+          <nav className="hidden items-center gap-1 xl:flex" aria-label={c.menu}>
             {nav.map((item, i) =>
               item.children ? (
                 <div key={item.label} className="relative">
@@ -169,7 +176,7 @@ export function Header({ locale, dict }: HeaderProps) {
                     type="button"
                     aria-expanded={open === i}
                     onClick={() => setOpen(open === i ? null : i)}
-                    className={`flex items-center gap-1 rounded-md px-3 py-2 font-bold text-[0.98rem] transition-colors hover:bg-[var(--color-mint)] ${
+                    className={`flex items-center gap-1 whitespace-nowrap rounded-md px-2.5 py-2 font-bold text-[0.98rem] transition-colors hover:bg-[var(--color-mint)] ${
                       open === i ? "bg-[var(--color-mint)]" : ""
                     }`}
                   >
@@ -211,7 +218,7 @@ export function Header({ locale, dict }: HeaderProps) {
                 <Link
                   key={item.label}
                   href={item.href!}
-                  className={`rounded-md px-3 py-2 font-bold text-[0.98rem] transition-colors hover:bg-[var(--color-mint)] ${
+                  className={`whitespace-nowrap rounded-md px-2.5 py-2 font-bold text-[0.98rem] transition-colors hover:bg-[var(--color-mint)] ${
                     pathname === item.href ? "text-[var(--color-teal-ink)]" : ""
                   }`}
                 >
@@ -226,7 +233,7 @@ export function Header({ locale, dict }: HeaderProps) {
 
           <button
             type="button"
-            className="rounded-md p-2 transition-colors hover:bg-[var(--color-mint)] lg:hidden"
+            className="rounded-md p-2 transition-colors hover:bg-[var(--color-mint)] xl:hidden"
             aria-expanded={drawer}
             aria-label={drawer ? c.close : c.menu}
             onClick={() => setDrawer(!drawer)}
@@ -236,9 +243,9 @@ export function Header({ locale, dict }: HeaderProps) {
         </div>
       </div>
 
-      {/* Mobile drawer */}
+      {/* Mobile drawer (offset = utility bar 2.5rem + main bar 5.5rem) */}
       {drawer && (
-        <div className="fixed inset-x-0 bottom-0 top-[7rem] z-[var(--z-drawer)] overflow-y-auto bg-white xl:hidden">
+        <div className="fixed inset-x-0 bottom-0 top-[8rem] z-[var(--z-drawer)] overflow-y-auto bg-white xl:hidden">
           <nav className="container-x flex flex-col gap-1 py-5" aria-label={c.menu}>
             <Link
               href={localePath(locale, "/")}

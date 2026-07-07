@@ -31,6 +31,9 @@ export const procedures: Bilingual[] = [
   { en: "Endoscopic Ultrasound", es: "Ultrasonido endoscópico" },
   { en: "Esophagogastroduodenoscopy (EGD)", es: "Esofagogastroduodenoscopia (EGD)" },
   { en: "Halo Study (Barrett's Esophagus ablation)", es: "Estudio Halo (ablación del esófago de Barrett)" },
+  // Added at the practice's request 2026-07-06. Conservative phrasing; the
+  // practice already lists "Liver Ultrasound & Elastography" on its About page.
+  { en: "Liver Elastography (non-invasive liver stiffness assessment)", es: "Elastografía hepática (evaluación no invasiva de la rigidez del hígado)" },
   { en: "Motility Study", es: "Estudio de motilidad" },
   { en: "Hemorrhoid Banding (non-invasive treatment of internal hemorrhoids)", es: "Ligadura de hemorroides (tratamiento no invasivo de las hemorroides internas)" },
 ];

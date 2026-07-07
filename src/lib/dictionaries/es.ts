@@ -21,12 +21,12 @@ export const es: Dictionary = {
     services: {
       title: "Servicios",
       description:
-        "Condiciones que tratamos y procedimientos que realizamos: colonoscopia, endoscopia superior, CPRE, ultrasonido endoscópico, ligadura de hemorroides y más en Tampa y Lutz, FL.",
+        "Condiciones que tratamos y procedimientos que realizamos: colonoscopia, endoscopia superior, CPRE, ultrasonido endoscópico, elastografía hepática, ligadura de hemorroides y más en Tampa y Lutz, FL.",
     },
     physicians: {
       title: "Médicos",
       description:
-        "Conozca a los médicos de Westchase Gastroenterology: John Chang, MD, FACG; Amir Awad, MD, FACG; y Alfredo Mendoza, MD, MS, junto con nuestras enfermeras practicantes y el equipo.",
+        "Conozca a los médicos de Westchase Gastroenterology: John Chang, MD, FACG; Amir Awad, MD; y Alfredo Mendoza, MD, MS, junto con nuestras enfermeras practicantes y el equipo.",
     },
     gallery: {
       title: "Nuestra Oficina",
@@ -63,6 +63,16 @@ export const es: Dictionary = {
       description:
         "Solicite una cita con Westchase Gastroenterology en Tampa o Lutz, FL. Nuestra coordinadora de citas le contactará para confirmar.",
     },
+    blog: {
+      title: "Blog",
+      description:
+        "Artículos de salud digestiva de Westchase Gastroenterology: colonoscopia, exámenes de detección, nutrición, reflujo y salud intestinal, en español e inglés.",
+    },
+    patientEducation: {
+      title: "Educación para Pacientes",
+      description:
+        "Educación en lenguaje sencillo de Westchase Gastroenterology: procedimientos digestivos como la colonoscopia y la endoscopia, y condiciones desde el reflujo hasta la enfermedad de Crohn.",
+    },
   },
 
   common: {
@@ -97,6 +107,8 @@ export const es: Dictionary = {
       existingPatients: "Pacientes Existentes",
       procedurePrep: "Preparación para Procedimientos",
       resources: "Recursos para Pacientes",
+      patientEducation: "Educación para Pacientes",
+      blog: "Blog",
       contact: "Contáctenos",
       appointment: "Solicitar Cita",
       formsEn: "Formularios para pacientes nuevos (inglés)",
@@ -127,6 +139,8 @@ export const es: Dictionary = {
       pendingExplainer:
         "Este documento se está actualizando. Envíenos un texto y le mandaremos la versión vigente, o recójala en la recepción.",
       requestByText: "Solicitar por texto",
+      readOnline: "Leer en línea",
+      printablePending: "Versión para imprimir en camino",
       newPatientHeading: "Formularios para imprimir",
       prepHeading: "Instrucciones de preparación",
       diseaseHeading: "Hojas informativas sobre enfermedades",
@@ -321,17 +335,53 @@ export const es: Dictionary = {
   resources: {
     title: "Recursos para Pacientes",
     intro:
-      "Organizaciones confiables que nuestros médicos recomiendan para aprender más sobre las enfermedades digestivas, además de nuestras propias hojas informativas.",
-    educationHeading: "Biblioteca de educación para pacientes",
+      "Organizaciones confiables que nuestros médicos recomiendan para aprender más sobre las enfermedades digestivas, además de nuestra propia biblioteca educativa y hojas informativas.",
+    educationHeading: "Nuestra biblioteca de educación para pacientes",
     educationBody:
-      "La Sociedad Americana de Endoscopia Gastrointestinal (ASGE) publica guías en lenguaje sencillo sobre condiciones digestivas, procedimientos y la detección del cáncer colorrectal (en inglés).",
+      "Páginas en lenguaje sencillo sobre los procedimientos que realizamos y las condiciones que tratamos — escritas para pacientes, en español e inglés.",
+    educationCta: "Ver la educación para pacientes",
+    asgeHeading: "Más recursos de la ASGE",
+    asgeBody:
+      "La Sociedad Americana de Endoscopia Gastrointestinal (ASGE) también publica guías para pacientes sobre condiciones y procedimientos digestivos (en inglés).",
     educationCtaConditions: "Guías de la ASGE: condiciones",
     educationCtaProcedures: "Guías de la ASGE: procedimientos y tratamientos",
     orgsHeading: "Organizaciones por tema",
     professionalHeading: "Organizaciones profesionales",
     sheetsHeading: "Hojas informativas sobre enfermedades",
     sheetsIntro:
-      "Hojas informativas para imprimir de nuestra oficina. Los títulos marcados como en actualización están disponibles en la recepción o por texto.",
+      "Todos los temas a continuación se pueden leer aquí mismo en el sitio. Nuestra oficina está renovando las versiones para imprimir y aparecerán como enlaces de descarga a medida que estén listas.",
+  },
+
+  blog: {
+    title: "Blog",
+    intro:
+      "Artículos prácticos de salud digestiva de nuestra práctica: exámenes de detección, síntomas que conviene revisar y los hábitos diarios que cuidan su digestión.",
+    postedLabel: "Publicado",
+    readPost: "Leer artículo",
+    backToBlog: "Todos los artículos",
+    moreHeading: "Siga leyendo",
+    archiveNote:
+      "¿Busca un artículo anterior? Envíenos un texto o llame a la oficina y con gusto le ayudamos.",
+  },
+
+  education: {
+    title: "Educación para Pacientes",
+    intro:
+      "Explicaciones en lenguaje sencillo de los procedimientos que realizamos y las condiciones que tratamos. Cada página está disponible en español e inglés.",
+    proceduresHeading: "Procedimientos y estudios",
+    proceduresIntro: "Qué esperar antes, durante y después de los procedimientos digestivos más comunes.",
+    conditionsHeading: "Condiciones",
+    conditionsIntro: "Síntomas, diagnóstico y manejo de las condiciones digestivas más comunes.",
+    backToLibrary: "Todos los temas educativos",
+    sheetHeading: "Hoja informativa para llevar",
+    sheetBodyAvailable: "Descargue la versión para imprimir de este tema para conservarla o compartirla.",
+    sheetBodyPending:
+      "La versión para imprimir de nuestra oficina está en camino. Mientras tanto, esta página contiene la misma información — o pregunte en la recepción.",
+    relatedHeading: "Relacionado",
+    prepCta: "¿Se prepara para un procedimiento? Vea las instrucciones de preparación",
+    questionsHeading: "¿Preguntas sobre su atención?",
+    questionsBody:
+      "Esta página es educación general, no un consejo médico personal. Su equipo de atención con gusto le explica lo que significa para usted.",
   },
 
   contact: {
