@@ -251,8 +251,6 @@ export const es: Dictionary = {
     teamHeading: "Equipo de Trabajo / Team Members",
     teamBody:
       "Detrás de cada visita está nuestro equipo de oficina: las personas que contestan sus llamadas y textos, coordinan citas y seguros, y hacen que ambas oficinas funcionen sin contratiempos.",
-    bioComing:
-      "Las biografías de nuestros médicos están en preparación. Mientras tanto, con gusto le contamos sobre ellos cuando llame o nos visite.",
   },
 
   gallery: {
@@ -260,8 +258,6 @@ export const es: Dictionary = {
     intro:
       "Conozca nuestras oficinas por dentro. Ambas ubicaciones comparten un mismo teléfono, una misma línea de texto y el mismo estándar de atención.",
     photos: {
-      lobbyPanorama: "La sala de espera de Westchase Gastroenterology",
-      consultRoom: "Una sala de consulta de Westchase Gastroenterology",
       storefront: "La entrada de nuestra oficina de Tampa en Sheldon Road",
       lobby: "La recepción y sala de espera de nuestra oficina",
       lobby2: "El área de recepción de nuestra oficina",

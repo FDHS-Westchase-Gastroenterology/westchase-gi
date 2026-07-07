@@ -24,11 +24,10 @@ export default async function GalleryPage({ params }: PageProps) {
   const dict = getDictionary(locale);
   const t = dict.gallery;
 
-  // The three photos the practice's site published, plus two practice-provided
-  // lobby photos supplied for this rebuild.
+  // The Tampa storefront from the practice's site, plus two practice-provided
+  // photos of the renovated lobby. (The old site's pre-remodel interior photos
+  // were retired at the practice's request, 2026-07-07.)
   const photos = [
-    { src: "/images/facility/lobby-panorama.webp", w: 1067, h: 436, alt: t.photos.lobbyPanorama, wide: true },
-    { src: "/images/facility/consult-room.webp", w: 1067, h: 436, alt: t.photos.consultRoom, wide: true },
     { src: "/images/facility/storefront-tampa.webp", w: 1067, h: 436, alt: t.photos.storefront, wide: true },
     { src: "/images/facility/lobby.jpeg", w: 2362, h: 1330, alt: t.photos.lobby, wide: false },
     { src: "/images/facility/lobby-2.jpeg", w: 2362, h: 1330, alt: t.photos.lobby2, wide: false },

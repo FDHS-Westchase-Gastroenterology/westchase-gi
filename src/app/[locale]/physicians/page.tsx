@@ -75,7 +75,6 @@ export default async function PhysiciansPage({ params }: PageProps) {
               </Reveal>
             ))}
           </div>
-          <p className="mt-7 max-w-2xl text-[0.95rem] text-[var(--color-muted)]">{t.bioComing}</p>
         </div>
       </section>
 

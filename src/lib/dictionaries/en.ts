@@ -247,8 +247,6 @@ export const en = {
     teamHeading: "Team Members / Equipo de Trabajo",
     teamBody:
       "Behind every visit is our office team: the people who answer your calls and texts, coordinate scheduling and insurance, and make both offices run smoothly.",
-    bioComing:
-      "Physician biographies are being prepared. In the meantime, feel free to ask about our physicians when you call or visit.",
   },
 
   gallery: {
@@ -256,8 +254,6 @@ export const en = {
     intro:
       "A look inside our offices. Both locations share one phone number, one text line, and the same standard of care.",
     photos: {
-      lobbyPanorama: "The waiting area at Westchase Gastroenterology",
-      consultRoom: "A consultation room at Westchase Gastroenterology",
       storefront: "The entrance of our Tampa office on Sheldon Road",
       lobby: "The front desk and lobby of our office",
       lobby2: "The reception area of our office",
