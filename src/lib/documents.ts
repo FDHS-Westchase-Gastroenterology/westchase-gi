@@ -23,20 +23,25 @@ export const documents: PracticeDocument[] = [
   { id: "record-release-to-wcgi", category: "new-patient", label: { en: "Medical Record Release to WCGI", es: "Autorización para enviar expedientes médicos a WCGI" }, file: null },
   { id: "record-release-from-wcgi", category: "new-patient", label: { en: "Medical Record Release from WCGI", es: "Autorización para solicitar expedientes médicos de WCGI" }, file: null },
 
-  // Procedure preparation instructions.
+  // Procedure preparation instructions — the practice's CURRENT handout set
+  // (Juliet's 2026-07-07 email, confirmed current; replaces the old site's
+  // stale list of MoviPrep/OsmoPrep/Prepopik/Suprep/Magnesium Citrate).
+  // Every one of these is readable on-site at /procedure-prep/<slug>
+  // (see lib/content/preps); `file` remains the slot for a clean per-doc
+  // printable PDF if the practice supplies one.
+  { id: "prep-clenpiq-split-dose", category: "procedure-prep", label: { en: "Clenpiq Split-Dose Prep", es: "Preparación Clenpiq en dosis dividida" }, file: null },
+  { id: "prep-clenpiq", category: "procedure-prep", label: { en: "Clenpiq Prep", es: "Preparación Clenpiq" }, file: null },
+  { id: "prep-sutab", category: "procedure-prep", label: { en: "Sutab Prep", es: "Preparación Sutab" }, file: null },
+  { id: "prep-colonoscopy-miralax", category: "procedure-prep", label: { en: "Colonoscopy Prep (MiraLAX)", es: "Preparación para colonoscopia (MiraLAX)" }, file: null },
+  { id: "prep-colonoscopy-miralax-split-dose", category: "procedure-prep", label: { en: "Colonoscopy Split-Dose Prep (MiraLAX)", es: "Preparación para colonoscopia en dosis dividida (MiraLAX)" }, file: null },
+  { id: "prep-golytely", category: "procedure-prep", label: { en: "Golytely Prep", es: "Preparación Golytely" }, file: null },
+  { id: "prep-golytely-split-dose", category: "procedure-prep", label: { en: "Golytely Split-Dose Prep", es: "Preparación Golytely en dosis dividida" }, file: null },
+  { id: "prep-egd", category: "procedure-prep", label: { en: "EGD (Upper Endoscopy) Prep", es: "Preparación para EGD (endoscopia superior)" }, file: null },
   { id: "prep-bravo", category: "procedure-prep", label: { en: "Bravo Prep", es: "Preparación Bravo" }, file: null },
-  { id: "prep-egd", category: "procedure-prep", label: { en: "EGD Prep", es: "Preparación para EGD" }, file: null },
-  { id: "prep-endocapsule", category: "procedure-prep", label: { en: "Endocapsule Prep", es: "Preparación para endocápsula" }, file: null },
-  { id: "prep-golytely", category: "procedure-prep", label: { en: "GoLYTELY Prep", es: "Preparación GoLYTELY" }, file: null },
   { id: "prep-halo", category: "procedure-prep", label: { en: "Halo Prep", es: "Preparación Halo" }, file: null },
-  { id: "prep-magnesium-citrate", category: "procedure-prep", label: { en: "Magnesium Citrate Prep", es: "Preparación con citrato de magnesio" }, file: null },
-  { id: "prep-miralax", category: "procedure-prep", label: { en: "MiraLAX Prep", es: "Preparación MiraLAX" }, file: null },
-  { id: "prep-moviprep", category: "procedure-prep", label: { en: "MoviPrep", es: "Preparación MoviPrep" }, file: null },
-  { id: "prep-osmoprep", category: "procedure-prep", label: { en: "OsmoPrep", es: "Preparación OsmoPrep" }, file: null },
-  { id: "prep-prepopik-day-before", category: "procedure-prep", label: { en: "Prepopik (day-before dose)", es: "Prepopik (dosis del día anterior)" }, file: null },
-  { id: "prep-prepopik-split", category: "procedure-prep", label: { en: "Prepopik (split dose)", es: "Prepopik (dosis dividida)" }, file: null },
+  { id: "prep-endocapsule", category: "procedure-prep", label: { en: "Endocapsule Study Prep", es: "Preparación para el estudio de endocápsula" }, file: null },
   { id: "prep-sigmoidoscopy", category: "procedure-prep", label: { en: "Sigmoidoscopy Prep", es: "Preparación para sigmoidoscopia" }, file: null },
-  { id: "prep-suprep", category: "procedure-prep", label: { en: "Suprep Prep", es: "Preparación Suprep" }, file: null },
+  { id: "prep-anti-reflux-diet", category: "procedure-prep", label: { en: "Anti-Reflux Diet Guidelines", es: "Guías de dieta antirreflujo" }, file: null },
 
   // Disease information sheets.
   { id: "info-abdominal-pain", category: "disease-info", label: { en: "Abdominal Pain", es: "Dolor abdominal" }, file: null },

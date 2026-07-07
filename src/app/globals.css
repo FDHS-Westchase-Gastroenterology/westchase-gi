@@ -421,6 +421,165 @@
      is set by an inline head script, so there is no flash). */
   html.banner-dismissed .notice-banner { display: none; }
 
+  /* ---- Procedure-prep content ------------------------------------ */
+
+  /* A fill-in blank from the paper handout: the office completes these
+     at scheduling; patients write them on the printed copy. */
+  .fill-blank {
+    display: inline-block;
+    min-width: 5.5ch;
+    height: 0.9em;
+    margin-inline: 0.2rem;
+    border-bottom: 2px dotted var(--color-line-2);
+    transform: translateY(0.12em);
+  }
+
+  /* Plain bullet list (teal dot markers, matching the site's list voice) */
+  .list-plain {
+    display: grid;
+    gap: 0.7rem;
+  }
+  .list-plain li {
+    position: relative;
+    padding-left: 1.5rem;
+  }
+  .list-plain li::before {
+    content: "";
+    position: absolute;
+    left: 0.2rem;
+    top: 0.58em;
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 999px;
+    background: var(--color-teal);
+  }
+
+  /* Numbered timeline steps (the prep regimens) */
+  .list-steps {
+    display: grid;
+    gap: 0.9rem;
+    counter-reset: prep-step;
+  }
+  .list-steps li {
+    position: relative;
+    padding-left: 2.6rem;
+    counter-increment: prep-step;
+  }
+  .list-steps li::before {
+    content: counter(prep-step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 999px;
+    background: var(--color-navy);
+    color: var(--color-on-dark);
+    font-weight: 800;
+    font-size: 0.88rem;
+    display: grid;
+    place-items: center;
+  }
+
+  /* "Do not" list: the red cross twin of .list-check */
+  .list-avoid {
+    display: grid;
+    gap: 0.7rem;
+  }
+  .list-avoid li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.7rem;
+  }
+  .list-avoid li::before {
+    content: "";
+    flex: none;
+    margin-top: 0.32rem;
+    width: 1.05rem;
+    height: 1.05rem;
+    background: oklch(0.5 0.19 25);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.4' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18'/%3E%3Cpath d='m6 6 12 12'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.4' stroke-linecap='round'%3E%3Cpath d='M18 6 6 18'/%3E%3Cpath d='m6 6 12 12'/%3E%3C/svg%3E") center / contain no-repeat;
+  }
+
+  /* Boxed handout warnings (follow-up note, day-of fasting rules) */
+  .prep-note {
+    display: grid;
+    gap: 0.5rem;
+    background: var(--color-amber-soft);
+    border-radius: var(--radius-lg);
+    padding: 1.05rem 1.3rem;
+    color: var(--color-ink);
+    font-weight: 600;
+  }
+  .prep-note strong {
+    font-weight: 800;
+  }
+
+  /* Two-regimen dosing schedule (Clenpiq / Sutab) */
+  .prep-schedule {
+    display: grid;
+    gap: 1rem;
+  }
+  @media (min-width: 640px) {
+    .prep-schedule {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  .prep-schedule-col {
+    background: white;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+  }
+  .prep-schedule-head {
+    background: var(--color-navy);
+    color: var(--color-on-dark);
+    font-weight: 800;
+    font-size: 0.98rem;
+    padding: 0.85rem 1.15rem;
+  }
+  .prep-schedule-head .fill-blank {
+    border-bottom-color: var(--color-line-dark);
+  }
+  .prep-schedule-col li {
+    padding: 0.85rem 1.15rem;
+    font-size: 0.97rem;
+  }
+  .prep-schedule-col li + li {
+    border-top: 1px solid var(--color-line);
+  }
+
+  /* Handout tables (clear-liquid food groups, anti-reflux foods) */
+  .prep-table-wrap {
+    overflow-x: auto;
+    background: white;
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-lg);
+  }
+  .prep-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.96rem;
+  }
+  .prep-table th {
+    background: var(--color-mint);
+    color: var(--color-ink);
+    text-align: left;
+    font-weight: 800;
+    padding: 0.8rem 1rem;
+  }
+  .prep-table td {
+    padding: 0.8rem 1rem;
+    border-top: 1px solid var(--color-line);
+    vertical-align: top;
+    min-width: 9rem;
+  }
+  .prep-table td:first-child {
+    font-weight: 700;
+    color: var(--color-ink);
+  }
+
   /* ---- Testimonial rail: scroll-snap, native momentum ---- */
   .rail {
     display: grid;
@@ -435,4 +594,128 @@
     scrollbar-color: var(--color-line-2) transparent;
   }
   .rail > * { scroll-snap-align: start; }
+}
+
+/* ------------------------------------------------------------------ *
+   Print: prep instructions (and any page) print as a clean handout.
+   Site chrome disappears; a letterhead block (print-only, rendered by
+   the prep pages) identifies the practice on paper.
+ * ------------------------------------------------------------------ */
+@media print {
+  @page {
+    margin: 14mm;
+  }
+
+  body {
+    background: white;
+    color: black;
+    font-size: 10.5pt;
+    line-height: 1.5;
+  }
+
+  body > header,
+  body > footer,
+  .notice-banner,
+  .skip-link,
+  .print-hide {
+    display: none !important;
+  }
+
+  main {
+    display: block;
+  }
+
+  .section,
+  .section-sm {
+    padding-block: 0.75rem;
+  }
+
+  /* Web-scale display sizes read as posters on paper; bring them down. */
+  .h1 {
+    font-size: 20pt;
+  }
+  .lead {
+    font-size: 11.5pt;
+  }
+
+  h1, h2, h3, h4, p, li, td, th {
+    color: black !important;
+  }
+
+  .heading-tick::before {
+    display: none;
+  }
+
+  .prep-note {
+    background: white;
+    border: 1.5pt solid black;
+    border-radius: 0;
+  }
+
+  .prep-schedule-head {
+    background: white !important;
+    color: black !important;
+    border-bottom: 1.5pt solid black;
+  }
+
+  .prep-schedule-col,
+  .prep-table-wrap {
+    border-color: black;
+    border-radius: 0;
+    overflow: visible;
+  }
+
+  .prep-table th {
+    background: white;
+    border-bottom: 1.5pt solid black;
+  }
+
+  .list-steps li::before {
+    background: white;
+    color: black;
+    border: 1.5pt solid black;
+  }
+
+  .fill-blank {
+    border-bottom-color: black;
+    min-width: 9ch;
+  }
+
+  /* Mask-drawn glyphs rely on background color, which printers may drop.
+     Swap in real characters so ✓ / ✗ / • survive black-and-white print. */
+  .list-check li::before,
+  .list-avoid li::before,
+  .list-plain li::before {
+    -webkit-mask: none;
+    mask: none;
+    background: transparent;
+    border-radius: 0;
+    width: auto;
+    height: auto;
+    margin-top: 0;
+    font-weight: 900;
+  }
+  .list-check li::before {
+    content: "✓";
+  }
+  .list-avoid li::before {
+    content: "✗";
+  }
+  .list-plain li::before {
+    content: "•";
+    top: 0;
+  }
+
+  section,
+  .prep-schedule-col,
+  .prep-note,
+  li,
+  tr {
+    break-inside: avoid;
+  }
+
+  html.js .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }

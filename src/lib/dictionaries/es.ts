@@ -46,7 +46,7 @@ export const es: Dictionary = {
     procedurePrep: {
       title: "Preparación para Procedimientos",
       description:
-        "Instrucciones de preparación para colonoscopia, EGD y otros procedimientos digestivos en Westchase Gastroenterology. Solicite sus instrucciones por texto o por teléfono.",
+        "Instrucciones de preparación paso a paso para colonoscopia, EGD y otros procedimientos digestivos en Westchase Gastroenterology — disponibles en línea y para imprimir, en español e inglés.",
     },
     resources: {
       title: "Recursos para Pacientes",
@@ -140,6 +140,7 @@ export const es: Dictionary = {
         "Este documento se está actualizando. Envíenos un texto y le mandaremos la versión vigente, o recójala en la recepción.",
       requestByText: "Solicitar por texto",
       readOnline: "Leer en línea",
+      viewInstructions: "Ver instrucciones",
       printablePending: "Versión para imprimir en camino",
       newPatientHeading: "Formularios para imprimir",
       prepHeading: "Instrucciones de preparación",
@@ -330,10 +331,18 @@ export const es: Dictionary = {
   procedurePrep: {
     title: "Preparación para Procedimientos",
     intro:
-      "Seguir sus instrucciones de preparación al pie de la letra es lo más importante que puede hacer para un examen preciso. Su equipo de atención le indica cuál preparación le corresponde; las instrucciones a continuación corresponden a cada preparación que recetamos.",
+      "Seguir sus instrucciones de preparación al pie de la letra es lo más importante que puede hacer para un examen preciso. Su equipo de atención le indica cuál preparación le corresponde — las instrucciones a continuación corresponden a cada preparación que recetamos, completas, listas para leer o imprimir.",
     unsure: "¿No está seguro de cuál es su preparación?",
     unsureBody:
       "Envíenos un texto al (813) 564-0315 con su nombre y la fecha de su cita, y le confirmaremos su preparación y le enviaremos las instrucciones correctas.",
+    view: "Ver instrucciones",
+    print: "Imprimir estas instrucciones",
+    backToAll: "Todas las instrucciones de preparación",
+    blanksHint:
+      "Las líneas en blanco son los detalles de su cita — nuestro equipo se los confirma cuando se programa su procedimiento. Escríbalos en su copia impresa.",
+    questionsHeading: "¿Preguntas sobre su preparación?",
+    questionsBody:
+      "Si algo en estas instrucciones no está claro, o sus medicamentos no aparecen aquí, comuníquese con nuestra oficina antes de comenzar su preparación.",
   },
 
   resources: {

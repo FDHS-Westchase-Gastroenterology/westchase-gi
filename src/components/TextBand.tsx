@@ -11,7 +11,7 @@ type TextBandProps = { locale: Locale; dict: Dictionary };
 export function TextBand({ dict }: TextBandProps) {
   const t = dict.common.textBand;
   return (
-    <section className="bg-[var(--color-navy)] text-[var(--color-on-dark)]">
+    <section className="print-hide bg-[var(--color-navy)] text-[var(--color-on-dark)]">
       <div className="container-x section-sm flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
         <div className="max-w-2xl">
           <h2 className="h2 font-[var(--font-display)] text-[var(--color-on-dark)]">{t.heading}</h2>

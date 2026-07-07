@@ -43,7 +43,7 @@ export const en = {
     procedurePrep: {
       title: "Procedure Preparation",
       description:
-        "Procedure preparation instructions for colonoscopy, EGD, and other GI procedures at Westchase Gastroenterology. Request your prep instructions by text or phone.",
+        "Step-by-step preparation instructions for colonoscopy, EGD, and other GI procedures at Westchase Gastroenterology — readable online and printable, in English and Spanish.",
     },
     resources: {
       title: "Patient Resources",
@@ -137,6 +137,7 @@ export const en = {
         "This document is being updated. Text us and we'll send you the current version, or pick one up at the front desk.",
       requestByText: "Request by text",
       readOnline: "Read online",
+      viewInstructions: "View instructions",
       printablePending: "Printable version on the way",
       newPatientHeading: "Printable new-patient forms",
       prepHeading: "Preparation instructions",
@@ -326,10 +327,18 @@ export const en = {
   procedurePrep: {
     title: "Procedure Preparation",
     intro:
-      "Following your preparation instructions exactly is the most important thing you can do for an accurate exam. Your care team tells you which prep applies to you; the instructions below match each prep we prescribe.",
+      "Following your preparation instructions exactly is the most important thing you can do for an accurate exam. Your care team tells you which prep applies to you — the instructions below match each prep we prescribe, in full, ready to read or print.",
     unsure: "Not sure which prep is yours?",
     unsureBody:
       "Text us at (813) 564-0315 with your name and appointment date, and we'll confirm your prep and send you the right instructions.",
+    view: "View instructions",
+    print: "Print these instructions",
+    backToAll: "All preparation instructions",
+    blanksHint:
+      "Blank lines are your appointment details — our team confirms them when your procedure is scheduled. Write them on your printed copy.",
+    questionsHeading: "Questions about your prep?",
+    questionsBody:
+      "If anything in these instructions is unclear, or your medications aren't covered here, contact our office before you start your prep.",
   },
 
   resources: {
