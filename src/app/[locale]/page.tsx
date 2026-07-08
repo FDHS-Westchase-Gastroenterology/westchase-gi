@@ -67,10 +67,11 @@ export default async function HomePage({ params }: PageProps) {
               className="mt-6 inline-flex items-center gap-2 font-semibold text-[var(--color-on-dark-muted)] transition-colors hover:text-[var(--color-on-dark)]"
             >
               <MessageSquare className="h-4 w-4 text-[var(--color-amber)]" />
-              {dict.common.textLine}: {site.textLine.display} · {dict.common.textLineHuman}
+              {dict.common.textLine}: <span className="bidi-ltr">{site.textLine.display}</span> ·{" "}
+              {dict.common.textLineHuman}
             </a>
           </div>
-          <Reveal variant="fade" className="xl:-mr-12 2xl:-mr-20">
+          <Reveal variant="fade" className="xl:-me-12 2xl:-me-20">
             <Image
               src="/images/staff/group-lobby-sign.webp"
               alt={t.heroPhoto}

@@ -163,13 +163,13 @@ export function Header({ locale, dict }: HeaderProps) {
           <div className="flex min-w-0 items-center gap-4">
             <a href={site.phone.href} className="flex items-center gap-1.5 transition-opacity hover:opacity-80">
               <Phone className="h-3.5 w-3.5 text-[var(--color-amber)]" />
-              <span className="whitespace-nowrap">{site.phone.display}</span>
+              <span className="bidi-ltr whitespace-nowrap">{site.phone.display}</span>
             </a>
             <a href={site.textLine.href} className="flex min-w-0 items-center gap-1.5 transition-opacity hover:opacity-80">
               <MessageSquare className="h-3.5 w-3.5 flex-none text-[var(--color-amber)]" />
               <span className="truncate">
                 <span className="hidden sm:inline">{c.textLine}: </span>
-                {site.textLine.display}
+                <span className="bidi-ltr">{site.textLine.display}</span>
               </span>
               <span className="hidden truncate font-normal text-[var(--color-on-dark-muted)] lg:inline">
                 · {c.textLineHuman}
@@ -208,10 +208,10 @@ export function Header({ locale, dict }: HeaderProps) {
               className="h-14 w-auto flex-none sm:h-[4.25rem]"
             />
             <span className="min-w-0 leading-tight">
-              <span className="block truncate font-[var(--font-display)] text-[1.05rem] text-[var(--color-navy)] sm:text-[1.2rem]">
+              <span className="bidi-ltr block truncate font-[var(--font-display)] text-[1.05rem] text-[var(--color-navy)] sm:text-[1.2rem]">
                 Westchase Gastroenterology
               </span>
-              <span className="block truncate text-[0.72rem] font-bold tracking-[0.01em] text-[var(--color-teal-ink)] sm:text-[0.8rem]">
+              <span className="bidi-ltr block truncate text-[0.72rem] font-bold tracking-[0.01em] text-[var(--color-teal-ink)] sm:text-[0.8rem]">
                 Florida Digestive Health Specialists
               </span>
             </span>
@@ -275,7 +275,7 @@ export function Header({ locale, dict }: HeaderProps) {
                 </Link>
               )
             )}
-            <Link href={localePath(locale, "/appointment")} className="btn btn-amber btn-sm ml-2">
+            <Link href={localePath(locale, "/appointment")} className="btn btn-amber btn-sm ms-2">
               {c.requestAppointment}
             </Link>
           </nav>

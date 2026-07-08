@@ -127,18 +127,19 @@ export function Footer({ locale, dict }: FooterProps) {
           <ul className="mt-5 grid gap-2 text-[0.95rem] font-semibold">
             <li>
               <a href={site.phone.href} className="inline-flex items-center gap-2 transition-colors hover:text-[var(--color-on-dark)]">
-                <Phone className="h-4 w-4 flex-none text-[var(--color-amber)]" /> {site.phone.display}
+                <Phone className="h-4 w-4 flex-none text-[var(--color-amber)]" />{" "}
+                <span className="bidi-ltr">{site.phone.display}</span>
               </a>
             </li>
             <li>
               <a href={site.textLine.href} className="inline-flex items-center gap-2 transition-colors hover:text-[var(--color-on-dark)]">
                 <MessageSquare className="h-4 w-4 flex-none text-[var(--color-amber)]" /> {c.textLine}:{" "}
-                {site.textLine.display}
+                <span className="bidi-ltr">{site.textLine.display}</span>
               </a>
             </li>
             <li className="inline-flex items-center gap-2">
               <Printer className="h-4 w-4 flex-none text-[var(--color-amber)]" /> {c.contactCard.fax}:{" "}
-              {site.fax.display}
+              <span className="bidi-ltr">{site.fax.display}</span>
             </li>
             <li>
               <a href={`mailto:${site.email}`} className="inline-flex items-center gap-2 transition-colors hover:text-[var(--color-on-dark)]">

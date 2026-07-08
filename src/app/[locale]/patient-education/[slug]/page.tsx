@@ -47,7 +47,7 @@ export default async function EducationTopicPage({ params }: PageProps) {
       <section className="border-b border-[var(--color-line)] bg-[var(--color-mint)]">
         <div className="container-tight section-sm">
           <Link href={localePath(locale, "/patient-education")} className="link-line text-[0.95rem]">
-            ← {t.backToLibrary}
+            <span aria-hidden className="inline-block rtl:-scale-x-100">←</span> {t.backToLibrary}
           </Link>
           <h1 className="h1 heading-tick mt-6">{topic.title[locale]}</h1>
           <p className="lead measure mt-4 text-[var(--color-body)]">{topic.summary[locale]}</p>

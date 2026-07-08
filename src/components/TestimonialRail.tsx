@@ -22,7 +22,9 @@ export function TestimonialRail({ label, prevLabel, nextLabel }: TestimonialRail
     if (!rail) return;
     const card = rail.firstElementChild as HTMLElement | null;
     const step = card ? card.offsetWidth + 16 : 360;
-    rail.scrollBy({ left: dir * step, behavior: "smooth" });
+    // In RTL the rail flows right-to-left: "next" content sits to the left.
+    const sign = getComputedStyle(rail).direction === "rtl" ? -dir : dir;
+    rail.scrollBy({ left: sign * step, behavior: "smooth" });
   }
 
   return (
@@ -53,7 +55,7 @@ export function TestimonialRail({ label, prevLabel, nextLabel }: TestimonialRail
           aria-label={prevLabel}
           className="rounded-full border-[1.5px] border-[var(--color-line-2)] p-2.5 transition-colors hover:border-[var(--color-navy)] hover:bg-white"
         >
-          <ChevronLeft className="h-5 w-5" />
+          <ChevronLeft className="h-5 w-5 rtl:-scale-x-100" />
         </button>
         <button
           type="button"
@@ -61,7 +63,7 @@ export function TestimonialRail({ label, prevLabel, nextLabel }: TestimonialRail
           aria-label={nextLabel}
           className="rounded-full border-[1.5px] border-[var(--color-line-2)] p-2.5 transition-colors hover:border-[var(--color-navy)] hover:bg-white"
         >
-          <ChevronRight className="h-5 w-5" />
+          <ChevronRight className="h-5 w-5 rtl:-scale-x-100" />
         </button>
       </div>
     </div>

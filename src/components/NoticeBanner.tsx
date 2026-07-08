@@ -38,7 +38,7 @@ export function NoticeBanner({ headline, body, cta, ctaHref, dismissLabel }: Not
       className="notice-banner border-b border-[color-mix(in_oklch,var(--color-amber)_45%,white)] bg-[var(--color-amber-soft)]"
       aria-label={headline}
     >
-      <div className="container-x relative flex flex-wrap items-center gap-x-4 gap-y-1.5 py-2.5 pr-10 text-[0.95rem] leading-snug text-[var(--color-ink)] sm:pr-2">
+      <div className="container-x relative flex flex-wrap items-center gap-x-4 gap-y-1.5 py-2.5 pe-10 text-[0.95rem] leading-snug text-[var(--color-ink)] sm:pe-2">
         <p className="min-w-0">
           <strong className="font-extrabold">{headline}</strong>{" "}
           <span className="text-[var(--color-body)]">{body}</span>{" "}
@@ -50,7 +50,7 @@ export function NoticeBanner({ headline, body, cta, ctaHref, dismissLabel }: Not
           type="button"
           onClick={dismiss}
           aria-label={dismissLabel}
-          className="absolute right-3 mt-0.5 rounded-md p-1.5 text-[var(--color-muted)] transition-colors hover:bg-[color-mix(in_oklch,var(--color-amber)_25%,transparent)] hover:text-[var(--color-ink)] sm:static sm:ml-auto"
+          className="absolute end-3 mt-0.5 rounded-md p-1.5 text-[var(--color-muted)] transition-colors hover:bg-[color-mix(in_oklch,var(--color-amber)_25%,transparent)] hover:text-[var(--color-ink)] sm:static sm:ms-auto"
         >
           <X className="h-4.5 w-4.5" />
         </button>

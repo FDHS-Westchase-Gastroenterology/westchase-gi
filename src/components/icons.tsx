@@ -48,8 +48,9 @@ export const Check = (p: IconProps) => (
   </svg>
 );
 
+// "Forward" arrow: mirrors under RTL so it always points in reading direction.
 export const ArrowRight = (p: IconProps) => (
-  <svg {...base(p)}>
+  <svg {...base({ ...p, className: `rtl:-scale-x-100 ${p.className ?? ""}` })}>
     <path d="M5 12h14" />
     <path d="m12 5 7 7-7 7" />
   </svg>

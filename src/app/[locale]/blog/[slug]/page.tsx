@@ -59,7 +59,7 @@ export default async function BlogPostPage({ params }: PageProps) {
       <section className="border-b border-[var(--color-line)] bg-[var(--color-mint)]">
         <div className="container-tight section-sm">
           <Link href={localePath(locale, "/blog")} className="link-line text-[0.95rem]">
-            ← {t.backToBlog}
+            <span aria-hidden className="inline-block rtl:-scale-x-100">←</span> {t.backToBlog}
           </Link>
           <h1 className="h1 heading-tick mt-6">{post.title[locale]}</h1>
           <p className="mt-4 text-[0.95rem] font-bold text-[var(--color-muted)]">

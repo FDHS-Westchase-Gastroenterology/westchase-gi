@@ -47,11 +47,11 @@ function PrintLetterhead({
           .join("   ·   ")}
       </p>
       <p className="text-[9pt]">
-        {t.printPhoneLabel}: {site.phone.display}
+        {t.printPhoneLabel}: <span className="bidi-ltr">{site.phone.display}</span>
         {"   ·   "}
-        {t.printTextLabel}: {site.textLine.display}
+        {t.printTextLabel}: <span className="bidi-ltr">{site.textLine.display}</span>
         {"   ·   "}
-        {site.domain}
+        <span className="bidi-ltr">{site.domain}</span>
       </p>
       <hr className="mt-3 mb-6 border-t-2 border-black" />
     </div>
@@ -75,7 +75,7 @@ export default async function PrepDetailPage({ params }: PageProps) {
             href={localePath(locale, "/procedure-prep")}
             className="link-line print-hide text-[0.95rem]"
           >
-            ← {t.backToAll}
+            <span aria-hidden className="inline-block rtl:-scale-x-100">←</span> {t.backToAll}
           </Link>
           <h1 className="h1 heading-tick mt-6 print:mt-0">{doc.title[locale]}</h1>
           <p className="lead measure mt-4 text-[var(--color-body)]">{doc.regimen[locale]}</p>
@@ -110,7 +110,7 @@ export default async function PrepDetailPage({ params }: PageProps) {
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
               <PrintButton label={t.print} />
               <Link href={localePath(locale, "/procedure-prep")} className="link-line">
-                ← {t.backToAll}
+                <span aria-hidden className="inline-block rtl:-scale-x-100">←</span> {t.backToAll}
               </Link>
             </div>
           </div>
