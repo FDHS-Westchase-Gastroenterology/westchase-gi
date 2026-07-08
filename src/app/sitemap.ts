@@ -25,18 +25,27 @@ const paths = [
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const lastModified = new Date();
-  return paths.flatMap((path) =>
+  const localized = paths.flatMap((path) =>
     locales.map((locale) => ({
       url: `${site.url}${localePath(locale, path)}`,
       lastModified,
       changeFrequency: "monthly" as const,
       priority: path === "/" ? 1 : 0.7,
       alternates: {
-        languages: {
-          en: `${site.url}${localePath("en", path)}`,
-          es: `${site.url}${localePath("es", path)}`,
-        },
+        languages: Object.fromEntries(
+          locales.map((l) => [l, `${site.url}${localePath(l, path)}`])
+        ),
       },
     }))
   );
+  return [
+    ...localized,
+    // The master-QR review hub: one locale-neutral URL (language switches inline).
+    {
+      url: `${site.url}/review`,
+      lastModified,
+      changeFrequency: "yearly" as const,
+      priority: 0.5,
+    },
+  ];
 }

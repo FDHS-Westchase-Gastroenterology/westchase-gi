@@ -1,28 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
-import { Lato, Trocchi } from "next/font/google";
 import "../globals.css";
 import { Header } from "@/components/Header";
 import { JsonLd } from "@/components/JsonLd";
 import { Footer } from "@/components/Footer";
 import { NoticeBanner } from "@/components/NoticeBanner";
 import { getDictionary, isLocale } from "@/lib/i18n";
+import { fontVariables } from "@/lib/fonts";
 import { site, localePath, locales, BANNER_KEY, type Locale } from "@/lib/site";
-
-// The practice's own type pairing: Lato for UI/body, Trocchi for display.
-const lato = Lato({
-  variable: "--font-lato",
-  subsets: ["latin"],
-  weight: ["400", "700", "900"],
-  display: "swap",
-});
-
-const trocchi = Trocchi({
-  variable: "--font-trocchi",
-  subsets: ["latin"],
-  weight: "400",
-  display: "swap",
-});
 
 export const dynamicParams = false;
 
@@ -123,7 +108,7 @@ export default async function LocaleLayout({
   const dict = getDictionary(locale);
 
   return (
-    <html lang={locale} className={`${lato.variable} ${trocchi.variable}`} suppressHydrationWarning>
+    <html lang={locale} className={fontVariables} suppressHydrationWarning>
       <body>
         {/* Pre-paint: enable reveal-on-scroll only with JS, and hide the
             once-per-visitor banner for returning visitors without a flash.

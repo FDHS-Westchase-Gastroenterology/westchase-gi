@@ -4,15 +4,28 @@ import type { PrepBlock, PrepSection } from "@/lib/content/preps";
    load-bearing emphasis, runs of 3+ underscores for fill-in blanks. */
 const INLINE_TOKEN = /(\*\*[^*]+\*\*|_{3,})/g;
 
+/** Stable keys for immutable content lists: the content itself, with a
+ *  collision counter for repeated strings (never the array index). */
+function contentKeys(parts: string[], take = 32): string[] {
+  const seen = new Map<string, number>();
+  return parts.map((part) => {
+    const base = part.slice(0, take);
+    const n = (seen.get(base) ?? 0) + 1;
+    seen.set(base, n);
+    return n > 1 ? `${base}#${n}` : base;
+  });
+}
+
 /** Renders one transcription string, honoring bold runs and fill-in blanks
  *  (which may nest, e.g. "**take at ___ AM**"). Deterministic parse of an
- *  immutable string: content+position keys are stable by construction. */
+ *  immutable string: content keys are stable by construction. */
 function Inline({ text }: { text: string }) {
   const parts = text.split(INLINE_TOKEN).filter(Boolean);
+  const keys = contentKeys(parts, 24);
   return (
     <>
       {parts.map((part, i) => {
-        const key = `${part.slice(0, 24)}@${i}`;
+        const key = keys[i];
         if (part.startsWith("**") && part.endsWith("**")) {
           return (
             <strong key={key}>
@@ -47,8 +60,9 @@ function Block({ block }: { block: PrepBlock }) {
         </p>
       );
     case "list": {
+      const keys = contentKeys(block.items);
       const items = block.items.map((item, i) => (
-        <li key={`${item.slice(0, 32)}@${i}`} className="measure">
+        <li key={keys[i]} className="measure">
           <Inline text={item} />
         </li>
       ));
@@ -58,34 +72,39 @@ function Block({ block }: { block: PrepBlock }) {
         <ul className={LIST_CLASS[block.style]}>{items}</ul>
       );
     }
-    case "note":
+    case "note": {
+      const keys = contentKeys(block.text);
       return (
         <div className="prep-note">
           {block.text.map((t, i) => (
-            <p key={`${t.slice(0, 32)}@${i}`}>
+            <p key={keys[i]}>
               <Inline text={t} />
             </p>
           ))}
         </div>
       );
+    }
     case "schedule":
       return (
         <div className="grid gap-4">
           <div className="prep-schedule">
-            {block.columns.map((col) => (
-              <div key={col.title} className="prep-schedule-col">
-                <div className="prep-schedule-head">
-                  <Inline text={col.title} />
+            {block.columns.map((col) => {
+              const keys = contentKeys(col.items);
+              return (
+                <div key={col.title} className="prep-schedule-col">
+                  <div className="prep-schedule-head">
+                    <Inline text={col.title} />
+                  </div>
+                  <ul>
+                    {col.items.map((item, j) => (
+                      <li key={keys[j]}>
+                        <Inline text={item} />
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <ul>
-                  {col.items.map((item, j) => (
-                    <li key={`${item.slice(0, 32)}@${j}`}>
-                      <Inline text={item} />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
+              );
+            })}
           </div>
           {block.footer ? (
             <p className="measure font-bold text-[var(--color-ink)]">

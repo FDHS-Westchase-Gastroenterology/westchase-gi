@@ -81,5 +81,11 @@ from the practice's primary contact page:
   disagree on afternoon timings (2/4/6 PM vs 1/3/5 PM); the Spanish colonoscopy sheet's
   GLP-1 hold instruction names the drugs but no day count (English says 7 days); the
   Golytely split-dose sheet's "one hour after completing step 4" forward reference.
-- Appointment/contact form delivery (submissions confirm on-page; wire to the scheduling
-  inbox before launch)
+- Appointment/contact form delivery — **launch blocker (2026-07-07)**: submissions currently
+  resolve to an on-page confirmation only; wire delivery to a practice inbox/queue that staff
+  actively monitor, and verify the handoff end-to-end, before any real patient traffic
+- Additional site languages — Vietnamese, Korean, and Arabic are directed (2026-07-07); the
+  complete wanted list is still being confirmed. Scoped separately from EN/ES parity: Arabic
+  is RTL, Hangul/Arabic scripts need font coverage, and graphics that carry text will move to
+  localizable rendering (source graphics stay preserved unmodified). Medical prep/education
+  content in new languages ships only after human verification of the translations

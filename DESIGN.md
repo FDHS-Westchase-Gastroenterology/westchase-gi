@@ -56,6 +56,9 @@ backgrounds. No gradients, no glassmorphism, no side-stripe borders.
   90ms, 1.5s failsafe so content can never stay hidden. Content is visible-by-default without JS.
 - `prefers-reduced-motion`: all animation and smooth scroll disabled globally.
 - Hovers: translateY(-2px) buttons, translate-x arrow nudges. No bounce, no elastic.
+- **The hero is a static photo — never a slideshow/carousel** (practice decision, 2026-07-07:
+  auto-rotating heroes were reviewed and emphatically declined). Applies to any future hero
+  work; enlarge/rebalance within the static composition instead.
 
 ## Layout
 
@@ -71,3 +74,8 @@ backgrounds. No gradients, no glassmorphism, no side-stripe borders.
   import); `next/image` handles resizing at delivery time only. Never re-encode sources.
 - Photography is the practice's own: team composite (hero), physician brochure cards, facility
   photos. No stock imagery anywhere.
+- **Text-bearing graphic surfaces are moving to localizable rendering** (practice direction,
+  2026-07-07): baked-in text can't follow the site language, so surfaces like the provider
+  credential cards get rebuilt as real, translatable text (credentials verbatim in every
+  language) while the source graphics stay preserved unmodified. Legibility is the other
+  driver: card text must be readable without effort on phones.
