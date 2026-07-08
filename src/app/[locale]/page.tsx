@@ -154,23 +154,23 @@ export default async function HomePage({ params }: PageProps) {
             {physicians.map((doc, i) => (
               <Reveal key={doc.id} delay={(i % 3) as 0 | 1 | 2}>
                 <Link
-                  href={p("/physicians")}
+                  href={`${p("/physicians")}#${doc.id}`}
                   className="group block overflow-hidden rounded-[var(--radius-lg)] bg-white shadow-[var(--shadow-soft)] transition-transform duration-300 ease-[var(--ease-out-quint)] hover:-translate-y-1"
                 >
                   <Image
-                    src={doc.image.src}
+                    src={doc.headshot.src}
                     alt={doc.alt[locale]}
-                    width={doc.image.width}
-                    height={doc.image.height}
+                    width={doc.headshot.width}
+                    height={doc.headshot.height}
                     sizes="(min-width: 1024px) 24rem, (min-width: 640px) 50vw, 100vw"
-                    className="w-full"
+                    className="aspect-[7/8] w-full object-cover object-top"
                   />
                   <span className="block px-6 py-5">
                     <span className="block font-[var(--font-display)] text-xl text-[var(--color-ink)]">
                       {doc.name}, {doc.credentials}
                     </span>
                     <span className="mt-1 block text-[0.95rem] font-semibold text-[var(--color-teal-ink)]">
-                      {doc.role[locale]}
+                      {doc.role[locale]} · {doc.experience[locale]}
                     </span>
                   </span>
                 </Link>
@@ -178,8 +178,8 @@ export default async function HomePage({ params }: PageProps) {
             ))}
           </div>
           <p className="mt-8 max-w-2xl text-[0.98rem] text-[var(--color-body)]">
-            {nursePractitioners.names.join(" · ")} — {dict.physicians.npsRole},{" "}
-            {nursePractitioners.credentials} · {infusionNurse.name} — {infusionNurse.role[locale]}
+            {nursePractitioners.individuals.map((np) => np.name).join(" · ")} —{" "}
+            {dict.physicians.npsRole} · {infusionNurse.name} — {infusionNurse.role[locale]}
           </p>
         </div>
       </section>

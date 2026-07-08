@@ -250,9 +250,17 @@ export const en = {
     intro:
       "At Westchase Gastroenterology, clinical excellence is our standard. Our physicians are highly credentialed specialists who combine decades of experience with ongoing advanced education to remain leaders in digestive and liver disease care. Their dedication to innovation, compassion, and exceptional outcomes ensures that every patient receives the highest level of personalized treatment.",
     physiciansHeading: "Our physicians",
+    boardCertifiedLabel: "Board certified",
+    languagesLabel: "Languages",
+    viewCard: "View the practice's profile card",
     npsHeading: "Nurse Practitioners",
     npsRole: "Family Nurse Practitioners",
+    npsLead:
+      "Expert care, compassionate providers: our nurse practitioners are dedicated to your digestive health and overall wellness.",
     infusionHeading: "Infusion Services",
+    biologicsMedication: "Medication",
+    biologicsGeneric: "Generic name",
+    biologicsFor: "Used for",
     teamHeading: "Team Members / Equipo de Trabajo",
     teamBody:
       "Behind every visit is our office team: the people who answer your calls and texts, coordinate scheduling and insurance, and make both offices run smoothly.",

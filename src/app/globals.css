@@ -506,6 +506,39 @@
     background: var(--color-teal);
   }
 
+  /* Provider-profile timeline (education & career milestones): node dots on
+     a hairline rail. A real typed sequence, not decorative scaffolding. */
+  .profile-timeline {
+    display: grid;
+    gap: 1.05rem;
+  }
+  .profile-timeline li {
+    position: relative;
+    padding-inline-start: 1.9rem;
+  }
+  .profile-timeline li::before {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0;
+    top: 0.36em;
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 999px;
+    background: var(--color-teal);
+  }
+  .profile-timeline li::after {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0.24rem;
+    top: 1.25em;
+    bottom: -0.8rem;
+    width: 2px;
+    background: var(--color-line);
+  }
+  .profile-timeline li:last-child::after {
+    display: none;
+  }
+
   /* Numbered timeline steps (the prep regimens) */
   .list-steps {
     display: grid;

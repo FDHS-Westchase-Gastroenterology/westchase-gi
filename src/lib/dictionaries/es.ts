@@ -254,9 +254,17 @@ export const es: Dictionary = {
     intro:
       "En Westchase Gastroenterology, la excelencia clínica es nuestro estándar. Nuestros médicos son especialistas altamente acreditados que combinan décadas de experiencia con educación avanzada continua para mantenerse a la vanguardia del cuidado de las enfermedades digestivas y del hígado. Su dedicación a la innovación, la compasión y los resultados excepcionales garantiza que cada paciente reciba el más alto nivel de tratamiento personalizado.",
     physiciansHeading: "Nuestros médicos",
+    boardCertifiedLabel: "Certificado por la junta",
+    languagesLabel: "Idiomas",
+    viewCard: "Ver la tarjeta de perfil de la práctica",
     npsHeading: "Enfermeras Practicantes",
     npsRole: "Enfermeras Practicantes Familiares",
+    npsLead:
+      "Atención experta y proveedoras compasivas: nuestras enfermeras practicantes están dedicadas a su salud digestiva y bienestar general.",
     infusionHeading: "Servicios de Infusión",
+    biologicsMedication: "Medicamento",
+    biologicsGeneric: "Nombre genérico",
+    biologicsFor: "Se usa para",
     teamHeading: "Equipo de Trabajo / Team Members",
     teamBody:
       "Detrás de cada visita está nuestro equipo de oficina: las personas que contestan sus llamadas y textos, coordinan citas y seguros, y hacen que ambas oficinas funcionen sin contratiempos.",
