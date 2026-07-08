@@ -1,6 +1,7 @@
 // Colonoscopy preps: Clenpiq split-dose, Clenpiq, and Sutab.
 // English bodies are the practice's originals (scan pp. 4–9); Spanish
 // bodies are faithful translations (no Spanish originals exist for these).
+// VI/KO/AR bodies are machine translations of the EN passages (2026-07-08), pending native-speaker verification by clinic staff.
 
 import type { PrepDoc, PrepSection } from "./types";
 import { EN, ES_T, VI, KO, AR } from "./common";
@@ -99,7 +100,7 @@ const clenpiqSplitDayBeforeVi: PrepSection[] = [
       { kind: "p", text: VI.drinkHourly("Clenpiq") },
       {
         kind: "p",
-        text: "Chuẩn bị Clenpiq gồm hai (2) liệu trình dùng với chất lỏng trong quý vị chọn.",
+        text: "Chuẩn bị Clenpiq gồm hai (2) liệu trình, dùng với loại chất lỏng trong mà quý vị chọn.",
       },
       {
         kind: "schedule",
@@ -108,14 +109,14 @@ const clenpiqSplitDayBeforeVi: PrepSection[] = [
             title: "Đêm trước ngày làm thủ thuật của quý vị ___",
             items: [
               "**Liệu trình thứ nhất — dùng lúc 4 PM.** A. Dùng theo hướng dẫn.",
-              "Uống năm (5) ly 8 ounce chất lỏng trong trước liều Clenpiq thứ hai của quý vị.",
+              "Uống năm (5) ly chất lỏng trong loại 8 ounce trước liều Clenpiq thứ hai của quý vị.",
             ],
           },
           {
             title: "Buổi sáng ngày làm thủ thuật của quý vị ___",
             items: [
               "**Liệu trình thứ hai — dùng lúc ___ AM.** B. Lặp lại bước A.",
-              "Uống ba (3) ly 8 ounce chất lỏng trong trước khi đi ngủ.",
+              "Uống ba (3) ly chất lỏng trong loại 8 ounce trước khi đi ngủ.",
             ],
           },
         ],
@@ -123,7 +124,7 @@ const clenpiqSplitDayBeforeVi: PrepSection[] = [
       },
       {
         kind: "p",
-        text: "**Một giờ** sau khi hoàn tất **liệu trình thứ hai**, uống hai (2) viên Dulcolax (Bisacodyl) 5 mg bằng đường uống.",
+        text: "**Một giờ** sau khi hoàn tất **liệu trình thứ hai**, dùng hai (2) viên Dulcolax (Bisacodyl) 5 mg bằng đường uống.",
       },
       { kind: "p", text: VI.hydrate("Clenpiq") },
     ],
@@ -146,15 +147,15 @@ const clenpiqSplitDayBeforeKo: PrepSection[] = [
           {
             title: "시술 전날 밤 ___",
             items: [
-              "**첫 번째 복용 일정 — 오후 4 PM에 복용하십시오.** A. 안내에 따라 복용하십시오.",
-              "두 번째 Clenpiq 복용 전에 맑은 액체 8온스 5잔을 드십시오.",
+              "**첫 번째 복용 일정 — 4 PM에 복용하십시오.** A. 안내에 따라 복용하십시오.",
+              "두 번째 Clenpiq 복용 전에 맑은 액체 8온스 다섯 (5) 잔을 드십시오.",
             ],
           },
           {
             title: "시술 당일 아침 ___",
             items: [
-              "**두 번째 복용 일정 — 오전 ___ AM에 복용하십시오.** B. A 단계를 반복하십시오.",
-              "취침 전에 맑은 액체 8온스 3잔을 드십시오.",
+              "**두 번째 복용 일정 — ___ AM에 복용하십시오.** B. A 단계를 반복하십시오.",
+              "취침 전에 맑은 액체 8온스 세 (3) 잔을 드십시오.",
             ],
           },
         ],
@@ -217,7 +218,7 @@ const clenpiqSplit: PrepDoc = {
     es: "Preparación Clenpiq en dosis dividida",
     vi: "Chuẩn bị Clenpiq liều chia đôi",
     ko: "Clenpiq 분할 복용 준비",
-    ar: "تحضير Clenpiq بجرعتين منفصلتين",
+    ar: "تحضير Clenpiq بجرعة مقسمة",
   },
   regimen: {
     en: "Two Clenpiq doses: 4 PM the day before + the morning of your procedure",
@@ -354,7 +355,7 @@ const clenpiqDayBeforeVi: PrepSection[] = [
       { kind: "p", text: VI.drinkHourly("Clenpiq") },
       {
         kind: "p",
-        text: "Chuẩn bị Clenpiq gồm hai (2) liệu trình dùng với chất lỏng trong quý vị chọn — cả hai đều vào ngày trước thủ thuật của quý vị.",
+        text: "Chuẩn bị Clenpiq gồm hai (2) liệu trình, dùng với loại chất lỏng trong mà quý vị chọn — cả hai đều vào ngày trước thủ thuật của quý vị.",
       },
       {
         kind: "schedule",
@@ -363,14 +364,14 @@ const clenpiqDayBeforeVi: PrepSection[] = [
             title: "Liệu trình thứ nhất — dùng lúc 4 PM",
             items: [
               "A. Dùng theo hướng dẫn.",
-              "Uống năm (5) ly 8 ounce chất lỏng trong trước liều Clenpiq thứ hai của quý vị.",
+              "Uống năm (5) ly chất lỏng trong loại 8 ounce trước liều Clenpiq thứ hai của quý vị.",
             ],
           },
           {
             title: "Liệu trình thứ hai — dùng lúc 10 PM",
             items: [
               "B. Lặp lại bước A.",
-              "Uống ba (3) ly 8 ounce chất lỏng trong trước khi đi ngủ.",
+              "Uống ba (3) ly chất lỏng trong loại 8 ounce trước khi đi ngủ.",
             ],
           },
         ],
@@ -378,7 +379,7 @@ const clenpiqDayBeforeVi: PrepSection[] = [
       },
       {
         kind: "p",
-        text: "**Một giờ** sau khi hoàn tất **liệu trình thứ hai**, uống hai (2) viên Dulcolax (Bisacodyl) 5 mg bằng đường uống.",
+        text: "**Một giờ** sau khi hoàn tất **liệu trình thứ hai**, dùng hai (2) viên Dulcolax (Bisacodyl) 5 mg bằng đường uống.",
       },
       { kind: "p", text: VI.hydrate("Clenpiq") },
     ],
@@ -402,14 +403,14 @@ const clenpiqDayBeforeKo: PrepSection[] = [
             title: "첫 번째 복용 일정 — 4 PM에 복용하십시오",
             items: [
               "A. 안내에 따라 복용하십시오.",
-              "두 번째 Clenpiq 복용 전에 맑은 액체 8온스 5잔을 드십시오.",
+              "두 번째 Clenpiq 복용 전에 맑은 액체 8온스 다섯 (5) 잔을 드십시오.",
             ],
           },
           {
             title: "두 번째 복용 일정 — 10 PM에 복용하십시오",
             items: [
               "B. A 단계를 반복하십시오.",
-              "취침 전에 맑은 액체 8온스 3잔을 드십시오.",
+              "취침 전에 맑은 액체 8온스 세 (3) 잔을 드십시오.",
             ],
           },
         ],
@@ -611,19 +612,19 @@ const sutabDayBeforeVi: PrepSection[] = [
           {
             title: "Liệu trình thứ nhất — dùng lúc 2 PM",
             items: [
-              "A. Đổ đầy nước vào chai đến vạch 16 ounce. Nuốt từng viên với một ngụm nước trong vòng 20 phút.",
-              "B. Khoảng 1 giờ sau khi nuốt viên cuối cùng, đổ nước vào chai được cấp đến vạch và uống hết trong 30 phút.",
-              "C. Khoảng 30 phút sau khi uống xong chai nước thứ hai, đổ nước vào chai được cấp đến vạch và uống hết trong 30 phút.",
-              "Uống thêm hai (2) chai nước nữa, mỗi chai đổ đến vạch 16 ounce, trong giờ tiếp theo.",
+              "A. Đổ 16 ounce nước vào bình (đến vạch châm đầy). Nuốt từng viên thuốc với một ngụm nước, trong vòng 20 phút.",
+              "B. Khoảng 1 giờ sau khi nuốt viên cuối cùng, đổ nước vào bình được cấp đến vạch châm đầy và uống hết toàn bộ trong 30 phút.",
+              "C. Khoảng 30 phút sau khi uống xong bình nước thứ hai, đổ nước vào bình được cấp đến vạch châm đầy và uống hết toàn bộ trong 30 phút.",
+              "Uống thêm hai (2) bình nước nữa, mỗi bình đổ nước đến vạch 16 ounce, trong một giờ tiếp theo.",
             ],
           },
           {
             title: "Liệu trình thứ hai — dùng lúc 8 PM",
             items: [
-              "D. Sau sáu (6) giờ kể từ liều đầu tiên, đổ đầy nước vào chai đến vạch 16 ounce. Nuốt từng viên với một ngụm nước trong vòng 20 phút.",
-              "E. Khoảng 1 giờ sau khi nuốt viên cuối cùng, đổ nước vào chai được cấp đến vạch và uống hết trong 30 phút.",
-              "F. Khoảng 30 phút sau khi uống xong chai nước thứ hai, đổ nước vào chai được cấp đến vạch và uống hết trong 30 phút.",
-              "Uống thêm hai (2) chai nước nữa, mỗi chai đổ đến vạch 16 ounce, trong giờ tiếp theo.",
+              "D. Sau sáu (6) giờ kể từ lần dùng thuốc đầu tiên, đổ 16 ounce nước vào bình (đến vạch châm đầy). Nuốt từng viên thuốc với một ngụm nước, trong vòng 20 phút.",
+              "E. Khoảng 1 giờ sau khi nuốt viên cuối cùng, đổ nước vào bình được cấp đến vạch châm đầy và uống hết toàn bộ trong 30 phút.",
+              "F. Khoảng 30 phút sau khi uống xong bình nước thứ hai, đổ nước vào bình được cấp đến vạch châm đầy và uống hết toàn bộ trong 30 phút.",
+              "Uống thêm hai (2) bình nước nữa, mỗi bình đổ nước đến vạch 16 ounce, trong một giờ tiếp theo.",
             ],
           },
         ],

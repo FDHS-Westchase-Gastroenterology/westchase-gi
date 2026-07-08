@@ -28,7 +28,7 @@ const purchaseKo =
   "가까운 약국의 완하제(변비약) 코너에서 **Magnesium Citrate 10온스 한 병, MiraLAX 가루 238그램 한 병, Dulcolax 5 mg (Bisacodyl) 4정을 구입하셔야 합니다.**";
 
 const purchaseAr =
-  "**ستحتاج إلى شراء زجاجة واحدة سعة 10 أونصات من Magnesium Citrate، وعبوة واحدة بوزن 238 غرامًا من مسحوق MiraLAX، و4 أقراص من Dulcolax عيار 5 ملغ (Bisacodyl)** من صيدليتك المحلية، في ممر الملينات.";
+  "**ستحتاج إلى شراء زجاجة واحدة سعة 10 أونصات من Magnesium Citrate، وعبوة واحدة بوزن 238 غرامًا من مسحوق MiraLAX، و4 أقراص من Dulcolax عيار 5 mg (Bisacodyl)** من صيدليتك المحلية، في ممر الملينات.";
 
 const mixStepVi =
   "Vào buổi sáng, pha toàn bộ chai bột MiraLAX với 64 ounce nước hoặc 64 ounce Gatorade **(nếu dùng Gatorade: không màu đỏ, tím hoặc xanh dương).** Lắc kỹ cho đến khi bột tan hết; để lạnh trong tủ lạnh.";
@@ -101,10 +101,10 @@ const miralaxDayBeforeVi: PrepSection[] = [
         style: "steps",
         items: [
           mixStepVi,
-          "Lúc **1:00 pm**, uống hai viên Dulcolax bằng đường uống.",
+          "Lúc **1:00 pm**, dùng hai viên Dulcolax bằng đường uống.",
           "Lúc **3:00 pm**, uống chai Magnesium Citrate 10 ounce.",
           "Lúc **5:00 pm**, bắt đầu uống một ly 8 ounce dung dịch MiraLAX mỗi 15 phút cho đến khi uống hết.",
-          "Lúc **9:00 pm**, uống hai viên Dulcolax còn lại bằng đường uống.",
+          "Lúc **9:00 pm**, dùng hai viên Dulcolax còn lại bằng đường uống.",
         ],
       },
       { kind: "p", text: VI.hydrate("MiraLAX") },
@@ -284,11 +284,11 @@ const miralaxSplitDayBeforeVi: PrepSection[] = [
         style: "steps",
         items: [
           mixStepVi,
-          "Lúc **2:00 pm**, uống hai viên Dulcolax bằng đường uống.",
+          "Lúc **2:00 pm**, dùng hai viên Dulcolax bằng đường uống.",
           "Lúc **4:00 pm**, uống chai Magnesium Citrate 10 ounce.",
           "Lúc **6:00 pm**, bắt đầu uống một ly 8 ounce dung dịch MiraLAX mỗi 15 phút cho đến khi uống **một nửa chai**.",
-          "Uống **nửa còn lại** của dung dịch MiraLAX vào ___ lúc ___",
-          "Sau khi hoàn tất bước 5, uống hai viên Dulcolax bằng đường uống.",
+          "Uống **nửa thứ hai** của phần dung dịch MiraLAX còn lại lúc ___ ngày ___",
+          "Sau khi hoàn tất bước 5, dùng hai viên Dulcolax bằng đường uống.",
         ],
       },
       { kind: "p", text: VI.hydrate("MiraLAX") },
@@ -311,7 +311,7 @@ const miralaxSplitDayBeforeKo: PrepSection[] = [
           "**2:00 pm**에 Dulcolax 정제 2정을 경구로 복용하십시오.",
           "**4:00 pm**에 Magnesium Citrate 10온스 병을 마시십시오.",
           "**6:00 pm**부터 MiraLAX 준비액 8온스 한 잔을 15분마다 마시기 시작하여 **병의 절반**까지 복용하십시오.",
-          "남은 MiraLAX 준비액의 **나머지 절반**은 ___의 ___에 복용하십시오.",
+          "남은 MiraLAX 준비액의 **나머지 절반**은 시각 ___, 날짜 ___에 복용하십시오.",
           "5단계를 마친 후 Dulcolax 정제 2정을 경구로 복용하십시오.",
         ],
       },
@@ -335,7 +335,7 @@ const miralaxSplitDayBeforeAr: PrepSection[] = [
           "في الساعة **2:00 pm**، تناول قرصي Dulcolax عن طريق الفم.",
           "في الساعة **4:00 pm**، اشرب زجاجة Magnesium Citrate سعة 10 أونصات.",
           "في الساعة **6:00 pm**، ابدأ بشرب كوب واحد سعة 8 أونصات من تحضير MiraLAX كل 15 دقيقة حتى تنهي **نصف الزجاجة**.",
-          "تناول **النصف الثاني** المتبقي من تحضير MiraLAX في ___ عند ___",
+          "تناول **النصف الثاني** المتبقي من تحضير MiraLAX في الساعة ___ بتاريخ ___",
           "بعد إكمال الخطوة 5، تناول قرصي Dulcolax عن طريق الفم.",
         ],
       },
@@ -495,7 +495,7 @@ const AR_G: Flavor = {
     `**يُرجى الحفاظ على ترطيب جسمك جيدًا قبل وأثناء وبعد إكمال تحضير الأمعاء بـ ${prep}.** ومع ذلك، تذكّر أنه يجب التوقف عن تناول جميع السوائل قبل الإجراء بـ 4 ساعات.`,
   avoidItems: [
     "**أي طعام باللون الأحمر أو الأزرق أو الأرجواني**",
-    "**منتجات الألبان، عصائر الفاكهة، sherbets، milkshakes**",
+    "**منتجات الألبان، عصائر الفاكهة، الشربات، الميلك شيك**",
     "**أي طعام صلب**",
   ],
 };
@@ -626,7 +626,7 @@ const golytelyDayBeforeVi: PrepSection[] = [
         items: [
           "Vào buổi sáng của ngày hôm trước, thêm nước vào bình Golytely đến vạch chỉ định.",
           "Lúc **3:00 pm hoặc 6:00 pm**, bắt đầu uống 8 ounce Golytely mỗi 15 phút cho đến khi uống hết toàn bộ.",
-          "Một giờ sau khi uống xong dung dịch Golytely, uống 2 viên Dulcolax 5 mg (Bisacodyl) — có bán không cần toa.",
+          "Một giờ sau khi uống xong dung dịch Golytely, dùng 2 viên Dulcolax 5 mg (Bisacodyl) — có bán không cần toa.",
         ],
       },
       { kind: "p", text: VI_G.hydrate("Golytely") },
@@ -758,22 +758,22 @@ const golytelySplitStepsEs = [
 const golytelySplitStepsVi = [
   "Lúc 10:00 am, đổ nước vào bình bột nhuận tràng Golytely. Lắc kỹ cho đến khi bột tan hết; để lạnh trong tủ lạnh.",
   "Bắt đầu lúc **4:00 pm**, uống một ly 8 ounce mỗi mười lăm (15) phút cho đến khi uống **một nửa**. Cố gắng uống trọn một ly mỗi lần thay vì nhấp từng ngụm.",
-  "**Một giờ** sau khi hoàn tất **bước 4**, uống hai (2) viên Dulcolax (Bisacodyl) 5 mg bằng đường uống.",
-  "Vào ___ lúc ___, **uống hết nửa còn lại** của dung dịch Golytely.",
+  "**Một giờ** sau khi hoàn tất **bước 4**, dùng hai (2) viên Dulcolax (Bisacodyl) 5 mg bằng đường uống.",
+  "Lúc ___ ngày ___, **uống hết nửa thứ hai** của dung dịch Golytely.",
 ];
 
 const golytelySplitStepsKo = [
-  "오전 10:00에 Golytely 완하제 분말 용기에 물을 채우십시오. 분말이 녹을 때까지 잘 흔든 뒤 냉장고에 넣어 차게 보관하십시오.",
+  "10:00 am에 Golytely 완하제 분말 용기에 물을 채우십시오. 분말이 녹을 때까지 잘 흔든 뒤 냉장고에 넣어 차게 보관하십시오.",
   "**4:00 pm**부터 15분마다 8온스 한 잔씩 마셔 **절반**을 복용하십시오. 조금씩 나눠 마시기보다 한 번에 한 잔씩 마시도록 하십시오.",
   "**4단계**를 마친 **1시간 후**, Dulcolax (Bisacodyl) 5 mg 2정을 경구로 복용하십시오.",
-  "___의 ___에 Golytely 준비액의 **남은 절반을 모두 복용하십시오**.",
+  "시각 ___, 날짜 ___에 Golytely 준비액의 **두 번째 절반을 모두 복용하십시오**.",
 ];
 
 const golytelySplitStepsAr = [
   "في الساعة 10:00 am، املأ عبوة مسحوق Golytely الملين بالماء. رجّها جيدًا حتى يذوب المسحوق، ثم ضعها في الثلاجة لتبرد.",
   "ابتداءً من **4:00 pm**، اشرب كوبًا سعة 8 أونصات كل خمس عشرة (15) دقيقة حتى تنتهي من **النصف**. حاول شرب كوب كامل كل مرة بدل الرشفات الصغيرة.",
   "بعد **ساعة واحدة** من إكمال **الخطوة 4**، تناول قرصين (2) من Dulcolax (Bisacodyl) عيار 5 mg عن طريق الفم.",
-  "في ___ عند ___، **أكمِل النصف الثاني** من تحضير Golytely.",
+  "في الساعة ___ بتاريخ ___، **أكمِل النصف الثاني** من تحضير Golytely.",
 ];
 
 const golytelySplit: PrepDoc = {
@@ -785,7 +785,7 @@ const golytelySplit: PrepDoc = {
     es: "Preparación Golytely en dosis dividida",
     vi: "Chuẩn bị Golytely liều chia đôi",
     ko: "Golytely 분할 복용 준비",
-    ar: "تحضير Golytely بجرعتين منفصلتين",
+    ar: "تحضير Golytely بجرعة مقسمة",
   },
   regimen: {
     en: "Golytely: half the evening before, half at your scheduled time",
