@@ -32,7 +32,9 @@ export function TestimonialRail({ label, prevLabel, nextLabel }: TestimonialRail
       <ul ref={railRef} className="rail" aria-label={label}>
         {testimonials.map((t) => (
           <li key={t.name + t.quote.slice(0, 16)}>
-            <figure className="card flex flex-col gap-5 p-7">
+            {/* Quotes are published verbatim in English (never translated), so
+                each card is an LTR island even when the page is RTL. */}
+            <figure dir="ltr" className="card flex flex-col gap-5 p-7">
               <div>
                 <p className="flex gap-0.5 text-[var(--color-amber)]" aria-hidden="true">
                   {Array.from({ length: 5 }).map((_, i) => (
