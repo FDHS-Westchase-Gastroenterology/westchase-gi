@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { getDictionary } from "@/lib/i18n";
+import { getDictionary, isLocale } from "@/lib/i18n";
 import { localePath, type Locale } from "@/lib/site";
 
 export default function NotFound() {
   const pathname = usePathname() || "/en";
-  const locale: Locale = /^\/es(\/|$)/.test(pathname) ? "es" : "en";
+  const seg = pathname.split("/")[1] ?? "";
+  const locale: Locale = isLocale(seg) ? seg : "en";
   const dict = getDictionary(locale);
   const t = dict.notFound;
 

@@ -142,7 +142,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
             <option value="any">{f.locationAny}</option>
             {site.locations.map((loc) => (
               <option key={loc.id} value={loc.id}>
-                {locale === "es" ? loc.nameEs : loc.name}
+                {loc.name[locale]}
               </option>
             ))}
           </select>

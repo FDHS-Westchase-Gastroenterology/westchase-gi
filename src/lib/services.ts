@@ -3,7 +3,9 @@
 // "Barrett's Esophagus" item (removed from the GERD parenthetical to avoid
 // listing it twice). Spanish is a first-class translation of the same lists.
 
-export type Bilingual = { en: string; es: string };
+import type { Bi } from "./content/types";
+
+export type Bilingual = Bi;
 
 export const conditions: Bilingual[] = [
   { en: "Celiac Disease", es: "Enfermedad celíaca" },

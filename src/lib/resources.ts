@@ -6,11 +6,13 @@
 // requests (HTTP 403) but load normally in a browser; both are the
 // organizations' canonical domains.
 
+import type { Bi } from "./content/types";
+
 export type ResourceLink = {
-  topic: { en: string; es: string };
+  topic: Bi;
   org: string;
   url: string;
-  description: { en: string; es: string };
+  description: Bi;
 };
 
 export const patientResources: ResourceLink[] = [

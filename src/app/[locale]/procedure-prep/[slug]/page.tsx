@@ -31,22 +31,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 /** Print-only letterhead so the printed page reads as a practice handout,
  *  not a webpage. Practice name + both offices + the numbers patients need. */
-function PrintLetterhead({ locale }: { locale: Locale }) {
+function PrintLetterhead({
+  locale,
+  t,
+}: {
+  locale: Locale;
+  t: { printPhoneLabel: string; printTextLabel: string };
+}) {
   return (
     <div className="hidden text-center print:block">
       <p className="font-[var(--font-display)] text-[16pt] font-bold">{site.name}</p>
       <p className="mt-1 text-[9pt]">
         {site.locations
-          .map(
-            (l) =>
-              `${locale === "es" ? l.nameEs : l.name}: ${l.street}, ${l.city}, ${l.region} ${l.postal}`
-          )
+          .map((l) => `${l.name[locale]}: ${l.street}, ${l.city}, ${l.region} ${l.postal}`)
           .join("   ·   ")}
       </p>
       <p className="text-[9pt]">
-        {locale === "es" ? "Teléfono" : "Telephone"}: {site.phone.display}
+        {t.printPhoneLabel}: {site.phone.display}
         {"   ·   "}
-        {locale === "es" ? "Línea de texto" : "Text line"}: {site.textLine.display}
+        {t.printTextLabel}: {site.textLine.display}
         {"   ·   "}
         {site.domain}
       </p>
@@ -67,7 +70,7 @@ export default async function PrepDetailPage({ params }: PageProps) {
     <>
       <section className="border-b border-[var(--color-line)] bg-[var(--color-mint)] print:border-0 print:bg-white">
         <div className="container-tight section-sm">
-          <PrintLetterhead locale={locale} />
+          <PrintLetterhead locale={locale} t={t} />
           <Link
             href={localePath(locale, "/procedure-prep")}
             className="link-line print-hide text-[0.95rem]"

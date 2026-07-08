@@ -7,7 +7,7 @@ import { Footer } from "@/components/Footer";
 import { NoticeBanner } from "@/components/NoticeBanner";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { fontVariables } from "@/lib/fonts";
-import { site, localePath, locales, BANNER_KEY, type Locale } from "@/lib/site";
+import { site, localePath, localeDir, locales, BANNER_KEY, type Locale } from "@/lib/site";
 
 export const dynamicParams = false;
 
@@ -54,7 +54,7 @@ function ClinicSchema() {
   const clinics = site.locations.map((loc) => ({
     "@type": "MedicalClinic",
     "@id": `${site.url}/#${loc.id}`,
-    name: `${site.name} – ${loc.name}`,
+    name: `${site.name} – ${loc.name.en}`,
     url: site.url,
     telephone: "+18139208882",
     faxNumber: "+18139205800",
@@ -90,7 +90,7 @@ function ClinicSchema() {
         "@type": "WebSite",
         name: site.name,
         url: site.url,
-        inLanguage: ["en", "es"],
+        inLanguage: [...locales],
       },
       ...clinics,
     ],
@@ -108,7 +108,7 @@ export default async function LocaleLayout({
   const dict = getDictionary(locale);
 
   return (
-    <html lang={locale} className={fontVariables} suppressHydrationWarning>
+    <html lang={locale} dir={localeDir(locale)} className={fontVariables} suppressHydrationWarning>
       <body>
         {/* Pre-paint: enable reveal-on-scroll only with JS, and hide the
             once-per-visitor banner for returning visitors without a flash.

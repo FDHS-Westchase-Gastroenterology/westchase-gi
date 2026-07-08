@@ -5,12 +5,14 @@
 // version, `file` stays null and the UI offers the staffed text line and
 // front desk instead of a dead link. Never fake a file path.
 
+import type { Bi } from "./content/types";
+
 export type DocCategory = "new-patient" | "procedure-prep" | "disease-info";
 
 export type PracticeDocument = {
   id: string;
   category: DocCategory;
-  label: { en: string; es: string };
+  label: Bi;
   /** Path under /public, e.g. "/documents/new-patient-registration.pdf". */
   file: string | null;
 };

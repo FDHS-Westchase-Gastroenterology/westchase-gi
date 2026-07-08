@@ -83,8 +83,7 @@ export const en = {
     textLineHuman: "A team member answers texts within 24 hours.",
     requestAppointment: "Request appointment",
     patientPortal: "Patient portal",
-    languageToggle: "Español",
-    languageToggleAria: "Ver este sitio en español",
+    languageLabel: "Language",
     getDirections: "Get directions",
     learnMore: "Learn more",
     banner: {
@@ -342,6 +341,8 @@ export const en = {
     view: "View instructions",
     print: "Print these instructions",
     backToAll: "All preparation instructions",
+    printPhoneLabel: "Telephone",
+    printTextLabel: "Text line",
     blanksHint:
       "Blank lines are your appointment details — our team confirms them when your procedure is scheduled. Write them on your printed copy.",
     questionsHeading: "Questions about your prep?",

@@ -13,7 +13,7 @@ export function HoursTable({ locale, dict }: HoursTableProps) {
           {c.hours.heading}
         </h3>
         <p className="text-[0.9rem] text-[var(--color-muted)]">
-          {site.locations.map((l) => (locale === "es" ? l.nameEs : l.name)).join(" · ")}
+          {site.locations.map((l) => l.name[locale]).join(" · ")}
         </p>
       </div>
       <dl className="grid">

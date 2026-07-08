@@ -110,7 +110,7 @@ export function Footer({ locale, dict }: FooterProps) {
                 <MapPin className="mt-1 h-4 w-4 flex-none text-[var(--color-amber)]" />
                 <div>
                   <p className="font-bold text-[var(--color-on-dark)]">
-                    {locale === "es" ? loc.nameEs : loc.name}
+                    {loc.name[locale]}
                   </p>
                   <a
                     href={directionsUrl(loc.mapsQuery)}

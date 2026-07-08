@@ -6,6 +6,7 @@
 // exist only as teasers in the recon capture and are catalogued in the
 // faithfulness matrix at the repo root, not ported.
 
+import type { Locale } from "@/lib/site";
 import type { BlogPost } from "../types";
 import { batch1 } from "./batch1";
 import { batch2 } from "./batch2";
@@ -21,12 +22,21 @@ export function getPost(slug: string): BlogPost | undefined {
 
 // Built once per locale; constructing an Intl formatter is expensive and
 // formatPosted runs for every post card on every list render.
-const postedFormat: Record<"en" | "es", Intl.DateTimeFormat> = {
-  en: new Intl.DateTimeFormat("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }),
-  es: new Intl.DateTimeFormat("es-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" }),
+const dateOpts = {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  timeZone: "UTC",
+} as const;
+const postedFormat: Record<Locale, Intl.DateTimeFormat> = {
+  en: new Intl.DateTimeFormat("en-US", dateOpts),
+  es: new Intl.DateTimeFormat("es-US", dateOpts),
+  vi: new Intl.DateTimeFormat("vi-VN", dateOpts),
+  ko: new Intl.DateTimeFormat("ko-KR", dateOpts),
+  ar: new Intl.DateTimeFormat("ar-u-nu-latn", dateOpts),
 };
 
-export function formatPosted(iso: string, locale: "en" | "es"): string {
+export function formatPosted(iso: string, locale: Locale): string {
   const [y, m, d] = iso.split("-").map(Number);
   return postedFormat[locale].format(new Date(Date.UTC(y, m - 1, d)));
 }

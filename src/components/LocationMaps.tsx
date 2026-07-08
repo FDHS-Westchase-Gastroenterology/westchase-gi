@@ -34,7 +34,7 @@ export function LocationMaps({ locale, dict }: LocationMapsProps) {
               <MapPin className="mt-1 h-4.5 w-4.5 flex-none text-[var(--color-teal-ink)]" />
               <span>
                 <span className="block font-extrabold text-[var(--color-ink)]">
-                  {locale === "es" ? loc.nameEs : loc.name}
+                  {loc.name[locale]}
                 </span>
                 <span className="block text-[0.95rem] text-[var(--color-muted)]">
                   {loc.street}, {loc.city}, {loc.region} {loc.postal}

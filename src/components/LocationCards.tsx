@@ -12,7 +12,7 @@ export function LocationCards({ locale, dict }: LocationCardsProps) {
       {site.locations.map((loc) => (
         <article key={loc.id} className="card p-7 sm:p-8">
           <h3 className="h3 font-[var(--font-display)]">
-            {locale === "es" ? loc.nameEs : loc.name}
+            {loc.name[locale]}
           </h3>
           <address className="mt-5 grid gap-3 not-italic">
             <p className="flex items-start gap-3">

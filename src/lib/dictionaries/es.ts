@@ -86,8 +86,7 @@ export const es: Dictionary = {
     textLineHuman: "Un miembro de nuestro equipo responde los textos en un plazo de 24 horas.",
     requestAppointment: "Solicitar cita",
     patientPortal: "Portal del paciente",
-    languageToggle: "English",
-    languageToggleAria: "View this site in English",
+    languageLabel: "Idioma",
     getDirections: "Cómo llegar",
     learnMore: "Más información",
     banner: {
@@ -346,6 +345,8 @@ export const es: Dictionary = {
     view: "Ver instrucciones",
     print: "Imprimir estas instrucciones",
     backToAll: "Todas las instrucciones de preparación",
+    printPhoneLabel: "Teléfono",
+    printTextLabel: "Línea de texto",
     blanksHint:
       "Las líneas en blanco son los detalles de su cita — nuestro equipo se los confirma cuando se programa su procedimiento. Escríbalos en su copia impresa.",
     questionsHeading: "¿Preguntas sobre su preparación?",

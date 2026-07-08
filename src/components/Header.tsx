@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { site, localePath, type Locale } from "@/lib/site";
+import { site, localePath, locales, localeNames, type Locale } from "@/lib/site";
 import type { Dictionary } from "@/lib/i18n";
-import { ChevronDown, ExternalLink, Globe, Menu, MessageSquare, Phone, X } from "./icons";
+import { Check, ChevronDown, ExternalLink, Globe, Menu, MessageSquare, Phone, X } from "./icons";
 
 type HeaderProps = { locale: Locale; dict: Dictionary };
 
@@ -48,11 +48,67 @@ function buildNav(locale: Locale, dict: Dictionary): NavGroup[] {
   ];
 }
 
-/** Swap the locale segment of the current path: /en/x <-> /es/x. */
-function togglePath(pathname: string, locale: Locale): string {
-  const other = locale === "en" ? "es" : "en";
-  const rest = pathname.replace(/^\/(en|es)(?=\/|$)/, "");
-  return `/${other}${rest}` || `/${other}`;
+/** Re-point the current path at another locale: /en/x -> /ko/x. */
+function pathInLocale(pathname: string, target: Locale): string {
+  const rest = pathname.replace(new RegExp(`^/(${locales.join("|")})(?=/|$)`), "");
+  return `/${target}${rest}` || `/${target}`;
+}
+
+/** The five-language menu that replaced the EN<->ES toggle (2026-07-08). */
+function LanguageMenu({ locale, label }: { locale: Locale; label: string }) {
+  const pathname = usePathname() || `/${locale}`;
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onClick(e: MouseEvent) {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("click", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("click", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-label={label}
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 rounded-full bg-[color-mix(in_oklch,white_14%,transparent)] px-3 py-1 transition-colors hover:bg-[color-mix(in_oklch,white_24%,transparent)]"
+      >
+        <Globe className="h-3.5 w-3.5" />
+        {localeNames[locale]}
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="absolute end-0 top-full z-[var(--z-dropdown)] mt-2 w-44 rounded-[var(--radius-md)] bg-white p-1.5 shadow-[var(--shadow-card)]">
+          {locales.map((l) => (
+            <Link
+              key={l}
+              href={pathInLocale(pathname, l)}
+              lang={l}
+              aria-current={l === locale ? "true" : undefined}
+              className={`flex items-center justify-between gap-2 rounded-md px-3 py-2 font-semibold transition-colors hover:bg-[var(--color-mint)] ${
+                l === locale ? "text-[var(--color-teal-ink)]" : "text-[var(--color-body)]"
+              }`}
+            >
+              {localeNames[l]}
+              {l === locale ? <Check className="h-4 w-4 flex-none" /> : null}
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function Header({ locale, dict }: HeaderProps) {
@@ -130,14 +186,7 @@ export function Header({ locale, dict }: HeaderProps) {
               {c.patientPortal}
               <ExternalLink className="h-3.5 w-3.5" />
             </a>
-            <Link
-              href={togglePath(pathname, locale)}
-              aria-label={c.languageToggleAria}
-              className="flex items-center gap-1.5 rounded-full bg-[color-mix(in_oklch,white_14%,transparent)] px-3 py-1 transition-colors hover:bg-[color-mix(in_oklch,white_24%,transparent)]"
-            >
-              <Globe className="h-3.5 w-3.5" />
-              {c.languageToggle}
-            </Link>
+            <LanguageMenu locale={locale} label={c.languageLabel} />
           </div>
         </div>
       </div>
@@ -188,7 +237,7 @@ export function Header({ locale, dict }: HeaderProps) {
                     />
                   </button>
                   {open === i && (
-                    <div className="absolute left-0 top-full z-[var(--z-dropdown)] mt-2 w-72 rounded-[var(--radius-lg)] bg-white p-2 shadow-[var(--shadow-card)]">
+                    <div className="absolute start-0 top-full z-[var(--z-dropdown)] mt-2 w-72 rounded-[var(--radius-lg)] bg-white p-2 shadow-[var(--shadow-card)]">
                       {item.children.map((child) =>
                         child.external ? (
                           <a

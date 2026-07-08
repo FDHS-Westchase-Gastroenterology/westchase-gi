@@ -4,8 +4,21 @@
 // publishes today and are centralized here so a confirmed correction is a
 // one-line change.
 
-export type Locale = "en" | "es";
-export const locales: Locale[] = ["en", "es"];
+export type Locale = "en" | "es" | "vi" | "ko" | "ar";
+export const locales: Locale[] = ["en", "es", "vi", "ko", "ar"];
+
+/** Native-language labels for the language menu. */
+export const localeNames: Record<Locale, string> = {
+  en: "English",
+  es: "Español",
+  vi: "Tiếng Việt",
+  ko: "한국어",
+  ar: "العربية",
+};
+
+export function localeDir(locale: Locale): "ltr" | "rtl" {
+  return locale === "ar" ? "rtl" : "ltr";
+}
 
 /** localStorage key for the once-per-visitor notice banner (30-day stamp).
  * Shared by the layout's pre-paint script and the banner's dismiss button. */
@@ -35,8 +48,13 @@ export const site = {
   locations: [
     {
       id: "tampa",
-      name: "Tampa Office",
-      nameEs: "Oficina de Tampa",
+      name: {
+        en: "Tampa Office",
+        es: "Oficina de Tampa",
+        vi: "Văn phòng Tampa",
+        ko: "탬파 진료소",
+        ar: "مكتب تامبا",
+      },
       street: "11912 Sheldon Road",
       city: "Tampa",
       region: "FL",
@@ -46,8 +64,13 @@ export const site = {
     },
     {
       id: "lutz",
-      name: "Lutz Office",
-      nameEs: "Oficina de Lutz",
+      name: {
+        en: "Lutz Office",
+        es: "Oficina de Lutz",
+        vi: "Văn phòng Lutz",
+        ko: "루츠 진료소",
+        ar: "مكتب لوتز",
+      },
       street: "4695 Van Dyke Road",
       city: "Lutz",
       region: "FL",

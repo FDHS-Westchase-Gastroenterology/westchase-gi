@@ -1,8 +1,17 @@
 import type { Metadata } from "next";
-import { site, localePath, type Locale } from "./site";
+import { site, locales, localePath, type Locale } from "./site";
 
-/** Per-page metadata with canonical + hreflang pair (fixes the old site's
- * single duplicated description across all 64 pages). */
+/** og:locale values (Facebook's ll_CC set) per site locale. */
+const ogLocale: Record<Locale, string> = {
+  en: "en_US",
+  es: "es_US",
+  vi: "vi_VN",
+  ko: "ko_KR",
+  ar: "ar_AR",
+};
+
+/** Per-page metadata with canonical + full hreflang set (fixes the old
+ * site's single duplicated description across all 64 pages). */
 export function pageMetadata(
   locale: Locale,
   path: string,
@@ -16,8 +25,7 @@ export function pageMetadata(
     alternates: {
       canonical,
       languages: {
-        en: localePath("en", path),
-        es: localePath("es", path),
+        ...Object.fromEntries(locales.map((l) => [l, localePath(l, path)])),
         "x-default": localePath("en", path),
       },
     },
@@ -26,7 +34,7 @@ export function pageMetadata(
       description,
       url: canonical,
       siteName: site.name,
-      locale: locale === "es" ? "es_US" : "en_US",
+      locale: ogLocale[locale],
       type: "website",
     },
   };
