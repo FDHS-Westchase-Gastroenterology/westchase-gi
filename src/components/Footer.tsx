@@ -132,13 +132,17 @@ export function Footer({ locale, dict }: FooterProps) {
             </li>
             <li>
               <a href={site.textLine.href} className="inline-flex items-center gap-2 transition-colors hover:text-[var(--color-on-dark)]">
-                <MessageSquare className="h-4 w-4 flex-none text-[var(--color-amber)]" /> {c.textLine}:{" "}
-                <span className="bidi-ltr">{site.textLine.display}</span>
+                <MessageSquare className="h-4 w-4 flex-none text-[var(--color-amber)]" />
+                <span className="whitespace-nowrap">
+                  {c.textLine}: <span className="bidi-ltr">{site.textLine.display}</span>
+                </span>
               </a>
             </li>
             <li className="inline-flex items-center gap-2">
-              <Printer className="h-4 w-4 flex-none text-[var(--color-amber)]" /> {c.contactCard.fax}:{" "}
-              <span className="bidi-ltr">{site.fax.display}</span>
+                <Printer className="h-4 w-4 flex-none text-[var(--color-amber)]" />
+                <span className="whitespace-nowrap">
+                  {c.contactCard.fax}: <span className="bidi-ltr">{site.fax.display}</span>
+                </span>
             </li>
             <li>
               <a href={`mailto:${site.email}`} className="inline-flex items-center gap-2 transition-colors hover:text-[var(--color-on-dark)]">

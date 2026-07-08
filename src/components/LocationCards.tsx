@@ -33,7 +33,7 @@ export function LocationCards({ locale, dict }: LocationCardsProps) {
               <MessageSquare className="h-4.5 w-4.5 flex-none text-[var(--color-teal-ink)]" />
               <span>
                 <a href={site.textLine.href} className="font-bold text-[var(--color-ink)] hover:underline">
-                  {c.textLine}: <span className="bidi-ltr">{site.textLine.display}</span>
+                  {c.textLine}: <span className="bidi-ltr whitespace-nowrap">{site.textLine.display}</span>
                 </a>
                 <span className="block text-[0.9rem] text-[var(--color-muted)]">{c.textLineHuman}</span>
               </span>
@@ -41,7 +41,7 @@ export function LocationCards({ locale, dict }: LocationCardsProps) {
             <p className="flex items-center gap-3">
               <Printer className="h-4.5 w-4.5 flex-none text-[var(--color-teal-ink)]" />
               <span>
-                {c.contactCard.fax}: <span className="bidi-ltr">{site.fax.display}</span>
+                {c.contactCard.fax}: <span className="bidi-ltr whitespace-nowrap">{site.fax.display}</span>
               </span>
             </p>
             <p className="flex items-center gap-3">

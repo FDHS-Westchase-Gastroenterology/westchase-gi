@@ -62,13 +62,20 @@ export default async function HomePage({ params }: PageProps) {
                 <Phone className="h-4.5 w-4.5" /> {dict.common.callUs}
               </a>
             </div>
+            {/* Icon + one wrapping text run (not sibling flex items): raw text
+                runs as flex items shrink and break mid-phrase on narrow
+                viewports — "Text/line:" stacking, the number splitting. */}
             <a
               href={site.textLine.href}
-              className="mt-6 inline-flex items-center gap-2 font-semibold text-[var(--color-on-dark-muted)] transition-colors hover:text-[var(--color-on-dark)]"
+              className="mt-6 inline-flex max-w-xl items-start gap-2 font-semibold text-[var(--color-on-dark-muted)] transition-colors hover:text-[var(--color-on-dark)]"
             >
-              <MessageSquare className="h-4 w-4 text-[var(--color-amber)]" />
-              {dict.common.textLine}: <span className="bidi-ltr">{site.textLine.display}</span> ·{" "}
-              {dict.common.textLineHuman}
+              <MessageSquare className="mt-1 h-4 w-4 flex-none text-[var(--color-amber)]" />
+              <span>
+                <span className="whitespace-nowrap">
+                  {dict.common.textLine}: <span className="bidi-ltr">{site.textLine.display}</span> ·
+                </span>{" "}
+                {dict.common.textLineHuman}
+              </span>
             </a>
           </div>
           <Reveal variant="fade" className="xl:-me-12 2xl:-me-20">
