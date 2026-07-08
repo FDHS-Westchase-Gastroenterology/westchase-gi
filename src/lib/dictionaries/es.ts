@@ -83,7 +83,7 @@ export const es: Dictionary = {
     callUs: "Llame al (813) 920-8882",
     textUs: "Texto al (813) 564-0315",
     textLine: "Línea de texto",
-    textLineHuman: "Un miembro de nuestro equipo responde los textos todos los días.",
+    textLineHuman: "Un miembro de nuestro equipo responde los textos en un plazo de 24 horas.",
     requestAppointment: "Solicitar cita",
     patientPortal: "Portal del paciente",
     languageToggle: "English",
@@ -160,7 +160,7 @@ export const es: Dictionary = {
     },
     textBand: {
       heading: "¿Prefiere enviar un texto?",
-      body: "Envíenos un mensaje al (813) 564-0315. Un miembro de nuestro equipo, no un robot, lee y responde los textos todos los días que la oficina está abierta.",
+      body: "Envíenos un mensaje al (813) 564-0315. Un miembro de nuestro equipo, no un robot, lee y responde los textos en un plazo de 24 horas.",
       cta: "Texto al (813) 564-0315",
     },
     maps: {

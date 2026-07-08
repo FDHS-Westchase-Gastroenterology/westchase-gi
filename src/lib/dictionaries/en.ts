@@ -80,7 +80,7 @@ export const en = {
     callUs: "Call (813) 920-8882",
     textUs: "Text (813) 564-0315",
     textLine: "Text line",
-    textLineHuman: "A team member answers texts daily.",
+    textLineHuman: "A team member answers texts within 24 hours.",
     requestAppointment: "Request appointment",
     patientPortal: "Patient portal",
     languageToggle: "Español",
@@ -157,7 +157,7 @@ export const en = {
     },
     textBand: {
       heading: "Prefer to text?",
-      body: "Send us a message at (813) 564-0315. A member of our team, not a bot, reads and answers texts every day the office is open.",
+      body: "Send us a message at (813) 564-0315. A member of our team, not a bot, reads and answers texts within 24 hours.",
       cta: "Text (813) 564-0315",
     },
     maps: {

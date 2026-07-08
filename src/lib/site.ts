@@ -18,7 +18,7 @@ export const site = {
   domain: "westchasegi.com",
   url: "https://www.westchasegi.com",
   phone: { display: "(813) 920-8882", href: "tel:+18139208882" },
-  // Staffed by a human daily; keep prominent (practice directive).
+  // Staffed by a human, answered within 24 hours; keep prominent (practice directive).
   textLine: { display: "(813) 564-0315", href: "sms:+18135640315" },
   // NEEDS CONFIRMATION: fax also appears as 813-920-8883 on the old office-gallery
   // page; (813) 920-5800 is what the contact page publishes.
