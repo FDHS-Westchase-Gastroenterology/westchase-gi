@@ -38,11 +38,6 @@ export const es: Dictionary = {
       description:
         "Todo lo que necesita para su primera visita a Westchase Gastroenterology: formularios en línea en inglés y español, información de seguros y qué esperar.",
     },
-    existingPatients: {
-      title: "Pacientes Existentes",
-      description:
-        "Recursos para pacientes actuales de Westchase Gastroenterology: acceso al portal del paciente, instrucciones de preparación para procedimientos y cómo comunicarse con la oficina.",
-    },
     procedurePrep: {
       title: "Preparación para Procedimientos",
       description:
@@ -103,7 +98,6 @@ export const es: Dictionary = {
       physicians: "Médicos",
       gallery: "Nuestra Oficina",
       newPatients: "Pacientes Nuevos",
-      existingPatients: "Pacientes Existentes",
       procedurePrep: "Preparación para Procedimientos",
       resources: "Recursos para Pacientes",
       patientEducation: "Educación para Pacientes",
@@ -255,7 +249,13 @@ export const es: Dictionary = {
     physiciansHeading: "Nuestros médicos",
     boardCertifiedLabel: "Certificado por la junta",
     languagesLabel: "Idiomas",
-    viewCard: "Ver la tarjeta de perfil de la práctica",
+    card: {
+      label: "Tarjeta de perfil de FDHS",
+      hint: "Ver en tamaño completo",
+      zoomIn: "Acercar",
+      zoomOut: "Alejar",
+      download: "Descargar la tarjeta",
+    },
     npsHeading: "Enfermeras Practicantes",
     npsRole: "Enfermeras Practicantes Familiares",
     npsLead:
@@ -316,23 +316,6 @@ export const es: Dictionary = {
     expectHeading: "Qué Esperar",
     expectBody:
       "Llegar bien preparado a su cita garantiza que el médico cuente con toda la información necesaria para brindarle la mejor atención posible. También ayuda a aliviar la ansiedad que pueda sentir antes de su primera cita. Infórmese sobre sus síntomas revisando el contenido de este sitio web y tómese un momento para visitar la página de nuestros médicos y familiarizarse con ellos. Esperamos su primera visita.",
-  },
-
-  existingPatients: {
-    title: "Pacientes Existentes",
-    intro:
-      "Lo que los pacientes que regresan necesitan con más frecuencia: su portal del paciente, las instrucciones de preparación para procedimientos y las formas más rápidas de comunicarse con nosotros.",
-    portalHeading: "Portal del Paciente",
-    portalBody:
-      "Consulte resúmenes de visitas, resultados y mensajes de su equipo de atención a través de nuestro portal seguro de eClinicalWorks.",
-    portalCta: "Abrir el portal del paciente",
-    prepHeading: "¿Se está preparando para un procedimiento?",
-    prepBody:
-      "Sus instrucciones de preparación dependen del procedimiento y de la preparación que su médico eligió para usted. Encuentre la suya o solicítela a nuestro equipo.",
-    prepCta: "Ver instrucciones de preparación",
-    recordsHeading: "Expedientes médicos",
-    recordsBody:
-      "Para enviarnos expedientes o solicitar los suyos, comuníquese con la oficina por teléfono o texto y le guiaremos con el formulario de autorización.",
   },
 
   procedurePrep: {

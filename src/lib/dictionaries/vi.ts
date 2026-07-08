@@ -35,11 +35,6 @@ export const vi: Dictionary = {
       description:
         "Mọi thứ quý vị cần cho buổi thăm khám đầu tiên tại Westchase Gastroenterology: mẫu đơn trực tuyến cho bệnh nhân mới bằng tiếng Anh và tiếng Tây Ban Nha, thông tin bảo hiểm và những điều quý vị có thể mong đợi.",
     },
-    existingPatients: {
-      title: "Bệnh nhân hiện tại",
-      description:
-        "Thông tin dành cho bệnh nhân hiện tại của Westchase Gastroenterology: truy cập cổng thông tin bệnh nhân, hướng dẫn chuẩn bị thủ thuật và cách liên hệ với phòng khám của chúng tôi.",
-    },
     procedurePrep: {
       title: "Chuẩn bị thủ thuật",
       description:
@@ -100,7 +95,6 @@ export const vi: Dictionary = {
       physicians: "Bác sĩ",
       gallery: "Hình ảnh phòng khám",
       newPatients: "Bệnh nhân mới",
-      existingPatients: "Bệnh nhân hiện tại",
       procedurePrep: "Chuẩn bị thủ thuật",
       resources: "Nguồn thông tin cho bệnh nhân",
       patientEducation: "Giáo dục bệnh nhân",
@@ -251,7 +245,13 @@ export const vi: Dictionary = {
     physiciansHeading: "Đội ngũ bác sĩ của chúng tôi",
     boardCertifiedLabel: "Được hội đồng y khoa chứng nhận",
     languagesLabel: "Ngôn ngữ",
-    viewCard: "Xem thẻ hồ sơ của phòng khám",
+    card: {
+      label: "Thẻ hồ sơ FDHS",
+      hint: "Xem kích thước đầy đủ",
+      zoomIn: "Phóng to",
+      zoomOut: "Thu nhỏ",
+      download: "Tải xuống thẻ",
+    },
     npsHeading: "Điều dưỡng thực hành",
     npsRole: "Điều dưỡng thực hành gia đình",
     npsLead:
@@ -312,23 +312,6 @@ export const vi: Dictionary = {
     expectHeading: "Những gì quý vị có thể mong đợi",
     expectBody:
       "Chuẩn bị chu đáo cho buổi hẹn sẽ giúp bác sĩ có đầy đủ thông tin cần thiết để mang đến cho quý vị sự chăm sóc tốt nhất có thể. Điều này cũng giúp giảm bớt những lo lắng không cần thiết mà quý vị có thể cảm thấy trước buổi hẹn đầu tiên. Hãy tìm hiểu về các triệu chứng của mình bằng cách xem nội dung trên trang web này. Quý vị cũng nên dành chút thời gian xem trang giới thiệu bác sĩ để làm quen với các bác sĩ của chúng tôi. Chúng tôi mong được đón tiếp quý vị trong buổi thăm khám đầu tiên.",
-  },
-
-  existingPatients: {
-    title: "Bệnh nhân hiện tại",
-    intro:
-      "Những điều bệnh nhân quay lại cần nhất: cổng thông tin bệnh nhân, hướng dẫn chuẩn bị thủ thuật, và những cách nhanh nhất để liên hệ với chúng tôi.",
-    portalHeading: "Cổng thông tin bệnh nhân",
-    portalBody:
-      "Xem tóm tắt buổi khám, kết quả và tin nhắn từ đội ngũ chăm sóc của quý vị qua cổng thông tin bảo mật eClinicalWorks của chúng tôi.",
-    portalCta: "Mở cổng thông tin bệnh nhân",
-    prepHeading: "Quý vị đang chuẩn bị cho một thủ thuật?",
-    prepBody:
-      "Hướng dẫn chuẩn bị của quý vị tùy thuộc vào thủ thuật và phương pháp chuẩn bị mà bác sĩ đã chọn cho quý vị. Tìm hướng dẫn của quý vị hoặc yêu cầu từ đội ngũ của chúng tôi.",
-    prepCta: "Xem hướng dẫn chuẩn bị",
-    recordsHeading: "Hồ sơ bệnh án",
-    recordsBody:
-      "Để gửi hồ sơ cho chúng tôi hoặc yêu cầu nhận hồ sơ từ chúng tôi, hãy liên hệ phòng khám qua điện thoại hoặc tin nhắn và chúng tôi sẽ hướng dẫn quý vị điền mẫu đơn ủy quyền cung cấp hồ sơ.",
   },
 
   procedurePrep: {

@@ -35,11 +35,6 @@ export const en = {
       description:
         "Everything you need for your first visit to Westchase Gastroenterology: online new-patient forms in English and Spanish, insurance information, and what to expect.",
     },
-    existingPatients: {
-      title: "Existing Patients",
-      description:
-        "Resources for current patients of Westchase Gastroenterology: patient portal access, procedure preparation instructions, and how to reach our office.",
-    },
     procedurePrep: {
       title: "Procedure Preparation",
       description:
@@ -100,7 +95,6 @@ export const en = {
       physicians: "Physicians",
       gallery: "Office Gallery",
       newPatients: "New Patients",
-      existingPatients: "Existing Patients",
       procedurePrep: "Procedure Preparation",
       resources: "Patient Resources",
       patientEducation: "Patient Education",
@@ -251,7 +245,13 @@ export const en = {
     physiciansHeading: "Our physicians",
     boardCertifiedLabel: "Board certified",
     languagesLabel: "Languages",
-    viewCard: "View the practice's profile card",
+    card: {
+      label: "FDHS profile card",
+      hint: "View full size",
+      zoomIn: "Zoom in",
+      zoomOut: "Zoom out",
+      download: "Download the card",
+    },
     npsHeading: "Nurse Practitioners",
     npsRole: "Family Nurse Practitioners",
     npsLead:
@@ -312,23 +312,6 @@ export const en = {
     expectHeading: "What To Expect",
     expectBody:
       "Being well-prepared for your appointment will ensure that the doctor has all of the needed information to provide the best possible care for you. It will also help alleviate any unnecessary anxiety you may be feeling prior to your first appointment. Educate yourself on your symptoms by reviewing the content on this website. Also, take some time to review our physicians page and familiarize yourself with the doctors. We look forward to your first visit.",
-  },
-
-  existingPatients: {
-    title: "Existing Patients",
-    intro:
-      "Everything returning patients need most often: your patient portal, procedure preparation instructions, and the quickest ways to reach us.",
-    portalHeading: "Patient Portal",
-    portalBody:
-      "View visit summaries, results, and messages from your care team through our secure eClinicalWorks portal.",
-    portalCta: "Open the patient portal",
-    prepHeading: "Preparing for a procedure?",
-    prepBody:
-      "Your preparation instructions depend on the procedure and the prep your physician chose for you. Find yours or request it from our team.",
-    prepCta: "View preparation instructions",
-    recordsHeading: "Medical records",
-    recordsBody:
-      "To send records to us or request records from us, contact the office by phone or text and we will guide you through the release form.",
   },
 
   procedurePrep: {

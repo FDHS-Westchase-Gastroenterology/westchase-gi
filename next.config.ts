@@ -10,7 +10,10 @@ const legacy: Array<[string, string]> = [
   ["/physicians", "/en/physicians"],
   ["/office-gallery", "/en/office-gallery"],
   ["/new-patients", "/en/new-patients"],
-  ["/existing-patients", "/en/existing-patients"],
+  // The old "Existing Patients" page (a "Coming Soon!" stub) has no successor:
+  // the portal lives in the site chrome and preps have their own section
+  // (practice decision 2026-07-08). Old links land on procedure prep.
+  ["/existing-patients", "/en/procedure-prep"],
   ["/procedure-preparation-instruction", "/en/procedure-prep"],
   ["/contact", "/en/contact"],
   ["/links", "/en/resources"],
@@ -73,6 +76,13 @@ const nextConfig: NextConfig = {
       // Root: English is the default mode; the header toggle switches to /es.
       { source: "/", destination: "/en", permanent: false },
       ...legacy.map(([source, destination]) => ({ source, destination, permanent: true })),
+      // The retired V1 existing-patients page (was live + in the sitemap
+      // until 2026-07-08); each locale lands on its own prep index.
+      {
+        source: "/:locale(en|es|vi|ko|ar)/existing-patients",
+        destination: "/:locale/procedure-prep",
+        permanent: true,
+      },
       // The blog: ported posts deep-link; anything older lands on the index.
       ...legacyBlogPosts.map(([old, slug]) => ({
         source: `/blog/${old}`,

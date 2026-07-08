@@ -129,6 +129,32 @@ export const Download = (p: IconProps) => (
   </svg>
 );
 
+export const Maximize = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M15 3h6v6" />
+    <path d="m21 3-7 7" />
+    <path d="m3 21 7-7" />
+    <path d="M9 21H3v-6" />
+  </svg>
+);
+
+export const ZoomIn = (p: IconProps) => (
+  <svg {...base(p)}>
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.3-4.3" />
+    <line x1="11" x2="11" y1="8" y2="14" />
+    <line x1="8" x2="14" y1="11" y2="11" />
+  </svg>
+);
+
+export const ZoomOut = (p: IconProps) => (
+  <svg {...base(p)}>
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.3-4.3" />
+    <line x1="8" x2="14" y1="11" y2="11" />
+  </svg>
+);
+
 export const Mail = (p: IconProps) => (
   <svg {...base(p)}>
     <rect width="20" height="16" x="2" y="4" rx="2" />

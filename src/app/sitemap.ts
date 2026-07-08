@@ -11,7 +11,6 @@ const paths = [
   "/physicians",
   "/office-gallery",
   "/new-patients",
-  "/existing-patients",
   "/procedure-prep",
   ...prepDocs.map((d) => `/procedure-prep/${d.slug}`),
   "/resources",

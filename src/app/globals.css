@@ -672,6 +672,98 @@
     color: var(--color-ink);
   }
 
+  /* ---- Profile-card lightbox (native <dialog>) ----
+     The practice's official FDHS card graphics, viewed in place: no new
+     tab, no navigation. The dialog element owns the top layer, so no
+     z-index management is needed. */
+  .pc-dialog {
+    margin: auto;
+    max-width: min(92vw, 64rem);
+    max-height: 92vh;
+    background: transparent;
+    border: none;
+    padding: 0;
+    overflow: visible;
+  }
+  .pc-dialog::backdrop {
+    background: oklch(0.22 0.04 248 / 0.72);
+    backdrop-filter: blur(6px);
+  }
+  .pc-dialog[open] {
+    animation: pc-rise 0.42s var(--ease-out-quint) both;
+  }
+  .pc-dialog[open]::backdrop {
+    animation: pc-dim 0.3s ease-out both;
+  }
+  @keyframes pc-rise {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.975);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes pc-dim {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pc-dialog[open],
+    .pc-dialog[open]::backdrop {
+      animation: none;
+    }
+  }
+  /* Pointer-only dismiss target covering the backdrop area (a real button;
+     keyboard users close with Escape or the labeled close control). */
+  .pc-scrim {
+    position: fixed;
+    inset: 0;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: default;
+  }
+  .pc-body {
+    z-index: 1; /* above the scrim, inside the dialog's own top layer */
+  }
+  .pc-canvas {
+    max-width: min(92vw, 64rem);
+    max-height: 76vh;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-2) transparent;
+  }
+  /* Slim indeterminate loader shown only while the full-size image streams. */
+  .pc-progress {
+    position: absolute;
+    inset-inline: 0;
+    top: 0;
+    height: 3px;
+    overflow: hidden;
+    background: color-mix(in oklch, var(--color-amber) 25%, transparent);
+  }
+  .pc-progress > span {
+    display: block;
+    height: 100%;
+    width: 40%;
+    border-radius: 999px;
+    background: var(--color-amber);
+    animation: pc-progress 1.1s ease-in-out infinite;
+  }
+  @keyframes pc-progress {
+    from { transform: translateX(-110%); }
+    to { transform: translateX(360%); }
+  }
+  [dir="rtl"] .pc-progress > span {
+    animation-name: pc-progress-rtl;
+  }
+  @keyframes pc-progress-rtl {
+    from { transform: translateX(110%); }
+    to { transform: translateX(-360%); }
+  }
+
   /* ---- Testimonial rail: scroll-snap, native momentum ---- */
   .rail {
     display: grid;

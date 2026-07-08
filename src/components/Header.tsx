@@ -33,7 +33,6 @@ function buildNav(locale: Locale, dict: Dictionary): NavGroup[] {
       label: dict.common.footer.patientsHeading,
       children: [
         { label: n.newPatients, href: p("/new-patients") },
-        { label: n.existingPatients, href: p("/existing-patients") },
         { label: n.procedurePrep, href: p("/procedure-prep") },
         { label: n.patientEducation, href: p("/patient-education") },
         { label: n.resources, href: p("/resources") },

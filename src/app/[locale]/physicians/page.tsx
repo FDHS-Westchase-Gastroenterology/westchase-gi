@@ -14,9 +14,9 @@ import {
 import type { Dictionary } from "@/lib/dictionaries/en";
 import { JsonLd } from "@/components/JsonLd";
 import { PageHero } from "@/components/PageHero";
+import { ProfileCardViewer } from "@/components/ProfileCardViewer";
 import { Reveal } from "@/components/Reveal";
 import { TextBand } from "@/components/TextBand";
-import { ExternalLink } from "@/components/icons";
 
 type PageProps = { params: Promise<{ locale: string }> };
 
@@ -96,19 +96,25 @@ function Quote({ text }: { text: string }) {
   );
 }
 
+/** Localized strings for the card viewer (close lives in common). */
+function cardStrings(dict: Dictionary) {
+  return { ...dict.physicians.card, close: dict.common.close };
+}
+
 function PhysicianProfile({
   doc,
   locale,
-  t,
+  dict,
   flip,
   mint,
 }: {
   doc: Physician;
   locale: Locale;
-  t: Dictionary["physicians"];
+  dict: Dictionary;
   flip: boolean;
   mint: boolean;
 }) {
+  const t = dict.physicians;
   return (
     <section
       id={doc.id}
@@ -149,14 +155,12 @@ function PhysicianProfile({
               </dd>
             </div>
           </dl>
-          <a
-            href={doc.card.src}
-            target="_blank"
-            rel="noopener"
-            className="mt-4 inline-flex items-center gap-1.5 text-[0.88rem] font-semibold text-[var(--color-muted)] transition-colors hover:text-[var(--color-teal-ink)]"
-          >
-            <ExternalLink className="h-3.5 w-3.5" /> {t.viewCard}
-          </a>
+          <ProfileCardViewer
+            image={doc.card}
+            subject={`${doc.name}, ${doc.credentials}`}
+            t={cardStrings(dict)}
+            className="mt-5"
+          />
         </Reveal>
 
         <Reveal delay={1} className={flip ? "lg:order-1" : ""}>
@@ -197,13 +201,14 @@ export default async function PhysiciansPage({ params }: PageProps) {
       <PageHero title={t.title} lead={t.intro} />
 
       {/* The three physicians: full profiles as real, localized type. The
-          practice's published card graphics stay linked, byte-exact. */}
+          practice's published card graphics stay on the page, byte-exact,
+          in a same-page lightbox (no new tab). */}
       {physicians.map((doc, i) => (
         <PhysicianProfile
           key={doc.id}
           doc={doc}
           locale={locale}
-          t={t}
+          dict={dict}
           flip={i % 2 === 1}
           mint={i % 2 === 1}
         />
@@ -262,14 +267,12 @@ export default async function PhysiciansPage({ params }: PageProps) {
                 <li key={item.en}>{item[locale]}</li>
               ))}
             </ul>
-            <a
-              href={nps.card.src}
-              target="_blank"
-              rel="noopener"
-              className="mt-6 inline-flex items-center gap-1.5 text-[0.88rem] font-semibold text-[var(--color-muted)] transition-colors hover:text-[var(--color-teal-ink)]"
-            >
-              <ExternalLink className="h-3.5 w-3.5" /> {t.viewCard}
-            </a>
+            <ProfileCardViewer
+              image={nps.card}
+              subject={t.npsHeading}
+              t={cardStrings(dict)}
+              className="mt-7"
+            />
           </Reveal>
         </div>
       </section>
@@ -296,14 +299,12 @@ export default async function PhysiciansPage({ params }: PageProps) {
                 </dd>
               </div>
             </dl>
-            <a
-              href={inf.card.src}
-              target="_blank"
-              rel="noopener"
-              className="mt-4 inline-flex items-center gap-1.5 text-[0.88rem] font-semibold text-[var(--color-muted)] transition-colors hover:text-[var(--color-teal-ink)]"
-            >
-              <ExternalLink className="h-3.5 w-3.5" /> {t.viewCard}
-            </a>
+            <ProfileCardViewer
+              image={inf.card}
+              subject={`${inf.name}, ${inf.credentials}`}
+              t={cardStrings(dict)}
+              className="mt-5"
+            />
           </Reveal>
 
           <Reveal delay={1}>

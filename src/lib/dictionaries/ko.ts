@@ -35,11 +35,6 @@ export const ko: Dictionary = {
       description:
         "Westchase Gastroenterology 첫 방문에 필요한 모든 것: 영어와 스페인어로 된 온라인 신규 환자 서류, 보험 정보, 방문 전 안내.",
     },
-    existingPatients: {
-      title: "기존 환자",
-      description:
-        "Westchase Gastroenterology 기존 환자분들을 위한 자료: 환자 포털 이용, 시술 준비 안내, 오피스 연락 방법.",
-    },
     procedurePrep: {
       title: "시술 준비 안내",
       description:
@@ -100,7 +95,6 @@ export const ko: Dictionary = {
       physicians: "의료진",
       gallery: "병원 둘러보기",
       newPatients: "신규 환자",
-      existingPatients: "기존 환자",
       procedurePrep: "시술 준비 안내",
       resources: "환자 자료실",
       patientEducation: "환자 교육",
@@ -251,7 +245,13 @@ export const ko: Dictionary = {
     physiciansHeading: "저희 전문의",
     boardCertifiedLabel: "전문의 자격 인증",
     languagesLabel: "구사 언어",
-    viewCard: "병원 프로필 카드 보기",
+    card: {
+      label: "FDHS 프로필 카드",
+      hint: "전체 크기로 보기",
+      zoomIn: "확대",
+      zoomOut: "축소",
+      download: "카드 다운로드",
+    },
     npsHeading: "전문간호사",
     npsRole: "가정전문간호사",
     npsLead:
@@ -312,23 +312,6 @@ export const ko: Dictionary = {
     expectHeading: "미리 알아 두실 사항",
     expectBody:
       "예약 전에 준비를 잘 해 오시면 의사가 최선의 진료에 필요한 정보를 모두 갖추고 진료할 수 있습니다. 첫 진료를 앞두고 느끼실 수 있는 불필요한 긴장을 더는 데에도 도움이 됩니다. 이 웹사이트의 내용을 살펴보시며 본인의 증상에 대해 알아 두시고, 의료진 페이지에서 담당 의사들을 미리 만나 보시기 바랍니다. 첫 방문을 기다리겠습니다.",
-  },
-
-  existingPatients: {
-    title: "기존 환자",
-    intro:
-      "재방문 환자분들이 가장 자주 찾으시는 것들을 모았습니다. 환자 포털, 시술 준비 안내, 그리고 가장 빠른 연락 방법입니다.",
-    portalHeading: "환자 포털",
-    portalBody:
-      "보안이 유지되는 eClinicalWorks 포털에서 진료 요약, 검사 결과, 진료팀의 메시지를 확인하십시오.",
-    portalCta: "환자 포털 열기",
-    prepHeading: "시술을 앞두고 계십니까?",
-    prepBody:
-      "준비 안내는 받으시는 시술과 담당 의사가 선택한 준비 방법에 따라 다릅니다. 본인에게 해당하는 안내를 찾아보시거나 저희 팀에 요청하십시오.",
-    prepCta: "준비 안내 보기",
-    recordsHeading: "의무 기록",
-    recordsBody:
-      "저희에게 기록을 보내시거나 기록 발급을 요청하시려면 전화나 문자로 오피스에 연락해 주십시오. 정보 제공 동의서 작성을 안내해 드리겠습니다.",
   },
 
   procedurePrep: {

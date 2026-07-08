@@ -10,9 +10,10 @@
 //
 // All display text is real, localizable type (client requirement 2026-07-07:
 // graphic-borne text must follow the site language). The original card
-// graphics stay in /images/staff/ byte-exact and are linked from each
-// profile; the clean headshots are derived from the practice's own photo
-// set (originals preserved in the project's assets archive).
+// graphics stay in /images/staff/ byte-exact and open in a same-page
+// lightbox from each profile (ProfileCardViewer); the clean headshots are
+// derived from the practice's own photo set (originals preserved in the
+// project's assets archive).
 
 import type { Bi } from "./content/types";
 
@@ -36,7 +37,7 @@ export type Physician = {
   sections: ProfileSection[];
   quote: Bi | null;
   headshot: Img;
-  /** The practice's own published card graphic, byte-exact, linked for reference. */
+  /** The practice's own published card graphic, byte-exact, shown in the in-page viewer. */
   card: Img;
   alt: Bi;
 };
