@@ -33,11 +33,9 @@ export default async function GalleryPage({ params }: PageProps) {
     { src: "/images/facility/lobby-2.jpeg", w: 2362, h: 1330, alt: t.photos.lobby2, wide: false },
   ];
 
-  const reviewLinks = [
-    { label: t.reviewGoogle, href: site.links.googleReview },
-    { label: t.healthgradesTampa, href: site.links.healthgradesTampa },
-    { label: t.healthgradesLutz, href: site.links.healthgradesLutz },
-  ];
+  // Healthgrades buttons removed at the practice's request (2026-07-08);
+  // Google is the review destination we're steering patients toward.
+  const reviewLinks = [{ label: t.reviewGoogle, href: site.links.googleReview }];
 
   return (
     <>
@@ -64,9 +62,8 @@ export default async function GalleryPage({ params }: PageProps) {
         </div>
       </section>
 
-      {/* Reviews: live, verified profiles only (the old page's Facebook and
-          Yelp links were dead or misnamed; they return once the practice
-          confirms live profiles). */}
+      {/* Reviews: this page steers to Google alone; the full platform list
+          (incl. the live Facebook page) belongs to /review and the footer. */}
       <section className="border-y border-[var(--color-line)] bg-[var(--color-mint)]">
         <div className="container-x section-sm">
           <Reveal>
