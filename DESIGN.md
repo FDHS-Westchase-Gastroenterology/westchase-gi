@@ -49,6 +49,14 @@ backgrounds. No gradients, no glassmorphism, no side-stripe borders.
 - **Notice banner**: amber-soft strip under the header; dismissible once per visitor
   (30-day localStorage; pre-paint script prevents flash).
 - **Rail** (`.rail`): scroll-snap testimonial strip, edge-padded to the container grid.
+- **Profile-card viewer** (`ProfileCardViewer`, `.pc-*`): the practice's official provider
+  card graphics, viewed in place. Tile ("Profile card / Open to read" — no network acronym on
+  patient-facing labels) opens a native `<dialog>`: full-screen sheet on phones, panel ≥640px.
+  Photo-app gestures via `react-zoom-pan-pinch` (pinch / double-tap / wheel / drag; left-click
+  pan disabled on coarse pointers — the lib's mouse handler otherwise cancels touch double-tap
+  zoom), floating −/%/+ cluster (tap % resets), one-time localized gesture hint, explicit
+  loading state, subject + download of the byte-exact original in the header bar. Pre-hydration
+  the tile is a real link to the graphic; browsers without `showModal` get a new-tab fallback.
 
 ## Motion
 
