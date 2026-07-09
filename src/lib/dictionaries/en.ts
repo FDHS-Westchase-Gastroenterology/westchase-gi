@@ -188,6 +188,8 @@ export const en = {
     physiciansLead:
       "Three board-certified gastroenterologists, supported by family nurse practitioners and an infusion nurse.",
     physiciansCta: "Meet the full team",
+    physicianReviewCta: "Leave a Google review",
+    physicianReviewAria: "Leave a Google review for Dr. {name} (opens the Google review form)",
     testimonialsHeading: "What patients say",
     testimonialsNote: "Reviews shared by our patients, in their own words.",
     railLabel: "Patient testimonials",

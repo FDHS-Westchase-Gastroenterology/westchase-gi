@@ -29,6 +29,9 @@ export type Physician = {
   name: string;
   /** Verbatim, identical in every language (practice directive). */
   credentials: string;
+  /** Direct Google write-review link for THIS physician's own listing
+   * (each doctor has a separate place ID; liveness-verified 2026-07-05). */
+  googleReview: string;
   role: Bi;
   experience: Bi;
   boardCertified: Bi[];
@@ -47,6 +50,7 @@ export const physicians: Physician[] = [
     id: "john-chang",
     name: "John Chang",
     credentials: "MD, FACG",
+    googleReview: "https://search.google.com/local/writereview?placeid=ChIJ1XxEt_TqwogRwXffFfsFWf0",
     role: {
       en: "Gastroenterologist",
       es: "Gastroenterólogo",
@@ -254,6 +258,7 @@ export const physicians: Physician[] = [
     id: "amir-awad",
     name: "Amir Awad",
     credentials: "MD",
+    googleReview: "https://search.google.com/local/writereview?placeid=ChIJ1XxEt_TqwogRejiysvVdwqc",
     role: {
       en: "Gastroenterologist",
       es: "Gastroenterólogo",
@@ -484,6 +489,7 @@ export const physicians: Physician[] = [
     id: "alfredo-mendoza",
     name: "Alfredo Mendoza",
     credentials: "MD, MS",
+    googleReview: "https://search.google.com/local/writereview?placeid=ChIJ1XxEt_TqwogRzZ4Jiq8ZMlA",
     role: {
       en: "Gastroenterologist",
       es: "Gastroenterólogo",
@@ -726,6 +732,8 @@ export type NursePractitioner = {
 /** The practice's NP brochure/card content, per provider, as real text. */
 export const nursePractitioners: {
   individuals: NursePractitioner[];
+  /** The card's closing band — the joint framing for the shared material. */
+  sharedTagline: { heading: Bi; sub: Bi };
   sharedFocus: { heading: Bi; items: Bi[] };
   card: Img;
 } = {
@@ -845,6 +853,22 @@ export const nursePractitioners: {
       },
     },
   ],
+  sharedTagline: {
+    heading: {
+      en: "Two expert providers. One shared goal.",
+      es: "Dos proveedoras expertas. Un mismo objetivo.",
+      vi: "Hai chuyên gia điều trị. Một mục tiêu chung.",
+      ko: "두 명의 전문 의료진, 하나의 공통된 목표.",
+      ar: "مقدّمتا رعاية خبيرتان. هدف واحد مشترك.",
+    },
+    sub: {
+      en: "Your health, our priority.",
+      es: "Su salud, nuestra prioridad.",
+      vi: "Sức khỏe của quý vị là ưu tiên của chúng tôi.",
+      ko: "여러분의 건강이 저희의 최우선입니다.",
+      ar: "صحتكم أولويتنا.",
+    },
+  },
   sharedFocus: {
     heading: {
       en: "Partnering with you for better digestive health",

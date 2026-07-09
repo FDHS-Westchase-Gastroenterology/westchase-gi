@@ -188,6 +188,8 @@ export const vi: Dictionary = {
     physiciansLead:
       "Ba bác sĩ chuyên khoa tiêu hóa được hội đồng y khoa chứng nhận, cùng sự hỗ trợ của các điều dưỡng thực hành gia đình và một điều dưỡng truyền tĩnh mạch.",
     physiciansCta: "Gặp gỡ toàn bộ đội ngũ",
+    physicianReviewCta: "Để lại đánh giá trên Google",
+    physicianReviewAria: "Để lại đánh giá trên Google cho bác sĩ {name} (mở biểu mẫu đánh giá của Google)",
     testimonialsHeading: "Bệnh nhân nói gì về chúng tôi",
     testimonialsNote: "Những đánh giá do bệnh nhân của chúng tôi chia sẻ, bằng chính lời của họ (bằng tiếng Anh).",
     railLabel: "Cảm nhận của bệnh nhân",

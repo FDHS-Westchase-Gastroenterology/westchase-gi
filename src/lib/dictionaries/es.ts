@@ -192,6 +192,8 @@ export const es: Dictionary = {
     physiciansLead:
       "Tres gastroenterólogos certificados, con el apoyo de enfermeras practicantes familiares y una enfermera de infusión.",
     physiciansCta: "Conozca a todo el equipo",
+    physicianReviewCta: "Deje una reseña en Google",
+    physicianReviewAria: "Deje una reseña en Google para el Dr. {name} (abre el formulario de reseñas de Google)",
     testimonialsHeading: "Lo que dicen nuestros pacientes",
     testimonialsNote: "Reseñas compartidas por nuestros pacientes, en sus propias palabras (en inglés).",
     railLabel: "Testimonios de pacientes",

@@ -189,6 +189,8 @@ export const ar: Dictionary = {
     physiciansLead:
       "ثلاثة أطباء جهاز هضمي حاصلون على شهادة البورد، تدعمهم ممرضات ممارسات في صحة الأسرة وممرضة تسريب وريدي.",
     physiciansCta: "تعرّفوا على الفريق بأكمله",
+    physicianReviewCta: "اتركوا تقييمًا على Google",
+    physicianReviewAria: "اتركوا تقييمًا على Google للدكتور {name} (يفتح نموذج التقييم في Google)",
     testimonialsHeading: "ماذا يقول مرضانا",
     testimonialsNote: "تقييمات شاركها مرضانا بكلماتهم الخاصة (بالإنجليزية).",
     railLabel: "آراء المرضى",
