@@ -58,7 +58,8 @@ function ClinicSchema() {
     name: `${site.name} – ${loc.name.en}`,
     url: site.url,
     telephone: "+18139208882",
-    faxNumber: "+18139205800",
+    // Practice-confirmed fax 2026-07-08 (see site.ts); the old 920-5800 was wrong.
+    faxNumber: "+18139208883",
     email: site.email,
     medicalSpecialty: "Gastroenterologic",
     address: {
