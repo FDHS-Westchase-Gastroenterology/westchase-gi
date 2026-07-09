@@ -214,65 +214,84 @@ export default async function PhysiciansPage({ params }: PageProps) {
         />
       ))}
 
-      {/* Nurse practitioners: the brochure's content as text, per provider. */}
+      {/* Nurse practitioners: each provider gets her own profile row — the
+          physicians' grammar (large portrait, name, credentials, her own
+          card content) at NP scale. The brochure's JOINT material (shared
+          focus list + its closing band) ends the section as a shared navy
+          band holding the single FDHS card, which covers both providers:
+          one artifact, shown once, in the shared context it belongs to. */}
       <section className="border-y border-[var(--color-line)] bg-[var(--color-mint)]">
         <div className="container-x section">
           <Reveal>
             <h2 className="h2 heading-tick">{t.npsHeading}</h2>
             <p className="lead measure mt-4 text-[var(--color-body)]">{t.npsLead}</p>
           </Reveal>
-          <div className="mt-10 grid gap-6 lg:grid-cols-2">
-            {nps.individuals.map((np, i) => (
-              <Reveal
+
+          {nps.individuals.map((np, i) => {
+            const flip = i % 2 === 0;
+            return (
+              <article
                 key={np.id}
-                delay={(i % 2) as 0 | 1}
-                as="article"
-                className="h-full rounded-[var(--radius-lg)] bg-white p-6 shadow-[var(--shadow-soft)] sm:p-8"
+                id={np.id}
+                className={`mt-12 grid scroll-mt-28 items-center gap-x-14 gap-y-8 lg:mt-16 ${
+                  flip
+                    ? "lg:grid-cols-[1fr_minmax(0,19rem)]"
+                    : "lg:grid-cols-[minmax(0,19rem)_1fr]"
+                }`}
               >
-                <div className="flex flex-wrap items-start gap-6">
+                <Reveal className={flip ? "lg:order-2" : ""}>
                   <Image
                     src={np.headshot.src}
                     alt={np.alt[locale]}
                     width={np.headshot.width}
                     height={np.headshot.height}
-                    sizes="10rem"
-                    className="w-32 flex-none rounded-[var(--radius-md)] shadow-[var(--shadow-soft)] sm:w-36"
+                    sizes="(min-width: 1024px) 19rem, (min-width: 640px) 24rem, 100vw"
+                    className="w-full max-w-sm rounded-[var(--radius-lg)] shadow-[var(--shadow-card)]"
                   />
-                  <div className="min-w-[12rem] flex-1">
-                    <h3 className="font-[var(--font-display)] text-[1.35rem] leading-tight text-[var(--color-ink)]">
-                      {np.name}
-                    </h3>
-                    <p className="mt-1 text-[0.92rem] font-bold text-[var(--color-teal-ink)]">
-                      {np.credentials} · {np.role[locale]}
-                    </p>
-                    <ul className="list-plain mt-4 gap-2 text-[0.95rem]">
-                      {np.focus.map((f) => (
-                        <li key={f.en}>{f[locale]}</li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-                <p className="mt-5 border-t border-[var(--color-line)] pt-4 text-[0.95rem] font-semibold text-[var(--color-navy)]">
-                  {np.tagline[locale]}
+                </Reveal>
+                <Reveal delay={1} className={flip ? "lg:order-1" : ""}>
+                  <h3 className="font-[var(--font-display)] text-[clamp(1.55rem,3vw,2rem)] leading-tight text-[var(--color-ink)]">
+                    {np.name}, {np.credentials}
+                  </h3>
+                  <p className="mt-2 font-bold text-[var(--color-teal-ink)]">{np.role[locale]}</p>
+                  <ul className="list-check mt-6 max-w-xl gap-x-8 gap-y-3 font-semibold text-[var(--color-ink)] sm:grid-cols-2">
+                    {np.focus.map((f) => (
+                      <li key={f.en}>{f[locale]}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-7 max-w-[34rem] border-t-2 border-[var(--color-amber)] pt-4 font-[var(--font-display)] text-[1.15rem] leading-normal text-[var(--color-navy)]">
+                    {np.tagline[locale]}
+                  </p>
+                </Reveal>
+              </article>
+            );
+          })}
+
+          {/* The brochure's closing band, in the site's own voice. */}
+          <Reveal className="mt-12 lg:mt-16">
+            <div className="grid items-center gap-x-12 gap-y-9 rounded-[var(--radius-lg)] bg-[var(--color-navy)] p-7 text-[var(--color-on-dark)] shadow-[var(--shadow-card)] sm:p-10 lg:grid-cols-[1.2fr_minmax(0,21rem)] lg:p-12">
+              <div>
+                <h3 className="font-[var(--font-display)] text-[clamp(1.45rem,2.6vw,1.85rem)] leading-tight text-[var(--color-on-dark)]">
+                  {nps.sharedTagline.heading[locale]}
+                </h3>
+                <p className="mt-2 font-bold text-[var(--color-amber)]">
+                  {nps.sharedTagline.sub[locale]}
                 </p>
-              </Reveal>
-            ))}
-          </div>
-          <Reveal className="mt-10">
-            <h3 className="text-[1.12rem] font-extrabold text-[var(--color-ink)]">
-              {nps.sharedFocus.heading[locale]}
-            </h3>
-            <ul className="list-plain mt-5 max-w-3xl gap-x-8 sm:grid-cols-2">
-              {nps.sharedFocus.items.map((item) => (
-                <li key={item.en}>{item[locale]}</li>
-              ))}
-            </ul>
-            <ProfileCardViewer
-              image={nps.card}
-              subject={t.npsHeading}
-              t={cardStrings(dict)}
-              className="mt-7"
-            />
+                <h4 className="mt-8 text-[1.02rem] font-extrabold text-[var(--color-on-dark)]">
+                  {nps.sharedFocus.heading[locale]}
+                </h4>
+                <ul className="list-check list-check--amber mt-4 gap-x-8 gap-y-2.5 text-[0.97rem] text-[var(--color-on-dark-muted)] sm:grid-cols-2">
+                  {nps.sharedFocus.items.map((item) => (
+                    <li key={item.en}>{item[locale]}</li>
+                  ))}
+                </ul>
+              </div>
+              <ProfileCardViewer
+                image={nps.card}
+                subject={nps.individuals.map((np) => np.name).join(" · ")}
+                t={cardStrings(dict)}
+              />
+            </div>
           </Reveal>
         </div>
       </section>
