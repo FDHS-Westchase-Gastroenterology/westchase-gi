@@ -19,9 +19,9 @@ export type PracticeDocument = {
 
 export const documents: PracticeDocument[] = [
   // New-patient forms (printable). The online hushforms packet is live and is
-  // the primary path; these mirror the old printable set.
-  { id: "new-patient-registration", category: "new-patient", label: { en: "New Patient Registration", es: "Registro de pacientes nuevos", vi: "Đăng ký bệnh nhân mới", ko: "신규 환자 등록", ar: "تسجيل المرضى الجدد" }, file: null },
-  { id: "notice-of-privacy-practices", category: "new-patient", label: { en: "Notice of Privacy Practices", es: "Aviso de prácticas de privacidad", vi: "Thông báo về các phương thức bảo mật thông tin", ko: "개인정보 보호 관행 통지서", ar: "إشعار ممارسات الخصوصية" }, file: null },
+  // the primary path; these mirror the old printable set. Registration and
+  // privacy notices are covered by the online packet — only record-release
+  // forms remain as printable slots until PDFs are supplied.
   { id: "record-release-to-wcgi", category: "new-patient", label: { en: "Medical Record Release to WCGI", es: "Autorización para enviar expedientes médicos a WCGI", vi: "Ủy quyền gửi hồ sơ bệnh án đến WCGI", ko: "WCGI로의 의무 기록 제공 동의서", ar: "تفويض إرسال السجلات الطبية إلى WCGI" }, file: null },
   { id: "record-release-from-wcgi", category: "new-patient", label: { en: "Medical Record Release from WCGI", es: "Autorización para solicitar expedientes médicos de WCGI", vi: "Ủy quyền yêu cầu hồ sơ bệnh án từ WCGI", ko: "WCGI로부터의 의무 기록 발급 동의서", ar: "تفويض طلب السجلات الطبية من WCGI" }, file: null },
 
