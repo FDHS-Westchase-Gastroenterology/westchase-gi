@@ -80,16 +80,18 @@ function LanguageMenu({ locale, label }: { locale: Locale; label: string }) {
       <button
         type="button"
         aria-expanded={open}
+        aria-haspopup="true"
         aria-label={label}
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 rounded-full bg-[color-mix(in_oklch,white_14%,transparent)] px-3 py-1 transition-colors hover:bg-[color-mix(in_oklch,white_24%,transparent)]"
+        className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[color-mix(in_oklch,white_38%,transparent)] bg-[color-mix(in_oklch,white_12%,transparent)] px-3 py-1 transition-colors hover:border-[color-mix(in_oklch,white_60%,transparent)] hover:bg-[color-mix(in_oklch,white_22%,transparent)]"
       >
-        <Globe className="h-3.5 w-3.5" />
+        <Globe className="h-3.5 w-3.5 flex-none text-[var(--color-amber)]" />
+        <span className="hidden font-normal text-[var(--color-on-dark-muted)] md:inline">{label}:</span>
         {localeNames[locale]}
-        <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        <ChevronDown className={`h-3.5 w-3.5 flex-none transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
-        <div className="absolute end-0 top-full z-[var(--z-dropdown)] mt-2 w-44 rounded-[var(--radius-md)] bg-white p-1.5 shadow-[var(--shadow-card)]">
+        <div className="absolute end-0 top-full z-[var(--z-dropdown)] mt-2 w-48 rounded-[var(--radius-md)] bg-white p-1.5 shadow-[var(--shadow-card)]">
           {locales.map((l) => (
             <Link
               key={l}
@@ -97,7 +99,9 @@ function LanguageMenu({ locale, label }: { locale: Locale; label: string }) {
               lang={l}
               aria-current={l === locale ? "true" : undefined}
               className={`flex items-center justify-between gap-2 rounded-md px-3 py-2 font-semibold transition-colors hover:bg-[var(--color-mint)] ${
-                l === locale ? "text-[var(--color-teal-ink)]" : "text-[var(--color-body)]"
+                l === locale
+                  ? "bg-[var(--color-mint)] text-[var(--color-teal-ink)]"
+                  : "text-[var(--color-body)]"
               }`}
             >
               {localeNames[l]}
