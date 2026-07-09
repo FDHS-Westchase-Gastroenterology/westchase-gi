@@ -33,9 +33,9 @@ export const site = {
   phone: { display: "(813) 920-8882", href: "tel:+18139208882" },
   // Staffed by a human, answered within 24 hours; keep prominent (practice directive).
   textLine: { display: "(813) 564-0315", href: "sms:+18135640315" },
-  // NEEDS CONFIRMATION: fax also appears as 813-920-8883 on the old office-gallery
-  // page; (813) 920-5800 is what the contact page publishes.
-  fax: { display: "(813) 920-5800" },
+  // Confirmed by the practice 2026-07-08: 920-8883 is the correct fax (the old
+  // contact page's 920-5800 was wrong; office-gallery page had it right).
+  fax: { display: "(813) 920-8883" },
   // NEEDS CONFIRMATION: info@westchasegi.com also appears on the old office-gallery
   // page; fdhswestchase@fdhs.com is what the contact page publishes and does not
   // depend on the domain's mail setup.
