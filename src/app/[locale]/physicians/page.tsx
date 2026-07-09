@@ -296,7 +296,10 @@ export default async function PhysiciansPage({ params }: PageProps) {
         </div>
       </section>
 
-      {/* Infusion services: Juliet's card content as text + the biologics table. */}
+      {/* Infusion services: Juliet's card content as text + the biologics table.
+          min-w-0 on the text column: without it the biologics table's
+          min-content width blows the single-column grid past the phone
+          viewport and the whole page renders zoomed out. */}
       <section id="infusion">
         <div className="container-x section grid items-start gap-x-14 gap-y-10 lg:grid-cols-[minmax(0,21rem)_1fr]">
           <Reveal className="lg:sticky lg:top-24">
@@ -326,7 +329,7 @@ export default async function PhysiciansPage({ params }: PageProps) {
             />
           </Reveal>
 
-          <Reveal delay={1}>
+          <Reveal delay={1} className="min-w-0">
             <p className="font-bold text-[var(--color-teal-ink)]">{t.infusionHeading}</p>
             <h2 className="mt-1 font-[var(--font-display)] text-[clamp(1.7rem,3.2vw,2.2rem)] leading-tight text-[var(--color-ink)]">
               {inf.name}, {inf.credentials}

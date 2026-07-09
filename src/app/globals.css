@@ -676,24 +676,37 @@
     color: var(--color-ink);
   }
 
-  /* ---- Profile-card lightbox (native <dialog>) ----
-     The practice's official FDHS card graphics, viewed in place: no new
-     tab, no navigation. The dialog element owns the top layer, so no
-     z-index management is needed. */
+  /* ---- Profile-card viewer (native <dialog>) ----
+     The practice's official provider card graphics, viewed in place with
+     photo-app gestures (pinch / double-tap / wheel / drag). The dialog
+     element owns the top layer, so no z-index management is needed.
+     On phones it is a full-screen sheet; on larger screens a large panel. */
   .pc-dialog {
-    margin: auto;
-    max-width: min(92vw, 64rem);
-    max-height: 92vh;
+    /* Always the full viewport; the visible panel is the centered .pc-shell.
+       This keeps the dismiss target a real button (the scrim) instead of a
+       click handler on the dialog element. */
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    width: 100vw;
+    width: 100dvw;
+    height: 100vh;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
     background: transparent;
     border: none;
     padding: 0;
     overflow: visible;
   }
+  .pc-dialog:not([open]) {
+    display: none;
+  }
   .pc-dialog::backdrop {
     background: oklch(0.22 0.04 248 / 0.72);
     backdrop-filter: blur(6px);
   }
-  .pc-dialog[open] {
+  .pc-dialog[open] .pc-shell {
     animation: pc-rise 0.42s var(--ease-out-quint) both;
   }
   .pc-dialog[open]::backdrop {
@@ -702,7 +715,7 @@
   @keyframes pc-rise {
     from {
       opacity: 0;
-      transform: translateY(14px) scale(0.975);
+      transform: translateY(14px) scale(0.985);
     }
     to {
       opacity: 1;
@@ -714,32 +727,97 @@
     to { opacity: 1; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .pc-dialog[open],
+    .pc-dialog[open] .pc-shell,
     .pc-dialog[open]::backdrop {
       animation: none;
     }
   }
-  /* Pointer-only dismiss target covering the backdrop area (a real button;
-     keyboard users close with Escape or the labeled close control). */
+  /* Pointer-only dismiss target behind the shell (a real button; keyboard
+     users close with Escape or the labeled close control). */
   .pc-scrim {
-    position: fixed;
+    position: absolute;
     inset: 0;
     background: transparent;
     border: none;
     padding: 0;
     cursor: default;
   }
-  .pc-body {
-    z-index: 1; /* above the scrim, inside the dialog's own top layer */
+  .pc-shell {
+    position: relative; /* above the scrim, inside the dialog's top layer */
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    background: oklch(0.2 0.035 248);
+    overflow: hidden;
   }
-  .pc-canvas {
-    max-width: min(92vw, 64rem);
-    max-height: 76vh;
+  @media (min-width: 40rem) {
+    .pc-shell {
+      flex: none;
+      margin: auto;
+      width: min(94vw, 68rem);
+      height: min(92vh, 92dvh);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+    }
+  }
+  .pc-top {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.75rem 0.6rem 1rem;
+    background: oklch(0.26 0.04 248);
+  }
+  .pc-top-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex: none;
+    border-radius: 999px;
+    padding: 0.55rem 0.8rem;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: oklch(0.9 0.01 248);
+    background: color-mix(in oklch, white 10%, transparent);
+    transition: background-color 0.2s ease-out, color 0.2s ease-out;
+  }
+  .pc-top-btn:hover {
+    background: color-mix(in oklch, white 20%, transparent);
+    color: white;
+  }
+  .pc-stage {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    /* Own every touch inside the stage: page scroll and browser pinch stay out. */
+    touch-action: none;
     overscroll-behavior: contain;
-    scrollbar-width: thin;
-    scrollbar-color: var(--color-line-2) transparent;
   }
-  /* Slim indeterminate loader shown only while the full-size image streams. */
+  .pc-tw {
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .pc-tc {
+    width: 100% !important;
+    height: 100% !important;
+  }
+  /* Letterbox inside the gesture surface (the library zeroes padding on its
+     own nodes, so the breathing room lives one level down). The extra
+     bottom inset keeps the fit view clear of the floating zoom cluster. */
+  .pc-frame {
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    padding: clamp(0.75rem, 2.5vw, 2rem);
+    padding-bottom: 4.5rem;
+  }
+  /* Explicit loading state: the streamed card must never look like a dead
+     tap — indeterminate bar up top, spinner mid-stage. */
+  .pc-loading {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
   .pc-progress {
     position: absolute;
     inset-inline: 0;
@@ -766,6 +844,86 @@
   @keyframes pc-progress-rtl {
     from { transform: translateX(110%); }
     to { transform: translateX(-360%); }
+  }
+  .pc-spinner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 2.25rem;
+    height: 2.25rem;
+    margin: -1.125rem;
+    border-radius: 999px;
+    border: 3px solid color-mix(in oklch, white 22%, transparent);
+    border-top-color: var(--color-amber);
+    animation: pc-spin 0.85s linear infinite;
+  }
+  @keyframes pc-spin {
+    to { transform: rotate(360deg); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pc-spinner {
+      animation-duration: 1.8s;
+    }
+  }
+  /* One-time gesture hint: retires on first zoom or after a beat. */
+  .pc-hint {
+    position: absolute;
+    bottom: 4.6rem;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: min(88%, 26rem);
+    text-align: center;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    background: oklch(0.24 0.04 248 / 0.92);
+    color: oklch(0.93 0.01 248);
+    font-size: 0.88rem;
+    font-weight: 600;
+    pointer-events: none;
+    animation: pc-hint-in 0.5s var(--ease-out-quart) both;
+  }
+  @keyframes pc-hint-in {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pc-hint {
+      animation: none;
+    }
+  }
+  /* Floating zoom cluster, bottom center. */
+  .pc-toolbar {
+    position: absolute;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.3rem;
+    border-radius: 999px;
+    background: white;
+    box-shadow: var(--shadow-card);
+  }
+  .pc-tool {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.6rem;
+    min-height: 2.6rem;
+    border-radius: 999px;
+    color: var(--color-body);
+    transition: background-color 0.2s ease-out, color 0.2s ease-out;
+  }
+  .pc-tool:hover {
+    background: var(--color-mint);
+    color: var(--color-ink);
   }
 
   /* ---- Testimonial rail: scroll-snap, native momentum ---- */
