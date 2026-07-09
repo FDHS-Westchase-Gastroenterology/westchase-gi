@@ -147,6 +147,11 @@ export const en = {
       sisterClinic: "Our wellness partner:",
       copyright: "Westchase Gastroenterology. All rights reserved.",
       networkLine: "Part of Florida Digestive Health Specialists.",
+      reviewHeading: "How was your visit?",
+      reviewBody: "A one-minute review helps neighbors find trusted digestive care.",
+      reviewGoogle: "Review us on Google",
+      reviewFacebook: "Review us on Facebook",
+      reviewMore: "All review options",
     },
     textBand: {
       heading: "Prefer to text?",

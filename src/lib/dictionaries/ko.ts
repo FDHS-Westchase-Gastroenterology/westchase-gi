@@ -147,6 +147,11 @@ export const ko: Dictionary = {
       sisterClinic: "저희 웰니스 파트너:",
       copyright: "Westchase Gastroenterology. 모든 권리 보유.",
       networkLine: "Florida Digestive Health Specialists의 일원입니다.",
+      reviewHeading: "진료는 어떠셨나요?",
+      reviewBody: "1분이면 충분한 후기가 다른 분들이 믿을 수 있는 소화기 진료를 찾는 데 도움이 됩니다.",
+      reviewGoogle: "Google에 후기 남기기",
+      reviewFacebook: "Facebook에 후기 남기기",
+      reviewMore: "모든 후기 옵션 보기",
     },
     textBand: {
       heading: "문자가 더 편하십니까?",

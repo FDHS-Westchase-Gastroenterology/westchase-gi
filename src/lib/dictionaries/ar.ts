@@ -148,6 +148,11 @@ export const ar: Dictionary = {
       sisterClinic: "شريكنا في العافية:",
       copyright: "Westchase Gastroenterology. جميع الحقوق محفوظة.",
       networkLine: "جزء من Florida Digestive Health Specialists.",
+      reviewHeading: "كيف كانت زيارتكم؟",
+      reviewBody: "تقييم لا يستغرق سوى دقيقة يساعد الآخرين في العثور على رعاية موثوقة للجهاز الهضمي.",
+      reviewGoogle: "قيّمونا على Google",
+      reviewFacebook: "قيّمونا على Facebook",
+      reviewMore: "جميع خيارات التقييم",
     },
     textBand: {
       heading: "تفضلون المراسلة النصية؟",

@@ -150,6 +150,11 @@ export const es: Dictionary = {
       sisterClinic: "Nuestro socio de bienestar:",
       copyright: "Westchase Gastroenterology. Todos los derechos reservados.",
       networkLine: "Parte de Florida Digestive Health Specialists.",
+      reviewHeading: "¿Cómo fue su visita?",
+      reviewBody: "Una reseña de un minuto ayuda a otros pacientes a encontrar atención digestiva de confianza.",
+      reviewGoogle: "Escriba una reseña en Google",
+      reviewFacebook: "Escriba una reseña en Facebook",
+      reviewMore: "Todas las opciones de reseña",
     },
     textBand: {
       heading: "¿Prefiere enviar un texto?",

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: `Leave us a review | ${site.name}`,
   description:
-    "Scan-to-review hub for Westchase Gastroenterology: share your experience on Google, or reach the office in one tap.",
+    "Scan-to-review hub for Westchase Gastroenterology: share your experience on Google or Facebook, or reach the office in one tap.",
   alternates: { canonical: "/review" },
   robots: { index: true, follow: true },
 };

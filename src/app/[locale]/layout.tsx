@@ -49,7 +49,8 @@ export const viewport: Viewport = {
 };
 
 /** Two MedicalClinic entities (Tampa AND Lutz; the old schema omitted Lutz)
- * plus WebSite. Dead social profiles are excluded from sameAs. */
+ * plus WebSite. Only live, verified profiles appear in sameAs (the Facebook
+ * page was verified alive 2026-07-08; Yelp stays excluded — misnamed). */
 function ClinicSchema() {
   const clinics = site.locations.map((loc) => ({
     "@type": "MedicalClinic",
@@ -79,6 +80,7 @@ function ClinicSchema() {
     ],
     sameAs: [
       site.links.googleMapsListing,
+      site.links.facebookPage,
       loc.id === "tampa" ? site.links.healthgradesTampa : site.links.healthgradesLutz,
     ],
     parentOrganization: { "@type": "MedicalOrganization", name: site.network },

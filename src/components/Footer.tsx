@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { site, localePath, directionsUrl, type Locale } from "@/lib/site";
 import type { Dictionary } from "@/lib/i18n";
-import { ExternalLink, Mail, MapPin, MessageSquare, Phone, Printer } from "./icons";
+import { ArrowRight, ExternalLink, Facebook, Mail, MapPin, MessageSquare, Phone, Printer, Star } from "./icons";
 
 type FooterProps = { locale: Locale; dict: Dictionary };
 
@@ -151,6 +151,46 @@ export function Footer({ locale, dict }: FooterProps) {
             </li>
           </ul>
           <p className="mt-4 text-[0.95rem]">{c.contactCard.hoursValue}</p>
+        </div>
+      </div>
+
+      {/* Review invitation. The two direct links are the verified-live ones
+          (Google form + the Facebook page's Reviews tab); every platform —
+          including ones added later — lives on /review, the master-QR hub,
+          so this row never has to grow a dead link to feel complete. */}
+      <div className="border-t border-[var(--color-line-dark)]">
+        <div className="container-x flex flex-col gap-6 py-9 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-md">
+            <p className="font-[var(--font-display)] text-xl leading-tight text-[var(--color-on-dark)]">
+              {c.footer.reviewHeading}
+            </p>
+            <p className="mt-2 text-[0.95rem] leading-relaxed">{c.footer.reviewBody}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-3">
+            <a
+              href={site.links.googleReview}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-amber btn-sm"
+            >
+              <Star className="h-4 w-4" /> {c.footer.reviewGoogle}
+            </a>
+            <a
+              href={site.links.facebookReviews}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-ghost-light btn-sm"
+            >
+              <Facebook className="h-4 w-4" /> {c.footer.reviewFacebook}
+            </a>
+            <Link
+              href={locale === "en" ? "/review" : `/review?lang=${locale}`}
+              className="inline-flex items-center gap-1.5 px-1 py-2 text-[0.95rem] font-bold text-[var(--color-on-dark)] underline decoration-[var(--color-line-dark)] underline-offset-4 transition-colors hover:decoration-[var(--color-amber)]"
+            >
+              {c.footer.reviewMore}
+              <ArrowRight className="h-4 w-4 flex-none" />
+            </Link>
+          </div>
         </div>
       </div>
 

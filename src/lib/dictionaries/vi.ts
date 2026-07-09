@@ -147,6 +147,11 @@ export const vi: Dictionary = {
       sisterClinic: "Đối tác chăm sóc sức khỏe của chúng tôi:",
       copyright: "Westchase Gastroenterology. Mọi quyền được bảo lưu.",
       networkLine: "Thành viên của Florida Digestive Health Specialists.",
+      reviewHeading: "Buổi khám của quý vị thế nào?",
+      reviewBody: "Một phút để lại đánh giá của quý vị giúp mọi người tìm được dịch vụ chăm sóc tiêu hóa đáng tin cậy.",
+      reviewGoogle: "Đánh giá chúng tôi trên Google",
+      reviewFacebook: "Đánh giá chúng tôi trên Facebook",
+      reviewMore: "Tất cả các cách để lại đánh giá",
     },
     textBand: {
       heading: "Quý vị thích nhắn tin hơn?",

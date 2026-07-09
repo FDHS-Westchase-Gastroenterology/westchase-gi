@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import { site, locales, type Locale } from "@/lib/site";
-import { ExternalLink, Globe, MessageSquare, Phone, Star } from "@/components/icons";
+import { ExternalLink, Facebook, Globe, MessageSquare, Phone, Star } from "@/components/icons";
 
 // The hub speaks every language the practice serves, on one URL, without a
 // page reload — the QR is printed once and never has to change. Strings are
@@ -25,6 +25,8 @@ type Strings = {
   sub: string;
   google: string;
   googleHint: string;
+  facebook: string;
+  facebookHint: string;
   comingSoon: string;
   moreHeading: string;
   website: string;
@@ -40,6 +42,8 @@ const STRINGS: Record<HubLang, Strings> = {
     sub: "Your review helps neighbors find trusted digestive care. It takes about a minute.",
     google: "Review us on Google",
     googleHint: "Opens the Google review form",
+    facebook: "Review us on Facebook",
+    facebookHint: "Opens the Reviews tab of our Facebook page",
     comingSoon: "Coming soon",
     moreHeading: "More from our practice",
     website: "Visit our website",
@@ -53,6 +57,8 @@ const STRINGS: Record<HubLang, Strings> = {
     sub: "Su reseña ayuda a otros pacientes a encontrar atención digestiva de confianza. Toma alrededor de un minuto.",
     google: "Escríbanos una reseña en Google",
     googleHint: "Abre el formulario de reseñas de Google",
+    facebook: "Escríbanos una reseña en Facebook",
+    facebookHint: "Abre la pestaña de reseñas de nuestra página de Facebook",
     comingSoon: "Próximamente",
     moreHeading: "Más de nuestra práctica",
     website: "Visite nuestro sitio web",
@@ -66,6 +72,8 @@ const STRINGS: Record<HubLang, Strings> = {
     sub: "Đánh giá của quý vị giúp mọi người tìm được dịch vụ chăm sóc tiêu hóa đáng tin cậy. Chỉ mất khoảng một phút.",
     google: "Đánh giá chúng tôi trên Google",
     googleHint: "Mở biểu mẫu đánh giá của Google",
+    facebook: "Đánh giá chúng tôi trên Facebook",
+    facebookHint: "Mở mục đánh giá trên trang Facebook của phòng khám",
     comingSoon: "Sắp ra mắt",
     moreHeading: "Thông tin thêm từ phòng khám",
     website: "Truy cập trang web",
@@ -79,6 +87,8 @@ const STRINGS: Record<HubLang, Strings> = {
     sub: "남겨주신 후기는 다른 분들이 믿을 수 있는 소화기 진료를 찾는 데 큰 도움이 됩니다. 1분이면 충분합니다.",
     google: "Google에 후기 남기기",
     googleHint: "Google 후기 작성 화면이 열립니다",
+    facebook: "Facebook에 후기 남기기",
+    facebookHint: "저희 Facebook 페이지의 후기 탭이 열립니다",
     comingSoon: "준비 중",
     moreHeading: "병원 안내",
     website: "웹사이트 방문",
@@ -92,6 +102,8 @@ const STRINGS: Record<HubLang, Strings> = {
     sub: "تقييمكم يساعد الآخرين في العثور على رعاية موثوقة للجهاز الهضمي، ولا يستغرق سوى دقيقة واحدة.",
     google: "قيِّمونا على Google",
     googleHint: "يفتح نموذج التقييم في Google",
+    facebook: "قيِّمونا على Facebook",
+    facebookHint: "يفتح تبويب التقييمات في صفحتنا على فيسبوك",
     comingSoon: "قريبًا",
     moreHeading: "المزيد من عيادتنا",
     website: "زوروا موقعنا الإلكتروني",
@@ -107,8 +119,21 @@ function siteHref(lang: HubLang): string {
   return (locales as string[]).includes(lang) ? `/${lang as Locale}` : "/en";
 }
 
+// Site-footer entries carry ?lang= so the hub opens in the visitor's language,
+// while the printed-QR path (no param) stays fully static. Read via
+// useSyncExternalStore: the server snapshot is null, and React reconciles the
+// client value at hydration without a mismatch. The URL never changes within
+// a page load, so the subscription is a no-op.
+const subscribeNever = () => () => {};
+function readLangParam(): HubLang | null {
+  const param = new URLSearchParams(window.location.search).get("lang");
+  return param && param in STRINGS ? (param as HubLang) : null;
+}
+
 export function ReviewHub() {
-  const [lang, setLang] = useState<HubLang>("en");
+  const urlLang = useSyncExternalStore(subscribeNever, readLangParam, () => null);
+  const [picked, setPicked] = useState<HubLang | null>(null);
+  const lang = picked ?? urlLang ?? "en";
   const t = STRINGS[lang];
 
   return (
@@ -140,7 +165,7 @@ export function ReviewHub() {
             type="button"
             lang={l.code}
             aria-pressed={lang === l.code}
-            onClick={() => setLang(l.code)}
+            onClick={() => setPicked(l.code)}
             className={`rounded-full px-3.5 py-1.5 text-[0.9rem] font-bold transition-colors ${
               lang === l.code
                 ? "bg-[var(--color-navy)] text-[var(--color-on-dark)]"
@@ -157,8 +182,10 @@ export function ReviewHub() {
         {t.sub}
       </p>
 
-      {/* The one live review destination. Facebook/Yelp join this list the
-          moment the practice confirms its profiles (held, never faked). */}
+      {/* Live, verified review destinations only. Facebook went live
+          2026-07-08 (page + public Reviews tab verified). Yelp stays held:
+          its listing still carries the practice's former name (held, never
+          faked — it joins the moment the practice claims/renames it). */}
       <div className="mt-7 grid gap-3">
         <a
           href={site.links.googleReview}
@@ -171,12 +198,17 @@ export function ReviewHub() {
           {t.google}
         </a>
 
-        <div className="card-lined flex items-center justify-between gap-3 px-5 py-3.5 opacity-80">
-          <span className="font-bold text-[var(--color-muted)]">Facebook</span>
-          <span className="rounded-full bg-[var(--color-mint-2)] px-2.5 py-1 text-[0.78rem] font-bold text-[var(--color-teal-ink)]">
-            {t.comingSoon}
-          </span>
-        </div>
+        <a
+          href={site.links.facebookReviews}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-navy btn-lg w-full"
+          title={t.facebookHint}
+        >
+          <Facebook className="h-5 w-5" />
+          {t.facebook}
+        </a>
+
         <div className="card-lined flex items-center justify-between gap-3 px-5 py-3.5 opacity-80">
           <span className="font-bold text-[var(--color-muted)]">Yelp</span>
           <span className="rounded-full bg-[var(--color-mint-2)] px-2.5 py-1 text-[0.78rem] font-bold text-[var(--color-teal-ink)]">

@@ -86,6 +86,12 @@ export const site = {
     newPatientFormsEs: "https://hushforms.com/37276-new-pt-packet-form-spanish",
     googleReview: "https://search.google.com/local/writereview?placeid=ChIJ1XxEt_TqwogRxD4EJvCYK4k",
     googleMapsListing: "https://maps.app.goo.gl/a2TfakxY1pG2d6tm8",
+    // The practice's live Facebook page (verified 2026-07-08: renders logged-out;
+    // page ID carries the old vanity slug's business_id — see REVIEW-LINKS.md).
+    facebookPage: "https://www.facebook.com/profile.php?id=100064038010410",
+    // Reviews tab verified publicly reachable logged-out 2026-07-08 (shows the
+    // existing recommendation; the "Do you recommend?" prompt appears on login).
+    facebookReviews: "https://www.facebook.com/profile.php?id=100064038010410&sk=reviews",
     healthgradesTampa:
       "https://www.healthgrades.com/group-directory/fl-florida/tampa/westchase-gastroenterology-pa-oy57dpj",
     healthgradesLutz:
