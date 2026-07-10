@@ -284,6 +284,7 @@ export const vi: Dictionary = {
       storefront: "Lối vào phòng khám Tampa của chúng tôi trên đường Sheldon Road",
       lobby: "Quầy lễ tân và sảnh chờ của phòng khám chúng tôi",
       lobby2: "Khu vực tiếp đón của phòng khám chúng tôi",
+      decoratedLobby: "Sảnh phòng khám được trang trí bằng cờ bóng đá quốc tế",
     },
     reviewsHeading: "Xem các đánh giá về chúng tôi",
     reviewsBody:

@@ -285,6 +285,7 @@ export const ar: Dictionary = {
       storefront: "مدخل عيادتنا في تامبا على Sheldon Road",
       lobby: "مكتب الاستقبال وردهة الانتظار في عيادتنا",
       lobby2: "منطقة الاستقبال في عيادتنا",
+      decoratedLobby: "ردهة العيادة مزينة بأعلام كرة القدم الدولية",
     },
     reviewsHeading: "اطّلعوا على تقييماتنا",
     reviewsBody:

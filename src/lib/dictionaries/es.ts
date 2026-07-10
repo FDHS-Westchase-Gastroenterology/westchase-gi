@@ -288,6 +288,7 @@ export const es: Dictionary = {
       storefront: "La entrada de nuestra oficina de Tampa en Sheldon Road",
       lobby: "La recepción y sala de espera de nuestra oficina",
       lobby2: "El área de recepción de nuestra oficina",
+      decoratedLobby: "La recepción de nuestra oficina decorada con banderas internacionales de fútbol",
     },
     reviewsHeading: "Nuestras reseñas",
     reviewsBody:

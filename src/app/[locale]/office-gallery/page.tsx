@@ -24,13 +24,20 @@ export default async function GalleryPage({ params }: PageProps) {
   const dict = getDictionary(locale);
   const t = dict.gallery;
 
-  // The Tampa storefront from the practice's site, plus two practice-provided
-  // photos of the renovated lobby. (The old site's pre-remodel interior photos
-  // were retired at the practice's request, 2026-07-07.)
+  // The Tampa storefront from the practice's site, plus practice-provided
+  // photos of the renovated lobby. The decorated lobby photo was restored at
+  // the practice's request on 2026-07-09.
   const photos = [
-    { src: "/images/facility/storefront-tampa.webp", w: 1067, h: 436, alt: t.photos.storefront, wide: true },
-    { src: "/images/facility/lobby.jpeg", w: 2362, h: 1330, alt: t.photos.lobby, wide: false },
-    { src: "/images/facility/lobby-2.jpeg", w: 2362, h: 1330, alt: t.photos.lobby2, wide: false },
+    { src: "/images/facility/storefront-tampa.webp", w: 1067, h: 436, alt: t.photos.storefront, layout: "wide" },
+    { src: "/images/facility/lobby.jpeg", w: 2362, h: 1330, alt: t.photos.lobby, layout: "standard" },
+    { src: "/images/facility/lobby-2.jpeg", w: 2362, h: 1330, alt: t.photos.lobby2, layout: "standard" },
+    {
+      src: "/images/facility/lobby-world-cup.jpeg",
+      w: 768,
+      h: 1024,
+      alt: t.photos.decoratedLobby,
+      layout: "portrait",
+    },
   ];
 
   // Healthgrades buttons removed at the practice's request (2026-07-08);
@@ -47,14 +54,26 @@ export default async function GalleryPage({ params }: PageProps) {
             <Reveal
               key={photo.src}
               delay={(i % 2) as 0 | 1}
-              className={photo.wide && i === 0 ? "sm:col-span-2" : undefined}
+              className={
+                photo.layout === "wide"
+                  ? "sm:col-span-2"
+                  : photo.layout === "portrait"
+                    ? "mx-auto w-full max-w-3xl sm:col-span-2"
+                    : undefined
+              }
             >
               <Image
                 src={photo.src}
                 alt={photo.alt}
                 width={photo.w}
                 height={photo.h}
-                sizes={photo.wide && i === 0 ? "(min-width: 1216px) 72rem, 100vw" : "(min-width: 640px) 50vw, 100vw"}
+                sizes={
+                  photo.layout === "wide"
+                    ? "(min-width: 1216px) 72rem, 100vw"
+                    : photo.layout === "portrait"
+                      ? "(min-width: 768px) 48rem, 100vw"
+                      : "(min-width: 640px) 50vw, 100vw"
+                }
                 className="w-full rounded-[var(--radius-lg)] object-cover shadow-[var(--shadow-soft)]"
               />
             </Reveal>

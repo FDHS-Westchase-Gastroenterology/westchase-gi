@@ -284,6 +284,7 @@ export const ko: Dictionary = {
       storefront: "Sheldon Road에 있는 탬파 오피스 입구",
       lobby: "저희 오피스의 접수처와 로비",
       lobby2: "저희 오피스의 리셉션 공간",
+      decoratedLobby: "국제 축구 깃발로 장식된 오피스 로비",
     },
     reviewsHeading: "저희 후기를 확인해 보십시오",
     reviewsBody:

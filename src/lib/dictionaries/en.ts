@@ -284,6 +284,7 @@ export const en = {
       storefront: "The entrance of our Tampa office on Sheldon Road",
       lobby: "The front desk and lobby of our office",
       lobby2: "The reception area of our office",
+      decoratedLobby: "The office lobby decorated with international soccer flags",
     },
     reviewsHeading: "Check out our reviews",
     reviewsBody:
