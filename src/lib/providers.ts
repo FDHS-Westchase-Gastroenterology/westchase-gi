@@ -1092,6 +1092,18 @@ export const infusionNurse = {
         },
       },
       {
+        // EN wording supplied by the practice (Juliet, 2026-07-10).
+        brand: "Tremfya",
+        generic: "guselkumab",
+        indication: {
+          en: "For moderate to severe plaque psoriasis, active psoriatic arthritis, ulcerative colitis and Crohn's disease",
+          es: "Para psoriasis en placas de moderada a grave, artritis psoriásica activa, colitis ulcerosa y enfermedad de Crohn",
+          vi: "Cho bệnh vảy nến thể mảng mức độ từ trung bình đến nặng, viêm khớp vảy nến hoạt động, viêm loét đại tràng và bệnh Crohn",
+          ko: "중등도에서 중증의 판상 건선, 활동성 건선성 관절염, 궤양성 대장염 및 크론병 치료용",
+          ar: "للصدفية اللويحية المتوسطة إلى الشديدة والتهاب المفاصل الصدفي النشط والتهاب القولون التقرحي وداء كرون",
+        },
+      },
+      {
         brand: "Remicade",
         generic: "infliximab",
         indication: {
