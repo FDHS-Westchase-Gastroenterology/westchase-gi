@@ -1113,28 +1113,6 @@ export const infusionNurse = {
           ar: "لداء كرون والتهاب القولون التقرحي وحالات التهابية أخرى",
         },
       },
-      {
-        brand: "Avsola",
-        generic: "infliximab-axxq",
-        indication: {
-          en: "For Crohn's disease, ulcerative colitis, and other inflammatory conditions",
-          es: "Para enfermedad de Crohn, colitis ulcerosa y otras condiciones inflamatorias",
-          vi: "Cho bệnh Crohn, viêm loét đại tràng và các bệnh lý viêm khác",
-          ko: "크론병, 궤양성 대장염 및 기타 염증성 질환 치료용",
-          ar: "لداء كرون والتهاب القولون التقرحي وحالات التهابية أخرى",
-        },
-      },
-      {
-        brand: "Renflexis",
-        generic: "infliximab-abda",
-        indication: {
-          en: "For Crohn's disease, ulcerative colitis, and other inflammatory conditions",
-          es: "Para enfermedad de Crohn, colitis ulcerosa y otras condiciones inflamatorias",
-          vi: "Cho bệnh Crohn, viêm loét đại tràng và các bệnh lý viêm khác",
-          ko: "크론병, 궤양성 대장염 및 기타 염증성 질환 치료용",
-          ar: "لداء كرون والتهاب القولون التقرحي وحالات التهابية أخرى",
-        },
-      },
     ] satisfies Biologic[],
     note: {
       en: "And more — additional therapies are available based on your treatment plan.",
