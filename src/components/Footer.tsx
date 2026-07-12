@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { site, localePath, directionsUrl, type Locale } from "@/lib/site";
+import { site, localePath, directionsUrl, formatOfficeHours, type Locale } from "@/lib/site";
 import type { Dictionary } from "@/lib/i18n";
 import { ArrowRight, ExternalLink, Facebook, Mail, MapPin, MessageSquare, Phone, Printer, Star } from "./icons";
 
@@ -150,7 +150,13 @@ export function Footer({ locale, dict }: FooterProps) {
               </a>
             </li>
           </ul>
-          <p className="mt-4 text-[0.95rem]">{c.contactCard.hoursValue}</p>
+          <div className="mt-4 grid gap-1 text-[0.95rem]">
+            {site.locations.map((loc) => (
+              <p key={loc.id}>
+                {loc.name[locale]}: {c.hours.weekdays}, {formatOfficeHours(locale, loc.hours)}
+              </p>
+            ))}
+          </div>
         </div>
       </div>
 

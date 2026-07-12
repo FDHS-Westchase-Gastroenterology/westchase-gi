@@ -112,7 +112,6 @@ export const es: Dictionary = {
       heading: "Horario de Atención",
       subheading: "Nuestro horario regular",
       weekdays: "Lunes – Viernes",
-      weekdaysTime: "8:00 AM – 4:30 PM",
       weekend: "Sábado – Domingo",
       closed: "Cerrado",
       confirmNote: "Por favor llame a nuestro teléfono principal, (813) 920-8882, para confirmar disponibilidad.",
@@ -124,7 +123,6 @@ export const es: Dictionary = {
       email: "Correo electrónico",
       text: "Línea de texto",
       hoursLabel: "Horario",
-      hoursValue: "Lunes – Viernes, 8:00 AM – 4:30 PM",
     },
     docs: {
       download: "Descargar PDF",

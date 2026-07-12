@@ -110,7 +110,6 @@ export const ar: Dictionary = {
       heading: "ساعات العمل",
       subheading: "جدول عملنا المعتاد",
       weekdays: "الاثنين – الجمعة",
-      weekdaysTime: "8:00 صباحًا – 4:30 مساءً",
       weekend: "السبت – الأحد",
       closed: "مغلق",
       confirmNote: "يُرجى الاتصال بهاتفنا الرئيسي، (813) 920-8882، لتأكيد توفر المواعيد.",
@@ -122,7 +121,6 @@ export const ar: Dictionary = {
       email: "البريد الإلكتروني",
       text: "خط الرسائل النصية",
       hoursLabel: "ساعات العمل",
-      hoursValue: "الاثنين – الجمعة، 8:00 صباحًا – 4:30 مساءً",
     },
     docs: {
       download: "تنزيل PDF",

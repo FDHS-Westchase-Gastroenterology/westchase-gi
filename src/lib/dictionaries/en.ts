@@ -109,7 +109,6 @@ export const en = {
       heading: "Hours of Operation",
       subheading: "Our Regular Schedule",
       weekdays: "Monday – Friday",
-      weekdaysTime: "8:00 AM – 4:30 PM",
       weekend: "Saturday – Sunday",
       closed: "Closed",
       confirmNote: "Please call our main phone, (813) 920-8882, to confirm availability.",
@@ -121,7 +120,6 @@ export const en = {
       email: "Email",
       text: "Text line",
       hoursLabel: "Office hours",
-      hoursValue: "Monday – Friday, 8:00 AM – 4:30 PM",
     },
     docs: {
       download: "Download PDF",

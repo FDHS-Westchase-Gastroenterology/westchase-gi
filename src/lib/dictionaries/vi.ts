@@ -109,7 +109,6 @@ export const vi: Dictionary = {
       heading: "Giờ làm việc",
       subheading: "Lịch làm việc thường lệ của chúng tôi",
       weekdays: "Thứ Hai – Thứ Sáu",
-      weekdaysTime: "8:00 AM – 4:30 PM",
       weekend: "Thứ Bảy – Chủ Nhật",
       closed: "Đóng cửa",
       confirmNote: "Vui lòng gọi số điện thoại chính của chúng tôi, (813) 920-8882, để xác nhận giờ làm việc.",
@@ -121,7 +120,6 @@ export const vi: Dictionary = {
       email: "Email",
       text: "Đường dây nhắn tin",
       hoursLabel: "Giờ làm việc",
-      hoursValue: "Thứ Hai – Thứ Sáu, 8:00 AM – 4:30 PM",
     },
     docs: {
       download: "Tải PDF",

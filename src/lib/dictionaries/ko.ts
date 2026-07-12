@@ -109,7 +109,6 @@ export const ko: Dictionary = {
       heading: "진료 시간",
       subheading: "정규 진료 일정",
       weekdays: "월요일 – 금요일",
-      weekdaysTime: "오전 8:00 – 오후 4:30",
       weekend: "토요일 – 일요일",
       closed: "휴진",
       confirmNote: "진료 가능 여부는 대표 전화 (813) 920-8882로 확인해 주십시오.",
@@ -121,7 +120,6 @@ export const ko: Dictionary = {
       email: "이메일",
       text: "문자 전용 번호",
       hoursLabel: "진료 시간",
-      hoursValue: "월요일 – 금요일, 오전 8:00 – 오후 4:30",
     },
     docs: {
       download: "PDF 다운로드",

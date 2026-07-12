@@ -75,8 +75,8 @@ function ClinicSchema() {
       {
         "@type": "OpeningHoursSpecification",
         dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
-        opens: site.hours.opens,
-        closes: site.hours.closes,
+        opens: loc.hours.opens,
+        closes: loc.hours.closes,
       },
     ],
     sameAs: [

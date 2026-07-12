@@ -1,4 +1,4 @@
-import { site, directionsUrl, type Locale } from "@/lib/site";
+import { site, directionsUrl, formatOfficeHours, type Locale } from "@/lib/site";
 import type { Dictionary } from "@/lib/i18n";
 import { Clock, Mail, MapPin, MessageSquare, Phone, Printer } from "./icons";
 
@@ -52,7 +52,9 @@ export function LocationCards({ locale, dict }: LocationCardsProps) {
             </p>
             <p className="flex items-center gap-3">
               <Clock className="h-4.5 w-4.5 flex-none text-[var(--color-teal-ink)]" />
-              <span>{c.contactCard.hoursValue}</span>
+              <span>
+                {c.hours.weekdays}, {formatOfficeHours(locale, loc.hours)}
+              </span>
             </p>
           </address>
           <a

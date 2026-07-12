@@ -6,6 +6,49 @@
 
 export type Locale = "en" | "es" | "vi" | "ko" | "ar";
 export const locales: Locale[] = ["en", "es", "vi", "ko", "ar"];
+export type OfficeHours = { opens: string; closes: string };
+
+const officeTimeFormatters: Record<Locale, Intl.DateTimeFormat> = {
+  en: new Intl.DateTimeFormat("en", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "UTC",
+  }),
+  es: new Intl.DateTimeFormat("es", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "UTC",
+  }),
+  vi: new Intl.DateTimeFormat("vi", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "UTC",
+  }),
+  ko: new Intl.DateTimeFormat("ko", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "UTC",
+  }),
+  ar: new Intl.DateTimeFormat("ar", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+    timeZone: "UTC",
+  }),
+};
+
+function officeTime(value: string, locale: Locale): string {
+  const [hour, minute] = value.split(":").map(Number);
+  return officeTimeFormatters[locale].format(new Date(Date.UTC(2026, 0, 1, hour, minute)));
+}
+
+export function formatOfficeHours(locale: Locale, hours: OfficeHours): string {
+  return `${officeTime(hours.opens, locale)} – ${officeTime(hours.closes, locale)}`;
+}
 
 /** Native-language labels for the language menu. */
 export const localeNames: Record<Locale, string> = {
@@ -36,11 +79,10 @@ export const site = {
   // Confirmed by the practice 2026-07-08: 920-8883 is the correct fax (the old
   // contact page's 920-5800 was wrong; office-gallery page had it right).
   fax: { display: "(813) 920-8883" },
-  // NEEDS CONFIRMATION: info@westchasegi.com also appears on the old office-gallery
-  // page; fdhswestchase@fdhs.com is what the contact page publishes and does not
-  // depend on the domain's mail setup.
+  // 2026-07-10 debrief: use the contact-page address as the canonical public address.
+  // Staff do not reliably monitor it, so appointment requests must not depend on this
+  // inbox; the future intake system will use a watched database/admin queue instead.
   email: "fdhswestchase@fdhs.com",
-  hours: { opens: "08:00", closes: "16:30" },
   // Confirmed by the practice 2026-07-05: these are the ONLY current procedure
   // locations (the four facilities on the old site are outdated).
   affiliations:
@@ -61,6 +103,8 @@ export const site = {
       postal: "33626",
       geo: { lat: 28.057047, lng: -82.584079 },
       mapsQuery: "Westchase Gastroenterology, 11912 Sheldon Road, Tampa, FL 33626",
+      // Google Business Profile, marked practice-confirmed 2026-07-03, rechecked 2026-07-10.
+      hours: { opens: "08:00", closes: "17:00" },
     },
     {
       id: "lutz",
@@ -77,6 +121,8 @@ export const site = {
       postal: "33558",
       geo: { lat: 28.145624, lng: -82.52381 },
       mapsQuery: "Westchase Gastroenterology, 4695 Van Dyke Road, Lutz, FL 33558",
+      // No separate Google profile surfaced. Keep the practice-published schedule until confirmed.
+      hours: { opens: "08:00", closes: "16:30" },
     },
   ],
   links: {
