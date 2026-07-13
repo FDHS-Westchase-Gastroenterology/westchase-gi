@@ -11,7 +11,19 @@ test("home page renders the hero on /en", async ({ page }) => {
   );
 });
 
-test("/admin redirects unauthenticated visitors to login", async ({ page }) => {
+test("/admin returns a real unauthenticated redirect to login", async ({
+  page,
+  request,
+}) => {
+  const rawResponse = await request.get("/admin", { maxRedirects: 0 });
+  expect(rawResponse.status()).toBe(307);
+  expect(
+    new URL(
+      rawResponse.headers().location,
+      "http://localhost:3100",
+    ).pathname,
+  ).toBe("/admin/login");
+
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/admin\/login\/?$/);
   await expect(
