@@ -25,8 +25,7 @@ export const REQUEST_STATUSES = [
 ] as const;
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
-const STAFF_ROLES = ["admin", "staff"] as const;
-export type StaffRole = (typeof STAFF_ROLES)[number];
+export type StaffRole = "admin" | "staff";
 
 /**
  * Validation rules mirror the client rules the form has always applied:
