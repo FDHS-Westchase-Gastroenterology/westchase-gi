@@ -1,14 +1,60 @@
 import { requireRole } from "@/lib/portal/auth";
-import { StubSection } from "../stub-page";
+import { serviceClient } from "@/lib/portal/server";
+import {
+  AssetCard,
+  NewAssetForm,
+  type AssetWithGrants,
+} from "./asset-manager";
 
 export default async function AdminRegistryPage() {
-  await requireRole("staff");
+  const session = await requireRole("staff");
+  const isAdmin = session.role === "admin";
+
+  const db = serviceClient();
+  const [assetsResult, grantsResult] = await Promise.all([
+    db
+      .from("registry_assets")
+      .select("id, name, kind, repo, live_url, hosting, maintainer, status, notes")
+      .order("created_at", { ascending: true }),
+    db
+      .from("registry_grants")
+      .select("id, asset_id, person, role, granted_via, active")
+      .order("created_at", { ascending: true }),
+  ]);
+  if (assetsResult.error) {
+    throw new Error(`Registry read failed: ${assetsResult.error.code}`);
+  }
+  if (grantsResult.error) {
+    throw new Error(`Grants read failed: ${grantsResult.error.code}`);
+  }
+
+  const grants = grantsResult.data ?? [];
+  const assets: AssetWithGrants[] = (assetsResult.data ?? []).map((asset) => ({
+    ...asset,
+    grants: grants.filter((grant) => grant.asset_id === asset.id),
+  }));
 
   return (
-    <StubSection
-      title="Software & access registry"
-      lede="Your software, and who can touch it."
-      detail="This section will list the practice's software assets — website, tools, this portal — with who maintains each and who holds access, so custody survives staff turnover."
-    />
+    <section aria-labelledby="registry-heading">
+      <h1
+        id="registry-heading"
+        className="text-[1.65rem] font-black leading-tight text-[var(--color-ink)]"
+      >
+        Software &amp; access registry
+      </h1>
+      <p className="mt-1.5 max-w-[65ch] text-[0.95rem] text-[var(--color-muted)]">
+        Your software, and who can touch it. This ledger is the practice&apos;s
+        own record of every digital asset it runs — so the knowledge survives
+        staff turnover, vendor changes, and time.
+      </p>
+
+      <div className="mt-8 space-y-5">
+        {assets.map((asset) => (
+          <AssetCard key={asset.id} asset={asset} isAdmin={isAdmin} />
+        ))}
+      </div>
+
+      {isAdmin && <NewAssetForm />}
+    </section>
   );
 }
