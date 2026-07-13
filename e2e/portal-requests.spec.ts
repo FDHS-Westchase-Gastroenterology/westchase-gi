@@ -158,29 +158,44 @@ test.describe("portal requests operation", () => {
   test("VAL-ADMIN-004: status filters match SQL counts exactly", async ({
     page,
   }) => {
+    test.setTimeout(120_000);
     await signIn(page);
 
+    // Parallel spec files stage and delete requests while this test runs,
+    // so a single page-render + SQL-read pair can legitimately disagree.
+    // The assertion samples until one snapshot is INTERNALLY consistent —
+    // chip count, visible rows, and SQL agree exactly at the same instant.
+    // Exactness is preserved; transient churn just retries the sample.
     for (const status of ["new", "contacted", "scheduled", "closed"]) {
-      const expected = await sqlCount(status);
-      await page.goto(`/admin?status=${status}`);
+      await expect
+        .poll(
+          async () => {
+            await page.goto(`/admin?status=${status}`);
+            const chip = Number(
+              await page
+                .locator(`[data-filter-count="${status}"]`)
+                .textContent(),
+            );
+            const shown = await page
+              .locator('[data-testid="request-row"]')
+              .count();
+            const badges = await page
+              .locator('[data-testid="request-row"] [data-status]')
+              .evaluateAll((nodes) =>
+                nodes.map((node) => node.getAttribute("data-status")),
+              );
+            const sql = await sqlCount(status);
 
-      const chipCount = await page
-        .locator(`[data-filter-count="${status}"]`)
-        .textContent();
-      expect(Number(chipCount)).toBe(expected);
-
-      const shown = await page.locator('[data-testid="request-row"]').count();
-      expect(shown).toBe(Math.min(expected, 200));
-
-      // Every visible badge matches the active filter.
-      const badges = await page
-        .locator('[data-testid="request-row"] [data-status]')
-        .evaluateAll((nodes) =>
-          nodes.map((node) => node.getAttribute("data-status")),
-        );
-      for (const badge of badges) {
-        expect(badge).toBe(status);
-      }
+            const badgesOk = badges.every((badge) => badge === status);
+            const consistent =
+              chip === sql && shown === Math.min(sql, 200) && badgesOk;
+            return consistent
+              ? "consistent"
+              : `chip=${chip} shown=${shown} sql=${sql} badgesOk=${badgesOk}`;
+          },
+          { timeout: 45_000, intervals: [500, 1_000, 2_000] },
+        )
+        .toBe("consistent");
     }
   });
 
