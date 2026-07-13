@@ -2,10 +2,48 @@
 
 Patient-facing website for **FDHS Westchase Gastroenterology** (Florida Digestive Health
 Specialists network), serving Tampa and Lutz, FL. A faithful, polished rebuild of the practice's
-existing site: same identity and content, every defect fixed, fully bilingual.
+existing site: same identity and content, every defect fixed, fully multilingual — plus a real
+appointment-request pipeline and a staff admin portal.
 
-Built with Next.js 16 (App Router) + Tailwind CSS 4. Deployed on Vercel; goes live at
+Built with Next.js 16 (App Router) + Tailwind CSS 4, with Supabase (Postgres + Auth) behind the
+intake pipeline and portal, and Resend for staff notifications. Deployed on Vercel; goes live at
 `westchasegi.com` at DNS cutover.
+
+## Five languages
+
+Every patient-facing surface renders in **English, Spanish, Vietnamese, Korean, and Arabic**
+(`/en /es /vi /ko /ar`, with hreflang alternates and full RTL for Arabic). The five dictionaries
+in `src/lib/dictionaries/` share one `Dictionary` type, so a missing key anywhere fails the
+build: no locale can drift behind another. The staff portal (`/admin`) is English-only by
+design — it is an internal tool, not a patient surface.
+
+## The appointment-request pipeline
+
+The old site's form silently discarded submissions. Now:
+
+- The form on `/{locale}/appointment` and `/{locale}/contact` POSTs to `/api/requests`, which
+  validates server-side, drops honeypot-filled bot submissions, rate-limits, and **persists the
+  request in the practice's own Postgres queue before any success message renders**. Distinct
+  failure and unknown states tell the patient to call or text if anything goes wrong — the site
+  never fakes a confirmation.
+- Without JavaScript the form still works: a native POST lands on a server-rendered receipt
+  page, and no patient data ever rides a URL.
+- Staff on the notification list get a **PHI-free email ping** (a count and a portal link — no
+  patient fields) via Resend; every attempt is recorded per recipient.
+- **PHI-minimal posture:** the site collects only appointment-request contact fields (name,
+  phone, email, office/time preferences, a brief reason). No clinical data. The request queue —
+  not any inbox — is the system of record. The form's "do not submit PHI" warning renders in
+  all five languages.
+
+## The staff portal (`/admin`)
+
+Authenticated staff tool (Supabase Auth + row-level security; roles enforced server-side from
+a staff-profiles table): a requests queue with triage lifecycle (new → contacted → scheduled →
+closed) and attributed notes, notification-recipient management, staff account management with
+one-time-password invites, an audit log of every mutation, CSV export, a plain-English help
+page, and a software/access registry with honest (inert) GitHub/Vercel integration seams —
+see `docs/INTEGRATION-ACTIVATION.md` for how those activate after ownership transfer, and
+`docs/PORTAL-OPS.md` for day-to-day operations.
 
 ## What this rebuild fixes (vs. the previous vendor site)
 
@@ -17,43 +55,54 @@ Built with Next.js 16 (App Router) + Tailwind CSS 4. Deployed on Vercel; goes li
   print styled as a letterheaded handout — content module: `src/lib/content/preps/`, from
   the practice's 2026-07-07 scan, dose timings human-verified). New-patient forms offer the
   staffed text line until the practice's PDFs arrive.
+- **Appointment requests are durable** (see the pipeline above) — the old form's silent
+  data loss is gone, and staff run the whole operation from `/admin`.
 - **The blog is on-site** (`/blog`): the old blog's 16 current posts (Nov 2025 – Jun 2026),
   same titles and dates, bilingual, with original bodies (the old bodies were vendor-licensed
-  text that doesn't transfer). The 2019–2025 archive is catalogued in the repo-root parity
-  matrix, not ported. Old post URLs 301 to the new slugs.
+  text that doesn't transfer). Old post URLs 301 to the new slugs.
 - **The patient-education library is on-site** (`/patient-education`): all 17 topics from the
   old ASGE-licensed library rebuilt as original bilingual pages (same titles), plus one page
   per disease-information sheet, each with a printable-PDF slot. Old category URLs 301.
 - **"Accepting new patients" popup** fired as a full-screen modal on every page, every day.
   Now a dismissible banner shown once per visitor (30-day localStorage).
-- **Spanish is a first-class mode** (`/en` + `/es` with hreflang), not a fragment.
 - **Per-page titles and descriptions** (the old site repeated one meta description on all 64
   pages), JSON-LD for both offices (Lutz was missing), physician schema, blog-post schema,
   sitemap, redirects for every legacy URL.
-- Dead links repaired or removed (Facebook/Yelp held pending live profiles; ccfa.org updated to
-  crohnscolitisfoundation.org; ASGE's public patient hub linked as the "more" layer), typos
-  fixed ("Practicies", "Barret", "un able to each"), `callto:` → `sms:`/`tel:`.
+- **Privacy hardening:** map embeds send no referrer; legacy patient-bearing query strings
+  are scrubbed at the proxy before any third-party resource loads; CI workflow actions are
+  pinned to commit SHAs; an executable script (`scripts/verify-no-secrets.mjs`) proves no
+  secret material sits in git history.
+- Dead links repaired or removed, typos fixed, `callto:` → `sms:`/`tel:`.
 - Empty physician bio pages are gone; bios slot into `src/lib/providers.ts` when the practice
   supplies them.
-
-Content parity with the old site's 64 captured pages is tracked in `WGI-CONTENT-PARITY.md`
-at the workspace root (local doc, not in this repo).
-
-## Non-negotiables (see AGENTS.md)
-
-Verbatim provider credentials; byte-exact practice graphics; the FDHS header; the human-staffed
-text line kept prominent; EN/ES parity; no invented facts.
 
 ## Develop
 
 ```bash
 npm install
-npm run dev    # http://localhost:3000 (redirects to /en)
-npm run build && npm run lint
+cp .env.example .env.local   # fill in real values (see docs/PORTAL-OPS.md)
+npm run dev                  # http://localhost:3000 (redirects to /en)
+npm run dev:mission          # the E2E stack's server on port 3100
+npm run build && npm run lint && npm run doctor
 ```
 
 Content lives in `src/lib/` (site facts, dictionaries, providers, services, documents,
-resources, testimonials). Pages in `src/app/[locale]/` render both locales from one codebase.
+resources, testimonials). Pages in `src/app/[locale]/` render all five locales from one
+codebase; the portal lives in `src/app/admin/`.
+
+### Tests
+
+```bash
+npx playwright install chromium   # once
+npx playwright test               # full E2E suite (boots its own server on :3100)
+npx playwright test e2e/smoke.spec.ts   # focused file
+```
+
+The suite covers the intake API contract, form states across all five locales, the no-JS
+fallback, portal auth/RLS boundaries, the queue lifecycle, management surfaces, the registry,
+and leak hygiene. Specs run against the Supabase project named in `.env.local` (use a
+development project, never production) and toggle notification recipients off for the run so
+no real emails send.
 
 ## Adding a patient PDF
 
@@ -67,9 +116,8 @@ resources, testimonials). Pages in `src/app/[locale]/` render both locales from 
 Centralized in `src/lib/site.ts` (marked `NEEDS CONFIRMATION`), currently shipping the values
 from the practice's primary contact page:
 
-- Canonical public email (`fdhswestchase@fdhs.com` vs `info@westchasegi.com`)
-- Fax number ((813) 920-5800 vs 813-920-8883)
-- Office hours (site says Mon–Fri 8:00–4:30; door signage differs)
+- Lutz office hours (Tampa's were practice-confirmed 2026-07-03; Lutz still shows the
+  practice-published schedule pending confirmation)
 - Facebook / Yelp profiles (links held until confirmed live)
 - Physician bios (2–3 sentences each)
 - Current PDFs for the document registry — procedure preps ARRIVED + shipped on-site
@@ -81,11 +129,6 @@ from the practice's primary contact page:
   disagree on afternoon timings (2/4/6 PM vs 1/3/5 PM); the Spanish colonoscopy sheet's
   GLP-1 hold instruction names the drugs but no day count (English says 7 days); the
   Golytely split-dose sheet's "one hour after completing step 4" forward reference.
-- Appointment/contact form delivery — **launch blocker (2026-07-07)**: submissions currently
-  resolve to an on-page confirmation only; wire delivery to a practice inbox/queue that staff
-  actively monitor, and verify the handoff end-to-end, before any real patient traffic
-- Additional site languages — Vietnamese, Korean, and Arabic are directed (2026-07-07); the
-  complete wanted list is still being confirmed. Scoped separately from EN/ES parity: Arabic
-  is RTL, Hangul/Arabic scripts need font coverage, and graphics that carry text will move to
-  localizable rendering (source graphics stay preserved unmodified). Medical prep/education
-  content in new languages ships only after human verification of the translations
+- Vietnamese, Korean, and Arabic medical content shipped translated by the build process and
+  awaits native-speaker verification (the established ship-then-verify policy); EN/ES remain
+  the human-verified baseline.

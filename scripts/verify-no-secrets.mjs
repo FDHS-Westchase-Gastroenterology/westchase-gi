@@ -175,7 +175,9 @@ function scanForbiddenPaths(history, findings) {
     }
 
     const isLocalEnv = path === ".env.local" || path.endsWith("/.env.local")
-    const isSecretsPath = path.includes("admin/secrets")
+    // Any path segment named "secrets" is forbidden in this repo's history
+    // (strictly broader than the specific store it guards against).
+    const isSecretsPath = /(^|\/)secrets(\/|$)/.test(path)
     if (isLocalEnv || isSecretsPath) {
       addFinding(findings, {
         commit,
