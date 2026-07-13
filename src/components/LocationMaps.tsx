@@ -19,14 +19,16 @@ export function LocationMaps({ locale, dict }: LocationMapsProps) {
           className="overflow-hidden rounded-[var(--radius-lg)] bg-white shadow-[var(--shadow-soft)]"
         >
           {/* Sandboxed without allow-same-origin (scripts + popups only);
-              verified 2026-07-07 the embed renders fully under this set. */}
+              verified 2026-07-07 the embed renders fully under this set.
+              no-referrer: the page URL must never reach the embed provider
+              (closes the referrer-leak finding class). */}
           <iframe
             src={mapEmbedUrl(loc.mapsQuery, locale)}
             title={c.maps.titles[loc.id]}
             loading="lazy"
             allowFullScreen
             sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
-            referrerPolicy="no-referrer-when-downgrade"
+            referrerPolicy="no-referrer"
             className="block h-72 w-full border-0 sm:h-80"
           />
           <figcaption className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 py-5">
