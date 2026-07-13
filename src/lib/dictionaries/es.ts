@@ -434,6 +434,16 @@ export const es: Dictionary = {
     },
   },
 
+  requestReceipt: {
+    successHeading: "Solicitud recibida",
+    successBody:
+      "Gracias. Una coordinadora de citas le contactará para confirmar la disponibilidad.",
+    failureHeading: "No pudimos enviar su solicitud",
+    failureBody:
+      "Su solicitud no se guardó. Llame o envíe un texto a nuestra oficina para que podamos ayudarle.",
+    contactLine: "Llámenos o envíenos un texto:",
+  },
+
   notFound: {
     title: "Página no encontrada",
     body: "La página que busca no existe o se ha movido. Pruebe una de estas opciones:",

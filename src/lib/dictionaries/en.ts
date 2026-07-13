@@ -430,6 +430,16 @@ export const en = {
     },
   },
 
+  requestReceipt: {
+    successHeading: "Request received",
+    successBody:
+      "Thank you. A scheduling coordinator will contact you to confirm appointment availability.",
+    failureHeading: "We could not send your request",
+    failureBody:
+      "Your request was not saved. Please call or text our office so we can help.",
+    contactLine: "Call or text us:",
+  },
+
   notFound: {
     title: "Page not found",
     body: "The page you're looking for doesn't exist or has moved. Try one of these instead:",

@@ -430,6 +430,16 @@ export const ko: Dictionary = {
     },
   },
 
+  requestReceipt: {
+    successHeading: "요청이 접수되었습니다",
+    successBody:
+      "감사합니다. 예약 담당자가 연락드려 가능한 예약 시간을 확인해 드리겠습니다.",
+    failureHeading: "요청을 보내지 못했습니다",
+    failureBody:
+      "요청이 저장되지 않았습니다. 도움을 받으시려면 오피스로 전화하거나 문자를 보내 주십시오.",
+    contactLine: "전화 또는 문자 문의:",
+  },
+
   notFound: {
     title: "페이지를 찾을 수 없습니다",
     body: "찾으시는 페이지가 존재하지 않거나 이동되었습니다. 대신 아래 페이지를 이용해 보십시오:",

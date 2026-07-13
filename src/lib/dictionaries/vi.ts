@@ -430,6 +430,16 @@ export const vi: Dictionary = {
     },
   },
 
+  requestReceipt: {
+    successHeading: "Đã nhận được yêu cầu",
+    successBody:
+      "Cảm ơn quý vị. Điều phối viên lịch hẹn sẽ liên hệ để xác nhận thời gian còn trống.",
+    failureHeading: "Không thể gửi yêu cầu",
+    failureBody:
+      "Yêu cầu của quý vị chưa được lưu. Vui lòng gọi điện hoặc nhắn tin cho phòng khám để được hỗ trợ.",
+    contactLine: "Gọi điện hoặc nhắn tin cho chúng tôi:",
+  },
+
   notFound: {
     title: "Không tìm thấy trang",
     body: "Trang quý vị đang tìm không tồn tại hoặc đã được di chuyển. Quý vị hãy thử một trong các lựa chọn sau:",
