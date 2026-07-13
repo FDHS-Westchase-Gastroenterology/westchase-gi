@@ -108,38 +108,58 @@ test.describe("portal authentication and direct REST boundaries", () => {
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/admin\/login\/?$/);
 
+    // Deactivation lockout is proven on a THROWAWAY account: toggling the
+    // shared seed admin raced parallel spec files signed in as that user.
     const db = serviceDb();
-    const { data: profile, error: profileError } = await db
-      .from("staff_profiles")
-      .select("user_id, active")
-      .eq("email", SEED_ADMIN_EMAIL)
-      .single();
-    expect(profileError).toBeNull();
-    expect(profile?.active).toBe(true);
-    if (!profile) throw new Error("Seeded staff profile is missing");
-
-    const { error: deactivateError } = await db
-      .from("staff_profiles")
-      .update({ active: false })
-      .eq("user_id", profile.user_id);
-    expect(deactivateError).toBeNull();
+    const lockoutEmail = `lockout-${randomUUID().slice(0, 8)}@example.test`;
+    const lockoutPassword = `Lk-${randomUUID()}`;
+    const { data: created, error: createError } =
+      await db.auth.admin.createUser({
+        email: lockoutEmail,
+        password: lockoutPassword,
+        email_confirm: true,
+      });
+    expect(createError).toBeNull();
+    const lockoutUserId = created?.user?.id;
+    if (!lockoutUserId) throw new Error("Lockout user creation failed");
 
     try {
-      await page.getByLabel("Email").fill(SEED_ADMIN_EMAIL);
-      await page.getByLabel("Password").fill(SEED_ADMIN_PASSWORD);
+      const { error: profileInsertError } = await db
+        .from("staff_profiles")
+        .insert({
+          user_id: lockoutUserId,
+          email: lockoutEmail,
+          display_name: "TEST Lockout",
+          role: "staff",
+          active: true,
+        });
+      expect(profileInsertError).toBeNull();
+
+      // Active: the account signs in.
+      await page.getByLabel("Email").fill(lockoutEmail);
+      await page.getByLabel("Password").fill(lockoutPassword);
+      await page.getByRole("button", { name: "Sign in" }).click();
+      await expect(page).toHaveURL(/\/admin\/?$/);
+      await page.getByRole("button", { name: "Sign out" }).click();
+      await expect(page).toHaveURL(/\/admin\/login\/?$/);
+
+      // Deactivated: the same credentials are refused.
+      const { error: deactivateError } = await db
+        .from("staff_profiles")
+        .update({ active: false })
+        .eq("user_id", lockoutUserId);
+      expect(deactivateError).toBeNull();
+
+      await page.getByLabel("Email").fill(lockoutEmail);
+      await page.getByLabel("Password").fill(lockoutPassword);
       await page.getByRole("button", { name: "Sign in" }).click();
       await expect(page).toHaveURL(/\/admin\/login\/?$/);
       await expect(page.locator("#login-error")).toHaveText(
         GENERIC_LOGIN_ERROR,
       );
     } finally {
-      const { error: restoreError } = await db
-        .from("staff_profiles")
-        .update({ active: true })
-        .eq("user_id", profile.user_id);
-      if (restoreError) {
-        throw new Error(`Staff restore failed: ${restoreError.code}`);
-      }
+      await db.from("staff_profiles").delete().eq("user_id", lockoutUserId);
+      await db.auth.admin.deleteUser(lockoutUserId);
     }
   });
 
