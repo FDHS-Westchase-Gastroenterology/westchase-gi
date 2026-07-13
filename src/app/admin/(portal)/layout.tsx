@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { logoutAction } from "@/app/admin/actions";
 import { getSessionUser } from "@/lib/portal/auth";
 import { PortalNav } from "./portal-nav";
+import { AssistantLauncher } from "./assistant-launcher";
 
 // Authenticated portal chrome: a navy work-desk header carrying the
 // practice identity (wordmark, amber active tick) over a calm paper
@@ -71,6 +72,7 @@ export default async function PortalLayout({
           </p>
         </div>
       </footer>
+      <AssistantLauncher />
     </div>
   );
 }
