@@ -31,13 +31,13 @@ test("VAL-ADMIN-002: seed admin logs in and out through the UI", async ({
   await expect(page).toHaveURL(/\/admin\/login\/?$/);
 
   await signIn(page);
-  await expect(page.getByTestId("session-email")).toHaveText(
+  await expect(page.getByTestId("session-user")).toHaveText(
     SEED_EMAIL.toLowerCase(),
   );
 
   await page.reload();
   await expect(page).toHaveURL(/\/admin\/?$/);
-  await expect(page.getByTestId("session-email")).toBeVisible();
+  await expect(page.getByTestId("session-user")).toBeVisible();
 
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/admin\/login\/?$/);

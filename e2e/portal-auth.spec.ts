@@ -100,7 +100,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
     await expect(page).toHaveURL(/\/admin\/?$/);
 
     const renderedEmail = (
-      (await page.getByTestId("session-email").textContent()) ?? ""
+      (await page.getByTestId("session-user").textContent()) ?? ""
     ).trim();
     expect(renderedEmail).not.toBe("");
     expect(digest(renderedEmail)).toBe(digest(SEED_ADMIN_EMAIL));

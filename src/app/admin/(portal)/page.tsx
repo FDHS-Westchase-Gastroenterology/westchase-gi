@@ -98,6 +98,17 @@ export default async function AdminRequestsPage({
             phone, then record the outcome here.
           </p>
         </div>
+        <a
+          href={
+            filter === "all"
+              ? "/admin/requests/export"
+              : `/admin/requests/export?status=${filter}`
+          }
+          data-testid="export-csv"
+          className="btn btn-outline"
+        >
+          Export CSV
+        </a>
       </div>
 
       <nav aria-label="Filter by status" className="mt-6 overflow-x-auto">

@@ -14,41 +14,31 @@ import { serviceClient } from "@/lib/portal/server";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STAFF_BAN_DURATION = "876000h";
 
-const addRecipientSchema = z
-  .object({
-    email: z.string().trim().min(1).max(254).regex(EMAIL_RE),
-    label: z.string().trim().max(120).optional(),
-    active: z.boolean().optional(),
-  })
-  .strict();
+const addRecipientSchema = z.strictObject({
+  email: z.string().trim().min(1).max(254).regex(EMAIL_RE),
+  label: z.string().trim().max(120).optional(),
+  active: z.boolean().optional(),
+});
 
-const recipientStateSchema = z
-  .object({
-    recipientId: z.string().uuid(),
-    active: z.boolean(),
-  })
-  .strict();
+const recipientStateSchema = z.strictObject({
+  recipientId: z.uuid(),
+  active: z.boolean(),
+});
 
-const entityIdSchema = z
-  .object({
-    id: z.string().uuid(),
-  })
-  .strict();
+const entityIdSchema = z.strictObject({
+  id: z.uuid(),
+});
 
-const inviteStaffSchema = z
-  .object({
-    email: z.string().trim().min(1).max(254).regex(EMAIL_RE),
-    displayName: z.string().trim().min(1).max(120),
-    role: z.enum(["admin", "staff"]),
-  })
-  .strict();
+const inviteStaffSchema = z.strictObject({
+  email: z.string().trim().min(1).max(254).regex(EMAIL_RE),
+  displayName: z.string().trim().min(1).max(120),
+  role: z.enum(["admin", "staff"]),
+});
 
-const staffRoleSchema = z
-  .object({
-    userId: z.string().uuid(),
-    role: z.enum(["admin", "staff"]),
-  })
-  .strict();
+const staffRoleSchema = z.strictObject({
+  userId: z.uuid(),
+  role: z.enum(["admin", "staff"]),
+});
 
 export type ManagementFailureCode =
   | "invalid"
@@ -118,6 +108,18 @@ async function deleteProvisionedUser(
     db.from("staff_profiles").delete().eq("user_id", userId),
     db.auth.admin.deleteUser(userId),
   ]);
+}
+
+/** Invite failure path: the half-provisioned user must be removed BEFORE
+ * the failure is reported — callers return this promise directly. */
+async function rollbackInvite(
+  db: ServiceClient,
+  userId: string,
+  code: ManagementFailureCode,
+  message: string,
+): Promise<ManagementFailure> {
+  await deleteProvisionedUser(db, userId);
+  return failure(code, message);
 }
 
 export async function addNotificationRecipientMutation(
@@ -307,8 +309,12 @@ export async function inviteStaffMutation(
     { app_metadata: appMetadata },
   );
   if (metadataError) {
-    await deleteProvisionedUser(db, user.id);
-    return failure("unavailable", "The staff account could not be created.");
+    return rollbackInvite(
+      db,
+      user.id,
+      "unavailable",
+      "The staff account could not be created.",
+    );
   }
 
   const { data: profile, error: profileError } = await db
@@ -323,11 +329,19 @@ export async function inviteStaffMutation(
     .select("id")
     .single();
   if (profileError || !profile) {
-    await deleteProvisionedUser(db, user.id);
-    if (profileError?.code === "23505") {
-      return failure("conflict", "A staff account already uses that email.");
-    }
-    return failure("unavailable", "The staff account could not be created.");
+    return profileError?.code === "23505"
+      ? rollbackInvite(
+          db,
+          user.id,
+          "conflict",
+          "A staff account already uses that email.",
+        )
+      : rollbackInvite(
+          db,
+          user.id,
+          "unavailable",
+          "The staff account could not be created.",
+        );
   }
 
   try {
@@ -339,8 +353,12 @@ export async function inviteStaffMutation(
       detail: { role: parsed.data.role, active: true },
     });
   } catch {
-    await deleteProvisionedUser(db, user.id);
-    return failure("unavailable", "The staff account could not be created.");
+    return rollbackInvite(
+      db,
+      user.id,
+      "unavailable",
+      "The staff account could not be created.",
+    );
   }
 
   revalidateManagementViews();
