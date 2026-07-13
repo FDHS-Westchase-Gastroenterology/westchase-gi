@@ -1,29 +1,46 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { usePathname } from "next/navigation";
 import { site, type Locale } from "@/lib/site";
 import type { Dictionary } from "@/lib/i18n";
+import {
+  HONEYPOT_FIELD,
+  INTAKE_API,
+  INTAKE_NOJS_ACTION,
+  type IntakeResponse,
+} from "@/lib/portal/contracts";
 import { Check, MessageSquare, Phone } from "./icons";
-
-// NOTE (pre-launch): submissions currently resolve to an on-page confirmation.
-// Wire to the practice's scheduling inbox (email service or scheduler) before
-// real patient traffic; tracked in the project log.
 
 type AppointmentFormProps = { locale: Locale; dict: Dictionary };
 
 type Errors = Partial<Record<"name" | "phone" | "email", string>>;
 
+// idle: form ready · submitting: POST in flight · success: durable acceptance
+// confirmed by the server · failure: the server refused or could not save ·
+// unknown: no readable response came back, so the truth is unknowable here.
+type Status = "idle" | "submitting" | "success" | "failure" | "unknown";
+
 const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const FETCH_TIMEOUT_MS = 20_000;
 
 export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
   const f = dict.appointment.form;
+  const pathname = usePathname();
   const [errors, setErrors] = useState<Errors>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
+  const [status, setStatus] = useState<Status>("idle");
+  const alertRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
-  function handleSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const data = new FormData(e.currentTarget);
+  // Testability marker: E2E waits for hydration before driving the JS path
+  // (a pre-hydration click legitimately takes the native no-JS fallback).
+  // Direct DOM write — no state, no extra render.
+  useEffect(() => {
+    formRef.current?.setAttribute("data-hydrated", "true");
+  }, []);
+
+  function localFieldErrors(data: FormData): Errors {
     const next: Errors = {};
     const name = String(data.get("name") || "").trim();
     const phone = String(data.get("phone") || "").trim();
@@ -32,24 +49,90 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     if (!name) next.name = f.errName;
     if (!phone || phone.replace(/\D/g, "").length < 10) next.phone = f.errPhone;
     if (!email || !emailRe.test(email)) next.email = f.errEmail;
+    return next;
+  }
 
+  function serverFieldErrors(fieldErrors: Record<string, string>): Errors {
+    const next: Errors = {};
+    if ("name" in fieldErrors) next.name = f.errName;
+    if ("phone" in fieldErrors) next.phone = f.errPhone;
+    if ("email" in fieldErrors) next.email = f.errEmail;
+    return next;
+  }
+
+  function showProblem(state: "failure" | "unknown") {
+    setStatus(state);
+    requestAnimationFrame(() => alertRef.current?.focus());
+  }
+
+  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const data = new FormData(form);
+
+    const next = localFieldErrors(data);
     setErrors(next);
     if (Object.keys(next).length > 0) {
-      const first = document.querySelector<HTMLElement>('[aria-invalid="true"]');
+      const first = form.querySelector<HTMLElement>('[aria-invalid="true"]');
       first?.focus();
       return;
     }
 
-    setSubmitting(true);
-    window.setTimeout(() => {
-      setSubmitting(false);
-      setDone(true);
-    }, 600);
+    setStatus("submitting");
+
+    const payload = {
+      name: String(data.get("name") || "").trim(),
+      phone: String(data.get("phone") || "").trim(),
+      email: String(data.get("email") || "").trim(),
+      location: String(data.get("location") || "any"),
+      time: String(data.get("time") || "any"),
+      message: String(data.get("message") || "").trim() || undefined,
+      locale,
+      sourcePath: pathname || `/${locale}/appointment`,
+      [HONEYPOT_FIELD]: String(data.get(HONEYPOT_FIELD) || ""),
+    };
+
+    let body: IntakeResponse;
+    try {
+      const res = await fetch(INTAKE_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      });
+      body = (await res.json()) as IntakeResponse;
+    } catch {
+      // Timed out or no readable response: the request may or may not have
+      // landed. Only the honest "please confirm with us" state is truthful.
+      showProblem("unknown");
+      return;
+    }
+
+    if (body.ok) {
+      setStatus("success");
+      return;
+    }
+
+    if (body.code === "validation" && body.fieldErrors) {
+      const mapped = serverFieldErrors(body.fieldErrors);
+      setErrors(mapped);
+      setStatus("idle");
+      requestAnimationFrame(() => {
+        form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+      });
+      return;
+    }
+
+    showProblem("failure");
   }
 
-  if (done) {
+  if (status === "success") {
     return (
-      <div role="status" aria-live="polite" className="card flex flex-col items-center p-8 text-center sm:p-12">
+      <div
+        role="status"
+        aria-live="polite"
+        className="card flex flex-col items-center p-8 text-center sm:p-12"
+      >
         <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-mint)] text-[var(--color-teal-ink)]">
           <Check className="h-7 w-7" />
         </span>
@@ -67,11 +150,69 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     );
   }
 
+  const problem = status === "failure" || status === "unknown";
+  const problemHeading = status === "unknown" ? f.unknownHeading : f.failHeading;
+  const problemBody = status === "unknown" ? f.unknownBody : f.failBody;
+
   return (
-    <form onSubmit={handleSubmit} noValidate className="card p-6 sm:p-9">
+    <form
+      method="post"
+      action={INTAKE_NOJS_ACTION}
+      onSubmit={handleSubmit}
+      noValidate
+      ref={formRef}
+      className="card relative p-6 sm:p-9"
+    >
+      {problem && (
+        <div
+          ref={alertRef}
+          role="alert"
+          tabIndex={-1}
+          className="mb-6 rounded-[var(--radius-sm)] border border-[var(--color-amber-deep)] bg-[var(--color-amber-soft)] p-5 outline-none"
+        >
+          <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
+            {problemHeading}
+          </h2>
+          <p className="mt-2 text-[0.95rem] text-[var(--color-ink)]">
+            {problemBody}
+          </p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <a href={site.phone.href} className="btn btn-navy">
+              <Phone className="h-4 w-4" /> {dict.common.callUs}
+            </a>
+            <a href={site.textLine.href} className="btn btn-outline">
+              <MessageSquare className="h-4 w-4" /> {dict.common.textUs}
+            </a>
+          </div>
+        </div>
+      )}
       <p className="mb-6 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-4 py-3 text-[0.95rem] font-semibold text-[var(--color-ink)]">
         {dict.appointment.phiWarning}
       </p>
+      {/* State the no-JS route needs: locale + origin path, rendered into the
+          document so the native POST works before (or without) hydration. */}
+      <input type="hidden" name="locale" value={locale} />
+      <input
+        type="hidden"
+        name="sourcePath"
+        value={pathname || `/${locale}/appointment`}
+      />
+      {/* Honeypot: humans never see or fill this; bots that do are dropped
+          server-side with a success-shaped reply. Not display:none — some
+          crawlers skip fully hidden fields. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute h-0 w-0 overflow-hidden opacity-0"
+      >
+        <label htmlFor={HONEYPOT_FIELD}>Company</label>
+        <input
+          id={HONEYPOT_FIELD}
+          name={HONEYPOT_FIELD}
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+        />
+      </div>
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label htmlFor="name" className="field-label">
@@ -161,14 +302,25 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
           <label htmlFor="message" className="field-label">
             {f.message}
           </label>
-          <textarea id="message" name="message" rows={4} className="field-input" aria-describedby="hint-message" />
+          <textarea
+            id="message"
+            name="message"
+            rows={4}
+            maxLength={2000}
+            className="field-input"
+            aria-describedby="hint-message"
+          />
           <p id="hint-message" className="field-hint">
             {f.messageHint}
           </p>
         </div>
       </div>
-      <button type="submit" disabled={submitting} className="btn btn-amber btn-lg mt-7 w-full disabled:opacity-70 sm:w-auto">
-        {submitting ? f.submitting : f.submit}
+      <button
+        type="submit"
+        disabled={status === "submitting"}
+        className="btn btn-amber btn-lg mt-7 w-full disabled:opacity-70 sm:w-auto"
+      >
+        {status === "submitting" ? f.submitting : f.submit}
       </button>
     </form>
   );
