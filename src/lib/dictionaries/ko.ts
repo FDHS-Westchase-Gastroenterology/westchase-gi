@@ -417,7 +417,7 @@ export const ko: Dictionary = {
       timeMorning: "오전",
       timeAfternoon: "오후",
       timeAny: "언제든 가능",
-      message: "그 밖에 알려 주실 내용이 있으십니까?",
+      message: "이번 진료 예약을 요청하시는 이유 (간단히)",
       messageHint: "선택 사항입니다. 의료 관련 세부 내용은 적지 마시기 바랍니다. 해당 내용은 전화로 여쭙겠습니다.",
       submit: "요청 보내기",
       submitting: "전송 중…",
@@ -427,7 +427,23 @@ export const ko: Dictionary = {
       doneHeading: "요청이 접수되었습니다",
       doneBody:
         "감사합니다. 예약 담당자가 연락드려 예약을 확정해 드리겠습니다. 더 빨리 연락이 필요하시면 오피스로 전화하시거나 문자를 보내 주십시오.",
+      failHeading: "요청을 전송하지 못했습니다",
+      failBody:
+        "요청이 저장되지 않았습니다. 오피스로 전화하시거나 문자를 보내 주시면 직접 도와드리겠습니다.",
+      unknownHeading: "요청이 전송되었는지 확실하지 않습니다",
+      unknownBody:
+        "다시 제출하시기 전에 전화나 문자로 확인해 주시기 바랍니다.",
     },
+  },
+
+  requestReceipt: {
+    successHeading: "요청이 접수되었습니다",
+    successBody:
+      "감사합니다. 예약 담당자가 연락드려 가능한 예약 시간을 확인해 드리겠습니다.",
+    failureHeading: "요청을 보내지 못했습니다",
+    failureBody:
+      "요청이 저장되지 않았습니다. 도움을 받으시려면 오피스로 전화하거나 문자를 보내 주십시오.",
+    contactLine: "전화 또는 문자 문의:",
   },
 
   notFound: {

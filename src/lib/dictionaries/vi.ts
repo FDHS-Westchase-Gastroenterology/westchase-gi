@@ -417,7 +417,7 @@ export const vi: Dictionary = {
       timeMorning: "Buổi sáng",
       timeAfternoon: "Buổi chiều",
       timeAny: "Giờ nào cũng được",
-      message: "Quý vị còn điều gì muốn cho chúng tôi biết?",
+      message: "Lý do yêu cầu cuộc hẹn này (ngắn gọn)",
       messageHint: "Không bắt buộc. Vui lòng tránh nêu chi tiết y khoa; chúng tôi sẽ trao đổi những nội dung đó qua điện thoại.",
       submit: "Gửi yêu cầu",
       submitting: "Đang gửi…",
@@ -427,7 +427,23 @@ export const vi: Dictionary = {
       doneHeading: "Đã nhận được yêu cầu",
       doneBody:
         "Cảm ơn quý vị. Điều phối viên lịch hẹn của chúng tôi sẽ liên hệ để xác nhận cuộc hẹn. Nếu quý vị cần chúng tôi sớm hơn, hãy gọi điện hoặc nhắn tin cho phòng khám.",
+      failHeading: "Chúng tôi không thể gửi yêu cầu của quý vị",
+      failBody:
+        "Yêu cầu của quý vị chưa được lưu. Vui lòng gọi điện hoặc nhắn tin cho phòng khám — chúng tôi sẵn lòng hỗ trợ trực tiếp.",
+      unknownHeading: "Chúng tôi chưa chắc yêu cầu của quý vị đã được gửi",
+      unknownBody:
+        "Vui lòng gọi điện hoặc nhắn tin cho chúng tôi để xác nhận trước khi gửi lại.",
     },
+  },
+
+  requestReceipt: {
+    successHeading: "Đã nhận được yêu cầu",
+    successBody:
+      "Cảm ơn quý vị. Điều phối viên lịch hẹn sẽ liên hệ để xác nhận thời gian còn trống.",
+    failureHeading: "Không thể gửi yêu cầu",
+    failureBody:
+      "Yêu cầu của quý vị chưa được lưu. Vui lòng gọi điện hoặc nhắn tin cho phòng khám để được hỗ trợ.",
+    contactLine: "Gọi điện hoặc nhắn tin cho chúng tôi:",
   },
 
   notFound: {

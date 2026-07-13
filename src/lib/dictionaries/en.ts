@@ -417,7 +417,7 @@ export const en = {
       timeMorning: "Morning",
       timeAfternoon: "Afternoon",
       timeAny: "Any time",
-      message: "Anything else we should know?",
+      message: "Reason for requesting this appointment (brief)",
       messageHint: "Optional. Please avoid medical details; we'll take those by phone.",
       submit: "Send request",
       submitting: "Sending…",
@@ -427,7 +427,23 @@ export const en = {
       doneHeading: "Request received",
       doneBody:
         "Thank you. Our scheduling coordinator will contact you to confirm your appointment. If you need us sooner, call or text the office.",
+      failHeading: "We could not send your request",
+      failBody:
+        "Your request was not saved. Please call or text our office instead — we're happy to help directly.",
+      unknownHeading: "We're not sure your request went through",
+      unknownBody:
+        "Please call or text us to confirm before submitting again.",
     },
+  },
+
+  requestReceipt: {
+    successHeading: "Request received",
+    successBody:
+      "Thank you. A scheduling coordinator will contact you to confirm appointment availability.",
+    failureHeading: "We could not send your request",
+    failureBody:
+      "Your request was not saved. Please call or text our office so we can help.",
+    contactLine: "Call or text us:",
   },
 
   notFound: {

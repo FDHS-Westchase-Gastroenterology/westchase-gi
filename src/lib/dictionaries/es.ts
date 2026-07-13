@@ -421,7 +421,7 @@ export const es: Dictionary = {
       timeMorning: "Por la mañana",
       timeAfternoon: "Por la tarde",
       timeAny: "Cualquier horario",
-      message: "¿Algo más que debamos saber?",
+      message: "Motivo de esta solicitud de cita (breve)",
       messageHint: "Opcional. Evite incluir detalles médicos; esos los tomaremos por teléfono.",
       submit: "Enviar solicitud",
       submitting: "Enviando…",
@@ -431,7 +431,23 @@ export const es: Dictionary = {
       doneHeading: "Solicitud recibida",
       doneBody:
         "Gracias. Nuestra coordinadora de citas le contactará para confirmar su cita. Si nos necesita antes, llame o envíe un texto a la oficina.",
+      failHeading: "No pudimos enviar su solicitud",
+      failBody:
+        "Su solicitud no se guardó. Por favor llame o envíe un mensaje de texto a nuestra oficina; con gusto le ayudaremos directamente.",
+      unknownHeading: "No estamos seguros de que su solicitud se haya enviado",
+      unknownBody:
+        "Llámenos o envíenos un mensaje de texto para confirmar antes de enviarla de nuevo.",
     },
+  },
+
+  requestReceipt: {
+    successHeading: "Solicitud recibida",
+    successBody:
+      "Gracias. Una coordinadora de citas le contactará para confirmar la disponibilidad.",
+    failureHeading: "No pudimos enviar su solicitud",
+    failureBody:
+      "Su solicitud no se guardó. Llame o envíe un texto a nuestra oficina para que podamos ayudarle.",
+    contactLine: "Llámenos o envíenos un texto:",
   },
 
   notFound: {

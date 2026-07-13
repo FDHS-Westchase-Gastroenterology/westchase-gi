@@ -15,6 +15,7 @@
 
 # next.js
 /.next/
+/.next-e2e/
 /out/
 
 # production
@@ -30,8 +31,16 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# local runtime logs (dev server output for the QA harness)
+/.logs/
+
+# playwright artifacts
+/playwright-report/
+/test-results/
+
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel

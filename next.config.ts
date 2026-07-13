@@ -71,6 +71,10 @@ const legacyEducation: Array<[string, string]> = [
 ];
 
 const nextConfig: NextConfig = {
+  // E2E build-dir isolation: a second dev server (broken-DB failure tests)
+  // boots with NEXT_DIST_DIR=.next-e2e so concurrent instances never share
+  // a Turbopack build directory.
+  distDir: process.env.NEXT_DIST_DIR || ".next",
   async redirects() {
     return [
       // Root: English is the default mode; the header toggle switches to /es.

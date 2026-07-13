@@ -18,7 +18,8 @@ verifying credentials, locations, and fax details.
 The patient-facing website of FDHS Westchase Gastroenterology (Florida Digestive Health
 Specialists network). It exists so patients can reach the practice and prepare for visits without
 friction: request an appointment, call or text a staffed line, access the patient portal and
-online forms, and get accurate location, hours, and provider information in English or Spanish.
+online forms, and get accurate location, hours, and provider information in English, Spanish,
+Vietnamese, Korean, or Arabic.
 Success: every link works, every fact is verified, both languages are first-class, and the site
 reads as the polished front door of a practice that answers its own phones.
 
@@ -48,8 +49,8 @@ plain language, warm but clinical, never salesy. Three words: steady, attentive,
    palette stay; the craft around them is what improves.
 3. **The human line is the hero.** Call and text affordances are prominent on every page; the
    text line is presented as a staffed human channel, never a bot.
-4. **Spanish is a mode, not a footnote.** Every patient-facing surface exists in English and
-   Spanish with equal care.
+4. **Every language is a mode, not a footnote.** Every patient-facing surface exists in
+   English, Spanish, Vietnamese, Korean, and Arabic with equal care (Arabic fully RTL).
 5. **Anxious patients skim.** One clear action per section, generous type, high contrast, short
    paths to phone, forms, portal, and directions.
 
