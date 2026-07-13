@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:mission": "mkdir -p .logs; lsof -ti tcp:3100 | xargs -r kill -9; exec next dev -p 3100",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
