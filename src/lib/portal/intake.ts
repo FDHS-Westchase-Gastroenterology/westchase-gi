@@ -201,56 +201,57 @@ async function notifyActiveRecipients(
   const text = `${openCount} open ${requestLabel} waiting in the Westchase GI portal.\n\nOpen the portal: ${adminUrl}`;
   const resend = new Resend(apiKey);
   const from = process.env.RESEND_FROM?.trim() || "onboarding@resend.dev";
-  const events: NotificationEvent[] = [];
 
-  // Resend's default cap is five calls per second. Keep this fan-out
-  // sequential so a larger recipient list does not manufacture 429 failures.
-  for (const recipient of recipients) {
-    try {
-      const { data, error } = await resend.emails.send({
-        from,
-        to: recipient.email,
-        subject: NOTIFICATION_SUBJECT,
-        text,
-      });
+  // Parallel fan-out: the recipient list is a handful of front-desk
+  // addresses, well inside Resend's request-rate budget. A provider 429
+  // (like any failure) is recorded honestly and never fails the intake.
+  const events: NotificationEvent[] = await Promise.all(
+    recipients.map(async (recipient): Promise<NotificationEvent> => {
+      try {
+        const { data, error } = await resend.emails.send({
+          from,
+          to: recipient.email,
+          subject: NOTIFICATION_SUBJECT,
+          text,
+        });
 
-      if (error) {
-        // onboarding@resend.dev rejects non-owner recipients with 403 until
-        // the clinic domain is verified. That expected provider outcome is
-        // distinct from transport/configuration failure.
-        events.push({
+        if (error) {
+          // onboarding@resend.dev rejects non-owner recipients with 403
+          // until the clinic domain is verified. That expected provider
+          // outcome is distinct from transport/configuration failure.
+          return {
+            request_id: requestId,
+            type: "notification",
+            recipient: recipient.email,
+            provider_message_id: null,
+            status: error.statusCode === 403 ? "rejected" : "failed",
+            meta: {
+              provider: "resend",
+              provider_status_code: error.statusCode ?? undefined,
+            },
+          };
+        }
+
+        return {
+          request_id: requestId,
+          type: "notification",
+          recipient: recipient.email,
+          provider_message_id: data.id,
+          status: "sent",
+          meta: { provider: "resend" },
+        };
+      } catch {
+        return {
           request_id: requestId,
           type: "notification",
           recipient: recipient.email,
           provider_message_id: null,
-          status: error.statusCode === 403 ? "rejected" : "failed",
-          meta: {
-            provider: "resend",
-            provider_status_code: error.statusCode ?? undefined,
-          },
-        });
-        continue;
+          status: "failed",
+          meta: { provider: "resend", reason: "network_failure" },
+        };
       }
-
-      events.push({
-        request_id: requestId,
-        type: "notification",
-        recipient: recipient.email,
-        provider_message_id: data.id,
-        status: "sent",
-        meta: { provider: "resend" },
-      });
-    } catch {
-      events.push({
-        request_id: requestId,
-        type: "notification",
-        recipient: recipient.email,
-        provider_message_id: null,
-        status: "failed",
-        meta: { provider: "resend", reason: "network_failure" },
-      });
-    }
-  }
+    }),
+  );
 
   await recordNotificationEvents(client, requestId, events);
 }

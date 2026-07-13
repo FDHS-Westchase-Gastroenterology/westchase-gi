@@ -9,12 +9,12 @@ import { z } from "zod";
 import { locales, type Locale } from "@/lib/site";
 
 /** Same pattern the patient form has always enforced client-side. */
-export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export const REQUEST_LOCATIONS = ["any", "tampa", "lutz"] as const;
+const REQUEST_LOCATIONS = ["any", "tampa", "lutz"] as const;
 export type RequestLocation = (typeof REQUEST_LOCATIONS)[number];
 
-export const REQUEST_TIMES = ["any", "morning", "afternoon"] as const;
+const REQUEST_TIMES = ["any", "morning", "afternoon"] as const;
 export type RequestTime = (typeof REQUEST_TIMES)[number];
 
 export const REQUEST_STATUSES = [
@@ -25,7 +25,7 @@ export const REQUEST_STATUSES = [
 ] as const;
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
-export const STAFF_ROLES = ["admin", "staff"] as const;
+const STAFF_ROLES = ["admin", "staff"] as const;
 export type StaffRole = (typeof STAFF_ROLES)[number];
 
 /**

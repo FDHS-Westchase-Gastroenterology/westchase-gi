@@ -15,7 +15,7 @@ export type RequireRoleOptions = {
   unauthenticated?: "redirect" | "throw";
 };
 
-export class PortalAuthorizationError extends Error {
+class PortalAuthorizationError extends Error {
   readonly status: 401 | 403;
 
   constructor(status: 401 | 403) {

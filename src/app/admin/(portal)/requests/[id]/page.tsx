@@ -6,11 +6,12 @@ import {
 } from "@/lib/portal/contracts";
 import { requireRole } from "@/lib/portal/auth";
 import { serviceClient } from "@/lib/portal/server";
-import { StatusBadge, STATUS_LABELS } from "../status-badge";
+import { StatusBadge } from "../status-badge";
 import {
   formatReceived,
   LOCALE_LABELS,
   LOCATION_LABELS,
+  STATUS_LABELS,
   TIME_LABELS,
 } from "../format";
 import { addRequestNote, updateRequestStatus } from "../actions";

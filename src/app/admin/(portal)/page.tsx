@@ -5,10 +5,11 @@ import {
 } from "@/lib/portal/contracts";
 import { requireRole } from "@/lib/portal/auth";
 import { serviceClient } from "@/lib/portal/server";
-import { StatusBadge, STATUS_LABELS } from "./requests/status-badge";
+import { StatusBadge } from "./requests/status-badge";
 import {
   formatReceived,
   LOCATION_LABELS,
+  STATUS_LABELS,
   TIME_LABELS,
 } from "./requests/format";
 

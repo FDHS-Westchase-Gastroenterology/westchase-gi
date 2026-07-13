@@ -1,4 +1,15 @@
-import type { RequestLocation, RequestTime } from "@/lib/portal/contracts";
+import type {
+  RequestLocation,
+  RequestStatus,
+  RequestTime,
+} from "@/lib/portal/contracts";
+
+export const STATUS_LABELS: Record<RequestStatus, string> = {
+  new: "New",
+  contacted: "Contacted",
+  scheduled: "Scheduled",
+  closed: "Closed",
+};
 
 // Practice-local time: front desk staff read these in Tampa.
 const dateTime = new Intl.DateTimeFormat("en-US", {

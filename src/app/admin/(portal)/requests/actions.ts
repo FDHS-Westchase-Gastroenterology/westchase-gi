@@ -26,10 +26,10 @@ export async function updateRequestStatus(
   requestId: string,
   nextStatus: RequestStatus,
 ): Promise<void> {
-  const session = await requireRole("staff");
   if (!isRequestStatus(nextStatus)) {
     throw new Error("Unknown request status");
   }
+  const session = await requireRole("staff");
 
   const db = serviceClient();
   const { data: current, error: readError } = await db
