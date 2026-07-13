@@ -464,6 +464,7 @@ export function AssetCard({
                   required
                   maxLength={120}
                   placeholder="Person"
+                  aria-label="Person"
                   className={INPUT_CLASS}
                 />
               </div>
@@ -477,6 +478,7 @@ export function AssetCard({
                   required
                   maxLength={80}
                   placeholder="Role (owner, admin…)"
+                  aria-label="Role"
                   className={INPUT_CLASS}
                 />
               </div>
@@ -487,6 +489,7 @@ export function AssetCard({
                 <input
                   id={`grant-via-${asset.id}`}
                   name="grantedVia"
+                  aria-label="Granted via"
                   required
                   maxLength={120}
                   placeholder="Via (GitHub, Vercel, portal…)"
