@@ -65,16 +65,18 @@ export function StaffManager({
     const role =
       String(formData.get("role") ?? "staff") === "admin" ? "admin" : "staff";
     if (!email || !displayName) return;
-    run(async () => {
+
+    setError(null);
+    startTransition(async () => {
       const result = await inviteStaff({ email, displayName, role });
-      if (result.ok && "tempPassword" in result) {
-        setIssued({
-          email,
-          tempPassword: result.tempPassword,
-          copied: false,
-        });
+      if (!result.ok) {
+        setError(failureMessage(result));
+        return;
       }
-      return result;
+      if ("tempPassword" in result) {
+        setIssued({ email, tempPassword: result.tempPassword, copied: false });
+      }
+      router.refresh();
     });
   }
 
