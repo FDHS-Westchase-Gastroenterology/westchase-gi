@@ -113,7 +113,12 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
         ).toHaveText("Settings");
       }
 
-      if (portalPage.name === "queue") {
+      // Screenshot sweep: the queue plus both Settings sub-pages (the tab
+      // row is the one place a narrow viewport has clipped before).
+      if (
+        portalPage.name === "queue" ||
+        portalPage.path.startsWith("/admin/settings")
+      ) {
         await page.screenshot({
           path: `test-results/portal-shell/${portalPage.name}-${viewport.name}.png`,
           fullPage: true,

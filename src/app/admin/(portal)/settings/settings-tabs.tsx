@@ -17,7 +17,7 @@ export function SettingsTabs() {
   return (
     <nav
       aria-label="Settings sections"
-      className="mt-5 border-b border-[var(--color-line)]"
+      className="mt-5 overflow-x-auto border-b border-[var(--color-line)]"
     >
       <ul className="-mb-px flex min-w-max items-stretch gap-x-5">
         {TABS.map((tab) => {
@@ -30,7 +30,7 @@ export function SettingsTabs() {
               <Link
                 href={tab.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-11 items-center border-b-2 text-[0.92rem] transition-colors ${
+                className={`flex min-h-11 items-center border-b-2 text-[0.92rem] transition-[color,border-color,transform] duration-150 active:scale-[0.98] ${
                   active
                     ? "border-[var(--color-navy)] font-bold text-[var(--color-ink)]"
                     : "border-transparent font-bold text-[var(--color-muted)] hover:text-[var(--color-ink)]"

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { requireRole } from "@/lib/portal/auth";
 import { serviceClient } from "@/lib/portal/server";
 import { formatReceived } from "../requests/format";
@@ -35,9 +36,22 @@ export default async function AdminAuditPage() {
 
   return (
     <section aria-labelledby="audit-heading">
+      <nav aria-label="Breadcrumb" className="text-[0.9rem]">
+        <Link
+          href="/admin"
+          className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+        >
+          Staff portal
+        </Link>
+        <span aria-hidden="true" className="mx-2 text-[var(--color-muted)]">
+          /
+        </span>
+        <span className="text-[var(--color-muted)]">Activity log</span>
+      </nav>
+
       <h1
         id="audit-heading"
-        className="text-[1.65rem] font-black leading-tight text-[var(--color-ink)]"
+        className="mt-4 text-[1.65rem] font-black leading-tight text-[var(--color-ink)]"
       >
         Activity log
       </h1>
