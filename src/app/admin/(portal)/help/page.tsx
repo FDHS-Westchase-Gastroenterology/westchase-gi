@@ -38,12 +38,11 @@ export default async function AdminHelpPage() {
               Appointment requests
             </Link>{" "}
             page. Nothing depends on anyone watching an email inbox: even if
-            every notification email went missing, the appointment request
-            would still be sitting safely in the queue. That is the whole
-            point of this system — the practice can never lose an
-            appointment request again. Appointment requests are callback
-            leads, not booked appointments: someone still calls the patient
-            to schedule.
+            every notification email went missing, the request would still
+            be sitting safely in the queue. That is the whole point of this
+            system — the practice can never lose one again. These are
+            callback leads, not booked appointments: someone still calls
+            the patient to schedule.
           </p>
         </div>
 
@@ -58,8 +57,7 @@ export default async function AdminHelpPage() {
             handled it yet; <strong>Contacted</strong> means you reached out
             (or tried); <strong>Scheduled</strong> means the appointment is
             booked in the scheduling system; <strong>Closed</strong> means
-            the appointment request needs no more work. The status filters
-            on the queue
+            the request needs no more work. The status filters on the queue
             page make it easy to see exactly what still needs attention —
             keeping the New list at zero is the daily goal.
           </p>

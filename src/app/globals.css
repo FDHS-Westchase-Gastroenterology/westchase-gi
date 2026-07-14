@@ -58,6 +58,13 @@
   --z-drawer: 80;
   --z-overlay: 70;
 
+  /* The staff-portal assistant launcher's reserved footprint: bottom
+     offset (1.25rem) + pill height (~2.75rem) + breathing room. The
+     portal footer pads its bottom by this exact token, so a taller
+     launcher means updating one value instead of silently covering the
+     footer links (assistant-launcher.tsx <-> (portal)/layout.tsx). */
+  --spacing-assistant-clearance: 5rem;
+
   /* Fluid type scale (ratio >= 1.25) */
   --step-hero: clamp(2.4rem, 1.35rem + 4vw, 4rem);
   --step-1: clamp(2rem, 1.5rem + 2.2vw, 3rem);
@@ -732,6 +739,23 @@
       animation: none;
     }
   }
+
+  /* ---- Staff-portal assistant panel (native <dialog>) ----
+     Enter-only motion reusing the pc-rise / pc-dim convention above;
+     exit stays instant (native dialog close). */
+  .assistant-dialog[open] {
+    animation: pc-rise 0.42s var(--ease-out-quint) both;
+  }
+  .assistant-dialog[open]::backdrop {
+    animation: pc-dim 0.3s ease-out both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .assistant-dialog[open],
+    .assistant-dialog[open]::backdrop {
+      animation: none;
+    }
+  }
+
   /* Pointer-only dismiss target behind the shell (a real button; keyboard
      users close with Escape or the labeled close control). */
   .pc-scrim {

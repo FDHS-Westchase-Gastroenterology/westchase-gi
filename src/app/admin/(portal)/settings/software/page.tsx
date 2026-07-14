@@ -37,9 +37,18 @@ export default async function AdminSettingsSoftwarePage() {
   }
 
   const grants = grantsResult.data ?? [];
+  const grantsByAsset = new Map<string, typeof grants>();
+  for (const grant of grants) {
+    const group = grantsByAsset.get(grant.asset_id);
+    if (group) {
+      group.push(grant);
+    } else {
+      grantsByAsset.set(grant.asset_id, [grant]);
+    }
+  }
   const assets: AssetWithGrants[] = (assetsResult.data ?? []).map((asset) => ({
     ...asset,
-    grants: grants.filter((grant) => grant.asset_id === asset.id),
+    grants: grantsByAsset.get(asset.id) ?? [],
   }));
 
   return (
@@ -58,6 +67,13 @@ export default async function AdminSettingsSoftwarePage() {
         </p>
 
         <div className="mt-5 space-y-5">
+          {assets.length === 0 && (
+            <p className="text-[0.95rem] text-[var(--color-muted)]">
+              {isAdmin
+                ? "Nothing recorded yet — add the practice's software below."
+                : "Nothing recorded yet — an administrator can add the practice's software here."}
+            </p>
+          )}
           {assets.map((asset) => (
             <AssetCard key={asset.id} asset={asset} isAdmin={isAdmin} />
           ))}
