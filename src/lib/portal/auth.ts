@@ -1,6 +1,7 @@
 import "server-only";
 
 import { redirect } from "next/navigation";
+import { cache } from "react";
 import type { StaffRole } from "@/lib/portal/contracts";
 import { serverClient, serviceClient } from "@/lib/portal/server";
 
@@ -34,52 +35,54 @@ function isStaffRole(value: unknown): value is StaffRole {
  * current authorization state from staff_profiles using the server-only
  * service client. User-editable metadata is never consulted.
  */
-export async function getSessionUser(): Promise<PortalSessionUser | null> {
-  try {
-    const authClient = await serverClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await authClient.auth.getUser();
+export const getSessionUser = cache(
+  async (): Promise<PortalSessionUser | null> => {
+    try {
+      const authClient = await serverClient();
+      const {
+        data: { user },
+        error: userError,
+      } = await authClient.auth.getUser();
 
-    if (userError || !user) return null;
+      if (userError || !user) return null;
 
-    const { data: profile, error: profileError } = await serviceClient()
-      .from("staff_profiles")
-      .select("email, display_name, role, active")
-      .eq("user_id", user.id)
-      .maybeSingle();
+      const { data: profile, error: profileError } = await serviceClient()
+        .from("staff_profiles")
+        .select("email, display_name, role, active")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-    if (
-      profileError ||
-      !profile ||
-      profile.active !== true ||
-      !isStaffRole(profile.role)
-    ) {
+      if (
+        profileError ||
+        !profile ||
+        profile.active !== true ||
+        !isStaffRole(profile.role)
+      ) {
+        return null;
+      }
+
+      const email =
+        user.email?.trim() ||
+        (typeof profile.email === "string" ? profile.email.trim() : "");
+      const displayName =
+        typeof profile.display_name === "string"
+          ? profile.display_name.trim()
+          : "";
+
+      if (!email || !displayName) return null;
+
+      return {
+        id: user.id,
+        email,
+        displayName,
+        role: profile.role,
+      };
+    } catch {
+      // Auth/provider outages fail closed and never expose provider details.
       return null;
     }
-
-    const email =
-      user.email?.trim() ||
-      (typeof profile.email === "string" ? profile.email.trim() : "");
-    const displayName =
-      typeof profile.display_name === "string"
-        ? profile.display_name.trim()
-        : "";
-
-    if (!email || !displayName) return null;
-
-    return {
-      id: user.id,
-      email,
-      displayName,
-      role: profile.role,
-    };
-  } catch {
-    // Auth/provider outages fail closed and never expose provider details.
-    return null;
-  }
-}
+  },
+);
 
 /**
  * Enforces the portal role hierarchy close to the protected operation:

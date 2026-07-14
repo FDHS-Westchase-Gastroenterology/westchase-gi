@@ -7,11 +7,9 @@ import { StaffManager, type StaffRow } from "./staff-manager";
 // The software custody record lives on the sibling /admin/settings/software.
 
 export default async function AdminSettingsPage() {
-  const session = await requireRole("staff");
-  const isAdmin = session.role === "admin";
-
   const db = serviceClient();
-  const [recipientsResult, staffResult] = await Promise.all([
+  const [session, recipientsResult, staffResult] = await Promise.all([
+    requireRole("staff"),
     db
       .from("notification_recipients")
       .select("id, email, label, active")
@@ -21,6 +19,8 @@ export default async function AdminSettingsPage() {
       .select("user_id, email, display_name, role, active")
       .order("display_name", { ascending: true }),
   ]);
+  const isAdmin = session.role === "admin";
+
   if (recipientsResult.error) {
     throw new Error(`Recipient read failed: ${recipientsResult.error.code}`);
   }

@@ -13,11 +13,9 @@ import {
 // off the default Settings sub-page.
 
 export default async function AdminSettingsSoftwarePage() {
-  const session = await requireRole("staff");
-  const isAdmin = session.role === "admin";
-
   const db = serviceClient();
-  const [assetsResult, grantsResult] = await Promise.all([
+  const [session, assetsResult, grantsResult] = await Promise.all([
+    requireRole("staff"),
     db
       .from("registry_assets")
       .select(
@@ -29,6 +27,8 @@ export default async function AdminSettingsSoftwarePage() {
       .select("id, asset_id, person, role, granted_via, active")
       .order("created_at", { ascending: true }),
   ]);
+  const isAdmin = session.role === "admin";
+
   if (assetsResult.error) {
     throw new Error(`Registry read failed: ${assetsResult.error.code}`);
   }
