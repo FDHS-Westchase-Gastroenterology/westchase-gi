@@ -2,11 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import {
-  AUDIT_ACTIONS,
   REQUEST_STATUSES,
   type RequestStatus,
 } from "@/lib/portal/contracts";
-import { recordAudit } from "@/lib/portal/audit";
 import { requireRole } from "@/lib/portal/auth";
 import { serviceClient } from "@/lib/portal/server";
 
@@ -26,37 +24,27 @@ export async function updateRequestStatus(
   requestId: string,
   nextStatus: RequestStatus,
 ): Promise<void> {
+  const session = await requireRole("staff");
   if (!isRequestStatus(nextStatus)) {
     throw new Error("Unknown request status");
   }
-  const session = await requireRole("staff");
 
   const db = serviceClient();
-  const { data: current, error: readError } = await db
-    .from("requests")
-    .select("id, status")
-    .eq("id", requestId)
-    .single();
-  if (readError || !current) {
-    throw new Error("Request not found");
+  const { data: changed, error } = await db.rpc(
+    "portal_update_request_status",
+    {
+      p_actor_email: session.email,
+      p_request_id: requestId,
+      p_next_status: nextStatus,
+    },
+  );
+  if (error) {
+    if (error.code === "P0002" || error.code === "22P02") {
+      throw new Error("Request not found");
+    }
+    throw new Error(`Status update failed: ${error.code}`);
   }
-  if (current.status === nextStatus) return;
-
-  const { error: updateError } = await db
-    .from("requests")
-    .update({ status: nextStatus })
-    .eq("id", requestId);
-  if (updateError) {
-    throw new Error(`Status update failed: ${updateError.code}`);
-  }
-
-  await recordAudit(db, {
-    actorEmail: session.email,
-    action: AUDIT_ACTIONS.REQUEST_STATUS_CHANGE,
-    entity: "requests",
-    entityId: requestId,
-    detail: { from: current.status, to: nextStatus },
-  });
+  if (!changed) return;
 
   revalidateRequestViews(requestId);
 }
@@ -74,32 +62,18 @@ export async function addRequestNote(
   }
 
   const db = serviceClient();
-  const { data: request, error: readError } = await db
-    .from("requests")
-    .select("id")
-    .eq("id", requestId)
-    .single();
-  if (readError || !request) {
-    throw new Error("Request not found");
-  }
-
-  const { error: insertError } = await db.from("request_events").insert({
-    request_id: requestId,
-    type: "note",
-    status: "recorded",
-    meta: { text: note, author_email: session.email },
+  const { error } = await db.rpc("portal_add_request_note", {
+    p_actor_email: session.email,
+    p_request_id: requestId,
+    p_note: note,
+    p_note_length: note.length,
   });
-  if (insertError) {
-    throw new Error(`Note write failed: ${insertError.code}`);
+  if (error) {
+    if (error.code === "P0002" || error.code === "22P02") {
+      throw new Error("Request not found");
+    }
+    throw new Error(`Note write failed: ${error.code}`);
   }
-
-  await recordAudit(db, {
-    actorEmail: session.email,
-    action: AUDIT_ACTIONS.REQUEST_NOTE,
-    entity: "requests",
-    entityId: requestId,
-    detail: { length: note.length },
-  });
 
   revalidateRequestViews(requestId);
 }

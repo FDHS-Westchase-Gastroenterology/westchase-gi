@@ -8,15 +8,37 @@ const TABLES = [
   "staff_profiles",
 ]
 
-const POLICIES = [
-  "audit_log_staff_read",
-  "notification_recipients_staff_read",
-  "registry_assets_portal_read",
-  "registry_grants_portal_read",
-  "request_events_staff_read",
-  "requests_staff_read",
-  "staff_profiles_self_read",
-]
+const POLICIES = []
+
+const RPC_SIGNATURES = {
+  portal_add_registry_grant:
+    "p_actor_email text, p_asset_id uuid, p_person text, p_role text, p_granted_via text",
+  portal_add_request_note:
+    "p_actor_email text, p_request_id uuid, p_note text, p_note_length integer",
+  portal_archive_registry_asset: "p_actor_email text, p_asset_id uuid",
+  portal_create_registry_asset:
+    "p_actor_email text, p_name text, p_kind text, p_repo text, p_live_url text, p_hosting text, p_maintainer text, p_status text, p_notes text",
+  portal_deactivate_registry_grant: "p_actor_email text, p_grant_id uuid",
+  portal_update_registry_asset:
+    "p_actor_email text, p_asset_id uuid, p_name text, p_kind text, p_repo text, p_live_url text, p_hosting text, p_maintainer text, p_status text, p_notes text",
+  portal_update_request_status:
+    "p_actor_email text, p_request_id uuid, p_next_status text",
+}
+
+const RPCS = Object.keys(RPC_SIGNATURES).sort()
+const RPC_RESULTS = {
+  portal_add_registry_grant: "uuid",
+  portal_add_request_note: "uuid",
+  portal_archive_registry_asset: "boolean",
+  portal_create_registry_asset: "uuid",
+  portal_deactivate_registry_grant: "boolean",
+  portal_update_registry_asset: "uuid",
+  portal_update_request_status: "boolean",
+}
+const PHASE_C_MIGRATION = {
+  version: "20260714224219",
+  name: "close_portal_data_api_and_atomic_audits",
+}
 
 const TARGETS = new Set(["dev", "prod"])
 
@@ -161,7 +183,7 @@ async function selectRows({ url, serviceKey, table, query }) {
   return payload
 }
 
-async function selectRowsAsUser({
+async function assertSelectDeniedAsUser({
   url,
   anonKey,
   accessToken,
@@ -174,13 +196,70 @@ async function selectRowsAsUser({
       Authorization: `Bearer ${accessToken}`,
     },
   })
-  const payload = await readResponse(response, `Authenticated read of ${table}`)
-
-  if (!Array.isArray(payload)) {
-    throw new Error(`Authenticated read of ${table} returned an unexpected shape`)
+  const text = await response.text()
+  let payload = null
+  if (text) {
+    try {
+      payload = JSON.parse(text)
+    } catch {
+      payload = text
+    }
   }
 
-  return payload
+  assert(!response.ok, `Authenticated read of ${table} unexpectedly succeeded`)
+  const code = payload && typeof payload === "object" ? payload.code : null
+  assert(
+    code === "42501",
+    `Authenticated read of ${table} failed unexpectedly (${response.status}${code ? `/${code}` : ""})`,
+  )
+}
+
+async function assertAtomicAuditRollback({ target, url, serviceKey }) {
+  const marker = `VERIFY ${target} atomic rollback ${Date.now()}`
+  const response = await fetch(
+    `${url}/rest/v1/rpc/portal_create_registry_asset`,
+    {
+      method: "POST",
+      headers: {
+        ...serviceHeaders(serviceKey),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        p_actor_email: "",
+        p_name: marker,
+        p_kind: "schema verification",
+        p_repo: null,
+        p_live_url: null,
+        p_hosting: null,
+        p_maintainer: "schema verifier",
+        p_status: "verification",
+        p_notes: null,
+      }),
+    },
+  )
+  const text = await response.text()
+  let payload = null
+  if (text) {
+    try {
+      payload = JSON.parse(text)
+    } catch {
+      payload = text
+    }
+  }
+
+  const code = payload && typeof payload === "object" ? payload.code : null
+  assert(
+    !response.ok && code === "23514",
+    `Forced audit failure was unexpected (${response.status}${code ? `/${code}` : ""})`,
+  )
+
+  const rows = await selectRows({
+    url,
+    serviceKey,
+    table: "registry_assets",
+    query: `select=id&name=eq.${encodeURIComponent(marker)}`,
+  })
+  assert(rows.length === 0, "Domain row survived a forced audit failure")
 }
 
 async function signIn({ url, anonKey, email, password }) {
@@ -217,6 +296,25 @@ async function main() {
   const email = requireEnv("PORTAL_SEED_ADMIN_EMAIL").trim().toLowerCase()
   const password = requireEnv("PORTAL_SEED_ADMIN_PASSWORD")
   const tableList = TABLES.map((name) => `'${name}'`).join(", ")
+  const rpcList = RPCS.map((name) => `'${name}'`).join(", ")
+
+  const migrationRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select version, name
+      from supabase_migrations.schema_migrations
+      order by version;
+    `,
+  })
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === PHASE_C_MIGRATION.version &&
+        row.name === PHASE_C_MIGRATION.name,
+    ),
+    `Phase C migration ${PHASE_C_MIGRATION.version}_${PHASE_C_MIGRATION.name} is not applied`,
+  )
 
   const tableRows = await queryDatabase({
     accessToken,
@@ -270,19 +368,105 @@ async function main() {
     `RLS policy mismatch: expected ${POLICIES.join(", ")}, received ${actualPolicies.join(", ")}`,
   )
 
-  const anonGrantRows = await queryDatabase({
+  const privilegeRows = await queryDatabase({
     accessToken,
     ref: config.ref,
     query: `
-      select table_name, privilege_type
-      from information_schema.role_table_grants
-      where table_schema = 'public'
-        and table_name in (${tableList})
-        and grantee = 'anon'
-      order by table_name, privilege_type;
+      select
+        c.relname as table_name,
+        pg_catalog.has_table_privilege('anon', c.oid, 'SELECT') as anon_select,
+        pg_catalog.has_table_privilege('anon', c.oid, 'INSERT') as anon_insert,
+        pg_catalog.has_table_privilege('anon', c.oid, 'UPDATE') as anon_update,
+        pg_catalog.has_table_privilege('anon', c.oid, 'DELETE') as anon_delete,
+        pg_catalog.has_table_privilege('authenticated', c.oid, 'SELECT') as authenticated_select,
+        pg_catalog.has_table_privilege('authenticated', c.oid, 'INSERT') as authenticated_insert,
+        pg_catalog.has_table_privilege('authenticated', c.oid, 'UPDATE') as authenticated_update,
+        pg_catalog.has_table_privilege('authenticated', c.oid, 'DELETE') as authenticated_delete,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'SELECT') as service_select,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'INSERT') as service_insert,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'UPDATE') as service_update,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'DELETE') as service_delete
+      from pg_catalog.pg_class as c
+      join pg_catalog.pg_namespace as n on n.oid = c.relnamespace
+      where n.nspname = 'public'
+        and c.relname in (${tableList})
+      order by c.relname;
     `,
   })
-  assert(anonGrantRows.length === 0, "The anon role has direct portal table grants")
+  assert(
+    privilegeRows.length === TABLES.length,
+    `Expected privilege rows for ${TABLES.length} tables, received ${privilegeRows.length}`,
+  )
+  for (const row of privilegeRows) {
+    assert(
+      !row.anon_select &&
+        !row.anon_insert &&
+        !row.anon_update &&
+        !row.anon_delete,
+      `The anon role has portal table access on ${row.table_name}`,
+    )
+    assert(
+      !row.authenticated_select &&
+        !row.authenticated_insert &&
+        !row.authenticated_update &&
+        !row.authenticated_delete,
+      `The authenticated role has portal table access on ${row.table_name}`,
+    )
+    assert(
+      row.service_select &&
+        row.service_insert &&
+        row.service_update &&
+        row.service_delete,
+      `The service_role lacks CRUD on ${row.table_name}`,
+    )
+  }
+
+  const rpcRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select
+        p.proname,
+        pg_catalog.pg_get_function_identity_arguments(p.oid) as identity_arguments,
+        pg_catalog.pg_get_function_result(p.oid) as result_type,
+        p.prosecdef,
+        coalesce(pg_catalog.array_to_string(p.proconfig, ','), '') as config,
+        pg_catalog.has_function_privilege('anon', p.oid, 'EXECUTE') as anon_execute,
+        pg_catalog.has_function_privilege('authenticated', p.oid, 'EXECUTE') as authenticated_execute,
+        pg_catalog.has_function_privilege('service_role', p.oid, 'EXECUTE') as service_execute
+      from pg_catalog.pg_proc as p
+      join pg_catalog.pg_namespace as n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname in (${rpcList})
+      order by p.proname;
+    `,
+  })
+  const actualRpcs = rpcRows.map((row) => row.proname)
+  assert(
+    sameValues(actualRpcs, RPCS),
+    `Portal RPC mismatch: expected ${RPCS.join(", ")}, received ${actualRpcs.join(", ")}`,
+  )
+  for (const rpc of rpcRows) {
+    assert(
+      rpc.identity_arguments === RPC_SIGNATURES[rpc.proname],
+      `${rpc.proname} signature mismatch: ${rpc.identity_arguments}`,
+    )
+    assert(
+      rpc.result_type === RPC_RESULTS[rpc.proname],
+      `${rpc.proname} result mismatch: ${rpc.result_type}`,
+    )
+    assert(!rpc.prosecdef, `${rpc.proname} must use SECURITY INVOKER`)
+    assert(
+      rpc.config.split(",").includes('search_path=""'),
+      `${rpc.proname} does not pin an empty search_path`,
+    )
+    assert(!rpc.anon_execute, `${rpc.proname} is executable by anon`)
+    assert(
+      !rpc.authenticated_execute,
+      `${rpc.proname} is executable by authenticated`,
+    )
+    assert(rpc.service_execute, `${rpc.proname} is not executable by service_role`)
+  }
 
   const session = await signIn({
     url: config.url,
@@ -296,9 +480,9 @@ async function main() {
     "Seed admin sign-in returned the wrong user",
   )
 
-  const authenticatedReads = await Promise.all(
+  await Promise.all(
     TABLES.map((table) =>
-      selectRowsAsUser({
+      assertSelectDeniedAsUser({
         url: config.url,
         anonKey: config.anonKey,
         accessToken: session.accessToken,
@@ -307,6 +491,12 @@ async function main() {
       }),
     ),
   )
+
+  await assertAtomicAuditRollback({
+    target,
+    url: config.url,
+    serviceKey: config.serviceKey,
+  })
 
   const encodedEmail = encodeURIComponent(email)
   const [staffRows, recipientRows, registryRows] = await Promise.all([
@@ -357,11 +547,18 @@ async function main() {
   console.log(`Verified ${target} tables (${actualTables.length}): ${actualTables.join(", ")}`)
   console.log(`Verified ${target} RLS: 0 public tables without row security`)
   console.log(
-    `Verified ${target} policies=${actualPolicies.length}, anon_table_grants=${anonGrantRows.length}`,
+    `Verified ${target} migration: ${PHASE_C_MIGRATION.version}_${PHASE_C_MIGRATION.name}`,
   )
   console.log(
-    `Verified ${target} authenticated RLS reads across ${authenticatedReads.length} portal tables`,
+    `Verified ${target} policies=${actualPolicies.length}, least-privilege table ACLs=${privilegeRows.length}`,
   )
+  console.log(
+    `Verified ${target} service-only SECURITY INVOKER RPCs=${actualRpcs.length}`,
+  )
+  console.log(
+    `Verified ${target} authenticated Data API denial across ${TABLES.length} portal tables`,
+  )
+  console.log(`Verified ${target} forced audit failure rolled back its domain row`)
   console.log(
     `Verified ${target} seed rows: staff_profiles=${staffRows.length}, notification_recipients=${recipientRows.length}, registry_assets=${registryRows.length}`,
   )

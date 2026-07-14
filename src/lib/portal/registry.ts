@@ -2,9 +2,7 @@ import "server-only";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { recordAudit } from "@/lib/portal/audit";
 import { requireRole } from "@/lib/portal/auth";
-import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
 import { serviceClient } from "@/lib/portal/server";
 import type {
   ManagementFailure,
@@ -54,16 +52,16 @@ function revalidateRegistry() {
   revalidatePath("/admin/audit");
 }
 
-function assetRow(data: z.infer<typeof assetFieldsSchema>) {
+function assetRpcArgs(data: z.infer<typeof assetFieldsSchema>) {
   return {
-    name: data.name,
-    kind: data.kind,
-    repo: data.repo || null,
-    live_url: data.liveUrl || null,
-    hosting: data.hosting || null,
-    maintainer: data.maintainer,
-    status: data.status,
-    notes: data.notes || null,
+    p_name: data.name,
+    p_kind: data.kind,
+    p_repo: data.repo || null,
+    p_live_url: data.liveUrl || null,
+    p_hosting: data.hosting || null,
+    p_maintainer: data.maintainer,
+    p_status: data.status,
+    p_notes: data.notes || null,
   };
 }
 
@@ -77,25 +75,19 @@ export async function createRegistryAssetMutation(
   }
 
   const db = serviceClient();
-  const { data: asset, error } = await db
-    .from("registry_assets")
-    .insert(assetRow(parsed.data))
-    .select("id")
-    .single();
-  if (error || !asset) {
+  const { data: assetId, error } = await db.rpc(
+    "portal_create_registry_asset",
+    {
+      p_actor_email: session.email,
+      ...assetRpcArgs(parsed.data),
+    },
+  );
+  if (error || !assetId) {
     if (error?.code === "23505") {
       return failure("conflict", "An asset with that name already exists.");
     }
     return failure("unavailable", "The asset could not be created.");
   }
-
-  await recordAudit(db, {
-    actorEmail: session.email,
-    action: AUDIT_ACTIONS.REGISTRY_CREATE,
-    entity: "registry_assets",
-    entityId: asset.id,
-    detail: { name: parsed.data.name },
-  });
 
   revalidateRegistry();
   return { ok: true };
@@ -111,36 +103,20 @@ export async function updateRegistryAssetMutation(
   }
 
   const db = serviceClient();
-  const { data: existing, error: readError } = await db
-    .from("registry_assets")
-    .select("id")
-    .eq("id", parsed.data.id)
-    .maybeSingle();
-  if (readError) {
-    return failure("unavailable", "The asset could not be read.");
-  }
-  if (!existing) {
-    return failure("not_found", "Asset not found.");
-  }
-
-  const { error: updateError } = await db
-    .from("registry_assets")
-    .update(assetRow(parsed.data))
-    .eq("id", parsed.data.id);
-  if (updateError) {
-    if (updateError.code === "23505") {
+  const { error } = await db.rpc("portal_update_registry_asset", {
+    p_actor_email: session.email,
+    p_asset_id: parsed.data.id,
+    ...assetRpcArgs(parsed.data),
+  });
+  if (error) {
+    if (error.code === "P0002") {
+      return failure("not_found", "Asset not found.");
+    }
+    if (error.code === "23505") {
       return failure("conflict", "An asset with that name already exists.");
     }
     return failure("unavailable", "The asset could not be updated.");
   }
-
-  await recordAudit(db, {
-    actorEmail: session.email,
-    action: AUDIT_ACTIONS.REGISTRY_UPDATE,
-    entity: "registry_assets",
-    entityId: parsed.data.id,
-    detail: { name: parsed.data.name },
-  });
 
   revalidateRegistry();
   return { ok: true };
@@ -156,36 +132,20 @@ export async function archiveRegistryAssetMutation(
   }
 
   const db = serviceClient();
-  const { data: existing, error: readError } = await db
-    .from("registry_assets")
-    .select("id, status")
-    .eq("id", parsed.data.id)
-    .maybeSingle();
-  if (readError) {
-    return failure("unavailable", "The asset could not be read.");
-  }
-  if (!existing) {
-    return failure("not_found", "Asset not found.");
-  }
-  if (existing.status === "archived") {
-    return { ok: true };
-  }
-
-  const { error: updateError } = await db
-    .from("registry_assets")
-    .update({ status: "archived" })
-    .eq("id", parsed.data.id);
-  if (updateError) {
+  const { data: changed, error } = await db.rpc(
+    "portal_archive_registry_asset",
+    {
+      p_actor_email: session.email,
+      p_asset_id: parsed.data.id,
+    },
+  );
+  if (error) {
+    if (error.code === "P0002") {
+      return failure("not_found", "Asset not found.");
+    }
     return failure("unavailable", "The asset could not be archived.");
   }
-
-  await recordAudit(db, {
-    actorEmail: session.email,
-    action: AUDIT_ACTIONS.REGISTRY_ARCHIVE,
-    entity: "registry_assets",
-    entityId: parsed.data.id,
-    detail: { from: existing.status },
-  });
+  if (!changed) return { ok: true };
 
   revalidateRegistry();
   return { ok: true };
@@ -201,43 +161,25 @@ export async function addRegistryGrantMutation(
   }
 
   const db = serviceClient();
-  const { data: asset, error: assetError } = await db
-    .from("registry_assets")
-    .select("id")
-    .eq("id", parsed.data.assetId)
-    .maybeSingle();
-  if (assetError) {
-    return failure("unavailable", "The asset could not be read.");
-  }
-  if (!asset) {
-    return failure("not_found", "Asset not found.");
-  }
-
-  const { data: grant, error: insertError } = await db
-    .from("registry_grants")
-    .insert({
-      asset_id: parsed.data.assetId,
-      person: parsed.data.person,
-      role: parsed.data.role,
-      granted_via: parsed.data.grantedVia,
-      active: true,
-    })
-    .select("id")
-    .single();
-  if (insertError || !grant) {
-    if (insertError?.code === "23505") {
+  const { data: grantId, error } = await db.rpc(
+    "portal_add_registry_grant",
+    {
+      p_actor_email: session.email,
+      p_asset_id: parsed.data.assetId,
+      p_person: parsed.data.person,
+      p_role: parsed.data.role,
+      p_granted_via: parsed.data.grantedVia,
+    },
+  );
+  if (error || !grantId) {
+    if (error?.code === "P0002") {
+      return failure("not_found", "Asset not found.");
+    }
+    if (error?.code === "23505") {
       return failure("conflict", "That exact grant is already recorded.");
     }
     return failure("unavailable", "The grant could not be recorded.");
   }
-
-  await recordAudit(db, {
-    actorEmail: session.email,
-    action: AUDIT_ACTIONS.REGISTRY_UPDATE,
-    entity: "registry_grants",
-    entityId: grant.id,
-    detail: { change: "grant_added", person: parsed.data.person },
-  });
 
   revalidateRegistry();
   return { ok: true };
@@ -253,36 +195,20 @@ export async function deactivateRegistryGrantMutation(
   }
 
   const db = serviceClient();
-  const { data: existing, error: readError } = await db
-    .from("registry_grants")
-    .select("id, active, person")
-    .eq("id", parsed.data.id)
-    .maybeSingle();
-  if (readError) {
-    return failure("unavailable", "The grant could not be read.");
-  }
-  if (!existing) {
-    return failure("not_found", "Grant not found.");
-  }
-  if (!existing.active) {
-    return { ok: true };
-  }
-
-  const { error: updateError } = await db
-    .from("registry_grants")
-    .update({ active: false })
-    .eq("id", parsed.data.id);
-  if (updateError) {
+  const { data: changed, error } = await db.rpc(
+    "portal_deactivate_registry_grant",
+    {
+      p_actor_email: session.email,
+      p_grant_id: parsed.data.id,
+    },
+  );
+  if (error) {
+    if (error.code === "P0002") {
+      return failure("not_found", "Grant not found.");
+    }
     return failure("unavailable", "The grant could not be deactivated.");
   }
-
-  await recordAudit(db, {
-    actorEmail: session.email,
-    action: AUDIT_ACTIONS.REGISTRY_UPDATE,
-    entity: "registry_grants",
-    entityId: parsed.data.id,
-    detail: { change: "grant_deactivated", person: existing.person },
-  });
+  if (!changed) return { ok: true };
 
   revalidateRegistry();
   return { ok: true };

@@ -40,12 +40,8 @@ function browserDb() {
 }
 
 function expectDenied(result: RestResult): void {
-  expect(result.error).not.toBeNull();
-  expect(
-    result.error?.code === "42501" ||
-      result.status === 401 ||
-      result.status === 403,
-  ).toBe(true);
+  expect(result.error?.code).toBe("42501");
+  expect([401, 403]).toContain(result.status);
 }
 
 function expectAnonymousReadClosed(result: RestResult): void {
@@ -163,18 +159,177 @@ test.describe("portal authentication and direct REST boundaries", () => {
     }
   });
 
-  test("VAL-ADMIN-013: anon reads and authenticated registry writes remain closed", async () => {
+  test("VAL-ADMIN-013: direct table and RPC access remain closed", async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
     const anon = browserDb();
     const db = serviceDb();
-
-    for (const table of [
+    const tables = [
       "requests",
+      "request_events",
       "notification_recipients",
       "staff_profiles",
+      "registry_assets",
+      "registry_grants",
       "audit_log",
-    ] as const) {
+    ] as const;
+    const missingId = randomUUID();
+    const rpcCalls = [
+      {
+        name: "portal_create_registry_asset",
+        args: {
+          p_actor_email: "",
+          p_name: `TEST denied RPC ${missingId}`,
+          p_kind: "test",
+          p_repo: null,
+          p_live_url: null,
+          p_hosting: null,
+          p_maintainer: "TEST automation",
+          p_status: "test",
+          p_notes: null,
+        },
+      },
+      {
+        name: "portal_update_registry_asset",
+        args: {
+          p_actor_email: "",
+          p_asset_id: missingId,
+          p_name: "TEST denied RPC update",
+          p_kind: "test",
+          p_repo: null,
+          p_live_url: null,
+          p_hosting: null,
+          p_maintainer: "TEST automation",
+          p_status: "test",
+          p_notes: null,
+        },
+      },
+      {
+        name: "portal_archive_registry_asset",
+        args: { p_actor_email: "", p_asset_id: missingId },
+      },
+      {
+        name: "portal_add_registry_grant",
+        args: {
+          p_actor_email: "",
+          p_asset_id: missingId,
+          p_person: "TEST automation",
+          p_role: "test",
+          p_granted_via: "e2e",
+        },
+      },
+      {
+        name: "portal_deactivate_registry_grant",
+        args: { p_actor_email: "", p_grant_id: missingId },
+      },
+      {
+        name: "portal_update_request_status",
+        args: {
+          p_actor_email: "",
+          p_request_id: missingId,
+          p_next_status: "new",
+        },
+      },
+      {
+        name: "portal_add_request_note",
+        args: {
+          p_actor_email: "",
+          p_request_id: missingId,
+          p_note: "TEST denied note",
+          p_note_length: 16,
+        },
+      },
+    ];
+
+    for (const table of tables) {
       const result = await anon.from(table).select("id");
       expectAnonymousReadClosed(result);
+    }
+    for (const call of rpcCalls) {
+      expectDenied(await anon.rpc(call.name, call.args));
+    }
+
+    const staleEmail = `stale-${randomUUID().slice(0, 8)}@example.test`;
+    const stalePassword = `St-${randomUUID()}-aA1!`;
+    const { data: staleUser, error: staleCreateError } =
+      await db.auth.admin.createUser({
+        email: staleEmail,
+        password: stalePassword,
+        email_confirm: true,
+        app_metadata: { role: "staff" },
+      });
+    expect(staleCreateError).toBeNull();
+    const staleUserId = staleUser.user?.id;
+    if (!staleUserId) throw new Error("Stale-token user creation failed");
+
+    const staleClient = browserDb();
+    try {
+      const { error: staleProfileError } = await db
+        .from("staff_profiles")
+        .insert({
+          user_id: staleUserId,
+          email: staleEmail,
+          display_name: "TEST Stale Token",
+          role: "staff",
+          active: true,
+        });
+      expect(staleProfileError).toBeNull();
+
+      await page.goto("/admin/login");
+      await page.getByLabel("Email").fill(staleEmail);
+      await page.getByLabel("Password").fill(stalePassword);
+      await page.getByRole("button", { name: "Sign in" }).click();
+      await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
+      for (const path of [
+        "/admin",
+        "/admin/settings",
+        "/admin/settings/software",
+      ]) {
+        await page.goto(path);
+        await expect(page).toHaveURL(new RegExp(`${path}/?$`));
+        await expect(page.getByTestId("session-user")).toContainText(
+          staleEmail,
+        );
+        if (path === "/admin") {
+          await expect(
+            page.getByRole("heading", {
+              name: "Appointment requests",
+              exact: true,
+            }),
+          ).toBeVisible();
+        } else if (path === "/admin/settings") {
+          await expect(page.getByTestId("recipients-manager")).toBeVisible();
+        } else {
+          await expect(
+            page.locator('[data-asset-name="Westchase GI website"]'),
+          ).toBeVisible();
+        }
+      }
+
+      const staleSignIn = await staleClient.auth.signInWithPassword({
+        email: staleEmail,
+        password: stalePassword,
+      });
+      expect(staleSignIn.error).toBeNull();
+      expect(staleSignIn.data.user?.app_metadata.role).toBe("staff");
+
+      const { error: staleDeactivateError } = await db
+        .from("staff_profiles")
+        .update({ active: false })
+        .eq("user_id", staleUserId);
+      expect(staleDeactivateError).toBeNull();
+
+      for (const table of tables) {
+        expectDenied(await staleClient.from(table).select("id"));
+      }
+      for (const call of rpcCalls) {
+        expectDenied(await staleClient.rpc(call.name, call.args));
+      }
+    } finally {
+      await staleClient.auth.signOut({ scope: "local" });
+      await db.from("staff_profiles").delete().eq("user_id", staleUserId);
+      await db.auth.admin.deleteUser(staleUserId);
     }
 
     const authenticated = browserDb();

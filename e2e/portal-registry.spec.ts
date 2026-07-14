@@ -123,6 +123,13 @@ test.describe("sovereignty registry", () => {
     await expect(
       card.locator('[data-grant-person="TEST Person"]'),
     ).toContainText("Ended", { timeout: 15_000 });
+    const { data: grant } = await db
+      .from("registry_grants")
+      .select("id")
+      .eq("asset_id", created!.id)
+      .eq("person", "TEST Person")
+      .single();
+    expect(grant?.id).toBeTruthy();
 
     // ARCHIVE through the UI.
     await card.locator('[data-action="archive-asset"]').click();
@@ -133,8 +140,9 @@ test.describe("sovereignty registry", () => {
     // Audit trail for the whole lifecycle.
     const { data: audits } = await db
       .from("audit_log")
-      .select("action")
+      .select("action, detail")
       .eq("actor_email", SEED_EMAIL.toLowerCase())
+      .eq("entity_id", created!.id)
       .in("action", [
         "registry.create",
         "registry.update",
@@ -143,9 +151,25 @@ test.describe("sovereignty registry", () => {
       .order("at", { ascending: false })
       .limit(20);
     const actions = (audits ?? []).map((row) => row.action);
-    expect(actions).toContain("registry.create");
-    expect(actions).toContain("registry.update");
-    expect(actions).toContain("registry.archive");
+    expect(actions.filter((action) => action === "registry.create")).toHaveLength(1);
+    expect(actions.filter((action) => action === "registry.update")).toHaveLength(1);
+    expect(actions.filter((action) => action === "registry.archive")).toHaveLength(1);
+
+    const { data: grantAudits } = await db
+      .from("audit_log")
+      .select("detail")
+      .eq("actor_email", SEED_EMAIL.toLowerCase())
+      .eq("entity_id", grant!.id)
+      .eq("action", "registry.update");
+    const grantChanges = (grantAudits ?? []).map(
+      (row) => (row.detail as { change?: string }).change,
+    );
+    expect(
+      grantChanges.filter((change) => change === "grant_added"),
+    ).toHaveLength(1);
+    expect(
+      grantChanges.filter((change) => change === "grant_deactivated"),
+    ).toHaveLength(1);
 
     // STAFF role: server-side rejection at the network level.
     const staffEmail = `reg-${runId}-staff@example.test`;
