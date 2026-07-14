@@ -90,7 +90,7 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
         .evaluateAll((links) =>
           links.map((link) => link.getBoundingClientRect().height),
         );
-      expect(navBoxes.length).toBeGreaterThanOrEqual(3);
+      expect(navBoxes).toHaveLength(3);
       for (const height of navBoxes) {
         expect(height, "nav target height").toBeGreaterThanOrEqual(40);
       }
@@ -100,11 +100,7 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
         .boundingBox();
       expect(signOutBox?.height ?? 0).toBeGreaterThanOrEqual(40);
 
-      // The primary nav stays at three tabs, and Settings is the active
-      // one on both of its sub-pages.
-      await expect(
-        page.locator('nav[aria-label="Portal sections"] a'),
-      ).toHaveCount(3);
+      // Settings is active on both of its sub-pages.
       if (portalPage.path.startsWith("/admin/settings")) {
         await expect(
           page.locator(

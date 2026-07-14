@@ -75,17 +75,12 @@ export function zodFieldErrors(
 
 /** Every staff-visible mutation writes one of these audit_log actions. */
 export const AUDIT_ACTIONS = {
-  REQUEST_STATUS_CHANGE: "request.status_change",
-  REQUEST_NOTE: "request.note",
   RECIPIENTS_ADD: "recipients.add",
   RECIPIENTS_REMOVE: "recipients.remove",
   RECIPIENTS_TOGGLE: "recipients.toggle",
   STAFF_INVITE: "staff.invite",
   STAFF_DEACTIVATE: "staff.deactivate",
   STAFF_ROLE: "staff.role",
-  REGISTRY_CREATE: "registry.create",
-  REGISTRY_UPDATE: "registry.update",
-  REGISTRY_ARCHIVE: "registry.archive",
 } as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
 

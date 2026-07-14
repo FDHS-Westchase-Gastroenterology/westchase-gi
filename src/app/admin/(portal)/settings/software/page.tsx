@@ -37,18 +37,10 @@ export default async function AdminSettingsSoftwarePage() {
   }
 
   const grants = grantsResult.data ?? [];
-  const grantsByAsset = new Map<string, typeof grants>();
-  for (const grant of grants) {
-    const group = grantsByAsset.get(grant.asset_id);
-    if (group) {
-      group.push(grant);
-    } else {
-      grantsByAsset.set(grant.asset_id, [grant]);
-    }
-  }
+  // ponytail: tiny ledger; build an index only after measured volume makes this hot.
   const assets: AssetWithGrants[] = (assetsResult.data ?? []).map((asset) => ({
     ...asset,
-    grants: grantsByAsset.get(asset.id) ?? [],
+    grants: grants.filter((grant) => grant.asset_id === asset.id),
   }));
 
   return (

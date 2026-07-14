@@ -21,10 +21,7 @@ export function SettingsTabs() {
     >
       <ul className="-mb-px flex min-w-max items-stretch gap-x-5">
         {TABS.map((tab) => {
-          const active =
-            tab.href === "/admin/settings"
-              ? pathname === tab.href
-              : pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+          const active = pathname === tab.href;
           return (
             <li key={tab.href} className="flex">
               <Link

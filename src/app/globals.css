@@ -58,13 +58,6 @@
   --z-drawer: 80;
   --z-overlay: 70;
 
-  /* The staff-portal assistant launcher's reserved footprint: bottom
-     offset (1.25rem) + pill height (~2.75rem) + breathing room. The
-     portal footer pads its bottom by this exact token, so a taller
-     launcher means updating one value instead of silently covering the
-     footer links (assistant-launcher.tsx <-> (portal)/layout.tsx). */
-  --spacing-assistant-clearance: 5rem;
-
   /* Fluid type scale (ratio >= 1.25) */
   --step-hero: clamp(2.4rem, 1.35rem + 4vw, 4rem);
   --step-1: clamp(2rem, 1.5rem + 2.2vw, 3rem);

@@ -111,17 +111,19 @@ function assert(condition, message) {
   }
 }
 
-async function readResponse(response, operation) {
+async function parseResponse(response) {
   const text = await response.text()
-  let payload = null
+  if (!text) return null
 
-  if (text) {
-    try {
-      payload = JSON.parse(text)
-    } catch {
-      payload = text
-    }
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
   }
+}
+
+async function readResponse(response, operation) {
+  const payload = await parseResponse(response)
 
   if (!response.ok) {
     const message =
@@ -196,15 +198,7 @@ async function assertSelectDeniedAsUser({
       Authorization: `Bearer ${accessToken}`,
     },
   })
-  const text = await response.text()
-  let payload = null
-  if (text) {
-    try {
-      payload = JSON.parse(text)
-    } catch {
-      payload = text
-    }
-  }
+  const payload = await parseResponse(response)
 
   assert(!response.ok, `Authenticated read of ${table} unexpectedly succeeded`)
   const code = payload && typeof payload === "object" ? payload.code : null
@@ -237,15 +231,7 @@ async function assertAtomicAuditRollback({ target, url, serviceKey }) {
       }),
     },
   )
-  const text = await response.text()
-  let payload = null
-  if (text) {
-    try {
-      payload = JSON.parse(text)
-    } catch {
-      payload = text
-    }
-  }
+  const payload = await parseResponse(response)
 
   const code = payload && typeof payload === "object" ? payload.code : null
   assert(

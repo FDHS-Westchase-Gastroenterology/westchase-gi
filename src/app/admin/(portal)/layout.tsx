@@ -58,11 +58,9 @@ export default async function PortalLayout({
       <main className="flex-1 pb-16 pt-8 sm:pt-10">
         <div className="container-x">{children}</div>
       </main>
-      {/* The shared clearance token keeps the footer links clear of the
-          floating assistant launcher pinned to the bottom-right corner;
-          its value is defined next to the launcher's dimensions in
-          globals.css. */}
-      <footer className="border-t border-[var(--color-line)] pb-[var(--spacing-assistant-clearance)] pt-5">
+      {/* Extra bottom padding keeps the footer links clear of the floating
+          assistant launcher pinned to the bottom-right corner. */}
+      <footer className="border-t border-[var(--color-line)] pb-20 pt-5">
         <div className="container-x flex flex-wrap items-center justify-between gap-3 text-[0.85rem] text-[var(--color-muted)]">
           <p>Internal tool for practice staff. Patient pages never link here.</p>
           <p className="flex items-center gap-x-4">
