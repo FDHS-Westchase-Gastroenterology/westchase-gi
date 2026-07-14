@@ -91,10 +91,10 @@ export default async function AdminRequestsPage({
             id="requests-heading"
             className="text-[1.65rem] font-black leading-tight text-[var(--color-ink)]"
           >
-            Patient relations
+            Appointment requests
           </h1>
           <p className="mt-1.5 max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
-            Appointment requests from the website, newest first.
+            Submitted from the website, newest first.
           </p>
         </div>
         <a

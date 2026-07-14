@@ -68,7 +68,7 @@ export default async function PortalLayout({
               href="/admin/audit"
               className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
             >
-              Logs
+              Activity log
             </Link>
             <span>
               Questions? See{" "}

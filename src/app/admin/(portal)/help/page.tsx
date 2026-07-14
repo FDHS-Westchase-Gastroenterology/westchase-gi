@@ -35,7 +35,7 @@ export default async function AdminHelpPage() {
             saved instantly
             to the practice&apos;s own secure database and appears on the{" "}
             <Link href="/admin" className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2">
-              Patient relations
+              Appointment requests
             </Link>{" "}
             page. Nothing depends on anyone watching an email inbox: even if
             every notification email went missing, the appointment request
@@ -108,8 +108,8 @@ export default async function AdminHelpPage() {
             <Link href="/admin/audit" className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2">
               activity log
             </Link>{" "}
-            (the Logs link at the bottom of every page), so there is always
-            a clear record of who did what.
+            (the Activity log link at the bottom of every page), so there
+            is always a clear record of who did what.
           </p>
         </div>
 

@@ -39,7 +39,7 @@ export default async function AdminAuditPage() {
         id="audit-heading"
         className="text-[1.65rem] font-black leading-tight text-[var(--color-ink)]"
       >
-        Audit log
+        Activity log
       </h1>
       <p className="mt-1.5 max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
         Every change made through the portal — who did it, what it touched,

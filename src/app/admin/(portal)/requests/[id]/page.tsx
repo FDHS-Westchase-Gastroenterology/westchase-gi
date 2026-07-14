@@ -121,7 +121,7 @@ export default async function RequestDetailPage({
           href="/admin"
           className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
         >
-          Patient relations
+          Appointment requests
         </Link>
         <span aria-hidden="true" className="mx-2 text-[var(--color-muted)]">
           /
@@ -231,7 +231,7 @@ export default async function RequestDetailPage({
             </h2>
             <p className="mt-1.5 text-[0.9rem] text-[var(--color-muted)]">
               Move the appointment request as you work it. Every change is
-              recorded in the audit log.
+              recorded in the activity log.
             </p>
             <div className="mt-4 grid gap-2">
               {REQUEST_STATUSES.map((status) => {
