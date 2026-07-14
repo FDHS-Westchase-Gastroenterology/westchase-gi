@@ -44,7 +44,7 @@ test.describe("sovereignty registry", () => {
 
   test("VAL-REG-001: seeded custody truth renders", async ({ page }) => {
     await signIn(page, SEED_EMAIL, SEED_PASSWORD);
-    await page.goto("/admin/settings");
+    await page.goto("/admin/settings/software");
 
     for (const seeded of [
       { name: "Westchase GI website", repo: "ASTXRTYS/westchase-gi" },
@@ -63,9 +63,9 @@ test.describe("sovereignty registry", () => {
       fullPage: true,
     });
 
-    // The retired standalone route forwards to Settings.
+    // The retired standalone route forwards to the software sub-page.
     await page.goto("/admin/registry");
-    await expect(page).toHaveURL(/\/admin\/settings/);
+    await expect(page).toHaveURL(/\/admin\/settings\/software\/?$/);
   });
 
   test("VAL-REG-002: asset CRUD persists with audit; staff cannot mutate", async ({
@@ -76,7 +76,7 @@ test.describe("sovereignty registry", () => {
     page.on("dialog", (dialog) => void dialog.accept());
 
     await signIn(page, SEED_EMAIL, SEED_PASSWORD);
-    await page.goto("/admin/settings");
+    await page.goto("/admin/settings/software");
 
     // CREATE through the UI.
     await page.locator('[data-action="open-new-asset"]').click();
@@ -170,7 +170,7 @@ test.describe("sovereignty registry", () => {
     await signIn(staffPage, staffEmail, staffPassword);
 
     // UI withholds mutation controls from staff.
-    await staffPage.goto("/admin/settings");
+    await staffPage.goto("/admin/settings/software");
     await expect(
       staffPage.locator('[data-asset-name="Westchase GI website"]'),
     ).toBeVisible();

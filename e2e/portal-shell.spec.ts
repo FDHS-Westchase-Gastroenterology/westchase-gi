@@ -54,6 +54,7 @@ const VIEWPORTS = [
 const PORTAL_PAGES = [
   { name: "queue", path: "/admin" },
   { name: "settings", path: "/admin/settings" },
+  { name: "settings-software", path: "/admin/settings/software" },
   { name: "audit", path: "/admin/audit" },
   { name: "help", path: "/admin/help" },
 ] as const;
@@ -98,6 +99,19 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
         .getByRole("button", { name: "Sign out" })
         .boundingBox();
       expect(signOutBox?.height ?? 0).toBeGreaterThanOrEqual(40);
+
+      // The primary nav stays at three tabs, and Settings is the active
+      // one on both of its sub-pages.
+      await expect(
+        page.locator('nav[aria-label="Portal sections"] a'),
+      ).toHaveCount(3);
+      if (portalPage.path.startsWith("/admin/settings")) {
+        await expect(
+          page.locator(
+            'nav[aria-label="Portal sections"] a[aria-current="page"]',
+          ),
+        ).toHaveText("Settings");
+      }
 
       if (portalPage.name === "queue") {
         await page.screenshot({

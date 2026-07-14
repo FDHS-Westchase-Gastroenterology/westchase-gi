@@ -50,7 +50,7 @@ function failure(
 }
 
 function revalidateRegistry() {
-  revalidatePath("/admin/settings");
+  revalidatePath("/admin/settings/software");
   revalidatePath("/admin/audit");
 }
 

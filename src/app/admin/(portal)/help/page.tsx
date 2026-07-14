@@ -116,11 +116,11 @@ export default async function AdminHelpPage() {
             day. A built-in assistant is planned for this portal that will
             let you describe a change in plain English and track it from
             request to done, without email. Until it ships, the{" "}
-            <Link href="/admin/settings" className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2">
-              Settings
+            <Link href="/admin/settings/software" className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2">
+              Software &amp; access
             </Link>{" "}
-            page lists every piece of software the practice runs and who
-            maintains it, under Software &amp; access.
+            page under Settings lists every piece of software the practice
+            runs and who maintains it.
           </p>
         </div>
 
