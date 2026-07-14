@@ -34,7 +34,7 @@ export default async function AdminHelpPage() {
             in any of the five languages — their request is saved instantly
             to the practice&apos;s own secure database and appears on the{" "}
             <Link href="/admin" className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2">
-              Requests
+              Patient relations
             </Link>{" "}
             page. Nothing depends on anyone watching an email inbox: even if
             every notification email went missing, the request would still be
@@ -100,9 +100,10 @@ export default async function AdminHelpPage() {
             deactivate their account there too; they are locked out
             immediately. Every change like this is recorded in the{" "}
             <Link href="/admin/audit" className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2">
-              Audit log
-            </Link>
-            , so there is always a clear record of who did what.
+              activity log
+            </Link>{" "}
+            (the Logs link at the bottom of every page), so there is always
+            a clear record of who did what.
           </p>
         </div>
 
@@ -115,11 +116,11 @@ export default async function AdminHelpPage() {
             day. A built-in assistant is planned for this portal that will
             let you describe a change in plain English and track it from
             request to done, without email. Until it ships, the{" "}
-            <Link href="/admin/registry" className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2">
-              Registry
+            <Link href="/admin/settings" className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2">
+              Settings
             </Link>{" "}
             page lists every piece of software the practice runs and who
-            maintains it.
+            maintains it, under Software &amp; access.
           </p>
         </div>
 

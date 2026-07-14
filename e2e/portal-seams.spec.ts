@@ -31,7 +31,6 @@ async function signIn(page: Page) {
 const PORTAL_PAGES = [
   "/admin",
   "/admin/settings",
-  "/admin/registry",
   "/admin/audit",
   "/admin/help",
 ];
@@ -60,7 +59,7 @@ test("VAL-REG-003: seam panels are truthful and no provider is ever called", asy
   await signIn(page);
 
   // The panels state the truthful inert status and what they WILL manage.
-  await page.goto("/admin/registry");
+  await page.goto("/admin/settings");
   for (const provider of ["github", "vercel"] as const) {
     const panel = page.getByTestId(`integration-${provider}`);
     await expect(panel).toBeVisible();

@@ -87,8 +87,9 @@ export function AssistantLauncher() {
           <ul className="mt-2 space-y-2 text-[0.95rem] leading-relaxed text-[var(--color-body)]">
             <li className="flex gap-x-2.5">
               <span aria-hidden="true" className="mt-0.5 text-[var(--color-teal-ink)]">•</span>
-              Answer questions about the queue, settings, and this
-              registry — like the Help page, but conversational.
+              Answer questions about patient requests, settings, and the
+              practice&apos;s software — like the Help page, but
+              conversational.
             </li>
             <li className="flex gap-x-2.5">
               <span aria-hidden="true" className="mt-0.5 text-[var(--color-teal-ink)]">•</span>

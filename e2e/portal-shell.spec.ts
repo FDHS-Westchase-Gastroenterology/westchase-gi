@@ -54,7 +54,6 @@ const VIEWPORTS = [
 const PORTAL_PAGES = [
   { name: "queue", path: "/admin" },
   { name: "settings", path: "/admin/settings" },
-  { name: "registry", path: "/admin/registry" },
   { name: "audit", path: "/admin/audit" },
   { name: "help", path: "/admin/help" },
 ] as const;
@@ -90,7 +89,7 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
         .evaluateAll((links) =>
           links.map((link) => link.getBoundingClientRect().height),
         );
-      expect(navBoxes.length).toBeGreaterThanOrEqual(5);
+      expect(navBoxes.length).toBeGreaterThanOrEqual(3);
       for (const height of navBoxes) {
         expect(height, "nav target height").toBeGreaterThanOrEqual(40);
       }

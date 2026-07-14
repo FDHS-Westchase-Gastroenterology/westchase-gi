@@ -121,7 +121,7 @@ export default async function RequestDetailPage({
           href="/admin"
           className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
         >
-          Requests
+          Patient relations
         </Link>
         <span aria-hidden="true" className="mx-2 text-[var(--color-muted)]">
           /
