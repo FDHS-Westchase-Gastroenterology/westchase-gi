@@ -150,13 +150,13 @@ export default async function AdminRequestsPage({
         <div className="mt-8 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-8 text-center sm:p-12">
           <h2 className="text-[1.1rem] font-black text-[var(--color-ink)]">
             {filter === "all"
-              ? "No requests yet"
+              ? "No appointment requests yet"
               : `Nothing marked ${STATUS_LABELS[filter as RequestStatus].toLowerCase()}`}
           </h2>
           <p className="mx-auto mt-2 max-w-[52ch] text-[0.95rem] leading-relaxed text-[var(--color-body)]">
             {filter === "all"
-              ? "When a patient submits the appointment form on the website, the request appears here instantly and the notification list gets an email ping."
-              : "Requests move between statuses from their detail page — open one from another filter to triage it."}
+              ? "When a patient submits the appointment form on the website, the appointment request appears here instantly and the notification list gets an email ping."
+              : "Appointment requests move between statuses from their detail page — open one from another filter to triage it."}
           </p>
         </div>
       ) : (

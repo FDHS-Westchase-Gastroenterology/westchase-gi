@@ -69,7 +69,8 @@ export function RecipientsManager({
         Notification recipients
       </h2>
       <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
-        Every address here gets an email ping when a new request arrives.
+        Every address here gets an email ping when a new appointment
+        request arrives.
         Notifications supplement the queue — the portal is the system of
         record, so nothing is lost if an email goes astray.
       </p>
@@ -86,8 +87,8 @@ export function RecipientsManager({
       <ul data-testid="recipient-list" className="mt-5 divide-y divide-[var(--color-line)]">
         {recipients.length === 0 && (
           <li className="py-4 text-[0.95rem] text-[var(--color-muted)]">
-            No recipients yet — new-request emails are currently going to
-            no one. The queue still records everything.
+            No recipients yet — new-appointment-request emails are
+            currently going to no one. The queue still records everything.
           </li>
         )}
         {recipients.map((recipient) => (

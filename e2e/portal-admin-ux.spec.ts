@@ -243,7 +243,7 @@ test.describe("portal management UI", () => {
     expect(words.length).toBeGreaterThanOrEqual(400);
 
     for (const heading of [
-      "Triaging requests and statuses",
+      "Triaging appointment requests and statuses",
       "Notification emails",
       "Staff access",
       "Getting website changes made",

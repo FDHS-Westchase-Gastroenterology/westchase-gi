@@ -144,7 +144,7 @@ export default async function RequestDetailPage({
         <div className="space-y-6">
           <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
             <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
-              Request details
+              Appointment request details
             </h2>
             <dl className="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-2">
               {fields.map((field) => (
@@ -230,8 +230,8 @@ export default async function RequestDetailPage({
               Status
             </h2>
             <p className="mt-1.5 text-[0.9rem] text-[var(--color-muted)]">
-              Move the request as you work it. Every change is recorded in
-              the audit log.
+              Move the appointment request as you work it. Every change is
+              recorded in the audit log.
             </p>
             <div className="mt-4 grid gap-2">
               {REQUEST_STATUSES.map((status) => {

@@ -28,34 +28,38 @@ export default async function AdminHelpPage() {
 
       <div className="mt-8 space-y-6">
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
-          <h2 className={SECTION_HEADING}>What the request queue is</h2>
+          <h2 className={SECTION_HEADING}>What the appointment request queue is</h2>
           <p className={SECTION_BODY}>
             When a patient fills out the appointment form on the website —
-            in any of the five languages — their request is saved instantly
+            in any of the five languages — their appointment request is
+            saved instantly
             to the practice&apos;s own secure database and appears on the{" "}
             <Link href="/admin" className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2">
               Patient relations
             </Link>{" "}
             page. Nothing depends on anyone watching an email inbox: even if
-            every notification email went missing, the request would still be
-            sitting safely in the queue. That is the whole point of this
-            system — the practice can never lose a request again. Requests
-            are callback leads, not booked appointments: someone still calls
-            the patient to schedule.
+            every notification email went missing, the appointment request
+            would still be sitting safely in the queue. That is the whole
+            point of this system — the practice can never lose an
+            appointment request again. Appointment requests are callback
+            leads, not booked appointments: someone still calls the patient
+            to schedule.
           </p>
         </div>
 
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
-          <h2 className={SECTION_HEADING}>Triaging requests and statuses</h2>
+          <h2 className={SECTION_HEADING}>Triaging appointment requests and statuses</h2>
           <p className={SECTION_BODY}>
-            Open a request to see everything the patient submitted: name,
+            Open an appointment request to see everything the patient
+            submitted: name,
             phone, email, preferred office and time, and their brief reason
             for the visit. Work it by phone, then move it through the four
             statuses with one click: <strong>New</strong> means nobody has
             handled it yet; <strong>Contacted</strong> means you reached out
             (or tried); <strong>Scheduled</strong> means the appointment is
             booked in the scheduling system; <strong>Closed</strong> means
-            the request needs no more work. The status filters on the queue
+            the appointment request needs no more work. The status filters
+            on the queue
             page make it easy to see exactly what still needs attention —
             keeping the New list at zero is the daily goal.
           </p>
@@ -64,7 +68,8 @@ export default async function AdminHelpPage() {
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
           <h2 className={SECTION_HEADING}>Notes</h2>
           <p className={SECTION_BODY}>
-            Every request has a notes section. Write what happened —
+            Every appointment request has a notes section. Write what
+            happened —
             &ldquo;left a voicemail at 2:15, will try again tomorrow&rdquo;
             — so a colleague can pick up exactly where you left off. Notes
             are stamped with your name and time automatically. Please keep
@@ -80,7 +85,8 @@ export default async function AdminHelpPage() {
             <Link href="/admin/settings" className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2">
               Settings
             </Link>{" "}
-            get a short email whenever a new request arrives. The email
+            get a short email whenever a new appointment request arrives.
+            The email
             deliberately contains no patient information — just a count and
             a link back here — so nothing sensitive ever sits in an inbox.
             Anyone on staff can pause a recipient (going on vacation, for
@@ -127,7 +133,8 @@ export default async function AdminHelpPage() {
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
           <h2 className={SECTION_HEADING}>If something looks wrong</h2>
           <p className={SECTION_BODY}>
-            If the portal will not load or a request seems missing, call or
+            If the portal will not load or an appointment request seems
+            missing, call or
             text the office line first — patients always see the
             call-and-text numbers on the website ({site.phone.display} /
             text {site.textLine.display}), so no one is ever stranded even
