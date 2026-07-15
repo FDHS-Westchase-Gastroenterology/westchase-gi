@@ -706,10 +706,12 @@
     background: oklch(0.22 0.04 248 / 0.72);
     backdrop-filter: blur(6px);
   }
-  .pc-dialog[open] .pc-shell {
+  .pc-dialog[open] .pc-shell,
+  .assistant-dialog[open] {
     animation: pc-rise 0.42s var(--ease-out-quint) both;
   }
-  .pc-dialog[open]::backdrop {
+  .pc-dialog[open]::backdrop,
+  .assistant-dialog[open]::backdrop {
     animation: pc-dim 0.3s ease-out both;
   }
   @keyframes pc-rise {
@@ -728,21 +730,7 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .pc-dialog[open] .pc-shell,
-    .pc-dialog[open]::backdrop {
-      animation: none;
-    }
-  }
-
-  /* ---- Staff-portal assistant panel (native <dialog>) ----
-     Enter-only motion reusing the pc-rise / pc-dim convention above;
-     exit stays instant (native dialog close). */
-  .assistant-dialog[open] {
-    animation: pc-rise 0.42s var(--ease-out-quint) both;
-  }
-  .assistant-dialog[open]::backdrop {
-    animation: pc-dim 0.3s ease-out both;
-  }
-  @media (prefers-reduced-motion: reduce) {
+    .pc-dialog[open]::backdrop,
     .assistant-dialog[open],
     .assistant-dialog[open]::backdrop {
       animation: none;
