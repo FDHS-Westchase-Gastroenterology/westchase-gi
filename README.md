@@ -6,8 +6,9 @@ existing site: same identity and content, every defect fixed, fully multilingual
 appointment-request pipeline and a staff admin portal.
 
 Built with Next.js 16 (App Router) + Tailwind CSS 4, with Supabase (Postgres + Auth) behind the
-intake pipeline and portal, and Resend for staff notifications. Deployed on Vercel; goes live at
-`westchasegi.com` at DNS cutover.
+intake pipeline and portal, and Resend for staff notifications. Deployed from the clinic-owned
+GitHub repository to the clinic-owned Vercel project; goes live at `westchasegi.com` at DNS
+cutover.
 
 ## Five languages
 
@@ -40,10 +41,10 @@ The old site's form silently discarded submissions. Now:
 Authenticated staff tool (Supabase Auth + row-level security; roles enforced server-side from
 a staff-profiles table): a requests queue with triage lifecycle (new → contacted → scheduled →
 closed) and attributed notes, notification-recipient management, staff account management with
-one-time-password invites, an audit log of every mutation, CSV export, a plain-English help
-page, and a software/access registry with honest (inert) GitHub/Vercel integration seams —
-see `docs/INTEGRATION-ACTIVATION.md` for how those activate after ownership transfer, and
-`docs/PORTAL-OPS.md` for day-to-day operations.
+emailed single-use setup links, an audit log of every mutation, CSV export, a plain-English help
+page, and a software/access registry with live server-side GitHub status and a deliberately
+deferred Vercel integration — see `docs/INTEGRATION-ACTIVATION.md` for the custody and connection
+runbook, and `docs/PORTAL-OPS.md` for day-to-day operations.
 
 ## What this rebuild fixes (vs. the previous vendor site)
 
@@ -94,7 +95,7 @@ codebase; the portal lives in `src/app/admin/`.
 
 ```bash
 npx playwright install chromium   # once
-npx playwright test               # full E2E suite (boots its own server on :3100)
+npx playwright test               # full serial E2E suite (boots its own server on :3100)
 npx playwright test e2e/smoke.spec.ts   # focused file
 ```
 
@@ -102,7 +103,9 @@ The suite covers the intake API contract, form states across all five locales, t
 fallback, portal auth/RLS boundaries, the queue lifecycle, management surfaces, the registry,
 and leak hygiene. Specs run against the Supabase project named in `.env.local` (use a
 development project, never production) and toggle notification recipients off for the run so
-no real emails send.
+no real emails send. The committed configuration uses one worker because the shared development
+Auth project rate-limits concurrent sign-ins and recovery requests; do not override that for
+login-heavy portal specs.
 
 ## Adding a patient PDF
 

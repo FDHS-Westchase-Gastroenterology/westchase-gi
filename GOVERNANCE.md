@@ -1,19 +1,23 @@
-# Governance — Westchase GI (`ASTXRTYS/westchase-gi`)
+# Governance — Westchase GI (`FDHS-Westchase-Gastroenterology/westchase-gi`)
 
 ## Stewardship
 
-This repository is maintained under the **ASTXRTYS** GitHub account until the Westchase GI site is shippable and a client-owned GitHub identity exists. Custody transfer to a practice-owned account is **deferred**; the future handoff uses a **new clean-snapshot repository** with verified production pipeline — not a rewrite of this history.
+The clinic-controlled personal GitHub account **FDHS-Westchase-Gastroenterology** owns this repository. The transfer completed on 2026-07-14 with issues, pull requests, and history intact. **ASTXRTYS** remains a Write collaborator for implementation work; Admin access is added only if a repository-settings task actually requires it.
+
+The clinic also owns the Vercel Hobby account and replacement project named `westchase-gi`. The production alias and all application environment variables moved to that project, its push-to-deploy path was verified, and the former consultant-owned Vercel project was deleted.
 
 ## Release discipline
 
-- **`main` is production.** Merges to `main` run CI (React Doctor) and deploy automatically to Vercel (`westchase-gi.vercel.app`, later `westchasegi.com` at DNS cutover).
+- **`main` is production.** Merges to `main` run CI (React Doctor) and deploy automatically to the clinic-owned Vercel project (`westchase-gi.vercel.app`, later `westchasegi.com` at DNS cutover).
 - Treat every merge as patient-facing unless the change is explicitly non-user-visible (tooling, governance, docs-only).
 
 ## Access lifecycle
 
-- Repository access stays limited to maintainers who need it for the WGI rebuild.
+- Repository access stays limited to maintainers who need it for the WGI rebuild. ASTXRTYS currently has Write access.
 - Dependabot, secret scanning, and push protection are enabled; address security alerts promptly.
-- When the deferred client handoff completes, rotate deploy tokens and revoke ASTXRTYS-only access that is no longer required.
+- The clinic account owner must enable two-factor authentication. This is an owner-only control and is not yet recorded as complete.
+- The `wgi-portal` GitHub App must be restricted from "all repositories" to only this repository. This is also owner-only and is not yet recorded as complete.
+- Revoke ASTXRTYS access when consulting work ends. Elevate it to Admin only for a concrete settings task, then return it to Write.
 
 ## Commit messages
 

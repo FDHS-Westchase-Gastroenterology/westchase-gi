@@ -4,8 +4,8 @@ import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // VAL-ADMIN-007: recipients are manageable from the UI and a staged
 // submission attempts notification for exactly the active set.
-// VAL-ADMIN-008: invite -> one-time password -> login -> deactivate ->
-// login refused, across two browser contexts.
+// VAL-ADMIN-008: invite -> one-time setup link -> own password -> deactivate
+// -> login refused, across two browser contexts.
 // VAL-ADMIN-012: the help page is substantive plain English (>=400 words).
 
 loadLocalEnv();
@@ -15,6 +15,10 @@ const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
 
 const db = serviceDb();
 const runId = randomUUID().slice(0, 8);
+
+// Invite/recovery URLs contain one-time bearer fragments. Never preserve them
+// in a retained-on-failure trace artifact.
+test.use({ trace: "off" });
 
 function testIp(label: string): string {
   const hex = createHash("sha256").update(`${runId}:${label}`).digest("hex");
@@ -37,6 +41,19 @@ async function signInExpectingPortal(
 ) {
   await signIn(page, email, password);
   await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
+}
+
+async function expectSetupLinkRejected(page: Page, setupUrl: string) {
+  await page.goto(setupUrl);
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page).toHaveURL(/\/admin\/auth\/confirm\/?$/, {
+    timeout: 15_000,
+  });
+  await expect(
+    page
+      .getByRole("alert")
+      .filter({ hasText: "This link is invalid or expired." }),
+  ).toBeVisible();
 }
 
 function recipientItem(page: Page, email: string) {
@@ -89,6 +106,9 @@ test.describe("portal management UI", () => {
       await expect(recipientItem(page, email)).toBeVisible({
         timeout: 15_000,
       });
+      await expect(page.getByTestId("recipient-delivery-status")).toContainText(
+        "Recipient added, but confirmation email delivery could not be confirmed.",
+      );
     }
 
     // Toggle B to paused; it persists.
@@ -176,11 +196,11 @@ test.describe("portal management UI", () => {
     }
   });
 
-  test("VAL-ADMIN-008: invite, one-time password, login, deactivate, refuse", async ({
+  test("VAL-ADMIN-008: invite, own-password setup, deactivate, refuse", async ({
     page,
     browser,
   }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(180_000);
     page.on("dialog", (dialog) => void dialog.accept());
 
     const inviteEmail = `ux-${runId}-staff@example.test`;
@@ -195,37 +215,113 @@ test.describe("portal management UI", () => {
     await page.locator("#invite-name").fill("TEST Invite");
     await page.getByRole("button", { name: "Invite", exact: true }).click();
 
-    const panel = page.getByTestId("temp-password-panel");
+    const panel = page.getByTestId("invite-fallback-panel");
     await expect(panel).toBeVisible({ timeout: 15_000 });
-    await expect(panel).toContainText(inviteEmail);
-    const tempPassword = (
-      (await page.getByTestId("temp-password").textContent()) ?? ""
+    await expect(panel.locator("p").first()).toHaveText(
+      `Invitation created for ${inviteEmail}`,
+    );
+    expect(await panel.getByText("One-time password").count()).toBe(0);
+    const originalSetupUrl = (
+      (await page.getByTestId("fallback-setup-url").textContent()) ?? ""
     ).trim();
-    expect(tempPassword.length).toBeGreaterThanOrEqual(20);
+    expect(URL.canParse(originalSetupUrl)).toBe(true);
+    const parsedSetupUrl = new URL(originalSetupUrl);
+    const setupFragment = new URLSearchParams(parsedSetupUrl.hash.slice(1));
+    expect(parsedSetupUrl.pathname).toBe("/admin/auth/confirm");
+    expect(setupFragment.get("type")).toBe("invite");
+    expect(Boolean(setupFragment.get("token_hash"))).toBe(true);
 
-    // Second context: the invited staffer signs in with the one-time password.
+    const invitedRow = page.locator(`[data-staff-email="${inviteEmail}"]`);
+    await expect(invitedRow).toContainText("Pending setup");
+
+    // An administrator can replace an expired/lost pending link. Reissuing
+    // invalidates the earlier token without changing the stored role.
+    await invitedRow.locator('[data-action="resend-invite"]').click();
+    await expect
+      .poll(async () => {
+        const renewed =
+          (await page.getByTestId("fallback-setup-url").textContent()) ?? "";
+        return renewed.trim().length > 0 && renewed.trim() !== originalSetupUrl;
+      })
+      .toBe(true);
+    const setupUrl = (
+      (await page.getByTestId("fallback-setup-url").textContent()) ?? ""
+    ).trim();
+    expect(URL.canParse(setupUrl)).toBe(true);
+    const renewedSetupUrl = new URL(setupUrl);
+    const renewedFragment = new URLSearchParams(
+      renewedSetupUrl.hash.slice(1),
+    );
+    expect(renewedSetupUrl.pathname).toBe("/admin/auth/confirm");
+    expect(renewedFragment.get("type")).toBe("invite");
+    expect(Boolean(renewedFragment.get("token_hash"))).toBe(true);
+
+    // Reissuing the invitation must supersede the original bearer link. Its
+    // Continue action stays on the confirmation screen with the generic
+    // expired-link outcome rather than establishing a password session.
+    const supersededContext = await browser.newContext();
+    const supersededPage = await supersededContext.newPage();
+    await expectSetupLinkRejected(supersededPage, originalSetupUrl);
+    await supersededContext.close();
+
+    // A never-onboarded invitation is also revoked when an administrator
+    // deactivates it. The row disappears from the default list immediately,
+    // and its previously issued bearer link cannot reach password setup.
+    const pendingEmail = `ux-${runId}-pending@example.test`;
+    await page.locator("#invite-email").fill(pendingEmail);
+    await page.locator("#invite-name").fill("TEST Pending Invite");
+    await page.getByRole("button", { name: "Invite", exact: true }).click();
+    await expect(panel.locator("p").first()).toHaveText(
+      `Invitation created for ${pendingEmail}`,
+      { timeout: 15_000 },
+    );
+    const pendingSetupUrl = (
+      (await page.getByTestId("fallback-setup-url").textContent()) ?? ""
+    ).trim();
+    expect(URL.canParse(pendingSetupUrl)).toBe(true);
+
+    const pendingRow = page.locator(`[data-staff-email="${pendingEmail}"]`);
+    await expect(pendingRow).toContainText("Pending setup");
+    await pendingRow.locator('[data-action="deactivate"]').click();
+    await expect(pendingRow).toHaveCount(0, { timeout: 15_000 });
+
+    const deactivatedInviteContext = await browser.newContext();
+    const deactivatedInvitePage = await deactivatedInviteContext.newPage();
+    await expectSetupLinkRejected(deactivatedInvitePage, pendingSetupUrl);
+    await deactivatedInviteContext.close();
+
+    // Second context: the invited staffer deliberately consumes the one-time
+    // link, chooses their own password, and lands in the portal.
     const staffContext = await browser.newContext();
     const staffPage = await staffContext.newPage();
-    await signInExpectingPortal(staffPage, inviteEmail, tempPassword);
+    await staffPage.goto(setupUrl);
+    await staffPage.getByRole("button", { name: "Continue" }).click();
+    await expect(staffPage).toHaveURL(/\/admin\/set-password\/?$/);
+
+    const chosenPassword = `Wgi!${runId}OwnPassword7`;
+    await staffPage.getByLabel("New password", { exact: true }).fill(chosenPassword);
+    await staffPage
+      .getByLabel("Confirm password", { exact: true })
+      .fill(chosenPassword);
+    await staffPage.getByRole("button", { name: "Set password" }).click();
+    await expect(staffPage).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
     await expect(staffPage.getByTestId("session-user")).toHaveText(
       inviteEmail,
     );
 
+    await page.reload();
+    await expect(invitedRow).not.toContainText("Pending setup");
+
     // Admin deactivates them.
-    await page
-      .locator(`[data-staff-email="${inviteEmail}"]`)
-      .locator('[data-action="deactivate"]')
-      .click();
-    await expect(
-      page.locator(`[data-staff-email="${inviteEmail}"]`),
-    ).toContainText("Deactivated", { timeout: 15_000 });
+    await invitedRow.locator('[data-action="deactivate"]').click();
+    await expect(invitedRow).toHaveCount(0, { timeout: 15_000 });
 
     // Their live session no longer opens the portal...
     await staffPage.goto("/admin");
     await expect(staffPage).toHaveURL(/\/admin\/login\/?$/);
 
     // ...and a fresh login is refused with the generic error.
-    await signIn(staffPage, inviteEmail, tempPassword);
+    await signIn(staffPage, inviteEmail, chosenPassword);
     await expect(staffPage).toHaveURL(/\/admin\/login\/?$/);
     await expect(staffPage.locator("#login-error")).toBeVisible();
 

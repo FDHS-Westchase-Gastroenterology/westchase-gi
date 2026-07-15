@@ -16,9 +16,11 @@ const RPC_SIGNATURES = {
   portal_add_request_note:
     "p_actor_email text, p_request_id uuid, p_note text, p_note_length integer",
   portal_archive_registry_asset: "p_actor_email text, p_asset_id uuid",
+  portal_complete_staff_onboarding: "p_user_id uuid",
   portal_create_registry_asset:
     "p_actor_email text, p_name text, p_kind text, p_repo text, p_live_url text, p_hosting text, p_maintainer text, p_status text, p_notes text",
   portal_deactivate_registry_grant: "p_actor_email text, p_grant_id uuid",
+  portal_record_staff_password_reset: "p_user_id uuid",
   portal_update_registry_asset:
     "p_actor_email text, p_asset_id uuid, p_name text, p_kind text, p_repo text, p_live_url text, p_hosting text, p_maintainer text, p_status text, p_notes text",
   portal_update_request_status:
@@ -30,14 +32,24 @@ const RPC_RESULTS = {
   portal_add_registry_grant: "uuid",
   portal_add_request_note: "uuid",
   portal_archive_registry_asset: "boolean",
+  portal_complete_staff_onboarding: "boolean",
   portal_create_registry_asset: "uuid",
   portal_deactivate_registry_grant: "boolean",
+  portal_record_staff_password_reset: "boolean",
   portal_update_registry_asset: "uuid",
   portal_update_request_status: "boolean",
 }
 const PHASE_C_MIGRATION = {
   version: "20260714224219",
   name: "close_portal_data_api_and_atomic_audits",
+}
+const ONBOARDING_MIGRATION = {
+  version: "20260715023258",
+  name: "complete_staff_onboarding",
+}
+const PASSWORD_RESET_LOCK_MIGRATION = {
+  version: "20260715025435",
+  name: "serialize_password_reset_deactivation",
 }
 
 const TARGETS = new Set(["dev", "prod"])
@@ -301,6 +313,41 @@ async function main() {
     ),
     `Phase C migration ${PHASE_C_MIGRATION.version}_${PHASE_C_MIGRATION.name} is not applied`,
   )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === ONBOARDING_MIGRATION.version &&
+        row.name === ONBOARDING_MIGRATION.name,
+    ),
+    `Onboarding migration ${ONBOARDING_MIGRATION.version}_${ONBOARDING_MIGRATION.name} is not applied`,
+  )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === PASSWORD_RESET_LOCK_MIGRATION.version &&
+        row.name === PASSWORD_RESET_LOCK_MIGRATION.name,
+    ),
+    `Password-reset lock migration ${PASSWORD_RESET_LOCK_MIGRATION.version}_${PASSWORD_RESET_LOCK_MIGRATION.name} is not applied`,
+  )
+
+  const onboardingColumnRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select data_type, is_nullable, column_default
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'staff_profiles'
+        and column_name = 'onboarded_at';
+    `,
+  })
+  assert(
+    onboardingColumnRows.length === 1 &&
+      onboardingColumnRows[0].data_type === "timestamp with time zone" &&
+      onboardingColumnRows[0].is_nullable === "YES" &&
+      onboardingColumnRows[0].column_default === null,
+    "staff_profiles.onboarded_at must be nullable timestamptz with no default",
+  )
 
   const tableRows = await queryDatabase({
     accessToken,
@@ -415,6 +462,7 @@ async function main() {
         p.proname,
         pg_catalog.pg_get_function_identity_arguments(p.oid) as identity_arguments,
         pg_catalog.pg_get_function_result(p.oid) as result_type,
+        pg_catalog.pg_get_functiondef(p.oid) as definition,
         p.prosecdef,
         coalesce(pg_catalog.array_to_string(p.proconfig, ','), '') as config,
         pg_catalog.has_function_privilege('anon', p.oid, 'EXECUTE') as anon_execute,
@@ -452,6 +500,12 @@ async function main() {
       `${rpc.proname} is executable by authenticated`,
     )
     assert(rpc.service_execute, `${rpc.proname} is not executable by service_role`)
+    if (rpc.proname === "portal_record_staff_password_reset") {
+      assert(
+        rpc.definition.toLowerCase().includes("for update"),
+        "portal_record_staff_password_reset must serialize against deactivation",
+      )
+    }
   }
 
   const session = await signIn({
@@ -490,7 +544,7 @@ async function main() {
       url: config.url,
       serviceKey: config.serviceKey,
       table: "staff_profiles",
-      query: `select=id,user_id,email,role,active&email=eq.${encodedEmail}`,
+      query: `select=id,user_id,email,role,active,onboarded_at&email=eq.${encodedEmail}`,
     }),
     selectRows({
       url: config.url,
@@ -510,7 +564,8 @@ async function main() {
     staffRows.length === 1 &&
       staffRows[0].user_id === user.id &&
       staffRows[0].role === "admin" &&
-      staffRows[0].active === true,
+      staffRows[0].active === true &&
+      typeof staffRows[0].onboarded_at === "string",
     "Seed admin staff profile is missing or incorrect",
   )
   assert(
@@ -536,6 +591,15 @@ async function main() {
     `Verified ${target} migration: ${PHASE_C_MIGRATION.version}_${PHASE_C_MIGRATION.name}`,
   )
   console.log(
+    `Verified ${target} migration: ${ONBOARDING_MIGRATION.version}_${ONBOARDING_MIGRATION.name}`,
+  )
+  console.log(
+    `Verified ${target} migration: ${PASSWORD_RESET_LOCK_MIGRATION.version}_${PASSWORD_RESET_LOCK_MIGRATION.name}`,
+  )
+  console.log(
+    `Verified ${target} staff_profiles.onboarded_at: nullable timestamptz, no default`,
+  )
+  console.log(
     `Verified ${target} policies=${actualPolicies.length}, least-privilege table ACLs=${privilegeRows.length}`,
   )
   console.log(
@@ -548,7 +612,7 @@ async function main() {
   console.log(
     `Verified ${target} seed rows: staff_profiles=${staffRows.length}, notification_recipients=${recipientRows.length}, registry_assets=${registryRows.length}`,
   )
-  console.log(`Verified ${target} seed admin sign-in: ${user.id} (${user.email})`)
+  console.log(`Verified ${target} seed admin sign-in: ${user.id}`)
 }
 
 main().catch((error) => {

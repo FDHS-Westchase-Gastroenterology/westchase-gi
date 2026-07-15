@@ -27,6 +27,9 @@ export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
 export type StaffRole = "admin" | "staff";
 
+export const RESET_REQUEST_MESSAGE =
+  "If an active staff account exists for that email, a password reset link has been sent.";
+
 /**
  * Validation rules mirror the client rules the form has always applied:
  * name required, phone >= 10 digits once formatting is stripped, email per
@@ -79,6 +82,8 @@ export const AUDIT_ACTIONS = {
   RECIPIENTS_REMOVE: "recipients.remove",
   RECIPIENTS_TOGGLE: "recipients.toggle",
   STAFF_INVITE: "staff.invite",
+  STAFF_ONBOARD: "staff.onboard",
+  STAFF_PASSWORD_RESET: "staff.password_reset",
   STAFF_DEACTIVATE: "staff.deactivate",
   STAFF_ROLE: "staff.role",
 } as const;

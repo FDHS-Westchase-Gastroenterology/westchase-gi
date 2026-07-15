@@ -7,6 +7,7 @@ import {
   deactivateStaffMutation,
   inviteStaffMutation,
   removeNotificationRecipientMutation,
+  resendStaffInviteMutation,
   toggleNotificationRecipientMutation,
 } from "@/lib/portal/management";
 
@@ -32,6 +33,11 @@ export async function removeNotificationRecipient(input: unknown) {
 export async function inviteStaff(input: unknown) {
   await requireRole("admin", { unauthenticated: "throw" });
   return inviteStaffMutation(input);
+}
+
+export async function resendStaffInvite(input: unknown) {
+  await requireRole("admin", { unauthenticated: "throw" });
+  return resendStaffInviteMutation(input);
 }
 
 export async function deactivateStaff(input: unknown) {

@@ -6,6 +6,7 @@ import {
   deactivateStaffMutation,
   inviteStaffMutation,
   removeNotificationRecipientMutation,
+  resendStaffInviteMutation,
   toggleNotificationRecipientMutation,
   type ManagementFailure,
 } from "@/lib/portal/management";
@@ -102,6 +103,9 @@ export async function POST(request: NextRequest): Promise<Response> {
       case "staff.invite":
         result = await inviteStaffMutation(payload.input);
         successStatus = 201;
+        break;
+      case "staff.invite.resend":
+        result = await resendStaffInviteMutation(payload.input);
         break;
       case "staff.deactivate":
         result = await deactivateStaffMutation(payload.input);

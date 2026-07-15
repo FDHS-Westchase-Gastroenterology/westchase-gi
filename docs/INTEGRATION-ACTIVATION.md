@@ -1,85 +1,104 @@
-# Integration activation runbook
+# Integration activation and custody runbook
 
-The staff portal's registry page shows two connection panels — GitHub and
-Vercel — that are deliberately inert. This document is the complete recipe
-for activating them later. It is written for whoever maintains this
-repository at that time; no other context is required.
+The staff portal's software ledger reports live GitHub repository status through a clinic-owned
+GitHub App. The Vercel connection remains deliberately deferred. This runbook records the actual
+custody model, the completed rehearsal, and the controls that still require the clinic account
+owner.
 
-## Why the seams are inert
+## Current custody (verified 2026-07-15)
 
-Until the practice owns its own GitHub organization and Vercel team, any
-credential the portal held would belong to an individual's personal
-account. That is the wrong trust shape for a medical practice's
-infrastructure: it couples the clinic's operations to one person's
-identity, and personal access tokens are broad, long-lived, and hard to
-scope. The decision on record: **no personal access token is ever wired
-into this portal.** The sanctioned integration is a **GitHub App owned by
-the practice's own organization**, created only after the ownership
-transfer completes.
+- The clinic-controlled personal GitHub account `FDHS-Westchase-Gastroenterology` owns
+  `FDHS-Westchase-Gastroenterology/westchase-gi`. The old `ASTXRTYS/westchase-gi` URL redirects.
+- GitHub retained `ASTXRTYS` as a **Write** collaborator. That is sufficient for implementation;
+  Admin is granted only when a specific repository-settings task requires it.
+- The clinic owns the Vercel Hobby account and replacement project `westchase-gi`. All eight
+  application variables were moved across production, preview, and development; the
+  `westchase-gi.vercel.app` alias moved; an ASTXRTYS-authored probe commit deployed READY; and the
+  former consultant-owned project was deleted.
+- The private GitHub App `wgi-portal` is registered on the clinic account with Repository
+  Administration read/write and Metadata read permissions, and no webhook. A manual rehearsal
+  proved the full server-to-server chain: signed App JWT, installation token, repository read,
+  and collaborator-list read.
+- App identifiers and private-key material remain outside git. The private key is the only secret
+  in this connection; never paste any of these values into source, documentation, issues, or
+  command-line arguments.
+- The three App variables are configured only in the clinic-owned Vercel project's Production
+  environment. They are deliberately absent from Preview: mutable preview code must not inherit
+  an App key whose registration includes Repository Administration permission. The provider's
+  configured and unconfigured states were rehearsed locally against the real App before release.
 
-## Preconditions (in order)
+Two owner-only controls remain open:
 
-1. **The practice owns its accounts.**
-   - A GitHub organization created by the practice, with the practice's
-     email as owner and two-factor authentication enforced.
-   - A Vercel team owned by the practice (the website project transferred
-     into it, or redeployed from the transferred repository).
-   - This repository transferred into (or forked to) the practice's
-     GitHub organization; the deploy pipeline verified green afterward.
-2. **A maintainer with admin access to both.**
+1. Enable two-factor authentication on `FDHS-Westchase-Gastroenterology`.
+2. Change the App installation from **All repositories** to **Only select repositories**, selecting
+   only `westchase-gi`.
 
-## Activating the GitHub connection
+## Trust model
 
-1. In the practice's GitHub organization, create a **GitHub App**
-   (Settings → Developer settings → GitHub Apps → New):
-   - Name it clearly (for example `wgi-portal`).
-   - Permissions, least privilege: Repository → **Administration:
-     read-and-write** (collaborator management) and **Metadata: read**.
-     Add nothing else until a feature needs it.
-   - No webhook is required for the first iteration.
-2. Install the App on the organization, scoped to only the website
-   repository.
-3. Generate a **private key** for the App. Store it — along with the App
-   ID and installation ID — in the deployment platform's environment
-   variables (`vercel env add`). Never commit any of them. Suggested
-   names: `PORTAL_GITHUB_APP_ID`, `PORTAL_GITHUB_APP_INSTALLATION_ID`,
-   `PORTAL_GITHUB_APP_PRIVATE_KEY`.
-4. Implement a live provider in `src/lib/portal/integrations.ts`:
-   replace the static `status()` for `github` with an implementation that
-   authenticates as the App installation (exchange the App JWT for an
-   installation token server-side; tokens are short-lived by design).
-   Keep every call server-only — the portal's browser bundle must never
-   hold credentials.
-5. Wire the registry's grant actions to the App where appropriate
-   (adding/removing repository collaborators), keeping the audit-log
-   writes exactly as they are.
+No personal access token is ever wired into this portal. The sanctioned connection is the
+clinic-owned GitHub App, and every GitHub request stays server-side. Installation tokens are
+short-lived and minted only from the App credentials at request time.
 
-## Activating the Vercel connection
+The decided owner is a clinic-controlled **personal account**, not an organization. GitHub Apps
+can be registered and installed on personal accounts, so an organization is not a prerequisite.
 
-1. From the practice's Vercel team, create an **access token scoped to
-   the team** (Team Settings → Tokens) with the narrowest available
-   scope. Prefer a token that can read deployments and manage
-   environment variables, nothing broader.
-2. Store it as `PORTAL_VERCEL_TOKEN` (plus `PORTAL_VERCEL_TEAM_ID`) via
-   `vercel env add` — server-side only, never `NEXT_PUBLIC_*`.
-3. Implement the live `vercel` provider in
-   `src/lib/portal/integrations.ts`: deployment visibility first
-   (list/inspect), configuration management second. All calls
-   server-side.
+## GitHub connection
 
-## Verifying after activation
+The deployment needs these server-only variables in Production. Verify integration changes
+locally with the ignored credential store; do not copy the Administration-capable private key to
+Preview or browser-visible configuration:
 
-- The registry page's connection panels flip to "Connected" with the
-  organization/team name, rendered from live server-side calls.
-- `npm run build` then a scan of `.next/static` for credential material
-  comes back clean (the repository's secret-scan script covers this).
-- The audit log records every access change made through the portal.
+| Name | Value shape |
+|---|---|
+| `PORTAL_GITHUB_APP_ID` | GitHub App ID |
+| `PORTAL_GITHUB_APP_INSTALLATION_ID` | Installation ID for the clinic account |
+| `PORTAL_GITHUB_APP_PRIVATE_KEY` | PEM private key, either base64-encoded or with escaped newlines |
 
-## What NOT to do
+Set them through the Vercel environment store without placing values in shell history. Never
+prefix one with `NEXT_PUBLIC_`. The provider in `src/lib/portal/integrations.ts` normalizes the
+two supported private-key encodings, signs an RS256 App JWT, exchanges it for an installation
+token, and reads the canonical repository through GitHub's server API.
 
-- Do not wire a personal access token "temporarily." That is the exact
-  failure mode this seam was designed to prevent.
-- Do not call GitHub or Vercel from client components; the panels render
-  server-provided state only.
-- Do not widen App permissions speculatively; add scopes when a shipped
-  feature requires them.
+After changing the variables, redeploy and verify:
+
+1. Sign in as an active portal administrator and open `/admin/settings/software`.
+2. Confirm GitHub shows **Connected** and names
+   `FDHS-Westchase-Gastroenterology/westchase-gi` from a live response.
+3. Run `npm run build` and `node scripts/verify-no-secrets.mjs`.
+4. Locally, run once without the three App variables and confirm the panel returns the safe **Not
+   configured** state instead of failing the page. A partial or invalid local configuration must
+   report **Connection unavailable** without exposing its input. Do not copy Production secrets
+   into Preview just to exercise these states.
+
+The current provider reads repository state only. Portal collaborator mutations are not wired to
+GitHub yet; add them only when that workflow is explicitly commissioned, keep the existing audit
+transaction, and do not broaden App permissions beyond the operation being shipped.
+
+## Transfer and hosting deviations worth preserving
+
+- The original plan assumed a GitHub organization. The accepted model is the clinic's personal
+  account because it preserves GitHub branch protection and Vercel Hobby compatibility without
+  organization-plan restrictions.
+- The old Vercel project could not simply be relinked. On Hobby, a project cannot connect to a
+  repository owned by a different GitHub account than the account linked to that Vercel login.
+  The working path was a new clinic-owned project imported from the transferred repository,
+  followed by environment and alias migration and deletion of the old project.
+- The transfer acceptance criterion originally requested ASTXRTYS Admin access. The verified
+  working state is Write access; do not expand it without a settings-level need.
+
+## Vercel connection is deferred
+
+The hosting itself is clinic-owned and active, but the portal's Vercel provider remains a
+disconnected status panel by issue scope. If deployment visibility is later commissioned, create
+a narrowly scoped token in the clinic-owned Vercel account, store it as server-only environment
+configuration, and start with read-only deployment status. Do not add configuration mutation
+permissions until a shipped workflow needs them.
+
+## Do not
+
+- Do not use a personal access token as a shortcut.
+- Do not call GitHub or Vercel from a client component.
+- Do not log JWTs, installation tokens, environment values, or private-key parsing errors that
+  contain input.
+- Do not claim the two owner-only controls are complete until the clinic account owner verifies
+  them.

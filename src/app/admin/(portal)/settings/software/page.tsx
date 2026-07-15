@@ -42,6 +42,12 @@ export default async function AdminSettingsSoftwarePage() {
     ...asset,
     grants: grants.filter((grant) => grant.asset_id === asset.id),
   }));
+  const integrations = await Promise.all(
+    PORTAL_INTEGRATIONS.map(async (provider) => ({
+      provider,
+      status: await provider.status(),
+    })),
+  );
 
   return (
     <div className="space-y-10">
@@ -82,13 +88,19 @@ export default async function AdminSettingsSoftwarePage() {
           Connections
         </h2>
         <p className="mt-1.5 max-w-[65ch] text-[0.9rem] text-[var(--color-muted)]">
-          Where the website&apos;s code lives and runs. These connections
-          activate after the practice takes ownership of its accounts —
-          nothing here talks to any outside service today.
+          Where the website&apos;s code lives and runs. GitHub verifies the
+          practice-owned repository when configured; Vercel remains
+          disconnected until its provider is activated.
         </p>
         <div className="mt-5 grid gap-5 md:grid-cols-2">
-          {PORTAL_INTEGRATIONS.map((provider) => {
-            const status = provider.status();
+          {integrations.map(({ provider, status }) => {
+            const statusLabel = status.connected
+              ? `Connected — ${status.account}`
+              : status.reason === "missing_configuration"
+                ? "Not configured"
+                : status.reason === "connection_unavailable"
+                  ? "Connection unavailable"
+                  : "Not configured";
             return (
               <div
                 key={provider.id}
@@ -103,30 +115,43 @@ export default async function AdminSettingsSoftwarePage() {
                     data-testid="integration-status"
                     className="rounded-full bg-[var(--color-line)] px-2.5 py-1 text-[0.72rem] font-bold uppercase tracking-[0.05em] text-[var(--color-muted)]"
                   >
-                    {status.connected
-                      ? `Connected — ${status.account}`
-                      : "Not connected — activates after ownership transfer"}
+                    {statusLabel}
                   </span>
                 </div>
                 <p className="mt-2.5 text-[0.9rem] leading-relaxed text-[var(--color-body)]">
                   {provider.summary}
                 </p>
                 <h4 className="mt-4 text-[0.78rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
-                  Once connected, it will manage
+                  {status.connected
+                    ? "Live connection"
+                    : "Once connected, it will manage"}
                 </h4>
-                <ul className="mt-2 space-y-1.5 text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-                  {provider.willManage.map((item) => (
-                    <li key={item} className="flex gap-x-2.5">
-                      <span
-                        aria-hidden="true"
-                        className="mt-0.5 text-[var(--color-teal-ink)]"
-                      >
-                        •
-                      </span>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+                {status.connected ? (
+                  <dl className="mt-2 space-y-2 text-[0.9rem] leading-relaxed text-[var(--color-body)]">
+                    {status.details.map((detail) => (
+                      <div key={detail.label}>
+                        <dt className="font-bold text-[var(--color-ink)]">
+                          {detail.label}
+                        </dt>
+                        <dd className="break-words">{detail.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                ) : (
+                  <ul className="mt-2 space-y-1.5 text-[0.9rem] leading-relaxed text-[var(--color-body)]">
+                    {provider.willManage.map((item) => (
+                      <li key={item} className="flex gap-x-2.5">
+                        <span
+                          aria-hidden="true"
+                          className="mt-0.5 text-[var(--color-teal-ink)]"
+                        >
+                          •
+                        </span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             );
           })}

@@ -47,14 +47,30 @@ test.describe("sovereignty registry", () => {
     await page.goto("/admin/settings/software");
 
     for (const seeded of [
-      { name: "Westchase GI website", repo: "ASTXRTYS/westchase-gi" },
-      { name: "Review QR print tool", repo: "ASTXRTYS/wgi-review-qr" },
-      { name: "Staff admin portal", repo: "ASTXRTYS/westchase-gi" },
+      {
+        name: "Westchase GI website",
+        repo: "FDHS-Westchase-Gastroenterology/westchase-gi",
+        hosting: "Vercel project: westchase-gi (clinic-owned Hobby account)",
+        maintainer: "Clinic-owned; ASTXRTYS — Write collaborator",
+      },
+      {
+        name: "Review QR print tool",
+        repo: "ASTXRTYS/wgi-review-qr",
+        hosting: "Vercel",
+        maintainer: "Jason — consultant",
+      },
+      {
+        name: "Staff admin portal",
+        repo: "FDHS-Westchase-Gastroenterology/westchase-gi",
+        hosting: "Vercel project: westchase-gi (clinic-owned Hobby account)",
+        maintainer: "Clinic-owned; ASTXRTYS — Write collaborator",
+      },
     ]) {
       const card = page.locator(`[data-asset-name="${seeded.name}"]`);
       await expect(card).toBeVisible();
       await expect(card).toContainText(seeded.repo);
-      await expect(card).toContainText("Jason — consultant");
+      await expect(card).toContainText(seeded.hosting);
+      await expect(card).toContainText(seeded.maintainer);
       await expect(card.getByTestId("asset-status")).toBeVisible();
     }
 
@@ -187,6 +203,7 @@ test.describe("sovereignty registry", () => {
       display_name: "TEST Registry Staff",
       role: "staff",
       active: true,
+      onboarded_at: new Date().toISOString(),
     });
 
     const staffContext = await browser.newContext();

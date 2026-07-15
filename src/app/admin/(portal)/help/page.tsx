@@ -98,11 +98,15 @@ export default async function AdminHelpPage() {
           <h2 className={SECTION_HEADING}>Staff access</h2>
           <p className={SECTION_BODY}>
             Administrators can invite a new staff member from the Settings
-            page: enter their email and name, and the portal generates a
-            one-time password to hand over securely — in person or by
-            phone, never by email. When someone leaves the practice,
-            deactivate their account there too; they are locked out
-            immediately. Every change like this is recorded in the{" "}
+            page: enter their email, name, and role, and the portal emails a
+            one-time setup link so they can choose their own password. If
+            delivery fails, Settings shows the same one-time link for secure
+            handoff. Pending invitations can be deactivated just like active
+            accounts; the link stops working and the person is removed from
+            the default staff list immediately. Active staff who forget a
+            password can request a reset from the sign-in page without an
+            administrator learning or choosing the new password. Every
+            access change is recorded in the{" "}
             <Link href="/admin/audit" className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2">
               activity log
             </Link>{" "}

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { randomBytes } from "node:crypto";
+import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/portal/audit";
@@ -9,6 +9,11 @@ import {
   AUDIT_ACTIONS,
   type StaffRole,
 } from "@/lib/portal/contracts";
+import {
+  portalEmailSender,
+  portalUrl,
+  sendPortalEmail,
+} from "@/lib/portal/email";
 import { serviceClient } from "@/lib/portal/server";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -54,11 +59,17 @@ export type ManagementFailure = {
 
 export type MutationResult = { ok: true } | ManagementFailure;
 
+export type AddRecipientResult =
+  | { ok: true; delivery: "sent" | "failed" }
+  | ManagementFailure;
+
 export type InviteStaffResult =
-  | { ok: true; tempPassword: string }
+  | { ok: true; delivery: "sent" }
+  | { ok: true; delivery: "failed"; fallbackSetupUrl: string }
   | ManagementFailure;
 
 type ServiceClient = ReturnType<typeof serviceClient>;
+type StaffSetupType = "invite" | "recovery";
 
 function failure(
   code: ManagementFailureCode,
@@ -76,17 +87,80 @@ function revalidateManagementViews(): void {
   revalidatePath("/admin/audit");
 }
 
-function temporaryPassword(): string {
-  // 36 characters with guaranteed mixed character classes. It exists only in
-  // this call frame and the one-time action response; it is never stored.
-  return `Wg!7${randomBytes(24).toString("base64url")}`;
-}
-
 function metadataRecord(value: unknown): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     return {};
   }
   return { ...(value as Record<string, unknown>) };
+}
+
+function recipientConfirmationText(): string {
+  return [
+    "A Westchase GI portal administrator added this address to appointment request notifications.",
+    "Future notification emails only say that an appointment request is waiting and link to the secure portal. They do not contain patient details.",
+    `Messages are sent from ${portalEmailSender()}.`,
+    "If you did not expect this, contact the Westchase GI office directly.",
+  ].join("\n\n");
+}
+
+function staffInviteText(setupUrl: string): string {
+  return [
+    "You have been invited to the Westchase GI staff portal.",
+    "Use this one-time link to choose your password:",
+    setupUrl,
+    "If the link has expired, ask a portal administrator for a new invitation. If you did not expect this invitation, contact the Westchase GI office directly.",
+  ].join("\n\n");
+}
+
+function staffSetupUrl(
+  confirmationUrl: string,
+  tokenHash: string,
+  type: StaffSetupType,
+): string {
+  const setupUrl = new URL(confirmationUrl);
+  setupUrl.hash = new URLSearchParams({
+    token_hash: tokenHash,
+    type,
+  }).toString();
+  return setupUrl.toString();
+}
+
+function staffSetupIdempotencyKey(
+  userId: string,
+  tokenHash: string,
+  type: StaffSetupType,
+): string {
+  const tokenDigest = createHash("sha256")
+    .update(tokenHash)
+    .digest("hex")
+    .slice(0, 32);
+  return `staff-setup/${type}/${userId}/${tokenDigest}`;
+}
+
+async function deliverStaffSetupLink({
+  email,
+  setupUrl,
+  tokenHash,
+  type,
+  userId,
+}: {
+  email: string;
+  setupUrl: string;
+  tokenHash: string;
+  type: StaffSetupType;
+  userId: string;
+}): Promise<Exclude<InviteStaffResult, ManagementFailure>> {
+  const delivery = await sendPortalEmail({
+    to: email,
+    subject: "Set up your Westchase GI portal access",
+    text: staffInviteText(setupUrl),
+    idempotencyKey: staffSetupIdempotencyKey(userId, tokenHash, type),
+    purpose: "staff_invite",
+  });
+
+  return delivery.ok
+    ? { ok: true, delivery: "sent" }
+    : { ok: true, delivery: "failed", fallbackSetupUrl: setupUrl };
 }
 
 function authCreateFailure(error: unknown): ManagementFailure {
@@ -100,18 +174,58 @@ function authCreateFailure(error: unknown): ManagementFailure {
   return failure("unavailable", "The staff account could not be created.");
 }
 
+async function operationFailed(
+  operation: () => PromiseLike<{ error: unknown }>,
+): Promise<boolean> {
+  try {
+    return Boolean((await operation()).error);
+  } catch {
+    return true;
+  }
+}
+
 async function deleteProvisionedUser(
   db: ServiceClient,
   userId: string,
-): Promise<void> {
-  await Promise.allSettled([
+): Promise<boolean> {
+  // Ban first so a generated invite cannot be consumed if Auth deletion is
+  // temporarily unavailable. Supabase APIs resolve with `{ error }`, so each
+  // result must be inspected rather than relying on Promise rejection.
+  // react-doctor-disable-next-line react-doctor/async-parallel
+  const banFailed = await operationFailed(() =>
+    db.auth.admin.updateUserById(userId, {
+      ban_duration: STAFF_BAN_DURATION,
+    }),
+  );
+  // react-doctor-disable-next-line react-doctor/server-sequential-independent-await
+  const initialProfileDeleteFailed = await operationFailed(() =>
     db.from("staff_profiles").delete().eq("user_id", userId),
+  );
+  const authDeleteFailed = await operationFailed(() =>
     db.auth.admin.deleteUser(userId),
-  ]);
+  );
+  // react-doctor-disable-next-line react-doctor/server-sequential-independent-await
+  const finalProfileDeleteFailed = await operationFailed(() =>
+    db.from("staff_profiles").delete().eq("user_id", userId),
+  );
+
+  const safe = !authDeleteFailed && !finalProfileDeleteFailed;
+  if (!safe) {
+    // User IDs and boolean outcomes are operational metadata. Never include
+    // the invited email, token, setup URL, or raw Supabase error messages.
+    console.error("[portal-management] invite rollback incomplete", {
+      userId,
+      banFailed,
+      initialProfileDeleteFailed,
+      authDeleteFailed,
+      finalProfileDeleteFailed,
+    });
+  }
+  return safe;
 }
 
-/** Invite failure path: the half-provisioned user must be removed BEFORE
- * the failure is reported — callers return this promise directly. */
+/** Invite failure path: invalidate the token and finish cleanup before the
+ * failure response. Any incomplete cleanup is recorded as a stable event. */
 async function rollbackInvite(
   db: ServiceClient,
   userId: string,
@@ -124,7 +238,7 @@ async function rollbackInvite(
 
 export async function addNotificationRecipientMutation(
   input: unknown,
-): Promise<MutationResult> {
+): Promise<AddRecipientResult> {
   const session = await requireRole("admin");
   const parsed = addRecipientSchema.safeParse(input);
   if (!parsed.success) {
@@ -139,7 +253,7 @@ export async function addNotificationRecipientMutation(
       label: parsed.data.label || null,
       active: parsed.data.active ?? true,
     })
-    .select("id, active")
+    .select("id, email, active")
     .single();
 
   if (insertError || !recipient) {
@@ -161,15 +275,42 @@ export async function addNotificationRecipientMutation(
       },
     });
   } catch {
-    await db
-      .from("notification_recipients")
-      .delete()
-      .eq("id", recipient.id);
+    const initialDeleteFailed = await operationFailed(() =>
+      db.from("notification_recipients").delete().eq("id", recipient.id),
+    );
+    if (initialDeleteFailed) {
+      // Fail closed for intake delivery if deletion is temporarily
+      // unavailable, then retry the compensating delete once.
+      const disableFailed = await operationFailed(() =>
+        db
+          .from("notification_recipients")
+          .update({ active: false })
+          .eq("id", recipient.id),
+      );
+      const finalDeleteFailed = await operationFailed(() =>
+        db.from("notification_recipients").delete().eq("id", recipient.id),
+      );
+      if (finalDeleteFailed) {
+        console.error("[portal-management] recipient rollback incomplete", {
+          recipientId: recipient.id,
+          disableFailed,
+          finalDeleteFailed,
+        });
+      }
+    }
     return failure("unavailable", "The notification recipient could not be added.");
   }
 
   revalidateManagementViews();
-  return { ok: true };
+  const delivery = await sendPortalEmail({
+    to: recipient.email,
+    subject: "Appointment notification access — Westchase GI portal",
+    text: recipientConfirmationText(),
+    idempotencyKey: `recipient-confirmation/${recipient.id}`,
+    purpose: "recipient_confirmation",
+  });
+
+  return { ok: true, delivery: delivery.ok ? "sent" : "failed" };
 }
 
 /**
@@ -287,35 +428,39 @@ export async function inviteStaffMutation(
   }
 
   const db = serviceClient();
-  const password = temporaryPassword();
   const email = normalizeEmail(parsed.data.email);
+  const confirmationUrl = portalUrl("/admin/auth/confirm");
+  if (!confirmationUrl) {
+    return failure("unavailable", "The staff invitation could not be created.");
+  }
+
   const { data: created, error: createError } =
     await db.auth.admin.createUser({
       email,
-      password,
-      email_confirm: true,
+      email_confirm: false,
+      app_metadata: { role: parsed.data.role },
     });
   const user = created.user;
   if (createError || !user) {
     return authCreateFailure(createError);
   }
 
-  const appMetadata = {
-    ...metadataRecord(user.app_metadata),
-    role: parsed.data.role,
-  };
-  const { error: metadataError } = await db.auth.admin.updateUserById(
-    user.id,
-    { app_metadata: appMetadata },
-  );
-  if (metadataError) {
+  const { data: generated, error: linkError } =
+    await db.auth.admin.generateLink({
+      type: "invite",
+      email,
+      options: { redirectTo: confirmationUrl },
+    });
+  const tokenHash = generated?.properties?.hashed_token;
+  if (linkError || !tokenHash || generated.user.id !== user.id) {
     return rollbackInvite(
       db,
       user.id,
       "unavailable",
-      "The staff account could not be created.",
+      "The staff invitation could not be created.",
     );
   }
+  const setupUrl = staffSetupUrl(confirmationUrl, tokenHash, "invite");
 
   const { data: profile, error: profileError } = await db
     .from("staff_profiles")
@@ -325,6 +470,7 @@ export async function inviteStaffMutation(
       display_name: parsed.data.displayName,
       role: parsed.data.role,
       active: true,
+      onboarded_at: null,
     })
     .select("id")
     .single();
@@ -350,7 +496,7 @@ export async function inviteStaffMutation(
       action: AUDIT_ACTIONS.STAFF_INVITE,
       entity: "staff_profiles",
       entityId: profile.id,
-      detail: { role: parsed.data.role, active: true },
+      detail: { role: parsed.data.role, active: true, onboarded: false },
     });
   } catch {
     return rollbackInvite(
@@ -362,7 +508,107 @@ export async function inviteStaffMutation(
   }
 
   revalidateManagementViews();
-  return { ok: true, tempPassword: password };
+  return deliverStaffSetupLink({
+    email,
+    setupUrl,
+    tokenHash,
+    type: "invite",
+    userId: user.id,
+  });
+}
+
+export async function resendStaffInviteMutation(
+  input: unknown,
+): Promise<InviteStaffResult> {
+  const session = await requireRole("admin");
+  const parsed = entityIdSchema.safeParse(input);
+  if (!parsed.success) {
+    return failure("invalid", "Choose a valid pending staff invitation.");
+  }
+
+  const db = serviceClient();
+  const { data: profile, error: profileError } = await db
+    .from("staff_profiles")
+    .select("id, user_id, email, role, active, onboarded_at")
+    .eq("user_id", parsed.data.id)
+    .maybeSingle();
+  if (profileError) {
+    return failure("unavailable", "The staff invitation could not be read.");
+  }
+  if (!profile || !profile.active) {
+    return failure("not_found", "Pending staff invitation not found.");
+  }
+  if (profile.onboarded_at) {
+    return failure("invalid", "That staff member has already completed setup.");
+  }
+
+  const { data: authData, error: authError } =
+    await db.auth.admin.getUserById(profile.user_id);
+  const authUser = authData.user;
+  if (
+    authError ||
+    !authUser?.email ||
+    normalizeEmail(authUser.email) !== normalizeEmail(profile.email)
+  ) {
+    return failure("unavailable", "The staff invitation could not be renewed.");
+  }
+  if (
+    authUser.banned_until &&
+    Date.parse(authUser.banned_until) > Date.now()
+  ) {
+    return failure("unavailable", "The staff invitation could not be renewed.");
+  }
+
+  // Once an invite OTP has been verified, Supabase considers the email
+  // confirmed. A recovery token is then the supported way to restore the
+  // interrupted password-setup session; the app still treats the active,
+  // not-onboarded profile as an invite and never accepts a role from input.
+  const type: StaffSetupType = authUser.email_confirmed_at
+    ? "recovery"
+    : "invite";
+  const confirmationUrl = portalUrl("/admin/auth/confirm");
+  if (!confirmationUrl) {
+    return failure("unavailable", "The staff invitation could not be renewed.");
+  }
+
+  const { data: generated, error: linkError } =
+    await db.auth.admin.generateLink({
+      type,
+      email: profile.email,
+      options: { redirectTo: confirmationUrl },
+    });
+  const tokenHash = generated?.properties?.hashed_token;
+  if (linkError || !tokenHash || generated.user.id !== profile.user_id) {
+    return failure("unavailable", "The staff invitation could not be renewed.");
+  }
+  const setupUrl = staffSetupUrl(confirmationUrl, tokenHash, type);
+
+  try {
+    await recordAudit(db, {
+      actorEmail: session.email,
+      action: AUDIT_ACTIONS.STAFF_INVITE,
+      entity: "staff_profiles",
+      entityId: profile.id,
+      detail: {
+        role: profile.role,
+        active: true,
+        onboarded: false,
+        resend: true,
+        link_type: type,
+      },
+    });
+  } catch {
+    return failure("unavailable", "The staff invitation could not be renewed.");
+  }
+
+  revalidateManagementViews();
+  return deliverStaffSetupLink({
+    email: profile.email,
+    setupUrl,
+    tokenHash,
+    type,
+    userId: profile.user_id,
+  });
 }
 
 export async function deactivateStaffMutation(

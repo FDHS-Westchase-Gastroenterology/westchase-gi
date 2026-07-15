@@ -16,7 +16,8 @@ export default async function AdminSettingsPage() {
       .order("email", { ascending: true }),
     db
       .from("staff_profiles")
-      .select("user_id, email, display_name, role, active")
+      .select("user_id, email, display_name, role, active, onboarded_at")
+      .eq("active", true)
       .order("display_name", { ascending: true }),
   ]);
   const isAdmin = session.role === "admin";

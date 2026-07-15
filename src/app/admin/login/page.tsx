@@ -6,8 +6,15 @@ import { LoginForm } from "./login-form";
 // card on the mint canvas. No patient chrome, no marketing. Signed-in
 // staff skip straight to the queue.
 
-export default async function AdminLoginPage() {
-  const session = await getSessionUser();
+export default async function AdminLoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ password?: string; auth?: string }>;
+}) {
+  const [query, session] = await Promise.all([
+    searchParams,
+    getSessionUser(),
+  ]);
   if (session) redirect("/admin");
 
   return (
@@ -29,6 +36,23 @@ export default async function AdminLoginPage() {
             <p className="mt-1.5 text-[0.9rem] text-[var(--color-muted)]">
               For practice staff only. Patient tools are on the main site.
             </p>
+            {query.password === "updated" ? (
+              <p
+                data-testid="password-updated"
+                className="mt-5 rounded-[var(--radius)] bg-[var(--color-mint-2)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
+              >
+                Your password was updated. Sign in with your new password.
+              </p>
+            ) : null}
+            {query.auth === "invalid" ? (
+              <p
+                role="alert"
+                className="mt-5 rounded-[var(--radius)] bg-[var(--color-amber-soft)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
+              >
+                That setup or reset link is no longer valid. Request another
+                reset or ask your portal administrator for a new invitation.
+              </p>
+            ) : null}
             <LoginForm />
           </div>
         </div>

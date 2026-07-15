@@ -1,8 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 import { loadLocalEnv, requiredEnv } from "./support";
 
-// VAL-REG-003: the GitHub/Vercel seams are truthful and inert — no
-// portal page makes any live call to either provider.
+// VAL-REG-003: GitHub status is live when configured, its credential path
+// stays server-only, and the Vercel seam remains truthfully inert.
 // VAL-REG-005: the assistant affordance is a portal-wide docked widget
 // with an expandable panel, conservative copy, and no dedicated page.
 // (VAL-REG-004 — the activation runbook — is verified by file
@@ -12,6 +12,11 @@ loadLocalEnv();
 
 const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
+const GITHUB_CONFIGURATION_COUNT = [
+  "PORTAL_GITHUB_APP_ID",
+  "PORTAL_GITHUB_APP_INSTALLATION_ID",
+  "PORTAL_GITHUB_APP_PRIVATE_KEY",
+].filter((name) => Boolean(process.env[name]?.trim())).length;
 
 const FORBIDDEN_HOSTS = [
   "api.github.com",
@@ -40,7 +45,7 @@ test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "JS portal UI");
 });
 
-test("VAL-REG-003: seam panels are truthful and no provider is ever called", async ({
+test("VAL-REG-003: GitHub status is live server-side and Vercel stays inert", async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -59,18 +64,37 @@ test("VAL-REG-003: seam panels are truthful and no provider is ever called", asy
 
   await signIn(page);
 
-  // The panels state the truthful inert status and what they WILL manage.
+  // GitHub reports live installation data only when all three server-side
+  // credentials exist; missing or partial configuration degrades cleanly.
   await page.goto("/admin/settings/software");
-  for (const provider of ["github", "vercel"] as const) {
-    const panel = page.getByTestId(`integration-${provider}`);
-    await expect(panel).toBeVisible();
-    await expect(panel.getByTestId("integration-status")).toContainText(
-      "Not connected — activates after ownership transfer",
+  const githubPanel = page.getByTestId("integration-github");
+  await expect(githubPanel).toBeVisible();
+  if (GITHUB_CONFIGURATION_COUNT === 3) {
+    await expect(githubPanel.getByTestId("integration-status")).toContainText(
+      "Connected — FDHS-Westchase-Gastroenterology",
     );
-    await expect(panel).toContainText("Once connected, it will manage");
+    await expect(githubPanel).toContainText(
+      "FDHS-Westchase-Gastroenterology/westchase-gi",
+    );
+    await expect(githubPanel).toContainText("Installation scope");
+    await expect(githubPanel).toContainText(/Selected repositories|All repositories/);
+  } else {
+    await expect(githubPanel.getByTestId("integration-status")).toContainText(
+      GITHUB_CONFIGURATION_COUNT === 0
+        ? "Not configured"
+        : "Connection unavailable",
+    );
+    await expect(githubPanel).toContainText("Once connected, it will manage");
   }
 
-  // Every portal page renders without touching either provider.
+  const vercelPanel = page.getByTestId("integration-vercel");
+  await expect(vercelPanel).toBeVisible();
+  await expect(vercelPanel.getByTestId("integration-status")).toContainText(
+    "Not configured",
+  );
+  await expect(vercelPanel).toContainText("Once connected, it will manage");
+
+  // Provider requests originate on the server, never in the browser bundle.
   for (const path of PORTAL_PAGES) {
     await page.goto(path);
     await page.waitForLoadState("load");

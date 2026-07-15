@@ -29,6 +29,8 @@ the Vercel environment store. Never point local tests at production.
 | `SUPABASE_*_PROD` family | The same, for the production project (migrations + verify scripts) |
 | `RESEND_API_KEY` / `RESEND_FROM` | Notification email provider + sender |
 | `PORTAL_BASE_URL` | Absolute base URL used in notification links |
+| `PORTAL_GITHUB_APP_ID` / `PORTAL_GITHUB_APP_INSTALLATION_ID` | Server-only identifiers for the clinic-owned `wgi-portal` App |
+| `PORTAL_GITHUB_APP_PRIVATE_KEY` | Server-only App private key; PEM encoded as base64 or escaped newlines |
 | `PORTAL_SEED_ADMIN_EMAIL` / `PORTAL_SEED_ADMIN_PASSWORD` | E2E test admin on the dev project (tests only) |
 
 ## Rotating a credential
@@ -43,8 +45,30 @@ the Vercel environment store. Never point local tests at production.
 4. Redeploy (any push to the deployed branch) and spot-check: a test
    submission on a preview URL, and `scripts/verify-schema.mjs --target dev`.
 
+For the GitHub App private key, generate the replacement in the clinic-owned
+App settings, update Production, redeploy, prove the live GitHub status there,
+and then revoke the old key. Keep verification that needs App credentials local
+through the ignored credential store; do not make the Administration-capable
+key available to Preview deployments. Never use a personal access token.
+
 The Supabase management access token used for provisioning is personal,
 short-lived, and is NOT a runtime dependency — the app never reads it.
+
+## GitHub and Vercel custody
+
+The clinic-controlled personal account `FDHS-Westchase-Gastroenterology`
+owns the repository. ASTXRTYS has Write access for implementation work, not
+ownership. The clinic-owned Vercel Hobby project is also named `westchase-gi`;
+it replaced the former consultant-owned project after Hobby's cross-account
+repository restriction prevented a relink. The production alias and
+push-to-deploy path are verified.
+
+The `wgi-portal` GitHub App uses Repository Administration read/write and
+Metadata read permissions. Its JWT-to-installation-token path was rehearsed
+successfully. Enabling two-factor authentication on the owner account and
+restricting the App installation to only this repository remain owner-only
+tasks; do not mark either complete without owner verification. The portal's
+Vercel API integration remains deferred.
 
 ## Supabase custody
 
@@ -56,6 +80,48 @@ required. Until then: never delete or pause either project; schema
 changes go through committed migrations in `supabase/migrations/`
 (`supabase link` + `supabase db push` per project, or the management
 API), applied to dev first, production after verification.
+
+## Staff invitation and password-reset email
+
+The two staff email paths share the same sender but have different owners:
+
+- The portal sends staff invitations and notification-recipient confirmations
+  through Resend with `RESEND_API_KEY` and `RESEND_FROM`.
+- Supabase Auth sends password-reset messages through its hosted SMTP settings.
+  Those settings are project configuration, not Postgres migrations, so they
+  must be kept in sync separately on development and production.
+
+For each hosted Supabase project, configure Resend SMTP, set the Auth site URL
+to that environment's trusted portal origin, and allow the exact
+`/admin/auth/confirm` redirect. Do not use a wildcard redirect. The recovery
+template contract is committed in `supabase/templates/recovery.html`; its link
+must preserve this shape:
+
+```text
+{{ .RedirectTo }}#token_hash={{ .TokenHash }}&type=recovery
+```
+
+The URL fragment keeps the bearer token out of HTTP requests and referrer
+headers. The confirmation page removes it from the address bar before the user
+presses Continue, and only that deliberate action consumes the one-time token.
+Use the committed subject and template when configuring hosted Auth rather than
+Supabase's default recovery link. Keep the Auth email rate limit high enough for
+serial verification while retaining the provider's abuse controls.
+
+After an Auth configuration change, verify all of the following without
+printing or reading a live bearer link:
+
+1. Request a reset for an active development staff account and confirm the
+   expected subject reaches the approved test inbox.
+2. Run `e2e/portal-auth.spec.ts` serially to prove invite and recovery links are
+   single-use, role preserving, and unavailable to deactivated accounts.
+3. Confirm an unknown address receives the same visible portal response as an
+   active address.
+
+Until the practice domain is verified, `onboarding@resend.dev` can deliver only
+to the Resend account owner's address. That permits an owner-inbox canary but
+does not satisfy arbitrary clinic-recipient delivery; repeat the receipt canary
+after domain recovery and update `RESEND_FROM` before handover.
 
 ## Data export
 
@@ -90,6 +156,11 @@ to the practice sender and deliveries open up to any recipient.
   check requests there first. Then Settings → recipients (is the address
   active?), the `request_events` rows for the request (what did the
   provider say?), and the Resend dashboard.
+- **GitHub shows Not configured:** confirm all three
+  `PORTAL_GITHUB_APP_*` variables exist on that Vercel target and redeploy.
+  Do not print their values while diagnosing. If it instead shows an upstream
+  failure, check the App installation and least-privilege permissions in the
+  clinic account.
 - **A secret leaked somewhere:** rotate it (see above) — the repo's
   history is provably clean (`node scripts/verify-no-secrets.mjs`) and
   must stay that way.
