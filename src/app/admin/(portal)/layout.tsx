@@ -62,7 +62,10 @@ export default async function PortalLayout({
           assistant launcher pinned to the bottom-right corner. */}
       <footer className="border-t border-[var(--color-line)] pb-20 pt-5">
         <div className="container-x flex flex-wrap items-center justify-between gap-3 text-[0.85rem] text-[var(--color-muted)]">
-          <p>Internal tool for practice staff. Patient pages never link here.</p>
+          <p>
+            Internal tool for practice staff. Patient tools are on the main
+            site.
+          </p>
           <p className="flex items-center gap-x-4">
             <Link
               href="/admin/audit"
