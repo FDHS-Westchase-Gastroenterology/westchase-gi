@@ -27,7 +27,7 @@ export default async function AdminLoginPage() {
               Staff sign in
             </h1>
             <p className="mt-1.5 text-[0.9rem] text-[var(--color-muted)]">
-              For practice staff only. Patient pages never link here.
+              For practice staff only. Patient tools are on the main site.
             </p>
             <LoginForm />
           </div>
