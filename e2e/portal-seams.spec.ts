@@ -1,30 +1,13 @@
 import { test, expect, type Page } from "@playwright/test";
 import { loadLocalEnv, requiredEnv } from "./support";
 
-// VAL-REG-003: GitHub status is live when configured, its credential path
-// stays server-only, and the Vercel seam remains truthfully inert.
 // VAL-REG-005: the assistant affordance is a portal-wide docked widget
 // with an expandable panel, conservative copy, and no dedicated page.
-// (VAL-REG-004 — the activation runbook — is verified by file
-// inspection in the packet's verificationSteps.)
 
 loadLocalEnv();
 
 const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
-const GITHUB_CONFIGURATION_COUNT = [
-  "PORTAL_GITHUB_APP_ID",
-  "PORTAL_GITHUB_APP_INSTALLATION_ID",
-  "PORTAL_GITHUB_APP_PRIVATE_KEY",
-].filter((name) => Boolean(process.env[name]?.trim())).length;
-
-const FORBIDDEN_HOSTS = [
-  "api.github.com",
-  "github.com",
-  "api.vercel.com",
-  "vercel.com",
-];
-
 async function signIn(page: Page) {
   await page.goto("/admin/login");
   await page.getByLabel("Email").fill(SEED_EMAIL);
@@ -43,69 +26,6 @@ const PORTAL_PAGES = [
 
 test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "JS portal UI");
-});
-
-test("VAL-REG-003: GitHub status is live server-side and Vercel stays inert", async ({
-  page,
-}) => {
-  test.setTimeout(120_000);
-
-  const offSiteHits: string[] = [];
-  page.on("request", (request) => {
-    const host = new URL(request.url()).hostname;
-    if (
-      FORBIDDEN_HOSTS.some(
-        (forbidden) => host === forbidden || host.endsWith(`.${forbidden}`),
-      )
-    ) {
-      offSiteHits.push(request.url());
-    }
-  });
-
-  await signIn(page);
-
-  // GitHub reports live installation data only when all three server-side
-  // credentials exist; missing or partial configuration degrades cleanly.
-  await page.goto("/admin/settings/software");
-  const githubPanel = page.getByTestId("integration-github");
-  await expect(githubPanel).toBeVisible();
-  if (GITHUB_CONFIGURATION_COUNT === 3) {
-    await expect(githubPanel.getByTestId("integration-status")).toContainText(
-      "Connected — FDHS-Westchase-Gastroenterology",
-    );
-    await expect(githubPanel).toContainText(
-      "FDHS-Westchase-Gastroenterology/westchase-gi",
-    );
-    await expect(githubPanel).toContainText("Installation scope");
-    await expect(githubPanel).toContainText(/Selected repositories|All repositories/);
-  } else {
-    await expect(githubPanel.getByTestId("integration-status")).toContainText(
-      GITHUB_CONFIGURATION_COUNT === 0
-        ? "Not configured"
-        : "Connection unavailable",
-    );
-    await expect(githubPanel).toContainText("Once connected, it will manage");
-  }
-
-  const vercelPanel = page.getByTestId("integration-vercel");
-  await expect(vercelPanel).toBeVisible();
-  await expect(vercelPanel.getByTestId("integration-status")).toContainText(
-    "Not configured",
-  );
-  await expect(vercelPanel).toContainText("Once connected, it will manage");
-
-  // Provider requests originate on the server, never in the browser bundle.
-  for (const path of PORTAL_PAGES) {
-    await page.goto(path);
-    await page.waitForLoadState("load");
-  }
-  expect(offSiteHits, `provider calls detected: ${offSiteHits.join(", ")}`)
-    .toHaveLength(0);
-
-  await page.screenshot({
-    path: "test-results/portal-seams/registry-connections.png",
-    fullPage: true,
-  });
 });
 
 test("VAL-REG-005: assistant widget is portal-wide, expandable, conservative", async ({

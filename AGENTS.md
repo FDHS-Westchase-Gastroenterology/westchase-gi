@@ -59,7 +59,7 @@ and the authenticated staff portal at `/admin`.
     The GitHub connection authenticates only through the clinic-owned GitHub App, with its
     three credentials kept in server-only environment variables. Never use a personal access
     token, expose App credentials to the browser, or widen the App beyond its documented
-    least-privilege permissions. The Vercel integration remains deliberately deferred
+    least-privilege permissions. The portal does not connect to or manage Vercel
     (`docs/INTEGRATION-ACTIVATION.md`).
 
 ## Verification

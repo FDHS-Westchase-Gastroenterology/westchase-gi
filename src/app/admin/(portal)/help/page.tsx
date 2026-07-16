@@ -121,14 +121,12 @@ export default async function AdminHelpPage() {
             Today, changes to the public website — new hours, a provider
             update, a new document — go through the practice&apos;s website
             maintainer: email the request and it is typically live within a
-            day. A built-in assistant is planned for this portal that will
-            let you describe a change in plain English and track it from
-            request to done, without email. Until it ships, the{" "}
+            day. The{" "}
             <Link href="/admin/settings/software" className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2">
-              Software &amp; access
+              Website
             </Link>{" "}
-            page under Settings lists every piece of software the practice
-            runs and who maintains it.
+            page under Settings records clinic custody, the canonical
+            repository, and the live GitHub connection status.
           </p>
         </div>
 

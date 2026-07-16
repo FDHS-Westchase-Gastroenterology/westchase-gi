@@ -8,7 +8,7 @@ import { usePathname } from "next/navigation";
 
 const TABS = [
   { href: "/admin/settings", label: "Notifications & staff" },
-  { href: "/admin/settings/software", label: "Software & access" },
+  { href: "/admin/settings/software", label: "Website" },
 ] as const;
 
 export function SettingsTabs() {

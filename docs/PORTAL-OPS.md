@@ -63,12 +63,15 @@ it replaced the former consultant-owned project after Hobby's cross-account
 repository restriction prevented a relink. The production alias and
 push-to-deploy path are verified.
 
-The `wgi-portal` GitHub App uses Repository Administration read/write and
-Metadata read permissions. Its JWT-to-installation-token path was rehearsed
+The `wgi-portal` GitHub App registration uses Repository Administration
+read/write and Metadata read permissions. The Website status request explicitly
+downscopes each installation token to Metadata read; it cannot change repository
+settings or collaborators. Its JWT-to-installation-token path was rehearsed
 successfully. Enabling two-factor authentication on the owner account and
 restricting the App installation to only this repository remain owner-only
-tasks; do not mark either complete without owner verification. The portal's
-Vercel API integration remains deferred.
+tasks; do not mark either complete without owner verification. The portal shows
+the clinic-owned Vercel project as a static custody fact and does not connect to
+or manage Vercel.
 
 ## Supabase custody
 

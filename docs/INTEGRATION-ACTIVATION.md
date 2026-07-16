@@ -1,9 +1,9 @@
 # Integration activation and custody runbook
 
-The staff portal's software ledger reports live GitHub repository status through a clinic-owned
-GitHub App. The Vercel connection remains deliberately deferred. This runbook records the actual
-custody model, the completed rehearsal, and the controls that still require the clinic account
-owner.
+The staff portal's Website page reports live status for the one canonical repository through a
+clinic-owned GitHub App. It records Vercel hosting custody as a static fact and does not connect
+to or manage Vercel. This runbook records the actual custody model, the completed rehearsal, and
+the controls that still require the clinic account owner.
 
 ## Current custody (verified 2026-07-15)
 
@@ -16,9 +16,10 @@ owner.
   `westchase-gi.vercel.app` alias moved; an ASTXRTYS-authored probe commit deployed READY; and the
   former consultant-owned project was deleted.
 - The private GitHub App `wgi-portal` is registered on the clinic account with Repository
-  Administration read/write and Metadata read permissions, and no webhook. A manual rehearsal
-  proved the full server-to-server chain: signed App JWT, installation token, repository read,
-  and collaborator-list read.
+  Administration read/write and Metadata read permissions, and no webhook. The Website status
+  request downscopes its installation token to Metadata read and verifies only the connected
+  account, canonical repository, and installation scope. A manual rehearsal proved the full
+  server-to-server authentication chain.
 - App identifiers and private-key material remain outside git. The private key is the only secret
   in this connection; never paste any of these values into source, documentation, issues, or
   command-line arguments.
@@ -70,9 +71,8 @@ After changing the variables, redeploy and verify:
    report **Connection unavailable** without exposing its input. Do not copy Production secrets
    into Preview just to exercise these states.
 
-The current provider reads repository state only. Portal collaborator mutations are not wired to
-GitHub yet; add them only when that workflow is explicitly commissioned, keep the existing audit
-transaction, and do not broaden App permissions beyond the operation being shipped.
+The current provider reads repository state only. Any future write workflow gets its own
+least-privilege permission review, audit contract, failure behavior, and deterministic tests.
 
 ## Transfer and hosting deviations worth preserving
 
@@ -86,18 +86,16 @@ transaction, and do not broaden App permissions beyond the operation being shipp
 - The transfer acceptance criterion originally requested ASTXRTYS Admin access. The verified
   working state is Write access; do not expand it without a settings-level need.
 
-## Vercel connection is deferred
+## Hosting custody
 
-The hosting itself is clinic-owned and active, but the portal's Vercel provider remains a
-disconnected status panel by issue scope. If deployment visibility is later commissioned, create
-a narrowly scoped token in the clinic-owned Vercel account, store it as server-only environment
-configuration, and start with read-only deployment status. Do not add configuration mutation
-permissions until a shipped workflow needs them.
+The clinic-owned Vercel project is `westchase-gi`. The portal displays that application-owned
+custody fact without a provider panel, token, deployment control, or configuration action.
 
 ## Do not
 
 - Do not use a personal access token as a shortcut.
-- Do not call GitHub or Vercel from a client component.
+- Do not call GitHub from a client component or add a browser/server Vercel call without a
+  commissioned workflow.
 - Do not log JWTs, installation tokens, environment values, or private-key parsing errors that
   contain input.
 - Do not claim the two owner-only controls are complete until the clinic account owner verifies

@@ -549,59 +549,10 @@ test.describe("portal authentication and direct REST boundaries", () => {
       "request_events",
       "notification_recipients",
       "staff_profiles",
-      "registry_assets",
-      "registry_grants",
       "audit_log",
     ] as const;
     const missingId = randomUUID();
     const rpcCalls = [
-      {
-        name: "portal_create_registry_asset",
-        args: {
-          p_actor_email: "",
-          p_name: `TEST denied RPC ${missingId}`,
-          p_kind: "test",
-          p_repo: null,
-          p_live_url: null,
-          p_hosting: null,
-          p_maintainer: "TEST automation",
-          p_status: "test",
-          p_notes: null,
-        },
-      },
-      {
-        name: "portal_update_registry_asset",
-        args: {
-          p_actor_email: "",
-          p_asset_id: missingId,
-          p_name: "TEST denied RPC update",
-          p_kind: "test",
-          p_repo: null,
-          p_live_url: null,
-          p_hosting: null,
-          p_maintainer: "TEST automation",
-          p_status: "test",
-          p_notes: null,
-        },
-      },
-      {
-        name: "portal_archive_registry_asset",
-        args: { p_actor_email: "", p_asset_id: missingId },
-      },
-      {
-        name: "portal_add_registry_grant",
-        args: {
-          p_actor_email: "",
-          p_asset_id: missingId,
-          p_person: "TEST automation",
-          p_role: "test",
-          p_granted_via: "e2e",
-        },
-      },
-      {
-        name: "portal_deactivate_registry_grant",
-        args: { p_actor_email: "", p_grant_id: missingId },
-      },
       {
         name: "portal_update_request_status",
         args: {
@@ -690,7 +641,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
           await expect(page.getByTestId("recipients-manager")).toBeVisible();
         } else {
           await expect(
-            page.locator('[data-asset-name="Westchase GI website"]'),
+            page.getByTestId("managed-product"),
           ).toBeVisible();
         }
       }
@@ -738,102 +689,26 @@ test.describe("portal authentication and direct REST boundaries", () => {
     expect(profileError).toBeNull();
     if (!profile) throw new Error("Seeded staff profile is missing");
 
-    let anchorAssetId: string | null = null;
-    let createdAnchorAsset = false;
-    const existingAsset = await db
-      .from("registry_assets")
-      .select("id")
-      .limit(1)
-      .maybeSingle();
-    expect(existingAsset.error).toBeNull();
-    anchorAssetId = existingAsset.data?.id ?? null;
-
-    if (!anchorAssetId) {
-      anchorAssetId = randomUUID();
-      const { error } = await db.from("registry_assets").insert({
-        id: anchorAssetId,
-        name: `TEST RLS anchor ${anchorAssetId}`,
-        kind: "test",
-        maintainer: "TEST automation",
-        status: "test",
-      });
-      expect(error).toBeNull();
-      createdAnchorAsset = true;
-    }
-
-    const attemptedAssetId = randomUUID();
-    const attemptedGrantId = randomUUID();
     const attemptedDisplayName = `TEST denied ${randomUUID()}`;
 
     try {
-      const [assetWrite, grantWrite, profileWrite] = await Promise.all([
-        authenticated
-          .from("registry_assets")
-          .insert({
-            id: attemptedAssetId,
-            name: `TEST denied ${attemptedAssetId}`,
-            kind: "test",
-            maintainer: "TEST automation",
-            status: "test",
-          })
-          .select("id"),
-        authenticated
-          .from("registry_grants")
-          .insert({
-            id: attemptedGrantId,
-            asset_id: anchorAssetId,
-            person: "TEST automation",
-            role: "viewer",
-            granted_via: "e2e",
-          })
-          .select("id"),
-        authenticated
-          .from("staff_profiles")
-          .update({ display_name: attemptedDisplayName })
-          .eq("user_id", profile.user_id)
-          .select("id"),
-      ]);
-
-      expectDenied(assetWrite);
-      expectDenied(grantWrite);
+      const profileWrite = await authenticated
+        .from("staff_profiles")
+        .update({ display_name: attemptedDisplayName })
+        .eq("user_id", profile.user_id)
+        .select("id");
       expectDenied(profileWrite);
 
-      const [assetCheck, grantCheck, profileCheck] = await Promise.all([
-        db
-          .from("registry_assets")
-          .select("id")
-          .eq("id", attemptedAssetId)
-          .maybeSingle(),
-        db
-          .from("registry_grants")
-          .select("id")
-          .eq("id", attemptedGrantId)
-          .maybeSingle(),
-        db
-          .from("staff_profiles")
-          .select("display_name")
-          .eq("user_id", profile.user_id)
-          .single(),
-      ]);
-
-      expect(assetCheck.error).toBeNull();
-      expect(grantCheck.error).toBeNull();
+      const profileCheck = await db
+        .from("staff_profiles")
+        .select("display_name")
+        .eq("user_id", profile.user_id)
+        .single();
       expect(profileCheck.error).toBeNull();
-      expect(assetCheck.data).toBeNull();
-      expect(grantCheck.data).toBeNull();
       expect(
         digest(profileCheck.data?.display_name ?? ""),
       ).toBe(digest(profile.display_name));
     } finally {
-      await db
-        .from("registry_grants")
-        .delete()
-        .eq("id", attemptedGrantId);
-      await db
-        .from("registry_assets")
-        .delete()
-        .eq("id", attemptedAssetId);
-
       const currentProfile = await db
         .from("staff_profiles")
         .select("display_name")
@@ -849,12 +724,6 @@ test.describe("portal authentication and direct REST boundaries", () => {
           .eq("user_id", profile.user_id);
       }
 
-      if (createdAnchorAsset) {
-        await db
-          .from("registry_assets")
-          .delete()
-          .eq("id", anchorAssetId);
-      }
       await authenticated.auth.signOut({ scope: "local" });
     }
   });

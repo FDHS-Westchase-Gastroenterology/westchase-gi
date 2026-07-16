@@ -2,7 +2,7 @@ import { SettingsTabs } from "./settings-tabs";
 
 // Settings is one primary-nav destination with two sub-pages: the
 // frequent staff-facing configuration (notifications, access) and the
-// rarely touched software custody record. The shared heading and the
+// rarely touched website custody record. The shared heading and the
 // quiet tab row live here; each sub-page describes its own content.
 
 export default function SettingsLayout({

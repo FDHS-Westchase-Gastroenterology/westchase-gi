@@ -207,38 +207,9 @@ async function main() {
     ],
   })
 
-  const registryCount = await upsertRows({
-    url,
-    serviceKey,
-    table: "registry_assets",
-    onConflict: "name",
-    rows: [
-      {
-        name: "Westchase GI website",
-        kind: "Website",
-        repo: "FDHS-Westchase-Gastroenterology/westchase-gi",
-        live_url: "https://westchase-gi.vercel.app",
-        hosting: "Vercel project: westchase-gi (clinic-owned Hobby account)",
-        maintainer: "Clinic-owned; ASTXRTYS — Write collaborator",
-        status: "active",
-        notes: null,
-      },
-      {
-        name: "Staff admin portal",
-        kind: "Admin portal",
-        repo: "FDHS-Westchase-Gastroenterology/westchase-gi",
-        live_url: "https://westchase-gi.vercel.app/admin",
-        hosting: "Vercel project: westchase-gi (clinic-owned Hobby account)",
-        maintainer: "Clinic-owned; ASTXRTYS — Write collaborator",
-        status: "in development",
-        notes: "Staff request portal in the website repository.",
-      },
-    ],
-  })
-
   console.log(`Seeded ${target} auth user: ${user.id} (${user.email})`)
   console.log(
-    `Seeded ${target} rows: staff_profiles=${staffCount}, notification_recipients=${recipientCount}, registry_assets=${registryCount}`,
+    `Seeded ${target} rows: staff_profiles=${staffCount}, notification_recipients=${recipientCount}`,
   )
 }
 

@@ -39,7 +39,6 @@ const staffEmail = `portal-staff-${runId}@example.test`;
 const targetEmail = `portal-target-${runId}@example.test`;
 const recipientEmail = `portal-recipient-${runId}@example.test`;
 const deniedRecipientEmail = `portal-denied-${runId}@example.test`;
-const registryAttemptId = randomUUID();
 
 let adminContext: BrowserContext | null = null;
 let staffContext: BrowserContext | null = null;
@@ -247,7 +246,6 @@ test.describe("portal management server boundaries", () => {
       .from("notification_recipients")
       .delete()
       .in("email", [recipientEmail, deniedRecipientEmail]);
-    await db.from("registry_assets").delete().eq("id", registryAttemptId);
     await db.from("requests").delete().like("email", `portal-export-${runId}-%`);
 
     if (auditEntityIds.size > 0) {
@@ -480,24 +478,11 @@ test.describe("portal management server boundaries", () => {
     });
     expect(staffSignIn.error).toBeNull();
 
-    const [registryWrite, profileWrite] = await Promise.all([
-      staffRest
-        .from("registry_assets")
-        .insert({
-          id: registryAttemptId,
-          name: `TEST denied registry ${runId}`,
-          kind: "test",
-          maintainer: "TEST automation",
-          status: "test",
-        })
-        .select("id"),
-      staffRest
-        .from("staff_profiles")
-        .update({ display_name: `TEST denied change ${runId}` })
-        .eq("user_id", targetProfile.user_id)
-        .select("id"),
-    ]);
-    expectDenied(registryWrite);
+    const profileWrite = await staffRest
+      .from("staff_profiles")
+      .update({ display_name: `TEST denied change ${runId}` })
+      .eq("user_id", targetProfile.user_id)
+      .select("id");
     expectDenied(profileWrite);
     await staffRest.auth.signOut({ scope: "local" });
 

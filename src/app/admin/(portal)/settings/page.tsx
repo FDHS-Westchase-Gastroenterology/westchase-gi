@@ -4,7 +4,7 @@ import { RecipientsManager, type RecipientRow } from "./recipients-manager";
 import { StaffManager, type StaffRow } from "./staff-manager";
 
 // Default Settings sub-page: the frequent, staff-facing configuration.
-// The software custody record lives on the sibling /admin/settings/software.
+// The website custody record lives on the sibling /admin/settings/software.
 
 export default async function AdminSettingsPage() {
   const db = serviceClient();

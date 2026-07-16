@@ -43,10 +43,12 @@ Authenticated staff tool (Supabase Auth + row-level security; roles enforced ser
 a staff-profiles table): a requests queue with triage lifecycle (new → contacted → scheduled →
 closed) and attributed notes, notification-recipient management, staff account management with
 emailed single-use setup links, an audit log of every mutation, CSV export, a plain-English help
-page, a software/access registry with live server-side GitHub status, and an administrator-only
-review-flyer printer. The printer serves its approved PDF, SVG, and PNG artifacts through the
-same server-enforced portal boundary; no flyer download lives in `public/` or depends on a
-separate application. The Vercel integration remains deliberately deferred — see
+page, a Website custody surface with live server-side GitHub status, and an administrator-only
+review-flyer printer. Westchase GI is the one managed product; the portal and printer are
+capabilities of the same application and canonical repository. The printer serves its approved
+PDF, SVG, and PNG artifacts through the same server-enforced portal boundary; no flyer download
+lives in `public/` or depends on a separate application. Hosting custody is shown as a static
+clinic-owned fact; the portal does not connect to or manage Vercel. See
 `docs/INTEGRATION-ACTIVATION.md` for the custody and connection runbook, and
 `docs/PORTAL-OPS.md` for day-to-day operations.
 
@@ -104,9 +106,9 @@ npx playwright test e2e/smoke.spec.ts   # focused file
 ```
 
 The suite covers the intake API contract, form states across all five locales, the no-JS
-fallback, portal auth/RLS boundaries, the queue lifecycle, management surfaces, the registry,
-and leak hygiene. Specs run against the Supabase project named in `.env.local` (use a
-development project, never production) and toggle notification recipients off for the run so
+fallback, portal auth/RLS boundaries, the queue lifecycle, management surfaces, Website custody,
+and leak hygiene. Specs run against the Supabase project named in `.env.local` (use a development
+project, never production) and toggle notification recipients off for the run so
 no real emails send. The committed configuration uses one worker because the shared development
 Auth project rate-limits concurrent sign-ins and recovery requests; do not override that for
 login-heavy portal specs.
