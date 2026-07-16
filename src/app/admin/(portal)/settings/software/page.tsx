@@ -3,7 +3,12 @@ import { requireRole } from "@/lib/portal/auth";
 import {
   CANONICAL_REPOSITORY,
   getGitHubRepositoryStatus,
+  type GitHubRepositoryStatus,
 } from "@/lib/portal/integrations";
+import {
+  MaintainerAccess,
+  type MaintainerAccessModel,
+} from "./maintainer-access";
 
 const CAPABILITIES = [
   "Patient-facing website",
@@ -11,17 +16,33 @@ const CAPABILITIES = [
   "Review-flyer printing",
 ] as const;
 
+// Temporary adapter: shapes today's status-only read into the maintainer
+// read model. The maintainers implementation (src/lib/portal/maintainers.ts,
+// PR #34) replaces this with the live collaborator/invitation read and the
+// real installation-permission check; until it proves administration:write,
+// management fails closed to a setup blocker and no mutation control renders.
+function toMaintainerAccessModel(
+  github: GitHubRepositoryStatus,
+): MaintainerAccessModel {
+  if (github.state !== "connected") {
+    return { state: github.state };
+  }
+  return {
+    state: "connected",
+    ownerLogin: github.account,
+    management:
+      github.installationScope === "Selected repositories"
+        ? "permission_upgrade_required"
+        : "restrict_installation",
+    maintainers: null,
+    invitations: null,
+  };
+}
+
 export default async function AdminSettingsSoftwarePage() {
   const session = await requireRole("staff");
   const github = await getGitHubRepositoryStatus();
-  const repository =
-    github.state === "connected" ? github.repository : CANONICAL_REPOSITORY;
-  const statusLabel =
-    github.state === "connected"
-      ? "Connected"
-      : github.state === "not_configured"
-        ? "Not configured"
-        : "Connection unavailable";
+  const model = toMaintainerAccessModel(github);
 
   return (
     <section
@@ -70,57 +91,28 @@ export default async function AdminSettingsSoftwarePage() {
           </ul>
         </div>
 
-        <div data-testid="integration-github">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-[0.82rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
-              GitHub repository
-            </h3>
+        <div>
+          <h3 className="text-[0.82rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
+            Who owns the website
+          </h3>
+          <p className="mt-3 max-w-[62ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
+            Westchase GI does. The website, its code, and the accounts it
+            runs on belong to the practice — not to a web vendor. The code
+            lives in the practice&rsquo;s own account, at{" "}
             <span
-              data-testid="integration-status"
-              className="rounded-full bg-[var(--color-line)] px-2.5 py-1 text-[0.72rem] font-bold uppercase tracking-[0.05em] text-[var(--color-muted)]"
+              data-testid="canonical-repository"
+              className="font-bold text-[var(--color-ink)] [overflow-wrap:anywhere]"
             >
-              {statusLabel}
+              {CANONICAL_REPOSITORY}
             </span>
-          </div>
-          <dl className="mt-3 space-y-3 text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-            <div>
-              <dt className="font-bold text-[var(--color-ink)]">
-                Canonical repository
-              </dt>
-              <dd data-testid="canonical-repository" className="break-words">
-                {repository}
-              </dd>
-            </div>
-            {github.state === "connected" && (
-              <>
-                <div>
-                  <dt className="font-bold text-[var(--color-ink)]">
-                    Connected account
-                  </dt>
-                  <dd>{github.account}</dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-[var(--color-ink)]">
-                    Installation scope
-                  </dt>
-                  <dd>{github.installationScope}</dd>
-                </div>
-              </>
-            )}
-          </dl>
+            . If the practice ever changes who maintains the site, the
+            website stays put and keeps running.
+          </p>
         </div>
       </div>
 
       <div className="mt-6 border-t border-[var(--color-line)] pt-6">
-        <h3 className="text-[0.82rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
-          Who owns the website
-        </h3>
-        <p className="mt-2 max-w-[70ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-          Westchase GI does. The website and the accounts it runs on belong
-          to the practice — not to a web vendor. If the practice ever
-          changes who maintains the site, the website stays put and keeps
-          running.
-        </p>
+        <MaintainerAccess model={model} isAdmin={session.role === "admin"} />
       </div>
     </section>
   );

@@ -116,20 +116,28 @@ test.describe("website custody", () => {
       ).toHaveCount(0);
     }
 
-    const github = page.getByTestId("integration-github");
-    await expect(github).toBeVisible();
+    const access = page.getByTestId("maintainer-access");
+    await expect(access).toBeVisible();
     const expectedStatus =
       GITHUB_CONFIGURATION_COUNT === 3
         ? "Connected"
         : GITHUB_CONFIGURATION_COUNT === 0
           ? "Not configured"
           : "Connection unavailable";
-    await expect(github.getByTestId("integration-status")).toHaveText(
+    await expect(access.getByTestId("integration-status")).toHaveText(
       expectedStatus,
     );
+    await expect(access).toContainText("Who can change the website");
     if (expectedStatus === "Connected") {
-      await expect(github).toContainText("Connected account");
-      await expect(github).toContainText("Installation scope");
+      // Owner row is fixed; mutation controls stay hidden (fail closed)
+      // until the maintainers read model reports management "ready".
+      await expect(access.getByTestId("maintainer-list")).toContainText(
+        "Owner",
+      );
+      await expect(access.getByTestId("maintainer-setup-notice")).toBeVisible();
+      await expect(
+        access.getByRole("button", { name: "Send invitation" }),
+      ).toHaveCount(0);
     }
     expect(browserProviderRequests).toHaveLength(0);
 
