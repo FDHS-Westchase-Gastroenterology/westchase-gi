@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect } from "react";
 import type { ReviewFlyer, ReviewTargetKey } from "@/lib/review-flyers";
 
@@ -113,11 +114,22 @@ export function ReviewFlyerPrinter({ flyers }: { flyers: ReviewFlyer[] }) {
   return (
     <>
       <div className="review-flyer-screen">
-        <div className="heading-tick" />
-        <div className="flex flex-wrap items-end justify-between gap-5">
+        <nav aria-label="Breadcrumb" className="flex items-center text-[0.9rem]">
+          <Link
+            href="/admin"
+            className="inline-flex min-h-11 min-w-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+          >
+            Home
+          </Link>
+          <span aria-hidden="true" className="mx-2 text-[var(--color-muted)]">
+            /
+          </span>
+          <span className="text-[var(--color-muted)]">Print review flyers</span>
+        </nav>
+        <div className="mt-4 flex flex-wrap items-end justify-between gap-5">
           <div className="max-w-[46rem]">
-            <h1 className="h1">Print review flyers</h1>
-            <p className="lead mt-4 text-[var(--color-body)]">
+            <h1 className="portal-title">Print review flyers</h1>
+            <p className="mt-2 max-w-[62ch] text-[0.95rem] text-[var(--color-muted)]">
               Choose one ready-to-print bilingual flyer, or print the full set.
               The PDF option is best for a print shop or when another device
               needs a guaranteed one-page file.

@@ -931,6 +931,27 @@
     color: var(--color-ink);
   }
 
+  /* ---- Staff portal chrome ----
+     The portal shares the site's tokens but is a tool, not a brochure.
+     Exactly one Trocchi page title per screen (the base h1 rule already
+     carries the family at its real weight, 400); every heading below it
+     returns to Lato so section labels read as UI. :where() keeps the
+     rule at class specificity inside @layer components, so explicit
+     font-family declarations (the print-flyer composition, utility
+     classes) still win. */
+  .portal-scope :where(h2, h3, h4, h5) {
+    font-family: var(--font-body);
+    letter-spacing: 0;
+  }
+
+  /* Portal page title: the practice serif at its true weight — never
+     synthetic bold (Trocchi ships 400 only). */
+  .portal-title {
+    font-size: 1.85rem;
+    line-height: 1.15;
+    font-weight: 400;
+  }
+
   /* ---- Testimonial rail: scroll-snap, native momentum ---- */
   .rail {
     display: grid;

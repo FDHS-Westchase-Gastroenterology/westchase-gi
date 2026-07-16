@@ -12,10 +12,7 @@ export default function SettingsLayout({
 }) {
   return (
     <section aria-labelledby="settings-heading">
-      <h1
-        id="settings-heading"
-        className="text-[1.65rem] font-black leading-tight text-[var(--color-ink)]"
-      >
+      <h1 id="settings-heading" className="portal-title">
         Settings
       </h1>
       <SettingsTabs />

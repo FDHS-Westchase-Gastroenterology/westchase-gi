@@ -22,7 +22,7 @@ export function AuthCard({
             </p>
           </div>
           <div className="px-8 pb-8 pt-7">
-            <h1 className="text-[1.35rem] font-black leading-tight text-[var(--color-ink)]">
+            <h1 className="text-[1.45rem] leading-tight text-[var(--color-ink)]">
               {title}
             </h1>
             <p className="mt-1.5 text-[0.9rem] text-[var(--color-muted)]">

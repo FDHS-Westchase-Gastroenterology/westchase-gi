@@ -16,7 +16,8 @@ function isRequestStatus(value: unknown): value is RequestStatus {
 }
 
 function revalidateRequestViews(requestId: string) {
-  revalidatePath("/admin");
+  revalidatePath("/admin"); // home overview counts
+  revalidatePath("/admin/requests");
   revalidatePath(`/admin/requests/${requestId}`);
 }
 

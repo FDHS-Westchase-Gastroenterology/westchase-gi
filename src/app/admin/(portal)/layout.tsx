@@ -52,7 +52,7 @@ export default async function PortalLayout({
               </form>
             </div>
           </div>
-          <PortalNav role={session.role} />
+          <PortalNav />
         </div>
       </header>
       <main className="flex-1 pb-16 pt-8 sm:pt-10">

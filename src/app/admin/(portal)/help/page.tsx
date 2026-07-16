@@ -15,10 +15,7 @@ export default async function AdminHelpPage() {
 
   return (
     <section aria-labelledby="help-heading">
-      <h1
-        id="help-heading"
-        className="text-[1.65rem] font-black leading-tight text-[var(--color-ink)]"
-      >
+      <h1 id="help-heading" className="portal-title">
         Help
       </h1>
       <p className="mt-1.5 max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
@@ -34,7 +31,7 @@ export default async function AdminHelpPage() {
             in any of the five languages — their appointment request is
             saved instantly
             to the practice&apos;s own secure database and appears on the{" "}
-            <Link href="/admin" className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2">
+            <Link href="/admin/requests" className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2">
               Appointment requests
             </Link>{" "}
             page. Nothing depends on anyone watching an email inbox: even if
@@ -115,7 +112,10 @@ export default async function AdminHelpPage() {
           </p>
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
+        <div
+          id="website-changes"
+          className="scroll-mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8"
+        >
           <h2 className={SECTION_HEADING}>Getting website changes made</h2>
           <p className={SECTION_BODY}>
             Today, changes to the public website — new hours, a provider
