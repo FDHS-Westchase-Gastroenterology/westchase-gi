@@ -175,7 +175,7 @@ test.describe("portal management UI", () => {
       .eq("request_id", body.id)
       .eq("type", "notification")
       .single();
-    expect(["sent", "rejected", "failed"]).toContain(attempt?.status);
+    expect(["accepted", "failed"]).toContain(attempt?.status);
 
     // The mutations above are on the audit record, visible in the view.
     await page.goto("/admin/audit");

@@ -18,7 +18,7 @@ export type RecipientRow = {
 type MutationOutcome = {
   ok: boolean;
   code?: string;
-  delivery?: "sent" | "failed";
+  delivery?: "accepted" | "failed";
 };
 
 const FAILURE_COPY: Record<string, string> = {
@@ -72,10 +72,10 @@ export function RecipientsManager({
       () => addNotificationRecipient({ email, label: label || undefined }),
       (result) =>
         setDeliveryNotice(
-          result.delivery === "sent"
+          result.delivery === "accepted"
             ? {
                 tone: "success",
-                text: "Recipient added and confirmation email sent.",
+                text: "Recipient added and confirmation email accepted for delivery.",
               }
             : {
                 tone: "warning",

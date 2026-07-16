@@ -27,7 +27,7 @@ the Vercel environment store. Never point local tests at production.
 | `SUPABASE_SECRET_KEY` (+ `SUPABASE_SERVICE_ROLE_KEY` alias) | Server-only privileged key — never `NEXT_PUBLIC_*`, never in client bundles |
 | `SUPABASE_PROJECT_REF` / `SUPABASE_DB_PASSWORD` | CLI/migration access for the default (dev) project |
 | `SUPABASE_*_PROD` family | The same, for the production project (migrations + verify scripts) |
-| `RESEND_API_KEY` / `RESEND_FROM` | Notification email provider + sender |
+| `RESEND_API_KEY` / `RESEND_FROM` | Current production email adapter + sender |
 | `PORTAL_BASE_URL` | Absolute base URL used in notification links |
 | `PORTAL_GITHUB_APP_ID` / `PORTAL_GITHUB_APP_INSTALLATION_ID` | Server-only identifiers for the clinic-owned `wgi-portal` App |
 | `PORTAL_GITHUB_APP_PRIVATE_KEY` | Server-only App private key; PEM encoded as base64 or escaped newlines |
@@ -81,15 +81,36 @@ changes go through committed migrations in `supabase/migrations/`
 (`supabase link` + `supabase db push` per project, or the management
 API), applied to dev first, production after verification.
 
-## Staff invitation and password-reset email
+## Email-path inventory
 
-The two staff email paths share the same sender but have different owners:
+The application owns one provider-neutral, text-only email capability. Resend
+is the only production adapter today, isolated in
+`src/lib/portal/email-provider.ts`; replacing it changes that file plus
+operations configuration, not feature workflows.
 
-- The portal sends staff invitations and notification-recipient confirmations
-  through Resend with `RESEND_API_KEY` and `RESEND_FROM`.
-- Supabase Auth sends password-reset messages through its hosted SMTP settings.
-  Those settings are project configuration, not Postgres migrations, so they
-  must be kept in sync separately on development and production.
+| Path | Delivery owner |
+|---|---|
+| New appointment notification | Application email capability |
+| Notification-recipient confirmation | Application email capability |
+| Staff setup invitation | Application email capability |
+| Password recovery | Supabase Auth hosted custom SMTP |
+
+The three application-owned paths share an eight-second deadline, stable
+idempotency keys, normalized failures, and logs that exclude recipients,
+message text, bearer links, provider errors, and idempotency keys. Appointment
+fan-out remains parallel and records one outcome per recipient. There are no
+automatic request-path retries. A timeout is ambiguous because the provider
+request may finish later; a deliberate retry can reuse the stable key within
+the provider's retention window.
+
+An `accepted` outcome means the configured provider returned a message ID. It
+does not prove inbox delivery. The request queue remains authoritative.
+
+Supabase Auth owns password-recovery generation, hosted template, rate limits,
+and delivery through its custom SMTP settings. Those settings are project
+configuration, not Postgres migrations, so development and production must be
+kept in sync separately. Do not add an Auth Send Email Hook unless unified Auth
+telemetry or provider selection becomes a concrete requirement.
 
 For each hosted Supabase project, configure Resend SMTP, set the Auth site URL
 to that environment's trusted portal origin, and allow the exact

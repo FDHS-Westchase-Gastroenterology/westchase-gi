@@ -2,7 +2,6 @@ import "server-only";
 
 import { createHash, randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { Resend } from "resend";
 import {
   HONEYPOT_FIELD,
   INTAKE_RATE_LIMIT,
@@ -10,7 +9,13 @@ import {
   type IntakeResponse,
   zodFieldErrors,
 } from "@/lib/portal/contracts";
-import { serviceClient } from "@/lib/portal/server";
+import { sendPortalEmail } from "@/lib/portal/email-provider";
+import {
+  createAppointmentNotificationEvents,
+  type NotificationEvent,
+  type NotificationRecipient,
+} from "@/lib/portal/intake-notification";
+import { portalUrl, serviceClient } from "@/lib/portal/server";
 
 type IntakeResult = {
   response: IntakeResponse;
@@ -22,30 +27,9 @@ type RateBucket = {
   windowStartedAt: number;
 };
 
-type NotificationEvent = {
-  request_id: string;
-  type: "notification";
-  recipient: string;
-  provider_message_id: string | null;
-  status: "sent" | "rejected" | "failed";
-  meta: {
-    provider: "resend";
-    provider_status_code?: number;
-    reason?: string;
-  };
-};
-
-type Recipient = {
-  id: string;
-  email: string;
-};
-
 // Accepted serverless limitation: this map enforces the cap per warm runtime
 // instance, not globally across every Vercel instance.
 const rateBuckets = new Map<string, RateBucket>();
-
-const NOTIFICATION_SUBJECT =
-  "New appointment request — Westchase GI portal";
 
 function logOperationalFailure(
   event: string,
@@ -98,21 +82,6 @@ function rateLimitExceeded(headers: Headers): boolean {
   return false;
 }
 
-function notificationFailureEvents(
-  requestId: string,
-  recipients: Recipient[],
-  reason: string,
-): NotificationEvent[] {
-  return recipients.map((recipient) => ({
-    request_id: requestId,
-    type: "notification",
-    recipient: recipient.email,
-    provider_message_id: null,
-    status: "failed",
-    meta: { provider: "resend", reason },
-  }));
-}
-
 async function recordNotificationEvents(
   client: SupabaseClient,
   requestId: string,
@@ -130,127 +99,36 @@ async function recordNotificationEvents(
   }
 }
 
-function portalAdminUrl(): string | null {
-  const base = process.env.PORTAL_BASE_URL?.trim();
-  if (!base) return null;
-
-  try {
-    return new URL("/admin", base).toString();
-  } catch {
-    return null;
-  }
-}
-
 async function notifyActiveRecipients(
   client: SupabaseClient,
   requestId: string,
 ) {
-  const recipientsPromise = client
+  const { data, error } = await client
     .from("notification_recipients")
     .select("id, email")
     .eq("active", true);
-  const countPromise = client
-    .from("requests")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "new");
 
-  const [recipientsResult, countResult] = await Promise.all([
-    recipientsPromise,
-    countPromise,
-  ]);
-
-  if (recipientsResult.error) {
+  if (error) {
     logOperationalFailure("recipient lookup failed", {
       requestId,
-      code: recipientsResult.error.code,
+      code: error.code,
     });
     return;
   }
 
-  const recipients = (recipientsResult.data ?? []) as Recipient[];
+  const recipients = (data ?? []) as NotificationRecipient[];
   if (recipients.length === 0) return;
 
-  if (countResult.error) {
-    logOperationalFailure("open request count failed", {
-      requestId,
-      code: countResult.error.code,
-    });
-    await recordNotificationEvents(
-      client,
-      requestId,
-      notificationFailureEvents(requestId, recipients, "count_unavailable"),
-    );
-    return;
+  const adminUrl = portalUrl("/admin");
+  if (!adminUrl) {
+    logOperationalFailure("portal URL unavailable", { requestId });
   }
 
-  const adminUrl = portalAdminUrl();
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  if (!adminUrl || !apiKey) {
-    const reason = adminUrl ? "provider_unconfigured" : "portal_url_unconfigured";
-    await recordNotificationEvents(
-      client,
-      requestId,
-      notificationFailureEvents(requestId, recipients, reason),
-    );
-    return;
-  }
-
-  const openCount = countResult.count ?? 0;
-  const requestLabel =
-    openCount === 1 ? "appointment request" : "appointment requests";
-  const text = `${openCount} open ${requestLabel} waiting in the Westchase GI portal.\n\nOpen the portal: ${adminUrl}`;
-  const resend = new Resend(apiKey);
-  const from = process.env.RESEND_FROM?.trim() || "onboarding@resend.dev";
-
-  // Parallel fan-out: the recipient list is a handful of front-desk
-  // addresses, well inside Resend's request-rate budget. A provider 429
-  // (like any failure) is recorded honestly and never fails the intake.
-  const events: NotificationEvent[] = await Promise.all(
-    recipients.map(async (recipient): Promise<NotificationEvent> => {
-      try {
-        const { data, error } = await resend.emails.send({
-          from,
-          to: recipient.email,
-          subject: NOTIFICATION_SUBJECT,
-          text,
-        });
-
-        if (error) {
-          // onboarding@resend.dev rejects non-owner recipients with 403
-          // until the clinic domain is verified. That expected provider
-          // outcome is distinct from transport/configuration failure.
-          return {
-            request_id: requestId,
-            type: "notification",
-            recipient: recipient.email,
-            provider_message_id: null,
-            status: error.statusCode === 403 ? "rejected" : "failed",
-            meta: {
-              provider: "resend",
-              provider_status_code: error.statusCode ?? undefined,
-            },
-          };
-        }
-
-        return {
-          request_id: requestId,
-          type: "notification",
-          recipient: recipient.email,
-          provider_message_id: data.id,
-          status: "sent",
-          meta: { provider: "resend" },
-        };
-      } catch {
-        return {
-          request_id: requestId,
-          type: "notification",
-          recipient: recipient.email,
-          provider_message_id: null,
-          status: "failed",
-          meta: { provider: "resend", reason: "network_failure" },
-        };
-      }
-    }),
+  const events = await createAppointmentNotificationEvents(
+    sendPortalEmail,
+    requestId,
+    recipients,
+    adminUrl,
   );
 
   await recordNotificationEvents(client, requestId, events);

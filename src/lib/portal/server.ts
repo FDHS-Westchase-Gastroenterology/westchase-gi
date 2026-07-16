@@ -28,6 +28,29 @@ function serviceRoleKey(): string {
   return requiredEnv(["SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY"]);
 }
 
+/** Build an application-owned URL without accepting an absolute/open-redirect
+ * target. HTTP remains valid for local Playwright; production supplies HTTPS. */
+export function portalUrl(path: string): string | null {
+  const base = process.env.PORTAL_BASE_URL?.trim();
+  if (!base || !path.startsWith("/") || path.startsWith("//")) return null;
+
+  try {
+    const baseUrl = new URL(base);
+    if (
+      (baseUrl.protocol !== "http:" && baseUrl.protocol !== "https:") ||
+      baseUrl.username ||
+      baseUrl.password
+    ) {
+      return null;
+    }
+
+    const target = new URL(path, baseUrl);
+    return target.origin === baseUrl.origin ? target.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Request-scoped, cookie-bound client for later portal auth work.
  * Authorization callers must verify identity with getClaims()/getUser(), never

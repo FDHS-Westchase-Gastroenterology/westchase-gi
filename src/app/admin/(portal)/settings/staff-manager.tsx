@@ -21,7 +21,7 @@ export type StaffRow = {
 type MutationOutcome = {
   ok: boolean;
   code?: string;
-  delivery?: "sent" | "failed";
+  delivery?: "accepted" | "failed";
   fallbackSetupUrl?: string;
 };
 
@@ -213,7 +213,7 @@ export function StaffManager({
   const [error, setError] = useState<string | null>(null);
   const [issued, setIssued] = useState<{
     email: string;
-    delivery: "sent" | "failed";
+    delivery: "accepted" | "failed";
     fallbackSetupUrl?: string;
     copied: boolean;
   } | null>(null);
@@ -240,7 +240,7 @@ export function StaffManager({
       return false;
     }
     if (
-      (result.delivery !== "sent" && result.delivery !== "failed") ||
+      (result.delivery !== "accepted" && result.delivery !== "failed") ||
       (result.delivery === "failed" && !result.fallbackSetupUrl)
     ) {
       setError(FAILURE_COPY.unavailable);
@@ -306,7 +306,7 @@ export function StaffManager({
       {issued && (
         <div
           data-testid={
-            issued.delivery === "sent"
+            issued.delivery === "accepted"
               ? "invite-delivery-panel"
               : "invite-fallback-panel"
           }
@@ -314,12 +314,12 @@ export function StaffManager({
         >
           <div role="status">
             <p className="text-sm font-bold text-[var(--color-ink)]">
-              {issued.delivery === "sent"
-                ? `Invitation sent to ${issued.email}`
+              {issued.delivery === "accepted"
+                ? `Invitation accepted for delivery to ${issued.email}`
                 : `Invitation created for ${issued.email}`}
             </p>
             <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-body)]">
-              {issued.delivery === "sent"
+              {issued.delivery === "accepted"
                 ? "They can use the one-time link in the email to choose their own password."
                 : "Email delivery could not be confirmed. Share this one-time setup link securely if they do not receive the message; it is shown only this once."}
             </p>
