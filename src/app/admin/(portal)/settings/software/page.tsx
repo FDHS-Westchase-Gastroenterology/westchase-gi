@@ -8,7 +8,7 @@ import {
 const CAPABILITIES = [
   "Patient-facing website",
   "Authenticated staff portal",
-  "Authenticated review-flyer printer",
+  "Review-flyer printing",
 ] as const;
 
 export default async function AdminSettingsSoftwarePage() {
@@ -41,8 +41,9 @@ export default async function AdminSettingsSoftwarePage() {
             Westchase GI
           </h2>
           <p className="mt-2 max-w-[62ch] text-[0.92rem] leading-relaxed text-[var(--color-body)]">
-            One clinic-owned product includes the public website and its
-            protected staff tools.
+            This is the practice&rsquo;s own software — the website patients
+            see and the staff tools behind it. It belongs to Westchase GI,
+            and this page is where the practice controls it.
           </p>
         </div>
         {session.role === "admin" && (
@@ -112,11 +113,13 @@ export default async function AdminSettingsSoftwarePage() {
 
       <div className="mt-6 border-t border-[var(--color-line)] pt-6">
         <h3 className="text-[0.82rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
-          Hosting custody
+          Who owns the website
         </h3>
         <p className="mt-2 max-w-[70ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-          The clinic-owned Vercel project is <strong>westchase-gi</strong>.
-          This portal does not connect to or manage Vercel.
+          Westchase GI does. The website and the accounts it runs on belong
+          to the practice — not to a web vendor. If the practice ever
+          changes who maintains the site, the website stays put and keeps
+          running.
         </p>
       </div>
     </section>
