@@ -14,9 +14,6 @@ const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
 
 const db = serviceDb();
 const runId = randomUUID().slice(0, 8);
-const staffEmail = `home-${runId}-staff@example.test`;
-const staffPassword = `Home-${randomUUID()}-aA1!`;
-let staffUserId: string | null = null;
 
 function testIp(label: string): string {
   const hex = createHash("sha256").update(`${runId}:${label}`).digest("hex");
@@ -32,39 +29,12 @@ async function signIn(page: Page, email: string, password: string) {
 }
 
 test.describe("portal home", () => {
-  test.describe.configure({ mode: "serial" });
-
   test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== "chromium", "JS portal UI");
   });
 
-  test.beforeAll(async () => {
-    const created = await db.auth.admin.createUser({
-      email: staffEmail,
-      password: staffPassword,
-      email_confirm: true,
-    });
-    expect(created.error).toBeNull();
-    staffUserId = created.data.user?.id ?? null;
-    if (!staffUserId) throw new Error("Home staff fixture creation failed");
-
-    const profile = await db.from("staff_profiles").insert({
-      user_id: staffUserId,
-      email: staffEmail,
-      display_name: "TEST Homefront Staff",
-      role: "staff",
-      active: true,
-      onboarded_at: new Date().toISOString(),
-    });
-    expect(profile.error).toBeNull();
-  });
-
   test.afterAll(async () => {
     await db.from("requests").delete().like("email", `home-${runId}-%`);
-    if (staffUserId) {
-      await db.from("staff_profiles").delete().eq("user_id", staffUserId);
-      await db.auth.admin.deleteUser(staffUserId);
-    }
   });
 
   test("admin lands on a greeting, live queue status, and the full task list", async ({
@@ -154,24 +124,5 @@ test.describe("portal home", () => {
     await expect(
       page.locator('nav[aria-label="Portal sections"] a[aria-current="page"]'),
     ).toHaveText("Appointment requests");
-  });
-
-  test("staff see the same home without the administrator flyer task", async ({
-    page,
-  }) => {
-    await signIn(page, staffEmail, staffPassword);
-
-    await expect(page.getByTestId("home-greeting")).toContainText(
-      "TEST",
-    );
-    await expect(
-      page.getByRole("link", { name: "Print review flyers" }),
-    ).toHaveCount(0);
-    await expect(
-      page.getByRole("link", { name: "Manage staff access" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: "Open appointment requests" }),
-    ).toBeVisible();
   });
 });

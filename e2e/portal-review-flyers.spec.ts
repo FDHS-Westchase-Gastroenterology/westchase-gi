@@ -152,6 +152,12 @@ test("review flyers enforce the page and asset role boundary", async ({
     await expect(
       staffPage.getByRole("link", { name: "Print review flyers" }),
     ).toHaveCount(0);
+    await expect(
+      staffPage.getByRole("link", { name: "Manage staff access" }),
+    ).toBeVisible();
+    await expect(
+      staffPage.getByRole("link", { name: "Open appointment requests" }),
+    ).toBeVisible();
 
     await staffPage.goto("/admin/review-flyers");
     await expect(staffPage).toHaveURL(/\/admin\/?$/);

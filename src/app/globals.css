@@ -952,36 +952,6 @@
     font-weight: 400;
   }
 
-  /* Task rows on the portal home: quiet hairline list, mint hover wash,
-     chevron nudge. Transition specific properties only; presses are
-     interruptible (transitions, not keyframes). */
-  .task-row {
-    display: flex;
-    align-items: center;
-    gap: 0.95rem;
-    padding: 0.9rem 0.75rem;
-    margin-inline: -0.75rem;
-    border-radius: var(--radius);
-    transition: background-color 0.18s ease-out;
-  }
-  .task-row:hover {
-    background-color: var(--color-mint);
-  }
-  .task-row:active {
-    background-color: var(--color-mint-2);
-  }
-  .task-row .task-row-go {
-    transition: transform 0.2s var(--ease-out-quint);
-  }
-  .task-row:hover .task-row-go {
-    transform: translateX(3px);
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .task-row .task-row-go {
-      transition: none;
-    }
-  }
-
   /* ---- Testimonial rail: scroll-snap, native momentum ---- */
   .rail {
     display: grid;

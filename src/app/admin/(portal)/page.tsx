@@ -1,10 +1,6 @@
 import Link from "next/link";
 import type { SVGProps } from "react";
-import {
-  REQUEST_STATUSES,
-  type RequestStatus,
-  type StaffRole,
-} from "@/lib/portal/contracts";
+import type { StaffRole } from "@/lib/portal/contracts";
 import { requireRole } from "@/lib/portal/auth";
 import { serviceClient } from "@/lib/portal/server";
 import {
@@ -108,36 +104,17 @@ export default async function AdminHomePage() {
   const now = new Date();
 
   const db = serviceClient();
-  const [{ data: newestRows }, ...countResults] = await Promise.all([
-    db
-      .from("requests")
-      .select("id, name, created_at")
-      .eq("status", "new")
-      .order("created_at", { ascending: false })
-      .limit(3),
-    ...REQUEST_STATUSES.map((status) =>
-      db
-        .from("requests")
-        .select("id", { count: "exact", head: true })
-        .eq("status", status),
-    ),
-  ]);
-  const counts = Object.fromEntries(
-    REQUEST_STATUSES.map((status, index) => [
-      status,
-      countResults[index].count ?? 0,
-    ]),
-  ) as Record<RequestStatus, number>;
+  const { data: newestRows, count: newCount } = await db
+    .from("requests")
+    .select("id, name, created_at", { count: "exact" })
+    .eq("status", "new")
+    .order("created_at", { ascending: false })
+    .limit(3);
   const newest = (newestRows ?? []) as Array<{
     id: string;
     name: string;
     created_at: string;
   }>;
-
-  const inMotion = [
-    counts.contacted > 0 && `${counts.contacted} contacted`,
-    counts.scheduled > 0 && `${counts.scheduled} scheduled`,
-  ].filter(Boolean) as string[];
 
   return (
     <section aria-labelledby="home-heading">
@@ -164,13 +141,8 @@ export default async function AdminHomePage() {
             data-testid="queue-overview-headline"
             className="mt-3 max-w-[26ch] text-[1.4rem] font-bold leading-snug text-[var(--color-ink)]"
           >
-            {headlineFor(counts.new)}
+            {headlineFor(newCount ?? 0)}
           </p>
-          {inMotion.length > 0 && (
-            <p className="mt-2 text-[0.92rem] tabular-nums text-[var(--color-muted)]">
-              Also in the queue: {inMotion.join(" · ")}.
-            </p>
-          )}
 
           {newest.length > 0 ? (
             <ul
@@ -224,7 +196,7 @@ export default async function AdminHomePage() {
                 <li key={task.href}>
                   <Link
                     href={task.href}
-                    className="task-row"
+                    className="group -mx-3 flex items-center gap-[0.95rem] rounded-[var(--radius)] px-3 py-[0.9rem] transition-colors duration-[180ms] ease-out hover:bg-[var(--color-mint)] active:bg-[var(--color-mint-2)]"
                     aria-labelledby={`task-${slug}-label`}
                     aria-describedby={`task-${slug}-desc`}
                   >
@@ -246,7 +218,7 @@ export default async function AdminHomePage() {
                       </span>
                     </span>
                     <ChevronRight
-                      className="task-row-go h-4.5 w-4.5 flex-none text-[var(--color-muted)]"
+                      className="h-4.5 w-4.5 flex-none text-[var(--color-muted)] transition-transform duration-200 [transition-timing-function:var(--ease-out-quint)] group-hover:translate-x-[3px]"
                       aria-hidden="true"
                     />
                   </Link>
