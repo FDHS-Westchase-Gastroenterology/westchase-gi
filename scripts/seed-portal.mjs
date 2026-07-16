@@ -224,16 +224,6 @@ async function main() {
         notes: null,
       },
       {
-        name: "Review QR print tool",
-        kind: "Print tool",
-        repo: "ASTXRTYS/wgi-review-qr",
-        live_url: "https://wgi-review-qr.vercel.app",
-        hosting: "Vercel",
-        maintainer: "Jason — consultant",
-        status: "active",
-        notes: null,
-      },
-      {
         name: "Staff admin portal",
         kind: "Admin portal",
         repo: "FDHS-Westchase-Gastroenterology/westchase-gi",

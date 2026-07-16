@@ -51,6 +51,10 @@ const PASSWORD_RESET_LOCK_MIGRATION = {
   version: "20260715025435",
   name: "serialize_password_reset_deactivation",
 }
+const REVIEW_QR_RETIREMENT_MIGRATION = {
+  version: "20260716132839",
+  name: "retire_review_qr_registry_asset",
+}
 
 const TARGETS = new Set(["dev", "prod"])
 
@@ -329,6 +333,14 @@ async function main() {
     ),
     `Password-reset lock migration ${PASSWORD_RESET_LOCK_MIGRATION.version}_${PASSWORD_RESET_LOCK_MIGRATION.name} is not applied`,
   )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === REVIEW_QR_RETIREMENT_MIGRATION.version &&
+        row.name === REVIEW_QR_RETIREMENT_MIGRATION.name,
+    ),
+    `Review-QR retirement migration ${REVIEW_QR_RETIREMENT_MIGRATION.version}_${REVIEW_QR_RETIREMENT_MIGRATION.name} is not applied`,
+  )
 
   const onboardingColumnRows = await queryDatabase({
     accessToken,
@@ -576,7 +588,6 @@ async function main() {
   const registryNames = registryRows.map((row) => row.name)
   for (const requiredName of [
     "Westchase GI website",
-    "Review QR print tool",
     "Staff admin portal",
   ]) {
     assert(
@@ -584,6 +595,10 @@ async function main() {
       `Registry seed is missing: ${requiredName}`,
     )
   }
+  assert(
+    !registryNames.includes("Review QR print tool"),
+    "Retired Review QR print tool is still present in the registry",
+  )
 
   console.log(`Verified ${target} tables (${actualTables.length}): ${actualTables.join(", ")}`)
   console.log(`Verified ${target} RLS: 0 public tables without row security`)
@@ -595,6 +610,9 @@ async function main() {
   )
   console.log(
     `Verified ${target} migration: ${PASSWORD_RESET_LOCK_MIGRATION.version}_${PASSWORD_RESET_LOCK_MIGRATION.name}`,
+  )
+  console.log(
+    `Verified ${target} migration: ${REVIEW_QR_RETIREMENT_MIGRATION.version}_${REVIEW_QR_RETIREMENT_MIGRATION.name}`,
   )
   console.log(
     `Verified ${target} staff_profiles.onboarded_at: nullable timestamptz, no default`,

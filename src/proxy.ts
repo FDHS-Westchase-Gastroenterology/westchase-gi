@@ -81,10 +81,13 @@ async function protectAdminRequest(request: NextRequest): Promise<NextResponse> 
     "/admin/auth/confirm",
     "/admin/auth/callback",
   ].includes(request.nextUrl.pathname);
+  const isReviewFlyerAssetPath = request.nextUrl.pathname.startsWith(
+    "/admin/review-flyers/assets/",
+  );
   const config = portalSupabaseConfig();
 
   if (!config) {
-    const response = isPublicAuthPath
+    const response = isPublicAuthPath || isReviewFlyerAssetPath
       ? NextResponse.next({ request })
       : NextResponse.redirect(new URL("/admin/login", request.url));
     return applySessionUpdates(response, [], {});
@@ -117,7 +120,7 @@ async function protectAdminRequest(request: NextRequest): Promise<NextResponse> 
   }
 
   const response =
-    !isPublicAuthPath && !authenticated
+    !isPublicAuthPath && !isReviewFlyerAssetPath && !authenticated
       ? NextResponse.redirect(new URL("/admin/login", request.url))
       : NextResponse.next({ request });
 

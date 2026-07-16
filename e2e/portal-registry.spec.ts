@@ -54,12 +54,6 @@ test.describe("sovereignty registry", () => {
         maintainer: "Clinic-owned; ASTXRTYS — Write collaborator",
       },
       {
-        name: "Review QR print tool",
-        repo: "ASTXRTYS/wgi-review-qr",
-        hosting: "Vercel",
-        maintainer: "Jason — consultant",
-      },
-      {
         name: "Staff admin portal",
         repo: "FDHS-Westchase-Gastroenterology/westchase-gi",
         hosting: "Vercel project: westchase-gi (clinic-owned Hobby account)",
@@ -73,6 +67,10 @@ test.describe("sovereignty registry", () => {
       await expect(card).toContainText(seeded.maintainer);
       await expect(card.getByTestId("asset-status")).toBeVisible();
     }
+
+    await expect(
+      page.locator('[data-asset-name="Review QR print tool"]'),
+    ).toHaveCount(0);
 
     await page.screenshot({
       path: "test-results/portal-registry/registry-1440.png",

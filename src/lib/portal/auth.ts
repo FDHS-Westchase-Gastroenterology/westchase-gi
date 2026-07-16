@@ -36,6 +36,14 @@ class PortalAuthorizationError extends Error {
   }
 }
 
+export function authorizationStatus(error: unknown): 401 | 403 | null {
+  if (typeof error !== "object" || error === null || !("status" in error)) {
+    return null;
+  }
+  const status = error.status;
+  return status === 401 || status === 403 ? status : null;
+}
+
 function isStaffRole(value: unknown): value is StaffRole {
   return value === "admin" || value === "staff";
 }

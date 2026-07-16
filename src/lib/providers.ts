@@ -16,6 +16,7 @@
 // project's assets archive).
 
 import type { Bi } from "./content/types";
+import reviewTargets from "./review-targets.json";
 
 type Img = { src: string; width: number; height: number };
 
@@ -50,7 +51,7 @@ export const physicians: Physician[] = [
     id: "john-chang",
     name: "John Chang",
     credentials: "MD, FACG",
-    googleReview: "https://search.google.com/local/writereview?placeid=ChIJ1XxEt_TqwogRwXffFfsFWf0",
+    googleReview: reviewTargets.chang.destination,
     role: {
       en: "Gastroenterologist",
       es: "Gastroenterólogo",
@@ -258,7 +259,7 @@ export const physicians: Physician[] = [
     id: "amir-awad",
     name: "Amir Awad",
     credentials: "MD",
-    googleReview: "https://search.google.com/local/writereview?placeid=ChIJ1XxEt_TqwogRejiysvVdwqc",
+    googleReview: reviewTargets.awad.destination,
     role: {
       en: "Gastroenterologist",
       es: "Gastroenterólogo",
@@ -489,7 +490,7 @@ export const physicians: Physician[] = [
     id: "alfredo-mendoza",
     name: "Alfredo Mendoza",
     credentials: "MD, MS",
-    googleReview: "https://search.google.com/local/writereview?placeid=ChIJ1XxEt_TqwogRzZ4Jiq8ZMlA",
+    googleReview: reviewTargets.mendoza.destination,
     role: {
       en: "Gastroenterologist",
       es: "Gastroenterólogo",

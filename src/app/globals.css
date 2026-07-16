@@ -1070,3 +1070,233 @@
     transform: none !important;
   }
 }
+
+/* ------------------------------------------------------------------ *
+   Review-flyer printer: portal screen uses the shared system; the
+   approved EN/ES flyer composition is reproduced exactly on letter paper.
+ * ------------------------------------------------------------------ */
+.review-flyer {
+  display: none;
+}
+
+.review-flyer-screen .btn {
+  transition: transform 160ms var(--ease-out-quint), background-color 160ms ease,
+    color 160ms ease, box-shadow 160ms ease;
+}
+
+.review-flyer-screen .btn:active {
+  transform: scale(0.98);
+}
+
+@media (hover: none) {
+  .review-flyer-screen .btn:hover {
+    transform: none;
+  }
+
+  .review-flyer-screen .btn:active {
+    transform: scale(0.98);
+  }
+}
+
+@page review-flyer {
+  size: letter;
+  margin: 0.45in;
+}
+
+@media print {
+  body[data-review-flyer-print] {
+    background: #fff;
+    page: review-flyer;
+  }
+
+  body[data-review-flyer-print] header,
+  body[data-review-flyer-print] footer,
+  body[data-review-flyer-print] .review-flyer-screen,
+  body[data-review-flyer-print] [data-testid="assistant-launcher"],
+  body[data-review-flyer-print] [data-testid="assistant-panel"] {
+    display: none !important;
+  }
+
+  body[data-review-flyer-print] main {
+    padding: 0 !important;
+  }
+
+  body[data-review-flyer-print] main > .container-x {
+    max-width: none;
+    padding: 0;
+  }
+
+  body[data-review-flyer-print] .review-flyer {
+    display: none;
+  }
+
+  body[data-review-flyer-print="master"] [data-review-flyer="master"],
+  body[data-review-flyer-print="practice"] [data-review-flyer="practice"],
+  body[data-review-flyer-print="awad"] [data-review-flyer="awad"],
+  body[data-review-flyer-print="chang"] [data-review-flyer="chang"],
+  body[data-review-flyer-print="mendoza"] [data-review-flyer="mendoza"],
+  body[data-review-flyer-print="taylor"] [data-review-flyer="taylor"],
+  body[data-review-flyer-print="all"] .review-flyer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    height: 10in;
+    overflow: hidden;
+    color: #22354a;
+    text-align: center;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body[data-review-flyer-print="all"] .review-flyer:not(:last-child) {
+    break-after: page;
+  }
+
+  .review-flyer-band {
+    width: 100%;
+    padding: 0.3in 0.4in 0.34in;
+    border-radius: 14pt;
+    background: #2e4a61;
+    color: #fff;
+  }
+
+  .review-flyer-brand {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 0.12in;
+  }
+
+  .review-flyer-brand img {
+    width: auto;
+    height: 0.62in;
+    padding: 4pt 9pt;
+    border-radius: 6pt;
+    background: #fff;
+  }
+
+  .review-flyer-clinic {
+    margin: 0;
+    color: #fff !important;
+    font-size: 13.5pt;
+    font-weight: 900;
+    letter-spacing: 0.045em;
+    text-transform: uppercase;
+  }
+
+  .review-flyer-clinic small {
+    display: block;
+    margin-top: 3pt;
+    color: #c8d6e2;
+    font-size: 9.5pt;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+  }
+
+  .review-flyer-tick {
+    display: block;
+    width: 44pt;
+    height: 4pt;
+    margin: 0.14in auto;
+    border-radius: 999px;
+    background: #eaa84a;
+  }
+
+  .review-flyer-ask {
+    margin: 0;
+    color: #fff !important;
+    font-family: var(--font-display);
+    font-size: 29pt;
+    font-weight: 400;
+    line-height: 1.15;
+    text-wrap: balance;
+  }
+
+  .review-flyer-ask-es {
+    margin: 6pt 0 0;
+    color: #c8d6e2 !important;
+    font-size: 14pt;
+    font-style: italic;
+  }
+
+  .review-flyer-qr-card {
+    padding: 0.16in;
+    border: 1.5pt solid #d6dee6;
+    border-radius: 14pt;
+    background: #fff;
+    line-height: 0;
+  }
+
+  .review-flyer-qr-card img {
+    display: block;
+    width: 3.9in;
+    height: 3.9in;
+  }
+
+  .review-flyer-scan {
+    max-width: 6.4in;
+    margin: 0;
+    color: #22354a !important;
+    font-size: 13pt;
+    font-weight: 700;
+  }
+
+  .review-flyer-scan em {
+    display: block;
+    margin-top: 4pt;
+    color: #3c5068;
+    font-size: 11.5pt;
+    font-weight: 400;
+    font-style: italic;
+  }
+
+  .review-flyer-langs {
+    margin: 0;
+    color: #2e4a61 !important;
+    font-size: 11pt;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+
+  .review-flyer-provider {
+    margin: 0;
+    color: #2e4a61 !important;
+    font-size: 16pt;
+    font-weight: 900;
+  }
+
+  .review-flyer-provider small {
+    display: block;
+    margin-top: 3pt;
+    color: #3c5068;
+    font-size: 10.5pt;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+  }
+
+  .review-flyer-foot {
+    width: 100%;
+    padding-top: 0.12in;
+    border-top: 1pt solid #d6dee6;
+  }
+
+  .review-flyer-thanks {
+    margin: 0;
+    color: #22354a !important;
+    font-size: 10.5pt;
+    font-weight: 700;
+  }
+
+  .review-flyer-thanks em {
+    color: #3c5068;
+    font-weight: 400;
+    font-style: italic;
+  }
+
+  .review-flyer-practice-line {
+    margin: 4pt 0 0;
+    color: #4c839f !important;
+    font-size: 9.5pt;
+    letter-spacing: 0.02em;
+  }
+}

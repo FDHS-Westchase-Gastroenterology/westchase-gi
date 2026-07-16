@@ -53,6 +53,7 @@ const VIEWPORTS = [
 
 const PORTAL_PAGES = [
   { name: "queue", path: "/admin" },
+  { name: "review-flyers", path: "/admin/review-flyers" },
   { name: "settings", path: "/admin/settings" },
   { name: "settings-software", path: "/admin/settings/software" },
   { name: "audit", path: "/admin/audit" },
@@ -90,7 +91,7 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
         .evaluateAll((links) =>
           links.map((link) => link.getBoundingClientRect().height),
         );
-      expect(navBoxes).toHaveLength(3);
+      expect(navBoxes).toHaveLength(4);
       for (const height of navBoxes) {
         expect(height, "nav target height").toBeGreaterThanOrEqual(40);
       }
@@ -109,10 +110,12 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
         ).toHaveText("Settings");
       }
 
-      // Screenshot sweep: the queue plus both Settings sub-pages (the tab
-      // row is the one place a narrow viewport has clipped before).
+      // Screenshot sweep: the queue, flyer printer, and both Settings
+      // sub-pages (the tab row is the one place a narrow viewport has clipped
+      // before).
       if (
         portalPage.name === "queue" ||
+        portalPage.name === "review-flyers" ||
         portalPage.path.startsWith("/admin/settings")
       ) {
         await page.screenshot({

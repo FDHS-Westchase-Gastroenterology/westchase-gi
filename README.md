@@ -42,9 +42,12 @@ Authenticated staff tool (Supabase Auth + row-level security; roles enforced ser
 a staff-profiles table): a requests queue with triage lifecycle (new → contacted → scheduled →
 closed) and attributed notes, notification-recipient management, staff account management with
 emailed single-use setup links, an audit log of every mutation, CSV export, a plain-English help
-page, and a software/access registry with live server-side GitHub status and a deliberately
-deferred Vercel integration — see `docs/INTEGRATION-ACTIVATION.md` for the custody and connection
-runbook, and `docs/PORTAL-OPS.md` for day-to-day operations.
+page, a software/access registry with live server-side GitHub status, and an administrator-only
+review-flyer printer. The printer serves its approved PDF, SVG, and PNG artifacts through the
+same server-enforced portal boundary; no flyer download lives in `public/` or depends on a
+separate application. The Vercel integration remains deliberately deferred — see
+`docs/INTEGRATION-ACTIVATION.md` for the custody and connection runbook, and
+`docs/PORTAL-OPS.md` for day-to-day operations.
 
 ## What this rebuild fixes (vs. the previous vendor site)
 

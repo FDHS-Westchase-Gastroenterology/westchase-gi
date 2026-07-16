@@ -132,6 +132,25 @@ after domain recovery and update `RESEND_FROM` before handover.
   or `pg_dump` with the database password for a complete portable dump.
   The practice's data is standard Postgres — there is no lock-in.
 
+## Review-flyer printing
+
+Administrators open **Print review flyers** in the portal navigation. The page supports one
+flyer at a time, all six flyers, and protected PDF, SVG, and PNG downloads. Non-admin staff do
+not see the action and cannot fetch its files directly.
+
+The 18 approved binaries live in `private/review-flyers/`; `src/lib/review-targets.json` is the
+single manifest for destinations, filenames, and pinned hashes. Never move these files to
+`public/`, regenerate an approved PDF during a routine edit, or duplicate review destinations
+outside the manifest. After any intentional flyer change, update the canonical files and hashes
+together, then run:
+
+```bash
+node scripts/verify-review-flyers.mjs
+```
+
+The verifier proves all 18 hashes, decodes every PNG to its exact destination, and confirms each
+PDF is one 612 × 792-point letter page.
+
 ## Notification recipients
 
 Managed in the portal (Settings): admins add/remove addresses, any staff
@@ -172,4 +191,5 @@ npm run build && npm run lint && npm run doctor   # build + lint + React Doctor 
 npx playwright test                               # full E2E contract
 node scripts/verify-schema.mjs --target dev       # schema/RLS/seed health (or --target prod)
 node scripts/verify-no-secrets.mjs                # git history secret sweep
+node scripts/verify-review-flyers.mjs             # QR destinations + artifact fidelity
 ```
