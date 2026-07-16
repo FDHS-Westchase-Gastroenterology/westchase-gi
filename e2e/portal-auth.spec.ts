@@ -631,12 +631,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
           staleEmail,
         );
         if (path === "/admin") {
-          await expect(
-            page.getByRole("heading", {
-              name: "Appointment requests",
-              exact: true,
-            }),
-          ).toBeVisible();
+          await expect(page.getByTestId("home-greeting")).toBeVisible();
         } else if (path === "/admin/settings") {
           await expect(page.getByTestId("recipients-manager")).toBeVisible();
         } else {

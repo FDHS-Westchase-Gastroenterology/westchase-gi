@@ -116,10 +116,10 @@ export default async function RequestDetailPage({
 
   return (
     <section aria-labelledby="request-heading">
-      <nav aria-label="Breadcrumb" className="text-[0.9rem]">
+      <nav aria-label="Breadcrumb" className="flex items-center text-[0.9rem]">
         <Link
-          href="/admin"
-          className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+          href="/admin/requests"
+          className="inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
         >
           Appointment requests
         </Link>
@@ -133,7 +133,7 @@ export default async function RequestDetailPage({
         <h1
           id="request-heading"
           data-testid="request-detail-name"
-          className="text-[1.65rem] font-black leading-tight text-[var(--color-ink)]"
+          className="portal-title"
         >
           {row.name}
         </h1>

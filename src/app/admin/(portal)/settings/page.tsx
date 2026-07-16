@@ -36,15 +36,20 @@ export default async function AdminSettingsPage() {
         open this portal.
       </p>
 
-      <RecipientsManager
-        recipients={(recipientsResult.data ?? []) as RecipientRow[]}
-        isAdmin={isAdmin}
-      />
-      <StaffManager
-        staff={(staffResult.data ?? []) as StaffRow[]}
-        isAdmin={isAdmin}
-        selfUserId={session.id}
-      />
+      {/* Anchor wrappers give the home-page task rows stable deep links. */}
+      <div id="notifications" className="scroll-mt-6">
+        <RecipientsManager
+          recipients={(recipientsResult.data ?? []) as RecipientRow[]}
+          isAdmin={isAdmin}
+        />
+      </div>
+      <div id="staff" className="scroll-mt-6">
+        <StaffManager
+          staff={(staffResult.data ?? []) as StaffRow[]}
+          isAdmin={isAdmin}
+          selfUserId={session.id}
+        />
+      </div>
     </div>
   );
 }

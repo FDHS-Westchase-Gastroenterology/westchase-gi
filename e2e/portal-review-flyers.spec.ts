@@ -303,7 +303,9 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
           };
         }),
       );
-    expect(actionSizes).toHaveLength(25);
+    // 24 flyer actions + the "Print all six flyers" button + the Home
+    // breadcrumb link (44px touch target like every other action).
+    expect(actionSizes).toHaveLength(26);
     for (const action of actionSizes) {
       viewportActionSizes.push({ viewport: viewport.width, ...action });
     }

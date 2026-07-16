@@ -52,7 +52,8 @@ const VIEWPORTS = [
 ] as const;
 
 const PORTAL_PAGES = [
-  { name: "queue", path: "/admin" },
+  { name: "home", path: "/admin" },
+  { name: "queue", path: "/admin/requests" },
   { name: "review-flyers", path: "/admin/review-flyers" },
   { name: "settings", path: "/admin/settings" },
   { name: "settings-software", path: "/admin/settings/software" },
@@ -110,10 +111,11 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
         ).toHaveText("Settings");
       }
 
-      // Screenshot sweep: the queue, flyer printer, and both Settings
+      // Screenshot sweep: home, the queue, flyer printer, and both Settings
       // sub-pages (the tab row is the one place a narrow viewport has clipped
       // before).
       if (
+        portalPage.name === "home" ||
         portalPage.name === "queue" ||
         portalPage.name === "review-flyers" ||
         portalPage.path.startsWith("/admin/settings")

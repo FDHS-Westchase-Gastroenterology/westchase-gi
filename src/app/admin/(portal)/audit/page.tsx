@@ -36,12 +36,12 @@ export default async function AdminAuditPage() {
 
   return (
     <section aria-labelledby="audit-heading">
-      <nav aria-label="Breadcrumb" className="text-[0.9rem]">
+      <nav aria-label="Breadcrumb" className="flex items-center text-[0.9rem]">
         <Link
           href="/admin"
-          className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+          className="inline-flex min-h-11 min-w-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
         >
-          Staff portal
+          Home
         </Link>
         <span aria-hidden="true" className="mx-2 text-[var(--color-muted)]">
           /
@@ -51,7 +51,7 @@ export default async function AdminAuditPage() {
 
       <h1
         id="audit-heading"
-        className="mt-4 text-[1.65rem] font-black leading-tight text-[var(--color-ink)]"
+        className="portal-title mt-4"
       >
         Activity log
       </h1>

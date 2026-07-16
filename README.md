@@ -40,17 +40,20 @@ The old site's form silently discarded submissions. Now:
 ## The staff portal (`/admin`)
 
 Authenticated staff tool (Supabase Auth + row-level security; roles enforced server-side from
-a staff-profiles table): a requests queue with triage lifecycle (new → contacted → scheduled →
-closed) and attributed notes, notification-recipient management, staff account management with
-emailed single-use setup links, an audit log of every mutation, CSV export, a plain-English help
-page, a Website custody surface with live server-side GitHub status, and an administrator-only
-review-flyer printer. Westchase GI is the one managed product; the portal and printer are
-capabilities of the same application and canonical repository. The printer serves its approved
-PDF, SVG, and PNG artifacts through the same server-enforced portal boundary; no flyer download
-lives in `public/` or depends on a separate application. Hosting custody is shown as a static
-clinic-owned fact; the portal does not connect to or manage Vercel. See
-`docs/INTEGRATION-ACTIVATION.md` for the custody and connection runbook, and
-`docs/PORTAL-OPS.md` for day-to-day operations.
+a staff-profiles table). Staff land on a task-first **home page** — a greeting, the live
+new-request status, and the portal's jobs in plain language — then work: a requests queue at
+`/admin/requests` with triage lifecycle (new → contacted → scheduled → closed) and attributed
+notes, notification-recipient management, staff account management with emailed single-use setup
+links, an audit log of every mutation, CSV export, a plain-English help page, a Website custody
+surface with live server-side GitHub status, and an administrator-only review-flyer printer
+(reached from Home and the Website page — occasional tasks do not hold permanent tabs).
+Westchase GI is the one managed product; the portal and printer are capabilities of the same
+application and canonical repository. The printer serves its approved PDF, SVG, and PNG
+artifacts through the same server-enforced portal boundary; no flyer download lives in `public/`
+or depends on a separate application. Hosting custody is shown as a static clinic-owned fact;
+the portal does not connect to or manage Vercel. See `docs/PORTAL-PRODUCT.md` for the portal's
+product definition (the root `PRODUCT.md` covers the patient site), `docs/INTEGRATION-ACTIVATION.md`
+for the custody and connection runbook, and `docs/PORTAL-OPS.md` for day-to-day operations.
 
 ## What this rebuild fixes (vs. the previous vendor site)
 

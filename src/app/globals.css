@@ -931,6 +931,57 @@
     color: var(--color-ink);
   }
 
+  /* ---- Staff portal chrome ----
+     The portal shares the site's tokens but is a tool, not a brochure.
+     Exactly one Trocchi page title per screen (the base h1 rule already
+     carries the family at its real weight, 400); every heading below it
+     returns to Lato so section labels read as UI. :where() keeps the
+     rule at class specificity inside @layer components, so explicit
+     font-family declarations (the print-flyer composition, utility
+     classes) still win. */
+  .portal-scope :where(h2, h3, h4, h5) {
+    font-family: var(--font-body);
+    letter-spacing: 0;
+  }
+
+  /* Portal page title: the practice serif at its true weight — never
+     synthetic bold (Trocchi ships 400 only). */
+  .portal-title {
+    font-size: 1.85rem;
+    line-height: 1.15;
+    font-weight: 400;
+  }
+
+  /* Task rows on the portal home: quiet hairline list, mint hover wash,
+     chevron nudge. Transition specific properties only; presses are
+     interruptible (transitions, not keyframes). */
+  .task-row {
+    display: flex;
+    align-items: center;
+    gap: 0.95rem;
+    padding: 0.9rem 0.75rem;
+    margin-inline: -0.75rem;
+    border-radius: var(--radius);
+    transition: background-color 0.18s ease-out;
+  }
+  .task-row:hover {
+    background-color: var(--color-mint);
+  }
+  .task-row:active {
+    background-color: var(--color-mint-2);
+  }
+  .task-row .task-row-go {
+    transition: transform 0.2s var(--ease-out-quint);
+  }
+  .task-row:hover .task-row-go {
+    transform: translateX(3px);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .task-row .task-row-go {
+      transition: none;
+    }
+  }
+
   /* ---- Testimonial rail: scroll-snap, native momentum ---- */
   .rail {
     display: grid;

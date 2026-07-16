@@ -83,7 +83,7 @@ test.describe("portal requests operation", () => {
     const secondId = await stageRequest(request, "newer");
 
     await signIn(page);
-    await page.goto("/admin");
+    await page.goto("/admin/requests");
 
     const names = await page.getByTestId("request-name").allTextContents();
     const newerIndex = names.findIndex((name) => name.includes("newer"));
@@ -184,7 +184,7 @@ test.describe("portal requests operation", () => {
       await expect
         .poll(
           async () => {
-            await page.goto(`/admin?status=${status}`);
+            await page.goto(`/admin/requests?status=${status}`);
             const chip = Number(
               await page
                 .locator(`[data-filter-count="${status}"]`)

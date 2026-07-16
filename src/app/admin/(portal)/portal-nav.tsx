@@ -2,41 +2,31 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { StaffRole } from "@/lib/portal/contracts";
+
+// One task-first primary nav for every role. Home is the landing
+// surface; the queue lives under /admin/requests; occasional tasks
+// (review flyers, website custody) are reached from Home and Settings
+// instead of holding permanent tabs.
 
 const NAV_ITEMS = [
-  { href: "/admin", label: "Appointment requests" },
+  { href: "/admin", label: "Home" },
+  { href: "/admin/requests", label: "Appointment requests" },
   { href: "/admin/settings", label: "Settings" },
   { href: "/admin/help", label: "Help" },
 ] as const;
 
-const REVIEW_FLYERS_ITEM = {
-  href: "/admin/review-flyers",
-  label: "Print review flyers",
-} as const;
-
-const ADMIN_NAV_ITEMS = [
-  NAV_ITEMS[0],
-  REVIEW_FLYERS_ITEM,
-  ...NAV_ITEMS.slice(1),
-] as const;
-
 function isActive(pathname: string, href: string): boolean {
-  if (href === "/admin") {
-    // The queue owns /admin and its detail pages, nothing else.
-    return pathname === "/admin" || pathname.startsWith("/admin/requests");
-  }
+  if (href === "/admin") return pathname === "/admin";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function PortalNav({ role }: { role: StaffRole }) {
+export function PortalNav() {
   const pathname = usePathname();
-  const items = role === "admin" ? ADMIN_NAV_ITEMS : NAV_ITEMS;
 
   return (
     <nav aria-label="Portal sections" className="-mb-px overflow-x-auto">
       <ul className="flex min-w-max items-stretch gap-1">
-        {items.map((item) => {
+        {NAV_ITEMS.map((item) => {
           const active = isActive(pathname, item.href);
           return (
             <li key={item.href} className="flex">

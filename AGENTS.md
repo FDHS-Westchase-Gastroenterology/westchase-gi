@@ -29,7 +29,9 @@ and the authenticated staff portal at `/admin`.
    `src/lib/dictionaries/{en,es,vi,ko,ar}.ts` — the shared `Dictionary` type makes a missing
    key a build error. Never ship one locale ahead of another. Arabic is RTL
    (`localeDir` in `src/lib/site.ts`). The `/admin` portal is English-only by scope decision
-   and keeps its strings in plain TSX, not the patient dictionaries.
+   and keeps its strings in plain TSX, not the patient dictionaries. Portal UI work follows
+   `docs/PORTAL-PRODUCT.md` (task-first product register; the root `PRODUCT.md` covers the
+   patient site only).
 6. **One-way linking:** this site may link to Alpha Omega Wellness (footer). Never accept the
    reverse expectation into this codebase; it's owned by the other project.
 7. **No invented facts.** Unconfirmed details (see `NEEDS CONFIRMATION` comments in
