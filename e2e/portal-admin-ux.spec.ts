@@ -333,6 +333,9 @@ test.describe("portal management UI", () => {
   }) => {
     await signInExpectingPortal(page, SEED_EMAIL, SEED_PASSWORD);
     await page.goto("/admin/help");
+    await expect(
+      page.getByRole("heading", { name: "Help", exact: true }),
+    ).toBeVisible();
 
     const text = (await page.locator("main").innerText()).trim();
     const words = text.split(/\s+/).filter(Boolean);
