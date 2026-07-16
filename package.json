@@ -11,11 +11,11 @@
     "doctor": "npx react-doctor"
   },
   "dependencies": {
-    "@supabase/ssr": "0.12.0",
-    "@supabase/supabase-js": "2.110.2",
-    "next": "16.2.9",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
+    "@supabase/ssr": "0.12.3",
+    "@supabase/supabase-js": "2.110.6",
+    "next": "16.2.10",
+    "react": "19.2.7",
+    "react-dom": "19.2.7",
     "react-zoom-pan-pinch": "^4.0.3",
     "resend": "6.17.2",
     "zod": "4.4.3"
@@ -23,15 +23,15 @@
   "devDependencies": {
     "@playwright/test": "1.61.1",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^26",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.9",
+    "eslint-config-next": "16.2.10",
     "jsqr": "^1.4.0",
     "pdf-lib": "^1.17.1",
     "pngjs": "^7.0.0",
-    "react-doctor": "^0.7.1",
+    "react-doctor": "^0.7.8",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
