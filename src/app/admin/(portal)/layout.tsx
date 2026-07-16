@@ -60,7 +60,7 @@ export default async function PortalLayout({
       </main>
       <footer className="border-t border-[var(--color-line)] py-5">
         <div className="container-x flex flex-wrap items-center justify-between gap-3 text-[0.85rem] text-[var(--color-muted)]">
-          <p>Internal tool for practice staff. Patient pages never link here.</p>
+          <p>Internal tool for practice staff. Patient tools are on the main site.</p>
           <p>
             Questions? See{" "}
             <Link
