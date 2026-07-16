@@ -284,12 +284,14 @@ export default async function RequestDetailPage({
                     </span>
                     <span
                       className={`font-bold ${
-                        event.status === "sent"
+                        event.status === "accepted" || event.status === "sent"
                           ? "text-[var(--color-teal-ink)]"
                           : "text-[var(--color-amber-deep)]"
                       }`}
                     >
-                      {event.status}
+                      {event.status === "accepted" || event.status === "sent"
+                        ? "Accepted for delivery"
+                        : "Failed"}
                     </span>
                   </li>
                 ))}

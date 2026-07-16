@@ -10,8 +10,7 @@ import {
   requireRole,
   resolveStaffAuthState,
 } from "@/lib/portal/auth";
-import { portalUrl } from "@/lib/portal/email";
-import { serverClient, serviceClient } from "@/lib/portal/server";
+import { portalUrl, serverClient, serviceClient } from "@/lib/portal/server";
 
 export type LoginActionState = {
   error: string | null;

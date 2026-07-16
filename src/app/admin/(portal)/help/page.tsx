@@ -84,9 +84,9 @@ export default async function AdminHelpPage() {
               Settings
             </Link>{" "}
             get a short email whenever a new appointment request arrives.
-            The email
-            deliberately contains no patient information — just a count and
-            a link back here — so nothing sensitive ever sits in an inbox.
+            The email deliberately contains no patient information — just a
+            notice that a request is waiting and a link back here — so
+            nothing sensitive ever sits in an inbox.
             Anyone on staff can pause a recipient (going on vacation, for
             example); adding or removing addresses is an administrator task.
             Remember: notifications are a convenience. The queue is the

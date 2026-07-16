@@ -4,8 +4,7 @@ import {
   establishPasswordAuthFlow,
   resolveStaffAuthState,
 } from "@/lib/portal/auth";
-import { portalUrl } from "@/lib/portal/email";
-import { serverClient } from "@/lib/portal/server";
+import { portalUrl, serverClient } from "@/lib/portal/server";
 
 function trustedRedirect(path: string): NextResponse {
   const target = portalUrl(path);

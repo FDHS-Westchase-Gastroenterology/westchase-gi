@@ -1,6 +1,5 @@
 import "server-only";
 
-import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { recordAudit } from "@/lib/portal/audit";
@@ -9,12 +8,13 @@ import {
   AUDIT_ACTIONS,
   type StaffRole,
 } from "@/lib/portal/contracts";
+import { sendPortalEmail } from "@/lib/portal/email-provider";
 import {
-  portalEmailSender,
-  portalUrl,
-  sendPortalEmail,
-} from "@/lib/portal/email";
-import { serviceClient } from "@/lib/portal/server";
+  sendRecipientConfirmation,
+  sendStaffSetupLink,
+  type StaffSetupType,
+} from "@/lib/portal/management-email";
+import { portalUrl, serviceClient } from "@/lib/portal/server";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STAFF_BAN_DURATION = "876000h";
@@ -60,16 +60,15 @@ export type ManagementFailure = {
 export type MutationResult = { ok: true } | ManagementFailure;
 
 export type AddRecipientResult =
-  | { ok: true; delivery: "sent" | "failed" }
+  | { ok: true; delivery: "accepted" | "failed" }
   | ManagementFailure;
 
 export type InviteStaffResult =
-  | { ok: true; delivery: "sent" }
+  | { ok: true; delivery: "accepted" }
   | { ok: true; delivery: "failed"; fallbackSetupUrl: string }
   | ManagementFailure;
 
 type ServiceClient = ReturnType<typeof serviceClient>;
-type StaffSetupType = "invite" | "recovery";
 
 function failure(
   code: ManagementFailureCode,
@@ -94,73 +93,26 @@ function metadataRecord(value: unknown): Record<string, unknown> {
   return { ...(value as Record<string, unknown>) };
 }
 
-function recipientConfirmationText(): string {
-  return [
-    "A Westchase GI portal administrator added this address to appointment request notifications.",
-    "Future notification emails only say that an appointment request is waiting and link to the secure portal. They do not contain patient details.",
-    `Messages are sent from ${portalEmailSender()}.`,
-    "If you did not expect this, contact the Westchase GI office directly.",
-  ].join("\n\n");
-}
-
-function staffInviteText(setupUrl: string): string {
-  return [
-    "You have been invited to the Westchase GI staff portal.",
-    "Use this one-time link to choose your password:",
-    setupUrl,
-    "If the link has expired, ask a portal administrator for a new invitation. If you did not expect this invitation, contact the Westchase GI office directly.",
-  ].join("\n\n");
-}
-
-function staffSetupUrl(
-  confirmationUrl: string,
-  tokenHash: string,
-  type: StaffSetupType,
-): string {
-  const setupUrl = new URL(confirmationUrl);
-  setupUrl.hash = new URLSearchParams({
-    token_hash: tokenHash,
-    type,
-  }).toString();
-  return setupUrl.toString();
-}
-
-function staffSetupIdempotencyKey(
-  userId: string,
-  tokenHash: string,
-  type: StaffSetupType,
-): string {
-  const tokenDigest = createHash("sha256")
-    .update(tokenHash)
-    .digest("hex")
-    .slice(0, 32);
-  return `staff-setup/${type}/${userId}/${tokenDigest}`;
-}
-
 async function deliverStaffSetupLink({
   email,
-  setupUrl,
+  confirmationUrl,
   tokenHash,
   type,
   userId,
 }: {
   email: string;
-  setupUrl: string;
+  confirmationUrl: string;
   tokenHash: string;
   type: StaffSetupType;
   userId: string;
 }): Promise<Exclude<InviteStaffResult, ManagementFailure>> {
-  const delivery = await sendPortalEmail({
-    to: email,
-    subject: "Set up your Westchase GI portal access",
-    text: staffInviteText(setupUrl),
-    idempotencyKey: staffSetupIdempotencyKey(userId, tokenHash, type),
-    purpose: "staff_invite",
+  return sendStaffSetupLink(sendPortalEmail, {
+    email,
+    confirmationUrl,
+    tokenHash,
+    type,
+    userId,
   });
-
-  return delivery.ok
-    ? { ok: true, delivery: "sent" }
-    : { ok: true, delivery: "failed", fallbackSetupUrl: setupUrl };
 }
 
 function authCreateFailure(error: unknown): ManagementFailure {
@@ -302,15 +254,9 @@ export async function addNotificationRecipientMutation(
   }
 
   revalidateManagementViews();
-  const delivery = await sendPortalEmail({
-    to: recipient.email,
-    subject: "Appointment notification access — Westchase GI portal",
-    text: recipientConfirmationText(),
-    idempotencyKey: `recipient-confirmation/${recipient.id}`,
-    purpose: "recipient_confirmation",
-  });
+  const delivery = await sendRecipientConfirmation(sendPortalEmail, recipient);
 
-  return { ok: true, delivery: delivery.ok ? "sent" : "failed" };
+  return { ok: true, delivery };
 }
 
 /**
@@ -460,8 +406,6 @@ export async function inviteStaffMutation(
       "The staff invitation could not be created.",
     );
   }
-  const setupUrl = staffSetupUrl(confirmationUrl, tokenHash, "invite");
-
   const { data: profile, error: profileError } = await db
     .from("staff_profiles")
     .insert({
@@ -510,7 +454,7 @@ export async function inviteStaffMutation(
   revalidateManagementViews();
   return deliverStaffSetupLink({
     email,
-    setupUrl,
+    confirmationUrl,
     tokenHash,
     type: "invite",
     userId: user.id,
@@ -581,8 +525,6 @@ export async function resendStaffInviteMutation(
   if (linkError || !tokenHash || generated.user.id !== profile.user_id) {
     return failure("unavailable", "The staff invitation could not be renewed.");
   }
-  const setupUrl = staffSetupUrl(confirmationUrl, tokenHash, type);
-
   try {
     await recordAudit(db, {
       actorEmail: session.email,
@@ -604,7 +546,7 @@ export async function resendStaffInviteMutation(
   revalidateManagementViews();
   return deliverStaffSetupLink({
     email: profile.email,
-    setupUrl,
+    confirmationUrl,
     tokenHash,
     type,
     userId: profile.user_id,

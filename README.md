@@ -6,9 +6,9 @@ existing site: same identity and content, every defect fixed, fully multilingual
 appointment-request pipeline and a staff admin portal.
 
 Built with Next.js 16 (App Router) + Tailwind CSS 4, with Supabase (Postgres + Auth) behind the
-intake pipeline and portal, and Resend for staff notifications. Deployed from the clinic-owned
-GitHub repository to the clinic-owned Vercel project; goes live at `westchasegi.com` at DNS
-cutover.
+intake pipeline and portal, and an application-owned email capability with Resend as its current
+production adapter. Deployed from the clinic-owned GitHub repository to the clinic-owned Vercel
+project; goes live at `westchasegi.com` at DNS cutover.
 
 ## Five languages
 
@@ -29,8 +29,9 @@ The old site's form silently discarded submissions. Now:
   never fakes a confirmation.
 - Without JavaScript the form still works: a native POST lands on a server-rendered receipt
   page, and no patient data ever rides a URL.
-- Staff on the notification list get a **PHI-free email ping** (a count and a portal link — no
-  patient fields) via Resend; every attempt is recorded per recipient.
+- Staff on the notification list get a **PHI-free email ping** (a stable notice and portal link —
+  no patient fields) through the application email capability; every provider-accepted or failed
+  attempt is recorded per recipient.
 - **PHI-minimal posture:** the site collects only appointment-request contact fields (name,
   phone, email, office/time preferences, a brief reason). No clinical data. The request queue —
   not any inbox — is the system of record. The form's "do not submit PHI" warning renders in
