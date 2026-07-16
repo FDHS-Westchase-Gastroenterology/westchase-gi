@@ -70,15 +70,24 @@ function applySessionUpdates(
     "Cache-Control",
     "private, no-cache, no-store, must-revalidate, max-age=0",
   );
+  response.headers.set("Referrer-Policy", "no-referrer");
   return response;
 }
 
 async function protectAdminRequest(request: NextRequest): Promise<NextResponse> {
-  const isLogin = request.nextUrl.pathname === "/admin/login";
+  const isPublicAuthPath = [
+    "/admin/login",
+    "/admin/forgot-password",
+    "/admin/auth/confirm",
+    "/admin/auth/callback",
+  ].includes(request.nextUrl.pathname);
+  const isReviewFlyerAssetPath = request.nextUrl.pathname.startsWith(
+    "/admin/review-flyers/assets/",
+  );
   const config = portalSupabaseConfig();
 
   if (!config) {
-    const response = isLogin
+    const response = isPublicAuthPath || isReviewFlyerAssetPath
       ? NextResponse.next({ request })
       : NextResponse.redirect(new URL("/admin/login", request.url));
     return applySessionUpdates(response, [], {});
@@ -111,7 +120,7 @@ async function protectAdminRequest(request: NextRequest): Promise<NextResponse> 
   }
 
   const response =
-    !isLogin && !authenticated
+    !isPublicAuthPath && !isReviewFlyerAssetPath && !authenticated
       ? NextResponse.redirect(new URL("/admin/login", request.url))
       : NextResponse.next({ request });
 

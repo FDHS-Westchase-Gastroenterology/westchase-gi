@@ -105,7 +105,9 @@ test.describe("VAL-INTAKE-006: truthful failure when the queue is down", () => {
     if (testInfo.project.name !== "chromium") return;
     test.setTimeout(240_000);
 
-    execSync("lsof -ti tcp:3101 | xargs -r kill -9 || true", {
+    // Restrict cleanup to the listener. An unqualified port query can also
+    // return this worker's pooled fetch connection and kill the test runner.
+    execSync("lsof -tiTCP:3101 -sTCP:LISTEN | xargs -r kill -9 || true", {
       shell: "/bin/bash",
     });
     mkdirSync(resolve(process.cwd(), ".logs"), { recursive: true });
@@ -150,7 +152,7 @@ test.describe("VAL-INTAKE-006: truthful failure when the queue is down", () => {
         // Already gone.
       }
     }
-    execSync("lsof -ti tcp:3101 | xargs -r kill -9 || true", {
+    execSync("lsof -tiTCP:3101 -sTCP:LISTEN | xargs -r kill -9 || true", {
       shell: "/bin/bash",
     });
   });

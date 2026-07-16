@@ -39,7 +39,6 @@ const staffEmail = `portal-staff-${runId}@example.test`;
 const targetEmail = `portal-target-${runId}@example.test`;
 const recipientEmail = `portal-recipient-${runId}@example.test`;
 const deniedRecipientEmail = `portal-denied-${runId}@example.test`;
-const registryAttemptId = randomUUID();
 
 let adminContext: BrowserContext | null = null;
 let staffContext: BrowserContext | null = null;
@@ -100,13 +99,27 @@ async function mutate(
   );
 }
 
-function oneTimePassword(response: MutationResponse): string {
-  expect(response.status).toBe(201);
+function fallbackSetupUrl(
+  response: MutationResponse,
+  expectedStatus = 201,
+  expectedType: "invite" | "recovery" = "invite",
+): string {
+  expect(response.status).toBe(expectedStatus);
   expect(response.body.ok).toBe(true);
-  const password = response.body.tempPassword;
-  expect(typeof password).toBe("string");
-  expect((password as string).length).toBeGreaterThanOrEqual(20);
-  return password as string;
+  expect(response.body.delivery).toBe("failed");
+  expect(
+    Object.prototype.hasOwnProperty.call(response.body, "tempPassword"),
+  ).toBe(false);
+  const setupUrl = response.body.fallbackSetupUrl;
+  expect(typeof setupUrl).toBe("string");
+  const setupUrlString = setupUrl as string;
+  expect(URL.canParse(setupUrlString)).toBe(true);
+  const parsed = new URL(setupUrlString);
+  const fragment = new URLSearchParams(parsed.hash.slice(1));
+  expect(parsed.pathname).toBe("/admin/auth/confirm");
+  expect(fragment.get("type")).toBe(expectedType);
+  expect(Boolean(fragment.get("token_hash"))).toBe(true);
+  return setupUrlString;
 }
 
 function expectDenied(result: RestResult): void {
@@ -233,7 +246,6 @@ test.describe("portal management server boundaries", () => {
       .from("notification_recipients")
       .delete()
       .in("email", [recipientEmail, deniedRecipientEmail]);
-    await db.from("registry_assets").delete().eq("id", registryAttemptId);
     await db.from("requests").delete().like("email", `portal-export-${runId}-%`);
 
     if (auditEntityIds.size > 0) {
@@ -270,18 +282,19 @@ test.describe("portal management server boundaries", () => {
       displayName: `TEST Portal Staff ${runId}`,
       role: "staff",
     });
-    const staffPassword = oneTimePassword(staffInvite);
+    const staffSetupUrl = fallbackSetupUrl(staffInvite);
 
     const targetInvite = await mutate(adminPage, "staff.invite", {
       email: targetEmail,
       displayName: `TEST Portal Target ${runId}`,
       role: "staff",
     });
-    const targetPassword = oneTimePassword(targetInvite);
+    const targetSetupUrl = fallbackSetupUrl(targetInvite);
+    expect(targetSetupUrl !== staffSetupUrl).toBe(true);
 
     const { data: profiles, error: profileError } = await db
       .from("staff_profiles")
-      .select("id, user_id, email, role, active")
+      .select("id, user_id, email, role, active, onboarded_at")
       .in("email", [staffEmail, targetEmail]);
     expect(profileError).toBeNull();
     expect(profiles).toHaveLength(2);
@@ -300,6 +313,87 @@ test.describe("portal management server boundaries", () => {
     targetProfileId = targetProfile.id;
     auditEntityIds.add(staffProfile.id);
     auditEntityIds.add(targetProfile.id);
+    expect(staffProfile.onboarded_at).toBeNull();
+    expect(targetProfile.onboarded_at).toBeNull();
+
+    const renewedTargetInvite = await mutate(
+      adminPage,
+      "staff.invite.resend",
+      { id: targetProfile.user_id },
+    );
+    const renewedTargetSetupUrl = fallbackSetupUrl(renewedTargetInvite, 200);
+    expect(renewedTargetSetupUrl !== targetSetupUrl).toBe(true);
+    const { data: stillPendingTarget, error: pendingTargetError } = await db
+      .from("staff_profiles")
+      .select("role, onboarded_at")
+      .eq("user_id", targetProfile.user_id)
+      .single();
+    expect(pendingTargetError).toBeNull();
+    expect(stillPendingTarget?.role).toBe("staff");
+    expect(stillPendingTarget?.onboarded_at).toBeNull();
+
+    // Simulate an invite link that verified the address but was abandoned
+    // before password setup. Reissuing must use recovery while preserving the
+    // pending profile and its assigned role.
+    const confirmedTarget = await db.auth.admin.updateUserById(
+      targetProfile.user_id,
+      { email_confirm: true },
+    );
+    expect(confirmedTarget.error).toBeNull();
+    const recoveredTargetInvite = await mutate(
+      adminPage,
+      "staff.invite.resend",
+      { id: targetProfile.user_id },
+    );
+    const recoverySetupUrl = fallbackSetupUrl(
+      recoveredTargetInvite,
+      200,
+      "recovery",
+    );
+    expect(recoverySetupUrl !== renewedTargetSetupUrl).toBe(true);
+    const { data: recoveryPendingTarget, error: recoveryPendingError } =
+      await db
+        .from("staff_profiles")
+        .select("role, onboarded_at")
+        .eq("user_id", targetProfile.user_id)
+        .single();
+    expect(recoveryPendingError).toBeNull();
+    expect(recoveryPendingTarget?.role).toBe("staff");
+    expect(recoveryPendingTarget?.onboarded_at).toBeNull();
+
+    // This suite exercises network roles rather than the setup UI. Give both
+    // throwaway accounts known passwords and mark them onboarded directly;
+    // VAL-ADMIN-008 covers the one-time browser setup flow.
+    const staffPassword = `Wgi!${runId}Staff7`;
+    const targetPassword = `Wgi!${runId}Target7`;
+    const onboardedAt = new Date().toISOString();
+    const [
+      staffAuthUpdate,
+      targetAuthUpdate,
+      staffProfileUpdate,
+      targetProfileUpdate,
+    ] = await Promise.all([
+        db.auth.admin.updateUserById(staffProfile.user_id, {
+          password: staffPassword,
+          email_confirm: true,
+        }),
+        db.auth.admin.updateUserById(targetProfile.user_id, {
+          password: targetPassword,
+          email_confirm: true,
+        }),
+        db
+          .from("staff_profiles")
+          .update({ onboarded_at: onboardedAt })
+          .eq("user_id", staffProfile.user_id),
+        db
+          .from("staff_profiles")
+          .update({ onboarded_at: onboardedAt })
+          .eq("user_id", targetProfile.user_id),
+    ]);
+    expect(staffAuthUpdate.error).toBeNull();
+    expect(targetAuthUpdate.error).toBeNull();
+    expect(staffProfileUpdate.error).toBeNull();
+    expect(targetProfileUpdate.error).toBeNull();
 
     const { data: targetAuth, error: targetAuthError } =
       await db.auth.admin.getUserById(targetProfile.user_id);
@@ -328,6 +422,11 @@ test.describe("portal management server boundaries", () => {
     });
     expect(deniedDeactivate.status).toBe(403);
 
+    const deniedResend = await mutate(staffPage, "staff.invite.resend", {
+      id: targetProfile.user_id,
+    });
+    expect(deniedResend.status).toBe(403);
+
     const addedRecipient = await mutate(adminPage, "recipient.add", {
       email: recipientEmail,
       label: `TEST recipient ${runId}`,
@@ -335,6 +434,7 @@ test.describe("portal management server boundaries", () => {
     });
     expect(addedRecipient.status).toBe(201);
     expect(addedRecipient.body.ok).toBe(true);
+    expect(addedRecipient.body.delivery).toBe("failed");
 
     const { data: recipient, error: recipientError } = await db
       .from("notification_recipients")
@@ -378,24 +478,11 @@ test.describe("portal management server boundaries", () => {
     });
     expect(staffSignIn.error).toBeNull();
 
-    const [registryWrite, profileWrite] = await Promise.all([
-      staffRest
-        .from("registry_assets")
-        .insert({
-          id: registryAttemptId,
-          name: `TEST denied registry ${runId}`,
-          kind: "test",
-          maintainer: "TEST automation",
-          status: "test",
-        })
-        .select("id"),
-      staffRest
-        .from("staff_profiles")
-        .update({ display_name: `TEST denied change ${runId}` })
-        .eq("user_id", targetProfile.user_id)
-        .select("id"),
-    ]);
-    expectDenied(registryWrite);
+    const profileWrite = await staffRest
+      .from("staff_profiles")
+      .update({ display_name: `TEST denied change ${runId}` })
+      .eq("user_id", targetProfile.user_id)
+      .select("id");
     expectDenied(profileWrite);
     await staffRest.auth.signOut({ scope: "local" });
 
@@ -486,7 +573,7 @@ test.describe("portal management server boundaries", () => {
 
     const { data: rows, error } = await db
       .from("audit_log")
-      .select("actor_email, action, entity, entity_id, at")
+      .select("actor_email, action, entity, entity_id, at, detail")
       .in("entity_id", [staffProfileId, targetProfileId, recipientId]);
     expect(error).toBeNull();
 
@@ -512,6 +599,26 @@ test.describe("portal management server boundaries", () => {
 
     assertAudit("staff.invite", staffProfileId, SEED_ADMIN_EMAIL);
     assertAudit("staff.invite", targetProfileId, SEED_ADMIN_EMAIL);
+    const resendAudits = rows?.filter((candidate) => {
+      if (
+        candidate.action !== "staff.invite" ||
+        candidate.entity_id !== targetProfileId ||
+        typeof candidate.detail !== "object" ||
+        candidate.detail === null ||
+        Array.isArray(candidate.detail)
+      ) {
+        return false;
+      }
+      return (candidate.detail as Record<string, unknown>).resend === true;
+    });
+    expect(resendAudits).toHaveLength(2);
+    const resendLinkTypes = (resendAudits ?? [])
+      .map(
+        (row) =>
+          (row.detail as Record<string, unknown> | undefined)?.link_type,
+      )
+      .sort();
+    expect(resendLinkTypes).toEqual(["invite", "recovery"]);
     assertAudit("staff.role", targetProfileId, SEED_ADMIN_EMAIL);
     assertAudit("staff.deactivate", targetProfileId, SEED_ADMIN_EMAIL);
     assertAudit("recipients.add", recipientId, SEED_ADMIN_EMAIL);

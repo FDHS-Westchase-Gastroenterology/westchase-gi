@@ -15,7 +15,11 @@ export type RecipientRow = {
   active: boolean;
 };
 
-type MutationOutcome = { ok: boolean; code?: string };
+type MutationOutcome = {
+  ok: boolean;
+  code?: string;
+  delivery?: "accepted" | "failed";
+};
 
 const FAILURE_COPY: Record<string, string> = {
   invalid: "That doesn't look like a valid email address.",
@@ -38,15 +42,24 @@ export function RecipientsManager({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [deliveryNotice, setDeliveryNotice] = useState<{
+    tone: "success" | "warning";
+    text: string;
+  } | null>(null);
 
-  function run(action: () => Promise<MutationOutcome>) {
+  function run(
+    action: () => Promise<MutationOutcome>,
+    onSuccess?: (result: MutationOutcome) => void,
+  ) {
     setError(null);
+    setDeliveryNotice(null);
     startTransition(async () => {
       const result = await action();
       if (!result.ok) {
         setError(failureMessage(result));
         return;
       }
+      onSuccess?.(result);
       router.refresh();
     });
   }
@@ -55,8 +68,20 @@ export function RecipientsManager({
     const email = String(formData.get("email") ?? "").trim();
     const label = String(formData.get("label") ?? "").trim();
     if (!email) return;
-    run(() =>
-      addNotificationRecipient({ email, label: label || undefined }),
+    run(
+      () => addNotificationRecipient({ email, label: label || undefined }),
+      (result) =>
+        setDeliveryNotice(
+          result.delivery === "accepted"
+            ? {
+                tone: "success",
+                text: "Recipient added and confirmation email accepted for delivery.",
+              }
+            : {
+                tone: "warning",
+                text: "Recipient added, but confirmation email delivery could not be confirmed. The portal queue remains the system of record.",
+              },
+        ),
     );
   }
 
@@ -69,7 +94,8 @@ export function RecipientsManager({
         Notification recipients
       </h2>
       <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
-        Every address here gets an email ping when a new request arrives.
+        Every address here gets an email ping when a new appointment
+        request arrives.
         Notifications supplement the queue — the portal is the system of
         record, so nothing is lost if an email goes astray.
       </p>
@@ -83,11 +109,25 @@ export function RecipientsManager({
         </p>
       )}
 
+      {deliveryNotice && (
+        <p
+          role="status"
+          data-testid="recipient-delivery-status"
+          className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-sm font-bold text-[var(--color-ink)] ${
+            deliveryNotice.tone === "success"
+              ? "bg-[var(--color-mint)]"
+              : "bg-[var(--color-amber-soft)]"
+          }`}
+        >
+          {deliveryNotice.text}
+        </p>
+      )}
+
       <ul data-testid="recipient-list" className="mt-5 divide-y divide-[var(--color-line)]">
         {recipients.length === 0 && (
           <li className="py-4 text-[0.95rem] text-[var(--color-muted)]">
-            No recipients yet — new-request emails are currently going to
-            no one. The queue still records everything.
+            No recipients yet — new-appointment-request emails are
+            currently going to no one. The queue still records everything.
           </li>
         )}
         {recipients.map((recipient) => (

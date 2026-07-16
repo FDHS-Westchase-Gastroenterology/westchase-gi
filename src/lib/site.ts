@@ -1,3 +1,5 @@
+import reviewTargets from "@/lib/review-targets.json";
+
 // Central site configuration for FDHS Westchase Gastroenterology.
 // Every fact mirrors the practice's published content; items flagged
 // NEEDS CONFIRMATION carry the value the practice's primary contact page
@@ -130,7 +132,7 @@ export const site = {
     portal: "https://mycw140.ecwcloud.com/portal19634/jsp/100mp/login_otp.jsp",
     newPatientFormsEn: "https://hushforms.com/37276-new-pt-packet-form-english",
     newPatientFormsEs: "https://hushforms.com/37276-new-pt-packet-form-spanish",
-    googleReview: "https://search.google.com/local/writereview?placeid=ChIJ1XxEt_TqwogRxD4EJvCYK4k",
+    googleReview: reviewTargets.practice.destination,
     googleMapsListing: "https://maps.app.goo.gl/a2TfakxY1pG2d6tm8",
     // The practice's live Facebook page (verified 2026-07-08: renders logged-out;
     // page ID carries the old vanity slug's business_id — see REVIEW-LINKS.md).

@@ -6,16 +6,10 @@ import {
   deactivateStaffMutation,
   inviteStaffMutation,
   removeNotificationRecipientMutation,
+  resendStaffInviteMutation,
   toggleNotificationRecipientMutation,
   type ManagementFailure,
 } from "@/lib/portal/management";
-import {
-  addRegistryGrantMutation,
-  archiveRegistryAssetMutation,
-  createRegistryAssetMutation,
-  deactivateRegistryGrantMutation,
-  updateRegistryAssetMutation,
-} from "@/lib/portal/registry";
 
 const JSON_HEADERS = {
   "Cache-Control": "private, no-store, max-age=0",
@@ -103,28 +97,14 @@ export async function POST(request: NextRequest): Promise<Response> {
         result = await inviteStaffMutation(payload.input);
         successStatus = 201;
         break;
+      case "staff.invite.resend":
+        result = await resendStaffInviteMutation(payload.input);
+        break;
       case "staff.deactivate":
         result = await deactivateStaffMutation(payload.input);
         break;
       case "staff.role":
         result = await changeStaffRoleMutation(payload.input);
-        break;
-      case "registry.create":
-        result = await createRegistryAssetMutation(payload.input);
-        successStatus = 201;
-        break;
-      case "registry.update":
-        result = await updateRegistryAssetMutation(payload.input);
-        break;
-      case "registry.archive":
-        result = await archiveRegistryAssetMutation(payload.input);
-        break;
-      case "registry.grant.add":
-        result = await addRegistryGrantMutation(payload.input);
-        successStatus = 201;
-        break;
-      case "registry.grant.deactivate":
-        result = await deactivateRegistryGrantMutation(payload.input);
         break;
       default:
         return json({ ok: false, error: "Unknown operation" }, 400);

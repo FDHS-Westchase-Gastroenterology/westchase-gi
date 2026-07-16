@@ -52,23 +52,36 @@ export default async function PortalLayout({
               </form>
             </div>
           </div>
-          <PortalNav />
+          <PortalNav role={session.role} />
         </div>
       </header>
       <main className="flex-1 pb-16 pt-8 sm:pt-10">
         <div className="container-x">{children}</div>
       </main>
-      <footer className="border-t border-[var(--color-line)] py-5">
+      {/* Extra bottom padding keeps the footer links clear of the floating
+          assistant launcher pinned to the bottom-right corner. */}
+      <footer className="border-t border-[var(--color-line)] pb-20 pt-5">
         <div className="container-x flex flex-wrap items-center justify-between gap-3 text-[0.85rem] text-[var(--color-muted)]">
-          <p>Internal tool for practice staff. Patient tools are on the main site.</p>
           <p>
-            Questions? See{" "}
+            Internal tool for practice staff. Patient tools are on the main
+            site.
+          </p>
+          <p className="flex items-center gap-x-4">
             <Link
-              href="/admin/help"
+              href="/admin/audit"
               className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
             >
-              Help
+              Activity log
             </Link>
+            <span>
+              Questions? See{" "}
+              <Link
+                href="/admin/help"
+                className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+              >
+                Help
+              </Link>
+            </span>
           </p>
         </div>
       </footer>

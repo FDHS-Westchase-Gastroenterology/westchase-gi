@@ -1,22 +1,80 @@
 const TABLES = [
   "audit_log",
   "notification_recipients",
-  "registry_assets",
-  "registry_grants",
   "request_events",
   "requests",
   "staff_profiles",
 ]
 
-const POLICIES = [
-  "audit_log_staff_read",
-  "notification_recipients_staff_read",
-  "registry_assets_portal_read",
-  "registry_grants_portal_read",
-  "request_events_staff_read",
-  "requests_staff_read",
-  "staff_profiles_self_read",
+const RETIRED_TABLES = [
+  ["registry", "assets"].join("_"),
+  ["registry", "grants"].join("_"),
 ]
+
+const POLICIES = []
+
+const RPC_SIGNATURES = {
+  portal_add_request_note:
+    "p_actor_email text, p_request_id uuid, p_note text, p_note_length integer",
+  portal_complete_staff_onboarding: "p_user_id uuid",
+  portal_record_staff_password_reset: "p_user_id uuid",
+  portal_update_request_status:
+    "p_actor_email text, p_request_id uuid, p_next_status text",
+}
+
+const RETIRED_RPC_SIGNATURES = [
+  {
+    name: ["portal", "create", "registry", "asset"].join("_"),
+    signature:
+      "p_actor_email text, p_name text, p_kind text, p_repo text, p_live_url text, p_hosting text, p_maintainer text, p_status text, p_notes text",
+  },
+  {
+    name: ["portal", "update", "registry", "asset"].join("_"),
+    signature:
+      "p_actor_email text, p_asset_id uuid, p_name text, p_kind text, p_repo text, p_live_url text, p_hosting text, p_maintainer text, p_status text, p_notes text",
+  },
+  {
+    name: ["portal", "archive", "registry", "asset"].join("_"),
+    signature: "p_actor_email text, p_asset_id uuid",
+  },
+  {
+    name: ["portal", "add", "registry", "grant"].join("_"),
+    signature:
+      "p_actor_email text, p_asset_id uuid, p_person text, p_role text, p_granted_via text",
+  },
+  {
+    name: ["portal", "deactivate", "registry", "grant"].join("_"),
+    signature: "p_actor_email text, p_grant_id uuid",
+  },
+]
+
+const RPCS = Object.keys(RPC_SIGNATURES).sort()
+const RPC_RESULTS = {
+  portal_add_request_note: "uuid",
+  portal_complete_staff_onboarding: "boolean",
+  portal_record_staff_password_reset: "boolean",
+  portal_update_request_status: "boolean",
+}
+const PHASE_C_MIGRATION = {
+  version: "20260714224219",
+  name: "close_portal_data_api_and_atomic_audits",
+}
+const ONBOARDING_MIGRATION = {
+  version: "20260715023258",
+  name: "complete_staff_onboarding",
+}
+const PASSWORD_RESET_LOCK_MIGRATION = {
+  version: "20260715025435",
+  name: "serialize_password_reset_deactivation",
+}
+const REVIEW_QR_RETIREMENT_MIGRATION = {
+  version: "20260716132839",
+  name: "retire_review_qr_registry_asset",
+}
+const SOFTWARE_REGISTRY_RETIREMENT_MIGRATION = {
+  version: "20260716151327",
+  name: "retire_software_registry",
+}
 
 const TARGETS = new Set(["dev", "prod"])
 
@@ -89,17 +147,19 @@ function assert(condition, message) {
   }
 }
 
-async function readResponse(response, operation) {
+async function parseResponse(response) {
   const text = await response.text()
-  let payload = null
+  if (!text) return null
 
-  if (text) {
-    try {
-      payload = JSON.parse(text)
-    } catch {
-      payload = text
-    }
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
   }
+}
+
+async function readResponse(response, operation) {
+  const payload = await parseResponse(response)
 
   if (!response.ok) {
     const message =
@@ -161,7 +221,7 @@ async function selectRows({ url, serviceKey, table, query }) {
   return payload
 }
 
-async function selectRowsAsUser({
+async function assertSelectDeniedAsUser({
   url,
   anonKey,
   accessToken,
@@ -174,13 +234,84 @@ async function selectRowsAsUser({
       Authorization: `Bearer ${accessToken}`,
     },
   })
-  const payload = await readResponse(response, `Authenticated read of ${table}`)
+  const payload = await parseResponse(response)
 
-  if (!Array.isArray(payload)) {
-    throw new Error(`Authenticated read of ${table} returned an unexpected shape`)
+  assert(!response.ok, `Authenticated read of ${table} unexpectedly succeeded`)
+  const code = payload && typeof payload === "object" ? payload.code : null
+  assert(
+    code === "42501",
+    `Authenticated read of ${table} failed unexpectedly (${response.status}${code ? `/${code}` : ""})`,
+  )
+}
+
+async function assertAtomicAuditRollback({ target, url, serviceKey }) {
+  const marker = `verify-${target}-${Date.now()}@example.test`
+  const createResponse = await fetch(`${url}/rest/v1/requests`, {
+    method: "POST",
+    headers: {
+      ...serviceHeaders(serviceKey),
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify({
+      name: "Schema verifier",
+      phone: "8135550100",
+      email: marker,
+      location: "any",
+      preferred_time: "any",
+      message: null,
+      locale: "en",
+      source_path: "/schema-verifier",
+      status: "new",
+    }),
+  })
+  const created = await readResponse(createResponse, "Create rollback-check request")
+  const requestId = Array.isArray(created) ? created[0]?.id : null
+  assert(requestId, "Rollback-check request was not created")
+
+  try {
+    const response = await fetch(
+      `${url}/rest/v1/rpc/portal_update_request_status`,
+      {
+        method: "POST",
+        headers: {
+          ...serviceHeaders(serviceKey),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          p_actor_email: "",
+          p_request_id: requestId,
+          p_next_status: "contacted",
+        }),
+      },
+    )
+    const payload = await parseResponse(response)
+    const code = payload && typeof payload === "object" ? payload.code : null
+    assert(
+      !response.ok && code === "23514",
+      `Forced audit failure was unexpected (${response.status}${code ? `/${code}` : ""})`,
+    )
+
+    const rows = await selectRows({
+      url,
+      serviceKey,
+      table: "requests",
+      query: `select=id,status&id=eq.${encodeURIComponent(requestId)}`,
+    })
+    assert(
+      rows.length === 1 && rows[0].status === "new",
+      "Request status survived a forced audit failure",
+    )
+  } finally {
+    const response = await fetch(
+      `${url}/rest/v1/requests?id=eq.${encodeURIComponent(requestId)}`,
+      {
+        method: "DELETE",
+        headers: serviceHeaders(serviceKey),
+      },
+    )
+    await readResponse(response, "Delete rollback-check request")
   }
-
-  return payload
 }
 
 async function signIn({ url, anonKey, email, password }) {
@@ -217,6 +348,78 @@ async function main() {
   const email = requireEnv("PORTAL_SEED_ADMIN_EMAIL").trim().toLowerCase()
   const password = requireEnv("PORTAL_SEED_ADMIN_PASSWORD")
   const tableList = TABLES.map((name) => `'${name}'`).join(", ")
+  const retiredTableList = RETIRED_TABLES.map((name) => `'${name}'`).join(", ")
+  const rpcList = RPCS.map((name) => `'${name}'`).join(", ")
+  const retiredRpcList = RETIRED_RPC_SIGNATURES.map(({ name }) => `'${name}'`).join(", ")
+
+  const migrationRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select version, name
+      from supabase_migrations.schema_migrations
+      order by version;
+    `,
+  })
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === PHASE_C_MIGRATION.version &&
+        row.name === PHASE_C_MIGRATION.name,
+    ),
+    `Phase C migration ${PHASE_C_MIGRATION.version}_${PHASE_C_MIGRATION.name} is not applied`,
+  )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === ONBOARDING_MIGRATION.version &&
+        row.name === ONBOARDING_MIGRATION.name,
+    ),
+    `Onboarding migration ${ONBOARDING_MIGRATION.version}_${ONBOARDING_MIGRATION.name} is not applied`,
+  )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === PASSWORD_RESET_LOCK_MIGRATION.version &&
+        row.name === PASSWORD_RESET_LOCK_MIGRATION.name,
+    ),
+    `Password-reset lock migration ${PASSWORD_RESET_LOCK_MIGRATION.version}_${PASSWORD_RESET_LOCK_MIGRATION.name} is not applied`,
+  )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === REVIEW_QR_RETIREMENT_MIGRATION.version &&
+        row.name === REVIEW_QR_RETIREMENT_MIGRATION.name,
+    ),
+    `Review-QR retirement migration ${REVIEW_QR_RETIREMENT_MIGRATION.version}_${REVIEW_QR_RETIREMENT_MIGRATION.name} is not applied`,
+  )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === SOFTWARE_REGISTRY_RETIREMENT_MIGRATION.version &&
+        row.name === SOFTWARE_REGISTRY_RETIREMENT_MIGRATION.name,
+    ),
+    `Software-registry retirement migration ${SOFTWARE_REGISTRY_RETIREMENT_MIGRATION.version}_${SOFTWARE_REGISTRY_RETIREMENT_MIGRATION.name} is not applied`,
+  )
+
+  const onboardingColumnRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select data_type, is_nullable, column_default
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'staff_profiles'
+        and column_name = 'onboarded_at';
+    `,
+  })
+  assert(
+    onboardingColumnRows.length === 1 &&
+      onboardingColumnRows[0].data_type === "timestamp with time zone" &&
+      onboardingColumnRows[0].is_nullable === "YES" &&
+      onboardingColumnRows[0].column_default === null,
+    "staff_profiles.onboarded_at must be nullable timestamptz with no default",
+  )
 
   const tableRows = await queryDatabase({
     accessToken,
@@ -233,6 +436,21 @@ async function main() {
   assert(
     sameValues(actualTables, TABLES),
     `Schema table mismatch: expected ${TABLES.join(", ")}, received ${actualTables.join(", ")}`,
+  )
+
+  const retiredTableRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select table_name
+      from information_schema.tables
+      where table_schema = 'public'
+        and table_name in (${retiredTableList});
+    `,
+  })
+  assert(
+    retiredTableRows.length === 0,
+    `Retired portal tables still exist: ${retiredTableRows.map((row) => row.table_name).join(", ")}`,
   )
 
   const missingRlsRows = await queryDatabase({
@@ -270,19 +488,136 @@ async function main() {
     `RLS policy mismatch: expected ${POLICIES.join(", ")}, received ${actualPolicies.join(", ")}`,
   )
 
-  const anonGrantRows = await queryDatabase({
+  const privilegeRows = await queryDatabase({
     accessToken,
     ref: config.ref,
     query: `
-      select table_name, privilege_type
-      from information_schema.role_table_grants
-      where table_schema = 'public'
-        and table_name in (${tableList})
-        and grantee = 'anon'
-      order by table_name, privilege_type;
+      select
+        c.relname as table_name,
+        pg_catalog.has_table_privilege('anon', c.oid, 'SELECT') as anon_select,
+        pg_catalog.has_table_privilege('anon', c.oid, 'INSERT') as anon_insert,
+        pg_catalog.has_table_privilege('anon', c.oid, 'UPDATE') as anon_update,
+        pg_catalog.has_table_privilege('anon', c.oid, 'DELETE') as anon_delete,
+        pg_catalog.has_table_privilege('authenticated', c.oid, 'SELECT') as authenticated_select,
+        pg_catalog.has_table_privilege('authenticated', c.oid, 'INSERT') as authenticated_insert,
+        pg_catalog.has_table_privilege('authenticated', c.oid, 'UPDATE') as authenticated_update,
+        pg_catalog.has_table_privilege('authenticated', c.oid, 'DELETE') as authenticated_delete,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'SELECT') as service_select,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'INSERT') as service_insert,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'UPDATE') as service_update,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'DELETE') as service_delete
+      from pg_catalog.pg_class as c
+      join pg_catalog.pg_namespace as n on n.oid = c.relnamespace
+      where n.nspname = 'public'
+        and c.relname in (${tableList})
+      order by c.relname;
     `,
   })
-  assert(anonGrantRows.length === 0, "The anon role has direct portal table grants")
+  assert(
+    privilegeRows.length === TABLES.length,
+    `Expected privilege rows for ${TABLES.length} tables, received ${privilegeRows.length}`,
+  )
+  for (const row of privilegeRows) {
+    assert(
+      !row.anon_select &&
+        !row.anon_insert &&
+        !row.anon_update &&
+        !row.anon_delete,
+      `The anon role has portal table access on ${row.table_name}`,
+    )
+    assert(
+      !row.authenticated_select &&
+        !row.authenticated_insert &&
+        !row.authenticated_update &&
+        !row.authenticated_delete,
+      `The authenticated role has portal table access on ${row.table_name}`,
+    )
+    assert(
+      row.service_select &&
+        row.service_insert &&
+        row.service_update &&
+        row.service_delete,
+      `The service_role lacks CRUD on ${row.table_name}`,
+    )
+  }
+
+  const rpcRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select
+        p.proname,
+        pg_catalog.pg_get_function_identity_arguments(p.oid) as identity_arguments,
+        pg_catalog.pg_get_function_result(p.oid) as result_type,
+        pg_catalog.pg_get_functiondef(p.oid) as definition,
+        p.prosecdef,
+        coalesce(pg_catalog.array_to_string(p.proconfig, ','), '') as config,
+        pg_catalog.has_function_privilege('anon', p.oid, 'EXECUTE') as anon_execute,
+        pg_catalog.has_function_privilege('authenticated', p.oid, 'EXECUTE') as authenticated_execute,
+        pg_catalog.has_function_privilege('service_role', p.oid, 'EXECUTE') as service_execute
+      from pg_catalog.pg_proc as p
+      join pg_catalog.pg_namespace as n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname in (${rpcList})
+      order by p.proname;
+    `,
+  })
+  const actualRpcs = rpcRows.map((row) => row.proname)
+  assert(
+    sameValues(actualRpcs, RPCS),
+    `Portal RPC mismatch: expected ${RPCS.join(", ")}, received ${actualRpcs.join(", ")}`,
+  )
+  for (const rpc of rpcRows) {
+    assert(
+      rpc.identity_arguments === RPC_SIGNATURES[rpc.proname],
+      `${rpc.proname} signature mismatch: ${rpc.identity_arguments}`,
+    )
+    assert(
+      rpc.result_type === RPC_RESULTS[rpc.proname],
+      `${rpc.proname} result mismatch: ${rpc.result_type}`,
+    )
+    assert(!rpc.prosecdef, `${rpc.proname} must use SECURITY INVOKER`)
+    assert(
+      rpc.config.split(",").includes('search_path=""'),
+      `${rpc.proname} does not pin an empty search_path`,
+    )
+    assert(!rpc.anon_execute, `${rpc.proname} is executable by anon`)
+    assert(
+      !rpc.authenticated_execute,
+      `${rpc.proname} is executable by authenticated`,
+    )
+    assert(rpc.service_execute, `${rpc.proname} is not executable by service_role`)
+    if (rpc.proname === "portal_record_staff_password_reset") {
+      assert(
+        rpc.definition.toLowerCase().includes("for update"),
+        "portal_record_staff_password_reset must serialize against deactivation",
+      )
+    }
+  }
+
+  const retiredRpcRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select
+        p.proname,
+        pg_catalog.pg_get_function_identity_arguments(p.oid) as identity_arguments
+      from pg_catalog.pg_proc as p
+      join pg_catalog.pg_namespace as n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname in (${retiredRpcList});
+    `,
+  })
+  const retiredIdentities = retiredRpcRows.filter((row) =>
+    RETIRED_RPC_SIGNATURES.some(
+      (rpc) =>
+        rpc.name === row.proname && rpc.signature === row.identity_arguments,
+    ),
+  )
+  assert(
+    retiredIdentities.length === 0,
+    `Retired portal RPCs still exist: ${retiredIdentities.map((row) => row.proname).join(", ")}`,
+  )
 
   const session = await signIn({
     url: config.url,
@@ -296,9 +631,9 @@ async function main() {
     "Seed admin sign-in returned the wrong user",
   )
 
-  const authenticatedReads = await Promise.all(
+  await Promise.all(
     TABLES.map((table) =>
-      selectRowsAsUser({
+      assertSelectDeniedAsUser({
         url: config.url,
         anonKey: config.anonKey,
         accessToken: session.accessToken,
@@ -308,13 +643,19 @@ async function main() {
     ),
   )
 
+  await assertAtomicAuditRollback({
+    target,
+    url: config.url,
+    serviceKey: config.serviceKey,
+  })
+
   const encodedEmail = encodeURIComponent(email)
-  const [staffRows, recipientRows, registryRows] = await Promise.all([
+  const [staffRows, recipientRows] = await Promise.all([
     selectRows({
       url: config.url,
       serviceKey: config.serviceKey,
       table: "staff_profiles",
-      query: `select=id,user_id,email,role,active&email=eq.${encodedEmail}`,
+      query: `select=id,user_id,email,role,active,onboarded_at&email=eq.${encodedEmail}`,
     }),
     selectRows({
       url: config.url,
@@ -322,19 +663,14 @@ async function main() {
       table: "notification_recipients",
       query: `select=id,email,active&email=eq.${encodedEmail}`,
     }),
-    selectRows({
-      url: config.url,
-      serviceKey: config.serviceKey,
-      table: "registry_assets",
-      query: "select=id,name,status&order=name.asc",
-    }),
   ])
 
   assert(
     staffRows.length === 1 &&
       staffRows[0].user_id === user.id &&
       staffRows[0].role === "admin" &&
-      staffRows[0].active === true,
+      staffRows[0].active === true &&
+      typeof staffRows[0].onboarded_at === "string",
     "Seed admin staff profile is missing or incorrect",
   )
   assert(
@@ -342,30 +678,43 @@ async function main() {
     "Seed notification recipient is missing or inactive",
   )
 
-  const registryNames = registryRows.map((row) => row.name)
-  for (const requiredName of [
-    "Westchase GI website",
-    "Review QR print tool",
-    "Staff admin portal",
-  ]) {
-    assert(
-      registryNames.includes(requiredName),
-      `Registry seed is missing: ${requiredName}`,
-    )
-  }
-
   console.log(`Verified ${target} tables (${actualTables.length}): ${actualTables.join(", ")}`)
   console.log(`Verified ${target} RLS: 0 public tables without row security`)
   console.log(
-    `Verified ${target} policies=${actualPolicies.length}, anon_table_grants=${anonGrantRows.length}`,
+    `Verified ${target} migration: ${PHASE_C_MIGRATION.version}_${PHASE_C_MIGRATION.name}`,
   )
   console.log(
-    `Verified ${target} authenticated RLS reads across ${authenticatedReads.length} portal tables`,
+    `Verified ${target} migration: ${ONBOARDING_MIGRATION.version}_${ONBOARDING_MIGRATION.name}`,
   )
   console.log(
-    `Verified ${target} seed rows: staff_profiles=${staffRows.length}, notification_recipients=${recipientRows.length}, registry_assets=${registryRows.length}`,
+    `Verified ${target} migration: ${PASSWORD_RESET_LOCK_MIGRATION.version}_${PASSWORD_RESET_LOCK_MIGRATION.name}`,
   )
-  console.log(`Verified ${target} seed admin sign-in: ${user.id} (${user.email})`)
+  console.log(
+    `Verified ${target} migration: ${REVIEW_QR_RETIREMENT_MIGRATION.version}_${REVIEW_QR_RETIREMENT_MIGRATION.name}`,
+  )
+  console.log(
+    `Verified ${target} migration: ${SOFTWARE_REGISTRY_RETIREMENT_MIGRATION.version}_${SOFTWARE_REGISTRY_RETIREMENT_MIGRATION.name}`,
+  )
+  console.log(
+    `Verified ${target} staff_profiles.onboarded_at: nullable timestamptz, no default`,
+  )
+  console.log(
+    `Verified ${target} policies=${actualPolicies.length}, least-privilege table ACLs=${privilegeRows.length}`,
+  )
+  console.log(
+    `Verified ${target} service-only SECURITY INVOKER RPCs=${actualRpcs.length}`,
+  )
+  console.log(
+    `Verified ${target} retired portal objects absent: tables=${RETIRED_TABLES.length}, RPCs=${RETIRED_RPC_SIGNATURES.length}`,
+  )
+  console.log(
+    `Verified ${target} authenticated Data API denial across ${TABLES.length} portal tables`,
+  )
+  console.log(`Verified ${target} forced audit failure rolled back request status`)
+  console.log(
+    `Verified ${target} seed rows: staff_profiles=${staffRows.length}, notification_recipients=${recipientRows.length}`,
+  )
+  console.log(`Verified ${target} seed admin sign-in: ${user.id}`)
 }
 
 main().catch((error) => {

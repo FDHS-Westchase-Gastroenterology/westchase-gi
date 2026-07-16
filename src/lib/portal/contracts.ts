@@ -27,6 +27,9 @@ export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
 export type StaffRole = "admin" | "staff";
 
+export const RESET_REQUEST_MESSAGE =
+  "If an active staff account exists for that email, a password reset link has been sent.";
+
 /**
  * Validation rules mirror the client rules the form has always applied:
  * name required, phone >= 10 digits once formatting is stripped, email per
@@ -75,17 +78,14 @@ export function zodFieldErrors(
 
 /** Every staff-visible mutation writes one of these audit_log actions. */
 export const AUDIT_ACTIONS = {
-  REQUEST_STATUS_CHANGE: "request.status_change",
-  REQUEST_NOTE: "request.note",
   RECIPIENTS_ADD: "recipients.add",
   RECIPIENTS_REMOVE: "recipients.remove",
   RECIPIENTS_TOGGLE: "recipients.toggle",
   STAFF_INVITE: "staff.invite",
+  STAFF_ONBOARD: "staff.onboard",
+  STAFF_PASSWORD_RESET: "staff.password_reset",
   STAFF_DEACTIVATE: "staff.deactivate",
   STAFF_ROLE: "staff.role",
-  REGISTRY_CREATE: "registry.create",
-  REGISTRY_UPDATE: "registry.update",
-  REGISTRY_ARCHIVE: "registry.archive",
 } as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
 

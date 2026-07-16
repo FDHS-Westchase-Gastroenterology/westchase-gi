@@ -75,6 +75,9 @@ const nextConfig: NextConfig = {
   // boots with NEXT_DIST_DIR=.next-e2e so concurrent instances never share
   // a Turbopack build directory.
   distDir: process.env.NEXT_DIST_DIR || ".next",
+  outputFileTracingIncludes: {
+    "/admin/review-flyers/assets/*": ["./private/review-flyers/**/*"],
+  },
   async redirects() {
     return [
       // Root: English is the default mode; the header toggle switches to /es.

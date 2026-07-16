@@ -6,8 +6,9 @@ existing site: same identity and content, every defect fixed, fully multilingual
 appointment-request pipeline and a staff admin portal.
 
 Built with Next.js 16 (App Router) + Tailwind CSS 4, with Supabase (Postgres + Auth) behind the
-intake pipeline and portal, and Resend for staff notifications. Deployed on Vercel; goes live at
-`westchasegi.com` at DNS cutover.
+intake pipeline and portal, and an application-owned email capability with Resend as its current
+production adapter. Deployed from the clinic-owned GitHub repository to the clinic-owned Vercel
+project; goes live at `westchasegi.com` at DNS cutover.
 
 ## Five languages
 
@@ -28,8 +29,9 @@ The old site's form silently discarded submissions. Now:
   never fakes a confirmation.
 - Without JavaScript the form still works: a native POST lands on a server-rendered receipt
   page, and no patient data ever rides a URL.
-- Staff on the notification list get a **PHI-free email ping** (a count and a portal link — no
-  patient fields) via Resend; every attempt is recorded per recipient.
+- Staff on the notification list get a **PHI-free email ping** (a stable notice and portal link —
+  no patient fields) through the application email capability; every provider-accepted or failed
+  attempt is recorded per recipient.
 - **PHI-minimal posture:** the site collects only appointment-request contact fields (name,
   phone, email, office/time preferences, a brief reason). No clinical data. The request queue —
   not any inbox — is the system of record. The form's "do not submit PHI" warning renders in
@@ -40,9 +42,14 @@ The old site's form silently discarded submissions. Now:
 Authenticated staff tool (Supabase Auth + row-level security; roles enforced server-side from
 a staff-profiles table): a requests queue with triage lifecycle (new → contacted → scheduled →
 closed) and attributed notes, notification-recipient management, staff account management with
-one-time-password invites, an audit log of every mutation, CSV export, a plain-English help
-page, and a software/access registry with honest (inert) GitHub/Vercel integration seams —
-see `docs/INTEGRATION-ACTIVATION.md` for how those activate after ownership transfer, and
+emailed single-use setup links, an audit log of every mutation, CSV export, a plain-English help
+page, a Website custody surface with live server-side GitHub status, and an administrator-only
+review-flyer printer. Westchase GI is the one managed product; the portal and printer are
+capabilities of the same application and canonical repository. The printer serves its approved
+PDF, SVG, and PNG artifacts through the same server-enforced portal boundary; no flyer download
+lives in `public/` or depends on a separate application. Hosting custody is shown as a static
+clinic-owned fact; the portal does not connect to or manage Vercel. See
+`docs/INTEGRATION-ACTIVATION.md` for the custody and connection runbook, and
 `docs/PORTAL-OPS.md` for day-to-day operations.
 
 ## What this rebuild fixes (vs. the previous vendor site)
@@ -94,15 +101,17 @@ codebase; the portal lives in `src/app/admin/`.
 
 ```bash
 npx playwright install chromium   # once
-npx playwright test               # full E2E suite (boots its own server on :3100)
+npx playwright test               # full serial E2E suite (boots its own server on :3100)
 npx playwright test e2e/smoke.spec.ts   # focused file
 ```
 
 The suite covers the intake API contract, form states across all five locales, the no-JS
-fallback, portal auth/RLS boundaries, the queue lifecycle, management surfaces, the registry,
-and leak hygiene. Specs run against the Supabase project named in `.env.local` (use a
-development project, never production) and toggle notification recipients off for the run so
-no real emails send.
+fallback, portal auth/RLS boundaries, the queue lifecycle, management surfaces, Website custody,
+and leak hygiene. Specs run against the Supabase project named in `.env.local` (use a development
+project, never production) and toggle notification recipients off for the run so
+no real emails send. The committed configuration uses one worker because the shared development
+Auth project rate-limits concurrent sign-ins and recovery requests; do not override that for
+login-heavy portal specs.
 
 ## Adding a patient PDF
 

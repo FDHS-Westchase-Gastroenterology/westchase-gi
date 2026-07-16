@@ -16,6 +16,15 @@ const serviceKeyNames = [
   "SUPABASE_SERVICE_ROLE_KEY_PROD",
   "SUPABASE_SECRET_KEY_PROD",
 ]
+const base64PrivateKeyPemMarkers = ["", "RSA", "EC", "OPENSSH"].map(
+  (keyType) =>
+    Buffer.from(
+      ["-----BEGIN", keyType, "PRIVATE KEY-----"].filter(Boolean).join(" "),
+      "utf8",
+    )
+      .toString("base64")
+      .replace(/=+$/, ""),
+)
 const secretPatterns = [
   {
     label: "Supabase access-token prefix",
@@ -28,6 +37,21 @@ const secretPatterns = [
   {
     label: "Resend API-key prefix",
     regex: /(?<![A-Za-z0-9_])re_[A-Za-z0-9]{16,}(?![A-Za-z0-9_])/,
+  },
+  {
+    label: "GitHub token prefix",
+    regex:
+      /(?<![A-Za-z0-9_])(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,})(?![A-Za-z0-9_])/,
+  },
+  {
+    label: "Private-key PEM marker",
+    regex: /-----BEGIN\s+(?:(?:RSA|EC|OPENSSH)\s+)?PRIVATE\s+KEY-----/,
+  },
+  {
+    label: "Base64 private-key PEM marker",
+    // Build the signatures at runtime so this scanner does not match its own
+    // source while still detecting every supported encoded PEM header.
+    regex: new RegExp(base64PrivateKeyPemMarkers.join("|")),
   },
 ]
 

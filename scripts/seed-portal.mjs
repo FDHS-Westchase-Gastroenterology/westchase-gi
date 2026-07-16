@@ -188,6 +188,7 @@ async function main() {
         display_name: "Portal administrator",
         role: "admin",
         active: true,
+        onboarded_at: new Date().toISOString(),
       },
     ],
   })
@@ -206,48 +207,9 @@ async function main() {
     ],
   })
 
-  const registryCount = await upsertRows({
-    url,
-    serviceKey,
-    table: "registry_assets",
-    onConflict: "name",
-    rows: [
-      {
-        name: "Westchase GI website",
-        kind: "Website",
-        repo: "ASTXRTYS/westchase-gi",
-        live_url: "https://westchase-gi.vercel.app",
-        hosting: "Vercel project: new-westchase-gi",
-        maintainer: "Jason — consultant",
-        status: "active",
-        notes: null,
-      },
-      {
-        name: "Review QR print tool",
-        kind: "Print tool",
-        repo: "ASTXRTYS/wgi-review-qr",
-        live_url: "https://wgi-review-qr.vercel.app",
-        hosting: "Vercel",
-        maintainer: "Jason — consultant",
-        status: "active",
-        notes: null,
-      },
-      {
-        name: "Staff admin portal",
-        kind: "Admin portal",
-        repo: "ASTXRTYS/westchase-gi",
-        live_url: "https://westchase-gi.vercel.app/admin",
-        hosting: "Vercel project: new-westchase-gi",
-        maintainer: "Jason — consultant",
-        status: "in development",
-        notes: "Staff request portal in the website repository.",
-      },
-    ],
-  })
-
   console.log(`Seeded ${target} auth user: ${user.id} (${user.email})`)
   console.log(
-    `Seeded ${target} rows: staff_profiles=${staffCount}, notification_recipients=${recipientCount}, registry_assets=${registryCount}`,
+    `Seeded ${target} rows: staff_profiles=${staffCount}, notification_recipients=${recipientCount}`,
   )
 }
 

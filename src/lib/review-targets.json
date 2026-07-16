@@ -1,0 +1,108 @@
+{
+  "master": {
+    "destination": "https://westchase-gi.vercel.app/review",
+    "assets": {
+      "png": {
+        "filename": "WGI-Master-Review-Hub-QR.png",
+        "sha256": "209e516a7aad5833e10e16f67ba86ee4d2edc4cfbfbc117f476089313fe45534"
+      },
+      "svg": {
+        "filename": "WGI-Master-Review-Hub-QR.svg",
+        "sha256": "51ecede9a36ccf61eaf2f10e9db285e43743af28f98305a89c6feaea64609ca4"
+      },
+      "pdf": {
+        "filename": "WGI-Master-Review-Hub-Flyer.pdf",
+        "sha256": "3eeeecbbb120ef51bdc8d903ec4e2a8ed3ca7c5fc0de2be014266a563453e700"
+      }
+    }
+  },
+  "practice": {
+    "destination": "https://search.google.com/local/writereview?placeid=ChIJ1XxEt_TqwogRxD4EJvCYK4k",
+    "assets": {
+      "png": {
+        "filename": "WGI-Practice-Review-QR.png",
+        "sha256": "6d59b081e944315c7b108fbbd651016f2a7bb2af923be632fac3bfb40627ec92"
+      },
+      "svg": {
+        "filename": "WGI-Practice-Review-QR.svg",
+        "sha256": "5f568e456b256df01933a0e180a1a54881dfd8b2f39867c077fa996b7feb4c3e"
+      },
+      "pdf": {
+        "filename": "WGI-Practice-Review-Flyer.pdf",
+        "sha256": "84ba0efebc05db762c4f305216ad0971095ff256c1fec7268f0cf9853925f9d3"
+      }
+    }
+  },
+  "awad": {
+    "destination": "https://search.google.com/local/writereview?placeid=ChIJ1XxEt_TqwogRejiysvVdwqc",
+    "providerId": "amir-awad",
+    "assets": {
+      "png": {
+        "filename": "Dr-Awad-Review-QR.png",
+        "sha256": "0189c5db353bb919a8c75cccb482b46d28ff2d13e4127411898da0160f5a7efd"
+      },
+      "svg": {
+        "filename": "Dr-Awad-Review-QR.svg",
+        "sha256": "9513396d2cc336ae8917f2351f5eed486ec43e1248e8d075cb9cd0b96e438530"
+      },
+      "pdf": {
+        "filename": "Dr-Awad-Review-Flyer.pdf",
+        "sha256": "b2b7617a73e1d3ecb5df6d2253ccdc6a106522ed597e3ba66290302fb5fa41d5"
+      }
+    }
+  },
+  "chang": {
+    "destination": "https://search.google.com/local/writereview?placeid=ChIJ1XxEt_TqwogRwXffFfsFWf0",
+    "providerId": "john-chang",
+    "assets": {
+      "png": {
+        "filename": "Dr-Chang-Review-QR.png",
+        "sha256": "180589ef1f55d551a2b65ef8060a2d99f49aeace874be3869b8c581bdcafa4c4"
+      },
+      "svg": {
+        "filename": "Dr-Chang-Review-QR.svg",
+        "sha256": "2ffad93eccd39005d918f9cbc915ce5a59ff8d1fd9f5d4566c4d918580fbcc87"
+      },
+      "pdf": {
+        "filename": "Dr-Chang-Review-Flyer.pdf",
+        "sha256": "a29ba0624ff378507deda646c51ba20acb6ac8229d1c5e43aed6251844adc65c"
+      }
+    }
+  },
+  "mendoza": {
+    "destination": "https://search.google.com/local/writereview?placeid=ChIJ1XxEt_TqwogRzZ4Jiq8ZMlA",
+    "providerId": "alfredo-mendoza",
+    "assets": {
+      "png": {
+        "filename": "Dr-Mendoza-Review-QR.png",
+        "sha256": "1072e8580d85b373a3b0ee099bb24006d38da78f05c1b56895d9f61f22c9b765"
+      },
+      "svg": {
+        "filename": "Dr-Mendoza-Review-QR.svg",
+        "sha256": "8004dc03ec2cdfa6c2f1a1ec9c164040d08cb80d22df53036d7bfaf635ff28b6"
+      },
+      "pdf": {
+        "filename": "Dr-Mendoza-Review-Flyer.pdf",
+        "sha256": "65a6b67a3472a779442aae951a8463b80f1b543762782e3558d9d9a572ea838b"
+      }
+    }
+  },
+  "taylor": {
+    "destination": "https://search.google.com/local/writereview?placeid=ChIJz79C7bDrwogRQukUnLPU7SE",
+    "providerId": "taylor-emmerman",
+    "assets": {
+      "png": {
+        "filename": "Taylor-Emmerman-Review-QR.png",
+        "sha256": "fc92e1786267f16c3fc64489fee876010d37bbfc1f7459451261cf197974c606"
+      },
+      "svg": {
+        "filename": "Taylor-Emmerman-Review-QR.svg",
+        "sha256": "635c27a313e4929a847d57f783f7f9181716a1b9b4c77fed1c03b506c8259c3c"
+      },
+      "pdf": {
+        "filename": "Taylor-Emmerman-Review-Flyer.pdf",
+        "sha256": "c80c86bc061052ff800654954bdd65eb090cde865f9497746e66195e264c02c6"
+      }
+    }
+  }
+}

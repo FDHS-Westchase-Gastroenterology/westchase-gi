@@ -27,7 +27,7 @@ export function AssistantLauncher() {
         type="button"
         data-testid="assistant-launcher"
         onClick={openPanel}
-        className="fixed bottom-5 right-5 z-40 flex min-h-11 items-center gap-x-2 rounded-full bg-[var(--color-navy)] px-4 text-[0.9rem] font-bold text-[var(--color-on-dark)] shadow-[var(--shadow-card)] transition-transform hover:-translate-y-0.5"
+        className="fixed bottom-5 right-5 z-40 flex min-h-11 items-center gap-x-2 rounded-full bg-[var(--color-navy)] px-4 text-[0.9rem] font-bold text-[var(--color-on-dark)] shadow-[var(--shadow-card)] transition-transform duration-150 hover:-translate-y-0.5 active:scale-[0.98]"
       >
         <MessageSquare className="h-4 w-4" aria-hidden="true" />
         Assistant
@@ -42,7 +42,7 @@ export function AssistantLauncher() {
         data-testid="assistant-panel"
         data-expanded={expanded}
         onClose={() => setExpanded(false)}
-        className={`flex-col overflow-hidden rounded-[var(--radius-lg)] bg-white p-0 shadow-[var(--shadow-card)] backdrop:bg-[rgba(20,32,45,0.35)] open:flex ${
+        className={`assistant-dialog flex-col overflow-hidden rounded-[var(--radius-lg)] bg-white p-0 shadow-[var(--shadow-card)] backdrop:bg-[rgba(20,32,45,0.35)] open:flex ${
           expanded
             ? "m-auto h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-h-none max-w-none"
             : "mb-4 ml-auto mr-4 mt-auto max-h-[85dvh] w-full max-w-md"
@@ -87,8 +87,9 @@ export function AssistantLauncher() {
           <ul className="mt-2 space-y-2 text-[0.95rem] leading-relaxed text-[var(--color-body)]">
             <li className="flex gap-x-2.5">
               <span aria-hidden="true" className="mt-0.5 text-[var(--color-teal-ink)]">•</span>
-              Answer questions about the queue, settings, and this
-              registry — like the Help page, but conversational.
+              Answer questions about appointment requests, settings, and the
+              practice&apos;s software — like the Help page, but
+              conversational.
             </li>
             <li className="flex gap-x-2.5">
               <span aria-hidden="true" className="mt-0.5 text-[var(--color-teal-ink)]">•</span>

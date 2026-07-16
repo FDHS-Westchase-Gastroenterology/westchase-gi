@@ -48,14 +48,19 @@ and the authenticated staff portal at `/admin`.
     insert (`src/lib/portal/intake.ts`); failure and unknown states stay distinct and always
     surface the call/text fallback; the no-JS path is a native POST with a status-only receipt
     URL. The honeypot drop returns a success-shaped response. Never weaken these.
-11. **Portal security invariants.** `/admin/*` is closed by the proxy and every server
-    action/route authenticates first (`requireRole`); authorization reads `staff_profiles`
-    via the service client — never user-editable metadata. The service-role key exists only in
-    server-only modules; `NEXT_PUBLIC_*` never holds secrets. RLS stays enabled on every
-    table with zero anon grants and no authenticated write policies (all writes go through
+11. **Portal security invariants.** `/admin/*` is closed by the proxy except the explicit
+    authentication-entry routes. Every management action/route authenticates first
+    (`requireRole`); login, reset request, and one-time-link confirmation are deliberate public
+    session-establishment boundaries and must stay generic/fail-closed. Authorization reads
+    `staff_profiles` via the service client — never user-editable metadata. The service-role key
+    exists only in server-only modules; `NEXT_PUBLIC_*` never holds secrets. RLS stays enabled on
+    every table with zero anon grants and no authenticated write policies (all writes go through
     service-role server actions). Every staff-visible mutation writes an `audit_log` row.
-    No GitHub/Vercel credential is ever wired into the portal — the integration seams stay
-    inert until the post-transfer GitHub App (`docs/INTEGRATION-ACTIVATION.md`).
+    The GitHub connection authenticates only through the clinic-owned GitHub App, with its
+    three credentials kept in server-only environment variables. Never use a personal access
+    token, expose App credentials to the browser, or widen the App beyond its documented
+    least-privilege permissions. The portal does not connect to or manage Vercel
+    (`docs/INTEGRATION-ACTIVATION.md`).
 
 ## Verification
 

@@ -153,6 +153,20 @@ test.describe("portal requests operation", () => {
       expect(error).toBeNull();
       expect(data?.status).toBe(status);
     }
+
+    const { data: statusAudits, error: statusAuditError } = await db
+      .from("audit_log")
+      .select("detail")
+      .eq("entity_id", id)
+      .eq("action", "request.status_change");
+    expect(statusAuditError).toBeNull();
+    expect(statusAudits).toHaveLength(3);
+    const statusTargets = (statusAudits ?? []).map(
+      (row) => (row.detail as { to?: string }).to,
+    );
+    for (const status of ["contacted", "scheduled", "closed"]) {
+      expect(statusTargets.filter((target) => target === status)).toHaveLength(1);
+    }
   });
 
   test("VAL-ADMIN-004: status filters match SQL counts exactly", async ({
@@ -231,6 +245,17 @@ test.describe("portal requests operation", () => {
     expect(meta.text).toBe(noteText);
     expect(String(meta.author_email).toLowerCase()).toBe(
       SEED_EMAIL.toLowerCase(),
+    );
+
+    const { data: noteAudits, error: noteAuditError } = await db
+      .from("audit_log")
+      .select("detail")
+      .eq("entity_id", id)
+      .eq("action", "request.note");
+    expect(noteAuditError).toBeNull();
+    expect(noteAudits).toHaveLength(1);
+    expect((noteAudits![0].detail as { length?: number }).length).toBe(
+      noteText.length,
     );
   });
 });

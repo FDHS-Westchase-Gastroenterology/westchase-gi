@@ -3,21 +3,25 @@ import { serviceClient } from "@/lib/portal/server";
 import { RecipientsManager, type RecipientRow } from "./recipients-manager";
 import { StaffManager, type StaffRow } from "./staff-manager";
 
-export default async function AdminSettingsPage() {
-  const session = await requireRole("staff");
-  const isAdmin = session.role === "admin";
+// Default Settings sub-page: the frequent, staff-facing configuration.
+// The website custody record lives on the sibling /admin/settings/software.
 
+export default async function AdminSettingsPage() {
   const db = serviceClient();
-  const [recipientsResult, staffResult] = await Promise.all([
+  const [session, recipientsResult, staffResult] = await Promise.all([
+    requireRole("staff"),
     db
       .from("notification_recipients")
       .select("id, email, label, active")
       .order("email", { ascending: true }),
     db
       .from("staff_profiles")
-      .select("user_id, email, display_name, role, active")
+      .select("user_id, email, display_name, role, active, onboarded_at")
+      .eq("active", true)
       .order("display_name", { ascending: true }),
   ]);
+  const isAdmin = session.role === "admin";
+
   if (recipientsResult.error) {
     throw new Error(`Recipient read failed: ${recipientsResult.error.code}`);
   }
@@ -26,18 +30,11 @@ export default async function AdminSettingsPage() {
   }
 
   return (
-    <section aria-labelledby="settings-heading" className="space-y-10">
-      <div>
-        <h1
-          id="settings-heading"
-          className="text-[1.65rem] font-black leading-tight text-[var(--color-ink)]"
-        >
-          Settings
-        </h1>
-        <p className="mt-1.5 max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
-          Who gets notified about new requests, and who can open this portal.
-        </p>
-      </div>
+    <div className="space-y-10">
+      <p className="max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
+        Who gets notified when an appointment request arrives, and who can
+        open this portal.
+      </p>
 
       <RecipientsManager
         recipients={(recipientsResult.data ?? []) as RecipientRow[]}
@@ -48,6 +45,6 @@ export default async function AdminSettingsPage() {
         isAdmin={isAdmin}
         selfUserId={session.id}
       />
-    </section>
+    </div>
   );
 }

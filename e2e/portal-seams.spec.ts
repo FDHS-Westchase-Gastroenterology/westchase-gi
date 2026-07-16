@@ -1,25 +1,13 @@
 import { test, expect, type Page } from "@playwright/test";
 import { loadLocalEnv, requiredEnv } from "./support";
 
-// VAL-REG-003: the GitHub/Vercel seams are truthful and inert — no
-// portal page makes any live call to either provider.
 // VAL-REG-005: the assistant affordance is a portal-wide docked widget
 // with an expandable panel, conservative copy, and no dedicated page.
-// (VAL-REG-004 — the activation runbook — is verified by file
-// inspection in the packet's verificationSteps.)
 
 loadLocalEnv();
 
 const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
-
-const FORBIDDEN_HOSTS = [
-  "api.github.com",
-  "github.com",
-  "api.vercel.com",
-  "vercel.com",
-];
-
 async function signIn(page: Page) {
   await page.goto("/admin/login");
   await page.getByLabel("Email").fill(SEED_EMAIL);
@@ -31,57 +19,13 @@ async function signIn(page: Page) {
 const PORTAL_PAGES = [
   "/admin",
   "/admin/settings",
-  "/admin/registry",
+  "/admin/settings/software",
   "/admin/audit",
   "/admin/help",
 ];
 
 test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "JS portal UI");
-});
-
-test("VAL-REG-003: seam panels are truthful and no provider is ever called", async ({
-  page,
-}) => {
-  test.setTimeout(120_000);
-
-  const offSiteHits: string[] = [];
-  page.on("request", (request) => {
-    const host = new URL(request.url()).hostname;
-    if (
-      FORBIDDEN_HOSTS.some(
-        (forbidden) => host === forbidden || host.endsWith(`.${forbidden}`),
-      )
-    ) {
-      offSiteHits.push(request.url());
-    }
-  });
-
-  await signIn(page);
-
-  // The panels state the truthful inert status and what they WILL manage.
-  await page.goto("/admin/registry");
-  for (const provider of ["github", "vercel"] as const) {
-    const panel = page.getByTestId(`integration-${provider}`);
-    await expect(panel).toBeVisible();
-    await expect(panel.getByTestId("integration-status")).toContainText(
-      "Not connected — activates after ownership transfer",
-    );
-    await expect(panel).toContainText("Once connected, it will manage");
-  }
-
-  // Every portal page renders without touching either provider.
-  for (const path of PORTAL_PAGES) {
-    await page.goto(path);
-    await page.waitForLoadState("load");
-  }
-  expect(offSiteHits, `provider calls detected: ${offSiteHits.join(", ")}`)
-    .toHaveLength(0);
-
-  await page.screenshot({
-    path: "test-results/portal-seams/registry-connections.png",
-    fullPage: true,
-  });
 });
 
 test("VAL-REG-005: assistant widget is portal-wide, expandable, conservative", async ({

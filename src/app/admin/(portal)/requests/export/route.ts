@@ -3,7 +3,7 @@ import {
   REQUEST_STATUSES,
   type RequestStatus,
 } from "@/lib/portal/contracts";
-import { requireRole } from "@/lib/portal/auth";
+import { authorizationStatus, requireRole } from "@/lib/portal/auth";
 import { serviceClient } from "@/lib/portal/server";
 
 const CSV_HEADERS = [
@@ -28,14 +28,6 @@ function isRequestStatus(value: string | null): value is RequestStatus {
     value !== null &&
     (REQUEST_STATUSES as readonly string[]).includes(value)
   );
-}
-
-function authorizationStatus(error: unknown): 401 | 403 | null {
-  if (typeof error !== "object" || error === null || !("status" in error)) {
-    return null;
-  }
-  const status = error.status;
-  return status === 401 || status === 403 ? status : null;
 }
 
 function csvField(raw: unknown): string {

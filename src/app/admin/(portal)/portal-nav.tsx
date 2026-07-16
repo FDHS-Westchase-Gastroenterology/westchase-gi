@@ -2,13 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { StaffRole } from "@/lib/portal/contracts";
 
 const NAV_ITEMS = [
-  { href: "/admin", label: "Requests" },
+  { href: "/admin", label: "Appointment requests" },
   { href: "/admin/settings", label: "Settings" },
-  { href: "/admin/registry", label: "Registry" },
-  { href: "/admin/audit", label: "Audit log" },
   { href: "/admin/help", label: "Help" },
+] as const;
+
+const REVIEW_FLYERS_ITEM = {
+  href: "/admin/review-flyers",
+  label: "Print review flyers",
+} as const;
+
+const ADMIN_NAV_ITEMS = [
+  NAV_ITEMS[0],
+  REVIEW_FLYERS_ITEM,
+  ...NAV_ITEMS.slice(1),
 ] as const;
 
 function isActive(pathname: string, href: string): boolean {
@@ -19,13 +29,14 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function PortalNav() {
+export function PortalNav({ role }: { role: StaffRole }) {
   const pathname = usePathname();
+  const items = role === "admin" ? ADMIN_NAV_ITEMS : NAV_ITEMS;
 
   return (
     <nav aria-label="Portal sections" className="-mb-px overflow-x-auto">
       <ul className="flex min-w-max items-stretch gap-1">
-        {NAV_ITEMS.map((item) => {
+        {items.map((item) => {
           const active = isActive(pathname, item.href);
           return (
             <li key={item.href} className="flex">
