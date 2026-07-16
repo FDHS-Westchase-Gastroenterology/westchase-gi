@@ -72,6 +72,21 @@ test.describe("portal home", () => {
     );
     await expect(greeting).toContainText(firstName);
 
+    // The practice-local after-hours cue starts at 7 p.m. Eastern.
+    const [easternHour, easternMinute] = new Intl.DateTimeFormat("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+      timeZone: "America/New_York",
+    })
+      .format(new Date())
+      .split(":")
+      .map(Number);
+    const easternMinutes = easternHour * 60 + easternMinute;
+    await expect(page.getByTestId("after-hours")).toHaveCount(
+      easternMinutes >= 19 * 60 || easternMinutes < 5 * 60 + 30 ? 1 : 0,
+    );
+
     // The overview count is the database's new-count, phrased as a sentence.
     const { count: newCount, error: countError } = await db
       .from("requests")

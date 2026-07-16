@@ -6,6 +6,7 @@ import { serviceClient } from "@/lib/portal/server";
 import {
   ArrowRight,
   ChevronRight,
+  Clock,
   FileText,
   Globe,
   Mail,
@@ -19,11 +20,15 @@ import { formatReceived } from "./requests/format";
 // requests), and the rest of the portal phrased as plain-language
 // tasks. Occasional tasks live here instead of holding permanent tabs.
 
-const NY_HOUR = new Intl.DateTimeFormat("en-US", {
-  hour: "numeric",
+const NY_TIME = new Intl.DateTimeFormat("en-US", {
+  hour: "2-digit",
+  minute: "2-digit",
   hourCycle: "h23",
   timeZone: "America/New_York",
 });
+
+const MORNING_START = 5 * 60 + 30;
+const AFTER_HOURS_START = 19 * 60;
 
 const NY_DATE = new Intl.DateTimeFormat("en-US", {
   weekday: "long",
@@ -33,10 +38,9 @@ const NY_DATE = new Intl.DateTimeFormat("en-US", {
 });
 
 // Practice-local clock: the front desk reads this in Tampa.
-function greetingFor(now: Date): string {
-  const hour = Number(NY_HOUR.format(now));
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
+function greetingFor(minutes: number): string {
+  if (minutes >= MORNING_START && minutes < 12 * 60) return "Good morning";
+  if (minutes >= 12 * 60 && minutes < 17 * 60) return "Good afternoon";
   return "Good evening";
 }
 
@@ -102,6 +106,8 @@ export default async function AdminHomePage() {
   const session = await requireRole("staff");
   const firstName = session.displayName.trim().split(/\s+/)[0];
   const now = new Date();
+  const [hour, minute] = NY_TIME.format(now).split(":").map(Number);
+  const minutes = hour * 60 + minute;
 
   const db = serviceClient();
   const { data: newestRows, count: newCount } = await db
@@ -119,11 +125,20 @@ export default async function AdminHomePage() {
   return (
     <section aria-labelledby="home-heading">
       <h1 id="home-heading" data-testid="home-greeting" className="portal-title">
-        {greetingFor(now)}, {firstName}.
+        {greetingFor(minutes)}, {firstName}.
       </h1>
-      <p className="mt-1.5 text-[0.95rem] text-[var(--color-muted)]">
-        {NY_DATE.format(now)}
-      </p>
+      <div className="mt-1.5 flex flex-wrap items-center gap-2.5 text-[0.95rem] text-[var(--color-muted)]">
+        <p>{NY_DATE.format(now)}</p>
+        {minutes >= AFTER_HOURS_START || minutes < MORNING_START ? (
+          <span
+            data-testid="after-hours"
+            className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-navy)] px-2.5 py-1 text-[0.78rem] font-extrabold text-white"
+          >
+            <Clock className="h-3.5 w-3.5" />
+            After hours
+          </span>
+        ) : null}
+      </div>
 
       <div className="mt-7 grid items-start gap-6 lg:grid-cols-[1.55fr_1fr]">
         <section
