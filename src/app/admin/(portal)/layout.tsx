@@ -63,16 +63,14 @@ export default async function PortalLayout({
       <footer className="border-t border-[var(--color-line)] pb-20 pt-5">
         <div className="container-x flex flex-wrap items-center justify-between gap-3 text-[0.85rem] text-[var(--color-muted)]">
           <p>
-            Internal tool for practice staff. Patient tools are on the main
-            site.
-          </p>
-          <p className="flex items-center gap-x-4">
             <Link
               href="/admin/audit"
               className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
             >
               Activity log
             </Link>
+          </p>
+          <p>
             <span>
               Questions? See{" "}
               <Link
