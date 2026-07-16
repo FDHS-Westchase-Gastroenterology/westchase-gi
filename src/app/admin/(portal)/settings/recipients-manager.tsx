@@ -94,10 +94,10 @@ export function RecipientsManager({
         Notification recipients
       </h2>
       <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
-        Every address here gets an email ping when a new appointment
-        request arrives.
-        Notifications supplement the queue — the portal is the system of
-        record, so nothing is lost if an email goes astray.
+        Everyone on this list gets an email whenever a patient requests an
+        appointment. The emails are just a heads-up — every request is
+        always saved here in the portal, so nothing gets missed even if an
+        email does.
       </p>
 
       {error && (

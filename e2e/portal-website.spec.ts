@@ -89,7 +89,7 @@ test.describe("website custody", () => {
     for (const capability of [
       "Patient-facing website",
       "Authenticated staff portal",
-      "Authenticated review-flyer printer",
+      "Review-flyer printing",
     ]) {
       await expect(product).toContainText(capability);
     }
