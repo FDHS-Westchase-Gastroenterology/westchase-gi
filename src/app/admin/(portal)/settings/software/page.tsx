@@ -1,14 +1,13 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/portal/auth";
+import { CANONICAL_REPOSITORY } from "@/lib/portal/integrations";
+import { getMaintainerAccessModel } from "@/lib/portal/maintainers";
 import {
-  CANONICAL_REPOSITORY,
-  getGitHubRepositoryStatus,
-  type GitHubRepositoryStatus,
-} from "@/lib/portal/integrations";
-import {
-  MaintainerAccess,
-  type MaintainerAccessModel,
-} from "./maintainer-access";
+  cancelMaintainerInvite,
+  inviteMaintainer,
+  revokeMaintainer,
+} from "../actions";
+import { MaintainerAccess } from "./maintainer-access";
 
 const CAPABILITIES = [
   "Patient-facing website",
@@ -16,33 +15,9 @@ const CAPABILITIES = [
   "Review-flyer printing",
 ] as const;
 
-// Temporary adapter: shapes today's status-only read into the maintainer
-// read model. The maintainers implementation (src/lib/portal/maintainers.ts,
-// PR #34) replaces this with the live collaborator/invitation read and the
-// real installation-permission check; until it proves administration:write,
-// management fails closed to a setup blocker and no mutation control renders.
-function toMaintainerAccessModel(
-  github: GitHubRepositoryStatus,
-): MaintainerAccessModel {
-  if (github.state !== "connected") {
-    return { state: github.state };
-  }
-  return {
-    state: "connected",
-    ownerLogin: github.account,
-    management:
-      github.installationScope === "Selected repositories"
-        ? "permission_upgrade_required"
-        : "restrict_installation",
-    maintainers: null,
-    invitations: null,
-  };
-}
-
 export default async function AdminSettingsSoftwarePage() {
   const session = await requireRole("staff");
-  const github = await getGitHubRepositoryStatus();
-  const model = toMaintainerAccessModel(github);
+  const model = await getMaintainerAccessModel();
 
   return (
     <section
@@ -112,7 +87,19 @@ export default async function AdminSettingsSoftwarePage() {
       </div>
 
       <div className="mt-6 border-t border-[var(--color-line)] pt-6">
-        <MaintainerAccess model={model} isAdmin={session.role === "admin"} />
+        <MaintainerAccess
+          model={model}
+          isAdmin={session.role === "admin"}
+          actions={
+            session.role === "admin"
+              ? {
+                  inviteMaintainer,
+                  cancelMaintainerInvite,
+                  revokeMaintainer,
+                }
+              : undefined
+          }
+        />
       </div>
     </section>
   );

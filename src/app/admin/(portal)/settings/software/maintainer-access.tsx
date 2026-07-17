@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { getMaintainerViewState } from "@/lib/portal/maintainer-view";
 
 // The staff-facing surface for "who can change the website". This component
 // owns presentation and confirmation only; every decision that matters
@@ -172,6 +173,7 @@ export function MaintainerAccess({
       const result = await action();
       if (!result.ok) {
         setError(failureMessage(result));
+        router.refresh();
         return;
       }
       setNotice(onSuccess);
@@ -179,8 +181,8 @@ export function MaintainerAccess({
     });
   }
 
-  const canManage =
-    isAdmin && model.state === "connected" && model.management === "ready" && !!actions;
+  const view = getMaintainerViewState(model, isAdmin, Boolean(actions));
+  const canManage = view.canManage;
 
   return (
     <div data-testid="maintainer-access">
@@ -261,12 +263,12 @@ export function MaintainerAccess({
                     {maintainer.login}
                   </p>
                   <p className="truncate text-[0.85rem] text-[var(--color-muted)]">
-                    Can edit and publish the website
+                    Can edit and publish the website — Write access
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <RolePill tone="maintainer">Maintainer</RolePill>
-                  {canManage && (
+                  {canManage && actions && (
                     <button
                       type="button"
                       data-action="revoke-maintainer"
@@ -286,7 +288,7 @@ export function MaintainerAccess({
                           );
                         }
                       }}
-                      className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+                      className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
                     >
                       Remove access
                     </button>
@@ -311,7 +313,7 @@ export function MaintainerAccess({
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <RolePill tone="invited">Invitation sent</RolePill>
-                  {canManage && (
+                  {canManage && actions && (
                     <button
                       type="button"
                       data-action="cancel-invitation"
@@ -331,7 +333,7 @@ export function MaintainerAccess({
                           );
                         }
                       }}
-                      className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+                      className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
                     >
                       Cancel invitation
                     </button>
@@ -347,20 +349,24 @@ export function MaintainerAccess({
               complete.
             </p>
           )}
-          {model.maintainers !== null &&
-            model.maintainers.length === 0 &&
-            (model.invitations?.length ?? 0) === 0 && (
+          {view.showInvitationDisclosure && (
+            <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
+              Pending invitations appear here once the practice owner approves
+              repository administration access.
+            </p>
+          )}
+          {view.showEmptyState && (
               <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
                 No one besides the practice&rsquo;s own account can change the
                 website right now.
               </p>
             )}
 
-          {isAdmin && model.management !== "ready" && (
+          {view.showSetup && (
             <SetupNotice management={model.management} />
           )}
 
-          {canManage && (
+          {canManage && actions && (
             <form
               className="mt-5 border-t border-[var(--color-line)] pt-5"
               action={(formData: FormData) => {
@@ -377,8 +383,9 @@ export function MaintainerAccess({
               </h4>
               <p className="mt-1 max-w-[65ch] text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
                 Ask the person for their exact GitHub username — it&rsquo;s
-                the one account detail this needs. Once they accept, they can
-                edit and publish the website.
+                the one account detail this needs. Once they accept, Write
+                access lets them change code and merge changes that publish
+                the website.
               </p>
               <div className="mt-3 flex flex-wrap gap-3">
                 <div className="min-w-0 flex-1 basis-64">

@@ -1,9 +1,10 @@
 # Integration activation and custody runbook
 
-The staff portal's Website page reports live status for the one canonical repository through a
-clinic-owned GitHub App. It records Vercel hosting custody as a static fact and does not connect
-to or manage Vercel. This runbook records the actual custody model, the completed rehearsal, and
-the controls that still require the clinic account owner.
+The staff portal's Website page lists the owner, current Write maintainers, and pending
+invitations for the one canonical repository through a clinic-owned GitHub App. Portal
+administrators can invite a maintainer, cancel an invitation, or revoke a maintainer after the
+owner controls below are complete. It records Vercel hosting custody as a static fact and does not
+connect to or manage Vercel.
 
 ## Current custody (verified 2026-07-15)
 
@@ -16,10 +17,10 @@ the controls that still require the clinic account owner.
   `westchase-gi.vercel.app` alias moved; an ASTXRTYS-authored probe commit deployed READY; and the
   former consultant-owned project was deleted.
 - The private GitHub App `wgi-portal` is registered on the clinic account with Repository
-  Administration read/write and Metadata read permissions, and no webhook. The Website status
-  request downscopes its installation token to Metadata read and verifies only the connected
-  account, canonical repository, and installation scope. A manual rehearsal proved the full
-  server-to-server authentication chain.
+  Administration read/write and Metadata read permissions, and no webhook. Every portal request
+  verifies the exact account and repository by numeric ID, scopes a short-lived token to that one
+  repository, and exposes only the three maintainer commands above. A manual rehearsal proved the
+  full server-to-server authentication chain.
 - App identifiers and private-key material remain outside git. The private key is the only secret
   in this connection; never paste any of these values into source, documentation, issues, or
   command-line arguments.
@@ -32,7 +33,12 @@ Two owner-only controls remain open:
 
 1. Enable two-factor authentication on `FDHS-Westchase-Gastroenterology`.
 2. Change the App installation from **All repositories** to **Only select repositories**, selecting
-   only `westchase-gi`.
+   only `westchase-gi`, and approve the App's Repository Administration permission if GitHub still
+   shows an updated-permission request.
+
+The portal cannot prove the two-factor-authentication control. It reads the installation scope and
+approved permission on every request and keeps all maintainer mutations disabled until GitHub
+reports both selected-repository scope and Administration write.
 
 ## Trust model
 
@@ -63,16 +69,16 @@ token, and reads the canonical repository through GitHub's server API.
 After changing the variables, redeploy and verify:
 
 1. Sign in as an active portal administrator and open `/admin/settings/software`.
-2. Confirm GitHub shows **Connected** and names
-   `FDHS-Westchase-Gastroenterology/westchase-gi` from a live response.
-3. Run `npm run build` and `node scripts/verify-no-secrets.mjs`.
-4. Locally, run once without the three App variables and confirm the panel returns the safe **Not
+2. Confirm the owner and current maintainers match the live repository. If setup is incomplete,
+   confirm the page names the exact owner action and renders no mutation controls.
+3. After both owner controls are complete, use a controlled throwaway GitHub account to exercise
+   invite, cancel, accept as a Write maintainer, and revoke. Confirm each final state on GitHub and
+   in the portal, and confirm the Activity log records the administrator, target, and outcome.
+4. Run `npm run build` and `node scripts/verify-no-secrets.mjs`.
+5. Locally, run once without the three App variables and confirm the panel returns the safe **Not
    configured** state instead of failing the page. A partial or invalid local configuration must
    report **Connection unavailable** without exposing its input. Do not copy Production secrets
    into Preview just to exercise these states.
-
-The current provider reads repository state only. Any future write workflow gets its own
-least-privilege permission review, audit contract, failure behavior, and deterministic tests.
 
 ## Transfer and hosting deviations worth preserving
 
@@ -100,3 +106,6 @@ custody fact without a provider panel, token, deployment control, or configurati
   contain input.
 - Do not claim the two owner-only controls are complete until the clinic account owner verifies
   them.
+- Do not treat a code revert as a complete privilege rollback. Reverting disables the portal
+  controls, but an approved Administration grant remains active until the clinic owner reduces the
+  App permission or uninstalls the App.

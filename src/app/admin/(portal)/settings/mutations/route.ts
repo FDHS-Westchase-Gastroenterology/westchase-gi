@@ -10,6 +10,12 @@ import {
   toggleNotificationRecipientMutation,
   type ManagementFailure,
 } from "@/lib/portal/management";
+import {
+  cancelMaintainerInviteMutation,
+  inviteMaintainerMutation,
+  revokeMaintainerMutation,
+} from "@/lib/portal/maintainers";
+import type { MaintainerMutationResult } from "@/lib/portal/maintainer-operation";
 
 const JSON_HEADERS = {
   "Cache-Control": "private, no-store, max-age=0",
@@ -28,7 +34,7 @@ function authorizationStatus(error: unknown): 401 | 403 | null {
   return status === 401 || status === 403 ? status : null;
 }
 
-function failureStatus(failure: ManagementFailure): number {
+function failureStatus(failure: ManagementFailure | Exclude<MaintainerMutationResult, { ok: true }>): number {
   switch (failure.code) {
     case "invalid":
       return 400;
@@ -36,6 +42,12 @@ function failureStatus(failure: ManagementFailure): number {
       return 404;
     case "conflict":
       return 409;
+    case "forbidden":
+      return 403;
+    case "limit":
+      return 429;
+    case "unconfirmed":
+      return 503;
     case "unavailable":
       return 503;
   }
@@ -105,6 +117,16 @@ export async function POST(request: NextRequest): Promise<Response> {
         break;
       case "staff.role":
         result = await changeStaffRoleMutation(payload.input);
+        break;
+      case "maintainer.invite":
+        result = await inviteMaintainerMutation(payload.input);
+        successStatus = 201;
+        break;
+      case "maintainer.invite.cancel":
+        result = await cancelMaintainerInviteMutation(payload.input);
+        break;
+      case "maintainer.revoke":
+        result = await revokeMaintainerMutation(payload.input);
         break;
       default:
         return json({ ok: false, error: "Unknown operation" }, 400);

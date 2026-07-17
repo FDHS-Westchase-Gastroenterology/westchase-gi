@@ -9,10 +9,26 @@ type AuditRow = {
   action: string;
   entity: string;
   entity_id: string | null;
+  detail: unknown;
   at: string;
 };
 
 const PAGE_SIZE = 100;
+
+function externalAuditSummary(
+  detail: unknown,
+): { target: string; outcome: string } | null {
+  if (typeof detail !== "object" || detail === null || Array.isArray(detail)) {
+    return null;
+  }
+  const value = detail as Record<string, unknown>;
+  if (typeof value.target_login !== "string") return null;
+  const outcome =
+    value.outcome === "succeeded" || value.outcome === "failed"
+      ? value.outcome
+      : "unconfirmed";
+  return { target: value.target_login, outcome };
+}
 
 export default async function AdminAuditPage() {
   await requireRole("staff");
@@ -22,7 +38,7 @@ export default async function AdminAuditPage() {
     await Promise.all([
       db
         .from("audit_log")
-        .select("id, actor_email, action, entity, entity_id, at")
+        .select("id, actor_email, action, entity, entity_id, detail, at")
         .order("at", { ascending: false })
         .limit(PAGE_SIZE),
       db.from("audit_log").select("id", { count: "exact", head: true }),
@@ -93,29 +109,37 @@ export default async function AdminAuditPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-line)]">
-              {entries.map((entry) => (
-                <tr key={entry.id} className="text-[0.9rem]">
-                  <td className="whitespace-nowrap px-5 py-3 text-[var(--color-muted)]">
-                    {formatReceived(entry.at, true)}
-                  </td>
-                  <td className="px-5 py-3 font-bold text-[var(--color-ink)]">
-                    {entry.actor_email}
-                  </td>
-                  <td className="px-5 py-3">
-                    <code className="rounded bg-[var(--color-mint)] px-2 py-0.5 text-[0.85rem] text-[var(--color-teal-ink)]">
-                      {entry.action}
-                    </code>
-                  </td>
-                  <td className="px-5 py-3 text-[var(--color-body)]">
-                    {entry.entity}
-                    {entry.entity_id ? (
-                      <span className="ml-1.5 text-[0.8rem] text-[var(--color-muted)]">
-                        {entry.entity_id.slice(0, 8)}…
-                      </span>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
+              {entries.map((entry) => {
+                const external = externalAuditSummary(entry.detail);
+                return (
+                  <tr key={entry.id} className="text-[0.9rem]">
+                    <td className="whitespace-nowrap px-5 py-3 text-[var(--color-muted)]">
+                      {formatReceived(entry.at, true)}
+                    </td>
+                    <td className="px-5 py-3 font-bold text-[var(--color-ink)]">
+                      {entry.actor_email}
+                    </td>
+                    <td className="px-5 py-3">
+                      <code className="rounded bg-[var(--color-mint)] px-2 py-0.5 text-[0.85rem] text-[var(--color-teal-ink)]">
+                        {entry.action}
+                      </code>
+                    </td>
+                    <td className="px-5 py-3 text-[var(--color-body)]">
+                      {entry.entity}
+                      {entry.entity_id ? (
+                        <span className="ml-1.5 text-[0.8rem] text-[var(--color-muted)]">
+                          {entry.entity_id.slice(0, 8)}…
+                        </span>
+                      ) : null}
+                      {external ? (
+                        <span className="mt-0.5 block text-[0.8rem] text-[var(--color-muted)]">
+                          {external.target} · Outcome {external.outcome}
+                        </span>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
