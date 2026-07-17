@@ -287,6 +287,9 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
   ]) {
     await page.setViewportSize(viewport);
     await page.goto("/admin/review-flyers");
+    await expect(
+      page.getByRole("heading", { name: "Print review flyers" }),
+    ).toBeVisible();
     const overflow = await page.evaluate(
       () =>
         document.documentElement.scrollWidth -
