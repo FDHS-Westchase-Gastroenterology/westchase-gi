@@ -64,14 +64,15 @@ repository restriction prevented a relink. The production alias and
 push-to-deploy path are verified.
 
 The `wgi-portal` GitHub App registration uses Repository Administration
-read/write and Metadata read permissions. The Website status request explicitly
-downscopes each installation token to Metadata read; it cannot change repository
-settings or collaborators. Its JWT-to-installation-token path was rehearsed
-successfully. Enabling two-factor authentication on the owner account and
-restricting the App installation to only this repository remain owner-only
-tasks; do not mark either complete without owner verification. The portal shows
-the clinic-owned Vercel project as a static custody fact and does not connect to
-or manage Vercel.
+read/write and Metadata read permissions. Website-page reads use Administration
+read; each mutation mints a fresh Administration write token. Every token is
+restricted to the numeric ID of `westchase-gi`, and the application exposes only
+invite, cancel invitation, and revoke commands. Its JWT-to-installation-token
+path was rehearsed successfully. Enabling two-factor authentication on the owner
+account and narrowing the App installation to only this repository remain
+owner-only defense-in-depth tasks, not portal-readiness gates; do not mark either
+complete without owner verification. The portal shows the clinic-owned Vercel
+project as a static custody fact and does not connect to or manage Vercel.
 
 ## Supabase custody
 
