@@ -26,8 +26,12 @@ software topology (repositories, hosting projects, asset ledgers). The jobs:
 - Reprint a review QR flyer.
 - Choose who receives new-request notification emails.
 - Manage who can sign in (invite staff, change roles, deactivate accounts).
-- See where the website lives and its connection status — the custody facts behind
-  IT / developer access decisions.
+- See where the website lives, its connection status, and who can change it —
+  and manage that access: invite a maintainer, cancel an invitation, or remove
+  one (administrators only). The clinic works in its own portal vocabulary —
+  people who "can edit and publish the website" — never in repository topology;
+  management controls stay hidden, failing closed, until the one-time
+  owner-side setup steps are complete.
 - Request an occasional website change (today: through the website maintainer; a
   portal assistant is planned for exactly this seam and its docked launcher already
   reserves the spot).

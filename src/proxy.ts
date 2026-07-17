@@ -74,6 +74,16 @@ function applySessionUpdates(
   return response;
 }
 
+function unauthenticatedAdminResponse(request: NextRequest): NextResponse {
+  if (request.nextUrl.pathname === "/admin/settings/mutations") {
+    return NextResponse.json(
+      { ok: false, error: "Unauthenticated" },
+      { status: 401, headers: { "X-Content-Type-Options": "nosniff" } },
+    );
+  }
+  return NextResponse.redirect(new URL("/admin/login", request.url));
+}
+
 async function protectAdminRequest(request: NextRequest): Promise<NextResponse> {
   const isPublicAuthPath = [
     "/admin/login",
@@ -87,9 +97,10 @@ async function protectAdminRequest(request: NextRequest): Promise<NextResponse> 
   const config = portalSupabaseConfig();
 
   if (!config) {
-    const response = isPublicAuthPath || isReviewFlyerAssetPath
-      ? NextResponse.next({ request })
-      : NextResponse.redirect(new URL("/admin/login", request.url));
+    const response =
+      isPublicAuthPath || isReviewFlyerAssetPath
+        ? NextResponse.next({ request })
+        : unauthenticatedAdminResponse(request);
     return applySessionUpdates(response, [], {});
   }
 
@@ -121,7 +132,7 @@ async function protectAdminRequest(request: NextRequest): Promise<NextResponse> 
 
   const response =
     !isPublicAuthPath && !isReviewFlyerAssetPath && !authenticated
-      ? NextResponse.redirect(new URL("/admin/login", request.url))
+      ? unauthenticatedAdminResponse(request)
       : NextResponse.next({ request });
 
   return applySessionUpdates(response, pendingCookies, pendingHeaders);

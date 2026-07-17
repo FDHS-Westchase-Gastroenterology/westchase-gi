@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/portal/auth";
+import { CANONICAL_REPOSITORY } from "@/lib/portal/integrations";
+import { getMaintainerAccessModel } from "@/lib/portal/maintainers";
 import {
-  CANONICAL_REPOSITORY,
-  getGitHubRepositoryStatus,
-} from "@/lib/portal/integrations";
+  cancelMaintainerInvite,
+  inviteMaintainer,
+  revokeMaintainer,
+} from "../actions";
+import { MaintainerAccess } from "./maintainer-access";
 
 const CAPABILITIES = [
   "Patient-facing website",
@@ -13,15 +17,7 @@ const CAPABILITIES = [
 
 export default async function AdminSettingsSoftwarePage() {
   const session = await requireRole("staff");
-  const github = await getGitHubRepositoryStatus();
-  const repository =
-    github.state === "connected" ? github.repository : CANONICAL_REPOSITORY;
-  const statusLabel =
-    github.state === "connected"
-      ? "Connected"
-      : github.state === "not_configured"
-        ? "Not configured"
-        : "Connection unavailable";
+  const model = await getMaintainerAccessModel();
 
   return (
     <section
@@ -70,57 +66,40 @@ export default async function AdminSettingsSoftwarePage() {
           </ul>
         </div>
 
-        <div data-testid="integration-github">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-[0.82rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
-              GitHub repository
-            </h3>
+        <div>
+          <h3 className="text-[0.82rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
+            Who owns the website
+          </h3>
+          <p className="mt-3 max-w-[62ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
+            Westchase GI does. The website, its code, and the accounts it
+            runs on belong to the practice — not to a web vendor. The code
+            lives in the practice&rsquo;s own account, at{" "}
             <span
-              data-testid="integration-status"
-              className="rounded-full bg-[var(--color-line)] px-2.5 py-1 text-[0.72rem] font-bold uppercase tracking-[0.05em] text-[var(--color-muted)]"
+              data-testid="canonical-repository"
+              className="font-bold text-[var(--color-ink)] [overflow-wrap:anywhere]"
             >
-              {statusLabel}
+              {CANONICAL_REPOSITORY}
             </span>
-          </div>
-          <dl className="mt-3 space-y-3 text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-            <div>
-              <dt className="font-bold text-[var(--color-ink)]">
-                Canonical repository
-              </dt>
-              <dd data-testid="canonical-repository" className="break-words">
-                {repository}
-              </dd>
-            </div>
-            {github.state === "connected" && (
-              <>
-                <div>
-                  <dt className="font-bold text-[var(--color-ink)]">
-                    Connected account
-                  </dt>
-                  <dd>{github.account}</dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-[var(--color-ink)]">
-                    Installation scope
-                  </dt>
-                  <dd>{github.installationScope}</dd>
-                </div>
-              </>
-            )}
-          </dl>
+            . If the practice ever changes who maintains the site, the
+            website stays put and keeps running.
+          </p>
         </div>
       </div>
 
       <div className="mt-6 border-t border-[var(--color-line)] pt-6">
-        <h3 className="text-[0.82rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
-          Who owns the website
-        </h3>
-        <p className="mt-2 max-w-[70ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-          Westchase GI does. The website and the accounts it runs on belong
-          to the practice — not to a web vendor. If the practice ever
-          changes who maintains the site, the website stays put and keeps
-          running.
-        </p>
+        <MaintainerAccess
+          model={model}
+          isAdmin={session.role === "admin"}
+          actions={
+            session.role === "admin"
+              ? {
+                  inviteMaintainer,
+                  cancelMaintainerInvite,
+                  revokeMaintainer,
+                }
+              : undefined
+          }
+        />
       </div>
     </section>
   );

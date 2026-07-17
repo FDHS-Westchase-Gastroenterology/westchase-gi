@@ -116,21 +116,41 @@ test.describe("website custody", () => {
       ).toHaveCount(0);
     }
 
-    const github = page.getByTestId("integration-github");
-    await expect(github).toBeVisible();
+    const access = page.getByTestId("maintainer-access");
+    await expect(access).toBeVisible();
     const expectedStatus =
       GITHUB_CONFIGURATION_COUNT === 3
         ? "Connected"
         : GITHUB_CONFIGURATION_COUNT === 0
           ? "Not configured"
           : "Connection unavailable";
-    await expect(github.getByTestId("integration-status")).toHaveText(
+    await expect(access.getByTestId("integration-status")).toHaveText(
       expectedStatus,
     );
+    await expect(access).toContainText("Who can change the website");
     if (expectedStatus === "Connected") {
-      await expect(github).toContainText("Connected account");
-      await expect(github).toContainText("Installation scope");
+      await expect(access.getByTestId("maintainer-list")).toContainText(
+        "Owner",
+      );
+      await expect(access).toContainText(
+        "FDHS-Westchase-Gastroenterology — the practice’s own account",
+      );
+      const setupNotice = access.getByTestId("maintainer-setup-notice");
+      if ((await setupNotice.count()) === 1) {
+        await expect(setupNotice).toBeVisible();
+        await expect(
+          access.getByRole("button", { name: "Send invitation" }),
+        ).toHaveCount(0);
+      } else {
+        await expect(
+          access.getByRole("button", { name: "Send invitation" }),
+        ).toBeVisible();
+      }
+    } else {
+      await expect(access.getByTestId("maintainer-list")).toHaveCount(0);
     }
+    await expect(page.getByRole("combobox")).toHaveCount(0);
+    await expect(page.getByText("Change permission", { exact: true })).toHaveCount(0);
     expect(browserProviderRequests).toHaveLength(0);
 
     const flyerTask = product.getByRole("link", { name: "Print review flyers" });
@@ -155,5 +175,11 @@ test.describe("website custody", () => {
     await expect(
       page.getByRole("link", { name: "Print review flyers" }),
     ).toHaveCount(0);
+    const access = page.getByTestId("maintainer-access");
+    await expect(
+      access.getByRole("button", { name: "Send invitation" }),
+    ).toHaveCount(0);
+    await expect(access.locator('[data-action="revoke-maintainer"]')).toHaveCount(0);
+    await expect(access.locator('[data-action="cancel-invitation"]')).toHaveCount(0);
   });
 });

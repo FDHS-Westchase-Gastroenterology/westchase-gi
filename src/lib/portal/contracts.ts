@@ -86,6 +86,9 @@ export const AUDIT_ACTIONS = {
   STAFF_PASSWORD_RESET: "staff.password_reset",
   STAFF_DEACTIVATE: "staff.deactivate",
   STAFF_ROLE: "staff.role",
+  MAINTAINERS_INVITE: "maintainers.invite",
+  MAINTAINERS_CANCEL: "maintainers.cancel",
+  MAINTAINERS_REVOKE: "maintainers.revoke",
 } as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
 

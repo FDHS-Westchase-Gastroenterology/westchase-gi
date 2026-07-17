@@ -427,6 +427,59 @@ test.describe("portal management server boundaries", () => {
     });
     expect(deniedResend.status).toBe(403);
 
+    const { count: maintainerAuditsBefore, error: maintainerAuditReadError } =
+      await db
+        .from("audit_log")
+        .select("id", { count: "exact", head: true })
+        .like("action", "maintainers.%");
+    expect(maintainerAuditReadError).toBeNull();
+
+    for (const [operation, input] of [
+      ["maintainer.invite", { username: "denied-maintainer" }],
+      ["maintainer.invite.cancel", { invitationId: 1 }],
+      ["maintainer.revoke", { userId: 1 }],
+    ] as const) {
+      const denied = await mutate(staffPage, operation, input);
+      expect(denied.status).toBe(403);
+    }
+
+    const anonymousContext = await browser.newContext();
+    try {
+      const anonymousPage = await anonymousContext.newPage();
+      await anonymousPage.goto("/en");
+      for (const [operation, input] of [
+        ["maintainer.invite", { username: "anonymous-maintainer" }],
+        ["maintainer.invite.cancel", { invitationId: 1 }],
+        ["maintainer.revoke", { userId: 1 }],
+      ] as const) {
+        const denied = await mutate(anonymousPage, operation, input);
+        expect(denied.status).toBe(401);
+      }
+    } finally {
+      await anonymousContext.close();
+    }
+
+    const injected = await mutate(adminPage, "maintainer.invite", {
+      username: "ASTXRTYS",
+      repository: "attacker/selected",
+      path: "/repos/attacker/selected",
+      method: "DELETE",
+      permission: "admin",
+    });
+    expect(injected.status).toBe(400);
+    const ownerRevoke = await mutate(adminPage, "maintainer.revoke", {
+      userId: 305283597,
+    });
+    expect(ownerRevoke.status).toBe(400);
+
+    const { count: maintainerAuditsAfter, error: maintainerAuditAfterError } =
+      await db
+        .from("audit_log")
+        .select("id", { count: "exact", head: true })
+        .like("action", "maintainers.%");
+    expect(maintainerAuditAfterError).toBeNull();
+    expect(maintainerAuditsAfter).toBe(maintainerAuditsBefore);
+
     const addedRecipient = await mutate(adminPage, "recipient.add", {
       email: recipientEmail,
       label: `TEST recipient ${runId}`,
@@ -624,6 +677,37 @@ test.describe("portal management server boundaries", () => {
     assertAudit("recipients.add", recipientId, SEED_ADMIN_EMAIL);
     assertAudit("recipients.toggle", recipientId, staffEmail);
     assertAudit("recipients.remove", recipientId, SEED_ADMIN_EMAIL);
+
+    if (!adminPage) throw new Error("Admin session is unavailable");
+    const targetLogin = `audit-${runId}`;
+    const { data: externalAudit, error: externalAuditError } = await db
+      .from("audit_log")
+      .insert({
+        actor_email: SEED_ADMIN_EMAIL,
+        action: "maintainers.invite",
+        entity: "repository_maintainers",
+        entity_id: null,
+        detail: {
+          provider: "github",
+          target_login: targetLogin,
+          outcome: "pending",
+        },
+      })
+      .select("id")
+      .single();
+    expect(externalAuditError).toBeNull();
+    if (!externalAudit) throw new Error("External audit fixture was not created");
+    try {
+      await adminPage.goto("/admin/audit");
+      const auditRow = adminPage
+        .getByTestId("audit-table")
+        .getByRole("row")
+        .filter({ hasText: targetLogin });
+      await expect(auditRow).toContainText(targetLogin);
+      await expect(auditRow).toContainText("Outcome unconfirmed");
+    } finally {
+      await db.from("audit_log").delete().eq("id", externalAudit.id);
+    }
   });
 
   test("VAL-ADMIN-011: filtered CSV is parseable, exact, and access-controlled", async ({
