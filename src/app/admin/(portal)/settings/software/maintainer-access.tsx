@@ -260,7 +260,9 @@ export function MaintainerAccess({
               >
                 <div className="min-w-0">
                   <p className="truncate font-bold text-[var(--color-ink)]">
-                    {maintainer.login}
+                    {maintainer.login === "ASTXRTYS"
+                      ? "Jason M."
+                      : maintainer.login}
                   </p>
                   <p className="truncate text-[0.85rem] text-[var(--color-muted)]">
                     Can edit and publish the website — Write access

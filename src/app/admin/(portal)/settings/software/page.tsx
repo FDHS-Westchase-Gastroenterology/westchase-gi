@@ -71,17 +71,17 @@ export default async function AdminSettingsSoftwarePage() {
             Who owns the website
           </h3>
           <p className="mt-3 max-w-[62ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-            Westchase GI does. The website, its code, and the accounts it
-            runs on belong to the practice — not to a web vendor. The code
-            lives in the practice&rsquo;s own account, at{" "}
+            Westchase GI owns the website itself. The code is saved in the
+            practice&rsquo;s GitHub account at{" "}
             <span
               data-testid="canonical-repository"
               className="font-bold text-[var(--color-ink)] [overflow-wrap:anywhere]"
             >
               {CANONICAL_REPOSITORY}
             </span>
-            . If the practice ever changes who maintains the site, the
-            website stays put and keeps running.
+            , and the live site is hosted in the practice&rsquo;s own Vercel
+            account. If the practice changes developers, the new person can
+            take over this same website — nothing has to be rebuilt or moved.
           </p>
         </div>
       </div>
