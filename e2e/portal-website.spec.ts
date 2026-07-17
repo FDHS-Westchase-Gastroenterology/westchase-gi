@@ -6,7 +6,8 @@ loadLocalEnv();
 
 const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
-const REPOSITORY = "FDHS-Westchase-Gastroenterology/westchase-gi";
+const REPOSITORY_URL =
+  "https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi";
 const GITHUB_CONFIGURATION_COUNT = [
   "PORTAL_GITHUB_APP_ID",
   "PORTAL_GITHUB_APP_INSTALLATION_ID",
@@ -75,16 +76,20 @@ test.describe("website custody", () => {
     await signIn(page, SEED_EMAIL, SEED_PASSWORD);
     await page.goto("/admin/settings/software");
 
-    await expect(page.getByRole("link", { name: "Website" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    await expect(
+      page.getByRole("link", { name: "Website", exact: true }),
+    ).toHaveAttribute("aria-current", "page");
     const product = page.getByTestId("managed-product");
     await expect(product).toHaveCount(1);
     await expect(
       page.getByRole("heading", { name: "Westchase GI", exact: true }),
     ).toBeVisible();
-    await expect(page.getByText(REPOSITORY, { exact: true })).toHaveCount(1);
+    await expect(
+      page.getByRole("link", {
+        name: "Open the website files in GitHub",
+        exact: true,
+      }),
+    ).toHaveAttribute("href", REPOSITORY_URL);
 
     for (const capability of [
       "Patient-facing website",
@@ -171,7 +176,12 @@ test.describe("website custody", () => {
     await page.goto("/admin/settings/software");
 
     await expect(page.getByTestId("managed-product")).toHaveCount(1);
-    await expect(page.getByText(REPOSITORY, { exact: true })).toHaveCount(1);
+    await expect(
+      page.getByRole("link", {
+        name: "Open the website files in GitHub",
+        exact: true,
+      }),
+    ).toHaveAttribute("href", REPOSITORY_URL);
     await expect(
       page.getByRole("link", { name: "Print review flyers" }),
     ).toHaveCount(0);
