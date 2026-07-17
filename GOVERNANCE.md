@@ -15,8 +15,8 @@ The clinic also owns the Vercel Hobby account and replacement project named `wes
 
 - Repository access stays limited to maintainers who need it for the WGI rebuild. ASTXRTYS currently has Write access.
 - Dependabot, secret scanning, and push protection are enabled; address security alerts promptly.
-- The clinic account owner must enable two-factor authentication. This is an owner-only control and is not yet recorded as complete.
-- The `wgi-portal` GitHub App must be restricted from "all repositories" to only this repository. This is also owner-only and is not yet recorded as complete.
+- The clinic account owner should enable two-factor authentication. This is an owner-only defense-in-depth control and is not yet recorded as complete; it does not gate the portal interface.
+- The `wgi-portal` GitHub App should be narrowed from "all repositories" to only this repository. This owner-only defense-in-depth task can happen independently because every portal token is already restricted to the numeric repository ID.
 - Revoke ASTXRTYS access when consulting work ends. Elevate it to Admin only for a concrete settings task, then return it to Write.
 
 ## Commit messages

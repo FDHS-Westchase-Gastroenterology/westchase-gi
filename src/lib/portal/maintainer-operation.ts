@@ -11,6 +11,14 @@ export type MaintainerMutationResult =
   | { ok: true }
   | { ok: false; code: MaintainerFailureCode };
 
+export function getMaintainerManagementState(
+  administration: "none" | "read" | "write",
+): "permission_upgrade_required" | "ready" {
+  return administration === "write"
+    ? "ready"
+    : "permission_upgrade_required";
+}
+
 type MaintainerState = {
   maintainers: Array<{ userId: number }>;
   invitations: Array<{ userId: number; invitationId: number }>;

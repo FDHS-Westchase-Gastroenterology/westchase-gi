@@ -9,6 +9,7 @@ import {
   GitHubApiError,
   readGitHubResponse,
 } from "@/lib/portal/github-response";
+import { getMaintainerManagementState } from "@/lib/portal/maintainer-operation";
 
 const GITHUB_API = "https://api.github.com";
 const GITHUB_API_VERSION = "2026-03-10";
@@ -140,7 +141,6 @@ async function githubRequest(
 }
 
 function parseInstallation(data: unknown): {
-  repositorySelection: "all" | "selected";
   administration: "none" | "read" | "write";
 } {
   if (
@@ -159,7 +159,6 @@ function parseInstallation(data: unknown): {
   }
 
   return {
-    repositorySelection: data.repository_selection,
     administration:
       data.permissions.administration === "write"
         ? "write"
@@ -283,11 +282,7 @@ async function openConnection(mode: "read" | "write") {
     ).data,
   );
   const management: GitHubMaintainerSnapshot["management"] =
-    installation.repositorySelection === "all"
-      ? "restrict_installation"
-      : installation.administration === "write"
-        ? "ready"
-        : "permission_upgrade_required";
+    getMaintainerManagementState(installation.administration);
   if (mode === "write" && management !== "ready") {
     throw new GitHubApiError(403);
   }

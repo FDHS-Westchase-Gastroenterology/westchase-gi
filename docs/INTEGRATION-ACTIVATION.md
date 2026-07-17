@@ -3,8 +3,8 @@
 The staff portal's Website page lists the owner, current Write maintainers, and pending
 invitations for the one canonical repository through a clinic-owned GitHub App. Portal
 administrators can invite a maintainer, cancel an invitation, or revoke a maintainer after the
-owner controls below are complete. It records Vercel hosting custody as a static fact and does not
-connect to or manage Vercel.
+App's Repository Administration permission is active. It records Vercel hosting custody as a
+static fact and does not connect to or manage Vercel.
 
 ## Current custody (verified 2026-07-15)
 
@@ -29,16 +29,17 @@ connect to or manage Vercel.
   an App key whose registration includes Repository Administration permission. The provider's
   configured and unconfigured states were rehearsed locally against the real App before release.
 
-Two owner-only controls remain open:
+Two owner-only defense-in-depth follow-ups remain open. Neither is a portal readiness gate:
 
 1. Enable two-factor authentication on `FDHS-Westchase-Gastroenterology`.
 2. Change the App installation from **All repositories** to **Only select repositories**, selecting
-   only `westchase-gi`, and approve the App's Repository Administration permission if GitHub still
-   shows an updated-permission request.
+   only `westchase-gi`.
 
-The portal cannot prove the two-factor-authentication control. It reads the installation scope and
-approved permission on every request and keeps all maintainer mutations disabled until GitHub
-reports both selected-repository scope and Administration write.
+The portal cannot prove the two-factor-authentication control. It reads the approved App permission
+on every request and enables maintainer mutations when GitHub reports Administration write. Every
+read and write token is independently pinned to the numeric ID of `westchase-gi`, so installation
+scope does not withhold the staff interface and can be narrowed separately. If GitHub still shows
+an updated-permission request, the owner must approve it before mutations can work.
 
 ## Trust model
 
@@ -69,9 +70,9 @@ token, and reads the canonical repository through GitHub's server API.
 After changing the variables, redeploy and verify:
 
 1. Sign in as an active portal administrator and open `/admin/settings/software`.
-2. Confirm the owner and current maintainers match the live repository. If setup is incomplete,
-   confirm the page names the exact owner action and renders no mutation controls.
-3. After both owner controls are complete, use a controlled throwaway GitHub account to exercise
+2. Confirm the owner and current maintainers match the live repository. If Administration write is
+   not approved, confirm the page names that exact owner action and renders no mutation controls.
+3. After Administration write is active, use a controlled throwaway GitHub account to exercise
    invite, cancel, accept as a Write maintainer, and revoke. Confirm each final state on GitHub and
    in the portal, and confirm the Activity log records the administrator, target, and outcome.
 4. Run `npm run build` and `node scripts/verify-no-secrets.mjs`.

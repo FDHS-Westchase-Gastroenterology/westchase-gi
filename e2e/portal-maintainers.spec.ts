@@ -4,6 +4,7 @@ import {
   readGitHubResponse,
 } from "../src/lib/portal/github-response";
 import {
+  getMaintainerManagementState,
   invitationIsCancelled,
   runMaintainerOperation,
 } from "../src/lib/portal/maintainer-operation";
@@ -208,4 +209,14 @@ test("maintainer view states keep blocked and staff controls fail closed", () =>
   expect(
     getMaintainerViewState({ ...base, management: "ready" }, false, false),
   ).toMatchObject({ canManage: false, showSetup: false });
+});
+
+test("Administration write makes maintainer controls ready", () => {
+  expect(getMaintainerManagementState("write")).toBe("ready");
+  expect(getMaintainerManagementState("read")).toBe(
+    "permission_upgrade_required",
+  );
+  expect(getMaintainerManagementState("none")).toBe(
+    "permission_upgrade_required",
+  );
 });
