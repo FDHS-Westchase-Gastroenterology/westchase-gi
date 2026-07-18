@@ -38,8 +38,10 @@ export default async function AdminSettingsSoftwarePage() {
           </h2>
           <p className="mt-2 max-w-[62ch] text-[0.92rem] leading-relaxed text-[var(--color-body)]">
             This is the practice&rsquo;s own software — the public website
-            patients use and the private staff portal. It belongs to Westchase
-            GI, and this page explains how the practice keeps control of it.
+            patients visit and the private portal the staff works in. It was
+            built for Westchase GI and belongs to Westchase GI, and this page
+            shows where everything lives and how the practice stays in
+            control.
           </p>
         </div>
         {session.role === "admin" && (
@@ -71,8 +73,9 @@ export default async function AdminSettingsSoftwarePage() {
             Who owns the website
           </h3>
           <p className="mt-3 max-w-[62ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-            Westchase GI owns this website. The practice — not its developer —
-            controls the services that keep it running.
+            Westchase GI owns this website, plain and simple. The practice —
+            not its developer — holds the keys to every service that keeps it
+            running.
           </p>
           <dl className="mt-3 max-w-[62ch] space-y-3 text-[0.9rem] leading-relaxed text-[var(--color-body)]">
             <div>
@@ -80,7 +83,8 @@ export default async function AdminSettingsSoftwarePage() {
                 Website files — GitHub
               </dt>
               <dd>
-                GitHub keeps the files used to build and update the website.
+                GitHub safeguards the files used to build and update the
+                website.
                 <a
                   data-testid="canonical-repository"
                   href={`https://github.com/${CANONICAL_REPOSITORY}`}
@@ -95,7 +99,14 @@ export default async function AdminSettingsSoftwarePage() {
                 Live website — Vercel
               </dt>
               <dd>
-                Vercel keeps the website online for patients and staff.
+                Vercel keeps the website up and running around the clock for
+                patients and staff.
+                <a
+                  href="https://vercel.com/login"
+                  className="mt-1 block w-fit font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+                >
+                  Sign in to Vercel
+                </a>
               </dd>
             </div>
             <div>
@@ -103,8 +114,14 @@ export default async function AdminSettingsSoftwarePage() {
                 Appointment requests and staff access — Supabase
               </dt>
               <dd>
-                Supabase stores the appointment requests shown in this portal
-                and manages staff sign-in.
+                Supabase holds the appointment requests shown in this portal
+                and handles staff sign-in.
+                <a
+                  href="https://supabase.com/dashboard/sign-in"
+                  className="mt-1 block w-fit font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+                >
+                  Sign in to Supabase
+                </a>
               </dd>
             </div>
             <div>
@@ -112,14 +129,21 @@ export default async function AdminSettingsSoftwarePage() {
                 Website address — Porkbun
               </dt>
               <dd>
-                Porkbun keeps westchasegi.com registered and renewed.
+                Porkbun keeps westchasegi.com registered and renewed, so the
+                address always points home.
+                <a
+                  href="https://porkbun.com/account/login"
+                  className="mt-1 block w-fit font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+                >
+                  Sign in to Porkbun
+                </a>
               </dd>
             </div>
           </dl>
           <p className="mt-3 max-w-[62ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-            If the practice changes developers, it gives the new developer
-            access to these same services. Nothing needs to be rebuilt or
-            moved.
+            If the practice ever works with a new developer, it simply grants
+            them access to these same services. Nothing needs to be rebuilt,
+            and nothing needs to move.
           </p>
         </div>
       </div>
