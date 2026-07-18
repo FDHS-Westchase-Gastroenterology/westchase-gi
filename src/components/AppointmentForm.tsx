@@ -25,6 +25,68 @@ const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const FETCH_TIMEOUT_MS = 20_000;
 
+/** Call/text recovery pair used by both the success card and problem alert. */
+function ContactActions({ dict }: { dict: Dictionary }) {
+  return (
+    <>
+      <a href={site.phone.href} className="btn btn-navy">
+        <Phone className="h-4 w-4" /> {dict.common.callUs}
+      </a>
+      <a href={site.textLine.href} className="btn btn-outline">
+        <MessageSquare className="h-4 w-4" /> {dict.common.textUs}
+      </a>
+    </>
+  );
+}
+
+function SuccessCard({ dict }: { dict: Dictionary }) {
+  const f = dict.appointment.form;
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="card flex flex-col items-center p-8 text-center sm:p-12"
+    >
+      <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-mint)] text-[var(--color-teal-ink)]">
+        <Check className="h-7 w-7" />
+      </span>
+      <h2 className="h3 mt-5 font-[var(--font-display)]">{f.doneHeading}</h2>
+      <p className="mt-3 max-w-md text-[var(--color-body)]">{f.doneBody}</p>
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
+        <ContactActions dict={dict} />
+      </div>
+    </div>
+  );
+}
+
+type ProblemAlertProps = {
+  dict: Dictionary;
+  status: "failure" | "unknown";
+  alertRef: React.RefObject<HTMLDivElement | null>;
+};
+
+function ProblemAlert({ dict, status, alertRef }: ProblemAlertProps) {
+  const f = dict.appointment.form;
+  return (
+    <div
+      ref={alertRef}
+      role="alert"
+      tabIndex={-1}
+      className="mb-6 rounded-[var(--radius-sm)] border border-[var(--color-amber-deep)] bg-[var(--color-amber-soft)] p-5 outline-none"
+    >
+      <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
+        {status === "unknown" ? f.unknownHeading : f.failHeading}
+      </h2>
+      <p className="mt-2 text-[0.95rem] text-[var(--color-ink)]">
+        {status === "unknown" ? f.unknownBody : f.failBody}
+      </p>
+      <div className="mt-4 flex flex-wrap gap-3">
+        <ContactActions dict={dict} />
+      </div>
+    </div>
+  );
+}
+
 export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
   const f = dict.appointment.form;
   const pathname = usePathname();
@@ -48,7 +110,9 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
 
     if (!name) next.name = f.errName;
     if (!phone || phone.replace(/\D/g, "").length < 10) next.phone = f.errPhone;
-    if (!email || !emailRe.test(email)) next.email = f.errEmail;
+    // Email is optional — many patients have none; phone is the callback
+    // channel. Validate the format only when something was entered.
+    if (email && !emailRe.test(email)) next.email = f.errEmail;
     return next;
   }
 
@@ -127,32 +191,8 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
   }
 
   if (status === "success") {
-    return (
-      <div
-        role="status"
-        aria-live="polite"
-        className="card flex flex-col items-center p-8 text-center sm:p-12"
-      >
-        <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-mint)] text-[var(--color-teal-ink)]">
-          <Check className="h-7 w-7" />
-        </span>
-        <h2 className="h3 mt-5 font-[var(--font-display)]">{f.doneHeading}</h2>
-        <p className="mt-3 max-w-md text-[var(--color-body)]">{f.doneBody}</p>
-        <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <a href={site.phone.href} className="btn btn-navy">
-            <Phone className="h-4 w-4" /> {dict.common.callUs}
-          </a>
-          <a href={site.textLine.href} className="btn btn-outline">
-            <MessageSquare className="h-4 w-4" /> {dict.common.textUs}
-          </a>
-        </div>
-      </div>
-    );
+    return <SuccessCard dict={dict} />;
   }
-
-  const problem = status === "failure" || status === "unknown";
-  const problemHeading = status === "unknown" ? f.unknownHeading : f.failHeading;
-  const problemBody = status === "unknown" ? f.unknownBody : f.failBody;
 
   return (
     <form
@@ -163,28 +203,8 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
       ref={formRef}
       className="card relative p-6 sm:p-9"
     >
-      {problem && (
-        <div
-          ref={alertRef}
-          role="alert"
-          tabIndex={-1}
-          className="mb-6 rounded-[var(--radius-sm)] border border-[var(--color-amber-deep)] bg-[var(--color-amber-soft)] p-5 outline-none"
-        >
-          <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
-            {problemHeading}
-          </h2>
-          <p className="mt-2 text-[0.95rem] text-[var(--color-ink)]">
-            {problemBody}
-          </p>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <a href={site.phone.href} className="btn btn-navy">
-              <Phone className="h-4 w-4" /> {dict.common.callUs}
-            </a>
-            <a href={site.textLine.href} className="btn btn-outline">
-              <MessageSquare className="h-4 w-4" /> {dict.common.textUs}
-            </a>
-          </div>
-        </div>
+      {(status === "failure" || status === "unknown") && (
+        <ProblemAlert dict={dict} status={status} alertRef={alertRef} />
       )}
       <p className="mb-6 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-4 py-3 text-[0.95rem] font-semibold text-[var(--color-ink)]">
         {dict.appointment.phiWarning}
@@ -257,14 +277,16 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
         </div>
         <div>
           <label htmlFor="email" className="field-label">
-            {f.email} <span aria-hidden="true" className="text-[var(--color-amber-deep)]">*</span>
+            {f.email}{" "}
+            <span className="font-semibold text-[var(--color-muted)]">
+              {f.emailOptional}
+            </span>
           </label>
           <input
             id="email"
             name="email"
             type="email"
             autoComplete="email"
-            required
             aria-invalid={errors.email ? "true" : undefined}
             aria-describedby={errors.email ? "err-email" : undefined}
             className="field-input"

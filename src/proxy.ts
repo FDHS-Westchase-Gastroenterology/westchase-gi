@@ -3,6 +3,7 @@ import {
   type CookieOptions,
 } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { LOCALE_COOKIE, locales, type Locale } from "@/lib/site";
 
 // Legacy URL hygiene (Next 16 proxy convention — middleware.ts is
 // deprecated): the old site's form fell back to GET on some paths, so
@@ -37,6 +38,52 @@ function portalSupabaseConfig(): { url: string; key: string } | null {
   )?.trim();
 
   return url && key ? { url, key } : null;
+}
+
+function isLocaleValue(value: string | undefined): value is Locale {
+  return value !== undefined && (locales as string[]).includes(value);
+}
+
+/** First supported language in the Accept-Language list, by q-value. */
+function negotiateLocale(header: string | null): Locale {
+  if (!header) return "en";
+
+  const candidates = header
+    .split(",")
+    .map((part) => {
+      const [tag, ...params] = part.trim().split(";");
+      const qParam = params.find((param) => param.trim().startsWith("q="));
+      const q = qParam ? Number.parseFloat(qParam.split("=")[1]) : 1;
+      const primary = tag.trim().toLowerCase().split("-")[0];
+      return { primary, q: Number.isNaN(q) ? 0 : q };
+    })
+    .filter((candidate) => candidate.q > 0)
+    .sort((a, b) => b.q - a.q);
+
+  for (const candidate of candidates) {
+    if (isLocaleValue(candidate.primary)) return candidate.primary;
+  }
+  return "en";
+}
+
+/** `/` goes to the visitor's language: their last-used locale when the
+ * cookie says so, otherwise the browser's Accept-Language, otherwise
+ * English. Replaces the old unconditional `/` -> `/en` redirect that
+ * landed every Spanish-dominant patient on the English site. */
+function localeRootRedirect(request: NextRequest): NextResponse {
+  const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value;
+  const locale = isLocaleValue(cookieLocale)
+    ? cookieLocale
+    : negotiateLocale(request.headers.get("accept-language"));
+
+  const destination = request.nextUrl.clone();
+  destination.pathname = `/${locale}`;
+
+  const response = NextResponse.redirect(destination, 307);
+  // Language-dependent redirect: never let a shared cache pin one answer.
+  response.headers.set("Cache-Control", "no-store");
+  response.headers.set("Vary", "Accept-Language, Cookie");
+  return response;
 }
 
 function scrubLegacyPatientQuery(request: NextRequest): NextResponse | null {
@@ -139,6 +186,10 @@ async function protectAdminRequest(request: NextRequest): Promise<NextResponse> 
 }
 
 export async function proxy(request: NextRequest) {
+  if (request.nextUrl.pathname === "/") {
+    return localeRootRedirect(request);
+  }
+
   const scrubResponse = scrubLegacyPatientQuery(request);
   if (scrubResponse) return scrubResponse;
 
@@ -153,6 +204,7 @@ export const config = {
   // Keep legacy query scrubbing tight while adding only the portal subtree
   // needed for Supabase session refresh and optimistic route protection.
   matcher: [
+    "/",
     "/:locale(en|es|vi|ko|ar)/contact",
     "/:locale(en|es|vi|ko|ar)/appointment",
     "/admin/:path*",

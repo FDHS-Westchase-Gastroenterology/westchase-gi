@@ -117,6 +117,14 @@ export const Star = (p: IconProps) => (
   </svg>
 );
 
+export const ClipboardCheck = (p: IconProps) => (
+  <svg {...base(p)}>
+    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+    <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+    <path d="m9 13 2 2 4-4" />
+  </svg>
+);
+
 export const FileText = (p: IconProps) => (
   <svg {...base(p)}>
     <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />

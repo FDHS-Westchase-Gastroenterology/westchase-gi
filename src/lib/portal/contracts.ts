@@ -31,11 +31,12 @@ export const RESET_REQUEST_MESSAGE =
   "If an active staff account exists for that email, a password reset link has been sent.";
 
 /**
- * Validation rules mirror the client rules the form has always applied:
- * name required, phone >= 10 digits once formatting is stripped, email per
- * EMAIL_RE, message optional and capped at 2000 characters. The honeypot
- * field (HONEYPOT_FIELD) is deliberately NOT part of this schema — the
- * route inspects and discards it before validation.
+ * Validation rules mirror the client rules the form applies: name required,
+ * phone >= 10 digits once formatting is stripped, email optional but per
+ * EMAIL_RE when present (many patients 65+ have no email; phone is the
+ * callback channel), message optional and capped at 2000 characters. The
+ * honeypot field (HONEYPOT_FIELD) is deliberately NOT part of this schema —
+ * the route inspects and discards it before validation.
  */
 export const requestInputSchema = z.object({
   name: z.string().trim().min(1, "name_required"),
@@ -43,7 +44,11 @@ export const requestInputSchema = z.object({
     .string()
     .trim()
     .refine((v) => v.replace(/\D/g, "").length >= 10, "phone_invalid"),
-  email: z.string().trim().regex(EMAIL_RE, "email_invalid"),
+  email: z
+    .string()
+    .trim()
+    .refine((v) => v === "" || EMAIL_RE.test(v), "email_invalid")
+    .default(""),
   location: z.enum(REQUEST_LOCATIONS),
   time: z.enum(REQUEST_TIMES),
   message: z.string().trim().max(2000, "message_too_long").optional(),

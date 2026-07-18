@@ -69,6 +69,10 @@ export function localeDir(locale: Locale): "ltr" | "rtl" {
  * Shared by the layout's pre-paint script and the banner's dismiss button. */
 export const BANNER_KEY = "wgi-banner-dismissed";
 
+/** Cookie recording the visitor's last-used locale. Written client-side on
+ * every locale page; read by the proxy to send `/` to the right language. */
+export const LOCALE_COOKIE = "wgi-locale";
+
 export const site = {
   name: "Westchase Gastroenterology",
   headerName: "FDHS Westchase Gastroenterology",

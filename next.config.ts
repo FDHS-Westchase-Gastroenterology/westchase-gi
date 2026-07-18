@@ -80,8 +80,9 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      // Root: English is the default mode; the header toggle switches to /es.
-      { source: "/", destination: "/en", permanent: false },
+      // Root locale routing lives in src/proxy.ts (config redirects run
+      // BEFORE the proxy, so a `/` entry here would shadow the
+      // Accept-Language/cookie negotiation).
       ...legacy.map(([source, destination]) => ({ source, destination, permanent: true })),
       // The retired V1 existing-patients page (was live + in the sitemap
       // until 2026-07-08); each locale lands on its own prep index.

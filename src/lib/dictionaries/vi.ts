@@ -174,7 +174,7 @@ export const vi: Dictionary = {
     heroPhoto: "Đội ngũ Westchase Gastroenterology tại phòng khám Tampa của chúng tôi",
     tiles: {
       heading: "Hôm nay chúng tôi có thể giúp gì cho quý vị?",
-      services: { title: "Dịch vụ", sub: "Các bệnh lý chúng tôi điều trị và các thủ thuật chúng tôi thực hiện" },
+      prep: { title: "Chuẩn bị thủ thuật", sub: "Hướng dẫn từng bước trước thủ thuật của quý vị" },
       forms: { title: "Mẫu đơn cho bệnh nhân mới", sub: "Hoàn tất hồ sơ trực tuyến trước buổi thăm khám của quý vị" },
       physicians: { title: "Gặp gỡ đội ngũ bác sĩ", sub: "Bác sĩ chuyên khoa tiêu hóa được hội đồng y khoa chứng nhận" },
       directions: { title: "Bản đồ & Chỉ đường", sub: "Hai phòng khám: Tampa và Lutz" },
@@ -411,6 +411,7 @@ export const vi: Dictionary = {
       name: "Họ và tên",
       phone: "Số điện thoại",
       email: "Địa chỉ email",
+      emailOptional: "(không bắt buộc)",
       location: "Phòng khám mong muốn",
       locationAny: "Phòng khám nào cũng được",
       time: "Thời gian mong muốn",

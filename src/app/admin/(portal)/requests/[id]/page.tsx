@@ -20,7 +20,7 @@ type RequestRow = {
   id: string;
   name: string;
   phone: string;
-  email: string;
+  email: string | null;
   location: "any" | "tampa" | "lutz";
   preferred_time: "any" | "morning" | "afternoon";
   message: string | null;
@@ -95,13 +95,17 @@ export default async function RequestDetailPage({
     },
     {
       label: "Email",
-      value: (
+      value: row.email ? (
         <a
           href={`mailto:${row.email}`}
           className="break-all font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
         >
           {row.email}
         </a>
+      ) : (
+        <span className="text-[var(--color-muted)]">
+          Not provided — call the phone number above
+        </span>
       ),
     },
     { label: "Preferred office", value: LOCATION_LABELS[row.location] },

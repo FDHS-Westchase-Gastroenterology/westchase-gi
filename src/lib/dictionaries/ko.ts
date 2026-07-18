@@ -174,7 +174,7 @@ export const ko: Dictionary = {
     heroPhoto: "탬파 오피스에서 함께한 Westchase Gastroenterology 팀",
     tiles: {
       heading: "오늘 어떤 도움이 필요하십니까?",
-      services: { title: "진료 안내", sub: "치료하는 질환과 시행하는 시술" },
+      prep: { title: "시술 준비 안내", sub: "시술 전 단계별 준비 안내" },
       forms: { title: "신규 환자 서류", sub: "방문 전에 온라인으로 서류를 작성하십시오" },
       physicians: { title: "의료진 소개", sub: "소화기내과 전문의" },
       directions: { title: "지도 및 길 안내", sub: "두 곳의 오피스: 탬파와 Lutz" },
@@ -411,6 +411,7 @@ export const ko: Dictionary = {
       name: "성함",
       phone: "전화번호",
       email: "이메일 주소",
+      emailOptional: "(선택 사항)",
       location: "희망 오피스",
       locationAny: "어느 오피스든 가능",
       time: "희망 시간대",
