@@ -174,7 +174,7 @@ export const en = {
     heroPhoto: "The Westchase Gastroenterology team in our Tampa office",
     tiles: {
       heading: "How can we help today?",
-      services: { title: "Services", sub: "Conditions we treat and procedures we perform" },
+      prep: { title: "Procedure Prep", sub: "Step-by-step instructions before your procedure" },
       forms: { title: "New Patient Forms", sub: "Complete your packet online before your visit" },
       physicians: { title: "Meet Our Physicians", sub: "Board-certified gastroenterologists" },
       directions: { title: "Maps & Directions", sub: "Two offices: Tampa and Lutz" },
@@ -411,6 +411,7 @@ export const en = {
       name: "Full name",
       phone: "Phone number",
       email: "Email address",
+      emailOptional: "(optional)",
       location: "Preferred office",
       locationAny: "Either office",
       time: "Preferred time",

@@ -48,7 +48,9 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
 
     if (!name) next.name = f.errName;
     if (!phone || phone.replace(/\D/g, "").length < 10) next.phone = f.errPhone;
-    if (!email || !emailRe.test(email)) next.email = f.errEmail;
+    // Email is optional — many patients have none; phone is the callback
+    // channel. Validate the format only when something was entered.
+    if (email && !emailRe.test(email)) next.email = f.errEmail;
     return next;
   }
 
@@ -257,14 +259,16 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
         </div>
         <div>
           <label htmlFor="email" className="field-label">
-            {f.email} <span aria-hidden="true" className="text-[var(--color-amber-deep)]">*</span>
+            {f.email}{" "}
+            <span className="font-semibold text-[var(--color-muted)]">
+              {f.emailOptional}
+            </span>
           </label>
           <input
             id="email"
             name="email"
             type="email"
             autoComplete="email"
-            required
             aria-invalid={errors.email ? "true" : undefined}
             aria-describedby={errors.email ? "err-email" : undefined}
             className="field-input"

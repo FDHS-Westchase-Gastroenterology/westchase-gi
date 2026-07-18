@@ -177,7 +177,7 @@ export const es: Dictionary = {
     heroPhoto: "El equipo de Westchase Gastroenterology en nuestra oficina de Tampa",
     tiles: {
       heading: "¿Cómo podemos ayudarle hoy?",
-      services: { title: "Servicios", sub: "Condiciones que tratamos y procedimientos que realizamos" },
+      prep: { title: "Preparación para Procedimientos", sub: "Instrucciones paso a paso antes de su procedimiento" },
       forms: { title: "Formularios para Pacientes Nuevos", sub: "Complete su paquete en línea antes de su visita" },
       physicians: { title: "Conozca a Nuestros Médicos", sub: "Gastroenterólogos certificados" },
       directions: { title: "Mapas y Direcciones", sub: "Dos oficinas: Tampa y Lutz" },
@@ -415,6 +415,7 @@ export const es: Dictionary = {
       name: "Nombre completo",
       phone: "Número de teléfono",
       email: "Correo electrónico",
+      emailOptional: "(opcional)",
       location: "Oficina de preferencia",
       locationAny: "Cualquiera de las dos",
       time: "Horario de preferencia",

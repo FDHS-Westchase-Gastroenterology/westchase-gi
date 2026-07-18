@@ -175,7 +175,7 @@ export const ar: Dictionary = {
     heroPhoto: "فريق Westchase Gastroenterology في عيادتنا في تامبا",
     tiles: {
       heading: "كيف يمكننا مساعدتكم اليوم؟",
-      services: { title: "الخدمات", sub: "الحالات التي نعالجها والإجراءات التي نجريها" },
+      prep: { title: "التحضير للإجراء", sub: "تعليمات خطوة بخطوة قبل إجرائكم" },
       forms: { title: "استمارات المرضى الجدد", sub: "أكملوا حزمة الاستمارات عبر الإنترنت قبل زيارتكم" },
       physicians: { title: "تعرّفوا على أطبائنا", sub: "أطباء جهاز هضمي حاصلون على شهادة البورد" },
       directions: { title: "الخرائط والاتجاهات", sub: "عيادتان: تامبا ولوتز" },
@@ -412,6 +412,7 @@ export const ar: Dictionary = {
       name: "الاسم الكامل",
       phone: "رقم الهاتف",
       email: "البريد الإلكتروني",
+      emailOptional: "(اختياري)",
       location: "العيادة المفضلة",
       locationAny: "أي من العيادتين",
       time: "الوقت المفضل",

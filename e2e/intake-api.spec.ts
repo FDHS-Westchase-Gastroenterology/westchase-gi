@@ -184,6 +184,30 @@ test.describe("intake API contract", () => {
     });
   });
 
+  test("VAL-INTAKE-001b: email is optional — empty email persists as null", async ({
+    request,
+  }) => {
+    const payload = { ...validPayload(`${sourcePrefix}/no-email`), email: "" };
+    const response = await request.post("/api/requests", {
+      data: payload,
+      headers: { "X-Forwarded-For": testIp("no-email") },
+    });
+
+    expect([200, 201]).toContain(response.status());
+    const body = (await response.json()) as IntakeResponse;
+    expect(body.ok).toBe(true);
+    if (!body.ok) throw new Error("Expected an accepted intake response");
+
+    const { data: row, error } = await db
+      .from("requests")
+      .select("id, email")
+      .eq("id", body.id)
+      .single();
+
+    expect(error).toBeNull();
+    expect(row).toEqual({ id: body.id, email: null });
+  });
+
   test("VAL-INTAKE-003: server validation rejects bad input", async ({
     request,
   }) => {

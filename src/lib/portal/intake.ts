@@ -181,7 +181,7 @@ export async function processIntake(
     .insert({
       name: input.name,
       phone: input.phone,
-      email: input.email,
+      email: input.email || null,
       location: input.location,
       preferred_time: input.time,
       message: input.message || null,

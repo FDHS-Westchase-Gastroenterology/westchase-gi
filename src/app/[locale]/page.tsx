@@ -9,7 +9,7 @@ import { Reveal } from "@/components/Reveal";
 import { TestimonialRail } from "@/components/TestimonialRail";
 import { LocationCards } from "@/components/LocationCards";
 import { TextBand } from "@/components/TextBand";
-import { ArrowRight, ExternalLink, Heart, MessageSquare, Phone, Star } from "@/components/icons";
+import { ArrowRight, ClipboardCheck, ExternalLink, Heart, MessageSquare, Phone, Star } from "@/components/icons";
 
 type PageProps = { params: Promise<{ locale: string }> };
 
@@ -29,12 +29,17 @@ export default async function HomePage({ params }: PageProps) {
   const t = dict.home;
   const p = (path: string) => localePath(locale, path);
 
+  // Prep replaced the Services tile (2026-07-18 critique): prep instructions
+  // are the most time-critical of the four named patient jobs and had no
+  // home-page path, while Services keeps its own top-level nav link. No
+  // practice-owned wayfinding graphic exists for prep, so the tile uses the
+  // site's own icon set at the same visual weight.
   const tiles = [
-    { ...t.tiles.services, href: p("/services"), img: "/images/tiles/services.webp", w: 200, h: 200 },
+    { ...t.tiles.prep, href: p("/procedure-prep"), icon: ClipboardCheck },
     { ...t.tiles.forms, href: p("/new-patients"), img: "/images/tiles/patient-forms.webp", w: 200, h: 200 },
     { ...t.tiles.physicians, href: p("/physicians"), img: "/images/tiles/physicians.webp", w: 150, h: 100 },
     { ...t.tiles.directions, href: p("/contact"), img: "/images/tiles/directions.webp", w: 100, h: 80 },
-  ];
+  ] as const;
 
   return (
     <>
@@ -104,7 +109,11 @@ export default async function HomePage({ params }: PageProps) {
                   className="group flex h-full items-center gap-4 rounded-[var(--radius-lg)] bg-white p-5 shadow-[var(--shadow-soft)] transition-transform duration-300 ease-[var(--ease-out-quint)] hover:-translate-y-1"
                 >
                   <span className="flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded-full bg-[var(--color-mint)]">
-                    <Image src={tile.img} alt="" width={tile.w} height={tile.h} className="h-11 w-11 object-contain" />
+                    {"icon" in tile ? (
+                      <tile.icon className="h-9 w-9 text-[var(--color-teal-ink)]" strokeWidth={1.75} />
+                    ) : (
+                      <Image src={tile.img} alt="" width={tile.w} height={tile.h} className="h-11 w-11 object-contain" />
+                    )}
                   </span>
                   <span className="min-w-0">
                     <span className="flex items-center gap-1.5 font-extrabold text-[var(--color-ink)]">
