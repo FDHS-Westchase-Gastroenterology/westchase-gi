@@ -20,14 +20,15 @@ Specialists network). It exists so patients can reach the practice and prepare f
 friction: request an appointment, call or text a staffed line, access the patient portal and
 online forms, and get accurate location, hours, and provider information in English, Spanish,
 Vietnamese, Korean, or Arabic.
-Success: every link works, every fact is verified, both languages are first-class, and the site
+Success: every link works, every fact is verified, all five languages are first-class, and the site
 reads as the polished front door of a practice that answers its own phones.
 
 ## Brand Personality
 
 Calm, credentialed, human. The practice's differentiator is staffed human attention (a real
-person answers the text line daily), so the site must feel attended-to rather than automated:
-plain language, warm but clinical, never salesy. Three words: steady, attentive, bilingual.
+person answers the text line within 24 hours), so the site must feel attended-to rather than
+automated: plain language, warm but clinical, never salesy. Three words: steady, attentive,
+multilingual.
 
 ## Anti-references
 
@@ -45,8 +46,9 @@ plain language, warm but clinical, never salesy. Three words: steady, attentive,
    not yet confirmed by the practice render as honest fallbacks (request from the office), never
    as placeholders or guesses.
 2. **Preserve the practice's identity, execute it better.** The FDHS header, verbatim provider
-   credentials, practice-owned graphics byte-for-byte, and the existing blue-teal-and-amber
-   palette stay; the craft around them is what improves.
+   credentials, harvested source-mirror graphics byte-for-byte, and the existing
+   blue-teal-and-amber palette stay; published staff headshots are the documented exception and
+   use intentionally resized, optimized derivatives.
 3. **The human line is the hero.** Call and text affordances are prominent on every page; the
    text line is presented as a staffed human channel, never a bot.
 4. **Every language is a mode, not a footnote.** Every patient-facing surface exists in
@@ -58,5 +60,6 @@ plain language, warm but clinical, never salesy. Three words: steady, attentive,
 
 WCAG 2.1 AA. Older-skewing patient base: body text at 17px or larger, contrast at 4.5:1 or
 better everywhere, visible focus states, large tap targets, semantic landmarks, skip link.
-Full reduced-motion alternatives. Bilingual EN/ES with correct `lang` attributes and hreflang
-alternates so assistive tech and search both understand the two modes.
+Full reduced-motion alternatives. All five locales use correct `lang` attributes and hreflang
+alternates, with RTL direction for Arabic, so assistive technology and search understand every
+mode.

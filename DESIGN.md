@@ -78,12 +78,16 @@ backgrounds. No gradients, no glassmorphism, no side-stripe borders.
 
 ## Imagery rules
 
-- Every practice-owned graphic in `public/images/` is a byte-exact copy (SHA-verified at
-  import); `next/image` handles resizing at delivery time only. Never re-encode sources.
+- Harvested graphics and official provider-card files retained as source mirrors in
+  `public/images/` are byte-exact (SHA-verified at import); `next/image` handles their delivery
+  sizing. The six published files under `public/images/staff/headshots/` are intentionally
+  resized/optimized derivatives of privately preserved source originals, not byte-exact mirrors.
+  Do not re-encode the source-mirror set or replace a headshot derivative without approved
+  provenance.
 - Photography is the practice's own: team composite (hero), physician brochure cards, facility
   photos. No stock imagery anywhere.
-- **Text-bearing graphic surfaces are moving to localizable rendering** (practice direction,
-  2026-07-07): baked-in text can't follow the site language, so surfaces like the provider
-  credential cards get rebuilt as real, translatable text (credentials verbatim in every
-  language) while the source graphics stay preserved unmodified. Legibility is the other
-  driver: card text must be readable without effort on phones.
+- **Essential text renders as localizable HTML** (practice direction, 2026-07-07): baked-in text
+  cannot follow the site language, so provider names, credentials, and patient information are
+  real translatable text in every locale. The official provider-card graphics remain preserved
+  byte-for-byte as optional view/download artifacts, never the sole carrier of essential
+  information. Text must be readable without effort on phones.

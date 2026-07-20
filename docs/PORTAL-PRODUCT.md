@@ -22,7 +22,8 @@ One place where practice staff do their web-adjacent jobs without reasoning abou
 software topology (repositories, hosting projects, asset ledgers). The jobs:
 
 - Work the appointment-request queue — the reason the portal exists: the previous
-  vendor's form silently lost patient requests.
+  vendor form fed an Officite queue the practice did not know to monitor, where
+  requests accumulated unseen and unworked.
 - Reprint a review QR flyer.
 - Choose who receives new-request notification emails.
 - Manage who can sign in (invite staff, change roles, deactivate accounts).
@@ -39,6 +40,15 @@ software topology (repositories, hosting projects, asset ledgers). The jobs:
 Success: a new front-desk hire lands on the home page and knows what to do without
 training, and nothing needing attention hides more than one click deep.
 
+## Current delivery boundary (verified 2026-07-19)
+
+The task-first Home, Requests queue, recipient and staff management, Activity log,
+Website/maintainer controls, and protected review-flyer printer are deployed. A full
+throwaway maintainer invite/cancel/accept/revoke acceptance pass; issue
+[#43](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/43)'s first-login
+opt-in tour plus Help-page systems explainer/restart path; and the conversational website-change
+assistant remain future work. Do not present them as completed portal capabilities.
+
 ## Design principles
 
 1. **Tasks, not topology.** Navigation and copy name staff jobs ("Print review
@@ -54,8 +64,10 @@ training, and nothing needing attention hides more than one click deep.
 4. **Honest states.** Delivery, connection, and configuration states render
    truthfully ("Not configured", "Connection unavailable"), and no control ships
    before its capability exists.
-5. **PHI-minimal.** The portal handles callback leads, not clinical data;
-   notification emails and logs stay free of patient fields.
+5. **PHI-minimal.** The portal handles callback leads, not a clinical record. Intake has
+   no dedicated clinical fields, but it stores an optional patient-supplied brief reason,
+   so the queue is still sensitive. Notification emails and operational logs stay free of
+   patient fields.
 
 ## Anti-references
 
