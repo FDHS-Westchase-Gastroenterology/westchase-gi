@@ -70,7 +70,7 @@ notifications) and the authenticated staff portal at `/admin`.
     least-privilege permissions. The portal does not connect to or manage Vercel
     (`docs/INTEGRATION-ACTIVATION.md`).
 
-## Known current reconciliation items (2026-07-19)
+## Known current reconciliation items (2026-07-20)
 
 - The canonical patient origin is the apex `https://westchasegi.com`; `www` redirects to it.
   Runtime `site.url` still incorrectly uses `www`, so canonical/OG/hreflang/sitemap/robots output
@@ -82,9 +82,10 @@ notifications) and the authenticated staff portal at `/admin`.
   and Resend account/team custody are not evidenced as complete. The Resend domain and Production
   application sender are configured, but that is not account custody. Keep the Website page's
   explicit custody split accurate until the practice-controlled handoff is documented.
-- Development has the intended five portal tables/four RPCs. Production still has the retired
-  registry tables, so the committed registry-retirement migration and post-migration verifier
-  remain live activation work.
+- Development and Production both have the intended five portal tables and five service-only RPCs
+  through migration `20260720102654`. Production registry retirement, schema/security assertions,
+  atomic-rollback verification, and the first-login-tour/public-site-link smoke passed on
+  `1124668`; no temporary acceptance rows or accounts remain.
 - The GitHub repository homepage still points at dead `new-westchase-gi.vercel.app`; the intended
   homepage is `https://westchasegi.com`.
 

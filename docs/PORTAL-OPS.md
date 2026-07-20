@@ -93,24 +93,25 @@ schema changes go through committed migrations in `supabase/migrations/`
 to development first and production only after verification. Record the owner,
 transfer date, and a non-secret acceptance check when this closes.
 
-## Current Production activation state (verified 2026-07-19)
+## Current Production activation state (verified 2026-07-20)
 
 GitHub issue [#24](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/24)
 is the canonical remaining-acceptance tracker. Keep this section synchronized with that checklist.
 
-- Source and Vercel Production are deployed through `1b2f142` (PR #42), including
-  the task-first portal, Website/maintainer controls, protected flyer printer, and
-  optional appointment email.
+- Source and Vercel Production are deployed through `1124668` (PR #53), including
+  the task-first portal, Website/maintainer controls, protected flyer printer, optional
+  appointment email, first-login tour, and persistent public-site link.
 - Complete the remaining Production workflow matrix: staff role changes/deactivation;
   notification-recipient add/confirm/pause/resume/remove; request status, notes, export,
   and optional-email-absent behavior; and current Home, Requests, Settings, Website, and Help
   navigation/interactions.
-- Development has the intended five portal tables and four RPCs. Production still
-  exposes the retired `registry_assets` and `registry_grants` tables, so apply the
-  committed software-registry retirement migration before claiming schema parity.
-- After that migration, run the schema verifier and authenticated Production smoke
-  for Settings → Website and the review-flyer paths. The schema verifier is not
-  read-only: it creates and then deletes a temporary rollback-check request.
+- Development and Production both have the intended five portal tables and five service-only
+  RPCs through migration `20260720102654`; the retired registry tables/functions are absent.
+- Production migration-ledger parity, catalog/RLS/ACL/RPC assertions, authenticated Data API
+  denial, nullable-email insertion, atomic audit rollback, tour persistence/auditing, public-site
+  locale negotiation, and portal-session continuity passed on `1124668`. The temporary request,
+  staff profile, audit rows, and Auth identity used for acceptance were deleted. Review-flyer
+  acceptance remains a separate checklist item in issue #24.
 - The Resend domain and Production application `RESEND_FROM` are configured. Provider
   logs mark two non-owner/non-test recipient-confirmation messages delivered, but clinic
   ownership of those inboxes is not documented. Reconcile those recipients and run
