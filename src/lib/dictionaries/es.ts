@@ -82,6 +82,15 @@ export const es: Dictionary = {
     requestAppointment: "Solicitar cita",
     patientPortal: "Portal del paciente",
     languageLabel: "Idioma",
+    languageChooser: {
+      eyebrow: "Idioma del sitio web",
+      title: "Elija su idioma",
+      description:
+        "Elija el idioma que desea usar en este sitio web. Puede cambiarlo en cualquier momento desde el menú Idioma.",
+      suggested: "Sugerido",
+      continue: "Continuar en español",
+      close: "Cerrar el selector de idioma y continuar en español",
+    },
     getDirections: "Cómo llegar",
     learnMore: "Más información",
     banner: {

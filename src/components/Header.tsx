@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { site, localePath, locales, localeNames, type Locale } from "@/lib/site";
+import { site, localePath, locales, localeNames, pathInLocale, type Locale } from "@/lib/site";
 import type { Dictionary } from "@/lib/i18n";
+import { LANGUAGE_TRIGGER_ID, rememberLocale } from "@/lib/locale-preference";
 import { Check, ChevronDown, ExternalLink, Globe, Menu, MessageSquare, Phone, X } from "./icons";
 
 type HeaderProps = { locale: Locale; dict: Dictionary };
@@ -47,12 +48,6 @@ function buildNav(locale: Locale, dict: Dictionary): NavGroup[] {
   ];
 }
 
-/** Re-point the current path at another locale: /en/x -> /ko/x. */
-function pathInLocale(pathname: string, target: Locale): string {
-  const rest = pathname.replace(new RegExp(`^/(${locales.join("|")})(?=/|$)`), "");
-  return `/${target}${rest}` || `/${target}`;
-}
-
 /** The five-language menu that replaced the EN<->ES toggle (2026-07-08). */
 function LanguageMenu({ locale, label }: { locale: Locale; label: string }) {
   const pathname = usePathname() || `/${locale}`;
@@ -78,6 +73,7 @@ function LanguageMenu({ locale, label }: { locale: Locale; label: string }) {
   return (
     <div ref={wrapRef} className="relative">
       <button
+        id={LANGUAGE_TRIGGER_ID}
         type="button"
         aria-expanded={open}
         aria-haspopup="true"
@@ -96,6 +92,7 @@ function LanguageMenu({ locale, label }: { locale: Locale; label: string }) {
             <Link
               key={l}
               href={pathInLocale(pathname, l)}
+              onClick={() => rememberLocale(l)}
               lang={l}
               aria-current={l === locale ? "true" : undefined}
               className={`flex items-center justify-between gap-2 rounded-md px-3 py-2 font-semibold transition-colors hover:bg-[var(--color-mint)] ${
