@@ -4,7 +4,7 @@ import "../globals.css";
 import { Header } from "@/components/Header";
 import { JsonLd } from "@/components/JsonLd";
 import { Footer } from "@/components/Footer";
-import { LocaleCookie } from "@/components/LocaleCookie";
+import { LanguageChooser } from "@/components/LanguageChooser";
 import { NoticeBanner } from "@/components/NoticeBanner";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { fontVariables } from "@/lib/fonts";
@@ -126,7 +126,7 @@ export default async function LocaleLayout({
           }}
         />
         <ClinicSchema />
-        <LocaleCookie locale={locale} />
+        <LanguageChooser locale={locale} dict={dict} />
         <a href="#main" className="skip-link">
           {dict.common.skipToContent}
         </a>

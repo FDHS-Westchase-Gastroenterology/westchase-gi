@@ -79,6 +79,15 @@ export const vi: Dictionary = {
     requestAppointment: "Yêu cầu đặt hẹn",
     patientPortal: "Cổng thông tin bệnh nhân",
     languageLabel: "Ngôn ngữ",
+    languageChooser: {
+      eyebrow: "Ngôn ngữ trang web",
+      title: "Chọn ngôn ngữ của quý vị",
+      description:
+        "Chọn ngôn ngữ quý vị muốn sử dụng trên trang web này. Quý vị có thể đổi bất cứ lúc nào trong menu Ngôn ngữ.",
+      suggested: "Được đề xuất",
+      continue: "Tiếp tục bằng Tiếng Việt",
+      close: "Đóng phần chọn ngôn ngữ và tiếp tục bằng Tiếng Việt",
+    },
     getDirections: "Chỉ đường",
     learnMore: "Tìm hiểu thêm",
     banner: {

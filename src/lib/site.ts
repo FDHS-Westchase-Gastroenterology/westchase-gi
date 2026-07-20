@@ -68,8 +68,8 @@ export function localeDir(locale: Locale): "ltr" | "rtl" {
  * Shared by the layout's pre-paint script and the banner's dismiss button. */
 export const BANNER_KEY = "wgi-banner-dismissed";
 
-/** Cookie recording the visitor's last-used locale. Written client-side on
- * every locale page; read by the proxy to send `/` to the right language. */
+/** Cookie recording the visitor's explicitly chosen locale. Read by the
+ * proxy to send future visits to `/` to the right language. */
 export const LOCALE_COOKIE = "wgi-locale";
 
 export const site = {
@@ -166,4 +166,13 @@ export function directionsUrl(query: string): string {
 export function localePath(locale: Locale, path: string): string {
   const clean = path.startsWith("/") ? path : `/${path}`;
   return clean === "/" ? `/${locale}` : `/${locale}${clean}`;
+}
+
+/** Re-point a localized path at another locale without changing its page. */
+export function pathInLocale(pathname: string, target: Locale): string {
+  const rest = pathname.replace(
+    new RegExp(`^/(${locales.join("|")})(?=/|$)`),
+    "",
+  );
+  return `/${target}${rest}`;
 }

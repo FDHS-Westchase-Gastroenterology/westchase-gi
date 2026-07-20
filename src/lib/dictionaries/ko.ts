@@ -79,6 +79,15 @@ export const ko: Dictionary = {
     requestAppointment: "진료 예약 신청",
     patientPortal: "환자 포털",
     languageLabel: "언어",
+    languageChooser: {
+      eyebrow: "웹사이트 언어",
+      title: "언어를 선택하세요",
+      description:
+        "이 웹사이트에서 사용할 언어를 선택하세요. 언어 메뉴에서 언제든지 변경할 수 있습니다.",
+      suggested: "권장",
+      continue: "한국어로 계속",
+      close: "언어 선택 창을 닫고 한국어로 계속",
+    },
     getDirections: "길찾기",
     learnMore: "자세히 보기",
     banner: {
