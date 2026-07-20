@@ -87,7 +87,7 @@ function targetCopy(key: ReviewTargetKey, providerId: string | null) {
       title: "Master code — review hub",
       credentials: null,
       description:
-        "Opens the practice review hub in English, Spanish, Vietnamese, Korean, or Arabic. Printed copies keep working as review platforms change.",
+        "Opens the practice review hub in English, Spanish, Vietnamese, Korean, or Arabic. Printed copies remain valid while this hub URL is maintained, even if its review destinations change.",
       askEn: "How was your visit?",
       askEs: "¿Cómo fue su visita?",
       scanEn: "Scan with your phone camera to leave us a review",

@@ -1,6 +1,7 @@
 // Blog batch 3: the five posts from Nov 2025 – Jan 2026. Topic, title, and
-// posted date match the old site exactly; the bodies are original writing in
-// both languages (the Spanish mirrors our English text, "usted" register).
+// posted date match the old site exactly; the bodies use an original EN/ES
+// baseline (Spanish mirrors English in the "usted" register), with VI/KO/AR
+// machine translations still awaiting native-speaker review.
 
 import type { BlogPost } from "../types";
 

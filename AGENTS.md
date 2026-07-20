@@ -7,9 +7,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 # Project rules — Westchase GI website
 
 Patient-facing site for FDHS Westchase Gastroenterology (Tampa + Lutz). Faithful polish of the
-practice's existing site: same identity, verified facts, zero broken links — plus the
-appointment-request pipeline (POST → Supabase Postgres queue → PHI-free staff notifications)
-and the authenticated staff portal at `/admin`.
+practice's former vendor site: same identity, source-grounded facts, repaired patient paths —
+plus the appointment-request pipeline (POST → Supabase Postgres queue → PHI-free staff
+notifications) and the authenticated staff portal at `/admin`.
 
 ## Hard rules
 
@@ -19,9 +19,12 @@ and the authenticated staff portal at `/admin`.
    Juliet Oliva is "Practice Manager & Infusion Nurse" (manager credit added at her request
    2026-07-06). Never edit, reorder, or "simplify" titles.
    Source of truth: `src/lib/providers.ts`.
-2. **Practice-owned images in `public/images/` are byte-exact copies** of the practice's own
-   graphics (SHA-verified at import). Never re-encode, resize on disk, or "optimize" them;
-   let `next/image` handle delivery.
+2. **Source-mirror graphics stay byte-exact.** Harvested graphics and official provider-card
+   files preserved as source mirrors in `public/images/` were SHA-verified at import; never
+   re-encode or resize those files, and let `next/image` handle delivery. The six files under
+   `public/images/staff/headshots/` are a documented exception: intentionally resized/optimized
+   derivatives whose source originals remain in the private engagement archive. Do not describe
+   those six derivatives as byte-exact or replace them without approved source provenance.
 3. **The FDHS header stays.** "FDHS Westchase Gastroenterology" with the exact harvested logo.
 4. **The text line (813) 564-0315 is a staffed human channel.** Keep it prominent; never frame
    it as automated.
@@ -34,16 +37,19 @@ and the authenticated staff portal at `/admin`.
    patient site only).
 6. **One-way linking:** this site may link to Alpha Omega Wellness (footer). Never accept the
    reverse expectation into this codebase; it's owned by the other project.
-7. **No invented facts.** Unconfirmed details (see `NEEDS CONFIRMATION` comments in
-   `src/lib/site.ts` and the README) render as honest fallbacks, not guesses. Patient documents
-   without a file in `public/documents/` fall back to the staffed text line (forms/prep) or
-   "printable version on the way" (disease sheets that already have on-site education pages).
+7. **No invented facts.** Unconfirmed details live in README's pending-confirmations list and
+   explicit dated source comments; do not infer confirmation from a value merely being present.
+   Patient documents without a file in `public/documents/` fall back to the staffed text line
+   (forms/prep) or "printable version on the way" (disease sheets that already have on-site
+   education pages).
 8. **Compliance and PHI-minimal posture:** conservative medical phrasing; no outcome
    guarantees; the appointment form keeps its "do not submit PHI" warning verbatim in all five
-   locales. The form collects only appointment-request contact fields (name, phone, email,
-   office/time preference, a brief reason) — never clinical data. Requests are callback leads
-   for a scheduling coordinator, not live scheduling. Notification emails carry zero patient
-   fields; server logs never print patient values; patient data never appears in a URL.
+   locales. The form collects callback-request fields only: name, phone, optional email,
+   office/time preference, and an optional brief reason. There are no dedicated clinical fields,
+   and the UI asks patients to avoid medical details, but patient-supplied reasons must still be
+   treated as potentially sensitive. Requests are callback leads for a scheduling coordinator,
+   not live scheduling. Notification emails carry zero patient fields; server logs never print
+   patient values; patient data never appears in a URL.
 9. **The "accepting new patients" notice** is a dismissible banner shown once per visitor
    (30-day localStorage). Never turn it back into a per-page modal.
 10. **Intake pipeline invariants.** The success state renders only after the durable Postgres
@@ -64,9 +70,29 @@ and the authenticated staff portal at `/admin`.
     least-privilege permissions. The portal does not connect to or manage Vercel
     (`docs/INTEGRATION-ACTIVATION.md`).
 
+## Known current reconciliation items (2026-07-19)
+
+- The canonical patient origin is the apex `https://westchasegi.com`; `www` redirects to it.
+  Runtime `site.url` still incorrectly uses `www`, so canonical/OG/hreflang/sitemap/robots output
+  currently publishes redirecting URLs. Do not describe `www` as the intended canonical origin.
+- Some procedure-prep, blog, and education availability strings still say EN/ES despite all five
+  locales being present. External Hushforms packets really are EN/ES-only; clinical-care language
+  claims require practice confirmation rather than a mechanical five-language rewrite.
+- GitHub, Vercel, and Porkbun custody are verified clinic-controlled. Supabase account/org custody
+  and Resend account/team custody are not evidenced as complete. The Resend domain and Production
+  application sender are configured, but that is not account custody. Keep the Website page's
+  explicit custody split accurate until the practice-controlled handoff is documented.
+- Development has the intended five portal tables/four RPCs. Production still has the retired
+  registry tables, so the committed registry-retirement migration and post-migration verifier
+  remain live activation work.
+- The GitHub repository homepage still points at dead `new-westchase-gi.vercel.app`; the intended
+  homepage is `https://westchasegi.com`.
+
 ## Verification
 
-- `npm run build`, `npm run lint`, and `npm run doctor` (React Doctor, 100 baseline) must pass.
+- `npm run build`, `npm run lint`, and `npm run doctor` must pass; the local React Doctor standard
+  is 100. The required GitHub status currently runs advisory (`blocking: none`), so a green check
+  proves execution, not a clean score—inspect its published score and findings.
 - `npx playwright test` must pass (see README §Tests; specs run against a development
   Supabase project via `.env.local`).
 - `node scripts/verify-no-secrets.mjs` proves the history stays free of secret material;

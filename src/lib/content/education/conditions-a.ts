@@ -1,6 +1,7 @@
 // Patient-education topics: conditions, part A (8 of the old library's 17
 // topics). Slugs, titles, and legacy ids mirror the old ASGE-licensed library
-// 1:1; the bodies are original plain-language writing in both languages.
+// 1:1; the bodies use original plain-language EN/ES writing, with VI/KO/AR
+// machine translations still awaiting native-speaker review.
 
 import type { EducationTopic } from "../types";
 
