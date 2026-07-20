@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
-// Legacy URL map: every indexed path from the practice's previous site gets a
-// permanent redirect at DNS cutover (including the old trailing-hyphen
-// /about-us- URL and the hollow bio/template slugs).
+// Legacy URL map: now that the real domain is cut over, every indexed path from
+// the practice's previous site gets a permanent redirect (including the old
+// trailing-hyphen /about-us- URL and the hollow bio/template slugs).
 const legacy: Array<[string, string]> = [
   ["/about-us-", "/en/about"],
   ["/about-us", "/en/about"],

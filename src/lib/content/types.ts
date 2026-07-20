@@ -1,8 +1,8 @@
 // Shared shapes for the on-site content library (blog + patient education).
 // Every string that reaches a patient exists in ALL site languages (hard
 // rule 5, extended 2026-07-07: EN/ES joined by VI/KO/AR; the new languages
-// ship machine-translated and are verified post-launch by the clinic's
-// native speakers).
+// shipped machine-translated and still await post-launch verification by the
+// clinic's native speakers).
 
 export type Bi = { en: string; es: string; vi: string; ko: string; ar: string };
 

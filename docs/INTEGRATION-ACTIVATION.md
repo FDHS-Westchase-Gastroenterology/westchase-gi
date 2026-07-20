@@ -6,16 +6,21 @@ administrators can invite a maintainer, cancel an invitation, or revoke a mainta
 App's Repository Administration permission is active. It records Vercel hosting custody as a
 static fact and does not connect to or manage Vercel.
 
-## Current custody (verified 2026-07-15)
+## Current custody (verified 2026-07-19)
 
 - The clinic-controlled personal GitHub account `FDHS-Westchase-Gastroenterology` owns
   `FDHS-Westchase-Gastroenterology/westchase-gi`. The old `ASTXRTYS/westchase-gi` URL redirects.
 - GitHub retained `ASTXRTYS` as a **Write** collaborator. That is sufficient for implementation;
   Admin is granted only when a specific repository-settings task requires it.
-- The clinic owns the Vercel Hobby account and replacement project `westchase-gi`. All eight
-  application variables were moved across production, preview, and development; the
-  `westchase-gi.vercel.app` alias moved; an ASTXRTYS-authored probe commit deployed READY; and the
-  former consultant-owned project was deleted.
+- The clinic owns the Vercel Hobby account and replacement project `westchase-gi`. Required
+  application variables were moved to their intended targets; the GitHub App private key remains
+  Production-only. The `westchase-gi.vercel.app` alias moved, an ASTXRTYS-authored probe commit
+  deployed READY, and the former consultant-owned project was deleted.
+- `westchasegi.com` cut over on 2026-07-18. Porkbun now serves its DNS, the apex is the canonical
+  patient origin, `www` redirects to the apex, TLS is live, and the Vercel alias remains attached.
+- Production is deployed through `1b2f142` (PR #42). The task-first portal,
+  Website/maintainer controls, and integrated review-flyer printer are live in the application;
+  their remaining external acceptance work is listed below and in `docs/PORTAL-OPS.md`.
 - The private GitHub App `wgi-portal` is registered on the clinic account with Repository
   Administration read/write and Metadata read permissions, and no webhook. Every portal request
   verifies the exact account and repository by numeric ID, scopes a short-lived token to that one
@@ -28,6 +33,11 @@ static fact and does not connect to or manage Vercel.
   environment. They are deliberately absent from Preview: mutable preview code must not inherit
   an App key whose registration includes Repository Administration permission. The provider's
   configured and unconfigured states were rehearsed locally against the real App before release.
+
+These verified clinic-custody statements cover GitHub, Vercel, the GitHub App, and Porkbun.
+They do not prove account-level custody of Supabase or Resend. Supabase organization transfer,
+Resend account custody, and email-path acceptance remain explicit items in
+`docs/PORTAL-OPS.md`; do not summarize them as complete without dated evidence.
 
 Two owner-only defense-in-depth follow-ups remain open. Neither is a portal readiness gate:
 
@@ -81,6 +91,10 @@ After changing the variables, redeploy and verify:
    report **Connection unavailable** without exposing its input. Do not copy Production secrets
    into Preview just to exercise these states.
 
+The ready-state controls have been seen in authenticated Production, but the full controlled
+throwaway-account lifecycle in step 3 is not yet recorded complete. Keep that acceptance item open
+until invite, cancel, accept, revoke, and Activity-log evidence all pass.
+
 ## Transfer and hosting deviations worth preserving
 
 - The original plan assumed a GitHub organization. The accepted model is the clinic's personal
@@ -96,7 +110,25 @@ After changing the variables, redeploy and verify:
 ## Hosting custody
 
 The clinic-owned Vercel project is `westchase-gi`. The portal displays that application-owned
-custody fact without a provider panel, token, deployment control, or configuration action.
+custody fact without a provider panel, token, deployment control, or configuration action. It
+serves canonical `https://westchasegi.com`; `westchase-gi.vercel.app` remains an attached alias.
+The repository's GitHub homepage metadata still points to retired
+`new-westchase-gi.vercel.app` and must be corrected separately to the apex.
+
+## Remaining integration acceptance
+
+1. Complete the controlled maintainer invite/cancel/accept/revoke lifecycle and verify Activity
+   log rows.
+2. Complete the Production schema retirement/verifier and authenticated Website/review-flyer
+   smoke described in `docs/PORTAL-OPS.md`.
+3. Establish Resend team/account custody and run clinic-approved application-email canaries. The
+   Resend domain and Production application `RESEND_FROM` are configured, but Supabase Auth's hosted
+   SMTP sender is still the sandbox identity; change it before the arbitrary-clinic-inbox
+   password-reset canary.
+4. After the integrated flyer printer passes Production acceptance, verify and retire the
+   standalone flyer deployment.
+5. Record owner 2FA and repo-only App-installation scope only after the clinic owner verifies them;
+   keep them classified as independent defense-in-depth controls rather than UI readiness gates.
 
 ## Do not
 

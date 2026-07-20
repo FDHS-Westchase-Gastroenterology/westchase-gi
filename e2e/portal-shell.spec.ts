@@ -3,9 +3,9 @@ import { loadLocalEnv, requiredEnv } from "./support";
 
 // VAL-ADMIN-002: the seed admin can log in and out through the UI.
 // VAL-ADMIN-014 (shell scope): no horizontal overflow at 390/1440, nav
-// targets >= 40px, and the chrome uses the repo's design tokens (not
-// ad-hoc hex). Screenshots land in test-results/portal-shell/ for the
-// gate evidence.
+// and utility targets >= 44px, and the chrome uses the repo's design tokens
+// (not ad-hoc hex). Screenshots land in test-results/portal-shell/ for the gate
+// evidence.
 
 loadLocalEnv();
 
@@ -94,13 +94,48 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
         );
       expect(navBoxes).toHaveLength(4);
       for (const height of navBoxes) {
-        expect(height, "nav target height").toBeGreaterThanOrEqual(40);
+        expect(height, "nav target height").toBeGreaterThanOrEqual(44);
       }
+
+      const websiteLink = page.getByRole("link", { name: "View website" });
+      await expect(websiteLink).toBeVisible();
+      await expect(websiteLink).toHaveAttribute("href", "/");
+      expect((await websiteLink.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(
+        44,
+      );
 
       const signOutBox = await page
         .getByRole("button", { name: "Sign out" })
         .boundingBox();
-      expect(signOutBox?.height ?? 0).toBeGreaterThanOrEqual(40);
+      expect(signOutBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+
+      const utilityCollision = await page.evaluate(() => {
+        const website = Array.from(document.querySelectorAll("a")).find(
+          (link) => link.textContent?.trim() === "View website",
+        )?.getBoundingClientRect();
+        const signOut = document
+          .querySelector('button[type="submit"]')
+          ?.getBoundingClientRect();
+        const identity = document
+          .querySelector('[data-testid="session-user"]')
+          ?.parentElement?.getBoundingClientRect();
+        const overlaps = (a: DOMRect, b: DOMRect) =>
+          a.left < b.right &&
+          a.right > b.left &&
+          a.top < b.bottom &&
+          a.bottom > b.top;
+        return {
+          signOut: Boolean(website && signOut && overlaps(website, signOut)),
+          identity: Boolean(
+            website &&
+              identity &&
+              identity.width > 0 &&
+              identity.height > 0 &&
+              overlaps(website, identity),
+          ),
+        };
+      });
+      expect(utilityCollision).toEqual({ signOut: false, identity: false });
 
       // Settings is active on both of its sub-pages.
       if (portalPage.path.startsWith("/admin/settings")) {
@@ -178,4 +213,38 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
       fullPage: true,
     });
   }
+});
+
+test("staff can view the locale-negotiated website and return with their session", async ({
+  page,
+}) => {
+  await page.context().addCookies([
+    {
+      name: "wgi-locale",
+      value: "es",
+      url: "http://localhost:3100",
+      sameSite: "Lax",
+    },
+  ]);
+  await signIn(page);
+
+  const wordmark = page.getByRole("link", {
+    name: "Westchase Gastroenterology",
+  });
+  await expect(wordmark).toHaveAttribute("href", "/admin");
+  const websiteLink = page.getByRole("link", { name: "View website" });
+  await wordmark.focus();
+  await page.keyboard.press("Tab");
+  await expect(websiteLink).toBeFocused();
+  expect(await websiteLink.evaluate((link) => getComputedStyle(link).outlineStyle)).not.toBe(
+    "none",
+  );
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/es\/?$/);
+
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/\/admin\/?$/);
+  await expect(page.getByTestId("session-user")).toHaveText(
+    SEED_EMAIL.toLowerCase(),
+  );
 });

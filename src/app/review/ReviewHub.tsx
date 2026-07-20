@@ -6,7 +6,8 @@ import { site, locales, type Locale } from "@/lib/site";
 import { ExternalLink, Facebook, Globe, MessageSquare, Phone, Star } from "@/components/icons";
 
 // The hub speaks every language the practice serves, on one URL, without a
-// page reload — the QR is printed once and never has to change. Strings are
+// page reload. Printed master QRs stay valid while this encoded hub URL is
+// maintained. Strings are
 // deliberately local to this file: the page must work standalone even before
 // (or after) the main site's locale set changes.
 

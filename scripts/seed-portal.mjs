@@ -189,6 +189,7 @@ async function main() {
         role: "admin",
         active: true,
         onboarded_at: new Date().toISOString(),
+        portal_tour_dismissed_at: new Date().toISOString(),
       },
     ],
   })
