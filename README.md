@@ -142,10 +142,11 @@ These are known mismatches, not intended product behavior:
   genuinely EN/ES-only; clinical-care language claims need practice confirmation before editing.
 - The GitHub repository homepage still points to the retired
   `new-westchase-gi.vercel.app` deployment instead of the live apex.
-- Production still needs the committed software-registry retirement migration and its schema
-  verifier, authenticated Website/review-flyer acceptance, clinic-approved application-email
-  canaries, a hosted-Auth sender change plus password-reset canary, and standalone flyer-tool
-  retirement. GitHub issue
+- Production schema parity through migration `20260720102654` was verified on 2026-07-20: the
+  retired software registry is gone, tour persistence is live, and authenticated first-login-tour
+  plus public-site-link/session-continuity acceptance passed on `1124668`. Clinic-approved email
+  canaries, hosted-Auth sender work, review-flyer acceptance, and standalone flyer-tool retirement
+  remain separate handover work. GitHub issue
   [#24](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/24) is the canonical
   full Production workflow checklist; current operational detail lives in
   `docs/PORTAL-OPS.md` and `docs/INTEGRATION-ACTIVATION.md`.
