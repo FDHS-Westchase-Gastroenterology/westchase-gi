@@ -140,4 +140,166 @@ test.describe("portal home", () => {
       page.locator('nav[aria-label="Portal sections"] a[aria-current="page"]'),
     ).toHaveText("Appointment requests");
   });
+
+  test("first-login tour dismissal and Help restart persist on the staff profile", async ({
+    page,
+  }) => {
+    const email = SEED_EMAIL.trim().toLowerCase();
+    const { data: originalProfile, error: profileError } = await db
+      .from("staff_profiles")
+      .select("id, portal_tour_dismissed_at")
+      .eq("email", email)
+      .single();
+    expect(profileError).toBeNull();
+    expect(typeof originalProfile?.portal_tour_dismissed_at).toBe("string");
+    const { data: priorTourAudits, error: priorAuditError } = await db
+      .from("audit_log")
+      .select("id")
+      .eq("actor_email", email)
+      .eq("entity_id", originalProfile!.id)
+      .in("action", ["staff.tour_dismiss", "staff.tour_restart"]);
+    expect(priorAuditError).toBeNull();
+    const priorAuditIds = new Set(
+      (priorTourAudits ?? []).map((row) => row.id),
+    );
+
+    try {
+      const { error: resetError } = await db
+        .from("staff_profiles")
+        .update({ portal_tour_dismissed_at: null })
+        .eq("id", originalProfile!.id);
+      expect(resetError).toBeNull();
+
+      await signIn(page, SEED_EMAIL, SEED_PASSWORD);
+      const nudge = page.getByTestId("portal-tour-nudge");
+      await expect(nudge).toBeVisible();
+      await expect(
+        nudge.getByRole("button", { name: "Take a quick tour" }),
+      ).toBeVisible();
+      await expect(
+        nudge.getByRole("button", { name: "Not now" }),
+      ).toBeVisible();
+
+      await nudge.getByRole("button", { name: "Take a quick tour" }).click();
+      const dialog = page.getByTestId("portal-tour-dialog");
+      await expect(dialog).toBeVisible();
+      await expect(
+        dialog.getByRole("heading", { name: "Home", exact: true }),
+      ).toBeVisible();
+      await dialog.getByRole("button", { name: "Next" }).click();
+      await expect(
+        dialog.getByRole("heading", {
+          name: "Appointment requests",
+          exact: true,
+        }),
+      ).toBeVisible();
+      await dialog.getByRole("button", { name: "Next" }).click();
+      await expect(
+        dialog.getByRole("heading", { name: "Settings", exact: true }),
+      ).toBeVisible();
+
+      // Escape closes without dismissing; the opt-in nudge remains available.
+      await page.keyboard.press("Escape");
+      await expect(dialog).toBeHidden();
+      await expect(nudge).toBeVisible();
+      const { data: stillNull } = await db
+        .from("staff_profiles")
+        .select("portal_tour_dismissed_at")
+        .eq("id", originalProfile!.id)
+        .single();
+      expect(stillNull?.portal_tour_dismissed_at).toBeNull();
+
+      await nudge.getByRole("button", { name: "Not now" }).click();
+      await expect(page).toHaveURL(/\/admin\/?$/);
+      await expect(page.getByTestId("portal-tour-nudge")).toHaveCount(0);
+      const { data: dismissed } = await db
+        .from("staff_profiles")
+        .select("portal_tour_dismissed_at")
+        .eq("id", originalProfile!.id)
+        .single();
+      expect(typeof dismissed?.portal_tour_dismissed_at).toBe("string");
+
+      await page.goto("/admin/help");
+      const systems = page.locator("details", {
+        hasText: "Show the systems explainer",
+      });
+      await systems.getByText("Show the systems explainer").click();
+      for (const name of ["GitHub", "Vercel", "Supabase", "Porkbun"]) {
+        await expect(systems.getByText(name, { exact: true })).toBeVisible();
+      }
+
+      await page
+        .getByRole("button", { name: "Show the portal tour again" })
+        .click();
+      await expect(page).toHaveURL(/\/admin\/?$/);
+      await expect(page.getByTestId("portal-tour-nudge")).toBeVisible();
+      const { data: restarted } = await db
+        .from("staff_profiles")
+        .select("portal_tour_dismissed_at")
+        .eq("id", originalProfile!.id)
+        .single();
+      expect(restarted?.portal_tour_dismissed_at).toBeNull();
+
+      await page.getByRole("button", { name: "Take a quick tour" }).click();
+      await page.getByTestId("portal-tour-dialog").getByRole("button", {
+        name: "Next",
+      }).click();
+      await page.getByTestId("portal-tour-dialog").getByRole("button", {
+        name: "Next",
+      }).click();
+      await page
+        .getByTestId("portal-tour-dialog")
+        .getByRole("button", { name: "Finish tour" })
+        .click();
+      await expect(page).toHaveURL(/\/admin\/?$/);
+      await expect(page.getByTestId("portal-tour-nudge")).toHaveCount(0);
+      await page.reload();
+      await expect(page.getByTestId("portal-tour-nudge")).toHaveCount(0);
+
+      const { data: completed } = await db
+        .from("staff_profiles")
+        .select("portal_tour_dismissed_at")
+        .eq("id", originalProfile!.id)
+        .single();
+      expect(typeof completed?.portal_tour_dismissed_at).toBe("string");
+
+      const { data: audits, error: auditError } = await db
+        .from("audit_log")
+        .select("id, action")
+        .eq("actor_email", email)
+        .eq("entity_id", originalProfile!.id)
+        .in("action", ["staff.tour_dismiss", "staff.tour_restart"]);
+      expect(auditError).toBeNull();
+      expect(
+        (audits ?? [])
+          .filter((row) => !priorAuditIds.has(row.id))
+          .map((row) => row.action),
+      ).toEqual(
+        expect.arrayContaining([
+          "staff.tour_dismiss",
+          "staff.tour_restart",
+        ]),
+      );
+    } finally {
+      await db
+        .from("staff_profiles")
+        .update({
+          portal_tour_dismissed_at:
+            originalProfile!.portal_tour_dismissed_at,
+        })
+        .eq("id", originalProfile!.id);
+      const { data: tourAudits } = await db
+        .from("audit_log")
+        .select("id")
+        .eq("actor_email", email)
+        .eq("entity_id", originalProfile!.id)
+        .in("action", ["staff.tour_dismiss", "staff.tour_restart"]);
+      const auditIds = (tourAudits ?? [])
+        .map((row) => row.id)
+        .filter((id) => !priorAuditIds.has(id));
+      if (auditIds.length > 0) {
+        await db.from("audit_log").delete().in("id", auditIds);
+      }
+    }
+  });
 });

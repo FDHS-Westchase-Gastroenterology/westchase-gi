@@ -18,6 +18,7 @@ const RPC_SIGNATURES = {
     "p_actor_email text, p_request_id uuid, p_note text, p_note_length integer",
   portal_complete_staff_onboarding: "p_user_id uuid",
   portal_record_staff_password_reset: "p_user_id uuid",
+  portal_set_staff_tour_dismissed: "p_user_id uuid, p_dismissed boolean",
   portal_update_request_status:
     "p_actor_email text, p_request_id uuid, p_next_status text",
 }
@@ -53,6 +54,7 @@ const RPC_RESULTS = {
   portal_add_request_note: "uuid",
   portal_complete_staff_onboarding: "boolean",
   portal_record_staff_password_reset: "boolean",
+  portal_set_staff_tour_dismissed: "boolean",
   portal_update_request_status: "boolean",
 }
 const PHASE_C_MIGRATION = {
@@ -74,6 +76,10 @@ const REVIEW_QR_RETIREMENT_MIGRATION = {
 const SOFTWARE_REGISTRY_RETIREMENT_MIGRATION = {
   version: "20260716151327",
   name: "retire_software_registry",
+}
+const PORTAL_TOUR_MIGRATION = {
+  version: "20260720102654",
+  name: "add_portal_staff_tour",
 }
 
 const TARGETS = new Set(["dev", "prod"])
@@ -401,6 +407,14 @@ async function main() {
     ),
     `Software-registry retirement migration ${SOFTWARE_REGISTRY_RETIREMENT_MIGRATION.version}_${SOFTWARE_REGISTRY_RETIREMENT_MIGRATION.name} is not applied`,
   )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === PORTAL_TOUR_MIGRATION.version &&
+        row.name === PORTAL_TOUR_MIGRATION.name,
+    ),
+    `Portal-tour migration ${PORTAL_TOUR_MIGRATION.version}_${PORTAL_TOUR_MIGRATION.name} is not applied`,
+  )
 
   const onboardingColumnRows = await queryDatabase({
     accessToken,
@@ -419,6 +433,25 @@ async function main() {
       onboardingColumnRows[0].is_nullable === "YES" &&
       onboardingColumnRows[0].column_default === null,
     "staff_profiles.onboarded_at must be nullable timestamptz with no default",
+  )
+
+  const tourColumnRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select data_type, is_nullable, column_default
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'staff_profiles'
+        and column_name = 'portal_tour_dismissed_at';
+    `,
+  })
+  assert(
+    tourColumnRows.length === 1 &&
+      tourColumnRows[0].data_type === "timestamp with time zone" &&
+      tourColumnRows[0].is_nullable === "YES" &&
+      tourColumnRows[0].column_default === null,
+    "staff_profiles.portal_tour_dismissed_at must be nullable timestamptz with no default",
   )
 
   const tableRows = await queryDatabase({
@@ -655,7 +688,7 @@ async function main() {
       url: config.url,
       serviceKey: config.serviceKey,
       table: "staff_profiles",
-      query: `select=id,user_id,email,role,active,onboarded_at&email=eq.${encodedEmail}`,
+      query: `select=id,user_id,email,role,active,onboarded_at,portal_tour_dismissed_at&email=eq.${encodedEmail}`,
     }),
     selectRows({
       url: config.url,
@@ -670,7 +703,8 @@ async function main() {
       staffRows[0].user_id === user.id &&
       staffRows[0].role === "admin" &&
       staffRows[0].active === true &&
-      typeof staffRows[0].onboarded_at === "string",
+      typeof staffRows[0].onboarded_at === "string" &&
+      typeof staffRows[0].portal_tour_dismissed_at === "string",
     "Seed admin staff profile is missing or incorrect",
   )
   assert(
@@ -696,7 +730,13 @@ async function main() {
     `Verified ${target} migration: ${SOFTWARE_REGISTRY_RETIREMENT_MIGRATION.version}_${SOFTWARE_REGISTRY_RETIREMENT_MIGRATION.name}`,
   )
   console.log(
+    `Verified ${target} migration: ${PORTAL_TOUR_MIGRATION.version}_${PORTAL_TOUR_MIGRATION.name}`,
+  )
+  console.log(
     `Verified ${target} staff_profiles.onboarded_at: nullable timestamptz, no default`,
+  )
+  console.log(
+    `Verified ${target} staff_profiles.portal_tour_dismissed_at: nullable timestamptz, no default`,
   )
   console.log(
     `Verified ${target} policies=${actualPolicies.length}, least-privilege table ACLs=${privilegeRows.length}`,

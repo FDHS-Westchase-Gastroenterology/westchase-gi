@@ -13,6 +13,7 @@ export type PortalSessionUser = {
   email: string;
   displayName: string;
   role: StaffRole;
+  portalTourDismissedAt: string | null;
 };
 
 export type PortalStaffAuthState = PortalSessionUser & {
@@ -85,7 +86,9 @@ export async function resolveStaffAuthState(
 ): Promise<PortalStaffAuthState | null> {
   const { data: profile, error: profileError } = await serviceClient()
     .from("staff_profiles")
-    .select("email, display_name, role, active, onboarded_at")
+    .select(
+      "email, display_name, role, active, onboarded_at, portal_tour_dismissed_at",
+    )
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -100,6 +103,10 @@ export async function resolveStaffAuthState(
       : "";
   const onboardedAt =
     typeof profile.onboarded_at === "string" ? profile.onboarded_at : null;
+  const portalTourDismissedAt =
+    typeof profile.portal_tour_dismissed_at === "string"
+      ? profile.portal_tour_dismissed_at
+      : null;
 
   if (!email || !displayName) return null;
 
@@ -110,6 +117,7 @@ export async function resolveStaffAuthState(
     role: profile.role,
     active: profile.active === true,
     onboardedAt,
+    portalTourDismissedAt,
   };
 }
 
@@ -204,6 +212,7 @@ export const getSessionUser = cache(
       email: state.email,
       displayName: state.displayName,
       role: state.role,
+      portalTourDismissedAt: state.portalTourDismissedAt,
     };
   },
 );
