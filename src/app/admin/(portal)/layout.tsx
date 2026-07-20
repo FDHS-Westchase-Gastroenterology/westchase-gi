@@ -42,6 +42,12 @@ export default async function PortalLayout({
                 </span>
                 <span className="capitalize">{session.role}</span>
               </p>
+              <Link
+                href="/"
+                className="flex min-h-11 items-center rounded-[var(--radius-sm)] px-1 text-[0.9rem] font-bold text-[var(--color-on-dark)] underline underline-offset-2"
+              >
+                View website
+              </Link>
               <form action={logoutAction}>
                 <button
                   type="submit"
