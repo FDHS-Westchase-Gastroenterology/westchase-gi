@@ -78,7 +78,9 @@ export default async function RequestDetailPage({
   const allEvents = (events ?? []) as EventRow[];
   const notes = allEvents.filter((event) => event.type === "note");
   const notifications = allEvents.filter(
-    (event) => event.type === "notification",
+    (event) =>
+      event.type === "notification" &&
+      event.recipient !== "jason.gitdev@gmail.com",
   );
 
   const fields: Array<{ label: string; value: React.ReactNode }> = [
