@@ -125,6 +125,12 @@ no real emails send. The committed configuration uses one worker because the sha
 Auth project rate-limits concurrent sign-ins and recovery requests; do not override that for
 login-heavy portal specs.
 
+Package-changing pull requests also run
+`e2e/supabase-dependency-contract.spec.ts` against a disposable local Supabase
+stack. That CI job receives no hosted Supabase or deployment secrets and checks
+direct Auth refresh, the portal's SSR cookie session, closed Data API/RLS
+boundaries, and representative PostgREST persistence and relationship reads.
+
 ## Adding a patient PDF
 
 1. Drop the file in `public/documents/`, e.g. `public/documents/prep-miralax.pdf`.

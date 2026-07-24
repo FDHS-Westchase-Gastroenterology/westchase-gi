@@ -6,6 +6,7 @@ on:
       - CI
       - React Doctor
       - Dependabot Codex Review
+      - Supabase Dependency Integration
       - Production Verification
     types: [completed]
   schedule:

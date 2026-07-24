@@ -7,13 +7,14 @@ const { appendFileSync } = require("node:fs");
 const REVIEW_STATUS = "Dependabot Auto-Merge";
 const REVIEW_MARKER = "<!-- dependabot-codex-review -->";
 const ALLOWED_CHANGED_FILES = new Set(["package.json", "package-lock.json"]);
-const AUTO_MERGE_PACKAGES = new Set([
-  "@types/node",
-  "@types/react",
-  "@types/react-dom",
-  "jsqr",
-  "pdf-lib",
-  "pngjs",
+const SUPABASE_RUNTIME_PACKAGES = new Set([
+  "@supabase/ssr",
+  "@supabase/supabase-js",
+]);
+const HUMAN_REVIEW_DEV_PACKAGES = new Set([
+  "@playwright/test",
+  "react-doctor",
+  "typescript",
 ]);
 const LABELS = {
   approved: {
@@ -109,27 +110,39 @@ function classifyDependabot(input) {
 
   const safeToReview = trustReasons.length === 0;
   const autoMergeReasons = [...trustReasons];
+  const isSinglePackage = names.length === 1;
+  const isPatch = input.updateType === "version-update:semver-patch";
+  const isSupabaseRuntime =
+    input.dependencyType === "direct:production" &&
+    isSinglePackage &&
+    SUPABASE_RUNTIME_PACKAGES.has(names[0]);
 
-  if (input.dependencyType !== "direct:development") {
-    autoMergeReasons.push("dependency is not a direct development dependency");
-  }
-  if (input.updateType !== "version-update:semver-patch") {
+  if (!isPatch) {
     autoMergeReasons.push("update is not semver-patch");
   }
-  if (names.length !== 1) {
+  if (!isSinglePackage) {
     autoMergeReasons.push("update changes more than one direct dependency");
   }
-  if (names.some((name) => !AUTO_MERGE_PACKAGES.has(name))) {
-    autoMergeReasons.push("dependency is outside the low-risk allowlist");
+  if (input.dependencyType === "direct:development") {
+    if (names.some((name) => HUMAN_REVIEW_DEV_PACKAGES.has(name))) {
+      autoMergeReasons.push(
+        "dependency controls a required verification or compiler gate",
+      );
+    }
+  } else if (!isSupabaseRuntime) {
+    autoMergeReasons.push(
+      "runtime dependency is outside the integration-tested Supabase lane",
+    );
   }
   if (String(input.dependencyGroup || "").trim()) {
     autoMergeReasons.push("grouped dependency updates require human review");
   }
 
   return {
-    version: 1,
+    version: 2,
     safeToReview,
     autoMergeEligible: safeToReview && autoMergeReasons.length === 0,
+    requiresSupabaseIntegration: isSupabaseRuntime,
     dependencyNames: names,
     changedFiles: files,
     dependencyType: String(input.dependencyType || ""),
@@ -249,7 +262,7 @@ function latestCheck(checkRuns, checkName) {
 function evaluateGate(checkRuns, statuses, { production = false } = {}) {
   const requiredChecks = production
     ? ["quality", "react-doctor", "production"]
-    : ["quality", "react-doctor"];
+    : ["quality", "react-doctor", "supabase-integration"];
   const missing = [];
 
   for (const name of requiredChecks) {
@@ -811,9 +824,10 @@ if (require.main === module) {
 }
 
 module.exports = {
-  AUTO_MERGE_PACKAGES,
+  HUMAN_REVIEW_DEV_PACKAGES,
   LABELS,
   REVIEW_STATUS,
+  SUPABASE_RUNTIME_PACKAGES,
   classifyDependabot,
   evaluateGate,
   filesArePackageOnly,

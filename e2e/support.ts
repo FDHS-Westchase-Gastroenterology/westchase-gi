@@ -1,13 +1,15 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Loads .env.local (gitignored, present locally) into process.env for specs
- * and global hooks. Values are never printed.
+ * Loads .env.local when present. CI injects disposable local-stack values
+ * directly into process.env, so it does not need a credentials file.
  */
 export function loadLocalEnv(): void {
-  const contents = readFileSync(resolve(process.cwd(), ".env.local"), "utf8");
+  const path = resolve(process.cwd(), ".env.local");
+  if (!existsSync(path)) return;
+  const contents = readFileSync(path, "utf8");
 
   for (const rawLine of contents.split(/\r?\n/)) {
     const line = rawLine.trim();
