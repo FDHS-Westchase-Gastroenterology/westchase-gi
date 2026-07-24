@@ -16,6 +16,13 @@ const db = serviceDb();
 const dicts: Record<Locale, Dictionary> = { en, es, vi, ko, ar };
 const runId = randomUUID().slice(0, 8);
 
+test.use({
+  storageState: {
+    cookies: [{ name: "wgi-locale", value: "en", domain: "localhost", path: "/" }],
+    origins: [],
+  },
+});
+
 /** All spec rows share this address shape so cleanup can sweep any run. */
 function emailFor(label: string): string {
   return `form-e2e-${runId}-${label}@example.test`;
