@@ -91,9 +91,10 @@ notifications) and the authenticated staff portal at `/admin`.
 
 ## Verification
 
-- `npm run build`, `npm run lint`, and `npm run doctor` must pass; the local React Doctor standard
-  is 100. The required GitHub status currently runs advisory (`blocking: none`), so a green check
-  proves execution, not a clean score—inspect its published score and findings.
+- `npm run build`, `npm run lint`, and `npm run doctor` must execute; the local React Doctor
+  standard is 100. The required GitHub status remains advisory while current findings are
+  reconciled, so a green check proves execution, not a clean score—inspect its report. The
+  dependency controller separately rejects auto-merge when an exact-head PR scan reports errors.
 - `npx playwright test` must pass (see README §Tests; specs run against a development
   Supabase project via `.env.local`).
 - `node scripts/verify-no-secrets.mjs` proves the history stays free of secret material;

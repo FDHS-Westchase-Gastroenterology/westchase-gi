@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "decision",
+    "summary",
+    "risk_reasons",
+    "evidence",
+    "recommended_actions"
+  ],
+  "properties": {
+    "decision": {
+      "type": "string",
+      "enum": ["approve", "needs_human", "block"]
+    },
+    "summary": {
+      "type": "string",
+      "maxLength": 1200
+    },
+    "risk_reasons": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "type": "string",
+        "maxLength": 500
+      }
+    },
+    "evidence": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "type": "string",
+        "maxLength": 500
+      }
+    },
+    "recommended_actions": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "type": "string",
+        "maxLength": 500
+      }
+    }
+  }
+}

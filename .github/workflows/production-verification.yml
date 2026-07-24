@@ -1,0 +1,45 @@
+name: Production Verification
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: Exact main commit that Vercel must deploy
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  deployments: read
+  statuses: read
+
+concurrency:
+  group: production-verification-main
+  cancel-in-progress: false
+
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: ${{ inputs.expected_sha || github.sha }}
+          persist-credentials: false
+
+      - name: Wait for matching Vercel Production and smoke the canonical site
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha || github.sha }}
+        with:
+          script: |
+            const automation = require(
+              "./.github/scripts/dependency-automation.cjs",
+            );
+            await automation.verifyProduction({
+              github,
+              context,
+              core,
+            });

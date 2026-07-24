@@ -1,0 +1,188 @@
+name: Dependabot Codex Review
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions: {}
+
+concurrency:
+  group: dependabot-codex-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preflight:
+    if: >-
+      github.repository == 'FDHS-Westchase-Gastroenterology/westchase-gi' &&
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      policy: ${{ steps.policy.outputs.policy }}
+      safe_to_review: ${{ steps.policy.outputs.safe_to_review }}
+      auto_merge_eligible: ${{ steps.policy.outputs.auto_merge_eligible }}
+      dependency_names: ${{ steps.metadata.outputs.dependency-names }}
+      dependency_type: ${{ steps.metadata.outputs.dependency-type }}
+      update_type: ${{ steps.metadata.outputs.update-type }}
+      previous_version: ${{ steps.metadata.outputs.previous-version }}
+      new_version: ${{ steps.metadata.outputs.new-version }}
+      head_sha: ${{ github.event.pull_request.head.sha }}
+      base_sha: ${{ github.event.pull_request.base.sha }}
+    steps:
+      # pull_request_target can access secrets, so this checkout is explicitly
+      # the trusted base commit. No PR-controlled file runs in this job.
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - name: Verify Dependabot metadata and commits
+        id: metadata
+        continue-on-error: true
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ github.token }}
+
+      - name: Read changed paths without checking out PR code
+        id: files
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          result-encoding: string
+          script: |
+            const files = await github.paginate(
+              github.rest.pulls.listFiles,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                per_page: 100,
+              },
+            );
+            return JSON.stringify(files.map((file) => file.filename));
+
+      - name: Classify the exact update
+        id: policy
+        env:
+          METADATA_VERIFIED: ${{ steps.metadata.outcome == 'success' }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          TARGET_BRANCH: ${{ steps.metadata.outputs.target-branch }}
+          PACKAGE_ECOSYSTEM: ${{ steps.metadata.outputs.package-ecosystem }}
+          DEPENDABOT_DIRECTORY: ${{ steps.metadata.outputs.directory }}
+          MAINTAINER_CHANGES: ${{ steps.metadata.outputs.maintainer-changes }}
+          DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names }}
+          DEPENDENCY_TYPE: ${{ steps.metadata.outputs.dependency-type }}
+          UPDATE_TYPE: ${{ steps.metadata.outputs.update-type }}
+          DEPENDENCY_GROUP: ${{ steps.metadata.outputs.dependency-group }}
+          PREVIOUS_VERSION: ${{ steps.metadata.outputs.previous-version }}
+          NEW_VERSION: ${{ steps.metadata.outputs.new-version }}
+          CHANGED_FILES_JSON: ${{ steps.files.outputs.result }}
+        run: node .github/scripts/dependency-automation.cjs policy
+
+  codex:
+    needs: preflight
+    if: needs.preflight.outputs.safe_to_review == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      result: ${{ steps.review.outputs.final-message }}
+    steps:
+      # Only verified Dependabot commits with manifest-only diffs reach this
+      # checkout. Credentials are not persisted, and Codex gets no GitHub
+      # mutation token or command-level network access.
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Write sanitized review context
+        env:
+          BASE_SHA: ${{ needs.preflight.outputs.base_sha }}
+          HEAD_SHA: ${{ needs.preflight.outputs.head_sha }}
+          POLICY_JSON: ${{ needs.preflight.outputs.policy }}
+          DEPENDENCY_NAMES: ${{ needs.preflight.outputs.dependency_names }}
+          DEPENDENCY_TYPE: ${{ needs.preflight.outputs.dependency_type }}
+          UPDATE_TYPE: ${{ needs.preflight.outputs.update_type }}
+          PREVIOUS_VERSION: ${{ needs.preflight.outputs.previous_version }}
+          NEW_VERSION: ${{ needs.preflight.outputs.new_version }}
+        run: |
+          node -e '
+            const fs = require("node:fs");
+            fs.mkdirSync(".codex-context", { recursive: true });
+            fs.writeFileSync(
+              ".codex-context/dependabot.json",
+              JSON.stringify({
+                baseSha: process.env.BASE_SHA,
+                headSha: process.env.HEAD_SHA,
+                policy: JSON.parse(process.env.POLICY_JSON),
+                dependencyNames: process.env.DEPENDENCY_NAMES,
+                dependencyType: process.env.DEPENDENCY_TYPE,
+                updateType: process.env.UPDATE_TYPE,
+                previousVersion: process.env.PREVIOUS_VERSION,
+                newVersion: process.env.NEW_VERSION,
+              }, null, 2),
+            );
+          '
+
+      # This must remain the final step. drop-sudo protects the API credential;
+      # :read-only prevents file/network mutations from model-generated commands.
+      - name: Review with Codex
+        id: review
+        uses: openai/codex-action@52fe01ec70a42f454c9d2ebd47598f9fd6893d56 # v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: .github/codex/dependabot-review.md
+          output-schema-file: .github/codex/dependabot-review.schema.json
+          permission-profile: ":read-only"
+          safety-strategy: drop-sudo
+          codex-version: "0.145.0"
+          codex-args: '["--ephemeral", "--ignore-user-config"]'
+          model: gpt-5.3-codex
+          effort: high
+          allow-bots: "true"
+          allow-bot-users: dependabot
+
+  report:
+    needs: [preflight, codex]
+    if: always() && needs.preflight.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      statuses: write
+    steps:
+      # Report code always comes from the trusted base branch. This job never
+      # checks out or executes PR-controlled code.
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - name: Publish exact-SHA decision
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ needs.preflight.outputs.head_sha }}
+          POLICY_JSON: ${{ needs.preflight.outputs.policy }}
+          CODEX_JOB_RESULT: ${{ needs.codex.result }}
+          CODEX_RESULT: ${{ needs.codex.outputs.result }}
+        with:
+          script: |
+            const automation = require(
+              "./.github/scripts/dependency-automation.cjs",
+            );
+            await automation.reportDependabotReview({
+              github,
+              context,
+              core,
+            });
