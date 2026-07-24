@@ -70,6 +70,36 @@ notifications) and the authenticated staff portal at `/admin`.
     least-privilege permissions. The portal does not connect to or manage Vercel
     (`docs/INTEGRATION-ACTIVATION.md`).
 
+## Dependabot/Supabase agent readiness
+
+The guarded dependency lane is operational. Its detailed source of truth is
+`.github/codex/dependabot-sop-and-examples.md`; executable policy lives in
+`.github/scripts/dependency-automation.cjs` and its adjacent test.
+
+- Dependabot performs the version bump. Codex runs a read-only semantic review of the exact
+  verified head on an ephemeral GitHub Actions runner; it cannot edit the branch, push a repair,
+  merge, or access a GitHub mutation token. A needed source or migration change means human review.
+- Every package-changing PR runs `e2e/supabase-dependency-contract.spec.ts` in a separate
+  GitHub-hosted Ubuntu job. That job starts a disposable Docker Supabase stack, replays committed
+  migrations, seeds local-only fixtures, checks Auth/SSR sessions, permission boundaries, intake
+  persistence, and PostgREST relationships, then stops the stack even on failure.
+- The disposable job receives no hosted Supabase, Vercel, or repository secrets. It never runs on
+  Jason's Mac and has no path that applies migrations or test writes to Development or Production.
+  Post-merge Production verification only checks the matching Vercel deployment and performs a
+  read-only canonical-site smoke request.
+- Automatic merge is limited to a verified, ungrouped, single-package, manifest-only npm patch to
+  `main`: a direct development dependency other than TypeScript, Playwright, or React Doctor, or a
+  direct production patch to `@supabase/supabase-js` or `@supabase/ssr`. Minor/major, grouped,
+  multi-package, maintainer-modified, source-changing, migration-changing, conflicting, stale, or
+  ambiguous PRs stop for a human.
+- The controller rechecks the exact SHA, all deterministic checks, Codex status, Vercel preview,
+  and mergeability; merges at most one PR without bypassing branch protection; then pauses the
+  queue until post-merge CI, React Doctor, Vercel Production, and live smoke succeed.
+
+Do not widen this lane by prose or agent judgment. Change the executable policy and regression
+tests together, preserve the no-production-database boundary, and require a new evidence-backed
+review before granting another runtime package autonomous merge authority.
+
 ## Known current reconciliation items (2026-07-20)
 
 - The canonical patient origin is the apex `https://westchasegi.com`; `www` redirects to it.
