@@ -415,6 +415,7 @@ export async function inviteStaffMutation(
       role: parsed.data.role,
       active: true,
       onboarded_at: null,
+      portal_tour_dismissed_at: null,
     })
     .select("id")
     .single();

@@ -1,10 +1,9 @@
 import reviewTargets from "@/lib/review-targets.json";
 
 // Central site configuration for FDHS Westchase Gastroenterology.
-// Every fact mirrors the practice's published content; items flagged
-// NEEDS CONFIRMATION carry the value the practice's primary contact page
-// publishes today and are centralized here so a confirmed correction is a
-// one-line change.
+// Facts carry dated provenance comments where useful; unresolved practice
+// confirmations are listed in README so a present value is never mistaken
+// for confirmed merely because it is centralized here.
 
 export type Locale = "en" | "es" | "vi" | "ko" | "ar";
 export const locales: Locale[] = ["en", "es", "vi", "ko", "ar"];
@@ -69,8 +68,8 @@ export function localeDir(locale: Locale): "ltr" | "rtl" {
  * Shared by the layout's pre-paint script and the banner's dismiss button. */
 export const BANNER_KEY = "wgi-banner-dismissed";
 
-/** Cookie recording the visitor's last-used locale. Written client-side on
- * every locale page; read by the proxy to send `/` to the right language. */
+/** Cookie recording the visitor's explicitly chosen locale. Read by the
+ * proxy to send future visits to `/` to the right language. */
 export const LOCALE_COOKIE = "wgi-locale";
 
 export const site = {
@@ -87,7 +86,7 @@ export const site = {
   fax: { display: "(813) 920-8883" },
   // 2026-07-10 debrief: use the contact-page address as the canonical public address.
   // Staff do not reliably monitor it, so appointment requests must not depend on this
-  // inbox; the future intake system will use a watched database/admin queue instead.
+  // inbox; the shipped intake system uses the durable database/admin queue instead.
   email: "fdhswestchase@fdhs.com",
   // Confirmed by the practice 2026-07-05: these are the ONLY current procedure
   // locations (the four facilities on the old site are outdated).
@@ -127,7 +126,7 @@ export const site = {
       postal: "33558",
       geo: { lat: 28.145624, lng: -82.52381 },
       mapsQuery: "Westchase Gastroenterology, 4695 Van Dyke Road, Lutz, FL 33558",
-      // No separate Google profile surfaced. Keep the practice-published schedule until confirmed.
+      // Practice-confirmed 2026-07-10: 8:00–4:30. No separate Google profile surfaced.
       hours: { opens: "08:00", closes: "16:30" },
     },
   ],
@@ -167,4 +166,13 @@ export function directionsUrl(query: string): string {
 export function localePath(locale: Locale, path: string): string {
   const clean = path.startsWith("/") ? path : `/${path}`;
   return clean === "/" ? `/${locale}` : `/${locale}${clean}`;
+}
+
+/** Re-point a localized path at another locale without changing its page. */
+export function pathInLocale(pathname: string, target: Locale): string {
+  const rest = pathname.replace(
+    new RegExp(`^/(${locales.join("|")})(?=/|$)`),
+    "",
+  );
+  return `/${target}${rest}`;
 }

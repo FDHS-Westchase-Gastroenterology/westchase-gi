@@ -73,9 +73,10 @@ export default async function AdminSettingsSoftwarePage() {
             Who owns the website
           </h3>
           <p className="mt-3 max-w-[62ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-            Westchase GI owns this website, plain and simple. The practice —
-            not its developer — holds the keys to every service that keeps it
-            running.
+            Westchase GI controls this website&apos;s domain, source repository,
+            and deployment. Database and email account custody is still being
+            completed with the practice, so this page is not yet proof that the
+            practice holds every service credential.
           </p>
           <dl className="mt-3 max-w-[62ch] space-y-3 text-[0.9rem] leading-relaxed text-[var(--color-body)]">
             <div>
@@ -129,8 +130,9 @@ export default async function AdminSettingsSoftwarePage() {
                 Website address — Porkbun
               </dt>
               <dd>
-                Porkbun keeps westchasegi.com registered and renewed, so the
-                address always points home.
+                Porkbun currently holds the westchasegi.com registration and
+                serves its DNS. Auto-renew and WHOIS privacy still need to be
+                confirmed in the clinic account.
                 <a
                   href="https://porkbun.com/account/login"
                   className="mt-1 block w-fit font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
@@ -141,9 +143,11 @@ export default async function AdminSettingsSoftwarePage() {
             </div>
           </dl>
           <p className="mt-3 max-w-[62ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-            If the practice ever works with a new developer, it simply grants
-            them access to these same services. Nothing needs to be rebuilt,
-            and nothing needs to move.
+            The practice can grant a new developer access to GitHub, Vercel,
+            and Porkbun now. After the Supabase project transfer and Resend
+            handoff are documented, it can grant those services too. The
+            application does not need to be rebuilt, and the Supabase transfer
+            requires no data migration.
           </p>
         </div>
       </div>

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireRole } from "@/lib/portal/auth";
 import { site } from "@/lib/site";
+import { restartPortalTourAction } from "../tour-actions";
 
 // Plain-language operations guide for the front desk (VAL-ADMIN-012:
 // authenticated, substantive, >= 400 words, no engineering jargon).
@@ -24,6 +25,20 @@ export default async function AdminHelpPage() {
       </p>
 
       <div className="mt-8 space-y-6">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-mint)] p-6 sm:p-8">
+          <h2 className={SECTION_HEADING}>Portal tour</h2>
+          <p className={SECTION_BODY}>
+            Reopen the short introduction to Home, Appointment requests, and
+            Settings whenever a refresher would help. This takes you back to
+            Home, where you can choose when to start it.
+          </p>
+          <form action={restartPortalTourAction} className="mt-4">
+            <button type="submit" className="btn btn-navy btn-sm min-h-11">
+              Show the portal tour again
+            </button>
+          </form>
+        </div>
+
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
           <h2 className={SECTION_HEADING}>What the appointment request queue is</h2>
           <p className={SECTION_BODY}>
@@ -128,6 +143,52 @@ export default async function AdminHelpPage() {
             page under Settings records clinic custody, the canonical
             repository, and the live GitHub connection status.
           </p>
+        </div>
+
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
+          <h2 className={SECTION_HEADING}>
+            How the website systems fit together
+          </h2>
+          <p className={SECTION_BODY}>
+            This is optional background. You do not need to open or manage
+            any of these systems to work appointment requests in the portal.
+          </p>
+          <details className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-4 py-3 open:pb-5">
+            <summary className="min-h-11 cursor-pointer py-2 font-bold text-[var(--color-teal-ink)]">
+              Show the systems explainer
+            </summary>
+            <dl className="mt-3 space-y-4 text-[0.95rem] leading-relaxed text-[var(--color-body)]">
+              <div>
+                <dt className="font-black text-[var(--color-ink)]">GitHub</dt>
+                <dd className="mt-1">
+                  Keeps the website files and their change history. The
+                  website maintainer works there when the practice requests
+                  an update.
+                </dd>
+              </div>
+              <div>
+                <dt className="font-black text-[var(--color-ink)]">Vercel</dt>
+                <dd className="mt-1">
+                  Publishes those approved website files to the internet and
+                  keeps the public site available.
+                </dd>
+              </div>
+              <div>
+                <dt className="font-black text-[var(--color-ink)]">Supabase</dt>
+                <dd className="mt-1">
+                  Holds the secure appointment-request queue and staff sign-in
+                  records used by this portal.
+                </dd>
+              </div>
+              <div>
+                <dt className="font-black text-[var(--color-ink)]">Porkbun</dt>
+                <dd className="mt-1">
+                  Keeps the clinic&apos;s website address registered and points
+                  that address to the published site.
+                </dd>
+              </div>
+            </dl>
+          </details>
         </div>
 
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">

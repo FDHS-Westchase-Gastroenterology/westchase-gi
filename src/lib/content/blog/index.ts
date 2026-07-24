@@ -2,7 +2,9 @@
 // full posts a visitor finds on the old blog's first two pages, Nov 2025 –
 // Jun 2026). Topic, title, and posted date match the old site exactly; the
 // bodies are original writing (the old bodies were vendor-licensed text that
-// does not transfer), in both languages. Older archive titles (2019–2025)
+// does not transfer), authored as an EN/ES baseline and expanded into VI/KO/AR
+// by machine translation; all translated copy awaits native-speaker review.
+// Older archive titles (2019–2025)
 // exist only as teasers in the recon capture and are catalogued in the
 // faithfulness matrix at the repo root, not ported.
 

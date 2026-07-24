@@ -1,8 +1,9 @@
 // The patient-education library, ported 1:1 by topic from the old site's
 // 17-topic article library, plus one on-site page for every disease
-// information sheet the old site offered only as a (dead) PDF. Bodies are
-// original plain-language writing in both languages (the old library was
-// ASGE-licensed content that does not transfer to the new site).
+// information sheet the old site offered only as a (dead) PDF. Bodies use
+// original plain-language EN/ES writing (the old library was ASGE-licensed
+// content that does not transfer), expanded into VI/KO/AR by machine
+// translation; all translated copy awaits native-speaker review.
 
 import type { EducationTopic } from "../types";
 import { procedures } from "./procedures";

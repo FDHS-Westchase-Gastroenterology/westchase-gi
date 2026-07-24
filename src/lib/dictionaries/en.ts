@@ -79,6 +79,15 @@ export const en = {
     requestAppointment: "Request appointment",
     patientPortal: "Patient portal",
     languageLabel: "Language",
+    languageChooser: {
+      eyebrow: "Website language",
+      title: "Choose your language",
+      description:
+        "Choose the language you would like to use on this website. You can change it anytime from the Language menu.",
+      suggested: "Suggested",
+      continue: "Continue in English",
+      close: "Close language chooser and continue in English",
+    },
     getDirections: "Get directions",
     learnMore: "Learn more",
     banner: {

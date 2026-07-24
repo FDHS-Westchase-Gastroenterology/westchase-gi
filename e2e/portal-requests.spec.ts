@@ -120,6 +120,22 @@ test.describe("portal requests operation", () => {
   }) => {
     const id = await stageRequest(request, "lifecycle");
     const staged = payload("lifecycle");
+    const visibleRecipient = `queue-${runId}-recipient@example.test`;
+    const { error: notificationError } = await db.from("request_events").insert([
+      {
+        request_id: id,
+        type: "notification",
+        recipient: "jason.gitdev@gmail.com",
+        status: "accepted",
+      },
+      {
+        request_id: id,
+        type: "notification",
+        recipient: visibleRecipient,
+        status: "accepted",
+      },
+    ]);
+    expect(notificationError).toBeNull();
 
     await signIn(page);
     await page.goto(`/admin/requests/${id}`);
@@ -135,6 +151,11 @@ test.describe("portal requests operation", () => {
       staged.message,
     );
     await expect(page.getByText("/en/appointment").first()).toBeVisible();
+    const notifications = page
+      .getByRole("heading", { name: "Notifications" })
+      .locator("..");
+    await expect(notifications).toContainText(visibleRecipient);
+    await expect(notifications).not.toContainText("jason.gitdev@gmail.com");
 
     for (const status of ["contacted", "scheduled", "closed"] as const) {
       await page.locator(`[data-status-action="${status}"]`).click();

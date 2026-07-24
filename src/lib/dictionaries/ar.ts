@@ -80,6 +80,15 @@ export const ar: Dictionary = {
     requestAppointment: "طلب موعد",
     patientPortal: "بوابة المريض",
     languageLabel: "اللغة",
+    languageChooser: {
+      eyebrow: "لغة الموقع الإلكتروني",
+      title: "اختر لغتك",
+      description:
+        "اختر اللغة التي تود استخدامها في هذا الموقع. يمكنك تغييرها في أي وقت من قائمة اللغة.",
+      suggested: "مقترحة",
+      continue: "المتابعة بالعربية",
+      close: "إغلاق اختيار اللغة والمتابعة بالعربية",
+    },
     getDirections: "الحصول على الاتجاهات",
     learnMore: "معرفة المزيد",
     banner: {

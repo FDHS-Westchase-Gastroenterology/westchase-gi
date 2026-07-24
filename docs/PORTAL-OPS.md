@@ -61,7 +61,9 @@ owns the repository. ASTXRTYS has Write access for implementation work, not
 ownership. The clinic-owned Vercel Hobby project is also named `westchase-gi`;
 it replaced the former consultant-owned project after Hobby's cross-account
 repository restriction prevented a relink. The production alias and
-push-to-deploy path are verified.
+push-to-deploy path are verified. The site has been live at canonical
+`https://westchasegi.com` since 2026-07-18, with DNS at Porkbun, `www`
+redirecting to the apex, and `westchase-gi.vercel.app` still attached.
 
 The `wgi-portal` GitHub App registration uses Repository Administration
 read/write and Metadata read permissions. Website-page reads use Administration
@@ -76,14 +78,53 @@ project as a static custody fact and does not connect to or manage Vercel.
 
 ## Supabase custody
 
-Both projects (production and development) live in a dedicated Supabase
-organization for the practice. Supabase supports **project transfer**
-between organizations, so at handover the projects move to an
-organization owned by the practice's own account — no data migration
-required. Until then: never delete or pause either project; schema
-changes go through committed migrations in `supabase/migrations/`
-(`supabase link` + `supabase db push` per project, or the management
-API), applied to dev first, production after verification.
+Both projects (production and development) live in a clinic-branded Supabase
+organization provisioned for this application. As verified 2026-07-19, its sole
+member and Owner is Jason's non-clinic account, that account has MFA off, and no
+practice-controlled member exists. Do not conflate a dedicated project
+organization—or the queue's role as the practice's system of record—with clinic
+ownership of the Supabase account. Transfer both projects to a practice-owned
+organization at handoff; Supabase supports **project transfer** between
+organizations, so no data migration is required.
+
+Until ownership is verified or transferred: never delete or pause either project;
+schema changes go through committed migrations in `supabase/migrations/`
+(`supabase link` + `supabase db push` per project, or the management API), applied
+to development first and production only after verification. Record the owner,
+transfer date, and a non-secret acceptance check when this closes.
+
+## Current Production activation state (verified 2026-07-20)
+
+GitHub issue [#24](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/24)
+is the canonical remaining-acceptance tracker. Keep this section synchronized with that checklist.
+
+- Source and Vercel Production are deployed through `1124668` (PR #53), including
+  the task-first portal, Website/maintainer controls, protected flyer printer, optional
+  appointment email, first-login tour, and persistent public-site link.
+- Complete the remaining Production workflow matrix: staff role changes/deactivation;
+  notification-recipient add/confirm/pause/resume/remove; request status, notes, export,
+  and optional-email-absent behavior; and current Home, Requests, Settings, Website, and Help
+  navigation/interactions.
+- Development and Production both have the intended five portal tables and five service-only
+  RPCs through migration `20260720102654`; the retired registry tables/functions are absent.
+- Production migration-ledger parity, catalog/RLS/ACL/RPC assertions, authenticated Data API
+  denial, nullable-email insertion, atomic audit rollback, tour persistence/auditing, public-site
+  locale negotiation, and portal-session continuity passed on `1124668`. The temporary request,
+  staff profile, audit rows, and Auth identity used for acceptance were deleted. Review-flyer
+  acceptance remains a separate checklist item in issue #24.
+- The Resend domain and Production application `RESEND_FROM` are configured. Provider
+  logs mark two non-owner/non-test recipient-confirmation messages delivered, but clinic
+  ownership of those inboxes is not documented. Reconcile those recipients and run
+  clinic-approved staff-invitation and appointment-notification canaries.
+- Production Supabase Auth still uses the sandbox sender. Move its hosted SMTP sender
+  off `@resend.dev` before the arbitrary-clinic-inbox password-reset canary; the prior
+  owner-inbox reset receipt does not satisfy that gate.
+- Use a controlled throwaway GitHub account to complete invite, cancel, accept as
+  Write, and revoke, then verify the corresponding Activity-log entries.
+- Keep the standalone flyer tool as a rollback surface until the integrated printer
+  passes Production acceptance; only then verify and retire it.
+- Owner 2FA and narrowing the GitHub App installation remain separate owner-only
+  governance controls. They are open, but they do not withhold the current portal UI.
 
 ## Email-path inventory
 
@@ -143,10 +184,19 @@ printing or reading a live bearer link:
 3. Confirm an unknown address receives the same visible portal response as an
    active address.
 
-Until the practice domain is verified, `onboarding@resend.dev` can deliver only
-to the Resend account owner's address. That permits an owner-inbox canary but
-does not satisfy arbitrary clinic-recipient delivery; repeat the receipt canary
-after domain recovery and update `RESEND_FROM` before handover.
+Production's application-owned email path uses the verified `westchasegi.com`
+sending domain through its configured `RESEND_FROM`. Provider logs mark two
+non-owner/non-test recipient-confirmation messages delivered; that is real provider
+evidence, but the record does not establish that clinic staff own or read those
+inboxes. Reconcile the intended recipients and run clinic-approved staff-invitation
+and appointment-notification canaries before handover.
+
+Supabase Auth is a separate hosted SMTP path. Its Production sender is still the
+sandbox `@resend.dev` identity, which permits only the Resend account owner's
+address. Change that hosted sender to the approved clinic identity before an
+arbitrary-clinic-inbox password-reset canary. Also record the Resend team/account
+custodian without copying credentials into this repository; domain verification and
+sender configuration do not themselves prove practice custody.
 
 ## Data export
 
@@ -181,11 +231,12 @@ PDF is one 612 × 792-point letter page.
 Managed in the portal (Settings): admins add/remove addresses, any staff
 member can pause/resume one. The intake pipeline reads the ACTIVE set at
 submission time and records one `request_events` row per attempt with the
-provider outcome. Until a practice email domain is verified with Resend,
-the onboarding sender only delivers to the Resend account owner's
-address — other recipients record as provider-rejected attempts. After
-the practice domain is verified (post-cutover task), set `RESEND_FROM`
-to the practice sender and deliveries open up to any recipient.
+provider outcome. The Production application sender is configured on the verified
+clinic domain. Two recipient-confirmation messages have provider `delivered` events,
+but clinic ownership/read receipt is not recorded. Confirm the intended addresses and
+run a clinic-approved appointment-notification canary before treating notifications
+as fully accepted. This application path is separate from Supabase Auth's still-sandboxed
+password-recovery sender.
 
 ## Incident basics
 
@@ -218,3 +269,7 @@ node scripts/verify-schema.mjs --target dev       # schema/RLS/seed health (or -
 node scripts/verify-no-secrets.mjs                # git history secret sweep
 node scripts/verify-review-flyers.mjs             # QR destinations + artifact fidelity
 ```
+
+`verify-schema.mjs` uses privileged credentials, creates a temporary request to
+exercise atomic rollback, and deletes it in cleanup. Running it against Production
+is an authorized activation/maintenance action, not a read-only inspection.
