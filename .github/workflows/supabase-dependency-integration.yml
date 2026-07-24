@@ -62,11 +62,18 @@ jobs:
             --network-id supabase-dependency \
             --exclude studio,imgproxy,storage-api,realtime,edge-runtime,logflare,vector,supavisor,postgres-meta \
             --yes
-          supabase status -o env \
-            --override-name api.url=NEXT_PUBLIC_SUPABASE_URL \
-            --override-name auth.publishable_key=NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY \
-            --override-name auth.secret_key=SUPABASE_SECRET_KEY \
-            >> "$GITHUB_ENV"
+          eval "$(
+            supabase status -o env \
+              --override-name api.url=NEXT_PUBLIC_SUPABASE_URL \
+              --override-name auth.publishable_key=NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY \
+              --override-name auth.secret_key=SUPABASE_SECRET_KEY
+          )"
+          {
+            printf 'NEXT_PUBLIC_SUPABASE_URL=%s\n' "$NEXT_PUBLIC_SUPABASE_URL"
+            printf 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=%s\n' \
+              "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+            printf 'SUPABASE_SECRET_KEY=%s\n' "$SUPABASE_SECRET_KEY"
+          } >> "$GITHUB_ENV"
 
       - name: Seed disposable portal fixtures
         run: node scripts/seed-portal.mjs --target dev
