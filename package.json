@@ -33,6 +33,6 @@
     "pngjs": "^7.0.0",
     "react-doctor": "^0.7.8",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^6"
   }
 }
