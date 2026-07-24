@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: "22"
+          cache: npm
+
+      # This job intentionally receives no repository secrets. npm lifecycle
+      # code and the PR itself therefore cannot reach deployment credentials.
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Verify dependency automation policy
+        run: node --test .github/scripts/dependency-automation.test.cjs
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-public-placeholder
+          SUPABASE_SECRET_KEY: ci-server-placeholder
+          PORTAL_BASE_URL: http://127.0.0.1:3100
+        run: npm run build
+
+      - name: Install public-smoke browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run public smoke
+        env:
+          PLAYWRIGHT_PUBLIC_SMOKE: "1"
+        run: npx playwright test e2e/smoke.spec.ts --project=chromium

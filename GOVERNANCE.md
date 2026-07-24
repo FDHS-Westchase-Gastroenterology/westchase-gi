@@ -8,10 +8,33 @@ The clinic also owns the Vercel Hobby account and replacement project named `wes
 
 ## Release discipline
 
-- **`main` is production.** Merges to `main` run CI (React Doctor) and deploy automatically to the clinic-owned Vercel project. The site has been live at canonical `https://westchasegi.com` since the 2026-07-18 DNS cutover; `www` redirects to the apex and `westchase-gi.vercel.app` remains attached.
+- **`main` is production.** Merges to `main` run the required quality and React Doctor checks, deploy automatically to the clinic-owned Vercel project, and run an exact-commit Production verification against the canonical site. The site has been live at canonical `https://westchasegi.com` since the 2026-07-18 DNS cutover; `www` redirects to the apex and `westchase-gi.vercel.app` remains attached.
 - Treat every merge as patient-facing unless the change is explicitly non-user-visible (tooling, governance, docs-only).
-- React Doctor is a required status check, but the current GitHub Action is advisory (`blocking: none`): a green check proves that the scan completed, not that it scored 100. Inspect the published score and findings before merge; the repository standard remains a clean 100 local baseline.
-- The current post-merge full-project snapshot at `1b2f142` is 85/100 with zero errors and one warning. The PR/local changed-scope 100 result is useful evidence but is not the current `main` score.
+- React Doctor remains an advisory required status while the current full-project findings are reconciled: a green check proves execution, not a clean result. The dependency controller additionally refuses automatic merge when an exact-head PR scan reports errors; manifest-only Dependabot changes normally publish the explicit "no React files changed" result.
+- The current full-project snapshot at `c0d0b6e` is 65/100 with two reported errors and four warnings. Treat those diagnostics as hypotheses requiring source review; the repository standard remains a clean 100 local baseline.
+
+## Automated dependency lane
+
+Dependabot updates use three independent boundaries:
+
+1. **Deterministic PR gates:** a no-secret runner performs a clean install, policy self-test,
+   lint, build, and public Playwright smoke. React Doctor execution and Vercel preview are
+   separate required checks.
+2. **Read-only Codex review:** only verified Dependabot commits targeting `main` with a
+   manifest-only diff reach Codex. The agent receives the OpenAI credential through its
+   protected proxy but no GitHub mutation or merge credential. Its decision is tied to the exact
+   head SHA and can veto but cannot override deterministic policy.
+3. **Trusted merge controller:** only patch updates to one allowlisted direct development
+   dependency can enter the queue. The controller rechecks the exact SHA, changed paths, CI,
+   React Doctor's exact-head result, Vercel preview, Codex status, and GitHub mergeability; it merges at most one PR
+   without bypassing protection. The next PR waits for post-merge CI, React Doctor, the matching
+   Vercel Production deployment, and a canonical live-site smoke.
+
+Major, minor, runtime, grouped, compiler/build/test/CI-tool, source-changing, stale, conflicting,
+failed-agent, or ambiguous updates remain human-gated. The executable policy and seed regression
+cases live in `.github/scripts/dependency-automation.cjs` and
+`.github/codex/dependabot-sop-and-examples.md`. `OPENAI_API_KEY` is a repository Actions secret;
+never copy its value into source, logs, PR text, Dependabot secrets, or the agent workspace.
 
 ## Access lifecycle
 
@@ -37,7 +60,9 @@ Use **imperative `type(scope): summary`** subjects and a short **why-focused bod
 | **Review-ready PR** (default) | All normal source, content, and UI changes |
 | **Admin direct push to `main`** | Urgent production hotfixes only — must include equivalent verification evidence (CI green, live spot-check, rollback noted) as a PR would |
 
-Branch protection requires the **react-doctor** status check on `main` but allows admin bypass for documented emergencies. Do not use bypass for routine work.
+Branch protection requires **quality**, **react-doctor**, and **Vercel**, requires the branch to
+be current with `main`, and rejects force-pushes/deletion. Admin bypass remains reserved for
+documented emergencies; automation never uses it.
 
 ## Related policy
 

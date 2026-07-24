@@ -113,6 +113,8 @@ codebase; the portal lives in `src/app/admin/`.
 npx playwright install chromium   # once
 npx playwright test               # full serial E2E suite (boots its own server on :3100)
 npx playwright test e2e/smoke.spec.ts   # focused file
+PLAYWRIGHT_PUBLIC_SMOKE=1 npx playwright test e2e/smoke.spec.ts --project=chromium
+                                  # no-secret CI smoke; skips all Supabase setup
 ```
 
 The suite covers the intake API contract, form states across all five locales, the no-JS

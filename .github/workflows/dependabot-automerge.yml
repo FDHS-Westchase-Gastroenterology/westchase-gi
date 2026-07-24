@@ -1,0 +1,53 @@
+name: Dependabot Auto-Merge
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+      - React Doctor
+      - Dependabot Codex Review
+      - Production Verification
+    types: [completed]
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  checks: read
+  contents: write
+  deployments: read
+  issues: write
+  pull-requests: write
+  statuses: read
+
+concurrency:
+  group: dependabot-auto-merge
+  cancel-in-progress: false
+
+jobs:
+  merge-next:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          ref: main
+          persist-credentials: false
+
+      # This trusted controller never checks out or runs PR code. It selects at
+      # most one exact SHA, asks GitHub to merge without bypass, and explicitly
+      # dispatches post-merge checks because GITHUB_TOKEN-created events do not
+      # recursively start Actions workflows.
+      - name: Merge the next fully verified dependency PR
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const automation = require(
+              "./.github/scripts/dependency-automation.cjs",
+            );
+            await automation.mergeNextDependabot({
+              github,
+              context,
+              core,
+            });
