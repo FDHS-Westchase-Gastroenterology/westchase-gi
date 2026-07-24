@@ -21,6 +21,39 @@
   merge token in the agent sandbox; no PR-authored instructions; no branch
   protection bypass; bounded API usage; exact-SHA audit trail.
 
+## Runtime architecture and safety boundary
+
+The word "local" in the Supabase integration job means local to an ephemeral
+GitHub-hosted Ubuntu runner, not local to a maintainer workstation and not a
+hosted Supabase project.
+
+1. Dependabot creates the dependency commit.
+2. The trusted preflight job reads GitHub/Dependabot metadata without checking
+   out PR code. Only a verified Dependabot author, `main` target, root npm
+   update, no maintainer changes, and a `package.json`/`package-lock.json`-only
+   diff may reach Codex.
+3. Codex checks out the exact merge ref on its own GitHub Actions runner and
+   acts only as a read-only semantic veto. It has no mutation token and cannot
+   repair, push, or merge the PR.
+4. A separate `ubuntu-latest` job starts Supabase in Docker, replays the
+   committed migrations, generates local API keys, seeds local-only fixtures,
+   starts the application, runs the contract, and executes `supabase stop`
+   under `if: always()`. GitHub destroys the runner afterward.
+5. That job has `contents: read`, does not receive hosted Supabase or deployment
+   secrets, and cannot apply its migrations or test writes to Development or
+   Production. The service key used by the contract belongs only to the
+   disposable stack.
+6. The trusted controller re-reads statuses for the exact SHA, requests a
+   normal GitHub squash merge without bypass, and dispatches post-merge checks.
+   Production verification waits for the matching Vercel deployment and sends
+   a read-only `GET` to `https://westchasegi.com/en`; it does not run SQL,
+   migrations, seeds, or write probes against the live database.
+
+This is review-and-verification automation, not an autonomous repair or
+database-deployment agent. If compatibility requires application code,
+configuration, or a migration, the manifest-only guard rejects the PR for
+human handling.
+
 ## Human SOP
 
 1. Confirm the PR is open, targets `main`, is authored by `dependabot[bot]`,
@@ -77,6 +110,36 @@
 | 10 | Codex times out or returns malformed JSON | Human review | No model-output parsing can accidentally approve |
 | 11 | Dependabot refreshes the branch after approval | Rerun on new SHA | Controller rejects the stale status |
 | 12 | First merge deploys unsuccessfully or live smoke fails | Queue pauses | No second dependency PR merges |
+
+## Readiness evidence — 2026-07-24
+
+PR #60 established the disposable Supabase gate and expanded the deterministic
+lane. Its GitHub run passed clean install, lint, build, public smoke, React
+Doctor, Vercel preview, and all three isolated Supabase contracts:
+
+- password sign-in, refresh-token/user verification, SSR cookie persistence,
+  reload, and logout;
+- denied anonymous/authenticated Data API access plus permitted local
+  service-client access; and
+- application intake persistence, related event insertion, embedded PostgREST
+  relationship reads, and cleanup.
+
+The executable historical regression in
+`.github/scripts/dependency-automation.test.cjs` proves that four of the six
+Dependabot PRs opened that day would have been end-to-end eligible:
+
+| PR | Dependency | Result |
+|---|---|---|
+| #45 | `@supabase/supabase-js` patch | Eligible through the isolated Supabase runtime lane |
+| #46 | TypeScript major | Human: major and compiler-gate owner |
+| #47 | `tailwindcss` patch | Eligible direct-development patch |
+| #48 | `@tailwindcss/postcss` patch | Eligible direct-development patch |
+| #49 | React Doctor minor | Human: minor and verification-gate owner |
+| #50 | ESLint patch | Eligible direct-development patch |
+
+Run `node --test .github/scripts/dependency-automation.test.cjs` after any
+policy edit. A documentation claim never expands eligibility; only a reviewed
+policy-and-test change can do that.
 
 ## Sign-off
 
