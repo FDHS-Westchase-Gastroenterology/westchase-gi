@@ -1,0 +1,1 @@
+-- Auth and portal fixtures are seeded after local keys are generated.

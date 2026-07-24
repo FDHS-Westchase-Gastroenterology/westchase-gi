@@ -1,0 +1,89 @@
+name: Supabase Dependency Integration
+
+on:
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/supabase-dependency-integration.yml"
+      - "e2e/support.ts"
+      - "e2e/supabase-dependency-contract.spec.ts"
+      - "scripts/seed-portal.mjs"
+      - "supabase/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-dependency-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  supabase-integration:
+    name: supabase-integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PORTAL_BASE_URL: http://127.0.0.1:3100
+      PORTAL_SEED_ADMIN_EMAIL: admin@local.westchase.test
+      PORTAL_SEED_ADMIN_PASSWORD: Local-Dependabot-Only-2026!
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: "22"
+          cache: npm
+
+      # Install hooks run before local credentials exist. The test job receives
+      # no repository secrets, deployment credentials, or persisted Git token.
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
+        with:
+          version: 2.109.1
+
+      - name: Start disposable local Supabase
+        env:
+          OPENAI_API_KEY: local-studio-disabled
+        run: |
+          docker network create \
+            -o com.docker.network.bridge.host_binding_ipv4=127.0.0.1 \
+            supabase-dependency
+          supabase start \
+            --network-id supabase-dependency \
+            --exclude studio,imgproxy,storage-api,realtime,edge-runtime,logflare,vector,supavisor,postgres-meta \
+            --yes
+          eval "$(
+            supabase status -o env \
+              --override-name api.url=NEXT_PUBLIC_SUPABASE_URL \
+              --override-name auth.publishable_key=NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY \
+              --override-name auth.secret_key=SUPABASE_SECRET_KEY
+          )"
+          {
+            printf 'NEXT_PUBLIC_SUPABASE_URL=%s\n' "$NEXT_PUBLIC_SUPABASE_URL"
+            printf 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=%s\n' \
+              "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
+            printf 'SUPABASE_SECRET_KEY=%s\n' "$SUPABASE_SECRET_KEY"
+          } >> "$GITHUB_ENV"
+
+      - name: Seed disposable portal fixtures
+        run: node scripts/seed-portal.mjs --target dev
+
+      - name: Verify Supabase client, SSR Auth, RLS, and PostgREST
+        run: >-
+          npx playwright test
+          e2e/supabase-dependency-contract.spec.ts
+          --project=chromium
+
+      - name: Stop disposable local Supabase
+        if: always()
+        run: supabase stop --no-backup --yes

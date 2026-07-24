@@ -10,10 +10,13 @@
   provenance, version class, file scope, CI, deployment, and merge decisions.
   Codex is used only for repository-aware compatibility reasoning that fixed
   rules cannot reliably express.
-- **Success criteria:** Only allowlisted patch updates to one direct development
-  dependency can enter the queue; all required checks pass on the exact head;
-  one PR merges at a time; the next waits for verified Production and live
-  health; every other case stops for a human.
+- **Success criteria:** One direct development dependency receiving a patch
+  update can enter the queue unless it owns the compiler or a required
+  verification gate. A single `@supabase/supabase-js` or `@supabase/ssr`
+  production patch can also enter after its disposable-stack integration
+  contract passes. All required checks pass on the exact head; one PR merges at
+  a time; the next waits for verified Production and live health; every other
+  case stops for a human.
 - **Constraints:** Patient-facing production; fail closed; no credential or
   merge token in the agent sandbox; no PR-authored instructions; no branch
   protection bypass; bounded API usage; exact-SHA audit trail.
@@ -25,12 +28,16 @@
    `package-lock.json`.
 2. Read Dependabot metadata: ecosystem, directory, dependency names/type,
    semver update class, old/new versions, group, and maintainer-change flag.
-3. Classify the deterministic lane. Only one allowlisted direct development
-   dependency receiving a patch update can be auto-merge eligible.
+3. Classify the deterministic lane. Permit one direct development patch unless
+   it updates TypeScript, Playwright, or React Doctor. Permit one direct
+   production patch only for `@supabase/supabase-js` or `@supabase/ssr`.
 4. Review the exact diff for unexpected lockfile churn, scripts, engines,
    registries, transitive changes, and repository compatibility.
-5. Run no-secret CI: clean install, policy self-check, lint, build, and public
-   Playwright smoke. Require React Doctor and Vercel preview success.
+5. Run no-secret CI: clean install, policy self-check, lint, build, public
+   Playwright smoke, and the isolated Supabase contract. The Supabase job uses
+   disposable local keys only and verifies direct Auth refresh, SSR cookie
+   sessions, closed Data API/RLS boundaries, and representative PostgREST
+   persistence/relationships. Require React Doctor and Vercel preview success.
 6. Bind the policy and Codex decision to the exact head SHA using a commit
    status. Any new commit invalidates the prior authority.
 7. If eligible and green, select at most one oldest PR, recheck every gate, and
@@ -59,15 +66,17 @@
 | # | Input / starting state | Expected outcome | Success criterion |
 |---|---|---|---|
 | 1 | `@types/react` direct-development patch; manifest-only diff; all checks green | Codex approves and controller merges exact SHA | One merge, followed by successful production verification |
-| 2 | Allowlisted direct-development minor update | Human review | No successful `Dependabot Auto-Merge` status |
-| 3 | Runtime dependency patch (`next`, React, Supabase, Resend, or Zod) | Human review | PR remains open with human-review label |
-| 4 | TypeScript, ESLint, Playwright, React Doctor, or other gate/tool update | Human review | Toolchain update never enters automatic queue |
-| 5 | PR changes a workflow, source file, or any non-manifest path | Agent does not run; human review | No OpenAI call and no merge authority |
-| 6 | Maintainer commit appears on the Dependabot branch | Commit verification fails closed | Existing reviewed SHA cannot authorize new head |
-| 7 | Policy-eligible patch but Codex identifies incompatible repository usage | Block | Failed exact-head status and blocked label |
-| 8 | Codex times out or returns malformed JSON | Human review | No model-output parsing can accidentally approve |
-| 9 | Dependabot refreshes the branch after approval | Rerun on new SHA | Controller rejects the stale status |
-| 10 | First merge deploys unsuccessfully or live smoke fails | Queue pauses | No second dependency PR merges |
+| 2 | Direct-development minor update | Human review | No successful `Dependabot Auto-Merge` status |
+| 3 | `@supabase/supabase-js` or `@supabase/ssr` production patch; disposable integration green | Eligible | Runtime patch merges only after Auth/data contract success |
+| 4 | Other runtime dependency patch (`next`, React, Resend, or Zod) | Human review | PR remains open with human-review label |
+| 5 | Direct-development patch such as Tailwind or ESLint | Eligible | Exact-head deterministic and semantic gates all pass |
+| 6 | TypeScript, Playwright, React Doctor, minor, or major update | Human review | Compiler/verifier update never enters automatic queue |
+| 7 | PR changes a workflow, source file, or any non-manifest path | Agent does not run; human review | No OpenAI call and no merge authority |
+| 8 | Maintainer commit appears on the Dependabot branch | Commit verification fails closed | Existing reviewed SHA cannot authorize new head |
+| 9 | Policy-eligible patch but Codex identifies incompatible repository usage | Block | Failed exact-head status and blocked label |
+| 10 | Codex times out or returns malformed JSON | Human review | No model-output parsing can accidentally approve |
+| 11 | Dependabot refreshes the branch after approval | Rerun on new SHA | Controller rejects the stale status |
+| 12 | First merge deploys unsuccessfully or live smoke fails | Queue pauses | No second dependency PR merges |
 
 ## Sign-off
 
