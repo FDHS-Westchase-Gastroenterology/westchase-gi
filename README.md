@@ -140,7 +140,8 @@ Package-changing pull requests also run
 `e2e/supabase-dependency-contract.spec.ts` against a disposable local Supabase
 stack. That CI job receives no hosted Supabase or deployment secrets and checks
 direct Auth refresh, the portal's SSR cookie session, closed Data API/RLS
-boundaries, and representative PostgREST persistence and relationship reads.
+boundaries, shared intake throttling, field caps, request-lifecycle boundaries,
+and representative PostgREST persistence and relationship reads.
 
 ## Adding a patient PDF
 

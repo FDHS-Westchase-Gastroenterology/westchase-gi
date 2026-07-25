@@ -115,6 +115,9 @@ is the canonical remaining-acceptance tracker. Keep this section synchronized wi
   navigation/interactions.
 - Development and Production both have the intended five portal tables and five service-only
   RPCs through migration `20260720102654`; the retired registry tables/functions are absent.
+- Migrations `20260725133049` and `20260725170000` are repository candidates only. They have
+  passed disposable-local iteration but are not applied to Development or Production. Do not
+  deploy application code that requires them until the target schema has been verified.
 - Production migration-ledger parity, catalog/RLS/ACL/RPC assertions, authenticated Data API
   denial, nullable-email insertion, atomic audit rollback, tour persistence/auditing, public-site
   locale negotiation, and portal-session continuity passed on `1124668`. The temporary request,
@@ -213,9 +216,124 @@ sender configuration do not themselves prove practice custody.
 - **CSV, self-serve:** the queue's Export CSV button (or
   `GET /admin/requests/export?status=...` authenticated) — the documented
   column set, filtered like the queue.
-- **Full copy:** Supabase dashboard → Database → Backups (daily included),
-  or `pg_dump` with the database password for a complete portable dump.
+- **Full copy:** Supabase dashboard → Database → Backups when the selected
+  plan provides them, or `pg_dump` with the database password for a complete
+  portable dump. Backup availability and history are plan-dependent; they are
+  not guaranteed on Free.
   The practice's data is standard Postgres — there is no lock-in.
+
+## Patient-request data lifecycle
+
+The balanced lifecycle was approved for isolated implementation on 2026-07-25.
+Production activation still requires the approvals below. The portal is a
+temporary appointment-intake and operations system, not a substitute for FDHS's
+authoritative patient record. Patients are asked not to submit PHI, but names,
+contact details, free-text reasons, and staff notes must be handled as potentially
+sensitive.
+
+| Data                                              | Retention                                                                                                   |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Legitimately open request                         | No automatic deletion                                                                                       |
+| Closed request that did not become an appointment | 180 days after classified closure                                                                           |
+| Closed request transferred to the FDHS record     | 12 months after verified handoff and classified closure                                                     |
+| Request notes and notification/receipt events     | Follow the parent request and delete with it                                                                |
+| Receipt token hash                                | Remove after one hour; the receipt is valid for only 15 minutes                                             |
+| Expired intake rate-limit HMAC bucket             | Remove on the next hourly lifecycle run                                                                     |
+| Audit rows                                        | Six years, unless a legal hold protects the related request                                                 |
+| Recovery copies                                   | Target a 14-day backup/PITR window; actual availability must be verified against the clinic's Supabase plan |
+
+Closing a request requires one explicit disposition:
+
+- **Did not become an appointment** starts the 180-day clock.
+- **Transferred to the FDHS record** confirms the handoff and starts the
+  12-month clock.
+
+Reopening a request clears its closure classification and clock. Closed rows
+that existed before this policy remain unclassified and ineligible for
+automatic deletion until staff review them; the migration never guesses their
+disposition. The migration keeps the currently deployed status RPC
+backward-compatible for a schema-first rollout: an old-app closure becomes
+unclassified and cannot expire. Once the new application is live, its server
+action requires the explicit classified-closure RPC.
+
+### Archive, holds, and authorized deletion
+
+There is no duplicate patient-data archive in Supabase. For converted
+requests, the FDHS record is the authoritative destination. CSV exports are
+not retained by the application; a downloaded export becomes a
+clinic-controlled sensitive copy and follows clinic handling and disposal
+rules.
+
+A legal hold blocks both scheduled deletion and exceptional early deletion.
+Only portal administrators can place or release a hold, each action requires a
+short non-patient reason or case reference, and the change is audited. Routine
+expiry is authorized by this approved policy. Exceptional early deletion has
+no self-serve UI: a database operator may call
+`portal_delete_request_early` only after receiving a non-PHI authorization
+reference from the designated privacy/records custodian. The function refuses
+held requests and atomically writes a minimized audit row before deleting the
+request and its events.
+
+Audit metadata may contain request UUIDs, staff identities, status changes,
+dispositions, authorization references, and counts. It must not copy patient
+names, contact details, intake messages, or staff-note text.
+
+### Preview, activation, and restore
+
+The migrations add lifecycle controls but deliberately do **not** schedule or
+run deletion. Activation remains blocked until all of the following are
+recorded:
+
+1. FDHS's privacy/records authority confirms the portal's record
+   classification and the authoritative handoff destination.
+2. Practice-controlled Supabase custody, organization MFA, the appropriate
+   plan/HIPAA add-on, BAA, SSL/network controls, logging, and recovery posture
+   are verified.
+3. The forward migration, lifecycle boundaries, holds, repeated runs, and
+   exact rollback pass in disposable Supabase.
+4. A count-only preflight finds zero existing requests over the new database
+   caps (`name > 120`, `phone > 32`, `email > 254`). Stop on any nonzero count;
+   never truncate patient-supplied data during migration.
+5. Development receives the migration and passes the same preview and
+   verification before Production is considered.
+6. The first Production preview from
+   `portal_preview_data_lifecycle(now())` is reviewed without patient content
+   and explicitly approved.
+
+After activation, Supabase Cron may call
+`portal_run_data_lifecycle('system@westchasegi.com', now())` hourly. The
+function is idempotent, removes expired receipt secrets and limiter buckets,
+deletes only classified/non-held requests at their exact boundary, and ages
+audit rows at six years. Record the Cron job name, schedule, last successful
+run, and alert owner outside this repository.
+
+Backups are recovery copies, not archives. Live deletion does not rewrite an
+immutable snapshot; deleted data ages out with the configured backup/PITR
+window. Restore only into an isolated, access-restricted environment. Before
+returning a restore to service:
+
+1. Reapply any exceptional deletion references kept in the clinic's external
+   compliance record.
+2. Preview and run the lifecycle at the current time.
+3. Verify holds, candidate counts, application checks, and audit continuity.
+4. Destroy the isolated copy if the restore is rejected.
+
+The manual rollback is
+`supabase/rollbacks/20260725170000_to_20260720102654.sql`. It refuses to drop
+classified or held lifecycle state. If an approved hosted rollback is ever
+performed, mark both versions reverted in the migration ledger before a later
+push (`supabase migration repair --status reverted 20260725133049
+20260725170000 --linked`). A rollback cannot restore rows already deleted;
+restore those only from an approved recovery copy.
+
+HIPAA does not impose one universal medical-record retention period; state
+law and the record's classification govern. The Security Rule's six-year
+documentation period is not a blanket six-year medical-record mandate. Policy
+sources: [HHS retention FAQ](https://www.hhs.gov/hipaa/for-professionals/faq/580/does-hipaa-require-covered-entities-to-keep-medical-records-for-any-period/index.html),
+[45 CFR 164.316](https://www.ecfr.gov/current/title-45/subtitle-A/subchapter-C/part-164/subpart-C/section-164.316),
+[Florida Rule 64B8-10.002](https://flrules.org/gateway/RuleNo.asp?ID=64B8-10.002),
+[Supabase backups](https://supabase.com/docs/guides/platform/backups), and
+[Supabase HIPAA guidance](https://supabase.com/docs/guides/security/hipaa-compliance).
 
 ## Review-flyer printing
 

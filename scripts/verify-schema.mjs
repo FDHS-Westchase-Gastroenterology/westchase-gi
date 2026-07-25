@@ -16,8 +16,19 @@ const POLICIES = []
 const RPC_SIGNATURES = {
   portal_add_request_note:
     "p_actor_email text, p_request_id uuid, p_note text, p_note_length integer",
+  portal_check_intake_rate_limit:
+    "p_client_hash text, p_limit integer, p_window_seconds integer",
+  portal_close_request:
+    "p_actor_email text, p_request_id uuid, p_disposition text",
   portal_complete_staff_onboarding: "p_user_id uuid",
+  portal_delete_request_early:
+    "p_actor_email text, p_request_id uuid, p_authorization_ref text",
+  portal_preview_data_lifecycle: "p_now timestamp with time zone",
   portal_record_staff_password_reset: "p_user_id uuid",
+  portal_run_data_lifecycle:
+    "p_actor_email text, p_now timestamp with time zone",
+  portal_set_request_legal_hold:
+    "p_actor_email text, p_request_id uuid, p_held boolean, p_reason text",
   portal_set_staff_tour_dismissed: "p_user_id uuid, p_dismissed boolean",
   portal_update_request_status:
     "p_actor_email text, p_request_id uuid, p_next_status text",
@@ -52,8 +63,14 @@ const RETIRED_RPC_SIGNATURES = [
 const RPCS = Object.keys(RPC_SIGNATURES).sort()
 const RPC_RESULTS = {
   portal_add_request_note: "uuid",
+  portal_check_intake_rate_limit: "boolean",
+  portal_close_request: "boolean",
   portal_complete_staff_onboarding: "boolean",
+  portal_delete_request_early: "boolean",
+  portal_preview_data_lifecycle: "jsonb",
   portal_record_staff_password_reset: "boolean",
+  portal_run_data_lifecycle: "jsonb",
+  portal_set_request_legal_hold: "boolean",
   portal_set_staff_tour_dismissed: "boolean",
   portal_update_request_status: "boolean",
 }
@@ -80,6 +97,14 @@ const SOFTWARE_REGISTRY_RETIREMENT_MIGRATION = {
 const PORTAL_TOUR_MIGRATION = {
   version: "20260720102654",
   name: "add_portal_staff_tour",
+}
+const INTAKE_RATE_LIMIT_MIGRATION = {
+  version: "20260725133049",
+  name: "harden_intake_rate_limits",
+}
+const DATA_LIFECYCLE_MIGRATION = {
+  version: "20260725170000",
+  name: "add_request_data_lifecycle",
 }
 
 const TARGETS = new Set(["dev", "prod"])
@@ -424,6 +449,22 @@ async function main() {
     ),
     `Portal-tour migration ${PORTAL_TOUR_MIGRATION.version}_${PORTAL_TOUR_MIGRATION.name} is not applied`,
   )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === INTAKE_RATE_LIMIT_MIGRATION.version &&
+        row.name === INTAKE_RATE_LIMIT_MIGRATION.name,
+    ),
+    `Intake rate-limit migration ${INTAKE_RATE_LIMIT_MIGRATION.version}_${INTAKE_RATE_LIMIT_MIGRATION.name} is not applied`,
+  )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === DATA_LIFECYCLE_MIGRATION.version &&
+        row.name === DATA_LIFECYCLE_MIGRATION.name,
+    ),
+    `Data-lifecycle migration ${DATA_LIFECYCLE_MIGRATION.version}_${DATA_LIFECYCLE_MIGRATION.name} is not applied`,
+  )
 
   const onboardingColumnRows = await queryDatabase({
     accessToken,
@@ -493,6 +534,111 @@ async function main() {
   assert(
     retiredTableRows.length === 0,
     `Retired portal tables still exist: ${retiredTableRows.map((row) => row.table_name).join(", ")}`,
+  )
+
+  const requestLifecycleColumnRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select column_name, data_type, is_nullable, column_default
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'requests'
+        and column_name in (
+          'closure_disposition',
+          'closed_at',
+          'record_handoff_at',
+          'retention_hold_at',
+          'retention_hold_by',
+          'retention_hold_reason'
+        )
+      order by column_name;
+    `,
+  })
+  const expectedLifecycleColumns = [
+    "closed_at",
+    "closure_disposition",
+    "record_handoff_at",
+    "retention_hold_at",
+    "retention_hold_by",
+    "retention_hold_reason",
+  ]
+  assert(
+    sameValues(
+      requestLifecycleColumnRows.map((row) => row.column_name),
+      expectedLifecycleColumns,
+    ) &&
+      requestLifecycleColumnRows.every(
+        (row) => row.is_nullable === "YES" && row.column_default === null,
+      ),
+    "Request lifecycle columns are missing or unexpectedly non-null/defaulted",
+  )
+
+  const requestConstraintRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select conname
+      from pg_catalog.pg_constraint
+      where conrelid = 'public.requests'::pg_catalog.regclass
+        and conname in (
+          'requests_name_length',
+          'requests_phone_length',
+          'requests_email_length',
+          'requests_closure_disposition_valid',
+          'requests_closure_state_valid',
+          'requests_retention_hold_state_valid'
+        )
+      order by conname;
+    `,
+  })
+  const expectedRequestConstraints = [
+    "requests_closure_disposition_valid",
+    "requests_closure_state_valid",
+    "requests_email_length",
+    "requests_name_length",
+    "requests_phone_length",
+    "requests_retention_hold_state_valid",
+  ]
+  assert(
+    sameValues(
+      requestConstraintRows.map((row) => row.conname),
+      expectedRequestConstraints,
+    ),
+    `Request constraints mismatch: ${requestConstraintRows.map((row) => row.conname).join(", ")}`,
+  )
+
+  const intakeLimitRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select
+        c.relpersistence,
+        c.relrowsecurity,
+        pg_catalog.has_table_privilege('anon', c.oid, 'SELECT') as anon_select,
+        pg_catalog.has_table_privilege('authenticated', c.oid, 'SELECT') as authenticated_select,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'SELECT') as service_select,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'INSERT') as service_insert,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'UPDATE') as service_update,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'DELETE') as service_delete
+      from pg_catalog.pg_class as c
+      join pg_catalog.pg_namespace as n on n.oid = c.relnamespace
+      where n.nspname = 'private'
+        and c.relname = 'intake_rate_limits'
+        and c.relkind = 'r';
+    `,
+  })
+  assert(
+    intakeLimitRows.length === 1 &&
+      intakeLimitRows[0].relpersistence === "p" &&
+      intakeLimitRows[0].relrowsecurity === true &&
+      intakeLimitRows[0].anon_select === false &&
+      intakeLimitRows[0].authenticated_select === false &&
+      intakeLimitRows[0].service_select === true &&
+      intakeLimitRows[0].service_insert === true &&
+      intakeLimitRows[0].service_update === true &&
+      intakeLimitRows[0].service_delete === true,
+    "private.intake_rate_limits must be persistent, RLS-enabled, and service-role-only",
   )
 
   const missingRlsRows = await queryDatabase({
@@ -635,6 +781,22 @@ async function main() {
         "portal_record_staff_password_reset must serialize against deactivation",
       )
     }
+    if (rpc.proname === "portal_check_intake_rate_limit") {
+      assert(
+        rpc.definition.toLowerCase().includes("on conflict"),
+        "portal_check_intake_rate_limit must claim buckets atomically",
+      )
+    }
+    if (rpc.proname === "portal_run_data_lifecycle") {
+      const definition = rpc.definition.toLowerCase()
+      assert(
+        definition.includes("pg_advisory_xact_lock") &&
+          definition.includes("for update skip locked") &&
+          definition.includes("retention_hold_at is null") &&
+          definition.includes("request.retention_delete"),
+        "portal_run_data_lifecycle must serialize runs, lock candidates, exclude holds, and audit deletion",
+      )
+    }
   }
 
   const retiredRpcRows = await queryDatabase({
@@ -721,7 +883,9 @@ async function main() {
     "Seed notification recipient is missing or inactive",
   )
 
-  console.log(`Verified ${target} tables (${actualTables.length}): ${actualTables.join(", ")}`)
+  console.log(
+    `Verified ${target} tables (${actualTables.length}): ${actualTables.join(", ")}`,
+  )
   console.log(`Verified ${target} RLS: 0 public tables without row security`)
   console.log(
     `Verified ${target} migration: ${PHASE_C_MIGRATION.version}_${PHASE_C_MIGRATION.name}`,
@@ -742,6 +906,18 @@ async function main() {
     `Verified ${target} migration: ${PORTAL_TOUR_MIGRATION.version}_${PORTAL_TOUR_MIGRATION.name}`,
   )
   console.log(
+    `Verified ${target} migration: ${INTAKE_RATE_LIMIT_MIGRATION.version}_${INTAKE_RATE_LIMIT_MIGRATION.name}`,
+  )
+  console.log(
+    `Verified ${target} migration: ${DATA_LIFECYCLE_MIGRATION.version}_${DATA_LIFECYCLE_MIGRATION.name}`,
+  )
+  console.log(
+    `Verified ${target} request lifecycle: nullable legacy-safe columns, constraints, preview, hold-aware deletion`,
+  )
+  console.log(
+    `Verified ${target} intake limiter: persistent private table, RLS, service-only ACL`,
+  )
+  console.log(
     `Verified ${target} staff_profiles.onboarded_at: nullable timestamptz, no default`,
   )
   console.log(
@@ -759,7 +935,9 @@ async function main() {
   console.log(
     `Verified ${target} authenticated Data API denial across ${TABLES.length} portal tables`,
   )
-  console.log(`Verified ${target} forced audit failure rolled back request status`)
+  console.log(
+    `Verified ${target} forced audit failure rolled back request status`,
+  )
   console.log(
     `Verified ${target} seed rows: staff_profiles=${staffRows.length}, notification_recipients=${recipientRows.length}`,
   )
@@ -767,6 +945,8 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : "Schema verification failed")
+  console.error(
+    error instanceof Error ? error.message : "Schema verification failed",
+  )
   process.exitCode = 1
 })

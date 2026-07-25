@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   HONEYPOT_FIELD,
@@ -15,7 +15,7 @@ import {
   type NotificationEvent,
   type NotificationRecipient,
 } from "@/lib/portal/intake-notification";
-import { portalUrl, serviceClient } from "@/lib/portal/server";
+import { portalUrl, serviceClient, serviceRoleKey } from "@/lib/portal/server";
 import type { Locale } from "@/lib/site";
 
 type IntakeResult = {
@@ -28,14 +28,7 @@ const RECEIPT_TTL_MS = 15 * 60 * 1000;
 const RECEIPT_TOKEN_RE =
   /^([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.([A-Za-z0-9_-]{43})$/;
 
-type RateBucket = {
-  count: number;
-  windowStartedAt: number;
-};
-
-// Accepted serverless limitation: this map enforces the cap per warm runtime
-// instance, not globally across every Vercel instance.
-const rateBuckets = new Map<string, RateBucket>();
+const INTAKE_CLIENT_HASH_DOMAIN = "wgi:intake-rate-limit:client:v1\0";
 
 function logOperationalFailure(
   event: string,
@@ -156,35 +149,37 @@ export async function consumeRequestReceipt(
 }
 
 function clientHash(headers: Headers): string {
-  const forwardedFor = headers.get("x-forwarded-for");
+  const forwardedFor =
+    headers.get("x-vercel-forwarded-for") ?? headers.get("x-forwarded-for");
   const firstHop = forwardedFor?.split(",", 1)[0]?.trim() || "missing";
 
-  // Vercel supplies X-Forwarded-For in production. Local callers without it
-  // share the "missing" bucket; never fall back to the socket/proxy address.
-  return createHash("sha256").update(firstHop.toLowerCase()).digest("hex");
+  // Vercel overwrites X-Vercel-Forwarded-For at its edge. Local callers fall
+  // back to X-Forwarded-For; callers without either header share the
+  // "missing" bucket. HMAC prevents offline address guessing.
+  return createHmac("sha256", serviceRoleKey())
+    .update(INTAKE_CLIENT_HASH_DOMAIN)
+    .update(firstHop.toLowerCase())
+    .digest("hex");
 }
 
-function rateLimitExceeded(headers: Headers): boolean {
-  const now = Date.now();
+async function rateLimitAllows(
+  client: SupabaseClient,
+  headers: Headers,
+): Promise<boolean | null> {
+  const { data, error } = await client.rpc("portal_check_intake_rate_limit", {
+    p_client_hash: clientHash(headers),
+    p_limit: INTAKE_RATE_LIMIT.limit,
+    p_window_seconds: INTAKE_RATE_LIMIT.windowSeconds,
+  });
 
-  for (const [key, bucket] of rateBuckets) {
-    if (now - bucket.windowStartedAt >= INTAKE_RATE_LIMIT.windowMs) {
-      rateBuckets.delete(key);
-    }
+  if (error || typeof data !== "boolean") {
+    logOperationalFailure("rate-limit claim failed", {
+      code: error?.code ?? "invalid_result",
+    });
+    return null;
   }
 
-  const key = clientHash(headers);
-  const current = rateBuckets.get(key);
-
-  if (!current) {
-    rateBuckets.set(key, { count: 1, windowStartedAt: now });
-    return false;
-  }
-
-  if (current.count >= INTAKE_RATE_LIMIT.limit) return true;
-
-  current.count += 1;
-  return false;
+  return data;
 }
 
 async function recordNotificationEvents(
@@ -264,13 +259,6 @@ export async function processIntake(
     };
   }
 
-  if (rateLimitExceeded(headers)) {
-    return {
-      response: { ok: false, code: "rate_limited" },
-      status: 429,
-    };
-  }
-
   let client: SupabaseClient;
   try {
     client = serviceClient();
@@ -279,6 +267,20 @@ export async function processIntake(
     return {
       response: { ok: false, code: "unavailable" },
       status: 503,
+    };
+  }
+
+  const rateAllowed = await rateLimitAllows(client, headers);
+  if (rateAllowed === null) {
+    return {
+      response: { ok: false, code: "unavailable" },
+      status: 503,
+    };
+  }
+  if (!rateAllowed) {
+    return {
+      response: { ok: false, code: "rate_limited" },
+      status: 429,
     };
   }
 

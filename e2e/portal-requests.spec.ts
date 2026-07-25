@@ -160,7 +160,7 @@ test.describe("portal requests operation", () => {
     await expect(notifications).toContainText(visibleRecipient);
     await expect(notifications).not.toContainText("jason.gitdev@gmail.com");
 
-    for (const status of ["contacted", "scheduled", "closed"] as const) {
+    for (const status of ["contacted", "scheduled"] as const) {
       await page.locator(`[data-status-action="${status}"]`).click();
       await expect(
         page.locator(`[data-status-action="${status}"]`),
@@ -178,19 +178,53 @@ test.describe("portal requests operation", () => {
       expect(data?.status).toBe(status);
     }
 
+    await page
+      .getByRole("button", {
+        name: "Close — did not become an appointment",
+      })
+      .click();
+    await expect(
+      page.getByRole("button", {
+        name: "Close — did not become an appointment",
+      }),
+    ).toBeDisabled();
+    await expect(
+      page.locator('span[data-status="closed"]').first(),
+    ).toBeVisible();
+
+    const { data: closed, error: closeError } = await db
+      .from("requests")
+      .select("status, closure_disposition, closed_at")
+      .eq("id", id)
+      .single();
+    expect(closeError).toBeNull();
+    expect(closed).toMatchObject({
+      status: "closed",
+      closure_disposition: "unconverted",
+    });
+    expect(closed?.closed_at).toBeTruthy();
+
     const { data: statusAudits, error: statusAuditError } = await db
       .from("audit_log")
       .select("detail")
       .eq("entity_id", id)
       .eq("action", "request.status_change");
     expect(statusAuditError).toBeNull();
-    expect(statusAudits).toHaveLength(3);
+    expect(statusAudits).toHaveLength(2);
     const statusTargets = (statusAudits ?? []).map(
       (row) => (row.detail as { to?: string }).to,
     );
-    for (const status of ["contacted", "scheduled", "closed"]) {
+    for (const status of ["contacted", "scheduled"]) {
       expect(statusTargets.filter((target) => target === status)).toHaveLength(1);
     }
+
+    const { count: closeAuditCount, error: closeAuditError } = await db
+      .from("audit_log")
+      .select("id", { count: "exact", head: true })
+      .eq("entity_id", id)
+      .eq("action", "request.close");
+    expect(closeAuditError).toBeNull();
+    expect(closeAuditCount).toBe(1);
   });
 
   test("VAL-ADMIN-005b: unsafe legacy email uses the phone fallback", async ({

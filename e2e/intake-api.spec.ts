@@ -1,11 +1,12 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
 import {
   INTAKE_RATE_LIMIT,
+  REQUEST_FIELD_LIMITS,
   type IntakeResponse,
 } from "../src/lib/portal/contracts";
 import { en } from "../src/lib/dictionaries/en";
-import { serviceDb } from "./support";
+import { requiredEnv, serviceDb } from "./support";
 
 const db = serviceDb();
 
@@ -162,11 +163,51 @@ test.describe("intake API contract", () => {
     expect(row).toEqual({ id: body.id, email: null });
   });
 
+  test("stores a keyed client bucket instead of a plain address digest", async ({
+    request,
+  }) => {
+    const clientIp = testIp("hmac-storage");
+    const payload = validPayload(`${sourcePrefix}/hmac-storage`);
+    const response = await request.post("/api/requests", {
+      data: payload,
+      headers: { "X-Forwarded-For": clientIp },
+    });
+    expect(response.status()).toBe(201);
+
+    const expectedHash = createHmac(
+      "sha256",
+      requiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
+    )
+      .update("wgi:intake-rate-limit:client:v1\0")
+      .update(clientIp.toLowerCase())
+      .digest("hex");
+    const plainHash = createHash("sha256")
+      .update(clientIp.toLowerCase())
+      .digest("hex");
+    expect(expectedHash).not.toBe(plainHash);
+
+    const expectedProbe = await db.rpc("portal_check_intake_rate_limit", {
+      p_client_hash: expectedHash,
+      p_limit: 1,
+      p_window_seconds: INTAKE_RATE_LIMIT.windowSeconds,
+    });
+    expect(expectedProbe.error).toBeNull();
+    expect(expectedProbe.data).toBe(false);
+
+    const plainProbe = await db.rpc("portal_check_intake_rate_limit", {
+      p_client_hash: plainHash,
+      p_limit: 1,
+      p_window_seconds: INTAKE_RATE_LIMIT.windowSeconds,
+    });
+    expect(plainProbe.error).toBeNull();
+    expect(plainProbe.data).toBe(true);
+  });
+
   test("VAL-INTAKE-003: server validation rejects bad input", async ({
     request,
   }) => {
     const invalidCases: Array<{
-      field: "name" | "phone" | "email";
+      field: "name" | "phone" | "email" | "message";
       makePayload: (sourcePath: string) => Record<string, unknown>;
     }> = [
       {
@@ -212,6 +253,27 @@ test.describe("intake API contract", () => {
         makePayload: (sourcePath) => ({
           ...validPayload(sourcePath),
           phone: "555-0101",
+        }),
+      },
+      {
+        field: "name",
+        makePayload: (sourcePath) => ({
+          ...validPayload(sourcePath),
+          name: "N".repeat(REQUEST_FIELD_LIMITS.name + 1),
+        }),
+      },
+      {
+        field: "phone",
+        makePayload: (sourcePath) => ({
+          ...validPayload(sourcePath),
+          phone: "8".repeat(REQUEST_FIELD_LIMITS.phone + 1),
+        }),
+      },
+      {
+        field: "message",
+        makePayload: (sourcePath) => ({
+          ...validPayload(sourcePath),
+          message: "M".repeat(REQUEST_FIELD_LIMITS.message + 1),
         }),
       },
     ];

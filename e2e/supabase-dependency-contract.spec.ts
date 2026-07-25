@@ -1,7 +1,11 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+import {
+  INTAKE_RATE_LIMIT,
+  REQUEST_FIELD_LIMITS,
+} from "../src/lib/portal/contracts";
 
 loadLocalEnv();
 
@@ -83,6 +87,18 @@ test.describe("Supabase dependency contract", () => {
   test("keeps direct Data API access closed while the service client can read", async () => {
     const anon = publicClient();
     expectPermissionDenied(await anon.from("staff_profiles").select("id"));
+    expectPermissionDenied(
+      await anon.rpc("portal_check_intake_rate_limit", {
+        p_client_hash: createHash("sha256").update("anon").digest("hex"),
+        p_limit: 1,
+        p_window_seconds: 1,
+      }),
+    );
+    expectPermissionDenied(
+      await anon.rpc("portal_preview_data_lifecycle", {
+        p_now: new Date().toISOString(),
+      }),
+    );
 
     const authenticated = publicClient();
     const signIn = await authenticated.auth.signInWithPassword({
@@ -101,6 +117,20 @@ test.describe("Supabase dependency contract", () => {
           .update({ display_name: "TEST forbidden" })
           .eq("user_id", signIn.data.user?.id ?? "")
           .select("id"),
+      );
+      expectPermissionDenied(
+        await authenticated.rpc("portal_check_intake_rate_limit", {
+          p_client_hash: createHash("sha256")
+            .update("authenticated")
+            .digest("hex"),
+          p_limit: 1,
+          p_window_seconds: 1,
+        }),
+      );
+      expectPermissionDenied(
+        await authenticated.rpc("portal_preview_data_lifecycle", {
+          p_now: new Date().toISOString(),
+        }),
       );
 
       const serviceRead = await serviceDb()
@@ -170,6 +200,67 @@ test.describe("Supabase dependency contract", () => {
       ]);
     } finally {
       await db.from("requests").delete().eq("id", body.id);
+    }
+  });
+
+  test("shares one atomic intake limit across fresh service clients and expiry", async () => {
+    const claim = async (
+      hash: string,
+      limit: number,
+      windowSeconds: number,
+    ) => {
+      const result = await serviceDb().rpc("portal_check_intake_rate_limit", {
+        p_client_hash: hash,
+        p_limit: limit,
+        p_window_seconds: windowSeconds,
+      });
+      expect(result.error).toBeNull();
+      return result.data;
+    };
+    const hash = (label: string) =>
+      createHash("sha256").update(`${randomUUID()}:${label}`).digest("hex");
+
+    const restartHash = hash("restart");
+    await expect(claim(restartHash, 2, 1)).resolves.toBe(true);
+    await expect(claim(restartHash, 2, 1)).resolves.toBe(true);
+    await expect(claim(restartHash, 2, 1)).resolves.toBe(false);
+    await new Promise((resolve) => setTimeout(resolve, 1_100));
+    await expect(claim(restartHash, 2, 1)).resolves.toBe(true);
+
+    const concurrentHash = hash("concurrent");
+    const claims = await Promise.all(
+      Array.from({ length: INTAKE_RATE_LIMIT.limit + 3 }, () =>
+        claim(
+          concurrentHash,
+          INTAKE_RATE_LIMIT.limit,
+          INTAKE_RATE_LIMIT.windowSeconds,
+        ),
+      ),
+    );
+    expect(claims.filter(Boolean)).toHaveLength(INTAKE_RATE_LIMIT.limit);
+    expect(claims.filter((allowed) => !allowed)).toHaveLength(3);
+  });
+
+  test("enforces intake field caps at the database boundary", async () => {
+    const base = {
+      name: "TEST database cap",
+      phone: "8135550199",
+      email: "database-cap@example.test",
+      location: "tampa",
+      preferred_time: "morning",
+      message: null,
+      locale: "en",
+      source_path: "/e2e/database-field-cap",
+    };
+    const oversized = [
+      { ...base, name: "N".repeat(REQUEST_FIELD_LIMITS.name + 1) },
+      { ...base, phone: "8".repeat(REQUEST_FIELD_LIMITS.phone + 1) },
+      { ...base, email: "e".repeat(REQUEST_FIELD_LIMITS.email + 1) },
+    ];
+
+    for (const row of oversized) {
+      const result = await serviceDb().from("requests").insert(row);
+      expect(result.error?.code).toBe("23514");
     }
   });
 });

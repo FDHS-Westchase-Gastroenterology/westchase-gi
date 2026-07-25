@@ -56,7 +56,10 @@ notifications) and the authenticated staff portal at `/admin`.
     insert (`src/lib/portal/intake.ts`); failure and unknown states stay distinct and always
     surface the call/text fallback; the no-JS path is a native POST with a short-lived, one-time
     opaque receipt URL bound to a persisted request. No patient field or unsigned success flag
-    belongs in that URL. The honeypot drop returns a success-shaped response. Never weaken these.
+    belongs in that URL. The honeypot drop returns a success-shaped response. Patient fields stay
+    capped at the browser, server, and database boundaries. Intake throttling stays shared and
+    atomic in Postgres, keyed by an HMAC rather than a raw address or reversible plain digest.
+    Never weaken these.
 11. **Portal security invariants.** `/admin/*` is closed by the proxy except the explicit
     authentication-entry routes. Every management action/route authenticates first
     (`requireRole`); login, reset request, and one-time-link confirmation are deliberate public
@@ -83,7 +86,8 @@ The guarded dependency lane is operational. Its detailed source of truth is
 - Every package-changing PR runs `e2e/supabase-dependency-contract.spec.ts` in a separate
   GitHub-hosted Ubuntu job. That job starts a disposable Docker Supabase stack, replays committed
   migrations, seeds local-only fixtures, checks Auth/SSR sessions, permission boundaries, intake
-  persistence, and PostgREST relationships, then stops the stack even on failure.
+  persistence, shared throttling, lifecycle boundaries, and PostgREST relationships, then stops
+  the stack even on failure.
 - The disposable job receives no hosted Supabase, Vercel, or repository secrets. It never runs on
   Jason's Mac and has no path that applies migrations or test writes to Development or Production.
   Post-merge Production verification only checks the matching Vercel deployment and performs a
