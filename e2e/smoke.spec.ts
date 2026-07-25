@@ -11,6 +11,58 @@ test("home page renders the hero on /en", async ({ page }) => {
   );
 });
 
+test("public metadata uses the apex canonical origin", async ({ page, request }) => {
+  const origin = "https://westchasegi.com";
+  const redirectingOrigin = "https://www.westchasegi.com";
+
+  await page.goto("/en");
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    `${origin}/en`,
+  );
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
+    "content",
+    `${origin}/en`,
+  );
+
+  const alternates = await page
+    .locator('link[rel="alternate"][hreflang]')
+    .evaluateAll((links) => links.map((link) => link.getAttribute("href")));
+  expect(alternates).toEqual([
+    `${origin}/en`,
+    `${origin}/es`,
+    `${origin}/vi`,
+    `${origin}/ko`,
+    `${origin}/ar`,
+    `${origin}/en`,
+  ]);
+
+  const jsonLd = await page
+    .locator('script[type="application/ld+json"]')
+    .allTextContents();
+  expect(jsonLd.join("")).toContain(origin);
+  expect(jsonLd.join("")).not.toContain(redirectingOrigin);
+
+  const sitemap = await request.get("/sitemap.xml");
+  expect(sitemap.ok()).toBe(true);
+  const sitemapText = await sitemap.text();
+  expect(sitemapText).toContain(`<loc>${origin}/en</loc>`);
+  expect(sitemapText).toContain(`href="${origin}/es"`);
+  expect(sitemapText).not.toContain(redirectingOrigin);
+
+  const robots = await request.get("/robots.txt");
+  expect(robots.ok()).toBe(true);
+  const robotsText = await robots.text();
+  expect(robotsText).toContain(`Sitemap: ${origin}/sitemap.xml`);
+  expect(robotsText).not.toContain(redirectingOrigin);
+
+  await page.goto("/review");
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    `${origin}/review`,
+  );
+});
+
 test("/ negotiates the locale from Accept-Language and the locale cookie", async ({
   playwright,
 }) => {

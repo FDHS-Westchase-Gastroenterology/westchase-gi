@@ -103,8 +103,8 @@ review before granting another runtime package autonomous merge authority.
 ## Known current reconciliation items (2026-07-20)
 
 - The canonical patient origin is the apex `https://westchasegi.com`; `www` redirects to it.
-  Runtime `site.url` still incorrectly uses `www`, so canonical/OG/hreflang/sitemap/robots output
-  currently publishes redirecting URLs. Do not describe `www` as the intended canonical origin.
+  Keep `site.url` and generated canonical/OG/hreflang/sitemap/robots output on the apex. Do not
+  describe `www` as the intended canonical origin.
 - Some procedure-prep, blog, and education availability strings still say EN/ES despite all five
   locales being present. External Hushforms packets really are EN/ES-only; clinical-care language
   claims require practice confirmation rather than a mechanical five-language rewrite.

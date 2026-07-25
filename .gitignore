@@ -21,6 +21,9 @@
 # production
 /build
 
+# generated scratch builds
+/private/tmp/
+
 # misc
 .DS_Store
 *.pem

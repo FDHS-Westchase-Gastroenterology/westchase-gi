@@ -142,9 +142,6 @@ boundaries, and representative PostgREST persistence and relationship reads.
 
 These are known mismatches, not intended product behavior:
 
-- The intended canonical origin is the apex `https://westchasegi.com`, but `site.url` still uses
-  `https://www.westchasegi.com`. That makes current canonical, Open Graph, hreflang, sitemap, and
-  robots output publish URLs that immediately redirect. The runtime fix remains outstanding.
 - Some patient-facing procedure-prep, blog, and education availability copy still says “English
   and Spanish” even though those pages exist in all five locales. External Hushforms packets are
   genuinely EN/ES-only; clinical-care language claims need practice confirmation before editing.
