@@ -11,8 +11,8 @@ The clinic also owns the Vercel Hobby account and replacement project named `wes
 - **`main` is production.** Merges to `main` run hosted quality and React Doctor workflows, deploy automatically to the clinic-owned Vercel project, and run exact-commit Production verification against the canonical site. The site has been live at canonical `https://westchasegi.com` since the 2026-07-18 DNS cutover; `www` redirects to the apex and `westchase-gi.vercel.app` remains attached.
 - Treat every merge as patient-facing unless the change is explicitly non-user-visible (tooling, governance, docs-only).
 - React Doctor remains advisory: a green check proves execution, not a clean result. The dependency controller additionally refuses automatic merge when an exact-head PR scan reports errors; manifest-only Dependabot changes normally publish the explicit "no React files changed" result.
-- The current full-project snapshot at `e5f32e5` is 65/100 with two reported errors and four warnings. Treat those diagnostics as hypotheses requiring source review; the repository standard remains a clean 100 local baseline.
-- As verified 2026-07-25, GitHub reports no branch-protection rule or ruleset. Hosted statuses therefore run but are not required by repository settings.
+- The behavior-bearing release at `d318300` scored 86/100 with zero errors and two reviewed warnings (the request-detail component size and a fixed four-item status-list `filter().map()`). Treat diagnostics as hypotheses requiring source review; the repository standard remains a clean 100 local baseline.
+- As verified 2026-07-25, `main` has strict branch protection requiring `quality`, `react-doctor`, and `Vercel`, plus resolved conversations. Force pushes and deletion are blocked; approving reviews are not currently required.
 
 ## Automated dependency lane
 
@@ -20,7 +20,7 @@ Dependabot updates use three independent boundaries:
 
 1. **Deterministic PR gates:** a no-secret runner performs a clean install, policy self-test,
    lint, build, and public Playwright smoke. React Doctor execution and Vercel preview are
-   separate signals required by the automation controller, not by current GitHub branch settings.
+   separate signals required by both the automation controller and current GitHub branch settings.
 2. **Read-only Codex review:** only verified Dependabot commits targeting `main` with a
    manifest-only diff reach Codex. The agent receives the OpenAI credential through its
    protected proxy but no GitHub mutation or merge credential. Its decision is tied to the exact
@@ -61,16 +61,13 @@ Use **imperative `type(scope): summary`** subjects and a short **why-focused bod
 | **Review-ready PR** (default) | All normal source, content, and UI changes |
 | **Admin direct push to `main`** | Urgent production hotfixes only — must include equivalent verification evidence (CI green, live spot-check, rollback noted) as a PR would |
 
-As verified 2026-07-25, there is no branch-protection rule or ruleset on `main`. That is a
-governance gap, not permission for routine direct pushes. Normal changes still use review-ready
-PRs, automation must not request bypass, and the clinic owner should restore protection that
-requires the intended quality, React Doctor, and Vercel statuses, current branches, and
-force-push/deletion denial.
+As verified 2026-07-25, strict `main` protection requires current-branch `quality`,
+`react-doctor`, and `Vercel` statuses plus resolved conversations, and blocks force pushes and
+branch deletion. Normal changes use review-ready PRs and must not request bypass.
 
-Until protection is restored, the merger must manually confirm that the PR head is current and
-unchanged and that CI `quality`, React Doctor, Vercel, and every path-triggered disposable
-integration job succeeded on that exact head. Pending, missing, stale, or failed signals withhold
-the merge.
+Before merge, confirm that every path-triggered disposable integration job also succeeded on the
+exact head even when it is not a repository-setting requirement. Pending, missing, stale, or
+failed signals withhold the merge.
 
 ## Related policy
 
