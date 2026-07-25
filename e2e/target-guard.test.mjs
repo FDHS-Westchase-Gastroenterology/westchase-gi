@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assertSafeE2ETarget } from "./target-guard.mjs";
+import { assertSafeE2ETarget } from "./target-guard.ts";
 
 const hosted = {
   NEXT_PUBLIC_SUPABASE_URL: "https://development-ref.supabase.co",

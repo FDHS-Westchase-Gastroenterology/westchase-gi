@@ -1,10 +1,10 @@
-/** @typedef {Readonly<Record<string, string | undefined>>} E2ETargetEnvironment */
+type E2ETargetEnvironment = Readonly<Record<string, string | undefined>>;
 
 /**
  * @param {E2ETargetEnvironment} env
  * @param {string[]} names
  */
-function first(env, ...names) {
+function first(env: E2ETargetEnvironment, ...names: string[]) {
   for (const name of names) {
     const value = env[name]?.trim();
     if (value) return value;
@@ -16,14 +16,14 @@ function first(env, ...names) {
  * @param {string} label
  * @param {string[]} names
  */
-function required(env, label, ...names) {
+function required(env: E2ETargetEnvironment, label: string, ...names: string[]) {
   const value = first(env, ...names);
   if (value) return value;
   throw new Error(`E2E safety check failed: missing ${label}`);
 }
 
 /** @param {string} value @param {string} label */
-function safeUrl(value, label) {
+function safeUrl(value: string, label: string) {
   try {
     const url = new URL(value);
     if (
@@ -40,7 +40,7 @@ function safeUrl(value, label) {
 }
 
 /** @param {E2ETargetEnvironment} env */
-export function assertSafeE2ETarget(env) {
+export function assertSafeE2ETarget(env: E2ETargetEnvironment) {
   const projectRef = required(
     env,
     "development project reference",

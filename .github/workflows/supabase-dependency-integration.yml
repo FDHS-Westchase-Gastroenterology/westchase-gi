@@ -10,7 +10,7 @@ on:
       - "e2e/intake-api.spec.ts"
       - "e2e/portal-scale.spec.ts"
       - "e2e/support.ts"
-      - "e2e/target-guard.mjs"
+      - "e2e/target-guard.ts"
       - "e2e/target-guard.test.mjs"
       - "e2e/supabase-dependency-contract.spec.ts"
       - "src/app/[locale]/appointment/received/page.tsx"

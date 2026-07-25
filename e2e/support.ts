@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { assertSafeE2ETarget } from "./target-guard.mjs";
+import { assertSafeE2ETarget } from "./target-guard";
 
 /**
  * Loads .env.local when present. CI injects disposable local-stack values
