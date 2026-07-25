@@ -715,6 +715,18 @@ test.describe("portal management server boundaries", () => {
   }) => {
     if (!staffPage) throw new Error("Staff session is unavailable");
 
+    const formulaPrefixes = ["=", "+", "-", "@", "\t", "\r", "\n"];
+    const formulaRows = formulaPrefixes.map((prefix, index) => ({
+      name: `${prefix}1+1 name`,
+      phone: `${prefix}81355502${index.toString().padStart(2, "0")}`,
+      email: `${prefix}formula-${runId}-${index}@example.test`,
+      location: "tampa",
+      preferred_time: "morning",
+      message: `${prefix}SUM(1,1)`,
+      locale: "en",
+      source_path: `${prefix}/e2e/export/${index}`,
+      status: "contacted",
+    }));
     const stagedRows = [
       {
         name: `TEST Export ${runId} Alpha`,
@@ -738,13 +750,14 @@ test.describe("portal management server boundaries", () => {
         source_path: "/es/contact",
         status: "contacted",
       },
+      ...formulaRows,
     ];
     const { data: inserted, error: insertError } = await db
       .from("requests")
       .insert(stagedRows)
       .select("id");
     expect(insertError).toBeNull();
-    expect(inserted).toHaveLength(2);
+    expect(inserted).toHaveLength(stagedRows.length);
     for (const row of inserted ?? []) requestIds.add(row.id);
 
     let csv: CsvFetch | null = null;
@@ -784,6 +797,38 @@ test.describe("portal management server boundaries", () => {
     }
     const quotedRow = parsed.find((row) => row[0] === inserted?.[0]?.id);
     expect(quotedRow?.[10]).toBe(stagedRows[0].message);
+    const plainRow = parsed.find((row) => row[0] === inserted?.[1]?.id);
+    for (const [column, value] of [
+      [3, stagedRows[1].name],
+      [4, stagedRows[1].phone],
+      [5, stagedRows[1].email],
+      [6, stagedRows[1].location],
+      [7, stagedRows[1].preferred_time],
+      [8, stagedRows[1].locale],
+      [9, stagedRows[1].source_path],
+      [10, stagedRows[1].message],
+    ] as const) {
+      expect(plainRow?.[column]).toBe(value);
+    }
+    for (const [index, formulaRow] of formulaRows.entries()) {
+      const exported = parsed.find(
+        (row) => row[0] === inserted?.[index + 2]?.id,
+      );
+      for (const [column, value] of [
+        [3, formulaRow.name],
+        [4, formulaRow.phone],
+        [5, formulaRow.email],
+        [9, formulaRow.source_path],
+        [10, formulaRow.message],
+      ] as const) {
+        expect(exported?.[column]).toBe(`'${value}`);
+      }
+      expect(exported?.slice(6, 9)).toEqual([
+        formulaRow.location,
+        formulaRow.preferred_time,
+        formulaRow.locale,
+      ]);
+    }
 
     const invalidFilter = await fetchCsv(staffPage, "not-a-status");
     expect(invalidFilter.status).toBe(400);

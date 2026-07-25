@@ -144,7 +144,10 @@ test.describe("portal requests operation", () => {
       staged.name,
     );
     await expect(page.getByText(staged.phone).first()).toBeVisible();
-    await expect(page.getByText(staged.email).first()).toBeVisible();
+    await expect(page.getByRole("link", { name: staged.email })).toHaveAttribute(
+      "href",
+      `mailto:${staged.email}`,
+    );
     await expect(page.getByText("Tampa", { exact: true })).toBeVisible();
     await expect(page.getByText("Morning", { exact: true })).toBeVisible();
     await expect(page.getByTestId("request-message")).toContainText(
@@ -188,6 +191,39 @@ test.describe("portal requests operation", () => {
     for (const status of ["contacted", "scheduled", "closed"]) {
       expect(statusTargets.filter((target) => target === status)).toHaveLength(1);
     }
+  });
+
+  test("VAL-ADMIN-005b: unsafe legacy email uses the phone fallback", async ({
+    page,
+  }) => {
+    const unsafeEmail = `queue-${runId}-unsafe@example.test?subject=Injected`;
+    const { data, error } = await db
+      .from("requests")
+      .insert({
+        name: `TEST Queue ${runId} unsafe email`,
+        phone: "8135550178",
+        email: unsafeEmail,
+        location: "tampa",
+        preferred_time: "morning",
+        message: "TEST unsafe legacy email - no medical details.",
+        locale: "en",
+        source_path: "/en/appointment",
+      })
+      .select("id")
+      .single();
+    expect(error).toBeNull();
+    if (!data) throw new Error("Unsafe email fixture was not created");
+
+    await signIn(page);
+    await page.goto(`/admin/requests/${data.id}`);
+
+    const fallback = page.getByText(
+      "Not provided — call the phone number above",
+    );
+    await expect(fallback).toBeVisible();
+    await expect(
+      fallback.locator("..").locator('a[href^="mailto:"]'),
+    ).toHaveCount(0);
   });
 
   test("VAL-ADMIN-004: status filters match SQL counts exactly", async ({

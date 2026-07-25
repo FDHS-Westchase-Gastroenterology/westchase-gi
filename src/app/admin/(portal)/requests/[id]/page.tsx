@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  isMailbox,
   REQUEST_STATUSES,
   type RequestStatus,
 } from "@/lib/portal/contracts";
@@ -75,6 +76,8 @@ export default async function RequestDetailPage({
   }
 
   const row = request as RequestRow;
+  const mailbox = row.email?.trim();
+  const safeMailbox = mailbox && isMailbox(mailbox) ? mailbox : null;
   const allEvents = (events ?? []) as EventRow[];
   const notes = allEvents.filter((event) => event.type === "note");
   const notifications = allEvents.filter(
@@ -97,12 +100,12 @@ export default async function RequestDetailPage({
     },
     {
       label: "Email",
-      value: row.email ? (
+      value: safeMailbox ? (
         <a
-          href={`mailto:${row.email}`}
+          href={`mailto:${safeMailbox}`}
           className="break-all font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
         >
-          {row.email}
+          {safeMailbox}
         </a>
       ) : (
         <span className="text-[var(--color-muted)]">

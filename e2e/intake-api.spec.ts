@@ -70,7 +70,7 @@ function validPayload(sourcePath: string) {
   return {
     name: `TEST Intake ${token}`,
     phone: "8135550101",
-    email: `intake-${token}@example.test`,
+    email: `intake+${token}@example.test`,
     location: "tampa",
     time: "morning",
     message: "TEST submission only — no medical details.",
@@ -238,6 +238,21 @@ test.describe("intake API contract", () => {
           email: "not-an-email",
         }),
       },
+      ...[
+        "patient@example.com?subject=Injected",
+        "patient@example.com%3Fsubject%3DInjected",
+        "patient@example.com\r\nBcc:other@example.com",
+        "patient@example.com%0D%0ABcc%3Aother%40example.com",
+        "first@example.com,second@example.com",
+        "first@example.com;second@example.com",
+        `${"a".repeat(255)}@example.test`,
+      ].map((email) => ({
+        field: "email" as const,
+        makePayload: (sourcePath: string) => ({
+          ...validPayload(sourcePath),
+          email,
+        }),
+      })),
       {
         field: "phone",
         makePayload: (sourcePath) => ({

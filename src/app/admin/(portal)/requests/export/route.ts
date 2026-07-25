@@ -32,9 +32,10 @@ function isRequestStatus(value: string | null): value is RequestStatus {
 
 function csvField(raw: unknown): string {
   const value = raw === null || raw === undefined ? "" : String(raw);
-  return /[",\r\n]/.test(value)
-    ? `"${value.replaceAll('"', '""')}"`
-    : value;
+  const safeValue = /^[=+\-@\t\r\n]/.test(value) ? `'${value}` : value;
+  return /[",\r\n]/.test(safeValue)
+    ? `"${safeValue.replaceAll('"', '""')}"`
+    : safeValue;
 }
 
 function csvDocument(rows: CsvRow[]): string {

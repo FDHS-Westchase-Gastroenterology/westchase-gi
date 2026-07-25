@@ -8,8 +8,11 @@
 import { z } from "zod";
 import { locales, type Locale } from "@/lib/site";
 
-/** Same pattern the patient form has always enforced client-side. */
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const mailboxSchema = z.email().max(254);
+
+export function isMailbox(value: string): boolean {
+  return mailboxSchema.safeParse(value).success;
+}
 
 const REQUEST_LOCATIONS = ["any", "tampa", "lutz"] as const;
 export type RequestLocation = (typeof REQUEST_LOCATIONS)[number];
@@ -32,9 +35,9 @@ export const RESET_REQUEST_MESSAGE =
 
 /**
  * Validation rules mirror the client rules the form applies: name required,
- * phone >= 10 digits once formatting is stripped, email optional but per
- * EMAIL_RE when present (many patients 65+ have no email; phone is the
- * callback channel), message optional and capped at 2000 characters. The
+ * phone >= 10 digits once formatting is stripped, email optional but exactly
+ * one practical mailbox when present (many patients 65+ have no email; phone
+ * is the callback channel), message optional and capped at 2000 characters. The
  * honeypot field (HONEYPOT_FIELD) is deliberately NOT part of this schema —
  * the route inspects and discards it before validation.
  */
@@ -47,7 +50,7 @@ export const requestInputSchema = z.object({
   email: z
     .string()
     .trim()
-    .refine((v) => v === "" || EMAIL_RE.test(v), "email_invalid")
+    .refine((v) => v === "" || isMailbox(v), "email_invalid")
     .default(""),
   location: z.enum(REQUEST_LOCATIONS),
   time: z.enum(REQUEST_TIMES),
