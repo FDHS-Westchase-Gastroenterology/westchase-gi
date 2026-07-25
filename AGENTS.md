@@ -94,14 +94,17 @@ The guarded dependency lane is operational. Its detailed source of truth is
   multi-package, maintainer-modified, source-changing, migration-changing, conflicting, stale, or
   ambiguous PRs stop for a human.
 - The controller rechecks the exact SHA, all deterministic checks, Codex status, Vercel preview,
-  and mergeability; merges at most one PR without bypassing branch protection; then pauses the
+  and mergeability; requests an ordinary merge for at most one PR; then pauses the
   queue until post-merge CI, React Doctor, Vercel Production, and live smoke succeed.
 
 Do not widen this lane by prose or agent judgment. Change the executable policy and regression
 tests together, preserve the no-production-database boundary, and require a new evidence-backed
 review before granting another runtime package autonomous merge authority.
 
-## Known current reconciliation items (2026-07-20)
+GitHub currently reports no branch-protection rule or ruleset. Workflow policy is not a substitute
+for repository-setting enforcement, and the missing protection does not authorize direct pushes.
+
+## Known current reconciliation items (2026-07-25)
 
 - The canonical patient origin is the apex `https://westchasegi.com`; `www` redirects to it.
   Keep `site.url` and generated canonical/OG/hreflang/sitemap/robots output on the apex. Do not
@@ -119,12 +122,15 @@ review before granting another runtime package autonomous merge authority.
   `1124668`; no temporary acceptance rows or accounts remain.
 - The GitHub repository homepage still points at dead `new-westchase-gi.vercel.app`; the intended
   homepage is `https://westchasegi.com`.
+- GitHub `main` and the last verified Vercel Production deployment match `e5f32e5`. The former
+  standalone flyer repository and Vercel project are retired; authenticated acceptance of the
+  integrated printer remains open in issue #24.
 
 ## Verification
 
 - `npm run build`, `npm run lint`, and `npm run doctor` must execute; the local React Doctor
-  standard is 100. The required GitHub status remains advisory while current findings are
-  reconciled, so a green check proves execution, not a clean score—inspect its report. The
+  standard is 100. The GitHub status is advisory and is not currently required by branch
+  settings, so a green check proves execution, not a clean score—inspect its report. The
   dependency controller separately rejects auto-merge when an exact-head PR scan reports errors.
 - `npx playwright test` must pass (see README §Tests; specs run against a development
   Supabase project via `.env.local`).

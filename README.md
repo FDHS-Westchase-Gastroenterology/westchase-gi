@@ -158,11 +158,14 @@ These are known mismatches, not intended product behavior:
   genuinely EN/ES-only; clinical-care language claims need practice confirmation before editing.
 - The GitHub repository homepage still points to the retired
   `new-westchase-gi.vercel.app` deployment instead of the live apex.
+- GitHub `main` and the last verified Vercel Production deployment match `e5f32e5`. GitHub
+  currently has no branch-protection rule or ruleset, so hosted statuses run but are not enforced
+  by repository settings.
 - Production schema parity through migration `20260720102654` was verified on 2026-07-20: the
   retired software registry is gone, tour persistence is live, and authenticated first-login-tour
-  plus public-site-link/session-continuity acceptance passed on `1124668`. Clinic-approved email
-  canaries, hosted-Auth sender work, review-flyer acceptance, and standalone flyer-tool retirement
-  remain separate handover work. GitHub issue
+  plus public-site-link/session-continuity acceptance passed on `1124668`. The former standalone
+  flyer repository and Vercel project are retired; authenticated acceptance of the integrated
+  printer, clinic-approved email canaries, and hosted-Auth sender work remain open. GitHub issue
   [#24](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/24) is the canonical
   full Production workflow checklist; current operational detail lives in
   `docs/PORTAL-OPS.md` and `docs/INTEGRATION-ACTIVATION.md`.

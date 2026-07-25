@@ -100,14 +100,15 @@ schema changes go through committed migrations in `supabase/migrations/`
 to development first and production only after verification. Record the owner,
 transfer date, and a non-secret acceptance check when this closes.
 
-## Current Production activation state (verified 2026-07-20)
+## Current Production activation state (verified 2026-07-25)
 
 GitHub issue [#24](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/24)
 is the canonical remaining-acceptance tracker. Keep this section synchronized with that checklist.
 
-- Source and Vercel Production are deployed through `1124668` (PR #53), including
-  the task-first portal, Website/maintainer controls, protected flyer printer, optional
-  appointment email, first-login tour, and persistent public-site link.
+- GitHub `main` and the last verified Vercel Production deployment match `e5f32e5`, including the
+  task-first portal, Website/maintainer controls, protected flyer printer, optional appointment
+  email, first-login tour/Help flow, persistent public-site link, language chooser, and
+  notification privacy refinement.
 - Complete the remaining Production workflow matrix: staff role changes/deactivation;
   notification-recipient add/confirm/pause/resume/remove; request status, notes, export,
   and optional-email-absent behavior; and current Home, Requests, Settings, Website, and Help
@@ -128,8 +129,10 @@ is the canonical remaining-acceptance tracker. Keep this section synchronized wi
   owner-inbox reset receipt does not satisfy that gate.
 - Use a controlled throwaway GitHub account to complete invite, cancel, accept as
   Write, and revoke, then verify the corresponding Activity-log entries.
-- Keep the standalone flyer tool as a rollback surface until the integrated printer
-  passes Production acceptance; only then verify and retire it.
+- The former standalone flyer repository and Vercel project are retired after this repository's
+  routes, protected assets, manifest, verifier, build, and live review hub were confirmed
+  self-contained. Authenticated Production acceptance of the integrated printer remains open,
+  but there is no separate rollback application.
 - Owner 2FA and narrowing the GitHub App installation remain separate owner-only
   governance controls. They are open, but they do not withhold the current portal UI.
 
