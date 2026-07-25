@@ -15,6 +15,15 @@ const SNAPSHOT_PATH = resolve(process.cwd(), ".logs/recipients-snapshot.json");
  */
 export default async function globalSetup(): Promise<void> {
   const db = serviceDb();
+  const { error: authAdminError } = await db.auth.admin.listUsers({
+    page: 1,
+    perPage: 1,
+  });
+  if (authAdminError) {
+    throw new Error(
+      `Auth Admin preflight failed: ${authAdminError.code ?? authAdminError.status}`,
+    );
+  }
 
   if (!existsSync(SNAPSHOT_PATH)) {
     const { data, error } = await db

@@ -24,14 +24,21 @@ the Vercel environment store. Never point local tests at production.
 | Name | Purpose |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (+ `_ANON_KEY` alias) | Browser-safe Supabase config (RLS enforced) |
-| `SUPABASE_SECRET_KEY` (+ `SUPABASE_SERVICE_ROLE_KEY` alias) | Server-only privileged key — never `NEXT_PUBLIC_*`, never in client bundles |
+| `SUPABASE_SERVICE_ROLE_KEY` | Temporary server-only compatibility credential for privileged data and Auth Admin; never `NEXT_PUBLIC_*`, never in client bundles |
 | `SUPABASE_PROJECT_REF` / `SUPABASE_DB_PASSWORD` | CLI/migration access for the default (dev) project |
-| `SUPABASE_*_PROD` family | The same, for the production project (migrations + verify scripts) |
+| `PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF` | Exact Development project allowlist for destructive Playwright runs; use `local` only with a loopback disposable stack |
+| `SUPABASE_*_PROD` family | The same, for the production project (migrations + verify scripts); the E2E guard rejects its URL and reference |
 | `RESEND_API_KEY` / `RESEND_FROM` | Current production email adapter + sender |
 | `PORTAL_BASE_URL` | Absolute base URL used in notification links |
 | `PORTAL_GITHUB_APP_ID` / `PORTAL_GITHUB_APP_INSTALLATION_ID` | Server-only identifiers for the clinic-owned `wgi-portal` App |
 | `PORTAL_GITHUB_APP_PRIVATE_KEY` | Server-only App private key; PEM encoded as base64 or escaped newlines |
 | `PORTAL_SEED_ADMIN_EMAIL` / `PORTAL_SEED_ADMIN_PASSWORD` | E2E test admin on the dev project (tests only) |
+| `PORTAL_PROD_ADMIN_EMAIL` / `PORTAL_PROD_ADMIN_PASSWORD` | Operator-only Production activation/verification identity; never add to Vercel, never read by Playwright, and never falls back to the Development seed identity |
+
+The service-role JWT is a temporary compatibility bridge. The configured opaque secrets could
+reach ordinary data APIs but failed hosted Auth Admin calls, while the service-role JWT succeeded.
+Keep the bridge server-only until create/delete, invite, resend, recovery, deactivate, and cleanup
+canaries pass in both intended projects and the actual Vercel Production variables are verified.
 
 ## Rotating a credential
 
@@ -264,6 +271,7 @@ password-recovery sender.
 
 ```bash
 npm run build && npm run lint && npm run doctor   # build + lint + React Doctor (100 baseline)
+npm run test:e2e-guard                            # pure target-guard matrix; no server/DB
 npx playwright test                               # full E2E contract
 node scripts/verify-schema.mjs --target dev       # schema/RLS/seed health (or --target prod)
 node scripts/verify-no-secrets.mjs                # git history secret sweep
@@ -272,4 +280,6 @@ node scripts/verify-review-flyers.mjs             # QR destinations + artifact f
 
 `verify-schema.mjs` uses privileged credentials, creates a temporary request to
 exercise atomic rollback, and deletes it in cleanup. Running it against Production
-is an authorized activation/maintenance action, not a read-only inspection.
+is an authorized activation/maintenance action, not a read-only inspection. The Production path
+requires `PORTAL_PROD_ADMIN_EMAIL` / `PORTAL_PROD_ADMIN_PASSWORD`; it cannot reuse or fall back to
+the Development Playwright identity.

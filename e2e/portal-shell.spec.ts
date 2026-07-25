@@ -4,8 +4,7 @@ import { loadLocalEnv, requiredEnv } from "./support";
 // VAL-ADMIN-002: the seed admin can log in and out through the UI.
 // VAL-ADMIN-014 (shell scope): no horizontal overflow at 390/1440, nav
 // and utility targets >= 44px, and the chrome uses the repo's design tokens
-// (not ad-hoc hex). Screenshots land in test-results/portal-shell/ for the gate
-// evidence.
+// (not ad-hoc hex).
 
 loadLocalEnv();
 
@@ -146,20 +145,6 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
         ).toHaveText("Settings");
       }
 
-      // Screenshot sweep: home, the queue, flyer printer, and both Settings
-      // sub-pages (the tab row is the one place a narrow viewport has clipped
-      // before).
-      if (
-        portalPage.name === "home" ||
-        portalPage.name === "queue" ||
-        portalPage.name === "review-flyers" ||
-        portalPage.path.startsWith("/admin/settings")
-      ) {
-        await page.screenshot({
-          path: `test-results/portal-shell/${portalPage.name}-${viewport.name}.png`,
-          fullPage: true,
-        });
-      }
     }
 
     // Token discipline: the header carries the navy token, the active nav
@@ -192,7 +177,7 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
     expect(tokenCheck.activeBorder).toBe(tokenCheck.expectedAmber);
   }
 
-  // Logged-out login page measurements + screenshots.
+  // Logged-out login page measurements.
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/admin\/login\/?$/);
   for (const viewport of VIEWPORTS) {
@@ -208,10 +193,6 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
     expect(overflow, `login overflow at ${viewport.name}`).toBeLessThanOrEqual(
       0,
     );
-    await page.screenshot({
-      path: `test-results/portal-shell/login-${viewport.name}.png`,
-      fullPage: true,
-    });
   }
 });
 

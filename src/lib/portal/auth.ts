@@ -6,7 +6,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import type { StaffRole } from "@/lib/portal/contracts";
-import { serverClient, serviceClient } from "@/lib/portal/server";
+import {
+  serverClient,
+  serviceClient,
+  serviceRoleKey,
+} from "@/lib/portal/server";
 
 export type PortalSessionUser = {
   id: string;
@@ -53,13 +57,7 @@ const PASSWORD_FLOW_COOKIE = "wgi-portal-password-flow";
 const PASSWORD_FLOW_TTL_SECONDS = 10 * 60;
 
 function passwordFlowSecret(): string {
-  const secret = (
-    process.env.SUPABASE_SECRET_KEY ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  )?.trim();
-
-  if (!secret) throw new Error("Missing portal password-flow signing secret");
-  return secret;
+  return serviceRoleKey();
 }
 
 function passwordFlowSignature(payload: string): string {

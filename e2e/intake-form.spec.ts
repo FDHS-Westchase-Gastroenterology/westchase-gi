@@ -16,6 +16,24 @@ const db = serviceDb();
 const dicts: Record<Locale, Dictionary> = { en, es, vi, ko, ar };
 const runId = randomUUID().slice(0, 8);
 
+test.use({
+  storageState: {
+    cookies: [
+      {
+        name: "wgi-locale",
+        value: "en",
+        domain: "localhost",
+        path: "/",
+        expires: -1,
+        httpOnly: false,
+        secure: false,
+        sameSite: "Lax",
+      },
+    ],
+    origins: [],
+  },
+});
+
 /** All spec rows share this address shape so cleanup can sweep any run. */
 function emailFor(label: string): string {
   return `form-e2e-${runId}-${label}@example.test`;
@@ -120,7 +138,6 @@ test.describe("VAL-INTAKE-006: truthful failure when the queue is down", () => {
       env: {
         ...process.env,
         NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:9",
-        SUPABASE_SECRET_KEY: "sb_broken_e2e_key",
         SUPABASE_SERVICE_ROLE_KEY: "sb_broken_e2e_key",
         NEXT_DIST_DIR: ".next-e2e",
       },

@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { assertSafeE2ETarget } from "./target-guard.mjs";
 
 /**
  * Loads .env.local when present. CI injects disposable local-stack values
@@ -41,9 +42,10 @@ export function requiredEnv(...names: string[]): string {
 /** Service-role client against the DEV project (from .env.local). */
 export function serviceDb(): SupabaseClient {
   loadLocalEnv();
+  assertSafeE2ETarget(process.env);
   return createClient(
     requiredEnv("NEXT_PUBLIC_SUPABASE_URL"),
-    requiredEnv("SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY"),
+    requiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
     {
       auth: {
         autoRefreshToken: false,

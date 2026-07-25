@@ -122,9 +122,7 @@ function projectConfig(target) {
       ),
       serviceKey: requireEnv(
         "SUPABASE_DEV_SERVICE_ROLE_KEY",
-        "SUPABASE_DEV_SECRET_KEY",
         "SUPABASE_SERVICE_ROLE_KEY",
-        "SUPABASE_SECRET_KEY",
       ),
     }
   }
@@ -140,11 +138,21 @@ function projectConfig(target) {
     ),
     serviceKey: requireEnv(
       "SUPABASE_PROD_SERVICE_ROLE_KEY",
-      "SUPABASE_PROD_SECRET_KEY",
       "SUPABASE_SERVICE_ROLE_KEY_PROD",
-      "SUPABASE_SECRET_KEY_PROD",
     ),
   }
+}
+
+function adminCredentials(target) {
+  return target === "dev"
+    ? {
+        email: requireEnv("PORTAL_SEED_ADMIN_EMAIL"),
+        password: requireEnv("PORTAL_SEED_ADMIN_PASSWORD"),
+      }
+    : {
+        email: requireEnv("PORTAL_PROD_ADMIN_EMAIL"),
+        password: requireEnv("PORTAL_PROD_ADMIN_PASSWORD"),
+      }
 }
 
 function assert(condition, message) {
@@ -351,8 +359,9 @@ async function main() {
   const target = parseTarget(process.argv.slice(2))
   const config = projectConfig(target)
   const accessToken = requireEnv("SUPABASE_ACCESS_TOKEN")
-  const email = requireEnv("PORTAL_SEED_ADMIN_EMAIL").trim().toLowerCase()
-  const password = requireEnv("PORTAL_SEED_ADMIN_PASSWORD")
+  const credentials = adminCredentials(target)
+  const email = credentials.email.trim().toLowerCase()
+  const password = credentials.password
   const tableList = TABLES.map((name) => `'${name}'`).join(", ")
   const retiredTableList = RETIRED_TABLES.map((name) => `'${name}'`).join(", ")
   const rpcList = RPCS.map((name) => `'${name}'`).join(", ")

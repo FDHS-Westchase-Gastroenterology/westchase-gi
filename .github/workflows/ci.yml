@@ -35,6 +35,9 @@ jobs:
       - name: Verify dependency automation policy
         run: node --test .github/scripts/dependency-automation.test.cjs
 
+      - name: Verify destructive E2E target guard
+        run: npm run test:e2e-guard
+
       - name: Lint
         run: npm run lint
 
@@ -42,7 +45,7 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-public-placeholder
-          SUPABASE_SECRET_KEY: ci-server-placeholder
+          SUPABASE_SERVICE_ROLE_KEY: ci-server-placeholder
           PORTAL_BASE_URL: http://127.0.0.1:3100
         run: npm run build
 

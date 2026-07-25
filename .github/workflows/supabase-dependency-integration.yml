@@ -8,6 +8,8 @@ on:
       - "package-lock.json"
       - ".github/workflows/supabase-dependency-integration.yml"
       - "e2e/support.ts"
+      - "e2e/target-guard.mjs"
+      - "e2e/target-guard.test.mjs"
       - "e2e/supabase-dependency-contract.spec.ts"
       - "scripts/seed-portal.mjs"
       - "supabase/**"
@@ -28,6 +30,8 @@ jobs:
       PORTAL_BASE_URL: http://127.0.0.1:3100
       PORTAL_SEED_ADMIN_EMAIL: admin@local.westchase.test
       PORTAL_SEED_ADMIN_PASSWORD: Local-Dependabot-Only-2026!
+      PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF: local
+      SUPABASE_PROJECT_REF: local
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
@@ -66,13 +70,13 @@ jobs:
             supabase status -o env \
               --override-name api.url=NEXT_PUBLIC_SUPABASE_URL \
               --override-name auth.publishable_key=NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY \
-              --override-name auth.secret_key=SUPABASE_SECRET_KEY
+              --override-name auth.service_role_key=SUPABASE_SERVICE_ROLE_KEY
           )"
           {
             printf 'NEXT_PUBLIC_SUPABASE_URL=%s\n' "$NEXT_PUBLIC_SUPABASE_URL"
             printf 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=%s\n' \
               "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
-            printf 'SUPABASE_SECRET_KEY=%s\n' "$SUPABASE_SECRET_KEY"
+            printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SUPABASE_SERVICE_ROLE_KEY"
           } >> "$GITHUB_ENV"
 
       - name: Seed disposable portal fixtures

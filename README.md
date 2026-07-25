@@ -111,6 +111,7 @@ codebase; the portal lives in `src/app/admin/`.
 
 ```bash
 npx playwright install chromium   # once
+npm run test:e2e-guard             # pure guard regression matrix; no server/DB
 npx playwright test               # full serial E2E suite (boots its own server on :3100)
 npx playwright test e2e/smoke.spec.ts   # focused file
 PLAYWRIGHT_PUBLIC_SMOKE=1 npx playwright test e2e/smoke.spec.ts --project=chromium
@@ -120,10 +121,20 @@ PLAYWRIGHT_PUBLIC_SMOKE=1 npx playwright test e2e/smoke.spec.ts --project=chromi
 The suite covers the intake API contract, form states across all five locales, the no-JS
 fallback, portal auth/RLS boundaries, the queue lifecycle, management surfaces, Website custody,
 and leak hygiene. Specs run against the Supabase project named in `.env.local` (use a development
-project, never production) and toggle notification recipients off for the run so
-no real emails send. The committed configuration uses one worker because the shared development
+project, never production) and toggle notification recipients off for the run so no real emails
+send. `SUPABASE_PROJECT_REF` must exactly match
+`PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF`, the URL must encode that same hosted project reference
+(or use the explicit `local` loopback sentinel), and hosted runs require and reject the explicit
+Production reference and URL before the first database call. Credential-bearing runs retain no traces, screenshots,
+video, or HTML report. The committed configuration uses one worker because the shared development
 Auth project rate-limits concurrent sign-ins and recovery requests; do not override that for
 login-heavy portal specs.
+
+The portal temporarily requires `SUPABASE_SERVICE_ROLE_KEY` for privileged application, E2E, and
+seed operations because the configured opaque secrets failed hosted Auth Admin requests. The
+legacy bridge remains server-only and must not be removed until create/delete, invite, resend,
+recovery, deactivate, and cleanup canaries pass in Development and Production and the actual
+Vercel Production environment is verified.
 
 Package-changing pull requests also run
 `e2e/supabase-dependency-contract.spec.ts` against a disposable local Supabase

@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "doctor": "npx react-doctor --blocking none"
+    "doctor": "npx react-doctor --blocking none",
+    "test:e2e-guard": "node --test e2e/target-guard.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.3",
