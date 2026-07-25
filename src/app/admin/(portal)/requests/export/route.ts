@@ -4,8 +4,13 @@ import {
   type RequestStatus,
 } from "@/lib/portal/contracts";
 import { authorizationStatus, requireRole } from "@/lib/portal/auth";
+import {
+  parseRequestSearch,
+  requestSearchFilter,
+} from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
 
+const EXPORT_CHUNK_SIZE = 1000;
 const CSV_HEADERS = [
   "id",
   "created_at",
@@ -66,28 +71,71 @@ export async function GET(request: NextRequest): Promise<Response> {
     // set of patient contact rows than the user requested.
     return new Response("Invalid status filter", { status: 400 });
   }
+  const search = parseRequestSearch(
+    request.nextUrl.searchParams.get("q") ?? undefined,
+  );
+  const searchFilter = search ? requestSearchFilter(search) : "";
 
   const db = serviceClient();
-  let query = db
+  let countQuery = db
     .from("requests")
-    .select(
-      "id, created_at, status, name, phone, email, location, preferred_time, locale, source_path, message",
-    )
-    .order("created_at", { ascending: false });
-
+    .select("id", { count: "exact", head: true });
   if (isRequestStatus(requestedStatus)) {
-    query = query.eq("status", requestedStatus);
+    countQuery = countQuery.eq("status", requestedStatus);
+  }
+  if (searchFilter) countQuery = countQuery.or(searchFilter);
+  const { count: expectedCount, error: countError } = await countQuery;
+  if (countError || expectedCount === null) {
+    return new Response("Export unavailable", { status: 503 });
   }
 
-  const { data, error } = await query;
-  if (error || !data) {
+  const rows: CsvRow[] = [];
+  for (let from = 0; from < expectedCount; from += EXPORT_CHUNK_SIZE) {
+    let query = db
+      .from("requests")
+      .select(
+        "id, created_at, status, name, phone, email, location, preferred_time, locale, source_path, message",
+      )
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, Math.min(from + EXPORT_CHUNK_SIZE, expectedCount) - 1);
+    if (isRequestStatus(requestedStatus)) {
+      query = query.eq("status", requestedStatus);
+    }
+    if (searchFilter) query = query.or(searchFilter);
+
+    const { data, error } = await query;
+    const expectedChunkSize = Math.min(
+      EXPORT_CHUNK_SIZE,
+      expectedCount - from,
+    );
+    if (error || !data || data.length !== expectedChunkSize) {
+      return new Response("Export unavailable", { status: 503 });
+    }
+    rows.push(...(data as CsvRow[]));
+  }
+
+  let finalCountQuery = db
+    .from("requests")
+    .select("id", { count: "exact", head: true });
+  if (isRequestStatus(requestedStatus)) {
+    finalCountQuery = finalCountQuery.eq("status", requestedStatus);
+  }
+  if (searchFilter) finalCountQuery = finalCountQuery.or(searchFilter);
+  const { count: finalCount, error: finalCountError } = await finalCountQuery;
+  if (
+    finalCountError ||
+    finalCount !== expectedCount ||
+    rows.length !== expectedCount ||
+    new Set(rows.map((row) => String(row.id))).size !== expectedCount
+  ) {
     return new Response("Export unavailable", { status: 503 });
   }
 
   // Export is a read-only queue operation, so it intentionally does not add an
   // audit row. Every state-changing portal operation remains audited.
   const date = new Date().toISOString().slice(0, 10);
-  return new Response(csvDocument(data as CsvRow[]), {
+  return new Response(csvDocument(rows), {
     status: 200,
     headers: {
       "Cache-Control": "private, no-store, max-age=0",
