@@ -139,7 +139,7 @@ export default async function HomePage({ params }: PageProps) {
           </Reveal>
           <div className="mt-7 grid gap-5">
             {t.welcome.map((para) => (
-              <p key={para.slice(0, 32)} className="measure">
+              <p key={para} className="measure">
                 {para}
               </p>
             ))}
