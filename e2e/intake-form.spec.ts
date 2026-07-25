@@ -224,9 +224,12 @@ test("VAL-INTAKE-007: no-JS native POST leaks nothing and lands on a receipt", a
   // and sidesteps bounding-box stability churn on cold dev compiles.
   await page.press("#email", "Enter");
 
-  await page.waitForURL("**/en/appointment/received?status=success", {
-    timeout: 60_000,
-  });
+  await page.waitForURL(
+    /\/en\/appointment\/received\?receipt=[0-9a-f-]{36}\.[A-Za-z0-9_-]{43}$/,
+    {
+      timeout: 60_000,
+    },
+  );
   await expect(
     page.getByRole("heading", { name: en.requestReceipt.successHeading }),
   ).toBeVisible();

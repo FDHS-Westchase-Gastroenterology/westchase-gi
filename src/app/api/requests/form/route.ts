@@ -60,12 +60,13 @@ export async function POST(request: Request) {
     // A malformed body lands on the truthful failure receipt.
   }
 
-  const result = await processIntake(rawInput, request.headers);
+  const result = await processIntake(rawInput, request.headers, true);
   const destination = new URL(receiptPath(locale), request.url);
-  destination.searchParams.set(
-    "status",
-    result.response.ok ? "success" : "failure",
-  );
+  if (result.receiptToken) {
+    destination.searchParams.set("receipt", result.receiptToken);
+  } else if (!result.response.ok) {
+    destination.searchParams.set("failure", "1");
+  }
 
   // Route-handler redirect() uses 307 and would replay this POST. A 303
   // explicitly completes the POST/redirect/GET flow without putting patient

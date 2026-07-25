@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   HONEYPOT_FIELD,
@@ -16,11 +16,17 @@ import {
   type NotificationRecipient,
 } from "@/lib/portal/intake-notification";
 import { portalUrl, serviceClient } from "@/lib/portal/server";
+import type { Locale } from "@/lib/site";
 
 type IntakeResult = {
   response: IntakeResponse;
   status: 200 | 201 | 400 | 429 | 503;
+  receiptToken?: string;
 };
+
+const RECEIPT_TTL_MS = 15 * 60 * 1000;
+const RECEIPT_TOKEN_RE =
+  /^([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.([A-Za-z0-9_-]{43})$/;
 
 type RateBucket = {
   count: number;
@@ -48,6 +54,105 @@ function honeypotIsFilled(value: unknown): boolean {
   if (!isRecord(value)) return false;
   const honeypot = value[HONEYPOT_FIELD];
   return honeypot !== undefined && String(honeypot).trim().length > 0;
+}
+
+function randomReceiptSecret(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+function receiptTokenHash(secret: string): string {
+  return createHash("sha256").update(secret).digest("hex");
+}
+
+function decoyReceiptToken(): string {
+  return `${randomUUID()}.${randomReceiptSecret()}`;
+}
+
+async function issueRequestReceipt(
+  client: SupabaseClient,
+  requestId: string,
+  locale: Locale,
+): Promise<string | undefined> {
+  const secret = randomReceiptSecret();
+
+  try {
+    const { data, error } = await client
+      .from("request_events")
+      .insert({
+        request_id: requestId,
+        type: "receipt",
+        status: "issued",
+        meta: {
+          locale,
+          token_hash: receiptTokenHash(secret),
+        },
+      })
+      .select("id")
+      .single();
+
+    if (error || !data) {
+      logOperationalFailure("receipt issue failed", {
+        requestId,
+        code: error?.code ?? "missing_row",
+      });
+      return undefined;
+    }
+
+    return `${data.id}.${secret}`;
+  } catch {
+    logOperationalFailure("receipt issue failed", {
+      requestId,
+      code: "request_failed",
+    });
+    return undefined;
+  }
+}
+
+export async function consumeRequestReceipt(
+  token: string,
+  locale: Locale,
+): Promise<boolean> {
+  const match = RECEIPT_TOKEN_RE.exec(token);
+  if (!match) return false;
+
+  const [, eventId, secret] = match;
+  let client: SupabaseClient;
+  try {
+    client = serviceClient();
+  } catch {
+    logOperationalFailure("receipt consume unavailable");
+    return false;
+  }
+
+  try {
+    const { data, error } = await client
+      .from("request_events")
+      .update({ status: "consumed" })
+      .eq("id", eventId)
+      .eq("type", "receipt")
+      .eq("status", "issued")
+      .gt("created_at", new Date(Date.now() - RECEIPT_TTL_MS).toISOString())
+      .contains("meta", {
+        locale,
+        token_hash: receiptTokenHash(secret),
+      })
+      .select("id")
+      .maybeSingle();
+
+    if (error) {
+      logOperationalFailure("receipt consume failed", {
+        code: error.code,
+      });
+      return false;
+    }
+
+    return data !== null;
+  } catch {
+    logOperationalFailure("receipt consume failed", {
+      code: "request_failed",
+    });
+    return false;
+  }
 }
 
 function clientHash(headers: Headers): string {
@@ -137,11 +242,13 @@ async function notifyActiveRecipients(
 export async function processIntake(
   rawInput: unknown,
   headers: Headers,
+  issueReceipt = false,
 ): Promise<IntakeResult> {
   if (honeypotIsFilled(rawInput)) {
     return {
       response: { ok: true, id: randomUUID() },
       status: 200,
+      receiptToken: issueReceipt ? decoyReceiptToken() : undefined,
     };
   }
 
@@ -201,6 +308,10 @@ export async function processIntake(
     };
   }
 
+  const receiptToken = issueReceipt
+    ? await issueRequestReceipt(client, data.id, input.locale)
+    : undefined;
+
   try {
     await notifyActiveRecipients(client, data.id);
   } catch {
@@ -214,5 +325,6 @@ export async function processIntake(
   return {
     response: { ok: true, id: data.id },
     status: 201,
+    receiptToken,
   };
 }

@@ -54,8 +54,9 @@ notifications) and the authenticated staff portal at `/admin`.
    (30-day localStorage). Never turn it back into a per-page modal.
 10. **Intake pipeline invariants.** The success state renders only after the durable Postgres
     insert (`src/lib/portal/intake.ts`); failure and unknown states stay distinct and always
-    surface the call/text fallback; the no-JS path is a native POST with a status-only receipt
-    URL. The honeypot drop returns a success-shaped response. Never weaken these.
+    surface the call/text fallback; the no-JS path is a native POST with a short-lived, one-time
+    opaque receipt URL bound to a persisted request. No patient field or unsigned success flag
+    belongs in that URL. The honeypot drop returns a success-shaped response. Never weaken these.
 11. **Portal security invariants.** `/admin/*` is closed by the proxy except the explicit
     authentication-entry routes. Every management action/route authenticates first
     (`requireRole`); login, reset request, and one-time-link confirmation are deliberate public

@@ -4,6 +4,7 @@ import {
   INTAKE_RATE_LIMIT,
   type IntakeResponse,
 } from "../src/lib/portal/contracts";
+import { en } from "../src/lib/dictionaries/en";
 import { serviceDb } from "./support";
 
 const db = serviceDb();
@@ -270,7 +271,7 @@ test.describe("intake API contract", () => {
     ).resolves.toBe(0);
   });
 
-  test("no-JS form POST uses a patient-data-free receipt URL", async ({
+  test("no-JS success requires one patient-free, one-time receipt", async ({
     request,
   }) => {
     const payload = validPayload(`${sourcePrefix}/no-js`);
@@ -284,8 +285,12 @@ test.describe("intake API contract", () => {
     const location = response.headers().location;
     expect(location).toBeTruthy();
     const receiptUrl = new URL(location);
+    const receiptToken = receiptUrl.searchParams.get("receipt");
     expect(receiptUrl.pathname).toBe("/en/appointment/received");
-    expect(receiptUrl.searchParams.get("status")).toBe("success");
+    expect(receiptUrl.searchParams.get("status")).toBeNull();
+    expect(receiptToken).toMatch(
+      /^[0-9a-f-]{36}\.[A-Za-z0-9_-]{43}$/,
+    );
     expect(location).not.toContain(payload.name);
     expect(location).not.toContain(payload.phone);
     expect(location).not.toContain(payload.email);
@@ -294,6 +299,87 @@ test.describe("intake API contract", () => {
     await expect(
       countRows("requests", "source_path", payload.sourcePath),
     ).resolves.toBe(1);
+
+    const claims = await Promise.all([
+      request.get(location),
+      request.get(location),
+    ]);
+    const bodies = await Promise.all(claims.map((claim) => claim.text()));
+    expect(
+      bodies.every((body) =>
+        body.includes('<meta name="referrer" content="no-referrer"/>'),
+      ),
+    ).toBe(true);
+    const renderedHeading = (body: string) =>
+      body
+        .match(/<h1[^>]*>([^<]+)<\/h1>/)?.[1]
+        ?.replaceAll("&#x27;", "'");
+    expect(bodies.map(renderedHeading).sort()).toEqual(
+      [
+        en.appointment.form.unknownHeading,
+        en.requestReceipt.successHeading,
+      ].sort(),
+    );
+    expect(renderedHeading(await (await request.get(location)).text())).toBe(
+      en.appointment.form.unknownHeading,
+    );
+
+    for (const directPath of [
+      "/en/appointment/received?status=success",
+      "/en/appointment/received?receipt=malformed",
+    ]) {
+      expect(renderedHeading(await (await request.get(directPath)).text())).toBe(
+        en.appointment.form.unknownHeading,
+      );
+    }
+
+    const [eventId] = receiptToken!.split(".");
+    const { data: event, error: eventError } = await db
+      .from("request_events")
+      .select("status")
+      .eq("id", eventId)
+      .single();
+    expect(eventError).toBeNull();
+    expect(event?.status).toBe("consumed");
+
+    const failedPayload = {
+      ...validPayload(`${sourcePrefix}/no-js-failed`),
+      phone: "555",
+    };
+    const failed = await request.post("/api/requests/form", {
+      form: failedPayload,
+      headers: { "X-Forwarded-For": testIp("no-js-failed") },
+      maxRedirects: 0,
+    });
+    const failedUrl = new URL(failed.headers().location);
+    expect(failedUrl.searchParams.get("receipt")).toBeNull();
+    expect(failedUrl.searchParams.get("failure")).toBe("1");
+    expect(
+      renderedHeading(await (await request.get(failedUrl.toString())).text()),
+    ).toBe(en.requestReceipt.failureHeading);
+
+    const honeypotPayload = {
+      ...validPayload(`${sourcePrefix}/no-js-honeypot`),
+      company: "Example Company",
+    };
+    const honeypot = await request.post("/api/requests/form", {
+      form: honeypotPayload,
+      headers: { "X-Forwarded-For": testIp("no-js-honeypot") },
+      maxRedirects: 0,
+    });
+    const honeypotUrl = new URL(honeypot.headers().location);
+    expect(honeypotUrl.searchParams.get("receipt")).toMatch(
+      /^[0-9a-f-]{36}\.[A-Za-z0-9_-]{43}$/,
+    );
+    expect(
+      renderedHeading(
+        await (await request.get(honeypotUrl.toString())).text(),
+      ),
+    ).toBe(en.appointment.form.unknownHeading);
+
+    await expect(
+      countRows("requests", "source_path", `${sourcePrefix}/no-js-%`),
+    ).resolves.toBe(0);
   });
 
   test("VAL-INTAKE-005: rate limiting stops rows at the cap", async ({
