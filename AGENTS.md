@@ -54,8 +54,12 @@ notifications) and the authenticated staff portal at `/admin`.
    (30-day localStorage). Never turn it back into a per-page modal.
 10. **Intake pipeline invariants.** The success state renders only after the durable Postgres
     insert (`src/lib/portal/intake.ts`); failure and unknown states stay distinct and always
-    surface the call/text fallback; the no-JS path is a native POST with a status-only receipt
-    URL. The honeypot drop returns a success-shaped response. Never weaken these.
+    surface the call/text fallback; the no-JS path is a native POST with a short-lived, one-time
+    opaque receipt URL bound to a persisted request. No patient field or unsigned success flag
+    belongs in that URL. The honeypot drop returns a success-shaped response. Patient fields stay
+    capped at the browser, server, and database boundaries. Intake throttling stays shared and
+    atomic in Postgres, keyed by an HMAC rather than a raw address or reversible plain digest.
+    Never weaken these.
 11. **Portal security invariants.** `/admin/*` is closed by the proxy except the explicit
     authentication-entry routes. Every management action/route authenticates first
     (`requireRole`); login, reset request, and one-time-link confirmation are deliberate public
@@ -82,7 +86,8 @@ The guarded dependency lane is operational. Its detailed source of truth is
 - Every package-changing PR runs `e2e/supabase-dependency-contract.spec.ts` in a separate
   GitHub-hosted Ubuntu job. That job starts a disposable Docker Supabase stack, replays committed
   migrations, seeds local-only fixtures, checks Auth/SSR sessions, permission boundaries, intake
-  persistence, and PostgREST relationships, then stops the stack even on failure.
+  persistence, shared throttling, lifecycle boundaries, and PostgREST relationships, then stops
+  the stack even on failure.
 - The disposable job receives no hosted Supabase, Vercel, or repository secrets. It never runs on
   Jason's Mac and has no path that applies migrations or test writes to Development or Production.
   Post-merge Production verification only checks the matching Vercel deployment and performs a
@@ -93,18 +98,21 @@ The guarded dependency lane is operational. Its detailed source of truth is
   multi-package, maintainer-modified, source-changing, migration-changing, conflicting, stale, or
   ambiguous PRs stop for a human.
 - The controller rechecks the exact SHA, all deterministic checks, Codex status, Vercel preview,
-  and mergeability; merges at most one PR without bypassing branch protection; then pauses the
+  and mergeability; requests an ordinary merge for at most one PR; then pauses the
   queue until post-merge CI, React Doctor, Vercel Production, and live smoke succeed.
 
 Do not widen this lane by prose or agent judgment. Change the executable policy and regression
 tests together, preserve the no-production-database boundary, and require a new evidence-backed
 review before granting another runtime package autonomous merge authority.
 
-## Known current reconciliation items (2026-07-20)
+GitHub currently reports no branch-protection rule or ruleset. Workflow policy is not a substitute
+for repository-setting enforcement, and the missing protection does not authorize direct pushes.
+
+## Known current reconciliation items (2026-07-25)
 
 - The canonical patient origin is the apex `https://westchasegi.com`; `www` redirects to it.
-  Runtime `site.url` still incorrectly uses `www`, so canonical/OG/hreflang/sitemap/robots output
-  currently publishes redirecting URLs. Do not describe `www` as the intended canonical origin.
+  Keep `site.url` and generated canonical/OG/hreflang/sitemap/robots output on the apex. Do not
+  describe `www` as the intended canonical origin.
 - Some procedure-prep, blog, and education availability strings still say EN/ES despite all five
   locales being present. External Hushforms packets really are EN/ES-only; clinical-care language
   claims require practice confirmation rather than a mechanical five-language rewrite.
@@ -112,18 +120,23 @@ review before granting another runtime package autonomous merge authority.
   and Resend account/team custody are not evidenced as complete. The Resend domain and Production
   application sender are configured, but that is not account custody. Keep the Website page's
   explicit custody split accurate until the practice-controlled handoff is documented.
-- Development and Production both have the intended five portal tables and five service-only RPCs
-  through migration `20260720102654`. Production registry retirement, schema/security assertions,
-  atomic-rollback verification, and the first-login-tour/public-site-link smoke passed on
-  `1124668`; no temporary acceptance rows or accounts remain.
+- Development and Production are current through lifecycle migration `20260725170000`.
+  Development passed apply, transactional lifecycle smoke, portal workflow, exact rollback,
+  migration-ledger repair, and clean reapplication. Production passed the count-only cap
+  preflight, migration-ledger/RLS/ACL/RPC assertions, and a zero-deletable-row lifecycle preview;
+  its three pre-policy closed requests remain deliberately unclassified. No lifecycle Cron job
+  exists, and no retention deletion has run.
 - The GitHub repository homepage still points at dead `new-westchase-gi.vercel.app`; the intended
   homepage is `https://westchasegi.com`.
+- GitHub `main` and the last verified Vercel Production deployment match `e5f32e5`. The former
+  standalone flyer repository and Vercel project are retired; authenticated acceptance of the
+  integrated printer remains open in issue #24.
 
 ## Verification
 
 - `npm run build`, `npm run lint`, and `npm run doctor` must execute; the local React Doctor
-  standard is 100. The required GitHub status remains advisory while current findings are
-  reconciled, so a green check proves execution, not a clean score—inspect its report. The
+  standard is 100. The GitHub status is advisory and is not currently required by branch
+  settings, so a green check proves execution, not a clean score—inspect its report. The
   dependency controller separately rejects auto-merge when an exact-head PR scan reports errors.
 - `npx playwright test` must pass (see README §Tests; specs run against a development
   Supabase project via `.env.local`).

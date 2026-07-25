@@ -1,48 +1,72 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Check, MessageSquare, Phone } from "@/components/icons";
 import { getDictionary, isLocale } from "@/lib/i18n";
+import { consumeRequestReceipt } from "@/lib/portal/intake";
 import { site, type Locale } from "@/lib/site";
+
+export const runtime = "nodejs";
 
 type PageProps = {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ status?: string | string[] }>;
+  searchParams: Promise<{
+    failure?: string | string[];
+    receipt?: string | string[];
+  }>;
 };
 
 async function receiptState({ params, searchParams }: PageProps) {
+  await connection();
   const [{ locale: rawLocale }, query] = await Promise.all([
     params,
     searchParams,
   ]);
   const locale: Locale = isLocale(rawLocale) ? rawLocale : "en";
-  const successful = query.status === "success";
+  const receiptAccepted =
+    typeof query.receipt === "string" &&
+    (await consumeRequestReceipt(query.receipt, locale));
+  const state = receiptAccepted
+    ? "success"
+    : query.receipt === undefined && query.failure === "1"
+      ? "failure"
+      : "unknown";
 
   return {
     dict: getDictionary(locale),
-    successful,
+    state,
   };
 }
 
 export async function generateMetadata(
-  props: PageProps,
+  { params }: PageProps,
 ): Promise<Metadata> {
-  const { dict, successful } = await receiptState(props);
-  const receipt = dict.requestReceipt;
+  const { locale: rawLocale } = await params;
+  const locale: Locale = isLocale(rawLocale) ? rawLocale : "en";
+  const dict = getDictionary(locale);
 
   return {
-    title: successful
-      ? receipt.successHeading
-      : receipt.failureHeading,
+    title: dict.appointment.title,
+    referrer: "no-referrer",
     robots: { index: false, follow: false },
   };
 }
 
 export default async function RequestReceiptPage(props: PageProps) {
-  const { dict, successful } = await receiptState(props);
+  const { dict, state } = await receiptState(props);
   const receipt = dict.requestReceipt;
-  const heading = successful
-    ? receipt.successHeading
-    : receipt.failureHeading;
-  const body = successful ? receipt.successBody : receipt.failureBody;
+  const successful = state === "success";
+  const heading =
+    state === "success"
+      ? receipt.successHeading
+      : state === "failure"
+        ? receipt.failureHeading
+        : dict.appointment.form.unknownHeading;
+  const body =
+    state === "success"
+      ? receipt.successBody
+      : state === "failure"
+        ? receipt.failureBody
+        : dict.appointment.form.unknownBody;
   const StatusIcon = successful ? Check : Phone;
 
   return (

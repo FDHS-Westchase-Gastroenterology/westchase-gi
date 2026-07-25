@@ -24,8 +24,13 @@ function publishableKey(): string {
   ]);
 }
 
-function serviceRoleKey(): string {
-  return requiredEnv(["SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY"]);
+/**
+ * Temporary compatibility bridge: both hosted projects rejected the configured
+ * opaque secret for Auth Admin while the legacy service-role JWT succeeded.
+ * Keep this single selector until provider canaries prove opaque-key parity.
+ */
+export function serviceRoleKey(): string {
+  return requiredEnv(["SUPABASE_SERVICE_ROLE_KEY"]);
 }
 
 /** Build an application-owned URL without accepting an absolute/open-redirect

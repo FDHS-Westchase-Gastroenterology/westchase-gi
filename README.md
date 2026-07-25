@@ -111,6 +111,7 @@ codebase; the portal lives in `src/app/admin/`.
 
 ```bash
 npx playwright install chromium   # once
+npm run test:e2e-guard             # pure guard regression matrix; no server/DB
 npx playwright test               # full serial E2E suite (boots its own server on :3100)
 npx playwright test e2e/smoke.spec.ts   # focused file
 PLAYWRIGHT_PUBLIC_SMOKE=1 npx playwright test e2e/smoke.spec.ts --project=chromium
@@ -120,16 +121,27 @@ PLAYWRIGHT_PUBLIC_SMOKE=1 npx playwright test e2e/smoke.spec.ts --project=chromi
 The suite covers the intake API contract, form states across all five locales, the no-JS
 fallback, portal auth/RLS boundaries, the queue lifecycle, management surfaces, Website custody,
 and leak hygiene. Specs run against the Supabase project named in `.env.local` (use a development
-project, never production) and toggle notification recipients off for the run so
-no real emails send. The committed configuration uses one worker because the shared development
+project, never production) and toggle notification recipients off for the run so no real emails
+send. `SUPABASE_PROJECT_REF` must exactly match
+`PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF`, the URL must encode that same hosted project reference
+(or use the explicit `local` loopback sentinel), and hosted runs require and reject the explicit
+Production reference and URL before the first database call. Credential-bearing runs retain no traces, screenshots,
+video, or HTML report. The committed configuration uses one worker because the shared development
 Auth project rate-limits concurrent sign-ins and recovery requests; do not override that for
 login-heavy portal specs.
+
+The portal temporarily requires `SUPABASE_SERVICE_ROLE_KEY` for privileged application, E2E, and
+seed operations because the configured opaque secrets failed hosted Auth Admin requests. The
+legacy bridge remains server-only and must not be removed until create/delete, invite, resend,
+recovery, deactivate, and cleanup canaries pass in Development and Production and the actual
+Vercel Production environment is verified.
 
 Package-changing pull requests also run
 `e2e/supabase-dependency-contract.spec.ts` against a disposable local Supabase
 stack. That CI job receives no hosted Supabase or deployment secrets and checks
 direct Auth refresh, the portal's SSR cookie session, closed Data API/RLS
-boundaries, and representative PostgREST persistence and relationship reads.
+boundaries, shared intake throttling, field caps, request-lifecycle boundaries,
+and representative PostgREST persistence and relationship reads.
 
 ## Adding a patient PDF
 
@@ -142,19 +154,21 @@ boundaries, and representative PostgREST persistence and relationship reads.
 
 These are known mismatches, not intended product behavior:
 
-- The intended canonical origin is the apex `https://westchasegi.com`, but `site.url` still uses
-  `https://www.westchasegi.com`. That makes current canonical, Open Graph, hreflang, sitemap, and
-  robots output publish URLs that immediately redirect. The runtime fix remains outstanding.
 - Some patient-facing procedure-prep, blog, and education availability copy still says “English
   and Spanish” even though those pages exist in all five locales. External Hushforms packets are
   genuinely EN/ES-only; clinical-care language claims need practice confirmation before editing.
 - The GitHub repository homepage still points to the retired
   `new-westchase-gi.vercel.app` deployment instead of the live apex.
-- Production schema parity through migration `20260720102654` was verified on 2026-07-20: the
-  retired software registry is gone, tour persistence is live, and authenticated first-login-tour
-  plus public-site-link/session-continuity acceptance passed on `1124668`. Clinic-approved email
-  canaries, hosted-Auth sender work, review-flyer acceptance, and standalone flyer-tool retirement
-  remain separate handover work. GitHub issue
+- GitHub `main` and the last verified Vercel Production deployment match `e5f32e5`. GitHub
+  currently has no branch-protection rule or ruleset, so hosted statuses run but are not enforced
+  by repository settings.
+- Development and Production schema parity through lifecycle migration `20260725170000` was
+  verified on 2026-07-25. Development passed exact rollback and reapplication; Production passed
+  cap, migration-ledger, constraint, RLS, privilege, RPC, and count-only preview checks. No
+  lifecycle Cron job exists, no retention deletion has run, and the three pre-policy closed
+  requests remain unclassified. The former standalone flyer repository and Vercel project are
+  retired; authenticated acceptance of the integrated printer, clinic-approved email canaries,
+  and hosted-Auth sender work remain open. GitHub issue
   [#24](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/24) is the canonical
   full Production workflow checklist; current operational detail lives in
   `docs/PORTAL-OPS.md` and `docs/INTEGRATION-ACTIVATION.md`.

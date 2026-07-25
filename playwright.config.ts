@@ -6,7 +6,7 @@ const publicSmoke = process.env.PLAYWRIGHT_PUBLIC_SMOKE === "1";
 // port 3100 (3000 is off-limits in this environment); webServer boots the
 // same foreground command the humans use (`npm run dev:mission`), which
 // first clears any zombie holding the port so tests never hit stale code.
-// Reporters must never hold an unattended run open — html stays open:never.
+// Credential-bearing runs retain no browser artifacts.
 
 export default defineConfig({
   testDir: "./e2e",
@@ -21,10 +21,12 @@ export default defineConfig({
   workers: 1,
   forbidOnly: !!process.env.CI,
   retries: 0,
-  reporter: [["list"], ["html", { open: "never" }]],
+  reporter: "list",
   use: {
     baseURL: "http://localhost:3100",
-    trace: "retain-on-failure",
+    screenshot: "off",
+    trace: "off",
+    video: "off",
   },
   projects: [
     {

@@ -1,9 +1,17 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   REQUEST_STATUSES,
   type RequestStatus,
 } from "@/lib/portal/contracts";
 import { requireRole } from "@/lib/portal/auth";
+import {
+  parsePage,
+  parseRequestSearch,
+  requestSearchFilter,
+  REQUEST_PAGE_SIZE,
+  REQUEST_SEARCH_MAX_LENGTH,
+} from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
 import { StatusBadge } from "./status-badge";
 import {
@@ -24,7 +32,11 @@ type QueueRow = {
   created_at: string;
 };
 
-type SearchParams = Promise<{ status?: string | string[] }>;
+type SearchParams = Promise<{
+  page?: string | string[];
+  q?: string | string[];
+  status?: string | string[];
+}>;
 
 function activeFilter(raw: string | string[] | undefined): RequestStatus | "all" {
   const value = Array.isArray(raw) ? raw[0] : raw;
@@ -33,33 +45,65 @@ function activeFilter(raw: string | string[] | undefined): RequestStatus | "all"
     : "all";
 }
 
+function requestsHref({
+  page = 1,
+  path = "/admin/requests",
+  search,
+  status,
+}: {
+  page?: number;
+  path?: string;
+  search: string;
+  status: RequestStatus | "all";
+}): string {
+  const params = new URLSearchParams();
+  if (status !== "all") params.set("status", status);
+  if (search) params.set("q", search);
+  if (page > 1) params.set("page", String(page));
+  const query = params.toString();
+  return `${path}${query ? `?${query}` : ""}`;
+}
+
 export default async function AdminRequestsPage({
   searchParams,
 }: {
   searchParams: SearchParams;
 }) {
   await requireRole("staff");
-  const filter = activeFilter((await searchParams).status);
+  const params = await searchParams;
+  const filter = activeFilter(params.status);
+  const page = parsePage(params.page);
+  const search = parseRequestSearch(params.q);
+  const searchFilter = search ? requestSearchFilter(search) : "";
+  const from = (page - 1) * REQUEST_PAGE_SIZE;
 
   const db = serviceClient();
   let query = db
     .from("requests")
-    .select("id, name, phone, location, preferred_time, locale, status, created_at")
+    .select(
+      "id, name, phone, location, preferred_time, locale, status, created_at",
+      { count: "exact" },
+    )
     .order("created_at", { ascending: false })
-    .limit(200);
+    .order("id", { ascending: false })
+    .range(from, from + REQUEST_PAGE_SIZE - 1);
   if (filter !== "all") query = query.eq("status", filter);
+  if (searchFilter) query = query.or(searchFilter);
 
-  const [{ data: rows, error }, ...countResults] = await Promise.all([
+  const [{ data: rows, error, count }, ...countResults] = await Promise.all([
     query,
-    ...REQUEST_STATUSES.map((status) =>
-      db
+    ...REQUEST_STATUSES.map((status) => {
+      let countQuery = db
         .from("requests")
         .select("id", { count: "exact", head: true })
-        .eq("status", status),
-    ),
+        .eq("status", status);
+      if (searchFilter) countQuery = countQuery.or(searchFilter);
+      return countQuery;
+    }),
   ]);
-  if (error) {
-    throw new Error(`Queue read failed: ${error.code}`);
+  const countError = countResults.find((result) => result.error)?.error;
+  if (error || countError) {
+    throw new Error(`Queue read failed: ${(error ?? countError)?.code}`);
   }
 
   const counts = Object.fromEntries(
@@ -72,7 +116,14 @@ export default async function AdminRequestsPage({
     (sum, status) => sum + counts[status],
     0,
   );
+  const filteredTotal = count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(filteredTotal / REQUEST_PAGE_SIZE));
+  if (page > totalPages) {
+    redirect(requestsHref({ page: totalPages, search, status: filter }));
+  }
   const requests = (rows ?? []) as QueueRow[];
+  const firstShown = filteredTotal === 0 ? 0 : from + 1;
+  const lastShown = from + requests.length;
 
   const filters: Array<{ key: RequestStatus | "all"; label: string; count: number }> = [
     { key: "all", label: "All", count: total },
@@ -98,11 +149,11 @@ export default async function AdminRequestsPage({
           </p>
         </div>
         <a
-          href={
-            filter === "all"
-              ? "/admin/requests/export"
-              : `/admin/requests/export?status=${filter}`
-          }
+          href={requestsHref({
+            path: "/admin/requests/export",
+            search,
+            status: filter,
+          })}
           data-testid="export-csv"
           className="btn btn-outline"
         >
@@ -110,14 +161,51 @@ export default async function AdminRequestsPage({
         </a>
       </div>
 
+      <form
+        action="/admin/requests"
+        method="get"
+        role="search"
+        className="mt-6 flex max-w-2xl flex-wrap items-end gap-3"
+      >
+        {filter !== "all" ? (
+          <input type="hidden" name="status" value={filter} />
+        ) : null}
+        <label
+          htmlFor="request-search"
+          className="min-w-64 flex-1 text-sm font-bold text-[var(--color-ink)]"
+        >
+          Search requests
+          <input
+            id="request-search"
+            name="q"
+            type="search"
+            defaultValue={search}
+            maxLength={REQUEST_SEARCH_MAX_LENGTH}
+            placeholder="Name, phone, or email"
+            className="mt-2 min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] font-normal outline-none transition-colors focus:border-[var(--color-teal-ink)]"
+          />
+        </label>
+        <button type="submit" className="btn btn-navy">
+          Search
+        </button>
+        {search ? (
+          <Link
+            href={requestsHref({ search: "", status: filter })}
+            className="btn btn-outline"
+          >
+            Clear
+          </Link>
+        ) : null}
+      </form>
+
       <nav aria-label="Filter by status" className="mt-6 overflow-x-auto">
         <ul className="flex min-w-max gap-2">
           {filters.map((item) => {
             const active = filter === item.key;
-            const href =
-              item.key === "all"
-                ? "/admin/requests"
-                : `/admin/requests?status=${item.key}`;
+            const href = requestsHref({
+              search,
+              status: item.key,
+            });
             return (
               <li key={item.key}>
                 <Link
@@ -151,14 +239,18 @@ export default async function AdminRequestsPage({
       {requests.length === 0 ? (
         <div className="mt-8 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-8 text-center sm:p-12">
           <h2 className="text-[1.1rem] font-black text-[var(--color-ink)]">
-            {filter === "all"
-              ? "No appointment requests yet"
-              : `Nothing marked ${STATUS_LABELS[filter as RequestStatus].toLowerCase()}`}
+            {search
+              ? "No appointment requests match that search"
+              : filter === "all"
+                ? "No appointment requests yet"
+                : `Nothing marked ${STATUS_LABELS[filter as RequestStatus].toLowerCase()}`}
           </h2>
           <p className="mx-auto mt-2 max-w-[52ch] text-[0.95rem] leading-relaxed text-[var(--color-body)]">
-            {filter === "all"
-              ? "When a patient submits the appointment form on the website, the appointment request appears here instantly and the notification list gets an email ping."
-              : "Appointment requests move between statuses from their detail page — open one from another filter to triage it."}
+            {search
+              ? "Try a name, phone number, or email address."
+              : filter === "all"
+                ? "When a patient submits the appointment form on the website, the appointment request appears here instantly and the notification list gets an email ping."
+                : "Appointment requests move between statuses from their detail page — open one from another filter to triage it."}
           </p>
         </div>
       ) : (
@@ -198,6 +290,53 @@ export default async function AdminRequestsPage({
           ))}
         </ul>
       )}
+
+      {filteredTotal > 0 ? (
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <p
+            data-testid="request-page-summary"
+            className="text-[0.9rem] text-[var(--color-muted)]"
+          >
+            Showing {firstShown}–{lastShown} of {filteredTotal}
+          </p>
+          {totalPages > 1 ? (
+            <nav
+              aria-label="Appointment request pages"
+              className="flex items-center gap-3"
+            >
+              {page > 1 ? (
+                <Link
+                  href={requestsHref({
+                    page: page - 1,
+                    search,
+                    status: filter,
+                  })}
+                  rel="prev"
+                  className="btn btn-outline"
+                >
+                  Previous
+                </Link>
+              ) : null}
+              <span className="text-[0.9rem] font-bold text-[var(--color-body)]">
+                Page {page} of {totalPages}
+              </span>
+              {page < totalPages ? (
+                <Link
+                  href={requestsHref({
+                    page: page + 1,
+                    search,
+                    status: filter,
+                  })}
+                  rel="next"
+                  className="btn btn-outline"
+                >
+                  Next
+                </Link>
+              ) : null}
+            </nav>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   );
 }

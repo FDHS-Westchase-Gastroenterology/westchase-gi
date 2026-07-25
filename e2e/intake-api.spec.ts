@@ -1,59 +1,14 @@
-import { createHash, randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { createHash, createHmac, randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
 import {
   INTAKE_RATE_LIMIT,
+  REQUEST_FIELD_LIMITS,
   type IntakeResponse,
 } from "../src/lib/portal/contracts";
+import { en } from "../src/lib/dictionaries/en";
+import { requiredEnv, serviceDb } from "./support";
 
-function loadLocalEnv() {
-  const contents = readFileSync(resolve(process.cwd(), ".env.local"), "utf8");
-
-  for (const rawLine of contents.split(/\r?\n/)) {
-    const line = rawLine.trim();
-    if (!line || line.startsWith("#")) continue;
-
-    const separator = line.indexOf("=");
-    if (separator < 1) continue;
-
-    const key = line.slice(0, separator).replace(/^export\s+/, "").trim();
-    let value = line.slice(separator + 1).trim();
-    const quote = value[0];
-    if (
-      (quote === `"` || quote === `'`) &&
-      value.endsWith(quote)
-    ) {
-      value = value.slice(1, -1);
-    }
-
-    if (process.env[key] === undefined) process.env[key] = value;
-  }
-}
-
-function requiredEnv(...names: string[]): string {
-  for (const name of names) {
-    const value = process.env[name]?.trim();
-    if (value) return value;
-  }
-
-  throw new Error(`Missing test environment: ${names.join(" or ")}`);
-}
-
-loadLocalEnv();
-
-const db = createClient(
-  requiredEnv("NEXT_PUBLIC_SUPABASE_URL"),
-  requiredEnv("SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY"),
-  {
-    auth: {
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-      persistSession: false,
-    },
-  },
-);
+const db = serviceDb();
 
 const runId = randomUUID().replaceAll("-", "");
 const sourcePrefix = `/e2e/intake-api/${runId}`;
@@ -70,7 +25,7 @@ function validPayload(sourcePath: string) {
   return {
     name: `TEST Intake ${token}`,
     phone: "8135550101",
-    email: `intake-${token}@example.test`,
+    email: `intake+${token}@example.test`,
     location: "tampa",
     time: "morning",
     message: "TEST submission only — no medical details.",
@@ -208,11 +163,51 @@ test.describe("intake API contract", () => {
     expect(row).toEqual({ id: body.id, email: null });
   });
 
+  test("stores a keyed client bucket instead of a plain address digest", async ({
+    request,
+  }) => {
+    const clientIp = testIp("hmac-storage");
+    const payload = validPayload(`${sourcePrefix}/hmac-storage`);
+    const response = await request.post("/api/requests", {
+      data: payload,
+      headers: { "X-Forwarded-For": clientIp },
+    });
+    expect(response.status()).toBe(201);
+
+    const expectedHash = createHmac(
+      "sha256",
+      requiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
+    )
+      .update("wgi:intake-rate-limit:client:v1\0")
+      .update(clientIp.toLowerCase())
+      .digest("hex");
+    const plainHash = createHash("sha256")
+      .update(clientIp.toLowerCase())
+      .digest("hex");
+    expect(expectedHash).not.toBe(plainHash);
+
+    const expectedProbe = await db.rpc("portal_check_intake_rate_limit", {
+      p_client_hash: expectedHash,
+      p_limit: 1,
+      p_window_seconds: INTAKE_RATE_LIMIT.windowSeconds,
+    });
+    expect(expectedProbe.error).toBeNull();
+    expect(expectedProbe.data).toBe(false);
+
+    const plainProbe = await db.rpc("portal_check_intake_rate_limit", {
+      p_client_hash: plainHash,
+      p_limit: 1,
+      p_window_seconds: INTAKE_RATE_LIMIT.windowSeconds,
+    });
+    expect(plainProbe.error).toBeNull();
+    expect(plainProbe.data).toBe(true);
+  });
+
   test("VAL-INTAKE-003: server validation rejects bad input", async ({
     request,
   }) => {
     const invalidCases: Array<{
-      field: "name" | "phone" | "email";
+      field: "name" | "phone" | "email" | "message";
       makePayload: (sourcePath: string) => Record<string, unknown>;
     }> = [
       {
@@ -238,11 +233,47 @@ test.describe("intake API contract", () => {
           email: "not-an-email",
         }),
       },
+      ...[
+        "patient@example.com?subject=Injected",
+        "patient@example.com%3Fsubject%3DInjected",
+        "patient@example.com\r\nBcc:other@example.com",
+        "patient@example.com%0D%0ABcc%3Aother%40example.com",
+        "first@example.com,second@example.com",
+        "first@example.com;second@example.com",
+        `${"a".repeat(255)}@example.test`,
+      ].map((email) => ({
+        field: "email" as const,
+        makePayload: (sourcePath: string) => ({
+          ...validPayload(sourcePath),
+          email,
+        }),
+      })),
       {
         field: "phone",
         makePayload: (sourcePath) => ({
           ...validPayload(sourcePath),
           phone: "555-0101",
+        }),
+      },
+      {
+        field: "name",
+        makePayload: (sourcePath) => ({
+          ...validPayload(sourcePath),
+          name: "N".repeat(REQUEST_FIELD_LIMITS.name + 1),
+        }),
+      },
+      {
+        field: "phone",
+        makePayload: (sourcePath) => ({
+          ...validPayload(sourcePath),
+          phone: "8".repeat(REQUEST_FIELD_LIMITS.phone + 1),
+        }),
+      },
+      {
+        field: "message",
+        makePayload: (sourcePath) => ({
+          ...validPayload(sourcePath),
+          message: "M".repeat(REQUEST_FIELD_LIMITS.message + 1),
         }),
       },
     ];
@@ -302,7 +333,7 @@ test.describe("intake API contract", () => {
     ).resolves.toBe(0);
   });
 
-  test("no-JS form POST uses a patient-data-free receipt URL", async ({
+  test("no-JS success requires one patient-free, one-time receipt", async ({
     request,
   }) => {
     const payload = validPayload(`${sourcePrefix}/no-js`);
@@ -316,8 +347,12 @@ test.describe("intake API contract", () => {
     const location = response.headers().location;
     expect(location).toBeTruthy();
     const receiptUrl = new URL(location);
+    const receiptToken = receiptUrl.searchParams.get("receipt");
     expect(receiptUrl.pathname).toBe("/en/appointment/received");
-    expect(receiptUrl.searchParams.get("status")).toBe("success");
+    expect(receiptUrl.searchParams.get("status")).toBeNull();
+    expect(receiptToken).toMatch(
+      /^[0-9a-f-]{36}\.[A-Za-z0-9_-]{43}$/,
+    );
     expect(location).not.toContain(payload.name);
     expect(location).not.toContain(payload.phone);
     expect(location).not.toContain(payload.email);
@@ -326,6 +361,87 @@ test.describe("intake API contract", () => {
     await expect(
       countRows("requests", "source_path", payload.sourcePath),
     ).resolves.toBe(1);
+
+    const claims = await Promise.all([
+      request.get(location),
+      request.get(location),
+    ]);
+    const bodies = await Promise.all(claims.map((claim) => claim.text()));
+    expect(
+      bodies.every((body) =>
+        body.includes('<meta name="referrer" content="no-referrer"/>'),
+      ),
+    ).toBe(true);
+    const renderedHeading = (body: string) =>
+      body
+        .match(/<h1[^>]*>([^<]+)<\/h1>/)?.[1]
+        ?.replaceAll("&#x27;", "'");
+    expect(bodies.map(renderedHeading).sort()).toEqual(
+      [
+        en.appointment.form.unknownHeading,
+        en.requestReceipt.successHeading,
+      ].sort(),
+    );
+    expect(renderedHeading(await (await request.get(location)).text())).toBe(
+      en.appointment.form.unknownHeading,
+    );
+
+    for (const directPath of [
+      "/en/appointment/received?status=success",
+      "/en/appointment/received?receipt=malformed",
+    ]) {
+      expect(renderedHeading(await (await request.get(directPath)).text())).toBe(
+        en.appointment.form.unknownHeading,
+      );
+    }
+
+    const [eventId] = receiptToken!.split(".");
+    const { data: event, error: eventError } = await db
+      .from("request_events")
+      .select("status")
+      .eq("id", eventId)
+      .single();
+    expect(eventError).toBeNull();
+    expect(event?.status).toBe("consumed");
+
+    const failedPayload = {
+      ...validPayload(`${sourcePrefix}/no-js-failed`),
+      phone: "555",
+    };
+    const failed = await request.post("/api/requests/form", {
+      form: failedPayload,
+      headers: { "X-Forwarded-For": testIp("no-js-failed") },
+      maxRedirects: 0,
+    });
+    const failedUrl = new URL(failed.headers().location);
+    expect(failedUrl.searchParams.get("receipt")).toBeNull();
+    expect(failedUrl.searchParams.get("failure")).toBe("1");
+    expect(
+      renderedHeading(await (await request.get(failedUrl.toString())).text()),
+    ).toBe(en.requestReceipt.failureHeading);
+
+    const honeypotPayload = {
+      ...validPayload(`${sourcePrefix}/no-js-honeypot`),
+      company: "Example Company",
+    };
+    const honeypot = await request.post("/api/requests/form", {
+      form: honeypotPayload,
+      headers: { "X-Forwarded-For": testIp("no-js-honeypot") },
+      maxRedirects: 0,
+    });
+    const honeypotUrl = new URL(honeypot.headers().location);
+    expect(honeypotUrl.searchParams.get("receipt")).toMatch(
+      /^[0-9a-f-]{36}\.[A-Za-z0-9_-]{43}$/,
+    );
+    expect(
+      renderedHeading(
+        await (await request.get(honeypotUrl.toString())).text(),
+      ),
+    ).toBe(en.appointment.form.unknownHeading);
+
+    await expect(
+      countRows("requests", "source_path", `${sourcePrefix}/no-js-%`),
+    ).resolves.toBe(0);
   });
 
   test("VAL-INTAKE-005: rate limiting stops rows at the cap", async ({

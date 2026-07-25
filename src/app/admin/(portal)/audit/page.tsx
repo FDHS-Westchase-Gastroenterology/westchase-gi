@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/portal/auth";
+import { parsePage } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
 import { formatReceived } from "../requests/format";
 
@@ -30,25 +32,36 @@ function externalAuditSummary(
   return { target: value.target_login, outcome };
 }
 
-export default async function AdminAuditPage() {
+export default async function AdminAuditPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string | string[] }>;
+}) {
   await requireRole("staff");
+  const page = parsePage((await searchParams).page);
+  const from = (page - 1) * PAGE_SIZE;
 
   const db = serviceClient();
-  const [{ data: rows, error }, { count, error: countError }] =
-    await Promise.all([
-      db
-        .from("audit_log")
-        .select("id, actor_email, action, entity, entity_id, detail, at")
-        .order("at", { ascending: false })
-        .limit(PAGE_SIZE),
-      db.from("audit_log").select("id", { count: "exact", head: true }),
-    ]);
-  if (error || countError) {
-    throw new Error(`Audit read failed: ${(error ?? countError)?.code}`);
+  const { data: rows, error, count } = await db
+    .from("audit_log")
+    .select("id, actor_email, action, entity, entity_id, detail, at", {
+      count: "exact",
+    })
+    .order("at", { ascending: false })
+    .order("id", { ascending: false })
+    .range(from, from + PAGE_SIZE - 1);
+  if (error) {
+    throw new Error(`Audit read failed: ${error.code}`);
   }
 
   const entries = (rows ?? []) as AuditRow[];
   const total = count ?? entries.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (page > totalPages) {
+    redirect(`/admin/audit${totalPages > 1 ? `?page=${totalPages}` : ""}`);
+  }
+  const firstShown = total === 0 ? 0 : from + 1;
+  const lastShown = from + entries.length;
 
   return (
     <section aria-labelledby="audit-heading">
@@ -74,9 +87,6 @@ export default async function AdminAuditPage() {
       <p className="mt-1.5 max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
         Every change made through the portal — who did it, what it touched,
         and when.
-        {total > PAGE_SIZE
-          ? ` Showing the latest ${PAGE_SIZE} of ${total} entries.`
-          : ""}
       </p>
 
       {entries.length === 0 ? (
@@ -144,6 +154,45 @@ export default async function AdminAuditPage() {
           </table>
         </div>
       )}
+
+      {total > 0 ? (
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <p
+            data-testid="audit-page-summary"
+            className="text-[0.9rem] text-[var(--color-muted)]"
+          >
+            Showing {firstShown}–{lastShown} of {total}
+          </p>
+          {totalPages > 1 ? (
+            <nav
+              aria-label="Activity log pages"
+              className="flex items-center gap-3"
+            >
+              {page > 1 ? (
+                <Link
+                  href={`/admin/audit${page > 2 ? `?page=${page - 1}` : ""}`}
+                  rel="prev"
+                  className="btn btn-outline"
+                >
+                  Previous
+                </Link>
+              ) : null}
+              <span className="text-[0.9rem] font-bold text-[var(--color-body)]">
+                Page {page} of {totalPages}
+              </span>
+              {page < totalPages ? (
+                <Link
+                  href={`/admin/audit?page=${page + 1}`}
+                  rel="next"
+                  className="btn btn-outline"
+                >
+                  Next
+                </Link>
+              ) : null}
+            </nav>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   );
 }

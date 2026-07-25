@@ -8,8 +8,18 @@
 import { z } from "zod";
 import { locales, type Locale } from "@/lib/site";
 
-/** Same pattern the patient form has always enforced client-side. */
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const mailboxSchema = z.email().max(254);
+
+export function isMailbox(value: string): boolean {
+  return mailboxSchema.safeParse(value).success;
+}
+
+export const REQUEST_FIELD_LIMITS = {
+  name: 120,
+  phone: 32,
+  email: 254,
+  message: 2000,
+} as const;
 
 const REQUEST_LOCATIONS = ["any", "tampa", "lutz"] as const;
 export type RequestLocation = (typeof REQUEST_LOCATIONS)[number];
@@ -25,6 +35,13 @@ export const REQUEST_STATUSES = [
 ] as const;
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
+export const REQUEST_CLOSURE_DISPOSITIONS = [
+  "unconverted",
+  "converted",
+] as const;
+export type RequestClosureDisposition =
+  (typeof REQUEST_CLOSURE_DISPOSITIONS)[number];
+
 export type StaffRole = "admin" | "staff";
 
 export const RESET_REQUEST_MESSAGE =
@@ -32,26 +49,37 @@ export const RESET_REQUEST_MESSAGE =
 
 /**
  * Validation rules mirror the client rules the form applies: name required,
- * phone >= 10 digits once formatting is stripped, email optional but per
- * EMAIL_RE when present (many patients 65+ have no email; phone is the
- * callback channel), message optional and capped at 2000 characters. The
- * honeypot field (HONEYPOT_FIELD) is deliberately NOT part of this schema —
+ * phone >= 10 digits once formatting is stripped, email optional but exactly
+ * one practical mailbox when present (many patients 65+ have no email; phone
+ * is the callback channel). Every free-text field has a shared
+ * client/server/database cap. The honeypot field (HONEYPOT_FIELD) is
+ * deliberately NOT part of this schema —
  * the route inspects and discards it before validation.
  */
 export const requestInputSchema = z.object({
-  name: z.string().trim().min(1, "name_required"),
+  name: z
+    .string()
+    .trim()
+    .min(1, "name_required")
+    .max(REQUEST_FIELD_LIMITS.name, "name_too_long"),
   phone: z
     .string()
     .trim()
+    .max(REQUEST_FIELD_LIMITS.phone, "phone_too_long")
     .refine((v) => v.replace(/\D/g, "").length >= 10, "phone_invalid"),
   email: z
     .string()
     .trim()
-    .refine((v) => v === "" || EMAIL_RE.test(v), "email_invalid")
+    .max(REQUEST_FIELD_LIMITS.email, "email_too_long")
+    .refine((v) => v === "" || isMailbox(v), "email_invalid")
     .default(""),
   location: z.enum(REQUEST_LOCATIONS),
   time: z.enum(REQUEST_TIMES),
-  message: z.string().trim().max(2000, "message_too_long").optional(),
+  message: z
+    .string()
+    .trim()
+    .max(REQUEST_FIELD_LIMITS.message, "message_too_long")
+    .optional(),
   locale: z.enum(locales as [Locale, ...Locale[]]),
   sourcePath: z.string().trim().min(1).max(300).startsWith("/"),
 });
@@ -113,8 +141,8 @@ export function receiptPath(locale: Locale): string {
 /** Honeypot input name — filled means bot; drop silently, persist nothing. */
 export const HONEYPOT_FIELD = "company";
 
-/** In-memory per-instance rate limit for the intake route. */
+/** Shared Postgres-backed intake rate limit. */
 export const INTAKE_RATE_LIMIT = {
   limit: 5,
-  windowMs: 10 * 60 * 1000,
+  windowSeconds: 10 * 60,
 } as const;

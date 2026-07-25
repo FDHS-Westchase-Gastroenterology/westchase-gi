@@ -31,9 +31,7 @@ function projectConfig(target) {
       url: requireEnv("SUPABASE_DEV_URL", "NEXT_PUBLIC_SUPABASE_URL"),
       serviceKey: requireEnv(
         "SUPABASE_DEV_SERVICE_ROLE_KEY",
-        "SUPABASE_DEV_SECRET_KEY",
         "SUPABASE_SERVICE_ROLE_KEY",
-        "SUPABASE_SECRET_KEY",
       ),
     }
   }
@@ -42,11 +40,21 @@ function projectConfig(target) {
     url: requireEnv("SUPABASE_PROD_URL", "SUPABASE_URL_PROD"),
     serviceKey: requireEnv(
       "SUPABASE_PROD_SERVICE_ROLE_KEY",
-      "SUPABASE_PROD_SECRET_KEY",
       "SUPABASE_SERVICE_ROLE_KEY_PROD",
-      "SUPABASE_SECRET_KEY_PROD",
     ),
   }
+}
+
+function adminCredentials(target) {
+  return target === "dev"
+    ? {
+        email: requireEnv("PORTAL_SEED_ADMIN_EMAIL"),
+        password: requireEnv("PORTAL_SEED_ADMIN_PASSWORD"),
+      }
+    : {
+        email: requireEnv("PORTAL_PROD_ADMIN_EMAIL"),
+        password: requireEnv("PORTAL_PROD_ADMIN_PASSWORD"),
+      }
 }
 
 async function readResponse(response, operation) {
@@ -171,8 +179,7 @@ async function upsertRows({
 async function main() {
   const target = parseTarget(process.argv.slice(2))
   const { url, serviceKey } = projectConfig(target)
-  const email = requireEnv("PORTAL_SEED_ADMIN_EMAIL")
-  const password = requireEnv("PORTAL_SEED_ADMIN_PASSWORD")
+  const { email, password } = adminCredentials(target)
 
   const user = await ensureAdminUser({ url, serviceKey, email, password })
 

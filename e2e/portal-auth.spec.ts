@@ -571,12 +571,56 @@ test.describe("portal authentication and direct REST boundaries", () => {
         },
       },
       {
+        name: "portal_check_intake_rate_limit",
+        args: {
+          p_client_hash: "a".repeat(64),
+          p_limit: 1,
+          p_window_seconds: 1,
+        },
+      },
+      {
+        name: "portal_close_request",
+        args: {
+          p_actor_email: "",
+          p_request_id: missingId,
+          p_disposition: "unconverted",
+        },
+      },
+      {
         name: "portal_complete_staff_onboarding",
         args: { p_user_id: missingId },
       },
       {
+        name: "portal_delete_request_early",
+        args: {
+          p_actor_email: "",
+          p_request_id: missingId,
+          p_authorization_ref: "TEST-1",
+        },
+      },
+      {
+        name: "portal_preview_data_lifecycle",
+        args: { p_now: new Date().toISOString() },
+      },
+      {
         name: "portal_record_staff_password_reset",
         args: { p_user_id: missingId },
+      },
+      {
+        name: "portal_run_data_lifecycle",
+        args: {
+          p_actor_email: "",
+          p_now: new Date().toISOString(),
+        },
+      },
+      {
+        name: "portal_set_request_legal_hold",
+        args: {
+          p_actor_email: "",
+          p_request_id: missingId,
+          p_held: true,
+          p_reason: "TEST",
+        },
       },
     ];
 

@@ -7,8 +7,24 @@ on:
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/supabase-dependency-integration.yml"
+      - "e2e/intake-api.spec.ts"
+      - "e2e/portal-lifecycle.spec.ts"
+      - "e2e/portal-requests.spec.ts"
+      - "e2e/portal-scale.spec.ts"
       - "e2e/support.ts"
+      - "e2e/target-guard.ts"
+      - "e2e/target-guard.test.mjs"
       - "e2e/supabase-dependency-contract.spec.ts"
+      - "src/app/[locale]/appointment/received/page.tsx"
+      - "src/app/api/requests/form/route.ts"
+      - "src/app/admin/(portal)/audit/page.tsx"
+      - "src/app/admin/(portal)/requests/[id]/page.tsx"
+      - "src/app/admin/(portal)/requests/actions.ts"
+      - "src/app/admin/(portal)/requests/export/route.ts"
+      - "src/app/admin/(portal)/requests/page.tsx"
+      - "src/lib/portal/intake.ts"
+      - "src/lib/portal/request-query.test.mjs"
+      - "src/lib/portal/request-query.ts"
       - "scripts/seed-portal.mjs"
       - "supabase/**"
 
@@ -28,6 +44,8 @@ jobs:
       PORTAL_BASE_URL: http://127.0.0.1:3100
       PORTAL_SEED_ADMIN_EMAIL: admin@local.westchase.test
       PORTAL_SEED_ADMIN_PASSWORD: Local-Dependabot-Only-2026!
+      PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF: local
+      SUPABASE_PROJECT_REF: local
     steps:
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
@@ -42,6 +60,9 @@ jobs:
       # no repository secrets, deployment credentials, or persisted Git token.
       - name: Install locked dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Verify portal query parsing
+        run: node --test src/lib/portal/request-query.test.mjs
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
@@ -66,13 +87,13 @@ jobs:
             supabase status -o env \
               --override-name api.url=NEXT_PUBLIC_SUPABASE_URL \
               --override-name auth.publishable_key=NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY \
-              --override-name auth.secret_key=SUPABASE_SECRET_KEY
+              --override-name auth.service_role_key=SUPABASE_SERVICE_ROLE_KEY
           )"
           {
             printf 'NEXT_PUBLIC_SUPABASE_URL=%s\n' "$NEXT_PUBLIC_SUPABASE_URL"
             printf 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=%s\n' \
               "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
-            printf 'SUPABASE_SECRET_KEY=%s\n' "$SUPABASE_SECRET_KEY"
+            printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SUPABASE_SERVICE_ROLE_KEY"
           } >> "$GITHUB_ENV"
 
       - name: Seed disposable portal fixtures
@@ -82,6 +103,10 @@ jobs:
         run: >-
           npx playwright test
           e2e/supabase-dependency-contract.spec.ts
+          e2e/intake-api.spec.ts
+          e2e/portal-lifecycle.spec.ts
+          e2e/portal-requests.spec.ts
+          e2e/portal-scale.spec.ts
           --project=chromium
 
       - name: Stop disposable local Supabase

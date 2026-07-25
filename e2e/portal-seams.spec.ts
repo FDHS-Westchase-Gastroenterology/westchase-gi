@@ -87,11 +87,6 @@ test("VAL-REG-005: assistant widget is portal-wide, expandable, conservative", a
   });
   expect([404, 307]).toContain(assistantPage.status());
 
-  await page.screenshot({
-    path: "test-results/portal-seams/assistant-panel.png",
-    fullPage: true,
-  });
-
   // Cleanup the staged request.
   const { serviceDb } = await import("./support");
   await serviceDb().from("requests").delete().eq("id", id);

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   HONEYPOT_FIELD,
@@ -15,21 +15,20 @@ import {
   type NotificationEvent,
   type NotificationRecipient,
 } from "@/lib/portal/intake-notification";
-import { portalUrl, serviceClient } from "@/lib/portal/server";
+import { portalUrl, serviceClient, serviceRoleKey } from "@/lib/portal/server";
+import type { Locale } from "@/lib/site";
 
 type IntakeResult = {
   response: IntakeResponse;
   status: 200 | 201 | 400 | 429 | 503;
+  receiptToken?: string;
 };
 
-type RateBucket = {
-  count: number;
-  windowStartedAt: number;
-};
+const RECEIPT_TTL_MS = 15 * 60 * 1000;
+const RECEIPT_TOKEN_RE =
+  /^([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.([A-Za-z0-9_-]{43})$/;
 
-// Accepted serverless limitation: this map enforces the cap per warm runtime
-// instance, not globally across every Vercel instance.
-const rateBuckets = new Map<string, RateBucket>();
+const INTAKE_CLIENT_HASH_DOMAIN = "wgi:intake-rate-limit:client:v1\0";
 
 function logOperationalFailure(
   event: string,
@@ -50,36 +49,137 @@ function honeypotIsFilled(value: unknown): boolean {
   return honeypot !== undefined && String(honeypot).trim().length > 0;
 }
 
-function clientHash(headers: Headers): string {
-  const forwardedFor = headers.get("x-forwarded-for");
-  const firstHop = forwardedFor?.split(",", 1)[0]?.trim() || "missing";
-
-  // Vercel supplies X-Forwarded-For in production. Local callers without it
-  // share the "missing" bucket; never fall back to the socket/proxy address.
-  return createHash("sha256").update(firstHop.toLowerCase()).digest("hex");
+function randomReceiptSecret(): string {
+  return randomBytes(32).toString("base64url");
 }
 
-function rateLimitExceeded(headers: Headers): boolean {
-  const now = Date.now();
+function receiptTokenHash(secret: string): string {
+  return createHash("sha256").update(secret).digest("hex");
+}
 
-  for (const [key, bucket] of rateBuckets) {
-    if (now - bucket.windowStartedAt >= INTAKE_RATE_LIMIT.windowMs) {
-      rateBuckets.delete(key);
+function decoyReceiptToken(): string {
+  return `${randomUUID()}.${randomReceiptSecret()}`;
+}
+
+async function issueRequestReceipt(
+  client: SupabaseClient,
+  requestId: string,
+  locale: Locale,
+): Promise<string | undefined> {
+  const secret = randomReceiptSecret();
+
+  try {
+    const { data, error } = await client
+      .from("request_events")
+      .insert({
+        request_id: requestId,
+        type: "receipt",
+        status: "issued",
+        meta: {
+          locale,
+          token_hash: receiptTokenHash(secret),
+        },
+      })
+      .select("id")
+      .single();
+
+    if (error || !data) {
+      logOperationalFailure("receipt issue failed", {
+        requestId,
+        code: error?.code ?? "missing_row",
+      });
+      return undefined;
     }
+
+    return `${data.id}.${secret}`;
+  } catch {
+    logOperationalFailure("receipt issue failed", {
+      requestId,
+      code: "request_failed",
+    });
+    return undefined;
   }
+}
 
-  const key = clientHash(headers);
-  const current = rateBuckets.get(key);
+export async function consumeRequestReceipt(
+  token: string,
+  locale: Locale,
+): Promise<boolean> {
+  const match = RECEIPT_TOKEN_RE.exec(token);
+  if (!match) return false;
 
-  if (!current) {
-    rateBuckets.set(key, { count: 1, windowStartedAt: now });
+  const [, eventId, secret] = match;
+  let client: SupabaseClient;
+  try {
+    client = serviceClient();
+  } catch {
+    logOperationalFailure("receipt consume unavailable");
     return false;
   }
 
-  if (current.count >= INTAKE_RATE_LIMIT.limit) return true;
+  try {
+    const { data, error } = await client
+      .from("request_events")
+      .update({ status: "consumed" })
+      .eq("id", eventId)
+      .eq("type", "receipt")
+      .eq("status", "issued")
+      .gt("created_at", new Date(Date.now() - RECEIPT_TTL_MS).toISOString())
+      .contains("meta", {
+        locale,
+        token_hash: receiptTokenHash(secret),
+      })
+      .select("id")
+      .maybeSingle();
 
-  current.count += 1;
-  return false;
+    if (error) {
+      logOperationalFailure("receipt consume failed", {
+        code: error.code,
+      });
+      return false;
+    }
+
+    return data !== null;
+  } catch {
+    logOperationalFailure("receipt consume failed", {
+      code: "request_failed",
+    });
+    return false;
+  }
+}
+
+function clientHash(headers: Headers): string {
+  const forwardedFor =
+    headers.get("x-vercel-forwarded-for") ?? headers.get("x-forwarded-for");
+  const firstHop = forwardedFor?.split(",", 1)[0]?.trim() || "missing";
+
+  // Vercel overwrites X-Vercel-Forwarded-For at its edge. Local callers fall
+  // back to X-Forwarded-For; callers without either header share the
+  // "missing" bucket. HMAC prevents offline address guessing.
+  return createHmac("sha256", serviceRoleKey())
+    .update(INTAKE_CLIENT_HASH_DOMAIN)
+    .update(firstHop.toLowerCase())
+    .digest("hex");
+}
+
+async function rateLimitAllows(
+  client: SupabaseClient,
+  headers: Headers,
+): Promise<boolean | null> {
+  const { data, error } = await client.rpc("portal_check_intake_rate_limit", {
+    p_client_hash: clientHash(headers),
+    p_limit: INTAKE_RATE_LIMIT.limit,
+    p_window_seconds: INTAKE_RATE_LIMIT.windowSeconds,
+  });
+
+  if (error || typeof data !== "boolean") {
+    logOperationalFailure("rate-limit claim failed", {
+      code: error?.code ?? "invalid_result",
+    });
+    return null;
+  }
+
+  return data;
 }
 
 async function recordNotificationEvents(
@@ -137,11 +237,13 @@ async function notifyActiveRecipients(
 export async function processIntake(
   rawInput: unknown,
   headers: Headers,
+  issueReceipt = false,
 ): Promise<IntakeResult> {
   if (honeypotIsFilled(rawInput)) {
     return {
       response: { ok: true, id: randomUUID() },
       status: 200,
+      receiptToken: issueReceipt ? decoyReceiptToken() : undefined,
     };
   }
 
@@ -157,13 +259,6 @@ export async function processIntake(
     };
   }
 
-  if (rateLimitExceeded(headers)) {
-    return {
-      response: { ok: false, code: "rate_limited" },
-      status: 429,
-    };
-  }
-
   let client: SupabaseClient;
   try {
     client = serviceClient();
@@ -172,6 +267,20 @@ export async function processIntake(
     return {
       response: { ok: false, code: "unavailable" },
       status: 503,
+    };
+  }
+
+  const rateAllowed = await rateLimitAllows(client, headers);
+  if (rateAllowed === null) {
+    return {
+      response: { ok: false, code: "unavailable" },
+      status: 503,
+    };
+  }
+  if (!rateAllowed) {
+    return {
+      response: { ok: false, code: "rate_limited" },
+      status: 429,
     };
   }
 
@@ -201,6 +310,10 @@ export async function processIntake(
     };
   }
 
+  const receiptToken = issueReceipt
+    ? await issueRequestReceipt(client, data.id, input.locale)
+    : undefined;
+
   try {
     await notifyActiveRecipients(client, data.id);
   } catch {
@@ -214,5 +327,6 @@ export async function processIntake(
   return {
     response: { ok: true, id: data.id },
     status: 201,
+    receiptToken,
   };
 }

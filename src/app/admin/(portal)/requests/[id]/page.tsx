@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
+  isMailbox,
   REQUEST_STATUSES,
+  type RequestClosureDisposition,
   type RequestStatus,
 } from "@/lib/portal/contracts";
 import { requireRole } from "@/lib/portal/auth";
@@ -14,7 +16,12 @@ import {
   STATUS_LABELS,
   TIME_LABELS,
 } from "../format";
-import { addRequestNote, updateRequestStatus } from "../actions";
+import {
+  addRequestNote,
+  closeRequest,
+  setRequestLegalHold,
+  updateRequestStatus,
+} from "../actions";
 
 type RequestRow = {
   id: string;
@@ -27,6 +34,11 @@ type RequestRow = {
   locale: string;
   source_path: string;
   status: RequestStatus;
+  closure_disposition: RequestClosureDisposition | null;
+  closed_at: string | null;
+  record_handoff_at: string | null;
+  retention_hold_at: string | null;
+  retention_hold_reason: string | null;
   created_at: string;
 };
 
@@ -49,7 +61,7 @@ export default async function RequestDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole("staff");
+  const session = await requireRole("staff");
   const { id } = await params;
 
   const db = serviceClient();
@@ -58,7 +70,7 @@ export default async function RequestDetailPage({
       db
         .from("requests")
         .select(
-          "id, name, phone, email, location, preferred_time, message, locale, source_path, status, created_at",
+          "id, name, phone, email, location, preferred_time, message, locale, source_path, status, closure_disposition, closed_at, record_handoff_at, retention_hold_at, retention_hold_reason, created_at",
         )
         .eq("id", id)
         .maybeSingle(),
@@ -75,6 +87,8 @@ export default async function RequestDetailPage({
   }
 
   const row = request as RequestRow;
+  const mailbox = row.email?.trim();
+  const safeMailbox = mailbox && isMailbox(mailbox) ? mailbox : null;
   const allEvents = (events ?? []) as EventRow[];
   const notes = allEvents.filter((event) => event.type === "note");
   const notifications = allEvents.filter(
@@ -97,12 +111,12 @@ export default async function RequestDetailPage({
     },
     {
       label: "Email",
-      value: row.email ? (
+      value: safeMailbox ? (
         <a
-          href={`mailto:${row.email}`}
+          href={`mailto:${safeMailbox}`}
           className="break-all font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
         >
-          {row.email}
+          {safeMailbox}
         </a>
       ) : (
         <span className="text-[var(--color-muted)]">
@@ -143,7 +157,14 @@ export default async function RequestDetailPage({
         >
           {row.name}
         </h1>
-        <StatusBadge status={row.status} />
+        <div className="flex flex-wrap items-center gap-2">
+          {row.retention_hold_at && (
+            <span className="rounded-full border border-[var(--color-amber-deep)] bg-[var(--color-amber-soft)] px-3 py-1 text-[0.78rem] font-black uppercase tracking-[0.05em] text-[var(--color-ink)]">
+              Legal hold
+            </span>
+          )}
+          <StatusBadge status={row.status} />
+        </div>
       </div>
 
       <div className="mt-7 grid items-start gap-6 lg:grid-cols-[1.5fr_1fr]">
@@ -240,35 +261,149 @@ export default async function RequestDetailPage({
               recorded in the activity log.
             </p>
             <div className="mt-4 grid gap-2">
-              {REQUEST_STATUSES.map((status) => {
-                const isCurrent = row.status === status;
-                return (
-                  <form
-                    key={status}
-                    action={updateRequestStatus.bind(null, row.id, status)}
-                  >
-                    <button
-                      type="submit"
-                      disabled={isCurrent}
-                      data-status-action={status}
-                      className={`flex min-h-11 w-full items-center justify-between rounded-[var(--radius)] border px-4 text-[0.95rem] font-bold transition-colors ${
-                        isCurrent
-                          ? "cursor-default border-[var(--color-navy)] bg-[var(--color-navy)] text-[var(--color-on-dark)]"
-                          : "border-[var(--color-line-2)] bg-white text-[var(--color-body)] hover:border-[var(--color-navy)]"
-                      }`}
+              {REQUEST_STATUSES.filter((status) => status !== "closed").map(
+                (status) => {
+                  const isCurrent = row.status === status;
+                  return (
+                    <form
+                      key={status}
+                      action={updateRequestStatus.bind(null, row.id, status)}
                     >
-                      {STATUS_LABELS[status]}
-                      {isCurrent && (
-                        <span className="text-[0.75rem] uppercase tracking-[0.06em]">
-                          Current
-                        </span>
-                      )}
-                    </button>
-                  </form>
-                );
-              })}
+                      <button
+                        type="submit"
+                        disabled={isCurrent}
+                        data-status-action={status}
+                        className={`flex min-h-11 w-full items-center justify-between rounded-[var(--radius)] border px-4 text-[0.95rem] font-bold transition-colors ${
+                          isCurrent
+                            ? "cursor-default border-[var(--color-navy)] bg-[var(--color-navy)] text-[var(--color-on-dark)]"
+                            : "border-[var(--color-line-2)] bg-white text-[var(--color-body)] hover:border-[var(--color-navy)]"
+                        }`}
+                      >
+                        {STATUS_LABELS[status]}
+                        {isCurrent && (
+                          <span className="text-[0.75rem] uppercase tracking-[0.06em]">
+                            Current
+                          </span>
+                        )}
+                      </button>
+                    </form>
+                  );
+                },
+              )}
+            </div>
+            <div className="mt-5 border-t border-[var(--color-line)] pt-5">
+              <h3 className="text-[0.8rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
+                Close and classify
+              </h3>
+              <p className="mt-2 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
+                Choose the outcome explicitly. This starts the approved
+                retention clock; reopening the request resets it.
+              </p>
+              {row.status === "closed" && !row.closure_disposition && (
+                <p
+                  data-testid="legacy-lifecycle-warning"
+                  className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-3 py-2 text-[0.85rem] font-bold text-[var(--color-ink)]"
+                >
+                  This legacy closed request is not classified and cannot be
+                  deleted automatically.
+                </p>
+              )}
+              {row.closure_disposition && row.closed_at && (
+                <p
+                  data-testid="request-lifecycle-summary"
+                  className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-3 py-2 text-[0.85rem] text-[var(--color-ink)]"
+                >
+                  {row.closure_disposition === "converted"
+                    ? "Transferred to the FDHS record; 12-month clock started"
+                    : "Did not become an appointment; 180-day clock started"}{" "}
+                  {formatReceived(row.closed_at, true)}.
+                </p>
+              )}
+              <div className="mt-3 grid gap-2">
+                <form action={closeRequest.bind(null, row.id, "unconverted")}>
+                  <button
+                    type="submit"
+                    disabled={
+                      row.status === "closed" &&
+                      row.closure_disposition === "unconverted"
+                    }
+                    data-close-action="unconverted"
+                    className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-4 text-left text-[0.9rem] font-bold text-[var(--color-body)] hover:border-[var(--color-navy)] disabled:cursor-default disabled:border-[var(--color-navy)] disabled:bg-[var(--color-navy)] disabled:text-[var(--color-on-dark)]"
+                  >
+                    Close — did not become an appointment
+                  </button>
+                </form>
+                <form action={closeRequest.bind(null, row.id, "converted")}>
+                  <button
+                    type="submit"
+                    disabled={
+                      row.status === "closed" &&
+                      row.closure_disposition === "converted"
+                    }
+                    data-close-action="converted"
+                    className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-4 text-left text-[0.9rem] font-bold text-[var(--color-body)] hover:border-[var(--color-navy)] disabled:cursor-default disabled:border-[var(--color-navy)] disabled:bg-[var(--color-navy)] disabled:text-[var(--color-on-dark)]"
+                  >
+                    Close — transferred to the FDHS record
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
+
+          {session.role === "admin" && (
+            <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
+              <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
+                Legal hold
+              </h2>
+              <p className="mt-1.5 text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
+                A hold blocks scheduled and exceptional deletion. Use a case
+                reference or a short reason without patient details.
+              </p>
+              {row.retention_hold_at && (
+                <p
+                  data-testid="legal-hold-summary"
+                  className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-3 py-2 text-[0.85rem] text-[var(--color-ink)]"
+                >
+                  Active since {formatReceived(row.retention_hold_at, true)}:{" "}
+                  {row.retention_hold_reason}
+                </p>
+              )}
+              <form
+                action={setRequestLegalHold.bind(
+                  null,
+                  row.id,
+                  !row.retention_hold_at,
+                )}
+                className="mt-4"
+              >
+                <label
+                  htmlFor="hold-reason"
+                  className="block text-sm font-bold text-[var(--color-ink)]"
+                >
+                  {row.retention_hold_at
+                    ? "Release reason or case reference"
+                    : "Hold reason or case reference"}
+                </label>
+                <input
+                  id="hold-reason"
+                  name="reason"
+                  required
+                  maxLength={200}
+                  className="mt-2 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 py-3 text-[0.95rem] text-[var(--color-ink)] outline-none focus:border-[var(--color-teal-ink)]"
+                />
+                <button
+                  type="submit"
+                  className={`btn mt-3 ${
+                    row.retention_hold_at ? "btn-outline" : "btn-navy"
+                  }`}
+                >
+                  {row.retention_hold_at
+                    ? "Release legal hold"
+                    : "Place legal hold"}
+                </button>
+              </form>
+            </div>
+          )}
 
           <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
             <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">

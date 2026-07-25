@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import {
+  REQUEST_CLOSURE_DISPOSITIONS,
   REQUEST_STATUSES,
+  type RequestClosureDisposition,
   type RequestStatus,
 } from "@/lib/portal/contracts";
 import { requireRole } from "@/lib/portal/auth";
@@ -12,6 +14,15 @@ function isRequestStatus(value: unknown): value is RequestStatus {
   return (
     typeof value === "string" &&
     (REQUEST_STATUSES as readonly string[]).includes(value)
+  );
+}
+
+function isClosureDisposition(
+  value: unknown,
+): value is RequestClosureDisposition {
+  return (
+    typeof value === "string" &&
+    (REQUEST_CLOSURE_DISPOSITIONS as readonly string[]).includes(value)
   );
 }
 
@@ -26,7 +37,7 @@ export async function updateRequestStatus(
   nextStatus: RequestStatus,
 ): Promise<void> {
   const session = await requireRole("staff");
-  if (!isRequestStatus(nextStatus)) {
+  if (!isRequestStatus(nextStatus) || nextStatus === "closed") {
     throw new Error("Unknown request status");
   }
 
@@ -48,6 +59,62 @@ export async function updateRequestStatus(
   if (!changed) return;
 
   revalidateRequestViews(requestId);
+}
+
+export async function closeRequest(
+  requestId: string,
+  disposition: RequestClosureDisposition,
+): Promise<void> {
+  const session = await requireRole("staff");
+  if (!isClosureDisposition(disposition)) {
+    throw new Error("Unknown closure disposition");
+  }
+
+  const { data: changed, error } = await serviceClient().rpc(
+    "portal_close_request",
+    {
+      p_actor_email: session.email,
+      p_request_id: requestId,
+      p_disposition: disposition,
+    },
+  );
+  if (error) {
+    if (error.code === "P0002" || error.code === "22P02") {
+      throw new Error("Request not found");
+    }
+    throw new Error(`Request close failed: ${error.code}`);
+  }
+  if (changed) revalidateRequestViews(requestId);
+}
+
+export async function setRequestLegalHold(
+  requestId: string,
+  held: boolean,
+  formData: FormData,
+): Promise<void> {
+  const session = await requireRole("admin");
+  const rawReason = formData.get("reason");
+  const reason = typeof rawReason === "string" ? rawReason.trim() : "";
+  if (!reason || reason.length > 200) {
+    throw new Error("A 1-200 character legal-hold reason is required");
+  }
+
+  const { data: changed, error } = await serviceClient().rpc(
+    "portal_set_request_legal_hold",
+    {
+      p_actor_email: session.email,
+      p_request_id: requestId,
+      p_held: held,
+      p_reason: reason,
+    },
+  );
+  if (error) {
+    if (error.code === "P0002" || error.code === "22P02") {
+      throw new Error("Request not found");
+    }
+    throw new Error(`Legal hold update failed: ${error.code}`);
+  }
+  if (changed) revalidateRequestViews(requestId);
 }
 
 export async function addRequestNote(

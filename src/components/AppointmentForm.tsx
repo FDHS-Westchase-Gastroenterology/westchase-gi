@@ -8,6 +8,8 @@ import {
   HONEYPOT_FIELD,
   INTAKE_API,
   INTAKE_NOJS_ACTION,
+  isMailbox,
+  REQUEST_FIELD_LIMITS,
   type IntakeResponse,
 } from "@/lib/portal/contracts";
 import { Check, MessageSquare, Phone } from "./icons";
@@ -20,8 +22,6 @@ type Errors = Partial<Record<"name" | "phone" | "email", string>>;
 // confirmed by the server · failure: the server refused or could not save ·
 // unknown: no readable response came back, so the truth is unknowable here.
 type Status = "idle" | "submitting" | "success" | "failure" | "unknown";
-
-const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const FETCH_TIMEOUT_MS = 20_000;
 
@@ -112,7 +112,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     if (!phone || phone.replace(/\D/g, "").length < 10) next.phone = f.errPhone;
     // Email is optional — many patients have none; phone is the callback
     // channel. Validate the format only when something was entered.
-    if (email && !emailRe.test(email)) next.email = f.errEmail;
+    if (email && !isMailbox(email)) next.email = f.errEmail;
     return next;
   }
 
@@ -244,6 +244,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
             type="text"
             autoComplete="name"
             required
+            maxLength={REQUEST_FIELD_LIMITS.name}
             aria-invalid={errors.name ? "true" : undefined}
             aria-describedby={errors.name ? "err-name" : undefined}
             className="field-input"
@@ -265,6 +266,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
             inputMode="tel"
             autoComplete="tel"
             required
+            maxLength={REQUEST_FIELD_LIMITS.phone}
             aria-invalid={errors.phone ? "true" : undefined}
             aria-describedby={errors.phone ? "err-phone" : undefined}
             className="field-input"
@@ -287,6 +289,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
             name="email"
             type="email"
             autoComplete="email"
+            maxLength={REQUEST_FIELD_LIMITS.email}
             aria-invalid={errors.email ? "true" : undefined}
             aria-describedby={errors.email ? "err-email" : undefined}
             className="field-input"
@@ -328,7 +331,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
             id="message"
             name="message"
             rows={4}
-            maxLength={2000}
+            maxLength={REQUEST_FIELD_LIMITS.message}
             className="field-input"
             aria-describedby="hint-message"
           />

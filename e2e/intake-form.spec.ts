@@ -16,6 +16,24 @@ const db = serviceDb();
 const dicts: Record<Locale, Dictionary> = { en, es, vi, ko, ar };
 const runId = randomUUID().slice(0, 8);
 
+test.use({
+  storageState: {
+    cookies: [
+      {
+        name: "wgi-locale",
+        value: "en",
+        domain: "localhost",
+        path: "/",
+        expires: -1,
+        httpOnly: false,
+        secure: false,
+        sameSite: "Lax",
+      },
+    ],
+    origins: [],
+  },
+});
+
 /** All spec rows share this address shape so cleanup can sweep any run. */
 function emailFor(label: string): string {
   return `form-e2e-${runId}-${label}@example.test`;
@@ -120,7 +138,6 @@ test.describe("VAL-INTAKE-006: truthful failure when the queue is down", () => {
       env: {
         ...process.env,
         NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:9",
-        SUPABASE_SECRET_KEY: "sb_broken_e2e_key",
         SUPABASE_SERVICE_ROLE_KEY: "sb_broken_e2e_key",
         NEXT_DIST_DIR: ".next-e2e",
       },
@@ -207,9 +224,12 @@ test("VAL-INTAKE-007: no-JS native POST leaks nothing and lands on a receipt", a
   // and sidesteps bounding-box stability churn on cold dev compiles.
   await page.press("#email", "Enter");
 
-  await page.waitForURL("**/en/appointment/received?status=success", {
-    timeout: 60_000,
-  });
+  await page.waitForURL(
+    /\/en\/appointment\/received\?receipt=[0-9a-f-]{36}\.[A-Za-z0-9_-]{43}$/,
+    {
+      timeout: 60_000,
+    },
+  );
   await expect(
     page.getByRole("heading", { name: en.requestReceipt.successHeading }),
   ).toBeVisible();
