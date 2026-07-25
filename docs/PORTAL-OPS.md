@@ -105,14 +105,19 @@ transfer date, and a non-secret acceptance check when this closes.
 GitHub issue [#24](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/24)
 is the canonical remaining-acceptance tracker. Keep this section synchronized with that checklist.
 
-- GitHub `main` and the last verified Vercel Production deployment match `e5f32e5`, including the
-  task-first portal, Website/maintainer controls, protected flyer printer, optional appointment
-  email, first-login tour/Help flow, persistent public-site link, language chooser, and
-  notification privacy refinement.
-- Complete the remaining Production workflow matrix: staff role changes/deactivation;
-  notification-recipient add/confirm/pause/resume/remove; request status, notes, export,
-  and optional-email-absent behavior; and current Home, Requests, Settings, Website, and Help
-  navigation/interactions.
+- PR #72's behavior-bearing release `d318300` is deployed and independently accepted in
+  Production, including the task-first portal, Website/maintainer controls, protected flyer
+  printer, optional appointment email, first-login tour/Help flow, persistent public-site link,
+  language chooser, and notification privacy refinement.
+- Sanitized Production canaries passed staff role changes/deactivation and lockout; Auth Admin
+  create/invite/resend/recovery/delete paths; request new → contacted → scheduled → explicitly
+  classified closed, notes, filtered export, formula neutralization, optional-email-absent,
+  legal-hold place/release, and unsigned-receipt rejection; Home, Requests, Settings, Website,
+  Help, and admin/non-admin flyer authorization. Cleanup restored 21 requests / 3 closed with no
+  synthetic request, profile, Auth, or actor-audit state retained.
+- Remaining Production acceptance is notification-recipient add/confirm/pause/resume/remove with
+  a clinic-approved inbox, clinic-inbox invitation/recovery delivery after hosted SMTP is fixed,
+  and the throwaway GitHub maintainer invite/cancel/accept/revoke lifecycle.
 - Development and Production are current through migration `20260725170000`; the retired
   registry tables/functions remain absent. Development passed the cap preflight, forward
   migration, transactional lifecycle smoke, portal request workflow, exact rollback,
@@ -138,8 +143,8 @@ is the canonical remaining-acceptance tracker. Keep this section synchronized wi
   Write, and revoke, then verify the corresponding Activity-log entries.
 - The former standalone flyer repository and Vercel project are retired after this repository's
   routes, protected assets, manifest, verifier, build, and live review hub were confirmed
-  self-contained. Authenticated Production acceptance of the integrated printer remains open,
-  but there is no separate rollback application.
+  self-contained. Production admin access and protected downloads passed; staff and anonymous
+  access failed closed. There is no separate rollback application.
 - Owner 2FA and narrowing the GitHub App installation remain separate owner-only
   governance controls. They are open, but they do not withhold the current portal UI.
 

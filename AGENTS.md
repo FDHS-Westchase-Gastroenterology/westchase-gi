@@ -105,8 +105,10 @@ Do not widen this lane by prose or agent judgment. Change the executable policy 
 tests together, preserve the no-production-database boundary, and require a new evidence-backed
 review before granting another runtime package autonomous merge authority.
 
-GitHub currently reports no branch-protection rule or ruleset. Workflow policy is not a substitute
-for repository-setting enforcement, and the missing protection does not authorize direct pushes.
+GitHub `main` has strict branch protection requiring current-branch `quality`, `react-doctor`, and
+`Vercel` statuses plus resolved conversations. Force pushes and deletion are blocked. Workflow
+policy still requires every path-triggered disposable integration job on the exact head even when
+that job is not a repository-setting requirement.
 
 ## Known current reconciliation items (2026-07-25)
 
@@ -128,16 +130,16 @@ for repository-setting enforcement, and the missing protection does not authoriz
   exists, and no retention deletion has run.
 - The GitHub repository homepage still points at dead `new-westchase-gi.vercel.app`; the intended
   homepage is `https://westchasegi.com`.
-- GitHub `main` and the last verified Vercel Production deployment match `e5f32e5`. The former
-  standalone flyer repository and Vercel project are retired; authenticated acceptance of the
-  integrated printer remains open in issue #24.
+- PR #72's behavior-bearing release `d318300` is deployed and independently accepted in
+  Production. The former standalone flyer repository and Vercel project are retired; admin,
+  non-admin, and anonymous acceptance of the integrated printer and protected assets passed.
 
 ## Verification
 
 - `npm run build`, `npm run lint`, and `npm run doctor` must execute; the local React Doctor
-  standard is 100. The GitHub status is advisory and is not currently required by branch
-  settings, so a green check proves execution, not a clean score—inspect its report. The
-  dependency controller separately rejects auto-merge when an exact-head PR scan reports errors.
+  standard is 100. The GitHub React Doctor status is required by branch settings, but a green
+  check proves execution rather than a clean score—inspect its report. The dependency controller
+  separately rejects auto-merge when an exact-head PR scan reports errors.
 - `npx playwright test` must pass (see README §Tests; specs run against a development
   Supabase project via `.env.local`).
 - `node scripts/verify-no-secrets.mjs` proves the history stays free of secret material;
