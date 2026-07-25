@@ -120,10 +120,12 @@ for repository-setting enforcement, and the missing protection does not authoriz
   and Resend account/team custody are not evidenced as complete. The Resend domain and Production
   application sender are configured, but that is not account custody. Keep the Website page's
   explicit custody split accurate until the practice-controlled handoff is documented.
-- Development and Production both have the intended five portal tables and five service-only RPCs
-  through migration `20260720102654`. Production registry retirement, schema/security assertions,
-  atomic-rollback verification, and the first-login-tour/public-site-link smoke passed on
-  `1124668`; no temporary acceptance rows or accounts remain.
+- Development and Production are current through lifecycle migration `20260725170000`.
+  Development passed apply, transactional lifecycle smoke, portal workflow, exact rollback,
+  migration-ledger repair, and clean reapplication. Production passed the count-only cap
+  preflight, migration-ledger/RLS/ACL/RPC assertions, and a zero-deletable-row lifecycle preview;
+  its three pre-policy closed requests remain deliberately unclassified. No lifecycle Cron job
+  exists, and no retention deletion has run.
 - The GitHub repository homepage still points at dead `new-westchase-gi.vercel.app`; the intended
   homepage is `https://westchasegi.com`.
 - GitHub `main` and the last verified Vercel Production deployment match `e5f32e5`. The former

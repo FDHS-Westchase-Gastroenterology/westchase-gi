@@ -162,11 +162,13 @@ These are known mismatches, not intended product behavior:
 - GitHub `main` and the last verified Vercel Production deployment match `e5f32e5`. GitHub
   currently has no branch-protection rule or ruleset, so hosted statuses run but are not enforced
   by repository settings.
-- Production schema parity through migration `20260720102654` was verified on 2026-07-20: the
-  retired software registry is gone, tour persistence is live, and authenticated first-login-tour
-  plus public-site-link/session-continuity acceptance passed on `1124668`. The former standalone
-  flyer repository and Vercel project are retired; authenticated acceptance of the integrated
-  printer, clinic-approved email canaries, and hosted-Auth sender work remain open. GitHub issue
+- Development and Production schema parity through lifecycle migration `20260725170000` was
+  verified on 2026-07-25. Development passed exact rollback and reapplication; Production passed
+  cap, migration-ledger, constraint, RLS, privilege, RPC, and count-only preview checks. No
+  lifecycle Cron job exists, no retention deletion has run, and the three pre-policy closed
+  requests remain unclassified. The former standalone flyer repository and Vercel project are
+  retired; authenticated acceptance of the integrated printer, clinic-approved email canaries,
+  and hosted-Auth sender work remain open. GitHub issue
   [#24](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/24) is the canonical
   full Production workflow checklist; current operational detail lives in
   `docs/PORTAL-OPS.md` and `docs/INTEGRATION-ACTIVATION.md`.

@@ -113,11 +113,15 @@ is the canonical remaining-acceptance tracker. Keep this section synchronized wi
   notification-recipient add/confirm/pause/resume/remove; request status, notes, export,
   and optional-email-absent behavior; and current Home, Requests, Settings, Website, and Help
   navigation/interactions.
-- Development and Production both have the intended five portal tables and five service-only
-  RPCs through migration `20260720102654`; the retired registry tables/functions are absent.
-- Migrations `20260725133049` and `20260725170000` are repository candidates only. They have
-  passed disposable-local iteration but are not applied to Development or Production. Do not
-  deploy application code that requires them until the target schema has been verified.
+- Development and Production are current through migration `20260725170000`; the retired
+  registry tables/functions remain absent. Development passed the cap preflight, forward
+  migration, transactional lifecycle smoke, portal request workflow, exact rollback,
+  migration-ledger repair, and clean reapplication.
+- Production received the same migrations schema-first on 2026-07-25 after a zero-violation cap
+  preflight and a restore-readable temporary logical backup. Migration-ledger, constraint,
+  RLS, privilege, and RPC assertions passed. Its first count-only lifecycle preview reported
+  zero unconverted, converted, held, receipt-secret, rate-limit, or audit candidates and three
+  deliberately unclassified legacy closures. No lifecycle run or Cron schedule was created.
 - Production migration-ledger parity, catalog/RLS/ACL/RPC assertions, authenticated Data API
   denial, nullable-email insertion, atomic audit rollback, tour persistence/auditing, public-site
   locale negotiation, and portal-session continuity passed on `1124668`. The temporary request,
