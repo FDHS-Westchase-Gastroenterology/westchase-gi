@@ -23,9 +23,40 @@ function originFrom(input) {
   return url;
 }
 
-const origin = originFrom(process.argv[2] ?? DEFAULT_ORIGIN);
+const args = process.argv.slice(2);
+const portalMode = args.includes("--portal");
+const origin = originFrom(
+  args.find((argument) => argument !== "--portal") ?? DEFAULT_ORIGIN,
+);
 
-const captures = [
+function requiredEnv(name) {
+  const value = process.env[name]?.trim();
+  if (!value) throw new Error(`Missing ${name} for portal references`);
+  return value;
+}
+
+function portalCredentials() {
+  if (origin.hostname === "localhost" || origin.hostname === "127.0.0.1") {
+    return {
+      email: requiredEnv("PORTAL_SEED_ADMIN_EMAIL"),
+      password: requiredEnv("PORTAL_SEED_ADMIN_PASSWORD"),
+    };
+  }
+  if (
+    origin.hostname.endsWith(".vercel.app") &&
+    origin.hostname.includes("-git-")
+  ) {
+    return {
+      email: requiredEnv("PORTAL_PREVIEW_USERNAME"),
+      password: requiredEnv("PORTAL_PREVIEW_PASSWORD"),
+    };
+  }
+  throw new Error(
+    `Portal references require a local or Vercel Preview origin, received: ${origin.origin}`,
+  );
+}
+
+const publicCaptures = [
   { name: "desktop-en-home", path: "/en", viewport: { width: 1440, height: 900 }, locale: "en", ready: "main h1" },
   { name: "desktop-en-home-first-visit", path: "/en", viewport: { width: 1440, height: 900 }, firstVisit: true, ready: "dialog.language-dialog[open]" },
   { name: "desktop-en-services", path: "/en/services", viewport: { width: 1440, height: 900 }, locale: "en", ready: "main h1" },
@@ -51,6 +82,23 @@ const captures = [
   { name: "mobile-ar-home", path: "/ar", viewport: { width: 390, height: 844 }, locale: "ar", ready: "main h1" },
 ];
 
+const portalCaptures = [
+  { name: "desktop-portal-home", path: "/admin", viewport: { width: 1440, height: 900 }, ready: "main h1" },
+  { name: "desktop-portal-requests", path: "/admin/requests?q=ui-reference-placeholder", viewport: { width: 1440, height: 900 }, ready: "main h1" },
+  { name: "desktop-portal-review-flyers", path: "/admin/review-flyers", viewport: { width: 1440, height: 900 }, ready: "main h1" },
+  { name: "desktop-portal-settings", path: "/admin/settings", viewport: { width: 1440, height: 900 }, ready: '[data-testid="recipients-manager"]' },
+  { name: "desktop-portal-settings-software", path: "/admin/settings/software", viewport: { width: 1440, height: 900 }, ready: '[data-testid="managed-product"]' },
+  { name: "desktop-portal-audit", path: "/admin/audit", viewport: { width: 1440, height: 900 }, ready: "main h1" },
+  { name: "desktop-portal-help", path: "/admin/help", viewport: { width: 1440, height: 900 }, ready: "main h1" },
+  { name: "mobile-portal-home", path: "/admin", viewport: { width: 390, height: 844 }, ready: "main h1" },
+  { name: "mobile-portal-requests", path: "/admin/requests?q=ui-reference-placeholder", viewport: { width: 390, height: 844 }, ready: "main h1" },
+  { name: "mobile-portal-review-flyers", path: "/admin/review-flyers", viewport: { width: 390, height: 844 }, ready: "main h1" },
+  { name: "mobile-portal-settings", path: "/admin/settings", viewport: { width: 390, height: 844 }, ready: '[data-testid="recipients-manager"]' },
+  { name: "mobile-portal-settings-software", path: "/admin/settings/software", viewport: { width: 390, height: 844 }, ready: '[data-testid="managed-product"]' },
+  { name: "mobile-portal-audit", path: "/admin/audit", viewport: { width: 390, height: 844 }, ready: "main h1" },
+  { name: "mobile-portal-help", path: "/admin/help", viewport: { width: 390, height: 844 }, ready: "main h1" },
+];
+
 async function settle(page) {
   await page.evaluate(async () => {
     window.scrollTo(0, 0);
@@ -59,44 +107,120 @@ async function settle(page) {
   });
 }
 
-await mkdir(outputDirectory, { recursive: true });
-console.log(`Capturing UI reference from ${origin.origin}`);
-const browser = await chromium.launch();
-
-try {
-  for (const capture of captures) {
-    const context = await browser.newContext({
-      viewport: capture.viewport,
-      deviceScaleFactor: 1,
-      reducedMotion: "reduce",
-    });
-    try {
-      if (!capture.firstVisit && capture.locale) {
-        await context.addCookies([
-          { name: "wgi-locale", value: capture.locale, url: origin.origin },
-        ]);
+async function redactPortalData(page) {
+  await page.addStyleTag({
+    content: `
+      [data-testid="recipient-list"],
+      [data-testid="staff-list"],
+      [data-testid="audit-table"] tbody,
+      [data-testid="maintainer-list"] {
+        filter: blur(8px);
+        user-select: none;
       }
+    `,
+  });
+  await page.evaluate(() => {
+    const sessionUser = document.querySelector('[data-testid="session-user"]');
+    if (sessionUser) sessionUser.textContent = "staff@westchasegi.com";
+    const greeting = document.querySelector('[data-testid="home-greeting"]');
+    if (greeting) greeting.textContent = "Good morning, Staff.";
+    document.querySelector('[data-testid="queue-overview-preview"]')?.remove();
+    document.querySelector('[data-testid="portal-tour-nudge"]')?.remove();
+    document.querySelector("nextjs-portal")?.remove();
+  });
+}
 
-      const page = await context.newPage();
-      page.setDefaultTimeout(15_000);
+async function capturePortalReferences(browser, credentials) {
+  const context = await browser.newContext({
+    viewport: portalCaptures[0].viewport,
+    deviceScaleFactor: 1,
+    reducedMotion: "reduce",
+  });
+  try {
+    const page = await context.newPage();
+    page.setDefaultTimeout(15_000);
+    await page.goto(new URL("/admin/login", origin).toString(), {
+      waitUntil: "domcontentloaded",
+    });
+    await page.getByLabel("Email").fill(credentials.email);
+    await page.getByLabel("Password").fill(credentials.password);
+    await Promise.all([
+      page.waitForURL((url) =>
+        url.origin === origin.origin && url.pathname === "/admin",
+      ),
+      page.getByRole("button", { name: "Sign in", exact: true }).click(),
+    ]);
+
+    for (const capture of portalCaptures) {
+      await page.setViewportSize(capture.viewport);
       await page.goto(new URL(capture.path, origin).toString(), {
         waitUntil: "domcontentloaded",
       });
-      if (new URL(page.url()).origin !== origin.origin) {
-        throw new Error(`Unexpected redirect for ${capture.path}: ${page.url()}`);
-      }
       await page.locator(capture.ready).waitFor({ state: "visible" });
-      await settle(page);
-      await capture.afterReady?.(page);
+      await page.waitForTimeout(250);
+      if (capture.path === "/admin/review-flyers") {
+        await page.waitForFunction(() => {
+          const images = Array.from(
+            document.querySelectorAll("[data-review-target] img"),
+          );
+          return images.length > 0 && images.every(
+            (image) => image.complete && image.naturalWidth > 0,
+          );
+        });
+      }
+      await redactPortalData(page);
       await settle(page);
       await page.screenshot({
         path: resolve(outputDirectory, `${capture.name}.png`),
       });
       console.log(`Captured ${capture.name}.png`);
-    } finally {
-      await context.close();
+    }
+  } finally {
+    await context.close();
+  }
+}
+
+await mkdir(outputDirectory, { recursive: true });
+console.log(`Capturing UI reference from ${origin.origin}`);
+const browser = await chromium.launch();
+
+try {
+  if (!portalMode) {
+    for (const capture of publicCaptures) {
+      const context = await browser.newContext({
+        viewport: capture.viewport,
+        deviceScaleFactor: 1,
+        reducedMotion: "reduce",
+      });
+      try {
+        if (!capture.firstVisit && capture.locale) {
+          await context.addCookies([
+            { name: "wgi-locale", value: capture.locale, url: origin.origin },
+          ]);
+        }
+
+        const page = await context.newPage();
+        page.setDefaultTimeout(15_000);
+        await page.goto(new URL(capture.path, origin).toString(), {
+          waitUntil: "domcontentloaded",
+        });
+        if (new URL(page.url()).origin !== origin.origin) {
+          throw new Error(`Unexpected redirect for ${capture.path}: ${page.url()}`);
+        }
+        await page.locator(capture.ready).waitFor({ state: "visible" });
+        await settle(page);
+        await capture.afterReady?.(page);
+        await settle(page);
+        await page.screenshot({
+          path: resolve(outputDirectory, `${capture.name}.png`),
+        });
+        console.log(`Captured ${capture.name}.png`);
+      } finally {
+        await context.close();
+      }
     }
   }
+  if (portalMode) await capturePortalReferences(browser, portalCredentials());
 } finally {
   await browser.close();
 }
