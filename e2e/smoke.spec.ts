@@ -11,6 +11,69 @@ test("home page renders the hero on /en", async ({ page }) => {
   );
 });
 
+test("appointment submission cannot re-enter while its request is pending", async ({
+  page,
+}) => {
+  let requestCount = 0;
+  let releaseRequest!: () => void;
+  const heldRequest = new Promise<void>((resolve) => {
+    releaseRequest = resolve;
+  });
+
+  await page.route("**/api/requests", async (route) => {
+    requestCount += 1;
+    await heldRequest;
+    await route.fulfill({
+      status: 201,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        id: "00000000-0000-4000-8000-000000000001",
+      }),
+    });
+  });
+
+  await page.goto("/en/appointment");
+  await page
+    .getByRole("button", { name: "Continue in English", exact: true })
+    .click();
+  const form = page.locator('form[action="/api/requests/form"]');
+  await expect(form).toHaveAttribute("data-hydrated", "true");
+  await page.fill("#name", "TEST Re-entry Guard");
+  await page.fill("#phone", "8135550142");
+  await page.evaluate(() => {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = (...args) => {
+      const root = document.documentElement;
+      root.dataset.intakeFetchCount = String(
+        Number(root.dataset.intakeFetchCount ?? "0") + 1,
+      );
+      return originalFetch(...args);
+    };
+  });
+
+  await form.evaluate((element) => {
+    const appointmentForm = element as HTMLFormElement;
+    appointmentForm.requestSubmit();
+    appointmentForm.requestSubmit();
+  });
+
+  try {
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-intake-fetch-count",
+      "1",
+    );
+    await expect
+      .poll(() => requestCount, { timeout: 5_000 })
+      .toBe(1);
+    await expect(form.getByRole("button", { name: "Sending…" })).toBeDisabled();
+  } finally {
+    releaseRequest();
+  }
+
+  await expect(page.getByText("Request received")).toBeVisible();
+});
+
 test("public metadata uses the apex canonical origin", async ({ page, request }) => {
   const origin = "https://westchasegi.com";
   const redirectingOrigin = "https://www.westchasegi.com";
