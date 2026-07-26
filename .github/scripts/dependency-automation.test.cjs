@@ -4,6 +4,8 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const {
   LABELS,
   classifyDependabot,
@@ -133,6 +135,15 @@ test("exposes no human-routing automation state", () => {
     Object.values(LABELS).some(({ name }) => name.includes("human")),
     false,
   );
+});
+
+test("package manifests do not request a human code owner", () => {
+  const codeowners = fs.readFileSync(
+    path.join(__dirname, "..", "CODEOWNERS"),
+    "utf8",
+  );
+  assert.match(codeowners, /^\/package\.json\s*$/m);
+  assert.match(codeowners, /^\/package-lock\.json\s*$/m);
 });
 
 test("does not expose an unverified or source-changing PR to Codex", () => {

@@ -81,5 +81,6 @@ failed signals withhold the merge.
 ## Related policy
 
 - Pull request template: `.github/PULL_REQUEST_TEMPLATE.md`
-- Code ownership: `.github/CODEOWNERS`
+- Code ownership: `.github/CODEOWNERS` (package manifests are deliberately ownerless because the
+  guarded dependency lane supplies their review and merge authority)
 - Dependency updates: `.github/dependabot.yml`
