@@ -20,7 +20,7 @@ permissions:
   deployments: read
   issues: write
   pull-requests: write
-  statuses: read
+  statuses: write
 
 concurrency:
   group: dependabot-auto-merge
