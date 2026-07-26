@@ -100,6 +100,42 @@ test.describe("portal home", () => {
         `^${newCount} new appointment request${newCount === 1 ? " is" : "s are"} waiting\\.$`,
       ),
     );
+
+    // Age context renders exactly when the oldest new request predates the
+    // current practice-local calendar day (label logic is unit-tested in
+    // src/lib/portal/business-time.test.mjs; this pins the wiring).
+    const { data: oldestNew, error: oldestError } = await db
+      .from("requests")
+      .select("created_at")
+      .eq("status", "new")
+      .order("created_at", { ascending: true })
+      .limit(1);
+    expect(oldestError).toBeNull();
+    const nyDay = (value: string | Date) =>
+      new Date(value).toLocaleDateString("en-CA", {
+        timeZone: "America/New_York",
+      });
+    const oldestIsPastDay =
+      oldestNew?.[0] != null &&
+      nyDay(oldestNew[0].created_at) < nyDay(new Date());
+    const oldestLine = page.getByTestId("queue-overview-oldest");
+    await expect(oldestLine).toHaveCount(oldestIsPastDay ? 1 : 0);
+    if (oldestIsPastDay) {
+      await expect(oldestLine).toHaveText(
+        /^(It|The oldest) has been waiting since .+\.$/,
+      );
+    }
+
+    // The zero-recipients safety net appears exactly when no active
+    // notification recipient exists.
+    const { count: activeRecipients, error: recipientsError } = await db
+      .from("notification_recipients")
+      .select("id", { count: "exact", head: true })
+      .eq("active", true);
+    expect(recipientsError).toBeNull();
+    await expect(page.getByTestId("no-recipients-warning")).toHaveCount(
+      (activeRecipients ?? 0) === 0 ? 1 : 0,
+    );
     // The staged request (the newest) appears in the preview list and its
     // row links to the detail page.
     const preview = page.getByTestId("queue-overview-preview");
@@ -116,7 +152,10 @@ test.describe("portal home", () => {
       nav.getByRole("link", { name: "Print review flyers" }),
     ).toHaveCount(0);
 
-    // Admin task list: five rows, flyers included, each a working link.
+    // Task list: five rows for every role — flyer printing is staff-wide
+    // (product decision 2026-07-26) — each a working link. Scoped to the
+    // tasks section: the zero-recipients warning may repeat a task's name.
+    const tasks = page.locator('section[aria-labelledby="tasks-heading"]');
     for (const [label, href] of [
       ["Print review flyers", "/admin/review-flyers"],
       ["Manage notification emails", "/admin/settings#notifications"],
@@ -125,7 +164,7 @@ test.describe("portal home", () => {
       ["Request a website change", "/admin/help#website-changes"],
     ] as const) {
       await expect(
-        page.getByRole("link", { name: label, exact: true }),
+        tasks.getByRole("link", { name: label, exact: true }),
         `task row: ${label}`,
       ).toHaveAttribute("href", href);
     }

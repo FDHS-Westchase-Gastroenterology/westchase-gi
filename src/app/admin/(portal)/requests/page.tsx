@@ -5,6 +5,7 @@ import {
   type RequestStatus,
 } from "@/lib/portal/contracts";
 import { requireRole } from "@/lib/portal/auth";
+import { waitingSince } from "@/lib/portal/business-time";
 import {
   parsePage,
   parseRequestSearch,
@@ -255,39 +256,56 @@ export default async function AdminRequestsPage({
         </div>
       ) : (
         <ul data-testid="request-list" className="mt-8 space-y-3">
-          {requests.map((request) => (
-            <li key={request.id}>
-              <Link
-                href={`/admin/requests/${request.id}`}
-                data-testid="request-row"
-                className="grid gap-x-6 gap-y-2 rounded-[var(--radius)] border border-[var(--color-line)] bg-white px-5 py-4 transition-colors hover:border-[var(--color-teal)] sm:grid-cols-[1.4fr_1fr_auto] sm:items-center"
-              >
-                <span className="min-w-0">
-                  <span
-                    data-testid="request-name"
-                    className="block truncate font-bold text-[var(--color-ink)]"
-                  >
-                    {request.name}
+          {requests.map((request) => {
+            // Age context appears only on unworked requests: once someone
+            // has touched a request, its urgency is a triage judgment, not
+            // a timestamp's.
+            const waiting =
+              request.status === "new"
+                ? waitingSince(request.created_at)
+                : null;
+            return (
+              <li key={request.id}>
+                <Link
+                  href={`/admin/requests/${request.id}`}
+                  data-testid="request-row"
+                  className="grid gap-x-6 gap-y-2 rounded-[var(--radius)] border border-[var(--color-line)] bg-white px-5 py-4 transition-colors hover:border-[var(--color-teal)] sm:grid-cols-[1.4fr_1fr_auto] sm:items-center"
+                >
+                  <span className="min-w-0">
+                    <span
+                      data-testid="request-name"
+                      className="block truncate font-bold text-[var(--color-ink)]"
+                    >
+                      {request.name}
+                    </span>
+                    <span className="mt-0.5 block text-[0.9rem] text-[var(--color-muted)]">
+                      {request.phone}
+                    </span>
                   </span>
-                  <span className="mt-0.5 block text-[0.9rem] text-[var(--color-muted)]">
-                    {request.phone}
+                  <span className="text-[0.9rem] text-[var(--color-body)]">
+                    <span className="block">
+                      {LOCATION_LABELS[request.location]} ·{" "}
+                      {TIME_LABELS[request.preferred_time]}
+                    </span>
+                    <span className="mt-0.5 block text-[var(--color-muted)]">
+                      Received {formatReceived(request.created_at)}
+                    </span>
+                    {waiting ? (
+                      <span
+                        data-testid="request-waiting"
+                        className="mt-0.5 block text-[0.85rem] font-bold text-[var(--color-amber-deep)]"
+                      >
+                        Waiting since {waiting}
+                      </span>
+                    ) : null}
                   </span>
-                </span>
-                <span className="text-[0.9rem] text-[var(--color-body)]">
-                  <span className="block">
-                    {LOCATION_LABELS[request.location]} ·{" "}
-                    {TIME_LABELS[request.preferred_time]}
+                  <span className="justify-self-start sm:justify-self-end">
+                    <StatusBadge status={request.status} />
                   </span>
-                  <span className="mt-0.5 block text-[var(--color-muted)]">
-                    Received {formatReceived(request.created_at)}
-                  </span>
-                </span>
-                <span className="justify-self-start sm:justify-self-end">
-                  <StatusBadge status={request.status} />
-                </span>
-              </Link>
-            </li>
-          ))}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
 

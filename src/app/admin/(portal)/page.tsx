@@ -1,7 +1,10 @@
 import Link from "next/link";
 import type { SVGProps } from "react";
-import type { StaffRole } from "@/lib/portal/contracts";
 import { requireRole } from "@/lib/portal/auth";
+import {
+  arrivedOutsideOfficeHours,
+  waitingSince,
+} from "@/lib/portal/business-time";
 import { availableQueueCount } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
 import {
@@ -51,7 +54,6 @@ type Task = {
   label: string;
   description: string;
   icon: (props: SVGProps<SVGSVGElement>) => React.ReactNode;
-  adminOnly?: boolean;
 };
 
 const TASKS: Task[] = [
@@ -60,7 +62,6 @@ const TASKS: Task[] = [
     label: "Print review flyers",
     description: "Print-ready bilingual QR flyers for the front desk.",
     icon: Printer,
-    adminOnly: true,
   },
   {
     href: "/admin/settings#notifications",
@@ -88,10 +89,6 @@ const TASKS: Task[] = [
   },
 ];
 
-function visibleTasks(role: StaffRole): Task[] {
-  return TASKS.filter((task) => !task.adminOnly || role === "admin");
-}
-
 function headlineFor(newCount: number): React.ReactNode {
   if (newCount === 0) return "No new appointment requests are waiting.";
   return (
@@ -115,22 +112,40 @@ export default async function AdminHomePage() {
   // A failed read must never present as an empty queue: "No new requests"
   // and "the count could not load" are different truths, and conflating
   // them recreates the silent-queue failure this portal exists to end.
-  const {
-    data: newestRows,
-    count: newCount,
-    error: queueReadError,
-  } = await db
-    .from("requests")
-    .select("id, name, created_at", { count: "exact" })
-    .eq("status", "new")
-    .order("created_at", { ascending: false })
-    .limit(3);
+  const [
+    { data: newestRows, count: newCount, error: queueReadError },
+    { data: oldestRows },
+    { count: recipientCount, error: recipientsReadError },
+  ] = await Promise.all([
+    db
+      .from("requests")
+      .select("id, name, created_at", { count: "exact" })
+      .eq("status", "new")
+      .order("created_at", { ascending: false })
+      .limit(3),
+    db
+      .from("requests")
+      .select("created_at")
+      .eq("status", "new")
+      .order("created_at", { ascending: true })
+      .limit(1),
+    db
+      .from("notification_recipients")
+      .select("id", { count: "exact", head: true })
+      .eq("active", true),
+  ]);
   const newest = (newestRows ?? []) as Array<{
     id: string;
     name: string;
     created_at: string;
   }>;
   const availableNewCount = availableQueueCount(newCount, queueReadError);
+  const oldest = (oldestRows ?? []) as Array<{ created_at: string }>;
+  const oldestWaiting =
+    availableNewCount && oldest[0] ? waitingSince(oldest[0].created_at, now) : null;
+  // Zero recipients is a real, legal state worth flagging; a failed
+  // recipients read is not evidence of it, so the warning stays silent then.
+  const noActiveRecipients = !recipientsReadError && recipientCount === 0;
 
   return (
     <section aria-labelledby="home-heading">
@@ -187,6 +202,21 @@ export default async function AdminHomePage() {
                 {headlineFor(availableNewCount)}
               </p>
 
+              {oldestWaiting ? (
+                <p
+                  data-testid="queue-overview-oldest"
+                  className="mt-2 text-[0.92rem] text-[var(--color-body)]"
+                >
+                  {availableNewCount === 1
+                    ? "It has been waiting since "
+                    : "The oldest has been waiting since "}
+                  <strong className="font-bold text-[var(--color-amber-deep)]">
+                    {oldestWaiting}
+                  </strong>
+                  .
+                </p>
+              ) : null}
+
               {newest.length > 0 ? (
                 <ul
                   data-testid="queue-overview-preview"
@@ -203,6 +233,9 @@ export default async function AdminHomePage() {
                         </span>
                         <span className="flex-none text-[0.88rem] text-[var(--color-muted)]">
                           {formatReceived(request.created_at)}
+                          {arrivedOutsideOfficeHours(request.created_at)
+                            ? " · after hours"
+                            : ""}
                         </span>
                       </Link>
                     </li>
@@ -215,6 +248,22 @@ export default async function AdminHomePage() {
               )}
             </>
           )}
+
+          {noActiveRecipients ? (
+            <p
+              data-testid="no-recipients-warning"
+              className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.92rem] leading-relaxed text-[var(--color-ink)]"
+            >
+              No one is getting email alerts right now. New requests still
+              land here, but no email goes out when one arrives.{" "}
+              <Link
+                href="/admin/settings#notifications"
+                className="font-bold underline underline-offset-2"
+              >
+                Manage notification emails
+              </Link>
+            </p>
+          ) : null}
 
           <div className="mt-6">
             <Link href="/admin/requests" className="btn btn-amber">
@@ -235,7 +284,7 @@ export default async function AdminHomePage() {
             Around the portal
           </h2>
           <ul className="mt-2.5">
-            {visibleTasks(session.role).map((task) => {
+            {TASKS.map((task) => {
               const slug = task.label.toLowerCase().replace(/[^a-z]+/g, "-");
               return (
                 <li key={task.href}>

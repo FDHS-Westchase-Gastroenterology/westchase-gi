@@ -44,11 +44,9 @@ export default async function AdminSettingsSoftwarePage() {
             control.
           </p>
         </div>
-        {session.role === "admin" && (
-          <Link href="/admin/review-flyers" className="btn btn-navy">
-            Print review flyers
-          </Link>
-        )}
+        <Link href="/admin/review-flyers" className="btn btn-navy">
+          Print review flyers
+        </Link>
       </div>
 
       <div className="mt-6 grid gap-6 border-t border-[var(--color-line)] pt-6 md:grid-cols-2">
