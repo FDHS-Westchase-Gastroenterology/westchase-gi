@@ -25,6 +25,19 @@ type Status = "idle" | "submitting" | "success" | "failure" | "unknown";
 
 const FETCH_TIMEOUT_MS = 20_000;
 
+function requireKnownIntakeStatus(response: Response) {
+  switch (response.status) {
+    case 200:
+    case 201:
+    case 400:
+    case 429:
+    case 503:
+      return;
+    default:
+      throw new Error("Unexpected intake response status");
+  }
+}
+
 /** Call/text recovery pair used by both the success card and problem alert. */
 function ContactActions({ dict }: { dict: Dictionary }) {
   return (
@@ -94,6 +107,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
   const [status, setStatus] = useState<Status>("idle");
   const alertRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const submittingRef = useRef(false);
 
   // Testability marker: E2E waits for hydration before driving the JS path
   // (a pre-hydration click legitimately takes the native no-JS fallback).
@@ -125,12 +139,15 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
   }
 
   function showProblem(state: "failure" | "unknown") {
+    submittingRef.current = false;
     setStatus(state);
     requestAnimationFrame(() => alertRef.current?.focus());
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (submittingRef.current) return;
+
     const form = e.currentTarget;
     const data = new FormData(form);
 
@@ -142,6 +159,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
       return;
     }
 
+    submittingRef.current = true;
     setStatus("submitting");
 
     const payload = {
@@ -164,7 +182,12 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
+      requireKnownIntakeStatus(res);
       body = (await res.json()) as IntakeResponse;
+      if (res.ok !== body.ok) {
+        showProblem("unknown");
+        return;
+      }
     } catch {
       // Timed out or no readable response: the request may or may not have
       // landed. Only the honest "please confirm with us" state is truthful.
@@ -180,6 +203,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     if (body.code === "validation" && body.fieldErrors) {
       const mapped = serverFieldErrors(body.fieldErrors);
       setErrors(mapped);
+      submittingRef.current = false;
       setStatus("idle");
       requestAnimationFrame(() => {
         form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();

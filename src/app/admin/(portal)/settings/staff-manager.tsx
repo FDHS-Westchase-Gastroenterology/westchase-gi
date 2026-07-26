@@ -343,7 +343,12 @@ export function StaffManager({
                       setIssued((current) =>
                         current ? { ...current, copied: true } : current,
                       ),
-                    );
+                    )
+                    .catch(() => {
+                      setError(
+                        "Could not copy the setup link. Select and copy it manually.",
+                      );
+                    });
                 }}
                 className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)]"
               >

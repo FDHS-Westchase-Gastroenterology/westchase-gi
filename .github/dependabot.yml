@@ -5,3 +5,12 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    groups:
+      react-runtime:
+        patterns:
+          - react
+          - react-dom
+      next-tooling:
+        patterns:
+          - next
+          - eslint-config-next

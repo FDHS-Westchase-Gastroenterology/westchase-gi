@@ -51,11 +51,18 @@ type EventRow = {
   created_at: string;
 };
 
+const OPEN_REQUEST_STATUSES = REQUEST_STATUSES.filter(
+  (status) => status !== "closed",
+);
+
 function metaText(meta: Record<string, unknown> | null, key: string): string {
   const value = meta?.[key];
   return typeof value === "string" ? value : "";
 }
 
+// One protected fetch feeds one cohesive request workflow; splitting its JSX
+// would add patient-data prop surfaces without isolating reusable behavior.
+// react-doctor-disable-next-line react-doctor/no-giant-component
 export default async function RequestDetailPage({
   params,
 }: {
@@ -261,35 +268,33 @@ export default async function RequestDetailPage({
               recorded in the activity log.
             </p>
             <div className="mt-4 grid gap-2">
-              {REQUEST_STATUSES.filter((status) => status !== "closed").map(
-                (status) => {
-                  const isCurrent = row.status === status;
-                  return (
-                    <form
-                      key={status}
-                      action={updateRequestStatus.bind(null, row.id, status)}
+              {OPEN_REQUEST_STATUSES.map((status) => {
+                const isCurrent = row.status === status;
+                return (
+                  <form
+                    key={status}
+                    action={updateRequestStatus.bind(null, row.id, status)}
+                  >
+                    <button
+                      type="submit"
+                      disabled={isCurrent}
+                      data-status-action={status}
+                      className={`flex min-h-11 w-full items-center justify-between rounded-[var(--radius)] border px-4 text-[0.95rem] font-bold transition-colors ${
+                        isCurrent
+                          ? "cursor-default border-[var(--color-navy)] bg-[var(--color-navy)] text-[var(--color-on-dark)]"
+                          : "border-[var(--color-line-2)] bg-white text-[var(--color-body)] hover:border-[var(--color-navy)]"
+                      }`}
                     >
-                      <button
-                        type="submit"
-                        disabled={isCurrent}
-                        data-status-action={status}
-                        className={`flex min-h-11 w-full items-center justify-between rounded-[var(--radius)] border px-4 text-[0.95rem] font-bold transition-colors ${
-                          isCurrent
-                            ? "cursor-default border-[var(--color-navy)] bg-[var(--color-navy)] text-[var(--color-on-dark)]"
-                            : "border-[var(--color-line-2)] bg-white text-[var(--color-body)] hover:border-[var(--color-navy)]"
-                        }`}
-                      >
-                        {STATUS_LABELS[status]}
-                        {isCurrent && (
-                          <span className="text-[0.75rem] uppercase tracking-[0.06em]">
-                            Current
-                          </span>
-                        )}
-                      </button>
-                    </form>
-                  );
-                },
-              )}
+                      {STATUS_LABELS[status]}
+                      {isCurrent && (
+                        <span className="text-[0.75rem] uppercase tracking-[0.06em]">
+                          Current
+                        </span>
+                      )}
+                    </button>
+                  </form>
+                );
+              })}
             </div>
             <div className="mt-5 border-t border-[var(--color-line)] pt-5">
               <h3 className="text-[0.8rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
