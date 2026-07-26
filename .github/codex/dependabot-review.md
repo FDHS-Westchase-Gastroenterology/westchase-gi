@@ -32,15 +32,17 @@ Check for:
   implications;
 - missing migration work that deterministic CI may not detect.
 
-Return `approve` only when there is no concrete semantic blocker and the trusted
-context says `autoMergeEligible: true`.
+Return `approve` when there is no concrete semantic blocker and the trusted
+context says `autoMergeEligible: true`. Dependency name, dependency type,
+version size, grouping, and ownership of a compiler, build, lint, or test gate
+are not blockers by themselves; deterministic checks exercise those paths.
 
-Return `needs_human` when the deterministic policy is not auto-merge eligible
-or the evidence is ambiguous. Runtime updates normally require a human; the
-only exception is a policy-approved patch to `@supabase/supabase-js` or
-`@supabase/ssr`, whose Auth, SSR session, RLS, and PostgREST behavior is covered
-by a separate disposable-stack integration gate. Major versions, application
-source, and updates to compiler or test-verification dependencies remain human.
+Return `retry` when the exact update may become valid after a Dependabot rebase
+or after another compatible dependency update lands, or when the evidence is
+temporarily incomplete. Return `repair` only when recreating the Dependabot
+manifest and lockfile update can resolve concrete generated-file drift.
 
-Return `block` only for a concrete defect or unsafe discrepancy. Cite concise
-file-and-fact evidence; do not speculate. Output only the requested JSON object.
+Return `reject` only for a concrete unsafe or incompatible update that rebasing
+or recreating cannot resolve. Cite concise file-and-fact evidence; do not
+speculate or delegate a decision to a person. Output only the requested JSON
+object.

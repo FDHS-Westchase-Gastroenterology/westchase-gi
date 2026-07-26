@@ -12,7 +12,7 @@
   "properties": {
     "decision": {
       "type": "string",
-      "enum": ["approve", "needs_human", "block"]
+      "enum": ["approve", "retry", "repair", "reject"]
     },
     "summary": {
       "type": "string",
