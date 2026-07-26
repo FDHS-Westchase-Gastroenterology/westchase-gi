@@ -62,6 +62,16 @@ distinct "count unavailable" state when its queue read fails — a failed read n
 presents as an empty queue. All four primary nav destinations stay fully visible on
 a 390px phone.
 
+Home also carries attention context in practice-local business terms: how long the
+oldest new request has been waiting ("since Friday"), which previewed requests
+arrived after office hours, and an explicit warning when zero active notification
+recipients exist (a failed recipients read stays silent — absence of evidence is
+not evidence of absence). The queue marks unworked requests that have waited past
+their arrival day. Review-flyer printing is open to every active staff member, not
+only administrators (decision 2026-07-26): printing an approved artifact mutates
+nothing, and handing flyers to patients is a front-desk job. Changing flyer assets
+stays outside the portal.
+
 The docked "coming soon" assistant launcher was removed (decision 2026-07-26): a
 floating control that completes no job obstructs real work on phones and violates
 the honest-states principle. The seam remains reserved — when an assistant ships it
@@ -103,12 +113,18 @@ Priorities for the portal's next chapter, in order:
 
 1. **A unified call-outcome workflow** on request detail: one prominent action that
    records outcome, status, note, and closure classification together, atomically.
-   Blocked on two things before implementation: the practice confirms the outcome
-   taxonomy in its own words, and a single atomic server operation exists (calling
-   the current status and note operations separately from a nicer UI would keep the
-   partial-completion risk). "Scheduled in the FDHS system — finish request" should
-   map directly to the existing converted-record closure so staff never have to
-   understand the status/classification split.
+   The outcome vocabulary is decided (2026-07-26), grounded in how the activity
+   record shows staff actually work — status changes paired with notes, direct
+   new → scheduled as the normal successful path: *Scheduled in the FDHS system —
+   request finished* (maps to the converted-record closure, so staff never learn
+   the status/classification split); *Reached the patient — follow-up needed*,
+   *Left a voicemail — call again*, and *No answer — call again* (each `contacted`
+   plus an optional follow-up time); *Patient won't schedule* and *Duplicate or
+   not actionable* (both map to the did-not-become-an-appointment closure). Six
+   outcomes, one screen; any outcome the activity record shows going unused gets
+   removed. Implementation waits only on the single atomic server operation
+   (issue #124) — building the composer on the existing separate operations would
+   keep the partial-completion risk.
 2. **A queue that says what to work next**: a needs-attention default view,
    business-aware age (a request that arrived Saturday afternoon is not the same as
    one waiting since Thursday), next action per row, and continuity
@@ -122,6 +138,11 @@ Priorities for the portal's next chapter, in order:
    responds immediately, only the affected row goes pending, success lands beside
    the changed object, failures preserve input and say whether anything changed,
    and reversible actions offer undo instead of repeated confirm prompts.
+
+Backend prerequisites for this chapter are tracked as scoped issues — the atomic
+call-outcome operation (#124), audit provenance for the Recent-work view (#125),
+the recipient label-update operation (#126), and recoverable staff lifecycle
+operations (#127). Frontend work that needs no schema change does not wait on them.
 
 Deliberately not building: generic metric dashboards or vanity counts; a forced
 linear status funnel (direct new → scheduled is the normal successful path); kanban

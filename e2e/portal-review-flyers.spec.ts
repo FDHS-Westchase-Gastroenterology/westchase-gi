@@ -101,7 +101,7 @@ test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "Authenticated portal UI");
 });
 
-test("review flyers enforce the page and asset role boundary", async ({
+test("review flyers stay closed to visitors and open to every staff member", async ({
   browser,
   page,
   request,
@@ -149,28 +149,25 @@ test("review flyers enforce the page and asset role boundary", async ({
     staffContext = await browser.newContext();
     const staffPage = await staffContext.newPage();
     await signIn(staffPage, staffEmail, staffPassword);
+    // Handing flyers to patients is a front-desk job: printing is open to
+    // every active staff member (product decision 2026-07-26), while
+    // anonymous access stays closed.
     await expect(
       staffPage.getByRole("link", { name: "Print review flyers" }),
-    ).toHaveCount(0);
-    await expect(
-      staffPage.getByRole("link", { name: "Manage staff access" }),
-    ).toBeVisible();
-    await expect(
-      staffPage.getByRole("link", { name: "Open appointment requests" }),
     ).toBeVisible();
 
     await staffPage.goto("/admin/review-flyers");
-    await expect(staffPage).toHaveURL(/\/admin\/?$/);
     await expect(
       staffPage.getByRole("heading", { name: "Print review flyers" }),
-    ).toHaveCount(0);
+    ).toBeVisible();
+    await expect(staffPage.locator("[data-review-target]")).toHaveCount(6);
 
     for (const asset of ASSETS) {
       const response = await staffContext.request.get(
         `/admin/review-flyers/assets/${encodeURIComponent(asset.filename)}`,
       );
       expect(response.status(), `staff asset access: ${asset.filename}`).toBe(
-        403,
+        200,
       );
     }
   } finally {

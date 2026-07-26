@@ -38,6 +38,9 @@ jobs:
       - name: Verify destructive E2E target guard
         run: npm run test:e2e-guard
 
+      - name: Portal unit tests
+        run: npm run test:unit
+
       - name: Lint
         run: npm run lint
 

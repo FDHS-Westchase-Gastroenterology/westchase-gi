@@ -10,6 +10,7 @@
     "lint": "eslint",
     "doctor": "npx react-doctor --blocking none",
     "test:e2e-guard": "node --test e2e/target-guard.test.mjs",
+    "test:unit": "node --test src/lib/portal/*.test.mjs",
     "ui:reference": "node scripts/capture-ui-reference.mjs",
     "ui:reference:portal": "node --env-file-if-exists=.env.local scripts/capture-ui-reference.mjs --portal"
   },
