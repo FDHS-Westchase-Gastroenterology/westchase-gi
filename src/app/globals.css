@@ -863,12 +863,10 @@
     background: oklch(0.22 0.04 248 / 0.72);
     backdrop-filter: blur(6px);
   }
-  .pc-dialog[open] .pc-shell,
-  .assistant-dialog[open] {
+  .pc-dialog[open] .pc-shell {
     animation: pc-rise 0.42s var(--ease-out-quint) both;
   }
-  .pc-dialog[open]::backdrop,
-  .assistant-dialog[open]::backdrop {
+  .pc-dialog[open]::backdrop {
     animation: pc-dim 0.3s ease-out both;
   }
   @keyframes pc-rise {
@@ -887,9 +885,7 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .pc-dialog[open] .pc-shell,
-    .pc-dialog[open]::backdrop,
-    .assistant-dialog[open],
-    .assistant-dialog[open]::backdrop {
+    .pc-dialog[open]::backdrop {
       animation: none;
     }
   }
@@ -1289,9 +1285,7 @@
 
   body[data-review-flyer-print] header,
   body[data-review-flyer-print] footer,
-  body[data-review-flyer-print] .review-flyer-screen,
-  body[data-review-flyer-print] [data-testid="assistant-launcher"],
-  body[data-review-flyer-print] [data-testid="assistant-panel"] {
+  body[data-review-flyer-print] .review-flyer-screen {
     display: none !important;
   }
 
