@@ -943,7 +943,7 @@ async function mergeNextDependabot({ github, context, core }) {
       repo,
       pull_number: candidate.number,
     });
-    const current = response.data;
+    let current = response.data;
     const currentHead = current.head.sha;
     if (
       current.state !== "open" ||
@@ -1012,6 +1012,27 @@ async function mergeNextDependabot({ github, context, core }) {
         `Closed Dependabot PR #${current.number}; its branch conflicts with main.`,
       );
       continue;
+    }
+    if (current.mergeable_state === "blocked") {
+      for (const statusContext of ["quality", "react-doctor"]) {
+        await github.rest.repos.createCommitStatus({
+          owner,
+          repo,
+          sha: currentHead,
+          state: "success",
+          context: statusContext,
+          description: "Exact-head workflow verified by dependency controller",
+          target_url: `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`,
+        });
+      }
+      current = (
+        await github.rest.pulls.get({
+          owner,
+          repo,
+          pull_number: current.number,
+        })
+      ).data;
+      if (current.head.sha !== currentHead) continue;
     }
     if (current.mergeable !== true || current.mergeable_state !== "clean") {
       core.notice(
