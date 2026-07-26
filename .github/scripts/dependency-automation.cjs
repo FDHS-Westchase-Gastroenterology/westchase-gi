@@ -361,7 +361,8 @@ async function upsertReviewComment(github, owner, repo, issueNumber, body) {
   });
   const prior = comments.find(
     (comment) =>
-      comment.user?.type === "Bot" && comment.body?.includes(REVIEW_MARKER),
+      comment.user?.login === "github-actions[bot]" &&
+      comment.body?.includes(REVIEW_MARKER),
   );
 
   if (prior) {
@@ -396,7 +397,15 @@ async function requestDependabotCommand(
     issue_number: issueNumber,
     per_page: 100,
   });
-  if (comments.some((comment) => comment.body?.includes(marker))) return false;
+  if (
+    comments.some(
+      (comment) =>
+        comment.user?.login === "github-actions[bot]" &&
+        comment.body?.includes(marker),
+    )
+  ) {
+    return false;
+  }
 
   await github.rest.issues.createComment({
     owner,
@@ -994,6 +1003,7 @@ module.exports = {
   mergeNextDependabot,
   parseCodexResult,
   reportDependabotReview,
+  requestDependabotCommand,
   sanitizeText,
   verifyProduction,
 };
