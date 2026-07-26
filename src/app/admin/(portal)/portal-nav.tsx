@@ -6,14 +6,26 @@ import { usePathname } from "next/navigation";
 // One task-first primary nav for every role. Home is the landing
 // surface; the queue lives under /admin/requests; occasional tasks
 // (review flyers, website custody) are reached from Home and Settings
-// instead of holding permanent tabs.
+// instead of holding permanent tabs. Every destination stays visible on
+// a phone: the queue tab compacts to "Requests" below `sm` so the row
+// never depends on unmarked horizontal scrolling.
 
-const NAV_ITEMS = [
+type NavItem = {
+  href: string;
+  label: string;
+  compactLabel?: string;
+};
+
+const NAV_ITEMS: readonly NavItem[] = [
   { href: "/admin", label: "Home" },
-  { href: "/admin/requests", label: "Appointment requests" },
+  {
+    href: "/admin/requests",
+    label: "Appointment requests",
+    compactLabel: "Requests",
+  },
   { href: "/admin/settings", label: "Settings" },
   { href: "/admin/help", label: "Help" },
-] as const;
+];
 
 function isActive(pathname: string, href: string): boolean {
   if (href === "/admin") return pathname === "/admin";
@@ -33,13 +45,20 @@ export function PortalNav() {
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-11 items-center border-b-[3px] px-3.5 text-[0.95rem] font-bold transition-colors sm:px-4 ${
+                className={`flex min-h-11 items-center border-b-[3px] px-2.5 text-[0.95rem] font-bold transition-colors sm:px-4 ${
                   active
                     ? "border-[var(--color-amber)] text-white"
                     : "border-transparent text-[var(--color-on-dark-muted)] hover:text-white"
                 }`}
               >
-                {item.label}
+                {item.compactLabel ? (
+                  <>
+                    <span className="sm:hidden">{item.compactLabel}</span>
+                    <span className="hidden sm:inline">{item.label}</span>
+                  </>
+                ) : (
+                  item.label
+                )}
               </Link>
             </li>
           );
