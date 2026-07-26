@@ -216,10 +216,15 @@ test("recovery updates a behind Dependabot branch without comment commands", asy
           data: {
             ...pull,
             state: "open",
-            mergeable_state: "behind",
+            mergeable_state: "unstable",
           },
         }),
         updateBranch: async (input) => calls.push(input),
+      },
+      repos: {
+        compareCommitsWithBasehead: async () => ({
+          data: { ahead_by: 3 },
+        }),
       },
     },
   };
@@ -230,6 +235,7 @@ test("recovery updates a behind Dependabot branch without comment commands", asy
       "owner",
       "repo",
       [pull],
+      "current-main",
       { notice: () => {}, warning: () => {} },
     ),
     true,
