@@ -12,7 +12,11 @@ const INITIAL_STATE: LoginActionState = { error: null };
 const inputClassName =
   "mt-2 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 py-3 text-base text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)]";
 
-export function LoginForm() {
+export function LoginForm({
+  allowPreviewAlias,
+}: {
+  allowPreviewAlias: boolean;
+}) {
   const [state, formAction, pending] = useActionState(
     loginAction,
     INITIAL_STATE,
@@ -30,7 +34,8 @@ export function LoginForm() {
         <input
           id="email"
           name="email"
-          type="email"
+          type={allowPreviewAlias ? "text" : "email"}
+          inputMode={allowPreviewAlias ? undefined : "email"}
           autoComplete="username"
           autoCapitalize="none"
           spellCheck={false}

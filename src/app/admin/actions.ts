@@ -1,5 +1,6 @@
 "use server";
 
+import { timingSafeEqual } from "node:crypto";
 import { redirect } from "next/navigation";
 import {
   clearPasswordAuthFlow,
@@ -42,6 +43,34 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function loginError(): LoginActionState {
   return { error: GENERIC_LOGIN_ERROR };
+}
+
+function safeCredentialMatch(actual: string, expected: string): boolean {
+  const actualBuffer = Buffer.from(actual);
+  const expectedBuffer = Buffer.from(expected);
+  return (
+    actualBuffer.length === expectedBuffer.length &&
+    timingSafeEqual(actualBuffer, expectedBuffer)
+  );
+}
+
+function previewLoginCredentials(
+  submittedEmail: string,
+  submittedPassword: string,
+): { email: string; password: string } | null {
+  if (process.env.VERCEL_ENV !== "preview") return null;
+
+  const username = process.env.PORTAL_PREVIEW_USERNAME?.trim();
+  const password = process.env.PORTAL_PREVIEW_PASSWORD;
+  const email = process.env.PORTAL_SEED_ADMIN_EMAIL?.trim();
+  const seedPassword = process.env.PORTAL_SEED_ADMIN_PASSWORD;
+  if (!username || !password || !email || !seedPassword) return null;
+
+  const usernameMatches = safeCredentialMatch(submittedEmail, username);
+  const passwordMatches = safeCredentialMatch(submittedPassword, password);
+  return usernameMatches && passwordMatches
+    ? { email, password: seedPassword }
+    : null;
 }
 
 function credential(
@@ -93,10 +122,11 @@ export async function loginAction(
   }
 
   try {
+    const previewCredentials = previewLoginCredentials(email, password);
     const supabase = await serverClient();
     const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+      email: previewCredentials?.email ?? email,
+      password: previewCredentials?.password ?? password,
     });
 
     if (error) return loginError();
