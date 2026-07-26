@@ -84,8 +84,10 @@ secret-bearing dependency run.
    GitHub's native pull-request API, re-verify the signed bot-only history, and
    explicitly dispatch the exact-head gates that token-authored updates do not
    trigger. After those real runs pass, attest their protected status contexts
-   on the exact SHA. Close a conflicting branch, and give valid retry/repair
-   decisions at most three exact-head attempts.
+   on the exact SHA. Optional approval-required runs do not override those
+   results; the normal protected merge remains the final repository-policy
+   check. Close a conflicting branch, and give valid retry/repair decisions at
+   most three exact-head attempts.
 8. Dispatch post-merge CI, React Doctor, and Production verification. Verify
    the matching Vercel Production deployment and canonical live-site smoke.
 9. Do not release another dependency PR until current `main` has successful
