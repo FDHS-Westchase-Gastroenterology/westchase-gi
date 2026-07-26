@@ -1,2 +1,6 @@
 # Default ownership for all paths in this repository.
 * @FDHS-Westchase-Gastroenterology
+
+# Manifest-only dependency updates use the guarded automation lane.
+/package.json
+/package-lock.json
