@@ -1,8 +1,61 @@
 import { test, expect } from "@playwright/test";
+import { NextRequest } from "next/server";
+import { proxy } from "../src/proxy";
 
 // Harness smoke: proves the QA stack can drive the app at all.
 // VAL-ENV-007 — /en renders the home hero; /admin redirects
 // unauthenticated visitors toward the login surface.
+
+test("branch previews use one shared gate without changing Production", async () => {
+  const original = {
+    environment: process.env.VERCEL_ENV,
+    username: process.env.PREVIEW_BASIC_AUTH_USERNAME,
+    password: process.env.PREVIEW_BASIC_AUTH_PASSWORD,
+  };
+
+  try {
+    process.env.VERCEL_ENV = "preview";
+    process.env.PREVIEW_BASIC_AUTH_USERNAME = "reviewer";
+    process.env.PREVIEW_BASIC_AUTH_PASSWORD = "test-only-preview-password";
+
+    const unauthorized = await proxy(
+      new NextRequest("https://preview.example/en"),
+    );
+    expect(unauthorized.status).toBe(401);
+    expect(unauthorized.headers.get("www-authenticate")).toContain("Basic");
+
+    const authorization = `Basic ${Buffer.from(
+      "reviewer:test-only-preview-password",
+    ).toString("base64")}`;
+    const authorized = await proxy(
+      new NextRequest("https://preview.example/en", {
+        headers: { authorization },
+      }),
+    );
+    expect(authorized.status).toBe(200);
+
+    delete process.env.PREVIEW_BASIC_AUTH_PASSWORD;
+    const unconfigured = await proxy(
+      new NextRequest("https://preview.example/en"),
+    );
+    expect(unconfigured.status).toBe(503);
+
+    process.env.VERCEL_ENV = "production";
+    const production = await proxy(
+      new NextRequest("https://westchasegi.com/en"),
+    );
+    expect(production.status).toBe(200);
+  } finally {
+    for (const [name, value] of [
+      ["VERCEL_ENV", original.environment],
+      ["PREVIEW_BASIC_AUTH_USERNAME", original.username],
+      ["PREVIEW_BASIC_AUTH_PASSWORD", original.password],
+    ] as const) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+});
 
 test("home page renders the hero on /en", async ({ page }) => {
   await page.goto("/en");
