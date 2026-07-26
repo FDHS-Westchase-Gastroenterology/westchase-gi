@@ -34,20 +34,41 @@ software topology (repositories, hosting projects, asset ledgers). The jobs:
   management controls stay hidden, failing closed, until the one-time
   owner-side setup steps are complete.
 - Request an occasional website change (today: through the website maintainer; a
-  portal assistant is planned for exactly this seam and its docked launcher already
-  reserves the spot).
+  structured change-request workflow, later conversationally assisted, is the
+  planned next step for this seam).
 
 Success: a new front-desk hire lands on the home page and knows what to do without
 training, and nothing needing attention hides more than one click deep.
 
-## Current delivery boundary (verified 2026-07-25)
+## North star
+
+The portal should feel like a calm shift partner: tell me what needs attention, let
+me finish the work in one coherent action, show me exactly what changed, and let me
+recover safely when I make a mistake. The intended emotional result is not
+excitement — it is calm confidence that the queue is complete, the next action is
+obvious, a colleague can continue my work, and nothing is silently lost or
+misrepresented.
+
+The center of gravity is moving from "staff update records" to "staff finish clinic
+work": the real job is a phone call and its outcome, not a status field plus a
+separate note form.
+
+## Current delivery boundary (verified 2026-07-26)
 
 The task-first Home, Requests queue, recipient and staff management, Activity log,
 Website/maintainer controls, protected review-flyer printer, first-login opt-in
-tour, and Help-page systems explainer/restart path are deployed. The remaining
-future work is a full throwaway maintainer invite/cancel/accept/revoke acceptance
-pass and the conversational website-change assistant. The assistant's docked
-launcher is only a placeholder; do not present it as a completed workflow.
+tour, and Help-page systems explainer/restart path are deployed. Home renders a
+distinct "count unavailable" state when its queue read fails — a failed read never
+presents as an empty queue. All four primary nav destinations stay fully visible on
+a 390px phone.
+
+The docked "coming soon" assistant launcher was removed (decision 2026-07-26): a
+floating control that completes no job obstructs real work on phones and violates
+the honest-states principle. The seam remains reserved — when an assistant ships it
+will be a docked, contextual widget with no dedicated page and no nav entry, and it
+arrives only when it completes a real job (first candidate: drafting structured
+website-change requests). The remaining future work also includes a full throwaway
+maintainer invite/cancel/accept/revoke acceptance pass.
 
 ## Design principles
 
@@ -62,12 +83,51 @@ launcher is only a placeholder; do not present it as a completed workflow.
    heading below it, minimal motion (150–250 ms, state-conveying only), and empty
    states that teach the interface.
 4. **Honest states.** Delivery, connection, and configuration states render
-   truthfully ("Not configured", "Connection unavailable"), and no control ships
-   before its capability exists.
-5. **PHI-minimal.** The portal handles callback leads, not a clinical record. Intake has
+   truthfully ("Not configured", "Connection unavailable"), no control ships
+   before its capability exists, and a failed read is never presented as an empty
+   result — "nothing waiting" and "could not check" are different truths.
+5. **One human action, one portal transaction.** Staff experience "set the outcome
+   and explain what happened" as a single step; the interface should not split one
+   real-world action across disconnected forms, and server operations backing a
+   combined action must commit atomically.
+6. **Attention over inventory.** Lead with work that needs action — and its
+   age in business terms — not with counts or tables that merely exist.
+7. **PHI-minimal.** The portal handles callback leads, not a clinical record. Intake has
    no dedicated clinical fields, but it stores an optional patient-supplied brief reason,
    so the queue is still sensitive. Notification emails and operational logs stay free of
    patient fields.
+
+## Direction (adopted 2026-07-26)
+
+Priorities for the portal's next chapter, in order:
+
+1. **A unified call-outcome workflow** on request detail: one prominent action that
+   records outcome, status, note, and closure classification together, atomically.
+   Blocked on two things before implementation: the practice confirms the outcome
+   taxonomy in its own words, and a single atomic server operation exists (calling
+   the current status and note operations separately from a nicer UI would keep the
+   partial-completion risk). "Scheduled in the FDHS system — finish request" should
+   map directly to the existing converted-record closure so staff never have to
+   understand the status/classification split.
+2. **A queue that says what to work next**: a needs-attention default view,
+   business-aware age (a request that arrived Saturday afternoon is not the same as
+   one waiting since Thursday), next action per row, and continuity
+   (previous/next, save-and-open-next).
+3. **A human Recent-work view** over the durable audit record: grouped,
+   plain-language entries linked to the work ("finished an appointment request as
+   Scheduled"), with the exact technical audit preserved beneath it for
+   administrators. Storage vocabulary (action codes, UUID fragments) is not staff
+   language.
+4. **One feedback-and-forgiveness pattern for every mutation**: the pressed control
+   responds immediately, only the affected row goes pending, success lands beside
+   the changed object, failures preserve input and say whether anything changed,
+   and reversible actions offer undo instead of repeated confirm prompts.
+
+Deliberately not building: generic metric dashboards or vanity counts; a forced
+linear status funnel (direct new → scheduled is the normal successful path); kanban
+or bulk mutations; direct browser database access; a CMS, flyer editor, or QR
+generator; page-view surveillance; an assistant that sees patient free text or
+mutates records autonomously.
 
 ## Anti-references
 
@@ -75,8 +135,8 @@ launcher is only a placeholder; do not present it as a completed workflow.
   rows.
 - Software-inventory framing: asset registries, provider matrices, "manage
   integrations" panels.
-- Chat-forward AI dashboards; the assistant remains a docked, conservatively-scoped
-  widget.
+- Chat-forward AI dashboards; any future assistant remains a docked,
+  conservatively-scoped widget that ships only with a completed job.
 
 ## Accessibility
 

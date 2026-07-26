@@ -86,14 +86,26 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
         `${portalPage.path} horizontal overflow at ${viewport.name}`,
       ).toBeLessThanOrEqual(0);
 
+      // Every primary destination is a real 44px target AND fully on
+      // screen — reachability must never depend on unmarked horizontal
+      // scrolling (a destination that starts offscreen does not exist
+      // for staff who don't know to swipe a nav bar).
       const navBoxes = await page
         .locator('nav[aria-label="Portal sections"] a')
         .evaluateAll((links) =>
-          links.map((link) => link.getBoundingClientRect().height),
+          links.map((link) => {
+            const rect = link.getBoundingClientRect();
+            return { height: rect.height, left: rect.left, right: rect.right };
+          }),
         );
       expect(navBoxes).toHaveLength(4);
-      for (const height of navBoxes) {
-        expect(height, "nav target height").toBeGreaterThanOrEqual(44);
+      for (const box of navBoxes) {
+        expect(box.height, "nav target height").toBeGreaterThanOrEqual(44);
+        expect(box.left, "nav item starts on screen").toBeGreaterThanOrEqual(0);
+        expect(
+          box.right,
+          `nav item fully visible at ${viewport.name}`,
+        ).toBeLessThanOrEqual(viewport.width);
       }
 
       const websiteLink = page.getByRole("link", { name: "View website" });
