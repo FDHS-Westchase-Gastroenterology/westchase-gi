@@ -1034,9 +1034,9 @@ async function mergeNextDependabot({ github, context, core }) {
       ).data;
       if (current.head.sha !== currentHead) continue;
     }
-    if (current.mergeable !== true || current.mergeable_state !== "clean") {
+    if (current.mergeable !== true) {
       core.notice(
-        `PR #${current.number} is not cleanly mergeable yet (${current.mergeable_state}).`,
+        `PR #${current.number} is not mergeable yet (${current.mergeable_state}).`,
       );
       if (pending.length) return;
       continue;
