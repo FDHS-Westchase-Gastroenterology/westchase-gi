@@ -81,8 +81,10 @@ secret-bearing dependency run.
    status. Any new commit invalidates the prior authority.
 7. Select the oldest exact-head-approved PR whose gates are green. A failing
    older PR does not stall a green sibling. Update a behind branch through
-   GitHub's native pull-request API, close a conflicting branch, and give valid
-   retry/repair decisions at most three exact-head attempts.
+   GitHub's native pull-request API, re-verify the signed bot-only history, and
+   explicitly dispatch the exact-head gates that token-authored updates do not
+   trigger. Close a conflicting branch, and give valid retry/repair decisions
+   at most three exact-head attempts.
 8. Dispatch post-merge CI, React Doctor, and Production verification. Verify
    the matching Vercel Production deployment and canonical live-site smoke.
 9. Do not release another dependency PR until current `main` has successful
@@ -118,7 +120,7 @@ secret-bearing dependency run.
 | 8 | Maintainer commit appears on the Dependabot branch | Commit verification fails closed | Existing reviewed SHA cannot authorize new head |
 | 9 | Codex identifies a concrete incompatibility not fixed by regeneration | Reject and close | Failed exact-head status and blocked label |
 | 10 | Codex times out, exceeds quota, or returns malformed JSON | Continue through deterministic gates | Model availability cannot create a human gate |
-| 11 | Dependabot refreshes the branch after approval | Rerun on new SHA | Controller rejects the stale status |
+| 11 | Dependabot refreshes the branch after approval | Verify bot signatures and explicitly dispatch gates on the new SHA | Controller rejects the stale status |
 | 12 | First merge deploys unsuccessfully or live smoke fails | Queue pauses | No second dependency PR merges |
 | 13 | Oldest PR fails install but a compatible sibling is green | Skip failure and merge green sibling | Rebased older PR gets a fresh exact-head run |
 
