@@ -1,11 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  availableQueueCount,
   parsePage,
   parseRequestSearch,
   requestSearchFilter,
   REQUEST_SEARCH_MAX_LENGTH,
 } from "./request-query.ts";
+
+test("never reports a failed queue read as empty", () => {
+  assert.equal(availableQueueCount(0, new Error("read failed")), null);
+  assert.equal(availableQueueCount(null, null), 0);
+  assert.equal(availableQueueCount(3, null), 3);
+});
 
 test("parses a bounded positive page", () => {
   assert.equal(parsePage("2"), 2);

@@ -1,8 +1,12 @@
 import { test, expect, type Page } from "@playwright/test";
 import { loadLocalEnv, requiredEnv } from "./support";
 
-// VAL-REG-005: the assistant affordance is a portal-wide docked widget
-// with an expandable panel, conservative copy, and no dedicated page.
+// VAL-REG-005 (revised 2026-07-26): the portal ships no assistant
+// placeholder. The docked "coming soon" launcher was removed because a
+// floating control that completes no job obstructs real work — it
+// returns only when an assistant can finish something. The seam itself
+// is unchanged: when it lands it will be a docked widget, with no
+// dedicated page and no nav entry.
 
 loadLocalEnv();
 
@@ -28,7 +32,7 @@ test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "JS portal UI");
 });
 
-test("VAL-REG-005: assistant widget is portal-wide, expandable, conservative", async ({
+test("VAL-REG-005: no assistant placeholder ships before the assistant works", async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -50,33 +54,23 @@ test("VAL-REG-005: assistant widget is portal-wide, expandable, conservative", a
   expect(response.status()).toBe(201);
   const { id } = (await response.json()) as { id: string };
 
+  // No floating placeholder covers content on any portal page.
   const everyPage = [...PORTAL_PAGES, `/admin/requests/${id}`];
   for (const path of everyPage) {
     await page.goto(path);
+    await expect(page.locator("main")).toBeVisible();
     await expect(
       page.getByTestId("assistant-launcher"),
-      `launcher missing on ${path}`,
-    ).toBeVisible();
-  }
-
-  // The launcher opens an expandable panel — not a navigation.
-  await page.goto("/admin");
-  await page.getByTestId("assistant-launcher").click();
-  await expect(page).toHaveURL(/\/admin\/?$/);
-  const panel = page.getByTestId("assistant-panel");
-  await expect(panel).toBeVisible();
-  await expect(panel).toContainText("planned");
-
-  await page.getByTestId("assistant-expand").click();
-  await expect(panel).toHaveAttribute("data-expanded", "true");
-
-  // Conservative phrasing: no compliance or availability promises.
-  const text = (await panel.innerText()).toLowerCase();
-  for (const banned of ["hipaa", "fda", "available now", "24/7"]) {
-    expect(text, `panel copy contains "${banned}"`).not.toContain(banned);
+      `placeholder launcher present on ${path}`,
+    ).toHaveCount(0);
+    await expect(
+      page.getByTestId("assistant-panel"),
+      `placeholder panel present on ${path}`,
+    ).toHaveCount(0);
   }
 
   // No dedicated assistant page or nav entry exists.
+  await page.goto("/admin");
   await expect(
     page.locator('nav[aria-label="Portal sections"] a', {
       hasText: "Assistant",

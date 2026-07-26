@@ -64,14 +64,26 @@ export default async function AdminHelpPage() {
             Open an appointment request to see everything the patient
             submitted: name,
             phone, email, preferred office and time, and their brief reason
-            for the visit. Work it by phone, then move it through the four
-            statuses with one click: <strong>New</strong> means nobody has
+            for the visit. Work it by phone, then record where things stand
+            with one click: <strong>New</strong> means nobody has
             handled it yet; <strong>Contacted</strong> means you reached out
             (or tried); <strong>Scheduled</strong> means the appointment is
-            booked in the scheduling system; <strong>Closed</strong> means
-            the request needs no more work. The status filters on the queue
+            booked in the scheduling system. The status filters on the queue
             page make it easy to see exactly what still needs attention —
             keeping the New list at zero is the daily goal.
+          </p>
+          <p className={`${SECTION_BODY} mt-3`}>
+            Finishing a request is its own deliberate step, under{" "}
+            <strong>Close and classify</strong> on the request page. Choose{" "}
+            <strong>Close — transferred to the FDHS record</strong> once the
+            appointment is booked and the patient&apos;s information lives in
+            the practice&apos;s medical-record system, or{" "}
+            <strong>Close — did not become an appointment</strong> when the
+            request needs no more work. The choice matters: it starts the
+            approved records-retention clock (12 months for transferred
+            requests, 180 days otherwise), and a scheduled request is not
+            finished until it is closed. Reopening a closed request resets
+            its clock.
           </p>
         </div>
 
