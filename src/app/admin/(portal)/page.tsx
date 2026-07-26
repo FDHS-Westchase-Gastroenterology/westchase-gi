@@ -111,7 +111,14 @@ export default async function AdminHomePage() {
   const minutes = hour * 60 + minute;
 
   const db = serviceClient();
-  const { data: newestRows, count: newCount } = await db
+  // A failed read must never present as an empty queue: "No new requests"
+  // and "the count could not load" are different truths, and conflating
+  // them recreates the silent-queue failure this portal exists to end.
+  const {
+    data: newestRows,
+    count: newCount,
+    error: queueReadError,
+  } = await db
     .from("requests")
     .select("id, name, created_at", { count: "exact" })
     .eq("status", "new")
@@ -155,38 +162,56 @@ export default async function AdminHomePage() {
           >
             Appointment requests
           </h2>
-          <p
-            data-testid="queue-overview-headline"
-            className="mt-3 max-w-[26ch] text-[1.4rem] font-bold leading-snug text-[var(--color-ink)]"
-          >
-            {headlineFor(newCount ?? 0)}
-          </p>
-
-          {newest.length > 0 ? (
-            <ul
-              data-testid="queue-overview-preview"
-              className="mt-5 divide-y divide-[var(--color-line)] border-t border-[var(--color-line)]"
-            >
-              {newest.map((request) => (
-                <li key={request.id}>
-                  <Link
-                    href={`/admin/requests/${request.id}`}
-                    className="group flex min-h-11 items-center justify-between gap-4 py-3"
-                  >
-                    <span className="truncate font-bold text-[var(--color-ink)] underline-offset-2 group-hover:underline group-hover:decoration-[var(--color-teal-ink)]">
-                      {request.name}
-                    </span>
-                    <span className="flex-none text-[0.88rem] text-[var(--color-muted)]">
-                      {formatReceived(request.created_at)}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+          {queueReadError ? (
+            <div data-testid="queue-overview-unavailable">
+              <p
+                data-testid="queue-overview-headline"
+                className="mt-3 max-w-[26ch] text-[1.4rem] font-bold leading-snug text-[var(--color-ink)]"
+              >
+                The request count is unavailable right now.
+              </p>
+              <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.92rem] leading-relaxed text-[var(--color-ink)]">
+                This does not mean the queue is empty — this page could not
+                check it. Refresh in a moment, or open the queue below to
+                see every request.
+              </p>
+            </div>
           ) : (
-            <p className="mt-2 text-[0.92rem] text-[var(--color-muted)]">
-              New website submissions appear here the moment they arrive.
-            </p>
+            <>
+              <p
+                data-testid="queue-overview-headline"
+                className="mt-3 max-w-[26ch] text-[1.4rem] font-bold leading-snug text-[var(--color-ink)]"
+              >
+                {headlineFor(newCount ?? 0)}
+              </p>
+
+              {newest.length > 0 ? (
+                <ul
+                  data-testid="queue-overview-preview"
+                  className="mt-5 divide-y divide-[var(--color-line)] border-t border-[var(--color-line)]"
+                >
+                  {newest.map((request) => (
+                    <li key={request.id}>
+                      <Link
+                        href={`/admin/requests/${request.id}`}
+                        className="group flex min-h-11 items-center justify-between gap-4 py-3"
+                      >
+                        <span className="truncate font-bold text-[var(--color-ink)] underline-offset-2 group-hover:underline group-hover:decoration-[var(--color-teal-ink)]">
+                          {request.name}
+                        </span>
+                        <span className="flex-none text-[0.88rem] text-[var(--color-muted)]">
+                          {formatReceived(request.created_at)}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-2 text-[0.92rem] text-[var(--color-muted)]">
+                  New website submissions appear here the moment they arrive.
+                </p>
+              )}
+            </>
           )}
 
           <div className="mt-6">
