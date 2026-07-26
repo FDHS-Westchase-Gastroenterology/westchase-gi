@@ -64,14 +64,21 @@ export default async function AdminHelpPage() {
             Open an appointment request to see everything the patient
             submitted: name,
             phone, email, preferred office and time, and their brief reason
-            for the visit. Work it by phone, then move it through the four
-            statuses with one click: <strong>New</strong> means nobody has
-            handled it yet; <strong>Contacted</strong> means you reached out
-            (or tried); <strong>Scheduled</strong> means the appointment is
-            booked in the scheduling system; <strong>Closed</strong> means
-            the request needs no more work. The status filters on the queue
-            page make it easy to see exactly what still needs attention —
-            keeping the New list at zero is the daily goal.
+            for the visit. Work it by phone and record the state that matches
+            what happened; you do not need to force every request through
+            every status. <strong>New</strong> means nobody has handled it
+            yet; <strong>Contacted</strong> means you reached out (or tried);
+            and <strong>Scheduled</strong> means the appointment is booked in
+            the FDHS scheduling system.
+          </p>
+          <p className={SECTION_BODY}>
+            Scheduled is not the final portal step. When no more callback work
+            remains, close and classify the request as either transferred to
+            the FDHS record or as not becoming an appointment. That explicit
+            classification starts the approved retention clock. Reopening a
+            request resets that clock. The queue filters make it easy to see
+            what still needs attention without treating a scheduled request as
+            automatically finished.
           </p>
         </div>
 

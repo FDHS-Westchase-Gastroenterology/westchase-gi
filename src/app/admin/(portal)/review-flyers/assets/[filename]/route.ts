@@ -10,7 +10,7 @@ export async function GET(
   context: { params: Promise<{ filename: string }> },
 ): Promise<Response> {
   try {
-    await requireRole("admin", { unauthenticated: "throw" });
+    await requireRole("staff", { unauthenticated: "throw" });
   } catch (error) {
     const status = authorizationStatus(error) ?? 401;
     return new Response(status === 401 ? "Unauthenticated" : "Forbidden", {

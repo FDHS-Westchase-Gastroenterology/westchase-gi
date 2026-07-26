@@ -86,15 +86,34 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
         `${portalPage.path} horizontal overflow at ${viewport.name}`,
       ).toBeLessThanOrEqual(0);
 
-      const navBoxes = await page
-        .locator('nav[aria-label="Portal sections"] a')
-        .evaluateAll((links) =>
-          links.map((link) => link.getBoundingClientRect().height),
-        );
+      const navLinks = page.locator('nav[aria-label="Portal sections"] a');
+      const navBoxes = await navLinks.evaluateAll((links) =>
+        links.map((link) => {
+          const box = link.getBoundingClientRect();
+          return {
+            height: box.height,
+            left: box.left,
+            right: box.right,
+            viewportWidth: window.innerWidth,
+          };
+        }),
+      );
       expect(navBoxes).toHaveLength(4);
-      for (const height of navBoxes) {
+      for (const { height, left, right, viewportWidth } of navBoxes) {
         expect(height, "nav target height").toBeGreaterThanOrEqual(44);
+        expect(left, "nav target begins inside the viewport").toBeGreaterThanOrEqual(
+          0,
+        );
+        expect(
+          right,
+          "nav target ends inside the viewport",
+        ).toBeLessThanOrEqual(viewportWidth);
       }
+      expect(await navLinks.allInnerTexts()).toEqual(
+        viewport.name === "390"
+          ? ["Home", "Requests", "Settings", "More"]
+          : ["Home", "Appointment requests", "Settings", "Help"],
+      );
 
       const websiteLink = page.getByRole("link", { name: "View website" });
       await expect(websiteLink).toBeVisible();
@@ -142,7 +161,17 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
           page.locator(
             'nav[aria-label="Portal sections"] a[aria-current="page"]',
           ),
-        ).toHaveText("Settings");
+        ).toHaveAccessibleName("Settings");
+      }
+      if (
+        portalPage.path === "/admin/audit" ||
+        portalPage.path === "/admin/review-flyers"
+      ) {
+        await expect(
+          page.locator(
+            'nav[aria-label="Portal sections"] a[aria-current="page"]',
+          ),
+        ).toHaveAccessibleName(viewport.name === "390" ? "More" : "Help");
       }
 
     }

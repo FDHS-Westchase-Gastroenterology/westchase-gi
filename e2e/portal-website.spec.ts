@@ -169,7 +169,7 @@ test.describe("website custody", () => {
     await expect(page).toHaveURL(/\/admin\/settings\/software\/?$/);
   });
 
-  test("staff can open Website without receiving the administrator flyer task", async ({
+  test("staff can open Website and use approved flyer assets", async ({
     page,
   }) => {
     await signIn(page, staffEmail, staffPassword);
@@ -184,7 +184,7 @@ test.describe("website custody", () => {
     ).toHaveAttribute("href", REPOSITORY_URL);
     await expect(
       page.getByRole("link", { name: "Print review flyers" }),
-    ).toHaveCount(0);
+    ).toHaveAttribute("href", "/admin/review-flyers");
     const access = page.getByTestId("maintainer-access");
     await expect(
       access.getByRole("button", { name: "Send invitation" }),

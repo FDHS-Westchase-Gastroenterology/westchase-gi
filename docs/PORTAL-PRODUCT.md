@@ -34,8 +34,7 @@ software topology (repositories, hosting projects, asset ledgers). The jobs:
   management controls stay hidden, failing closed, until the one-time
   owner-side setup steps are complete.
 - Request an occasional website change (today: through the website maintainer; a
-  portal assistant is planned for exactly this seam and its docked launcher already
-  reserves the spot).
+  later structured request workflow may replace that handoff).
 
 Success: a new front-desk hire lands on the home page and knows what to do without
 training, and nothing needing attention hides more than one click deep.
@@ -47,7 +46,9 @@ Website/maintainer controls, and protected review-flyer printer are deployed. A 
 throwaway maintainer invite/cancel/accept/revoke acceptance pass; issue
 [#43](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/43)'s first-login
 opt-in tour plus Help-page systems explainer/restart path; and the conversational website-change
-assistant remain future work. Do not present them as completed portal capabilities.
+assistant remain future work. No placeholder assistant is shown before it can complete a real
+workflow. Staff can use the approved flyer assets; replacement remains source-controlled outside
+ordinary portal CRUD. Do not present future capabilities as completed portal features.
 
 ## Design principles
 
@@ -75,8 +76,8 @@ assistant remain future work. Do not present them as completed portal capabiliti
   rows.
 - Software-inventory framing: asset registries, provider matrices, "manage
   integrations" panels.
-- Chat-forward AI dashboards; the assistant remains a docked, conservatively-scoped
-  widget.
+- Chat-forward AI dashboards or placeholder assistant controls that compete with
+  current patient work.
 
 ## Accessibility
 

@@ -1,13 +1,14 @@
 import { test, expect, type Page } from "@playwright/test";
 import { loadLocalEnv, requiredEnv } from "./support";
 
-// VAL-REG-005: the assistant affordance is a portal-wide docked widget
-// with an expandable panel, conservative copy, and no dedicated page.
+// VAL-REG-005: no placeholder assistant competes with current patient work.
+// A future assistant must enter through a completed, bounded workflow.
 
 loadLocalEnv();
 
 const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
+
 async function signIn(page: Page) {
   await page.goto("/admin/login");
   await page.getByLabel("Email").fill(SEED_EMAIL);
@@ -18,6 +19,7 @@ async function signIn(page: Page) {
 
 const PORTAL_PAGES = [
   "/admin",
+  "/admin/requests",
   "/admin/settings",
   "/admin/settings/software",
   "/admin/audit",
@@ -28,55 +30,21 @@ test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "JS portal UI");
 });
 
-test("VAL-REG-005: assistant widget is portal-wide, expandable, conservative", async ({
+test("VAL-REG-005: placeholder assistant stays absent from portal work", async ({
   page,
 }) => {
   test.setTimeout(120_000);
   await signIn(page);
 
-  // Stage one request so a detail page exists for the portal-wide check.
-  const response = await page.request.post("/api/requests", {
-    data: {
-      name: "TEST Assistant Widget",
-      phone: "8135550188",
-      email: "assistant-widget@example.test",
-      location: "any",
-      time: "any",
-      locale: "en",
-      sourcePath: "/en/appointment",
-    },
-    headers: { "X-Forwarded-For": "2001:db8:5ea3:1::5" },
-  });
-  expect(response.status()).toBe(201);
-  const { id } = (await response.json()) as { id: string };
-
-  const everyPage = [...PORTAL_PAGES, `/admin/requests/${id}`];
-  for (const path of everyPage) {
+  for (const path of PORTAL_PAGES) {
     await page.goto(path);
     await expect(
       page.getByTestId("assistant-launcher"),
-      `launcher missing on ${path}`,
-    ).toBeVisible();
+      `placeholder launcher present on ${path}`,
+    ).toHaveCount(0);
+    await expect(page.getByTestId("assistant-panel")).toHaveCount(0);
   }
 
-  // The launcher opens an expandable panel — not a navigation.
-  await page.goto("/admin");
-  await page.getByTestId("assistant-launcher").click();
-  await expect(page).toHaveURL(/\/admin\/?$/);
-  const panel = page.getByTestId("assistant-panel");
-  await expect(panel).toBeVisible();
-  await expect(panel).toContainText("planned");
-
-  await page.getByTestId("assistant-expand").click();
-  await expect(panel).toHaveAttribute("data-expanded", "true");
-
-  // Conservative phrasing: no compliance or availability promises.
-  const text = (await panel.innerText()).toLowerCase();
-  for (const banned of ["hipaa", "fda", "available now", "24/7"]) {
-    expect(text, `panel copy contains "${banned}"`).not.toContain(banned);
-  }
-
-  // No dedicated assistant page or nav entry exists.
   await expect(
     page.locator('nav[aria-label="Portal sections"] a', {
       hasText: "Assistant",
@@ -86,8 +54,4 @@ test("VAL-REG-005: assistant widget is portal-wide, expandable, conservative", a
     maxRedirects: 0,
   });
   expect([404, 307]).toContain(assistantPage.status());
-
-  // Cleanup the staged request.
-  const { serviceDb } = await import("./support");
-  await serviceDb().from("requests").delete().eq("id", id);
 });

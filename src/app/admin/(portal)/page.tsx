@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type { SVGProps } from "react";
-import type { StaffRole } from "@/lib/portal/contracts";
 import { requireRole } from "@/lib/portal/auth";
 import { serviceClient } from "@/lib/portal/server";
 import {
@@ -50,7 +49,6 @@ type Task = {
   label: string;
   description: string;
   icon: (props: SVGProps<SVGSVGElement>) => React.ReactNode;
-  adminOnly?: boolean;
 };
 
 const TASKS: Task[] = [
@@ -59,7 +57,6 @@ const TASKS: Task[] = [
     label: "Print review flyers",
     description: "Print-ready bilingual QR flyers for the front desk.",
     icon: Printer,
-    adminOnly: true,
   },
   {
     href: "/admin/settings#notifications",
@@ -87,10 +84,6 @@ const TASKS: Task[] = [
   },
 ];
 
-function visibleTasks(role: StaffRole): Task[] {
-  return TASKS.filter((task) => !task.adminOnly || role === "admin");
-}
-
 function headlineFor(newCount: number): React.ReactNode {
   if (newCount === 0) return "No new appointment requests are waiting.";
   return (
@@ -111,13 +104,17 @@ export default async function AdminHomePage() {
   const minutes = hour * 60 + minute;
 
   const db = serviceClient();
-  const { data: newestRows, count: newCount } = await db
+  const {
+    data: newestRows,
+    count: newCount,
+    error: queueError,
+  } = await db
     .from("requests")
     .select("id, name, created_at", { count: "exact" })
     .eq("status", "new")
     .order("created_at", { ascending: false })
     .limit(3);
-  const newest = (newestRows ?? []) as Array<{
+  const newest = (queueError ? [] : (newestRows ?? [])) as Array<{
     id: string;
     name: string;
     created_at: string;
@@ -159,10 +156,29 @@ export default async function AdminHomePage() {
             data-testid="queue-overview-headline"
             className="mt-3 max-w-[26ch] text-[1.4rem] font-bold leading-snug text-[var(--color-ink)]"
           >
-            {headlineFor(newCount ?? 0)}
+            {queueError
+              ? "The request count is temporarily unavailable."
+              : headlineFor(newCount ?? 0)}
           </p>
 
-          {newest.length > 0 ? (
+          {queueError ? (
+            <div
+              data-testid="queue-overview-unavailable"
+              className="mt-4 rounded-[var(--radius)] border border-[var(--color-amber-deep)] bg-[var(--color-amber-soft)] px-4 py-3"
+            >
+              <p className="text-[0.92rem] leading-relaxed text-[var(--color-ink)]">
+                Nothing has been marked as clear or empty. Try the count
+                again, or open the queue directly.
+              </p>
+              <Link
+                href="/admin?retry=1"
+                prefetch={false}
+                className="mt-2 inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+              >
+                Retry the count
+              </Link>
+            </div>
+          ) : newest.length > 0 ? (
             <ul
               data-testid="queue-overview-preview"
               className="mt-5 divide-y divide-[var(--color-line)] border-t border-[var(--color-line)]"
@@ -208,7 +224,7 @@ export default async function AdminHomePage() {
             Around the portal
           </h2>
           <ul className="mt-2.5">
-            {visibleTasks(session.role).map((task) => {
+            {TASKS.map((task) => {
               const slug = task.label.toLowerCase().replace(/[^a-z]+/g, "-");
               return (
                 <li key={task.href}>

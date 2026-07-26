@@ -101,7 +101,7 @@ test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "Authenticated portal UI");
 });
 
-test("review flyers enforce the page and asset role boundary", async ({
+test("review flyers enforce the authenticated staff boundary", async ({
   browser,
   page,
   request,
@@ -151,7 +151,7 @@ test("review flyers enforce the page and asset role boundary", async ({
     await signIn(staffPage, staffEmail, staffPassword);
     await expect(
       staffPage.getByRole("link", { name: "Print review flyers" }),
-    ).toHaveCount(0);
+    ).toBeVisible();
     await expect(
       staffPage.getByRole("link", { name: "Manage staff access" }),
     ).toBeVisible();
@@ -160,17 +160,17 @@ test("review flyers enforce the page and asset role boundary", async ({
     ).toBeVisible();
 
     await staffPage.goto("/admin/review-flyers");
-    await expect(staffPage).toHaveURL(/\/admin\/?$/);
+    await expect(staffPage).toHaveURL(/\/admin\/review-flyers\/?$/);
     await expect(
       staffPage.getByRole("heading", { name: "Print review flyers" }),
-    ).toHaveCount(0);
+    ).toBeVisible();
 
     for (const asset of ASSETS) {
       const response = await staffContext.request.get(
         `/admin/review-flyers/assets/${encodeURIComponent(asset.filename)}`,
       );
       expect(response.status(), `staff asset access: ${asset.filename}`).toBe(
-        403,
+        200,
       );
     }
   } finally {

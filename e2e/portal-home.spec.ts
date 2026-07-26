@@ -3,9 +3,9 @@ import { test, expect, type Page } from "@playwright/test";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // The portal home page: staff land on a greeting and their tasks, not on
-// software. The queue overview count is real data, the task list is
-// role-gated (the flyer printer is an admin task, not a tab), and the
-// primary action leads to the queue at /admin/requests.
+// software. The queue overview count is real data, approved flyer assets
+// are a staff task rather than a tab, and the primary action leads to the
+// queue at /admin/requests.
 
 loadLocalEnv();
 
@@ -111,12 +111,14 @@ test.describe("portal home", () => {
     // printer holds no tab, and Home carries the current-page marker.
     const nav = page.locator('nav[aria-label="Portal sections"]');
     await expect(nav.locator("a")).toHaveCount(4);
-    await expect(nav.locator('a[aria-current="page"]')).toHaveText("Home");
+    await expect(nav.locator('a[aria-current="page"]')).toHaveAccessibleName(
+      "Home",
+    );
     await expect(
       nav.getByRole("link", { name: "Print review flyers" }),
     ).toHaveCount(0);
 
-    // Admin task list: five rows, flyers included, each a working link.
+    // Task list: five rows, flyers included, each a working link.
     for (const [label, href] of [
       ["Print review flyers", "/admin/review-flyers"],
       ["Manage notification emails", "/admin/settings#notifications"],
@@ -138,7 +140,7 @@ test.describe("portal home", () => {
     ).toBeVisible();
     await expect(
       page.locator('nav[aria-label="Portal sections"] a[aria-current="page"]'),
-    ).toHaveText("Appointment requests");
+    ).toHaveAccessibleName("Appointment requests");
   });
 
   test("first-login tour dismissal and Help restart persist on the staff profile", async ({

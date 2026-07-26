@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { logoutAction } from "@/app/admin/actions";
 import { getSessionUser } from "@/lib/portal/auth";
 import { PortalNav } from "./portal-nav";
-import { AssistantLauncher } from "./assistant-launcher";
 
 // Authenticated portal chrome: a navy work-desk header carrying the
 // practice identity (wordmark, amber active tick) over a calm paper
@@ -64,9 +63,7 @@ export default async function PortalLayout({
       <main className="flex-1 pb-16 pt-8 sm:pt-10">
         <div className="container-x">{children}</div>
       </main>
-      {/* Extra bottom padding keeps the footer links clear of the floating
-          assistant launcher pinned to the bottom-right corner. */}
-      <footer className="border-t border-[var(--color-line)] pb-20 pt-5">
+      <footer className="border-t border-[var(--color-line)] pb-6 pt-5">
         <div className="container-x flex flex-wrap items-center justify-between gap-3 text-[0.85rem] text-[var(--color-muted)]">
           <p>
             <Link
@@ -89,7 +86,6 @@ export default async function PortalLayout({
           </p>
         </div>
       </footer>
-      <AssistantLauncher />
     </div>
   );
 }
