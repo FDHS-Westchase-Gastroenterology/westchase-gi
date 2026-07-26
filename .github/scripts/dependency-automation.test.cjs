@@ -486,7 +486,9 @@ test("queue skips a failing older PR and merges the next green sibling", async (
   const listLabelsForRepo = () => {};
   const listLabelsOnIssue = () => {};
   const merged = [];
+  const attestations = [];
   const notices = [];
+  const pullReads = new Map();
   const github = {
     paginate: async (method, args) => {
       if (method === listPulls) return pulls;
@@ -542,15 +544,20 @@ test("queue skips a failing older PR and merges the next green sibling", async (
         removeLabel: async () => {},
       },
       pulls: {
-        get: async ({ pull_number: pullNumber }) => ({
-          data: {
+        get: async ({ pull_number: pullNumber }) => {
+          const reads = pullReads.get(pullNumber) || 0;
+          pullReads.set(pullNumber, reads + 1);
+          return {
+            data: {
             ...pulls.find(({ number }) => number === pullNumber),
             draft: false,
             state: "open",
             mergeable: true,
-            mergeable_state: "clean",
-          },
-        }),
+              mergeable_state:
+                pullNumber === 104 && reads === 0 ? "blocked" : "clean",
+            },
+          };
+        },
         list: listPulls,
         listFiles,
         merge: async ({ pull_number: pullNumber }) => {
@@ -563,6 +570,7 @@ test("queue skips a failing older PR and merges the next green sibling", async (
         compareCommitsWithBasehead: async () => ({
           data: { ahead_by: 0 },
         }),
+        createCommitStatus: async (input) => attestations.push(input),
         getBranch: async () => ({ data: { commit: { sha: "main" } } }),
         getCombinedStatusForRef: async ({ ref }) => {
           return {
@@ -592,5 +600,16 @@ test("queue skips a failing older PR and merges the next green sibling", async (
     merged.join(","),
     "104",
     notices.join("\n"),
+  );
+  assert.deepEqual(
+    attestations.map(({ sha, state, context: statusContext }) => ({
+      sha,
+      state,
+      context: statusContext,
+    })),
+    [
+      { sha: "green", state: "success", context: "quality" },
+      { sha: "green", state: "success", context: "react-doctor" },
+    ],
   );
 });
