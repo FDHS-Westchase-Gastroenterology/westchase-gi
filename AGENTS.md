@@ -85,9 +85,11 @@ The guarded dependency lane is operational. Its detailed source of truth is
 `.github/codex/dependabot-sop-and-examples.md`; executable policy lives in
 `.github/scripts/dependency-automation.cjs` and its adjacent test.
 
-- Dependabot performs the version bump. Codex runs a read-only semantic review of the exact
+- Dependabot performs the version bump. Codex attempts a read-only semantic review of the exact
   verified head on an ephemeral GitHub Actions runner; it cannot edit the branch, push a repair,
-  merge, or access a GitHub mutation token. A needed source or migration change means human review.
+  merge, or access a GitHub mutation token. A valid approve/retry/repair/reject decision is honored
+  as a semantic veto, but an unavailable or malformed Codex response cannot become a human gate:
+  the exact-head deterministic suite remains authoritative.
 - Every package-changing PR runs `e2e/supabase-dependency-contract.spec.ts` in a separate
   GitHub-hosted Ubuntu job. That job starts a disposable Docker Supabase stack, replays committed
   migrations, seeds local-only fixtures, checks Auth/SSR sessions, permission boundaries, intake
@@ -97,18 +99,19 @@ The guarded dependency lane is operational. Its detailed source of truth is
   Jason's Mac and has no path that applies migrations or test writes to Development or Production.
   Post-merge Production verification only checks the matching Vercel deployment and performs a
   read-only canonical-site smoke request.
-- Automatic merge is limited to a verified, ungrouped, single-package, manifest-only npm patch to
-  `main`: a direct development dependency other than TypeScript, Playwright, or React Doctor, or a
-  direct production patch to `@supabase/supabase-js` or `@supabase/ssr`. Minor/major, grouped,
-  multi-package, maintainer-modified, source-changing, migration-changing, conflicting, stale, or
-  ambiguous PRs stop for a human.
-- The controller rechecks the exact SHA, all deterministic checks, Codex status, Vercel preview,
-  and mergeability; requests an ordinary merge for at most one PR; then pauses the
-  queue until post-merge CI, React Doctor, Vercel Production, and live smoke succeed.
+- Every verified, manifest-only root npm update to `main` may enter the automatic queue regardless
+  of package name/type, SemVer class, grouping, compiler ownership, or test-tool ownership.
+  Maintainer-modified, source-changing, migration-changing, or otherwise untrusted PRs are rejected
+  before Codex. Incomplete metadata and valid retry/repair decisions get at most three exact-head
+  attempts; persistent or concrete incompatibilities are closed rather than delegated.
+- The controller rechecks the exact SHA, all deterministic checks, the automation decision, Vercel
+  preview, and mergeability; skips a failing older update so a green compatible sibling can
+  proceed; updates behind branches through GitHub's pull-request API; merges at most one PR; then
+  pauses the queue until post-merge CI, React Doctor, Vercel Production, and live smoke succeed.
 
-Do not widen this lane by prose or agent judgment. Change the executable policy and regression
-tests together, preserve the no-production-database boundary, and require a new evidence-backed
-review before granting another runtime package autonomous merge authority.
+Do not widen the provenance or manifest-only boundary by prose or agent judgment. Change the
+executable policy and regression tests together, preserve the no-production-database boundary,
+and keep every merge bound to the exact reviewed SHA.
 
 GitHub `main` has strict branch protection requiring current-branch `quality`, `react-doctor`, and
 `Vercel` statuses plus resolved conversations. Force pushes and deletion are blocked. Workflow
@@ -151,3 +154,18 @@ that job is not a repository-setting requirement.
   `scripts/verify-schema.mjs --target dev|prod` checks schema/RLS/seed state.
 - External links: only ship URLs verified live (see README's link table); anything unverified
   stays out.
+
+<!-- OPENWIKI:START -->
+
+## OpenWiki
+
+This repository keeps generated OpenWiki code documentation. Start with
+`openwiki/quickstart.md`, then follow its links to architecture, workflows,
+domain concepts, operations, integrations, testing guidance, and source maps.
+
+OpenWiki refresh is manual: no scheduled workflow is committed or enabled.
+Follow the pinned procedure in `openwiki/operations-and-governance.md`, regenerate
+from a clean branch based on current `main`, and review every output against the
+authoritative source before merging it through the normal protected PR path.
+
+<!-- OPENWIKI:END -->

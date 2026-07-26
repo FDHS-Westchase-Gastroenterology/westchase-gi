@@ -13,8 +13,8 @@ on:
   # Scans `main` on every push to track the health-score trend and catch regressions that slipped past PR review.
   push:
     branches: ["main"]
-  # The dependency controller dispatches this explicitly after its merge
-  # because GITHUB_TOKEN-created events do not recursively start workflows.
+  # The dependency controller dispatches this explicitly after token-authored
+  # branch refreshes and merges because those events do not start workflows.
   workflow_dispatch:
 
 permissions:
