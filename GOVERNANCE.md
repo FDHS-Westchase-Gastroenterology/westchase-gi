@@ -32,9 +32,10 @@ Dependabot updates use three independent boundaries:
    Doctor's exact-head result, Vercel preview, the automation decision, and GitHub mergeability;
    skips failing candidates without stalling green siblings; updates behind branches through
    GitHub's pull-request API; re-verifies the signed bot-only history; explicitly dispatches
-   exact-head checks suppressed by GitHub's token recursion rule; and merges at most one PR. The
-   next PR waits for post-merge CI, React Doctor, the matching Vercel Production deployment, and
-   a canonical live-site smoke.
+   exact-head checks suppressed by GitHub's token recursion rule; attests protected contexts only
+   after the real check runs pass on that SHA; and merges at most one PR. The next PR waits for
+   post-merge CI, React Doctor, the matching Vercel Production deployment, and a canonical
+   live-site smoke.
 
 Maintainer-modified, source-changing, migration-changing, or otherwise untrusted updates are
 rejected before the agent. Incomplete metadata and valid retry/repair decisions receive at most
