@@ -73,6 +73,11 @@ notifications) and the authenticated staff portal at `/admin`.
     token, expose App credentials to the browser, or widen the App beyond its documented
     least-privilege permissions. The portal does not connect to or manage Vercel
     (`docs/INTEGRATION-ACTIVATION.md`).
+12. **Visual baseline.** Before frontend UI work, open `docs/ui-reference/README.md`. Refresh the
+    affected images against the matching local or Preview origin before committing; use the default
+    live-origin capture after deployment for public pages. The atlas includes the seven top-level
+    staff routes: refresh those only with the Development/Preview seed identity, preserve the
+    browser-side redaction, and never include an individual request or Production data.
 
 ## Dependabot/Supabase agent readiness
 
