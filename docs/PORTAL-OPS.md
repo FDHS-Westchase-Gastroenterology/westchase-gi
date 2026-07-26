@@ -28,11 +28,12 @@ the Vercel environment store. Never point local tests at production.
 | `SUPABASE_PROJECT_REF` / `SUPABASE_DB_PASSWORD` | CLI/migration access for the default (dev) project |
 | `PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF` | Exact Development project allowlist for destructive Playwright runs; use `local` only with a loopback disposable stack |
 | `SUPABASE_*_PROD` family | The same, for the production project (migrations + verify scripts); the E2E guard rejects its URL and reference |
-| `RESEND_API_KEY` / `RESEND_FROM` | Current production email adapter + sender |
+| `RESEND_API_KEY` / `RESEND_FROM` | Current production email adapter + sender; deliberately absent from Preview |
 | `PORTAL_BASE_URL` | Absolute base URL used in notification links |
+| `PORTAL_PREVIEW_USERNAME` / `PORTAL_PREVIEW_PASSWORD` | Shared branch-Preview portal alias; Preview only, never Production |
 | `PORTAL_GITHUB_APP_ID` / `PORTAL_GITHUB_APP_INSTALLATION_ID` | Server-only identifiers for the clinic-owned `wgi-portal` App |
 | `PORTAL_GITHUB_APP_PRIVATE_KEY` | Server-only App private key; PEM encoded as base64 or escaped newlines |
-| `PORTAL_SEED_ADMIN_EMAIL` / `PORTAL_SEED_ADMIN_PASSWORD` | E2E test admin on the dev project (tests only) |
+| `PORTAL_SEED_ADMIN_EMAIL` / `PORTAL_SEED_ADMIN_PASSWORD` | Seeded admin on the Development project; used by E2E and as the underlying Preview review identity, never Production |
 | `PORTAL_PROD_ADMIN_EMAIL` / `PORTAL_PROD_ADMIN_PASSWORD` | Operator-only Production activation/verification identity; never add to Vercel, never read by Playwright, and never falls back to the Development seed identity |
 
 The service-role JWT is a temporary compatibility bridge. The configured opaque secrets could

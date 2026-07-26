@@ -16,6 +16,8 @@ const SUPABASE_KEY = requiredEnv(
 );
 const SEED_ADMIN_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_ADMIN_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
+const PREVIEW_USERNAME = process.env.PORTAL_PREVIEW_USERNAME;
+const PREVIEW_PASSWORD = process.env.PORTAL_PREVIEW_PASSWORD;
 const GENERIC_LOGIN_ERROR =
   "Unable to sign in. Check your credentials and try again.";
 const RESET_REQUEST_MESSAGE =
@@ -71,6 +73,33 @@ test.describe("portal authentication and direct REST boundaries", () => {
     );
   });
 
+  test("VAL-ADMIN-019: Preview alias creates a real seeded admin session", async ({
+    page,
+  }) => {
+    test.skip(
+      process.env.VERCEL_ENV !== "preview" ||
+        !PREVIEW_USERNAME ||
+        !PREVIEW_PASSWORD,
+      "Preview alias is exercised only by the explicit Preview auth run.",
+    );
+
+    await page.goto("/admin/login");
+    await expect(page.getByLabel("Email")).toHaveAttribute("type", "text");
+    await page.getByLabel("Email").fill(PREVIEW_USERNAME);
+    await page.getByLabel("Password").fill(PREVIEW_PASSWORD);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page).toHaveURL(/\/admin\/?$/);
+
+    const renderedEmail = (
+      (await page.getByTestId("session-user").textContent()) ?? ""
+    ).trim();
+    expect(renderedEmail).not.toBe("");
+    expect(digest(renderedEmail)).toBe(digest(SEED_ADMIN_EMAIL));
+
+    await page.getByRole("button", { name: "Sign out" }).click();
+    await expect(page).toHaveURL(/\/admin\/login\/?$/);
+  });
+
   test("VAL-ADMIN-001: portal redirects, signs in, signs out, and rejects deactivated staff", async ({
     page,
     request,
@@ -85,6 +114,9 @@ test.describe("portal authentication and direct REST boundaries", () => {
     ).toBe("/admin/login");
 
     await page.goto("/admin/login");
+    if (process.env.VERCEL_ENV !== "preview") {
+      await expect(page.getByLabel("Email")).toHaveAttribute("type", "email");
+    }
     await page.getByLabel("Email").fill("nobody@example.test");
     await page.getByLabel("Password").fill("not-the-password");
     await page.getByRole("button", { name: "Sign in" }).click();

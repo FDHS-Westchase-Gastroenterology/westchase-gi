@@ -41,7 +41,7 @@ export default async function AdminLoginPage({
           reset or ask your portal administrator for a new invitation.
         </p>
       ) : null}
-      <LoginForm />
+      <LoginForm allowPreviewAlias={process.env.VERCEL_ENV === "preview"} />
     </AuthCard>
   );
 }

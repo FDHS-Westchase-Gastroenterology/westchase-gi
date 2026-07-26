@@ -2,7 +2,6 @@ import {
   createServerClient,
   type CookieOptions,
 } from "@supabase/ssr";
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { LOCALE_COOKIE, locales, type Locale } from "@/lib/site";
 
@@ -30,39 +29,6 @@ type PendingCookie = {
   value: string;
   options: CookieOptions;
 };
-
-function previewAccessResponse(request: NextRequest): NextResponse | null {
-  if (process.env.VERCEL_ENV !== "preview") return null;
-
-  const username = process.env.PREVIEW_BASIC_AUTH_USERNAME?.trim();
-  const password = process.env.PREVIEW_BASIC_AUTH_PASSWORD;
-  if (!username || !password) {
-    return new NextResponse("Preview access is not configured.", {
-      status: 503,
-      headers: { "Cache-Control": "no-store", "X-Robots-Tag": "noindex" },
-    });
-  }
-
-  const actual = request.headers.get("authorization") ?? "";
-  const expected = `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
-  const actualBuffer = Buffer.from(actual);
-  const expectedBuffer = Buffer.from(expected);
-  if (
-    actualBuffer.length === expectedBuffer.length &&
-    timingSafeEqual(actualBuffer, expectedBuffer)
-  ) {
-    return null;
-  }
-
-  return new NextResponse("Authentication required.", {
-    status: 401,
-    headers: {
-      "Cache-Control": "no-store",
-      "WWW-Authenticate": 'Basic realm="Westchase GI preview", charset="UTF-8"',
-      "X-Robots-Tag": "noindex",
-    },
-  });
-}
 
 function portalSupabaseConfig(): { url: string; key: string } | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -220,9 +186,6 @@ async function protectAdminRequest(request: NextRequest): Promise<NextResponse> 
 }
 
 export async function proxy(request: NextRequest) {
-  const previewResponse = previewAccessResponse(request);
-  if (previewResponse) return previewResponse;
-
   if (request.nextUrl.pathname === "/") {
     return localeRootRedirect(request);
   }
@@ -238,13 +201,12 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Preview authentication covers every application surface and mutation
-  // route while leaving framework assets to Next.js.
+  // Keep legacy query scrubbing tight while adding only the portal subtree
+  // needed for Supabase session refresh and optimistic route protection.
   matcher: [
     "/",
-    "/:locale(en|es|vi|ko|ar)/:path*",
+    "/:locale(en|es|vi|ko|ar)/contact",
+    "/:locale(en|es|vi|ko|ar)/appointment",
     "/admin/:path*",
-    "/api/:path*",
-    "/review/:path*",
   ],
 };
