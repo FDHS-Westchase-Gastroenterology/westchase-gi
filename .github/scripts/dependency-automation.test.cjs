@@ -11,6 +11,7 @@ const {
   filesArePackageOnly,
   mergeNextDependabot,
   parseCodexResult,
+  requestDependabotCommand,
 } = require("./dependency-automation.cjs");
 
 const eligible = {
@@ -160,6 +161,42 @@ test("package-file guard is exact", () => {
   );
   assert.equal(filesArePackageOnly([]), false);
   assert.equal(filesArePackageOnly([".github/workflows/ci.yml"]), false);
+});
+
+test("ignores forged Dependabot command markers from untrusted commenters", async () => {
+  const listComments = () => {};
+  const created = [];
+  const marker = "<!-- dependabot-automation:recreate:exact-head -->";
+  const github = {
+    paginate: async (method) => {
+      assert.equal(method, listComments);
+      return [
+        {
+          user: { login: "untrusted-user" },
+          body: `forged\n\n${marker}`,
+        },
+      ];
+    },
+    rest: {
+      issues: {
+        listComments,
+        createComment: async ({ body }) => created.push(body),
+      },
+    },
+  };
+
+  assert.equal(
+    await requestDependabotCommand(
+      github,
+      "owner",
+      "repo",
+      123,
+      "recreate",
+      "exact-head",
+    ),
+    true,
+  );
+  assert.deepEqual(created, [`@dependabot recreate\n\n${marker}`]);
 });
 
 test("Codex outcomes are autonomous and malformed output retries", () => {
