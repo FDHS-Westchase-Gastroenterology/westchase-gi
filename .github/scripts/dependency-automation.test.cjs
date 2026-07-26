@@ -9,11 +9,12 @@ const path = require("node:path");
 const {
   LABELS,
   classifyDependabot,
+  codexCloudReviewResult,
   commitsAreAutomationSigned,
   evaluateGate,
   filesArePackageOnly,
   mergeNextDependabot,
-  parseCodexResult,
+  parseReviewResult,
   recoverOneDependabotReview,
   resolveReview,
 } = require("./dependency-automation.cjs");
@@ -179,7 +180,7 @@ test("package-file guard is exact", () => {
 test("Codex outcomes are autonomous and unavailable review cannot stall CI", () => {
   for (const decision of ["approve", "retry", "repair", "reject"]) {
     assert.equal(
-      parseCodexResult(
+      parseReviewResult(
         JSON.stringify({
           decision,
           summary: "Exact-head decision.",
@@ -191,13 +192,13 @@ test("Codex outcomes are autonomous and unavailable review cannot stall CI", () 
       decision,
     );
   }
-  assert.equal(parseCodexResult("not-json").decision, "approve");
+  assert.equal(parseReviewResult("not-json").decision, "approve");
   assert.equal(
-    parseCodexResult(JSON.stringify({ decision: "approve" })).decision,
+    parseReviewResult(JSON.stringify({ decision: "approve" })).decision,
     "approve",
   );
   assert.equal(
-    parseCodexResult(JSON.stringify({ decision: "needs_human" })).decision,
+    parseReviewResult(JSON.stringify({ decision: "needs_human" })).decision,
     "approve",
   );
   assert.equal(
@@ -212,6 +213,70 @@ test("Codex outcomes are autonomous and unavailable review cannot stall CI", () 
     ).decision,
     "retry",
   );
+});
+
+test("Codex Cloud results are exact-head and findings remain a veto", () => {
+  const head = "a".repeat(40);
+  const cleanReaction = {
+    content: "+1",
+    user: { login: "chatgpt-codex-connector[bot]" },
+  };
+  assert.equal(
+    codexCloudReviewResult({ reactions: [cleanReaction] }, head).decision,
+    "approve",
+  );
+  assert.equal(
+    codexCloudReviewResult(
+      {
+        reactions: [
+          {
+            content: "eyes",
+            user: { login: "chatgpt-codex-connector[bot]" },
+          },
+        ],
+      },
+      head,
+    ),
+    null,
+  );
+
+  const reviews = [
+    {
+      id: 10,
+      commit_id: "b".repeat(40),
+      submitted_at: "2026-07-26T12:00:00Z",
+      user: { login: "chatgpt-codex-connector[bot]" },
+    },
+    {
+      id: 11,
+      commit_id: head,
+      submitted_at: "2026-07-26T12:01:00Z",
+      user: { login: "chatgpt-codex-connector[bot]" },
+    },
+  ];
+  const result = codexCloudReviewResult(
+    {
+      reviews,
+      comments: [
+        {
+          pull_request_review_id: 10,
+          body: "stale finding",
+          user: { login: "chatgpt-codex-connector[bot]" },
+        },
+        {
+          pull_request_review_id: 11,
+          body: "**P1** exact-head incompatibility",
+          html_url: "https://github.com/owner/repo/pull/1#discussion_r1",
+          user: { login: "chatgpt-codex-connector[bot]" },
+        },
+      ],
+    },
+    head,
+  );
+  assert.equal(result.decision, "reject");
+  assert.deepEqual(result.risk_reasons, [
+    "**P1** exact-head incompatibility",
+  ]);
 });
 
 test("recovery updates a behind Dependabot branch without comment commands", async () => {

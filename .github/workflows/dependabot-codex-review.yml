@@ -90,71 +90,38 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+      issues: write
       pull-requests: read
     outputs:
       result: ${{ steps.review.outputs.final-message }}
       outcome: ${{ steps.review.outcome }}
     steps:
-      # Only verified Dependabot commits with manifest-only diffs reach this
-      # checkout. Credentials are not persisted, and Codex gets no GitHub
-      # mutation token or command-level network access.
+      # Workflow code always comes from the trusted base commit. Codex Cloud
+      # reviews the PR through its GitHub App; this runner never checks out or
+      # executes PR-controlled code and receives no OpenAI credential.
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
-          fetch-depth: 0
+          ref: ${{ github.event.pull_request.base.sha }}
           persist-credentials: false
 
-      - name: Write sanitized review context
-        env:
-          BASE_SHA: ${{ needs.preflight.outputs.base_sha }}
-          HEAD_SHA: ${{ needs.preflight.outputs.head_sha }}
-          POLICY_JSON: ${{ needs.preflight.outputs.policy }}
-          DEPENDENCY_NAMES: ${{ needs.preflight.outputs.dependency_names }}
-          DEPENDENCY_TYPE: ${{ needs.preflight.outputs.dependency_type }}
-          UPDATE_TYPE: ${{ needs.preflight.outputs.update_type }}
-          PREVIOUS_VERSION: ${{ needs.preflight.outputs.previous_version }}
-          NEW_VERSION: ${{ needs.preflight.outputs.new_version }}
-        run: |
-          node -e '
-            const fs = require("node:fs");
-            fs.mkdirSync(".codex-context", { recursive: true });
-            fs.writeFileSync(
-              ".codex-context/dependabot.json",
-              JSON.stringify({
-                baseSha: process.env.BASE_SHA,
-                headSha: process.env.HEAD_SHA,
-                policy: JSON.parse(process.env.POLICY_JSON),
-                dependencyNames: process.env.DEPENDENCY_NAMES,
-                dependencyType: process.env.DEPENDENCY_TYPE,
-                updateType: process.env.UPDATE_TYPE,
-                previousVersion: process.env.PREVIOUS_VERSION,
-                newVersion: process.env.NEW_VERSION,
-              }, null, 2),
-            );
-          '
-
-      # This must remain the final step. drop-sudo protects the API credential;
-      # :read-only prevents file/network mutations from model-generated commands.
-      # The action-authored CODEX_HOME config must remain enabled so Codex uses
-      # the protected Responses API proxy instead of direct unauthenticated calls.
-      # Its outcome is advisory; the trusted report job owns the deterministic
-      # fallback when the service or structured response is unavailable.
-      - name: Review with Codex
+      - name: Request and collect Codex Cloud review
         id: review
         continue-on-error: true
-        uses: openai/codex-action@52fe01ec70a42f454c9d2ebd47598f9fd6893d56 # v1
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ needs.preflight.outputs.head_sha }}
         with:
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          prompt-file: .github/codex/dependabot-review.md
-          output-schema-file: .github/codex/dependabot-review.schema.json
-          permission-profile: ":read-only"
-          safety-strategy: drop-sudo
-          codex-version: "0.145.0"
-          codex-args: '["--ephemeral"]'
-          model: gpt-5.3-codex
-          effort: high
-          allow-bots: "true"
-          allow-bot-users: dependabot
+          script: |
+            const automation = require(
+              "./.github/scripts/dependency-automation.cjs",
+            );
+            const result = await automation.collectCodexCloudReview({
+              github,
+              context,
+              core,
+            });
+            core.setOutput("final-message", JSON.stringify(result));
 
   report:
     needs: [preflight, codex]

@@ -6,6 +6,8 @@ const { appendFileSync } = require("node:fs");
 
 const REVIEW_STATUS = "Dependabot Auto-Merge";
 const REVIEW_MARKER = "<!-- dependabot-codex-review -->";
+const CODEX_CLOUD_REVIEWER = "chatgpt-codex-connector[bot]";
+const CODEX_CLOUD_REQUEST_MARKER = "<!-- dependabot-codex-cloud-review:";
 const ALLOWED_CHANGED_FILES = new Set(["package.json", "package-lock.json"]);
 const LABELS = {
   approved: {
@@ -200,7 +202,7 @@ function sanitizeList(value, maxItems = 6) {
   return value.slice(0, maxItems).map((item) => sanitizeText(item, 500));
 }
 
-function parseCodexResult(raw) {
+function parseReviewResult(raw) {
   try {
     const parsed = JSON.parse(String(raw || "").trim());
     if (
@@ -224,8 +226,8 @@ function parseCodexResult(raw) {
     return {
       decision: "approve",
       summary:
-        "Codex did not return a valid structured review; trusted deterministic gates remain authoritative.",
-      riskReasons: ["Codex output was malformed or missing"],
+        "The semantic-review result was malformed or missing; trusted deterministic gates remain authoritative.",
+      riskReasons: ["Semantic-review result was malformed or missing"],
       evidence: [],
       recommendedActions: [
         "Proceed only after every exact-head deterministic gate passes",
@@ -267,7 +269,195 @@ function resolveReview(policy, codexJobResult, codexResult) {
       ],
     };
   }
-  return parseCodexResult(codexResult);
+  return parseReviewResult(codexResult);
+}
+
+function codexCloudReviewResult(
+  { reviews = [], comments = [], reactions = [], requestUrl = "" },
+  expectedHead,
+) {
+  const review = reviews
+    .filter(
+      (candidate) =>
+        candidate.user?.login === CODEX_CLOUD_REVIEWER &&
+        candidate.commit_id === expectedHead,
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.submitted_at || 0).getTime() -
+        new Date(a.submitted_at || 0).getTime(),
+    )[0];
+
+  if (review) {
+    const findings = comments.filter(
+      (comment) =>
+        comment.user?.login === CODEX_CLOUD_REVIEWER &&
+        comment.pull_request_review_id === review.id,
+    );
+    return {
+      decision: findings.length ? "reject" : "approve",
+      summary: findings.length
+        ? `Codex Cloud found ${findings.length} concrete issue${findings.length === 1 ? "" : "s"} on the exact Dependabot commit.`
+        : "Codex Cloud completed its exact-commit review without a concrete blocker.",
+      risk_reasons: findings.map(
+        ({ body }) =>
+          String(body || "")
+            .split("\n")
+            .find((line) => line.trim()) || "Codex Cloud review finding",
+      ),
+      evidence: findings.length
+        ? findings.map(({ html_url }) => html_url).filter(Boolean)
+        : [review.html_url].filter(Boolean),
+      recommended_actions: findings.length
+        ? ["Wait for a future Dependabot update that resolves the findings"]
+        : [],
+    };
+  }
+
+  if (
+    reactions.some(
+      (reaction) =>
+        reaction.user?.login === CODEX_CLOUD_REVIEWER &&
+        reaction.content === "+1",
+    )
+  ) {
+    return {
+      decision: "approve",
+      summary:
+        "Codex Cloud marked the exact-commit review request clean with a thumbs-up.",
+      risk_reasons: [],
+      evidence: [requestUrl].filter(Boolean),
+      recommended_actions: [],
+    };
+  }
+
+  return null;
+}
+
+async function collectCodexCloudReview({ github, context, core }) {
+  const { owner, repo } = context.repo;
+  const pullNumber = Number.parseInt(process.env.PR_NUMBER || "", 10);
+  const expectedHead = process.env.HEAD_SHA;
+
+  if (!Number.isInteger(pullNumber) || !expectedHead) {
+    throw new Error("Missing pull request number or expected head SHA");
+  }
+
+  const { data: pull } = await github.rest.pulls.get({
+    owner,
+    repo,
+    pull_number: pullNumber,
+  });
+  if (
+    pull.state !== "open" ||
+    pull.user?.login !== "dependabot[bot]" ||
+    pull.base.ref !== "main" ||
+    pull.head.sha !== expectedHead
+  ) {
+    throw new Error("Pull request no longer matches the trusted exact-head review");
+  }
+
+  const readReviews = () =>
+    github.paginate(github.rest.pulls.listReviews, {
+      owner,
+      repo,
+      pull_number: pullNumber,
+      per_page: 100,
+    });
+  const readComments = () =>
+    github.paginate(github.rest.pulls.listReviewComments, {
+      owner,
+      repo,
+      pull_number: pullNumber,
+      per_page: 100,
+    });
+
+  const [existingReviews, existingComments] = await Promise.all([
+    readReviews(),
+    readComments(),
+  ]);
+  const existing = codexCloudReviewResult(
+    { reviews: existingReviews, comments: existingComments },
+    expectedHead,
+  );
+  if (existing) return existing;
+
+  const requests = [];
+  const requestReview = async (attempt) => {
+    const marker = `${CODEX_CLOUD_REQUEST_MARKER}${expectedHead}:${context.runId}:${attempt} -->`;
+    const { data: comment } = await github.rest.issues.createComment({
+      owner,
+      repo,
+      issue_number: pullNumber,
+      body: [
+        "@codex review",
+        "",
+        `Review this verified Dependabot manifest-only update at exact head \`${expectedHead}\`. Follow the repository's AGENTS.md Code Review Rules. Do not modify the branch.`,
+        "",
+        marker,
+      ].join("\n"),
+    });
+    requests.push(comment);
+  };
+
+  await requestReview(context.runAttempt || 1);
+  const startedAt = Date.now();
+  const deadline = startedAt + 17 * 60_000;
+  let retried = false;
+
+  while (Date.now() < deadline) {
+    const [reviews, comments, reactionPages] = await Promise.all([
+      readReviews(),
+      readComments(),
+      Promise.all(
+        requests.map(({ id }) =>
+          github.paginate(github.rest.reactions.listForIssueComment, {
+            owner,
+            repo,
+            comment_id: id,
+            per_page: 100,
+          }),
+        ),
+      ),
+    ]);
+    const reactions = reactionPages.flat();
+    const cleanRequestIndex = reactionPages.findIndex((page) =>
+      page.some(
+        (reaction) =>
+          reaction.user?.login === CODEX_CLOUD_REVIEWER &&
+          reaction.content === "+1",
+      ),
+    );
+    const result = codexCloudReviewResult(
+      {
+        reviews,
+        comments,
+        reactions,
+        requestUrl:
+          requests[cleanRequestIndex]?.html_url ||
+          requests.at(-1)?.html_url,
+      },
+      expectedHead,
+    );
+    if (result) return result;
+
+    const acknowledged = reactions.some(
+      (reaction) =>
+        reaction.user?.login === CODEX_CLOUD_REVIEWER &&
+        reaction.content === "eyes",
+    );
+    if (!retried && !acknowledged && Date.now() - startedAt >= 3 * 60_000) {
+      retried = true;
+      core.notice("Codex Cloud did not acknowledge the first request; retrying once.");
+      await requestReview(`${context.runAttempt || 1}-retry`);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 15_000));
+  }
+
+  throw new Error(
+    `Codex Cloud did not complete an exact-head review for ${expectedHead}`,
+  );
 }
 
 function latestStatus(statuses, contextName) {
@@ -1236,11 +1426,13 @@ module.exports = {
   LABELS,
   REVIEW_STATUS,
   classifyDependabot,
+  codexCloudReviewResult,
+  collectCodexCloudReview,
   commitsAreAutomationSigned,
   evaluateGate,
   filesArePackageOnly,
   mergeNextDependabot,
-  parseCodexResult,
+  parseReviewResult,
   recoverOneDependabotReview,
   reportDependabotReview,
   resolveReview,

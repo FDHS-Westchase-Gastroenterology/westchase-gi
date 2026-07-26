@@ -21,11 +21,12 @@ Dependabot updates use three independent boundaries:
 1. **Deterministic PR gates:** a no-secret runner performs a clean install, policy self-test,
    lint, build, and public Playwright smoke. React Doctor execution and Vercel preview are
    separate signals required by both the automation controller and current GitHub branch settings.
-2. **Best-effort read-only Codex review:** only verified Dependabot commits targeting `main` with
-   a manifest-only diff reach Codex. The agent receives the OpenAI credential through its protected
-   proxy but no GitHub mutation or merge credential. A valid exact-head decision can veto but
-   cannot override deterministic policy; an unavailable or malformed response falls back to the
-   authoritative exact-head deterministic gates instead of becoming a human approval step.
+2. **Best-effort Codex Cloud review:** only verified Dependabot commits targeting `main` with a
+   manifest-only diff receive the review-only `@codex review` request. The trusted workflow uses
+   the subscription-backed GitHub App, checks out only base-branch code, and receives no OpenAI API
+   key or merge credential. An exact-head Cloud finding can veto but cannot override deterministic
+   policy; an unavailable or incomplete review falls back to the authoritative exact-head
+   deterministic gates instead of becoming a human approval step.
 3. **Trusted merge controller:** every verified manifest-only npm update can enter the queue.
    Package name/type, SemVer class, grouping, and compiler/build/test ownership do not create a
    separate approval class. The controller rechecks the exact SHA, changed paths, CI, React
@@ -39,12 +40,12 @@ Dependabot updates use three independent boundaries:
    Vercel Production deployment, and a canonical live-site smoke.
 
 Maintainer-modified, source-changing, migration-changing, or otherwise untrusted updates are
-rejected before the agent. Incomplete metadata and valid retry/repair decisions receive at most
-three exact-head attempts; persistent or concrete incompatibilities are closed rather than
-delegated. The executable policy and seed regression cases live in
+rejected before the agent. Incomplete metadata and retryable exact-head recovery receive at most
+three attempts; persistent or concrete incompatibilities are closed rather than delegated. The
+executable policy and seed regression cases live in
 `.github/scripts/dependency-automation.cjs` and
-`.github/codex/dependabot-sop-and-examples.md`. `OPENAI_API_KEY` is a repository Actions secret;
-never copy its value into source, logs, PR text, Dependabot secrets, or the agent workspace.
+`.github/codex/dependabot-sop-and-examples.md`. This lane does not use `OPENAI_API_KEY`; do not add
+an API credential to the workflow, Dependabot secrets, source, logs, PR text, or an agent workspace.
 
 ## Access lifecycle
 

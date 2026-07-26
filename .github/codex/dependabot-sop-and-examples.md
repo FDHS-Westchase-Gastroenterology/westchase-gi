@@ -13,13 +13,14 @@
 - **Success criteria:** Every verified manifest-only npm update may enter the
   queue regardless of dependency name/type, SemVer class, or grouping. All
   required checks pass on the exact head; one PR merges at a time; the next
-  waits for verified Production and live health. Incomplete metadata and valid
-  retry/repair decisions receive bounded automatic attempts; concrete defects
-  are rejected rather than delegated.
+  waits for verified Production and live health. Incomplete metadata and
+  retryable exact-head recovery receive bounded automatic attempts; concrete
+  defects are rejected rather than delegated.
 - **Constraints:** Patient-facing production; fail closed at provenance and
-  deterministic gates; no credential or merge token in the agent sandbox; no
-  PR-authored instructions; no branch-protection bypass; bounded API usage;
-  exact-SHA audit trail. Codex availability is not a release or human gate.
+  deterministic gates; no OpenAI API key; no merge token in the agent
+  environment; no PR-authored instructions; no branch-protection bypass;
+  bounded Codex Cloud review attempts; exact-SHA audit trail. Codex availability
+  is not a release or human gate.
 
 ## Runtime architecture and safety boundary
 
@@ -32,11 +33,15 @@ hosted Supabase project.
    out PR code. Only a verified Dependabot author, `main` target, root npm
    update, no maintainer changes, and a `package.json`/`package-lock.json`-only
    diff may reach Codex.
-3. Codex attempts to check out the exact merge ref on its own GitHub Actions
-   runner and acts only as a read-only semantic veto. It has no mutation token
-   and cannot repair, push, or merge the PR. If the service is unavailable or
-   its response is malformed, the workflow records that fact and continues to
-   the authoritative deterministic gates.
+3. The trusted workflow posts an exact-SHA `@codex review` request only after
+   preflight succeeds. The subscription-backed Codex Cloud GitHub App performs
+   a review-only pass and returns either exact-commit review findings or a
+   clean thumbs-up reaction. The workflow runner checks out only trusted base
+   code, receives no OpenAI credential, and never checks out or executes PR
+   code. This lane requests review only; a separate human-authored `@codex fix`
+   request would be outside its authority. If Cloud is unavailable,
+   unacknowledged, over quota, or incomplete, the workflow records that fact
+   and continues to the authoritative deterministic gates.
 4. A separate `ubuntu-latest` job starts Supabase in Docker, replays the
    committed migrations, generates local API keys, seeds local-only fixtures,
    starts the application, runs the contract, and executes `supabase stop`
@@ -53,11 +58,11 @@ hosted Supabase project.
    migrations, seeds, or write probes against the live database.
 
 This is autonomous dependency review and verification, not a production
-database-deployment agent. Codex remains read-only. Valid `retry` and `repair`
-decisions trigger bounded exact-head attempts; GitHub's pull-request API updates
-behind branches, and persistent failures are closed. `reject` closes a concrete
-incompatible update. Source or migration work is never improvised inside a
-secret-bearing dependency run.
+database-deployment agent. Codex Cloud remains review-only. GitHub's
+pull-request API updates behind branches when deterministic recovery requires
+it, and persistent deterministic failures are closed. A Cloud finding rejects
+and closes a concrete incompatible update. Source or migration work is never
+improvised inside the dependency run.
 
 ## Automation SOP
 
@@ -69,9 +74,11 @@ secret-bearing dependency run.
 3. Admit every update that passes the provenance and manifest-only boundary.
    Package identity, runtime/development classification, SemVer size, grouping,
    compiler ownership, and test-tool ownership do not change eligibility.
-4. When Codex is available, review the exact diff for unexpected lockfile
-   churn, scripts, engines, registries, transitive changes, and repository
-   compatibility.
+4. Ask Codex Cloud to review the exact diff for unexpected lockfile churn,
+   scripts, engines, registries, transitive changes, and repository
+   compatibility. Accept only a review bound to the exact commit or the clean
+   reaction on that exact-SHA request. Treat every Cloud inline finding as a
+   semantic veto.
 5. Run no-secret CI: clean install, policy self-check, lint, build, public
    Playwright smoke, and the isolated Supabase contract. The Supabase job uses
    disposable local keys only and verifies direct Auth refresh, SSR cookie
@@ -86,8 +93,8 @@ secret-bearing dependency run.
    trigger. After those real runs pass, attest their protected status contexts
    on the exact SHA. Optional approval-required runs do not override those
    results; the normal protected merge remains the final repository-policy
-   check. Close a conflicting branch, and give valid retry/repair decisions at
-   most three exact-head attempts.
+   check. Close a conflicting branch, and give retryable exact-head recovery at
+   most three attempts.
 8. Dispatch post-merge CI, React Doctor, and Production verification. Verify
    the matching Vercel Production deployment and canonical live-site smoke.
 9. Do not release another dependency PR until current `main` has successful
@@ -95,8 +102,8 @@ secret-bearing dependency run.
 10. Retry an incomplete metadata fetch without exposing the PR to Codex. Close
     genuinely untrusted or concretely rejected updates. Keep failed
     deterministic updates out of the merge set while the queue evaluates other
-    green PRs. An unavailable or malformed model response is advisory and
-    cannot prevent otherwise-green automation.
+    green PRs. An unavailable, unacknowledged, or incomplete Cloud review is
+    advisory and cannot prevent otherwise-green automation.
 
 ### Decision points
 
@@ -104,7 +111,7 @@ secret-bearing dependency run.
 |---|---|---|---|
 | 1 | Is the PR safe to expose to Codex? | Author, verified commits, base, changed files | Prompt injection or secret exposure |
 | 3 | Is automatic review permitted? | Provenance, target, ecosystem, directory, changed files | Untrusted code reaches a secret-bearing job |
-| 4 | Did Codex find a concrete compatibility issue? | Exact diff and repository usages | Semantic regression despite green mechanical checks |
+| 4 | Did Codex Cloud find a concrete compatibility issue? | Exact-commit GitHub review and inline findings | Semantic regression despite green mechanical checks |
 | 6 | Is the decision current? | Reviewed SHA and current head SHA | Different code merges than was reviewed |
 | 7 | May this PR merge now? | CI, React Doctor, Vercel, automation status, mergeability | Protection bypass or concurrent production changes |
 | 8 | Is production healthy? | Exact main SHA, Vercel deployment/status, live response | Cascading dependency merges after a bad deployment |
@@ -122,7 +129,7 @@ secret-bearing dependency run.
 | 7 | PR changes a workflow, source file, or any non-manifest path | Reject and close | No OpenAI call and no merge authority |
 | 8 | Maintainer commit appears on the Dependabot branch | Commit verification fails closed | Existing reviewed SHA cannot authorize new head |
 | 9 | Codex identifies a concrete incompatibility not fixed by regeneration | Reject and close | Failed exact-head status and blocked label |
-| 10 | Codex times out, exceeds quota, or returns malformed JSON | Continue through deterministic gates | Model availability cannot create a human gate |
+| 10 | Codex Cloud times out, exceeds quota, or never acknowledges the request | Continue through deterministic gates | Model availability cannot create a human gate |
 | 11 | Dependabot refreshes the branch after approval | Verify bot signatures and explicitly dispatch gates on the new SHA | Controller rejects the stale status |
 | 12 | First merge deploys unsuccessfully or live smoke fails | Queue pauses | No second dependency PR merges |
 | 13 | Oldest PR fails install but a compatible sibling is green | Skip failure and merge green sibling | Rebased older PR gets a fresh exact-head run |
@@ -157,6 +164,19 @@ all seven PRs from the 2026-07-26 batch.
 Run `node --test .github/scripts/dependency-automation.test.cjs` after any
 policy edit. A documentation claim never expands eligibility; only a reviewed
 policy-and-test change can do that.
+
+## Codex Cloud activation and controls
+
+Codex Cloud must be connected to
+`FDHS-Westchase-Gastroenterology/westchase-gi`, and Code review must be enabled
+for the repository in Codex settings. Leave Automatic reviews off: this
+workflow issues targeted review requests only for preflight-approved Dependabot
+PRs, preserving the manifest-only provenance boundary and subscription quota.
+
+The GitHub App review surface does not expose a repository setting for model or
+reasoning effort. The former `openai/codex-action` workflow could pin both
+because it used the paid API; this subscription-backed Cloud path deliberately
+uses the service-managed reviewer instead.
 
 ## Sign-off
 
