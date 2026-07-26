@@ -584,6 +584,7 @@ async function recoverOneDependabotReview(
   owner,
   repo,
   pulls,
+  mainSha,
   core,
 ) {
   for (const pull of pulls) {
@@ -603,16 +604,39 @@ async function recoverOneDependabotReview(
     if (current.state !== "open" || current.head.sha !== pull.head.sha) {
       continue;
     }
-    if (current.mergeable_state === "behind") {
-      await github.rest.pulls.updateBranch({
-        owner,
-        repo,
-        pull_number: pull.number,
-        expected_head_sha: pull.head.sha,
-      });
-      core.notice(`Updated Dependabot PR #${pull.number} from current main.`);
+
+    const comparison = await github.rest.repos.compareCommitsWithBasehead({
+      owner,
+      repo,
+      basehead: `${pull.head.sha}...${mainSha}`,
+    });
+    if (comparison.data.ahead_by > 0) {
+      try {
+        await github.rest.pulls.updateBranch({
+          owner,
+          repo,
+          pull_number: pull.number,
+          expected_head_sha: pull.head.sha,
+        });
+        core.notice(`Updated Dependabot PR #${pull.number} from current main.`);
+      } catch (error) {
+        if (error.status !== 422) throw error;
+        await replaceAutomationLabels(github, owner, repo, pull.number, [
+          LABELS.blocked.name,
+        ]);
+        await github.rest.pulls.update({
+          owner,
+          repo,
+          pull_number: pull.number,
+          state: "closed",
+        });
+        core.warning(
+          `Closed Dependabot PR #${pull.number}; GitHub could not update its conflicting branch automatically.`,
+        );
+      }
       return true;
     }
+
     if (current.mergeable_state === "dirty") {
       await replaceAutomationLabels(github, owner, repo, pull.number, [
         LABELS.blocked.name,
@@ -737,6 +761,7 @@ async function mergeNextDependabot({ github, context, core }) {
         owner,
         repo,
         dependabotPulls,
+        mainSha,
         core,
       )
     ) {
@@ -843,6 +868,7 @@ async function mergeNextDependabot({ github, context, core }) {
       owner,
       repo,
       dependabotPulls,
+      mainSha,
       core,
     );
     return;
