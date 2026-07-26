@@ -7,10 +7,13 @@ const assert = require("node:assert/strict");
 const {
   LABELS,
   classifyDependabot,
+  commitsAreAutomationSigned,
   evaluateGate,
   filesArePackageOnly,
   mergeNextDependabot,
   parseCodexResult,
+  recoverOneDependabotReview,
+  resolveReview,
 } = require("./dependency-automation.cjs");
 
 const eligible = {
@@ -162,7 +165,7 @@ test("package-file guard is exact", () => {
   assert.equal(filesArePackageOnly([".github/workflows/ci.yml"]), false);
 });
 
-test("Codex outcomes are autonomous and malformed output retries", () => {
+test("Codex outcomes are autonomous and unavailable review cannot stall CI", () => {
   for (const decision of ["approve", "retry", "repair", "reject"]) {
     assert.equal(
       parseCodexResult(
@@ -177,14 +180,196 @@ test("Codex outcomes are autonomous and malformed output retries", () => {
       decision,
     );
   }
-  assert.equal(parseCodexResult("not-json").decision, "retry");
+  assert.equal(parseCodexResult("not-json").decision, "approve");
   assert.equal(
     parseCodexResult(JSON.stringify({ decision: "approve" })).decision,
-    "retry",
+    "approve",
   );
   assert.equal(
     parseCodexResult(JSON.stringify({ decision: "needs_human" })).decision,
+    "approve",
+  );
+  assert.equal(
+    resolveReview(classifyDependabot(eligible), "failure", "").decision,
+    "approve",
+  );
+  assert.equal(
+    resolveReview(
+      classifyDependabot({ ...eligible, metadataVerified: false }),
+      "skipped",
+      "",
+    ).decision,
     "retry",
+  );
+});
+
+test("recovery updates a behind Dependabot branch without comment commands", async () => {
+  const calls = {
+    branches: [],
+    dispatches: [],
+    statuses: [],
+  };
+  const listFiles = () => {};
+  const listCommits = () => {};
+  const listLabelsForRepo = () => {};
+  const listLabelsOnIssue = () => {};
+  const pull = {
+    number: 123,
+    state: "open",
+    draft: false,
+    user: { login: "dependabot[bot]" },
+    base: { ref: "main" },
+    head: {
+      sha: "exact-head",
+      ref: "dependabot/npm_and_yarn/example",
+      repo: { full_name: "owner/repo" },
+    },
+    labels: [{ name: LABELS.retry.name }],
+  };
+  const refreshed = {
+    ...pull,
+    head: { ...pull.head, sha: "refreshed-head" },
+  };
+  let pullReads = 0;
+  const github = {
+    paginate: async (method) => {
+      if (method === listFiles) {
+        return [
+          { filename: "package.json" },
+          { filename: "package-lock.json" },
+        ];
+      }
+      if (method === listCommits) {
+        return [
+          {
+            author: { login: "dependabot[bot]" },
+            commit: { verification: { verified: true } },
+          },
+          {
+            author: { login: "github-actions[bot]" },
+            commit: { verification: { verified: true } },
+          },
+        ];
+      }
+      if (method === listLabelsForRepo) {
+        return Object.values(LABELS).map(({ name }) => ({ name }));
+      }
+      if (method === listLabelsOnIssue) return pull.labels;
+      if (method === listComments) return [];
+      throw new Error("Unexpected pagination request");
+    },
+    rest: {
+      actions: {
+        createWorkflowDispatch: async (input) =>
+          calls.dispatches.push(input),
+      },
+      issues: {
+        addLabels: async () => {},
+        listLabelsForRepo,
+        listLabelsOnIssue,
+        removeLabel: async () => {},
+      },
+      pulls: {
+        get: async () => ({
+          data: pullReads++ === 0 ? pull : refreshed,
+        }),
+        listCommits,
+        listFiles,
+        updateBranch: async (input) => calls.branches.push(input),
+      },
+      repos: {
+        compareCommitsWithBasehead: async () => ({
+          data: { ahead_by: 3 },
+        }),
+        createCommitStatus: async (input) => calls.statuses.push(input),
+      },
+    },
+  };
+
+  assert.equal(
+    await recoverOneDependabotReview(
+      github,
+      "owner",
+      "repo",
+      [pull],
+      "current-main",
+      { notice: () => {}, warning: () => {} },
+    ),
+    true,
+  );
+  assert.deepEqual(calls.branches, [
+    {
+      owner: "owner",
+      repo: "repo",
+      pull_number: 123,
+      expected_head_sha: "exact-head",
+    },
+  ]);
+  assert.deepEqual(
+    calls.dispatches.map(({ workflow_id, ref }) => ({ workflow_id, ref })),
+    [
+      {
+        workflow_id: "ci.yml",
+        ref: "dependabot/npm_and_yarn/example",
+      },
+      {
+        workflow_id: "react-doctor.yml",
+        ref: "dependabot/npm_and_yarn/example",
+      },
+      {
+        workflow_id: "supabase-dependency-integration.yml",
+        ref: "dependabot/npm_and_yarn/example",
+      },
+    ],
+  );
+  assert.deepEqual(
+    calls.statuses.map(({ sha, state, context }) => ({
+      sha,
+      state,
+      context,
+    })),
+    [
+      {
+        sha: "refreshed-head",
+        state: "pending",
+        context: "Dependabot Auto-Merge",
+      },
+      {
+        sha: "refreshed-head",
+        state: "success",
+        context: "Dependabot Auto-Merge",
+      },
+    ],
+  );
+});
+
+test("refreshed history requires verified automation signatures", () => {
+  const dependabot = {
+    author: { login: "dependabot[bot]" },
+    commit: { verification: { verified: true } },
+  };
+  const branchUpdate = {
+    author: { login: "github-actions[bot]" },
+    commit: { verification: { verified: true } },
+  };
+
+  assert.equal(
+    commitsAreAutomationSigned([dependabot, branchUpdate]),
+    true,
+  );
+  assert.equal(
+    commitsAreAutomationSigned([
+      dependabot,
+      { ...branchUpdate, commit: { verification: { verified: false } } },
+    ]),
+    false,
+  );
+  assert.equal(
+    commitsAreAutomationSigned([
+      dependabot,
+      { ...branchUpdate, author: { login: "maintainer" } },
+    ]),
+    false,
   );
 });
 
@@ -375,6 +560,9 @@ test("queue skips a failing older PR and merges the next green sibling", async (
         update: async () => {},
       },
       repos: {
+        compareCommitsWithBasehead: async () => ({
+          data: { ahead_by: 0 },
+        }),
         getBranch: async () => ({ data: { commit: { sha: "main" } } }),
         getCombinedStatusForRef: async ({ ref }) => {
           return {

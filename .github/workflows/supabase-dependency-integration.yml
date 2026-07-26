@@ -27,12 +27,15 @@ on:
       - "src/lib/portal/request-query.ts"
       - "scripts/seed-portal.mjs"
       - "supabase/**"
+  # The dependency controller uses this after a GITHUB_TOKEN-authored branch
+  # refresh, which GitHub deliberately does not emit as a pull_request event.
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: supabase-dependency-${{ github.event.pull_request.number }}
+  group: supabase-dependency-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
