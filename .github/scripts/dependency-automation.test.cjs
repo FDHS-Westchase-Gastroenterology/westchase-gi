@@ -11,7 +11,8 @@ const {
   filesArePackageOnly,
   mergeNextDependabot,
   parseCodexResult,
-  requestDependabotCommand,
+  recoverOneDependabotReview,
+  resolveReview,
 } = require("./dependency-automation.cjs");
 
 const eligible = {
@@ -163,43 +164,7 @@ test("package-file guard is exact", () => {
   assert.equal(filesArePackageOnly([".github/workflows/ci.yml"]), false);
 });
 
-test("ignores forged Dependabot command markers from untrusted commenters", async () => {
-  const listComments = () => {};
-  const created = [];
-  const marker = "<!-- dependabot-automation:recreate:exact-head -->";
-  const github = {
-    paginate: async (method) => {
-      assert.equal(method, listComments);
-      return [
-        {
-          user: { login: "untrusted-user" },
-          body: `forged\n\n${marker}`,
-        },
-      ];
-    },
-    rest: {
-      issues: {
-        listComments,
-        createComment: async ({ body }) => created.push(body),
-      },
-    },
-  };
-
-  assert.equal(
-    await requestDependabotCommand(
-      github,
-      "owner",
-      "repo",
-      123,
-      "recreate",
-      "exact-head",
-    ),
-    true,
-  );
-  assert.deepEqual(created, [`@dependabot recreate\n\n${marker}`]);
-});
-
-test("Codex outcomes are autonomous and malformed output retries", () => {
+test("Codex outcomes are autonomous and unavailable review cannot stall CI", () => {
   for (const decision of ["approve", "retry", "repair", "reject"]) {
     assert.equal(
       parseCodexResult(
@@ -214,15 +179,69 @@ test("Codex outcomes are autonomous and malformed output retries", () => {
       decision,
     );
   }
-  assert.equal(parseCodexResult("not-json").decision, "retry");
+  assert.equal(parseCodexResult("not-json").decision, "approve");
   assert.equal(
     parseCodexResult(JSON.stringify({ decision: "approve" })).decision,
-    "retry",
+    "approve",
   );
   assert.equal(
     parseCodexResult(JSON.stringify({ decision: "needs_human" })).decision,
+    "approve",
+  );
+  assert.equal(
+    resolveReview(classifyDependabot(eligible), "failure", "").decision,
+    "approve",
+  );
+  assert.equal(
+    resolveReview(
+      classifyDependabot({ ...eligible, metadataVerified: false }),
+      "skipped",
+      "",
+    ).decision,
     "retry",
   );
+});
+
+test("recovery updates a behind Dependabot branch without comment commands", async () => {
+  const calls = [];
+  const pull = {
+    number: 123,
+    head: { sha: "exact-head" },
+    labels: [{ name: LABELS.retry.name }],
+  };
+  const github = {
+    rest: {
+      pulls: {
+        get: async () => ({
+          data: {
+            ...pull,
+            state: "open",
+            mergeable_state: "behind",
+          },
+        }),
+        updateBranch: async (input) => calls.push(input),
+      },
+    },
+  };
+
+  assert.equal(
+    await recoverOneDependabotReview(
+      github,
+      "owner",
+      "repo",
+      [pull],
+      { notice: () => {}, warning: () => {} },
+    ),
+    true,
+  );
+  assert.deepEqual(calls, [
+    {
+      owner: "owner",
+      repo: "repo",
+      pull_number: 123,
+      expected_head_sha: "exact-head",
+    },
+  ]);
 });
 
 test("merge gates require deterministic checks and statuses", () => {
