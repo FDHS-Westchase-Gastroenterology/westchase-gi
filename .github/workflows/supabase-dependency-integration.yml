@@ -8,23 +8,24 @@ on:
       - "package-lock.json"
       - ".github/workflows/supabase-dependency-integration.yml"
       - "e2e/intake-api.spec.ts"
-      - "e2e/portal-lifecycle.spec.ts"
-      - "e2e/portal-requests.spec.ts"
-      - "e2e/portal-scale.spec.ts"
+      - "e2e/global-setup.ts"
+      - "e2e/global-teardown.ts"
+      - "e2e/portal-*.spec.ts"
       - "e2e/support.ts"
       - "e2e/target-guard.ts"
       - "e2e/target-guard.test.mjs"
       - "e2e/supabase-dependency-contract.spec.ts"
+      - "playwright.config.ts"
       - "src/app/[locale]/appointment/received/page.tsx"
-      - "src/app/api/requests/form/route.ts"
-      - "src/app/admin/(portal)/audit/page.tsx"
-      - "src/app/admin/(portal)/requests/[id]/page.tsx"
-      - "src/app/admin/(portal)/requests/actions.ts"
-      - "src/app/admin/(portal)/requests/export/route.ts"
-      - "src/app/admin/(portal)/requests/page.tsx"
-      - "src/lib/portal/intake.ts"
-      - "src/lib/portal/request-query.test.mjs"
-      - "src/lib/portal/request-query.ts"
+      - "src/app/admin/**"
+      - "src/app/api/**"
+      - "src/app/globals.css"
+      - "src/components/icons.tsx"
+      - "src/lib/portal/**"
+      - "src/lib/review-flyers.ts"
+      - "src/lib/review-targets.json"
+      - "src/proxy.ts"
+      - "private/review-flyers/**"
       - "scripts/seed-portal.mjs"
       - "supabase/**"
   # The dependency controller uses this after a GITHUB_TOKEN-authored branch
@@ -103,7 +104,7 @@ jobs:
       - name: Seed disposable portal fixtures
         run: node scripts/seed-portal.mjs --target dev
 
-      - name: Verify Supabase client, SSR Auth, RLS, and PostgREST
+      - name: Verify Supabase and authenticated portal contracts
         run: >-
           npx playwright test
           e2e/supabase-dependency-contract.spec.ts
@@ -111,6 +112,16 @@ jobs:
           e2e/portal-lifecycle.spec.ts
           e2e/portal-requests.spec.ts
           e2e/portal-scale.spec.ts
+          e2e/portal-auth.spec.ts
+          e2e/portal-admin-server.spec.ts
+          e2e/portal-admin-ux.spec.ts
+          e2e/portal-email.spec.ts
+          e2e/portal-home.spec.ts
+          e2e/portal-maintainers.spec.ts
+          e2e/portal-review-flyers.spec.ts
+          e2e/portal-seams.spec.ts
+          e2e/portal-shell.spec.ts
+          e2e/portal-website.spec.ts
           --project=chromium
 
       - name: Stop disposable local Supabase

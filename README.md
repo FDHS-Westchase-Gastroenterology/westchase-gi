@@ -118,8 +118,9 @@ npx playwright install chromium   # once
 npm run test:e2e-guard             # pure guard regression matrix; no server/DB
 npx playwright test               # full serial E2E suite (boots its own server on :3100)
 npx playwright test e2e/smoke.spec.ts   # focused file
+npm run build
 PLAYWRIGHT_PUBLIC_SMOKE=1 npx playwright test e2e/smoke.spec.ts --project=chromium
-                                  # no-secret CI smoke; skips all Supabase setup
+                                  # no-secret public contracts against the built app
 ```
 
 The suite covers the intake API contract, form states across all five locales, the no-JS
@@ -134,18 +135,23 @@ video, or HTML report. The committed configuration uses one worker because the s
 Auth project rate-limits concurrent sign-ins and recovery requests; do not override that for
 login-heavy portal specs.
 
+Pull requests and exact-head manual CI dispatches run the public contract suite, including every
+route advertised in the sitemap. Main-push CI repeats the non-browser quality gates while the
+separate Production Verification workflow waits for that exact Vercel deployment and checks the
+canonical live site. Authenticated portal paths run their existing specs against the disposable
+local Supabase workflow; they never receive hosted project credentials.
+
 The portal temporarily requires `SUPABASE_SERVICE_ROLE_KEY` for privileged application, E2E, and
 seed operations because the configured opaque secrets failed hosted Auth Admin requests. The
 legacy bridge remains server-only and must not be removed until create/delete, invite, resend,
 recovery, deactivate, and cleanup canaries pass in Development and Production and the actual
 Vercel Production environment is verified.
 
-Package-changing pull requests also run
-`e2e/supabase-dependency-contract.spec.ts` against a disposable local Supabase
-stack. That CI job receives no hosted Supabase or deployment secrets and checks
-direct Auth refresh, the portal's SSR cookie session, closed Data API/RLS
-boundaries, shared intake throttling, field caps, request-lifecycle boundaries,
-and representative PostgREST persistence and relationship reads.
+Package, data-path, and authenticated portal pull requests also run the relevant existing specs
+against a disposable local Supabase stack. That CI job receives no hosted Supabase or deployment
+secrets and checks direct Auth refresh, the portal's SSR cookie session, closed Data API/RLS
+boundaries, shared intake throttling, field caps, request lifecycle, management authorization,
+portal navigation, and representative PostgREST persistence and relationship reads.
 
 ## Adding a patient PDF
 

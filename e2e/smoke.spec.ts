@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
 
-// Harness smoke: proves the QA stack can drive the app at all.
-// VAL-ENV-007 — /en renders the home hero; /admin redirects
-// unauthenticated visitors toward the login surface.
+// No-secret public contracts. Authenticated portal behavior belongs in the
+// disposable-Supabase workflow; this file covers the public production build
+// plus the anonymous portal perimeter.
 
 test("home page renders the hero on /en", async ({ page }) => {
   await page.goto("/en");
@@ -124,6 +124,36 @@ test("public metadata uses the apex canonical origin", async ({ page, request })
     "href",
     `${origin}/review`,
   );
+});
+
+test("every public sitemap route renders HTML without redirecting", async ({
+  request,
+}) => {
+  test.setTimeout(120_000);
+  const sitemap = await request.get("/sitemap.xml");
+  expect(sitemap.ok()).toBe(true);
+  const urls = [...(await sitemap.text()).matchAll(/<loc>([^<]+)<\/loc>/g)]
+    .map((match) => match[1]);
+  expect(urls.length).toBeGreaterThan(0);
+
+  const failures: string[] = [];
+  for (let index = 0; index < urls.length; index += 12) {
+    const results = await Promise.all(
+      urls.slice(index, index + 12).map(async (url) => {
+        const path = new URL(url).pathname;
+        const response = await request.get(path, { maxRedirects: 0 });
+        const contentType = response.headers()["content-type"] ?? "";
+        return response.status() === 200 && contentType.startsWith("text/html")
+          ? null
+          : `${path}: ${response.status()} ${contentType || "no content-type"}`;
+      }),
+    );
+    for (const failure of results) {
+      if (failure) failures.push(failure);
+    }
+  }
+
+  expect(failures.sort(), failures.join("\n")).toEqual([]);
 });
 
 test("/ negotiates the locale from Accept-Language and the locale cookie", async ({

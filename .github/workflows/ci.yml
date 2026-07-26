@@ -52,10 +52,15 @@ jobs:
           PORTAL_BASE_URL: http://127.0.0.1:3100
         run: npm run build
 
-      - name: Install public-smoke browser
+      # PRs and exact-head manual dispatches run the browser contract. The
+      # main push repeats the non-browser gates while Production Verification
+      # proves the deployed SHA, so do not install and run Chromium twice.
+      - name: Install public-contract browser
+        if: github.event_name != 'push'
         run: npx playwright install --with-deps chromium
 
-      - name: Run public smoke
+      - name: Run public contract smoke (no authenticated portal)
+        if: github.event_name != 'push'
         env:
           PLAYWRIGHT_PUBLIC_SMOKE: "1"
         run: npx playwright test e2e/smoke.spec.ts --project=chromium

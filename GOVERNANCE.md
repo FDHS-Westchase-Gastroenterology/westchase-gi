@@ -19,8 +19,10 @@ The clinic also owns the Vercel Hobby account and replacement project named `wes
 Dependabot updates use three independent boundaries:
 
 1. **Deterministic PR gates:** a no-secret runner performs a clean install, policy self-test,
-   lint, build, and public Playwright smoke. React Doctor execution and Vercel preview are
-   separate signals required by both the automation controller and current GitHub branch settings.
+   lint, build, and a public Playwright contract against the built artifact, including every
+   sitemap route. Main-push CI repeats the non-browser gates; exact-SHA Production Verification
+   proves the deployed revision. React Doctor execution and Vercel preview are separate signals
+   required by both the automation controller and current GitHub branch settings.
 2. **Best-effort read-only Codex review:** only verified Dependabot commits targeting `main` with
    a manifest-only diff reach Codex. The agent receives the OpenAI credential through its protected
    proxy but no GitHub mutation or merge credential. A valid exact-head decision can veto but

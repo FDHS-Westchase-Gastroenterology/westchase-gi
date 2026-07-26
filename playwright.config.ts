@@ -3,10 +3,8 @@ import { defineConfig, devices } from "@playwright/test";
 const publicSmoke = process.env.PLAYWRIGHT_PUBLIC_SMOKE === "1";
 
 // E2E harness for the intake pipeline + staff portal. The stack runs on
-// port 3100 (3000 is off-limits in this environment); webServer boots the
-// same foreground command the humans use (`npm run dev:mission`), which
-// first clears any zombie holding the port so tests never hit stale code.
-// Credential-bearing runs retain no browser artifacts.
+// port 3100 (3000 is off-limits in this environment). Credential-bearing
+// runs retain no browser artifacts.
 
 export default defineConfig({
   testDir: "./e2e",
@@ -40,9 +38,14 @@ export default defineConfig({
     }] : []),
   ],
   webServer: {
-    command: "npm run dev:mission",
+    // CI builds first, so the no-secret public contract exercises the same
+    // production artifact Vercel receives. Credential-bearing E2E keeps the
+    // existing development server and its isolated failure-test build.
+    command: publicSmoke
+      ? "npm run start -- -p 3100"
+      : "npm run dev:mission",
     url: "http://localhost:3100/en",
-    reuseExistingServer: true,
+    reuseExistingServer: !publicSmoke,
     timeout: 120_000,
   },
 });
