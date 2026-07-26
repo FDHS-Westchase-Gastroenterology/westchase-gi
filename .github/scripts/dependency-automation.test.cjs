@@ -554,7 +554,7 @@ test("queue skips a failing older PR and merges the next green sibling", async (
             state: "open",
             mergeable: true,
               mergeable_state:
-                pullNumber === 104 && reads === 0 ? "blocked" : "clean",
+                pullNumber === 104 && reads === 0 ? "blocked" : "unstable",
             },
           };
         },
