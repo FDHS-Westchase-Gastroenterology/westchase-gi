@@ -40,14 +40,14 @@ software topology (repositories, hosting projects, asset ledgers). The jobs:
 Success: a new front-desk hire lands on the home page and knows what to do without
 training, and nothing needing attention hides more than one click deep.
 
-## Current delivery boundary (verified 2026-07-19)
+## Current delivery boundary (verified 2026-07-25)
 
 The task-first Home, Requests queue, recipient and staff management, Activity log,
-Website/maintainer controls, and protected review-flyer printer are deployed. A full
-throwaway maintainer invite/cancel/accept/revoke acceptance pass; issue
-[#43](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/43)'s first-login
-opt-in tour plus Help-page systems explainer/restart path; and the conversational website-change
-assistant remain future work. Do not present them as completed portal capabilities.
+Website/maintainer controls, protected review-flyer printer, first-login opt-in
+tour, and Help-page systems explainer/restart path are deployed. The remaining
+future work is a full throwaway maintainer invite/cancel/accept/revoke acceptance
+pass and the conversational website-change assistant. The assistant's docked
+launcher is only a placeholder; do not present it as a completed workflow.
 
 ## Design principles
 
