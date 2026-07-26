@@ -177,7 +177,11 @@ export async function requestPasswordResetAction(
   return { submitted: true };
 }
 
-/** Token-hash verification happens only after the human presses Continue. */
+/**
+ * Public session-establishment boundary: the one-time token is the credential,
+ * and active staff/onboarding state is checked before a flow cookie is issued.
+ */
+// react-doctor-disable-next-line react-doctor/server-auth-actions
 export async function confirmAuthLinkAction(
   _state: ConfirmAuthActionState,
   formData: FormData,
@@ -233,6 +237,9 @@ export async function confirmAuthLinkAction(
   redirect("/admin/set-password");
 }
 
+// Mutation requires both an authenticated active staff identity and the
+// recent, signed, user-bound invite/recovery flow cookie established above.
+// react-doctor-disable-next-line react-doctor/server-auth-actions
 export async function setPasswordAction(
   _state: SetPasswordActionState,
   formData: FormData,

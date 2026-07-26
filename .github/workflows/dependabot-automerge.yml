@@ -20,7 +20,7 @@ permissions:
   deployments: read
   issues: write
   pull-requests: write
-  statuses: read
+  statuses: write
 
 concurrency:
   group: dependabot-auto-merge
@@ -38,8 +38,9 @@ jobs:
 
       # This trusted controller never checks out or runs PR code. It selects at
       # most one exact SHA, asks GitHub to merge without bypass, and explicitly
-      # dispatches post-merge checks because GITHUB_TOKEN-created events do not
-      # recursively start Actions workflows.
+      # dispatches exact-head checks after branch refreshes and post-merge
+      # checks because GITHUB_TOKEN-created events do not recursively start
+      # Actions workflows.
       - name: Merge the next fully verified dependency PR
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
