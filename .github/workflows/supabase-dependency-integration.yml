@@ -45,7 +45,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      PORTAL_BASE_URL: http://127.0.0.1:3100
+      # Must match Playwright's origin: setup/recovery links navigate here,
+      # and mixed localhost/127.0.0.1 pages cannot load the Next dev client.
+      PORTAL_BASE_URL: http://localhost:3100
       PORTAL_SEED_ADMIN_EMAIL: admin@local.westchase.test
       PORTAL_SEED_ADMIN_PASSWORD: Local-Dependabot-Only-2026!
       PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF: local
