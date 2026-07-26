@@ -151,3 +151,18 @@ that job is not a repository-setting requirement.
   `scripts/verify-schema.mjs --target dev|prod` checks schema/RLS/seed state.
 - External links: only ship URLs verified live (see README's link table); anything unverified
   stays out.
+
+<!-- OPENWIKI:START -->
+
+## OpenWiki
+
+This repository keeps generated OpenWiki code documentation. Start with
+`openwiki/quickstart.md`, then follow its links to architecture, workflows,
+domain concepts, operations, integrations, testing guidance, and source maps.
+
+OpenWiki refresh is manual: no scheduled workflow is committed or enabled.
+Follow the pinned procedure in `openwiki/operations-and-governance.md`, regenerate
+from a clean branch based on current `main`, and review every output against the
+authoritative source before merging it through the normal protected PR path.
+
+<!-- OPENWIKI:END -->
