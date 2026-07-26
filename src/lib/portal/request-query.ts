@@ -32,3 +32,10 @@ export function requestSearchFilter(search: string): string {
     .replaceAll('"', '\\"')}.*"`;
   return `name.imatch.${quoted},phone.imatch.${quoted},email.imatch.${quoted}`;
 }
+
+export function availableQueueCount(
+  count: number | null,
+  error: unknown,
+): number | null {
+  return error ? null : (count ?? 0);
+}
