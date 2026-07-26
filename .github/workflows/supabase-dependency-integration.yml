@@ -68,6 +68,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Install pinned Supabase CLI
+        id: supabase_cli
         uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
         with:
           version: 2.109.1
@@ -110,5 +111,5 @@ jobs:
           --project=chromium
 
       - name: Stop disposable local Supabase
-        if: always()
+        if: always() && steps.supabase_cli.outcome == 'success'
         run: supabase stop --no-backup --yes

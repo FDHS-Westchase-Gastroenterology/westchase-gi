@@ -134,6 +134,8 @@ jobs:
 
       # This must remain the final step. drop-sudo protects the API credential;
       # :read-only prevents file/network mutations from model-generated commands.
+      # The action-authored CODEX_HOME config must remain enabled so Codex uses
+      # the protected Responses API proxy instead of direct unauthenticated calls.
       - name: Review with Codex
         id: review
         uses: openai/codex-action@52fe01ec70a42f454c9d2ebd47598f9fd6893d56 # v1
@@ -144,7 +146,7 @@ jobs:
           permission-profile: ":read-only"
           safety-strategy: drop-sudo
           codex-version: "0.145.0"
-          codex-args: '["--ephemeral", "--ignore-user-config"]'
+          codex-args: '["--ephemeral"]'
           model: gpt-5.3-codex
           effort: high
           allow-bots: "true"

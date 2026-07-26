@@ -7,15 +7,6 @@ const { appendFileSync } = require("node:fs");
 const REVIEW_STATUS = "Dependabot Auto-Merge";
 const REVIEW_MARKER = "<!-- dependabot-codex-review -->";
 const ALLOWED_CHANGED_FILES = new Set(["package.json", "package-lock.json"]);
-const SUPABASE_RUNTIME_PACKAGES = new Set([
-  "@supabase/ssr",
-  "@supabase/supabase-js",
-]);
-const HUMAN_REVIEW_DEV_PACKAGES = new Set([
-  "@playwright/test",
-  "react-doctor",
-  "typescript",
-]);
 const LABELS = {
   approved: {
     name: "dependencies:codex-approved",
@@ -32,19 +23,27 @@ const LABELS = {
     color: "5319e7",
     description: "Dependency update is the only PR currently allowed to merge",
   },
-  human: {
-    name: "dependencies:human-review",
+  retry: {
+    name: "dependencies:auto-retry",
     color: "fbca04",
-    description: "Dependency update requires a maintainer decision",
+    description: "Automation will retry or rebase this dependency update",
+  },
+  repair: {
+    name: "dependencies:auto-repair",
+    color: "d4c5f9",
+    description: "Dependabot will recreate this dependency update",
   },
   blocked: {
     name: "dependencies:blocked",
     color: "d73a4a",
-    description: "Codex or deterministic policy found a merge blocker",
+    description: "Automation rejected a concrete dependency-update defect",
   },
 };
 const AUTOMATION_LABEL_NAMES = new Set(
-  Object.values(LABELS).map(({ name }) => name),
+  [
+    ...Object.values(LABELS).map(({ name }) => name),
+    "dependencies:human-review",
+  ],
 );
 
 function asBoolean(value) {
@@ -82,8 +81,9 @@ function classifyDependabot(input) {
   const names = dependencyNames(input.dependencyNames);
   const files = changedFiles(input.changedFiles);
   const trustReasons = [];
+  const metadataVerified = asBoolean(input.metadataVerified);
 
-  if (!asBoolean(input.metadataVerified)) {
+  if (!metadataVerified) {
     trustReasons.push("Dependabot metadata or commit verification did not pass");
   }
   if (input.prAuthor !== "dependabot[bot]") {
@@ -109,40 +109,18 @@ function classifyDependabot(input) {
   }
 
   const safeToReview = trustReasons.length === 0;
-  const autoMergeReasons = [...trustReasons];
-  const isSinglePackage = names.length === 1;
-  const isPatch = input.updateType === "version-update:semver-patch";
-  const isSupabaseRuntime =
-    input.dependencyType === "direct:production" &&
-    isSinglePackage &&
-    SUPABASE_RUNTIME_PACKAGES.has(names[0]);
-
-  if (!isPatch) {
-    autoMergeReasons.push("update is not semver-patch");
-  }
-  if (!isSinglePackage) {
-    autoMergeReasons.push("update changes more than one direct dependency");
-  }
-  if (input.dependencyType === "direct:development") {
-    if (names.some((name) => HUMAN_REVIEW_DEV_PACKAGES.has(name))) {
-      autoMergeReasons.push(
-        "dependency controls a required verification or compiler gate",
-      );
-    }
-  } else if (!isSupabaseRuntime) {
-    autoMergeReasons.push(
-      "runtime dependency is outside the integration-tested Supabase lane",
-    );
-  }
-  if (String(input.dependencyGroup || "").trim()) {
-    autoMergeReasons.push("grouped dependency updates require human review");
-  }
+  const retryable =
+    !metadataVerified &&
+    input.prAuthor === "dependabot[bot]" &&
+    input.baseRef === "main" &&
+    filesArePackageOnly(files);
 
   return {
-    version: 2,
+    version: 3,
     safeToReview,
-    autoMergeEligible: safeToReview && autoMergeReasons.length === 0,
-    requiresSupabaseIntegration: isSupabaseRuntime,
+    retryable,
+    autoMergeEligible: safeToReview,
+    requiresSupabaseIntegration: safeToReview,
     dependencyNames: names,
     changedFiles: files,
     dependencyType: String(input.dependencyType || ""),
@@ -150,7 +128,7 @@ function classifyDependabot(input) {
     previousVersion: String(input.previousVersion || ""),
     newVersion: String(input.newVersion || ""),
     trustReasons,
-    autoMergeReasons,
+    autoMergeReasons: [...trustReasons],
   };
 }
 
@@ -212,7 +190,7 @@ function parseCodexResult(raw) {
   try {
     const parsed = JSON.parse(String(raw || "").trim());
     if (
-      !["approve", "needs_human", "block"].includes(parsed.decision) ||
+      !["approve", "retry", "repair", "reject"].includes(parsed.decision) ||
       typeof parsed.summary !== "string" ||
       !parsed.summary.trim() ||
       !Array.isArray(parsed.risk_reasons) ||
@@ -230,11 +208,11 @@ function parseCodexResult(raw) {
     };
   } catch {
     return {
-      decision: "needs_human",
+      decision: "retry",
       summary: "Codex did not return a valid structured review.",
       riskReasons: ["Malformed or missing Codex output"],
       evidence: [],
-      recommendedActions: ["Inspect the workflow run and review the PR manually"],
+      recommendedActions: ["Retry the exact-head semantic review"],
     };
   }
 }
@@ -403,6 +381,32 @@ async function upsertReviewComment(github, owner, repo, issueNumber, body) {
   });
 }
 
+async function requestDependabotCommand(
+  github,
+  owner,
+  repo,
+  issueNumber,
+  command,
+  requestKey,
+) {
+  const marker = `<!-- dependabot-automation:${command}:${requestKey} -->`;
+  const comments = await github.paginate(github.rest.issues.listComments, {
+    owner,
+    repo,
+    issue_number: issueNumber,
+    per_page: 100,
+  });
+  if (comments.some((comment) => comment.body?.includes(marker))) return false;
+
+  await github.rest.issues.createComment({
+    owner,
+    repo,
+    issue_number: issueNumber,
+    body: `@dependabot ${command}\n\n${marker}`,
+  });
+  return true;
+}
+
 function listSection(title, items) {
   if (!items.length) return "";
   return `\n\n**${title}**\n${items.map((item) => `- ${item}`).join("\n")}`;
@@ -439,20 +443,29 @@ async function reportDependabotReview({ github, context, core }) {
 
   let review;
   if (!policy.safeToReview) {
-    review = {
-      decision: "needs_human",
-      summary: "Deterministic trust checks did not permit an agent review.",
-      riskReasons: policy.trustReasons || ["Untrusted review context"],
-      evidence: [],
-      recommendedActions: ["Review the PR and its commit provenance manually"],
-    };
+    review = policy.retryable
+      ? {
+          decision: "retry",
+          summary:
+            "Dependabot metadata verification did not complete; automation will retry it.",
+          riskReasons: policy.trustReasons || ["Incomplete trusted metadata"],
+          evidence: [],
+          recommendedActions: ["Retry metadata and exact-head verification"],
+        }
+      : {
+          decision: "reject",
+          summary: "Deterministic trust checks rejected this automation request.",
+          riskReasons: policy.trustReasons || ["Untrusted review context"],
+          evidence: [],
+          recommendedActions: ["Close the untrusted dependency update"],
+        };
   } else if (codexJobResult !== "success") {
     review = {
-      decision: "needs_human",
-      summary: "The Codex review did not complete successfully.",
+      decision: "retry",
+      summary: "The Codex review did not complete; automation will retry it.",
       riskReasons: [`Codex job result: ${sanitizeText(codexJobResult, 100)}`],
       evidence: [],
-      recommendedActions: ["Inspect the workflow run and review the PR manually"],
+      recommendedActions: ["Retry the exact-head semantic review"],
     };
   } else {
     review = parseCodexResult(process.env.CODEX_RESULT);
@@ -460,13 +473,27 @@ async function reportDependabotReview({ github, context, core }) {
 
   const eligible =
     policy.autoMergeEligible === true && review.decision === "approve";
-  const desiredLabels = eligible
-    ? [LABELS.approved.name, LABELS.ready.name]
-    : review.decision === "approve"
-      ? [LABELS.approved.name, LABELS.human.name]
-      : review.decision === "block"
-        ? [LABELS.blocked.name]
-        : [LABELS.human.name];
+  const desiredLabels = {
+    approve: eligible
+      ? [LABELS.approved.name, LABELS.ready.name]
+      : [LABELS.blocked.name],
+    retry: [LABELS.retry.name],
+    repair: [LABELS.repair.name],
+    reject: [LABELS.blocked.name],
+  }[review.decision];
+  const statusState = eligible
+    ? "success"
+    : ["retry", "repair"].includes(review.decision)
+      ? "pending"
+      : "failure";
+  const queueResult = {
+    approve: eligible
+      ? "ready for guarded auto-merge"
+      : "rejected by deterministic trust policy",
+    retry: "automatic retry requested",
+    repair: "automatic Dependabot recreation requested",
+    reject: "automatically rejected",
+  }[review.decision];
 
   await ensureLabels(github, owner, repo);
   await replaceAutomationLabels(
@@ -482,11 +509,15 @@ async function reportDependabotReview({ github, context, core }) {
     owner,
     repo,
     sha: expectedHead,
-    state: eligible ? "success" : "failure",
+    state: statusState,
     context: REVIEW_STATUS,
     description: eligible
       ? "Exact head approved for guarded dependency auto-merge"
-      : "Human dependency review required",
+      : review.decision === "retry"
+        ? "Exact-head review will retry automatically"
+        : review.decision === "repair"
+          ? "Dependabot will recreate this exact update"
+          : "Dependency update rejected by automation",
     target_url: workflowUrl,
   });
 
@@ -506,7 +537,7 @@ async function reportDependabotReview({ github, context, core }) {
     `- Dependency: ${packages.length ? packages.map((name) => `\`${name}\``).join(", ") : "unknown"}${versions ? ` (${versions})` : ""}`,
     `- Deterministic auto-merge lane: **${policy.autoMergeEligible ? "eligible" : "not eligible"}**`,
     `- Codex decision: **${review.decision}**`,
-    `- Queue result: **${eligible ? "ready for guarded auto-merge" : "human review required"}**`,
+    `- Queue result: **${queueResult}**`,
     "",
     review.summary,
     listSection("Deterministic policy reasons", policyReasons),
@@ -519,6 +550,33 @@ async function reportDependabotReview({ github, context, core }) {
     .filter((line) => line !== "")
     .join("\n");
   await upsertReviewComment(github, owner, repo, pullNumber, body);
+
+  if (review.decision === "retry") {
+    await requestDependabotCommand(
+      github,
+      owner,
+      repo,
+      pullNumber,
+      "rebase",
+      expectedHead,
+    );
+  } else if (review.decision === "repair") {
+    await requestDependabotCommand(
+      github,
+      owner,
+      repo,
+      pullNumber,
+      "recreate",
+      expectedHead,
+    );
+  } else if (review.decision === "reject") {
+    await github.rest.pulls.update({
+      owner,
+      repo,
+      pull_number: pullNumber,
+      state: "closed",
+    });
+  }
 }
 
 async function allPullFiles(github, owner, repo, pullNumber) {
@@ -546,6 +604,60 @@ async function dispatchWithRetry(github, request, attempts = 3) {
     }
   }
   throw lastError;
+}
+
+async function retryOneCodexReview(
+  github,
+  owner,
+  repo,
+  pulls,
+  mainSha,
+  core,
+) {
+  for (const pull of pulls) {
+    if (!pull.labels.some((label) => label.name === LABELS.retry.name)) {
+      continue;
+    }
+    if (
+      await requestDependabotCommand(
+        github,
+        owner,
+        repo,
+        pull.number,
+        "rebase",
+        `${pull.head.sha}:${mainSha}`,
+      )
+    ) {
+      core.notice(`Requested a fresh Dependabot rebase for PR #${pull.number}.`);
+      return true;
+    }
+    const statuses = await github.rest.repos.getCombinedStatusForRef({
+      owner,
+      repo,
+      ref: pull.head.sha,
+      per_page: 100,
+    });
+    const review = latestStatus(statuses.data.statuses, REVIEW_STATUS);
+    const runId = Number.parseInt(
+      review?.target_url?.match(/\/actions\/runs\/(\d+)/)?.[1] || "",
+      10,
+    );
+    if (review?.state !== "pending" || !Number.isInteger(runId)) continue;
+
+    const run = await github.rest.actions.getWorkflowRun({
+      owner,
+      repo,
+      run_id: runId,
+    });
+    if (run.data.status !== "completed" || run.data.run_attempt >= 3) continue;
+
+    await github.rest.actions.reRunWorkflow({ owner, repo, run_id: runId });
+    core.notice(
+      `Re-running Dependabot Codex review for PR #${pull.number} (attempt ${run.data.run_attempt + 1}/3).`,
+    );
+    return true;
+  }
+  return false;
 }
 
 async function mergeNextDependabot({ github, context, core }) {
@@ -589,63 +701,113 @@ async function mergeNextDependabot({ github, context, core }) {
   const ready = dependabotPulls.filter((pull) =>
     pull.labels.some((label) => label.name === LABELS.ready.name),
   );
-  const candidate = pending[0] || ready[0];
-  if (!candidate) {
-    core.notice("No reviewed low-risk Dependabot PR is ready.");
+  const candidates = pending.length ? pending : ready;
+  if (!candidates.length) {
+    if (
+      await retryOneCodexReview(
+        github,
+        owner,
+        repo,
+        dependabotPulls,
+        mainSha,
+        core,
+      )
+    ) {
+      return;
+    }
+    core.notice("No exact-head approved Dependabot PR is ready.");
     return;
   }
 
-  const { data: pull } = await github.rest.pulls.get({
-    owner,
-    repo,
-    pull_number: candidate.number,
-  });
-  const headSha = pull.head.sha;
-  if (
-    pull.state !== "open" ||
-    pull.draft ||
-    pull.user?.login !== "dependabot[bot]" ||
-    pull.base.ref !== "main" ||
-    pull.head.repo?.full_name !== `${owner}/${repo}`
-  ) {
-    core.warning(`PR #${pull.number} no longer meets Dependabot trust bounds.`);
-    return;
-  }
-
-  const files = await allPullFiles(github, owner, repo, pull.number);
-  if (!filesArePackageOnly(files)) {
-    await replaceAutomationLabels(github, owner, repo, pull.number, [
-      LABELS.human.name,
-    ]);
-    core.warning(`PR #${pull.number} changed files outside package manifests.`);
-    return;
-  }
-
-  const headGate = await commitGate(github, owner, repo, headSha, {
-    production: false,
-  });
-  if (!headGate.passed) {
-    core.notice(
-      `PR #${pull.number} is waiting on exact-head gates: ${headGate.missing.join(", ")}`,
-    );
-    return;
-  }
-
-  if (pull.mergeable === false || pull.mergeable_state === "dirty") {
-    await replaceAutomationLabels(github, owner, repo, pull.number, [
-      LABELS.human.name,
-    ]);
-    await github.rest.issues.createComment({
+  let pull;
+  let headSha;
+  for (const candidate of candidates) {
+    const response = await github.rest.pulls.get({
       owner,
       repo,
-      issue_number: pull.number,
-      body: "Dependabot automation stopped because the branch conflicts with `main`. Human review is required.",
+      pull_number: candidate.number,
     });
-    return;
+    const current = response.data;
+    const currentHead = current.head.sha;
+    if (
+      current.state !== "open" ||
+      current.draft ||
+      current.user?.login !== "dependabot[bot]" ||
+      current.base.ref !== "main" ||
+      current.head.repo?.full_name !== `${owner}/${repo}`
+    ) {
+      core.warning(
+        `PR #${current.number} no longer meets Dependabot trust bounds.`,
+      );
+      continue;
+    }
+
+    const files = await allPullFiles(github, owner, repo, current.number);
+    if (!filesArePackageOnly(files)) {
+      await replaceAutomationLabels(github, owner, repo, current.number, [
+        LABELS.blocked.name,
+      ]);
+      await github.rest.pulls.update({
+        owner,
+        repo,
+        pull_number: current.number,
+        state: "closed",
+      });
+      core.warning(
+        `PR #${current.number} was closed after changing files outside package manifests.`,
+      );
+      continue;
+    }
+
+    const headGate = await commitGate(github, owner, repo, currentHead, {
+      production: false,
+    });
+    if (!headGate.passed) {
+      core.notice(
+        `PR #${current.number} is waiting on exact-head gates: ${headGate.missing.join(", ")}`,
+      );
+      if (pending.length) return;
+      continue;
+    }
+
+    if (["behind", "dirty"].includes(current.mergeable_state)) {
+      await replaceAutomationLabels(github, owner, repo, current.number, [
+        LABELS.retry.name,
+      ]);
+      await requestDependabotCommand(
+        github,
+        owner,
+        repo,
+        current.number,
+        "rebase",
+        `${currentHead}:${mainSha}`,
+      );
+      core.notice(
+        `PR #${current.number} is ${current.mergeable_state}; Dependabot rebase requested.`,
+      );
+      return;
+    }
+    if (current.mergeable !== true || current.mergeable_state !== "clean") {
+      core.notice(
+        `PR #${current.number} is not cleanly mergeable yet (${current.mergeable_state}).`,
+      );
+      if (pending.length) return;
+      continue;
+    }
+
+    pull = current;
+    headSha = currentHead;
+    break;
   }
-  if (pull.mergeable !== true || pull.mergeable_state !== "clean") {
-    core.notice(
-      `PR #${pull.number} is not cleanly mergeable yet (${pull.mergeable_state}).`,
+
+  if (!pull || !headSha) {
+    await retryOneCodexReview(
+      github,
+      owner,
+      repo,
+      dependabotPulls,
+      mainSha,
+      core,
     );
     return;
   }
@@ -824,10 +986,8 @@ if (require.main === module) {
 }
 
 module.exports = {
-  HUMAN_REVIEW_DEV_PACKAGES,
   LABELS,
   REVIEW_STATUS,
-  SUPABASE_RUNTIME_PACKAGES,
   classifyDependabot,
   evaluateGate,
   filesArePackageOnly,

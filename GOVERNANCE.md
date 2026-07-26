@@ -25,15 +25,18 @@ Dependabot updates use three independent boundaries:
    manifest-only diff reach Codex. The agent receives the OpenAI credential through its
    protected proxy but no GitHub mutation or merge credential. Its decision is tied to the exact
    head SHA and can veto but cannot override deterministic policy.
-3. **Trusted merge controller:** only patch updates to one allowlisted direct development
-   dependency can enter the queue. The controller rechecks the exact SHA, changed paths, CI,
-   React Doctor's exact-head result, Vercel preview, Codex status, and GitHub mergeability; it
-   requests an ordinary merge for at most one PR. The next PR waits for post-merge CI, React Doctor, the matching
-   Vercel Production deployment, and a canonical live-site smoke.
+3. **Trusted merge controller:** every verified manifest-only npm update can enter the queue.
+   Package name/type, SemVer class, grouping, and compiler/build/test ownership do not create a
+   separate approval class. The controller rechecks the exact SHA, changed paths, CI, React
+   Doctor's exact-head result, Vercel preview, Codex status, and GitHub mergeability; skips failing
+   candidates without stalling green siblings; requests Dependabot rebase/recreation; and merges at
+   most one PR. The next PR waits for post-merge CI, React Doctor, the matching Vercel Production
+   deployment, and a canonical live-site smoke.
 
-Major, minor, runtime, grouped, compiler/build/test/CI-tool, source-changing, stale, conflicting,
-failed-agent, or ambiguous updates remain human-gated. The executable policy and seed regression
-cases live in `.github/scripts/dependency-automation.cjs` and
+Maintainer-modified, source-changing, migration-changing, or otherwise untrusted updates are
+rejected before the agent. Incomplete metadata and transient or malformed agent results retry
+automatically; concrete incompatibilities are closed rather than delegated. The executable policy
+and seed regression cases live in `.github/scripts/dependency-automation.cjs` and
 `.github/codex/dependabot-sop-and-examples.md`. `OPENAI_API_KEY` is a repository Actions secret;
 never copy its value into source, logs, PR text, Dependabot secrets, or the agent workspace.
 
