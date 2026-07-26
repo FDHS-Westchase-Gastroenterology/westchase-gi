@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint",
     "doctor": "npx react-doctor --blocking none",
-    "test:e2e-guard": "node --test e2e/target-guard.test.mjs"
+    "test:e2e-guard": "node --test e2e/target-guard.test.mjs",
+    "ui:reference": "node scripts/capture-ui-reference.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.3",

@@ -73,6 +73,10 @@ notifications) and the authenticated staff portal at `/admin`.
     token, expose App credentials to the browser, or widen the App beyond its documented
     least-privilege permissions. The portal does not connect to or manage Vercel
     (`docs/INTEGRATION-ACTIVATION.md`).
+12. **Visual baseline.** Before patient-facing UI work, open `docs/ui-reference/README.md`.
+    Refresh the affected images against the matching local or Preview origin before committing;
+    use the default live-origin capture after deployment. The atlas is public-only: never add a
+    signed-in portal capture or any operational/patient data to it.
 
 ## Dependabot/Supabase agent readiness
 

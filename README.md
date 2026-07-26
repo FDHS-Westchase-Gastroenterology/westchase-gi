@@ -107,6 +107,10 @@ Content lives in `src/lib/` (site facts, dictionaries, providers, services, docu
 resources, testimonials). Pages in `src/app/[locale]/` render all five locales from one
 codebase; the portal lives in `src/app/admin/`.
 
+The checked-in [UI reference](docs/ui-reference/README.md) is the fast visual baseline for
+frontend work. Its refresh instructions distinguish the live baseline from a local or Preview
+change under review.
+
 ### Tests
 
 ```bash
