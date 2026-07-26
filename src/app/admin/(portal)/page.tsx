@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { SVGProps } from "react";
 import type { StaffRole } from "@/lib/portal/contracts";
 import { requireRole } from "@/lib/portal/auth";
+import { availableQueueCount } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
 import {
   ArrowRight,
@@ -129,6 +130,7 @@ export default async function AdminHomePage() {
     name: string;
     created_at: string;
   }>;
+  const availableNewCount = availableQueueCount(newCount, queueReadError);
 
   return (
     <section aria-labelledby="home-heading">
@@ -162,7 +164,7 @@ export default async function AdminHomePage() {
           >
             Appointment requests
           </h2>
-          {queueReadError ? (
+          {availableNewCount === null ? (
             <div data-testid="queue-overview-unavailable">
               <p
                 data-testid="queue-overview-headline"
@@ -182,7 +184,7 @@ export default async function AdminHomePage() {
                 data-testid="queue-overview-headline"
                 className="mt-3 max-w-[26ch] text-[1.4rem] font-bold leading-snug text-[var(--color-ink)]"
               >
-                {headlineFor(newCount ?? 0)}
+                {headlineFor(availableNewCount)}
               </p>
 
               {newest.length > 0 ? (
