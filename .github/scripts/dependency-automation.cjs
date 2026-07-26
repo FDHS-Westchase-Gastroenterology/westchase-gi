@@ -78,6 +78,19 @@ function filesArePackageOnly(files) {
   );
 }
 
+function commitsAreAutomationSigned(commits) {
+  return (
+    commits.length > 0 &&
+    commits[0].author?.login === "dependabot[bot]" &&
+    commits.every(
+      (commit) =>
+        ["dependabot[bot]", "github-actions[bot]"].includes(
+          commit.author?.login,
+        ) && commit.commit.verification?.verified === true,
+    )
+  );
+}
+
 function classifyDependabot(input) {
   const names = dependencyNames(input.dependencyNames);
   const files = changedFiles(input.changedFiles);
@@ -579,6 +592,145 @@ async function dispatchWithRetry(github, request, attempts = 3) {
   throw lastError;
 }
 
+async function startRefreshedDependabotChecks(
+  github,
+  owner,
+  repo,
+  pull,
+  core,
+) {
+  const [files, commits] = await Promise.all([
+    allPullFiles(github, owner, repo, pull.number),
+    github.paginate(github.rest.pulls.listCommits, {
+      owner,
+      repo,
+      pull_number: pull.number,
+      per_page: 100,
+    }),
+  ]);
+  const trusted =
+    pull.state === "open" &&
+    !pull.draft &&
+    pull.user?.login === "dependabot[bot]" &&
+    pull.base.ref === "main" &&
+    pull.head.repo?.full_name === `${owner}/${repo}` &&
+    Boolean(pull.head.ref) &&
+    filesArePackageOnly(files) &&
+    commitsAreAutomationSigned(commits);
+
+  await ensureLabels(github, owner, repo);
+  if (!trusted) {
+    await replaceAutomationLabels(github, owner, repo, pull.number, [
+      LABELS.blocked.name,
+    ]);
+    await github.rest.repos.createCommitStatus({
+      owner,
+      repo,
+      sha: pull.head.sha,
+      state: "failure",
+      context: REVIEW_STATUS,
+      description: "Refreshed dependency head failed deterministic trust checks",
+    });
+    await github.rest.pulls.update({
+      owner,
+      repo,
+      pull_number: pull.number,
+      state: "closed",
+    });
+    core.warning(
+      `Closed Dependabot PR #${pull.number}; its refreshed head failed deterministic trust checks.`,
+    );
+    return;
+  }
+
+  await replaceAutomationLabels(github, owner, repo, pull.number, [
+    LABELS.retry.name,
+  ]);
+  await github.rest.repos.createCommitStatus({
+    owner,
+    repo,
+    sha: pull.head.sha,
+    state: "pending",
+    context: REVIEW_STATUS,
+    description: "Starting exact-head checks after automated branch refresh",
+  });
+
+  const dispatches = await Promise.allSettled(
+    ["ci.yml", "react-doctor.yml", "supabase-dependency-integration.yml"].map(
+      (workflowId) =>
+        dispatchWithRetry(github, {
+          owner,
+          repo,
+          workflow_id: workflowId,
+          ref: pull.head.ref,
+        }),
+    ),
+  );
+  if (dispatches.some(({ status }) => status === "rejected")) {
+    core.warning(
+      `One or more exact-head checks for Dependabot PR #${pull.number} could not start; automation will retry.`,
+    );
+    return;
+  }
+
+  await replaceAutomationLabels(github, owner, repo, pull.number, [
+    LABELS.approved.name,
+    LABELS.ready.name,
+  ]);
+  await github.rest.repos.createCommitStatus({
+    owner,
+    repo,
+    sha: pull.head.sha,
+    state: "success",
+    context: REVIEW_STATUS,
+    description: "Trusted refreshed head admitted to deterministic gates",
+  });
+  core.notice(
+    `Dispatched exact-head checks for refreshed Dependabot PR #${pull.number}.`,
+  );
+}
+
+async function refreshDependabotBranch(github, owner, repo, pull, core) {
+  await github.rest.pulls.updateBranch({
+    owner,
+    repo,
+    pull_number: pull.number,
+    expected_head_sha: pull.head.sha,
+  });
+  core.notice(`Updated Dependabot PR #${pull.number} from current main.`);
+
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const { data: refreshed } = await github.rest.pulls.get({
+      owner,
+      repo,
+      pull_number: pull.number,
+    });
+    if (refreshed.head.sha !== pull.head.sha) {
+      await startRefreshedDependabotChecks(
+        github,
+        owner,
+        repo,
+        refreshed,
+        core,
+      );
+      return;
+    }
+    if (attempt < 19) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
+  }
+
+  await dispatchWithRetry(github, {
+    owner,
+    repo,
+    workflow_id: "dependabot-automerge.yml",
+    ref: "main",
+  });
+  core.notice(
+    `GitHub is still refreshing Dependabot PR #${pull.number}; queued the controller to resume automatically.`,
+  );
+}
+
 async function recoverOneDependabotReview(
   github,
   owner,
@@ -612,13 +764,7 @@ async function recoverOneDependabotReview(
     });
     if (comparison.data.ahead_by > 0) {
       try {
-        await github.rest.pulls.updateBranch({
-          owner,
-          repo,
-          pull_number: pull.number,
-          expected_head_sha: pull.head.sha,
-        });
-        core.notice(`Updated Dependabot PR #${pull.number} from current main.`);
+        await refreshDependabotBranch(github, owner, repo, current, core);
       } catch (error) {
         if (error.status !== 422) throw error;
         await replaceAutomationLabels(github, owner, repo, pull.number, [
@@ -664,6 +810,24 @@ async function recoverOneDependabotReview(
       review?.target_url?.match(/\/actions\/runs\/(\d+)/)?.[1] || "",
       10,
     );
+    if (!review || (review.state === "pending" && !Number.isInteger(runId))) {
+      await startRefreshedDependabotChecks(
+        github,
+        owner,
+        repo,
+        current,
+        core,
+      );
+      return true;
+    }
+    if (review.state === "success") {
+      await ensureLabels(github, owner, repo);
+      await replaceAutomationLabels(github, owner, repo, pull.number, [
+        LABELS.approved.name,
+        LABELS.ready.name,
+      ]);
+      return true;
+    }
     if (review?.state !== "pending" || !Number.isInteger(runId)) continue;
 
     const run = await github.rest.actions.getWorkflowRun({
@@ -822,22 +986,22 @@ async function mergeNextDependabot({ github, context, core }) {
       continue;
     }
 
-    if (["behind", "dirty"].includes(current.mergeable_state)) {
+    const comparison = await github.rest.repos.compareCommitsWithBasehead({
+      owner,
+      repo,
+      basehead: `${currentHead}...${mainSha}`,
+    });
+    if (comparison.data.ahead_by > 0) {
       await replaceAutomationLabels(github, owner, repo, current.number, [
-        current.mergeable_state === "behind"
-          ? LABELS.retry.name
-          : LABELS.blocked.name,
+        LABELS.retry.name,
       ]);
-      if (current.mergeable_state === "behind") {
-        await github.rest.pulls.updateBranch({
-          owner,
-          repo,
-          pull_number: current.number,
-          expected_head_sha: currentHead,
-        });
-        core.notice(`Updated Dependabot PR #${current.number} from current main.`);
-        return;
-      }
+      await refreshDependabotBranch(github, owner, repo, current, core);
+      return;
+    }
+    if (current.mergeable_state === "dirty") {
+      await replaceAutomationLabels(github, owner, repo, current.number, [
+        LABELS.blocked.name,
+      ]);
       await github.rest.pulls.update({
         owner,
         repo,
@@ -1051,6 +1215,7 @@ module.exports = {
   LABELS,
   REVIEW_STATUS,
   classifyDependabot,
+  commitsAreAutomationSigned,
   evaluateGate,
   filesArePackageOnly,
   mergeNextDependabot,
