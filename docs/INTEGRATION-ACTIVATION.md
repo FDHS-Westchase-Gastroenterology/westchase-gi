@@ -6,7 +6,7 @@ administrators can invite a maintainer, cancel an invitation, or revoke a mainta
 App's Repository Administration permission is active. It records Vercel hosting custody as a
 static fact and does not connect to or manage Vercel.
 
-## Current custody (verified 2026-07-19)
+## Current custody (verified 2026-07-25)
 
 - The clinic-controlled personal GitHub account `FDHS-Westchase-Gastroenterology` owns
   `FDHS-Westchase-Gastroenterology/westchase-gi`. The old `ASTXRTYS/westchase-gi` URL redirects.
@@ -18,9 +18,10 @@ static fact and does not connect to or manage Vercel.
   deployed READY, and the former consultant-owned project was deleted.
 - `westchasegi.com` cut over on 2026-07-18. Porkbun now serves its DNS, the apex is the canonical
   patient origin, `www` redirects to the apex, TLS is live, and the Vercel alias remains attached.
-- Production is deployed through `1b2f142` (PR #42). The task-first portal,
-  Website/maintainer controls, and integrated review-flyer printer are live in the application;
-  their remaining external acceptance work is listed below and in `docs/PORTAL-OPS.md`.
+- PR #72's behavior-bearing release `d318300` is deployed and independently accepted in
+  Production. The task-first portal, Website/maintainer controls, integrated review-flyer printer,
+  first-login tour/Help flow, persistent public-site link, and language chooser are live; remaining
+  external acceptance is listed below and in `docs/PORTAL-OPS.md`.
 - The private GitHub App `wgi-portal` is registered on the clinic account with Repository
   Administration read/write and Metadata read permissions, and no webhook. Every portal request
   verifies the exact account and repository by numeric ID, scopes a short-lived token to that one
@@ -98,8 +99,8 @@ until invite, cancel, accept, revoke, and Activity-log evidence all pass.
 ## Transfer and hosting deviations worth preserving
 
 - The original plan assumed a GitHub organization. The accepted model is the clinic's personal
-  account because it preserves GitHub branch protection and Vercel Hobby compatibility without
-  organization-plan restrictions.
+  account because it supports the current strict branch protection and Vercel Hobby connection
+  without an organization-plan dependency.
 - The old Vercel project could not simply be relinked. On Hobby, a project cannot connect to a
   repository owned by a different GitHub account than the account linked to that Vercel login.
   The working path was a new clinic-owned project imported from the transferred repository,
@@ -119,15 +120,13 @@ The repository's GitHub homepage metadata still points to retired
 
 1. Complete the controlled maintainer invite/cancel/accept/revoke lifecycle and verify Activity
    log rows.
-2. Complete the Production schema retirement/verifier and authenticated Website/review-flyer
-   smoke described in `docs/PORTAL-OPS.md`.
-3. Establish Resend team/account custody and run clinic-approved application-email canaries. The
+2. Complete the remaining notification-recipient and clinic-approved application-email acceptance
+   described in `docs/PORTAL-OPS.md`.
+3. Establish Resend team/account custody. The
    Resend domain and Production application `RESEND_FROM` are configured, but Supabase Auth's hosted
    SMTP sender is still the sandbox identity; change it before the arbitrary-clinic-inbox
    password-reset canary.
-4. After the integrated flyer printer passes Production acceptance, verify and retire the
-   standalone flyer deployment.
-5. Record owner 2FA and repo-only App-installation scope only after the clinic owner verifies them;
+4. Record owner 2FA and repo-only App-installation scope only after the clinic owner verifies them;
    keep them classified as independent defense-in-depth controls rather than UI readiness gates.
 
 ## Do not
