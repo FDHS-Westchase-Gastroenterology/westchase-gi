@@ -99,6 +99,13 @@ test.describe("Supabase dependency contract", () => {
         p_now: new Date().toISOString(),
       }),
     );
+    expectPermissionDenied(
+      await anon.rpc("portal_log_call_outcome", {
+        p_actor_email: "anon@example.test",
+        p_request_id: randomUUID(),
+        p_outcome: "no_answer",
+      }),
+    );
 
     const authenticated = publicClient();
     const signIn = await authenticated.auth.signInWithPassword({
@@ -130,6 +137,13 @@ test.describe("Supabase dependency contract", () => {
       expectPermissionDenied(
         await authenticated.rpc("portal_preview_data_lifecycle", {
           p_now: new Date().toISOString(),
+        }),
+      );
+      expectPermissionDenied(
+        await authenticated.rpc("portal_log_call_outcome", {
+          p_actor_email: SEED_EMAIL,
+          p_request_id: randomUUID(),
+          p_outcome: "no_answer",
         }),
       );
 
@@ -239,6 +253,250 @@ test.describe("Supabase dependency contract", () => {
     );
     expect(claims.filter(Boolean)).toHaveLength(INTAKE_RATE_LIMIT.limit);
     expect(claims.filter((allowed) => !allowed)).toHaveLength(3);
+  });
+
+  test("records all six call outcomes atomically with one audit row", async () => {
+    const db = serviceDb();
+    const actor = `call-outcome-${randomUUID()}@example.test`;
+    const followUpAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    const requestIds: string[] = [];
+    const cases = [
+      {
+        outcome: "scheduled_transferred",
+        note: "TEST appointment transferred.",
+        followUpAt: null,
+        status: "closed",
+        disposition: "converted",
+        handedOff: true,
+      },
+      {
+        outcome: "reached_follow_up",
+        note: "TEST patient asked for another call.",
+        followUpAt,
+        status: "contacted",
+        disposition: null,
+        handedOff: false,
+      },
+      {
+        outcome: "voicemail",
+        note: "TEST voicemail left.",
+        followUpAt,
+        status: "contacted",
+        disposition: null,
+        handedOff: false,
+      },
+      {
+        outcome: "no_answer",
+        note: null,
+        followUpAt: null,
+        status: "contacted",
+        disposition: null,
+        handedOff: false,
+      },
+      {
+        outcome: "wont_schedule",
+        note: null,
+        followUpAt: null,
+        status: "closed",
+        disposition: "unconverted",
+        handedOff: false,
+      },
+      {
+        outcome: "not_actionable",
+        note: "TEST duplicate request.",
+        followUpAt: null,
+        status: "closed",
+        disposition: "unconverted",
+        handedOff: false,
+      },
+    ] as const;
+
+    try {
+      for (const item of cases) {
+        const requestId = randomUUID();
+        requestIds.push(requestId);
+        const inserted = await db.from("requests").insert({
+          id: requestId,
+          name: `TEST call outcome ${item.outcome}`,
+          phone: "8135550199",
+          email: null,
+          location: "tampa",
+          preferred_time: "morning",
+          message: null,
+          locale: "en",
+          source_path: "/e2e/call-outcome",
+        });
+        expect(inserted.error).toBeNull();
+
+        const result = await db.rpc("portal_log_call_outcome", {
+          p_actor_email: actor,
+          p_request_id: requestId,
+          p_outcome: item.outcome,
+          p_note: item.note,
+          p_follow_up_at: item.followUpAt,
+        });
+        expect(result.error).toBeNull();
+        expect(result.data).toMatch(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+        );
+
+        const row = await db
+          .from("requests")
+          .select(
+            "status, follow_up_at, closure_disposition, closed_at, record_handoff_at",
+          )
+          .eq("id", requestId)
+          .single();
+        expect(row.error).toBeNull();
+        expect(row.data).toMatchObject({
+          status: item.status,
+          closure_disposition: item.disposition,
+        });
+        expect(
+          row.data?.follow_up_at
+            ? new Date(row.data.follow_up_at).toISOString()
+            : null,
+        ).toBe(item.followUpAt);
+        expect(Boolean(row.data?.closed_at)).toBe(item.status === "closed");
+        expect(Boolean(row.data?.record_handoff_at)).toBe(item.handedOff);
+
+        const events = await db
+          .from("request_events")
+          .select("type, status, meta")
+          .eq("request_id", requestId);
+        expect(events.error).toBeNull();
+        const outcomeEvents = (events.data ?? []).filter(
+          ({ type }) => type === "call_outcome",
+        );
+        const noteEvents = (events.data ?? []).filter(
+          ({ type }) => type === "note",
+        );
+        expect(outcomeEvents).toHaveLength(1);
+        expect(outcomeEvents[0]).toMatchObject({
+          status: "recorded",
+          meta: {
+            outcome: item.outcome,
+            author_email: actor,
+          },
+        });
+        expect(
+          typeof outcomeEvents[0].meta?.follow_up_at === "string"
+            ? new Date(outcomeEvents[0].meta.follow_up_at).toISOString()
+            : null,
+        ).toBe(item.followUpAt);
+        expect(noteEvents).toHaveLength(item.note ? 1 : 0);
+        if (item.note) {
+          expect(noteEvents[0]).toMatchObject({
+            status: "recorded",
+            meta: { text: item.note, author_email: actor },
+          });
+        }
+
+        const audits = await db
+          .from("audit_log")
+          .select("action, detail")
+          .eq("entity_id", requestId);
+        expect(audits.error).toBeNull();
+        expect(audits.data).toHaveLength(1);
+        expect(audits.data?.[0]).toMatchObject({
+          action: "request.call_outcome",
+          detail: {
+            outcome: item.outcome,
+            to: item.status,
+            note_attached: Boolean(item.note),
+            ...(item.note ? { note_length: item.note.length } : {}),
+          },
+        });
+        expect(
+          typeof audits.data?.[0].detail?.follow_up_at === "string"
+            ? new Date(audits.data[0].detail.follow_up_at).toISOString()
+            : null,
+        ).toBe(item.followUpAt);
+        expect(JSON.stringify(audits.data?.[0].detail)).not.toContain(
+          item.note ?? "TEST patient value that is never present",
+        );
+      }
+
+      const rollbackId = randomUUID();
+      requestIds.push(rollbackId);
+      const inserted = await db.from("requests").insert({
+        id: rollbackId,
+        name: "TEST atomic call-outcome rollback",
+        phone: "8135550199",
+        email: null,
+        location: "tampa",
+        preferred_time: "morning",
+        message: null,
+        locale: "en",
+        source_path: "/e2e/call-outcome-rollback",
+      });
+      expect(inserted.error).toBeNull();
+
+      const forcedAuditFailure = await db.rpc("portal_log_call_outcome", {
+        p_actor_email: "",
+        p_request_id: rollbackId,
+        p_outcome: "voicemail",
+        p_note: "TEST this write must roll back.",
+        p_follow_up_at: followUpAt,
+      });
+      expect(forcedAuditFailure.error?.code).toBe("23514");
+
+      const oversizedNote = await db.rpc("portal_log_call_outcome", {
+        p_actor_email: actor,
+        p_request_id: rollbackId,
+        p_outcome: "voicemail",
+        p_note: "N".repeat(2001),
+        p_follow_up_at: followUpAt,
+      });
+      expect(oversizedNote.error?.code).toBe("22023");
+
+      const closingFollowUp = await db.rpc("portal_log_call_outcome", {
+        p_actor_email: actor,
+        p_request_id: rollbackId,
+        p_outcome: "wont_schedule",
+        p_follow_up_at: followUpAt,
+      });
+      expect(closingFollowUp.error?.code).toBe("22023");
+
+      const unknownOutcome = await db.rpc("portal_log_call_outcome", {
+        p_actor_email: actor,
+        p_request_id: rollbackId,
+        p_outcome: "maybe_later",
+      });
+      expect(unknownOutcome.error?.code).toBe("22023");
+
+      const unchanged = await db
+        .from("requests")
+        .select(
+          "status, follow_up_at, closure_disposition, closed_at, record_handoff_at",
+        )
+        .eq("id", rollbackId)
+        .single();
+      expect(unchanged.data).toEqual({
+        status: "new",
+        follow_up_at: null,
+        closure_disposition: null,
+        closed_at: null,
+        record_handoff_at: null,
+      });
+      expect(
+        (
+          await db
+            .from("request_events")
+            .select("id")
+            .eq("request_id", rollbackId)
+        ).data,
+      ).toHaveLength(0);
+      expect(
+        (await db.from("audit_log").select("id").eq("entity_id", rollbackId))
+          .data,
+      ).toHaveLength(0);
+    } finally {
+      if (requestIds.length > 0) {
+        await db.from("requests").delete().in("id", requestIds);
+        await db.from("audit_log").delete().in("entity_id", requestIds);
+      }
+    }
   });
 
   test("enforces intake field caps at the database boundary", async () => {

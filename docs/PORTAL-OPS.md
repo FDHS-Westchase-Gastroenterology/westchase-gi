@@ -119,10 +119,12 @@ is the canonical remaining-acceptance tracker. Keep this section synchronized wi
 - Remaining Production acceptance is notification-recipient add/confirm/pause/resume/remove with
   a clinic-approved inbox, clinic-inbox invitation/recovery delivery after hosted SMTP is fixed,
   and the throwaway GitHub maintainer invite/cancel/accept/revoke lifecycle.
-- Development and Production are current through migration `20260725170000`; the retired
-  registry tables/functions remain absent. Development passed the cap preflight, forward
-  migration, transactional lifecycle smoke, portal request workflow, exact rollback,
-  migration-ledger repair, and clean reapplication.
+- Production is current through migration `20260725170000`. Development also has
+  `20260727013641_add_atomic_call_outcome`, which passed the six-outcome contract, service-role
+  boundary, forced late-audit rollback, exact schema rollback, migration-ledger repair, clean
+  reapplication, schema verifier, and database advisors. Production promotion remains a separate
+  decision; merging the prerequisite does not authorize it. The retired registry tables/functions
+  remain absent.
 - Production received the same migrations schema-first on 2026-07-25 after a zero-violation cap
   preflight and a restore-readable temporary logical backup. Migration-ledger, constraint,
   RLS, privilege, and RPC assertions passed. Its first count-only lifecycle preview reported
