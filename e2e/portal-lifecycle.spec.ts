@@ -151,6 +151,11 @@ test.describe("disposable-local request lifecycle", () => {
       record_handoff_at: null,
     });
 
+    await page.locator('[data-status-action="closed"]').click();
+    await expect(page.getByTestId("closed-status-control")).toHaveAttribute(
+      "open",
+      "",
+    );
     await page
       .getByRole("button", {
         name: /^Appointment booked/,
