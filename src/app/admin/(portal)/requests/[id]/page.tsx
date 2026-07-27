@@ -284,19 +284,20 @@ export default async function RequestDetailPage({
             </div>
             <div className="mt-5 border-t border-[var(--color-line)] pt-5">
               <h3 className="text-[0.8rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
-                Close and classify
+                Finish this request
               </h3>
               <p className="mt-2 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
-                Choose the outcome explicitly. This starts the approved
-                retention clock; reopening the request resets it.
+                Finish it when nobody needs to call this patient again. It
+                leaves the active queue; reopen it any time by choosing a
+                status above.
               </p>
               {row.status === "closed" && !row.closure_disposition && (
                 <p
                   data-testid="legacy-lifecycle-warning"
                   className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-3 py-2 text-[0.85rem] font-bold text-[var(--color-ink)]"
                 >
-                  This legacy closed request is not classified and cannot be
-                  deleted automatically.
+                  Closed before outcomes were recorded. Choose one below if you
+                  know how it ended.
                 </p>
               )}
               {row.closure_disposition && row.closed_at && (
@@ -304,26 +305,14 @@ export default async function RequestDetailPage({
                   data-testid="request-lifecycle-summary"
                   className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-3 py-2 text-[0.85rem] text-[var(--color-ink)]"
                 >
+                  Finished {formatReceived(row.closed_at, true)} —{" "}
                   {row.closure_disposition === "converted"
-                    ? "Transferred to the FDHS record; 12-month clock started"
-                    : "Did not become an appointment; 180-day clock started"}{" "}
-                  {formatReceived(row.closed_at, true)}.
+                    ? "appointment booked"
+                    : "no appointment booked"}
+                  .
                 </p>
               )}
               <div className="mt-3 grid gap-2">
-                <form action={closeRequest.bind(null, row.id, "unconverted")}>
-                  <button
-                    type="submit"
-                    disabled={
-                      row.status === "closed" &&
-                      row.closure_disposition === "unconverted"
-                    }
-                    data-close-action="unconverted"
-                    className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-4 text-left text-[0.9rem] font-bold text-[var(--color-body)] hover:border-[var(--color-navy)] disabled:cursor-default disabled:border-[var(--color-navy)] disabled:bg-[var(--color-navy)] disabled:text-[var(--color-on-dark)]"
-                  >
-                    Close — did not become an appointment
-                  </button>
-                </form>
                 <form action={closeRequest.bind(null, row.id, "converted")}>
                   <button
                     type="submit"
@@ -334,7 +323,20 @@ export default async function RequestDetailPage({
                     data-close-action="converted"
                     className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-4 text-left text-[0.9rem] font-bold text-[var(--color-body)] hover:border-[var(--color-navy)] disabled:cursor-default disabled:border-[var(--color-navy)] disabled:bg-[var(--color-navy)] disabled:text-[var(--color-on-dark)]"
                   >
-                    Close — transferred to the FDHS record
+                    Finished — appointment booked
+                  </button>
+                </form>
+                <form action={closeRequest.bind(null, row.id, "unconverted")}>
+                  <button
+                    type="submit"
+                    disabled={
+                      row.status === "closed" &&
+                      row.closure_disposition === "unconverted"
+                    }
+                    data-close-action="unconverted"
+                    className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-4 text-left text-[0.9rem] font-bold text-[var(--color-body)] hover:border-[var(--color-navy)] disabled:cursor-default disabled:border-[var(--color-navy)] disabled:bg-[var(--color-navy)] disabled:text-[var(--color-on-dark)]"
+                  >
+                    Finished — no appointment booked
                   </button>
                 </form>
               </div>

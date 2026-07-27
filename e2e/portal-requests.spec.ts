@@ -180,12 +180,12 @@ test.describe("portal requests operation", () => {
 
     await page
       .getByRole("button", {
-        name: "Close — did not become an appointment",
+        name: "Finished — no appointment booked",
       })
       .click();
     await expect(
       page.getByRole("button", {
-        name: "Close — did not become an appointment",
+        name: "Finished — no appointment booked",
       }),
     ).toBeDisabled();
     await expect(

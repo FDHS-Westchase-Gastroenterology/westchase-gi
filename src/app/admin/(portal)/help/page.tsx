@@ -74,16 +74,14 @@ export default async function AdminHelpPage() {
           </p>
           <p className={`${SECTION_BODY} mt-3`}>
             Finishing a request is its own deliberate step, under{" "}
-            <strong>Close and classify</strong> on the request page. Choose{" "}
-            <strong>Close — transferred to the FDHS record</strong> once the
-            appointment is booked and the patient&apos;s information lives in
-            the practice&apos;s medical-record system, or{" "}
-            <strong>Close — did not become an appointment</strong> when the
-            request needs no more work. The choice matters: it starts the
-            approved records-retention clock (12 months for transferred
-            requests, 180 days otherwise), and a scheduled request is not
-            finished until it is closed. Reopening a closed request resets
-            its clock.
+            <strong>Finish this request</strong> on the request page. Choose{" "}
+            <strong>Finished — appointment booked</strong> once you have put
+            the appointment into the practice&apos;s scheduling system, or{" "}
+            <strong>Finished — no appointment booked</strong> when the request
+            needs no more work — the patient went elsewhere, never called back,
+            or it was a duplicate. Finishing takes the request off the active
+            queue, so a scheduled request is not done until you finish it.
+            Reopen one any time by choosing a status again.
           </p>
         </div>
 

@@ -244,18 +244,22 @@ sensitive.
 | Data                                              | Retention                                                                                                   |
 | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | Legitimately open request                         | No automatic deletion                                                                                       |
-| Closed request that did not become an appointment | 180 days after classified closure                                                                           |
-| Closed request transferred to the FDHS record     | 12 months after verified handoff and classified closure                                                     |
+| Closed request, no appointment booked             | 180 days after classified closure                                                                           |
+| Closed request, appointment booked elsewhere      | 12 months after the staff-recorded booking and classified closure                                           |
 | Request notes and notification/receipt events     | Follow the parent request and delete with it                                                                |
 | Receipt token hash                                | Remove after one hour; the receipt is valid for only 15 minutes                                             |
 | Expired intake rate-limit HMAC bucket             | Remove on the next hourly lifecycle run                                                                     |
 | Audit rows                                        | Six years, unless a legal hold protects the related request                                                 |
 | Recovery copies                                   | Target a 14-day backup/PITR window; actual availability must be verified against the clinic's Supabase plan |
 
-Closing a request requires one explicit disposition:
+Closing a request requires one explicit disposition. Staff choose it in
+front-desk language; the application has no connection to any FDHS system, so
+the handoff is always a person entering the appointment there:
 
-- **Did not become an appointment** starts the 180-day clock.
-- **Transferred to the FDHS record** confirms the handoff and starts the
+- **Finished — no appointment booked** (`unconverted`) starts the 180-day clock.
+- **Finished — appointment booked** (`converted`) records that a staff member
+  put the appointment into the practice's scheduling system, so the
+  authoritative record now exists outside this application. It starts the
   12-month clock.
 
 Reopening a request clears its closure classification and clock. Closed rows
