@@ -118,7 +118,11 @@ GitHub `main` has strict branch protection requiring current-branch `quality`, `
 policy still requires every path-triggered disposable integration job on the exact head even when
 that job is not a repository-setting requirement.
 
-## Known current reconciliation items (2026-07-25)
+## Standing content and custody constraints
+
+These are durable constraints, not status. Release progress, acceptance state, and open work live
+in the issue tracker; do not restate them here, because a stale claim in this file misleads every
+agent that reads it.
 
 - The canonical patient origin is the apex `https://westchasegi.com`; `www` redirects to it.
   Keep `site.url` and generated canonical/OG/hreflang/sitemap/robots output on the apex. Do not
@@ -130,42 +134,29 @@ that job is not a repository-setting requirement.
   and Resend account/team custody are not evidenced as complete. The Resend domain and Production
   application sender are configured, but that is not account custody. Keep the Website page's
   explicit custody split accurate until the practice-controlled handoff is documented.
-- Development and Production are current through lifecycle migration `20260725170000`.
-  Development passed apply, transactional lifecycle smoke, portal workflow, exact rollback,
-  migration-ledger repair, and clean reapplication. Production passed the count-only cap
-  preflight, migration-ledger/RLS/ACL/RPC assertions, and a zero-deletable-row lifecycle preview;
-  its three pre-policy closed requests remain deliberately unclassified. No lifecycle Cron job
-  exists, and no retention deletion has run.
-- The GitHub repository homepage still points at dead `new-westchase-gi.vercel.app`; the intended
-  homepage is `https://westchasegi.com`.
-- PR #72's behavior-bearing release `d318300` is deployed and independently accepted in
-  Production. The former standalone flyer repository and Vercel project are retired; admin,
-  non-admin, and anonymous acceptance of the integrated printer and protected assets passed.
 
 ## Verification
 
-- `npm run build`, `npm run lint`, and `npm run doctor` must execute; the local React Doctor
-  standard is 100. The GitHub React Doctor status is required by branch settings, but a green
-  check proves execution rather than a clean score—inspect its report. The dependency controller
-  separately rejects auto-merge when an exact-head PR scan reports errors.
-- `npx playwright test` must pass (see README §Tests; specs run against a development
-  Supabase project via `.env.local`).
+- `docs/SOURCE-MAP.md` maps each kind of change to the files it touches and the checks that cover
+  it, and separates the checks that need credentials from the ones that do not. Start there in an
+  unfamiliar area.
+- The no-credential set is exactly the CI `quality` job: `npm run test:e2e-guard`,
+  `npm run test:unit`, `npm run lint`, `npm run build` with placeholder Supabase values, and the
+  `PLAYWRIGHT_PUBLIC_SMOKE=1` smoke run. It needs no `.env.local`, so it is the whole verification
+  surface available to an agent working without secrets.
+- `npm run doctor` must execute; the standard for repository source is a clean 100. The GitHub
+  React Doctor status is required by branch settings, but a green check proves execution rather
+  than a clean score—inspect its report. The dependency controller separately rejects auto-merge
+  when an exact-head PR scan reports errors.
+- A local React Doctor score is not comparable to the CI score. CI scans a clean checkout; a local
+  scan also reads untracked build output such as `.next/` and `.next-e2e/`, whose bundled
+  third-party sourcemaps trip the artifact-secret rule and can drag the score far below 100. Read
+  the path on every finding before acting: a hit inside a build directory or `node_modules` is
+  local noise, not a repository defect, and must never be "fixed" by editing generated files.
+- `npx playwright test` must pass before shipping a behavior change; it runs against a development
+  Supabase project via `.env.local` (see README §Tests). Never describe it as passing when it did
+  not run.
 - `node scripts/verify-no-secrets.mjs` proves the history stays free of secret material;
   `scripts/verify-schema.mjs --target dev|prod` checks schema/RLS/seed state.
 - External links: only ship URLs verified live (see README's link table); anything unverified
   stays out.
-
-<!-- OPENWIKI:START -->
-
-## OpenWiki
-
-This repository keeps generated OpenWiki code documentation. Start with
-`openwiki/quickstart.md`, then follow its links to architecture, workflows,
-domain concepts, operations, integrations, testing guidance, and source maps.
-
-OpenWiki refresh is manual: no scheduled workflow is committed or enabled.
-Follow the pinned procedure in `openwiki/operations-and-governance.md`, regenerate
-from a clean branch based on current `main`, and review every output against the
-authoritative source before merging it through the normal protected PR path.
-
-<!-- OPENWIKI:END -->
