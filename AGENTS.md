@@ -173,3 +173,32 @@ acting on it. Never hand-edit a vendored skill; re-copy it from upstream.
   `scripts/verify-schema.mjs --target dev|prod` checks schema/RLS/seed state.
 - External links: only ship URLs verified live (see README's link table); anything unverified
   stays out.
+
+### Codex Cloud containers
+
+A Codex Cloud container is not the CI runner, and the difference decides which checks can prove
+anything. `.github/codex/setup.sh` is its setup script: it pins Node 22, installs from the
+lockfile, fetches Chromium, and runs one build. Network access exists during setup and is
+withdrawn for the agent phase, so anything not downloaded in setup is unreachable afterwards.
+
+The Node version is declared in `.nvmrc` and installed by that script. Do not move it into
+`engines.node`: Vercel reads that field, resolves a range to the highest matching major, and would
+silently take Production off the version chosen in Project Settings. Keep runtime selection for
+the deployed site a deliberate Vercel decision, separate from container tooling.
+
+Runnable there: `npm run lint`, `npm run test:unit`, `npm run test:e2e-guard`, `npm run build`,
+and the `PLAYWRIGHT_PUBLIC_SMOKE=1` smoke run, which boots a local server on port 3100 rather
+than calling an external host. `npm run doctor` also runs; when its remote score API is
+unreachable the local scan still reports, and the missing score is an environment limit rather
+than a finding.
+
+The setup script also installs the Supabase CLI, but only for authoring: `migration new`,
+`db diff`, `gen types`, and config inspection. `supabase start` cannot work in that container. The
+sandbox blocks the Docker daemon at the kernel level, so the disposable stack is a CI-only
+capability no environment setting can grant.
+
+Not runnable there: `e2e/supabase-dependency-contract.spec.ts`, `scripts/verify-schema.mjs`, and
+the credentialed `npx playwright test` run, all of which need either Docker or hosted database
+credentials. Report them as not run instead of installing a way around them. The GitHub-hosted job
+is the authority, and the no-production-database boundary holds regardless of which container an
+agent happens to be in.
