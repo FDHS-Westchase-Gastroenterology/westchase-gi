@@ -347,9 +347,10 @@ sources: [HHS retention FAQ](https://www.hhs.gov/hipaa/for-professionals/faq/580
 
 ## Review-flyer printing
 
-Administrators open **Print review flyers** from the portal home page (it is also linked from
-Settings → Website). The page supports one flyer at a time, all six flyers, and protected PDF,
-SVG, and PNG downloads. Non-admin staff do not see the task and cannot fetch its files directly.
+Any active staff member opens **Print review flyers** from the portal home page (it is also linked
+from Settings → Website). The page supports one flyer at a time, all six flyers, and protected PDF,
+SVG, and PNG downloads. Both the page and its asset route require an authenticated staff session
+(`requireRole("staff")`); anonymous visitors get nothing.
 
 The 18 approved binaries live in `private/review-flyers/`; `src/lib/review-targets.json` is the
 single manifest for destinations, filenames, and pinned hashes. Never move these files to

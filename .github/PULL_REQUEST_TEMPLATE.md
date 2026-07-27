@@ -4,24 +4,45 @@
 
 ## Scope
 
-<!-- Routes, components, locales, content areas, or config touched. Link parity or strategy docs when relevant. -->
+<!-- Routes, components, locales, content areas, or config touched. docs/SOURCE-MAP.md lists what
+each kind of change usually touches. Link parity or strategy docs when relevant. -->
 
-## Verification evidence
+## Verification
 
-<!-- Commands run, CI links, manual checks. For UI changes, note viewport/locale coverage. -->
+These need no credentials and mirror the required CI checks. Run all of them:
+
+- [ ] `npm run test:unit`
+- [ ] `npm run test:e2e-guard`
+- [ ] `npm run lint`
+- [ ] `npm run build`
+- [ ] `npm run doctor` — local React Doctor standard is 100; inspect the report, not just the status
+- [ ] `PLAYWRIGHT_PUBLIC_SMOKE=1 npx playwright test e2e/smoke.spec.ts --project=chromium`
+
+These need a development Supabase project via `.env.local`. State the real outcome — "not run" is
+an acceptable answer, silently implying a pass is not:
+
+- [ ] `npx playwright test` — passed / not run:
+- [ ] `node scripts/verify-schema.mjs --target dev` — required when migrations changed; N/A:
+
+<!-- Paste command output, CI links, or manual checks that back the boxes above. -->
 
 ## UI screenshots
 
-<!-- Required for visible changes. Before/after or annotated captures. N/A for non-UI work — say so explicitly. -->
+<!-- Required for visible changes. Before/after or annotated captures, with viewport and locale
+coverage noted. Refresh docs/ui-reference/ images when a covered surface changed. N/A for non-UI
+work — say so explicitly. -->
 
 ## Medical / content provenance
 
-<!-- When copy, credentials, hours, prep instructions, or compliance-sensitive text changes: cite the source (meeting decision, client-provided asset, recon evidence). N/A otherwise. -->
+<!-- When copy, credentials, hours, prep instructions, or compliance-sensitive text changes: cite
+the source (meeting decision, client-provided asset, recon evidence). Provider credentials are
+verbatim; see AGENTS.md hard rule 1. N/A otherwise. -->
 
 ## Risk / rollback
 
-<!-- What could break, how to detect it, and the rollback path (revert commit, redeploy prior Vercel deployment, etc.). -->
+<!-- What could break, how to detect it, and the rollback path (revert commit, redeploy prior
+Vercel deployment, rollback migration in supabase/rollbacks/). -->
 
 ## Deployment impact
 
-<!-- Does this merge to `main` trigger production? Any DNS, env, or Vercel config follow-up? -->
+<!-- Does this merge to `main` trigger production? Any migration, env, DNS, or Vercel follow-up? -->

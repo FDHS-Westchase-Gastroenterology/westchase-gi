@@ -49,8 +49,8 @@ new-request status, and the portal's jobs in plain language — then work: a req
 `/admin/requests` with triage lifecycle (new → contacted → scheduled → closed) and attributed
 notes, notification-recipient management, staff account management with emailed single-use setup
 links, an audit log of every mutation, CSV export, a plain-English help page, a Website custody
-surface with live server-side GitHub status, and an administrator-only review-flyer printer
-(reached from Home and the Website page — occasional tasks do not hold permanent tabs).
+surface with live server-side GitHub status, and a review-flyer printer open to every active staff
+member (reached from Home and the Website page — occasional tasks do not hold permanent tabs).
 Westchase GI is the one managed product; the portal and printer are capabilities of the same
 application and canonical repository. The printer serves its approved PDF, SVG, and PNG
 artifacts through the same server-enforced portal boundary; no flyer download lives in `public/`
@@ -107,6 +107,9 @@ Content lives in `src/lib/` (site facts, dictionaries, providers, services, docu
 resources, testimonials). Pages in `src/app/[locale]/` render all five locales from one
 codebase; the portal lives in `src/app/admin/`.
 
+[`docs/SOURCE-MAP.md`](docs/SOURCE-MAP.md) maps each kind of change to the files it touches and
+the checks that cover it, including which checks run without any credentials.
+
 The checked-in [UI reference](docs/ui-reference/README.md) is the fast visual baseline for
 frontend work. Its refresh instructions distinguish the live baseline from a local or Preview
 change under review.
@@ -115,6 +118,7 @@ change under review.
 
 ```bash
 npx playwright install chromium   # once
+npm run test:unit                  # portal unit tests; no server/DB
 npm run test:e2e-guard             # pure guard regression matrix; no server/DB
 npx playwright test               # full serial E2E suite (boots its own server on :3100)
 npx playwright test e2e/smoke.spec.ts   # focused file
@@ -154,28 +158,17 @@ and representative PostgREST persistence and relationship reads.
 3. Done: the row (and, for disease sheets, the education page's take-home box) switches
    to a download link in all five languages.
 
-## Known current reconciliation follow-ups
-
-These are known mismatches, not intended product behavior:
+## Known content mismatch
 
 - Some patient-facing procedure-prep, blog, and education availability copy still says “English
   and Spanish” even though those pages exist in all five locales. External Hushforms packets are
   genuinely EN/ES-only; clinical-care language claims need practice confirmation before editing.
-- The GitHub repository homepage still points to the retired
-  `new-westchase-gi.vercel.app` deployment instead of the live apex.
-- PR #72's behavior-bearing release `d318300` is deployed and independently accepted in
-  Production. Strict `main` protection now requires current-branch `quality`, `react-doctor`,
-  and `Vercel` statuses plus resolved conversations; force pushes and deletion are blocked.
-- Development and Production schema parity through lifecycle migration `20260725170000` was
-  verified on 2026-07-25. Development passed exact rollback and reapplication; Production passed
-  cap, migration-ledger, constraint, RLS, privilege, RPC, and count-only preview checks. No
-  lifecycle Cron job exists, no retention deletion has run, and the three pre-policy closed
-  requests remain unclassified. The former standalone flyer repository and Vercel project are
-  retired; authenticated admin/non-admin acceptance of the integrated printer passed at
-  `d318300`. Clinic-approved email canaries and hosted-Auth sender work remain open. GitHub issue
-  [#24](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/24) is the canonical
-  full Production workflow checklist; current operational detail lives in
-  `docs/PORTAL-OPS.md` and `docs/INTEGRATION-ACTIVATION.md`.
+
+Release progress, deployment acceptance, and open operational work are not duplicated here,
+because a stale status line in the README misleads everyone who reads it first. GitHub issue
+[#24](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/24) is the canonical
+Production workflow checklist, and current operational detail lives in `docs/PORTAL-OPS.md` and
+`docs/INTEGRATION-ACTIVATION.md`.
 
 ## Pending practice confirmations
 
