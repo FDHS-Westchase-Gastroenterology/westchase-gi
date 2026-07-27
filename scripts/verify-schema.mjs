@@ -35,6 +35,8 @@ const RPC_SIGNATURES = {
   portal_set_request_legal_hold:
     "p_actor_email text, p_request_id uuid, p_held boolean, p_reason text",
   portal_set_staff_tour_dismissed: "p_user_id uuid, p_dismissed boolean",
+  portal_update_recipient_label:
+    "p_actor_email text, p_recipient_id uuid, p_label text",
   portal_update_request_status:
     "p_actor_email text, p_request_id uuid, p_next_status text",
 }
@@ -78,7 +80,21 @@ const RPC_RESULTS = {
   portal_run_data_lifecycle: "jsonb",
   portal_set_request_legal_hold: "boolean",
   portal_set_staff_tour_dismissed: "boolean",
+  portal_update_recipient_label: "boolean",
   portal_update_request_status: "boolean",
+}
+const AUDIT_RPC_SOURCES = {
+  portal_add_request_note: "staff",
+  portal_close_request: "staff",
+  portal_complete_staff_onboarding: "staff",
+  portal_delete_request_early: "staff",
+  portal_log_call_outcome: "staff",
+  portal_record_staff_password_reset: "staff",
+  portal_run_data_lifecycle: "system",
+  portal_set_request_legal_hold: "staff",
+  portal_set_staff_tour_dismissed: "staff",
+  portal_update_recipient_label: "staff",
+  portal_update_request_status: "staff",
 }
 const PHASE_C_MIGRATION = {
   version: "20260714224219",
@@ -115,6 +131,10 @@ const DATA_LIFECYCLE_MIGRATION = {
 const CALL_OUTCOME_MIGRATION = {
   version: "20260727013641",
   name: "add_atomic_call_outcome",
+}
+const AUDIT_PROVENANCE_MIGRATION = {
+  version: "20260727070521",
+  name: "add_audit_provenance_and_recipient_label_update",
 }
 
 const TARGETS = new Set(["dev", "prod"])
@@ -532,6 +552,14 @@ async function main() {
     ),
     `Call-outcome migration ${CALL_OUTCOME_MIGRATION.version}_${CALL_OUTCOME_MIGRATION.name} is not applied`,
   )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === AUDIT_PROVENANCE_MIGRATION.version &&
+        row.name === AUDIT_PROVENANCE_MIGRATION.name,
+    ),
+    `Audit-provenance migration ${AUDIT_PROVENANCE_MIGRATION.version}_${AUDIT_PROVENANCE_MIGRATION.name} is not applied`,
+  )
 
   const onboardingColumnRows = await queryDatabase({
     accessToken,
@@ -641,6 +669,54 @@ async function main() {
         (row) => row.is_nullable === "YES" && row.column_default === null,
       ),
     "Request lifecycle columns are missing or unexpectedly non-null/defaulted",
+  )
+
+  const auditProvenanceColumnRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select column_name, data_type, is_nullable, column_default
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'audit_log'
+        and column_name in ('source', 'correlation_id')
+      order by column_name;
+    `,
+  })
+  assert(
+    sameValues(
+      auditProvenanceColumnRows.map((row) => row.column_name),
+      ["correlation_id", "source"],
+    ) &&
+      auditProvenanceColumnRows.every(
+        (row) => row.is_nullable === "YES" && row.column_default === null,
+      ) &&
+      auditProvenanceColumnRows.find(
+        (row) => row.column_name === "correlation_id",
+      )?.data_type === "uuid" &&
+      auditProvenanceColumnRows.find((row) => row.column_name === "source")
+        ?.data_type === "text",
+    "Audit provenance columns must be nullable uuid/text with no defaults",
+  )
+
+  const auditSourceConstraintRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select pg_catalog.pg_get_constraintdef(oid) as definition
+      from pg_catalog.pg_constraint
+      where conrelid = 'public.audit_log'::pg_catalog.regclass
+        and conname = 'audit_log_source_valid';
+    `,
+  })
+  const auditSourceConstraint =
+    auditSourceConstraintRows[0]?.definition?.toLowerCase() ?? ""
+  assert(
+    auditSourceConstraintRows.length === 1 &&
+      auditSourceConstraint.includes("'staff'") &&
+      auditSourceConstraint.includes("'system'") &&
+      auditSourceConstraint.includes("'acceptance'"),
+    "audit_log.source must allow only staff, system, acceptance, or null",
   )
 
   const requestConstraintRows = await queryDatabase({
@@ -844,6 +920,24 @@ async function main() {
       `${rpc.proname} is executable by authenticated`,
     )
     assert(rpc.service_execute, `${rpc.proname} is not executable by service_role`)
+    const auditSource = AUDIT_RPC_SOURCES[rpc.proname]
+    if (auditSource) {
+      const definition = rpc.definition.toLowerCase()
+      const auditWrites =
+        definition.match(/insert into public\.audit_log/g)?.length ?? 0
+      const sourceColumns = definition.match(/\bsource\s*,/g)?.length ?? 0
+      const correlationColumns =
+        definition.match(/\bcorrelation_id\s*,/g)?.length ?? 0
+      const sourceValues =
+        definition.match(new RegExp(`'${auditSource}'`, "g"))?.length ?? 0
+      assert(
+        auditWrites > 0 &&
+          sourceColumns === auditWrites &&
+          correlationColumns === auditWrites &&
+          sourceValues >= auditWrites,
+        `${rpc.proname} must classify every audit as ${auditSource} with one operation correlation id`,
+      )
+    }
     if (rpc.proname === "portal_record_staff_password_reset") {
       assert(
         rpc.definition.toLowerCase().includes("for update"),
@@ -868,6 +962,16 @@ async function main() {
           definition.includes("'wont_schedule'") &&
           definition.includes("'not_actionable'"),
         "portal_log_call_outcome must lock the request, audit once, and preserve the six-outcome vocabulary",
+      )
+    }
+    if (rpc.proname === "portal_update_recipient_label") {
+      const definition = rpc.definition.toLowerCase()
+      assert(
+        definition.includes("for update") &&
+          definition.includes("recipients.label_update") &&
+          definition.includes("char_length") &&
+          definition.includes("btrim"),
+        "portal_update_recipient_label must lock, trim, cap, and audit the label change",
       )
     }
     if (rpc.proname === "portal_run_data_lifecycle") {
@@ -998,6 +1102,9 @@ async function main() {
     `Verified ${target} migration: ${CALL_OUTCOME_MIGRATION.version}_${CALL_OUTCOME_MIGRATION.name}`,
   )
   console.log(
+    `Verified ${target} migration: ${AUDIT_PROVENANCE_MIGRATION.version}_${AUDIT_PROVENANCE_MIGRATION.name}`,
+  )
+  console.log(
     `Verified ${target} request lifecycle: nullable legacy-safe columns, constraints, preview, hold-aware deletion`,
   )
   console.log(
@@ -1008,6 +1115,9 @@ async function main() {
   )
   console.log(
     `Verified ${target} staff_profiles.portal_tour_dismissed_at: nullable timestamptz, no default`,
+  )
+  console.log(
+    `Verified ${target} audit provenance: nullable historical columns, constrained source vocabulary, correlated classified writes`,
   )
   console.log(
     `Verified ${target} policies=${actualPolicies.length}, least-privilege table ACLs=${privilegeRows.length}`,

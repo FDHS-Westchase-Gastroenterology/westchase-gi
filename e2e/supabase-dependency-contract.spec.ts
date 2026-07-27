@@ -106,6 +106,13 @@ test.describe("Supabase dependency contract", () => {
         p_outcome: "no_answer",
       }),
     );
+    expectPermissionDenied(
+      await anon.rpc("portal_update_recipient_label", {
+        p_actor_email: "anon@example.test",
+        p_recipient_id: randomUUID(),
+        p_label: "Blocked",
+      }),
+    );
 
     const authenticated = publicClient();
     const signIn = await authenticated.auth.signInWithPassword({
@@ -144,6 +151,13 @@ test.describe("Supabase dependency contract", () => {
           p_actor_email: SEED_EMAIL,
           p_request_id: randomUUID(),
           p_outcome: "no_answer",
+        }),
+      );
+      expectPermissionDenied(
+        await authenticated.rpc("portal_update_recipient_label", {
+          p_actor_email: SEED_EMAIL,
+          p_recipient_id: randomUUID(),
+          p_label: "Blocked",
         }),
       );
 
@@ -253,6 +267,119 @@ test.describe("Supabase dependency contract", () => {
     );
     expect(claims.filter(Boolean)).toHaveLength(INTAKE_RATE_LIMIT.limit);
     expect(claims.filter((allowed) => !allowed)).toHaveLength(3);
+  });
+
+  test("updates recipient labels in place with one classified audit per change", async () => {
+    const db = serviceDb();
+    const recipientId = randomUUID();
+    const actor = `recipient-label-${randomUUID()}@example.test`;
+    const email = `recipient-label-${randomUUID()}@example.test`;
+    const inserted = await db
+      .from("notification_recipients")
+      .insert({
+        id: recipientId,
+        email,
+        label: "Before",
+        active: false,
+      })
+      .select("email, label, active, created_at, updated_at")
+      .single();
+    expect(inserted.error).toBeNull();
+    if (!inserted.data) throw new Error("Recipient label fixture was not created");
+
+    try {
+      const changed = await db.rpc("portal_update_recipient_label", {
+        p_actor_email: actor,
+        p_recipient_id: recipientId,
+        p_label: "  After  ",
+      });
+      expect(changed.error).toBeNull();
+      expect(changed.data).toBe(true);
+
+      const updated = await db
+        .from("notification_recipients")
+        .select("email, label, active, created_at, updated_at")
+        .eq("id", recipientId)
+        .single();
+      expect(updated.error).toBeNull();
+      expect(updated.data).toMatchObject({
+        email: inserted.data.email,
+        label: "After",
+        active: inserted.data.active,
+        created_at: inserted.data.created_at,
+      });
+      expect(updated.data?.updated_at).not.toBe(inserted.data.updated_at);
+
+      const firstAudits = await db
+        .from("audit_log")
+        .select("action, source, correlation_id, detail")
+        .eq("entity_id", recipientId);
+      expect(firstAudits.error).toBeNull();
+      expect(firstAudits.data).toHaveLength(1);
+      expect(firstAudits.data?.[0]).toMatchObject({
+        action: "recipients.label_update",
+        source: "staff",
+        detail: { from: "Before", to: "After" },
+      });
+      expect(firstAudits.data?.[0].correlation_id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
+
+      for (const invalidLabel of ["   ", "L".repeat(121)]) {
+        const rejected = await db.rpc("portal_update_recipient_label", {
+          p_actor_email: actor,
+          p_recipient_id: recipientId,
+          p_label: invalidLabel,
+        });
+        expect(rejected.error?.code).toBe("22023");
+      }
+      expect(
+        (
+          await db
+            .from("notification_recipients")
+            .select("label")
+            .eq("id", recipientId)
+            .single()
+        ).data?.label,
+      ).toBe("After");
+      expect(
+        (await db.from("audit_log").select("id").eq("entity_id", recipientId))
+          .data,
+      ).toHaveLength(1);
+
+      const cleared = await db.rpc("portal_update_recipient_label", {
+        p_actor_email: actor,
+        p_recipient_id: recipientId,
+        p_label: null,
+      });
+      expect(cleared.error).toBeNull();
+      expect(cleared.data).toBe(true);
+      expect(
+        (
+          await db
+            .from("notification_recipients")
+            .select("label")
+            .eq("id", recipientId)
+            .single()
+        ).data?.label,
+      ).toBeNull();
+      const finalAudits = await db
+        .from("audit_log")
+        .select("source, correlation_id, detail")
+        .eq("entity_id", recipientId)
+        .order("at");
+      expect(finalAudits.data).toHaveLength(2);
+      expect(finalAudits.data?.[1]).toMatchObject({
+        source: "staff",
+        detail: { from: "After", to: null },
+      });
+      expect(finalAudits.data?.[1].correlation_id).not.toBe(
+        finalAudits.data?.[0].correlation_id,
+      );
+    } finally {
+      await db.from("audit_log").delete().eq("entity_id", recipientId);
+      await db.from("notification_recipients").delete().eq("id", recipientId);
+    }
   });
 
   test("records all six call outcomes atomically with one audit row", async () => {
@@ -394,12 +521,13 @@ test.describe("Supabase dependency contract", () => {
 
         const audits = await db
           .from("audit_log")
-          .select("action, detail")
+          .select("action, source, correlation_id, detail")
           .eq("entity_id", requestId);
         expect(audits.error).toBeNull();
         expect(audits.data).toHaveLength(1);
         expect(audits.data?.[0]).toMatchObject({
           action: "request.call_outcome",
+          source: "staff",
           detail: {
             outcome: item.outcome,
             to: item.status,
@@ -407,6 +535,9 @@ test.describe("Supabase dependency contract", () => {
             ...(item.note ? { note_length: item.note.length } : {}),
           },
         });
+        expect(audits.data?.[0].correlation_id).toMatch(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+        );
         expect(
           typeof audits.data?.[0].detail?.follow_up_at === "string"
             ? new Date(audits.data[0].detail.follow_up_at).toISOString()
