@@ -96,7 +96,7 @@ test.describe("disposable-local request lifecycle", () => {
     await db.from("audit_log").delete().eq("actor_email", lifecycleActor);
   });
 
-  test("staff classifies closure and admins control legal holds", async ({
+  test("staff classifies closure from the request detail page", async ({
     page,
   }) => {
     const id = await stageRequest("workflow");
@@ -155,12 +155,6 @@ test.describe("disposable-local request lifecycle", () => {
       "12-month clock started",
     );
 
-    await page.getByLabel("Hold reason or case reference").fill("CASE-204");
-    await page.getByRole("button", { name: "Place legal hold" }).click();
-    await expect(page.getByTestId("legal-hold-summary")).toContainText(
-      "CASE-204",
-    );
-
     row = await db
       .from("requests")
       .select(
@@ -170,29 +164,17 @@ test.describe("disposable-local request lifecycle", () => {
       .single();
     expect(row.data?.closure_disposition).toBe("converted");
     expect(row.data?.record_handoff_at).toBeTruthy();
-    expect(row.data?.retention_hold_at).toBeTruthy();
-
-    await page
-      .getByLabel("Release reason or case reference")
-      .fill("CASE-204-RELEASE");
-    await page.getByRole("button", { name: "Release legal hold" }).click();
-    await expect(page.getByTestId("legal-hold-summary")).toHaveCount(0);
+    expect(row.data?.retention_hold_at).toBeNull();
 
     const audits = await db
       .from("audit_log")
       .select("action")
       .eq("entity_id", id)
-      .in("action", [
-        "request.close",
-        "request.legal_hold_place",
-        "request.legal_hold_release",
-      ]);
+      .in("action", ["request.close"]);
     expect(audits.error).toBeNull();
-    expect((audits.data ?? []).map(({ action }) => action).sort()).toEqual([
+    expect((audits.data ?? []).map(({ action }) => action)).toEqual([
       "request.close",
       "request.close",
-      "request.legal_hold_place",
-      "request.legal_hold_release",
     ]);
 
     await db.from("requests").delete().eq("id", id);

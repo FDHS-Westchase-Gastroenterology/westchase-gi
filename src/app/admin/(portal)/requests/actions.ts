@@ -87,36 +87,6 @@ export async function closeRequest(
   if (changed) revalidateRequestViews(requestId);
 }
 
-export async function setRequestLegalHold(
-  requestId: string,
-  held: boolean,
-  formData: FormData,
-): Promise<void> {
-  const session = await requireRole("admin");
-  const rawReason = formData.get("reason");
-  const reason = typeof rawReason === "string" ? rawReason.trim() : "";
-  if (!reason || reason.length > 200) {
-    throw new Error("A 1-200 character legal-hold reason is required");
-  }
-
-  const { data: changed, error } = await serviceClient().rpc(
-    "portal_set_request_legal_hold",
-    {
-      p_actor_email: session.email,
-      p_request_id: requestId,
-      p_held: held,
-      p_reason: reason,
-    },
-  );
-  if (error) {
-    if (error.code === "P0002" || error.code === "22P02") {
-      throw new Error("Request not found");
-    }
-    throw new Error(`Legal hold update failed: ${error.code}`);
-  }
-  if (changed) revalidateRequestViews(requestId);
-}
-
 export async function addRequestNote(
   requestId: string,
   formData: FormData,
