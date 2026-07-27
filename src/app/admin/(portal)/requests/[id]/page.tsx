@@ -16,12 +16,7 @@ import {
   STATUS_LABELS,
   TIME_LABELS,
 } from "../format";
-import {
-  addRequestNote,
-  closeRequest,
-  setRequestLegalHold,
-  updateRequestStatus,
-} from "../actions";
+import { addRequestNote, closeRequest, updateRequestStatus } from "../actions";
 
 type RequestRow = {
   id: string;
@@ -37,8 +32,6 @@ type RequestRow = {
   closure_disposition: RequestClosureDisposition | null;
   closed_at: string | null;
   record_handoff_at: string | null;
-  retention_hold_at: string | null;
-  retention_hold_reason: string | null;
   created_at: string;
 };
 
@@ -68,7 +61,7 @@ export default async function RequestDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await requireRole("staff");
+  await requireRole("staff");
   const { id } = await params;
 
   const db = serviceClient();
@@ -77,7 +70,7 @@ export default async function RequestDetailPage({
       db
         .from("requests")
         .select(
-          "id, name, phone, email, location, preferred_time, message, locale, source_path, status, closure_disposition, closed_at, record_handoff_at, retention_hold_at, retention_hold_reason, created_at",
+          "id, name, phone, email, location, preferred_time, message, locale, source_path, status, closure_disposition, closed_at, record_handoff_at, created_at",
         )
         .eq("id", id)
         .maybeSingle(),
@@ -164,14 +157,7 @@ export default async function RequestDetailPage({
         >
           {row.name}
         </h1>
-        <div className="flex flex-wrap items-center gap-2">
-          {row.retention_hold_at && (
-            <span className="rounded-full border border-[var(--color-amber-deep)] bg-[var(--color-amber-soft)] px-3 py-1 text-[0.78rem] font-black uppercase tracking-[0.05em] text-[var(--color-ink)]">
-              Legal hold
-            </span>
-          )}
-          <StatusBadge status={row.status} />
-        </div>
+        <StatusBadge status={row.status} />
       </div>
 
       <div className="mt-7 grid items-start gap-6 lg:grid-cols-[1.5fr_1fr]">
@@ -354,61 +340,6 @@ export default async function RequestDetailPage({
               </div>
             </div>
           </div>
-
-          {session.role === "admin" && (
-            <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
-              <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
-                Legal hold
-              </h2>
-              <p className="mt-1.5 text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
-                A hold blocks scheduled and exceptional deletion. Use a case
-                reference or a short reason without patient details.
-              </p>
-              {row.retention_hold_at && (
-                <p
-                  data-testid="legal-hold-summary"
-                  className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-3 py-2 text-[0.85rem] text-[var(--color-ink)]"
-                >
-                  Active since {formatReceived(row.retention_hold_at, true)}:{" "}
-                  {row.retention_hold_reason}
-                </p>
-              )}
-              <form
-                action={setRequestLegalHold.bind(
-                  null,
-                  row.id,
-                  !row.retention_hold_at,
-                )}
-                className="mt-4"
-              >
-                <label
-                  htmlFor="hold-reason"
-                  className="block text-sm font-bold text-[var(--color-ink)]"
-                >
-                  {row.retention_hold_at
-                    ? "Release reason or case reference"
-                    : "Hold reason or case reference"}
-                </label>
-                <input
-                  id="hold-reason"
-                  name="reason"
-                  required
-                  maxLength={200}
-                  className="mt-2 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 py-3 text-[0.95rem] text-[var(--color-ink)] outline-none focus:border-[var(--color-teal-ink)]"
-                />
-                <button
-                  type="submit"
-                  className={`btn mt-3 ${
-                    row.retention_hold_at ? "btn-outline" : "btn-navy"
-                  }`}
-                >
-                  {row.retention_hold_at
-                    ? "Release legal hold"
-                    : "Place legal hold"}
-                </button>
-              </form>
-            </div>
-          )}
 
           <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
             <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">

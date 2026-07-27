@@ -274,11 +274,12 @@ not retained by the application; a downloaded export becomes a
 clinic-controlled sensitive copy and follows clinic handling and disposal
 rules.
 
-A legal hold blocks both scheduled deletion and exceptional early deletion.
-Only portal administrators can place or release a hold, each action requires a
-short non-patient reason or case reference, and the change is audited. Routine
-expiry is authorized by this approved policy. Exceptional early deletion has
-no self-serve UI: a database operator may call
+A legal hold blocks both scheduled deletion and exceptional early deletion. It
+has no self-serve UI: a database operator places or releases a hold by calling
+`portal_set_request_legal_hold` with a short non-patient reason or case
+reference, and the change is audited. Routine expiry is authorized by this
+approved policy. Exceptional early deletion is likewise operator-only: a
+database operator may call
 `portal_delete_request_early` only after receiving a non-PHI authorization
 reference from the designated privacy/records custodian. The function refuses
 held requests and atomically writes a minimized audit row before deleting the
