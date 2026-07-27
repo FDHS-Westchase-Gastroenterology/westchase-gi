@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChevronDown } from "@/components/icons";
 import {
   isMailbox,
   REQUEST_STATUSES,
@@ -281,65 +282,103 @@ export default async function RequestDetailPage({
                   </form>
                 );
               })}
-            </div>
-            <div className="mt-5 border-t border-[var(--color-line)] pt-5">
-              <h3 className="text-[0.8rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
-                Finish this request
-              </h3>
-              <p className="mt-2 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
-                Finish it when nobody needs to call this patient again. It
-                leaves the active queue; reopen it any time by choosing a
-                status above.
-              </p>
-              {row.status === "closed" && !row.closure_disposition && (
-                <p
-                  data-testid="legacy-lifecycle-warning"
-                  className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-3 py-2 text-[0.85rem] font-bold text-[var(--color-ink)]"
+              <details
+                open={row.status === "closed"}
+                data-testid="closed-status-control"
+                className="group overflow-hidden rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white open:border-[var(--color-navy)]"
+              >
+                <summary
+                  data-status-action="closed"
+                  className={`flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 text-[0.95rem] font-bold transition-colors marker:hidden [&::-webkit-details-marker]:hidden ${
+                    row.status === "closed"
+                      ? "bg-[var(--color-navy)] text-[var(--color-on-dark)]"
+                      : "text-[var(--color-body)] hover:bg-[var(--color-mint)]"
+                  }`}
                 >
-                  Closed before outcomes were recorded. Choose one below if you
-                  know how it ended.
-                </p>
-              )}
-              {row.closure_disposition && row.closed_at && (
-                <p
-                  data-testid="request-lifecycle-summary"
-                  className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-3 py-2 text-[0.85rem] text-[var(--color-ink)]"
-                >
-                  Finished {formatReceived(row.closed_at, true)} —{" "}
-                  {row.closure_disposition === "converted"
-                    ? "appointment booked"
-                    : "no appointment booked"}
-                  .
-                </p>
-              )}
-              <div className="mt-3 grid gap-2">
-                <form action={closeRequest.bind(null, row.id, "converted")}>
-                  <button
-                    type="submit"
-                    disabled={
-                      row.status === "closed" &&
-                      row.closure_disposition === "converted"
-                    }
-                    data-close-action="converted"
-                    className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-4 text-left text-[0.9rem] font-bold text-[var(--color-body)] hover:border-[var(--color-navy)] disabled:cursor-default disabled:border-[var(--color-navy)] disabled:bg-[var(--color-navy)] disabled:text-[var(--color-on-dark)]"
-                  >
-                    Finished — appointment booked
-                  </button>
-                </form>
-                <form action={closeRequest.bind(null, row.id, "unconverted")}>
-                  <button
-                    type="submit"
-                    disabled={
-                      row.status === "closed" &&
-                      row.closure_disposition === "unconverted"
-                    }
-                    data-close-action="unconverted"
-                    className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-4 text-left text-[0.9rem] font-bold text-[var(--color-body)] hover:border-[var(--color-navy)] disabled:cursor-default disabled:border-[var(--color-navy)] disabled:bg-[var(--color-navy)] disabled:text-[var(--color-on-dark)]"
-                  >
-                    Finished — no appointment booked
-                  </button>
-                </form>
-              </div>
+                  <span>Closed</span>
+                  <span className="flex items-center gap-2">
+                    {row.status === "closed" && (
+                      <span className="text-[0.75rem] uppercase tracking-[0.06em]">
+                        Current
+                      </span>
+                    )}
+                    <ChevronDown
+                      aria-hidden="true"
+                      className="h-4 w-4 transition-transform group-open:rotate-180"
+                    />
+                  </span>
+                </summary>
+                <div className="border-t border-[var(--color-line)] px-3 pb-3 pt-4">
+                  <p className="text-[0.85rem] font-bold text-[var(--color-ink)]">
+                    How was this request resolved?
+                  </p>
+                  <p className="mt-1 text-[0.8rem] leading-relaxed text-[var(--color-muted)]">
+                    Closing removes it from the active queue. You can reopen it
+                    later by choosing another status.
+                  </p>
+                  {row.status === "closed" && !row.closure_disposition && (
+                    <p
+                      data-testid="legacy-lifecycle-warning"
+                      className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-3 py-2 text-[0.85rem] font-bold text-[var(--color-ink)]"
+                    >
+                      Closed before outcomes were recorded. Choose an outcome
+                      if you know how it ended.
+                    </p>
+                  )}
+                  {row.closure_disposition && row.closed_at && (
+                    <p
+                      data-testid="request-lifecycle-summary"
+                      className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-3 py-2 text-[0.85rem] text-[var(--color-ink)]"
+                    >
+                      Closed {formatReceived(row.closed_at, true)} —{" "}
+                      {row.closure_disposition === "converted"
+                        ? "appointment booked"
+                        : "no appointment booked"}
+                      .
+                    </p>
+                  )}
+                  <div className="mt-3 grid gap-2">
+                    <form action={closeRequest.bind(null, row.id, "converted")}>
+                      <button
+                        type="submit"
+                        disabled={
+                          row.status === "closed" &&
+                          row.closure_disposition === "converted"
+                        }
+                        data-close-action="converted"
+                        className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3 py-2.5 text-left text-[0.9rem] text-[var(--color-body)] hover:border-[var(--color-navy)] hover:bg-[var(--color-mint)] disabled:cursor-default disabled:border-[var(--color-navy)] disabled:bg-[var(--color-navy)] disabled:text-[var(--color-on-dark)]"
+                      >
+                        <span className="block font-bold">
+                          Appointment booked
+                        </span>
+                        <span className="mt-0.5 block text-[0.78rem] font-normal leading-snug opacity-80">
+                          The appointment is in the scheduling system.
+                        </span>
+                      </button>
+                    </form>
+                    <form
+                      action={closeRequest.bind(null, row.id, "unconverted")}
+                    >
+                      <button
+                        type="submit"
+                        disabled={
+                          row.status === "closed" &&
+                          row.closure_disposition === "unconverted"
+                        }
+                        data-close-action="unconverted"
+                        className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3 py-2.5 text-left text-[0.9rem] text-[var(--color-body)] hover:border-[var(--color-navy)] hover:bg-[var(--color-mint)] disabled:cursor-default disabled:border-[var(--color-navy)] disabled:bg-[var(--color-navy)] disabled:text-[var(--color-on-dark)]"
+                      >
+                        <span className="block font-bold">
+                          No appointment booked
+                        </span>
+                        <span className="mt-0.5 block text-[0.78rem] font-normal leading-snug opacity-80">
+                          No more follow-up is needed for this request.
+                        </span>
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              </details>
             </div>
           </div>
 

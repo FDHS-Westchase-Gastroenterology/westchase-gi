@@ -103,9 +103,14 @@ test.describe("disposable-local request lifecycle", () => {
     await signIn(page);
     await page.goto(`/admin/requests/${id}`);
 
+    await page.locator('[data-status-action="closed"]').click();
+    await expect(page.getByTestId("closed-status-control")).toHaveAttribute(
+      "open",
+      "",
+    );
     await page
       .getByRole("button", {
-        name: "Finished — no appointment booked",
+        name: /^No appointment booked/,
       })
       .click();
     await expect(page.getByTestId("request-lifecycle-summary")).toContainText(
@@ -146,9 +151,14 @@ test.describe("disposable-local request lifecycle", () => {
       record_handoff_at: null,
     });
 
+    await page.locator('[data-status-action="closed"]').click();
+    await expect(page.getByTestId("closed-status-control")).toHaveAttribute(
+      "open",
+      "",
+    );
     await page
       .getByRole("button", {
-        name: "Finished — appointment booked",
+        name: /^Appointment booked/,
       })
       .click();
     await expect(page.getByTestId("request-lifecycle-summary")).toContainText(

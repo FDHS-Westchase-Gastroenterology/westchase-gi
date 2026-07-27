@@ -73,15 +73,14 @@ export default async function AdminHelpPage() {
             keeping the New list at zero is the daily goal.
           </p>
           <p className={`${SECTION_BODY} mt-3`}>
-            Finishing a request is its own deliberate step, under{" "}
-            <strong>Finish this request</strong> on the request page. Choose{" "}
-            <strong>Finished — appointment booked</strong> once you have put
-            the appointment into the practice&apos;s scheduling system, or{" "}
-            <strong>Finished — no appointment booked</strong> when the request
-            needs no more work — the patient went elsewhere, never called back,
-            or it was a duplicate. Finishing takes the request off the active
-            queue, so a scheduled request is not done until you finish it.
-            Reopen one any time by choosing a status again.
+            <strong>Closed</strong> is in the same status list. Choose it when
+            nobody needs to call the patient again, then record whether an{" "}
+            <strong>Appointment was booked</strong> or{" "}
+            <strong>No appointment was booked</strong>. The first option means
+            you have put the appointment into the practice&apos;s scheduling
+            system; the second covers requests that need no more follow-up.
+            Closing takes the request off the active queue. Reopen it any time
+            by choosing New, Contacted, or Scheduled.
           </p>
         </div>
 

@@ -261,10 +261,11 @@ Closing a request requires one explicit disposition. Staff choose it in
 front-desk language; the application has no connection to any FDHS system, so
 the handoff is always a person entering the appointment there:
 
-- **Finished — no appointment booked** (`unconverted`) starts the 180-day clock.
-- **Finished — appointment booked** (`converted`) records that a staff member
-  put the appointment into the practice's scheduling system, so the
-  authoritative record now exists outside this application. It starts the
+- Choose **Closed**, then **No appointment booked** (`unconverted`), to start
+  the 180-day clock.
+- Choose **Closed**, then **Appointment booked** (`converted`), to record that
+  a staff member put the appointment into the practice's scheduling system, so
+  the authoritative record now exists outside this application. It starts the
   12-month clock.
 
 Reopening a request clears its closure classification and clock. Closed rows

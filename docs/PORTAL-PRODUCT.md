@@ -53,7 +53,7 @@ The center of gravity is moving from "staff update records" to "staff finish cli
 work": the real job is a phone call and its outcome, not a status field plus a
 separate note form.
 
-## Current delivery boundary (verified 2026-07-26)
+## Current delivery boundary (verified 2026-07-27)
 
 The task-first Home, Requests queue, recipient and staff management, Activity log,
 Website/maintainer controls, protected review-flyer printer, first-login opt-in
@@ -61,6 +61,10 @@ tour, and Help-page systems explainer/restart path are deployed. Home renders a
 distinct "count unavailable" state when its queue read fails — a failed read never
 presents as an empty queue. All four primary nav destinations stay fully visible on
 a 390px phone.
+
+Request detail keeps New, Contacted, Scheduled, and Closed in one Status control.
+Closed expands in place to ask whether an appointment was booked; staff never have
+to reconcile a separate finishing section with the visible status.
 
 Home also carries attention context in practice-local business terms: how long the
 oldest new request has been waiting ("since Friday"), which previewed requests

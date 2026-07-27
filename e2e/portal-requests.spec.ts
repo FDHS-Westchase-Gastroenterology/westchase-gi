@@ -178,14 +178,20 @@ test.describe("portal requests operation", () => {
       expect(data?.status).toBe(status);
     }
 
+    const closedStatus = page.getByTestId("closed-status-control");
+    await expect(closedStatus).not.toHaveAttribute("open", "");
+    await page.locator('[data-status-action="closed"]').click();
+    await expect(closedStatus).toHaveAttribute("open", "");
+    await expect(page.getByText("How was this request resolved?")).toBeVisible();
+
     await page
       .getByRole("button", {
-        name: "Finished — no appointment booked",
+        name: /^No appointment booked/,
       })
       .click();
     await expect(
       page.getByRole("button", {
-        name: "Finished — no appointment booked",
+        name: /^No appointment booked/,
       }),
     ).toBeDisabled();
     await expect(
