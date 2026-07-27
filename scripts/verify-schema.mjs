@@ -1,3 +1,6 @@
+import { execFileSync } from "node:child_process"
+import { readFileSync } from "node:fs"
+
 const TABLES = [
   "audit_log",
   "notification_recipients",
@@ -23,6 +26,8 @@ const RPC_SIGNATURES = {
   portal_complete_staff_onboarding: "p_user_id uuid",
   portal_delete_request_early:
     "p_actor_email text, p_request_id uuid, p_authorization_ref text",
+  portal_log_call_outcome:
+    "p_actor_email text, p_request_id uuid, p_outcome text, p_note text, p_follow_up_at timestamp with time zone",
   portal_preview_data_lifecycle: "p_now timestamp with time zone",
   portal_record_staff_password_reset: "p_user_id uuid",
   portal_run_data_lifecycle:
@@ -67,6 +72,7 @@ const RPC_RESULTS = {
   portal_close_request: "boolean",
   portal_complete_staff_onboarding: "boolean",
   portal_delete_request_early: "boolean",
+  portal_log_call_outcome: "uuid",
   portal_preview_data_lifecycle: "jsonb",
   portal_record_staff_password_reset: "boolean",
   portal_run_data_lifecycle: "jsonb",
@@ -105,6 +111,10 @@ const INTAKE_RATE_LIMIT_MIGRATION = {
 const DATA_LIFECYCLE_MIGRATION = {
   version: "20260725170000",
   name: "add_request_data_lifecycle",
+}
+const CALL_OUTCOME_MIGRATION = {
+  version: "20260727013641",
+  name: "add_atomic_call_outcome",
 }
 
 const TARGETS = new Set(["dev", "prod"])
@@ -223,6 +233,40 @@ async function queryDatabase({ accessToken, ref, query }) {
       body: JSON.stringify({ query }),
     },
   )
+  if (response.status === 401) {
+    const linkedRef = readFileSync("supabase/.temp/project-ref", "utf8").trim()
+    const devRef =
+      process.env.SUPABASE_DEV_PROJECT_REF ?? process.env.SUPABASE_PROJECT_REF
+    assert(
+      ref === devRef && linkedRef === devRef,
+      "Direct database verification fallback is Development-only",
+    )
+    const dbUrl = readFileSync("supabase/.temp/pooler-url", "utf8").trim()
+    const password = requireEnv(
+      "SUPABASE_DEV_DB_PASSWORD",
+      "SUPABASE_DB_PASSWORD",
+    )
+    return JSON.parse(
+      execFileSync(
+        "supabase",
+        [
+          "db",
+          "query",
+          "--db-url",
+          dbUrl,
+          "--agent=no",
+          "--output",
+          "json",
+          query,
+        ],
+        {
+          encoding: "utf8",
+          env: { ...process.env, PGPASSWORD: password },
+          stdio: ["ignore", "pipe", "inherit"],
+        },
+      ),
+    )
+  }
   const payload = await readResponse(response, "Database verification query")
 
   if (Array.isArray(payload)) {
@@ -310,7 +354,7 @@ async function assertAtomicAuditRollback({ target, url, serviceKey }) {
 
   try {
     const response = await fetch(
-      `${url}/rest/v1/rpc/portal_update_request_status`,
+      `${url}/rest/v1/rpc/portal_log_call_outcome`,
       {
         method: "POST",
         headers: {
@@ -320,7 +364,9 @@ async function assertAtomicAuditRollback({ target, url, serviceKey }) {
         body: JSON.stringify({
           p_actor_email: "",
           p_request_id: requestId,
-          p_next_status: "contacted",
+          p_outcome: "voicemail",
+          p_note: "TEST forced audit rollback",
+          p_follow_up_at: new Date(Date.now() + 60_000).toISOString(),
         }),
       },
     )
@@ -335,11 +381,24 @@ async function assertAtomicAuditRollback({ target, url, serviceKey }) {
       url,
       serviceKey,
       table: "requests",
-      query: `select=id,status&id=eq.${encodeURIComponent(requestId)}`,
+      query: `select=id,status,follow_up_at,closure_disposition&id=eq.${encodeURIComponent(requestId)}`,
     })
     assert(
-      rows.length === 1 && rows[0].status === "new",
-      "Request status survived a forced audit failure",
+      rows.length === 1 &&
+        rows[0].status === "new" &&
+        rows[0].follow_up_at === null &&
+        rows[0].closure_disposition === null,
+      "Call-outcome request state survived a forced audit failure",
+    )
+    const events = await selectRows({
+      url,
+      serviceKey,
+      table: "request_events",
+      query: `select=id&request_id=eq.${encodeURIComponent(requestId)}`,
+    })
+    assert(
+      events.length === 0,
+      "Call-outcome events survived a forced audit failure",
     )
   } finally {
     const response = await fetch(
@@ -465,6 +524,14 @@ async function main() {
     ),
     `Data-lifecycle migration ${DATA_LIFECYCLE_MIGRATION.version}_${DATA_LIFECYCLE_MIGRATION.name} is not applied`,
   )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === CALL_OUTCOME_MIGRATION.version &&
+        row.name === CALL_OUTCOME_MIGRATION.name,
+    ),
+    `Call-outcome migration ${CALL_OUTCOME_MIGRATION.version}_${CALL_OUTCOME_MIGRATION.name} is not applied`,
+  )
 
   const onboardingColumnRows = await queryDatabase({
     accessToken,
@@ -547,6 +614,7 @@ async function main() {
         and column_name in (
           'closure_disposition',
           'closed_at',
+          'follow_up_at',
           'record_handoff_at',
           'retention_hold_at',
           'retention_hold_by',
@@ -558,6 +626,7 @@ async function main() {
   const expectedLifecycleColumns = [
     "closed_at",
     "closure_disposition",
+    "follow_up_at",
     "record_handoff_at",
     "retention_hold_at",
     "retention_hold_by",
@@ -630,7 +699,7 @@ async function main() {
   })
   assert(
     intakeLimitRows.length === 1 &&
-      intakeLimitRows[0].relpersistence === "p" &&
+      ["p", 112].includes(intakeLimitRows[0].relpersistence) &&
       intakeLimitRows[0].relrowsecurity === true &&
       intakeLimitRows[0].anon_select === false &&
       intakeLimitRows[0].authenticated_select === false &&
@@ -787,6 +856,20 @@ async function main() {
         "portal_check_intake_rate_limit must claim buckets atomically",
       )
     }
+    if (rpc.proname === "portal_log_call_outcome") {
+      const definition = rpc.definition.toLowerCase()
+      assert(
+        definition.includes("for update") &&
+          definition.includes("request.call_outcome") &&
+          definition.includes("'scheduled_transferred'") &&
+          definition.includes("'reached_follow_up'") &&
+          definition.includes("'voicemail'") &&
+          definition.includes("'no_answer'") &&
+          definition.includes("'wont_schedule'") &&
+          definition.includes("'not_actionable'"),
+        "portal_log_call_outcome must lock the request, audit once, and preserve the six-outcome vocabulary",
+      )
+    }
     if (rpc.proname === "portal_run_data_lifecycle") {
       const definition = rpc.definition.toLowerCase()
       assert(
@@ -912,6 +995,9 @@ async function main() {
     `Verified ${target} migration: ${DATA_LIFECYCLE_MIGRATION.version}_${DATA_LIFECYCLE_MIGRATION.name}`,
   )
   console.log(
+    `Verified ${target} migration: ${CALL_OUTCOME_MIGRATION.version}_${CALL_OUTCOME_MIGRATION.name}`,
+  )
+  console.log(
     `Verified ${target} request lifecycle: nullable legacy-safe columns, constraints, preview, hold-aware deletion`,
   )
   console.log(
@@ -936,7 +1022,7 @@ async function main() {
     `Verified ${target} authenticated Data API denial across ${TABLES.length} portal tables`,
   )
   console.log(
-    `Verified ${target} forced audit failure rolled back request status`,
+    `Verified ${target} forced audit failure rolled back call-outcome request and event state`,
   )
   console.log(
     `Verified ${target} seed rows: staff_profiles=${staffRows.length}, notification_recipients=${recipientRows.length}`,
