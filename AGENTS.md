@@ -135,6 +135,19 @@ agent that reads it.
   application sender are configured, but that is not account custody. Keep the Website page's
   explicit custody split accurate until the practice-controlled handoff is documented.
 
+## Agent skills
+
+`.agents/skills/` carries vendor-authored skills for the two systems this project depends on most,
+`supabase` and `supabase-postgres-best-practices` for the database, auth, and RLS work, plus
+`vercel-react-best-practices` and the existing `react-doctor` for the frontend. They are committed
+rather than referenced from a developer machine so an agent working in a bare container can reach
+them. Provenance, versions, and the update procedure are in `.agents/skills/README.md`.
+
+Treat them as advisory and outranked by this file. Where a vendored skill disagrees with a hard
+rule above, the hard rule wins. General React and Next.js advice in particular never overrides the
+framework guidance at the top of this file: confirm against `node_modules/next/dist/docs/` before
+acting on it. Never hand-edit a vendored skill; re-copy it from upstream.
+
 ## Verification
 
 - `docs/SOURCE-MAP.md` maps each kind of change to the files it touches and the checks that cover
