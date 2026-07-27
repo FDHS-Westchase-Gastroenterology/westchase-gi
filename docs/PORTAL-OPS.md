@@ -101,7 +101,7 @@ schema changes go through committed migrations in `supabase/migrations/`
 to development first and production only after verification. Record the owner,
 transfer date, and a non-secret acceptance check when this closes.
 
-## Current Production activation state (verified 2026-07-25)
+## Current Production activation state (verified 2026-07-27)
 
 GitHub issue [#24](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/24)
 is the canonical remaining-acceptance tracker. Keep this section synchronized with that checklist.
@@ -119,12 +119,15 @@ is the canonical remaining-acceptance tracker. Keep this section synchronized wi
 - Remaining Production acceptance is notification-recipient add/confirm/pause/resume/remove with
   a clinic-approved inbox, clinic-inbox invitation/recovery delivery after hosted SMTP is fixed,
   and the throwaway GitHub maintainer invite/cancel/accept/revoke lifecycle.
-- Production is current through migration `20260725170000`. Development also has
-  `20260727013641_add_atomic_call_outcome`, which passed the six-outcome contract, service-role
-  boundary, forced late-audit rollback, exact schema rollback, migration-ledger repair, clean
-  reapplication, schema verifier, and database advisors. Production promotion remains a separate
-  decision; merging the prerequisite does not authorize it. The retired registry tables/functions
-  remain absent.
+- Production is current through migration `20260725170000`. Development additionally has
+  `20260727013641_add_atomic_call_outcome` and
+  `20260727070521_add_audit_provenance_and_recipient_label_update`. The latter passed historical
+  null preservation, the service-role-only label contract, classified/correlated audit writes,
+  exact schema rollback, migration-ledger repair, clean reapplication, the schema verifier,
+  database lint, and the full hosted Development browser suite. Production promotion remains a
+  separate decision; merging the prerequisites does not authorize it. Until that promotion, the
+  application audit writer retries only the exact pre-provenance missing-column response. The
+  retired registry tables/functions remain absent.
 - Production received the same migrations schema-first on 2026-07-25 after a zero-violation cap
   preflight and a restore-readable temporary logical backup. Migration-ledger, constraint,
   RLS, privilege, and RPC assertions passed. Its first count-only lifecycle preview reported

@@ -626,7 +626,9 @@ test.describe("portal management server boundaries", () => {
 
     const { data: rows, error } = await db
       .from("audit_log")
-      .select("actor_email, action, entity, entity_id, at, detail")
+      .select(
+        "actor_email, action, entity, entity_id, source, correlation_id, at, detail",
+      )
       .in("entity_id", [staffProfileId, targetProfileId, recipientId]);
     expect(error).toBeNull();
 
@@ -648,6 +650,10 @@ test.describe("portal management server boundaries", () => {
           : "notification_recipients",
       );
       expect(Number.isNaN(Date.parse(row?.at ?? ""))).toBe(false);
+      expect(row?.source).toBe("staff");
+      expect(row?.correlation_id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
     }
 
     assertAudit("staff.invite", staffProfileId, SEED_ADMIN_EMAIL);
@@ -687,6 +693,8 @@ test.describe("portal management server boundaries", () => {
         action: "maintainers.invite",
         entity: "repository_maintainers",
         entity_id: null,
+        source: "acceptance",
+        correlation_id: randomUUID(),
         detail: {
           provider: "github",
           target_login: targetLogin,
