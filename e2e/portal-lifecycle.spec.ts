@@ -105,11 +105,11 @@ test.describe("disposable-local request lifecycle", () => {
 
     await page
       .getByRole("button", {
-        name: "Close — did not become an appointment",
+        name: "Finished — no appointment booked",
       })
       .click();
     await expect(page.getByTestId("request-lifecycle-summary")).toContainText(
-      "180-day clock started",
+      "— no appointment booked",
     );
 
     let row = await db
@@ -148,11 +148,11 @@ test.describe("disposable-local request lifecycle", () => {
 
     await page
       .getByRole("button", {
-        name: "Close — transferred to the FDHS record",
+        name: "Finished — appointment booked",
       })
       .click();
     await expect(page.getByTestId("request-lifecycle-summary")).toContainText(
-      "12-month clock started",
+      /—\s+appointment booked/,
     );
 
     row = await db

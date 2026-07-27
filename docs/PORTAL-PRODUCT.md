@@ -115,7 +115,7 @@ Priorities for the portal's next chapter, in order:
    records outcome, status, note, and closure classification together, atomically.
    The outcome vocabulary is decided (2026-07-26), grounded in how the activity
    record shows staff actually work — status changes paired with notes, direct
-   new → scheduled as the normal successful path: *Scheduled in the FDHS system —
+   new → scheduled as the normal successful path: *Appointment booked —
    request finished* (maps to the converted-record closure, so staff never learn
    the status/classification split); *Reached the patient — follow-up needed*,
    *Left a voicemail — call again*, and *No answer — call again* (each `contacted`
