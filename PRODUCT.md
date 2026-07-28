@@ -124,7 +124,7 @@ The center of gravity is moving from "staff update records" to "staff finish cli
 work": the real job is a phone call and its outcome, not a status field plus a
 separate note form.
 
-### Current delivery boundary (verified 2026-07-27)
+### Current delivery boundary (verified 2026-07-28)
 
 The task-first Home, Requests queue, recipient and staff management, Activity log,
 Website/maintainer controls, protected review-flyer printer, first-login opt-in
@@ -132,6 +132,14 @@ tour, and Help-page systems explainer/restart path are deployed. Home renders a
 distinct "count unavailable" state when its queue read fails — a failed read never
 presents as an empty queue. All four primary nav destinations stay fully visible on
 a 390px phone.
+
+The next chapter's backend prerequisites have landed in Development: the atomic
+call-outcome operation, audit provenance (`source` / `correlation_id`), and the
+recipient-label operation (issues #124–#126 closed, migrations `20260727013641` and
+`20260727070521`). They are not yet promoted to Production — promotion is a
+separate, explicit decision per `CONTRIBUTING.md` §Shipping, and nothing below
+treats a merged migration as production authority. The recoverable staff lifecycle
+(#127) remains the one open backend prerequisite.
 
 Request detail keeps New, Contacted, Scheduled, and Closed in one Status control.
 Closed expands in place to ask whether an appointment was booked; staff never have
@@ -197,27 +205,33 @@ Priorities for the portal's next chapter, in order:
    plus an optional follow-up time); *Patient won't schedule* and *Duplicate or
    not actionable* (both map to the did-not-become-an-appointment closure). Six
    outcomes, one screen; any outcome the activity record shows going unused gets
-   removed. Implementation waits only on the single atomic server operation
-   (issue #124) — building the composer on the existing separate operations would
-   keep the partial-completion risk.
+   removed. The atomic server operation exists in Development (issue #124 closed);
+   the composer UI is the portal's next build, and Production promotion of its
+   migration is the remaining gate, not acceptance.
 2. **A queue that says what to work next**: a needs-attention default view,
    business-aware age (a request that arrived Saturday afternoon is not the same as
-   one waiting since Thursday), next action per row, and continuity
-   (previous/next, save-and-open-next).
+   one waiting since Thursday) that also accuses aging in-progress work — a
+   request touched into Contacted or Scheduled and forgotten must not go silent —
+   next action per row, and continuity (previous/next, save-and-open-next).
 3. **A human Recent-work view** over the durable audit record: grouped,
    plain-language entries linked to the work ("finished an appointment request as
    Scheduled"), with the exact technical audit preserved beneath it for
    administrators. Storage vocabulary (action codes, UUID fragments) is not staff
-   language.
+   language. Audit provenance landed in Development (issue #125 closed); the view
+   reads today's rows and historical rows degrade gracefully.
 4. **One feedback-and-forgiveness pattern for every mutation**: the pressed control
    responds immediately, only the affected row goes pending, success lands beside
    the changed object, failures preserve input and say whether anything changed,
-   and reversible actions offer undo instead of repeated confirm prompts.
+   and reversible actions offer undo instead of repeated confirm prompts. A
+   mutation failure is a designed state, never a framework error page: the portal
+   group gains real error and not-found boundaries so a failed action or a stale
+   request link keeps the staff member oriented instead of ejecting them.
 
-Backend prerequisites for this chapter are tracked as scoped issues — the atomic
-call-outcome operation (#124), audit provenance for the Recent-work view (#125),
-the recipient label-update operation (#126), and recoverable staff lifecycle
-operations (#127). Frontend work that needs no schema change does not wait on them.
+Backend prerequisites for this chapter: the atomic call-outcome operation (#124),
+audit provenance (#125), and the recipient label-update operation (#126) are
+implemented and proved in Development, pending the separate Production promotion
+decision; recoverable staff lifecycle operations (#127) remain open. Frontend work
+that needs no schema change and teaches no new vocabulary does not wait on them.
 
 Deliberately not building: generic metric dashboards or vanity counts; a forced
 linear status funnel (direct new → scheduled is the normal successful path); kanban
