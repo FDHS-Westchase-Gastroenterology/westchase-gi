@@ -172,8 +172,9 @@ secret; never copy it into source, logs, PR text, Dependabot secrets, or an agen
    exact-commit production verification against the canonical site.
 2. **Migrations promote separately.** Apply to development first
    (`supabase link` + `supabase db push`), verify, then make the production decision
-   explicitly — merging a migration PR does not authorize production promotion. Every
-   schema-changing migration ships with a rollback sibling in `supabase/rollbacks/`; after an
+   explicitly — merging a migration PR does not authorize production promotion. Every new
+   schema-changing migration ships with a rollback sibling in `supabase/rollbacks/` (migrations
+   before `20260725170000` predate the convention); after an
    approved hosted rollback, mark versions reverted in the migration ledger before any later
    push.
 3. **Environment changes** go through the Vercel environment store

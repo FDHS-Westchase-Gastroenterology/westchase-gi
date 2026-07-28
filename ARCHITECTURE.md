@@ -94,8 +94,9 @@ staff browser ──────►   ├─ src/app/admin/**   portal (Supabase
 | `auth.ts` | `requireRole()` for every portal page/action; `staff_profiles` authorization via the service client (never user-editable metadata); password-flow signed-cookie helpers for invite/recovery. |
 | `intake.ts` | `processIntake()`: validate → honeypot drop → shared atomic throttle → durable insert → receipt token. `consumeRequestReceipt()` for the one-time receipt page. |
 | `intake-notification.ts` | Fan-out to ACTIVE recipients; one `request_events` row per recipient with provider outcome. Zero patient fields. |
-| `email-provider.ts` | Transport seam: `createEmailSender(transport)`; `sendPortalEmail` bound to the Resend adapter. Eight-second deadline, stable idempotency keys, normalized failures, logs exclude recipients/content/keys. |
-| `email.ts`, `management-email.ts` | Message composition for appointment, recipient-confirmation, and staff lifecycle mail. |
+| `email.ts` | The transport seam: `PortalEmail*` contract types + `createEmailSender(transport)` — eight-second deadline, idempotency-key pass-through, normalized outcomes, logs exclude recipients/content/keys. |
+| `email-provider.ts` | `sendPortalEmail`: the sender bound to the Resend adapter (`unconfigured` result when `RESEND_API_KEY` is absent). |
+| `management-email.ts` | Message composition for recipient-confirmation and staff lifecycle mail. Appointment pings are composed in `intake-notification.ts`. |
 | `management.ts` | Staff and recipient mutations (invite/resend/deactivate/role change; add/toggle/remove recipient); each returns a typed result and writes audit rows. |
 | `maintainers.ts`, `maintainer-operation.ts`, `maintainer-view.ts`, `github-response.ts` | Website-surface maintainer lifecycle (invite/cancel/revoke) and its view/response shaping. |
 | `integrations.ts` | GitHub App provider: RS256 App JWT → installation token; every token pinned to the numeric owner/repository IDs; configured/unconfigured/unavailable states. |
@@ -110,8 +111,12 @@ staff browser ──────►   ├─ src/app/admin/**   portal (Supabase
   (`page.tsx`), `requests/` (+ `[id]`, `export`), `review-flyers/` (+ protected `assets/`),
   `settings/` (recipients, staff, `mutations` endpoint), `settings/software/` (Website),
   `audit/`, `help/`, plus `portal-nav.tsx`, `portal-tour.tsx`, `tour-actions.ts`.
-- `admin/login`, `admin/forgot-password`, `admin/set-password`, `admin/auth/{confirm,callback}`
-  — the deliberate public session-establishment boundaries; they stay generic and fail-closed.
+  `admin/(portal)/registry/` is a permanent redirect to `settings/software/` kept for
+  retired-registry bookmarks.
+- `admin/login`, `admin/forgot-password`, `admin/auth/{confirm,callback}` — the deliberate
+  public session-establishment boundaries; they stay generic and fail-closed.
+  `admin/set-password` is the gated completion step, not a public boundary: it requires a
+  verified active staff session plus the signed password-flow cookie (invite or recovery).
 - `api/requests/` — the two intake handlers. `review/` — the public review hub.
 
 ### `src/components/`
@@ -162,8 +167,10 @@ outcome). Recipients: `portal_update_recipient_label`. Staff: `portal_complete_s
 
 ### Migrations
 
-Forward-only, timestamped files in `supabase/migrations/`, each schema-changing pair with a
-rollback sibling in `supabase/rollbacks/`. Applied development-first
+Forward-only, timestamped files in `supabase/migrations/`. Since
+`20260725170000_add_request_data_lifecycle`, each schema-changing migration ships with a
+rollback sibling in `supabase/rollbacks/` (named `<new_version>_to_<prior_version>.sql`); the
+twelve earlier migrations predate the convention and have none. Applied development-first
 (`supabase link` + `supabase db push`); production promotion is a separate, deliberate
 decision — merging the migration does not authorize it. Schema-first rollouts keep the
 deployed status RPC backward-compatible until the new app is live. After an approved hosted
