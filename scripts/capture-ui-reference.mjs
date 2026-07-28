@@ -5,7 +5,7 @@ import { chromium } from "@playwright/test";
 
 const DEFAULT_ORIGIN = "https://westchasegi.com";
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
-const outputDirectory = resolve(scriptDirectory, "../docs/ui-reference");
+const outputDirectory = resolve(scriptDirectory, "../ui-reference");
 
 function originFrom(input) {
   let url;

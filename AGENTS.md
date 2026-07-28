@@ -4,110 +4,131 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
-# Project rules — Westchase GI website
+# AGENTS.md — Westchase GI agent guide
 
 Patient-facing site for FDHS Westchase Gastroenterology (Tampa + Lutz). Faithful polish of the
 practice's former vendor site: same identity, source-grounded facts, repaired patient paths —
 plus the appointment-request pipeline (POST → Supabase Postgres queue → PHI-free staff
 notifications) and the authenticated staff portal at `/admin`.
 
+This file gives an agent with zero pre-context a fast ramp-up: the non-negotiable rules, the
+environment truths, and pointers to the deeper docs. The goal is autonomous work that is
+correct on the first pass.
+
+## Ramp up here
+
+Read in this order, as the task requires:
+
+1. **This file** — hard rules and invariants. They outrank everything, including vendored
+   skills and general framework advice.
+2. [`ARCHITECTURE.md`](ARCHITECTURE.md) — system design, module interfaces, external systems,
+   and the change-type → files map (§14). Start there in an unfamiliar area.
+3. [`CONTRIBUTING.md`](CONTRIBUTING.md) — the contribution process: setup, verification
+   surface, commit/PR/merge discipline, and the path to production.
+4. Product truth: `PRODUCT.md` (patient-site brand register and staff-portal product register)
+   + `DESIGN.md` (design system). UI baseline: `ui-reference/README.md`.
+
+`README.md` is the human, user-facing overview — cite it for custody and pending practice
+confirmations, but do not treat it as developer documentation.
+
 ## Hard rules
 
 1. **Provider credentials are verbatim and load-bearing.** Chang is "MD, FACG"; Awad is "MD"
-   (client-corrected 2026-07-06 — he is NOT FACG, and his own FDHS card graphic says MD only);
-   Mendoza is "MD, MS" (never FACG); NPs are "MSN, APRN, FNP-C" (Family Nurse Practitioner);
-   Juliet Oliva is "Practice Manager & Infusion Nurse" (manager credit added at her request
-   2026-07-06). Never edit, reorder, or "simplify" titles.
-   Source of truth: `src/lib/providers.ts`.
+ (client-corrected 2026-07-06 — he is NOT FACG, and his own FDHS card graphic says MD only);
+ Mendoza is "MD, MS" (never FACG); NPs are "MSN, APRN, FNP-C" (Family Nurse Practitioner);
+ Juliet Oliva is "Practice Manager & Infusion Nurse" (manager credit added at her request
+ 2026-07-06). Never edit, reorder, or "simplify" titles.
+ Source of truth: `src/lib/providers.ts`.
 2. **Source-mirror graphics stay byte-exact.** Harvested graphics and official provider-card
-   files preserved as source mirrors in `public/images/` were SHA-verified at import; never
-   re-encode or resize those files, and let `next/image` handle delivery. The six files under
-   `public/images/staff/headshots/` are a documented exception: intentionally resized/optimized
-   derivatives whose source originals remain in the private engagement archive. Do not describe
-   those six derivatives as byte-exact or replace them without approved source provenance.
+ files preserved as source mirrors in `public/images/` were SHA-verified at import; never
+ re-encode or resize those files, and let `next/image` handle delivery. The six files under
+ `public/images/staff/headshots/` are a documented exception: intentionally resized/optimized
+ derivatives whose source originals remain in the private engagement archive. Do not describe
+ those six derivatives as byte-exact or replace them without approved source provenance.
 3. **The FDHS header stays.** "FDHS Westchase Gastroenterology" with the exact harvested logo.
 4. **The text line (813) 564-0315 is a staffed human channel.** Keep it prominent; never frame
-   it as automated.
+ it as automated.
 5. **Five locales are first-class.** Any patient-facing copy change lands in ALL of
-   `src/lib/dictionaries/{en,es,vi,ko,ar}.ts` — the shared `Dictionary` type makes a missing
-   key a build error. Never ship one locale ahead of another. Arabic is RTL
-   (`localeDir` in `src/lib/site.ts`). The `/admin` portal is English-only by scope decision
-   and keeps its strings in plain TSX, not the patient dictionaries. Portal UI work follows
-   `docs/PORTAL-PRODUCT.md` (task-first product register; the root `PRODUCT.md` covers the
-   patient site only).
+ `src/lib/dictionaries/{en,es,vi,ko,ar}.ts` — the shared `Dictionary` type makes a missing
+ key a build error. Never ship one locale ahead of another. Arabic is RTL
+ (`localeDir` in `src/lib/site.ts`). The `/admin` portal is English-only by scope decision
+ and keeps its strings in plain TSX, not the patient dictionaries. Portal UI work follows
+ the staff-portal register in `PRODUCT.md` (a task-first product register; the same file's
+ brand register covers the patient site).
 6. **One-way linking:** this site may link to Alpha Omega Wellness (footer). Never accept the
-   reverse expectation into this codebase; it's owned by the other project.
+ reverse expectation into this codebase; it's owned by the other project.
 7. **No invented facts.** Unconfirmed details live in README's pending-confirmations list and
-   explicit dated source comments; do not infer confirmation from a value merely being present.
-   Patient documents without a file in `public/documents/` fall back to the staffed text line
-   (forms/prep) or "printable version on the way" (disease sheets that already have on-site
-   education pages).
+ explicit dated source comments; do not infer confirmation from a value merely being present.
+ Patient documents without a file in `public/documents/` fall back to the staffed text line
+ (forms/prep) or "printable version on the way" (disease sheets that already have on-site
+ education pages).
 8. **Compliance and PHI-minimal posture:** conservative medical phrasing; no outcome
-   guarantees; the appointment form keeps its "do not submit PHI" warning verbatim in all five
-   locales. The form collects callback-request fields only: name, phone, optional email,
-   office/time preference, and an optional brief reason. There are no dedicated clinical fields,
-   and the UI asks patients to avoid medical details, but patient-supplied reasons must still be
-   treated as potentially sensitive. Requests are callback leads for a scheduling coordinator,
-   not live scheduling. Notification emails carry zero patient fields; server logs never print
-   patient values; patient data never appears in a URL.
+ guarantees; the appointment form keeps its "do not submit PHI" warning verbatim in all five
+ locales. The form collects callback-request fields only: name, phone, optional email,
+ office/time preference, and an optional brief reason. There are no dedicated clinical fields,
+ and the UI asks patients to avoid medical details, but patient-supplied reasons must still be
+ treated as potentially sensitive. Requests are callback leads for a scheduling coordinator,
+ not live scheduling. Notification emails carry zero patient fields; server logs never print
+ patient values; patient data never appears in a URL.
 9. **The "accepting new patients" notice** is a dismissible banner shown once per visitor
-   (30-day localStorage). Never turn it back into a per-page modal.
+ (30-day localStorage). Never turn it back into a per-page modal.
 10. **Intake pipeline invariants.** The success state renders only after the durable Postgres
-    insert (`src/lib/portal/intake.ts`); failure and unknown states stay distinct and always
-    surface the call/text fallback; the no-JS path is a native POST with a short-lived, one-time
-    opaque receipt URL bound to a persisted request. No patient field or unsigned success flag
-    belongs in that URL. The honeypot drop returns a success-shaped response. Patient fields stay
-    capped at the browser, server, and database boundaries. Intake throttling stays shared and
-    atomic in Postgres, keyed by an HMAC rather than a raw address or reversible plain digest.
-    Never weaken these.
+ insert (`src/lib/portal/intake.ts`); failure and unknown states stay distinct and always
+ surface the call/text fallback; the no-JS path is a native POST with a short-lived, one-time
+ opaque receipt URL bound to a persisted request. No patient field or unsigned success flag
+ belongs in that URL. The honeypot drop returns a success-shaped response. Patient fields stay
+ capped at the browser, server, and database boundaries. Intake throttling stays shared and
+ atomic in Postgres, keyed by an HMAC rather than a raw address or reversible plain digest.
+ Never weaken these.
 11. **Portal security invariants.** `/admin/*` is closed by the proxy except the explicit
-    authentication-entry routes. Every management action/route authenticates first
-    (`requireRole`); login, reset request, and one-time-link confirmation are deliberate public
-    session-establishment boundaries and must stay generic/fail-closed. Authorization reads
-    `staff_profiles` via the service client — never user-editable metadata. The service-role key
-    exists only in server-only modules; `NEXT_PUBLIC_*` never holds secrets. RLS stays enabled on
-    every table with zero anon grants and no authenticated write policies (all writes go through
-    service-role server actions). Every staff-visible mutation writes an `audit_log` row.
-    The GitHub connection authenticates only through the clinic-owned GitHub App, with its
-    three credentials kept in server-only environment variables. Never use a personal access
-    token, expose App credentials to the browser, or widen the App beyond its documented
-    least-privilege permissions. The portal does not connect to or manage Vercel
-    (`docs/INTEGRATION-ACTIVATION.md`).
-12. **Visual baseline.** Before frontend UI work, open `docs/ui-reference/README.md`. Refresh the
-    affected images against the matching local or Preview origin before committing; use the default
-    live-origin capture after deployment for public pages. The atlas includes the seven top-level
-    staff routes: refresh those only with the Development/Preview seed identity, preserve the
-    browser-side redaction, and never include an individual request or Production data.
+ authentication-entry routes. Every management action/route authenticates first
+ (`requireRole`); login, reset request, and one-time-link confirmation are deliberate public
+ session-establishment boundaries and must stay generic/fail-closed. Authorization reads
+ `staff_profiles` via the service client — never user-editable metadata. The service-role key
+ exists only in server-only modules; `NEXT_PUBLIC_*` never holds secrets. RLS stays enabled on
+ every table with zero anon grants and no authenticated write policies (all writes go through
+ service-role server actions). Every staff-visible mutation writes an `audit_log` row.
+ The GitHub connection authenticates only through the clinic-owned GitHub App, with its
+ three credentials kept in server-only environment variables. Never use a personal access
+ token, expose App credentials to the browser, or widen the App beyond its documented
+ least-privilege permissions. The portal does not connect to or manage Vercel
+ (see `ARCHITECTURE.md` §10).
+12. **Visual baseline.** Before frontend UI work, open `ui-reference/README.md`. Refresh the
+ affected images against the matching local or Preview origin before committing; use the default
+ live-origin capture after deployment for public pages. The atlas includes the seven top-level
+ staff routes: refresh those only with the Development/Preview seed identity, preserve the
+ browser-side redaction, and never include an individual request or Production data.
 
 ## Dependabot/Supabase agent readiness
 
 The guarded dependency lane is operational. Its detailed source of truth is
 `.github/codex/dependabot-sop-and-examples.md`; executable policy lives in
-`.github/scripts/dependency-automation.cjs` and its adjacent test.
+`.github/scripts/dependency-automation.cjs` and its adjacent test. The contributor-facing
+summary is `CONTRIBUTING.md` §Dependency updates.
 
 - Dependabot performs the version bump. Codex attempts a read-only semantic review of the exact
-  verified head on an ephemeral GitHub Actions runner; it cannot edit the branch, push a repair,
-  merge, or access a GitHub mutation token. A valid approve/retry/repair/reject decision is honored
-  as a semantic veto, but an unavailable or malformed Codex response cannot become a human gate:
-  the exact-head deterministic suite remains authoritative.
+ verified head on an ephemeral GitHub Actions runner; it cannot edit the branch, push a repair,
+ merge, or access a GitHub mutation token. A valid approve/retry/repair/reject decision is honored
+ as a semantic veto, but an unavailable or malformed Codex response cannot become a human gate:
+ the exact-head deterministic suite remains authoritative.
 - Every package-changing PR runs `e2e/supabase-dependency-contract.spec.ts` in a separate
-  GitHub-hosted Ubuntu job. That job starts a disposable Docker Supabase stack, replays committed
-  migrations, seeds local-only fixtures, checks Auth/SSR sessions, permission boundaries, intake
-  persistence, shared throttling, lifecycle boundaries, and PostgREST relationships, then stops
-  the stack even on failure.
+ GitHub-hosted Ubuntu job. That job starts a disposable Docker Supabase stack, replays committed
+ migrations, seeds local-only fixtures, checks Auth/SSR sessions, permission boundaries, intake
+ persistence, shared throttling, lifecycle boundaries, and PostgREST relationships, then stops
+ the stack even on failure.
 - The disposable job receives no hosted Supabase, Vercel, or repository secrets. It never runs on
-  Jason's Mac and has no path that applies migrations or test writes to Development or Production.
-  Post-merge Production verification only checks the matching Vercel deployment and performs a
-  read-only canonical-site smoke request.
+ Jason's Mac and has no path that applies migrations or test writes to Development or Production.
+ Post-merge Production verification only checks the matching Vercel deployment and performs a
+ read-only canonical-site smoke request.
 - Every verified, manifest-only root npm update to `main` may enter the automatic queue regardless
-  of package name/type, SemVer class, grouping, compiler ownership, or test-tool ownership.
-  Maintainer-modified, source-changing, migration-changing, or otherwise untrusted PRs are rejected
-  before Codex. Incomplete metadata and valid retry/repair decisions get at most three exact-head
-  attempts; persistent or concrete incompatibilities are closed rather than delegated.
+ of package name/type, SemVer class, grouping, compiler ownership, or test-tool ownership.
+ Maintainer-modified, source-changing, migration-changing, or otherwise untrusted PRs are rejected
+ before Codex. Incomplete metadata and valid retry/repair decisions get at most three exact-head
+ attempts; persistent or concrete incompatibilities are closed rather than delegated.
 - The controller rechecks the exact SHA, all deterministic checks, the automation decision, Vercel
-  preview, and mergeability; skips a failing older update so a green compatible sibling can
-  proceed; updates behind branches through GitHub's pull-request API; merges at most one PR; then
-  pauses the queue until post-merge CI, React Doctor, Vercel Production, and live smoke succeed.
+ preview, and mergeability; skips a failing older update so a green compatible sibling can
+ proceed; updates behind branches through GitHub's pull-request API; merges at most one PR; then
+ pauses the queue until post-merge CI, React Doctor, Vercel Production, and live smoke succeed.
 
 Do not widen the provenance or manifest-only boundary by prose or agent judgment. Change the
 executable policy and regression tests together, preserve the no-production-database boundary,
@@ -125,15 +146,15 @@ in the issue tracker; do not restate them here, because a stale claim in this fi
 agent that reads it.
 
 - The canonical patient origin is the apex `https://westchasegi.com`; `www` redirects to it.
-  Keep `site.url` and generated canonical/OG/hreflang/sitemap/robots output on the apex. Do not
-  describe `www` as the intended canonical origin.
+ Keep `site.url` and generated canonical/OG/hreflang/sitemap/robots output on the apex. Do not
+ describe `www` as the intended canonical origin.
 - Some procedure-prep, blog, and education availability strings still say EN/ES despite all five
-  locales being present. External Hushforms packets really are EN/ES-only; clinical-care language
-  claims require practice confirmation rather than a mechanical five-language rewrite.
+ locales being present. External Hushforms packets really are EN/ES-only; clinical-care language
+ claims require practice confirmation rather than a mechanical five-language rewrite.
 - GitHub, Vercel, and Porkbun custody are verified clinic-controlled. Supabase account/org custody
-  and Resend account/team custody are not evidenced as complete. The Resend domain and Production
-  application sender are configured, but that is not account custody. Keep the Website page's
-  explicit custody split accurate until the practice-controlled handoff is documented.
+ and Resend account/team custody are not evidenced as complete. The Resend domain and Production
+ application sender are configured, but that is not account custody. Keep the Website page's
+ explicit custody split accurate until the practice-controlled handoff is documented.
 
 ## Agent skills
 
@@ -150,29 +171,28 @@ acting on it. Never hand-edit a vendored skill; re-copy it from upstream.
 
 ## Verification
 
-- `docs/SOURCE-MAP.md` maps each kind of change to the files it touches and the checks that cover
-  it, and separates the checks that need credentials from the ones that do not. Start there in an
-  unfamiliar area.
+- `ARCHITECTURE.md` §14 maps each kind of change to the files it touches, and
+ `CONTRIBUTING.md` maps those areas to the checks that cover them, separating the checks that
+ need credentials from the ones that do not. Start there in an unfamiliar area.
 - The no-credential set is exactly the CI `quality` job: `npm run test:e2e-guard`,
-  `npm run test:unit`, `npm run lint`, `npm run build` with placeholder Supabase values, and the
-  `PLAYWRIGHT_PUBLIC_SMOKE=1` smoke run. It needs no `.env.local`, so it is the whole verification
-  surface available to an agent working without secrets.
+ `npm run test:unit`, `npm run lint`, `npm run build` with placeholder Supabase values, and the
+ `PLAYWRIGHT_PUBLIC_SMOKE=1` smoke run. It needs no `.env.local`, so it is the whole verification
+ surface available to an agent working without secrets.
 - `npm run doctor` must execute; the standard for repository source is a clean 100. The GitHub
-  React Doctor status is required by branch settings, but a green check proves execution rather
-  than a clean score—inspect its report. The dependency controller separately rejects auto-merge
-  when an exact-head PR scan reports errors.
+ React Doctor status is required by branch settings, but a green check proves execution rather
+ than a clean score—inspect its report. The dependency controller separately rejects auto-merge
+ when an exact-head PR scan reports errors.
 - A local React Doctor score is not comparable to the CI score. CI scans a clean checkout; a local
-  scan also reads untracked build output such as `.next/` and `.next-e2e/`, whose bundled
-  third-party sourcemaps trip the artifact-secret rule and can drag the score far below 100. Read
-  the path on every finding before acting: a hit inside a build directory or `node_modules` is
-  local noise, not a repository defect, and must never be "fixed" by editing generated files.
+ scan also reads untracked build output such as `.next/` and `.next-e2e/`, whose bundled
+ third-party sourcemaps trip the artifact-secret rule and can drag the score far below 100. Read
+ the path on every finding before acting: a hit inside a build directory or `node_modules` is
+ local noise, not a repository defect, and must never be "fixed" by editing generated files.
 - `npx playwright test` must pass before shipping a behavior change; it runs against a development
-  Supabase project via `.env.local` (see README §Tests). Never describe it as passing when it did
-  not run.
+ Supabase project via `.env.local` (see `CONTRIBUTING.md` §Verification). Never describe it as
+ passing when it did not run.
 - `node scripts/verify-no-secrets.mjs` proves the history stays free of secret material;
-  `scripts/verify-schema.mjs --target dev|prod` checks schema/RLS/seed state.
-- External links: only ship URLs verified live (see README's link table); anything unverified
-  stays out.
+ `scripts/verify-schema.mjs --target dev|prod` checks schema/RLS/seed state.
+- External links: only ship URLs verified live; anything unverified stays out.
 
 ### Codex Cloud containers
 
