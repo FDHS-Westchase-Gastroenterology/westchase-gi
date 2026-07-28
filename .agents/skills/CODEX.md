@@ -26,7 +26,7 @@ practice, so they rank below the repository's own rules:
    APIs and conventions differ from what a general best-practices document assumes. Check
    `node_modules/next/dist/docs/` before acting on any framework recommendation from a vendored
    skill, and prefer what the installed version documents.
-3. `docs/SOURCE-MAP.md` for where a change belongs and how to verify it.
+3. `ARCHITECTURE.md` for where a change belongs and `CONTRIBUTING.md` for how to verify it.
 4. The vendored skill.
 
 A vendored skill that contradicts a hard rule is wrong for this repository, not a reason to
@@ -37,4 +37,4 @@ revisit the rule.
 Re-copy the whole directory from upstream and record the new version in the table above. Do not
 hand-edit vendored content: a local edit is invisible to the next person who refreshes the skill,
 and it silently forks a document that claims to be the vendor's. Repository-specific guidance
-belongs in `AGENTS.md` or `docs/`, never inside a vendored skill.
+belongs in `AGENTS.md`, `ARCHITECTURE.md`, or `CONTRIBUTING.md`, never inside a vendored skill.

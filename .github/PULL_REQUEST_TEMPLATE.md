@@ -4,7 +4,7 @@
 
 ## Scope
 
-<!-- Routes, components, locales, content areas, or config touched. docs/SOURCE-MAP.md lists what
+<!-- Routes, components, locales, content areas, or config touched. ARCHITECTURE.md §14 lists what
 each kind of change usually touches. Link parity or strategy docs when relevant. -->
 
 ## Verification
@@ -29,7 +29,7 @@ an acceptable answer, silently implying a pass is not:
 ## UI screenshots
 
 <!-- Required for visible changes. Before/after or annotated captures, with viewport and locale
-coverage noted. Refresh docs/ui-reference/ images when a covered surface changed. N/A for non-UI
+coverage noted. Refresh ui-reference/ images when a covered surface changed. N/A for non-UI
 work — say so explicitly. -->
 
 ## Medical / content provenance
