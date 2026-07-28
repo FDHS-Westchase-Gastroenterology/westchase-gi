@@ -25,8 +25,8 @@ Read in this order, as the task requires:
    and the change-type → files map (§14). Start there in an unfamiliar area.
 3. [`CONTRIBUTING.md`](CONTRIBUTING.md) — the contribution process: setup, verification
    surface, commit/PR/merge discipline, and the path to production.
-4. Product truth: `PRODUCT.md` + `DESIGN.md` (patient site), `PORTAL-PRODUCT.md` (portal).
-   UI baseline: `ui-reference/README.md`.
+4. Product truth: `PRODUCT.md` (patient-site brand register and staff-portal product register)
+   + `DESIGN.md` (design system). UI baseline: `ui-reference/README.md`.
 
 `README.md` is the human, user-facing overview — cite it for custody and pending practice
 confirmations, but do not treat it as developer documentation.
@@ -53,8 +53,8 @@ confirmations, but do not treat it as developer documentation.
  key a build error. Never ship one locale ahead of another. Arabic is RTL
  (`localeDir` in `src/lib/site.ts`). The `/admin` portal is English-only by scope decision
  and keeps its strings in plain TSX, not the patient dictionaries. Portal UI work follows
- `PORTAL-PRODUCT.md` (task-first product register; the root `PRODUCT.md` covers the
- patient site only).
+ the staff-portal register in `PRODUCT.md` (a task-first product register; the same file's
+ brand register covers the patient site).
 6. **One-way linking:** this site may link to Alpha Omega Wellness (footer). Never accept the
  reverse expectation into this codebase; it's owned by the other project.
 7. **No invented facts.** Unconfirmed details live in README's pending-confirmations list and

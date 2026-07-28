@@ -37,8 +37,8 @@ A private portal at `/admin` where front-desk staff and the practice manager:
 - manage staff sign-ins, print the approved review-QR flyers, and see who can change the
   website.
 
-Product definitions live in `PRODUCT.md` / `DESIGN.md` (patient site) and
-`PORTAL-PRODUCT.md` (staff portal).
+Product definitions live in `PRODUCT.md` (patient site and staff portal) and `DESIGN.md`
+(shared design system).
 
 ## What this rebuild fixed (vs. the old vendor site)
 
@@ -98,8 +98,7 @@ covered in `CONTRIBUTING.md`.
 | `ARCHITECTURE.md` | Developers | System design, module interfaces, external systems, where logic lives |
 | `CONTRIBUTING.md` | Developers | Setup, verification, commit/PR/merge rules, shipping to production, operations |
 | `AGENTS.md` | AI coding agents | Hard rules and fast ramp-up for autonomous work |
-| `PRODUCT.md` / `DESIGN.md` | Product + design | Patient-site product definition and design system |
-| `PORTAL-PRODUCT.md` | Product + design | Staff-portal product definition |
+| `PRODUCT.md` / `DESIGN.md` | Product + design | Product definitions (patient site + staff portal) and the design system |
 | `ui-reference/` | Developers | Checked-in screenshots: the visual baseline for UI work |
 
 Release progress and open operational work are deliberately **not** restated here — a stale

@@ -3,7 +3,7 @@
 Developer-facing system design: how the application works, where logic lives, and how it
 interacts with external systems. Companions: [`CONTRIBUTING.md`](CONTRIBUTING.md) (process:
 setup, verification, commit/PR/merge, production), [`AGENTS.md`](AGENTS.md) (non-negotiable
-hard rules), `PRODUCT.md` / `DESIGN.md` (patient site), `PORTAL-PRODUCT.md` (staff portal).
+hard rules), `PRODUCT.md` (patient-site and staff-portal registers), `DESIGN.md` (design system).
 
 This document describes the design; it is not a status page. When it and the code disagree,
 the code is right — fix this file in the same pull request.
@@ -208,7 +208,7 @@ rollback, mark versions reverted in the migration ledger
   classification, attributed notes, CSV export), Settings (notification recipients; staff
   accounts with emailed single-use setup links), Website (custody + maintainer controls),
   Activity (audit log), Help, review-flyer printer (every active staff member), first-login
-  tour. Product truth: `PORTAL-PRODUCT.md`.
+  tour. Product truth: the portal register in `PRODUCT.md`.
 - **Mutations** — `management.ts` (staff/recipients) and the maintainer modules return typed
   results, commit combined actions atomically, and write `audit_log` rows.
 - **Review-flyer printer** — 18 approved binaries in `private/review-flyers/` served through

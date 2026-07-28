@@ -6,7 +6,8 @@ the where-logic-lives map this guide references. The non-negotiable product and 
 rules are in [`AGENTS.md`](AGENTS.md) — read its hard rules before editing anything.
 
 Product truth lives in `PRODUCT.md` and `DESIGN.md` (patient site) and
-`PORTAL-PRODUCT.md` (staff portal). Repository custody facts are summarized in
+`PRODUCT.md` (patient-site and staff-portal registers) and `DESIGN.md`. Repository custody
+facts are summarized in
 [`README.md`](README.md); the design of every external connection is in
 `ARCHITECTURE.md` §10.
 
