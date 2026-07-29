@@ -247,6 +247,11 @@ test.describe("portal management server boundaries", () => {
       .delete()
       .in("email", [recipientEmail, deniedRecipientEmail]);
     await db.from("requests").delete().like("email", `portal-export-${runId}-%`);
+    await db
+      .from("audit_log")
+      .delete()
+      .eq("action", "requests.export")
+      .eq("actor_email", staffEmail);
 
     if (auditEntityIds.size > 0) {
       await db
@@ -838,6 +843,28 @@ test.describe("portal management server boundaries", () => {
       ]);
     }
 
+    // The export boundary is audited: exactly one metadata-only row for the
+    // successful read above, nothing for the rejected calls below.
+    const { data: exportAudits, error: exportAuditError } = await db
+      .from("audit_log")
+      .select("id, actor_email, entity, entity_id, detail")
+      .eq("action", "requests.export")
+      .eq("actor_email", staffEmail)
+      .order("at", { ascending: false })
+      .limit(1);
+    expect(exportAuditError).toBeNull();
+    expect(exportAudits).toHaveLength(1);
+    expect(exportAudits?.[0].entity).toBe("requests");
+    expect(exportAudits?.[0].entity_id).toBeNull();
+    expect(exportAudits?.[0].detail).toMatchObject({
+      row_count: expectedCount,
+      status_filter: "contacted",
+      has_search: false,
+    });
+    expect(JSON.stringify(exportAudits?.[0].detail)).not.toContain(
+      "portal-export-",
+    );
+
     const invalidFilter = await fetchCsv(staffPage, "not-a-status");
     expect(invalidFilter.status).toBe(400);
 
@@ -854,5 +881,13 @@ test.describe("portal management server boundaries", () => {
         ).pathname,
       ).toBe("/admin/login");
     }
+
+    const { count: exportAuditTotal, error: exportAuditCountError } = await db
+      .from("audit_log")
+      .select("id", { count: "exact", head: true })
+      .eq("action", "requests.export")
+      .eq("actor_email", staffEmail);
+    expect(exportAuditCountError).toBeNull();
+    expect(exportAuditTotal).toBe(1);
   });
 });
