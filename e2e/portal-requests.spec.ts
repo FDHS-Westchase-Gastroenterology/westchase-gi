@@ -490,7 +490,9 @@ test.describe("portal requests operation", () => {
       `/admin/requests?status=contacted&q=${encodeURIComponent(payload("notes").name)}`,
     );
     await page.getByTestId("request-row").click();
-    await expect(page.getByRole("heading", { name: "Notes" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Notes", exact: true }),
+    ).toBeVisible();
     await expect(page.getByTestId("note-list")).toContainText(noteText);
     await expect(page.getByTestId("note-list")).toContainText(handoffText);
 
