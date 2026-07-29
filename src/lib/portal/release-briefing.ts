@@ -5,12 +5,10 @@ import { serviceClient } from "@/lib/portal/server";
 import {
   derivePortalReleaseState,
   parsePortalReleaseId,
-  PORTAL_RELEASE_WINDOW_MS,
   type PortalReleaseState,
   type PortalReleaseStateRow,
 } from "./release-state";
 
-export { PORTAL_RELEASE_WINDOW_MS };
 export type { PortalReleaseState };
 
 type PortalReleaseMutation =
