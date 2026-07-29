@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { logoutAction } from "@/app/admin/actions";
 import { getSessionUser } from "@/lib/portal/auth";
+import { availableQueueCount } from "@/lib/portal/request-query";
+import { serviceClient } from "@/lib/portal/server";
 import { PortalNav } from "./portal-nav";
 
 // Authenticated portal chrome: a navy work-desk header carrying the
@@ -16,6 +18,14 @@ export default async function PortalLayout({
 }) {
   const session = await getSessionUser();
   if (!session) redirect("/admin/login");
+
+  // The waiting signal travels with the worker: the same read discipline as
+  // Home (failed read = no badge, never a false zero).
+  const { count, error } = await serviceClient()
+    .from("requests")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "new");
+  const waitingCount = availableQueueCount(count, error);
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -57,7 +67,7 @@ export default async function PortalLayout({
               </form>
             </div>
           </div>
-          <PortalNav />
+          <PortalNav waitingCount={waitingCount} />
         </div>
       </header>
       <main className="flex-1 pb-16 pt-8 sm:pt-10">
