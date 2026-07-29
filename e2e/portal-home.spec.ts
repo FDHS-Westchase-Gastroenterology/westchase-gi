@@ -389,6 +389,21 @@ test.describe("portal home", () => {
           "staff.tour_restart",
         ]),
       );
+
+      // Finishing the tour is now distinguishable from dismissing it: one
+      // completion row with the step reached, written app-side.
+      const { data: completes, error: completeError } = await db
+        .from("audit_log")
+        .select("id, detail")
+        .eq("actor_email", email)
+        .eq("action", "staff.tour_complete");
+      expect(completeError).toBeNull();
+      expect(completes).toHaveLength(1);
+      expect(completes![0].detail).toMatchObject({
+        completed: true,
+        step_reached: 3,
+        total_steps: 3,
+      });
     } finally {
       await db
         .from("staff_profiles")
@@ -409,6 +424,11 @@ test.describe("portal home", () => {
       if (auditIds.length > 0) {
         await db.from("audit_log").delete().in("id", auditIds);
       }
+      await db
+        .from("audit_log")
+        .delete()
+        .eq("actor_email", email)
+        .eq("action", "staff.tour_complete");
     }
   });
 });
