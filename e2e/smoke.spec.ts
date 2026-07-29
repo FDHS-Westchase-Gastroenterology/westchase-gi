@@ -34,9 +34,8 @@ test("appointment submission cannot re-enter while its request is pending", asyn
   });
 
   await page.goto("/en/appointment");
-  await page
-    .getByRole("button", { name: "Continue in English", exact: true })
-    .click();
+  // No chooser dismissal: the default en-US evidence matches /en, so the
+  // evidence-gated dialog never opens (P0-2).
   const form = page.locator('form[action="/api/requests/form"]');
   await expect(form).toHaveAttribute("data-hydrated", "true");
   await page.fill("#name", "TEST Re-entry Guard");

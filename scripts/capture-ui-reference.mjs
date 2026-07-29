@@ -58,7 +58,12 @@ function portalCredentials() {
 
 const publicCaptures = [
   { name: "desktop-en-home", path: "/en", viewport: { width: 1440, height: 900 }, locale: "en", ready: "main h1" },
-  { name: "desktop-en-home-first-visit", path: "/en", viewport: { width: 1440, height: 900 }, firstVisit: true, ready: "dialog.language-dialog[open]" },
+  // The English-evidence first visit is banner + hero alone: the chooser only
+  // interrupts on a locale mismatch (I4).
+  { name: "desktop-en-home-first-visit", path: "/en", viewport: { width: 1440, height: 900 }, firstVisit: true, ready: "main h1" },
+  // The one standing interruption: the chooser when the browser's language
+  // mismatches the served locale, with that language suggested.
+  { name: "desktop-en-home-locale-hint", path: "/en", viewport: { width: 1440, height: 900 }, firstVisit: true, browserLocale: "es", ready: "dialog.language-dialog[open]" },
   { name: "desktop-en-services", path: "/en/services", viewport: { width: 1440, height: 900 }, locale: "en", ready: "main h1" },
   { name: "desktop-en-physicians", path: "/en/physicians", viewport: { width: 1440, height: 900 }, locale: "en", ready: "main h1" },
   { name: "desktop-en-appointment", path: "/en/appointment", viewport: { width: 1440, height: 900 }, locale: "en", ready: "main form" },
@@ -191,6 +196,7 @@ try {
         viewport: capture.viewport,
         deviceScaleFactor: 1,
         reducedMotion: "reduce",
+        ...(capture.browserLocale ? { locale: capture.browserLocale } : {}),
       });
       try {
         if (!capture.firstVisit && capture.locale) {

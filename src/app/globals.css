@@ -601,6 +601,8 @@
     font-weight: 800;
   }
 
+  .language-dialog__suggested[hidden] { display: none; }
+
   .language-dialog__suggested svg { width: 1rem; height: 1rem; }
 
   .language-dialog__continue {
