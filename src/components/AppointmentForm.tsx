@@ -109,6 +109,31 @@ function ProblemAlert({ dict, status, alertRef }: ProblemAlertProps) {
   );
 }
 
+function localFieldErrors(f: Dictionary["appointment"]["form"], data: FormData): Errors {
+  const next: Errors = {};
+  const name = String(data.get("name") || "").trim();
+  const phone = String(data.get("phone") || "").trim();
+  const email = String(data.get("email") || "").trim();
+
+  if (!name) next.name = f.errName;
+  if (!phone || phone.replace(/\D/g, "").length < 10) next.phone = f.errPhone;
+  // Email is optional — many patients have none; phone is the callback
+  // channel. Validate the format only when something was entered.
+  if (email && !isMailbox(email)) next.email = f.errEmail;
+  return next;
+}
+
+function serverFieldErrors(
+  f: Dictionary["appointment"]["form"],
+  fieldErrors: Record<string, string>,
+): Errors {
+  const next: Errors = {};
+  if ("name" in fieldErrors) next.name = f.errName;
+  if ("phone" in fieldErrors) next.phone = f.errPhone;
+  if ("email" in fieldErrors) next.email = f.errEmail;
+  return next;
+}
+
 export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
   const f = dict.appointment.form;
   const pathname = usePathname();
@@ -138,28 +163,6 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     }
   }, [status]);
 
-  function localFieldErrors(data: FormData): Errors {
-    const next: Errors = {};
-    const name = String(data.get("name") || "").trim();
-    const phone = String(data.get("phone") || "").trim();
-    const email = String(data.get("email") || "").trim();
-
-    if (!name) next.name = f.errName;
-    if (!phone || phone.replace(/\D/g, "").length < 10) next.phone = f.errPhone;
-    // Email is optional — many patients have none; phone is the callback
-    // channel. Validate the format only when something was entered.
-    if (email && !isMailbox(email)) next.email = f.errEmail;
-    return next;
-  }
-
-  function serverFieldErrors(fieldErrors: Record<string, string>): Errors {
-    const next: Errors = {};
-    if ("name" in fieldErrors) next.name = f.errName;
-    if ("phone" in fieldErrors) next.phone = f.errPhone;
-    if ("email" in fieldErrors) next.email = f.errEmail;
-    return next;
-  }
-
   function showProblem(state: "failure" | "unknown") {
     submittingRef.current = false;
     setStatus(state);
@@ -172,7 +175,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     const form = e.currentTarget;
     const data = new FormData(form);
 
-    const next = localFieldErrors(data);
+    const next = localFieldErrors(f, data);
     setErrors(next);
     if (Object.keys(next).length > 0) {
       const first = form.querySelector<HTMLElement>('[aria-invalid="true"]');
@@ -230,7 +233,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     }
 
     if (body.code === "validation" && body.fieldErrors) {
-      const mapped = serverFieldErrors(body.fieldErrors);
+      const mapped = serverFieldErrors(f, body.fieldErrors);
       setErrors(mapped);
       submittingRef.current = false;
       setStatus("idle");
