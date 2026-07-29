@@ -73,15 +73,25 @@ type AuditRow = {
 };
 
 // Call outcomes from the request event stream, plus status moves and closes
-// from the audit record. Notes remain a separate, first-class staff
-// abstraction; their call-outcome/note audit twins are excluded here so each
-// human action renders exactly once.
+// from the audit record. Appointment request notes remain a separate,
+// first-class staff abstraction; corresponding call-outcome and
+// appointment-request-note audit rows are excluded here so each human action
+// renders exactly once.
 type ActivityEntry =
   | {
       kind: "outcome";
       id: string;
       outcome: string;
       followUpAt: string | null;
+      undone: boolean;
+      author: string;
+      at: string;
+    }
+  | {
+      kind: "undo";
+      id: string;
+      outcome: string;
+      restoredStatus: string;
       author: string;
       at: string;
     }
@@ -122,6 +132,16 @@ function activityEntries(
         id: `event-${event.id}`,
         outcome: metaText(event.meta, "outcome"),
         followUpAt: metaText(event.meta, "follow_up_at") || null,
+        undone: event.status === "undone",
+        author: metaText(event.meta, "author_email"),
+        at: event.created_at,
+      });
+    } else if (event.type === "call_outcome_undo") {
+      entries.push({
+        kind: "undo",
+        id: `event-${event.id}`,
+        outcome: metaText(event.meta, "outcome"),
+        restoredStatus: metaText(event.meta, "restored_status"),
         author: metaText(event.meta, "author_email"),
         at: event.created_at,
       });
@@ -231,7 +251,7 @@ export default async function RequestDetailPage({
     throw new Error(`Event read failed: ${eventsError.code}`);
   }
   if (auditError) {
-    throw new Error(`Work record read failed: ${auditError.code}`);
+    throw new Error(`Request activity read failed: ${auditError.code}`);
   }
 
   // Previous/next within the viewer's queue scope: the same attention
@@ -476,7 +496,16 @@ export default async function RequestDetailPage({
                           entry.followUpAt
                             ? ` — call again ${followUpWhenLabel(entry.followUpAt)}`
                             : ""
+                        }${
+                          entry.undone
+                            ? " — appointment request status change undone"
+                            : ""
                         }`
+                      : entry.kind === "undo"
+                        ? `Undo — appointment request status restored to ${
+                            STATUS_LINE_LABELS[entry.restoredStatus] ??
+                            entry.restoredStatus
+                          }`
                       : entry.kind === "status"
                         ? entry.legacyClose
                           ? "Closed without an outcome"

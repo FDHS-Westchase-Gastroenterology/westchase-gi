@@ -245,7 +245,7 @@ test.describe("portal requests operation", () => {
       (row) => (row.detail as { outcome?: string }).outcome,
     );
     expect(outcomes.sort()).toEqual(
-      ["no_answer", "reached_follow_up", "wont_schedule"].sort(),
+      ["booked", "no_answer", "reached_follow_up", "wont_schedule"].sort(),
     );
 
     const { data: statusAudits, error: statusAuditError } = await db
@@ -254,8 +254,7 @@ test.describe("portal requests operation", () => {
       .eq("entity_id", id)
       .eq("action", "request.status_change");
     expect(statusAuditError).toBeNull();
-    expect(statusAudits).toHaveLength(1);
-    expect((statusAudits![0].detail as { to?: string }).to).toBe("scheduled");
+    expect(statusAudits).toHaveLength(0);
   });
 
   test("VAL-ADMIN-005b: unsafe legacy email uses the phone fallback", async ({
@@ -450,14 +449,39 @@ test.describe("portal requests operation", () => {
           .getByText("Contacted", { exact: true }),
       ).toHaveCount(0);
       await expect(page.getByTestId("save-outcome")).toHaveText(
-        "Save appointment request status",
+        "Save",
       );
       await expect(page.getByTestId("save-outcome")).toBeDisabled();
       await expect(page.getByTestId("save-outcome-next")).toHaveCount(0);
       await composer.getByText("Scheduled", { exact: true }).click();
-      await expect(page.getByTestId("save-outcome")).toHaveText(
-        "Save as Scheduled",
+      await expect(page.getByTestId("save-outcome")).toHaveText("Save");
+      await page.getByTestId("save-outcome").click();
+      await expect(page.getByTestId("composer-feedback")).toBeVisible();
+      await expect(page.getByTestId("save-outcome")).toHaveText("Saved");
+      await expect(page.getByTestId("undo-outcome")).toHaveText("Undo");
+
+      // Undo is a real atomic reversal, not a local form reset.
+      await page.getByTestId("undo-outcome").click();
+      await expect(page.getByTestId("composer-feedback")).toContainText(
+        "Appointment request status restored to Contacted.",
       );
+      await expect(page.getByTestId("undo-outcome")).toHaveText("Undone");
+      const { data: undoneRow, error: undoneRowError } = await db
+        .from("requests")
+        .select("status")
+        .eq("id", idsByKey.get("due")!)
+        .single();
+      expect(undoneRowError).toBeNull();
+      expect(undoneRow?.status).toBe("contacted");
+      await expect(page.getByTestId("request-activity")).toContainText(
+        "Appointment booked — appointment request status change undone",
+      );
+      await expect(page.getByTestId("request-activity")).toContainText(
+        "Undo — appointment request status restored to Contacted",
+      );
+
+      // A new save creates the next undo point and offers queue continuation.
+      await composer.getByText("Scheduled", { exact: true }).click();
       await page.getByTestId("save-outcome").click();
       await expect(page.getByTestId("composer-feedback")).toBeVisible();
       await page.getByTestId("open-next-request").click();
@@ -473,14 +497,32 @@ test.describe("portal requests operation", () => {
       expect(savedRowError).toBeNull();
       expect(savedRow?.status).toBe("scheduled");
 
-      const { data: statusAudits, error: statusAuditError } = await db
+      const { data: outcomeAudits, error: outcomeAuditError } = await db
         .from("audit_log")
         .select("detail")
         .eq("entity_id", idsByKey.get("due")!)
-        .eq("action", "request.status_change");
-      expect(statusAuditError).toBeNull();
-      expect(statusAudits).toHaveLength(1);
-      expect((statusAudits![0].detail as { to?: string }).to).toBe("scheduled");
+        .eq("action", "request.call_outcome");
+      expect(outcomeAuditError).toBeNull();
+      expect(outcomeAudits).toHaveLength(2);
+      for (const audit of outcomeAudits ?? []) {
+        expect(audit.detail).toMatchObject({
+          outcome: "booked",
+          from: "contacted",
+          to: "scheduled",
+        });
+      }
+      const { data: undoAudits, error: undoAuditError } = await db
+        .from("audit_log")
+        .select("detail")
+        .eq("entity_id", idsByKey.get("due")!)
+        .eq("action", "request.call_outcome_undo");
+      expect(undoAuditError).toBeNull();
+      expect(undoAudits).toHaveLength(1);
+      expect(undoAudits?.[0].detail).toMatchObject({
+        outcome: "booked",
+        from: "scheduled",
+        to: "contacted",
+      });
     } finally {
       const ids = [...idsByKey.values()];
       await db.from("requests").delete().in("id", ids);

@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useReducer, useRef, useTransition } from "react";
+import {
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+  useTransition,
+  type RefObject,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type {
@@ -8,7 +15,11 @@ import type {
   RequestStatus,
 } from "@/lib/portal/contracts";
 import { Check } from "@/components/icons";
-import { logCallOutcome, type CallOutcomeId } from "../actions";
+import {
+  logCallOutcome,
+  undoCallOutcome,
+  type CallOutcomeId,
+} from "../actions";
 import { followUpWhenLabel } from "../format";
 
 // The daily work loop uses the same lifecycle vocabulary as the queue.
@@ -138,8 +149,6 @@ function confirmationFor(
 const ERROR_COPY = {
   follow_up_required:
     "Choose when to call again — that's how the queue knows when to bring this request back.",
-  note_failed:
-    "The status was saved, but the request may be incomplete. Check the request before repeating anything.",
   not_found:
     "This request no longer exists — it may have been removed. Open the queue to see the current list.",
   invalid:
@@ -160,7 +169,12 @@ function practiceLocalDay(offsetDays: number): string {
 }
 
 type Feedback =
-  | { tone: "success"; text: string; closed: boolean }
+  | {
+      tone: "success";
+      text: string;
+      closed: boolean;
+      offerNext: boolean;
+    }
   | { tone: "error"; text: string };
 
 type ComposerState = {
@@ -178,7 +192,12 @@ type ComposerAction =
   | { type: "select_follow_up"; kind: FollowUpKind }
   | { type: "set_day"; day: string }
   | { type: "attempt" }
-  | { type: "succeeded"; text: string; closed: boolean }
+  | {
+      type: "succeeded";
+      text: string;
+      closed: boolean;
+      offerNext: boolean;
+    }
   | { type: "failed"; text: string };
 
 const INITIAL_STATE: ComposerState = {
@@ -224,7 +243,12 @@ function composerReducer(
     case "succeeded":
       return {
         ...INITIAL_STATE,
-        feedback: { tone: "success", text: action.text, closed: action.closed },
+        feedback: {
+          tone: "success",
+          text: action.text,
+          closed: action.closed,
+          offerNext: action.offerNext,
+        },
       };
     case "failed":
       return { ...state, feedback: { tone: "error", text: action.text } };
@@ -401,6 +425,129 @@ function FollowUpFieldset({
   );
 }
 
+function ComposerFeedback({
+  feedback,
+  nextHref,
+  feedbackRef,
+}: {
+  feedback: Feedback | null;
+  nextHref?: string | null;
+  feedbackRef: RefObject<HTMLParagraphElement | null>;
+}) {
+  if (!feedback) return null;
+
+  return (
+    <p
+      ref={feedbackRef}
+      tabIndex={-1}
+      role={feedback.tone === "success" ? "status" : "alert"}
+      data-testid="composer-feedback"
+      className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-[0.92rem] font-bold leading-relaxed text-[var(--color-ink)] outline-none ${
+        feedback.tone === "success"
+          ? "bg-[var(--color-mint)]"
+          : "bg-[var(--color-amber-soft)]"
+      }`}
+    >
+      {feedback.text}{" "}
+      {feedback.tone === "success" ? (
+        feedback.offerNext && nextHref ? (
+          <Link
+            href={nextHref}
+            data-testid="open-next-request"
+            className="inline-flex min-h-11 items-center underline underline-offset-2"
+          >
+            Open next appointment request
+          </Link>
+        ) : feedback.closed ? (
+          <Link
+            href="/admin/requests"
+            className="inline-flex min-h-11 items-center underline underline-offset-2"
+          >
+            Back to appointment requests
+          </Link>
+        ) : null
+      ) : null}
+    </p>
+  );
+}
+
+function StatusActions({
+  pending,
+  saveDisabled,
+  operation,
+  saveConfirmed,
+  undoAvailable,
+  undoConfirmed,
+  confirmationMotion,
+  onSave,
+  onUndo,
+}: {
+  pending: boolean;
+  saveDisabled: boolean;
+  operation: "save" | "undo" | null;
+  saveConfirmed: boolean;
+  undoAvailable: boolean;
+  undoConfirmed: boolean;
+  confirmationMotion: boolean;
+  onSave: (animateConfirmation: boolean) => void;
+  onUndo: (animateConfirmation: boolean) => void;
+}) {
+  const saveLabel =
+    operation === "save" ? "Saving…" : saveConfirmed ? "Saved" : "Save";
+  const undoLabel =
+    operation === "undo" ? "Undoing…" : undoConfirmed ? "Undone" : "Undo";
+
+  return (
+    <div className="mt-5 flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        data-testid="save-outcome"
+        disabled={saveDisabled}
+        onClick={(event) => onSave(event.detail !== 0)}
+        className="btn btn-navy min-h-11 disabled:opacity-60"
+      >
+        <span
+          key={saveLabel}
+          data-confirmed={saveConfirmed && operation !== "save"}
+          data-animate={confirmationMotion}
+          className="request-status-action-label"
+        >
+          {saveConfirmed && operation !== "save" ? (
+            <Check aria-hidden="true" className="h-4 w-4" />
+          ) : null}
+          {saveLabel}
+        </span>
+      </button>
+      {undoAvailable || undoConfirmed ? (
+        <button
+          type="button"
+          data-testid="undo-outcome"
+          disabled={pending || undoConfirmed}
+          onClick={(event) => onUndo(event.detail !== 0)}
+          className="btn btn-outline min-h-11 disabled:opacity-60"
+        >
+          <span
+            key={undoLabel}
+            data-confirmed={undoConfirmed && operation !== "undo"}
+            data-animate={confirmationMotion}
+            className="request-status-action-label"
+          >
+            {undoConfirmed && operation !== "undo" ? (
+              <Check aria-hidden="true" className="h-4 w-4" />
+            ) : null}
+            {undoLabel}
+          </span>
+        </button>
+      ) : null}
+      <p className="text-[0.85rem] text-[var(--color-muted)]">
+        {undoAvailable
+          ? "Undo restores the previous appointment request status, callback time, and Closed details."
+          : "Save creates one Request activity entry."}
+      </p>
+    </div>
+  );
+}
+
 export function CallOutcomeComposer({
   requestId,
   status,
@@ -417,6 +564,11 @@ export function CallOutcomeComposer({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [state, dispatch] = useReducer(composerReducer, INITIAL_STATE);
+  const [operation, setOperation] = useState<"save" | "undo" | null>(null);
+  const [undoEventId, setUndoEventId] = useState<string | null>(null);
+  const [saveConfirmed, setSaveConfirmed] = useState(false);
+  const [undoConfirmed, setUndoConfirmed] = useState(false);
+  const [confirmationMotion, setConfirmationMotion] = useState(true);
   const {
     destination,
     selected,
@@ -432,6 +584,12 @@ export function CallOutcomeComposer({
     if (feedback) feedbackRef.current?.focus();
   }, [feedback]);
 
+  useEffect(() => {
+    if (!undoConfirmed) return;
+    const timeout = window.setTimeout(() => setUndoConfirmed(false), 1200);
+    return () => window.clearTimeout(timeout);
+  }, [undoConfirmed]);
+
   const outcomeRowProps = (option: OutcomeOption) => ({
     option,
     checked: selected === option.id,
@@ -440,7 +598,7 @@ export function CallOutcomeComposer({
       dispatch({ type: "select_outcome", outcome: id }),
   });
 
-  function submit() {
+  function submit(animateConfirmation: boolean) {
     if (!selected || pending) return;
     dispatch({ type: "attempt" });
     if (requiresFollowUp(selected) && !followUpKind) return;
@@ -453,22 +611,85 @@ export function CallOutcomeComposer({
           : { kind: followUpKind }
         : undefined;
 
+    setOperation("save");
     startTransition(async () => {
-      const result = await logCallOutcome({
-        requestId,
-        outcome: selected,
-        followUp,
-      });
-      if (!result.ok) {
-        dispatch({ type: "failed", text: ERROR_COPY[result.code] });
-        return;
+      try {
+        const result = await logCallOutcome({
+          requestId,
+          outcome: selected,
+          followUp,
+        });
+        if (!result.ok) {
+          dispatch({ type: "failed", text: ERROR_COPY[result.code] });
+          return;
+        }
+        setConfirmationMotion(animateConfirmation);
+        setUndoEventId(result.eventId);
+        setUndoConfirmed(false);
+        setSaveConfirmed(true);
+        dispatch({
+          type: "succeeded",
+          text: confirmationFor(selected, result.followUpAt),
+          closed: result.status === "closed",
+          offerNext: true,
+        });
+        router.refresh();
+      } finally {
+        setOperation(null);
       }
-      dispatch({
-        type: "succeeded",
-        text: confirmationFor(selected, result.followUpAt),
-        closed: result.status === "closed",
-      });
-      router.refresh();
+    });
+  }
+
+  function undo(animateConfirmation: boolean) {
+    if (!undoEventId || pending) return;
+    setOperation("undo");
+    startTransition(async () => {
+      try {
+        const result = await undoCallOutcome({
+          requestId,
+          eventId: undoEventId,
+        });
+        if (!result.ok) {
+          if (result.code === "stale" || result.code === "not_found") {
+            setUndoEventId(null);
+            setSaveConfirmed(false);
+            router.refresh();
+          }
+          dispatch({
+            type: "failed",
+            text:
+              result.code === "stale"
+                ? "Undo is unavailable because the appointment request changed after this save. The current appointment request status is shown."
+                : result.code === "not_found"
+                  ? "This save is no longer available to undo. The current appointment request status is shown."
+                  : result.code === "invalid"
+                    ? "Undo is unavailable. Nothing changed."
+                    : "Undo did not complete. Check the current appointment request status before trying again.",
+          });
+          return;
+        }
+        setConfirmationMotion(animateConfirmation);
+        setUndoEventId(null);
+        setSaveConfirmed(false);
+        setUndoConfirmed(true);
+        dispatch({
+          type: "succeeded",
+          text: `Appointment request status restored to ${STATUS_LABEL[result.status]}.`,
+          closed: result.status === "closed",
+          offerNext: false,
+        });
+        router.refresh();
+      } finally {
+        setOperation(null);
+      }
+    });
+  }
+
+  function selectDestination(nextDestination: LifecycleDestination) {
+    setSaveConfirmed(false);
+    dispatch({
+      type: "select_destination",
+      destination: nextDestination,
     });
   }
 
@@ -516,39 +737,11 @@ export function CallOutcomeComposer({
         </p>
       ) : null}
 
-      {feedback ? (
-        <p
-          ref={feedbackRef}
-          tabIndex={-1}
-          role={feedback.tone === "success" ? "status" : "alert"}
-          data-testid="composer-feedback"
-          className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-[0.92rem] font-bold leading-relaxed text-[var(--color-ink)] outline-none ${
-            feedback.tone === "success"
-              ? "bg-[var(--color-mint)]"
-              : "bg-[var(--color-amber-soft)]"
-          }`}
-        >
-          {feedback.text}{" "}
-          {feedback.tone === "success" ? (
-            nextHref ? (
-              <Link
-                href={nextHref}
-                data-testid="open-next-request"
-                className="inline-flex min-h-11 items-center underline underline-offset-2"
-              >
-                Open next appointment request
-              </Link>
-            ) : feedback.closed ? (
-              <Link
-                href="/admin/requests"
-                className="inline-flex min-h-11 items-center underline underline-offset-2"
-              >
-                Back to appointment requests
-              </Link>
-            ) : null
-          ) : null}
-        </p>
-      ) : null}
+      <ComposerFeedback
+        feedback={feedback}
+        nextHref={nextHref}
+        feedbackRef={feedbackRef}
+      />
 
       <fieldset className="mt-5" disabled={pending}>
         <legend className="text-sm font-bold text-[var(--color-ink)]">
@@ -568,12 +761,7 @@ export function CallOutcomeComposer({
               destination={nextStatus}
               checked={destination === nextStatus}
               disabled={pending}
-              onSelect={(selectedDestination) =>
-                dispatch({
-                  type: "select_destination",
-                  destination: selectedDestination,
-                })
-              }
+              onSelect={selectDestination}
             />
           ))}
         </div>
@@ -630,29 +818,22 @@ export function CallOutcomeComposer({
         />
       ) : null}
 
-      <div className="mt-5 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          data-testid="save-outcome"
-          disabled={
-            pending ||
-            !selected ||
-            (requiresFollowUp(selected) && !followUpKind) ||
-            (followUpKind === "day" && !followUpDay)
-          }
-          onClick={submit}
-          className="btn btn-navy min-h-11 disabled:opacity-60"
-        >
-          {pending
-            ? "Saving…"
-            : destination
-              ? `Save as ${STATUS_LABEL[destination]}`
-              : "Save appointment request status"}
-        </button>
-        <p className="text-[0.85rem] text-[var(--color-muted)]">
-          Saved together — one request activity entry.
-        </p>
-      </div>
+      <StatusActions
+        pending={pending}
+        saveDisabled={
+          pending ||
+          !selected ||
+          (requiresFollowUp(selected) && !followUpKind) ||
+          (followUpKind === "day" && !followUpDay)
+        }
+        operation={operation}
+        saveConfirmed={saveConfirmed}
+        undoAvailable={Boolean(undoEventId)}
+        undoConfirmed={undoConfirmed}
+        confirmationMotion={confirmationMotion}
+        onSave={submit}
+        onUndo={undo}
+      />
     </section>
   );
 }

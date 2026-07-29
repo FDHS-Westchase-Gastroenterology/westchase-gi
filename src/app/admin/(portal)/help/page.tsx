@@ -131,15 +131,15 @@ export default async function AdminHelpPage() {
               ],
               [
                 "Add an appointment request note",
-                "Use the request's notes when the next person needs context. Keep medical details in the clinical record, not the portal.",
+                "Use appointment request notes when the next person needs context. Keep medical details in the clinical record, not the portal.",
               ],
               [
                 "Choose the next status",
                 "Select Contacted, Scheduled, or Closed. The portal then asks only for the details that status needs.",
               ],
               [
-                "Save, then continue",
-                "Save the appointment request status. After the portal confirms it, open the next appointment request to keep working the queue.",
+                "Save and Undo",
+                "Choose Save. After it is saved, choose Undo to restore the previous appointment request status, callback time, and Closed details.",
               ],
             ].map(([title, body], index) => (
               <li

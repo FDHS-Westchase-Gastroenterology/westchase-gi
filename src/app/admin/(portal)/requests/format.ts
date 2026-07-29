@@ -56,9 +56,10 @@ export const LOCALE_LABELS: Record<string, string> = {
   ar: "Arabic",
 };
 
-// Call-outcome vocabulary in front-desk language. Past-tense lines for the
-// work-history record, keyed by the RPC outcome ids.
+// Call-outcome vocabulary in front-desk language. Past-tense lines for
+// Request activity, keyed by the RPC outcome ids.
 export const OUTCOME_HISTORY_LABELS: Record<string, string> = {
+  booked: "Appointment booked",
   reached_follow_up: "Reached the patient — follow-up needed",
   voicemail: "Left a voicemail",
   no_answer: "No answer",

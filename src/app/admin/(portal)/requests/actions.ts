@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { requireRole } from "@/lib/portal/auth";
 import {
   resolveFollowUpAt,
@@ -73,6 +74,7 @@ export type CallOutcomeResult =
       ok: true;
       status: "new" | "contacted" | "scheduled" | "closed";
       followUpAt: string | null;
+      eventId: string;
     }
   | {
       ok: false;
@@ -80,7 +82,6 @@ export type CallOutcomeResult =
         | "invalid"
         | "not_found"
         | "follow_up_required"
-        | "note_failed"
         | "unavailable";
     };
 
@@ -115,6 +116,16 @@ const OUTCOME_STATUS: Record<
   not_actionable: "closed",
   scheduled_transferred: "closed",
 };
+
+const uuidSchema = z.uuid();
+const undoCallOutcomeInputSchema = z.object({
+  requestId: uuidSchema,
+  eventId: uuidSchema,
+});
+const requestStatusSchema = z.enum(["new", "contacted", "scheduled", "closed"]);
+const undoCallOutcomeResultSchema = z.object({
+  status: requestStatusSchema,
+});
 
 function isCallOutcomeId(value: unknown): value is CallOutcomeId {
   return (
@@ -175,44 +186,14 @@ export async function logCallOutcome(
     }
   }
 
-  const requestId = input.requestId;
-  if (typeof requestId !== "string" || requestId.length === 0) {
+  const requestIdResult = uuidSchema.safeParse(input.requestId);
+  if (!requestIdResult.success) {
     return { ok: false, code: "invalid" };
   }
+  const requestId = requestIdResult.data;
 
   const db = serviceClient();
-
-  if (outcome === "booked") {
-    // Booked is outside portal_log_call_outcome's six-outcome vocabulary and
-    // new schema is not permitted this cycle, so it routes through the two
-    // existing RPCs. Status first: portal_update_request_status is a no-op when
-    // unchanged, so a client retry only re-saves the note.
-    const { error: statusError } = await db.rpc("portal_update_request_status", {
-      p_actor_email: session.email,
-      p_request_id: requestId,
-      p_next_status: "scheduled",
-    });
-    if (statusError) {
-      return mapCallOutcomeRpcError(statusError.code);
-    }
-
-    if (note !== null) {
-      const { error: noteError } = await db.rpc("portal_add_request_note", {
-        p_actor_email: session.email,
-        p_request_id: requestId,
-        p_note: note,
-        p_note_length: note.length,
-      });
-      if (noteError) {
-        return { ok: false, code: "note_failed" };
-      }
-    }
-
-    revalidateRequestViews(requestId);
-    return { ok: true, status: "scheduled", followUpAt: null };
-  }
-
-  const { error } = await db.rpc("portal_log_call_outcome", {
+  const { data, error } = await db.rpc("portal_log_call_outcome", {
     p_actor_email: session.email,
     p_request_id: requestId,
     p_outcome: outcome,
@@ -223,10 +204,65 @@ export async function logCallOutcome(
     return mapCallOutcomeRpcError(error.code);
   }
 
+  const eventId = uuidSchema.safeParse(data);
+  if (!eventId.success) {
+    return { ok: false, code: "unavailable" };
+  }
+
   revalidateRequestViews(requestId);
   return {
     ok: true,
     status: OUTCOME_STATUS[outcome],
     followUpAt,
+    eventId: eventId.data,
   };
+}
+
+export async function undoCallOutcome(input: {
+  requestId: string;
+  eventId: string;
+}): Promise<
+  | { ok: true; status: "new" | "contacted" | "scheduled" | "closed" }
+  | {
+      ok: false;
+      code: "invalid" | "not_found" | "stale" | "unavailable";
+    }
+> {
+  const session = await requireRole("staff", { unauthenticated: "throw" });
+
+  const parsedInput = undoCallOutcomeInputSchema.safeParse(input);
+  if (!parsedInput.success) {
+    return { ok: false, code: "invalid" };
+  }
+
+  const { requestId, eventId } = parsedInput.data;
+  const { data, error } = await serviceClient().rpc(
+    "portal_undo_call_outcome",
+    {
+      p_actor_email: session.email,
+      p_request_id: requestId,
+      p_event_id: eventId,
+    },
+  );
+
+  if (error) {
+    if (error.code === "P0002" || error.code === "22P02") {
+      return { ok: false, code: "not_found" };
+    }
+    if (error.code === "22023") {
+      return { ok: false, code: "invalid" };
+    }
+    if (error.code === "55000") {
+      return { ok: false, code: "stale" };
+    }
+    return { ok: false, code: "unavailable" };
+  }
+
+  const result = undoCallOutcomeResultSchema.safeParse(data);
+  if (!result.success) {
+    return { ok: false, code: "unavailable" };
+  }
+
+  revalidateRequestViews(requestId);
+  return { ok: true, status: result.data.status };
 }

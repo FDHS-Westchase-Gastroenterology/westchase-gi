@@ -360,7 +360,9 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
         if (rule instanceof CSSPageRule) cssTexts.push(rule.cssText);
       }
     }
-    return cssTexts.find((text) => /size:\s*letter/i.test(text)) ?? null;
+    return (
+      cssTexts.find((text) => /@page\s+review-flyer\b/i.test(text)) ?? null
+    );
   });
   expect(pageRule).toMatch(/size:\s*letter/i);
   expect(pageRule).toMatch(/margin:\s*0\.45in/i);

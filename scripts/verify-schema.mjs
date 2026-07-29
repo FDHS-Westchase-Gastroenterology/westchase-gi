@@ -32,6 +32,8 @@ const RPC_SIGNATURES = {
     "p_actor_email text, p_request_id uuid, p_authorization_ref text",
   portal_log_call_outcome:
     "p_actor_email text, p_request_id uuid, p_outcome text, p_note text, p_follow_up_at timestamp with time zone",
+  portal_undo_call_outcome:
+    "p_actor_email text, p_request_id uuid, p_event_id uuid",
   portal_hide_staff_release: "p_user_id uuid, p_release_id text",
   portal_open_staff_release: "p_user_id uuid, p_release_id text",
   portal_preview_data_lifecycle: "p_now timestamp with time zone",
@@ -85,6 +87,7 @@ const RPC_RESULTS = {
   portal_complete_staff_onboarding: "boolean",
   portal_delete_request_early: "boolean",
   portal_log_call_outcome: "uuid",
+  portal_undo_call_outcome: "jsonb",
   portal_hide_staff_release: "boolean",
   portal_open_staff_release: "boolean",
   portal_preview_data_lifecycle: "jsonb",
@@ -104,6 +107,7 @@ const AUDIT_RPC_SOURCES = {
   portal_complete_staff_onboarding: "staff",
   portal_delete_request_early: "staff",
   portal_log_call_outcome: "staff",
+  portal_undo_call_outcome: "staff",
   portal_hide_staff_release: "staff",
   portal_open_staff_release: "staff",
   portal_record_staff_password_reset: "staff",
@@ -170,6 +174,10 @@ const PORTAL_RELEASE_ENGAGEMENT_MIGRATION = {
 const PORTAL_RELEASE_GUIDE_FIX_MIGRATION = {
   version: "20260729105736",
   name: "fix_portal_release_guide_timestamp",
+}
+const CALL_OUTCOME_UNDO_MIGRATION = {
+  version: "20260729172311",
+  name: "add_atomic_call_outcome_undo",
 }
 
 const TARGETS = new Set(["dev", "prod"])
@@ -626,6 +634,14 @@ async function main() {
         row.name === PORTAL_RELEASE_GUIDE_FIX_MIGRATION.name,
     ),
     `Portal release guide fix migration ${PORTAL_RELEASE_GUIDE_FIX_MIGRATION.version}_${PORTAL_RELEASE_GUIDE_FIX_MIGRATION.name} is not applied`,
+  )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === CALL_OUTCOME_UNDO_MIGRATION.version &&
+        row.name === CALL_OUTCOME_UNDO_MIGRATION.name,
+    ),
+    `Call-outcome undo migration ${CALL_OUTCOME_UNDO_MIGRATION.version}_${CALL_OUTCOME_UNDO_MIGRATION.name} is not applied`,
   )
 
   const onboardingColumnRows = await queryDatabase({
@@ -1189,13 +1205,31 @@ async function main() {
       assert(
         definition.includes("for update") &&
           definition.includes("request.call_outcome") &&
+          definition.includes("'booked'") &&
           definition.includes("'scheduled_transferred'") &&
           definition.includes("'reached_follow_up'") &&
           definition.includes("'voicemail'") &&
           definition.includes("'no_answer'") &&
           definition.includes("'wont_schedule'") &&
-          definition.includes("'not_actionable'"),
-        "portal_log_call_outcome must lock the request, audit once, and preserve the six-outcome vocabulary",
+          definition.includes("'not_actionable'") &&
+          definition.includes("'lifecycle'") &&
+          definition.includes("'before'") &&
+          definition.includes("'after'") &&
+          definition.includes("'sequence'"),
+        "portal_log_call_outcome must lock the request, audit once, preserve all seven outcomes, and snapshot lifecycle state",
+      )
+    }
+    if (rpc.proname === "portal_undo_call_outcome") {
+      const definition = rpc.definition.toLowerCase()
+      assert(
+        definition.includes("for update") &&
+          definition.includes("'55000'") &&
+          definition.includes("'call_outcome_undo'") &&
+          definition.includes("'request.call_outcome_undo'") &&
+          definition.includes("is distinct from") &&
+          definition.includes("set status = 'undone'") &&
+          definition.includes("'restored_lifecycle'"),
+        "portal_undo_call_outcome must lock, reject stale state, restore atomically, preserve history, and audit lifecycle-only metadata",
       )
     }
     if (rpc.proname === "portal_update_recipient_label") {
@@ -1399,6 +1433,9 @@ async function main() {
   )
   console.log(
     `Verified ${target} migration: ${PORTAL_RELEASE_GUIDE_FIX_MIGRATION.version}_${PORTAL_RELEASE_GUIDE_FIX_MIGRATION.name}`,
+  )
+  console.log(
+    `Verified ${target} migration: ${CALL_OUTCOME_UNDO_MIGRATION.version}_${CALL_OUTCOME_UNDO_MIGRATION.name}`,
   )
   console.log(
     `Verified ${target} request lifecycle: nullable legacy-safe columns, constraints, preview, hold-aware deletion`,
