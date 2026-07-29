@@ -442,15 +442,25 @@ test.describe("portal requests operation", () => {
       );
 
       // The due row is already Contacted, so that current state is not offered.
-      // Save-and-open-next moves it to Scheduled and keeps queue continuity.
+      // One save moves it to Scheduled; continuation appears only after success.
       const composer = page.getByTestId("call-outcome-composer");
       await expect(
         composer
           .getByTestId("lifecycle-destinations")
           .getByText("Contacted", { exact: true }),
       ).toHaveCount(0);
+      await expect(page.getByTestId("save-outcome")).toHaveText(
+        "Save appointment request status",
+      );
+      await expect(page.getByTestId("save-outcome")).toBeDisabled();
+      await expect(page.getByTestId("save-outcome-next")).toHaveCount(0);
       await composer.getByText("Scheduled", { exact: true }).click();
-      await page.getByTestId("save-outcome-next").click();
+      await expect(page.getByTestId("save-outcome")).toHaveText(
+        "Save as Scheduled",
+      );
+      await page.getByTestId("save-outcome").click();
+      await expect(page.getByTestId("composer-feedback")).toBeVisible();
+      await page.getByTestId("open-next-request").click();
       await expect(page).toHaveURL(
         new RegExp(`/admin/requests/${idsByKey.get("stale")}`),
       );

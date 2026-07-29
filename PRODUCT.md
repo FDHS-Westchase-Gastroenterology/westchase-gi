@@ -165,7 +165,9 @@ of renaming notes as history. The same lifecycle
 vocabulary as the queue remains: Contacted, Scheduled, and Closed. Staff choose
 the next status, then only the details that status needs; the current status is
 not offered as a destination. One status save records the outcome, status,
-optional call-again time, and closure classification together.
+optional call-again time, and closure classification together. After that
+save is confirmed, the next appointment request is offered as a separate
+continuation action rather than a second version of Save.
 Scheduled stays visible, Contacted can resurface on a chosen day, Closed leaves
 the active queue, and a closed request can be reopened as Contacted or
 Scheduled. An explicit print action produces the complete patient contact,
@@ -247,7 +249,8 @@ Priorities for the portal's next chapter, in order:
    (New, then follow-up dates due today or past, then touched rows silent since
    the previous practice-local business morning with no follow-up set),
    business-aware age, next-action hint per row ("Call again Friday", "Waiting
-   since Tuesday"), and continuity (previous/next, save-and-open-next). Staff
+   since Tuesday"), and continuity (previous/next, with the next request
+   offered after a confirmed save). Staff
    author attention by picking when they'll call back — not by a Settings
    "N days" knob and not by a practice meeting. The queue's "once touched,
    urgency is a triage judgment" premise is retired.

@@ -440,7 +440,7 @@ export function CallOutcomeComposer({
       dispatch({ type: "select_outcome", outcome: id }),
   });
 
-  function submit(openNext: boolean) {
+  function submit() {
     if (!selected || pending) return;
     dispatch({ type: "attempt" });
     if (requiresFollowUp(selected) && !followUpKind) return;
@@ -461,11 +461,6 @@ export function CallOutcomeComposer({
       });
       if (!result.ok) {
         dispatch({ type: "failed", text: ERROR_COPY[result.code] });
-        return;
-      }
-      if (openNext && nextHref) {
-        router.push(nextHref);
-        router.refresh();
         return;
       }
       dispatch({
@@ -534,13 +529,23 @@ export function CallOutcomeComposer({
           }`}
         >
           {feedback.text}{" "}
-          {feedback.tone === "success" && feedback.closed ? (
-            <Link
-              href="/admin/requests"
-              className="underline underline-offset-2"
-            >
-              Back to appointment requests
-            </Link>
+          {feedback.tone === "success" ? (
+            nextHref ? (
+              <Link
+                href={nextHref}
+                data-testid="open-next-request"
+                className="inline-flex min-h-11 items-center underline underline-offset-2"
+              >
+                Open next appointment request
+              </Link>
+            ) : feedback.closed ? (
+              <Link
+                href="/admin/requests"
+                className="inline-flex min-h-11 items-center underline underline-offset-2"
+              >
+                Back to appointment requests
+              </Link>
+            ) : null
           ) : null}
         </p>
       ) : null}
@@ -635,35 +640,15 @@ export function CallOutcomeComposer({
             (requiresFollowUp(selected) && !followUpKind) ||
             (followUpKind === "day" && !followUpDay)
           }
-          onClick={() => submit(false)}
+          onClick={submit}
           className="btn btn-navy min-h-11 disabled:opacity-60"
         >
           {pending
             ? "Saving…"
             : destination
               ? `Save as ${STATUS_LABEL[destination]}`
-              : "Choose a status"}
+              : "Save appointment request status"}
         </button>
-        {nextHref ? (
-          <button
-            type="button"
-            data-testid="save-outcome-next"
-            disabled={
-              pending ||
-              !selected ||
-              (requiresFollowUp(selected) && !followUpKind) ||
-              (followUpKind === "day" && !followUpDay)
-            }
-            onClick={() => submit(true)}
-            className="btn btn-outline min-h-11 disabled:opacity-60"
-          >
-            {pending
-              ? "Saving…"
-              : destination
-                ? `Save as ${STATUS_LABEL[destination]} and open next`
-                : "Choose a status"}
-          </button>
-        ) : null}
         <p className="text-[0.85rem] text-[var(--color-muted)]">
           Saved together — one request activity entry.
         </p>

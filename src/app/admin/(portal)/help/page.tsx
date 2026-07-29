@@ -138,8 +138,8 @@ export default async function AdminHelpPage() {
                 "Select Contacted, Scheduled, or Closed. The portal then asks only for the details that status needs.",
               ],
               [
-                "Save and continue",
-                "Choose Save to stay on the request, or Save and open next to keep working the queue.",
+                "Save, then continue",
+                "Save the appointment request status. After the portal confirms it, open the next appointment request to keep working the queue.",
               ],
             ].map(([title, body], index) => (
               <li
