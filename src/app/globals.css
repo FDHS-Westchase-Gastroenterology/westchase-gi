@@ -1494,6 +1494,107 @@
     }
   }
 
+  /* ---- Appointment request notes ----
+     The composer is a disclosure already present inside the Notes surface:
+     pointer activation unfolds it from the top edge; keyboard activation is
+     immediate. The bounded grid track is the only layout transition needed
+     to preserve page continuity around content with an unknown final height. */
+  .request-note-add-trigger {
+    touch-action: manipulation;
+    transition:
+      opacity 100ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 120ms cubic-bezier(0.23, 1, 0.32, 1),
+      visibility 0s linear 0s;
+  }
+
+  .request-note-add-trigger:active {
+    transform: scale(0.97);
+  }
+
+  .request-note-add-trigger[data-open="true"] {
+    visibility: hidden;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate3d(0, -2px, 0);
+    transition:
+      opacity 100ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 100ms cubic-bezier(0.23, 1, 0.32, 1),
+      visibility 0s linear 100ms;
+  }
+
+  .request-note-disclosure {
+    display: grid;
+    grid-template-rows: 0fr;
+    visibility: hidden;
+    transition:
+      grid-template-rows 160ms cubic-bezier(0.23, 1, 0.32, 1),
+      visibility 0s linear 160ms;
+  }
+
+  .request-note-disclosure[data-open="true"] {
+    grid-template-rows: 1fr;
+    visibility: visible;
+    transition:
+      grid-template-rows 220ms cubic-bezier(0.23, 1, 0.32, 1),
+      visibility 0s linear 0s;
+  }
+
+  .request-note-disclosure__clip {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .request-note-composer {
+    opacity: 0;
+    transform: translate3d(0, -6px, 0);
+    transition:
+      opacity 120ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .request-note-disclosure[data-open="true"] .request-note-composer {
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity 180ms cubic-bezier(0.23, 1, 0.32, 1) 30ms,
+      transform 180ms cubic-bezier(0.23, 1, 0.32, 1) 30ms;
+  }
+
+  .request-note-add-trigger[data-animate="false"],
+  .request-note-disclosure[data-animate="false"],
+  .request-note-disclosure[data-animate="false"] .request-note-composer {
+    transition: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .request-note-add-trigger,
+    .request-note-add-trigger[data-open="true"] {
+      transform: none;
+      transition-property: opacity, visibility;
+      transition-duration: 120ms, 0s !important;
+      transition-delay: 0s;
+    }
+
+    .request-note-disclosure,
+    .request-note-disclosure[data-open="true"] {
+      transition: none;
+    }
+
+    .request-note-composer,
+    .request-note-disclosure[data-open="true"] .request-note-composer {
+      transform: none;
+      transition-property: opacity;
+      transition-duration: 120ms !important;
+      transition-delay: 0s;
+    }
+
+    .request-note-add-trigger[data-animate="false"],
+    .request-note-disclosure[data-animate="false"],
+    .request-note-disclosure[data-animate="false"] .request-note-composer {
+      transition: none !important;
+    }
+  }
+
   /* ---- Testimonial rail: scroll-snap, native momentum ---- */
   .rail {
     display: grid;
