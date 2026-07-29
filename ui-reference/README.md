@@ -12,6 +12,7 @@ localized content route.
 | --- | --- |
 | English home | [desktop-en-home.png](desktop-en-home.png) · [mobile-en-home.png](mobile-en-home.png) |
 | English home, first visit | [desktop-en-home-first-visit.png](desktop-en-home-first-visit.png) |
+| Home, locale-mismatch chooser | [desktop-en-home-locale-hint.png](desktop-en-home-locale-hint.png) |
 | English mobile navigation open | [mobile-en-menu.png](mobile-en-menu.png) |
 | Services | [desktop-en-services.png](desktop-en-services.png) |
 | Physicians | [desktop-en-physicians.png](desktop-en-physicians.png) |

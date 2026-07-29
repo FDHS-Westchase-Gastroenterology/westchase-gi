@@ -4,6 +4,8 @@ import { useEffect, useId, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import type { Dictionary } from "@/lib/i18n";
 import {
+  browserLocale,
+  dismissLanguageChoice,
   hasCompletedLanguageChoice,
   LANGUAGE_TRIGGER_ID,
   rememberLocale,
@@ -22,6 +24,15 @@ function returnFocus() {
   document.getElementById(LANGUAGE_TRIGGER_ID)?.focus();
 }
 
+/**
+ * Evidence-gated first-visit chooser (I4). The dialog auto-opens only on
+ * positive evidence of a mismatch: the browser's top supported language
+ * differs from the served locale and the visitor holds no remembered choice.
+ * When the site already guessed right, the first paint is hero and banner
+ * alone — the header Language menu remains the always-available way to
+ * switch. The evidence is computed client-side (navigator.languages) so it
+ * never depends on a response-cache-friendly transport.
+ */
 export function LanguageChooser({ locale, dict }: LanguageChooserProps) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const pathname = usePathname() || `/${locale}`;
@@ -33,13 +44,29 @@ export function LanguageChooser({ locale, dict }: LanguageChooserProps) {
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog || hasCompletedLanguageChoice()) return;
-    if (!dialog.open) dialog.showModal();
-  }, []);
+    const candidate = browserLocale();
+    if (candidate === locale) return;
+    const option = dialog.querySelector<HTMLElement>(`button[lang="${candidate}"]`);
+    if (!option) return;
+    // The badge and focus belong to the browser's language — the dialog's
+    // whole reason to open is the mismatch. The effect synchronizes the DOM
+    // directly so no extra render stands between evidence and interruption.
+    option.querySelector<HTMLElement>("[data-suggested]")?.removeAttribute("hidden");
+    if (!dialog.open) {
+      dialog.showModal();
+      option.focus();
+    }
+  }, [locale]);
 
   function finish(target: Locale) {
     rememberLocale(target);
     dialogRef.current?.close();
     if (target !== locale) router.push(pathInLocale(pathname, target));
+  }
+
+  function dismiss() {
+    dismissLanguageChoice();
+    dialogRef.current?.close();
   }
 
   return (
@@ -49,7 +76,7 @@ export function LanguageChooser({ locale, dict }: LanguageChooserProps) {
       aria-describedby={descriptionId}
       onCancel={(event) => {
         event.preventDefault();
-        finish(locale);
+        dismiss();
       }}
       onClose={returnFocus}
       className="language-dialog"
@@ -69,17 +96,14 @@ export function LanguageChooser({ locale, dict }: LanguageChooserProps) {
               key={target}
               type="button"
               lang={target}
-              autoFocus={target === locale}
               onClick={() => finish(target)}
               className="language-dialog__option"
             >
               <span>{localeNames[target]}</span>
-              {target === locale ? (
-                <span className="language-dialog__suggested">
-                  <Check aria-hidden="true" />
-                  {copy.suggested}
-                </span>
-              ) : null}
+              <span className="language-dialog__suggested" data-suggested hidden>
+                <Check aria-hidden="true" />
+                {copy.suggested}
+              </span>
             </button>
           ))}
         </div>
@@ -93,7 +117,7 @@ export function LanguageChooser({ locale, dict }: LanguageChooserProps) {
       </div>
       <button
         type="button"
-        onClick={() => finish(locale)}
+        onClick={dismiss}
         aria-label={copy.close}
         className="language-dialog__close"
       >
