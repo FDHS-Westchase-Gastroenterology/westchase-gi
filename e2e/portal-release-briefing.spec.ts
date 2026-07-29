@@ -89,8 +89,8 @@ test.describe("portal release briefing", () => {
     ).toBeVisible();
     for (const sentence of [
       "Choose Contacted, Scheduled, or Closed.",
-      "The result, note, and callback date stay together.",
-      "Due callbacks return. Scheduled requests stay visible.",
+      "Status, call result, call-again timing, and note stay together.",
+      "New requests and due callbacks rise. Scheduled requests stay visible.",
     ]) {
       await expect(homeSummary).toContainText(sentence);
     }

@@ -66,7 +66,7 @@ export default async function AdminHelpPage() {
             <div>
               <h2 className={SECTION_HEADING}>Work an appointment request</h2>
               <p className={SECTION_BODY}>
-                A two-minute guide to choosing the next step and leaving the
+                A two-minute guide to choosing the next status and leaving the
                 queue ready for whoever works it next.
               </p>
             </div>
@@ -110,8 +110,8 @@ export default async function AdminHelpPage() {
               </dt>
               <dd className="text-[0.94rem] leading-relaxed text-[var(--color-body)]">
                 Nobody needs to work the request again. Record whether the
-                appointment is complete, the patient will not schedule, or
-                the request is not actionable.
+                appointment was booked and the request is complete, the
+                patient will not schedule, or the request is not actionable.
               </dd>
             </div>
           </dl>
@@ -122,12 +122,12 @@ export default async function AdminHelpPage() {
           <ol className="mt-4 space-y-5">
             {[
               [
-                "Start with Needs attention",
-                "New requests and callbacks that are due rise to the top. Open the first request that needs work.",
+                "Start at the top",
+                "The queue puts new requests and due callbacks first, then older requests without a call-again date.",
               ],
               [
-                "Choose what happened",
-                "Select Contacted, Scheduled, or Closed. The portal shows only the choices that belong to that next step.",
+                "Choose the next status",
+                "Select Contacted, Scheduled, or Closed. The portal then asks only for the details that status needs.",
               ],
               [
                 "Leave a useful handoff",

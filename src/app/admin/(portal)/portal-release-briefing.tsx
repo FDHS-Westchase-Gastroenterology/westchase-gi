@@ -409,14 +409,17 @@ function ReleaseSummary({
 
       <dl className="mt-5 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
         {[
-          ["Start with what happened.", "Choose Contacted, Scheduled, or Closed."],
           [
-            "Save it once.",
-            "The result, note, and callback date stay together.",
+            "Start with the next status.",
+            "Choose Contacted, Scheduled, or Closed.",
           ],
           [
-            "Know what is next.",
-            "Due callbacks return. Scheduled requests stay visible.",
+            "Save once.",
+            "Status, call result, call-again timing, and note stay together.",
+          ],
+          [
+            "Work from the top.",
+            "New requests and due callbacks rise. Scheduled requests stay visible.",
           ],
         ].map(([term, detail], index) => (
           <div
