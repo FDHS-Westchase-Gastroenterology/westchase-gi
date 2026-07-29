@@ -7,6 +7,7 @@ import {
   type AnalyticsEvent,
   type DeviceClass,
 } from "@/lib/telemetry";
+import { postBeacon } from "@/lib/telemetry-transport";
 import { site } from "@/lib/site";
 import type { Locale } from "@/lib/site";
 import reviewTargets from "@/lib/review-targets.json";
@@ -15,7 +16,6 @@ import reviewTargets from "@/lib/review-targets.json";
 // enum/allowlist strings, no cookies, no free text, no journeys. Never
 // blocking, fails silently — telemetry must never cost a patient anything.
 
-const TELEMETRY_ENDPOINT = "/api/telemetry";
 const routeTemplateSet = new Set<string>(TELEMETRY_ROUTE_TEMPLATES);
 
 const REVIEW_DESTINATIONS = new Set<string>([
@@ -45,33 +45,14 @@ export function routeTemplateFor(pathname: string): string | null {
   return routeTemplateSet.has(withoutLocale) ? withoutLocale : null;
 }
 
-function post(payload: string) {
-  try {
-    const blob = new Blob([payload], { type: "application/json" });
-    if (navigator.sendBeacon?.(TELEMETRY_ENDPOINT, blob)) return;
-  } catch {
-    // sendBeacon unavailable or threw — fall through to keepalive fetch.
-  }
-  try {
-    void fetch(TELEMETRY_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: payload,
-      keepalive: true,
-    }).catch(() => {
-      // Telemetry is best-effort by design.
-    });
-  } catch {
-    // Never let telemetry break the page that carries it.
-  }
-}
-
 export function track(
   event: AnalyticsEvent,
   routeTemplate: string,
   locale: Locale,
 ) {
-  post(JSON.stringify({ event, routeTemplate, locale, deviceClass: deviceClass() }));
+  postBeacon(
+    JSON.stringify({ event, routeTemplate, locale, deviceClass: deviceClass() }),
+  );
 }
 
 /** Channel taps, classified by destination so no chrome markup changes:
@@ -92,6 +73,51 @@ function ctaEventFor(anchor: HTMLAnchorElement): AnalyticsEvent | null {
     // A malformed href is simply not a channel tap.
   }
   return null;
+}
+
+/** form_view telemetry for the intake form: fires once, when the form first
+ * genuinely enters the viewport (the honest funnel denominator). */
+export function useFormViewTelemetry(
+  formRef: React.RefObject<HTMLElement | null>,
+  locale: Locale,
+) {
+  const pathname = usePathname();
+  useEffect(() => {
+    const form = formRef.current;
+    const template = pathname ? routeTemplateFor(pathname) : null;
+    if (!template) return;
+    const fire = () => track("form_view", template, locale);
+    if (!form || typeof IntersectionObserver === "undefined") {
+      fire();
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          fire();
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.35 },
+    );
+    observer.observe(form);
+    return () => observer.disconnect();
+  }, [formRef, locale, pathname]);
+}
+
+/** The intake funnel's state-machine events, from the form's own flow. */
+export function trackFormEvent(
+  event:
+    | "form_submit"
+    | "form_success"
+    | "form_failure"
+    | "form_unknown"
+    | "form_throttled",
+  pathname: string | null,
+  locale: Locale,
+) {
+  const template = pathname ? routeTemplateFor(pathname) : null;
+  if (template) track(event, template, locale);
 }
 
 /**

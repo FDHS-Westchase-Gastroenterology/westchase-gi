@@ -70,6 +70,8 @@ test.afterAll(async () => {
 });
 
 test("page_view fires per navigation on patient routes", async ({ page }) => {
+  // Cold dev compiles plus two round trips can exceed the default budget.
+  test.setTimeout(90_000);
   const beforeHome = rollupCount("page_view", "/");
   const beforePrep = rollupCount("page_view", "/procedure-prep");
 
@@ -173,6 +175,7 @@ test("the route rejects bad events, raw URLs, and staff templates", async ({
 });
 
 test("chooser and banner outcomes count", async ({ browser, page }) => {
+  test.setTimeout(90_000);
   const beforeBanner = rollupCount("banner_dismissed", "/");
   await page.goto("/en");
   await page.locator(".notice-banner button").click();
