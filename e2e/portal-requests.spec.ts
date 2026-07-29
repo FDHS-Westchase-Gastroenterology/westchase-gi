@@ -423,7 +423,14 @@ test.describe("portal requests operation", () => {
     const history = page.getByTestId("work-history");
     await expect(history).toContainText(noteText);
     await expect(history).toContainText("Left a voicemail");
-    await expect(history).toContainText(SEED_EMAIL.toLowerCase());
+    const { data: authorProfile } = await db
+      .from("staff_profiles")
+      .select("display_name")
+      .eq("email", SEED_EMAIL.toLowerCase())
+      .single();
+    await expect(history).toContainText(
+      String(authorProfile?.display_name ?? ""),
+    );
 
     await page.reload();
     await expect(page.getByTestId("work-history")).toContainText(noteText);

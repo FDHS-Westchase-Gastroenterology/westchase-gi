@@ -306,7 +306,7 @@ test.describe("portal management UI", () => {
     await staffPage.getByRole("button", { name: "Set password" }).click();
     await expect(staffPage).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
     await expect(staffPage.getByTestId("session-user")).toHaveText(
-      inviteEmail,
+      "TEST Invite",
     );
 
     await page.reload();
@@ -326,6 +326,23 @@ test.describe("portal management UI", () => {
     await expect(staffPage.locator("#login-error")).toBeVisible();
 
     await staffContext.close();
+  });
+
+  test("VAL-ADMIN-018: Settings shows last sign-in from existing Auth state", async ({
+    page,
+  }) => {
+    await signInExpectingPortal(page, SEED_EMAIL, SEED_PASSWORD);
+    await page.goto("/admin/settings");
+
+    // The seed admin just signed in, so their row reads as a real sign-in
+    // timestamp — never "No sign-ins yet" and never a crashed page.
+    const ownRow = page
+      .getByTestId("staff-list")
+      .locator("li")
+      .filter({ hasText: SEED_EMAIL.toLowerCase() });
+    await expect(ownRow.getByTestId("staff-last-sign-in")).toContainText(
+      "Last sign in",
+    );
   });
 
   test("VAL-ADMIN-012: help page is substantive plain English", async ({

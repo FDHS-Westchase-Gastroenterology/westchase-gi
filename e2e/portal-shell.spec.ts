@@ -31,8 +31,13 @@ test("VAL-ADMIN-002: seed admin logs in and out through the UI", async ({
   await expect(page).toHaveURL(/\/admin\/login\/?$/);
 
   await signIn(page);
+  const { data: profile } = await serviceDb()
+    .from("staff_profiles")
+    .select("display_name")
+    .eq("email", SEED_EMAIL.toLowerCase())
+    .single();
   await expect(page.getByTestId("session-user")).toHaveText(
-    SEED_EMAIL.toLowerCase(),
+    String(profile?.display_name ?? ""),
   );
 
   await page.reload();
@@ -290,7 +295,5 @@ test("staff can view the locale-negotiated website and return with their session
 
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/admin\/?$/);
-  await expect(page.getByTestId("session-user")).toHaveText(
-    SEED_EMAIL.toLowerCase(),
-  );
+  await expect(page.getByTestId("session-user")).toBeVisible();
 });

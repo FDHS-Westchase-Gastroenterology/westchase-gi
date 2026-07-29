@@ -3,6 +3,10 @@ import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/portal/auth";
 import { parsePage } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
+import {
+  displayNameOrEmail,
+  fetchStaffNameMap,
+} from "@/lib/portal/staff-identity";
 import { formatReceived } from "../requests/format";
 
 type AuditRow = {
@@ -42,14 +46,17 @@ export default async function AdminAuditPage({
   const from = (page - 1) * PAGE_SIZE;
 
   const db = serviceClient();
-  const { data: rows, error, count } = await db
-    .from("audit_log")
-    .select("id, actor_email, action, entity, entity_id, detail, at", {
-      count: "exact",
-    })
-    .order("at", { ascending: false })
-    .order("id", { ascending: false })
-    .range(from, from + PAGE_SIZE - 1);
+  const [{ data: rows, error, count }, nameMap] = await Promise.all([
+    db
+      .from("audit_log")
+      .select("id, actor_email, action, entity, entity_id, detail, at", {
+        count: "exact",
+      })
+      .order("at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1),
+    fetchStaffNameMap(db),
+  ]);
   if (error) {
     throw new Error(`Audit read failed: ${error.code}`);
   }
@@ -127,7 +134,7 @@ export default async function AdminAuditPage({
                       {formatReceived(entry.at, true)}
                     </td>
                     <td className="px-5 py-3 font-bold text-[var(--color-ink)]">
-                      {entry.actor_email}
+                      {displayNameOrEmail(nameMap, entry.actor_email)}
                     </td>
                     <td className="px-5 py-3">
                       <code className="rounded bg-[var(--color-mint)] px-2 py-0.5 text-[0.85rem] text-[var(--color-teal-ink)]">

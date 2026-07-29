@@ -13,6 +13,10 @@ import {
 } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
 import {
+  displayNameOrEmail,
+  fetchStaffNameMap,
+} from "@/lib/portal/staff-identity";
+import {
   fetchAttentiveOpenRows,
   fetchClosedRows,
   OPEN_CANDIDATE_LIMIT,
@@ -198,6 +202,7 @@ export default async function RequestDetailPage({
     { data: request, error },
     { data: events, error: eventsError },
     { data: auditRows, error: auditError },
+    nameMap,
   ] = await Promise.all([
     db
       .from("requests")
@@ -219,6 +224,7 @@ export default async function RequestDetailPage({
       .in("action", ["request.status_change", "request.close"])
       .order("at", { ascending: false })
       .limit(50),
+    fetchStaffNameMap(db),
   ]);
 
   if (error || !request) notFound();
@@ -438,7 +444,8 @@ export default async function RequestDetailPage({
                           {entry.text}
                         </p>
                         <p className="mt-2 text-[0.8rem] font-bold text-[var(--color-teal-ink)]">
-                          {entry.author} · {formatReceived(entry.at, true)}
+                          {displayNameOrEmail(nameMap, entry.author)} ·{" "}
+                          {formatReceived(entry.at, true)}
                         </p>
                       </li>
                     );
@@ -468,7 +475,8 @@ export default async function RequestDetailPage({
                         {line}
                       </p>
                       <p className="mt-1.5 text-[0.8rem] font-bold text-[var(--color-teal-ink)]">
-                        {entry.author} · {formatReceived(entry.at, true)}
+                        {displayNameOrEmail(nameMap, entry.author)} ·{" "}
+                        {formatReceived(entry.at, true)}
                       </p>
                     </li>
                   );
