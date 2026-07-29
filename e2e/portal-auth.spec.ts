@@ -90,11 +90,18 @@ test.describe("portal authentication and direct REST boundaries", () => {
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL(/\/admin\/?$/);
 
-    const renderedEmail = (
+    const renderedIdentity = (
       (await page.getByTestId("session-user").textContent()) ?? ""
     ).trim();
-    expect(renderedEmail).not.toBe("");
-    expect(digest(renderedEmail)).toBe(digest(SEED_ADMIN_EMAIL));
+    expect(renderedIdentity).not.toBe("");
+    const { data: sessionProfile } = await serviceDb()
+      .from("staff_profiles")
+      .select("display_name")
+      .eq("email", SEED_ADMIN_EMAIL.toLowerCase())
+      .single();
+    expect(digest(renderedIdentity)).toBe(
+      digest(String(sessionProfile?.display_name ?? "")),
+    );
 
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/admin\/login\/?$/);
@@ -129,11 +136,18 @@ test.describe("portal authentication and direct REST boundaries", () => {
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL(/\/admin\/?$/);
 
-    const renderedEmail = (
+    const renderedIdentity = (
       (await page.getByTestId("session-user").textContent()) ?? ""
     ).trim();
-    expect(renderedEmail).not.toBe("");
-    expect(digest(renderedEmail)).toBe(digest(SEED_ADMIN_EMAIL));
+    expect(renderedIdentity).not.toBe("");
+    const { data: sessionProfile } = await serviceDb()
+      .from("staff_profiles")
+      .select("display_name")
+      .eq("email", SEED_ADMIN_EMAIL.toLowerCase())
+      .single();
+    expect(digest(renderedIdentity)).toBe(
+      digest(String(sessionProfile?.display_name ?? "")),
+    );
 
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/admin\/login\/?$/);
@@ -382,7 +396,9 @@ test.describe("portal authentication and direct REST boundaries", () => {
       await page.getByLabel("Confirm password").fill(password);
       await page.getByRole("button", { name: "Set password" }).click();
       await expect(page).toHaveURL(/\/admin\/?$/);
-      await expect(page.getByTestId("session-user")).toContainText(email);
+      await expect(page.getByTestId("session-user")).toContainText(
+        "TEST Invited Staff",
+      );
       await expect(page.getByText("staff", { exact: true })).toBeVisible();
 
       const completedProfile = await db
@@ -704,7 +720,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
         await page.goto(path);
         await expect(page).toHaveURL(new RegExp(`${path}/?$`));
         await expect(page.getByTestId("session-user")).toContainText(
-          staleEmail,
+          "TEST Stale Token",
         );
         if (path === "/admin") {
           await expect(page.getByTestId("home-greeting")).toBeVisible();

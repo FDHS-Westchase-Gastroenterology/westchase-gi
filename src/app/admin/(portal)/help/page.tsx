@@ -64,36 +64,37 @@ export default async function AdminHelpPage() {
             Open an appointment request to see everything the patient
             submitted: name,
             phone, email, preferred office and time, and their brief reason
-            for the visit. Work it by phone, then record where things stand
-            with one click: <strong>New</strong> means nobody has
-            handled it yet; <strong>Contacted</strong> means you reached out
-            (or tried); <strong>Scheduled</strong> means the appointment is
-            booked in the scheduling system. The status filters on the queue
-            page make it easy to see exactly what still needs attention —
-            keeping the New list at zero is the daily goal.
+            for the visit. Work it by phone, then use{" "}
+            <strong>Record what happened on the call</strong> — one step that
+            saves the outcome, an optional note, and when to call again
+            together. <strong>Appointment is booked</strong> leaves the
+            request on the Scheduled list in case you need it; the call-again
+            outcomes bring it back to your attention on the day you choose.
+            The status filters on the queue page make it easy to see exactly
+            what still needs attention — keeping the New list at zero is the
+            daily goal.
           </p>
           <p className={`${SECTION_BODY} mt-3`}>
-            <strong>Closed</strong> is in the same status list. Choose it when
-            nobody needs to call the patient again, then record whether an{" "}
-            <strong>Appointment was booked</strong> or{" "}
-            <strong>No appointment was booked</strong>. The first option means
-            you have put the appointment into the practice&apos;s scheduling
-            system; the second covers requests that need no more follow-up.
-            Closing takes the request off the active queue. Reopen it any time
-            by choosing New, Contacted, or Scheduled.
+            When nobody needs to call the patient again, pick one of the
+            outcomes under <strong>Done with this request?</strong> —{" "}
+            <strong>Patient won&apos;t schedule</strong> or{" "}
+            <strong>Duplicate or not actionable</strong>. Closing takes the
+            request off the active queue. If the appointment was booked and
+            the work is finished,{" "}
+            <strong>Finished with this request?</strong> closes it out as
+            done. Recording another call outcome reopens a closed request.
           </p>
         </div>
 
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
           <h2 className={SECTION_HEADING}>Notes</h2>
           <p className={SECTION_BODY}>
-            Every appointment request has a notes section. Write what
-            happened —
-            &ldquo;left a voicemail at 2:15, will try again tomorrow&rdquo;
-            — so a colleague can pick up exactly where you left off. Notes
-            are stamped with your name and time automatically. Please keep
-            medical details out of notes; clinical conversation belongs on
-            the phone and in the medical record, not here.
+            Add a note when you record the outcome — what happened,
+            anything the next person should know. Notes appear in the
+            request&apos;s <strong>Work history</strong> with your name and
+            the time, so a colleague can pick up exactly where you left off.
+            Please keep medical details out of notes; clinical conversation
+            belongs on the phone and in the medical record, not here.
           </p>
         </div>
 
@@ -200,7 +201,10 @@ export default async function AdminHelpPage() {
           </details>
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
+        <div
+          id="something-wrong"
+          className="scroll-mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8"
+        >
           <h2 className={SECTION_HEADING}>If something looks wrong</h2>
           <p className={SECTION_BODY}>
             If the portal will not load or an appointment request seems

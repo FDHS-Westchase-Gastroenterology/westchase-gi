@@ -426,7 +426,7 @@ export const ar: Dictionary = {
   contact: {
     title: "اتصلوا بنا",
     intro: "عيادتان وفريق واحد. اتصلوا أو أرسلوا رسالة نصية أو قدّموا طلب موعد؛ ونحن نتولى الباقي.",
-    formHeading: "أرسلوا لنا رسالة",
+    formHeading: "قدّموا طلب موعد",
     locationsHeading: "عياداتنا",
   },
 

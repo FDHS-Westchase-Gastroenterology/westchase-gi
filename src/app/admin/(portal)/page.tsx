@@ -112,10 +112,12 @@ export default async function AdminHomePage() {
   // A failed read must never present as an empty queue: "No new requests"
   // and "the count could not load" are different truths, and conflating
   // them recreates the silent-queue failure this portal exists to end.
+  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
   const [
     { data: newestRows, count: newCount, error: queueReadError },
     { data: oldestRows },
     { count: recipientCount, error: recipientsReadError },
+    { count: failedNotificationCount, error: notificationsReadError },
   ] = await Promise.all([
     db
       .from("requests")
@@ -133,6 +135,12 @@ export default async function AdminHomePage() {
       .from("notification_recipients")
       .select("id", { count: "exact", head: true })
       .eq("active", true),
+    db
+      .from("request_events")
+      .select("id", { count: "exact", head: true })
+      .eq("type", "notification")
+      .eq("status", "failed")
+      .gte("created_at", oneDayAgo),
   ]);
   const newest = (newestRows ?? []) as Array<{
     id: string;
@@ -146,6 +154,13 @@ export default async function AdminHomePage() {
   // Zero recipients is a real, legal state worth flagging; a failed
   // recipients read is not evidence of it, so the warning stays silent then.
   const noActiveRecipients = !recipientsReadError && recipientCount === 0;
+  // Delivery health is the other silent failure mode: the provider can start
+  // failing while every request still lands in the queue. Same discipline —
+  // a failed events read is not evidence of an outage, so it stays silent.
+  const deliveryFailureCount =
+    !notificationsReadError && (failedNotificationCount ?? 0) > 0
+      ? failedNotificationCount
+      : null;
 
   return (
     <section aria-labelledby="home-heading">
@@ -261,6 +276,25 @@ export default async function AdminHomePage() {
                 className="font-bold underline underline-offset-2"
               >
                 Manage notification emails
+              </Link>
+            </p>
+          ) : null}
+
+          {deliveryFailureCount ? (
+            <p
+              data-testid="delivery-failure-warning"
+              className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.92rem] leading-relaxed text-[var(--color-ink)]"
+            >
+              {deliveryFailureCount === 1
+                ? "An email alert failed to send in the last 24 hours."
+                : `${deliveryFailureCount} email alerts failed to send in the last 24 hours.`}{" "}
+              Requests still land here — the queue is always the system of
+              record — but the email pings may not be reaching anyone.{" "}
+              <Link
+                href="/admin/help#something-wrong"
+                className="font-bold underline underline-offset-2"
+              >
+                See what to check
               </Link>
             </p>
           ) : null}

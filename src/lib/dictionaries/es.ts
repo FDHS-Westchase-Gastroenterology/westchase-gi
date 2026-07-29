@@ -429,7 +429,7 @@ export const es: Dictionary = {
   contact: {
     title: "Contáctenos",
     intro: "Dos oficinas, un solo equipo. Llame, envíe un texto o mande una solicitud de cita; nosotros nos encargamos del resto.",
-    formHeading: "Envíenos un mensaje",
+    formHeading: "Mande una solicitud de cita",
     locationsHeading: "Nuestras oficinas",
   },
 

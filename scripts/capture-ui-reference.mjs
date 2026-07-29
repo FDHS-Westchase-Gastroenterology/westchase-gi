@@ -126,7 +126,7 @@ async function redactPortalData(page) {
   });
   await page.evaluate(() => {
     const sessionUser = document.querySelector('[data-testid="session-user"]');
-    if (sessionUser) sessionUser.textContent = "staff@westchasegi.com";
+    if (sessionUser) sessionUser.textContent = "Staff Member";
     const greeting = document.querySelector('[data-testid="home-greeting"]');
     if (greeting) greeting.textContent = "Good morning, Staff.";
     document.querySelector('[data-testid="queue-overview-preview"]')?.remove();

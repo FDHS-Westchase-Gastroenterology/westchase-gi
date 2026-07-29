@@ -53,13 +53,21 @@ function ContactActions({ dict }: { dict: Dictionary }) {
   );
 }
 
-function SuccessCard({ dict }: { dict: Dictionary }) {
+function SuccessCard({
+  dict,
+  cardRef,
+}: {
+  dict: Dictionary;
+  cardRef: React.RefObject<HTMLDivElement | null>;
+}) {
   const f = dict.appointment.form;
   return (
     <div
+      ref={cardRef}
       role="status"
       aria-live="polite"
-      className="card flex flex-col items-center p-8 text-center sm:p-12"
+      tabIndex={-1}
+      className="card flex flex-col items-center p-8 text-center outline-none sm:p-12"
     >
       <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-mint)] text-[var(--color-teal-ink)]">
         <Check className="h-7 w-7" />
@@ -107,6 +115,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
   const [errors, setErrors] = useState<Errors>({});
   const [status, setStatus] = useState<Status>("idle");
   const alertRef = useRef<HTMLDivElement>(null);
+  const successRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const submittingRef = useRef(false);
 
@@ -118,6 +127,16 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
   }, []);
 
   useFormViewTelemetry(formRef, locale);
+  // Outcome focus lands after the committing render, never in a rAF race:
+  // success, failure, and unknown all move focus to their announcement (F5,
+  // S7). Effects run post-commit, so the target exists by focus time.
+  useEffect(() => {
+    if (status === "failure" || status === "unknown") {
+      alertRef.current?.focus();
+    } else if (status === "success") {
+      successRef.current?.focus();
+    }
+  }, [status]);
 
   function localFieldErrors(data: FormData): Errors {
     const next: Errors = {};
@@ -144,7 +163,6 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
   function showProblem(state: "failure" | "unknown") {
     submittingRef.current = false;
     setStatus(state);
-    requestAnimationFrame(() => alertRef.current?.focus());
   }
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
@@ -205,6 +223,8 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
 
     if (body.ok) {
       trackFormEvent("form_success", pathname, locale);
+      // Focus moves to the success card via the status effect, matching the
+      // failure/unknown behavior (F5).
       setStatus("success");
       return;
     }
@@ -227,7 +247,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
   }
 
   if (status === "success") {
-    return <SuccessCard dict={dict} />;
+    return <SuccessCard dict={dict} cardRef={successRef} />;
   }
 
   return (
@@ -269,7 +289,12 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
           autoComplete="off"
         />
       </div>
-      <div className="grid gap-5 sm:grid-cols-2">
+      {/* The fields lock while submission is in flight, not just the button:
+          an edit mid-flight would let the patient believe the later value
+          was sent when only the earlier one was (F11d). `contents` keeps the
+          fieldset layout-transparent. */}
+      <fieldset className="contents" disabled={status === "submitting"}>
+        <div className="grid gap-5 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label htmlFor="name" className="field-label">
             {f.name} <span aria-hidden="true" className="text-[var(--color-amber-deep)]">*</span>
@@ -375,7 +400,8 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
             {f.messageHint}
           </p>
         </div>
-      </div>
+        </div>
+      </fieldset>
       <button
         type="submit"
         disabled={status === "submitting"}
