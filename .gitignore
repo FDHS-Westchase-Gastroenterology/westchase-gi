@@ -31,6 +31,9 @@
 # Local Cursor hooks/skills (machine-local; not part of the public product)
 .cursor/
 
+# Local backend coordination memos (not part of the public product)
+backend-memos/
+
 # debug
 npm-debug.log*
 yarn-debug.log*
