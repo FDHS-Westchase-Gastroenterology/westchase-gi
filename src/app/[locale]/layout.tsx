@@ -9,6 +9,7 @@ import { NoticeBanner } from "@/components/NoticeBanner";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { fontVariables } from "@/lib/fonts";
 import { site, localePath, localeDir, locales, BANNER_KEY, type Locale } from "@/lib/site";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const dynamicParams = false;
 
@@ -140,6 +141,7 @@ export default async function LocaleLayout({
         />
         <main id="main">{children}</main>
         <Footer locale={locale} dict={dict} />
+        <SpeedInsights />
       </body>
     </html>
   );
