@@ -123,6 +123,144 @@ function nextActionHint({
   }
 }
 
+type FilterItem = { key: RequestStatus | "all"; label: string; count: number };
+
+function FilterChips({
+  filters,
+  active,
+  search,
+}: {
+  filters: FilterItem[];
+  active: RequestStatus | "all";
+  search: string;
+}) {
+  return (
+    <nav aria-label="Filter by status" className="mt-6 overflow-x-auto">
+      <ul className="flex min-w-max gap-2">
+        {filters.map((item) => {
+          const isActive = active === item.key;
+          const href = requestsHref({
+            search,
+            status: item.key,
+          });
+          return (
+            <li key={item.key}>
+              <Link
+                href={href}
+                aria-current={isActive ? "page" : undefined}
+                data-filter={item.key}
+                className={`flex min-h-10 items-center gap-x-2 rounded-full border px-3.5 text-[0.9rem] font-bold transition-colors ${
+                  isActive
+                    ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-[var(--color-on-dark)]"
+                    : "border-[var(--color-line-2)] bg-white text-[var(--color-body)] hover:border-[var(--color-navy)]"
+                }`}
+              >
+                {item.label}
+                <span
+                  data-filter-count={item.key}
+                  className={`rounded-full px-1.5 text-[0.75rem] tabular-nums ${
+                    isActive
+                      ? "bg-white/15"
+                      : "bg-[var(--color-mint)] text-[var(--color-teal-ink)]"
+                  }`}
+                >
+                  {item.count}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
+function QueueRowLink({
+  request,
+  bucket,
+  lastActivityAt,
+  page,
+  search,
+  filter,
+  now,
+}: {
+  request: QueueRow;
+  bucket: AttentionBucket;
+  lastActivityAt: string | null;
+  page: number;
+  search: string;
+  filter: RequestStatus | "all";
+  now: Date;
+}) {
+  const hint = nextActionHint({
+    bucket,
+    followUpAt: request.follow_up_at,
+    lastActivityAt,
+    createdAt: request.created_at,
+    now,
+  });
+  const waiting =
+    request.status === "new" ? waitingSince(request.created_at, now) : null;
+  return (
+    <li>
+      <Link
+        href={detailHref({
+          id: request.id,
+          page,
+          search,
+          status: filter,
+        })}
+        data-testid="request-row"
+        className="grid gap-x-6 gap-y-2 rounded-[var(--radius)] border border-[var(--color-line)] bg-white px-5 py-4 transition-colors hover:border-[var(--color-teal)] sm:grid-cols-[1.4fr_1fr_auto] sm:items-center"
+      >
+        <span className="min-w-0">
+          <span
+            data-testid="request-name"
+            className="block truncate font-bold text-[var(--color-ink)]"
+          >
+            {request.name}
+          </span>
+          <span className="mt-0.5 block text-[0.9rem] text-[var(--color-muted)]">
+            {request.phone}
+          </span>
+        </span>
+        <span className="text-[0.9rem] text-[var(--color-body)]">
+          <span className="block">
+            {LOCATION_LABELS[request.location]} ·{" "}
+            {TIME_LABELS[request.preferred_time]}
+          </span>
+          <span className="mt-0.5 block text-[var(--color-muted)]">
+            Received {formatReceived(request.created_at)}
+          </span>
+          {waiting ? (
+            <span
+              data-testid="request-waiting"
+              className="mt-0.5 block text-[0.85rem] font-bold text-[var(--color-amber-deep)]"
+            >
+              Waiting since {waiting}
+            </span>
+          ) : null}
+          {hint ? (
+            <span
+              data-testid="request-next-action"
+              className={`mt-0.5 block text-[0.85rem] ${
+                hint.attention
+                  ? "font-bold text-[var(--color-amber-deep)]"
+                  : "text-[var(--color-muted)]"
+              }`}
+            >
+              {hint.text}
+            </span>
+          ) : null}
+        </span>
+        <span className="justify-self-start sm:justify-self-end">
+          <StatusBadge status={request.status} />
+        </span>
+      </Link>
+    </li>
+  );
+}
+
 export default async function AdminRequestsPage({
   searchParams,
 }: {
@@ -290,43 +428,7 @@ export default async function AdminRequestsPage({
         ) : null}
       </form>
 
-      <nav aria-label="Filter by status" className="mt-6 overflow-x-auto">
-        <ul className="flex min-w-max gap-2">
-          {filters.map((item) => {
-            const active = filter === item.key;
-            const href = requestsHref({
-              search,
-              status: item.key,
-            });
-            return (
-              <li key={item.key}>
-                <Link
-                  href={href}
-                  aria-current={active ? "page" : undefined}
-                  data-filter={item.key}
-                  className={`flex min-h-10 items-center gap-x-2 rounded-full border px-3.5 text-[0.9rem] font-bold transition-colors ${
-                    active
-                      ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-[var(--color-on-dark)]"
-                      : "border-[var(--color-line-2)] bg-white text-[var(--color-body)] hover:border-[var(--color-navy)]"
-                  }`}
-                >
-                  {item.label}
-                  <span
-                    data-filter-count={item.key}
-                    className={`rounded-full px-1.5 text-[0.75rem] tabular-nums ${
-                      active
-                        ? "bg-white/15"
-                        : "bg-[var(--color-mint)] text-[var(--color-teal-ink)]"
-                    }`}
-                  >
-                    {item.count}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      <FilterChips filters={filters} active={filter} search={search} />
 
       {requests.length === 0 ? (
         <div className="mt-8 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-8 text-center sm:p-12">
@@ -349,75 +451,17 @@ export default async function AdminRequestsPage({
         <ul data-testid="request-list" className="mt-8 space-y-3">
           {requests.map((request) => {
             const derived = openBuckets.get(request.id);
-            const bucket = derived?.bucket ?? "closed";
-            const hint = nextActionHint({
-              bucket,
-              followUpAt: request.follow_up_at,
-              lastActivityAt: derived?.lastActivityAt ?? null,
-              createdAt: request.created_at,
-              now,
-            });
-            const waiting =
-              request.status === "new"
-                ? waitingSince(request.created_at, now)
-                : null;
             return (
-              <li key={request.id}>
-                <Link
-                  href={detailHref({
-                    id: request.id,
-                    page,
-                    search,
-                    status: filter,
-                  })}
-                  data-testid="request-row"
-                  className="grid gap-x-6 gap-y-2 rounded-[var(--radius)] border border-[var(--color-line)] bg-white px-5 py-4 transition-colors hover:border-[var(--color-teal)] sm:grid-cols-[1.4fr_1fr_auto] sm:items-center"
-                >
-                  <span className="min-w-0">
-                    <span
-                      data-testid="request-name"
-                      className="block truncate font-bold text-[var(--color-ink)]"
-                    >
-                      {request.name}
-                    </span>
-                    <span className="mt-0.5 block text-[0.9rem] text-[var(--color-muted)]">
-                      {request.phone}
-                    </span>
-                  </span>
-                  <span className="text-[0.9rem] text-[var(--color-body)]">
-                    <span className="block">
-                      {LOCATION_LABELS[request.location]} ·{" "}
-                      {TIME_LABELS[request.preferred_time]}
-                    </span>
-                    <span className="mt-0.5 block text-[var(--color-muted)]">
-                      Received {formatReceived(request.created_at)}
-                    </span>
-                    {waiting ? (
-                      <span
-                        data-testid="request-waiting"
-                        className="mt-0.5 block text-[0.85rem] font-bold text-[var(--color-amber-deep)]"
-                      >
-                        Waiting since {waiting}
-                      </span>
-                    ) : null}
-                    {hint ? (
-                      <span
-                        data-testid="request-next-action"
-                        className={`mt-0.5 block text-[0.85rem] ${
-                          hint.attention
-                            ? "font-bold text-[var(--color-amber-deep)]"
-                            : "text-[var(--color-muted)]"
-                        }`}
-                      >
-                        {hint.text}
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className="justify-self-start sm:justify-self-end">
-                    <StatusBadge status={request.status} />
-                  </span>
-                </Link>
-              </li>
+              <QueueRowLink
+                key={request.id}
+                request={request}
+                bucket={derived?.bucket ?? "closed"}
+                lastActivityAt={derived?.lastActivityAt ?? null}
+                page={page}
+                search={search}
+                filter={filter}
+                now={now}
+              />
             );
           })}
         </ul>

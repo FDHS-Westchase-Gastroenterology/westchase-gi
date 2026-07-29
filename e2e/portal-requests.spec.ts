@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { test, expect, type Page, type APIRequestContext } from "@playwright/test";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
-// VAL-ADMIN-003: queue lists real submissions newest-first with badges.
+// VAL-ADMIN-003: the queue leads with the oldest unworked requests first.
 // VAL-ADMIN-004: status filtering matches SQL counts exactly.
 // VAL-ADMIN-005: detail shows all fields; the full lifecycle persists.
 // VAL-ADMIN-006: staff notes persist with attribution and re-render.
@@ -75,7 +75,7 @@ test.describe("portal requests operation", () => {
     await db.from("requests").delete().like("email", `queue-${runId}-%`);
   });
 
-  test("VAL-ADMIN-003: fresh submissions appear in the queue newest-first", async ({
+  test("VAL-ADMIN-003: the queue leads with the oldest unworked requests first", async ({
     page,
     request,
   }) => {
@@ -85,12 +85,14 @@ test.describe("portal requests operation", () => {
     await signIn(page);
     await page.goto("/admin/requests");
 
+    // Attention-first: between two unworked New requests, the older one —
+    // the one that has waited longer — comes before the newer one.
     const names = await page.getByTestId("request-name").allTextContents();
     const newerIndex = names.findIndex((name) => name.includes("newer"));
     const olderIndex = names.findIndex((name) => name.includes("older"));
     expect(newerIndex).toBeGreaterThanOrEqual(0);
     expect(olderIndex).toBeGreaterThanOrEqual(0);
-    expect(newerIndex).toBeLessThan(olderIndex);
+    expect(olderIndex).toBeLessThan(newerIndex);
 
     // Both staged rows carry the New badge in the queue.
     const newerRow = page
@@ -300,8 +302,11 @@ test.describe("portal requests operation", () => {
             const sql = await sqlCount(status);
 
             const badgesOk = badges.every((badge) => badge === status);
+            // One page holds at most REQUEST_PAGE_SIZE (50) rows; the SQL
+            // count may exceed it, so the honest expectation is a full or
+            // partial first page matching the count at the same instant.
             const consistent =
-              chip === sql && shown === Math.min(sql, 200) && badgesOk;
+              chip === sql && shown === Math.min(sql, 50) && badgesOk;
             return consistent
               ? "consistent"
               : `chip=${chip} shown=${shown} sql=${sql} badgesOk=${badgesOk}`;

@@ -98,6 +98,10 @@ function metaText(meta: Record<string, unknown> | null, key: string): string {
   return typeof value === "string" ? value : "";
 }
 
+function firstParam(value: string | string[] | undefined): string | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+}
+
 function workEntries(events: EventRow[], audits: AuditRow[]): WorkEntry[] {
   const entries: WorkEntry[] = [];
   for (const event of events) {
@@ -171,16 +175,14 @@ export default async function RequestDetailPage({
   await requireRole("staff");
   const { id } = await params;
   const continuity = await searchParams;
-  const first = (value: string | string[] | undefined): string | null =>
-    Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
-  const statusParam = first(continuity.status);
+  const statusParam = firstParam(continuity.status);
   const search = parseRequestSearch(continuity.q);
   const searchFilter = search ? requestSearchFilter(search) : "";
 
   const queueParams = new URLSearchParams();
   if (statusParam) queueParams.set("status", statusParam);
   if (search) queueParams.set("q", search);
-  const pageParam = first(continuity.page);
+  const pageParam = firstParam(continuity.page);
   if (pageParam) queueParams.set("page", pageParam);
   const queueQuery = queueParams.toString();
   const queueHref = `/admin/requests${queueQuery ? `?${queueQuery}` : ""}`;
