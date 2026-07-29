@@ -1,5 +1,7 @@
 import type { NextRequest } from "next/server";
+import { recordAudit } from "@/lib/portal/audit";
 import {
+  AUDIT_ACTIONS,
   REQUEST_STATUSES,
   type RequestStatus,
 } from "@/lib/portal/contracts";
@@ -54,8 +56,9 @@ function csvDocument(rows: CsvRow[]): string {
 }
 
 export async function GET(request: NextRequest): Promise<Response> {
+  let session;
   try {
-    await requireRole("staff", { unauthenticated: "throw" });
+    session = await requireRole("staff", { unauthenticated: "throw" });
   } catch (error) {
     const status = authorizationStatus(error) ?? 401;
     return new Response(
@@ -132,8 +135,26 @@ export async function GET(request: NextRequest): Promise<Response> {
     return new Response("Export unavailable", { status: 503 });
   }
 
-  // Export is a read-only queue operation, so it intentionally does not add an
-  // audit row. Every state-changing portal operation remains audited.
+  // Export creates a clinic-controlled sensitive copy, so it writes a
+  // metadata-only audit row (actor, row count, filter) — never patient values.
+  try {
+    await recordAudit(db, {
+      actorEmail: session.email,
+      action: AUDIT_ACTIONS.REQUESTS_EXPORT,
+      entity: "requests",
+      entityId: null,
+      detail: {
+        row_count: rows.length,
+        status_filter: isRequestStatus(requestedStatus)
+          ? requestedStatus
+          : "all",
+        has_search: Boolean(search),
+      },
+    });
+  } catch {
+    return new Response("Export unavailable", { status: 503 });
+  }
+
   const date = new Date().toISOString().slice(0, 10);
   return new Response(csvDocument(rows), {
     status: 200,
