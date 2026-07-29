@@ -6,7 +6,8 @@ import { serviceClient } from "@/lib/portal/server";
 import { fetchStaffNameMap } from "@/lib/portal/staff-identity";
 import { displayNameOrEmail } from "@/lib/portal/staff-identity";
 import { formatReceived } from "../requests/format";
-import { RecentWorkSection, toRecentWorkItems } from "./recent-work";
+import { RecentWorkSection } from "./recent-work";
+import { toRecentWorkItems } from "./recent-work-model";
 
 type AuditRow = {
   id: string;
