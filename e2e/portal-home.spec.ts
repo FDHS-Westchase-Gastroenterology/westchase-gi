@@ -176,10 +176,11 @@ test.describe("portal home", () => {
       page.getByRole("heading", { name: "Appointment requests", exact: true }),
     ).toBeVisible();
     // The queue tab renders a compact "Requests" label below `sm`; assert
-    // the visible desktop text rather than the concatenated textContent.
+    // the visible desktop text rather than the concatenated textContent. The
+    // waiting-count badge may append a count inside the same link.
     await expect(
       page.locator('nav[aria-label="Portal sections"] a[aria-current="page"]'),
-    ).toHaveText("Appointment requests", { useInnerText: true });
+    ).toHaveText(/^Appointment requests/, { useInnerText: true });
   });
 
   test("first-login tour dismissal and Help restart persist on the staff profile", async ({

@@ -55,3 +55,36 @@ export const LOCALE_LABELS: Record<string, string> = {
   ko: "Korean",
   ar: "Arabic",
 };
+
+// Call-outcome vocabulary in front-desk language. Past-tense lines for the
+// work-history record, keyed by the RPC outcome ids.
+export const OUTCOME_HISTORY_LABELS: Record<string, string> = {
+  reached_follow_up: "Reached the patient — follow-up needed",
+  voicemail: "Left a voicemail",
+  no_answer: "No answer",
+  wont_schedule: "Patient won't schedule",
+  not_actionable: "Duplicate or not actionable",
+  scheduled_transferred: "Finished — appointment booked",
+};
+
+// A follow-up day in the front desk's practice-local phrasing:
+// "Friday, August 1 morning" (9:00 ET) / "Friday, August 1 afternoon" (1:00 ET).
+const followUpDay = new Intl.DateTimeFormat("en-US", {
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+  timeZone: "America/New_York",
+});
+
+const followUpHour = new Intl.DateTimeFormat("en-US", {
+  hour: "2-digit",
+  hourCycle: "h23",
+  timeZone: "America/New_York",
+});
+
+export function followUpWhenLabel(iso: string): string {
+  const date = new Date(iso);
+  const hour = Number(followUpHour.format(date));
+  const part = hour < 12 ? "morning" : "afternoon";
+  return `${followUpDay.format(date)} ${part}`;
+}

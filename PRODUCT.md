@@ -157,9 +157,13 @@ distinct "count unavailable" state when its queue read fails — a failed read n
 presents as an empty queue. All four primary nav destinations stay fully visible on
 a 390px phone.
 
-Request detail keeps New, Contacted, Scheduled, and Closed in one Status control.
-Closed expands in place to ask whether an appointment was booked; staff never have
-to reconcile a separate finishing section with the visible status.
+Request detail leads with a unified call-outcome composer: one gesture
+records the outcome, status, an optional note, and an optional call-again
+time, committed as one server transaction. The daily success path —
+*Appointment is booked* — lands on Scheduled and stays visible; the
+call-again outcomes resurface the request on the day staff choose; the
+separate status buttons and note form are retired into the composer, and
+the secondary converted finish stays quietly available under it.
 
 Home also carries attention context in practice-local business terms: how long the
 oldest new request has been waiting ("since Friday"), which previewed requests

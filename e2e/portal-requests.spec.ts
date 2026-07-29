@@ -114,7 +114,7 @@ test.describe("portal requests operation", () => {
     expect(firstId && secondId && thirdId).toBeTruthy();
   });
 
-  test("VAL-ADMIN-005: detail shows every field and the lifecycle persists", async ({
+  test("VAL-ADMIN-005: detail shows every field and the composer drives the lifecycle", async ({
     page,
     request,
   }) => {
@@ -160,55 +160,70 @@ test.describe("portal requests operation", () => {
     await expect(notifications).toContainText(visibleRecipient);
     await expect(notifications).not.toContainText("jason.gitdev@gmail.com");
 
-    for (const status of ["contacted", "scheduled"] as const) {
-      await page.locator(`[data-status-action="${status}"]`).click();
-      await expect(
-        page.locator(`[data-status-action="${status}"]`),
-      ).toBeDisabled();
-      await expect(
-        page.locator(`span[data-status="${status}"]`).first(),
-      ).toBeVisible();
-
+    const composer = page.getByTestId("call-outcome-composer");
+    // The radios are sr-only inside visible labels — click the label text
+    // the way a staff member does.
+    async function saveOutcome(label: string) {
+      await composer.getByText(label, { exact: true }).click();
+      await page.getByTestId("save-outcome").click();
+      await expect(page.getByTestId("composer-feedback")).toBeVisible();
+    }
+    async function statusOf() {
       const { data, error } = await db
         .from("requests")
-        .select("status")
+        .select("status, closure_disposition, follow_up_at")
         .eq("id", id)
         .single();
       expect(error).toBeNull();
-      expect(data?.status).toBe(status);
+      return data;
     }
 
-    const closedStatus = page.getByTestId("closed-status-control");
-    await expect(closedStatus).not.toHaveAttribute("open", "");
-    await page.locator('[data-status-action="closed"]').click();
-    await expect(closedStatus).toHaveAttribute("open", "");
-    await expect(page.getByText("How was this request resolved?")).toBeVisible();
+    // The daily success path: booked lands on Scheduled and stays open.
+    await saveOutcome("Appointment is booked");
+    expect((await statusOf())?.status).toBe("scheduled");
 
-    await page
-      .getByRole("button", {
-        name: /^No appointment booked/,
-      })
+    // A call-again outcome requires the follow-up choice before saving.
+    await composer.getByText("No answer — call again", { exact: true }).click();
+    await expect(page.getByTestId("save-outcome")).toBeDisabled();
+    await composer.getByText("Tomorrow morning", { exact: true }).click();
+    await page.getByTestId("save-outcome").click();
+    await expect(page.getByTestId("composer-feedback")).toContainText(
+      "resurface",
+    );
+    const afterNoAnswer = await statusOf();
+    expect(afterNoAnswer?.status).toBe("contacted");
+    expect(afterNoAnswer?.follow_up_at).toBeTruthy();
+
+    // A closing outcome leaves the active queue with a classification.
+    await saveOutcome("Patient won't schedule");
+    const closed = await statusOf();
+    expect(closed?.status).toBe("closed");
+    expect(closed?.closure_disposition).toBe("unconverted");
+    expect(closed?.follow_up_at).toBeNull();
+
+    // Recording another call outcome reopens the closed request and clears
+    // the classification.
+    await composer
+      .getByText("Reached the patient — follow-up needed", { exact: true })
       .click();
-    await expect(
-      page.getByRole("button", {
-        name: /^No appointment booked/,
-      }),
-    ).toBeDisabled();
-    await expect(
-      page.locator('span[data-status="closed"]').first(),
-    ).toBeVisible();
+    await page.getByTestId("save-outcome").click();
+    await expect(page.getByTestId("composer-feedback")).toBeVisible();
+    const reopened = await statusOf();
+    expect(reopened?.status).toBe("contacted");
+    expect(reopened?.closure_disposition).toBeNull();
 
-    const { data: closed, error: closeError } = await db
-      .from("requests")
-      .select("status, closure_disposition, closed_at")
-      .eq("id", id)
-      .single();
-    expect(closeError).toBeNull();
-    expect(closed).toMatchObject({
-      status: "closed",
-      closure_disposition: "unconverted",
-    });
-    expect(closed?.closed_at).toBeTruthy();
+    const { data: outcomeAudits, error: outcomeAuditError } = await db
+      .from("audit_log")
+      .select("detail")
+      .eq("entity_id", id)
+      .eq("action", "request.call_outcome");
+    expect(outcomeAuditError).toBeNull();
+    const outcomes = (outcomeAudits ?? []).map(
+      (row) => (row.detail as { outcome?: string }).outcome,
+    );
+    expect(outcomes.sort()).toEqual(
+      ["no_answer", "reached_follow_up", "wont_schedule"].sort(),
+    );
 
     const { data: statusAudits, error: statusAuditError } = await db
       .from("audit_log")
@@ -216,21 +231,8 @@ test.describe("portal requests operation", () => {
       .eq("entity_id", id)
       .eq("action", "request.status_change");
     expect(statusAuditError).toBeNull();
-    expect(statusAudits).toHaveLength(2);
-    const statusTargets = (statusAudits ?? []).map(
-      (row) => (row.detail as { to?: string }).to,
-    );
-    for (const status of ["contacted", "scheduled"]) {
-      expect(statusTargets.filter((target) => target === status)).toHaveLength(1);
-    }
-
-    const { count: closeAuditCount, error: closeAuditError } = await db
-      .from("audit_log")
-      .select("id", { count: "exact", head: true })
-      .eq("entity_id", id)
-      .eq("action", "request.close");
-    expect(closeAuditError).toBeNull();
-    expect(closeAuditCount).toBe(1);
+    expect(statusAudits).toHaveLength(1);
+    expect((statusAudits![0].detail as { to?: string }).to).toBe("scheduled");
   });
 
   test("VAL-ADMIN-005b: unsafe legacy email uses the phone fallback", async ({
@@ -320,16 +322,22 @@ test.describe("portal requests operation", () => {
     await signIn(page);
     await page.goto(`/admin/requests/${id}`);
 
-    await page.getByLabel("Add a note").fill(noteText);
-    await page.getByRole("button", { name: "Save note" }).click();
+    const composer = page.getByTestId("call-outcome-composer");
+    await composer
+      .getByText("Left a voicemail — call again", { exact: true })
+      .click();
+    await composer.getByText("Tomorrow morning", { exact: true }).click();
+    await page.getByLabel(/Add a note/).fill(noteText);
+    await page.getByTestId("save-outcome").click();
+    await expect(page.getByTestId("composer-feedback")).toBeVisible();
 
-    await expect(page.getByTestId("note-list")).toContainText(noteText);
-    await expect(page.getByTestId("note-list")).toContainText(
-      SEED_EMAIL.toLowerCase(),
-    );
+    const history = page.getByTestId("work-history");
+    await expect(history).toContainText(noteText);
+    await expect(history).toContainText("Left a voicemail");
+    await expect(history).toContainText(SEED_EMAIL.toLowerCase());
 
     await page.reload();
-    await expect(page.getByTestId("note-list")).toContainText(noteText);
+    await expect(page.getByTestId("work-history")).toContainText(noteText);
 
     const { data: events, error } = await db
       .from("request_events")
@@ -344,15 +352,17 @@ test.describe("portal requests operation", () => {
       SEED_EMAIL.toLowerCase(),
     );
 
-    const { data: noteAudits, error: noteAuditError } = await db
+    const { data: outcomeAudits, error: outcomeAuditError } = await db
       .from("audit_log")
       .select("detail")
       .eq("entity_id", id)
-      .eq("action", "request.note");
-    expect(noteAuditError).toBeNull();
-    expect(noteAudits).toHaveLength(1);
-    expect((noteAudits![0].detail as { length?: number }).length).toBe(
-      noteText.length,
-    );
+      .eq("action", "request.call_outcome");
+    expect(outcomeAuditError).toBeNull();
+    expect(outcomeAudits).toHaveLength(1);
+    const detail = outcomeAudits![0].detail as Record<string, unknown>;
+    expect(detail.outcome).toBe("voicemail");
+    expect(detail.note_attached).toBe(true);
+    expect(detail.note_length).toBe(noteText.length);
+    expect(JSON.stringify(detail)).not.toContain(noteText);
   });
 });
