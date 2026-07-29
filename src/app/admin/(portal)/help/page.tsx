@@ -58,43 +58,130 @@ export default async function AdminHelpPage() {
           </p>
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
-          <h2 className={SECTION_HEADING}>Triaging appointment requests and statuses</h2>
-          <p className={SECTION_BODY}>
-            Open an appointment request to see everything the patient
-            submitted: name,
-            phone, email, preferred office and time, and their brief reason
-            for the visit. Work it by phone, then use{" "}
-            <strong>Update request status</strong>. Choose the same{" "}
-            <strong>Contacted</strong>, <strong>Scheduled</strong>, or{" "}
-            <strong>Closed</strong> status you see on the queue; the current
-            status is left out. The details, an optional note, and when to
-            call again are saved together. Scheduled leaves the request
-            visible in case you need it; Contacted can bring it back to your
-            attention on the day you choose.
-            The status filters on the queue page make it easy to see exactly
-            what still needs attention — keeping the New list at zero is the
-            daily goal.
-          </p>
-          <p className={`${SECTION_BODY} mt-3`}>
-            Choose <strong>Closed</strong> when nobody needs to work the
-            request again, then record whether the appointment was booked,
-            the patient will not schedule, or the request is not actionable.
-            Closing takes the request off the active queue. A closed request
-            can be reopened as Contacted or Scheduled if it needs correction.
-          </p>
-        </div>
+        <div
+          id="appointment-workflow-guide"
+          className="scroll-mt-20 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className={SECTION_HEADING}>Work an appointment request</h2>
+              <p className={SECTION_BODY}>
+                A two-minute guide to choosing the next step and leaving the
+                queue ready for whoever works it next.
+              </p>
+            </div>
+            <span className="rounded-full bg-[var(--color-amber-soft)] px-3 py-1 text-[0.78rem] font-bold text-[var(--color-amber-deep)]">
+              2-minute guide
+            </span>
+          </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
-          <h2 className={SECTION_HEADING}>Notes</h2>
-          <p className={SECTION_BODY}>
-            Add a note when you record the outcome — what happened,
-            anything the next person should know. Notes appear in the
-            request&apos;s <strong>Work history</strong> with your name and
-            the time, so a colleague can pick up exactly where you left off.
-            Please keep medical details out of notes; clinical conversation
-            belongs on the phone and in the medical record, not here.
-          </p>
+          <h3 className="mt-7 text-[1rem] font-black text-[var(--color-ink)]">
+            Which status should I choose?
+          </h3>
+          <dl className="mt-3 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
+            <div className="grid gap-1.5 py-4 sm:grid-cols-[8rem_1fr] sm:gap-5">
+              <dt>
+                <span className="inline-flex rounded-full bg-[var(--color-mint-2)] px-3 py-1 text-[0.82rem] font-black text-[var(--color-ink)]">
+                  Contacted
+                </span>
+              </dt>
+              <dd className="text-[0.94rem] leading-relaxed text-[var(--color-body)]">
+                You reached the patient but more work remains, left a
+                voicemail, or received no answer. If another call is needed,
+                tell the portal when to bring the request back.
+              </dd>
+            </div>
+            <div className="grid gap-1.5 py-4 sm:grid-cols-[8rem_1fr] sm:gap-5">
+              <dt>
+                <span className="inline-flex rounded-full bg-[var(--color-amber-soft)] px-3 py-1 text-[0.82rem] font-black text-[var(--color-ink)]">
+                  Scheduled
+                </span>
+              </dt>
+              <dd className="text-[0.94rem] leading-relaxed text-[var(--color-body)]">
+                The appointment is booked. The request stays visible so the
+                team can still find it.
+              </dd>
+            </div>
+            <div className="grid gap-1.5 py-4 sm:grid-cols-[8rem_1fr] sm:gap-5">
+              <dt>
+                <span className="inline-flex rounded-full bg-[var(--color-navy)] px-3 py-1 text-[0.82rem] font-black text-white">
+                  Closed
+                </span>
+              </dt>
+              <dd className="text-[0.94rem] leading-relaxed text-[var(--color-body)]">
+                Nobody needs to work the request again. Record whether the
+                appointment is complete, the patient will not schedule, or
+                the request is not actionable.
+              </dd>
+            </div>
+          </dl>
+
+          <h3 className="mt-8 text-[1rem] font-black text-[var(--color-ink)]">
+            Work the queue in four steps
+          </h3>
+          <ol className="mt-4 space-y-5">
+            {[
+              [
+                "Start with Needs attention",
+                "New requests and callbacks that are due rise to the top. Open the first request that needs work.",
+              ],
+              [
+                "Choose what happened",
+                "Select Contacted, Scheduled, or Closed. The portal shows only the choices that belong to that next step.",
+              ],
+              [
+                "Leave a useful handoff",
+                "Add a short operational note when it helps the next person. Keep medical details in the clinical record, not the portal.",
+              ],
+              [
+                "Save and continue",
+                "Choose Save to stay on the request, or Save and open next to keep working the queue.",
+              ],
+            ].map(([title, body], index) => (
+              <li
+                key={title}
+                className="grid grid-cols-[2rem_1fr] gap-3 border-b border-[var(--color-line)] pb-5 last:border-0 last:pb-0"
+              >
+                <span
+                  aria-hidden="true"
+                  className="grid h-8 w-8 place-items-center rounded-full bg-[var(--color-mint-2)] text-[0.82rem] font-black text-[var(--color-navy)]"
+                >
+                  {index + 1}
+                </span>
+                <div>
+                  <p className="font-black text-[var(--color-ink)]">{title}</p>
+                  <p className="mt-1 text-[0.92rem] leading-relaxed text-[var(--color-body)]">
+                    {body}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ol>
+
+          <div className="mt-7 bg-[var(--color-mint)] px-4 py-4 sm:px-5">
+            <p className="font-black text-[var(--color-ink)]">
+              Need to correct something?
+            </p>
+            <p className="mt-1 text-[0.92rem] leading-relaxed text-[var(--color-body)]">
+              A Closed request can be reopened as Contacted or Scheduled.
+              The earlier work remains in its history.
+            </p>
+          </div>
+
+          <div className="mt-6 flex flex-wrap items-center gap-4">
+            <Link
+              href="/admin/requests"
+              className="btn btn-amber btn-sm min-h-11"
+            >
+              Open appointment requests
+            </Link>
+            <Link
+              href="/admin"
+              className="min-h-11 py-3 text-[0.9rem] font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+            >
+              Return to Home
+            </Link>
+          </div>
         </div>
 
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">

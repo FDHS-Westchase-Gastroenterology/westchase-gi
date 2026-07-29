@@ -1140,6 +1140,290 @@
     font-weight: 400;
   }
 
+  /* ---- Staff release briefing ----
+     The first open is a rare, authored moment: a restrained seal fracture
+     explains that staff deliberately opened a maintained-software update.
+     Re-entry stays crisp and utility-like. The expanded surfaces are
+     anchored overlays, so the queue never jumps while the briefing opens. */
+  .portal-release-home {
+    z-index: var(--z-dropdown);
+  }
+
+  .release-open-button,
+  .release-quick-button,
+  .release-icon-button {
+    touch-action: manipulation;
+    transition:
+      transform 120ms cubic-bezier(0.23, 1, 0.32, 1),
+      background-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+      color 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .release-open-button {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 0.7rem;
+    border-radius: var(--radius);
+    padding: 0.25rem 0.75rem 0.25rem 0.25rem;
+    background: color-mix(in oklch, white 68%, var(--color-amber-soft));
+    color: var(--color-navy-2);
+    font-size: 0.9rem;
+    font-weight: 900;
+  }
+
+  .release-open-button:active,
+  .release-quick-button:active,
+  .release-icon-button:active {
+    transform: scale(0.97);
+  }
+
+  .release-icon-button {
+    display: grid;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    flex: none;
+    place-items: center;
+    border-radius: var(--radius-sm);
+    color: var(--color-muted);
+  }
+
+  .release-seal {
+    position: relative;
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex: none;
+    place-items: center;
+    filter: drop-shadow(0 5px 7px oklch(0.42 0.08 70 / 0.2));
+  }
+
+  .release-seal[data-compact="true"] {
+    width: 2rem;
+    height: 2rem;
+  }
+
+  .release-seal__half {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: var(--color-amber);
+    box-shadow:
+      inset 0 0 0 2px color-mix(in oklch, var(--color-amber-deep) 28%, transparent),
+      inset 0 0 0 5px color-mix(in oklch, white 16%, transparent);
+    transition: transform 170ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .release-seal__half--top {
+    clip-path: inset(0 0 48% 0 round 999px 999px 0 0);
+    transform-origin: bottom center;
+  }
+
+  .release-seal__half--bottom {
+    clip-path: inset(48% 0 0 0 round 0 0 999px 999px);
+    transform-origin: top center;
+  }
+
+  .release-seal[data-broken="true"] .release-seal__half--top {
+    transform: translate3d(-1px, -1.5px, 0) rotate(-1.5deg);
+  }
+
+  .release-seal[data-broken="true"] .release-seal__half--bottom {
+    transform: translate3d(1px, 1.5px, 0) rotate(1.5deg);
+  }
+
+  .release-seal__mark,
+  .release-seal__crack {
+    position: absolute;
+    inset: 17%;
+    width: 66%;
+    height: 66%;
+    overflow: visible;
+    color: var(--color-navy-2);
+    transition:
+      opacity 90ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 170ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .release-seal__mark {
+    fill: var(--color-amber);
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .release-seal[data-broken="true"] .release-seal__mark {
+    opacity: 0.28;
+    transform: scale(0.96);
+  }
+
+  .release-seal__crack {
+    fill: none;
+    stroke: var(--color-navy-2);
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0;
+    transform: scale(0.94);
+  }
+
+  .release-seal[data-broken="true"] .release-seal__crack {
+    opacity: 1;
+    transform: none;
+  }
+
+  .release-seal[data-animate="false"] :where(
+      .release-seal__half,
+      .release-seal__mark,
+      .release-seal__crack
+    ) {
+    transition: none;
+  }
+
+  .release-summary {
+    position: absolute;
+    inset-inline-end: 0;
+    top: calc(100% + 0.55rem);
+    z-index: var(--z-dropdown);
+    width: min(42rem, 100%);
+    max-height: min(70dvh, 38rem);
+    overflow-y: auto;
+    border-radius: var(--radius-lg);
+    background: white;
+    padding: clamp(1.25rem, 3vw, 1.75rem);
+    color: var(--color-body);
+    box-shadow: 0 28px 70px -30px oklch(0.22 0.05 248 / 0.68);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transform: translate3d(0, -8px, 0) scaleY(0.96);
+    transform-origin: top right;
+    transition:
+      opacity 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 180ms cubic-bezier(0.23, 1, 0.32, 1),
+      visibility 0s linear 180ms;
+  }
+
+  .release-summary[data-open="true"] {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: none;
+    transition:
+      opacity 180ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 240ms cubic-bezier(0.23, 1, 0.32, 1),
+      visibility 0s linear 0s;
+  }
+
+  .release-summary[data-animate="false"] {
+    transition: none;
+  }
+
+  .release-summary__row {
+    opacity: 0;
+    transform: translate3d(0, -5px, 0);
+    transition:
+      opacity 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .release-summary[data-open="true"] .release-summary__row {
+    opacity: 1;
+    transform: none;
+    transition-delay: calc(var(--release-row) * 35ms + 70ms);
+  }
+
+  .release-summary[data-animate="false"] .release-summary__row {
+    transition: none;
+  }
+
+  .portal-release-utility {
+    position: sticky;
+    top: 0;
+    z-index: var(--z-dropdown);
+    border-bottom: 1px solid color-mix(in oklch, var(--color-amber) 30%, white);
+    background: color-mix(in oklch, var(--color-amber-soft) 72%, var(--color-paper));
+  }
+
+  .release-quick-button {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.55rem;
+    border-radius: var(--radius);
+    padding-inline: 0.35rem 0.6rem;
+    color: var(--color-ink);
+    font-size: 0.86rem;
+  }
+
+  .portal-release-utility .release-summary {
+    width: min(42rem, calc(100vw - 2.5rem));
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .release-open-button:hover,
+    .release-quick-button:hover,
+    .release-icon-button:hover {
+      background: color-mix(in oklch, white 82%, var(--color-amber-soft));
+      color: var(--color-ink);
+    }
+  }
+
+  @media (max-width: 639px) {
+    .release-open-button {
+      align-self: stretch;
+      justify-content: center;
+    }
+
+    .portal-release-utility .container-x {
+      justify-content: stretch;
+    }
+
+    .release-quick-button {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .portal-release-utility .release-summary {
+      inset-inline: 1.25rem;
+      width: auto;
+      transform-origin: top center;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .release-summary,
+    .release-summary[data-open="true"] {
+      transform: none;
+      transition-property: opacity, visibility;
+      transition-duration: 120ms, 0s !important;
+    }
+
+    .release-summary__row,
+    .release-summary[data-open="true"] .release-summary__row {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+
+    .release-open-button:active,
+    .release-quick-button:active,
+    .release-icon-button:active,
+    .release-seal :where(
+        .release-seal__half,
+        .release-seal__mark,
+        .release-seal__crack
+      ) {
+      transform: none;
+    }
+
+    .release-seal :where(.release-seal__mark, .release-seal__crack) {
+      transition-property: opacity;
+      transition-duration: 100ms !important;
+    }
+  }
+
   /* ---- Testimonial rail: scroll-snap, native momentum ---- */
   .rail {
     display: grid;

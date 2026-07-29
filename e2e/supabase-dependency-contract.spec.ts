@@ -120,6 +120,27 @@ test.describe("Supabase dependency contract", () => {
         p_label: "Blocked",
       }),
     );
+    expectPermissionDenied(
+      await anon.from("portal_release_states").select("staff_user_id"),
+    );
+    expectPermissionDenied(
+      await anon.rpc("portal_open_staff_release", {
+        p_user_id: randomUUID(),
+        p_release_id: "dependency-contract",
+      }),
+    );
+    expectPermissionDenied(
+      await anon.rpc("portal_acknowledge_staff_release", {
+        p_user_id: randomUUID(),
+        p_release_id: "dependency-contract",
+      }),
+    );
+    expectPermissionDenied(
+      await anon.rpc("portal_hide_staff_release", {
+        p_user_id: randomUUID(),
+        p_release_id: "dependency-contract",
+      }),
+    );
 
     const authenticated = publicClient();
     const signIn = await authenticated.auth.signInWithPassword({
@@ -167,6 +188,29 @@ test.describe("Supabase dependency contract", () => {
           p_label: "Blocked",
         }),
       );
+      expectPermissionDenied(
+        await authenticated
+          .from("portal_release_states")
+          .select("staff_user_id"),
+      );
+      expectPermissionDenied(
+        await authenticated.rpc("portal_open_staff_release", {
+          p_user_id: signIn.data.user?.id ?? randomUUID(),
+          p_release_id: "dependency-contract",
+        }),
+      );
+      expectPermissionDenied(
+        await authenticated.rpc("portal_acknowledge_staff_release", {
+          p_user_id: signIn.data.user?.id ?? randomUUID(),
+          p_release_id: "dependency-contract",
+        }),
+      );
+      expectPermissionDenied(
+        await authenticated.rpc("portal_hide_staff_release", {
+          p_user_id: signIn.data.user?.id ?? randomUUID(),
+          p_release_id: "dependency-contract",
+        }),
+      );
 
       const serviceRead = await serviceDb()
         .from("staff_profiles")
@@ -181,6 +225,255 @@ test.describe("Supabase dependency contract", () => {
       });
     } finally {
       await authenticated.auth.signOut({ scope: "local" });
+    }
+  });
+
+  test("keeps portal release state per staff with idempotent atomic audits", async () => {
+    const db = serviceDb();
+    const releaseId = `dependency-${randomUUID()}`;
+    const secondEmail = `release-second-${randomUUID()}@example.test`;
+    const pendingEmail = `release-pending-${randomUUID()}@example.test`;
+    const inactiveEmail = `release-inactive-${randomUUID()}@example.test`;
+    const createdUserIds: string[] = [];
+    const profileIds: string[] = [];
+
+    const createProfile = async ({
+      email,
+      active,
+      onboarded,
+    }: {
+      email: string;
+      active: boolean;
+      onboarded: boolean;
+    }) => {
+      const createdUser = await db.auth.admin.createUser({
+        email,
+        email_confirm: true,
+        password: `T3st-${randomUUID()}!`,
+      });
+      expect(createdUser.error).toBeNull();
+      const userId = createdUser.data.user?.id;
+      if (!userId) throw new Error("Release-state Auth fixture was not created");
+      createdUserIds.push(userId);
+
+      const profileId = randomUUID();
+      const inserted = await db.from("staff_profiles").insert({
+        id: profileId,
+        user_id: userId,
+        email,
+        display_name: "TEST release-state staff",
+        role: "staff",
+        active,
+        onboarded_at: onboarded ? new Date().toISOString() : null,
+      });
+      expect(inserted.error).toBeNull();
+      profileIds.push(profileId);
+      return { userId, profileId };
+    };
+
+    const { data: seedProfile, error: seedProfileError } = await db
+      .from("staff_profiles")
+      .select("id, user_id, email")
+      .eq("email", SEED_EMAIL)
+      .single();
+    expect(seedProfileError).toBeNull();
+    if (!seedProfile) throw new Error("Seed staff profile is missing");
+
+    try {
+      const second = await createProfile({
+        email: secondEmail,
+        active: true,
+        onboarded: true,
+      });
+      const pending = await createProfile({
+        email: pendingEmail,
+        active: true,
+        onboarded: false,
+      });
+      const inactive = await createProfile({
+        email: inactiveEmail,
+        active: false,
+        onboarded: true,
+      });
+
+      const firstOpen = await db.rpc("portal_open_staff_release", {
+        p_user_id: seedProfile.user_id,
+        p_release_id: releaseId,
+      });
+      expect(firstOpen.error).toBeNull();
+      expect(firstOpen.data).toBe(true);
+
+      const openedState = await db
+        .from("portal_release_states")
+        .select("first_opened_at, acknowledged_at, hidden_at")
+        .eq("staff_user_id", seedProfile.user_id)
+        .eq("release_id", releaseId)
+        .single();
+      expect(openedState.error).toBeNull();
+      expect(openedState.data?.first_opened_at).toEqual(expect.any(String));
+      expect(openedState.data?.acknowledged_at).toBeNull();
+      expect(openedState.data?.hidden_at).toBeNull();
+      const firstOpenedAt = openedState.data?.first_opened_at;
+
+      const repeatedOpen = await db.rpc("portal_open_staff_release", {
+        p_user_id: seedProfile.user_id,
+        p_release_id: releaseId,
+      });
+      expect(repeatedOpen.error).toBeNull();
+      expect(repeatedOpen.data).toBe(false);
+      expect(
+        (
+          await db
+            .from("portal_release_states")
+            .select("first_opened_at")
+            .eq("staff_user_id", seedProfile.user_id)
+            .eq("release_id", releaseId)
+            .single()
+        ).data?.first_opened_at,
+      ).toBe(firstOpenedAt);
+
+      const acknowledged = await db.rpc(
+        "portal_acknowledge_staff_release",
+        {
+          p_user_id: seedProfile.user_id,
+          p_release_id: releaseId,
+        },
+      );
+      expect(acknowledged.error).toBeNull();
+      expect(acknowledged.data).toBe(true);
+      const repeatedAcknowledgement = await db.rpc(
+        "portal_acknowledge_staff_release",
+        {
+          p_user_id: seedProfile.user_id,
+          p_release_id: releaseId,
+        },
+      );
+      expect(repeatedAcknowledgement.error).toBeNull();
+      expect(repeatedAcknowledgement.data).toBe(false);
+
+      const acknowledgedState = await db
+        .from("portal_release_states")
+        .select("first_opened_at, acknowledged_at, hidden_at")
+        .eq("staff_user_id", seedProfile.user_id)
+        .eq("release_id", releaseId)
+        .single();
+      expect(acknowledgedState.error).toBeNull();
+      expect(acknowledgedState.data).toMatchObject({
+        first_opened_at: firstOpenedAt,
+        acknowledged_at: expect.any(String),
+        hidden_at: null,
+      });
+
+      const hidden = await db.rpc("portal_hide_staff_release", {
+        p_user_id: seedProfile.user_id,
+        p_release_id: releaseId,
+      });
+      expect(hidden.error).toBeNull();
+      expect(hidden.data).toBe(true);
+      const repeatedHide = await db.rpc("portal_hide_staff_release", {
+        p_user_id: seedProfile.user_id,
+        p_release_id: releaseId,
+      });
+      expect(repeatedHide.error).toBeNull();
+      expect(repeatedHide.data).toBe(false);
+
+      const finalState = await db
+        .from("portal_release_states")
+        .select("first_opened_at, acknowledged_at, hidden_at")
+        .eq("staff_user_id", seedProfile.user_id)
+        .eq("release_id", releaseId)
+        .single();
+      expect(finalState.error).toBeNull();
+      expect(finalState.data).toMatchObject({
+        first_opened_at: firstOpenedAt,
+        acknowledged_at: acknowledgedState.data?.acknowledged_at,
+        hidden_at: expect.any(String),
+      });
+
+      const seedAudits = await db
+        .from("audit_log")
+        .select("action, entity, entity_id, source, correlation_id, detail")
+        .eq("entity_id", seedProfile.id)
+        .contains("detail", { release_id: releaseId })
+        .order("at");
+      expect(seedAudits.error).toBeNull();
+      expect(seedAudits.data).toHaveLength(3);
+      expect(seedAudits.data?.map(({ action }) => action)).toEqual([
+        "staff.release_open",
+        "staff.release_acknowledge",
+        "staff.release_hide",
+      ]);
+      for (const audit of seedAudits.data ?? []) {
+        expect(audit).toMatchObject({
+          entity: "portal_release_states",
+          entity_id: seedProfile.id,
+          source: "staff",
+          detail: { release_id: releaseId },
+        });
+        expect(audit.correlation_id).toMatch(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+        );
+        expect(Object.keys(audit.detail ?? {})).toEqual(["release_id"]);
+      }
+
+      const secondOpen = await db.rpc("portal_open_staff_release", {
+        p_user_id: second.userId,
+        p_release_id: releaseId,
+      });
+      expect(secondOpen.error).toBeNull();
+      expect(secondOpen.data).toBe(true);
+      const isolatedStates = await db
+        .from("portal_release_states")
+        .select("staff_user_id")
+        .eq("release_id", releaseId)
+        .order("staff_user_id");
+      expect(isolatedStates.error).toBeNull();
+      expect(isolatedStates.data?.map(({ staff_user_id }) => staff_user_id)).toEqual(
+        [seedProfile.user_id, second.userId].sort(),
+      );
+
+      for (const rejectedUserId of [
+        pending.userId,
+        inactive.userId,
+        randomUUID(),
+      ]) {
+        const rejected = await db.rpc("portal_open_staff_release", {
+          p_user_id: rejectedUserId,
+          p_release_id: releaseId,
+        });
+        expect(rejected.error?.code).toBe("P0002");
+      }
+      expect(
+        (
+          await db
+            .from("portal_release_states")
+            .select("staff_user_id")
+            .eq("release_id", releaseId)
+        ).data,
+      ).toHaveLength(2);
+
+      for (const invalidReleaseId of ["", " has-spaces", "x".repeat(81)]) {
+        const rejected = await db.rpc("portal_open_staff_release", {
+          p_user_id: seedProfile.user_id,
+          p_release_id: invalidReleaseId,
+        });
+        expect(rejected.error?.code).toBe("22023");
+      }
+    } finally {
+      await db
+        .from("portal_release_states")
+        .delete()
+        .eq("release_id", releaseId);
+      await db
+        .from("audit_log")
+        .delete()
+        .contains("detail", { release_id: releaseId });
+      if (profileIds.length > 0) {
+        await db.from("staff_profiles").delete().in("id", profileIds);
+      }
+      for (const userId of createdUserIds) {
+        await db.auth.admin.deleteUser(userId);
+      }
     }
   });
 

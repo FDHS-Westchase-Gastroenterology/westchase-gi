@@ -17,10 +17,11 @@ export type PortalSessionUser = {
   email: string;
   displayName: string;
   role: StaffRole;
+  onboardedAt: string;
   portalTourDismissedAt: string | null;
 };
 
-export type PortalStaffAuthState = PortalSessionUser & {
+export type PortalStaffAuthState = Omit<PortalSessionUser, "onboardedAt"> & {
   active: boolean;
   onboardedAt: string | null;
 };
@@ -210,6 +211,7 @@ export const getSessionUser = cache(
       email: state.email,
       displayName: state.displayName,
       role: state.role,
+      onboardedAt: state.onboardedAt,
       portalTourDismissedAt: state.portalTourDismissedAt,
     };
   },

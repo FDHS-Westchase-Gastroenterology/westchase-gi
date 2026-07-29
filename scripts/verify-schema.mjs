@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs"
 const TABLES = [
   "audit_log",
   "notification_recipients",
+  "portal_release_states",
   "request_events",
   "requests",
   "staff_profiles",
@@ -17,6 +18,7 @@ const RETIRED_TABLES = [
 const POLICIES = []
 
 const RPC_SIGNATURES = {
+  portal_acknowledge_staff_release: "p_user_id uuid, p_release_id text",
   portal_add_request_note:
     "p_actor_email text, p_request_id uuid, p_note text, p_note_length integer",
   portal_check_intake_rate_limit:
@@ -30,6 +32,8 @@ const RPC_SIGNATURES = {
     "p_actor_email text, p_request_id uuid, p_authorization_ref text",
   portal_log_call_outcome:
     "p_actor_email text, p_request_id uuid, p_outcome text, p_note text, p_follow_up_at timestamp with time zone",
+  portal_hide_staff_release: "p_user_id uuid, p_release_id text",
+  portal_open_staff_release: "p_user_id uuid, p_release_id text",
   portal_preview_data_lifecycle: "p_now timestamp with time zone",
   portal_record_staff_password_reset: "p_user_id uuid",
   portal_run_data_lifecycle:
@@ -71,6 +75,7 @@ const RETIRED_RPC_SIGNATURES = [
 
 const RPCS = Object.keys(RPC_SIGNATURES).sort()
 const RPC_RESULTS = {
+  portal_acknowledge_staff_release: "boolean",
   portal_add_request_note: "uuid",
   portal_check_intake_rate_limit: "boolean",
   portal_record_analytics_event: "boolean",
@@ -78,6 +83,8 @@ const RPC_RESULTS = {
   portal_complete_staff_onboarding: "boolean",
   portal_delete_request_early: "boolean",
   portal_log_call_outcome: "uuid",
+  portal_hide_staff_release: "boolean",
+  portal_open_staff_release: "boolean",
   portal_preview_data_lifecycle: "jsonb",
   portal_record_staff_password_reset: "boolean",
   portal_run_data_lifecycle: "jsonb",
@@ -87,11 +94,14 @@ const RPC_RESULTS = {
   portal_update_request_status: "boolean",
 }
 const AUDIT_RPC_SOURCES = {
+  portal_acknowledge_staff_release: "staff",
   portal_add_request_note: "staff",
   portal_close_request: "staff",
   portal_complete_staff_onboarding: "staff",
   portal_delete_request_early: "staff",
   portal_log_call_outcome: "staff",
+  portal_hide_staff_release: "staff",
+  portal_open_staff_release: "staff",
   portal_record_staff_password_reset: "staff",
   portal_run_data_lifecycle: "system",
   portal_set_request_legal_hold: "staff",
@@ -142,6 +152,10 @@ const AUDIT_PROVENANCE_MIGRATION = {
 const ANALYTICS_MIGRATION = {
   version: "20260728223000",
   name: "add_patient_analytics_daily",
+}
+const PORTAL_RELEASE_STATE_MIGRATION = {
+  version: "20260729095026",
+  name: "add_portal_release_briefing_state",
 }
 
 const TARGETS = new Set(["dev", "prod"])
@@ -575,6 +589,14 @@ async function main() {
     ),
     `Analytics migration ${ANALYTICS_MIGRATION.version}_${ANALYTICS_MIGRATION.name} is not applied`,
   )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === PORTAL_RELEASE_STATE_MIGRATION.version &&
+        row.name === PORTAL_RELEASE_STATE_MIGRATION.name,
+    ),
+    `Portal release-state migration ${PORTAL_RELEASE_STATE_MIGRATION.version}_${PORTAL_RELEASE_STATE_MIGRATION.name} is not applied`,
+  )
 
   const onboardingColumnRows = await queryDatabase({
     accessToken,
@@ -612,6 +634,74 @@ async function main() {
       tourColumnRows[0].is_nullable === "YES" &&
       tourColumnRows[0].column_default === null,
     "staff_profiles.portal_tour_dismissed_at must be nullable timestamptz with no default",
+  )
+
+  const portalReleaseColumnRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select column_name, data_type, is_nullable, column_default
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'portal_release_states'
+      order by ordinal_position;
+    `,
+  })
+  assert(
+    sameValues(
+      portalReleaseColumnRows.map((row) => row.column_name),
+      [
+        "staff_user_id",
+        "release_id",
+        "first_opened_at",
+        "acknowledged_at",
+        "hidden_at",
+      ],
+    ) &&
+      portalReleaseColumnRows.find(
+        (row) => row.column_name === "staff_user_id",
+      )?.data_type === "uuid" &&
+      portalReleaseColumnRows.find((row) => row.column_name === "release_id")
+        ?.data_type === "text" &&
+      portalReleaseColumnRows
+        .filter((row) => row.column_name.endsWith("_at"))
+        .every((row) => row.data_type === "timestamp with time zone") &&
+      portalReleaseColumnRows.find(
+        (row) => row.column_name === "first_opened_at",
+      )?.is_nullable === "NO" &&
+      portalReleaseColumnRows.find(
+        (row) => row.column_name === "acknowledged_at",
+      )?.is_nullable === "YES" &&
+      portalReleaseColumnRows.find((row) => row.column_name === "hidden_at")
+        ?.is_nullable === "YES",
+    "portal_release_states must contain only the staff/release key and three timestamp fields",
+  )
+
+  const portalReleaseConstraintRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select conname, contype, pg_catalog.pg_get_constraintdef(oid) as definition
+      from pg_catalog.pg_constraint
+      where conrelid = 'public.portal_release_states'::pg_catalog.regclass
+      order by conname;
+    `,
+  })
+  const portalReleasePrimaryKey = portalReleaseConstraintRows.find(
+    (row) => row.conname === "portal_release_states_pkey",
+  )
+  const portalReleaseIdCheck = portalReleaseConstraintRows.find(
+    (row) => row.conname === "portal_release_states_release_id_valid",
+  )
+  assert(
+    ["p", 112].includes(portalReleasePrimaryKey?.contype) &&
+      portalReleasePrimaryKey.definition
+        .toLowerCase()
+        .includes("staff_user_id, release_id") &&
+      ["c", 99].includes(portalReleaseIdCheck?.contype) &&
+      portalReleaseIdCheck.definition.toLowerCase().includes("btrim") &&
+      portalReleaseIdCheck.definition.toLowerCase().includes("80"),
+    "portal_release_states must use the staff/release primary key and a bounded release identifier",
   )
 
   const tableRows = await queryDatabase({
@@ -1050,6 +1140,28 @@ async function main() {
         "portal_update_recipient_label must lock, trim, cap, and audit the label change",
       )
     }
+    if (
+      rpc.proname === "portal_open_staff_release" ||
+      rpc.proname === "portal_acknowledge_staff_release" ||
+      rpc.proname === "portal_hide_staff_release"
+    ) {
+      const definition = rpc.definition.toLowerCase()
+      assert(
+        definition.includes("from public.staff_profiles") &&
+          definition.includes("and active") &&
+          definition.includes("and onboarded_at is not null") &&
+          definition.includes("for update") &&
+          definition.includes("portal_release_states") &&
+          definition.includes("release_id"),
+        `${rpc.proname} must authorize from a locked active onboarded staff profile and scope by release`,
+      )
+    }
+    if (rpc.proname === "portal_open_staff_release") {
+      assert(
+        rpc.definition.toLowerCase().includes("on conflict"),
+        "portal_open_staff_release must claim the first-open state atomically",
+      )
+    }
     if (rpc.proname === "portal_run_data_lifecycle") {
       const definition = rpc.definition.toLowerCase()
       assert(
@@ -1105,7 +1217,10 @@ async function main() {
         anonKey: config.anonKey,
         accessToken: session.accessToken,
         table,
-        query: "select=id&limit=1",
+        query:
+          table === "portal_release_states"
+            ? "select=staff_user_id&limit=1"
+            : "select=id&limit=1",
       }),
     ),
   )
@@ -1184,6 +1299,9 @@ async function main() {
     `Verified ${target} migration: ${ANALYTICS_MIGRATION.version}_${ANALYTICS_MIGRATION.name}`,
   )
   console.log(
+    `Verified ${target} migration: ${PORTAL_RELEASE_STATE_MIGRATION.version}_${PORTAL_RELEASE_STATE_MIGRATION.name}`,
+  )
+  console.log(
     `Verified ${target} request lifecycle: nullable legacy-safe columns, constraints, preview, hold-aware deletion`,
   )
   console.log(
@@ -1191,6 +1309,9 @@ async function main() {
   )
   console.log(
     `Verified ${target} analytics_daily: persistent private table, RLS, service-only ACL, event vocabulary`,
+  )
+  console.log(
+    `Verified ${target} portal_release_states: per-staff key, bounded release id, RLS, service-only ACL`,
   )
   console.log(
     `Verified ${target} staff_profiles.onboarded_at: nullable timestamptz, no default`,
