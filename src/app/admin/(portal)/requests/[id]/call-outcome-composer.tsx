@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useReducer, useRef, useTransition } from "react";
+import {
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+  useTransition,
+  type RefObject,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type {
@@ -8,13 +15,17 @@ import type {
   RequestStatus,
 } from "@/lib/portal/contracts";
 import { Check } from "@/components/icons";
-import { logCallOutcome, type CallOutcomeId } from "../actions";
+import {
+  logCallOutcome,
+  undoCallOutcome,
+  type CallOutcomeId,
+} from "../actions";
 import { followUpWhenLabel } from "../format";
 
 // The daily work loop uses the same lifecycle vocabulary as the queue.
 // Staff choose the request's next status first, then only the details that
-// status needs. The underlying atomic outcome operation still saves status,
-// note, follow-up timing, and closure classification together.
+// status needs. Appointment request notes stay in their own single,
+// consistent surface instead of appearing as a second input here.
 
 type OutcomeOption = {
   id: CallOutcomeId;
@@ -138,8 +149,6 @@ function confirmationFor(
 const ERROR_COPY = {
   follow_up_required:
     "Choose when to call again — that's how the queue knows when to bring this request back.",
-  note_failed:
-    "The outcome was saved, but the note didn't go through. Add it again and save.",
   not_found:
     "This request no longer exists — it may have been removed. Open the queue to see the current list.",
   invalid:
@@ -160,7 +169,12 @@ function practiceLocalDay(offsetDays: number): string {
 }
 
 type Feedback =
-  | { tone: "success"; text: string; closed: boolean }
+  | {
+      tone: "success";
+      text: string;
+      closed: boolean;
+      offerNext: boolean;
+    }
   | { tone: "error"; text: string };
 
 type ComposerState = {
@@ -168,7 +182,6 @@ type ComposerState = {
   selected: CallOutcomeId | null;
   followUpKind: FollowUpKind | null;
   followUpDay: string;
-  note: string;
   attempted: boolean;
   feedback: Feedback | null;
 };
@@ -178,9 +191,13 @@ type ComposerAction =
   | { type: "select_outcome"; outcome: CallOutcomeId }
   | { type: "select_follow_up"; kind: FollowUpKind }
   | { type: "set_day"; day: string }
-  | { type: "set_note"; note: string }
   | { type: "attempt" }
-  | { type: "succeeded"; text: string; closed: boolean }
+  | {
+      type: "succeeded";
+      text: string;
+      closed: boolean;
+      offerNext: boolean;
+    }
   | { type: "failed"; text: string };
 
 const INITIAL_STATE: ComposerState = {
@@ -188,7 +205,6 @@ const INITIAL_STATE: ComposerState = {
   selected: null,
   followUpKind: null,
   followUpDay: "",
-  note: "",
   attempted: false,
   feedback: null,
 };
@@ -222,14 +238,17 @@ function composerReducer(
       return { ...state, followUpKind: action.kind, feedback: null };
     case "set_day":
       return { ...state, followUpDay: action.day, feedback: null };
-    case "set_note":
-      return { ...state, note: action.note };
     case "attempt":
       return { ...state, attempted: true };
     case "succeeded":
       return {
         ...INITIAL_STATE,
-        feedback: { tone: "success", text: action.text, closed: action.closed },
+        feedback: {
+          tone: "success",
+          text: action.text,
+          closed: action.closed,
+          offerNext: action.offerNext,
+        },
       };
     case "failed":
       return { ...state, feedback: { tone: "error", text: action.text } };
@@ -406,6 +425,129 @@ function FollowUpFieldset({
   );
 }
 
+function ComposerFeedback({
+  feedback,
+  nextHref,
+  feedbackRef,
+}: {
+  feedback: Feedback | null;
+  nextHref?: string | null;
+  feedbackRef: RefObject<HTMLParagraphElement | null>;
+}) {
+  if (!feedback) return null;
+
+  return (
+    <p
+      ref={feedbackRef}
+      tabIndex={-1}
+      role={feedback.tone === "success" ? "status" : "alert"}
+      data-testid="composer-feedback"
+      className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-[0.92rem] font-bold leading-relaxed text-[var(--color-ink)] outline-none ${
+        feedback.tone === "success"
+          ? "bg-[var(--color-mint)]"
+          : "bg-[var(--color-amber-soft)]"
+      }`}
+    >
+      {feedback.text}{" "}
+      {feedback.tone === "success" ? (
+        feedback.offerNext && nextHref ? (
+          <Link
+            href={nextHref}
+            data-testid="open-next-request"
+            className="inline-flex min-h-11 items-center underline underline-offset-2"
+          >
+            Open next appointment request
+          </Link>
+        ) : feedback.closed ? (
+          <Link
+            href="/admin/requests"
+            className="inline-flex min-h-11 items-center underline underline-offset-2"
+          >
+            Back to appointment requests
+          </Link>
+        ) : null
+      ) : null}
+    </p>
+  );
+}
+
+function StatusActions({
+  pending,
+  saveDisabled,
+  operation,
+  saveConfirmed,
+  undoAvailable,
+  undoConfirmed,
+  confirmationMotion,
+  onSave,
+  onUndo,
+}: {
+  pending: boolean;
+  saveDisabled: boolean;
+  operation: "save" | "undo" | null;
+  saveConfirmed: boolean;
+  undoAvailable: boolean;
+  undoConfirmed: boolean;
+  confirmationMotion: boolean;
+  onSave: (animateConfirmation: boolean) => void;
+  onUndo: (animateConfirmation: boolean) => void;
+}) {
+  const saveLabel =
+    operation === "save" ? "Saving…" : saveConfirmed ? "Saved" : "Save";
+  const undoLabel =
+    operation === "undo" ? "Undoing…" : undoConfirmed ? "Undone" : "Undo";
+
+  return (
+    <div className="mt-5 flex flex-wrap items-center gap-3">
+      <button
+        type="button"
+        data-testid="save-outcome"
+        disabled={saveDisabled}
+        onClick={(event) => onSave(event.detail !== 0)}
+        className="btn btn-navy min-h-11 disabled:opacity-60"
+      >
+        <span
+          key={saveLabel}
+          data-confirmed={saveConfirmed && operation !== "save"}
+          data-animate={confirmationMotion}
+          className="request-status-action-label"
+        >
+          {saveConfirmed && operation !== "save" ? (
+            <Check aria-hidden="true" className="h-4 w-4" />
+          ) : null}
+          {saveLabel}
+        </span>
+      </button>
+      {undoAvailable || undoConfirmed ? (
+        <button
+          type="button"
+          data-testid="undo-outcome"
+          disabled={pending || undoConfirmed}
+          onClick={(event) => onUndo(event.detail !== 0)}
+          className="btn btn-outline min-h-11 disabled:opacity-60"
+        >
+          <span
+            key={undoLabel}
+            data-confirmed={undoConfirmed && operation !== "undo"}
+            data-animate={confirmationMotion}
+            className="request-status-action-label"
+          >
+            {undoConfirmed && operation !== "undo" ? (
+              <Check aria-hidden="true" className="h-4 w-4" />
+            ) : null}
+            {undoLabel}
+          </span>
+        </button>
+      ) : null}
+      <p className="text-[0.85rem] text-[var(--color-muted)]">
+        {undoAvailable
+          ? "Undo restores the previous appointment request status, callback time, and Closed details."
+          : "Save creates one Request activity entry."}
+      </p>
+    </div>
+  );
+}
+
 export function CallOutcomeComposer({
   requestId,
   status,
@@ -422,12 +564,16 @@ export function CallOutcomeComposer({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [state, dispatch] = useReducer(composerReducer, INITIAL_STATE);
+  const [operation, setOperation] = useState<"save" | "undo" | null>(null);
+  const [undoEventId, setUndoEventId] = useState<string | null>(null);
+  const [saveConfirmed, setSaveConfirmed] = useState(false);
+  const [undoConfirmed, setUndoConfirmed] = useState(false);
+  const [confirmationMotion, setConfirmationMotion] = useState(true);
   const {
     destination,
     selected,
     followUpKind,
     followUpDay,
-    note,
     attempted,
     feedback,
   } = state;
@@ -438,6 +584,12 @@ export function CallOutcomeComposer({
     if (feedback) feedbackRef.current?.focus();
   }, [feedback]);
 
+  useEffect(() => {
+    if (!undoConfirmed) return;
+    const timeout = window.setTimeout(() => setUndoConfirmed(false), 1200);
+    return () => window.clearTimeout(timeout);
+  }, [undoConfirmed]);
+
   const outcomeRowProps = (option: OutcomeOption) => ({
     option,
     checked: selected === option.id,
@@ -446,7 +598,7 @@ export function CallOutcomeComposer({
       dispatch({ type: "select_outcome", outcome: id }),
   });
 
-  function submit(openNext: boolean) {
+  function submit(animateConfirmation: boolean) {
     if (!selected || pending) return;
     dispatch({ type: "attempt" });
     if (requiresFollowUp(selected) && !followUpKind) return;
@@ -459,43 +611,99 @@ export function CallOutcomeComposer({
           : { kind: followUpKind }
         : undefined;
 
+    setOperation("save");
     startTransition(async () => {
-      const result = await logCallOutcome({
-        requestId,
-        outcome: selected,
-        note: note.trim() ? note : undefined,
-        followUp,
-      });
-      if (!result.ok) {
-        dispatch({ type: "failed", text: ERROR_COPY[result.code] });
-        return;
-      }
-      if (openNext && nextHref) {
-        router.push(nextHref);
+      try {
+        const result = await logCallOutcome({
+          requestId,
+          outcome: selected,
+          followUp,
+        });
+        if (!result.ok) {
+          dispatch({ type: "failed", text: ERROR_COPY[result.code] });
+          return;
+        }
+        setConfirmationMotion(animateConfirmation);
+        setUndoEventId(result.eventId);
+        setUndoConfirmed(false);
+        setSaveConfirmed(true);
+        dispatch({
+          type: "succeeded",
+          text: confirmationFor(selected, result.followUpAt),
+          closed: result.status === "closed",
+          offerNext: true,
+        });
         router.refresh();
-        return;
+      } finally {
+        setOperation(null);
       }
-      dispatch({
-        type: "succeeded",
-        text: confirmationFor(selected, result.followUpAt),
-        closed: result.status === "closed",
-      });
-      router.refresh();
+    });
+  }
+
+  function undo(animateConfirmation: boolean) {
+    if (!undoEventId || pending) return;
+    setOperation("undo");
+    startTransition(async () => {
+      try {
+        const result = await undoCallOutcome({
+          requestId,
+          eventId: undoEventId,
+        });
+        if (!result.ok) {
+          if (result.code === "stale" || result.code === "not_found") {
+            setUndoEventId(null);
+            setSaveConfirmed(false);
+            router.refresh();
+          }
+          dispatch({
+            type: "failed",
+            text:
+              result.code === "stale"
+                ? "Undo is unavailable because the appointment request changed after this save. The current appointment request status is shown."
+                : result.code === "not_found"
+                  ? "This save is no longer available to undo. The current appointment request status is shown."
+                  : result.code === "invalid"
+                    ? "Undo is unavailable. Nothing changed."
+                    : "Undo did not complete. Check the current appointment request status before trying again.",
+          });
+          return;
+        }
+        setConfirmationMotion(animateConfirmation);
+        setUndoEventId(null);
+        setSaveConfirmed(false);
+        setUndoConfirmed(true);
+        dispatch({
+          type: "succeeded",
+          text: `Appointment request status restored to ${STATUS_LABEL[result.status]}.`,
+          closed: result.status === "closed",
+          offerNext: false,
+        });
+        router.refresh();
+      } finally {
+        setOperation(null);
+      }
+    });
+  }
+
+  function selectDestination(nextDestination: LifecycleDestination) {
+    setSaveConfirmed(false);
+    dispatch({
+      type: "select_destination",
+      destination: nextDestination,
     });
   }
 
   return (
-    <div
+    <section
       data-testid="call-outcome-composer"
-      className="print-hide card-lined mt-7 p-6 sm:p-7"
+      className="print-hide mt-7 border-t border-[var(--color-line)] pt-7"
     >
       <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
-        Update request status
+        Update appointment request status
       </h2>
       <p className="mt-1.5 max-w-[68ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
-        Choose where this request belongs next. Any details, callback timing,
-        and note are saved together. Notes also appear in the patient&apos;s
-        Notes card above.
+        Choose where this request belongs next. The outcome and callback
+        timing are saved together.
       </p>
       <p
         id="current-request-status"
@@ -529,29 +737,11 @@ export function CallOutcomeComposer({
         </p>
       ) : null}
 
-      {feedback ? (
-        <p
-          ref={feedbackRef}
-          tabIndex={-1}
-          role={feedback.tone === "success" ? "status" : "alert"}
-          data-testid="composer-feedback"
-          className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-[0.92rem] font-bold leading-relaxed text-[var(--color-ink)] outline-none ${
-            feedback.tone === "success"
-              ? "bg-[var(--color-mint)]"
-              : "bg-[var(--color-amber-soft)]"
-          }`}
-        >
-          {feedback.text}{" "}
-          {feedback.tone === "success" && feedback.closed ? (
-            <Link
-              href="/admin/requests"
-              className="underline underline-offset-2"
-            >
-              Back to appointment requests
-            </Link>
-          ) : null}
-        </p>
-      ) : null}
+      <ComposerFeedback
+        feedback={feedback}
+        nextHref={nextHref}
+        feedbackRef={feedbackRef}
+      />
 
       <fieldset className="mt-5" disabled={pending}>
         <legend className="text-sm font-bold text-[var(--color-ink)]">
@@ -571,12 +761,7 @@ export function CallOutcomeComposer({
               destination={nextStatus}
               checked={destination === nextStatus}
               disabled={pending}
-              onSelect={(selectedDestination) =>
-                dispatch({
-                  type: "select_destination",
-                  destination: selectedDestination,
-                })
-              }
+              onSelect={selectDestination}
             />
           ))}
         </div>
@@ -633,71 +818,22 @@ export function CallOutcomeComposer({
         />
       ) : null}
 
-      <div className="mt-5">
-        <label
-          htmlFor="outcome-note"
-          className="block text-sm font-bold text-[var(--color-ink)]"
-        >
-          Add a note <span className="font-normal">(optional)</span>
-        </label>
-        <textarea
-          id="outcome-note"
-          name="note"
-          rows={3}
-          maxLength={2000}
-          value={note}
-          disabled={pending}
-          onChange={(event) =>
-            dispatch({ type: "set_note", note: event.target.value })
-          }
-          className="mt-2 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 py-3 text-[0.95rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)] disabled:opacity-60"
-          placeholder="Anything the next person should know? Keep it brief."
-        />
-      </div>
-
-      <div className="mt-5 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          data-testid="save-outcome"
-          disabled={
-            pending ||
-            !selected ||
-            (requiresFollowUp(selected) && !followUpKind) ||
-            (followUpKind === "day" && !followUpDay)
-          }
-          onClick={() => submit(false)}
-          className="btn btn-navy min-h-11 disabled:opacity-60"
-        >
-          {pending
-            ? "Saving…"
-            : destination
-              ? `Save as ${STATUS_LABEL[destination]}`
-              : "Choose a status"}
-        </button>
-        {nextHref ? (
-          <button
-            type="button"
-            data-testid="save-outcome-next"
-            disabled={
-              pending ||
-              !selected ||
-              (requiresFollowUp(selected) && !followUpKind) ||
-              (followUpKind === "day" && !followUpDay)
-            }
-            onClick={() => submit(true)}
-            className="btn btn-outline min-h-11 disabled:opacity-60"
-          >
-            {pending
-              ? "Saving…"
-              : destination
-                ? `Save as ${STATUS_LABEL[destination]} and open next`
-                : "Choose a status"}
-          </button>
-        ) : null}
-        <p className="text-[0.85rem] text-[var(--color-muted)]">
-          Saved together — one entry in the activity log.
-        </p>
-      </div>
-    </div>
+      <StatusActions
+        pending={pending}
+        saveDisabled={
+          pending ||
+          !selected ||
+          (requiresFollowUp(selected) && !followUpKind) ||
+          (followUpKind === "day" && !followUpDay)
+        }
+        operation={operation}
+        saveConfirmed={saveConfirmed}
+        undoAvailable={Boolean(undoEventId)}
+        undoConfirmed={undoConfirmed}
+        confirmationMotion={confirmationMotion}
+        onSave={submit}
+        onUndo={undo}
+      />
+    </section>
   );
 }

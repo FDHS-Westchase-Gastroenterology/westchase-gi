@@ -145,9 +145,10 @@ obvious, a colleague can continue my work, and nothing is silently lost or
 misrepresented.
 
 The center of gravity is moving from "staff update records" to "staff finish clinic
-work": the real job is a phone call and its outcome, not a status field. Notes remain
-a first-class clinic abstraction: staff can leave one independently, or attach one
-while recording an outcome without splitting that call across separate saves.
+work": the real job is a phone call and its outcome, not a status field. Appointment
+request notes remain a first-class clinic abstraction: every request has one
+Appointment request notes surface where staff read and add context for the next
+person.
 
 ### Current delivery boundary (verified 2026-07-29)
 
@@ -158,19 +159,23 @@ distinct "count unavailable" state when its queue read fails — a failed read n
 presents as an empty queue. All four primary nav destinations stay fully visible on
 a 390px phone.
 
-Request detail restores Notes as a first-class card before the status workflow.
-Notes can be added independently; an optional note saved with an outcome appears
-in the same card. The secondary Request activity record carries call outcomes
-and status changes instead of renaming notes as history. The same lifecycle
+Request detail leads with the patient context, then one compact Appointment request
+notes surface before the status workflow. Appointment request notes are read and
+added only there. The secondary Request activity record carries call outcomes and
+status changes without calling appointment request notes history. The same lifecycle
 vocabulary as the queue remains: Contacted, Scheduled, and Closed. Staff choose
 the next status, then only the details that status needs; the current status is
-not offered as a destination. One save still records the outcome, status,
-optional note, optional call-again time, and closure classification together.
+not offered as a destination. Choosing Save records the outcome, appointment
+request status, optional call-again time, and closure classification together.
+After that save is confirmed, Undo restores the exact preceding lifecycle state without
+removing the saved call outcome from Request activity, and the next appointment
+request is offered as a separate continuation action rather than a second
+version of Save.
 Scheduled stays visible, Contacted can resurface on a chosen day, Closed leaves
 the active queue, and a closed request can be reopened as Contacted or
 Scheduled. An explicit print action produces the complete patient contact,
-notes, and request-activity handoff without portal controls or delivery
-diagnostics.
+Appointment request notes, and Request activity without portal controls or
+delivery diagnostics.
 
 Home also carries attention context in practice-local business terms: how long the
 oldest new request has been waiting ("since Friday"), which previewed requests
@@ -207,9 +212,10 @@ maintainer invite/cancel/accept/revoke acceptance pass.
    before its capability exists, and a failed read is never presented as an empty
    result — "nothing waiting" and "could not check" are different truths.
 5. **One human action, one portal transaction.** Staff experience "set the outcome
-   and explain what happened" as a single step; the interface should not split one
-   real-world action across disconnected forms, and server operations backing a
-   combined action must commit atomically.
+   and callback timing" as a single step, while appointment request notes remain
+   in their one familiar section. The interface should not split one real-world
+   action across disconnected forms, and server operations backing a combined
+   action must commit atomically.
 6. **Attention over inventory.** Lead with work that needs action — and its
    age in business terms — not with counts or tables that merely exist.
 7. **PHI-minimal.** The portal handles callback leads, not a clinical record. Intake has
@@ -226,7 +232,7 @@ Priorities for the portal's next chapter, in order:
 
 1. **A lifecycle-aligned request workflow** on request detail: one prominent action
    that uses the queue's Contacted, Scheduled, and Closed vocabulary and records
-   outcome, status, note, and closure classification together, atomically.
+   outcome, status, callback timing, and closure classification together, atomically.
    Production usage (2026-07-28) confirms the normal success path is
    `new → scheduled` left open — not a converted close. Contacted asks whether the
    patient was reached, a voicemail was left, or there was no answer; voicemail and
@@ -240,13 +246,18 @@ Priorities for the portal's next chapter, in order:
    atomic server operation landed in migrations
    2026-07-27 (`portal_log_call_outcome`; issue #124), so the composer is
    unblocked frontend work; production promotion of the migration follows its
-   own deliberate path. Notes and patient context lead the detail page; the
-   composer follows them without returning to disconnected status buttons.
+   own deliberate path. Appointment request notes and patient context lead the
+   detail page; the composer follows them without returning to disconnected
+   status buttons.
 2. **A queue that says what to work next**: a needs-attention default view
    (New, then follow-up dates due today or past, then touched rows silent since
    the previous practice-local business morning with no follow-up set),
    business-aware age, next-action hint per row ("Call again Friday", "Waiting
-   since Tuesday"), and continuity (previous/next, save-and-open-next). Staff
+   since Tuesday"), and continuity (previous/next, with the next request
+   offered after a confirmed save). The status workflow has one Save command.
+   After a confirmed save, Undo restores the preceding appointment request
+   status only when no later save has changed it. Save and Undo both remain in
+   Request activity. Staff
    author attention by picking when they'll call back — not by a Settings
    "N days" knob and not by a practice meeting. The queue's "once touched,
    urgency is a triage judgment" premise is retired.

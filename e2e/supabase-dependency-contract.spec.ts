@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import { execFileSync } from "node:child_process";
 import { test, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
@@ -114,6 +115,13 @@ test.describe("Supabase dependency contract", () => {
       }),
     );
     expectPermissionDenied(
+      await anon.rpc("portal_undo_call_outcome", {
+        p_actor_email: "anon@example.test",
+        p_request_id: randomUUID(),
+        p_event_id: randomUUID(),
+      }),
+    );
+    expectPermissionDenied(
       await anon.rpc("portal_update_recipient_label", {
         p_actor_email: "anon@example.test",
         p_recipient_id: randomUUID(),
@@ -191,6 +199,13 @@ test.describe("Supabase dependency contract", () => {
           p_actor_email: SEED_EMAIL,
           p_request_id: randomUUID(),
           p_outcome: "no_answer",
+        }),
+      );
+      expectPermissionDenied(
+        await authenticated.rpc("portal_undo_call_outcome", {
+          p_actor_email: SEED_EMAIL,
+          p_request_id: randomUUID(),
+          p_event_id: randomUUID(),
         }),
       );
       expectPermissionDenied(
@@ -278,7 +293,8 @@ test.describe("Supabase dependency contract", () => {
       });
       expect(createdUser.error).toBeNull();
       const userId = createdUser.data.user?.id;
-      if (!userId) throw new Error("Release-state Auth fixture was not created");
+      if (!userId)
+        throw new Error("Release-state Auth fixture was not created");
       createdUserIds.push(userId);
 
       const profileId = randomUUID();
@@ -371,13 +387,10 @@ test.describe("Supabase dependency contract", () => {
       expect(firstGuideOpen.error).toBeNull();
       expect(firstGuideOpen.data).toBe(true);
 
-      const firstDismiss = await db.rpc(
-        "portal_record_staff_release_dismiss",
-        {
-          p_user_id: seedProfile.user_id,
-          p_release_id: releaseId,
-        },
-      );
+      const firstDismiss = await db.rpc("portal_record_staff_release_dismiss", {
+        p_user_id: seedProfile.user_id,
+        p_release_id: releaseId,
+      });
       expect(firstDismiss.error).toBeNull();
       expect(firstDismiss.data).toBe(true);
 
@@ -440,13 +453,10 @@ test.describe("Supabase dependency contract", () => {
         Date.parse(countedState.data?.last_guide_opened_at ?? ""),
       ).toBeGreaterThanOrEqual(Date.parse(firstGuideOpenedAt ?? ""));
 
-      const acknowledged = await db.rpc(
-        "portal_acknowledge_staff_release",
-        {
-          p_user_id: seedProfile.user_id,
-          p_release_id: releaseId,
-        },
-      );
+      const acknowledged = await db.rpc("portal_acknowledge_staff_release", {
+        p_user_id: seedProfile.user_id,
+        p_release_id: releaseId,
+      });
       expect(acknowledged.error).toBeNull();
       expect(acknowledged.data).toBe(true);
       const repeatedAcknowledgement = await db.rpc(
@@ -567,9 +577,9 @@ test.describe("Supabase dependency contract", () => {
         .eq("release_id", releaseId)
         .order("staff_user_id");
       expect(isolatedStates.error).toBeNull();
-      expect(isolatedStates.data?.map(({ staff_user_id }) => staff_user_id)).toEqual(
-        [seedProfile.user_id, second.userId].sort(),
-      );
+      expect(
+        isolatedStates.data?.map(({ staff_user_id }) => staff_user_id),
+      ).toEqual([seedProfile.user_id, second.userId].sort());
 
       const reportRows = await db
         .from("portal_release_states")
@@ -778,7 +788,8 @@ test.describe("Supabase dependency contract", () => {
       .select("email, label, active, created_at, updated_at")
       .single();
     expect(inserted.error).toBeNull();
-    if (!inserted.data) throw new Error("Recipient label fixture was not created");
+    if (!inserted.data)
+      throw new Error("Recipient label fixture was not created");
 
     try {
       const changed = await db.rpc("portal_update_recipient_label", {
@@ -875,12 +886,20 @@ test.describe("Supabase dependency contract", () => {
     }
   });
 
-  test("records all six call outcomes atomically with one audit row", async () => {
+  test("records and undoes all seven call outcomes atomically", async () => {
     const db = serviceDb();
     const actor = `call-outcome-${randomUUID()}@example.test`;
     const followUpAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
     const requestIds: string[] = [];
     const cases = [
+      {
+        outcome: "booked",
+        note: "TEST appointment booked.",
+        followUpAt: null,
+        status: "scheduled",
+        disposition: null,
+        handedOff: false,
+      },
       {
         outcome: "scheduled_transferred",
         note: "TEST appointment transferred.",
@@ -959,6 +978,7 @@ test.describe("Supabase dependency contract", () => {
         expect(result.data).toMatch(
           /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
         );
+        const eventId = String(result.data);
 
         const row = await db
           .from("requests")
@@ -982,7 +1002,7 @@ test.describe("Supabase dependency contract", () => {
 
         const events = await db
           .from("request_events")
-          .select("type, status, meta")
+          .select("id, type, status, meta")
           .eq("request_id", requestId);
         expect(events.error).toBeNull();
         const outcomeEvents = (events.data ?? []).filter(
@@ -993,12 +1013,28 @@ test.describe("Supabase dependency contract", () => {
         );
         expect(outcomeEvents).toHaveLength(1);
         expect(outcomeEvents[0]).toMatchObject({
+          id: eventId,
           status: "recorded",
           meta: {
             outcome: item.outcome,
             author_email: actor,
+            lifecycle: {
+              version: 1,
+              before: {
+                status: "new",
+                follow_up_at: null,
+                closure_disposition: null,
+                closed_at: null,
+                record_handoff_at: null,
+              },
+              after: {
+                status: item.status,
+                closure_disposition: item.disposition,
+              },
+            },
           },
         });
+        expect(outcomeEvents[0].meta?.lifecycle?.sequence).toBe(1);
         expect(
           typeof outcomeEvents[0].meta?.follow_up_at === "string"
             ? new Date(outcomeEvents[0].meta.follow_up_at).toISOString()
@@ -1039,6 +1075,113 @@ test.describe("Supabase dependency contract", () => {
         expect(JSON.stringify(audits.data?.[0].detail)).not.toContain(
           item.note ?? "TEST patient value that is never present",
         );
+        expect(JSON.stringify(outcomeEvents[0].meta)).not.toContain(
+          item.note ?? "TEST patient value that is never present",
+        );
+        expect(JSON.stringify(outcomeEvents[0].meta)).not.toContain(
+          "8135550199",
+        );
+
+        const undone = await db.rpc("portal_undo_call_outcome", {
+          p_actor_email: actor,
+          p_request_id: requestId,
+          p_event_id: eventId,
+        });
+        expect(undone.error).toBeNull();
+        expect(undone.data).toEqual({ status: "new" });
+
+        const restored = await db
+          .from("requests")
+          .select(
+            "status, follow_up_at, closure_disposition, closed_at, record_handoff_at",
+          )
+          .eq("id", requestId)
+          .single();
+        expect(restored.data).toEqual({
+          status: "new",
+          follow_up_at: null,
+          closure_disposition: null,
+          closed_at: null,
+          record_handoff_at: null,
+        });
+
+        const finalEvents = await db
+          .from("request_events")
+          .select("id, type, status, meta")
+          .eq("request_id", requestId);
+        expect(finalEvents.error).toBeNull();
+        const original = finalEvents.data?.find(({ id }) => id === eventId);
+        expect(original).toMatchObject({
+          type: "call_outcome",
+          status: "undone",
+          meta: { outcome: item.outcome },
+        });
+        const undoEvents = (finalEvents.data ?? []).filter(
+          ({ type }) => type === "call_outcome_undo",
+        );
+        expect(undoEvents).toHaveLength(1);
+        expect(undoEvents[0]).toMatchObject({
+          status: "recorded",
+          meta: {
+            target_event_id: eventId,
+            outcome: item.outcome,
+            author_email: actor,
+            restored_status: "new",
+          },
+        });
+        expect(
+          (finalEvents.data ?? []).filter(({ type }) => type === "note"),
+        ).toHaveLength(item.note ? 1 : 0);
+
+        const undoAudits = await db
+          .from("audit_log")
+          .select("action, source, correlation_id, detail")
+          .eq("entity_id", requestId)
+          .eq("action", "request.call_outcome_undo");
+        expect(undoAudits.error).toBeNull();
+        expect(undoAudits.data).toHaveLength(1);
+        expect(undoAudits.data?.[0]).toMatchObject({
+          action: "request.call_outcome_undo",
+          source: "staff",
+          detail: {
+            target_event_id: eventId,
+            outcome: item.outcome,
+            from: item.status,
+            to: "new",
+            restored_lifecycle: {
+              status: "new",
+              follow_up_at: null,
+              closure_disposition: null,
+              closed_at: null,
+              record_handoff_at: null,
+            },
+          },
+        });
+        expect(undoAudits.data?.[0].correlation_id).toMatch(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+        );
+        expect(JSON.stringify(undoAudits.data?.[0].detail)).not.toContain(
+          item.note ?? "TEST patient value that is never present",
+        );
+        expect(JSON.stringify(undoAudits.data?.[0].detail)).not.toContain(
+          "8135550199",
+        );
+
+        const duplicateUndo = await db.rpc("portal_undo_call_outcome", {
+          p_actor_email: actor,
+          p_request_id: requestId,
+          p_event_id: eventId,
+        });
+        expect(duplicateUndo.error?.code).toBe("55000");
+        expect(
+          (
+            await db
+              .from("request_events")
+              .select("id")
+              .eq("request_id", requestId)
+              .eq("type", "call_outcome_undo")
+          ).data,
+        ).toHaveLength(1);
       }
 
       const rollbackId = randomUUID();
@@ -1119,6 +1262,437 @@ test.describe("Supabase dependency contract", () => {
       if (requestIds.length > 0) {
         await db.from("requests").delete().in("id", requestIds);
         await db.from("audit_log").delete().in("entity_id", requestIds);
+      }
+    }
+  });
+
+  test("restores every meaningful prior lifecycle shape exactly", async () => {
+    const db = serviceDb();
+    const actor = `undo-shapes-${randomUUID()}@example.test`;
+    const requestIds: string[] = [];
+    const followUpAt = "2026-08-03T14:30:00.000Z";
+    const unconvertedClosedAt = "2026-07-24T15:10:00.000Z";
+    const convertedClosedAt = "2026-07-25T16:20:00.000Z";
+    const recordHandoffAt = "2026-07-25T16:22:00.000Z";
+    const cases = [
+      {
+        name: "new",
+        before: {
+          status: "new",
+          follow_up_at: null,
+          closure_disposition: null,
+          closed_at: null,
+          record_handoff_at: null,
+        },
+        outcome: "booked",
+      },
+      {
+        name: "contacted with follow-up",
+        before: {
+          status: "contacted",
+          follow_up_at: followUpAt,
+          closure_disposition: null,
+          closed_at: null,
+          record_handoff_at: null,
+        },
+        outcome: "wont_schedule",
+      },
+      {
+        name: "scheduled",
+        before: {
+          status: "scheduled",
+          follow_up_at: null,
+          closure_disposition: null,
+          closed_at: null,
+          record_handoff_at: null,
+        },
+        outcome: "no_answer",
+      },
+      {
+        name: "closed unconverted",
+        before: {
+          status: "closed",
+          follow_up_at: null,
+          closure_disposition: "unconverted",
+          closed_at: unconvertedClosedAt,
+          record_handoff_at: null,
+        },
+        outcome: "booked",
+      },
+      {
+        name: "closed converted",
+        before: {
+          status: "closed",
+          follow_up_at: null,
+          closure_disposition: "converted",
+          closed_at: convertedClosedAt,
+          record_handoff_at: recordHandoffAt,
+        },
+        outcome: "voicemail",
+      },
+    ] as const;
+
+    const normalizeLifecycle = (row: {
+      status: string;
+      follow_up_at: string | null;
+      closure_disposition: string | null;
+      closed_at: string | null;
+      record_handoff_at: string | null;
+    }) => ({
+      status: row.status,
+      follow_up_at: row.follow_up_at
+        ? new Date(row.follow_up_at).toISOString()
+        : null,
+      closure_disposition: row.closure_disposition,
+      closed_at: row.closed_at ? new Date(row.closed_at).toISOString() : null,
+      record_handoff_at: row.record_handoff_at
+        ? new Date(row.record_handoff_at).toISOString()
+        : null,
+    });
+
+    try {
+      for (const item of cases) {
+        const requestId = randomUUID();
+        requestIds.push(requestId);
+        const inserted = await db.from("requests").insert({
+          id: requestId,
+          name: `TEST undo previous ${item.name}`,
+          phone: "8135550199",
+          email: null,
+          location: "tampa",
+          preferred_time: "morning",
+          message: null,
+          locale: "en",
+          source_path: "/e2e/call-outcome-undo-shapes",
+          ...item.before,
+        });
+        expect(inserted.error).toBeNull();
+
+        const saved = await db.rpc("portal_log_call_outcome", {
+          p_actor_email: actor,
+          p_request_id: requestId,
+          p_outcome: item.outcome,
+          p_note:
+            item.name === "closed converted"
+              ? "TEST note remains after lifecycle undo."
+              : null,
+          p_follow_up_at: null,
+        });
+        expect(saved.error).toBeNull();
+
+        const undone = await db.rpc("portal_undo_call_outcome", {
+          p_actor_email: actor,
+          p_request_id: requestId,
+          p_event_id: saved.data,
+        });
+        expect(undone.error).toBeNull();
+        expect(undone.data).toEqual({ status: item.before.status });
+
+        const restored = await db
+          .from("requests")
+          .select(
+            "status, follow_up_at, closure_disposition, closed_at, record_handoff_at",
+          )
+          .eq("id", requestId)
+          .single();
+        expect(restored.error).toBeNull();
+        expect(
+          normalizeLifecycle(
+            restored.data as Parameters<typeof normalizeLifecycle>[0],
+          ),
+        ).toEqual(item.before);
+
+        if (item.name === "closed converted") {
+          const notes = await db
+            .from("request_events")
+            .select("status, meta")
+            .eq("request_id", requestId)
+            .eq("type", "note");
+          expect(notes.data).toEqual([
+            {
+              status: "recorded",
+              meta: {
+                text: "TEST note remains after lifecycle undo.",
+                author_email: actor,
+              },
+            },
+          ]);
+        }
+      }
+    } finally {
+      if (requestIds.length > 0) {
+        await db.from("requests").delete().in("id", requestIds);
+        await db.from("audit_log").delete().in("entity_id", requestIds);
+      }
+    }
+  });
+
+  test("rejects stale, mismatched, missing, invalid, and malformed undo tokens", async () => {
+    const db = serviceDb();
+    const actor = `undo-rejection-${randomUUID()}@example.test`;
+    const firstRequestId = randomUUID();
+    const secondRequestId = randomUUID();
+    const requestIds = [firstRequestId, secondRequestId];
+
+    try {
+      const inserted = await db.from("requests").insert([
+        {
+          id: firstRequestId,
+          name: "TEST undo rejection first",
+          phone: "8135550199",
+          email: null,
+          location: "tampa",
+          preferred_time: "morning",
+          message: null,
+          locale: "en",
+          source_path: "/e2e/call-outcome-undo-rejection",
+        },
+        {
+          id: secondRequestId,
+          name: "TEST undo rejection second",
+          phone: "8135550199",
+          email: null,
+          location: "tampa",
+          preferred_time: "morning",
+          message: null,
+          locale: "en",
+          source_path: "/e2e/call-outcome-undo-rejection",
+        },
+      ]);
+      expect(inserted.error).toBeNull();
+
+      const firstSave = await db.rpc("portal_log_call_outcome", {
+        p_actor_email: actor,
+        p_request_id: firstRequestId,
+        p_outcome: "no_answer",
+      });
+      expect(firstSave.error).toBeNull();
+
+      const missingRequest = await db.rpc("portal_undo_call_outcome", {
+        p_actor_email: actor,
+        p_request_id: randomUUID(),
+        p_event_id: firstSave.data,
+      });
+      expect(missingRequest.error?.code).toBe("P0002");
+
+      const missingEvent = await db.rpc("portal_undo_call_outcome", {
+        p_actor_email: actor,
+        p_request_id: firstRequestId,
+        p_event_id: randomUUID(),
+      });
+      expect(missingEvent.error?.code).toBe("P0002");
+
+      const mismatched = await db.rpc("portal_undo_call_outcome", {
+        p_actor_email: actor,
+        p_request_id: secondRequestId,
+        p_event_id: firstSave.data,
+      });
+      expect(mismatched.error?.code).toBe("P0002");
+
+      const invalidActor = await db.rpc("portal_undo_call_outcome", {
+        p_actor_email: " ",
+        p_request_id: firstRequestId,
+        p_event_id: firstSave.data,
+      });
+      expect(invalidActor.error?.code).toBe("22023");
+
+      const laterSave = await db.rpc("portal_log_call_outcome", {
+        p_actor_email: actor,
+        p_request_id: firstRequestId,
+        p_outcome: "booked",
+      });
+      expect(laterSave.error).toBeNull();
+
+      const stale = await db.rpc("portal_undo_call_outcome", {
+        p_actor_email: actor,
+        p_request_id: firstRequestId,
+        p_event_id: firstSave.data,
+      });
+      expect(stale.error?.code).toBe("55000");
+      const laterState = await db
+        .from("requests")
+        .select(
+          "status, follow_up_at, closure_disposition, closed_at, record_handoff_at",
+        )
+        .eq("id", firstRequestId)
+        .single();
+      expect(laterState.data).toEqual({
+        status: "scheduled",
+        follow_up_at: null,
+        closure_disposition: null,
+        closed_at: null,
+        record_handoff_at: null,
+      });
+      expect(
+        (
+          await db
+            .from("request_events")
+            .select("id")
+            .eq("request_id", firstRequestId)
+            .eq("type", "call_outcome_undo")
+        ).data,
+      ).toHaveLength(0);
+
+      const malformedSave = await db.rpc("portal_log_call_outcome", {
+        p_actor_email: actor,
+        p_request_id: secondRequestId,
+        p_outcome: "voicemail",
+      });
+      expect(malformedSave.error).toBeNull();
+      const malformedUpdate = await db
+        .from("request_events")
+        .update({
+          meta: {
+            outcome: "voicemail",
+            author_email: actor,
+            lifecycle: {
+              version: 1,
+              sequence: 1,
+              before: { status: "new" },
+              after: { status: "contacted" },
+            },
+          },
+        })
+        .eq("id", malformedSave.data);
+      expect(malformedUpdate.error).toBeNull();
+
+      const malformed = await db.rpc("portal_undo_call_outcome", {
+        p_actor_email: actor,
+        p_request_id: secondRequestId,
+        p_event_id: malformedSave.data,
+      });
+      expect(malformed.error?.code).toBe("22023");
+      expect(
+        (
+          await db
+            .from("requests")
+            .select("status")
+            .eq("id", secondRequestId)
+            .single()
+        ).data,
+      ).toEqual({ status: "contacted" });
+      expect(
+        (
+          await db
+            .from("request_events")
+            .select("status")
+            .eq("id", malformedSave.data)
+            .single()
+        ).data,
+      ).toEqual({ status: "recorded" });
+    } finally {
+      await db.from("requests").delete().in("id", requestIds);
+      await db.from("audit_log").delete().in("entity_id", requestIds);
+    }
+  });
+
+  test("rolls back an undo when its audit insert fails", async () => {
+    test.skip(
+      process.env.SUPABASE_PROJECT_REF !== "local",
+      "The forced audit failure uses only the disposable local database.",
+    );
+
+    const db = serviceDb();
+    const actor = `undo-audit-rollback-${randomUUID()}@example.test`;
+    const requestId = randomUUID();
+    const constraintName = "audit_log_test_reject_call_outcome_undo";
+    const localWorkdirArgs = process.env.SUPABASE_DISPOSABLE_WORKDIR
+      ? ["--workdir", process.env.SUPABASE_DISPOSABLE_WORKDIR]
+      : [];
+
+    try {
+      const inserted = await db.from("requests").insert({
+        id: requestId,
+        name: "TEST undo audit rollback",
+        phone: "8135550199",
+        email: null,
+        location: "tampa",
+        preferred_time: "morning",
+        message: null,
+        locale: "en",
+        source_path: "/e2e/call-outcome-undo-audit-rollback",
+      });
+      expect(inserted.error).toBeNull();
+
+      const saved = await db.rpc("portal_log_call_outcome", {
+        p_actor_email: actor,
+        p_request_id: requestId,
+        p_outcome: "booked",
+      });
+      expect(saved.error).toBeNull();
+
+      execFileSync(
+        "supabase",
+        [
+          "db",
+          "query",
+          `alter table public.audit_log add constraint ${constraintName} check (action <> 'request.call_outcome_undo') not valid`,
+          "--local",
+          ...localWorkdirArgs,
+          "--agent=no",
+        ],
+        { cwd: process.cwd(), stdio: "pipe" },
+      );
+
+      const undo = await db.rpc("portal_undo_call_outcome", {
+        p_actor_email: actor,
+        p_request_id: requestId,
+        p_event_id: saved.data,
+      });
+      expect(undo.error?.code).toBe("23514");
+
+      expect(
+        (
+          await db
+            .from("requests")
+            .select(
+              "status, follow_up_at, closure_disposition, closed_at, record_handoff_at",
+            )
+            .eq("id", requestId)
+            .single()
+        ).data,
+      ).toEqual({
+        status: "scheduled",
+        follow_up_at: null,
+        closure_disposition: null,
+        closed_at: null,
+        record_handoff_at: null,
+      });
+      expect(
+        (
+          await db
+            .from("request_events")
+            .select("status")
+            .eq("id", saved.data)
+            .single()
+        ).data,
+      ).toEqual({ status: "recorded" });
+      expect(
+        (
+          await db
+            .from("request_events")
+            .select("id")
+            .eq("request_id", requestId)
+            .eq("type", "call_outcome_undo")
+        ).data,
+      ).toHaveLength(0);
+    } finally {
+      try {
+        execFileSync(
+          "supabase",
+          [
+            "db",
+            "query",
+            `alter table public.audit_log drop constraint if exists ${constraintName}`,
+            "--local",
+            ...localWorkdirArgs,
+            "--agent=no",
+          ],
+          { cwd: process.cwd(), stdio: "pipe" },
+        );
+      } finally {
+        await db.from("requests").delete().eq("id", requestId);
+        await db.from("audit_log").delete().eq("entity_id", requestId);
       }
     }
   });

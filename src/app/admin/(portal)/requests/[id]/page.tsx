@@ -32,8 +32,11 @@ import {
   OUTCOME_HISTORY_LABELS,
   TIME_LABELS,
 } from "../format";
-import { addRequestNote } from "../actions";
 import { CallOutcomeComposer } from "./call-outcome-composer";
+import {
+  RequestNotes,
+  type RequestNoteView,
+} from "./request-notes";
 
 type RequestRow = {
   id: string;
@@ -70,15 +73,25 @@ type AuditRow = {
 };
 
 // Call outcomes from the request event stream, plus status moves and closes
-// from the audit record. Notes remain a separate, first-class staff
-// abstraction; their call-outcome/note audit twins are excluded here so each
-// human action renders exactly once.
+// from the audit record. Appointment request notes remain a separate,
+// first-class staff abstraction; corresponding call-outcome and
+// appointment-request-note audit rows are excluded here so each human action
+// renders exactly once.
 type ActivityEntry =
   | {
       kind: "outcome";
       id: string;
       outcome: string;
       followUpAt: string | null;
+      undone: boolean;
+      author: string;
+      at: string;
+    }
+  | {
+      kind: "undo";
+      id: string;
+      outcome: string;
+      restoredStatus: string;
       author: string;
       at: string;
     }
@@ -119,6 +132,16 @@ function activityEntries(
         id: `event-${event.id}`,
         outcome: metaText(event.meta, "outcome"),
         followUpAt: metaText(event.meta, "follow_up_at") || null,
+        undone: event.status === "undone",
+        author: metaText(event.meta, "author_email"),
+        at: event.created_at,
+      });
+    } else if (event.type === "call_outcome_undo") {
+      entries.push({
+        kind: "undo",
+        id: `event-${event.id}`,
+        outcome: metaText(event.meta, "outcome"),
+        restoredStatus: metaText(event.meta, "restored_status"),
         author: metaText(event.meta, "author_email"),
         at: event.created_at,
       });
@@ -228,7 +251,7 @@ export default async function RequestDetailPage({
     throw new Error(`Event read failed: ${eventsError.code}`);
   }
   if (auditError) {
-    throw new Error(`Work record read failed: ${auditError.code}`);
+    throw new Error(`Request activity read failed: ${auditError.code}`);
   }
 
   // Previous/next within the viewer's queue scope: the same attention
@@ -272,6 +295,14 @@ export default async function RequestDetailPage({
   const notes = allEvents
     .filter((event) => event.type === "note")
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const noteViews: RequestNoteView[] = notes.map((note) => ({
+    id: note.id,
+    text: metaText(note.meta, "text"),
+    byline: `${displayNameOrEmail(
+      nameMap,
+      metaText(note.meta, "author_email"),
+    )} · ${formatReceived(note.created_at, true)}`,
+  }));
   const entries = activityEntries(
     allEvents,
     (auditRows ?? []) as AuditRow[],
@@ -401,103 +432,47 @@ export default async function RequestDetailPage({
 
       <div className="request-print-card mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
         <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
-          Notes
+          Appointment request details
         </h2>
-        <p className="mt-1.5 text-[0.88rem] leading-relaxed text-[var(--color-muted)]">
-          Staff handoff notes for this patient request.
-        </p>
-        {notes.length === 0 ? (
+        <dl className="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-2">
+          {fields.map((field) => (
+            <div key={field.label}>
+              <dt className="text-[0.8rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
+                {field.label}
+              </dt>
+              <dd className="mt-1 text-[0.95rem] text-[var(--color-ink)]">
+                {field.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <div className="mt-5 border-t border-[var(--color-line)] pt-5">
+          <h3 className="text-[0.8rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
+            Reason for requesting this appointment
+          </h3>
           <p
-            data-testid="notes-empty"
-            className="mt-4 text-[0.95rem] text-[var(--color-muted)]"
+            data-testid="request-message"
+            className="mt-2 whitespace-pre-wrap text-[0.95rem] leading-relaxed text-[var(--color-body)]"
           >
-            No notes yet. Leave a note when the next person needs context.
+            {row.message?.trim() || "— none provided —"}
           </p>
-        ) : (
-          <ul
-            data-testid="note-list"
-            className="mt-4 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]"
-          >
-            {notes.map((note) => (
-              <li key={note.id} className="request-note-item py-4">
-                <p className="whitespace-pre-wrap text-[0.95rem] leading-relaxed text-[var(--color-ink)]">
-                  {metaText(note.meta, "text")}
-                </p>
-                <p className="mt-2 text-[0.8rem] font-bold text-[var(--color-teal-ink)]">
-                  {displayNameOrEmail(
-                    nameMap,
-                    metaText(note.meta, "author_email"),
-                  )}{" "}
-                  · {formatReceived(note.created_at, true)}
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
-        <form
-          action={addRequestNote.bind(null, row.id)}
-          className="print-hide mt-5 border-t border-[var(--color-line)] pt-5"
-        >
-          <label
-            htmlFor="request-note"
-            className="block text-sm font-bold text-[var(--color-ink)]"
-          >
-            Add a note
-          </label>
-          <textarea
-            id="request-note"
-            name="note"
-            rows={3}
-            required
-            maxLength={2000}
-            className="mt-2 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 py-3 text-[0.95rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)]"
-            placeholder="Anything the next person should know? Keep medical details in the clinical record."
-          />
-          <button type="submit" className="btn btn-navy mt-3 min-h-11">
-            Save note
-          </button>
-        </form>
+        </div>
       </div>
 
-      <CallOutcomeComposer
-        requestId={row.id}
-        status={row.status}
-        closureDisposition={row.closure_disposition}
-        closedAtLabel={row.closed_at ? formatReceived(row.closed_at) : null}
-        nextHref={nextId ? continuityHref(nextId) : null}
-      />
+      <div className="request-print-card mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
+        <RequestNotes requestId={row.id} notes={noteViews} />
+
+        <CallOutcomeComposer
+          requestId={row.id}
+          status={row.status}
+          closureDisposition={row.closure_disposition}
+          closedAtLabel={row.closed_at ? formatReceived(row.closed_at) : null}
+          nextHref={nextId ? continuityHref(nextId) : null}
+        />
+      </div>
 
       <div className="request-detail-secondary mt-6 grid items-start gap-6 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-6">
-          <div className="request-print-card rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
-            <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
-              Appointment request details
-            </h2>
-            <dl className="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-2">
-              {fields.map((field) => (
-                <div key={field.label}>
-                  <dt className="text-[0.8rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
-                    {field.label}
-                  </dt>
-                  <dd className="mt-1 text-[0.95rem] text-[var(--color-ink)]">
-                    {field.value}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-            <div className="mt-5 border-t border-[var(--color-line)] pt-5">
-              <h3 className="text-[0.8rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
-                Reason for requesting this appointment
-              </h3>
-              <p
-                data-testid="request-message"
-                className="mt-2 whitespace-pre-wrap text-[0.95rem] leading-relaxed text-[var(--color-body)]"
-              >
-                {row.message?.trim() || "— none provided —"}
-              </p>
-            </div>
-          </div>
-
           <div className="request-print-card rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
             <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
               Request activity
@@ -521,7 +496,16 @@ export default async function RequestDetailPage({
                           entry.followUpAt
                             ? ` — call again ${followUpWhenLabel(entry.followUpAt)}`
                             : ""
+                        }${
+                          entry.undone
+                            ? " — appointment request status change undone"
+                            : ""
                         }`
+                      : entry.kind === "undo"
+                        ? `Undo — appointment request status restored to ${
+                            STATUS_LINE_LABELS[entry.restoredStatus] ??
+                            entry.restoredStatus
+                          }`
                       : entry.kind === "status"
                         ? entry.legacyClose
                           ? "Closed without an outcome"

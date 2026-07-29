@@ -1,5 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
-import { test, expect, type Page, type APIRequestContext } from "@playwright/test";
+import {
+  test,
+  expect,
+  type Page,
+  type APIRequestContext,
+} from "@playwright/test";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // VAL-ADMIN-003: the queue leads with the oldest unworked requests first.
@@ -123,20 +128,22 @@ test.describe("portal requests operation", () => {
     const id = await stageRequest(request, "lifecycle");
     const staged = payload("lifecycle");
     const visibleRecipient = `queue-${runId}-recipient@example.test`;
-    const { error: notificationError } = await db.from("request_events").insert([
-      {
-        request_id: id,
-        type: "notification",
-        recipient: "jason.gitdev@gmail.com",
-        status: "accepted",
-      },
-      {
-        request_id: id,
-        type: "notification",
-        recipient: visibleRecipient,
-        status: "accepted",
-      },
-    ]);
+    const { error: notificationError } = await db
+      .from("request_events")
+      .insert([
+        {
+          request_id: id,
+          type: "notification",
+          recipient: "jason.gitdev@gmail.com",
+          status: "accepted",
+        },
+        {
+          request_id: id,
+          type: "notification",
+          recipient: visibleRecipient,
+          status: "accepted",
+        },
+      ]);
     expect(notificationError).toBeNull();
 
     await signIn(page);
@@ -150,10 +157,9 @@ test.describe("portal requests operation", () => {
       page.getByRole("navigation", { name: "Breadcrumb" }),
     ).toContainText(staged.name);
     await expect(page.getByText(staged.phone).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: staged.email })).toHaveAttribute(
-      "href",
-      `mailto:${staged.email}`,
-    );
+    await expect(
+      page.getByRole("link", { name: staged.email }),
+    ).toHaveAttribute("href", `mailto:${staged.email}`);
     await expect(page.getByText("Tampa", { exact: true })).toBeVisible();
     await expect(page.getByText("Morning", { exact: true })).toBeVisible();
     await expect(page.getByTestId("request-message")).toContainText(
@@ -239,7 +245,7 @@ test.describe("portal requests operation", () => {
       (row) => (row.detail as { outcome?: string }).outcome,
     );
     expect(outcomes.sort()).toEqual(
-      ["no_answer", "reached_follow_up", "wont_schedule"].sort(),
+      ["booked", "no_answer", "reached_follow_up", "wont_schedule"].sort(),
     );
 
     const { data: statusAudits, error: statusAuditError } = await db
@@ -248,8 +254,7 @@ test.describe("portal requests operation", () => {
       .eq("entity_id", id)
       .eq("action", "request.status_change");
     expect(statusAuditError).toBeNull();
-    expect(statusAudits).toHaveLength(1);
-    expect((statusAudits![0].detail as { to?: string }).to).toBe("scheduled");
+    expect(statusAudits).toHaveLength(0);
   });
 
   test("VAL-ADMIN-005b: unsafe legacy email uses the phone fallback", async ({
@@ -339,12 +344,37 @@ test.describe("portal requests operation", () => {
     const nowMs = Date.now();
     const dayMs = 86_400_000;
     const stagedRows = [
-      { suffix: "closed", status: "closed", created_at: new Date(nowMs - 5 * dayMs).toISOString() },
-      { suffix: "scheduled", status: "scheduled", created_at: new Date(nowMs - 2 * dayMs).toISOString() },
-      { suffix: "stale", status: "contacted", created_at: new Date(nowMs - 4 * dayMs).toISOString() },
-      { suffix: "due", status: "contacted", created_at: new Date(nowMs - dayMs).toISOString(), follow_up_at: new Date(nowMs).toISOString() },
-      { suffix: "newer", status: "new", created_at: new Date(nowMs - dayMs).toISOString() },
-      { suffix: "older", status: "new", created_at: new Date(nowMs - 3 * dayMs).toISOString() },
+      {
+        suffix: "closed",
+        status: "closed",
+        created_at: new Date(nowMs - 5 * dayMs).toISOString(),
+      },
+      {
+        suffix: "scheduled",
+        status: "scheduled",
+        created_at: new Date(nowMs - 2 * dayMs).toISOString(),
+      },
+      {
+        suffix: "stale",
+        status: "contacted",
+        created_at: new Date(nowMs - 4 * dayMs).toISOString(),
+      },
+      {
+        suffix: "due",
+        status: "contacted",
+        created_at: new Date(nowMs - dayMs).toISOString(),
+        follow_up_at: new Date(nowMs).toISOString(),
+      },
+      {
+        suffix: "newer",
+        status: "new",
+        created_at: new Date(nowMs - dayMs).toISOString(),
+      },
+      {
+        suffix: "older",
+        status: "new",
+        created_at: new Date(nowMs - 3 * dayMs).toISOString(),
+      },
     ];
     const idsByKey = new Map<string, string>();
     for (const row of stagedRows) {
@@ -374,13 +404,26 @@ test.describe("portal requests operation", () => {
       const names = await page.getByTestId("request-name").allTextContents();
       const orderOf = (suffix: string) =>
         names.findIndex((name) => name.includes(` ${suffix}`));
-      const positions = ["older", "newer", "due", "stale", "scheduled", "closed"].map(orderOf);
+      const positions = [
+        "older",
+        "newer",
+        "due",
+        "stale",
+        "scheduled",
+        "closed",
+      ].map(orderOf);
       expect(positions.every((position) => position >= 0)).toBe(true);
       expect([...positions].sort((a, b) => a - b)).toEqual(positions);
 
-      await expect(page.getByTestId("request-next-action").first()).toBeVisible();
-      const hints = await page.getByTestId("request-next-action").allTextContents();
-      expect(hints.some((hint) => hint.startsWith("Call again — due"))).toBe(true);
+      await expect(
+        page.getByTestId("request-next-action").first(),
+      ).toBeVisible();
+      const hints = await page
+        .getByTestId("request-next-action")
+        .allTextContents();
+      expect(hints.some((hint) => hint.startsWith("Call again — due"))).toBe(
+        true,
+      );
       expect(hints.some((hint) => hint.startsWith("Silent"))).toBe(true);
       expect(hints.some((hint) => hint === "On the schedule")).toBe(true);
 
@@ -388,20 +431,63 @@ test.describe("portal requests operation", () => {
       await page.goto(`/admin/requests/${idsByKey.get("due")}?q=${token}`);
       const prevLink = page.getByTestId("prev-request");
       const nextLink = page.getByTestId("next-request");
-      await expect(prevLink).toHaveAttribute("href", new RegExp(idsByKey.get("newer")!));
-      await expect(nextLink).toHaveAttribute("href", new RegExp(idsByKey.get("stale")!));
+      await expect(prevLink).toHaveAttribute(
+        "href",
+        new RegExp(idsByKey.get("newer")!),
+      );
+      await expect(nextLink).toHaveAttribute(
+        "href",
+        new RegExp(idsByKey.get("stale")!),
+      );
 
       // The due row is already Contacted, so that current state is not offered.
-      // Save-and-open-next moves it to Scheduled and keeps queue continuity.
+      // One save moves it to Scheduled; continuation appears only after success.
       const composer = page.getByTestId("call-outcome-composer");
       await expect(
         composer
           .getByTestId("lifecycle-destinations")
           .getByText("Contacted", { exact: true }),
       ).toHaveCount(0);
+      await expect(page.getByTestId("save-outcome")).toHaveText(
+        "Save",
+      );
+      await expect(page.getByTestId("save-outcome")).toBeDisabled();
+      await expect(page.getByTestId("save-outcome-next")).toHaveCount(0);
       await composer.getByText("Scheduled", { exact: true }).click();
-      await page.getByTestId("save-outcome-next").click();
-      await expect(page).toHaveURL(new RegExp(`/admin/requests/${idsByKey.get("stale")}`));
+      await expect(page.getByTestId("save-outcome")).toHaveText("Save");
+      await page.getByTestId("save-outcome").click();
+      await expect(page.getByTestId("composer-feedback")).toBeVisible();
+      await expect(page.getByTestId("save-outcome")).toHaveText("Saved");
+      await expect(page.getByTestId("undo-outcome")).toHaveText("Undo");
+
+      // Undo is a real atomic reversal, not a local form reset.
+      await page.getByTestId("undo-outcome").click();
+      await expect(page.getByTestId("composer-feedback")).toContainText(
+        "Appointment request status restored to Contacted.",
+      );
+      await expect(page.getByTestId("undo-outcome")).toHaveText("Undone");
+      const { data: undoneRow, error: undoneRowError } = await db
+        .from("requests")
+        .select("status")
+        .eq("id", idsByKey.get("due")!)
+        .single();
+      expect(undoneRowError).toBeNull();
+      expect(undoneRow?.status).toBe("contacted");
+      await expect(page.getByTestId("request-activity")).toContainText(
+        "Appointment booked — appointment request status change undone",
+      );
+      await expect(page.getByTestId("request-activity")).toContainText(
+        "Undo — appointment request status restored to Contacted",
+      );
+
+      // A new save creates the next undo point and offers queue continuation.
+      await composer.getByText("Scheduled", { exact: true }).click();
+      await page.getByTestId("save-outcome").click();
+      await expect(page.getByTestId("composer-feedback")).toBeVisible();
+      await page.getByTestId("open-next-request").click();
+      await expect(page).toHaveURL(
+        new RegExp(`/admin/requests/${idsByKey.get("stale")}`),
+      );
 
       const { data: savedRow, error: savedRowError } = await db
         .from("requests")
@@ -411,16 +497,32 @@ test.describe("portal requests operation", () => {
       expect(savedRowError).toBeNull();
       expect(savedRow?.status).toBe("scheduled");
 
-      const { data: statusAudits, error: statusAuditError } = await db
+      const { data: outcomeAudits, error: outcomeAuditError } = await db
         .from("audit_log")
         .select("detail")
         .eq("entity_id", idsByKey.get("due")!)
-        .eq("action", "request.status_change");
-      expect(statusAuditError).toBeNull();
-      expect(statusAudits).toHaveLength(1);
-      expect(
-        (statusAudits![0].detail as { to?: string }).to,
-      ).toBe("scheduled");
+        .eq("action", "request.call_outcome");
+      expect(outcomeAuditError).toBeNull();
+      expect(outcomeAudits).toHaveLength(2);
+      for (const audit of outcomeAudits ?? []) {
+        expect(audit.detail).toMatchObject({
+          outcome: "booked",
+          from: "contacted",
+          to: "scheduled",
+        });
+      }
+      const { data: undoAudits, error: undoAuditError } = await db
+        .from("audit_log")
+        .select("detail")
+        .eq("entity_id", idsByKey.get("due")!)
+        .eq("action", "request.call_outcome_undo");
+      expect(undoAuditError).toBeNull();
+      expect(undoAudits).toHaveLength(1);
+      expect(undoAudits?.[0].detail).toMatchObject({
+        outcome: "booked",
+        from: "scheduled",
+        to: "contacted",
+      });
     } finally {
       const ids = [...idsByKey.values()];
       await db.from("requests").delete().in("id", ids);
@@ -440,18 +542,48 @@ test.describe("portal requests operation", () => {
     await signIn(page);
     await page.goto(`/admin/requests/${id}`);
 
+    const notesSection = page.getByTestId("request-notes");
+    await expect(
+      notesSection.getByRole("heading", {
+        name: "Appointment request notes",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(notesSection.getByLabel("Note", { exact: true })).toBeHidden();
+    await notesSection
+      .getByRole("button", { name: "Add note", exact: true })
+      .click();
+    const noteField = notesSection.getByLabel("Note", { exact: true });
+    await expect(noteField).toBeFocused();
+    await expect(
+      notesSection.getByRole("button", { name: "Save note" }),
+    ).toBeDisabled();
+    await noteField.fill(noteText);
+    await notesSection.getByRole("button", { name: "Save note" }).click();
+    await expect(
+      notesSection.getByTestId("request-note-feedback"),
+    ).toContainText("Note added.");
+
+    const notes = page.getByTestId("note-list");
+    await expect(notes).toContainText(noteText);
+    const { data: unchangedNewStatus, error: initialStatusError } = await db
+      .from("requests")
+      .select("status")
+      .eq("id", id)
+      .single();
+    expect(initialStatusError).toBeNull();
+    expect(unchangedNewStatus?.status).toBe("new");
+
     const composer = page.getByTestId("call-outcome-composer");
+    await expect(composer.getByLabel("Note", { exact: true })).toHaveCount(0);
     await composer.getByText("Contacted", { exact: true }).click();
     await composer
       .getByText("Left a voicemail — call again", { exact: true })
       .click();
     await composer.getByText("Tomorrow morning", { exact: true }).click();
-    await composer.getByLabel(/Add a note/).fill(noteText);
     await page.getByTestId("save-outcome").click();
     await expect(page.getByTestId("composer-feedback")).toBeVisible();
 
-    const notes = page.getByTestId("note-list");
-    await expect(notes).toContainText(noteText);
     const { data: authorProfile } = await db
       .from("staff_profiles")
       .select("display_name")
@@ -467,13 +599,13 @@ test.describe("portal requests operation", () => {
     await page.reload();
     await expect(page.getByTestId("note-list")).toContainText(noteText);
 
-    // Notes remain a first-class action: staff can leave a handoff without
-    // inventing a status transition.
-    const notesCard = page
-      .getByRole("heading", { name: "Notes", exact: true })
-      .locator("..");
-    await notesCard.getByLabel("Add a note", { exact: true }).fill(handoffText);
-    await notesCard.getByRole("button", { name: "Save note" }).click();
+    // Appointment request notes have one consistent entry point, independent
+    // from the status workflow.
+    await notesSection
+      .getByRole("button", { name: "Add note", exact: true })
+      .click();
+    await notesSection.getByLabel("Note", { exact: true }).fill(handoffText);
+    await notesSection.getByRole("button", { name: "Save note" }).click();
     await expect(page.getByTestId("note-list")).toContainText(handoffText);
 
     const { data: unchangedStatus, error: statusError } = await db
@@ -491,7 +623,10 @@ test.describe("portal requests operation", () => {
     );
     await page.getByTestId("request-row").click();
     await expect(
-      page.getByRole("heading", { name: "Notes", exact: true }),
+      page.getByRole("heading", {
+        name: "Appointment request notes",
+        exact: true,
+      }),
     ).toBeVisible();
     await expect(page.getByTestId("note-list")).toContainText(noteText);
     await expect(page.getByTestId("note-list")).toContainText(handoffText);
@@ -502,9 +637,7 @@ test.describe("portal requests operation", () => {
         document.documentElement.dataset.testRequestPrint = "called";
       };
     });
-    await page
-      .getByRole("button", { name: "Print patient page" })
-      .click();
+    await page.getByRole("button", { name: "Print patient page" }).click();
     await expect(page.locator("html")).toHaveAttribute(
       "data-test-request-print",
       "called",
@@ -527,9 +660,9 @@ test.describe("portal requests operation", () => {
       page.getByRole("navigation", { name: "Breadcrumb" }),
     ).toBeHidden();
     expect(
-      await page.locator(".request-detail-print").evaluate(
-        (element) => getComputedStyle(element).breakInside,
-      ),
+      await page
+        .locator(".request-detail-print")
+        .evaluate((element) => getComputedStyle(element).breakInside),
     ).toBe("auto");
     await page.emulateMedia({ media: "screen" });
 
@@ -562,8 +695,8 @@ test.describe("portal requests operation", () => {
     expect(outcomeAudits).toHaveLength(1);
     const detail = outcomeAudits![0].detail as Record<string, unknown>;
     expect(detail.outcome).toBe("voicemail");
-    expect(detail.note_attached).toBe(true);
-    expect(detail.note_length).toBe(noteText.length);
+    expect(detail.note_attached).toBe(false);
+    expect(detail).not.toHaveProperty("note_length");
     expect(JSON.stringify(detail)).not.toContain(noteText);
   });
 });

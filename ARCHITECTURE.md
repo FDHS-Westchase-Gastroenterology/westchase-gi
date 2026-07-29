@@ -154,7 +154,7 @@ ProfileCardViewer, Reveal, etc.). Portal UI is colocated with its routes in
 | Table | Role |
 |---|---|
 | `public.requests` | The appointment-request queue — the system of record. Status lifecycle `new → contacted → scheduled → closed` with explicit closure classification (`converted` / `unconverted`) driving retention. Carries receipt-token hash state and legal-hold/lifecycle columns (later migrations). |
-| `public.request_events` | Per-request event stream: notification attempts (recipient, provider message id, outcome) and attributed staff notes. Cascade-deletes with its parent request. |
+| `public.request_events` | Per-request event stream: notification attempts, attributed appointment request notes, atomic call outcomes, and their explicit Undo events. Call outcomes carry versioned lifecycle snapshots so Undo can restore the exact preceding request state when no later save has changed it, without deleting the saved call outcome or Undo event. Cascade-deletes with its parent request. |
 | `public.notification_recipients` | Who gets new-request email pings; `active` toggles pause/resume; optional label. |
 | `public.staff_profiles` | Authorization source of truth: `user_id → auth.users`, role (`admin`/`staff`), active flag. |
 | `public.portal_release_states` | PHI-free per-staff release briefing state keyed by `(staff_user_id, release_id)`: immutable first open, last-view and bounded view count, first/last guide open and count, last dismiss and count, plus idempotent acknowledgement and early hide. |
@@ -168,7 +168,9 @@ ProfileCardViewer, Reveal, etc.). Portal UI is colocated with its routes in
 Intake: `portal_check_intake_rate_limit`. Telemetry: `portal_record_analytics_event`. Queue:
 `portal_update_request_status`,
 `portal_close_request`, `portal_add_request_note`, `portal_log_call_outcome` (atomic combined
-outcome). Recipients: `portal_update_recipient_label`. Staff: `portal_complete_staff_onboarding`,
+outcome plus lifecycle snapshot), `portal_undo_call_outcome` (atomic Undo that rejects a stale
+or repeated attempt).
+Recipients: `portal_update_recipient_label`. Staff: `portal_complete_staff_onboarding`,
 `portal_record_staff_password_reset`, `portal_set_staff_tour_dismissed`. Release briefing:
 `portal_open_staff_release`, `portal_record_staff_release_guide_open`,
 `portal_record_staff_release_dismiss`, `portal_acknowledge_staff_release`,
