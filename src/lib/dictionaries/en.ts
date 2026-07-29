@@ -421,7 +421,7 @@ export const en = {
   contact: {
     title: "Contact Us",
     intro: "Two offices, one team. Call, text, or send an appointment request; we'll take it from there.",
-    formHeading: "Send us a message",
+    formHeading: "Send an appointment request",
     locationsHeading: "Our offices",
   },
 

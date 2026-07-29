@@ -425,7 +425,7 @@ export const ko: Dictionary = {
   contact: {
     title: "문의하기",
     intro: "두 곳의 오피스, 하나의 팀. 전화나 문자를 주시거나 예약 신청을 보내 주시면, 그다음은 저희가 맡겠습니다.",
-    formHeading: "메시지 보내기",
+    formHeading: "예약 신청 보내기",
     locationsHeading: "저희 오피스",
   },
 
