@@ -212,8 +212,6 @@ export const es: Dictionary = {
     physiciansLead:
       "Tres gastroenterólogos certificados, con el apoyo de enfermeras practicantes familiares y una enfermera de infusión.",
     physiciansCta: "Conozca a todo el equipo",
-    physicianReviewCta: "Deje una reseña en Google",
-    physicianReviewAria: "Deje una reseña en Google para el Dr. {name} (abre el formulario de reseñas de Google)",
     testimonialsHeading: "Lo que dicen nuestros pacientes",
     // i5-waiver 2026-07-28 home.testimonialsNote: settled decision — testimonials
     // stay English-only in every locale, with this explicit qualifier.

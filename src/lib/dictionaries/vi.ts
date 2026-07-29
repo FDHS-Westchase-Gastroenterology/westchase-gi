@@ -208,8 +208,6 @@ export const vi: Dictionary = {
     physiciansLead:
       "Ba bác sĩ chuyên khoa tiêu hóa được hội đồng y khoa chứng nhận, cùng sự hỗ trợ của các điều dưỡng thực hành gia đình và một điều dưỡng truyền tĩnh mạch.",
     physiciansCta: "Gặp gỡ toàn bộ đội ngũ",
-    physicianReviewCta: "Để lại đánh giá trên Google",
-    physicianReviewAria: "Để lại đánh giá trên Google cho bác sĩ {name} (mở biểu mẫu đánh giá của Google)",
     testimonialsHeading: "Bệnh nhân nói gì về chúng tôi",
     // i5-waiver 2026-07-28 home.testimonialsNote: settled decision — testimonials
     // stay English-only in every locale, with this explicit qualifier.
