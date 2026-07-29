@@ -7,15 +7,37 @@ const localeSet = new Set<string>(locales);
 export const LANGUAGE_TRIGGER_ID = "language-menu-trigger";
 let completedInThisSession = false;
 
-function hasRememberedLocale(): boolean {
+function readCookie(name: string): string | undefined {
   try {
-    return document.cookie.split("; ").some((cookie) => {
-      const [name, value] = cookie.split("=");
-      return name === LOCALE_COOKIE && localeSet.has(value);
-    });
+    for (const cookie of document.cookie.split("; ")) {
+      const [cookieName, value] = cookie.split("=");
+      if (cookieName === name) return value;
+    }
   } catch {
-    return false;
+    // Cookie access can throw in hardened contexts; treat as absent.
   }
+  return undefined;
+}
+
+function hasRememberedLocale(): boolean {
+  const value = readCookie(LOCALE_COOKIE);
+  return value !== undefined && localeSet.has(value);
+}
+
+/** First supported language in the browser's preference list. Mirrors the
+ * proxy's Accept-Language negotiation (`negotiateLocale` in `src/proxy.ts`):
+ * same primary-subtag matching, same English fallback. Client-side because
+ * the chooser's gating evidence must survive response caches (I4). */
+export function browserLocale(): Locale {
+  try {
+    for (const tag of navigator.languages ?? [navigator.language]) {
+      const primary = tag.toLowerCase().split("-")[0];
+      if (localeSet.has(primary)) return primary as Locale;
+    }
+  } catch {
+    // A locked-down navigator falls through to the English default.
+  }
+  return "en";
 }
 
 export function hasCompletedLanguageChoice(): boolean {
@@ -36,6 +58,17 @@ export function rememberLocale(locale: Locale) {
   } catch {
     // A blocked cookie may make the chooser return in a later browser session.
   }
+  try {
+    sessionStorage.setItem(SESSION_KEY, "1");
+  } catch {
+    // Module state still covers this client session.
+  }
+}
+
+/** A dismissal asserts no preference: suppress the dialog for this session
+ * only — never as a stored choice, so a later mismatch can still help. */
+export function dismissLanguageChoice() {
+  completedInThisSession = true;
   try {
     sessionStorage.setItem(SESSION_KEY, "1");
   } catch {
