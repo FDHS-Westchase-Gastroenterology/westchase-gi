@@ -78,7 +78,6 @@ export function RequestNotes({
     <section
       data-testid="request-notes"
       aria-labelledby="request-notes-heading"
-      className="request-print-card mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7"
     >
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
         <h2

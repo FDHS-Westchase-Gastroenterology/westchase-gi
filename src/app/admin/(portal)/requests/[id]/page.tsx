@@ -439,15 +439,17 @@ export default async function RequestDetailPage({
         </div>
       </div>
 
-      <RequestNotes requestId={row.id} notes={noteViews} />
+      <div className="request-print-card mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
+        <RequestNotes requestId={row.id} notes={noteViews} />
 
-      <CallOutcomeComposer
-        requestId={row.id}
-        status={row.status}
-        closureDisposition={row.closure_disposition}
-        closedAtLabel={row.closed_at ? formatReceived(row.closed_at) : null}
-        nextHref={nextId ? continuityHref(nextId) : null}
-      />
+        <CallOutcomeComposer
+          requestId={row.id}
+          status={row.status}
+          closureDisposition={row.closure_disposition}
+          closedAtLabel={row.closed_at ? formatReceived(row.closed_at) : null}
+          nextHref={nextId ? continuityHref(nextId) : null}
+        />
+      </div>
 
       <div className="request-detail-secondary mt-6 grid items-start gap-6 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-6">

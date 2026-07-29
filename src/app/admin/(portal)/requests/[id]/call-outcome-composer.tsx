@@ -478,12 +478,12 @@ export function CallOutcomeComposer({
   }
 
   return (
-    <div
+    <section
       data-testid="call-outcome-composer"
-      className="print-hide card-lined mt-7 p-6 sm:p-7"
+      className="print-hide mt-7 border-t border-[var(--color-line)] pt-7"
     >
       <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
-        Update request status
+        Update appointment request status
       </h2>
       <p className="mt-1.5 max-w-[68ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
         Choose where this request belongs next. The outcome and callback
@@ -668,6 +668,6 @@ export function CallOutcomeComposer({
           Saved together — one request activity entry.
         </p>
       </div>
-    </div>
+    </section>
   );
 }
