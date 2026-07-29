@@ -152,7 +152,9 @@ function FilterChips({
                 className={`flex min-h-10 items-center gap-x-2 rounded-full border px-3.5 text-[0.9rem] font-bold transition-colors ${
                   isActive
                     ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-[var(--color-on-dark)]"
-                    : "border-[var(--color-line-2)] bg-white text-[var(--color-body)] hover:border-[var(--color-navy)]"
+                    : item.count === 0
+                      ? "border-[var(--color-line)] bg-white text-[var(--color-muted)] hover:border-[var(--color-navy)]"
+                      : "border-[var(--color-line-2)] bg-white text-[var(--color-body)] hover:border-[var(--color-navy)]"
                 }`}
               >
                 {item.label}
@@ -161,7 +163,9 @@ function FilterChips({
                   className={`rounded-full px-1.5 text-[0.75rem] tabular-nums ${
                     isActive
                       ? "bg-white/15"
-                      : "bg-[var(--color-mint)] text-[var(--color-teal-ink)]"
+                      : item.count === 0
+                        ? "text-[var(--color-muted)]"
+                        : "bg-[var(--color-mint)] text-[var(--color-teal-ink)]"
                   }`}
                 >
                   {item.count}

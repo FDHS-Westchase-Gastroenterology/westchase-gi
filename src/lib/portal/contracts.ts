@@ -116,6 +116,7 @@ export const AUDIT_ACTIONS = {
   STAFF_PASSWORD_RESET: "staff.password_reset",
   STAFF_TOUR_DISMISS: "staff.tour_dismiss",
   STAFF_TOUR_RESTART: "staff.tour_restart",
+  STAFF_TOUR_COMPLETE: "staff.tour_complete",
   STAFF_DEACTIVATE: "staff.deactivate",
   STAFF_ROLE: "staff.role",
   MAINTAINERS_INVITE: "maintainers.invite",
