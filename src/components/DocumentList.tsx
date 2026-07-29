@@ -50,7 +50,13 @@ export function DocumentList({ category, locale, dict }: DocumentListProps) {
               </Link>
             ) : null}
             {doc.file ? (
-              <a href={doc.file} className="link-line text-[0.92rem]" download>
+              <a
+                href={doc.file}
+                className="link-line text-[0.92rem]"
+                download
+                data-telemetry-event="doc_download"
+                data-telemetry-route={`documents:${doc.id}`}
+              >
                 <Download className="h-4 w-4" /> {d.download}
               </a>
             ) : topic ? (
@@ -65,6 +71,8 @@ export function DocumentList({ category, locale, dict }: DocumentListProps) {
                 href={site.textLine.href}
                 className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-mint)] px-3 py-1.5 text-[0.88rem] font-bold text-[var(--color-teal-ink)] transition-colors hover:bg-[var(--color-mint-2)]"
                 title={d.pendingExplainer}
+                data-telemetry-event="doc_request_by_text"
+                data-telemetry-route={`documents:${doc.id}`}
               >
                 <MessageSquare className="h-3.5 w-3.5" /> {d.requestByText}
               </a>

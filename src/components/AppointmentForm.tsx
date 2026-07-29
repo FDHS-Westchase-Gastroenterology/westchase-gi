@@ -12,6 +12,7 @@ import {
   REQUEST_FIELD_LIMITS,
   type IntakeResponse,
 } from "@/lib/portal/contracts";
+import { routeTemplateFor, track } from "@/lib/telemetry-client";
 import { Check, MessageSquare, Phone } from "./icons";
 
 type AppointmentFormProps = { locale: Locale; dict: Dictionary };
@@ -109,11 +110,38 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const submittingRef = useRef(false);
 
+  function trackForm(event: "form_view" | "form_submit" | "form_success" | "form_failure" | "form_unknown" | "form_throttled") {
+    const template = pathname ? routeTemplateFor(pathname) : null;
+    if (template) track(event, template, locale);
+  }
+
   // Testability marker: E2E waits for hydration before driving the JS path
   // (a pre-hydration click legitimately takes the native no-JS fallback).
   // Direct DOM write — no state, no extra render.
   useEffect(() => {
     formRef.current?.setAttribute("data-hydrated", "true");
+  }, []);
+
+  // form_view is the funnel denominator: fire once, when the form first
+  // genuinely enters the viewport (not merely mounts below the fold).
+  useEffect(() => {
+    const form = formRef.current;
+    if (!form || typeof IntersectionObserver === "undefined") {
+      trackForm("form_view");
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          trackForm("form_view");
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.35 },
+    );
+    observer.observe(form);
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function localFieldErrors(data: FormData): Errors {
@@ -161,6 +189,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
 
     submittingRef.current = true;
     setStatus("submitting");
+    trackForm("form_submit");
 
     const payload = {
       name: String(data.get("name") || "").trim(),
@@ -175,6 +204,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     };
 
     let body: IntakeResponse;
+    let wasThrottled = false;
     try {
       const res = await fetch(INTAKE_API, {
         method: "POST",
@@ -182,20 +212,24 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
+      wasThrottled = res.status === 429;
       requireKnownIntakeStatus(res);
       body = (await res.json()) as IntakeResponse;
       if (res.ok !== body.ok) {
+        trackForm("form_unknown");
         showProblem("unknown");
         return;
       }
     } catch {
       // Timed out or no readable response: the request may or may not have
       // landed. Only the honest "please confirm with us" state is truthful.
+      trackForm("form_unknown");
       showProblem("unknown");
       return;
     }
 
     if (body.ok) {
+      trackForm("form_success");
       setStatus("success");
       return;
     }
@@ -211,6 +245,9 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
       return;
     }
 
+    // A throttle stays unnamed to the patient (no abuse intelligence), but
+    // it is a distinct count from a queue failure.
+    trackForm(wasThrottled ? "form_throttled" : "form_failure");
     showProblem("failure");
   }
 
