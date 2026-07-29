@@ -67,19 +67,33 @@ export async function fetchAttentiveOpenRows(
   const activityById = new Map<string, string>();
   const ids = rows.map((row) => row.id);
   // PostgREST URL limits reject long `in` lists (a 500-row candidate set is
-  // ~18KB of UUIDs), so the activity map is fetched in chunks.
+  // ~18KB of UUIDs), so the activity map is fetched in parallel chunks.
   const ACTIVITY_ID_CHUNK = 100;
-  for (let offset = 0; offset < ids.length; offset += ACTIVITY_ID_CHUNK) {
-    const chunk = ids.slice(offset, offset + ACTIVITY_ID_CHUNK);
-    const { data: activityRows, error: activityError } = await db
-      .from("audit_log")
-      .select("entity_id, at")
-      .eq("entity", "requests")
-      .in("entity_id", chunk);
-    if (activityError) {
-      throw new Error(`Queue read failed: ${activityError.code}`);
+  const activityChunks: Array<{
+    data: Array<Record<string, unknown>> | null;
+    error: { code?: string } | null;
+  }> = await Promise.all(
+    Array.from(
+      { length: Math.ceil(ids.length / ACTIVITY_ID_CHUNK) },
+      (_, chunkIndex) =>
+        db
+          .from("audit_log")
+          .select("entity_id, at")
+          .eq("entity", "requests")
+          .in(
+            "entity_id",
+            ids.slice(
+              chunkIndex * ACTIVITY_ID_CHUNK,
+              (chunkIndex + 1) * ACTIVITY_ID_CHUNK,
+            ),
+          ),
+    ),
+  );
+  for (const chunk of activityChunks) {
+    if (chunk.error) {
+      throw new Error(`Queue read failed: ${chunk.error.code}`);
     }
-    for (const row of activityRows ?? []) {
+    for (const row of chunk.data ?? []) {
       const id = row.entity_id as string | null;
       const at = row.at as string | null;
       if (!id || !at) continue;
