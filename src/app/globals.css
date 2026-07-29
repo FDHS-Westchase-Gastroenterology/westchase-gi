@@ -1099,6 +1099,39 @@
     letter-spacing: 0;
   }
 
+  /* First-login tour: the dialog arrives with a short, calm rise (180ms,
+     strong ease-out) — the rare-tier motion budget, state-conveying only. */
+  .tour-dialog[open] {
+    animation: tour-in 180ms var(--ease-out-quint) both;
+  }
+  .tour-dialog[open]::backdrop {
+    animation: tour-dim 150ms ease-out both;
+  }
+  @keyframes tour-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes tour-dim {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tour-dialog[open],
+    .tour-dialog[open]::backdrop {
+      animation: none;
+    }
+  }
+
   /* Portal page title: the practice serif at its true weight — never
      synthetic bold (Trocchi ships 400 only). */
   .portal-title {

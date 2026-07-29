@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { X } from "@/components/icons";
-import { dismissPortalTourAction } from "./tour-actions";
+import { dismissPortalTourAction, finishPortalTourAction } from "./tour-actions";
 
 const STEPS = [
   {
@@ -74,7 +74,7 @@ export function PortalTour() {
         aria-describedby="portal-tour-description"
         data-testid="portal-tour-dialog"
         onClose={() => setStep(0)}
-        className="m-auto max-h-[90dvh] w-[90vw] max-w-xl overflow-y-auto rounded-[var(--radius-lg)] border-0 bg-white p-0 shadow-[var(--shadow-card)] backdrop:bg-[rgba(20,32,45,0.48)]"
+        className="tour-dialog m-auto max-h-[90dvh] w-[90vw] max-w-xl overflow-y-auto rounded-[var(--radius-lg)] border-0 bg-white p-0 shadow-[var(--shadow-card)] backdrop:bg-[rgba(20,32,45,0.48)]"
       >
         <div className="flex items-center justify-between gap-4 bg-[var(--color-navy)] px-5 py-4 text-[var(--color-on-dark)] sm:px-6">
           <p className="text-[0.8rem] font-extrabold uppercase tracking-[0.08em] text-[var(--color-on-dark-muted)]">
@@ -130,7 +130,12 @@ export function PortalTour() {
                 Next
               </button>
             ) : (
-              <form action={dismissPortalTourAction}>
+              <form
+                action={finishPortalTourAction.bind(null, {
+                  stepReached: STEPS.length,
+                  totalSteps: STEPS.length,
+                })}
+              >
                 <button
                   type="submit"
                   className="btn btn-amber btn-sm min-h-11"
