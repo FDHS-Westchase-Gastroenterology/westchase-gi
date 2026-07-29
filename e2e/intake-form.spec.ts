@@ -94,9 +94,12 @@ test("VAL-INTAKE-002: success renders only after durable acceptance", async ({
   await submitButton(page).click();
 
   // While the response is held open the UI must show only the pending
-  // affordance — never the confirmation.
+  // affordance — never the confirmation. The fields lock too (F11d), so an
+  // edit mid-flight cannot masquerade as part of what was sent.
   await expect(submitButton(page)).toBeDisabled();
   await expect(submitButton(page)).toHaveText(en.appointment.form.submitting);
+  await expect(page.locator("#name")).toBeDisabled();
+  await expect(page.locator("#message")).toBeDisabled();
   await page.waitForTimeout(1_200);
   await expect(page.getByText(en.appointment.form.doneHeading)).toHaveCount(0);
 
@@ -104,6 +107,8 @@ test("VAL-INTAKE-002: success renders only after durable acceptance", async ({
   await expect(page.getByText(en.appointment.form.doneHeading)).toBeVisible({
     timeout: 15_000,
   });
+  // F5: the success card takes focus, like the problem alerts do.
+  await expect(page.locator('main [role="status"]')).toBeFocused();
 
   const { data, error } = await db
     .from("requests")
@@ -194,6 +199,7 @@ test.describe("VAL-INTAKE-006: truthful failure when the queue is down", () => {
       'form[action="/api/requests/form"] [role="alert"]',
     );
     await expect(alert).toBeVisible({ timeout: 45_000 });
+    await expect(alert).toBeFocused();
     await expect(alert).toContainText(en.appointment.form.failHeading);
     // The patient must see how to reach the office: phone + text line.
     await expect(alert).toContainText("(813) 920-8882");
@@ -202,6 +208,27 @@ test.describe("VAL-INTAKE-006: truthful failure when the queue is down", () => {
       0,
     );
   });
+});
+
+test("VAL-INTAKE-015: the unknown state is distinct, honest, and takes focus", async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "JS submission path");
+
+  await page.setExtraHTTPHeaders({ "X-Forwarded-For": testIp("unknown") });
+  await page.route("**/api/requests", (route) => route.abort());
+
+  await page.goto("/en/appointment");
+  await awaitHydration(page);
+  await fillForm(page, emailFor("unknown"), "TEST Unknown Outcome");
+  await submitButton(page).click();
+
+  const alert = page.locator('form[action="/api/requests/form"] [role="alert"]');
+  await expect(alert).toBeVisible({ timeout: 30_000 });
+  await expect(alert).toBeFocused();
+  await expect(alert).toContainText(en.appointment.form.unknownHeading);
+  await expect(alert).not.toContainText(en.appointment.form.failHeading);
+  await expect(page.getByText(en.appointment.form.doneHeading)).toHaveCount(0);
 });
 
 test("VAL-INTAKE-007: no-JS native POST leaks nothing and lands on a receipt", async ({
@@ -270,6 +297,13 @@ for (const locale of ["en", "es", "vi", "ko", "ar"] as const) {
       });
       await page.goto(`/${locale}/${route}`);
       await awaitHydration(page);
+
+      // The contact entry names what the pipeline actually does (P1-5).
+      if (route === "contact") {
+        await expect(page.locator("main h2.heading-tick").first()).toHaveText(
+          d.contact.formHeading,
+        );
+      }
 
       await expect(page.locator('label[for="name"]')).toContainText(
         d.appointment.form.name,
