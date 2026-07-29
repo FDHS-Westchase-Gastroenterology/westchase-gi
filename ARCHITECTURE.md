@@ -89,7 +89,7 @@ staff browser ──────►   ├─ src/app/admin/**   portal (Supabase
 
 | Module | Responsibility |
 |---|---|
-| `contracts.ts` | The shared contract: `requestInputSchema` (zod), `REQUEST_FIELD_LIMITS`, `REQUEST_STATUSES`, `REQUEST_CLOSURE_DISPOSITIONS`, `StaffRole`, `AUDIT_ACTIONS`, `IntakeResponse` (the only permitted intake response shape), `INTAKE_API` / `INTAKE_NOJS_ACTION`, `receiptPath`, `HONEYPOT_FIELD` (`"company"`), `INTAKE_RATE_LIMIT`, generic `RESET_REQUEST_MESSAGE`. |
+| `contracts.ts` | The shared contract: `requestInputSchema` (zod), `REQUEST_FIELD_LIMITS`, `REQUEST_STATUSES`, `RequestClosureDisposition`, `StaffRole`, `AUDIT_ACTIONS`, `IntakeResponse` (the only permitted intake response shape), `INTAKE_API` / `INTAKE_NOJS_ACTION`, `receiptPath`, `HONEYPOT_FIELD` (`"company"`), `INTAKE_RATE_LIMIT`, generic `RESET_REQUEST_MESSAGE`. |
 | `server.ts` | Supabase client factories: `serverClient()` (session-bound), `serviceClient()` (service role). Reads server-only env; never `NEXT_PUBLIC_*`. |
 | `auth.ts` | `requireRole()` for every portal page/action; `staff_profiles` authorization via the service client (never user-editable metadata); password-flow signed-cookie helpers for invite/recovery. |
 | `intake.ts` | `processIntake()`: validate → honeypot drop → shared atomic throttle → durable insert → receipt token. `consumeRequestReceipt()` for the one-time receipt page. |

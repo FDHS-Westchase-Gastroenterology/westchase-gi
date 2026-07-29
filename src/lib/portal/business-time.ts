@@ -187,6 +187,32 @@ export function arrivedOutsideOfficeHours(iso: string): boolean {
   return minutes < OPEN_MINUTES || minutes >= CLOSE_MINUTES;
 }
 
+// The instant a silent touched row becomes attention again: the most recent
+// business-day 08:00 ET strictly before `now`. (Before today's 08:00 on a
+// weekday, the boundary is the previous business day's 08:00; on weekends it
+// is Friday 08:00.)
+export function previousBusinessMorningBoundary(now: Date = new Date()): Date {
+  let day = nyDayNumber(now) - 1;
+  for (;;) {
+    const ymd = dayNumberToYmd(day);
+    const probeIso = atPracticeLocal(ymd, 12, 0);
+    if (!probeIso) {
+      day -= 1;
+      continue;
+    }
+    const { weekday } = nyClock(new Date(probeIso));
+    if (weekday !== "Sat" && weekday !== "Sun") {
+      const morningIso = atPracticeLocal(ymd, OPEN_MINUTES / 60, 0);
+      if (!morningIso) {
+        day -= 1;
+        continue;
+      }
+      return new Date(morningIso);
+    }
+    day -= 1;
+  }
+}
+
 // "yesterday", a weekday name within the past week, or "July 18" beyond it.
 // Null while the request arrived on the current practice-local calendar day.
 export function waitingSince(

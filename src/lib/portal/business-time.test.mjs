@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   arrivedOutsideOfficeHours,
+  previousBusinessMorningBoundary,
   resolveFollowUpAt,
   waitingSince,
 } from "./business-time.ts";
@@ -91,4 +92,37 @@ test("resolveFollowUpAt rejects past, far-future, and malformed days", () => {
   assert.equal(resolveFollowUpAt({ kind: "day", date: "2026-02-30" }, now), null);
   assert.equal(resolveFollowUpAt({ kind: "day", date: "07/29/2026" }, now), null);
   assert.equal(resolveFollowUpAt({ kind: "day", date: "not-a-date" }, now), null);
+});
+
+test("previousBusinessMorningBoundary is prior business-day 08:00 ET", () => {
+  // Tue 09:00 ET → Mon 08:00 ET
+  assert.equal(
+    previousBusinessMorningBoundary(new Date("2026-07-28T13:00:00Z")).toISOString(),
+    "2026-07-27T12:00:00.000Z",
+  );
+  // Tue 07:59 ET (before open) → Mon 08:00 ET
+  assert.equal(
+    previousBusinessMorningBoundary(new Date("2026-07-28T11:59:00Z")).toISOString(),
+    "2026-07-27T12:00:00.000Z",
+  );
+  // Tue 08:00 ET exactly → Mon 08:00 ET (strictly before today)
+  assert.equal(
+    previousBusinessMorningBoundary(new Date("2026-07-28T12:00:00Z")).toISOString(),
+    "2026-07-27T12:00:00.000Z",
+  );
+  // Mon 07:30 ET → Fri 08:00 ET
+  assert.equal(
+    previousBusinessMorningBoundary(new Date("2026-07-27T11:30:00Z")).toISOString(),
+    "2026-07-24T12:00:00.000Z",
+  );
+  // Sat 12:00 ET → Fri 08:00 ET
+  assert.equal(
+    previousBusinessMorningBoundary(new Date("2026-07-25T16:00:00Z")).toISOString(),
+    "2026-07-24T12:00:00.000Z",
+  );
+  // Sunday → Friday 08:00 ET
+  assert.equal(
+    previousBusinessMorningBoundary(new Date("2026-07-26T16:00:00Z")).toISOString(),
+    "2026-07-24T12:00:00.000Z",
+  );
 });
