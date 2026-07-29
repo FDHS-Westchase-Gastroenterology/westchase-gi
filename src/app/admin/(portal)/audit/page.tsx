@@ -3,11 +3,11 @@ import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/portal/auth";
 import { parsePage } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
-import {
-  displayNameOrEmail,
-  fetchStaffNameMap,
-} from "@/lib/portal/staff-identity";
+import { fetchStaffNameMap } from "@/lib/portal/staff-identity";
+import { displayNameOrEmail } from "@/lib/portal/staff-identity";
 import { formatReceived } from "../requests/format";
+import { RecentWorkSection } from "./recent-work";
+import { toRecentWorkItems } from "./recent-work-model";
 
 type AuditRow = {
   id: string;
@@ -44,24 +44,52 @@ export default async function AdminAuditPage({
   await requireRole("staff");
   const page = parsePage((await searchParams).page);
   const from = (page - 1) * PAGE_SIZE;
+  const now = new Date();
 
   const db = serviceClient();
-  const [{ data: rows, error, count }, nameMap] = await Promise.all([
-    db
-      .from("audit_log")
-      .select("id, actor_email, action, entity, entity_id, detail, at", {
-        count: "exact",
-      })
-      .order("at", { ascending: false })
-      .order("id", { ascending: false })
-      .range(from, from + PAGE_SIZE - 1),
-    fetchStaffNameMap(db),
-  ]);
+  const [{ data: rows, error, count }, nameMap, profileRows, recipientRows] =
+    await Promise.all([
+      db
+        .from("audit_log")
+        .select("id, actor_email, action, entity, entity_id, detail, at", {
+          count: "exact",
+        })
+        .order("at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1),
+      fetchStaffNameMap(db),
+      db.from("staff_profiles").select("id, display_name"),
+      db.from("notification_recipients").select("id, email"),
+    ]);
   if (error) {
     throw new Error(`Audit read failed: ${error.code}`);
   }
 
   const entries = (rows ?? []) as AuditRow[];
+  const namesByProfileId = new Map(
+    (profileRows.data ?? [])
+      .filter(
+        (row): row is { id: string; display_name: string } =>
+          typeof row.id === "string" &&
+          typeof row.display_name === "string" &&
+          row.display_name.trim().length > 0,
+      )
+      .map((row) => [row.id, row.display_name.trim()]),
+  );
+  const recipientsById = new Map(
+    (recipientRows.data ?? [])
+      .filter(
+        (row): row is { id: string; email: string } =>
+          typeof row.id === "string" && typeof row.email === "string",
+      )
+      .map((row) => [row.id, row.email]),
+  );
+  const recentItems = toRecentWorkItems(entries, {
+    namesByEmail: nameMap,
+    namesByProfileId,
+    recipientsById,
+    now,
+  });
   const total = count ?? entries.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   if (page > totalPages) {
@@ -92,8 +120,8 @@ export default async function AdminAuditPage({
         Activity log
       </h1>
       <p className="mt-1.5 max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
-        Every change made through the portal — who did it, what it touched,
-        and when.
+        Who did what, in plain language — with the exact technical record
+        beneath for administrators.
       </p>
 
       {entries.length === 0 ? (
@@ -107,59 +135,74 @@ export default async function AdminAuditPage({
           </p>
         </div>
       ) : (
-        <div className="mt-8 overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white">
-          <table data-testid="audit-table" className="w-full min-w-[640px] text-left">
-            <thead>
-              <tr className="border-b border-[var(--color-line)] text-[0.8rem] uppercase tracking-[0.06em] text-[var(--color-muted)]">
-                <th scope="col" className="px-5 py-3.5 font-bold">
-                  When
-                </th>
-                <th scope="col" className="px-5 py-3.5 font-bold">
-                  Who
-                </th>
-                <th scope="col" className="px-5 py-3.5 font-bold">
-                  Action
-                </th>
-                <th scope="col" className="px-5 py-3.5 font-bold">
-                  Entity
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--color-line)]">
-              {entries.map((entry) => {
-                const external = externalAuditSummary(entry.detail);
-                return (
-                  <tr key={entry.id} className="text-[0.9rem]">
-                    <td className="whitespace-nowrap px-5 py-3 text-[var(--color-muted)]">
-                      {formatReceived(entry.at, true)}
-                    </td>
-                    <td className="px-5 py-3 font-bold text-[var(--color-ink)]">
-                      {displayNameOrEmail(nameMap, entry.actor_email)}
-                    </td>
-                    <td className="px-5 py-3">
-                      <code className="rounded bg-[var(--color-mint)] px-2 py-0.5 text-[0.85rem] text-[var(--color-teal-ink)]">
-                        {entry.action}
-                      </code>
-                    </td>
-                    <td className="px-5 py-3 text-[var(--color-body)]">
-                      {entry.entity}
-                      {entry.entity_id ? (
-                        <span className="ml-1.5 text-[0.8rem] text-[var(--color-muted)]">
-                          {entry.entity_id.slice(0, 8)}…
-                        </span>
-                      ) : null}
-                      {external ? (
-                        <span className="mt-0.5 block text-[0.8rem] text-[var(--color-muted)]">
-                          {external.target} · Outcome {external.outcome}
-                        </span>
-                      ) : null}
-                    </td>
+        <>
+          <RecentWorkSection items={recentItems} now={now} />
+
+          <section aria-labelledby="technical-record-heading" className="mt-10">
+            <h2
+              id="technical-record-heading"
+              className="text-[1.05rem] font-black text-[var(--color-ink)]"
+            >
+              Technical record
+            </h2>
+            <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
+              The exact actions behind the entries above, for administrators.
+            </p>
+            <div className="mt-4 overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white">
+              <table data-testid="audit-table" className="w-full min-w-[640px] text-left">
+                <thead>
+                  <tr className="border-b border-[var(--color-line)] text-[0.8rem] uppercase tracking-[0.06em] text-[var(--color-muted)]">
+                    <th scope="col" className="px-5 py-3.5 font-bold">
+                      When
+                    </th>
+                    <th scope="col" className="px-5 py-3.5 font-bold">
+                      Who
+                    </th>
+                    <th scope="col" className="px-5 py-3.5 font-bold">
+                      Action
+                    </th>
+                    <th scope="col" className="px-5 py-3.5 font-bold">
+                      Entity
+                    </th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody className="divide-y divide-[var(--color-line)]">
+                  {entries.map((entry) => {
+                    const external = externalAuditSummary(entry.detail);
+                    return (
+                      <tr key={entry.id} className="text-[0.9rem]">
+                        <td className="whitespace-nowrap px-5 py-3 text-[var(--color-muted)]">
+                          {formatReceived(entry.at, true)}
+                        </td>
+                        <td className="px-5 py-3 font-bold text-[var(--color-ink)]">
+                          {displayNameOrEmail(nameMap, entry.actor_email)}
+                        </td>
+                        <td className="px-5 py-3">
+                          <code className="rounded bg-[var(--color-mint)] px-2 py-0.5 text-[0.85rem] text-[var(--color-teal-ink)]">
+                            {entry.action}
+                          </code>
+                        </td>
+                        <td className="px-5 py-3 text-[var(--color-body)]">
+                          {entry.entity}
+                          {entry.entity_id ? (
+                            <span className="ml-1.5 text-[0.8rem] text-[var(--color-muted)]">
+                              {entry.entity_id.slice(0, 8)}…
+                            </span>
+                          ) : null}
+                          {external ? (
+                            <span className="mt-0.5 block text-[0.8rem] text-[var(--color-muted)]">
+                              {external.target} · Outcome {external.outcome}
+                            </span>
+                          ) : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </>
       )}
 
       {total > 0 ? (
