@@ -103,16 +103,16 @@ test.describe("disposable-local request lifecycle", () => {
     await signIn(page);
     await page.goto(`/admin/requests/${id}`);
 
-    await page.locator('[data-status-action="closed"]').click();
-    await expect(page.getByTestId("closed-status-control")).toHaveAttribute(
-      "open",
-      "",
-    );
-    await page
-      .getByRole("button", {
-        name: /^No appointment booked/,
-      })
-      .click();
+    const composer = page.getByTestId("call-outcome-composer");
+    // The radios are sr-only inside visible labels — click the label text
+    // the way a staff member does.
+    async function saveOutcome(label: string) {
+      await composer.getByText(label, { exact: true }).click();
+      await page.getByTestId("save-outcome").click();
+      await expect(page.getByTestId("composer-feedback")).toBeVisible();
+    }
+
+    await saveOutcome("Patient won't schedule");
     await expect(page.getByTestId("request-lifecycle-summary")).toContainText(
       "— no appointment booked",
     );
@@ -132,10 +132,9 @@ test.describe("disposable-local request lifecycle", () => {
     });
     expect(row.data?.closed_at).toBeTruthy();
 
-    await page.locator('[data-status-action="contacted"]').click();
-    await expect(
-      page.locator('[data-status-action="contacted"]'),
-    ).toBeDisabled();
+    // Recording another call outcome reopens the request and clears the
+    // classification.
+    await saveOutcome("Reached the patient — follow-up needed");
     await expect(page.getByTestId("request-lifecycle-summary")).toHaveCount(0);
     row = await db
       .from("requests")
@@ -151,16 +150,9 @@ test.describe("disposable-local request lifecycle", () => {
       record_handoff_at: null,
     });
 
-    await page.locator('[data-status-action="closed"]').click();
-    await expect(page.getByTestId("closed-status-control")).toHaveAttribute(
-      "open",
-      "",
-    );
-    await page
-      .getByRole("button", {
-        name: /^Appointment booked/,
-      })
-      .click();
+    // The secondary finish path closes as converted.
+    await composer.getByText("Finished with this request?").click();
+    await saveOutcome("We're finished — appointment was booked");
     await expect(page.getByTestId("request-lifecycle-summary")).toContainText(
       /—\s+appointment booked/,
     );
@@ -180,11 +172,12 @@ test.describe("disposable-local request lifecycle", () => {
       .from("audit_log")
       .select("action")
       .eq("entity_id", id)
-      .in("action", ["request.close"]);
+      .in("action", ["request.call_outcome"]);
     expect(audits.error).toBeNull();
     expect((audits.data ?? []).map(({ action }) => action)).toEqual([
-      "request.close",
-      "request.close",
+      "request.call_outcome",
+      "request.call_outcome",
+      "request.call_outcome",
     ]);
 
     await db.from("requests").delete().eq("id", id);
