@@ -487,14 +487,15 @@ export function CallOutcomeComposer({
   return (
     <div
       data-testid="call-outcome-composer"
-      className="card-lined mt-7 p-6 sm:p-7"
+      className="print-hide card-lined mt-7 p-6 sm:p-7"
     >
       <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
         Update request status
       </h2>
       <p className="mt-1.5 max-w-[68ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
         Choose where this request belongs next. Any details, callback timing,
-        and note are saved together in the activity log.
+        and note are saved together. Notes also appear in the patient&apos;s
+        Notes card above.
       </p>
       <p
         id="current-request-status"
