@@ -98,6 +98,10 @@ confirmations, but do not treat it as developer documentation.
  live-origin capture after deployment for public pages. The atlas includes the seven top-level
  staff routes: refresh those only with the Development/Preview seed identity, preserve the
  browser-side redaction, and never include an individual request or Production data.
+13. **Release-state transparency.** Distinguish code merged, code deployed, and the feature
+ actually operational. Before approval or completion, name every external migration,
+ configuration change, credential dependency, and post-deploy check; disclose anything pending
+ or unverified, and never imply that one release layer proves another.
 
 ## Dependabot/Supabase agent readiness
 
