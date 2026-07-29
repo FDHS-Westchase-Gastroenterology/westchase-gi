@@ -21,6 +21,8 @@ const RPC_SIGNATURES = {
     "p_actor_email text, p_request_id uuid, p_note text, p_note_length integer",
   portal_check_intake_rate_limit:
     "p_client_hash text, p_limit integer, p_window_seconds integer",
+  portal_record_analytics_event:
+    "p_event text, p_route_template text, p_locale text, p_device_class text",
   portal_close_request:
     "p_actor_email text, p_request_id uuid, p_disposition text",
   portal_complete_staff_onboarding: "p_user_id uuid",
@@ -71,6 +73,7 @@ const RPCS = Object.keys(RPC_SIGNATURES).sort()
 const RPC_RESULTS = {
   portal_add_request_note: "uuid",
   portal_check_intake_rate_limit: "boolean",
+  portal_record_analytics_event: "boolean",
   portal_close_request: "boolean",
   portal_complete_staff_onboarding: "boolean",
   portal_delete_request_early: "boolean",
@@ -135,6 +138,10 @@ const CALL_OUTCOME_MIGRATION = {
 const AUDIT_PROVENANCE_MIGRATION = {
   version: "20260727070521",
   name: "add_audit_provenance_and_recipient_label_update",
+}
+const ANALYTICS_MIGRATION = {
+  version: "20260728223000",
+  name: "add_patient_analytics_daily",
 }
 
 const TARGETS = new Set(["dev", "prod"])
@@ -560,6 +567,14 @@ async function main() {
     ),
     `Audit-provenance migration ${AUDIT_PROVENANCE_MIGRATION.version}_${AUDIT_PROVENANCE_MIGRATION.name} is not applied`,
   )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === ANALYTICS_MIGRATION.version &&
+        row.name === ANALYTICS_MIGRATION.name,
+    ),
+    `Analytics migration ${ANALYTICS_MIGRATION.version}_${ANALYTICS_MIGRATION.name} is not applied`,
+  )
 
   const onboardingColumnRows = await queryDatabase({
     accessToken,
@@ -786,6 +801,61 @@ async function main() {
     "private.intake_rate_limits must be persistent, RLS-enabled, and service-role-only",
   )
 
+  const analyticsDailyRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select
+        c.relpersistence,
+        c.relrowsecurity,
+        pg_catalog.has_table_privilege('anon', c.oid, 'SELECT') as anon_select,
+        pg_catalog.has_table_privilege('authenticated', c.oid, 'SELECT') as authenticated_select,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'SELECT') as service_select,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'INSERT') as service_insert,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'UPDATE') as service_update,
+        pg_catalog.has_table_privilege('service_role', c.oid, 'DELETE') as service_delete
+      from pg_catalog.pg_class as c
+      join pg_catalog.pg_namespace as n on n.oid = c.relnamespace
+      where n.nspname = 'private'
+        and c.relname = 'analytics_daily'
+        and c.relkind = 'r';
+    `,
+  })
+  assert(
+    analyticsDailyRows.length === 1 &&
+      ["p", 112].includes(analyticsDailyRows[0].relpersistence) &&
+      analyticsDailyRows[0].relrowsecurity === true &&
+      analyticsDailyRows[0].anon_select === false &&
+      analyticsDailyRows[0].authenticated_select === false &&
+      analyticsDailyRows[0].service_select === true &&
+      analyticsDailyRows[0].service_insert === true &&
+      analyticsDailyRows[0].service_update === true &&
+      analyticsDailyRows[0].service_delete === true,
+    "private.analytics_daily must be persistent, RLS-enabled, and service-role-only",
+  )
+
+  const analyticsEventConstraintRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select pg_catalog.pg_get_constraintdef(oid) as definition
+      from pg_catalog.pg_constraint
+      where conrelid = 'private.analytics_daily'::pg_catalog.regclass
+        and conname = 'analytics_daily_event_valid';
+    `,
+  })
+  const analyticsEventConstraint =
+    analyticsEventConstraintRows[0]?.definition?.toLowerCase() ?? ""
+  assert(
+    analyticsEventConstraintRows.length === 1 &&
+      analyticsEventConstraint.includes("'page_view'") &&
+      analyticsEventConstraint.includes("'form_throttled'") &&
+      analyticsEventConstraint.includes("'cta_tap_hushforms'") &&
+      analyticsEventConstraint.includes("'chooser_kept_current'") &&
+      analyticsEventConstraint.includes("'doc_request_by_text'"),
+    "analytics_daily.event must include the frozen patient telemetry vocabulary",
+  )
+
   const missingRlsRows = await queryDatabase({
     accessToken,
     ref: config.ref,
@@ -950,6 +1020,12 @@ async function main() {
         "portal_check_intake_rate_limit must claim buckets atomically",
       )
     }
+    if (rpc.proname === "portal_record_analytics_event") {
+      assert(
+        rpc.definition.toLowerCase().includes("on conflict"),
+        "portal_record_analytics_event must upsert rollups atomically",
+      )
+    }
     if (rpc.proname === "portal_log_call_outcome") {
       const definition = rpc.definition.toLowerCase()
       assert(
@@ -1105,10 +1181,16 @@ async function main() {
     `Verified ${target} migration: ${AUDIT_PROVENANCE_MIGRATION.version}_${AUDIT_PROVENANCE_MIGRATION.name}`,
   )
   console.log(
+    `Verified ${target} migration: ${ANALYTICS_MIGRATION.version}_${ANALYTICS_MIGRATION.name}`,
+  )
+  console.log(
     `Verified ${target} request lifecycle: nullable legacy-safe columns, constraints, preview, hold-aware deletion`,
   )
   console.log(
     `Verified ${target} intake limiter: persistent private table, RLS, service-only ACL`,
+  )
+  console.log(
+    `Verified ${target} analytics_daily: persistent private table, RLS, service-only ACL, event vocabulary`,
   )
   console.log(
     `Verified ${target} staff_profiles.onboarded_at: nullable timestamptz, no default`,

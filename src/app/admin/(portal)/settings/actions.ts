@@ -9,6 +9,7 @@ import {
   removeNotificationRecipientMutation,
   resendStaffInviteMutation,
   toggleNotificationRecipientMutation,
+  updateRecipientLabelMutation,
 } from "@/lib/portal/management";
 import {
   cancelMaintainerInviteMutation,
@@ -28,6 +29,11 @@ export async function addNotificationRecipient(input: unknown) {
 export async function toggleNotificationRecipient(input: unknown) {
   await requireRole("staff", { unauthenticated: "throw" });
   return toggleNotificationRecipientMutation(input);
+}
+
+export async function updateRecipientLabel(input: unknown) {
+  const session = await requireRole("staff", { unauthenticated: "throw" });
+  return updateRecipientLabelMutation(input, session.email);
 }
 
 export async function removeNotificationRecipient(input: unknown) {

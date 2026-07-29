@@ -12,6 +12,7 @@ import {
   REQUEST_FIELD_LIMITS,
   type IntakeResponse,
 } from "@/lib/portal/contracts";
+import { trackFormEvent, useFormViewTelemetry } from "@/lib/telemetry-client";
 import { Check, MessageSquare, Phone } from "./icons";
 
 type AppointmentFormProps = { locale: Locale; dict: Dictionary };
@@ -108,6 +109,31 @@ function ProblemAlert({ dict, status, alertRef }: ProblemAlertProps) {
   );
 }
 
+function localFieldErrors(f: Dictionary["appointment"]["form"], data: FormData): Errors {
+  const next: Errors = {};
+  const name = String(data.get("name") || "").trim();
+  const phone = String(data.get("phone") || "").trim();
+  const email = String(data.get("email") || "").trim();
+
+  if (!name) next.name = f.errName;
+  if (!phone || phone.replace(/\D/g, "").length < 10) next.phone = f.errPhone;
+  // Email is optional — many patients have none; phone is the callback
+  // channel. Validate the format only when something was entered.
+  if (email && !isMailbox(email)) next.email = f.errEmail;
+  return next;
+}
+
+function serverFieldErrors(
+  f: Dictionary["appointment"]["form"],
+  fieldErrors: Record<string, string>,
+): Errors {
+  const next: Errors = {};
+  if ("name" in fieldErrors) next.name = f.errName;
+  if ("phone" in fieldErrors) next.phone = f.errPhone;
+  if ("email" in fieldErrors) next.email = f.errEmail;
+  return next;
+}
+
 export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
   const f = dict.appointment.form;
   const pathname = usePathname();
@@ -125,6 +151,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     formRef.current?.setAttribute("data-hydrated", "true");
   }, []);
 
+  useFormViewTelemetry(formRef, locale);
   // Outcome focus lands after the committing render, never in a rAF race:
   // success, failure, and unknown all move focus to their announcement (F5,
   // S7). Effects run post-commit, so the target exists by focus time.
@@ -135,28 +162,6 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
       successRef.current?.focus();
     }
   }, [status]);
-
-  function localFieldErrors(data: FormData): Errors {
-    const next: Errors = {};
-    const name = String(data.get("name") || "").trim();
-    const phone = String(data.get("phone") || "").trim();
-    const email = String(data.get("email") || "").trim();
-
-    if (!name) next.name = f.errName;
-    if (!phone || phone.replace(/\D/g, "").length < 10) next.phone = f.errPhone;
-    // Email is optional — many patients have none; phone is the callback
-    // channel. Validate the format only when something was entered.
-    if (email && !isMailbox(email)) next.email = f.errEmail;
-    return next;
-  }
-
-  function serverFieldErrors(fieldErrors: Record<string, string>): Errors {
-    const next: Errors = {};
-    if ("name" in fieldErrors) next.name = f.errName;
-    if ("phone" in fieldErrors) next.phone = f.errPhone;
-    if ("email" in fieldErrors) next.email = f.errEmail;
-    return next;
-  }
 
   function showProblem(state: "failure" | "unknown") {
     submittingRef.current = false;
@@ -170,7 +175,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     const form = e.currentTarget;
     const data = new FormData(form);
 
-    const next = localFieldErrors(data);
+    const next = localFieldErrors(f, data);
     setErrors(next);
     if (Object.keys(next).length > 0) {
       const first = form.querySelector<HTMLElement>('[aria-invalid="true"]');
@@ -180,6 +185,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
 
     submittingRef.current = true;
     setStatus("submitting");
+    trackFormEvent("form_submit", pathname, locale);
 
     const payload = {
       name: String(data.get("name") || "").trim(),
@@ -194,6 +200,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     };
 
     let body: IntakeResponse;
+    let wasThrottled = false;
     try {
       const res = await fetch(INTAKE_API, {
         method: "POST",
@@ -201,20 +208,24 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
         body: JSON.stringify(payload),
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       });
+      wasThrottled = res.status === 429;
       requireKnownIntakeStatus(res);
       body = (await res.json()) as IntakeResponse;
       if (res.ok !== body.ok) {
+        trackFormEvent("form_unknown", pathname, locale);
         showProblem("unknown");
         return;
       }
     } catch {
       // Timed out or no readable response: the request may or may not have
       // landed. Only the honest "please confirm with us" state is truthful.
+      trackFormEvent("form_unknown", pathname, locale);
       showProblem("unknown");
       return;
     }
 
     if (body.ok) {
+      trackFormEvent("form_success", pathname, locale);
       // Focus moves to the success card via the status effect, matching the
       // failure/unknown behavior (F5).
       setStatus("success");
@@ -222,7 +233,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     }
 
     if (body.code === "validation" && body.fieldErrors) {
-      const mapped = serverFieldErrors(body.fieldErrors);
+      const mapped = serverFieldErrors(f, body.fieldErrors);
       setErrors(mapped);
       submittingRef.current = false;
       setStatus("idle");
@@ -232,6 +243,9 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
       return;
     }
 
+    // A throttle stays unnamed to the patient (no abuse intelligence), but
+    // it is a distinct count from a queue failure.
+    trackFormEvent(wasThrottled ? "form_throttled" : "form_failure", pathname, locale);
     showProblem("failure");
   }
 

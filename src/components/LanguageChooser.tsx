@@ -16,6 +16,7 @@ import {
   pathInLocale,
   type Locale,
 } from "@/lib/site";
+import { routeTemplateFor, track } from "@/lib/telemetry-client";
 import { Check, Globe, X } from "./icons";
 
 type LanguageChooserProps = { locale: Locale; dict: Dictionary };
@@ -41,6 +42,15 @@ export function LanguageChooser({ locale, dict }: LanguageChooserProps) {
   const descriptionId = useId();
   const copy = dict.common.languageChooser;
 
+  const hintRef = useRef<Locale | null>(null);
+
+  function trackChooser(
+    event: "chooser_shown" | "chooser_accepted_hint" | "chooser_switched" | "chooser_kept_current" | "chooser_dismissed",
+  ) {
+    const template = routeTemplateFor(pathname);
+    if (template) track(event, template, locale);
+  }
+
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog || hasCompletedLanguageChoice()) return;
@@ -51,21 +61,32 @@ export function LanguageChooser({ locale, dict }: LanguageChooserProps) {
     // The badge and focus belong to the browser's language — the dialog's
     // whole reason to open is the mismatch. The effect synchronizes the DOM
     // directly so no extra render stands between evidence and interruption.
+    hintRef.current = candidate;
     option.querySelector<HTMLElement>("[data-suggested]")?.removeAttribute("hidden");
     if (!dialog.open) {
       dialog.showModal();
       option.focus();
+      trackChooser("chooser_shown");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locale]);
 
   function finish(target: Locale) {
     rememberLocale(target);
+    trackChooser(
+      target === locale
+        ? "chooser_kept_current"
+        : target === hintRef.current
+          ? "chooser_accepted_hint"
+          : "chooser_switched",
+    );
     dialogRef.current?.close();
     if (target !== locale) router.push(pathInLocale(pathname, target));
   }
 
   function dismiss() {
     dismissLanguageChoice();
+    trackChooser("chooser_dismissed");
     dialogRef.current?.close();
   }
 

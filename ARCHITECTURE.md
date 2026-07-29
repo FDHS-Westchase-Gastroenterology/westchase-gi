@@ -77,6 +77,7 @@ staff browser ──────►   ├─ src/app/admin/**   portal (Supabase
 | `providers.ts` | Provider roster. **Credentials are verbatim and load-bearing** (AGENTS.md rule 1). |
 | `services.ts`, `resources.ts`, `testimonials.ts` | Page-level fact libraries. |
 | `documents.ts` | The 31-slot patient-document registry (2 record-release, 13 preps, 16 disease sheets). `file` stays `null` until a real PDF exists in `public/documents/`; slots fall back to the staffed text line or the on-site page. |
+| `telemetry.ts` | Client-importable PHI-free analytics contract: `ANALYTICS_EVENTS`, route-template allowlist, `telemetryEventSchema`. |
 | `content/preps/` | Procedure-prep handouts, transcribed from the practice's scans (EN and ES separately; source discrepancies preserved in comments). Registered through `index.ts`; shared `Bi` type from `content/types.ts`. |
 | `content/blog/` | The 16 migrated posts (`batch1–3.ts`, `legacyPath` drives redirects). |
 | `content/education/` | The 17 rebuilt education topics + disease-sheet pages (`procedures.ts`, `conditions-a.ts`, `conditions-b.ts`). |
@@ -93,6 +94,7 @@ staff browser ──────►   ├─ src/app/admin/**   portal (Supabase
 | `server.ts` | Supabase client factories: `serverClient()` (session-bound), `serviceClient()` (service role). Reads server-only env; never `NEXT_PUBLIC_*`. |
 | `auth.ts` | `requireRole()` for every portal page/action; `staff_profiles` authorization via the service client (never user-editable metadata); password-flow signed-cookie helpers for invite/recovery. |
 | `intake.ts` | `processIntake()`: validate → honeypot drop → shared atomic throttle → durable insert → receipt token. `consumeRequestReceipt()` for the one-time receipt page. |
+| `telemetry.ts` | `processTelemetry()`: zod → shared throttle (telemetry HMAC domain) → `portal_record_analytics_event` upsert. |
 | `intake-notification.ts` | Fan-out to ACTIVE recipients; one `request_events` row per recipient with provider outcome. Zero patient fields. |
 | `email.ts` | The transport seam: `PortalEmail*` contract types + `createEmailSender(transport)` — eight-second deadline, idempotency-key pass-through, normalized outcomes, logs exclude recipients/content/keys. |
 | `email-provider.ts` | `sendPortalEmail`: the sender bound to the Resend adapter (`unconfigured` result when `RESEND_API_KEY` is absent). |
@@ -117,7 +119,8 @@ staff browser ──────►   ├─ src/app/admin/**   portal (Supabase
   public session-establishment boundaries; they stay generic and fail-closed.
   `admin/set-password` is the gated completion step, not a public boundary: it requires a
   verified active staff session plus the signed password-flow cookie (invite or recovery).
-- `api/requests/` — the two intake handlers. `review/` — the public review hub.
+- `api/requests/` — the two intake handlers. `api/telemetry/` — PHI-free aggregate event
+  counters. `review/` — the public review hub.
 
 ### `src/components/`
 
@@ -154,11 +157,13 @@ ProfileCardViewer, Reveal, etc.). Portal UI is colocated with its routes in
 | `public.staff_profiles` | Authorization source of truth: `user_id → auth.users`, role (`admin`/`staff`), active flag. |
 | `public.audit_log` | Every staff-visible mutation: actor, action, entity, detail JSONB (metadata only — never patient text). Six-year retention. |
 | `private.intake_rate_limits` | Expired-bucket HMAC throttle state, cleaned by the lifecycle run. |
+| `private.analytics_daily` | PHI-free patient-site daily event rollups `(day, event, route_template, locale, device_class)` — aggregate counts only. |
 | ~~`registry_assets` / `registry_grants`~~ | Retired by migration; remain absent. |
 
 ### RPCs (service-role only)
 
-Intake: `portal_check_intake_rate_limit`. Queue: `portal_update_request_status`,
+Intake: `portal_check_intake_rate_limit`. Telemetry: `portal_record_analytics_event`. Queue:
+`portal_update_request_status`,
 `portal_close_request`, `portal_add_request_note`, `portal_log_call_outcome` (atomic combined
 outcome). Recipients: `portal_update_recipient_label`. Staff: `portal_complete_staff_onboarding`,
 `portal_record_staff_password_reset`, `portal_set_staff_tour_dismissed`. Lifecycle:
@@ -195,6 +200,16 @@ rollback, mark versions reverted in the migration ledger
 7. The no-JS path answers `303` to `/{locale}/appointment/received` with a short-lived
    (15-minute), one-time, opaque receipt token bound to the persisted request; its hash is
    removed after one hour. No patient field or unsigned success flag ever rides the URL.
+
+## 6b. Patient-site telemetry
+
+`POST /api/telemetry` → zod (`src/lib/telemetry.ts`) → shared throttle
+(`portal_check_intake_rate_limit` with a telemetry-only HMAC domain) → atomic upsert RPC
+(`portal_record_analytics_event`) → `private.analytics_daily`. Service-role writes only;
+RLS on, zero anon/authenticated grants. Read path is the SQL snippet
+`supabase/snippets/analytics-daily-rollup.sql` (dashboard / service role). No staff UI in
+v1. Counts are directional, not forensic; payload is four allowlisted strings and never
+carries free text, raw URLs, or timestamps.
 
 ## 7. Staff portal
 
@@ -443,6 +458,9 @@ Change-type → files. Verification for each area is mapped in `CONTRIBUTING.md`
 - **Intake persistence / throttling / receipt:** `intake.ts`; `INTAKE_RATE_LIMIT` and
   `receiptPath` in `contracts.ts`; `intake-notification.ts`; the rate-limit RPC migration;
   `appointment/received/page.tsx`.
+- **Patient-site telemetry:** `src/lib/telemetry.ts` (shared contract) →
+  `src/lib/portal/telemetry.ts` → `api/telemetry/route.ts`; analytics migration +
+  `portal_record_analytics_event`; read path `supabase/snippets/analytics-daily-rollup.sql`.
 - **A portal page or route:** the route under `src/app/admin/` with `requireRole` first;
   `portal-nav.tsx` for permanent nav (occasional tasks are reached from Home/Settings);
   the route's `actions.ts`; the matcher + public-path allowlist in `src/proxy.ts`.
