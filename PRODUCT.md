@@ -180,9 +180,12 @@ maintainer invite/cancel/accept/revoke acceptance pass.
 7. **PHI-minimal.** The portal handles callback leads, not a clinical record. Intake has
    no dedicated clinical fields, but it stores an optional patient-supplied brief reason,
    so the queue is still sensitive. Notification emails and operational logs stay free of
-   patient fields.
+   patient fields. Boundary-crossing reads of patient data are audited: a CSV export
+   writes a metadata-only audit row (actor, timestamp, row count, filter) — an export
+   creates a clinic-controlled sensitive copy, and leaving it unaudited was inconsistent
+   with this posture (decision 2026-07-28).
 
-### Direction (adopted 2026-07-26)
+### Direction (adopted 2026-07-26; amended 2026-07-28)
 
 Priorities for the portal's next chapter, in order:
 
@@ -197,27 +200,46 @@ Priorities for the portal's next chapter, in order:
    plus an optional follow-up time); *Patient won't schedule* and *Duplicate or
    not actionable* (both map to the did-not-become-an-appointment closure). Six
    outcomes, one screen; any outcome the activity record shows going unused gets
-   removed. Implementation waits only on the single atomic server operation
-   (issue #124) — building the composer on the existing separate operations would
-   keep the partial-completion risk.
+   removed. The atomic server operation landed in migrations 2026-07-27
+   (`portal_log_call_outcome`; issue #124), so the composer is now unblocked
+   frontend work; production promotion of the migration follows its own
+   deliberate path. On phones the composer leads the work area — today the
+   status control sits well below the fold there.
 2. **A queue that says what to work next**: a needs-attention default view,
    business-aware age (a request that arrived Saturday afternoon is not the same as
    one waiting since Thursday), next action per row, and continuity
-   (previous/next, save-and-open-next).
+   (previous/next, save-and-open-next). A request touched once and then left
+   silent is attention again: the queue's "once touched, urgency is a triage
+   judgment" premise is retired — staleness (no note or status change within a
+   practice-confirmed business window) re-flags the row.
 3. **A human Recent-work view** over the durable audit record: grouped,
    plain-language entries linked to the work ("finished an appointment request as
    Scheduled"), with the exact technical audit preserved beneath it for
    administrators. Storage vocabulary (action codes, UUID fragments) is not staff
-   language.
+   language. The audit detail already carries from/to statuses, dispositions,
+   actors, and correlation IDs (verified 2026-07-28), so this is a
+   presentation-layer view, not a schema change.
 4. **One feedback-and-forgiveness pattern for every mutation**: the pressed control
    responds immediately, only the affected row goes pending, success lands beside
    the changed object, failures preserve input and say whether anything changed,
    and reversible actions offer undo instead of repeated confirm prompts.
+5. **Attention travels with the worker**: the waiting-request count rides on the
+   Requests nav destination, suppressed — never zeroed — when its read fails, and
+   recent notification failures (trailing 24 hours, from the existing
+   `request_events` rows) aggregate onto Home beside the zero-recipient warning.
+   Both are attention, not inventory; neither collects anything new.
+6. **Names, not addresses**: staff-facing identity renders the display name
+   captured at invite (header, note attribution, the Recent-work view); emails
+   remain in the raw audit. Settings staff rows surface last sign-in from
+   existing Auth state — the highest-value adoption signal available without any
+   new tracking.
 
-Backend prerequisites for this chapter are tracked as scoped issues — the atomic
+Backend prerequisites for this chapter were tracked as scoped issues: the atomic
 call-outcome operation (#124), audit provenance for the Recent-work view (#125),
-the recipient label-update operation (#126), and recoverable staff lifecycle
-operations (#127). Frontend work that needs no schema change does not wait on them.
+and the recipient label-update operation (#126) landed in migrations 2026-07-27
+(production promotion remains the deliberate separate decision); recoverable
+staff lifecycle operations (#127) remain open. Frontend work that needs no schema
+change does not wait on them.
 
 Deliberately not building: generic metric dashboards or vanity counts; a forced
 linear status funnel (direct new → scheduled is the normal successful path); kanban
@@ -233,6 +255,9 @@ mutates records autonomously.
   integrations" panels.
 - Chat-forward AI dashboards; any future assistant remains a docked,
   conservatively-scoped widget that ships only with a completed job.
+- Developer-console vocabulary on staff surfaces: raw action codes, entity names,
+  and UUID fragments belong to the administrator's technical audit beneath a
+  plain-language layer, never to the layer itself.
 
 ### Accessibility
 
