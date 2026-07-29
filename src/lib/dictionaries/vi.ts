@@ -425,7 +425,7 @@ export const vi: Dictionary = {
   contact: {
     title: "Liên hệ với chúng tôi",
     intro: "Hai phòng khám, một đội ngũ. Hãy gọi điện, nhắn tin hoặc gửi yêu cầu đặt hẹn; chúng tôi sẽ lo phần còn lại.",
-    formHeading: "Gửi tin nhắn cho chúng tôi",
+    formHeading: "Gửi yêu cầu đặt hẹn",
     locationsHeading: "Các phòng khám của chúng tôi",
   },
 

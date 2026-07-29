@@ -127,6 +127,7 @@ test("public metadata uses the apex canonical origin", async ({ page, request })
 
 test("/ negotiates the locale from Accept-Language and the locale cookie", async ({
   playwright,
+  baseURL,
 }) => {
   const cases: Array<{
     headers: Record<string, string>;
@@ -150,16 +151,14 @@ test("/ negotiates the locale from Accept-Language and the locale cookie", async
   ];
 
   for (const { headers, expected } of cases) {
-    const context = await playwright.request.newContext({
-      baseURL: "http://localhost:3100",
-    });
+    const context = await playwright.request.newContext({ baseURL });
     const response = await context.get("/", {
       maxRedirects: 0,
       headers,
     });
     expect(response.status()).toBe(307);
     expect(
-      new URL(response.headers().location, "http://localhost:3100").pathname,
+      new URL(response.headers().location, "http://localhost").pathname,
     ).toBe(expected);
     await context.dispose();
   }
@@ -174,7 +173,7 @@ test("/admin returns a real unauthenticated redirect to login", async ({
   expect(
     new URL(
       rawResponse.headers().location,
-      "http://localhost:3100",
+      "http://localhost",
     ).pathname,
   ).toBe("/admin/login");
 
