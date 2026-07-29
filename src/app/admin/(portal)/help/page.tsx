@@ -201,7 +201,10 @@ export default async function AdminHelpPage() {
           </details>
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
+        <div
+          id="something-wrong"
+          className="scroll-mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8"
+        >
           <h2 className={SECTION_HEADING}>If something looks wrong</h2>
           <p className={SECTION_BODY}>
             If the portal will not load or an appointment request seems
