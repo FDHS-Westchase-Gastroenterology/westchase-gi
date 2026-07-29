@@ -66,12 +66,16 @@ export async function fetchAttentiveOpenRows(
 
   const activityById = new Map<string, string>();
   const ids = rows.map((row) => row.id);
-  if (ids.length > 0) {
+  // PostgREST URL limits reject long `in` lists (a 500-row candidate set is
+  // ~18KB of UUIDs), so the activity map is fetched in chunks.
+  const ACTIVITY_ID_CHUNK = 100;
+  for (let offset = 0; offset < ids.length; offset += ACTIVITY_ID_CHUNK) {
+    const chunk = ids.slice(offset, offset + ACTIVITY_ID_CHUNK);
     const { data: activityRows, error: activityError } = await db
       .from("audit_log")
       .select("entity_id, at")
       .eq("entity", "requests")
-      .in("entity_id", ids);
+      .in("entity_id", chunk);
     if (activityError) {
       throw new Error(`Queue read failed: ${activityError.code}`);
     }
