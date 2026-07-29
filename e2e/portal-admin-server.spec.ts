@@ -890,4 +890,97 @@ test.describe("portal management server boundaries", () => {
     expect(exportAuditCountError).toBeNull();
     expect(exportAuditTotal).toBe(1);
   });
+
+  test("VAL-ADMIN-019: Recent work renders the audit record in plain language", async () => {
+    if (!adminPage) throw new Error("Admin session is unavailable");
+    const token = `recentwork-${runId}`;
+    const { data: staged, error: stageError } = await db
+      .from("requests")
+      .insert({
+        name: `TEST Recent Work ${runId}`,
+        phone: "8135550111",
+        email: `${token}@example.test`,
+        location: "tampa",
+        preferred_time: "morning",
+        message: "TEST recent-work fixture.",
+        locale: "en",
+        source_path: "/e2e/recent-work",
+        status: "scheduled",
+      })
+      .select("id")
+      .single();
+    expect(stageError).toBeNull();
+    const requestId = staged!.id;
+
+    const { error: auditError } = await db.from("audit_log").insert([
+      {
+        actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+        action: "request.status_change",
+        entity: "requests",
+        entity_id: requestId,
+        detail: { from: "new", to: "scheduled" },
+      },
+      {
+        actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+        action: "request.call_outcome",
+        entity: "requests",
+        entity_id: requestId,
+        detail: {
+          from: "scheduled",
+          to: "contacted",
+          outcome: "voicemail",
+          follow_up_at: new Date(Date.now() + 3 * 86_400_000).toISOString(),
+          note_attached: false,
+        },
+      },
+      {
+        actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+        action: "requests.export",
+        entity: "requests",
+        entity_id: null,
+        detail: { row_count: 42, status_filter: "all", has_search: false },
+      },
+    ]);
+    expect(auditError).toBeNull();
+
+    const { data: profile } = await db
+      .from("staff_profiles")
+      .select("display_name")
+      .eq("email", SEED_ADMIN_EMAIL.toLowerCase())
+      .single();
+    const actorName = String(profile?.display_name ?? "");
+
+    try {
+      await adminPage.goto("/admin/audit");
+      const recent = adminPage.getByTestId("recent-work-list").first();
+      await expect(recent).toBeVisible();
+      await expect(recent).toContainText(actorName);
+      await expect(recent).toContainText("marked a request Scheduled");
+      await expect(recent).toContainText("left a voicemail on a request");
+      await expect(recent).toContainText("exported the request list (42 requests)");
+      // Storage vocabulary never reaches the human view.
+      await expect(recent).not.toContainText("request.status_change");
+      await expect(recent).not.toContainText("requests.export");
+      const statusEntry = recent
+        .locator("li", { hasText: "marked a request Scheduled" })
+        .first();
+      await expect(
+        statusEntry.getByRole("link", { name: "open request" }),
+      ).toHaveAttribute("href", `/admin/requests/${requestId}`);
+
+      // The exact technical record stays beneath for administrators.
+      const technical = adminPage.getByTestId("audit-table");
+      await expect(technical).toContainText("request.status_change");
+      await expect(technical).toContainText("requests.export");
+    } finally {
+      await db.from("audit_log").delete().eq("entity_id", requestId);
+      await db
+        .from("audit_log")
+        .delete()
+        .eq("action", "requests.export")
+        .eq("actor_email", SEED_ADMIN_EMAIL.toLowerCase())
+        .contains("detail", { row_count: 42 });
+      await db.from("requests").delete().eq("id", requestId);
+    }
+  });
 });
