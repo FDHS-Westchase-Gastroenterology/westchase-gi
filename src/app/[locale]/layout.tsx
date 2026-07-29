@@ -10,6 +10,7 @@ import { getDictionary, isLocale } from "@/lib/i18n";
 import { fontVariables } from "@/lib/fonts";
 import { site, localePath, localeDir, locales, BANNER_KEY, type Locale } from "@/lib/site";
 import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const dynamicParams = false;
 
@@ -142,6 +143,7 @@ export default async function LocaleLayout({
         <main id="main">{children}</main>
         <Footer locale={locale} dict={dict} />
         <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
