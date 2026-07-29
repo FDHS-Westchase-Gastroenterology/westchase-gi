@@ -145,6 +145,10 @@ test.describe("portal requests operation", () => {
     await expect(page.getByTestId("request-detail-name")).toHaveText(
       staged.name,
     );
+    // The breadcrumb's current page is the request's name, not "Detail".
+    await expect(
+      page.getByRole("navigation", { name: "Breadcrumb" }),
+    ).toContainText(staged.name);
     await expect(page.getByText(staged.phone).first()).toBeVisible();
     await expect(page.getByRole("link", { name: staged.email })).toHaveAttribute(
       "href",
@@ -159,8 +163,9 @@ test.describe("portal requests operation", () => {
     const notifications = page
       .getByRole("heading", { name: "Notifications" })
       .locator("..");
+    // Every recorded delivery attempt renders — no address is hidden.
     await expect(notifications).toContainText(visibleRecipient);
-    await expect(notifications).not.toContainText("jason.gitdev@gmail.com");
+    await expect(notifications).toContainText("jason.gitdev@gmail.com");
 
     const composer = page.getByTestId("call-outcome-composer");
     // The radios are sr-only inside visible labels — click the label text

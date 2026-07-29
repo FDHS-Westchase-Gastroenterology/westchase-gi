@@ -275,9 +275,7 @@ export default async function RequestDetailPage({
   const allEvents = (events ?? []) as EventRow[];
   const entries = workEntries(allEvents, (auditRows ?? []) as AuditRow[]);
   const notifications = allEvents.filter(
-    (event) =>
-      event.type === "notification" &&
-      event.recipient !== "jason.gitdev@gmail.com",
+    (event) => event.type === "notification",
   );
 
   const fields: Array<{ label: string; value: React.ReactNode }> = [
@@ -329,7 +327,7 @@ export default async function RequestDetailPage({
         <span aria-hidden="true" className="mx-2 text-[var(--color-muted)]">
           /
         </span>
-        <span className="text-[var(--color-muted)]">Detail</span>
+        <span className="truncate text-[var(--color-muted)]">{row.name}</span>
         {prevId || nextId ? (
           <span className="ml-auto flex items-center gap-3">
             {prevId ? (
