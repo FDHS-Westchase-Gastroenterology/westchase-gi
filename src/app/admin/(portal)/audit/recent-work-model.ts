@@ -247,9 +247,13 @@ function describeAction(
         technical: false,
       };
     case "staff.tour_dismiss":
-      return { sentence: "dismissed the portal tour", technical: false };
+      // Filtered from the human view in toRecentWorkItems (it pairs with
+      // tour_complete on finish); the technical record keeps it.
+      return { sentence: "dismissed the portal tour nudge", technical: true };
     case "staff.tour_restart":
       return { sentence: "restarted the portal tour", technical: false };
+    case "staff.tour_complete":
+      return { sentence: "finished the portal tour", technical: false };
     case "maintainers.invite":
       return {
         sentence: `invited ${typeof detail.target_login === "string" ? detail.target_login : "a maintainer"} to edit the website`,
@@ -279,18 +283,23 @@ export function toRecentWorkItems(
   entries: readonly AuditEntry[],
   ctx: RecentWorkContext,
 ): RecentWorkItem[] {
-  return entries.map((entry) => {
+  const items: RecentWorkItem[] = [];
+  for (const entry of entries) {
+    // The dismissal nudge pairs with tour_complete on finish; it stays in
+    // the technical record rather than the human view.
+    if (entry.action === "staff.tour_dismiss") continue;
     const detail = detailObject(entry.detail);
     const { sentence, technical } = describeAction(entry, detail, ctx);
-    return {
+    items.push({
       id: entry.id,
       at: entry.at,
       actor: nameOrEmail(ctx.namesByEmail, entry.actor_email),
       sentence,
       requestId: entry.entity === "requests" ? entry.entity_id : null,
       technical,
-    };
-  });
+    });
+  }
+  return items;
 }
 
 export function groupByPracticeDay(
