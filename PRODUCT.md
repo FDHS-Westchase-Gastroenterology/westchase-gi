@@ -215,27 +215,29 @@ Priorities for the portal's next chapter, in order:
 
 1. **A unified call-outcome workflow** on request detail: one prominent action that
    records outcome, status, note, and closure classification together, atomically.
-   The outcome vocabulary is decided (2026-07-26), grounded in how the activity
-   record shows staff actually work — status changes paired with notes, direct
-   new → scheduled as the normal successful path: *Appointment booked —
-   request finished* (maps to the converted-record closure, so staff never learn
-   the status/classification split); *Reached the patient — follow-up needed*,
-   *Left a voicemail — call again*, and *No answer — call again* (each `contacted`
-   plus an optional follow-up time); *Patient won't schedule* and *Duplicate or
-   not actionable* (both map to the did-not-become-an-appointment closure). Six
-   outcomes, one screen; any outcome the activity record shows going unused gets
-   removed. The atomic server operation landed in migrations 2026-07-27
-   (`portal_log_call_outcome`; issue #124), so the composer is now unblocked
-   frontend work; production promotion of the migration follows its own
-   deliberate path. On phones the composer leads the work area — today the
+   Production usage (2026-07-28) confirms the normal success path is
+   `new → scheduled` left open — not a converted close. Primary outcomes:
+   *Appointment is booked* (→ `scheduled`, stays visible; helper copy teaches the
+   meaning); *Reached the patient — follow-up needed*, *Left a voicemail — call
+   again*, and *No answer — call again* (each `contacted`; voicemail/no-answer
+   require a "Call again …" date so staff tell the queue when to resurface the
+   row); *Patient won't schedule* and *Duplicate or not actionable* (both
+   unconverted close). *We're finished — appointment was booked* (converted close)
+   stays available as a secondary finish action, not the daily success path.
+   Staff never learn a status/classification split and never visit Settings to
+   define "Scheduled." The atomic server operation landed in migrations
+   2026-07-27 (`portal_log_call_outcome`; issue #124), so the composer is
+   unblocked frontend work; production promotion of the migration follows its
+   own deliberate path. On phones the composer leads the work area — today the
    status control sits well below the fold there.
-2. **A queue that says what to work next**: a needs-attention default view,
-   business-aware age (a request that arrived Saturday afternoon is not the same as
-   one waiting since Thursday), next action per row, and continuity
-   (previous/next, save-and-open-next). A request touched once and then left
-   silent is attention again: the queue's "once touched, urgency is a triage
-   judgment" premise is retired — staleness (no note or status change within a
-   practice-confirmed business window) re-flags the row.
+2. **A queue that says what to work next**: a needs-attention default view
+   (New, then follow-up dates due today or past, then touched rows silent since
+   the previous practice-local business morning with no follow-up set),
+   business-aware age, next-action hint per row ("Call again Friday", "Waiting
+   since Tuesday"), and continuity (previous/next, save-and-open-next). Staff
+   author attention by picking when they'll call back — not by a Settings
+   "N days" knob and not by a practice meeting. The queue's "once touched,
+   urgency is a triage judgment" premise is retired.
 3. **A human Recent-work view** over the durable audit record: grouped,
    plain-language entries linked to the work ("finished an appointment request as
    Scheduled"), with the exact technical audit preserved beneath it for
