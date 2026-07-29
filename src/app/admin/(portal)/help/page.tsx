@@ -130,12 +130,12 @@ export default async function AdminHelpPage() {
                 "The queue puts new requests and due callbacks first, then older requests without a call-again date.",
               ],
               [
-                "Choose the next status",
-                "Select Contacted, Scheduled, or Closed. The portal then asks only for the details that status needs.",
+                "Add an appointment request note",
+                "Use the request's notes when the next person needs context. Keep medical details in the clinical record, not the portal.",
               ],
               [
-                "Leave a useful handoff",
-                "Add a short operational note when it helps the next person. Keep medical details in the clinical record, not the portal.",
+                "Choose the next status",
+                "Select Contacted, Scheduled, or Closed. The portal then asks only for the details that status needs.",
               ],
               [
                 "Save and continue",
@@ -163,21 +163,19 @@ export default async function AdminHelpPage() {
           </ol>
 
           <h3 className="mt-8 text-[1rem] font-black text-[var(--color-ink)]">
-            Notes stay with the patient request
+            Appointment request notes stay together
           </h3>
           <p className="mt-2 max-w-[70ch] text-[0.95rem] leading-relaxed text-[var(--color-body)]">
-            Every request has its own <strong>Notes</strong> card. The newest
+            Every request has one{" "}
+            <strong>Appointment request notes</strong> section. Add notes
+            there whenever the next staff member needs context. The newest
             note appears first with the staff member&apos;s name and time.
-            Add a note there whenever a colleague needs context, even when the
-            request&apos;s status should not change. If you add an optional
-            note while updating the status, it appears in that same Notes
-            card.
           </p>
           <p className="mt-3 max-w-[70ch] text-[0.95rem] leading-relaxed text-[var(--color-body)]">
-            Notes are for brief operational handoffs. Keep medical details in
-            the clinical record, not the portal. Call outcomes and status
-            changes appear separately under <strong>Request activity</strong>,
-            so they never hide or rename the notes staff are looking for.
+            Keep medical details in the clinical record, not the portal.
+            Status updates are saved separately and appear under{" "}
+            <strong>Request activity</strong>, so they never hide or rename
+            the notes staff are looking for.
           </p>
 
           <div className="mt-7 bg-[var(--color-mint)] px-4 py-4 sm:px-5">
@@ -186,8 +184,8 @@ export default async function AdminHelpPage() {
             </p>
             <p className="mt-1 text-[0.92rem] leading-relaxed text-[var(--color-body)]">
               A Closed request can be reopened as Contacted or Scheduled.
-              Earlier notes remain under Notes, and earlier outcomes remain
-              under Request activity.
+              Earlier notes remain under Appointment request notes, and
+              earlier outcomes remain under Request activity.
             </p>
           </div>
 

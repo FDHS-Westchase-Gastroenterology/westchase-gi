@@ -440,18 +440,50 @@ test.describe("portal requests operation", () => {
     await signIn(page);
     await page.goto(`/admin/requests/${id}`);
 
+    const notesSection = page.getByTestId("request-notes");
+    await expect(
+      notesSection.getByRole("heading", {
+        name: "Appointment request notes",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(notesSection.getByLabel("Note", { exact: true })).toBeHidden();
+    await notesSection
+      .getByRole("button", { name: "Add note", exact: true })
+      .click();
+    const noteField = notesSection.getByLabel("Note", { exact: true });
+    await expect(noteField).toBeFocused();
+    await expect(
+      notesSection.getByRole("button", { name: "Save note" }),
+    ).toBeDisabled();
+    await noteField.fill(noteText);
+    await notesSection.getByRole("button", { name: "Save note" }).click();
+    await expect(
+      notesSection.getByTestId("request-note-feedback"),
+    ).toContainText("Note added.");
+
+    const notes = page.getByTestId("note-list");
+    await expect(notes).toContainText(noteText);
+    const { data: unchangedNewStatus, error: initialStatusError } = await db
+      .from("requests")
+      .select("status")
+      .eq("id", id)
+      .single();
+    expect(initialStatusError).toBeNull();
+    expect(unchangedNewStatus?.status).toBe("new");
+
     const composer = page.getByTestId("call-outcome-composer");
+    await expect(
+      composer.getByLabel("Note", { exact: true }),
+    ).toHaveCount(0);
     await composer.getByText("Contacted", { exact: true }).click();
     await composer
       .getByText("Left a voicemail — call again", { exact: true })
       .click();
     await composer.getByText("Tomorrow morning", { exact: true }).click();
-    await composer.getByLabel(/Add a note/).fill(noteText);
     await page.getByTestId("save-outcome").click();
     await expect(page.getByTestId("composer-feedback")).toBeVisible();
 
-    const notes = page.getByTestId("note-list");
-    await expect(notes).toContainText(noteText);
     const { data: authorProfile } = await db
       .from("staff_profiles")
       .select("display_name")
@@ -467,13 +499,15 @@ test.describe("portal requests operation", () => {
     await page.reload();
     await expect(page.getByTestId("note-list")).toContainText(noteText);
 
-    // Notes remain a first-class action: staff can leave a handoff without
-    // inventing a status transition.
-    const notesCard = page
-      .getByRole("heading", { name: "Notes", exact: true })
-      .locator("..");
-    await notesCard.getByLabel("Add a note", { exact: true }).fill(handoffText);
-    await notesCard.getByRole("button", { name: "Save note" }).click();
+    // Appointment request notes have one consistent entry point, independent
+    // from the status workflow.
+    await notesSection
+      .getByRole("button", { name: "Add note", exact: true })
+      .click();
+    await notesSection
+      .getByLabel("Note", { exact: true })
+      .fill(handoffText);
+    await notesSection.getByRole("button", { name: "Save note" }).click();
     await expect(page.getByTestId("note-list")).toContainText(handoffText);
 
     const { data: unchangedStatus, error: statusError } = await db
@@ -491,7 +525,10 @@ test.describe("portal requests operation", () => {
     );
     await page.getByTestId("request-row").click();
     await expect(
-      page.getByRole("heading", { name: "Notes", exact: true }),
+      page.getByRole("heading", {
+        name: "Appointment request notes",
+        exact: true,
+      }),
     ).toBeVisible();
     await expect(page.getByTestId("note-list")).toContainText(noteText);
     await expect(page.getByTestId("note-list")).toContainText(handoffText);
@@ -562,8 +599,8 @@ test.describe("portal requests operation", () => {
     expect(outcomeAudits).toHaveLength(1);
     const detail = outcomeAudits![0].detail as Record<string, unknown>;
     expect(detail.outcome).toBe("voicemail");
-    expect(detail.note_attached).toBe(true);
-    expect(detail.note_length).toBe(noteText.length);
+    expect(detail.note_attached).toBe(false);
+    expect(detail.note_length).toBeNull();
     expect(JSON.stringify(detail)).not.toContain(noteText);
   });
 });

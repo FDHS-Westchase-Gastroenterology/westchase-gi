@@ -13,8 +13,8 @@ import { followUpWhenLabel } from "../format";
 
 // The daily work loop uses the same lifecycle vocabulary as the queue.
 // Staff choose the request's next status first, then only the details that
-// status needs. The underlying atomic outcome operation still saves status,
-// note, follow-up timing, and closure classification together.
+// status needs. Appointment request notes stay in their own single,
+// consistent surface instead of appearing as a second input here.
 
 type OutcomeOption = {
   id: CallOutcomeId;
@@ -139,7 +139,7 @@ const ERROR_COPY = {
   follow_up_required:
     "Choose when to call again — that's how the queue knows when to bring this request back.",
   note_failed:
-    "The outcome was saved, but the note didn't go through. Add it again and save.",
+    "The status was saved, but the request may be incomplete. Check the request before repeating anything.",
   not_found:
     "This request no longer exists — it may have been removed. Open the queue to see the current list.",
   invalid:
@@ -168,7 +168,6 @@ type ComposerState = {
   selected: CallOutcomeId | null;
   followUpKind: FollowUpKind | null;
   followUpDay: string;
-  note: string;
   attempted: boolean;
   feedback: Feedback | null;
 };
@@ -178,7 +177,6 @@ type ComposerAction =
   | { type: "select_outcome"; outcome: CallOutcomeId }
   | { type: "select_follow_up"; kind: FollowUpKind }
   | { type: "set_day"; day: string }
-  | { type: "set_note"; note: string }
   | { type: "attempt" }
   | { type: "succeeded"; text: string; closed: boolean }
   | { type: "failed"; text: string };
@@ -188,7 +186,6 @@ const INITIAL_STATE: ComposerState = {
   selected: null,
   followUpKind: null,
   followUpDay: "",
-  note: "",
   attempted: false,
   feedback: null,
 };
@@ -222,8 +219,6 @@ function composerReducer(
       return { ...state, followUpKind: action.kind, feedback: null };
     case "set_day":
       return { ...state, followUpDay: action.day, feedback: null };
-    case "set_note":
-      return { ...state, note: action.note };
     case "attempt":
       return { ...state, attempted: true };
     case "succeeded":
@@ -427,7 +422,6 @@ export function CallOutcomeComposer({
     selected,
     followUpKind,
     followUpDay,
-    note,
     attempted,
     feedback,
   } = state;
@@ -463,7 +457,6 @@ export function CallOutcomeComposer({
       const result = await logCallOutcome({
         requestId,
         outcome: selected,
-        note: note.trim() ? note : undefined,
         followUp,
       });
       if (!result.ok) {
@@ -493,9 +486,8 @@ export function CallOutcomeComposer({
         Update request status
       </h2>
       <p className="mt-1.5 max-w-[68ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
-        Choose where this request belongs next. Any details, callback timing,
-        and note are saved together. Notes also appear in the patient&apos;s
-        Notes card above.
+        Choose where this request belongs next. The outcome and callback
+        timing are saved together.
       </p>
       <p
         id="current-request-status"
@@ -633,28 +625,6 @@ export function CallOutcomeComposer({
         />
       ) : null}
 
-      <div className="mt-5">
-        <label
-          htmlFor="outcome-note"
-          className="block text-sm font-bold text-[var(--color-ink)]"
-        >
-          Add a note <span className="font-normal">(optional)</span>
-        </label>
-        <textarea
-          id="outcome-note"
-          name="note"
-          rows={3}
-          maxLength={2000}
-          value={note}
-          disabled={pending}
-          onChange={(event) =>
-            dispatch({ type: "set_note", note: event.target.value })
-          }
-          className="mt-2 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 py-3 text-[0.95rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)] disabled:opacity-60"
-          placeholder="Anything the next person should know? Keep it brief."
-        />
-      </div>
-
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <button
           type="button"
@@ -695,7 +665,7 @@ export function CallOutcomeComposer({
           </button>
         ) : null}
         <p className="text-[0.85rem] text-[var(--color-muted)]">
-          Saved together — one entry in the activity log.
+          Saved together — one request activity entry.
         </p>
       </div>
     </div>
