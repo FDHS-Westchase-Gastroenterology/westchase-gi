@@ -1635,6 +1635,76 @@
 }
 
 /* ------------------------------------------------------------------ *
+   Appointment-request print: a complete patient contact handoff.
+   The portal shell and editing controls recede; contact details, notes,
+   and request activity can flow across as many letter pages as needed.
+ * ------------------------------------------------------------------ */
+@page request-detail {
+  size: letter;
+  margin: 0.55in;
+}
+
+@media print {
+  body.portal-scope:has(.request-detail-print) {
+    page: request-detail;
+  }
+
+  body.portal-scope:has(.request-detail-print) header,
+  body.portal-scope:has(.request-detail-print) footer,
+  body.portal-scope:has(.request-detail-print) .portal-release-utility {
+    display: none !important;
+  }
+
+  body.portal-scope:has(.request-detail-print) main {
+    padding: 0 !important;
+  }
+
+  body.portal-scope:has(.request-detail-print) main > .container-x {
+    max-width: none;
+    padding: 0;
+  }
+
+  .request-detail-print {
+    break-inside: auto !important;
+  }
+
+  .request-detail-print .portal-title {
+    font-size: 18pt;
+  }
+
+  .request-detail-secondary {
+    display: block;
+  }
+
+  .request-print-card {
+    break-inside: auto;
+    margin-top: 14pt;
+    border: 1pt solid #777;
+    border-radius: 0;
+    padding: 12pt;
+    background: white !important;
+  }
+
+  .request-print-card h2,
+  .request-print-card h3,
+  .request-print-card dt,
+  .request-print-card dd,
+  .request-print-card a {
+    color: black !important;
+  }
+
+  .request-print-card a {
+    text-decoration: none;
+  }
+
+  .request-print-card dl > div,
+  .request-note-item,
+  .request-activity-item {
+    break-inside: avoid;
+  }
+}
+
+/* ------------------------------------------------------------------ *
    Review-flyer printer: portal screen uses the shared system; the
    approved EN/ES flyer composition is reproduced exactly on letter paper.
  * ------------------------------------------------------------------ */

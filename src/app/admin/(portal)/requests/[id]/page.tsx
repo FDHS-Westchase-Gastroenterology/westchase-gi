@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { PrintButton } from "@/components/PrintButton";
 import {
   isMailbox,
   REQUEST_STATUSES,
@@ -31,6 +32,7 @@ import {
   OUTCOME_HISTORY_LABELS,
   TIME_LABELS,
 } from "../format";
+import { addRequestNote } from "../actions";
 import { CallOutcomeComposer } from "./call-outcome-composer";
 
 type RequestRow = {
@@ -67,12 +69,11 @@ type AuditRow = {
   at: string;
 };
 
-// The work record shown on the page: notes and call outcomes from the
-// request's event stream, plus status moves and closes from the audit
-// record (their call-outcome/note audit twins are deliberately excluded —
-// the events already carry them, so each human action renders exactly once).
-type WorkEntry =
-  | { kind: "note"; id: string; text: string; author: string; at: string }
+// Call outcomes from the request event stream, plus status moves and closes
+// from the audit record. Notes remain a separate, first-class staff
+// abstraction; their call-outcome/note audit twins are excluded here so each
+// human action renders exactly once.
+type ActivityEntry =
   | {
       kind: "outcome";
       id: string;
@@ -106,18 +107,13 @@ function firstParam(value: string | string[] | undefined): string | null {
   return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
 }
 
-function workEntries(events: EventRow[], audits: AuditRow[]): WorkEntry[] {
-  const entries: WorkEntry[] = [];
+function activityEntries(
+  events: EventRow[],
+  audits: AuditRow[],
+): ActivityEntry[] {
+  const entries: ActivityEntry[] = [];
   for (const event of events) {
-    if (event.type === "note") {
-      entries.push({
-        kind: "note",
-        id: `event-${event.id}`,
-        text: metaText(event.meta, "text"),
-        author: metaText(event.meta, "author_email"),
-        at: event.created_at,
-      });
-    } else if (event.type === "call_outcome") {
+    if (event.type === "call_outcome") {
       entries.push({
         kind: "outcome",
         id: `event-${event.id}`,
@@ -273,7 +269,13 @@ export default async function RequestDetailPage({
   const mailbox = row.email?.trim();
   const safeMailbox = mailbox && isMailbox(mailbox) ? mailbox : null;
   const allEvents = (events ?? []) as EventRow[];
-  const entries = workEntries(allEvents, (auditRows ?? []) as AuditRow[]);
+  const notes = allEvents
+    .filter((event) => event.type === "note")
+    .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const entries = activityEntries(
+    allEvents,
+    (auditRows ?? []) as AuditRow[],
+  );
   const notifications = allEvents.filter(
     (event) => event.type === "notification",
   );
@@ -316,8 +318,21 @@ export default async function RequestDetailPage({
   ];
 
   return (
-    <section aria-labelledby="request-heading">
-      <nav aria-label="Breadcrumb" className="flex items-center text-[0.9rem]">
+    <section
+      aria-labelledby="request-heading"
+      className="request-detail-print"
+    >
+      <div className="hidden border-b-2 border-black pb-3 print:block">
+        <p className="text-[15pt] font-bold">Westchase Gastroenterology</p>
+        <p className="mt-1 text-[9pt] font-bold uppercase tracking-[0.08em]">
+          Appointment request
+        </p>
+      </div>
+
+      <nav
+        aria-label="Breadcrumb"
+        className="print-hide flex items-center text-[0.9rem]"
+      >
         <Link
           href={queueHref}
           className="inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
@@ -354,7 +369,7 @@ export default async function RequestDetailPage({
         ) : null}
       </nav>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+      <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <h1
           id="request-heading"
           data-testid="request-detail-name"
@@ -362,7 +377,10 @@ export default async function RequestDetailPage({
         >
           {row.name}
         </h1>
-        <StatusBadge status={row.status} />
+        <div className="flex flex-wrap items-center gap-3">
+          <StatusBadge status={row.status} />
+          <PrintButton label="Print patient page" />
+        </div>
       </div>
       {row.status === "closed" && row.closed_at ? (
         <p
@@ -381,6 +399,66 @@ export default async function RequestDetailPage({
         </p>
       ) : null}
 
+      <div className="request-print-card mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
+        <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
+          Notes
+        </h2>
+        <p className="mt-1.5 text-[0.88rem] leading-relaxed text-[var(--color-muted)]">
+          Staff handoff notes for this patient request.
+        </p>
+        {notes.length === 0 ? (
+          <p
+            data-testid="notes-empty"
+            className="mt-4 text-[0.95rem] text-[var(--color-muted)]"
+          >
+            No notes yet. Leave a note when the next person needs context.
+          </p>
+        ) : (
+          <ul
+            data-testid="note-list"
+            className="mt-4 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]"
+          >
+            {notes.map((note) => (
+              <li key={note.id} className="request-note-item py-4">
+                <p className="whitespace-pre-wrap text-[0.95rem] leading-relaxed text-[var(--color-ink)]">
+                  {metaText(note.meta, "text")}
+                </p>
+                <p className="mt-2 text-[0.8rem] font-bold text-[var(--color-teal-ink)]">
+                  {displayNameOrEmail(
+                    nameMap,
+                    metaText(note.meta, "author_email"),
+                  )}{" "}
+                  · {formatReceived(note.created_at, true)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+        <form
+          action={addRequestNote.bind(null, row.id)}
+          className="print-hide mt-5 border-t border-[var(--color-line)] pt-5"
+        >
+          <label
+            htmlFor="request-note"
+            className="block text-sm font-bold text-[var(--color-ink)]"
+          >
+            Add a note
+          </label>
+          <textarea
+            id="request-note"
+            name="note"
+            rows={3}
+            required
+            maxLength={2000}
+            className="mt-2 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 py-3 text-[0.95rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)]"
+            placeholder="Anything the next person should know? Keep medical details in the clinical record."
+          />
+          <button type="submit" className="btn btn-navy mt-3 min-h-11">
+            Save note
+          </button>
+        </form>
+      </div>
+
       <CallOutcomeComposer
         requestId={row.id}
         status={row.status}
@@ -389,9 +467,9 @@ export default async function RequestDetailPage({
         nextHref={nextId ? continuityHref(nextId) : null}
       />
 
-      <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1.5fr_1fr]">
+      <div className="request-detail-secondary mt-6 grid items-start gap-6 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-6">
-          <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
+          <div className="request-print-card rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
             <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
               Appointment request details
             </h2>
@@ -420,34 +498,23 @@ export default async function RequestDetailPage({
             </div>
           </div>
 
-          <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
+          <div className="request-print-card rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
             <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
-              Work history
+              Request activity
             </h2>
+            <p className="mt-1.5 text-[0.88rem] leading-relaxed text-[var(--color-muted)]">
+              Call outcomes and status changes, newest first.
+            </p>
             {entries.length === 0 ? (
               <p className="mt-3 text-[0.95rem] text-[var(--color-muted)]">
-                Nothing recorded yet. Record what happens on the call above —
-                the next person picks up where you left off.
+                No call or status activity yet.
               </p>
             ) : (
-              <ul data-testid="work-history" className="mt-4 space-y-4">
+              <ul
+                data-testid="request-activity"
+                className="mt-4 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]"
+              >
                 {entries.map((entry) => {
-                  if (entry.kind === "note") {
-                    return (
-                      <li
-                        key={entry.id}
-                        className="rounded-[var(--radius)] bg-[var(--color-mint)] px-4 py-3"
-                      >
-                        <p className="whitespace-pre-wrap text-[0.95rem] leading-relaxed text-[var(--color-ink)]">
-                          {entry.text}
-                        </p>
-                        <p className="mt-2 text-[0.8rem] font-bold text-[var(--color-teal-ink)]">
-                          {displayNameOrEmail(nameMap, entry.author)} ·{" "}
-                          {formatReceived(entry.at, true)}
-                        </p>
-                      </li>
-                    );
-                  }
                   const line =
                     entry.kind === "outcome"
                       ? `${OUTCOME_HISTORY_LABELS[entry.outcome] ?? entry.outcome}${
@@ -467,7 +534,7 @@ export default async function RequestDetailPage({
                   return (
                     <li
                       key={entry.id}
-                      className="rounded-[var(--radius)] border border-[var(--color-line)] px-4 py-3"
+                      className="request-activity-item py-4"
                     >
                       <p className="text-[0.95rem] font-bold text-[var(--color-ink)]">
                         {line}
@@ -485,7 +552,7 @@ export default async function RequestDetailPage({
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
+          <div className="request-notifications print-hide rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
             <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
               Notifications
             </h2>

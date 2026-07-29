@@ -433,7 +433,9 @@ test.describe("portal requests operation", () => {
     request,
   }) => {
     const id = await stageRequest(request, "notes");
+    const staged = payload("notes");
     const noteText = `TEST note ${runId} — left a voicemail, call back tomorrow.`;
+    const handoffText = `TEST handoff ${runId} — patient asked for a later callback.`;
 
     await signIn(page);
     await page.goto(`/admin/requests/${id}`);
@@ -444,24 +446,90 @@ test.describe("portal requests operation", () => {
       .getByText("Left a voicemail — call again", { exact: true })
       .click();
     await composer.getByText("Tomorrow morning", { exact: true }).click();
-    await page.getByLabel(/Add a note/).fill(noteText);
+    await composer.getByLabel(/Add a note/).fill(noteText);
     await page.getByTestId("save-outcome").click();
     await expect(page.getByTestId("composer-feedback")).toBeVisible();
 
-    const history = page.getByTestId("work-history");
-    await expect(history).toContainText(noteText);
-    await expect(history).toContainText("Left a voicemail");
+    const notes = page.getByTestId("note-list");
+    await expect(notes).toContainText(noteText);
     const { data: authorProfile } = await db
       .from("staff_profiles")
       .select("display_name")
       .eq("email", SEED_EMAIL.toLowerCase())
       .single();
-    await expect(history).toContainText(
+    await expect(notes).toContainText(
       String(authorProfile?.display_name ?? ""),
+    );
+    await expect(page.getByTestId("request-activity")).toContainText(
+      "Left a voicemail",
     );
 
     await page.reload();
-    await expect(page.getByTestId("work-history")).toContainText(noteText);
+    await expect(page.getByTestId("note-list")).toContainText(noteText);
+
+    // Notes remain a first-class action: staff can leave a handoff without
+    // inventing a status transition.
+    const notesCard = page
+      .getByRole("heading", { name: "Notes", exact: true })
+      .locator("..");
+    await notesCard.getByLabel("Add a note", { exact: true }).fill(handoffText);
+    await notesCard.getByRole("button", { name: "Save note" }).click();
+    await expect(page.getByTestId("note-list")).toContainText(handoffText);
+
+    const { data: unchangedStatus, error: statusError } = await db
+      .from("requests")
+      .select("status")
+      .eq("id", id)
+      .single();
+    expect(statusError).toBeNull();
+    expect(unchangedStatus?.status).toBe("contacted");
+
+    // Re-enter through the staff's Contacted queue, not a direct test URL:
+    // the note must still be the obvious patient handoff when the row opens.
+    await page.goto(
+      `/admin/requests?status=contacted&q=${encodeURIComponent(payload("notes").name)}`,
+    );
+    await page.getByTestId("request-row").click();
+    await expect(page.getByRole("heading", { name: "Notes" })).toBeVisible();
+    await expect(page.getByTestId("note-list")).toContainText(noteText);
+    await expect(page.getByTestId("note-list")).toContainText(handoffText);
+
+    // The explicit print action invokes the browser print surface.
+    await page.evaluate(() => {
+      window.print = () => {
+        document.documentElement.dataset.testRequestPrint = "called";
+      };
+    });
+    await page
+      .getByRole("button", { name: "Print patient page" })
+      .click();
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-test-request-print",
+      "called",
+    );
+
+    // Print keeps the complete patient handoff and removes portal controls
+    // and delivery diagnostics. The request root must be allowed to paginate.
+    await page.emulateMedia({ media: "print" });
+    await expect(page.getByTestId("request-detail-name")).toBeVisible();
+    await expect(page.getByText(staged.message)).toBeVisible();
+    await expect(page.getByTestId("note-list")).toContainText(handoffText);
+    await expect(page.getByTestId("request-activity")).toContainText(
+      "Left a voicemail",
+    );
+    await expect(page.getByTestId("call-outcome-composer")).toBeHidden();
+    await expect(
+      page.getByRole("heading", { name: "Notifications" }),
+    ).toBeHidden();
+    await expect(
+      page.getByRole("navigation", { name: "Breadcrumb" }),
+    ).toBeHidden();
+    expect(
+      await page.locator(".request-detail-print").evaluate(
+        (element) => getComputedStyle(element).breakInside,
+      ),
+    ).toBe("auto");
+    await page.emulateMedia({ media: "screen" });
 
     const { data: events, error } = await db
       .from("request_events")
@@ -469,12 +537,19 @@ test.describe("portal requests operation", () => {
       .eq("request_id", id)
       .eq("type", "note");
     expect(error).toBeNull();
-    expect(events).toHaveLength(1);
-    const meta = (events![0].meta ?? {}) as Record<string, unknown>;
-    expect(meta.text).toBe(noteText);
-    expect(String(meta.author_email).toLowerCase()).toBe(
-      SEED_EMAIL.toLowerCase(),
-    );
+    expect(events).toHaveLength(2);
+    for (const expectedText of [noteText, handoffText]) {
+      const event = events?.find(
+        (candidate) =>
+          (candidate.meta as Record<string, unknown> | null)?.text ===
+          expectedText,
+      );
+      expect(event).toBeTruthy();
+      const meta = (event?.meta ?? {}) as Record<string, unknown>;
+      expect(String(meta.author_email).toLowerCase()).toBe(
+        SEED_EMAIL.toLowerCase(),
+      );
+    }
 
     const { data: outcomeAudits, error: outcomeAuditError } = await db
       .from("audit_log")

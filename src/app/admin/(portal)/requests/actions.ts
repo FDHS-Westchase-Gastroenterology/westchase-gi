@@ -14,6 +14,42 @@ function revalidateRequestViews(requestId: string) {
   revalidatePath(`/admin/requests/${requestId}`);
 }
 
+export async function addRequestNote(
+  requestId: string,
+  formData: FormData,
+): Promise<void> {
+  const session = await requireRole("staff");
+
+  const rawNote = formData.get("note");
+  if (typeof rawNote !== "string") {
+    throw new Error("Notes must be 1-2000 characters");
+  }
+
+  const note = rawNote.trim();
+  if (note.length === 0 || note.length > 2000) {
+    throw new Error("Notes must be 1-2000 characters");
+  }
+
+  if (typeof requestId !== "string" || requestId.trim().length === 0) {
+    throw new Error("Request not found");
+  }
+
+  const { error } = await serviceClient().rpc("portal_add_request_note", {
+    p_actor_email: session.email,
+    p_request_id: requestId,
+    p_note: note,
+    p_note_length: note.length,
+  });
+  if (error) {
+    if (error.code === "P0002" || error.code === "22P02") {
+      throw new Error("Request not found");
+    }
+    throw new Error(`Note write failed: ${error.code}`);
+  }
+
+  revalidateRequestViews(requestId);
+}
+
 // ---- Call-outcome composer (P1) -----------------------------------------
 
 export type CallOutcomeId =
@@ -194,4 +230,3 @@ export async function logCallOutcome(
     followUpAt,
   };
 }
-

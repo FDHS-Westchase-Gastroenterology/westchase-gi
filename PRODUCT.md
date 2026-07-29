@@ -145,8 +145,9 @@ obvious, a colleague can continue my work, and nothing is silently lost or
 misrepresented.
 
 The center of gravity is moving from "staff update records" to "staff finish clinic
-work": the real job is a phone call and its outcome, not a status field plus a
-separate note form.
+work": the real job is a phone call and its outcome, not a status field. Notes remain
+a first-class clinic abstraction: staff can leave one independently, or attach one
+while recording an outcome without splitting that call across separate saves.
 
 ### Current delivery boundary (verified 2026-07-29)
 
@@ -157,13 +158,19 @@ distinct "count unavailable" state when its queue read fails — a failed read n
 presents as an empty queue. All four primary nav destinations stay fully visible on
 a 390px phone.
 
-Request detail leads with the same lifecycle vocabulary as the queue:
-Contacted, Scheduled, and Closed. Staff choose the next status first, then
-only the details that status needs; the current status is not offered as a
-destination. One save still records the outcome, status, optional note,
-optional call-again time, and closure classification together. Scheduled
-stays visible, Contacted can resurface on a chosen day, Closed leaves the
-active queue, and a closed request can be reopened as Contacted or Scheduled.
+Request detail restores Notes as a first-class card before the status workflow.
+Notes can be added independently; an optional note saved with an outcome appears
+in the same card. The secondary Request activity record carries call outcomes
+and status changes instead of renaming notes as history. The same lifecycle
+vocabulary as the queue remains: Contacted, Scheduled, and Closed. Staff choose
+the next status, then only the details that status needs; the current status is
+not offered as a destination. One save still records the outcome, status,
+optional note, optional call-again time, and closure classification together.
+Scheduled stays visible, Contacted can resurface on a chosen day, Closed leaves
+the active queue, and a closed request can be reopened as Contacted or
+Scheduled. An explicit print action produces the complete patient contact,
+notes, and request-activity handoff without portal controls or delivery
+diagnostics.
 
 Home also carries attention context in practice-local business terms: how long the
 oldest new request has been waiting ("since Friday"), which previewed requests
@@ -233,8 +240,8 @@ Priorities for the portal's next chapter, in order:
    atomic server operation landed in migrations
    2026-07-27 (`portal_log_call_outcome`; issue #124), so the composer is
    unblocked frontend work; production promotion of the migration follows its
-   own deliberate path. On phones the composer leads the work area — today the
-   status control sits well below the fold there.
+   own deliberate path. Notes and patient context lead the detail page; the
+   composer follows them without returning to disconnected status buttons.
 2. **A queue that says what to work next**: a needs-attention default view
    (New, then follow-up dates due today or past, then touched rows silent since
    the previous practice-local business morning with no follow-up set),
