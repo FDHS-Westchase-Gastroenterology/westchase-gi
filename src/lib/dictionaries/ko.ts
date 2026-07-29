@@ -33,12 +33,12 @@ export const ko: Dictionary = {
     newPatients: {
       title: "신규 환자",
       description:
-        "Westchase Gastroenterology 첫 방문에 필요한 모든 것: 영어와 스페인어로 된 온라인 신규 환자 서류, 보험 정보, 방문 전 안내.",
+        "Westchase Gastroenterology 첫 방문에 필요한 모든 것: 온라인 신규 환자 서류, 보험 정보, 방문 전 안내.",
     },
     procedurePrep: {
       title: "시술 준비 안내",
       description:
-        "Westchase Gastroenterology의 대장내시경, 위내시경(EGD) 및 기타 소화기 시술을 위한 단계별 준비 안내 — 영어와 스페인어로 온라인에서 읽고 인쇄하실 수 있습니다.",
+        "Westchase Gastroenterology의 대장내시경, 위내시경(EGD) 및 기타 소화기 시술을 위한 단계별 준비 안내 — 온라인에서 읽고 인쇄하실 수 있습니다.",
     },
     resources: {
       title: "환자 자료실",
@@ -58,7 +58,7 @@ export const ko: Dictionary = {
     blog: {
       title: "블로그",
       description:
-        "Westchase Gastroenterology의 소화기 건강 칼럼: 대장내시경, 검진, 영양, 역류, 일상 장 건강 이야기를 영어와 스페인어로 전합니다.",
+        "Westchase Gastroenterology의 소화기 건강 칼럼: 대장내시경, 검진, 영양, 역류, 일상 장 건강 이야기.",
     },
     patientEducation: {
       title: "환자 교육",
@@ -85,7 +85,11 @@ export const ko: Dictionary = {
       description:
         "이 웹사이트에서 사용할 언어를 선택하세요. 언어 메뉴에서 언제든지 변경할 수 있습니다.",
       suggested: "권장",
+      // i5-waiver 2026-07-28 common.languageChooser.continue: action label naming
+      // the current locale, not an availability claim.
       continue: "한국어로 계속",
+      // i5-waiver 2026-07-28 common.languageChooser.close: action label naming
+      // the current locale, not an availability claim.
       close: "언어 선택 창을 닫고 한국어로 계속",
     },
     getDirections: "길찾기",
@@ -110,7 +114,11 @@ export const ko: Dictionary = {
       blog: "블로그",
       contact: "문의하기",
       appointment: "진료 예약 신청",
+      // i5-waiver 2026-07-28 common.nav.formsEn: the external Hushforms packet
+      // really is English-only; the label says so honestly.
       formsEn: "온라인 신규 환자 서류 (영어)",
+      // i5-waiver 2026-07-28 common.nav.formsEs: the external Hushforms packet
+      // really is Spanish-only; the label says so honestly.
       formsEs: "온라인 신규 환자 서류 (스페인어)",
       printableForms: "인쇄용 서류",
     },
@@ -179,7 +187,7 @@ export const ko: Dictionary = {
     heroKicker: "탬파베이의 소화기내과 전문의 진료",
     heroTitle: "따뜻한 손길로 지키는 소화기 건강",
     heroLead:
-      "Westchase와 Lutz의 종합 소화기내과 진료: 환자의 이야기에 시간을 들여 귀 기울이는 전문의들이 대장내시경 검진, 첨단 내시경, 간 질환 진료를 제공합니다. 진료는 영어와 스페인어로 제공됩니다.",
+      "Westchase와 Lutz의 종합 소화기내과 진료: 환자의 이야기에 시간을 들여 귀 기울이는 전문의들이 대장내시경 검진, 첨단 내시경, 간 질환 진료를 제공합니다.",
     heroPhoto: "탬파 오피스에서 함께한 Westchase Gastroenterology 팀",
     tiles: {
       heading: "오늘 어떤 도움이 필요하십니까?",
@@ -203,6 +211,8 @@ export const ko: Dictionary = {
     physicianReviewCta: "Google 후기 남기기",
     physicianReviewAria: "{name} 선생님에 대한 Google 후기를 남겨 주세요 (Google 후기 작성 화면이 열립니다)",
     testimonialsHeading: "환자분들의 이야기",
+    // i5-waiver 2026-07-28 home.testimonialsNote: settled decision — testimonials
+    // stay English-only in every locale, with this explicit qualifier.
     testimonialsNote: "환자분들이 직접 남겨 주신 후기를 그대로 전합니다(영어 원문).",
     railLabel: "환자 후기",
     railPrev: "이전 후기",
@@ -317,9 +327,15 @@ export const ko: Dictionary = {
       "모든 영역에서 끊임없는 개선을 추구합니다.",
     ],
     formsHeading: "환자 서류",
+    // i5-waiver 2026-07-28 newPatients.formsIntro: the EN/ES clause binds to
+    // the external Hushforms packet only — no claim about the site's languages.
     formsIntro:
-      "가장 빠른 방법은 영어와 스페인어로 제공되는 보안 온라인 서류 패킷입니다. 첫 방문 전에 어느 기기에서든 작성하실 수 있습니다:",
+      "가장 빠른 방법은 보안 온라인 서류 패킷이며, 패킷 자체는 영어와 스페인어로 제공됩니다. 첫 방문 전에 어느 기기에서든 작성하실 수 있습니다:",
+    // i5-waiver 2026-07-28 newPatients.formsOnlineEn: the external Hushforms
+    // packet really is English-only; the label says so honestly.
     formsOnlineEn: "온라인 신규 환자 서류 (영어)",
+    // i5-waiver 2026-07-28 newPatients.formsOnlineEs: the external Hushforms
+    // packet really is Spanish-only; the label says so honestly.
     formsOnlineEs: "온라인 신규 환자 서류 (스페인어)",
     formsPrintableIntro:
       "종이 서류를 선호하십니까? 인쇄용 서류는 현재 업데이트 중입니다. 문자를 보내 주시면 최신 버전을 보내 드리며, 도착하셔서 접수처에서 작성하셔도 됩니다.",
@@ -358,9 +374,11 @@ export const ko: Dictionary = {
       "소화기 질환에 대해 더 알아보실 수 있도록 저희 전문의들이 추천하는 신뢰할 수 있는 기관들과 함께, 저희가 직접 마련한 환자 교육 자료실과 질환 정보지를 소개합니다.",
     educationHeading: "환자 교육 자료실",
     educationBody:
-      "저희가 시행하는 시술과 치료하는 질환을 쉬운 말로 설명한 페이지입니다 — 환자를 위해 작성되었으며, 영어와 스페인어로 제공됩니다.",
+      "저희가 시행하는 시술과 치료하는 질환을 쉬운 말로 설명한 페이지입니다 — 환자를 위해 영어, 스페인어, 베트남어, 한국어, 아랍어로 작성되었습니다.",
     educationCta: "환자 교육 자료 둘러보기",
     asgeHeading: "ASGE의 추가 자료",
+    // i5-waiver 2026-07-28 resources.asgeBody: the external ASGE guides really
+    // are English-only; the qualifier is the truth.
     asgeBody:
       "미국소화기내시경학회(ASGE)에서도 소화기 질환과 시술에 대한 환자용 안내서를 발간하고 있습니다(영어).",
     educationCtaConditions: "ASGE 안내서: 질환",
@@ -387,7 +405,7 @@ export const ko: Dictionary = {
   education: {
     title: "환자 교육",
     intro:
-      "저희가 시행하는 시술과 치료하는 질환을 쉬운 말로 설명합니다. 모든 페이지는 영어와 스페인어로 제공됩니다.",
+      "저희가 시행하는 시술과 치료하는 질환을 쉬운 말로 설명합니다. 모든 페이지는 영어, 스페인어, 베트남어, 한국어, 아랍어로 제공됩니다.",
     proceduresHeading: "시술 및 검사",
     proceduresIntro: "일반적인 소화기 시술의 전·중·후 과정을 안내합니다.",
     conditionsHeading: "질환",

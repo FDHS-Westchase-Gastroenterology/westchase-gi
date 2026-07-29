@@ -33,12 +33,12 @@ export const en = {
     newPatients: {
       title: "New Patients",
       description:
-        "Everything you need for your first visit to Westchase Gastroenterology: online new-patient forms in English and Spanish, insurance information, and what to expect.",
+        "Everything you need for your first visit to Westchase Gastroenterology: online new-patient forms, insurance information, and what to expect.",
     },
     procedurePrep: {
       title: "Procedure Preparation",
       description:
-        "Step-by-step preparation instructions for colonoscopy, EGD, and other GI procedures at Westchase Gastroenterology — readable online and printable, in English and Spanish.",
+        "Step-by-step preparation instructions for colonoscopy, EGD, and other GI procedures at Westchase Gastroenterology — readable online and printable.",
     },
     resources: {
       title: "Patient Resources",
@@ -58,7 +58,7 @@ export const en = {
     blog: {
       title: "Blog",
       description:
-        "Digestive health articles from Westchase Gastroenterology: colonoscopy, screening, nutrition, reflux, and everyday gut health, in English and Spanish.",
+        "Digestive health articles from Westchase Gastroenterology: colonoscopy, screening, nutrition, reflux, and everyday gut health.",
     },
     patientEducation: {
       title: "Patient Education",
@@ -85,7 +85,11 @@ export const en = {
       description:
         "Choose the language you would like to use on this website. You can change it anytime from the Language menu.",
       suggested: "Suggested",
+      // i5-waiver 2026-07-28 common.languageChooser.continue: action label naming
+      // the current locale, not an availability claim.
       continue: "Continue in English",
+      // i5-waiver 2026-07-28 common.languageChooser.close: action label naming
+      // the current locale, not an availability claim.
       close: "Close language chooser and continue in English",
     },
     getDirections: "Get directions",
@@ -110,7 +114,11 @@ export const en = {
       blog: "Blog",
       contact: "Contact Us",
       appointment: "Request Appointment",
+      // i5-waiver 2026-07-28 common.nav.formsEn: the external Hushforms packet
+      // really is English-only; the label says so honestly.
       formsEn: "Online New Patient Forms (English)",
+      // i5-waiver 2026-07-28 common.nav.formsEs: the external Hushforms packet
+      // really is Spanish-only; the label says so honestly.
       formsEs: "Online New Patient Forms (Spanish)",
       printableForms: "Printable Forms",
     },
@@ -179,7 +187,7 @@ export const en = {
     heroKicker: "Board-certified digestive care in Tampa Bay",
     heroTitle: "Digestive health, in caring hands",
     heroLead:
-      "Comprehensive gastroenterology in Westchase and Lutz: screening colonoscopies, advanced endoscopy, and liver care from physicians who take the time to listen. In English and Spanish.",
+      "Comprehensive gastroenterology in Westchase and Lutz: screening colonoscopies, advanced endoscopy, and liver care from physicians who take the time to listen.",
     heroPhoto: "The Westchase Gastroenterology team in our Tampa office",
     tiles: {
       heading: "How can we help today?",
@@ -317,9 +325,15 @@ export const en = {
       "Strive for continuous improvement at all levels.",
     ],
     formsHeading: "Patient Forms",
+    // i5-waiver 2026-07-28 newPatients.formsIntro: the EN/ES clause binds to
+    // the external Hushforms packet only — no claim about the site's languages.
     formsIntro:
-      "The fastest option is our secure online packet, available in English and Spanish. Complete it from any device before your first visit:",
+      "The fastest option is our secure online packet — the packet itself is available in English and Spanish. Complete it from any device before your first visit:",
+    // i5-waiver 2026-07-28 newPatients.formsOnlineEn: the external Hushforms
+    // packet really is English-only; the label says so honestly.
     formsOnlineEn: "Online New Patient Forms (English)",
+    // i5-waiver 2026-07-28 newPatients.formsOnlineEs: the external Hushforms
+    // packet really is Spanish-only; the label says so honestly.
     formsOnlineEs: "Online New Patient Forms (Spanish)",
     formsPrintableIntro:
       "Prefer paper? These printable forms are being updated; text us and we'll send you the current versions, or complete them at the front desk when you arrive.",
@@ -358,7 +372,7 @@ export const en = {
       "Trusted organizations our physicians recommend for learning more about digestive conditions, plus our own patient education library and information sheets.",
     educationHeading: "Our patient education library",
     educationBody:
-      "Plain-language pages on the procedures we perform and the conditions we treat — written for patients, in English and Spanish.",
+      "Plain-language pages on the procedures we perform and the conditions we treat — written for patients in English, Spanish, Vietnamese, Korean, and Arabic.",
     educationCta: "Browse patient education",
     asgeHeading: "More from the ASGE",
     asgeBody:
@@ -387,7 +401,7 @@ export const en = {
   education: {
     title: "Patient Education",
     intro:
-      "Plain-language explanations of the procedures we perform and the conditions we treat. Every page is available in English and Spanish.",
+      "Plain-language explanations of the procedures we perform and the conditions we treat. Every page is available in English, Spanish, Vietnamese, Korean, and Arabic.",
     proceduresHeading: "Procedures and tests",
     proceduresIntro: "What to expect before, during, and after common GI procedures.",
     conditionsHeading: "Conditions",

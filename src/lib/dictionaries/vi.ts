@@ -33,12 +33,12 @@ export const vi: Dictionary = {
     newPatients: {
       title: "Bệnh nhân mới",
       description:
-        "Mọi thứ quý vị cần cho buổi thăm khám đầu tiên tại Westchase Gastroenterology: mẫu đơn trực tuyến cho bệnh nhân mới bằng tiếng Anh và tiếng Tây Ban Nha, thông tin bảo hiểm và những điều quý vị có thể mong đợi.",
+        "Mọi thứ quý vị cần cho buổi thăm khám đầu tiên tại Westchase Gastroenterology: mẫu đơn trực tuyến cho bệnh nhân mới, thông tin bảo hiểm và những điều quý vị có thể mong đợi.",
     },
     procedurePrep: {
       title: "Chuẩn bị thủ thuật",
       description:
-        "Hướng dẫn chuẩn bị từng bước cho nội soi đại tràng, nội soi dạ dày (EGD) và các thủ thuật tiêu hóa khác tại Westchase Gastroenterology — đọc trực tuyến và in được, bằng tiếng Anh và tiếng Tây Ban Nha.",
+        "Hướng dẫn chuẩn bị từng bước cho nội soi đại tràng, nội soi dạ dày (EGD) và các thủ thuật tiêu hóa khác tại Westchase Gastroenterology — đọc trực tuyến và in được.",
     },
     resources: {
       title: "Nguồn thông tin cho bệnh nhân",
@@ -58,7 +58,7 @@ export const vi: Dictionary = {
     blog: {
       title: "Blog",
       description:
-        "Bài viết về sức khỏe tiêu hóa từ Westchase Gastroenterology: nội soi đại tràng, tầm soát, dinh dưỡng, trào ngược và sức khỏe đường ruột hằng ngày, bằng tiếng Anh và tiếng Tây Ban Nha.",
+        "Bài viết về sức khỏe tiêu hóa từ Westchase Gastroenterology: nội soi đại tràng, tầm soát, dinh dưỡng, trào ngược và sức khỏe đường ruột hằng ngày.",
     },
     patientEducation: {
       title: "Giáo dục bệnh nhân",
@@ -85,7 +85,11 @@ export const vi: Dictionary = {
       description:
         "Chọn ngôn ngữ quý vị muốn sử dụng trên trang web này. Quý vị có thể đổi bất cứ lúc nào trong menu Ngôn ngữ.",
       suggested: "Được đề xuất",
+      // i5-waiver 2026-07-28 common.languageChooser.continue: action label naming
+      // the current locale, not an availability claim.
       continue: "Tiếp tục bằng Tiếng Việt",
+      // i5-waiver 2026-07-28 common.languageChooser.close: action label naming
+      // the current locale, not an availability claim.
       close: "Đóng phần chọn ngôn ngữ và tiếp tục bằng Tiếng Việt",
     },
     getDirections: "Chỉ đường",
@@ -110,7 +114,11 @@ export const vi: Dictionary = {
       blog: "Blog",
       contact: "Liên hệ",
       appointment: "Yêu cầu đặt hẹn",
+      // i5-waiver 2026-07-28 common.nav.formsEn: the external Hushforms packet
+      // really is English-only; the label says so honestly.
       formsEn: "Mẫu đơn trực tuyến cho bệnh nhân mới (tiếng Anh)",
+      // i5-waiver 2026-07-28 common.nav.formsEs: the external Hushforms packet
+      // really is Spanish-only; the label says so honestly.
       formsEs: "Mẫu đơn trực tuyến cho bệnh nhân mới (tiếng Tây Ban Nha)",
       printableForms: "Mẫu đơn để in",
     },
@@ -179,7 +187,7 @@ export const vi: Dictionary = {
     heroKicker: "Chăm sóc tiêu hóa đạt chứng nhận hội đồng y khoa tại Tampa Bay",
     heroTitle: "Sức khỏe tiêu hóa của quý vị, trong bàn tay tận tâm",
     heroLead:
-      "Chuyên khoa tiêu hóa toàn diện tại Westchase và Lutz: nội soi đại tràng tầm soát, nội soi chuyên sâu và chăm sóc gan từ những bác sĩ luôn dành thời gian lắng nghe. Bằng tiếng Anh và tiếng Tây Ban Nha.",
+      "Chuyên khoa tiêu hóa toàn diện tại Westchase và Lutz: nội soi đại tràng tầm soát, nội soi chuyên sâu và chăm sóc gan từ những bác sĩ luôn dành thời gian lắng nghe.",
     heroPhoto: "Đội ngũ Westchase Gastroenterology tại phòng khám Tampa của chúng tôi",
     tiles: {
       heading: "Hôm nay chúng tôi có thể giúp gì cho quý vị?",
@@ -203,6 +211,8 @@ export const vi: Dictionary = {
     physicianReviewCta: "Để lại đánh giá trên Google",
     physicianReviewAria: "Để lại đánh giá trên Google cho bác sĩ {name} (mở biểu mẫu đánh giá của Google)",
     testimonialsHeading: "Bệnh nhân nói gì về chúng tôi",
+    // i5-waiver 2026-07-28 home.testimonialsNote: settled decision — testimonials
+    // stay English-only in every locale, with this explicit qualifier.
     testimonialsNote: "Những đánh giá do bệnh nhân của chúng tôi chia sẻ, bằng chính lời của họ (bằng tiếng Anh).",
     railLabel: "Cảm nhận của bệnh nhân",
     railPrev: "Các cảm nhận trước",
@@ -317,9 +327,15 @@ export const vi: Dictionary = {
       "Phấn đấu cải tiến liên tục ở mọi cấp độ.",
     ],
     formsHeading: "Mẫu đơn cho bệnh nhân",
+    // i5-waiver 2026-07-28 newPatients.formsIntro: the EN/ES clause binds to
+    // the external Hushforms packet only — no claim about the site's languages.
     formsIntro:
-      "Cách nhanh nhất là bộ hồ sơ trực tuyến bảo mật của chúng tôi, có sẵn bằng tiếng Anh và tiếng Tây Ban Nha. Quý vị có thể hoàn tất từ bất kỳ thiết bị nào trước buổi thăm khám đầu tiên:",
+      "Cách nhanh nhất là bộ hồ sơ trực tuyến bảo mật của chúng tôi — bộ hồ sơ có sẵn bằng tiếng Anh và tiếng Tây Ban Nha. Quý vị có thể hoàn tất từ bất kỳ thiết bị nào trước buổi thăm khám đầu tiên:",
+    // i5-waiver 2026-07-28 newPatients.formsOnlineEn: the external Hushforms
+    // packet really is English-only; the label says so honestly.
     formsOnlineEn: "Mẫu đơn trực tuyến cho bệnh nhân mới (tiếng Anh)",
+    // i5-waiver 2026-07-28 newPatients.formsOnlineEs: the external Hushforms
+    // packet really is Spanish-only; the label says so honestly.
     formsOnlineEs: "Mẫu đơn trực tuyến cho bệnh nhân mới (tiếng Tây Ban Nha)",
     formsPrintableIntro:
       "Quý vị muốn dùng bản giấy? Các mẫu đơn để in này đang được cập nhật; hãy nhắn tin cho chúng tôi và chúng tôi sẽ gửi quý vị phiên bản hiện hành, hoặc quý vị có thể điền tại quầy lễ tân khi đến.",
@@ -358,9 +374,11 @@ export const vi: Dictionary = {
       "Các tổ chức đáng tin cậy được bác sĩ của chúng tôi khuyên dùng để tìm hiểu thêm về các bệnh lý tiêu hóa, cùng với thư viện giáo dục bệnh nhân và các tờ thông tin của chính chúng tôi.",
     educationHeading: "Thư viện giáo dục bệnh nhân của chúng tôi",
     educationBody:
-      "Các trang viết bằng ngôn ngữ dễ hiểu về các thủ thuật chúng tôi thực hiện và các bệnh lý chúng tôi điều trị — được viết cho bệnh nhân, bằng tiếng Anh và tiếng Tây Ban Nha.",
+      "Các trang viết bằng ngôn ngữ dễ hiểu về các thủ thuật chúng tôi thực hiện và các bệnh lý chúng tôi điều trị — được viết cho bệnh nhân bằng tiếng Anh, tiếng Tây Ban Nha, tiếng Việt, tiếng Hàn và tiếng Ả Rập.",
     educationCta: "Xem trang giáo dục bệnh nhân",
     asgeHeading: "Thông tin thêm từ ASGE",
+    // i5-waiver 2026-07-28 resources.asgeBody: the external ASGE guides really
+    // are English-only; the qualifier is the truth.
     asgeBody:
       "Hiệp hội Nội soi Tiêu hóa Hoa Kỳ (ASGE) cũng xuất bản các cẩm nang cho bệnh nhân về các bệnh lý và thủ thuật tiêu hóa (bằng tiếng Anh).",
     educationCtaConditions: "Cẩm nang ASGE: bệnh lý",
@@ -387,7 +405,7 @@ export const vi: Dictionary = {
   education: {
     title: "Giáo dục bệnh nhân",
     intro:
-      "Giải thích bằng ngôn ngữ dễ hiểu về các thủ thuật chúng tôi thực hiện và các bệnh lý chúng tôi điều trị. Mỗi trang đều có bằng tiếng Anh và tiếng Tây Ban Nha.",
+      "Giải thích bằng ngôn ngữ dễ hiểu về các thủ thuật chúng tôi thực hiện và các bệnh lý chúng tôi điều trị. Mỗi trang đều có bằng tiếng Anh, tiếng Tây Ban Nha, tiếng Việt, tiếng Hàn và tiếng Ả Rập.",
     proceduresHeading: "Thủ thuật và kiểm tra",
     proceduresIntro: "Những điều sẽ diễn ra trước, trong và sau các thủ thuật tiêu hóa thường gặp.",
     conditionsHeading: "Bệnh lý",
