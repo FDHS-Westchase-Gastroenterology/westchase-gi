@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   createContext,
   startTransition,
   use,
+  useCallback,
   useEffect,
+  useEffectEvent,
+  useMemo,
   useRef,
   useState,
 } from "react";
-import { ArrowRight, Check, X } from "@/components/icons";
+import { ArrowRight, ChevronDown, X } from "@/components/icons";
 import {
   PORTAL_RELEASE_BRIEFING,
   type PortalReleaseViewState,
@@ -19,6 +22,8 @@ import {
   acknowledgePortalReleaseAction,
   hidePortalReleaseAction,
   openPortalReleaseAction,
+  recordPortalReleaseDismissAction,
+  recordPortalReleaseGuideOpenAction,
 } from "./release-briefing-actions";
 
 type ReleaseActionResult =
@@ -27,20 +32,22 @@ type ReleaseActionResult =
 
 type PortalReleaseContextValue = {
   available: boolean;
-  sealedVisible: boolean;
+  announcementVisible: boolean;
   homeOpen: boolean;
   quickOpen: boolean;
   quickMotion: boolean;
   firstOpenMotion: boolean;
   actionPending: boolean;
+  guidePending: boolean;
   actionError: string | null;
   quickButtonRef: React.RefObject<HTMLButtonElement | null>;
   openHome: (animate: boolean) => void;
-  closeHome: () => void;
+  dismissHome: () => void;
   acknowledge: () => void;
   hide: () => void;
   toggleQuick: (animate: boolean) => void;
-  closeQuick: () => void;
+  dismissQuick: () => void;
+  openGuide: () => void;
 };
 
 const PortalReleaseContext = createContext<PortalReleaseContextValue | null>(
@@ -67,6 +74,7 @@ export function PortalReleaseProvider({
   initialState: PortalReleaseViewState;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const initiallyAvailable = initialState.status === "available";
   const [available, setAvailable] = useState(initiallyAvailable);
   const [homeOpen, setHomeOpen] = useState(false);
@@ -80,6 +88,7 @@ export function PortalReleaseProvider({
       !eligible,
   );
   const [actionPending, setActionPending] = useState(false);
+  const [guidePending, setGuidePending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const quickButtonRef = useRef<HTMLButtonElement>(null);
   const previousPathname = useRef(pathname);
@@ -96,52 +105,48 @@ export function PortalReleaseProvider({
     return () => cancelAnimationFrame(frame);
   }, [pathname]);
 
-  useEffect(() => {
-    if (!quickOpen && !homeOpen) return;
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key !== "Escape") return;
-      setQuickOpen(false);
-      setHomeOpen(false);
-      requestAnimationFrame(() => quickButtonRef.current?.focus());
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [homeOpen, quickOpen]);
+  const runAction = useCallback(
+    (
+      action: () => Promise<ReleaseActionResult>,
+      failureMessage = "The update is open, but the portal could not save that preference. It may appear as new again later.",
+    ) => {
+      setActionError(null);
+      startTransition(async () => {
+        try {
+          const result = await action();
+          setActionError(result.ok ? null : failureMessage);
+        } catch {
+          setActionError(failureMessage);
+        }
+      });
+    },
+    [],
+  );
 
-  function runAction(action: () => Promise<ReleaseActionResult>) {
-    setActionPending(true);
-    setActionError(null);
-    startTransition(async () => {
-      try {
-        const result = await action();
-        setActionError(
-          result.ok
-            ? null
-            : "The update is open, but the portal could not save that preference. It may appear as new again later.",
-        );
-      } catch {
-        setActionError(
-          "The update is open, but the portal could not save that preference. It may appear as new again later.",
-        );
-      } finally {
-        setActionPending(false);
-      }
-    });
-  }
+  const openHome = useCallback(
+    (animate: boolean) => {
+      setFirstOpenMotion(animate);
+      setAvailable(true);
+      setHomeOpen(true);
+      runAction(() => openPortalReleaseAction(PORTAL_RELEASE_BRIEFING.id));
+    },
+    [runAction],
+  );
 
-  function openHome(animate: boolean) {
-    setFirstOpenMotion(animate);
-    setAvailable(true);
-    setHomeOpen(true);
-    runAction(() => openPortalReleaseAction(PORTAL_RELEASE_BRIEFING.id));
-  }
+  const recordDismiss = useCallback(() => {
+    runAction(
+      () => recordPortalReleaseDismissAction(PORTAL_RELEASE_BRIEFING.id),
+      "The summary closed, but the portal could not record that dismissal.",
+    );
+  }, [runAction]);
 
-  function closeHome() {
+  const dismissHome = useCallback(() => {
     setHomeOpen(false);
+    recordDismiss();
     requestAnimationFrame(() => quickButtonRef.current?.focus());
-  }
+  }, [recordDismiss]);
 
-  function acknowledge() {
+  const acknowledge = useCallback(() => {
     setActionPending(true);
     setActionError(null);
     startTransition(async () => {
@@ -166,9 +171,9 @@ export function PortalReleaseProvider({
         setActionPending(false);
       }
     });
-  }
+  }, []);
 
-  function hide() {
+  const hide = useCallback(() => {
     setActionPending(true);
     setActionError(null);
     startTransition(async () => {
@@ -193,34 +198,114 @@ export function PortalReleaseProvider({
         setActionPending(false);
       }
     });
-  }
+  }, []);
 
-  function toggleQuick(animate: boolean) {
-    setQuickMotion(animate);
-    setQuickOpen((open) => !open);
-  }
+  const toggleQuick = useCallback(
+    (animate: boolean) => {
+      setQuickMotion(animate);
+      if (quickOpen) {
+        setQuickOpen(false);
+        recordDismiss();
+        return;
+      }
+      setQuickOpen(true);
+      runAction(() => openPortalReleaseAction(PORTAL_RELEASE_BRIEFING.id));
+    },
+    [quickOpen, recordDismiss, runAction],
+  );
 
-  const value: PortalReleaseContextValue = {
-    available: available && !hidden,
-    sealedVisible:
-      eligible &&
-      initialState.status === "unseen" &&
-      !available &&
-      !hidden,
-    homeOpen,
-    quickOpen,
-    quickMotion,
-    firstOpenMotion,
-    actionPending,
-    actionError,
-    quickButtonRef,
-    openHome,
-    closeHome,
-    acknowledge,
-    hide,
-    toggleQuick,
-    closeQuick: () => setQuickOpen(false),
-  };
+  const dismissQuick = useCallback(() => {
+    setQuickOpen(false);
+    recordDismiss();
+    requestAnimationFrame(() => quickButtonRef.current?.focus());
+  }, [recordDismiss]);
+
+  const openGuide = useCallback(() => {
+    setGuidePending(true);
+    setActionError(null);
+    startTransition(async () => {
+      try {
+        const result = await recordPortalReleaseGuideOpenAction(
+          PORTAL_RELEASE_BRIEFING.id,
+        );
+        setActionError(
+          result.ok
+            ? null
+            : "The guide is opening, but the portal could not record that selection.",
+        );
+      } catch {
+        setActionError(
+          "The guide is opening, but the portal could not record that selection.",
+        );
+      } finally {
+        setGuidePending(false);
+        router.push(PORTAL_RELEASE_BRIEFING.guideHref);
+      }
+    });
+  }, [router]);
+
+  const handleEscape = useEffectEvent(() => {
+    setQuickOpen(false);
+    setHomeOpen(false);
+    recordDismiss();
+    requestAnimationFrame(() => quickButtonRef.current?.focus());
+  });
+
+  useEffect(() => {
+    if (!quickOpen && !homeOpen) return;
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      handleEscape();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [homeOpen, quickOpen]);
+
+  const value = useMemo<PortalReleaseContextValue>(
+    () => ({
+      available: available && !hidden,
+      announcementVisible:
+        eligible &&
+        initialState.status === "unseen" &&
+        !available &&
+        !hidden,
+      homeOpen,
+      quickOpen,
+      quickMotion,
+      firstOpenMotion,
+      actionPending,
+      guidePending,
+      actionError,
+      quickButtonRef,
+      openHome,
+      dismissHome,
+      acknowledge,
+      hide,
+      toggleQuick,
+      dismissQuick,
+      openGuide,
+    }),
+    [
+      acknowledge,
+      actionError,
+      actionPending,
+      available,
+      dismissHome,
+      dismissQuick,
+      eligible,
+      firstOpenMotion,
+      guidePending,
+      hidden,
+      hide,
+      homeOpen,
+      initialState.status,
+      openGuide,
+      openHome,
+      quickMotion,
+      quickOpen,
+      toggleQuick,
+    ],
+  );
 
   return (
     <PortalReleaseContext value={value}>
@@ -232,35 +317,39 @@ export function PortalReleaseProvider({
   );
 }
 
-function ReleaseSeal({
+function ReleaseSignal({
   animate,
-  broken,
+  resolved,
   compact = false,
 }: {
   animate: boolean;
-  broken: boolean;
+  resolved: boolean;
   compact?: boolean;
 }) {
   return (
     <span
       aria-hidden="true"
-      className="release-seal"
+      className="release-signal"
       data-animate={animate}
-      data-broken={broken}
+      data-resolved={resolved}
       data-compact={compact}
     >
-      <span className="release-seal__half release-seal__half--top" />
-      <span className="release-seal__half release-seal__half--bottom" />
-      <svg className="release-seal__mark" viewBox="0 0 36 36">
-        <path d="M8 19h7l4-7 4 12 5-5" />
-        <circle cx="8" cy="19" r="1.8" />
-        <circle cx="19" cy="12" r="1.8" />
-        <circle cx="28" cy="19" r="1.8" />
-      </svg>
-      <svg className="release-seal__crack" viewBox="0 0 36 36">
-        <path d="m19 3-3 9 4 4-5 6 3 11" />
-        <path d="m18 16-7 2-4 5" />
-        <path d="m16 22-6 3" />
+      <span className="release-signal__list">
+        <span className="release-signal__row">
+          <span className="release-signal__dot" />
+          <span className="release-signal__line release-signal__line--long" />
+        </span>
+        <span className="release-signal__row">
+          <span className="release-signal__dot" />
+          <span className="release-signal__line release-signal__line--medium" />
+        </span>
+        <span className="release-signal__row">
+          <span className="release-signal__dot" />
+          <span className="release-signal__line release-signal__line--short" />
+        </span>
+      </span>
+      <svg className="release-signal__check" viewBox="0 0 24 24">
+        <path d="m6.5 12.5 3.3 3.3 7.7-8" />
       </svg>
     </span>
   );
@@ -277,7 +366,14 @@ function ReleaseSummary({
   open: boolean;
   onClose: () => void;
 }) {
-  const { acknowledge, actionError, actionPending, hide } = usePortalRelease();
+  const {
+    acknowledge,
+    actionError,
+    actionPending,
+    guidePending,
+    hide,
+    openGuide,
+  } = usePortalRelease();
 
   return (
     <section
@@ -358,12 +454,14 @@ function ReleaseSummary({
           Open requests
           <ArrowRight className="h-4 w-4" />
         </Link>
-        <Link
-          href={PORTAL_RELEASE_BRIEFING.guideHref}
+        <button
+          type="button"
+          onClick={openGuide}
+          disabled={guidePending}
           className="btn btn-outline btn-sm min-h-11"
         >
-          See the 2-minute guide
-        </Link>
+          {guidePending ? "Opening guide…" : "See the 2-minute guide"}
+        </button>
         <button
           type="button"
           onClick={acknowledge}
@@ -388,15 +486,15 @@ function ReleaseSummary({
 
 export function PortalReleaseHomeAnnouncement() {
   const {
-    closeHome,
+    dismissHome,
     firstOpenMotion,
     homeOpen,
     openHome,
-    sealedVisible,
+    announcementVisible,
   } = usePortalRelease();
   const pointerActivation = useRef(false);
 
-  if (!sealedVisible && !homeOpen) return null;
+  if (!announcementVisible && !homeOpen) return null;
 
   return (
     <aside
@@ -429,10 +527,7 @@ export function PortalReleaseHomeAnnouncement() {
           onClick={() => openHome(pointerActivation.current)}
           className="release-open-button min-h-12"
         >
-          <ReleaseSeal
-            animate={firstOpenMotion}
-            broken={homeOpen}
-          />
+          <ReleaseSignal animate={firstOpenMotion} resolved={homeOpen} />
           <span>See what changed</span>
         </button>
       </div>
@@ -440,7 +535,7 @@ export function PortalReleaseHomeAnnouncement() {
         animate={firstOpenMotion}
         id="portal-release-home-summary"
         open={homeOpen}
-        onClose={closeHome}
+        onClose={dismissHome}
       />
     </aside>
   );
@@ -449,7 +544,7 @@ export function PortalReleaseHomeAnnouncement() {
 export function PortalReleaseUtility() {
   const {
     available,
-    closeQuick,
+    dismissQuick,
     homeOpen,
     quickMotion,
     quickButtonRef,
@@ -473,6 +568,8 @@ export function PortalReleaseUtility() {
           type="button"
           aria-controls="portal-release-quick-summary"
           aria-expanded={quickOpen}
+          data-animate={quickMotion}
+          data-open={quickOpen}
           onPointerDown={() => {
             pointerActivation.current = true;
           }}
@@ -482,20 +579,20 @@ export function PortalReleaseUtility() {
           onClick={() => toggleQuick(pointerActivation.current)}
           className="release-quick-button"
         >
-          <ReleaseSeal animate={false} broken compact />
+          <ReleaseSignal animate={false} resolved compact />
           <span>
             <strong className="font-black">What’s new</strong>
             <span className="ml-2 hidden text-[0.8rem] text-[var(--color-muted)] sm:inline">
               Opened recently
             </span>
           </span>
-          <Check className="h-4 w-4 text-[var(--color-teal-ink)]" />
+          <ChevronDown className="release-quick-chevron h-4 w-4 text-[var(--color-teal-ink)]" />
         </button>
         <ReleaseSummary
           animate={quickMotion}
           id="portal-release-quick-summary"
           open={quickOpen}
-          onClose={closeQuick}
+          onClose={dismissQuick}
         />
       </div>
     </aside>

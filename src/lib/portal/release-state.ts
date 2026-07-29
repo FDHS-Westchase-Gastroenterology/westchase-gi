@@ -3,6 +3,9 @@ export const PORTAL_RELEASE_ID_MAX_LENGTH = 80;
 
 export const RELEASE_AUDIT_ACTIONS = {
   STAFF_RELEASE_OPEN: "staff.release_open",
+  STAFF_RELEASE_VIEW: "staff.release_view",
+  STAFF_RELEASE_GUIDE_OPEN: "staff.release_guide_open",
+  STAFF_RELEASE_DISMISS: "staff.release_dismiss",
   STAFF_RELEASE_ACKNOWLEDGE: "staff.release_acknowledge",
   STAFF_RELEASE_HIDE: "staff.release_hide",
 } as const;

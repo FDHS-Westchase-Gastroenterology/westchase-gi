@@ -36,6 +36,8 @@ const RPC_SIGNATURES = {
   portal_open_staff_release: "p_user_id uuid, p_release_id text",
   portal_preview_data_lifecycle: "p_now timestamp with time zone",
   portal_record_staff_password_reset: "p_user_id uuid",
+  portal_record_staff_release_dismiss: "p_user_id uuid, p_release_id text",
+  portal_record_staff_release_guide_open: "p_user_id uuid, p_release_id text",
   portal_run_data_lifecycle:
     "p_actor_email text, p_now timestamp with time zone",
   portal_set_request_legal_hold:
@@ -87,6 +89,8 @@ const RPC_RESULTS = {
   portal_open_staff_release: "boolean",
   portal_preview_data_lifecycle: "jsonb",
   portal_record_staff_password_reset: "boolean",
+  portal_record_staff_release_dismiss: "boolean",
+  portal_record_staff_release_guide_open: "boolean",
   portal_run_data_lifecycle: "jsonb",
   portal_set_request_legal_hold: "boolean",
   portal_set_staff_tour_dismissed: "boolean",
@@ -103,6 +107,8 @@ const AUDIT_RPC_SOURCES = {
   portal_hide_staff_release: "staff",
   portal_open_staff_release: "staff",
   portal_record_staff_password_reset: "staff",
+  portal_record_staff_release_dismiss: "staff",
+  portal_record_staff_release_guide_open: "staff",
   portal_run_data_lifecycle: "system",
   portal_set_request_legal_hold: "staff",
   portal_set_staff_tour_dismissed: "staff",
@@ -156,6 +162,14 @@ const ANALYTICS_MIGRATION = {
 const PORTAL_RELEASE_STATE_MIGRATION = {
   version: "20260729095026",
   name: "add_portal_release_briefing_state",
+}
+const PORTAL_RELEASE_ENGAGEMENT_MIGRATION = {
+  version: "20260729105056",
+  name: "add_portal_release_engagement_telemetry",
+}
+const PORTAL_RELEASE_GUIDE_FIX_MIGRATION = {
+  version: "20260729105736",
+  name: "fix_portal_release_guide_timestamp",
 }
 
 const TARGETS = new Set(["dev", "prod"])
@@ -597,6 +611,22 @@ async function main() {
     ),
     `Portal release-state migration ${PORTAL_RELEASE_STATE_MIGRATION.version}_${PORTAL_RELEASE_STATE_MIGRATION.name} is not applied`,
   )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === PORTAL_RELEASE_ENGAGEMENT_MIGRATION.version &&
+        row.name === PORTAL_RELEASE_ENGAGEMENT_MIGRATION.name,
+    ),
+    `Portal release-engagement migration ${PORTAL_RELEASE_ENGAGEMENT_MIGRATION.version}_${PORTAL_RELEASE_ENGAGEMENT_MIGRATION.name} is not applied`,
+  )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === PORTAL_RELEASE_GUIDE_FIX_MIGRATION.version &&
+        row.name === PORTAL_RELEASE_GUIDE_FIX_MIGRATION.name,
+    ),
+    `Portal release guide fix migration ${PORTAL_RELEASE_GUIDE_FIX_MIGRATION.version}_${PORTAL_RELEASE_GUIDE_FIX_MIGRATION.name} is not applied`,
+  )
 
   const onboardingColumnRows = await queryDatabase({
     accessToken,
@@ -656,6 +686,13 @@ async function main() {
         "first_opened_at",
         "acknowledged_at",
         "hidden_at",
+        "last_viewed_at",
+        "view_count",
+        "guide_opened_at",
+        "last_guide_opened_at",
+        "guide_open_count",
+        "last_dismissed_at",
+        "dismiss_count",
       ],
     ) &&
       portalReleaseColumnRows.find(
@@ -673,8 +710,19 @@ async function main() {
         (row) => row.column_name === "acknowledged_at",
       )?.is_nullable === "YES" &&
       portalReleaseColumnRows.find((row) => row.column_name === "hidden_at")
-        ?.is_nullable === "YES",
-    "portal_release_states must contain only the staff/release key and three timestamp fields",
+        ?.is_nullable === "YES" &&
+      portalReleaseColumnRows.find(
+        (row) => row.column_name === "last_viewed_at",
+      )?.is_nullable === "NO" &&
+      portalReleaseColumnRows
+        .filter((row) => row.column_name.endsWith("_count"))
+        .every(
+          (row) =>
+            row.data_type === "integer" &&
+            row.is_nullable === "NO" &&
+            row.column_default !== null,
+        ),
+    "portal_release_states must contain the per-staff release state and bounded engagement telemetry",
   )
 
   const portalReleaseConstraintRows = await queryDatabase({
@@ -693,6 +741,18 @@ async function main() {
   const portalReleaseIdCheck = portalReleaseConstraintRows.find(
     (row) => row.conname === "portal_release_states_release_id_valid",
   )
+  const portalReleaseViewCountCheck = portalReleaseConstraintRows.find(
+    (row) => row.conname === "portal_release_states_view_count_valid",
+  )
+  const portalReleaseViewTimestampCheck = portalReleaseConstraintRows.find(
+    (row) => row.conname === "portal_release_states_view_timestamps_valid",
+  )
+  const portalReleaseGuideCheck = portalReleaseConstraintRows.find(
+    (row) => row.conname === "portal_release_states_guide_engagement_valid",
+  )
+  const portalReleaseDismissCheck = portalReleaseConstraintRows.find(
+    (row) => row.conname === "portal_release_states_dismiss_engagement_valid",
+  )
   assert(
     ["p", 112].includes(portalReleasePrimaryKey?.contype) &&
       portalReleasePrimaryKey.definition
@@ -700,8 +760,16 @@ async function main() {
         .includes("staff_user_id, release_id") &&
       ["c", 99].includes(portalReleaseIdCheck?.contype) &&
       portalReleaseIdCheck.definition.toLowerCase().includes("btrim") &&
-      portalReleaseIdCheck.definition.toLowerCase().includes("80"),
-    "portal_release_states must use the staff/release primary key and a bounded release identifier",
+      portalReleaseIdCheck.definition.toLowerCase().includes("80") &&
+      ["c", 99].includes(portalReleaseViewCountCheck?.contype) &&
+      portalReleaseViewCountCheck.definition.includes("2147483647") &&
+      ["c", 99].includes(portalReleaseViewTimestampCheck?.contype) &&
+      portalReleaseViewTimestampCheck.definition.includes("last_viewed_at") &&
+      ["c", 99].includes(portalReleaseGuideCheck?.contype) &&
+      portalReleaseGuideCheck.definition.includes("guide_open_count") &&
+      ["c", 99].includes(portalReleaseDismissCheck?.contype) &&
+      portalReleaseDismissCheck.definition.includes("dismiss_count"),
+    "portal_release_states must use the staff/release key and enforce bounded, timestamp-consistent engagement telemetry",
   )
 
   const tableRows = await queryDatabase({
@@ -1143,7 +1211,9 @@ async function main() {
     if (
       rpc.proname === "portal_open_staff_release" ||
       rpc.proname === "portal_acknowledge_staff_release" ||
-      rpc.proname === "portal_hide_staff_release"
+      rpc.proname === "portal_hide_staff_release" ||
+      rpc.proname === "portal_record_staff_release_guide_open" ||
+      rpc.proname === "portal_record_staff_release_dismiss"
     ) {
       const definition = rpc.definition.toLowerCase()
       assert(
@@ -1157,9 +1227,32 @@ async function main() {
       )
     }
     if (rpc.proname === "portal_open_staff_release") {
+      const definition = rpc.definition.toLowerCase()
       assert(
-        rpc.definition.toLowerCase().includes("on conflict"),
-        "portal_open_staff_release must claim the first-open state atomically",
+        definition.includes("on conflict") &&
+          definition.includes("view_count = view_count + 1") &&
+          definition.includes("'staff.release_open'") &&
+          definition.includes("'staff.release_view'"),
+        "portal_open_staff_release must atomically distinguish first-open from repeat-view telemetry",
+      )
+    }
+    if (rpc.proname === "portal_record_staff_release_guide_open") {
+      const definition = rpc.definition.toLowerCase()
+      assert(
+        definition.includes("guide_open_count = guide_open_count + 1") &&
+          definition.includes(
+            "guide_opened_at = coalesce(guide_opened_at, v_event_at)",
+          ) &&
+          definition.includes("'staff.release_guide_open'"),
+        "portal_record_staff_release_guide_open must preserve the first event and atomically count every guide open",
+      )
+    }
+    if (rpc.proname === "portal_record_staff_release_dismiss") {
+      const definition = rpc.definition.toLowerCase()
+      assert(
+        definition.includes("dismiss_count = dismiss_count + 1") &&
+          definition.includes("'staff.release_dismiss'"),
+        "portal_record_staff_release_dismiss must atomically count every dismiss",
       )
     }
     if (rpc.proname === "portal_run_data_lifecycle") {
@@ -1302,6 +1395,12 @@ async function main() {
     `Verified ${target} migration: ${PORTAL_RELEASE_STATE_MIGRATION.version}_${PORTAL_RELEASE_STATE_MIGRATION.name}`,
   )
   console.log(
+    `Verified ${target} migration: ${PORTAL_RELEASE_ENGAGEMENT_MIGRATION.version}_${PORTAL_RELEASE_ENGAGEMENT_MIGRATION.name}`,
+  )
+  console.log(
+    `Verified ${target} migration: ${PORTAL_RELEASE_GUIDE_FIX_MIGRATION.version}_${PORTAL_RELEASE_GUIDE_FIX_MIGRATION.name}`,
+  )
+  console.log(
     `Verified ${target} request lifecycle: nullable legacy-safe columns, constraints, preview, hold-aware deletion`,
   )
   console.log(
@@ -1311,7 +1410,7 @@ async function main() {
     `Verified ${target} analytics_daily: persistent private table, RLS, service-only ACL, event vocabulary`,
   )
   console.log(
-    `Verified ${target} portal_release_states: per-staff key, bounded release id, RLS, service-only ACL`,
+    `Verified ${target} portal_release_states: per-staff key, bounded release id and engagement counters, RLS, service-only ACL`,
   )
   console.log(
     `Verified ${target} staff_profiles.onboarded_at: nullable timestamptz, no default`,

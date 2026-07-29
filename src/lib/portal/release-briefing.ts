@@ -16,7 +16,9 @@ export type { PortalReleaseState };
 type PortalReleaseMutation =
   | "portal_open_staff_release"
   | "portal_acknowledge_staff_release"
-  | "portal_hide_staff_release";
+  | "portal_hide_staff_release"
+  | "portal_record_staff_release_guide_open"
+  | "portal_record_staff_release_dismiss";
 
 export async function getPortalReleaseState(
   session: PortalSessionUser,

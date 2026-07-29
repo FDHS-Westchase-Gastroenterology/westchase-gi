@@ -141,6 +141,18 @@ test.describe("Supabase dependency contract", () => {
         p_release_id: "dependency-contract",
       }),
     );
+    expectPermissionDenied(
+      await anon.rpc("portal_record_staff_release_guide_open", {
+        p_user_id: randomUUID(),
+        p_release_id: "dependency-contract",
+      }),
+    );
+    expectPermissionDenied(
+      await anon.rpc("portal_record_staff_release_dismiss", {
+        p_user_id: randomUUID(),
+        p_release_id: "dependency-contract",
+      }),
+    );
 
     const authenticated = publicClient();
     const signIn = await authenticated.auth.signInWithPassword({
@@ -211,6 +223,18 @@ test.describe("Supabase dependency contract", () => {
           p_release_id: "dependency-contract",
         }),
       );
+      expectPermissionDenied(
+        await authenticated.rpc("portal_record_staff_release_guide_open", {
+          p_user_id: signIn.data.user?.id ?? randomUUID(),
+          p_release_id: "dependency-contract",
+        }),
+      );
+      expectPermissionDenied(
+        await authenticated.rpc("portal_record_staff_release_dismiss", {
+          p_user_id: signIn.data.user?.id ?? randomUUID(),
+          p_release_id: "dependency-contract",
+        }),
+      );
 
       const serviceRead = await serviceDb()
         .from("staff_profiles")
@@ -228,9 +252,10 @@ test.describe("Supabase dependency contract", () => {
     }
   });
 
-  test("keeps portal release state per staff with idempotent atomic audits", async () => {
+  test("keeps portal release engagement per staff with atomic counters and audits", async () => {
     const db = serviceDb();
     const releaseId = `dependency-${randomUUID()}`;
+    const legacyShapeReleaseId = `legacy-shape-${randomUUID()}`;
     const secondEmail = `release-second-${randomUUID()}@example.test`;
     const pendingEmail = `release-pending-${randomUUID()}@example.test`;
     const inactiveEmail = `release-inactive-${randomUUID()}@example.test`;
@@ -305,14 +330,28 @@ test.describe("Supabase dependency contract", () => {
 
       const openedState = await db
         .from("portal_release_states")
-        .select("first_opened_at, acknowledged_at, hidden_at")
+        .select(
+          "first_opened_at, last_viewed_at, view_count, acknowledged_at, hidden_at, guide_opened_at, last_guide_opened_at, guide_open_count, last_dismissed_at, dismiss_count",
+        )
         .eq("staff_user_id", seedProfile.user_id)
         .eq("release_id", releaseId)
         .single();
       expect(openedState.error).toBeNull();
-      expect(openedState.data?.first_opened_at).toEqual(expect.any(String));
-      expect(openedState.data?.acknowledged_at).toBeNull();
-      expect(openedState.data?.hidden_at).toBeNull();
+      expect(openedState.data).toMatchObject({
+        first_opened_at: expect.any(String),
+        last_viewed_at: expect.any(String),
+        view_count: 1,
+        acknowledged_at: null,
+        hidden_at: null,
+        guide_opened_at: null,
+        last_guide_opened_at: null,
+        guide_open_count: 0,
+        last_dismissed_at: null,
+        dismiss_count: 0,
+      });
+      expect(openedState.data?.last_viewed_at).toBe(
+        openedState.data?.first_opened_at,
+      );
       const firstOpenedAt = openedState.data?.first_opened_at;
 
       const repeatedOpen = await db.rpc("portal_open_staff_release", {
@@ -321,16 +360,85 @@ test.describe("Supabase dependency contract", () => {
       });
       expect(repeatedOpen.error).toBeNull();
       expect(repeatedOpen.data).toBe(false);
+
+      const firstGuideOpen = await db.rpc(
+        "portal_record_staff_release_guide_open",
+        {
+          p_user_id: seedProfile.user_id,
+          p_release_id: releaseId,
+        },
+      );
+      expect(firstGuideOpen.error).toBeNull();
+      expect(firstGuideOpen.data).toBe(true);
+
+      const firstDismiss = await db.rpc(
+        "portal_record_staff_release_dismiss",
+        {
+          p_user_id: seedProfile.user_id,
+          p_release_id: releaseId,
+        },
+      );
+      expect(firstDismiss.error).toBeNull();
+      expect(firstDismiss.data).toBe(true);
+
+      const beforeConcurrentEvents = await db
+        .from("portal_release_states")
+        .select("guide_opened_at")
+        .eq("staff_user_id", seedProfile.user_id)
+        .eq("release_id", releaseId)
+        .single();
+      expect(beforeConcurrentEvents.error).toBeNull();
+      const firstGuideOpenedAt = beforeConcurrentEvents.data?.guide_opened_at;
+
+      const concurrentEvents = await Promise.all([
+        ...Array.from({ length: 4 }, () =>
+          db.rpc("portal_open_staff_release", {
+            p_user_id: seedProfile.user_id,
+            p_release_id: releaseId,
+          }),
+        ),
+        ...Array.from({ length: 3 }, () =>
+          db.rpc("portal_record_staff_release_guide_open", {
+            p_user_id: seedProfile.user_id,
+            p_release_id: releaseId,
+          }),
+        ),
+        ...Array.from({ length: 2 }, () =>
+          db.rpc("portal_record_staff_release_dismiss", {
+            p_user_id: seedProfile.user_id,
+            p_release_id: releaseId,
+          }),
+        ),
+      ]);
+      for (const event of concurrentEvents) {
+        expect(event.error).toBeNull();
+      }
+
+      const countedState = await db
+        .from("portal_release_states")
+        .select(
+          "first_opened_at, last_viewed_at, view_count, guide_opened_at, last_guide_opened_at, guide_open_count, last_dismissed_at, dismiss_count",
+        )
+        .eq("staff_user_id", seedProfile.user_id)
+        .eq("release_id", releaseId)
+        .single();
+      expect(countedState.error).toBeNull();
+      expect(countedState.data).toMatchObject({
+        first_opened_at: firstOpenedAt,
+        last_viewed_at: expect.any(String),
+        view_count: 6,
+        guide_opened_at: firstGuideOpenedAt,
+        last_guide_opened_at: expect.any(String),
+        guide_open_count: 4,
+        last_dismissed_at: expect.any(String),
+        dismiss_count: 3,
+      });
       expect(
-        (
-          await db
-            .from("portal_release_states")
-            .select("first_opened_at")
-            .eq("staff_user_id", seedProfile.user_id)
-            .eq("release_id", releaseId)
-            .single()
-        ).data?.first_opened_at,
-      ).toBe(firstOpenedAt);
+        Date.parse(countedState.data?.last_viewed_at ?? ""),
+      ).toBeGreaterThanOrEqual(Date.parse(firstOpenedAt ?? ""));
+      expect(
+        Date.parse(countedState.data?.last_guide_opened_at ?? ""),
+      ).toBeGreaterThanOrEqual(Date.parse(firstGuideOpenedAt ?? ""));
 
       const acknowledged = await db.rpc(
         "portal_acknowledge_staff_release",
@@ -379,15 +487,21 @@ test.describe("Supabase dependency contract", () => {
 
       const finalState = await db
         .from("portal_release_states")
-        .select("first_opened_at, acknowledged_at, hidden_at")
+        .select(
+          "first_opened_at, last_viewed_at, view_count, acknowledged_at, hidden_at, guide_opened_at, last_guide_opened_at, guide_open_count, last_dismissed_at, dismiss_count",
+        )
         .eq("staff_user_id", seedProfile.user_id)
         .eq("release_id", releaseId)
         .single();
       expect(finalState.error).toBeNull();
       expect(finalState.data).toMatchObject({
         first_opened_at: firstOpenedAt,
+        view_count: 6,
         acknowledged_at: acknowledgedState.data?.acknowledged_at,
         hidden_at: expect.any(String),
+        guide_opened_at: firstGuideOpenedAt,
+        guide_open_count: 4,
+        dismiss_count: 3,
       });
 
       const seedAudits = await db
@@ -397,12 +511,19 @@ test.describe("Supabase dependency contract", () => {
         .contains("detail", { release_id: releaseId })
         .order("at");
       expect(seedAudits.error).toBeNull();
-      expect(seedAudits.data).toHaveLength(3);
-      expect(seedAudits.data?.map(({ action }) => action)).toEqual([
-        "staff.release_open",
-        "staff.release_acknowledge",
-        "staff.release_hide",
-      ]);
+      expect(seedAudits.data).toHaveLength(15);
+      const auditCounts = new Map<string, number>();
+      for (const { action } of seedAudits.data ?? []) {
+        auditCounts.set(action, (auditCounts.get(action) ?? 0) + 1);
+      }
+      expect(Object.fromEntries(auditCounts)).toEqual({
+        "staff.release_open": 1,
+        "staff.release_view": 5,
+        "staff.release_guide_open": 4,
+        "staff.release_dismiss": 3,
+        "staff.release_acknowledge": 1,
+        "staff.release_hide": 1,
+      });
       for (const audit of seedAudits.data ?? []) {
         expect(audit).toMatchObject({
           entity: "portal_release_states",
@@ -415,6 +536,24 @@ test.describe("Supabase dependency contract", () => {
         );
         expect(Object.keys(audit.detail ?? {})).toEqual(["release_id"]);
       }
+
+      for (const mutation of [
+        "portal_record_staff_release_guide_open",
+        "portal_record_staff_release_dismiss",
+      ] as const) {
+        const missingState = await db.rpc(mutation, {
+          p_user_id: second.userId,
+          p_release_id: releaseId,
+        });
+        expect(missingState.error?.code).toBe("P0002");
+      }
+      const missingStateAudits = await db
+        .from("audit_log")
+        .select("id")
+        .eq("entity_id", second.profileId)
+        .contains("detail", { release_id: releaseId });
+      expect(missingStateAudits.error).toBeNull();
+      expect(missingStateAudits.data).toEqual([]);
 
       const secondOpen = await db.rpc("portal_open_staff_release", {
         p_user_id: second.userId,
@@ -432,16 +571,42 @@ test.describe("Supabase dependency contract", () => {
         [seedProfile.user_id, second.userId].sort(),
       );
 
+      const reportRows = await db
+        .from("portal_release_states")
+        .select(
+          "staff_user_id, profile:staff_profiles!portal_release_states_staff_user_id_fkey(display_name,email,active)",
+        )
+        .eq("release_id", releaseId)
+        .order("staff_user_id");
+      expect(reportRows.error).toBeNull();
+      expect(reportRows.data).toHaveLength(2);
+      expect(
+        reportRows.data?.every(
+          ({ profile }) =>
+            profile !== null &&
+            typeof profile === "object" &&
+            "display_name" in profile &&
+            "email" in profile &&
+            "active" in profile,
+        ),
+      ).toBe(true);
+
       for (const rejectedUserId of [
         pending.userId,
         inactive.userId,
         randomUUID(),
       ]) {
-        const rejected = await db.rpc("portal_open_staff_release", {
-          p_user_id: rejectedUserId,
-          p_release_id: releaseId,
-        });
-        expect(rejected.error?.code).toBe("P0002");
+        for (const mutation of [
+          "portal_open_staff_release",
+          "portal_record_staff_release_guide_open",
+          "portal_record_staff_release_dismiss",
+        ] as const) {
+          const rejected = await db.rpc(mutation, {
+            p_user_id: rejectedUserId,
+            p_release_id: releaseId,
+          });
+          expect(rejected.error?.code).toBe("P0002");
+        }
       }
       expect(
         (
@@ -453,17 +618,45 @@ test.describe("Supabase dependency contract", () => {
       ).toHaveLength(2);
 
       for (const invalidReleaseId of ["", " has-spaces", "x".repeat(81)]) {
-        const rejected = await db.rpc("portal_open_staff_release", {
-          p_user_id: seedProfile.user_id,
-          p_release_id: invalidReleaseId,
-        });
-        expect(rejected.error?.code).toBe("22023");
+        for (const mutation of [
+          "portal_open_staff_release",
+          "portal_record_staff_release_guide_open",
+          "portal_record_staff_release_dismiss",
+        ] as const) {
+          const rejected = await db.rpc(mutation, {
+            p_user_id: seedProfile.user_id,
+            p_release_id: invalidReleaseId,
+          });
+          expect(rejected.error?.code).toBe("22023");
+        }
       }
+
+      const legacyShapeInsert = await db
+        .from("portal_release_states")
+        .insert({
+          staff_user_id: second.userId,
+          release_id: legacyShapeReleaseId,
+        })
+        .select("first_opened_at, last_viewed_at, view_count")
+        .single();
+      expect(legacyShapeInsert.error).toBeNull();
+      expect(legacyShapeInsert.data).toMatchObject({
+        first_opened_at: expect.any(String),
+        last_viewed_at: expect.any(String),
+        view_count: 1,
+      });
+      expect(legacyShapeInsert.data?.last_viewed_at).toBe(
+        legacyShapeInsert.data?.first_opened_at,
+      );
+      await db
+        .from("portal_release_states")
+        .delete()
+        .eq("release_id", legacyShapeReleaseId);
     } finally {
       await db
         .from("portal_release_states")
         .delete()
-        .eq("release_id", releaseId);
+        .in("release_id", [releaseId, legacyShapeReleaseId]);
       await db
         .from("audit_log")
         .delete()

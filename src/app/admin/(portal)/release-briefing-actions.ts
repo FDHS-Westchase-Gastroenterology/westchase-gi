@@ -12,7 +12,9 @@ export type PortalReleaseActionResult =
 type PortalReleaseMutation =
   | "portal_open_staff_release"
   | "portal_acknowledge_staff_release"
-  | "portal_hide_staff_release";
+  | "portal_hide_staff_release"
+  | "portal_record_staff_release_guide_open"
+  | "portal_record_staff_release_dismiss";
 
 async function runPortalReleaseAction(
   mutation: PortalReleaseMutation,
@@ -49,4 +51,22 @@ export async function hidePortalReleaseAction(
   releaseId: unknown,
 ): Promise<PortalReleaseActionResult> {
   return runPortalReleaseAction("portal_hide_staff_release", releaseId);
+}
+
+export async function recordPortalReleaseGuideOpenAction(
+  releaseId: unknown,
+): Promise<PortalReleaseActionResult> {
+  return runPortalReleaseAction(
+    "portal_record_staff_release_guide_open",
+    releaseId,
+  );
+}
+
+export async function recordPortalReleaseDismissAction(
+  releaseId: unknown,
+): Promise<PortalReleaseActionResult> {
+  return runPortalReleaseAction(
+    "portal_record_staff_release_dismiss",
+    releaseId,
+  );
 }

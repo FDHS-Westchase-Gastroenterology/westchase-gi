@@ -93,7 +93,8 @@ staff browser ──────►   ├─ src/app/admin/**   portal (Supabase
 | `contracts.ts` | The shared contract: `requestInputSchema` (zod), `REQUEST_FIELD_LIMITS`, `REQUEST_STATUSES`, `RequestClosureDisposition`, `StaffRole`, `AUDIT_ACTIONS`, `IntakeResponse` (the only permitted intake response shape), `INTAKE_API` / `INTAKE_NOJS_ACTION`, `receiptPath`, `HONEYPOT_FIELD` (`"company"`), `INTAKE_RATE_LIMIT`, generic `RESET_REQUEST_MESSAGE`. |
 | `server.ts` | Supabase client factories: `serverClient()` (session-bound), `serviceClient()` (service role). Reads server-only env; never `NEXT_PUBLIC_*`. |
 | `auth.ts` | `requireRole()` for every portal page/action; `staff_profiles` authorization via the service client (never user-editable metadata); password-flow signed-cookie helpers for invite/recovery. |
-| `release-briefing.ts`, `release-state.ts` | Per-staff release-briefing read/mutation boundary and the PHI-free five-state model. The application owns release content; Postgres stores only first-open, acknowledgement, and early-hide timestamps. |
+| `release-briefing.ts`, `release-state.ts` | Per-staff release-briefing read/mutation boundary, technical audit classifier, and PHI-free five-state model. The application owns release content; Postgres stores bounded per-release view, guide-open, dismiss, acknowledgement, and hide engagement. |
+| `release-engagement.ts`, `release-engagement-model.ts` | Server-only release-engagement report query plus fail-closed row parser. It joins release state to staff identity for the admin Activity surface and never reads patient tables. |
 | `intake.ts` | `processIntake()`: validate → honeypot drop → shared atomic throttle → durable insert → receipt token. `consumeRequestReceipt()` for the one-time receipt page. |
 | `telemetry.ts` | `processTelemetry()`: zod → shared throttle (telemetry HMAC domain) → `portal_record_analytics_event` upsert. |
 | `intake-notification.ts` | Fan-out to ACTIVE recipients; one `request_events` row per recipient with provider outcome. Zero patient fields. |
@@ -156,7 +157,7 @@ ProfileCardViewer, Reveal, etc.). Portal UI is colocated with its routes in
 | `public.request_events` | Per-request event stream: notification attempts (recipient, provider message id, outcome) and attributed staff notes. Cascade-deletes with its parent request. |
 | `public.notification_recipients` | Who gets new-request email pings; `active` toggles pause/resume; optional label. |
 | `public.staff_profiles` | Authorization source of truth: `user_id → auth.users`, role (`admin`/`staff`), active flag. |
-| `public.portal_release_states` | PHI-free per-staff release briefing state keyed by `(staff_user_id, release_id)`: immutable first open plus idempotent acknowledgement and early hide. |
+| `public.portal_release_states` | PHI-free per-staff release briefing state keyed by `(staff_user_id, release_id)`: immutable first open, last-view and bounded view count, first/last guide open and count, last dismiss and count, plus idempotent acknowledgement and early hide. |
 | `public.audit_log` | Every staff-visible mutation: actor, action, entity, detail JSONB (metadata only — never patient text). Six-year retention. |
 | `private.intake_rate_limits` | Expired-bucket HMAC throttle state, cleaned by the lifecycle run. |
 | `private.analytics_daily` | PHI-free patient-site daily event rollups `(day, event, route_template, locale, device_class)` — aggregate counts only. |
@@ -169,7 +170,9 @@ Intake: `portal_check_intake_rate_limit`. Telemetry: `portal_record_analytics_ev
 `portal_close_request`, `portal_add_request_note`, `portal_log_call_outcome` (atomic combined
 outcome). Recipients: `portal_update_recipient_label`. Staff: `portal_complete_staff_onboarding`,
 `portal_record_staff_password_reset`, `portal_set_staff_tour_dismissed`. Release briefing:
-`portal_open_staff_release`, `portal_acknowledge_staff_release`, `portal_hide_staff_release`.
+`portal_open_staff_release`, `portal_record_staff_release_guide_open`,
+`portal_record_staff_release_dismiss`, `portal_acknowledge_staff_release`,
+`portal_hide_staff_release`.
 Lifecycle:
 `portal_preview_data_lifecycle`, `portal_run_data_lifecycle`, `portal_set_request_legal_hold`,
 `portal_delete_request_early`.

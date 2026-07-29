@@ -1141,10 +1141,11 @@
   }
 
   /* ---- Staff release briefing ----
-     The first open is a rare, authored moment: a restrained seal fracture
-     explains that staff deliberately opened a maintained-software update.
-     Re-entry stays crisp and utility-like. The expanded surfaces are
-     anchored overlays, so the queue never jumps while the briefing opens. */
+     The first open is a rare, authored moment: a compact change list resolves
+     into a check as the summary opens. It reads as maintained software rather
+     than a literal object or celebration. Re-entry stays crisp and
+     utility-like. Expanded surfaces are anchored overlays, so the queue never
+     jumps while the briefing opens. */
   .portal-release-home {
     z-index: var(--z-dropdown);
   }
@@ -1188,95 +1189,148 @@
     color: var(--color-muted);
   }
 
-  .release-seal {
+  .release-signal {
     position: relative;
     display: grid;
     width: 2.75rem;
     height: 2.75rem;
     flex: none;
+    overflow: hidden;
     place-items: center;
-    filter: drop-shadow(0 5px 7px oklch(0.42 0.08 70 / 0.2));
+    border: 1px solid color-mix(in oklch, var(--color-navy-2) 78%, white);
+    border-radius: calc(var(--radius-sm) + 0.1rem);
+    background: var(--color-navy-2);
+    box-shadow:
+      inset 0 1px 0 oklch(1 0 0 / 0.16),
+      0 5px 12px -7px oklch(0.22 0.05 248 / 0.65);
   }
 
-  .release-seal[data-compact="true"] {
+  .release-signal[data-compact="true"] {
     width: 2rem;
     height: 2rem;
+    border-radius: calc(var(--radius-sm) - 0.05rem);
   }
 
-  .release-seal__half {
+  .release-signal__list,
+  .release-signal__check {
     position: absolute;
-    inset: 0;
+    transition:
+      opacity 120ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .release-signal__list {
+    inset: 0.72rem 0.62rem;
+    display: grid;
+    align-content: center;
+    gap: 0.22rem;
+  }
+
+  .release-signal__row {
+    display: flex;
+    align-items: center;
+    gap: 0.24rem;
+    transform: none;
+    transition:
+      opacity 110ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .release-signal__dot {
+    width: 0.2rem;
+    height: 0.2rem;
+    flex: none;
     border-radius: 999px;
     background: var(--color-amber);
-    box-shadow:
-      inset 0 0 0 2px color-mix(in oklch, var(--color-amber-deep) 28%, transparent),
-      inset 0 0 0 5px color-mix(in oklch, white 16%, transparent);
-    transition: transform 170ms cubic-bezier(0.23, 1, 0.32, 1);
   }
 
-  .release-seal__half--top {
-    clip-path: inset(0 0 48% 0 round 999px 999px 0 0);
-    transform-origin: bottom center;
+  .release-signal__line {
+    height: 0.13rem;
+    border-radius: 999px;
+    background: color-mix(in oklch, white 86%, var(--color-mint));
   }
 
-  .release-seal__half--bottom {
-    clip-path: inset(48% 0 0 0 round 0 0 999px 999px);
-    transform-origin: top center;
+  .release-signal__line--long {
+    width: 0.9rem;
   }
 
-  .release-seal[data-broken="true"] .release-seal__half--top {
-    transform: translate3d(-1px, -1.5px, 0) rotate(-1.5deg);
+  .release-signal__line--medium {
+    width: 0.72rem;
   }
 
-  .release-seal[data-broken="true"] .release-seal__half--bottom {
-    transform: translate3d(1px, 1.5px, 0) rotate(1.5deg);
+  .release-signal__line--short {
+    width: 0.52rem;
   }
 
-  .release-seal__mark,
-  .release-seal__crack {
-    position: absolute;
-    inset: 17%;
-    width: 66%;
-    height: 66%;
-    overflow: visible;
-    color: var(--color-navy-2);
-    transition:
-      opacity 90ms cubic-bezier(0.23, 1, 0.32, 1),
-      transform 170ms cubic-bezier(0.23, 1, 0.32, 1);
-  }
-
-  .release-seal__mark {
-    fill: var(--color-amber);
-    stroke: currentColor;
-    stroke-width: 2.2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .release-seal[data-broken="true"] .release-seal__mark {
-    opacity: 0.28;
-    transform: scale(0.96);
-  }
-
-  .release-seal__crack {
+  .release-signal__check {
+    inset: 0.58rem;
     fill: none;
-    stroke: var(--color-navy-2);
-    stroke-width: 2.2;
+    stroke: white;
+    stroke-width: 2.35;
     stroke-linecap: round;
     stroke-linejoin: round;
     opacity: 0;
-    transform: scale(0.94);
+    transform: scale(0.94) translate3d(0, 2px, 0);
   }
 
-  .release-seal[data-broken="true"] .release-seal__crack {
+  .release-signal[data-resolved="true"] .release-signal__list {
+    opacity: 0;
+    transform: translate3d(0, -3px, 0) scale(0.97);
+  }
+
+  .release-signal[data-resolved="true"] .release-signal__row {
+    opacity: 0;
+    transform: translate3d(5px, 0, 0);
+  }
+
+  .release-signal[data-resolved="true"] .release-signal__row:nth-child(2) {
+    transition-delay: 25ms;
+  }
+
+  .release-signal[data-resolved="true"] .release-signal__row:nth-child(3) {
+    transition-delay: 50ms;
+  }
+
+  .release-signal[data-resolved="true"] .release-signal__check {
     opacity: 1;
     transform: none;
+    transition-delay: 70ms;
   }
 
-  .release-seal[data-animate="false"] :where(
-      .release-seal__half,
-      .release-seal__mark,
-      .release-seal__crack
+  .release-signal[data-compact="true"] .release-signal__list {
+    inset: 0.5rem 0.42rem;
+    gap: 0.16rem;
+  }
+
+  .release-signal[data-compact="true"] .release-signal__dot {
+    width: 0.15rem;
+    height: 0.15rem;
+  }
+
+  .release-signal[data-compact="true"] .release-signal__line {
+    height: 0.1rem;
+  }
+
+  .release-signal[data-compact="true"] .release-signal__line--long {
+    width: 0.66rem;
+  }
+
+  .release-signal[data-compact="true"] .release-signal__line--medium {
+    width: 0.52rem;
+  }
+
+  .release-signal[data-compact="true"] .release-signal__line--short {
+    width: 0.38rem;
+  }
+
+  .release-signal[data-compact="true"] .release-signal__check {
+    inset: 0.4rem;
+  }
+
+  .release-signal[data-animate="false"] :where(
+      .release-signal__list,
+      .release-signal__row,
+      .release-signal__check
     ) {
     transition: none;
   }
@@ -1357,6 +1411,18 @@
     font-size: 0.86rem;
   }
 
+  .release-quick-chevron {
+    transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .release-quick-button[data-open="true"] .release-quick-chevron {
+    transform: rotate(180deg);
+  }
+
+  .release-quick-button[data-animate="false"] .release-quick-chevron {
+    transition: none;
+  }
+
   .portal-release-utility .release-summary {
     width: min(42rem, calc(100vw - 2.5rem));
   }
@@ -1410,15 +1476,19 @@
     .release-open-button:active,
     .release-quick-button:active,
     .release-icon-button:active,
-    .release-seal :where(
-        .release-seal__half,
-        .release-seal__mark,
-        .release-seal__crack
+    .release-signal :where(
+        .release-signal__list,
+        .release-signal__row,
+        .release-signal__check
       ) {
       transform: none;
     }
 
-    .release-seal :where(.release-seal__mark, .release-seal__crack) {
+    .release-quick-chevron {
+      transition: none;
+    }
+
+    .release-signal :where(.release-signal__list, .release-signal__row, .release-signal__check) {
       transition-property: opacity;
       transition-duration: 100ms !important;
     }
@@ -1604,6 +1674,7 @@
 
   body[data-review-flyer-print] header,
   body[data-review-flyer-print] footer,
+  body[data-review-flyer-print] .portal-release-utility,
   body[data-review-flyer-print] .review-flyer-screen {
     display: none !important;
   }

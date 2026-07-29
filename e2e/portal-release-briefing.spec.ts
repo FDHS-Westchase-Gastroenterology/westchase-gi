@@ -38,7 +38,7 @@ test.describe("portal release briefing", () => {
       user_id: staffUserId,
       email: staffEmail,
       display_name: "TEST Release Briefing Staff",
-      role: "staff",
+      role: "admin",
       active: true,
       onboarded_at: "2026-07-01T13:00:00.000Z",
       portal_tour_dismissed_at: "2026-07-01T13:05:00.000Z",
@@ -75,8 +75,8 @@ test.describe("portal release briefing", () => {
     await expect(announcement).toBeVisible();
     await expect(page.getByTestId("portal-release-utility")).toHaveCount(0);
 
-    // Keyboard activation stays immediate: the rare fracture animation is
-    // reserved for direct pointer opening, per the portal motion standard.
+    // Keyboard activation stays immediate: the rare list-to-check transition
+    // is reserved for direct pointer opening, per the portal motion standard.
     await openButton.focus();
     await page.keyboard.press("Enter");
     const homeSummary = page.locator("#portal-release-home-summary");
@@ -99,15 +99,20 @@ test.describe("portal release briefing", () => {
       .poll(async () => {
         const { data } = await db
           .from("portal_release_states")
-          .select("first_opened_at, acknowledged_at, hidden_at")
+          .select(
+            "first_opened_at, last_viewed_at, view_count, acknowledged_at, hidden_at, guide_open_count, dismiss_count",
+          )
           .eq("staff_user_id", staffUserId)
           .eq("release_id", releaseId)
           .maybeSingle();
         return data;
       })
       .toMatchObject({
+        view_count: 1,
         acknowledged_at: null,
         hidden_at: null,
+        guide_open_count: 0,
+        dismiss_count: 0,
       });
 
     // Reset only this disposable fixture to exercise the pointer-authored
@@ -123,7 +128,7 @@ test.describe("portal release briefing", () => {
     await expect(homeSummary).toBeVisible();
     await expect(homeSummary).toHaveAttribute("data-animate", "true");
     await expect(
-      announcement.locator(".release-seal[data-broken='true']"),
+      announcement.locator(".release-signal[data-resolved='true']"),
     ).toBeVisible();
 
     await homeSummary
@@ -155,7 +160,7 @@ test.describe("portal release briefing", () => {
 
     await utility.getByRole("button", { name: /What’s new/ }).click();
     await quickSummary
-      .getByRole("link", { name: "See the 2-minute guide" })
+      .getByRole("button", { name: "See the 2-minute guide" })
       .click();
     await expect(page).toHaveURL(
       /\/admin\/help#appointment-workflow-guide$/,
@@ -178,13 +183,46 @@ test.describe("portal release briefing", () => {
 
     const { data: finalState, error: finalStateError } = await db
       .from("portal_release_states")
-      .select("first_opened_at, acknowledged_at, hidden_at")
+      .select(
+        "first_opened_at, last_viewed_at, view_count, acknowledged_at, hidden_at, guide_opened_at, last_guide_opened_at, guide_open_count, last_dismissed_at, dismiss_count",
+      )
       .eq("staff_user_id", staffUserId)
       .eq("release_id", releaseId)
       .single();
     expect(finalStateError).toBeNull();
     expect(typeof finalState?.first_opened_at).toBe("string");
+    expect(typeof finalState?.last_viewed_at).toBe("string");
+    expect(finalState?.view_count).toBe(4);
     expect(typeof finalState?.acknowledged_at).toBe("string");
     expect(typeof finalState?.hidden_at).toBe("string");
+    expect(typeof finalState?.guide_opened_at).toBe("string");
+    expect(typeof finalState?.last_guide_opened_at).toBe("string");
+    expect(finalState?.guide_open_count).toBe(1);
+    expect(typeof finalState?.last_dismissed_at).toBe("string");
+    expect(finalState?.dismiss_count).toBe(1);
+
+    await page.goto("/admin/audit");
+    const engagement = page.getByTestId("release-engagement");
+    await expect(
+      engagement.getByRole("heading", {
+        name: "Release update engagement",
+      }),
+    ).toBeVisible();
+    const engagementRow = engagement
+      .getByRole("row")
+      .filter({ hasText: "TEST Release Briefing Staff" });
+    await expect(engagementRow).toContainText("4 views");
+    await expect(engagementRow).toContainText("1 open");
+    await expect(engagementRow).toContainText("Hidden early");
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const engagementCard = engagement
+      .getByTestId("release-engagement-cards")
+      .getByRole("listitem")
+      .filter({ hasText: "TEST Release Briefing Staff" });
+    await expect(engagementCard).toBeVisible();
+    await expect(engagementCard).toContainText("4 views");
+    await expect(engagementCard).toContainText("1 open");
+    await expect(engagementCard).toContainText("Hidden early");
   });
 });
