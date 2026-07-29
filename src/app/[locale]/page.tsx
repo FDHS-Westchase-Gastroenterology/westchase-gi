@@ -9,7 +9,7 @@ import { Reveal } from "@/components/Reveal";
 import { TestimonialRail } from "@/components/TestimonialRail";
 import { LocationCards } from "@/components/LocationCards";
 import { TextBand } from "@/components/TextBand";
-import { ArrowRight, ClipboardCheck, ExternalLink, Heart, MessageSquare, Phone, Star } from "@/components/icons";
+import { ArrowRight, ClipboardCheck, ExternalLink, Heart, MessageSquare, Phone } from "@/components/icons";
 
 type PageProps = { params: Promise<{ locale: string }> };
 
@@ -170,9 +170,9 @@ export default async function HomePage({ params }: PageProps) {
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {physicians.map((doc, i) => (
               <Reveal key={doc.id} delay={(i % 3) as 0 | 1 | 2} className="h-full">
-                {/* Two actions per card (profile + review) means the card can't
-                    be one big anchor: the profile link owns the photo and name,
-                    and the review link sits as a hairline-divided footer row. */}
+                {/* One action per card: the profile. Review asks are calibrated
+                    (I8) — the testimonial rail CTA and the footer carry the
+                    standing invitation; no per-provider ask mid-page. */}
                 <div className="flex h-full flex-col overflow-hidden rounded-[var(--radius-lg)] bg-white shadow-[var(--shadow-soft)] transition-transform duration-300 ease-[var(--ease-out-quint)] hover:-translate-y-1">
                   <Link href={`${p("/physicians")}#${doc.id}`} className="group block flex-1">
                     <Image
@@ -192,17 +192,6 @@ export default async function HomePage({ params }: PageProps) {
                       </span>
                     </span>
                   </Link>
-                  <a
-                    href={doc.googleReview}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={t.physicianReviewAria.replace("{name}", doc.name)}
-                    className="flex items-center gap-2.5 border-t border-[var(--color-line)] px-6 py-3.5 text-[0.92rem] font-bold text-[var(--color-teal-ink)] transition-colors hover:bg-[var(--color-mint)] hover:text-[var(--color-navy)]"
-                  >
-                    <Star className="h-4 w-4 flex-none text-[var(--color-amber)]" />
-                    {t.physicianReviewCta}
-                    <ExternalLink className="ms-auto h-3.5 w-3.5 flex-none text-[var(--color-muted)]" />
-                  </a>
                 </div>
               </Reveal>
             ))}

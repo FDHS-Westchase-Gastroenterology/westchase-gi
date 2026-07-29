@@ -208,8 +208,6 @@ export const ko: Dictionary = {
     physiciansLead:
       "세 분의 소화기내과 전문의가 가정전문간호사, 주입 치료 전담 간호사와 함께 진료합니다.",
     physiciansCta: "전체 의료진 보기",
-    physicianReviewCta: "Google 후기 남기기",
-    physicianReviewAria: "{name} 선생님에 대한 Google 후기를 남겨 주세요 (Google 후기 작성 화면이 열립니다)",
     testimonialsHeading: "환자분들의 이야기",
     // i5-waiver 2026-07-28 home.testimonialsNote: settled decision — testimonials
     // stay English-only in every locale, with this explicit qualifier.
