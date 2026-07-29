@@ -111,17 +111,58 @@ test.describe("portal management UI", () => {
       );
     }
 
-    // Toggle B to paused; it persists.
+    // Toggle B to paused; it persists — and the undo offer restores it
+    // without a re-toggle.
     await recipientItem(page, emailB).locator('[data-action="toggle"]').click();
     await expect(
       recipientItem(page, emailB).locator('[data-action="toggle"]'),
     ).toHaveText("Paused", { timeout: 15_000 });
     const { data: bRow } = await db
       .from("notification_recipients")
-      .select("active")
+      .select("id, active")
       .eq("email", emailB)
       .single();
     expect(bRow?.active).toBe(false);
+
+    await page.getByTestId("recipient-undo").getByRole("button", {
+      name: "Undo",
+    }).click();
+    await expect(
+      recipientItem(page, emailB).locator('[data-action="toggle"]'),
+    ).toHaveText("Active", { timeout: 15_000 });
+    const { data: bRestored } = await db
+      .from("notification_recipients")
+      .select("active")
+      .eq("email", emailB)
+      .single();
+    expect(bRestored?.active).toBe(true);
+
+    // The label edits in place (no remove-and-re-add), audited by the RPC.
+    await recipientItem(page, emailB)
+      .getByRole("button", { name: "Add a label" })
+      .click();
+    await recipientItem(page, emailB)
+      .locator(`#label-${bRow!.id}`)
+      .fill("Front desk mornings");
+    await recipientItem(page, emailB)
+      .locator('[data-action="save-label"]')
+      .click();
+    await expect(page.getByTestId("recipient-label-status")).toContainText(
+      "Label updated",
+      { timeout: 15_000 },
+    );
+    const { data: labelAudits } = await db
+      .from("audit_log")
+      .select("id")
+      .eq("action", "recipients.label_update")
+      .eq("entity_id", bRow!.id);
+    expect(labelAudits?.length).toBeGreaterThanOrEqual(1);
+
+    // Pause B again so the active notification set is exactly {A}.
+    await recipientItem(page, emailB).locator('[data-action="toggle"]').click();
+    await expect(
+      recipientItem(page, emailB).locator('[data-action="toggle"]'),
+    ).toHaveText("Paused", { timeout: 15_000 });
 
     // Remove C (native confirm accepted above); it disappears and is gone.
     await recipientItem(page, emailC).locator('[data-action="remove"]').click();

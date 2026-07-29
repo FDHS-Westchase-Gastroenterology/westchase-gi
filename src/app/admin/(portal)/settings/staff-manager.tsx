@@ -43,7 +43,7 @@ function StaffList({
   isAdmin,
   selfUserId,
   signInReadFailed,
-  pending,
+  pendingKey,
   roleDrafts,
   onRoleDraft,
   run,
@@ -53,10 +53,10 @@ function StaffList({
   isAdmin: boolean;
   selfUserId: string;
   signInReadFailed: boolean;
-  pending: boolean;
+  pendingKey: string | null;
   roleDrafts: Record<string, "admin" | "staff">;
   onRoleDraft: (userId: string, role: "admin" | "staff") => void;
-  run: (action: () => Promise<MutationOutcome>) => void;
+  run: (key: string, action: () => Promise<MutationOutcome>) => void;
   resendFromRow: (person: StaffRow) => void;
 }) {
   return (
@@ -65,6 +65,10 @@ function StaffList({
         const isSelf = person.user_id === selfUserId;
         const isPendingSetup = person.onboarded_at === null;
         const draft = roleDrafts[person.user_id] ?? person.role;
+        const rowPending =
+          pendingKey === `role:${person.user_id}` ||
+          pendingKey === `deactivate:${person.user_id}` ||
+          pendingKey === `resend:${person.user_id}`;
         return (
           <li
             key={person.user_id}
@@ -108,7 +112,7 @@ function StaffList({
                       <button
                         type="button"
                         data-action="resend-invite"
-                        disabled={pending}
+                        disabled={rowPending}
                         onClick={() => {
                           if (
                             window.confirm(
@@ -125,14 +129,14 @@ function StaffList({
                       <button
                         type="button"
                         data-action="deactivate"
-                        disabled={pending}
+                        disabled={rowPending}
                         onClick={() => {
                           if (
                             window.confirm(
                               `Cancel the pending invitation for ${person.display_name}? Their setup link will stop working.`,
                             )
                           ) {
-                            run(() =>
+                            run(`deactivate:${person.user_id}`, () =>
                               deactivateStaff({ id: person.user_id }),
                             );
                           }
@@ -152,7 +156,7 @@ function StaffList({
                   <select
                     id={`role-${person.user_id}`}
                     value={draft}
-                    disabled={pending}
+                    disabled={rowPending}
                     onChange={(event) =>
                       onRoleDraft(
                         person.user_id,
@@ -168,9 +172,9 @@ function StaffList({
                     <button
                       type="button"
                       data-action="apply-role"
-                      disabled={pending}
+                      disabled={rowPending}
                       onClick={() =>
-                        run(() =>
+                        run(`role:${person.user_id}`, () =>
                           changeStaffRole({
                             userId: person.user_id,
                             role: draft,
@@ -185,14 +189,16 @@ function StaffList({
                   <button
                     type="button"
                     data-action="deactivate"
-                    disabled={pending}
+                    disabled={rowPending}
                     onClick={() => {
                       if (
                         window.confirm(
                           `Deactivate ${person.display_name}? They are locked out immediately and this can only be undone by an engineer.`,
                         )
                       ) {
-                        run(() => deactivateStaff({ id: person.user_id }));
+                        run(`deactivate:${person.user_id}`, () =>
+                          deactivateStaff({ id: person.user_id }),
+                        );
                       }
                     }}
                     className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
@@ -225,7 +231,8 @@ export function StaffManager({
   signInReadFailed?: boolean;
 }) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [issued, setIssued] = useState<{
     email: string;
@@ -237,11 +244,13 @@ export function StaffManager({
     {},
   );
 
-  function run(action: () => Promise<MutationOutcome>) {
+  function run(key: string, action: () => Promise<MutationOutcome>) {
     setError(null);
     setIssued(null);
+    setPendingKey(key);
     startTransition(async () => {
       const result = await action();
+      setPendingKey(null);
       if (!result.ok) {
         setError(failureMessage(result));
         return;
@@ -281,8 +290,10 @@ export function StaffManager({
 
     setError(null);
     setIssued(null);
+    setPendingKey("invite");
     startTransition(async () => {
       const result = await inviteStaff({ email, displayName, role });
+      setPendingKey(null);
       if (showInviteResult(email, result)) router.refresh();
     });
   }
@@ -290,8 +301,10 @@ export function StaffManager({
   function resendFromRow(person: StaffRow) {
     setError(null);
     setIssued(null);
+    setPendingKey(`resend:${person.user_id}`);
     startTransition(async () => {
       const result = await resendStaffInvite({ id: person.user_id });
+      setPendingKey(null);
       if (showInviteResult(person.email, result)) router.refresh();
     });
   }
@@ -387,7 +400,7 @@ export function StaffManager({
         isAdmin={isAdmin}
         selfUserId={selfUserId}
         signInReadFailed={signInReadFailed}
-        pending={pending}
+        pendingKey={pendingKey}
         roleDrafts={roleDrafts}
         onRoleDraft={(userId, role) =>
           setRoleDrafts((current) => ({ ...current, [userId]: role }))
@@ -415,7 +428,7 @@ export function StaffManager({
                 type="email"
                 required
                 placeholder="person@example.com"
-                disabled={pending}
+                disabled={pendingKey === "invite"}
                 className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)]"
               />
             </div>
@@ -429,7 +442,7 @@ export function StaffManager({
                 type="text"
                 required
                 placeholder="Full name"
-                disabled={pending}
+                disabled={pendingKey === "invite"}
                 className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)]"
               />
             </div>
@@ -441,7 +454,7 @@ export function StaffManager({
                 id="invite-role"
                 name="role"
                 defaultValue="staff"
-                disabled={pending}
+                disabled={pendingKey === "invite"}
                 className="min-h-11 rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3 text-[0.95rem] font-bold text-[var(--color-body)]"
               >
                 <option value="staff">Staff</option>
@@ -450,10 +463,10 @@ export function StaffManager({
             </div>
             <button
               type="submit"
-              disabled={pending}
+              disabled={pendingKey === "invite"}
               className="btn btn-navy min-h-11 disabled:opacity-60"
             >
-              {pending ? "Inviting…" : "Invite"}
+              {pendingKey === "invite" ? "Inviting…" : "Invite"}
             </button>
           </div>
         </form>
