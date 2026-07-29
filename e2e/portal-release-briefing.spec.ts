@@ -84,7 +84,7 @@ test.describe("portal release briefing", () => {
     await expect(homeSummary).toHaveAttribute("data-animate", "false");
     await expect(
       homeSummary.getByRole("heading", {
-        name: "A smoother way to work requests",
+        name: "A smoother way to manage appointment requests",
       }),
     ).toBeVisible();
     for (const sentence of [

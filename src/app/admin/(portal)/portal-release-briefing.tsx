@@ -394,7 +394,7 @@ function ReleaseSummary({
             id={`${id}-heading`}
             className="mt-1 text-[1.25rem] font-black leading-snug text-[var(--color-ink)]"
           >
-            A smoother way to work requests
+            A smoother way to manage appointment requests
           </h2>
         </div>
         <button
@@ -511,7 +511,7 @@ export function PortalReleaseHomeAnnouncement() {
             id="portal-release-title"
             className="mt-1 text-[1.08rem] font-black text-[var(--color-ink)]"
           >
-            A smoother way to work requests is here.
+            A smoother way to manage appointment requests is here.
           </h2>
         </div>
         <button
