@@ -32,7 +32,7 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function PortalNav() {
+export function PortalNav({ waitingCount }: { waitingCount: number | null }) {
   const pathname = usePathname();
 
   return (
@@ -40,6 +40,10 @@ export function PortalNav() {
       <ul className="flex min-w-max items-stretch gap-1">
         {NAV_ITEMS.map((item) => {
           const active = isActive(pathname, item.href);
+          const showBadge =
+            item.href === "/admin/requests" &&
+            waitingCount !== null &&
+            waitingCount > 0;
           return (
             <li key={item.href} className="flex">
               <Link
@@ -59,6 +63,15 @@ export function PortalNav() {
                 ) : (
                   item.label
                 )}
+                {showBadge ? (
+                  <span
+                    data-testid="nav-waiting-badge"
+                    className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--color-amber)] px-1.5 py-0.5 text-center text-[0.72rem] font-extrabold tabular-nums text-[var(--color-navy-2)]"
+                  >
+                    {waitingCount}
+                    <span className="sr-only"> waiting</span>
+                  </span>
+                ) : null}
               </Link>
             </li>
           );

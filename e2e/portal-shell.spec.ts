@@ -1,5 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { test, expect, type Page } from "@playwright/test";
-import { loadLocalEnv, requiredEnv } from "./support";
+import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // VAL-ADMIN-002: the seed admin can log in and out through the UI.
 // VAL-ADMIN-014 (shell scope): no horizontal overflow at 390/1440, nav
@@ -205,6 +206,58 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
     expect(overflow, `login overflow at ${viewport.name}`).toBeLessThanOrEqual(
       0,
     );
+  }
+});
+
+test("VAL-ADMIN-016: the waiting count rides on the Requests nav item", async ({
+  page,
+  request,
+}) => {
+  const marker = `navbadge-${randomUUID().slice(0, 8)}@example.test`;
+  const staged = await request.post("/api/requests", {
+    data: {
+      name: "TEST Nav Badge",
+      phone: "8135550122",
+      email: marker,
+      location: "tampa",
+      time: "morning",
+      message: "TEST staged for the nav badge check.",
+      locale: "en",
+      sourcePath: "/en/appointment",
+    },
+  });
+  expect(staged.status()).toBe(201);
+  const db = serviceDb();
+
+  try {
+    await signIn(page);
+    await page.goto("/admin/settings");
+
+    // Parallel specs and the shared development project can add or remove
+    // new requests mid-run; accept the badge once it matches the SQL count
+    // at the same instant (and is gone only when that count is zero).
+    await expect
+      .poll(
+        async () => {
+          await page.reload();
+          const badge = page.getByTestId("nav-waiting-badge");
+          const shown = (await badge.count()) > 0;
+          const text = shown
+            ? Number((await badge.textContent())?.replace(/\D+/g, ""))
+            : null;
+          const { count, error } = await db
+            .from("requests")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "new");
+          expect(error).toBeNull();
+          if ((count ?? 0) === 0) return shown ? "badge-shown-at-zero" : "consistent";
+          return shown && text === count ? "consistent" : `badge=${text} sql=${count}`;
+        },
+        { timeout: 30_000, intervals: [500, 1_000, 2_000] },
+      )
+      .toBe("consistent");
+  } finally {
+    await db.from("requests").delete().eq("email", marker);
   }
 });
 

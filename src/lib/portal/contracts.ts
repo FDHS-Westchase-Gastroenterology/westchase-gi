@@ -124,6 +124,7 @@ export const AUDIT_ACTIONS = {
   MAINTAINERS_INVITE: "maintainers.invite",
   MAINTAINERS_CANCEL: "maintainers.cancel",
   MAINTAINERS_REVOKE: "maintainers.revoke",
+  REQUESTS_EXPORT: "requests.export",
 } as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
 
