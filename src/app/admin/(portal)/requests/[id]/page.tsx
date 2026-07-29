@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ChevronDown } from "@/components/icons";
 import {
   isMailbox,
   REQUEST_STATUSES,
@@ -8,16 +7,31 @@ import {
   type RequestStatus,
 } from "@/lib/portal/contracts";
 import { requireRole } from "@/lib/portal/auth";
+import {
+  parseRequestSearch,
+  requestSearchFilter,
+} from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
+import {
+  displayNameOrEmail,
+  fetchStaffNameMap,
+} from "@/lib/portal/staff-identity";
+import {
+  fetchAttentiveOpenRows,
+  fetchClosedRows,
+  OPEN_CANDIDATE_LIMIT,
+  OPEN_STATUSES,
+} from "../queue";
 import { StatusBadge } from "../status-badge";
 import {
   formatReceived,
+  followUpWhenLabel,
   LOCALE_LABELS,
   LOCATION_LABELS,
-  STATUS_LABELS,
+  OUTCOME_HISTORY_LABELS,
   TIME_LABELS,
 } from "../format";
-import { addRequestNote, closeRequest, updateRequestStatus } from "../actions";
+import { CallOutcomeComposer } from "./call-outcome-composer";
 
 type RequestRow = {
   id: string;
@@ -45,53 +59,221 @@ type EventRow = {
   created_at: string;
 };
 
-const OPEN_REQUEST_STATUSES = REQUEST_STATUSES.filter(
-  (status) => status !== "closed",
-);
+type AuditRow = {
+  id: string;
+  actor_email: string | null;
+  action: string;
+  detail: Record<string, unknown> | null;
+  at: string;
+};
+
+// The work record shown on the page: notes and call outcomes from the
+// request's event stream, plus status moves and closes from the audit
+// record (their call-outcome/note audit twins are deliberately excluded —
+// the events already carry them, so each human action renders exactly once).
+type WorkEntry =
+  | { kind: "note"; id: string; text: string; author: string; at: string }
+  | {
+      kind: "outcome";
+      id: string;
+      outcome: string;
+      followUpAt: string | null;
+      author: string;
+      at: string;
+    }
+  | {
+      kind: "status";
+      id: string;
+      to: string;
+      legacyClose: boolean;
+      author: string;
+      at: string;
+    }
+  | {
+      kind: "close";
+      id: string;
+      disposition: string;
+      author: string;
+      at: string;
+    };
 
 function metaText(meta: Record<string, unknown> | null, key: string): string {
   const value = meta?.[key];
   return typeof value === "string" ? value : "";
 }
 
+function firstParam(value: string | string[] | undefined): string | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+}
+
+function workEntries(events: EventRow[], audits: AuditRow[]): WorkEntry[] {
+  const entries: WorkEntry[] = [];
+  for (const event of events) {
+    if (event.type === "note") {
+      entries.push({
+        kind: "note",
+        id: `event-${event.id}`,
+        text: metaText(event.meta, "text"),
+        author: metaText(event.meta, "author_email"),
+        at: event.created_at,
+      });
+    } else if (event.type === "call_outcome") {
+      entries.push({
+        kind: "outcome",
+        id: `event-${event.id}`,
+        outcome: metaText(event.meta, "outcome"),
+        followUpAt: metaText(event.meta, "follow_up_at") || null,
+        author: metaText(event.meta, "author_email"),
+        at: event.created_at,
+      });
+    }
+  }
+  for (const audit of audits) {
+    const detail = audit.detail ?? {};
+    if (audit.action === "request.status_change") {
+      const to = typeof detail.to === "string" ? detail.to : "";
+      entries.push({
+        kind: "status",
+        id: `audit-${audit.id}`,
+        to,
+        legacyClose:
+          to === "closed" && detail.legacy_unclassified_close === true,
+        author: audit.actor_email ?? "",
+        at: audit.at,
+      });
+    } else if (audit.action === "request.close") {
+      entries.push({
+        kind: "close",
+        id: `audit-${audit.id}`,
+        disposition:
+          typeof detail.disposition === "string" ? detail.disposition : "",
+        author: audit.actor_email ?? "",
+        at: audit.at,
+      });
+    }
+  }
+  return entries.sort((a, b) => b.at.localeCompare(a.at));
+}
+
+const STATUS_LINE_LABELS: Record<string, string> = {
+  new: "New",
+  contacted: "Contacted",
+  scheduled: "Scheduled",
+  closed: "Closed",
+};
+
 // One protected fetch feeds one cohesive request workflow; splitting its JSX
 // would add patient-data prop surfaces without isolating reusable behavior.
 // react-doctor-disable-next-line react-doctor/no-giant-component
 export default async function RequestDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{
+    status?: string | string[];
+    q?: string | string[];
+    page?: string | string[];
+  }>;
 }) {
   await requireRole("staff");
   const { id } = await params;
+  const continuity = await searchParams;
+  const statusParam = firstParam(continuity.status);
+  const search = parseRequestSearch(continuity.q);
+  const searchFilter = search ? requestSearchFilter(search) : "";
+
+  const queueParams = new URLSearchParams();
+  if (statusParam) queueParams.set("status", statusParam);
+  if (search) queueParams.set("q", search);
+  const pageParam = firstParam(continuity.page);
+  if (pageParam) queueParams.set("page", pageParam);
+  const queueQuery = queueParams.toString();
+  const queueHref = `/admin/requests${queueQuery ? `?${queueQuery}` : ""}`;
+  const continuityParams = new URLSearchParams();
+  if (statusParam) continuityParams.set("status", statusParam);
+  if (search) continuityParams.set("q", search);
+  const continuityQuery = continuityParams.toString();
+  const continuityHref = (requestId: string): string =>
+    `/admin/requests/${requestId}${continuityQuery ? `?${continuityQuery}` : ""}`;
 
   const db = serviceClient();
-  const [{ data: request, error }, { data: events, error: eventsError }] =
-    await Promise.all([
-      db
-        .from("requests")
-        .select(
-          "id, name, phone, email, location, preferred_time, message, locale, source_path, status, closure_disposition, closed_at, record_handoff_at, created_at",
-        )
-        .eq("id", id)
-        .maybeSingle(),
-      db
-        .from("request_events")
-        .select("id, type, recipient, status, meta, created_at")
-        .eq("request_id", id)
-        .order("created_at", { ascending: true }),
-    ]);
+  const [
+    { data: request, error },
+    { data: events, error: eventsError },
+    { data: auditRows, error: auditError },
+    nameMap,
+  ] = await Promise.all([
+    db
+      .from("requests")
+      .select(
+        "id, name, phone, email, location, preferred_time, message, locale, source_path, status, closure_disposition, closed_at, record_handoff_at, created_at",
+      )
+      .eq("id", id)
+      .maybeSingle(),
+    db
+      .from("request_events")
+      .select("id, type, recipient, status, meta, created_at")
+      .eq("request_id", id)
+      .order("created_at", { ascending: true }),
+    db
+      .from("audit_log")
+      .select("id, actor_email, action, detail, at")
+      .eq("entity", "requests")
+      .eq("entity_id", id)
+      .in("action", ["request.status_change", "request.close"])
+      .order("at", { ascending: false })
+      .limit(50),
+    fetchStaffNameMap(db),
+  ]);
 
   if (error || !request) notFound();
   if (eventsError) {
     throw new Error(`Event read failed: ${eventsError.code}`);
   }
+  if (auditError) {
+    throw new Error(`Work record read failed: ${auditError.code}`);
+  }
+
+  // Previous/next within the viewer's queue scope: the same attention
+  // ordering the list renders, so staff can keep working without
+  // returning to the list each time. A request outside the current scope
+  // (e.g. an old closed row beyond the tail window) simply shows no chain.
+  const scoped =
+    statusParam &&
+    statusParam !== "all" &&
+    (REQUEST_STATUSES as readonly string[]).includes(statusParam)
+      ? (statusParam as RequestStatus)
+      : null;
+  const neighborIds: string[] = [];
+  if (scoped !== "closed") {
+    const openStatuses = scoped ? [scoped] : [...OPEN_STATUSES];
+    const openRows = await fetchAttentiveOpenRows(db, {
+      statuses: openStatuses,
+      searchFilter,
+    });
+    neighborIds.push(...openRows.map((row) => row.id));
+  }
+  if (scoped === null || scoped === "closed") {
+    const closedRows = await fetchClosedRows(db, {
+      from: 0,
+      limit: OPEN_CANDIDATE_LIMIT,
+      searchFilter,
+    });
+    neighborIds.push(...closedRows.map((row) => row.id));
+  }
+  const selfIndex = neighborIds.indexOf(id);
+  const prevId = selfIndex > 0 ? neighborIds[selfIndex - 1] : null;
+  const nextId =
+    selfIndex >= 0 && selfIndex < neighborIds.length - 1
+      ? neighborIds[selfIndex + 1]
+      : null;
 
   const row = request as RequestRow;
   const mailbox = row.email?.trim();
   const safeMailbox = mailbox && isMailbox(mailbox) ? mailbox : null;
   const allEvents = (events ?? []) as EventRow[];
-  const notes = allEvents.filter((event) => event.type === "note");
+  const entries = workEntries(allEvents, (auditRows ?? []) as AuditRow[]);
   const notifications = allEvents.filter(
     (event) =>
       event.type === "notification" &&
@@ -139,7 +321,7 @@ export default async function RequestDetailPage({
     <section aria-labelledby="request-heading">
       <nav aria-label="Breadcrumb" className="flex items-center text-[0.9rem]">
         <Link
-          href="/admin/requests"
+          href={queueHref}
           className="inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
         >
           Appointment requests
@@ -148,6 +330,30 @@ export default async function RequestDetailPage({
           /
         </span>
         <span className="text-[var(--color-muted)]">Detail</span>
+        {prevId || nextId ? (
+          <span className="ml-auto flex items-center gap-3">
+            {prevId ? (
+              <Link
+                href={continuityHref(prevId)}
+                rel="prev"
+                data-testid="prev-request"
+                className="inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+              >
+                ← Previous
+              </Link>
+            ) : null}
+            {nextId ? (
+              <Link
+                href={continuityHref(nextId)}
+                rel="next"
+                data-testid="next-request"
+                className="inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+              >
+                Next →
+              </Link>
+            ) : null}
+          </span>
+        ) : null}
       </nav>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
@@ -160,8 +366,32 @@ export default async function RequestDetailPage({
         </h1>
         <StatusBadge status={row.status} />
       </div>
+      {row.status === "closed" && row.closed_at ? (
+        <p
+          data-testid="request-lifecycle-summary"
+          className="mt-1.5 text-[0.9rem] text-[var(--color-muted)]"
+        >
+          Closed {formatReceived(row.closed_at, true)}
+          {row.closure_disposition
+            ? ` — ${
+                row.closure_disposition === "converted"
+                  ? "appointment booked"
+                  : "no appointment booked"
+              }`
+            : ""}
+          .
+        </p>
+      ) : null}
 
-      <div className="mt-7 grid items-start gap-6 lg:grid-cols-[1.5fr_1fr]">
+      <CallOutcomeComposer
+        requestId={row.id}
+        status={row.status}
+        closureDisposition={row.closure_disposition}
+        closedAtLabel={row.closed_at ? formatReceived(row.closed_at) : null}
+        nextHref={nextId ? continuityHref(nextId) : null}
+      />
+
+      <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-6">
           <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
             <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
@@ -194,194 +424,69 @@ export default async function RequestDetailPage({
 
           <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
             <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
-              Staff notes
+              Work history
             </h2>
-            {notes.length === 0 ? (
+            {entries.length === 0 ? (
               <p className="mt-3 text-[0.95rem] text-[var(--color-muted)]">
-                No notes yet. Record call outcomes here so the next person
-                picks up where you left off.
+                Nothing recorded yet. Record what happens on the call above —
+                the next person picks up where you left off.
               </p>
             ) : (
-              <ul data-testid="note-list" className="mt-4 space-y-4">
-                {notes.map((note) => (
-                  <li
-                    key={note.id}
-                    className="rounded-[var(--radius)] bg-[var(--color-mint)] px-4 py-3"
-                  >
-                    <p className="whitespace-pre-wrap text-[0.95rem] leading-relaxed text-[var(--color-ink)]">
-                      {metaText(note.meta, "text")}
-                    </p>
-                    <p className="mt-2 text-[0.8rem] font-bold text-[var(--color-teal-ink)]">
-                      {metaText(note.meta, "author_email")} ·{" "}
-                      {formatReceived(note.created_at, true)}
-                    </p>
-                  </li>
-                ))}
+              <ul data-testid="work-history" className="mt-4 space-y-4">
+                {entries.map((entry) => {
+                  if (entry.kind === "note") {
+                    return (
+                      <li
+                        key={entry.id}
+                        className="rounded-[var(--radius)] bg-[var(--color-mint)] px-4 py-3"
+                      >
+                        <p className="whitespace-pre-wrap text-[0.95rem] leading-relaxed text-[var(--color-ink)]">
+                          {entry.text}
+                        </p>
+                        <p className="mt-2 text-[0.8rem] font-bold text-[var(--color-teal-ink)]">
+                          {displayNameOrEmail(nameMap, entry.author)} ·{" "}
+                          {formatReceived(entry.at, true)}
+                        </p>
+                      </li>
+                    );
+                  }
+                  const line =
+                    entry.kind === "outcome"
+                      ? `${OUTCOME_HISTORY_LABELS[entry.outcome] ?? entry.outcome}${
+                          entry.followUpAt
+                            ? ` — call again ${followUpWhenLabel(entry.followUpAt)}`
+                            : ""
+                        }`
+                      : entry.kind === "status"
+                        ? entry.legacyClose
+                          ? "Closed without an outcome"
+                          : `Marked ${STATUS_LINE_LABELS[entry.to] ?? entry.to}`
+                        : `Closed — ${
+                            entry.disposition === "converted"
+                              ? "appointment booked"
+                              : "no appointment booked"
+                          }`;
+                  return (
+                    <li
+                      key={entry.id}
+                      className="rounded-[var(--radius)] border border-[var(--color-line)] px-4 py-3"
+                    >
+                      <p className="text-[0.95rem] font-bold text-[var(--color-ink)]">
+                        {line}
+                      </p>
+                      <p className="mt-1.5 text-[0.8rem] font-bold text-[var(--color-teal-ink)]">
+                        {displayNameOrEmail(nameMap, entry.author)} ·{" "}
+                        {formatReceived(entry.at, true)}
+                      </p>
+                    </li>
+                  );
+                })}
               </ul>
             )}
-            <form
-              action={addRequestNote.bind(null, row.id)}
-              className="mt-5 border-t border-[var(--color-line)] pt-5"
-            >
-              <label
-                htmlFor="note"
-                className="block text-sm font-bold text-[var(--color-ink)]"
-              >
-                Add a note
-              </label>
-              <textarea
-                id="note"
-                name="note"
-                rows={3}
-                required
-                maxLength={2000}
-                className="mt-2 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 py-3 text-[0.95rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)]"
-                placeholder="e.g. Left a voicemail at 2:15pm — will try again tomorrow morning."
-              />
-              <button type="submit" className="btn btn-navy mt-3">
-                Save note
-              </button>
-            </form>
           </div>
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
-            <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
-              Status
-            </h2>
-            <p className="mt-1.5 text-[0.9rem] text-[var(--color-muted)]">
-              Move the appointment request as you work it. Every change is
-              recorded in the activity log.
-            </p>
-            <div className="mt-4 grid gap-2">
-              {OPEN_REQUEST_STATUSES.map((status) => {
-                const isCurrent = row.status === status;
-                return (
-                  <form
-                    key={status}
-                    action={updateRequestStatus.bind(null, row.id, status)}
-                  >
-                    <button
-                      type="submit"
-                      disabled={isCurrent}
-                      data-status-action={status}
-                      className={`flex min-h-11 w-full items-center justify-between rounded-[var(--radius)] border px-4 text-[0.95rem] font-bold transition-colors ${
-                        isCurrent
-                          ? "cursor-default border-[var(--color-navy)] bg-[var(--color-navy)] text-[var(--color-on-dark)]"
-                          : "border-[var(--color-line-2)] bg-white text-[var(--color-body)] hover:border-[var(--color-navy)]"
-                      }`}
-                    >
-                      {STATUS_LABELS[status]}
-                      {isCurrent && (
-                        <span className="text-[0.75rem] uppercase tracking-[0.06em]">
-                          Current
-                        </span>
-                      )}
-                    </button>
-                  </form>
-                );
-              })}
-              <details
-                open={row.status === "closed"}
-                data-testid="closed-status-control"
-                className="group overflow-hidden rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white open:border-[var(--color-navy)]"
-              >
-                <summary
-                  data-status-action="closed"
-                  className={`flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 text-[0.95rem] font-bold transition-colors marker:hidden [&::-webkit-details-marker]:hidden ${
-                    row.status === "closed"
-                      ? "bg-[var(--color-navy)] text-[var(--color-on-dark)]"
-                      : "text-[var(--color-body)] hover:bg-[var(--color-mint)]"
-                  }`}
-                >
-                  <span>Closed</span>
-                  <span className="flex items-center gap-2">
-                    {row.status === "closed" && (
-                      <span className="text-[0.75rem] uppercase tracking-[0.06em]">
-                        Current
-                      </span>
-                    )}
-                    <ChevronDown
-                      aria-hidden="true"
-                      className="h-4 w-4 transition-transform group-open:rotate-180"
-                    />
-                  </span>
-                </summary>
-                <div className="border-t border-[var(--color-line)] px-3 pb-3 pt-4">
-                  <p className="text-[0.85rem] font-bold text-[var(--color-ink)]">
-                    How was this request resolved?
-                  </p>
-                  <p className="mt-1 text-[0.8rem] leading-relaxed text-[var(--color-muted)]">
-                    Closing removes it from the active queue. You can reopen it
-                    later by choosing another status.
-                  </p>
-                  {row.status === "closed" && !row.closure_disposition && (
-                    <p
-                      data-testid="legacy-lifecycle-warning"
-                      className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-3 py-2 text-[0.85rem] font-bold text-[var(--color-ink)]"
-                    >
-                      Closed before outcomes were recorded. Choose an outcome
-                      if you know how it ended.
-                    </p>
-                  )}
-                  {row.closure_disposition && row.closed_at && (
-                    <p
-                      data-testid="request-lifecycle-summary"
-                      className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-3 py-2 text-[0.85rem] text-[var(--color-ink)]"
-                    >
-                      Closed {formatReceived(row.closed_at, true)} —{" "}
-                      {row.closure_disposition === "converted"
-                        ? "appointment booked"
-                        : "no appointment booked"}
-                      .
-                    </p>
-                  )}
-                  <div className="mt-3 grid gap-2">
-                    <form action={closeRequest.bind(null, row.id, "converted")}>
-                      <button
-                        type="submit"
-                        disabled={
-                          row.status === "closed" &&
-                          row.closure_disposition === "converted"
-                        }
-                        data-close-action="converted"
-                        className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3 py-2.5 text-left text-[0.9rem] text-[var(--color-body)] hover:border-[var(--color-navy)] hover:bg-[var(--color-mint)] disabled:cursor-default disabled:border-[var(--color-navy)] disabled:bg-[var(--color-navy)] disabled:text-[var(--color-on-dark)]"
-                      >
-                        <span className="block font-bold">
-                          Appointment booked
-                        </span>
-                        <span className="mt-0.5 block text-[0.78rem] font-normal leading-snug opacity-80">
-                          The appointment is in the scheduling system.
-                        </span>
-                      </button>
-                    </form>
-                    <form
-                      action={closeRequest.bind(null, row.id, "unconverted")}
-                    >
-                      <button
-                        type="submit"
-                        disabled={
-                          row.status === "closed" &&
-                          row.closure_disposition === "unconverted"
-                        }
-                        data-close-action="unconverted"
-                        className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3 py-2.5 text-left text-[0.9rem] text-[var(--color-body)] hover:border-[var(--color-navy)] hover:bg-[var(--color-mint)] disabled:cursor-default disabled:border-[var(--color-navy)] disabled:bg-[var(--color-navy)] disabled:text-[var(--color-on-dark)]"
-                      >
-                        <span className="block font-bold">
-                          No appointment booked
-                        </span>
-                        <span className="mt-0.5 block text-[0.78rem] font-normal leading-snug opacity-80">
-                          No more follow-up is needed for this request.
-                        </span>
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              </details>
-            </div>
-          </div>
-
           <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
             <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
               Notifications

@@ -8,6 +8,7 @@ import {
   inviteStaff,
   resendStaffInvite,
 } from "./actions";
+import { formatReceived } from "../requests/format";
 
 export type StaffRow = {
   user_id: string;
@@ -16,6 +17,7 @@ export type StaffRow = {
   role: "admin" | "staff";
   active: boolean;
   onboarded_at: string | null;
+  lastSignInAt?: string | null;
 };
 
 type MutationOutcome = {
@@ -40,6 +42,7 @@ function StaffList({
   staff,
   isAdmin,
   selfUserId,
+  signInReadFailed,
   pending,
   roleDrafts,
   onRoleDraft,
@@ -49,6 +52,7 @@ function StaffList({
   staff: StaffRow[];
   isAdmin: boolean;
   selfUserId: string;
+  signInReadFailed: boolean;
   pending: boolean;
   roleDrafts: Record<string, "admin" | "staff">;
   onRoleDraft: (userId: string, role: "admin" | "staff") => void;
@@ -78,6 +82,16 @@ function StaffList({
               </p>
               <p className="truncate text-[0.85rem] text-[var(--color-muted)]">
                 {person.email}
+              </p>
+              <p
+                data-testid="staff-last-sign-in"
+                className="mt-0.5 text-[0.8rem] text-[var(--color-muted)]"
+              >
+                {signInReadFailed
+                  ? "Sign-in info unavailable"
+                  : person.lastSignInAt
+                    ? `Last sign in ${formatReceived(person.lastSignInAt)}`
+                    : "No sign-ins yet"}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -203,10 +217,12 @@ export function StaffManager({
   staff,
   isAdmin,
   selfUserId,
+  signInReadFailed = false,
 }: {
   staff: StaffRow[];
   isAdmin: boolean;
   selfUserId: string;
+  signInReadFailed?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -370,6 +386,7 @@ export function StaffManager({
         staff={staff}
         isAdmin={isAdmin}
         selfUserId={selfUserId}
+        signInReadFailed={signInReadFailed}
         pending={pending}
         roleDrafts={roleDrafts}
         onRoleDraft={(userId, role) =>

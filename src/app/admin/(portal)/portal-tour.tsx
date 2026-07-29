@@ -11,7 +11,7 @@ const STEPS = [
   },
   {
     title: "Appointment requests",
-    body: "Open a request, call the patient, and update its status as you work. The queue is the practice’s complete list even if a notification email is missed.",
+    body: "Open a request, call the patient, and record what happened on the call. The queue is the practice’s complete list even if a notification email is missed.",
   },
   {
     title: "Settings",

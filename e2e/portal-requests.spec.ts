@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { test, expect, type Page, type APIRequestContext } from "@playwright/test";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
-// VAL-ADMIN-003: queue lists real submissions newest-first with badges.
+// VAL-ADMIN-003: the queue leads with the oldest unworked requests first.
 // VAL-ADMIN-004: status filtering matches SQL counts exactly.
 // VAL-ADMIN-005: detail shows all fields; the full lifecycle persists.
 // VAL-ADMIN-006: staff notes persist with attribution and re-render.
@@ -75,7 +75,7 @@ test.describe("portal requests operation", () => {
     await db.from("requests").delete().like("email", `queue-${runId}-%`);
   });
 
-  test("VAL-ADMIN-003: fresh submissions appear in the queue newest-first", async ({
+  test("VAL-ADMIN-003: the queue leads with the oldest unworked requests first", async ({
     page,
     request,
   }) => {
@@ -85,12 +85,14 @@ test.describe("portal requests operation", () => {
     await signIn(page);
     await page.goto("/admin/requests");
 
+    // Attention-first: between two unworked New requests, the older one —
+    // the one that has waited longer — comes before the newer one.
     const names = await page.getByTestId("request-name").allTextContents();
     const newerIndex = names.findIndex((name) => name.includes("newer"));
     const olderIndex = names.findIndex((name) => name.includes("older"));
     expect(newerIndex).toBeGreaterThanOrEqual(0);
     expect(olderIndex).toBeGreaterThanOrEqual(0);
-    expect(newerIndex).toBeLessThan(olderIndex);
+    expect(olderIndex).toBeLessThan(newerIndex);
 
     // Both staged rows carry the New badge in the queue.
     const newerRow = page
@@ -114,7 +116,7 @@ test.describe("portal requests operation", () => {
     expect(firstId && secondId && thirdId).toBeTruthy();
   });
 
-  test("VAL-ADMIN-005: detail shows every field and the lifecycle persists", async ({
+  test("VAL-ADMIN-005: detail shows every field and the composer drives the lifecycle", async ({
     page,
     request,
   }) => {
@@ -160,55 +162,70 @@ test.describe("portal requests operation", () => {
     await expect(notifications).toContainText(visibleRecipient);
     await expect(notifications).not.toContainText("jason.gitdev@gmail.com");
 
-    for (const status of ["contacted", "scheduled"] as const) {
-      await page.locator(`[data-status-action="${status}"]`).click();
-      await expect(
-        page.locator(`[data-status-action="${status}"]`),
-      ).toBeDisabled();
-      await expect(
-        page.locator(`span[data-status="${status}"]`).first(),
-      ).toBeVisible();
-
+    const composer = page.getByTestId("call-outcome-composer");
+    // The radios are sr-only inside visible labels — click the label text
+    // the way a staff member does.
+    async function saveOutcome(label: string) {
+      await composer.getByText(label, { exact: true }).click();
+      await page.getByTestId("save-outcome").click();
+      await expect(page.getByTestId("composer-feedback")).toBeVisible();
+    }
+    async function statusOf() {
       const { data, error } = await db
         .from("requests")
-        .select("status")
+        .select("status, closure_disposition, follow_up_at")
         .eq("id", id)
         .single();
       expect(error).toBeNull();
-      expect(data?.status).toBe(status);
+      return data;
     }
 
-    const closedStatus = page.getByTestId("closed-status-control");
-    await expect(closedStatus).not.toHaveAttribute("open", "");
-    await page.locator('[data-status-action="closed"]').click();
-    await expect(closedStatus).toHaveAttribute("open", "");
-    await expect(page.getByText("How was this request resolved?")).toBeVisible();
+    // The daily success path: booked lands on Scheduled and stays open.
+    await saveOutcome("Appointment is booked");
+    expect((await statusOf())?.status).toBe("scheduled");
 
-    await page
-      .getByRole("button", {
-        name: /^No appointment booked/,
-      })
+    // A call-again outcome requires the follow-up choice before saving.
+    await composer.getByText("No answer — call again", { exact: true }).click();
+    await expect(page.getByTestId("save-outcome")).toBeDisabled();
+    await composer.getByText("Tomorrow morning", { exact: true }).click();
+    await page.getByTestId("save-outcome").click();
+    await expect(page.getByTestId("composer-feedback")).toContainText(
+      "resurface",
+    );
+    const afterNoAnswer = await statusOf();
+    expect(afterNoAnswer?.status).toBe("contacted");
+    expect(afterNoAnswer?.follow_up_at).toBeTruthy();
+
+    // A closing outcome leaves the active queue with a classification.
+    await saveOutcome("Patient won't schedule");
+    const closed = await statusOf();
+    expect(closed?.status).toBe("closed");
+    expect(closed?.closure_disposition).toBe("unconverted");
+    expect(closed?.follow_up_at).toBeNull();
+
+    // Recording another call outcome reopens the closed request and clears
+    // the classification.
+    await composer
+      .getByText("Reached the patient — follow-up needed", { exact: true })
       .click();
-    await expect(
-      page.getByRole("button", {
-        name: /^No appointment booked/,
-      }),
-    ).toBeDisabled();
-    await expect(
-      page.locator('span[data-status="closed"]').first(),
-    ).toBeVisible();
+    await page.getByTestId("save-outcome").click();
+    await expect(page.getByTestId("composer-feedback")).toBeVisible();
+    const reopened = await statusOf();
+    expect(reopened?.status).toBe("contacted");
+    expect(reopened?.closure_disposition).toBeNull();
 
-    const { data: closed, error: closeError } = await db
-      .from("requests")
-      .select("status, closure_disposition, closed_at")
-      .eq("id", id)
-      .single();
-    expect(closeError).toBeNull();
-    expect(closed).toMatchObject({
-      status: "closed",
-      closure_disposition: "unconverted",
-    });
-    expect(closed?.closed_at).toBeTruthy();
+    const { data: outcomeAudits, error: outcomeAuditError } = await db
+      .from("audit_log")
+      .select("detail")
+      .eq("entity_id", id)
+      .eq("action", "request.call_outcome");
+    expect(outcomeAuditError).toBeNull();
+    const outcomes = (outcomeAudits ?? []).map(
+      (row) => (row.detail as { outcome?: string }).outcome,
+    );
+    expect(outcomes.sort()).toEqual(
+      ["no_answer", "reached_follow_up", "wont_schedule"].sort(),
+    );
 
     const { data: statusAudits, error: statusAuditError } = await db
       .from("audit_log")
@@ -216,21 +233,8 @@ test.describe("portal requests operation", () => {
       .eq("entity_id", id)
       .eq("action", "request.status_change");
     expect(statusAuditError).toBeNull();
-    expect(statusAudits).toHaveLength(2);
-    const statusTargets = (statusAudits ?? []).map(
-      (row) => (row.detail as { to?: string }).to,
-    );
-    for (const status of ["contacted", "scheduled"]) {
-      expect(statusTargets.filter((target) => target === status)).toHaveLength(1);
-    }
-
-    const { count: closeAuditCount, error: closeAuditError } = await db
-      .from("audit_log")
-      .select("id", { count: "exact", head: true })
-      .eq("entity_id", id)
-      .eq("action", "request.close");
-    expect(closeAuditError).toBeNull();
-    expect(closeAuditCount).toBe(1);
+    expect(statusAudits).toHaveLength(1);
+    expect((statusAudits![0].detail as { to?: string }).to).toBe("scheduled");
   });
 
   test("VAL-ADMIN-005b: unsafe legacy email uses the phone fallback", async ({
@@ -298,8 +302,11 @@ test.describe("portal requests operation", () => {
             const sql = await sqlCount(status);
 
             const badgesOk = badges.every((badge) => badge === status);
+            // One page holds at most REQUEST_PAGE_SIZE (50) rows; the SQL
+            // count may exceed it, so the honest expectation is a full or
+            // partial first page matching the count at the same instant.
             const consistent =
-              chip === sql && shown === Math.min(sql, 200) && badgesOk;
+              chip === sql && shown === Math.min(sql, 50) && badgesOk;
             return consistent
               ? "consistent"
               : `chip=${chip} shown=${shown} sql=${sql} badgesOk=${badgesOk}`;
@@ -307,6 +314,90 @@ test.describe("portal requests operation", () => {
           { timeout: 45_000, intervals: [500, 1_000, 2_000] },
         )
         .toBe("consistent");
+    }
+  });
+
+  test("VAL-ADMIN-017: the default queue leads with attention and details chain prev/next", async ({
+    page,
+  }) => {
+    const token = `p2queue-${runId}`;
+    const nowMs = Date.now();
+    const dayMs = 86_400_000;
+    const stagedRows = [
+      { suffix: "closed", status: "closed", created_at: new Date(nowMs - 5 * dayMs).toISOString() },
+      { suffix: "scheduled", status: "scheduled", created_at: new Date(nowMs - 2 * dayMs).toISOString() },
+      { suffix: "stale", status: "contacted", created_at: new Date(nowMs - 4 * dayMs).toISOString() },
+      { suffix: "due", status: "contacted", created_at: new Date(nowMs - dayMs).toISOString(), follow_up_at: new Date(nowMs).toISOString() },
+      { suffix: "newer", status: "new", created_at: new Date(nowMs - dayMs).toISOString() },
+      { suffix: "older", status: "new", created_at: new Date(nowMs - 3 * dayMs).toISOString() },
+    ];
+    const idsByKey = new Map<string, string>();
+    for (const row of stagedRows) {
+      const id = randomUUID();
+      idsByKey.set(row.suffix, id);
+      const { error } = await db.from("requests").insert({
+        id,
+        name: `TEST Queue ${runId} ${row.suffix}`,
+        phone: "8135550166",
+        email: `${token}-${row.suffix}@example.test`,
+        location: "tampa",
+        preferred_time: "morning",
+        message: "TEST attention-order fixture.",
+        locale: "en",
+        source_path: "/e2e/p2queue",
+        status: row.status,
+        created_at: row.created_at,
+        ...(row.follow_up_at ? { follow_up_at: row.follow_up_at } : {}),
+      });
+      expect(error).toBeNull();
+    }
+
+    try {
+      await signIn(page);
+      await page.goto(`/admin/requests?q=${token}`);
+
+      const names = await page.getByTestId("request-name").allTextContents();
+      const orderOf = (suffix: string) =>
+        names.findIndex((name) => name.includes(` ${suffix}`));
+      const positions = ["older", "newer", "due", "stale", "scheduled", "closed"].map(orderOf);
+      expect(positions.every((position) => position >= 0)).toBe(true);
+      expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+
+      await expect(page.getByTestId("request-next-action").first()).toBeVisible();
+      const hints = await page.getByTestId("request-next-action").allTextContents();
+      expect(hints.some((hint) => hint.startsWith("Call again — due"))).toBe(true);
+      expect(hints.some((hint) => hint.startsWith("Silent"))).toBe(true);
+      expect(hints.some((hint) => hint === "On the schedule")).toBe(true);
+
+      // Continuity: the due row chains to its attention-order neighbors.
+      await page.goto(`/admin/requests/${idsByKey.get("due")}?q=${token}`);
+      const prevLink = page.getByTestId("prev-request");
+      const nextLink = page.getByTestId("next-request");
+      await expect(prevLink).toHaveAttribute("href", new RegExp(idsByKey.get("newer")!));
+      await expect(nextLink).toHaveAttribute("href", new RegExp(idsByKey.get("stale")!));
+
+      // Save-and-open-next records the outcome and moves to the next row.
+      const composer = page.getByTestId("call-outcome-composer");
+      await composer
+        .getByText("Reached the patient — follow-up needed", { exact: true })
+        .click();
+      await page.getByTestId("save-outcome-next").click();
+      await expect(page).toHaveURL(new RegExp(`/admin/requests/${idsByKey.get("stale")}`));
+
+      const { data: outcomeAudits, error: outcomeAuditError } = await db
+        .from("audit_log")
+        .select("detail")
+        .eq("entity_id", idsByKey.get("due")!)
+        .eq("action", "request.call_outcome");
+      expect(outcomeAuditError).toBeNull();
+      expect(outcomeAudits).toHaveLength(1);
+      expect(
+        (outcomeAudits![0].detail as { outcome?: string }).outcome,
+      ).toBe("reached_follow_up");
+    } finally {
+      const ids = [...idsByKey.values()];
+      await db.from("requests").delete().in("id", ids);
+      await db.from("audit_log").delete().in("entity_id", ids);
     }
   });
 
@@ -320,16 +411,29 @@ test.describe("portal requests operation", () => {
     await signIn(page);
     await page.goto(`/admin/requests/${id}`);
 
-    await page.getByLabel("Add a note").fill(noteText);
-    await page.getByRole("button", { name: "Save note" }).click();
+    const composer = page.getByTestId("call-outcome-composer");
+    await composer
+      .getByText("Left a voicemail — call again", { exact: true })
+      .click();
+    await composer.getByText("Tomorrow morning", { exact: true }).click();
+    await page.getByLabel(/Add a note/).fill(noteText);
+    await page.getByTestId("save-outcome").click();
+    await expect(page.getByTestId("composer-feedback")).toBeVisible();
 
-    await expect(page.getByTestId("note-list")).toContainText(noteText);
-    await expect(page.getByTestId("note-list")).toContainText(
-      SEED_EMAIL.toLowerCase(),
+    const history = page.getByTestId("work-history");
+    await expect(history).toContainText(noteText);
+    await expect(history).toContainText("Left a voicemail");
+    const { data: authorProfile } = await db
+      .from("staff_profiles")
+      .select("display_name")
+      .eq("email", SEED_EMAIL.toLowerCase())
+      .single();
+    await expect(history).toContainText(
+      String(authorProfile?.display_name ?? ""),
     );
 
     await page.reload();
-    await expect(page.getByTestId("note-list")).toContainText(noteText);
+    await expect(page.getByTestId("work-history")).toContainText(noteText);
 
     const { data: events, error } = await db
       .from("request_events")
@@ -344,15 +448,17 @@ test.describe("portal requests operation", () => {
       SEED_EMAIL.toLowerCase(),
     );
 
-    const { data: noteAudits, error: noteAuditError } = await db
+    const { data: outcomeAudits, error: outcomeAuditError } = await db
       .from("audit_log")
       .select("detail")
       .eq("entity_id", id)
-      .eq("action", "request.note");
-    expect(noteAuditError).toBeNull();
-    expect(noteAudits).toHaveLength(1);
-    expect((noteAudits![0].detail as { length?: number }).length).toBe(
-      noteText.length,
-    );
+      .eq("action", "request.call_outcome");
+    expect(outcomeAuditError).toBeNull();
+    expect(outcomeAudits).toHaveLength(1);
+    const detail = outcomeAudits![0].detail as Record<string, unknown>;
+    expect(detail.outcome).toBe("voicemail");
+    expect(detail.note_attached).toBe(true);
+    expect(detail.note_length).toBe(noteText.length);
+    expect(JSON.stringify(detail)).not.toContain(noteText);
   });
 });

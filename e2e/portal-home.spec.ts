@@ -176,10 +176,78 @@ test.describe("portal home", () => {
       page.getByRole("heading", { name: "Appointment requests", exact: true }),
     ).toBeVisible();
     // The queue tab renders a compact "Requests" label below `sm`; assert
-    // the visible desktop text rather than the concatenated textContent.
+    // the visible desktop text rather than the concatenated textContent. The
+    // waiting-count badge may append a count inside the same link.
     await expect(
       page.locator('nav[aria-label="Portal sections"] a[aria-current="page"]'),
-    ).toHaveText("Appointment requests", { useInnerText: true });
+    ).toHaveText(/^Appointment requests/, { useInnerText: true });
+  });
+
+  test("home flags recent notification delivery failures honestly", async ({
+    page,
+  }) => {
+    const staged = await page.request.post("/api/requests", {
+      data: {
+        name: `TEST Home ${runId} delivery`,
+        phone: "8135550199",
+        email: `home-${runId}-delivery@example.test`,
+        location: "any",
+        time: "any",
+        locale: "en",
+        sourcePath: "/en/appointment",
+      },
+      headers: { "X-Forwarded-For": testIp("delivery") },
+    });
+    expect(staged.status()).toBe(201);
+    const { id } = (await staged.json()) as { id: string };
+    const { error: eventError } = await db.from("request_events").insert({
+      request_id: id,
+      type: "notification",
+      recipient: `home-${runId}-recipient@example.test`,
+      status: "failed",
+    });
+    expect(eventError).toBeNull();
+
+    async function recentFailures(): Promise<number> {
+      const { count, error } = await db
+        .from("request_events")
+        .select("id", { count: "exact", head: true })
+        .eq("type", "notification")
+        .eq("status", "failed")
+        .gte(
+          "created_at",
+          new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+        );
+      expect(error).toBeNull();
+      return count ?? 0;
+    }
+
+    await signIn(page, SEED_EMAIL, SEED_PASSWORD);
+
+    const expectedCount = await recentFailures();
+    expect(expectedCount).toBeGreaterThanOrEqual(1);
+    const warning = page.getByTestId("delivery-failure-warning");
+    await expect(warning).toBeVisible();
+    await expect(warning).toContainText(
+      expectedCount === 1
+        ? "An email alert failed to send in the last 24 hours."
+        : `${expectedCount} email alerts failed to send in the last 24 hours.`,
+    );
+
+    // Removing the staged failure restores the honest quiet state: the
+    // warning shows only while a real recent failure exists.
+    await db
+      .from("request_events")
+      .delete()
+      .eq("request_id", id)
+      .eq("status", "failed");
+    const remaining = await recentFailures();
+    await page.reload();
+    await expect(page.getByTestId("delivery-failure-warning")).toHaveCount(
+      remaining > 0 ? 1 : 0,
+    );
+
+    await db.from("requests").delete().eq("id", id);
   });
 
   test("first-login tour dismissal and Help restart persist on the staff profile", async ({
