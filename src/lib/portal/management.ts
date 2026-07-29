@@ -30,6 +30,11 @@ const recipientStateSchema = z.strictObject({
   active: z.boolean(),
 });
 
+const updateRecipientLabelSchema = z.strictObject({
+  recipientId: z.uuid(),
+  label: z.string().nullable(),
+});
+
 const entityIdSchema = z.strictObject({
   id: z.uuid(),
 });
@@ -44,6 +49,10 @@ const staffRoleSchema = z.strictObject({
   userId: z.uuid(),
   role: z.enum(["admin", "staff"]),
 });
+
+export type UpdateRecipientLabelResult =
+  | { ok: true }
+  | { ok: false; code: "invalid" | "not_found" | "unavailable" };
 
 export type ManagementFailureCode =
   | "invalid"
@@ -257,6 +266,52 @@ export async function addNotificationRecipientMutation(
   const delivery = await sendRecipientConfirmation(sendPortalEmail, recipient);
 
   return { ok: true, delivery };
+}
+
+/**
+ * Front-desk staff may correct a recipient label without remove-and-re-add
+ * (which would re-send the confirmation email). The RPC owns the durable
+ * write and its own `recipients.label_update` audit row.
+ */
+export async function updateRecipientLabelMutation(
+  input: unknown,
+  actorEmail: string,
+): Promise<UpdateRecipientLabelResult> {
+  const parsed = updateRecipientLabelSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, code: "invalid" };
+  }
+
+  const trimmed =
+    parsed.data.label === null ? null : parsed.data.label.trim();
+  const label = trimmed === null || trimmed === "" ? null : trimmed;
+  if (label !== null && (label.length < 1 || label.length > 120)) {
+    return { ok: false, code: "invalid" };
+  }
+
+  const { data, error } = await serviceClient().rpc(
+    "portal_update_recipient_label",
+    {
+      p_actor_email: actorEmail,
+      p_recipient_id: parsed.data.recipientId,
+      p_label: label,
+    },
+  );
+
+  if (error) {
+    if (error.code === "P0002" || error.code === "22P02") {
+      return { ok: false, code: "not_found" };
+    }
+    if (error.code === "22023") {
+      return { ok: false, code: "invalid" };
+    }
+    return { ok: false, code: "unavailable" };
+  }
+
+  // No-op (same label) returns false from the RPC; treat as success.
+  void data;
+  revalidateManagementViews();
+  return { ok: true };
 }
 
 /**

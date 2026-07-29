@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useReducer, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   addNotificationRecipient,
   removeNotificationRecipient,
   toggleNotificationRecipient,
+  updateRecipientLabel,
 } from "./actions";
 
 export type RecipientRow = {
@@ -32,6 +33,195 @@ function failureMessage(result: MutationOutcome): string {
   return FAILURE_COPY[result.code ?? "unavailable"] ?? FAILURE_COPY.unavailable;
 }
 
+// Every mutation reports per row, not per panel: only the affected control
+// goes pending while the rest of the list stays live. The reversible toggle
+// offers an undo in plain language instead of making staff reverse it
+// themselves.
+type RecipientsState = {
+  pendingKey: string | null;
+  error: string | null;
+  deliveryNotice: { tone: "success" | "warning"; text: string } | null;
+  undo: { recipientId: string; email: string; restoredActive: boolean } | null;
+  labelDraft: { recipientId: string; value: string } | null;
+  labelNotice: string | null;
+};
+
+type RecipientsAction =
+  | { type: "begin"; key: string }
+  | { type: "failed"; message: string }
+  | { type: "settle" }
+  | { type: "delivery"; notice: RecipientsState["deliveryNotice"] }
+  | { type: "undo_ready"; undo: RecipientsState["undo"] }
+  | { type: "dismiss_undo" }
+  | { type: "label_draft"; draft: RecipientsState["labelDraft"] }
+  | { type: "label_saved"; notice: string };
+
+const INITIAL_STATE: RecipientsState = {
+  pendingKey: null,
+  error: null,
+  deliveryNotice: null,
+  undo: null,
+  labelDraft: null,
+  labelNotice: null,
+};
+
+function recipientsReducer(
+  state: RecipientsState,
+  action: RecipientsAction,
+): RecipientsState {
+  switch (action.type) {
+    case "begin":
+      return {
+        ...state,
+        pendingKey: action.key,
+        error: null,
+        deliveryNotice: null,
+        undo: null,
+        labelNotice: null,
+      };
+    case "failed":
+      return { ...state, pendingKey: null, error: action.message };
+    case "settle":
+      return { ...state, pendingKey: null };
+    case "delivery":
+      return { ...state, pendingKey: null, deliveryNotice: action.notice };
+    case "undo_ready":
+      return { ...state, pendingKey: null, undo: action.undo };
+    case "dismiss_undo":
+      return { ...state, undo: null };
+    case "label_draft":
+      return { ...state, labelDraft: action.draft };
+    case "label_saved":
+      return {
+        ...state,
+        pendingKey: null,
+        labelDraft: null,
+        labelNotice: action.notice,
+      };
+  }
+}
+
+function RecipientRowItem({
+  recipient,
+  isAdmin,
+  pendingKey,
+  labelDraft,
+  onToggle,
+  onRemove,
+  onEditLabel,
+  onDraftChange,
+  onSaveLabel,
+  onCancelLabel,
+}: {
+  recipient: RecipientRow;
+  isAdmin: boolean;
+  pendingKey: string | null;
+  labelDraft: RecipientsState["labelDraft"];
+  onToggle: () => void;
+  onRemove: () => void;
+  onEditLabel: () => void;
+  onDraftChange: (value: string) => void;
+  onSaveLabel: () => void;
+  onCancelLabel: () => void;
+}) {
+  const togglePending = pendingKey === `toggle:${recipient.id}`;
+  const removePending = pendingKey === `remove:${recipient.id}`;
+  const labelPending = pendingKey === `label:${recipient.id}`;
+  const editingLabel = labelDraft?.recipientId === recipient.id;
+
+  return (
+    <li
+      data-recipient-email={recipient.email}
+      className="flex flex-wrap items-center justify-between gap-3 py-3.5"
+    >
+      <div className="min-w-0">
+        <p className="truncate font-bold text-[var(--color-ink)]">
+          {recipient.email}
+        </p>
+        {editingLabel && labelDraft ? (
+          <span className="mt-1.5 flex flex-wrap items-center gap-2">
+            <label htmlFor={`label-${recipient.id}`} className="sr-only">
+              Label for {recipient.email}
+            </label>
+            <input
+              id={`label-${recipient.id}`}
+              type="text"
+              maxLength={120}
+              value={labelDraft.value}
+              disabled={labelPending}
+              onChange={(event) => onDraftChange(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  onSaveLabel();
+                }
+                if (event.key === "Escape") onCancelLabel();
+              }}
+              className="min-h-10 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-3 text-[0.85rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)] disabled:opacity-60"
+            />
+            <button
+              type="button"
+              data-action="save-label"
+              disabled={labelPending}
+              onClick={onSaveLabel}
+              className="min-h-10 rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
+            >
+              {labelPending ? "Saving…" : "Save"}
+            </button>
+            <button
+              type="button"
+              disabled={labelPending}
+              onClick={onCancelLabel}
+              className="min-h-10 px-2 text-[0.85rem] font-bold text-[var(--color-muted)] disabled:opacity-60"
+            >
+              Cancel
+            </button>
+          </span>
+        ) : (
+          <p className="text-[0.85rem] text-[var(--color-muted)]">
+            {recipient.label?.trim() || "No label"}
+            <button
+              type="button"
+              data-action="edit-label"
+              onClick={onEditLabel}
+              className="ml-2 min-h-11 align-baseline font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+            >
+              {recipient.label?.trim() ? "Edit label" : "Add a label"}
+            </button>
+          </p>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-pressed={recipient.active}
+          data-action="toggle"
+          disabled={togglePending}
+          onClick={onToggle}
+          className={`flex min-h-10 items-center rounded-full border px-3.5 text-[0.85rem] font-bold transition-colors disabled:opacity-60 ${
+            recipient.active
+              ? "border-[var(--color-teal-ink)] bg-[var(--color-mint)] text-[var(--color-teal-ink)]"
+              : "border-[var(--color-line-2)] bg-white text-[var(--color-muted)]"
+          }`}
+        >
+          {togglePending ? "Saving…" : recipient.active ? "Active" : "Paused"}
+        </button>
+        {isAdmin && (
+          <button
+            type="button"
+            data-action="remove"
+            disabled={removePending}
+            onClick={onRemove}
+            className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+          >
+            {removePending ? "Removing…" : "Remove"}
+          </button>
+        )}
+      </div>
+    </li>
+  );
+}
+
 export function RecipientsManager({
   recipients,
   isAdmin,
@@ -40,28 +230,72 @@ export function RecipientsManager({
   isAdmin: boolean;
 }) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [deliveryNotice, setDeliveryNotice] = useState<{
-    tone: "success" | "warning";
-    text: string;
-  } | null>(null);
+  const [, startTransition] = useTransition();
+  const [state, dispatch] = useReducer(recipientsReducer, INITIAL_STATE);
+  const { pendingKey, error, deliveryNotice, undo, labelDraft, labelNotice } =
+    state;
 
   function run(
+    key: string,
     action: () => Promise<MutationOutcome>,
     onSuccess?: (result: MutationOutcome) => void,
   ) {
-    setError(null);
-    setDeliveryNotice(null);
+    dispatch({ type: "begin", key });
     startTransition(async () => {
       const result = await action();
       if (!result.ok) {
-        setError(failureMessage(result));
+        dispatch({ type: "failed", message: failureMessage(result) });
         return;
       }
-      onSuccess?.(result);
+      if (onSuccess) {
+        onSuccess(result);
+      } else {
+        dispatch({ type: "settle" });
+      }
       router.refresh();
     });
+  }
+
+  function toggleRecipient(recipient: RecipientRow) {
+    run(
+      `toggle:${recipient.id}`,
+      () =>
+        toggleNotificationRecipient({
+          recipientId: recipient.id,
+          active: !recipient.active,
+        }),
+      () =>
+        dispatch({
+          type: "undo_ready",
+          undo: {
+            recipientId: recipient.id,
+            email: recipient.email,
+            restoredActive: recipient.active,
+          },
+        }),
+    );
+  }
+
+  function saveLabel(recipient: RecipientRow) {
+    if (!labelDraft || labelDraft.recipientId !== recipient.id) return;
+    const next = labelDraft.value.trim();
+    if (next === (recipient.label?.trim() ?? "")) {
+      dispatch({ type: "label_draft", draft: null });
+      return;
+    }
+    run(
+      `label:${recipient.id}`,
+      () =>
+        updateRecipientLabel({
+          recipientId: recipient.id,
+          label: next || null,
+        }),
+      () =>
+        dispatch({
+          type: "label_saved",
+          notice: `Label updated for ${recipient.email}.`,
+        }),
+    );
   }
 
   function addFromForm(formData: FormData) {
@@ -69,19 +303,22 @@ export function RecipientsManager({
     const label = String(formData.get("label") ?? "").trim();
     if (!email) return;
     run(
+      "add",
       () => addNotificationRecipient({ email, label: label || undefined }),
       (result) =>
-        setDeliveryNotice(
-          result.delivery === "accepted"
-            ? {
-                tone: "success",
-                text: "Recipient added and confirmation email accepted for delivery.",
-              }
-            : {
-                tone: "warning",
-                text: "Recipient added, but confirmation email delivery could not be confirmed. The portal queue remains the system of record.",
-              },
-        ),
+        dispatch({
+          type: "delivery",
+          notice:
+            result.delivery === "accepted"
+              ? {
+                  tone: "success",
+                  text: "Recipient added and confirmation email accepted for delivery.",
+                }
+              : {
+                  tone: "warning",
+                  text: "Recipient added, but confirmation email delivery could not be confirmed. The portal queue remains the system of record.",
+                },
+        }),
     );
   }
 
@@ -123,6 +360,55 @@ export function RecipientsManager({
         </p>
       )}
 
+      {undo && (
+        <p
+          role="status"
+          data-testid="recipient-undo"
+          className="mt-4 flex flex-wrap items-center gap-3 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-4 py-3 text-sm text-[var(--color-ink)]"
+        >
+          <span className="font-bold">
+            Notifications {undo.restoredActive ? "paused" : "resumed"} for{" "}
+            {undo.email}.
+          </span>
+          <button
+            type="button"
+            data-action="undo-toggle"
+            disabled={pendingKey === `toggle:${undo.recipientId}`}
+            onClick={() => {
+              const target = undo;
+              run(
+                `toggle:${target.recipientId}`,
+                () =>
+                  toggleNotificationRecipient({
+                    recipientId: target.recipientId,
+                    active: target.restoredActive,
+                  }),
+              );
+            }}
+            className="min-h-11 font-bold text-[var(--color-teal-ink)] underline underline-offset-2 disabled:opacity-60"
+          >
+            Undo
+          </button>
+          <button
+            type="button"
+            onClick={() => dispatch({ type: "dismiss_undo" })}
+            className="min-h-11 font-bold text-[var(--color-muted)]"
+          >
+            Dismiss
+          </button>
+        </p>
+      )}
+
+      {labelNotice && (
+        <p
+          role="status"
+          data-testid="recipient-label-status"
+          className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
+        >
+          {labelNotice}
+        </p>
+      )}
+
       <ul data-testid="recipient-list" className="mt-5 divide-y divide-[var(--color-line)]">
         {recipients.length === 0 && (
           <li className="py-4 text-[0.95rem] text-[var(--color-muted)]">
@@ -131,64 +417,42 @@ export function RecipientsManager({
           </li>
         )}
         {recipients.map((recipient) => (
-          <li
+          <RecipientRowItem
             key={recipient.id}
-            data-recipient-email={recipient.email}
-            className="flex flex-wrap items-center justify-between gap-3 py-3.5"
-          >
-            <div className="min-w-0">
-              <p className="truncate font-bold text-[var(--color-ink)]">
-                {recipient.email}
-              </p>
-              <p className="text-[0.85rem] text-[var(--color-muted)]">
-                {recipient.label?.trim() || "No label"}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                aria-pressed={recipient.active}
-                data-action="toggle"
-                disabled={pending}
-                onClick={() =>
-                  run(() =>
-                    toggleNotificationRecipient({
-                      recipientId: recipient.id,
-                      active: !recipient.active,
-                    }),
-                  )
-                }
-                className={`flex min-h-10 items-center rounded-full border px-3.5 text-[0.85rem] font-bold transition-colors disabled:opacity-60 ${
-                  recipient.active
-                    ? "border-[var(--color-teal-ink)] bg-[var(--color-mint)] text-[var(--color-teal-ink)]"
-                    : "border-[var(--color-line-2)] bg-white text-[var(--color-muted)]"
-                }`}
-              >
-                {recipient.active ? "Active" : "Paused"}
-              </button>
-              {isAdmin && (
-                <button
-                  type="button"
-                  data-action="remove"
-                  disabled={pending}
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        `Remove ${recipient.email} from notifications? The queue keeps working either way.`,
-                      )
-                    ) {
-                      run(() =>
-                        removeNotificationRecipient({ id: recipient.id }),
-                      );
-                    }
-                  }}
-                  className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-          </li>
+            recipient={recipient}
+            isAdmin={isAdmin}
+            pendingKey={pendingKey}
+            labelDraft={labelDraft}
+            onToggle={() => toggleRecipient(recipient)}
+            onRemove={() => {
+              if (
+                window.confirm(
+                  `Remove ${recipient.email} from notifications? The queue keeps working either way.`,
+                )
+              ) {
+                run(`remove:${recipient.id}`, () =>
+                  removeNotificationRecipient({ id: recipient.id }),
+                );
+              }
+            }}
+            onEditLabel={() =>
+              dispatch({
+                type: "label_draft",
+                draft: {
+                  recipientId: recipient.id,
+                  value: recipient.label?.trim() ?? "",
+                },
+              })
+            }
+            onDraftChange={(value) =>
+              dispatch({
+                type: "label_draft",
+                draft: { recipientId: recipient.id, value },
+              })
+            }
+            onSaveLabel={() => saveLabel(recipient)}
+            onCancelLabel={() => dispatch({ type: "label_draft", draft: null })}
+          />
         ))}
       </ul>
 
@@ -211,7 +475,7 @@ export function RecipientsManager({
                 type="email"
                 required
                 placeholder="frontdesk@example.com"
-                disabled={pending}
+                disabled={pendingKey === "add"}
                 className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)]"
               />
             </div>
@@ -224,16 +488,16 @@ export function RecipientsManager({
                 name="label"
                 type="text"
                 placeholder="Label (optional)"
-                disabled={pending}
+                disabled={pendingKey === "add"}
                 className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)]"
               />
             </div>
             <button
               type="submit"
-              disabled={pending}
+              disabled={pendingKey === "add"}
               className="btn btn-navy min-h-11 disabled:opacity-60"
             >
-              {pending ? "Saving…" : "Add"}
+              {pendingKey === "add" ? "Saving…" : "Add"}
             </button>
           </div>
         </form>
