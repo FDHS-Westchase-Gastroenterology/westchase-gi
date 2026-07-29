@@ -88,3 +88,38 @@ export function followUpWhenLabel(iso: string): string {
   const part = hour < 12 ? "morning" : "afternoon";
   return `${followUpDay.format(date)} ${part}`;
 }
+
+// Compact practice-local label for queue hints: "this morning",
+// "tomorrow morning", "Friday morning", or "August 8".
+const shortWeekday = new Intl.DateTimeFormat("en-US", {
+  weekday: "long",
+  timeZone: "America/New_York",
+});
+
+const shortMonthDay = new Intl.DateTimeFormat("en-US", {
+  month: "long",
+  day: "numeric",
+  timeZone: "America/New_York",
+});
+
+const nyDay = new Intl.DateTimeFormat("en-CA", {
+  dateStyle: "short",
+  timeZone: "America/New_York",
+});
+
+function nyDayNumber(date: Date): number {
+  return Math.round(
+    Date.parse(`${nyDay.format(date)}T00:00:00Z`) / 86_400_000,
+  );
+}
+
+export function followUpShortLabel(iso: string, now: Date = new Date()): string {
+  const date = new Date(iso);
+  const hour = Number(followUpHour.format(date));
+  const part = hour < 12 ? "morning" : "afternoon";
+  const dayDiff = nyDayNumber(date) - nyDayNumber(now);
+  if (dayDiff <= 0) return `this ${part}`;
+  if (dayDiff === 1) return `tomorrow ${part}`;
+  if (dayDiff <= 6) return `${shortWeekday.format(date)} ${part}`;
+  return shortMonthDay.format(date);
+}

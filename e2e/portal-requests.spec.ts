@@ -312,6 +312,90 @@ test.describe("portal requests operation", () => {
     }
   });
 
+  test("VAL-ADMIN-017: the default queue leads with attention and details chain prev/next", async ({
+    page,
+  }) => {
+    const token = `p2queue-${runId}`;
+    const nowMs = Date.now();
+    const dayMs = 86_400_000;
+    const stagedRows = [
+      { suffix: "closed", status: "closed", created_at: new Date(nowMs - 5 * dayMs).toISOString() },
+      { suffix: "scheduled", status: "scheduled", created_at: new Date(nowMs - 2 * dayMs).toISOString() },
+      { suffix: "stale", status: "contacted", created_at: new Date(nowMs - 4 * dayMs).toISOString() },
+      { suffix: "due", status: "contacted", created_at: new Date(nowMs - dayMs).toISOString(), follow_up_at: new Date(nowMs).toISOString() },
+      { suffix: "newer", status: "new", created_at: new Date(nowMs - dayMs).toISOString() },
+      { suffix: "older", status: "new", created_at: new Date(nowMs - 3 * dayMs).toISOString() },
+    ];
+    const idsByKey = new Map<string, string>();
+    for (const row of stagedRows) {
+      const id = randomUUID();
+      idsByKey.set(row.suffix, id);
+      const { error } = await db.from("requests").insert({
+        id,
+        name: `TEST Queue ${runId} ${row.suffix}`,
+        phone: "8135550166",
+        email: `${token}-${row.suffix}@example.test`,
+        location: "tampa",
+        preferred_time: "morning",
+        message: "TEST attention-order fixture.",
+        locale: "en",
+        source_path: "/e2e/p2queue",
+        status: row.status,
+        created_at: row.created_at,
+        ...(row.follow_up_at ? { follow_up_at: row.follow_up_at } : {}),
+      });
+      expect(error).toBeNull();
+    }
+
+    try {
+      await signIn(page);
+      await page.goto(`/admin/requests?q=${token}`);
+
+      const names = await page.getByTestId("request-name").allTextContents();
+      const orderOf = (suffix: string) =>
+        names.findIndex((name) => name.includes(` ${suffix}`));
+      const positions = ["older", "newer", "due", "stale", "scheduled", "closed"].map(orderOf);
+      expect(positions.every((position) => position >= 0)).toBe(true);
+      expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+
+      await expect(page.getByTestId("request-next-action").first()).toBeVisible();
+      const hints = await page.getByTestId("request-next-action").allTextContents();
+      expect(hints.some((hint) => hint.startsWith("Call again — due"))).toBe(true);
+      expect(hints.some((hint) => hint.startsWith("Silent"))).toBe(true);
+      expect(hints.some((hint) => hint === "On the schedule")).toBe(true);
+
+      // Continuity: the due row chains to its attention-order neighbors.
+      await page.goto(`/admin/requests/${idsByKey.get("due")}?q=${token}`);
+      const prevLink = page.getByTestId("prev-request");
+      const nextLink = page.getByTestId("next-request");
+      await expect(prevLink).toHaveAttribute("href", new RegExp(idsByKey.get("newer")!));
+      await expect(nextLink).toHaveAttribute("href", new RegExp(idsByKey.get("stale")!));
+
+      // Save-and-open-next records the outcome and moves to the next row.
+      const composer = page.getByTestId("call-outcome-composer");
+      await composer
+        .getByText("Reached the patient — follow-up needed", { exact: true })
+        .click();
+      await page.getByTestId("save-outcome-next").click();
+      await expect(page).toHaveURL(new RegExp(`/admin/requests/${idsByKey.get("stale")}`));
+
+      const { data: outcomeAudits, error: outcomeAuditError } = await db
+        .from("audit_log")
+        .select("detail")
+        .eq("entity_id", idsByKey.get("due")!)
+        .eq("action", "request.call_outcome");
+      expect(outcomeAuditError).toBeNull();
+      expect(outcomeAudits).toHaveLength(1);
+      expect(
+        (outcomeAudits![0].detail as { outcome?: string }).outcome,
+      ).toBe("reached_follow_up");
+    } finally {
+      const ids = [...idsByKey.values()];
+      await db.from("requests").delete().in("id", ids);
+      await db.from("audit_log").delete().in("entity_id", ids);
+    }
+  });
+
   test("VAL-ADMIN-006: notes persist with attribution and survive reload", async ({
     page,
     request,
