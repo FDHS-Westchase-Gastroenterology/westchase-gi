@@ -196,7 +196,9 @@ function StaffList({
                           `Deactivate ${person.display_name}? They are locked out immediately and this can only be undone by an engineer.`,
                         )
                       ) {
-                        run(() => deactivateStaff({ id: person.user_id }));
+                        run(`deactivate:${person.user_id}`, () =>
+                          deactivateStaff({ id: person.user_id }),
+                        );
                       }
                     }}
                     className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
