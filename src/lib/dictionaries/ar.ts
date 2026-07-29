@@ -34,12 +34,12 @@ export const ar: Dictionary = {
     newPatients: {
       title: "المرضى الجدد",
       description:
-        "كل ما تحتاجونه لزيارتكم الأولى إلى Westchase Gastroenterology: استمارات المرضى الجدد عبر الإنترنت بالإنجليزية والإسبانية، ومعلومات التأمين، وما يمكن توقعه.",
+        "كل ما تحتاجونه لزيارتكم الأولى إلى Westchase Gastroenterology: استمارات المرضى الجدد عبر الإنترنت، ومعلومات التأمين، وما يمكن توقعه.",
     },
     procedurePrep: {
       title: "التحضير للإجراءات",
       description:
-        "تعليمات تحضير خطوة بخطوة لتنظير القولون والتنظير العلوي (EGD) وغيرهما من إجراءات الجهاز الهضمي في Westchase Gastroenterology — متاحة للقراءة عبر الإنترنت وقابلة للطباعة، بالإنجليزية والإسبانية.",
+        "تعليمات تحضير خطوة بخطوة لتنظير القولون والتنظير العلوي (EGD) وغيرهما من إجراءات الجهاز الهضمي في Westchase Gastroenterology — متاحة للقراءة عبر الإنترنت وقابلة للطباعة.",
     },
     resources: {
       title: "مصادر للمرضى",
@@ -59,7 +59,7 @@ export const ar: Dictionary = {
     blog: {
       title: "المدونة",
       description:
-        "مقالات عن صحة الجهاز الهضمي من Westchase Gastroenterology: تنظير القولون، والكشف المبكر، والتغذية، والارتجاع، وصحة الأمعاء اليومية، بالإنجليزية والإسبانية.",
+        "مقالات عن صحة الجهاز الهضمي من Westchase Gastroenterology: تنظير القولون، والكشف المبكر، والتغذية، والارتجاع، وصحة الأمعاء اليومية.",
     },
     patientEducation: {
       title: "تثقيف المرضى",
@@ -86,7 +86,11 @@ export const ar: Dictionary = {
       description:
         "اختر اللغة التي تود استخدامها في هذا الموقع. يمكنك تغييرها في أي وقت من قائمة اللغة.",
       suggested: "مقترحة",
+      // i5-waiver 2026-07-28 common.languageChooser.continue: action label naming
+      // the current locale, not an availability claim.
       continue: "المتابعة بالعربية",
+      // i5-waiver 2026-07-28 common.languageChooser.close: action label naming
+      // the current locale, not an availability claim.
       close: "إغلاق اختيار اللغة والمتابعة بالعربية",
     },
     getDirections: "الحصول على الاتجاهات",
@@ -111,7 +115,11 @@ export const ar: Dictionary = {
       blog: "المدونة",
       contact: "اتصلوا بنا",
       appointment: "طلب موعد",
+      // i5-waiver 2026-07-28 common.nav.formsEn: the external Hushforms packet
+      // really is English-only; the label says so honestly.
       formsEn: "استمارات المرضى الجدد عبر الإنترنت (بالإنجليزية)",
+      // i5-waiver 2026-07-28 common.nav.formsEs: the external Hushforms packet
+      // really is Spanish-only; the label says so honestly.
       formsEs: "استمارات المرضى الجدد عبر الإنترنت (بالإسبانية)",
       printableForms: "استمارات قابلة للطباعة",
     },
@@ -180,7 +188,7 @@ export const ar: Dictionary = {
     heroKicker: "رعاية للجهاز الهضمي على أيدي أطباء معتمدين من البورد في تامبا باي",
     heroTitle: "صحة جهازكم الهضمي بين أيدٍ حانية",
     heroLead:
-      "رعاية شاملة لأمراض الجهاز الهضمي في ويستشيس ولوتز: تنظير القولون للكشف المبكر، والتنظير المتقدم، ورعاية الكبد على أيدي أطباء يخصصون الوقت الكافي للإصغاء إليكم. بالإنجليزية والإسبانية.",
+      "رعاية شاملة لأمراض الجهاز الهضمي في ويستشيس ولوتز: تنظير القولون للكشف المبكر، والتنظير المتقدم، ورعاية الكبد على أيدي أطباء يخصصون الوقت الكافي للإصغاء إليكم.",
     heroPhoto: "فريق Westchase Gastroenterology في عيادتنا في تامبا",
     tiles: {
       heading: "كيف يمكننا مساعدتكم اليوم؟",
@@ -204,6 +212,8 @@ export const ar: Dictionary = {
     physicianReviewCta: "اتركوا تقييمًا على Google",
     physicianReviewAria: "اتركوا تقييمًا على Google للدكتور {name} (يفتح نموذج التقييم في Google)",
     testimonialsHeading: "ماذا يقول مرضانا",
+    // i5-waiver 2026-07-28 home.testimonialsNote: settled decision — testimonials
+    // stay English-only in every locale, with this explicit qualifier.
     testimonialsNote: "تقييمات شاركها مرضانا بكلماتهم الخاصة (بالإنجليزية).",
     railLabel: "آراء المرضى",
     railPrev: "الآراء السابقة",
@@ -318,9 +328,15 @@ export const ar: Dictionary = {
       "السعي إلى التحسين المستمر على جميع المستويات.",
     ],
     formsHeading: "استمارات المرضى",
+    // i5-waiver 2026-07-28 newPatients.formsIntro: the EN/ES clause binds to
+    // the external Hushforms packet only — no claim about the site's languages.
     formsIntro:
-      "الخيار الأسرع هو حزمة الاستمارات الآمنة عبر الإنترنت، المتوفرة بالإنجليزية والإسبانية. أكملوها من أي جهاز قبل زيارتكم الأولى:",
+      "الخيار الأسرع هو حزمة الاستمارات الآمنة عبر الإنترنت — الحزمة نفسها متوفرة بالإنجليزية والإسبانية. أكملوها من أي جهاز قبل زيارتكم الأولى:",
+    // i5-waiver 2026-07-28 newPatients.formsOnlineEn: the external Hushforms
+    // packet really is English-only; the label says so honestly.
     formsOnlineEn: "استمارات المرضى الجدد عبر الإنترنت (بالإنجليزية)",
+    // i5-waiver 2026-07-28 newPatients.formsOnlineEs: the external Hushforms
+    // packet really is Spanish-only; the label says so honestly.
     formsOnlineEs: "استمارات المرضى الجدد عبر الإنترنت (بالإسبانية)",
     formsPrintableIntro:
       "تفضلون الورق؟ هذه الاستمارات القابلة للطباعة قيد التحديث؛ راسلونا نصيًا وسنرسل لكم النسخ الحالية، أو أكملوها في مكتب الاستقبال عند وصولكم.",
@@ -359,9 +375,11 @@ export const ar: Dictionary = {
       "منظمات موثوقة يوصي بها أطباؤنا لمعرفة المزيد عن أمراض الجهاز الهضمي، إضافة إلى مكتبتنا الخاصة لتثقيف المرضى والنشرات المعلوماتية.",
     educationHeading: "مكتبتنا لتثقيف المرضى",
     educationBody:
-      "صفحات بلغة مبسطة عن الإجراءات التي نجريها والحالات التي نعالجها — كُتبت خصيصًا للمرضى، بالإنجليزية والإسبانية.",
+      "صفحات بلغة مبسطة عن الإجراءات التي نجريها والحالات التي نعالجها — كُتبت خصيصًا للمرضى بالإنجليزية والإسبانية والفيتنامية والكورية والعربية.",
     educationCta: "تصفح صفحات تثقيف المرضى",
     asgeHeading: "المزيد من ASGE",
+    // i5-waiver 2026-07-28 resources.asgeBody: the external ASGE guides really
+    // are English-only; the qualifier is the truth.
     asgeBody:
       "تنشر الجمعية الأمريكية لتنظير الجهاز الهضمي (ASGE) أيضًا أدلة للمرضى حول أمراض الجهاز الهضمي وإجراءاته (بالإنجليزية).",
     educationCtaConditions: "أدلة ASGE: الحالات المرضية",
@@ -388,7 +406,7 @@ export const ar: Dictionary = {
   education: {
     title: "تثقيف المرضى",
     intro:
-      "شروح بلغة مبسطة للإجراءات التي نجريها والحالات التي نعالجها. كل صفحة متوفرة بالإنجليزية والإسبانية.",
+      "شروح بلغة مبسطة للإجراءات التي نجريها والحالات التي نعالجها. كل صفحة متوفرة بالإنجليزية والإسبانية والفيتنامية والكورية والعربية.",
     proceduresHeading: "الإجراءات والفحوصات",
     proceduresIntro: "ما يمكن توقعه قبل إجراءات الجهاز الهضمي الشائعة وأثناءها وبعدها.",
     conditionsHeading: "الحالات المرضية",

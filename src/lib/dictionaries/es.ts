@@ -36,12 +36,12 @@ export const es: Dictionary = {
     newPatients: {
       title: "Pacientes Nuevos",
       description:
-        "Todo lo que necesita para su primera visita a Westchase Gastroenterology: formularios en línea en inglés y español, información de seguros y qué esperar.",
+        "Todo lo que necesita para su primera visita a Westchase Gastroenterology: formularios en línea, información de seguros y qué esperar.",
     },
     procedurePrep: {
       title: "Preparación para Procedimientos",
       description:
-        "Instrucciones de preparación paso a paso para colonoscopia, EGD y otros procedimientos digestivos en Westchase Gastroenterology — disponibles en línea y para imprimir, en español e inglés.",
+        "Instrucciones de preparación paso a paso para colonoscopia, EGD y otros procedimientos digestivos en Westchase Gastroenterology — disponibles en línea y para imprimir.",
     },
     resources: {
       title: "Recursos para Pacientes",
@@ -61,7 +61,7 @@ export const es: Dictionary = {
     blog: {
       title: "Blog",
       description:
-        "Artículos de salud digestiva de Westchase Gastroenterology: colonoscopia, exámenes de detección, nutrición, reflujo y salud intestinal, en español e inglés.",
+        "Artículos de salud digestiva de Westchase Gastroenterology: colonoscopia, exámenes de detección, nutrición, reflujo y salud intestinal.",
     },
     patientEducation: {
       title: "Educación para Pacientes",
@@ -88,7 +88,11 @@ export const es: Dictionary = {
       description:
         "Elija el idioma que desea usar en este sitio web. Puede cambiarlo en cualquier momento desde el menú Idioma.",
       suggested: "Sugerido",
+      // i5-waiver 2026-07-28 common.languageChooser.continue: action label naming
+      // the current locale, not an availability claim.
       continue: "Continuar en español",
+      // i5-waiver 2026-07-28 common.languageChooser.close: action label naming
+      // the current locale, not an availability claim.
       close: "Cerrar el selector de idioma y continuar en español",
     },
     getDirections: "Cómo llegar",
@@ -113,7 +117,11 @@ export const es: Dictionary = {
       blog: "Blog",
       contact: "Contáctenos",
       appointment: "Solicitar Cita",
+      // i5-waiver 2026-07-28 common.nav.formsEn: the external Hushforms packet
+      // really is English-only; the label says so honestly.
       formsEn: "Formularios para pacientes nuevos (inglés)",
+      // i5-waiver 2026-07-28 common.nav.formsEs: the external Hushforms packet
+      // really is Spanish-only; the label says so honestly.
       formsEs: "Formularios para pacientes nuevos (español)",
       printableForms: "Formularios para imprimir",
     },
@@ -182,7 +190,7 @@ export const es: Dictionary = {
     heroKicker: "Atención digestiva certificada en Tampa Bay",
     heroTitle: "Su salud digestiva, en buenas manos",
     heroLead:
-      "Gastroenterología integral en Westchase y Lutz: colonoscopias de detección, endoscopia avanzada y cuidado del hígado con médicos que se toman el tiempo de escuchar. En español e inglés.",
+      "Gastroenterología integral en Westchase y Lutz: colonoscopias de detección, endoscopia avanzada y cuidado del hígado con médicos que se toman el tiempo de escuchar.",
     heroPhoto: "El equipo de Westchase Gastroenterology en nuestra oficina de Tampa",
     tiles: {
       heading: "¿Cómo podemos ayudarle hoy?",
@@ -207,6 +215,8 @@ export const es: Dictionary = {
     physicianReviewCta: "Deje una reseña en Google",
     physicianReviewAria: "Deje una reseña en Google para el Dr. {name} (abre el formulario de reseñas de Google)",
     testimonialsHeading: "Lo que dicen nuestros pacientes",
+    // i5-waiver 2026-07-28 home.testimonialsNote: settled decision — testimonials
+    // stay English-only in every locale, with this explicit qualifier.
     testimonialsNote: "Reseñas compartidas por nuestros pacientes, en sus propias palabras (en inglés).",
     railLabel: "Testimonios de pacientes",
     railPrev: "Testimonios anteriores",
@@ -321,9 +331,15 @@ export const es: Dictionary = {
       "Buscar la mejora continua en todos los niveles.",
     ],
     formsHeading: "Formularios para Pacientes",
+    // i5-waiver 2026-07-28 newPatients.formsIntro: the EN/ES clause binds to
+    // the external Hushforms packet only — no claim about the site's languages.
     formsIntro:
-      "La opción más rápida es nuestro paquete seguro en línea, disponible en español e inglés. Complételo desde cualquier dispositivo antes de su primera visita:",
+      "La opción más rápida es nuestro paquete seguro en línea — el paquete está disponible en español e inglés. Complételo desde cualquier dispositivo antes de su primera visita:",
+    // i5-waiver 2026-07-28 newPatients.formsOnlineEn: the external Hushforms
+    // packet really is English-only; the label says so honestly.
     formsOnlineEn: "Formularios en línea para pacientes nuevos (inglés)",
+    // i5-waiver 2026-07-28 newPatients.formsOnlineEs: the external Hushforms
+    // packet really is Spanish-only; the label says so honestly.
     formsOnlineEs: "Formularios en línea para pacientes nuevos (español)",
     formsPrintableIntro:
       "¿Prefiere papel? Estos formularios para imprimir se están actualizando; envíenos un texto y le mandaremos las versiones vigentes, o complételos en la recepción cuando llegue.",
@@ -362,9 +378,11 @@ export const es: Dictionary = {
       "Organizaciones confiables que nuestros médicos recomiendan para aprender más sobre las enfermedades digestivas, además de nuestra propia biblioteca educativa y hojas informativas.",
     educationHeading: "Nuestra biblioteca de educación para pacientes",
     educationBody:
-      "Páginas en lenguaje sencillo sobre los procedimientos que realizamos y las condiciones que tratamos — escritas para pacientes, en español e inglés.",
+      "Páginas en lenguaje sencillo sobre los procedimientos que realizamos y las condiciones que tratamos — escritas para pacientes en inglés, español, vietnamita, coreano y árabe.",
     educationCta: "Ver la educación para pacientes",
     asgeHeading: "Más recursos de la ASGE",
+    // i5-waiver 2026-07-28 resources.asgeBody: the external ASGE guides really
+    // are English-only; the qualifier is the truth.
     asgeBody:
       "La Sociedad Americana de Endoscopia Gastrointestinal (ASGE) también publica guías para pacientes sobre condiciones y procedimientos digestivos (en inglés).",
     educationCtaConditions: "Guías de la ASGE: condiciones",
@@ -391,7 +409,7 @@ export const es: Dictionary = {
   education: {
     title: "Educación para Pacientes",
     intro:
-      "Explicaciones en lenguaje sencillo de los procedimientos que realizamos y las condiciones que tratamos. Cada página está disponible en español e inglés.",
+      "Explicaciones en lenguaje sencillo de los procedimientos que realizamos y las condiciones que tratamos. Cada página está disponible en inglés, español, vietnamita, coreano y árabe.",
     proceduresHeading: "Procedimientos y estudios",
     proceduresIntro: "Qué esperar antes, durante y después de los procedimientos digestivos más comunes.",
     conditionsHeading: "Condiciones",
