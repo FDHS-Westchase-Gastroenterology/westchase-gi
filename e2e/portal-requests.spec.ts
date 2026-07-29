@@ -168,10 +168,14 @@ test.describe("portal requests operation", () => {
     await expect(notifications).toContainText("jason.gitdev@gmail.com");
 
     const composer = page.getByTestId("call-outcome-composer");
-    // The radios are sr-only inside visible labels — click the label text
-    // the way a staff member does.
-    async function saveOutcome(label: string) {
-      await composer.getByText(label, { exact: true }).click();
+    async function saveLifecycle(
+      destination: "Contacted" | "Scheduled" | "Closed",
+      detail?: string,
+    ) {
+      await composer.getByText(destination, { exact: true }).click();
+      if (detail) {
+        await composer.getByText(detail, { exact: true }).click();
+      }
       await page.getByTestId("save-outcome").click();
       await expect(page.getByTestId("composer-feedback")).toBeVisible();
     }
@@ -185,11 +189,8 @@ test.describe("portal requests operation", () => {
       return data;
     }
 
-    // The daily success path: booked lands on Scheduled and stays open.
-    await saveOutcome("Appointment is booked");
-    expect((await statusOf())?.status).toBe("scheduled");
-
     // A call-again outcome requires the follow-up choice before saving.
+    await composer.getByText("Contacted", { exact: true }).click();
     await composer.getByText("No answer — call again", { exact: true }).click();
     await expect(page.getByTestId("save-outcome")).toBeDisabled();
     await composer.getByText("Tomorrow morning", { exact: true }).click();
@@ -200,21 +201,30 @@ test.describe("portal requests operation", () => {
     const afterNoAnswer = await statusOf();
     expect(afterNoAnswer?.status).toBe("contacted");
     expect(afterNoAnswer?.follow_up_at).toBeTruthy();
+    await expect(
+      page
+        .getByTestId("lifecycle-destinations")
+        .getByText("Contacted", { exact: true }),
+    ).toHaveCount(0);
 
-    // A closing outcome leaves the active queue with a classification.
-    await saveOutcome("Patient won't schedule");
+    // The daily success path: Scheduled means booked and stays open.
+    await saveLifecycle("Scheduled");
+    expect((await statusOf())?.status).toBe("scheduled");
+    await expect(
+      page
+        .getByTestId("lifecycle-destinations")
+        .getByText("Scheduled", { exact: true }),
+    ).toHaveCount(0);
+
+    // Closed then asks for the classification the database needs.
+    await saveLifecycle("Closed", "Patient won't schedule");
     const closed = await statusOf();
     expect(closed?.status).toBe("closed");
     expect(closed?.closure_disposition).toBe("unconverted");
     expect(closed?.follow_up_at).toBeNull();
 
-    // Recording another call outcome reopens the closed request and clears
-    // the classification.
-    await composer
-      .getByText("Reached the patient — follow-up needed", { exact: true })
-      .click();
-    await page.getByTestId("save-outcome").click();
-    await expect(page.getByTestId("composer-feedback")).toBeVisible();
+    // A closed request can be deliberately reopened into a non-current status.
+    await saveLifecycle("Contacted", "Reached the patient — follow-up needed");
     const reopened = await statusOf();
     expect(reopened?.status).toBe("contacted");
     expect(reopened?.closure_disposition).toBeNull();
@@ -381,24 +391,36 @@ test.describe("portal requests operation", () => {
       await expect(prevLink).toHaveAttribute("href", new RegExp(idsByKey.get("newer")!));
       await expect(nextLink).toHaveAttribute("href", new RegExp(idsByKey.get("stale")!));
 
-      // Save-and-open-next records the outcome and moves to the next row.
+      // The due row is already Contacted, so that current state is not offered.
+      // Save-and-open-next moves it to Scheduled and keeps queue continuity.
       const composer = page.getByTestId("call-outcome-composer");
-      await composer
-        .getByText("Reached the patient — follow-up needed", { exact: true })
-        .click();
+      await expect(
+        composer
+          .getByTestId("lifecycle-destinations")
+          .getByText("Contacted", { exact: true }),
+      ).toHaveCount(0);
+      await composer.getByText("Scheduled", { exact: true }).click();
       await page.getByTestId("save-outcome-next").click();
       await expect(page).toHaveURL(new RegExp(`/admin/requests/${idsByKey.get("stale")}`));
 
-      const { data: outcomeAudits, error: outcomeAuditError } = await db
+      const { data: savedRow, error: savedRowError } = await db
+        .from("requests")
+        .select("status")
+        .eq("id", idsByKey.get("due")!)
+        .single();
+      expect(savedRowError).toBeNull();
+      expect(savedRow?.status).toBe("scheduled");
+
+      const { data: statusAudits, error: statusAuditError } = await db
         .from("audit_log")
         .select("detail")
         .eq("entity_id", idsByKey.get("due")!)
-        .eq("action", "request.call_outcome");
-      expect(outcomeAuditError).toBeNull();
-      expect(outcomeAudits).toHaveLength(1);
+        .eq("action", "request.status_change");
+      expect(statusAuditError).toBeNull();
+      expect(statusAudits).toHaveLength(1);
       expect(
-        (outcomeAudits![0].detail as { outcome?: string }).outcome,
-      ).toBe("reached_follow_up");
+        (statusAudits![0].detail as { to?: string }).to,
+      ).toBe("scheduled");
     } finally {
       const ids = [...idsByKey.values()];
       await db.from("requests").delete().in("id", ids);
@@ -417,6 +439,7 @@ test.describe("portal requests operation", () => {
     await page.goto(`/admin/requests/${id}`);
 
     const composer = page.getByTestId("call-outcome-composer");
+    await composer.getByText("Contacted", { exact: true }).click();
     await composer
       .getByText("Left a voicemail — call again", { exact: true })
       .click();

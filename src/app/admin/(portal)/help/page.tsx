@@ -65,24 +65,23 @@ export default async function AdminHelpPage() {
             submitted: name,
             phone, email, preferred office and time, and their brief reason
             for the visit. Work it by phone, then use{" "}
-            <strong>Record what happened on the call</strong> — one step that
-            saves the outcome, an optional note, and when to call again
-            together. <strong>Appointment is booked</strong> leaves the
-            request on the Scheduled list in case you need it; the call-again
-            outcomes bring it back to your attention on the day you choose.
+            <strong>Update request status</strong>. Choose the same{" "}
+            <strong>Contacted</strong>, <strong>Scheduled</strong>, or{" "}
+            <strong>Closed</strong> status you see on the queue; the current
+            status is left out. The details, an optional note, and when to
+            call again are saved together. Scheduled leaves the request
+            visible in case you need it; Contacted can bring it back to your
+            attention on the day you choose.
             The status filters on the queue page make it easy to see exactly
             what still needs attention — keeping the New list at zero is the
             daily goal.
           </p>
           <p className={`${SECTION_BODY} mt-3`}>
-            When nobody needs to call the patient again, pick one of the
-            outcomes under <strong>Done with this request?</strong> —{" "}
-            <strong>Patient won&apos;t schedule</strong> or{" "}
-            <strong>Duplicate or not actionable</strong>. Closing takes the
-            request off the active queue. If the appointment was booked and
-            the work is finished,{" "}
-            <strong>Finished with this request?</strong> closes it out as
-            done. Recording another call outcome reopens a closed request.
+            Choose <strong>Closed</strong> when nobody needs to work the
+            request again, then record whether the appointment was booked,
+            the patient will not schedule, or the request is not actionable.
+            Closing takes the request off the active queue. A closed request
+            can be reopened as Contacted or Scheduled if it needs correction.
           </p>
         </div>
 

@@ -104,15 +104,19 @@ test.describe("disposable-local request lifecycle", () => {
     await page.goto(`/admin/requests/${id}`);
 
     const composer = page.getByTestId("call-outcome-composer");
-    // The radios are sr-only inside visible labels — click the label text
-    // the way a staff member does.
-    async function saveOutcome(label: string) {
-      await composer.getByText(label, { exact: true }).click();
+    async function saveLifecycle(
+      destination: "Contacted" | "Scheduled" | "Closed",
+      detail?: string,
+    ) {
+      await composer.getByText(destination, { exact: true }).click();
+      if (detail) {
+        await composer.getByText(detail, { exact: true }).click();
+      }
       await page.getByTestId("save-outcome").click();
       await expect(page.getByTestId("composer-feedback")).toBeVisible();
     }
 
-    await saveOutcome("Patient won't schedule");
+    await saveLifecycle("Closed", "Patient won't schedule");
     await expect(page.getByTestId("request-lifecycle-summary")).toContainText(
       "— no appointment booked",
     );
@@ -132,9 +136,8 @@ test.describe("disposable-local request lifecycle", () => {
     });
     expect(row.data?.closed_at).toBeTruthy();
 
-    // Recording another call outcome reopens the request and clears the
-    // classification.
-    await saveOutcome("Reached the patient — follow-up needed");
+    // Closed exposes the explicit correction/reopen destinations.
+    await saveLifecycle("Contacted", "Reached the patient — follow-up needed");
     await expect(page.getByTestId("request-lifecycle-summary")).toHaveCount(0);
     row = await db
       .from("requests")
@@ -150,9 +153,8 @@ test.describe("disposable-local request lifecycle", () => {
       record_handoff_at: null,
     });
 
-    // The secondary finish path closes as converted.
-    await composer.getByText("Finished with this request?").click();
-    await saveOutcome("We're finished — appointment was booked");
+    // Closed carries the appointment-complete classification as a detail.
+    await saveLifecycle("Closed", "Appointment booked — request complete");
     await expect(page.getByTestId("request-lifecycle-summary")).toContainText(
       /—\s+appointment booked/,
     );

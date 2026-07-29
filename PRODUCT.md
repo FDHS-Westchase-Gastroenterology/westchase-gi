@@ -148,7 +148,7 @@ The center of gravity is moving from "staff update records" to "staff finish cli
 work": the real job is a phone call and its outcome, not a status field plus a
 separate note form.
 
-### Current delivery boundary (verified 2026-07-27)
+### Current delivery boundary (verified 2026-07-29)
 
 The task-first Home, Requests queue, recipient and staff management, Activity log,
 Website/maintainer controls, protected review-flyer printer, first-login opt-in
@@ -157,13 +157,13 @@ distinct "count unavailable" state when its queue read fails — a failed read n
 presents as an empty queue. All four primary nav destinations stay fully visible on
 a 390px phone.
 
-Request detail leads with a unified call-outcome composer: one gesture
-records the outcome, status, an optional note, and an optional call-again
-time, committed as one server transaction. The daily success path —
-*Appointment is booked* — lands on Scheduled and stays visible; the
-call-again outcomes resurface the request on the day staff choose; the
-separate status buttons and note form are retired into the composer, and
-the secondary converted finish stays quietly available under it.
+Request detail leads with the same lifecycle vocabulary as the queue:
+Contacted, Scheduled, and Closed. Staff choose the next status first, then
+only the details that status needs; the current status is not offered as a
+destination. One save still records the outcome, status, optional note,
+optional call-again time, and closure classification together. Scheduled
+stays visible, Contacted can resurface on a chosen day, Closed leaves the
+active queue, and a closed request can be reopened as Contacted or Scheduled.
 
 Home also carries attention context in practice-local business terms: how long the
 oldest new request has been waiting ("since Friday"), which previewed requests
@@ -213,23 +213,24 @@ maintainer invite/cancel/accept/revoke acceptance pass.
    creates a clinic-controlled sensitive copy, and leaving it unaudited was inconsistent
    with this posture (decision 2026-07-28).
 
-### Direction (adopted 2026-07-26; amended 2026-07-28)
+### Direction (adopted 2026-07-26; amended 2026-07-29)
 
 Priorities for the portal's next chapter, in order:
 
-1. **A unified call-outcome workflow** on request detail: one prominent action that
-   records outcome, status, note, and closure classification together, atomically.
+1. **A lifecycle-aligned request workflow** on request detail: one prominent action
+   that uses the queue's Contacted, Scheduled, and Closed vocabulary and records
+   outcome, status, note, and closure classification together, atomically.
    Production usage (2026-07-28) confirms the normal success path is
-   `new → scheduled` left open — not a converted close. Primary outcomes:
-   *Appointment is booked* (→ `scheduled`, stays visible; helper copy teaches the
-   meaning); *Reached the patient — follow-up needed*, *Left a voicemail — call
-   again*, and *No answer — call again* (each `contacted`; voicemail/no-answer
-   require a "Call again …" date so staff tell the queue when to resurface the
-   row); *Patient won't schedule* and *Duplicate or not actionable* (both
-   unconverted close). *We're finished — appointment was booked* (converted close)
-   stays available as a secondary finish action, not the daily success path.
-   Staff never learn a status/classification split and never visit Settings to
-   define "Scheduled." The atomic server operation landed in migrations
+   `new → scheduled` left open — not a converted close. Contacted asks whether the
+   patient was reached, a voicemail was left, or there was no answer; voicemail and
+   no-answer require a "Call again …" date so staff tell the queue when to resurface
+   the row. Scheduled means the appointment is booked and stays visible. Closed asks
+   whether the appointment was booked and the request is complete, the patient will
+   not schedule, or the request is not actionable. The current status is omitted
+   from the destinations so the interaction is stateful; Closed offers Contacted
+   and Scheduled as explicit correction/reopen paths. Staff never learn a
+   status/classification split and never visit Settings to define "Scheduled." The
+   atomic server operation landed in migrations
    2026-07-27 (`portal_log_call_outcome`; issue #124), so the composer is
    unblocked frontend work; production promotion of the migration follows its
    own deliberate path. On phones the composer leads the work area — today the

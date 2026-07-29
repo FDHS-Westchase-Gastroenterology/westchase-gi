@@ -11,11 +11,10 @@ import { Check } from "@/components/icons";
 import { logCallOutcome, type CallOutcomeId } from "../actions";
 import { followUpWhenLabel } from "../format";
 
-// The daily work loop: one gesture after a call records outcome, status,
-// optional note, and optional call-again time together. The vocabulary
-// matches how the front desk actually talks about a call — the primary
-// success path lands on Scheduled (stays visible), never on a close.
-// The separate status buttons and note form are retired into this card.
+// The daily work loop uses the same lifecycle vocabulary as the queue.
+// Staff choose the request's next status first, then only the details that
+// status needs. The underlying atomic outcome operation still saves status,
+// note, follow-up timing, and closure classification together.
 
 type OutcomeOption = {
   id: CallOutcomeId;
@@ -23,12 +22,7 @@ type OutcomeOption = {
   helper?: string;
 };
 
-const PRIMARY_OUTCOMES: OutcomeOption[] = [
-  {
-    id: "booked",
-    label: "Appointment is booked",
-    helper: "On the practice schedule — still visible here if you need it.",
-  },
+const CONTACTED_OUTCOMES: OutcomeOption[] = [
   {
     id: "reached_follow_up",
     label: "Reached the patient — follow-up needed",
@@ -53,9 +47,50 @@ const CLOSING_OUTCOMES: OutcomeOption[] = [
 
 const FINISH_OUTCOME: OutcomeOption = {
   id: "scheduled_transferred",
-  label: "We're finished — appointment was booked",
-  helper: "Closes the request as done.",
+  label: "Appointment booked — request complete",
+  helper:
+    "The booking is on the practice schedule and no more follow-up is needed.",
 };
+
+type LifecycleDestination = Exclude<RequestStatus, "new">;
+
+const STATUS_LABEL: Record<RequestStatus, string> = {
+  new: "New",
+  contacted: "Contacted",
+  scheduled: "Scheduled",
+  closed: "Closed",
+};
+
+const DESTINATION_COPY: Record<
+  LifecycleDestination,
+  { label: string; helper: string }
+> = {
+  contacted: {
+    label: "Contacted",
+    helper: "The patient was reached or needs another call.",
+  },
+  scheduled: {
+    label: "Scheduled",
+    helper: "The appointment is booked and on the practice schedule.",
+  },
+  closed: {
+    label: "Closed",
+    helper: "No more work remains on this request.",
+  },
+};
+
+function destinationsFrom(status: RequestStatus): LifecycleDestination[] {
+  switch (status) {
+    case "new":
+      return ["contacted", "scheduled", "closed"];
+    case "contacted":
+      return ["scheduled", "closed"];
+    case "scheduled":
+      return ["closed"];
+    case "closed":
+      return ["contacted", "scheduled"];
+  }
+}
 
 type FollowUpKind = "this_afternoon" | "tomorrow_morning" | "friday" | "day";
 
@@ -129,6 +164,7 @@ type Feedback =
   | { tone: "error"; text: string };
 
 type ComposerState = {
+  destination: LifecycleDestination | null;
   selected: CallOutcomeId | null;
   followUpKind: FollowUpKind | null;
   followUpDay: string;
@@ -138,6 +174,7 @@ type ComposerState = {
 };
 
 type ComposerAction =
+  | { type: "select_destination"; destination: LifecycleDestination }
   | { type: "select_outcome"; outcome: CallOutcomeId }
   | { type: "select_follow_up"; kind: FollowUpKind }
   | { type: "set_day"; day: string }
@@ -147,6 +184,7 @@ type ComposerAction =
   | { type: "failed"; text: string };
 
 const INITIAL_STATE: ComposerState = {
+  destination: null,
   selected: null,
   followUpKind: null,
   followUpDay: "",
@@ -160,6 +198,16 @@ function composerReducer(
   action: ComposerAction,
 ): ComposerState {
   switch (action.type) {
+    case "select_destination":
+      return {
+        ...state,
+        destination: action.destination,
+        selected: action.destination === "scheduled" ? "booked" : null,
+        followUpKind: null,
+        followUpDay: "",
+        attempted: false,
+        feedback: null,
+      };
     case "select_outcome":
       return {
         ...state,
@@ -186,6 +234,50 @@ function composerReducer(
     case "failed":
       return { ...state, feedback: { tone: "error", text: action.text } };
   }
+}
+
+function DestinationRow({
+  destination,
+  checked,
+  disabled,
+  onSelect,
+}: {
+  destination: LifecycleDestination;
+  checked: boolean;
+  disabled: boolean;
+  onSelect: (destination: LifecycleDestination) => void;
+}) {
+  const copy = DESTINATION_COPY[destination];
+  return (
+    <label className="group block cursor-pointer rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-4 py-3 transition-[border-color,background-color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] has-[:checked]:border-[var(--color-navy)] has-[:checked]:bg-[var(--color-mint)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-teal-ink)] has-[:disabled]:cursor-default has-[:disabled]:opacity-60 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100">
+      <input
+        type="radio"
+        name="request-status"
+        value={destination}
+        checked={checked}
+        disabled={disabled}
+        aria-describedby="current-request-status"
+        onChange={() => onSelect(destination)}
+        className="sr-only"
+      />
+      <span className="flex items-start justify-between gap-3">
+        <span>
+          <span className="block text-[0.95rem] font-black leading-snug text-[var(--color-ink)]">
+            {copy.label}
+          </span>
+          <span className="mt-1 block text-[0.82rem] leading-snug text-[var(--color-muted)]">
+            {copy.helper}
+          </span>
+        </span>
+        <span
+          aria-hidden="true"
+          className="grid h-5 w-5 flex-none place-items-center rounded-full border border-[var(--color-line-2)] text-white transition-colors group-has-[:checked]:border-[var(--color-navy)] group-has-[:checked]:bg-[var(--color-navy)]"
+        >
+          <Check className="h-3 w-3 opacity-0 transition-opacity group-has-[:checked]:opacity-100" />
+        </span>
+      </span>
+    </label>
+  );
 }
 
 function OutcomeRow({
@@ -330,9 +422,17 @@ export function CallOutcomeComposer({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [state, dispatch] = useReducer(composerReducer, INITIAL_STATE);
-  const { selected, followUpKind, followUpDay, note, attempted, feedback } =
-    state;
+  const {
+    destination,
+    selected,
+    followUpKind,
+    followUpDay,
+    note,
+    attempted,
+    feedback,
+  } = state;
   const feedbackRef = useRef<HTMLParagraphElement>(null);
+  const availableDestinations = destinationsFrom(status);
 
   useEffect(() => {
     if (feedback) feedbackRef.current?.focus();
@@ -390,11 +490,17 @@ export function CallOutcomeComposer({
       className="card-lined mt-7 p-6 sm:p-7"
     >
       <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
-        Record what happened on the call
+        Update request status
       </h2>
       <p className="mt-1.5 max-w-[68ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
-        One step — the outcome, an optional note, and when to call again are
-        saved together and recorded in the activity log.
+        Choose where this request belongs next. Any details, callback timing,
+        and note are saved together in the activity log.
+      </p>
+      <p
+        id="current-request-status"
+        className="mt-3 text-[0.85rem] font-bold text-[var(--color-body)]"
+      >
+        Current status: {STATUS_LABEL[status]}
       </p>
 
       {status === "closed" ? (
@@ -417,8 +523,8 @@ export function CallOutcomeComposer({
                 closureDisposition === "converted"
                   ? "appointment booked"
                   : "no appointment booked"
-              }. Recording a call outcome updates or reopens it.`
-            : "Closed before outcomes were recorded. Choose an outcome if you know how it ended."}
+              }. Choose Contacted or Scheduled to reopen it.`
+            : "Closed before outcomes were recorded. Choose Contacted or Scheduled to reopen it."}
         </p>
       ) : null}
 
@@ -448,41 +554,72 @@ export function CallOutcomeComposer({
 
       <fieldset className="mt-5" disabled={pending}>
         <legend className="text-sm font-bold text-[var(--color-ink)]">
-          What happened?
+          Where should this request go next?
         </legend>
-        <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
-          {PRIMARY_OUTCOMES.map((option) => (
-            <OutcomeRow key={option.id} {...outcomeRowProps(option)} />
+        <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
+          The current status is left out, so every choice moves the request
+          forward or reopens it.
+        </p>
+        <div
+          data-testid="lifecycle-destinations"
+          className="mt-3 grid gap-2.5 sm:grid-cols-3"
+        >
+          {availableDestinations.map((nextStatus) => (
+            <DestinationRow
+              key={nextStatus}
+              destination={nextStatus}
+              checked={destination === nextStatus}
+              disabled={pending}
+              onSelect={(selectedDestination) =>
+                dispatch({
+                  type: "select_destination",
+                  destination: selectedDestination,
+                })
+              }
+            />
           ))}
         </div>
+      </fieldset>
 
-        <div className="mt-5 border-t border-[var(--color-line)] pt-4">
-          <p className="text-sm font-bold text-[var(--color-ink)]">
-            Done with this request?
-          </p>
+      {destination === "contacted" ? (
+        <fieldset className="mt-5" disabled={pending}>
+          <legend className="text-sm font-bold text-[var(--color-ink)]">
+            How did contact go?
+          </legend>
           <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
-            {CLOSING_OUTCOMES.map((option) => (
+            {CONTACTED_OUTCOMES.map((option) => (
               <OutcomeRow key={option.id} {...outcomeRowProps(option)} />
             ))}
           </div>
-          <details className="group mt-2.5">
-            <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-[var(--radius)] px-1 text-[0.9rem] font-bold text-[var(--color-teal-ink)] marker:hidden [&::-webkit-details-marker]:hidden">
-              <span className="underline underline-offset-2">
-                Finished with this request?
-              </span>
-            </summary>
-            <div className="mt-2 max-w-xl">
-              <p className="text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
-                If the appointment was booked and you&rsquo;re done with this
-                request, close it out here.
-              </p>
-              <div className="mt-2">
-                <OutcomeRow {...outcomeRowProps(FINISH_OUTCOME)} />
-              </div>
-            </div>
-          </details>
+        </fieldset>
+      ) : null}
+
+      {destination === "scheduled" ? (
+        <div
+          data-testid="scheduled-explanation"
+          className="mt-5 rounded-[var(--radius)] bg-[var(--color-mint)] px-4 py-3"
+        >
+          <p className="text-[0.95rem] font-bold text-[var(--color-ink)]">
+            Appointment is booked
+          </p>
+          <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
+            This request will stay on the Scheduled list in case staff need it.
+          </p>
         </div>
-      </fieldset>
+      ) : null}
+
+      {destination === "closed" ? (
+        <fieldset className="mt-5" disabled={pending}>
+          <legend className="text-sm font-bold text-[var(--color-ink)]">
+            Why is this request closed?
+          </legend>
+          <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+            {[FINISH_OUTCOME, ...CLOSING_OUTCOMES].map((option) => (
+              <OutcomeRow key={option.id} {...outcomeRowProps(option)} />
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
 
       {selected && allowsFollowUp(selected) ? (
         <FollowUpFieldset
@@ -530,7 +667,11 @@ export function CallOutcomeComposer({
           onClick={() => submit(false)}
           className="btn btn-navy min-h-11 disabled:opacity-60"
         >
-          {pending ? "Saving…" : "Save outcome"}
+          {pending
+            ? "Saving…"
+            : destination
+              ? `Save as ${STATUS_LABEL[destination]}`
+              : "Choose a status"}
         </button>
         {nextHref ? (
           <button
@@ -545,7 +686,11 @@ export function CallOutcomeComposer({
             onClick={() => submit(true)}
             className="btn btn-outline min-h-11 disabled:opacity-60"
           >
-            {pending ? "Saving…" : "Save and open next"}
+            {pending
+              ? "Saving…"
+              : destination
+                ? `Save as ${STATUS_LABEL[destination]} and open next`
+                : "Choose a status"}
           </button>
         ) : null}
         <p className="text-[0.85rem] text-[var(--color-muted)]">
