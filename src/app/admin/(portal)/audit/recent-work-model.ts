@@ -3,6 +3,7 @@
 // Patient names are deliberately not resolved here; the request is the link.
 
 import { OUTCOME_HISTORY_LABELS, followUpShortLabel } from "../requests/format";
+import { isPortalReleaseAuditAction } from "@/lib/portal/release-state";
 
 // The human lens over the durable audit record: plain-language, grouped by
 // practice-local day, linked to the work — never an action code. Storage
@@ -285,6 +286,7 @@ export function toRecentWorkItems(
 ): RecentWorkItem[] {
   const items: RecentWorkItem[] = [];
   for (const entry of entries) {
+    if (isPortalReleaseAuditAction(entry.action)) continue;
     // The dismissal nudge pairs with tour_complete on finish; it stays in
     // the technical record rather than the human view.
     if (entry.action === "staff.tour_dismiss") continue;
@@ -318,4 +320,3 @@ export function groupByPracticeDay(
   }
   return groups;
 }
-

@@ -19,6 +19,7 @@ import {
 } from "@/components/icons";
 import { formatReceived } from "./requests/format";
 import { PortalTour } from "./portal-tour";
+import { PortalReleaseHomeAnnouncement } from "./portal-release-briefing";
 
 // The portal's front door. Staff land on their day, not on software:
 // a greeting, the one thing that may need attention (new appointment
@@ -181,6 +182,7 @@ export default async function AdminHomePage() {
       </div>
 
       {session.portalTourDismissedAt === null ? <PortalTour /> : null}
+      <PortalReleaseHomeAnnouncement />
 
       <div className="mt-7 grid items-start gap-6 lg:grid-cols-[1.55fr_1fr]">
         <section

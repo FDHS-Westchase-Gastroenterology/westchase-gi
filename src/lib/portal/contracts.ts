@@ -7,6 +7,7 @@
 
 import { z } from "zod";
 import { locales, type Locale } from "@/lib/site";
+import { RELEASE_AUDIT_ACTIONS } from "./release-state";
 
 const mailboxSchema = z.email().max(254);
 
@@ -123,6 +124,7 @@ export const AUDIT_ACTIONS = {
   MAINTAINERS_CANCEL: "maintainers.cancel",
   MAINTAINERS_REVOKE: "maintainers.revoke",
   REQUESTS_EXPORT: "requests.export",
+  ...RELEASE_AUDIT_ACTIONS,
 } as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];
 

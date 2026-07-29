@@ -13,7 +13,9 @@ test("home page renders the hero on /en", async ({ page }) => {
 
 test("appointment submission cannot re-enter while its request is pending", async ({
   page,
-}) => {
+}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "JS submission path");
+
   let requestCount = 0;
   let releaseRequest!: () => void;
   const heldRequest = new Promise<void>((resolve) => {

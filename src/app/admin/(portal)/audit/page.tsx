@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { requireRole } from "@/lib/portal/auth";
+import { getPortalReleaseEngagement } from "@/lib/portal/release-engagement";
+import { PORTAL_RELEASE_BRIEFING } from "@/lib/portal/release-briefing-content";
 import { parsePage } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
 import { fetchStaffNameMap } from "@/lib/portal/staff-identity";
@@ -8,6 +10,7 @@ import { displayNameOrEmail } from "@/lib/portal/staff-identity";
 import { formatReceived } from "../requests/format";
 import { RecentWorkSection } from "./recent-work";
 import { toRecentWorkItems } from "./recent-work-model";
+import { ReleaseEngagementSection } from "./release-engagement";
 
 type AuditRow = {
   id: string;
@@ -41,14 +44,19 @@ export default async function AdminAuditPage({
 }: {
   searchParams: Promise<{ page?: string | string[] }>;
 }) {
-  await requireRole("staff");
+  const session = await requireRole("staff");
   const page = parsePage((await searchParams).page);
   const from = (page - 1) * PAGE_SIZE;
   const now = new Date();
 
   const db = serviceClient();
-  const [{ data: rows, error, count }, nameMap, profileRows, recipientRows] =
-    await Promise.all([
+  const [
+    { data: rows, error, count },
+    nameMap,
+    profileRows,
+    recipientRows,
+    releaseEngagement,
+  ] = await Promise.all([
       db
         .from("audit_log")
         .select("id, actor_email, action, entity, entity_id, detail, at", {
@@ -60,6 +68,9 @@ export default async function AdminAuditPage({
       fetchStaffNameMap(db),
       db.from("staff_profiles").select("id, display_name"),
       db.from("notification_recipients").select("id, email"),
+      session.role === "admin"
+        ? getPortalReleaseEngagement(PORTAL_RELEASE_BRIEFING.id)
+        : Promise.resolve(null),
     ]);
   if (error) {
     throw new Error(`Audit read failed: ${error.code}`);
@@ -124,8 +135,12 @@ export default async function AdminAuditPage({
         beneath for administrators.
       </p>
 
+      {releaseEngagement ? (
+        <ReleaseEngagementSection engagement={releaseEngagement} />
+      ) : null}
+
       {entries.length === 0 ? (
-        <div className="mt-8 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-8 text-center sm:p-12">
+        <div className="mt-10 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-8 text-center sm:p-12">
           <h2 className="text-[1.1rem] font-black text-[var(--color-ink)]">
             Nothing recorded yet
           </h2>
