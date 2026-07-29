@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { test, expect, type Page, type APIRequestContext } from "@playwright/test";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
-// VAL-ADMIN-003: queue lists real submissions newest-first with badges.
+// VAL-ADMIN-003: the queue leads with the oldest unworked requests first.
 // VAL-ADMIN-004: status filtering matches SQL counts exactly.
 // VAL-ADMIN-005: detail shows all fields; the full lifecycle persists.
 // VAL-ADMIN-006: staff notes persist with attribution and re-render.
@@ -75,7 +75,7 @@ test.describe("portal requests operation", () => {
     await db.from("requests").delete().like("email", `queue-${runId}-%`);
   });
 
-  test("VAL-ADMIN-003: fresh submissions appear in the queue newest-first", async ({
+  test("VAL-ADMIN-003: the queue leads with the oldest unworked requests first", async ({
     page,
     request,
   }) => {
@@ -85,12 +85,14 @@ test.describe("portal requests operation", () => {
     await signIn(page);
     await page.goto("/admin/requests");
 
+    // Attention-first: between two unworked New requests, the older one —
+    // the one that has waited longer — comes before the newer one.
     const names = await page.getByTestId("request-name").allTextContents();
     const newerIndex = names.findIndex((name) => name.includes("newer"));
     const olderIndex = names.findIndex((name) => name.includes("older"));
     expect(newerIndex).toBeGreaterThanOrEqual(0);
     expect(olderIndex).toBeGreaterThanOrEqual(0);
-    expect(newerIndex).toBeLessThan(olderIndex);
+    expect(olderIndex).toBeLessThan(newerIndex);
 
     // Both staged rows carry the New badge in the queue.
     const newerRow = page
@@ -300,8 +302,11 @@ test.describe("portal requests operation", () => {
             const sql = await sqlCount(status);
 
             const badgesOk = badges.every((badge) => badge === status);
+            // One page holds at most REQUEST_PAGE_SIZE (50) rows; the SQL
+            // count may exceed it, so the honest expectation is a full or
+            // partial first page matching the count at the same instant.
             const consistent =
-              chip === sql && shown === Math.min(sql, 200) && badgesOk;
+              chip === sql && shown === Math.min(sql, 50) && badgesOk;
             return consistent
               ? "consistent"
               : `chip=${chip} shown=${shown} sql=${sql} badgesOk=${badgesOk}`;
@@ -309,6 +314,90 @@ test.describe("portal requests operation", () => {
           { timeout: 45_000, intervals: [500, 1_000, 2_000] },
         )
         .toBe("consistent");
+    }
+  });
+
+  test("VAL-ADMIN-017: the default queue leads with attention and details chain prev/next", async ({
+    page,
+  }) => {
+    const token = `p2queue-${runId}`;
+    const nowMs = Date.now();
+    const dayMs = 86_400_000;
+    const stagedRows = [
+      { suffix: "closed", status: "closed", created_at: new Date(nowMs - 5 * dayMs).toISOString() },
+      { suffix: "scheduled", status: "scheduled", created_at: new Date(nowMs - 2 * dayMs).toISOString() },
+      { suffix: "stale", status: "contacted", created_at: new Date(nowMs - 4 * dayMs).toISOString() },
+      { suffix: "due", status: "contacted", created_at: new Date(nowMs - dayMs).toISOString(), follow_up_at: new Date(nowMs).toISOString() },
+      { suffix: "newer", status: "new", created_at: new Date(nowMs - dayMs).toISOString() },
+      { suffix: "older", status: "new", created_at: new Date(nowMs - 3 * dayMs).toISOString() },
+    ];
+    const idsByKey = new Map<string, string>();
+    for (const row of stagedRows) {
+      const id = randomUUID();
+      idsByKey.set(row.suffix, id);
+      const { error } = await db.from("requests").insert({
+        id,
+        name: `TEST Queue ${runId} ${row.suffix}`,
+        phone: "8135550166",
+        email: `${token}-${row.suffix}@example.test`,
+        location: "tampa",
+        preferred_time: "morning",
+        message: "TEST attention-order fixture.",
+        locale: "en",
+        source_path: "/e2e/p2queue",
+        status: row.status,
+        created_at: row.created_at,
+        ...(row.follow_up_at ? { follow_up_at: row.follow_up_at } : {}),
+      });
+      expect(error).toBeNull();
+    }
+
+    try {
+      await signIn(page);
+      await page.goto(`/admin/requests?q=${token}`);
+
+      const names = await page.getByTestId("request-name").allTextContents();
+      const orderOf = (suffix: string) =>
+        names.findIndex((name) => name.includes(` ${suffix}`));
+      const positions = ["older", "newer", "due", "stale", "scheduled", "closed"].map(orderOf);
+      expect(positions.every((position) => position >= 0)).toBe(true);
+      expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+
+      await expect(page.getByTestId("request-next-action").first()).toBeVisible();
+      const hints = await page.getByTestId("request-next-action").allTextContents();
+      expect(hints.some((hint) => hint.startsWith("Call again — due"))).toBe(true);
+      expect(hints.some((hint) => hint.startsWith("Silent"))).toBe(true);
+      expect(hints.some((hint) => hint === "On the schedule")).toBe(true);
+
+      // Continuity: the due row chains to its attention-order neighbors.
+      await page.goto(`/admin/requests/${idsByKey.get("due")}?q=${token}`);
+      const prevLink = page.getByTestId("prev-request");
+      const nextLink = page.getByTestId("next-request");
+      await expect(prevLink).toHaveAttribute("href", new RegExp(idsByKey.get("newer")!));
+      await expect(nextLink).toHaveAttribute("href", new RegExp(idsByKey.get("stale")!));
+
+      // Save-and-open-next records the outcome and moves to the next row.
+      const composer = page.getByTestId("call-outcome-composer");
+      await composer
+        .getByText("Reached the patient — follow-up needed", { exact: true })
+        .click();
+      await page.getByTestId("save-outcome-next").click();
+      await expect(page).toHaveURL(new RegExp(`/admin/requests/${idsByKey.get("stale")}`));
+
+      const { data: outcomeAudits, error: outcomeAuditError } = await db
+        .from("audit_log")
+        .select("detail")
+        .eq("entity_id", idsByKey.get("due")!)
+        .eq("action", "request.call_outcome");
+      expect(outcomeAuditError).toBeNull();
+      expect(outcomeAudits).toHaveLength(1);
+      expect(
+        (outcomeAudits![0].detail as { outcome?: string }).outcome,
+      ).toBe("reached_follow_up");
+    } finally {
+      const ids = [...idsByKey.values()];
+      await db.from("requests").delete().in("id", ids);
+      await db.from("audit_log").delete().in("entity_id", ids);
     }
   });
 

@@ -319,11 +319,13 @@ export function CallOutcomeComposer({
   status,
   closureDisposition,
   closedAtLabel,
+  nextHref = null,
 }: {
   requestId: string;
   status: RequestStatus;
   closureDisposition: RequestClosureDisposition | null;
   closedAtLabel: string | null;
+  nextHref?: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -344,7 +346,7 @@ export function CallOutcomeComposer({
       dispatch({ type: "select_outcome", outcome: id }),
   });
 
-  function submit() {
+  function submit(openNext: boolean) {
     if (!selected || pending) return;
     dispatch({ type: "attempt" });
     if (requiresFollowUp(selected) && !followUpKind) return;
@@ -366,6 +368,11 @@ export function CallOutcomeComposer({
       });
       if (!result.ok) {
         dispatch({ type: "failed", text: ERROR_COPY[result.code] });
+        return;
+      }
+      if (openNext && nextHref) {
+        router.push(nextHref);
+        router.refresh();
         return;
       }
       dispatch({
@@ -520,11 +527,27 @@ export function CallOutcomeComposer({
             (requiresFollowUp(selected) && !followUpKind) ||
             (followUpKind === "day" && !followUpDay)
           }
-          onClick={submit}
+          onClick={() => submit(false)}
           className="btn btn-navy min-h-11 disabled:opacity-60"
         >
           {pending ? "Saving…" : "Save outcome"}
         </button>
+        {nextHref ? (
+          <button
+            type="button"
+            data-testid="save-outcome-next"
+            disabled={
+              pending ||
+              !selected ||
+              (requiresFollowUp(selected) && !followUpKind) ||
+              (followUpKind === "day" && !followUpDay)
+            }
+            onClick={() => submit(true)}
+            className="btn btn-outline min-h-11 disabled:opacity-60"
+          >
+            {pending ? "Saving…" : "Save and open next"}
+          </button>
+        ) : null}
         <p className="text-[0.85rem] text-[var(--color-muted)]">
           Saved together — one entry in the activity log.
         </p>

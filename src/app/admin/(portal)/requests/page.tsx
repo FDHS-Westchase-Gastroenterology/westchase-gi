@@ -6,6 +6,7 @@ import {
 } from "@/lib/portal/contracts";
 import { requireRole } from "@/lib/portal/auth";
 import { waitingSince } from "@/lib/portal/business-time";
+import type { AttentionBucket } from "@/lib/portal/queue-attention";
 import {
   parsePage,
   parseRequestSearch,
@@ -14,24 +15,20 @@ import {
   REQUEST_SEARCH_MAX_LENGTH,
 } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
+import {
+  fetchAttentiveOpenRows,
+  fetchClosedRows,
+  OPEN_STATUSES,
+  type QueueRow,
+} from "./queue";
 import { StatusBadge } from "./status-badge";
 import {
+  followUpShortLabel,
   formatReceived,
   LOCATION_LABELS,
   STATUS_LABELS,
   TIME_LABELS,
 } from "./format";
-
-type QueueRow = {
-  id: string;
-  name: string;
-  phone: string;
-  location: "any" | "tampa" | "lutz";
-  preferred_time: "any" | "morning" | "afternoon";
-  locale: string;
-  status: RequestStatus;
-  created_at: string;
-};
 
 type SearchParams = Promise<{
   page?: string | string[];
@@ -65,6 +62,205 @@ function requestsHref({
   return `${path}${query ? `?${query}` : ""}`;
 }
 
+function detailHref({
+  id,
+  page,
+  search,
+  status,
+}: {
+  id: string;
+  page: number;
+  search: string;
+  status: RequestStatus | "all";
+}): string {
+  const params = new URLSearchParams();
+  if (status !== "all") params.set("status", status);
+  if (search) params.set("q", search);
+  if (page > 1) params.set("page", String(page));
+  const query = params.toString();
+  return `/admin/requests/${id}${query ? `?${query}` : ""}`;
+}
+
+// Next-action language per attention bucket. The queue leads with what to
+// work next: unworked rows by age, call-again rows whose time arrived,
+// touched rows that went silent with no follow-up set.
+function nextActionHint({
+  bucket,
+  followUpAt,
+  lastActivityAt,
+  createdAt,
+  now,
+}: {
+  bucket: AttentionBucket;
+  followUpAt: string | null;
+  lastActivityAt: string | null;
+  createdAt: string;
+  now: Date;
+}): { text: string; attention: boolean } | null {
+  switch (bucket) {
+    case "follow_up":
+      return followUpAt
+        ? {
+            text: `Call again — due ${followUpShortLabel(followUpAt, now)}`,
+            attention: true,
+          }
+        : null;
+    case "stale": {
+      const since = waitingSince(lastActivityAt ?? createdAt, now);
+      return {
+        text: `Silent${since ? ` since ${since}` : " since before today"} — set a call-again day`,
+        attention: true,
+      };
+    }
+    case "upcoming":
+      return followUpAt
+        ? { text: `Call again ${followUpShortLabel(followUpAt, now)}`, attention: false }
+        : null;
+    case "scheduled":
+      return { text: "On the schedule", attention: false };
+    default:
+      return null;
+  }
+}
+
+type FilterItem = { key: RequestStatus | "all"; label: string; count: number };
+
+function FilterChips({
+  filters,
+  active,
+  search,
+}: {
+  filters: FilterItem[];
+  active: RequestStatus | "all";
+  search: string;
+}) {
+  return (
+    <nav aria-label="Filter by status" className="mt-6 overflow-x-auto">
+      <ul className="flex min-w-max gap-2">
+        {filters.map((item) => {
+          const isActive = active === item.key;
+          const href = requestsHref({
+            search,
+            status: item.key,
+          });
+          return (
+            <li key={item.key}>
+              <Link
+                href={href}
+                aria-current={isActive ? "page" : undefined}
+                data-filter={item.key}
+                className={`flex min-h-10 items-center gap-x-2 rounded-full border px-3.5 text-[0.9rem] font-bold transition-colors ${
+                  isActive
+                    ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-[var(--color-on-dark)]"
+                    : "border-[var(--color-line-2)] bg-white text-[var(--color-body)] hover:border-[var(--color-navy)]"
+                }`}
+              >
+                {item.label}
+                <span
+                  data-filter-count={item.key}
+                  className={`rounded-full px-1.5 text-[0.75rem] tabular-nums ${
+                    isActive
+                      ? "bg-white/15"
+                      : "bg-[var(--color-mint)] text-[var(--color-teal-ink)]"
+                  }`}
+                >
+                  {item.count}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
+function QueueRowLink({
+  request,
+  bucket,
+  lastActivityAt,
+  page,
+  search,
+  filter,
+  now,
+}: {
+  request: QueueRow;
+  bucket: AttentionBucket;
+  lastActivityAt: string | null;
+  page: number;
+  search: string;
+  filter: RequestStatus | "all";
+  now: Date;
+}) {
+  const hint = nextActionHint({
+    bucket,
+    followUpAt: request.follow_up_at,
+    lastActivityAt,
+    createdAt: request.created_at,
+    now,
+  });
+  const waiting =
+    request.status === "new" ? waitingSince(request.created_at, now) : null;
+  return (
+    <li>
+      <Link
+        href={detailHref({
+          id: request.id,
+          page,
+          search,
+          status: filter,
+        })}
+        data-testid="request-row"
+        className="grid gap-x-6 gap-y-2 rounded-[var(--radius)] border border-[var(--color-line)] bg-white px-5 py-4 transition-colors hover:border-[var(--color-teal)] sm:grid-cols-[1.4fr_1fr_auto] sm:items-center"
+      >
+        <span className="min-w-0">
+          <span
+            data-testid="request-name"
+            className="block truncate font-bold text-[var(--color-ink)]"
+          >
+            {request.name}
+          </span>
+          <span className="mt-0.5 block text-[0.9rem] text-[var(--color-muted)]">
+            {request.phone}
+          </span>
+        </span>
+        <span className="text-[0.9rem] text-[var(--color-body)]">
+          <span className="block">
+            {LOCATION_LABELS[request.location]} ·{" "}
+            {TIME_LABELS[request.preferred_time]}
+          </span>
+          <span className="mt-0.5 block text-[var(--color-muted)]">
+            Received {formatReceived(request.created_at)}
+          </span>
+          {waiting ? (
+            <span
+              data-testid="request-waiting"
+              className="mt-0.5 block text-[0.85rem] font-bold text-[var(--color-amber-deep)]"
+            >
+              Waiting since {waiting}
+            </span>
+          ) : null}
+          {hint ? (
+            <span
+              data-testid="request-next-action"
+              className={`mt-0.5 block text-[0.85rem] ${
+                hint.attention
+                  ? "font-bold text-[var(--color-amber-deep)]"
+                  : "text-[var(--color-muted)]"
+              }`}
+            >
+              {hint.text}
+            </span>
+          ) : null}
+        </span>
+        <span className="justify-self-start sm:justify-self-end">
+          <StatusBadge status={request.status} />
+        </span>
+      </Link>
+    </li>
+  );
+}
+
 export default async function AdminRequestsPage({
   searchParams,
 }: {
@@ -77,36 +273,41 @@ export default async function AdminRequestsPage({
   const search = parseRequestSearch(params.q);
   const searchFilter = search ? requestSearchFilter(search) : "";
   const from = (page - 1) * REQUEST_PAGE_SIZE;
+  const now = new Date();
 
   const db = serviceClient();
-  let query = db
-    .from("requests")
-    .select(
-      "id, name, phone, location, preferred_time, locale, status, created_at",
-      { count: "exact" },
-    )
-    .order("created_at", { ascending: false })
-    .order("id", { ascending: false })
-    .range(from, from + REQUEST_PAGE_SIZE - 1);
-  if (filter !== "all") query = query.eq("status", filter);
-  if (searchFilter) query = query.or(searchFilter);
 
-  const [{ data: rows, error, count }, ...countResults] = await Promise.all([
-    query,
-    ...REQUEST_STATUSES.map((status) => {
-      let countQuery = db
-        .from("requests")
-        .select("id", { count: "exact", head: true })
-        .eq("status", status);
-      if (searchFilter) countQuery = countQuery.or(searchFilter);
-      return countQuery;
-    }),
+  // Chip counts and the closed tail stay database-paged exactly as before;
+  // the open set is small enough to order by attention in memory.
+  const countQueries = REQUEST_STATUSES.map((status) => {
+    let countQuery = db
+      .from("requests")
+      .select("id", { count: "exact", head: true })
+      .eq("status", status);
+    if (searchFilter) countQuery = countQuery.or(searchFilter);
+    return countQuery;
+  });
+
+  const wantsClosed = filter === "all" || filter === "closed";
+  const openStatuses =
+    filter === "all" ? OPEN_STATUSES : filter === "closed" ? [] : [filter];
+  const [orderedOpen, closedCountProbe, ...countResults] = await Promise.all([
+    openStatuses.length > 0
+      ? fetchAttentiveOpenRows(db, { statuses: openStatuses, searchFilter, now })
+      : Promise.resolve([]),
+    // Closed rows join the default view after the open set; their own window
+    // is computed once the open size is known.
+    wantsClosed
+      ? db.from("requests").select("id", { count: "exact", head: true }).eq("status", "closed")
+      : Promise.resolve({ count: 0, error: null }),
+    ...countQueries,
   ]);
-  const countError = countResults.find((result) => result.error)?.error;
-  if (error || countError) {
-    throw new Error(`Queue read failed: ${(error ?? countError)?.code}`);
-  }
 
+  const countError =
+    countResults.find((result) => result.error)?.error ?? closedCountProbe.error;
+  if (countError) {
+    throw new Error(`Queue read failed: ${countError.code}`);
+  }
   const counts = Object.fromEntries(
     REQUEST_STATUSES.map((status, index) => [
       status,
@@ -117,12 +318,40 @@ export default async function AdminRequestsPage({
     (sum, status) => sum + counts[status],
     0,
   );
-  const filteredTotal = count ?? 0;
+
+  const openTotal = orderedOpen.length;
+  const closedTotal = wantsClosed ? (closedCountProbe.count ?? 0) : 0;
+  // Display totals come from the SQL counts (the open fetch is capped);
+  // under the cap they are identical, and the window math uses the same
+  // numbers, so "Showing x–y of z" stays exact.
+  const openSqlTotal =
+    filter === "all"
+      ? counts.new + counts.contacted + counts.scheduled
+      : filter === "closed"
+        ? 0
+        : counts[filter];
+  const filteredTotal = openSqlTotal + closedTotal;
   const totalPages = Math.max(1, Math.ceil(filteredTotal / REQUEST_PAGE_SIZE));
   if (page > totalPages) {
     redirect(requestsHref({ page: totalPages, search, status: filter }));
   }
-  const requests = (rows ?? []) as QueueRow[];
+
+  // The page window: open rows first (attention-ordered), then the closed
+  // tail (newest first) fetched from its own offset.
+  const openSlice = orderedOpen.slice(from, from + REQUEST_PAGE_SIZE);
+  const closedFrom = Math.max(0, from - openTotal);
+  const closedLimit = REQUEST_PAGE_SIZE - openSlice.length;
+  let closedSlice: QueueRow[] = [];
+  if (wantsClosed && closedLimit > 0 && closedFrom < closedTotal) {
+    closedSlice = await fetchClosedRows(db, {
+      from: closedFrom,
+      limit: closedLimit,
+      searchFilter,
+    });
+  }
+
+  const openBuckets = new Map(openSlice.map((row) => [row.id, row]));
+  const requests = [...openSlice, ...closedSlice];
   const firstShown = filteredTotal === 0 ? 0 : from + 1;
   const lastShown = from + requests.length;
 
@@ -146,7 +375,7 @@ export default async function AdminRequestsPage({
             Appointment requests
           </h1>
           <p className="mt-1.5 max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
-            Submitted from the website, newest first.
+            What needs attention first, then the rest.
           </p>
         </div>
         <a
@@ -199,43 +428,7 @@ export default async function AdminRequestsPage({
         ) : null}
       </form>
 
-      <nav aria-label="Filter by status" className="mt-6 overflow-x-auto">
-        <ul className="flex min-w-max gap-2">
-          {filters.map((item) => {
-            const active = filter === item.key;
-            const href = requestsHref({
-              search,
-              status: item.key,
-            });
-            return (
-              <li key={item.key}>
-                <Link
-                  href={href}
-                  aria-current={active ? "page" : undefined}
-                  data-filter={item.key}
-                  className={`flex min-h-10 items-center gap-x-2 rounded-full border px-3.5 text-[0.9rem] font-bold transition-colors ${
-                    active
-                      ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-[var(--color-on-dark)]"
-                      : "border-[var(--color-line-2)] bg-white text-[var(--color-body)] hover:border-[var(--color-navy)]"
-                  }`}
-                >
-                  {item.label}
-                  <span
-                    data-filter-count={item.key}
-                    className={`rounded-full px-1.5 text-[0.75rem] tabular-nums ${
-                      active
-                        ? "bg-white/15"
-                        : "bg-[var(--color-mint)] text-[var(--color-teal-ink)]"
-                    }`}
-                  >
-                    {item.count}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      <FilterChips filters={filters} active={filter} search={search} />
 
       {requests.length === 0 ? (
         <div className="mt-8 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-8 text-center sm:p-12">
@@ -257,53 +450,18 @@ export default async function AdminRequestsPage({
       ) : (
         <ul data-testid="request-list" className="mt-8 space-y-3">
           {requests.map((request) => {
-            // Age context appears only on unworked requests: once someone
-            // has touched a request, its urgency is a triage judgment, not
-            // a timestamp's.
-            const waiting =
-              request.status === "new"
-                ? waitingSince(request.created_at)
-                : null;
+            const derived = openBuckets.get(request.id);
             return (
-              <li key={request.id}>
-                <Link
-                  href={`/admin/requests/${request.id}`}
-                  data-testid="request-row"
-                  className="grid gap-x-6 gap-y-2 rounded-[var(--radius)] border border-[var(--color-line)] bg-white px-5 py-4 transition-colors hover:border-[var(--color-teal)] sm:grid-cols-[1.4fr_1fr_auto] sm:items-center"
-                >
-                  <span className="min-w-0">
-                    <span
-                      data-testid="request-name"
-                      className="block truncate font-bold text-[var(--color-ink)]"
-                    >
-                      {request.name}
-                    </span>
-                    <span className="mt-0.5 block text-[0.9rem] text-[var(--color-muted)]">
-                      {request.phone}
-                    </span>
-                  </span>
-                  <span className="text-[0.9rem] text-[var(--color-body)]">
-                    <span className="block">
-                      {LOCATION_LABELS[request.location]} ·{" "}
-                      {TIME_LABELS[request.preferred_time]}
-                    </span>
-                    <span className="mt-0.5 block text-[var(--color-muted)]">
-                      Received {formatReceived(request.created_at)}
-                    </span>
-                    {waiting ? (
-                      <span
-                        data-testid="request-waiting"
-                        className="mt-0.5 block text-[0.85rem] font-bold text-[var(--color-amber-deep)]"
-                      >
-                        Waiting since {waiting}
-                      </span>
-                    ) : null}
-                  </span>
-                  <span className="justify-self-start sm:justify-self-end">
-                    <StatusBadge status={request.status} />
-                  </span>
-                </Link>
-              </li>
+              <QueueRowLink
+                key={request.id}
+                request={request}
+                bucket={derived?.bucket ?? "closed"}
+                lastActivityAt={derived?.lastActivityAt ?? null}
+                page={page}
+                search={search}
+                filter={filter}
+                now={now}
+              />
             );
           })}
         </ul>

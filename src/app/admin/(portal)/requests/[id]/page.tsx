@@ -2,11 +2,22 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   isMailbox,
+  REQUEST_STATUSES,
   type RequestClosureDisposition,
   type RequestStatus,
 } from "@/lib/portal/contracts";
 import { requireRole } from "@/lib/portal/auth";
+import {
+  parseRequestSearch,
+  requestSearchFilter,
+} from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
+import {
+  fetchAttentiveOpenRows,
+  fetchClosedRows,
+  OPEN_CANDIDATE_LIMIT,
+  OPEN_STATUSES,
+} from "../queue";
 import { StatusBadge } from "../status-badge";
 import {
   formatReceived,
@@ -87,6 +98,10 @@ function metaText(meta: Record<string, unknown> | null, key: string): string {
   return typeof value === "string" ? value : "";
 }
 
+function firstParam(value: string | string[] | undefined): string | null {
+  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+}
+
 function workEntries(events: EventRow[], audits: AuditRow[]): WorkEntry[] {
   const entries: WorkEntry[] = [];
   for (const event of events) {
@@ -148,11 +163,35 @@ const STATUS_LINE_LABELS: Record<string, string> = {
 // react-doctor-disable-next-line react-doctor/no-giant-component
 export default async function RequestDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{
+    status?: string | string[];
+    q?: string | string[];
+    page?: string | string[];
+  }>;
 }) {
   await requireRole("staff");
   const { id } = await params;
+  const continuity = await searchParams;
+  const statusParam = firstParam(continuity.status);
+  const search = parseRequestSearch(continuity.q);
+  const searchFilter = search ? requestSearchFilter(search) : "";
+
+  const queueParams = new URLSearchParams();
+  if (statusParam) queueParams.set("status", statusParam);
+  if (search) queueParams.set("q", search);
+  const pageParam = firstParam(continuity.page);
+  if (pageParam) queueParams.set("page", pageParam);
+  const queueQuery = queueParams.toString();
+  const queueHref = `/admin/requests${queueQuery ? `?${queueQuery}` : ""}`;
+  const continuityParams = new URLSearchParams();
+  if (statusParam) continuityParams.set("status", statusParam);
+  if (search) continuityParams.set("q", search);
+  const continuityQuery = continuityParams.toString();
+  const continuityHref = (requestId: string): string =>
+    `/admin/requests/${requestId}${continuityQuery ? `?${continuityQuery}` : ""}`;
 
   const db = serviceClient();
   const [
@@ -189,6 +228,40 @@ export default async function RequestDetailPage({
   if (auditError) {
     throw new Error(`Work record read failed: ${auditError.code}`);
   }
+
+  // Previous/next within the viewer's queue scope: the same attention
+  // ordering the list renders, so staff can keep working without
+  // returning to the list each time. A request outside the current scope
+  // (e.g. an old closed row beyond the tail window) simply shows no chain.
+  const scoped =
+    statusParam &&
+    statusParam !== "all" &&
+    (REQUEST_STATUSES as readonly string[]).includes(statusParam)
+      ? (statusParam as RequestStatus)
+      : null;
+  const neighborIds: string[] = [];
+  if (scoped !== "closed") {
+    const openStatuses = scoped ? [scoped] : [...OPEN_STATUSES];
+    const openRows = await fetchAttentiveOpenRows(db, {
+      statuses: openStatuses,
+      searchFilter,
+    });
+    neighborIds.push(...openRows.map((row) => row.id));
+  }
+  if (scoped === null || scoped === "closed") {
+    const closedRows = await fetchClosedRows(db, {
+      from: 0,
+      limit: OPEN_CANDIDATE_LIMIT,
+      searchFilter,
+    });
+    neighborIds.push(...closedRows.map((row) => row.id));
+  }
+  const selfIndex = neighborIds.indexOf(id);
+  const prevId = selfIndex > 0 ? neighborIds[selfIndex - 1] : null;
+  const nextId =
+    selfIndex >= 0 && selfIndex < neighborIds.length - 1
+      ? neighborIds[selfIndex + 1]
+      : null;
 
   const row = request as RequestRow;
   const mailbox = row.email?.trim();
@@ -242,7 +315,7 @@ export default async function RequestDetailPage({
     <section aria-labelledby="request-heading">
       <nav aria-label="Breadcrumb" className="flex items-center text-[0.9rem]">
         <Link
-          href="/admin/requests"
+          href={queueHref}
           className="inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
         >
           Appointment requests
@@ -251,6 +324,30 @@ export default async function RequestDetailPage({
           /
         </span>
         <span className="text-[var(--color-muted)]">Detail</span>
+        {prevId || nextId ? (
+          <span className="ml-auto flex items-center gap-3">
+            {prevId ? (
+              <Link
+                href={continuityHref(prevId)}
+                rel="prev"
+                data-testid="prev-request"
+                className="inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+              >
+                ← Previous
+              </Link>
+            ) : null}
+            {nextId ? (
+              <Link
+                href={continuityHref(nextId)}
+                rel="next"
+                data-testid="next-request"
+                className="inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+              >
+                Next →
+              </Link>
+            ) : null}
+          </span>
+        ) : null}
       </nav>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
@@ -285,6 +382,7 @@ export default async function RequestDetailPage({
         status={row.status}
         closureDisposition={row.closure_disposition}
         closedAtLabel={row.closed_at ? formatReceived(row.closed_at) : null}
+        nextHref={nextId ? continuityHref(nextId) : null}
       />
 
       <div className="mt-6 grid items-start gap-6 lg:grid-cols-[1.5fr_1fr]">
