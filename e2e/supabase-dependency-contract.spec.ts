@@ -74,11 +74,18 @@ test.describe("Supabase dependency contract", () => {
     await page.getByLabel("Password").fill(SEED_PASSWORD);
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL(/\/admin\/?$/);
-    await expect(page.getByTestId("session-user")).toContainText(SEED_EMAIL);
+    const { data: sessionProfile } = await serviceDb()
+      .from("staff_profiles")
+      .select("display_name")
+      .eq("email", SEED_EMAIL.toLowerCase())
+      .single();
+    const sessionName = String(sessionProfile?.display_name ?? "");
+    expect(sessionName).not.toBe("");
+    await expect(page.getByTestId("session-user")).toContainText(sessionName);
 
     await page.reload();
     await expect(page).toHaveURL(/\/admin\/?$/);
-    await expect(page.getByTestId("session-user")).toContainText(SEED_EMAIL);
+    await expect(page.getByTestId("session-user")).toContainText(sessionName);
 
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/admin\/login\/?$/);

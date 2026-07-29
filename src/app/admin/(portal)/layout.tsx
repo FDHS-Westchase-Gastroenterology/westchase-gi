@@ -45,7 +45,7 @@ export default async function PortalLayout({
             </Link>
             <div className="flex items-center gap-x-4">
               <p className="hidden text-[0.85rem] text-[var(--color-on-dark-muted)] md:block">
-                <span data-testid="session-user">{session.email}</span>
+                <span data-testid="session-user">{session.displayName}</span>
                 <span aria-hidden="true" className="mx-2">
                   ·
                 </span>
