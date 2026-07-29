@@ -25,14 +25,17 @@ friction: request an appointment, call or text a staffed line, access the patien
 online forms, and get accurate location, hours, and provider information in English, Spanish,
 Vietnamese, Korean, or Arabic.
 Success: every link works, every fact is verified, all five languages are first-class, and the site
-reads as the polished front door of a practice that answers its own phones.
+reads as the polished front door of a practice that answers its own phones. Success is also
+knowable: the practice can tell, from aggregate and PHI-free evidence, whether patients are
+reaching the phone, the text line, and the request form — without watching anyone do it.
 
 ## Brand Personality
 
 Calm, credentialed, human. The practice's differentiator is staffed human attention (a real
 person answers the text line within 24 hours), so the site must feel attended-to rather than
-automated: plain language, warm but clinical, never salesy. Three words: steady, attentive,
-multilingual.
+automated: plain language, warm but clinical, never salesy. The site never shouts: no pop-ups,
+no autoplay, no urgency — its confidence shows in what it doesn't do. Three words: steady,
+attentive, multilingual.
 
 ## Anti-references
 
@@ -43,6 +46,9 @@ multilingual.
   borrow it.
 - Chatbot-forward "AI clinic" sites. Human attention is the differentiator here.
 - Generic SaaS landing-page grammar: hero metrics, gradient text, icon-card grids.
+- Conversion-pressure patterns: exit-intent modals, chat bubbles, floating action buttons,
+  review-bait sprinkled through content, interruptions on arrival. The site asks once, in
+  context.
 
 ## Design Principles
 
@@ -56,14 +62,32 @@ multilingual.
 3. **The human line is the hero.** Call and text affordances are prominent on every page; the
    text line is presented as a staffed human channel, never a bot.
 4. **Every language is a mode, not a footnote.** Every patient-facing surface exists in
-   English, Spanish, Vietnamese, Korean, and Arabic with equal care (Arabic fully RTL).
+   English, Spanish, Vietnamese, Korean, and Arabic with equal care (Arabic fully RTL), and
+   no string may claim a smaller language set than the site actually serves — availability
+   claims stay true at the sentence level, and clinical-care language claims ship only with
+   dated practice confirmation.
 5. **Anxious patients skim.** One clear action per section, generous type, high contrast, short
    paths to phone, forms, portal, and directions.
+6. **Interruptions are earned, never guessed.** At most one standing first-visit
+   interruption, and it fires only on positive evidence it helps (the language chooser opens
+   itself only on a detected language mismatch; the header menu always works). The
+   once-per-visitor banner is the only standing notice. Any future modal needs an explicit
+   exception here — the old site's daily popup is the anti-precedent.
+7. **Asks are calibrated.** One review ask per page in primary content; the testimonial rail
+   and footer carry the standing invitation. Written contact is one honest pipeline, labeled
+   as what it actually does. The site never trades the trust it is building for a second
+   conversion.
+8. **Measure like a medical practice.** Product evidence is aggregate, first-party, and
+   PHI-free: counts and funnels, never journeys — no per-visitor profiles, session replay,
+   heatmaps, or third-party trackers. If a question can't be answered inside that posture,
+   the instrumentation fits the posture, never the reverse.
 
 ## Accessibility & Inclusion
 
 WCAG 2.1 AA. Older-skewing patient base: body text at 17px or larger, contrast at 4.5:1 or
-better everywhere, visible focus states, large tap targets, semantic landmarks, skip link.
+better everywhere, visible focus states, large tap targets (44px floor, including dismiss
+controls), semantic landmarks, skip link. Async outcome states move focus to the outcome —
+success, failure, and unknown alike — never leaving keyboard users on a detached control.
 Full reduced-motion alternatives. All five locales use correct `lang` attributes and hreflang
 alternates, with RTL direction for Arabic, so assistive technology and search understand every
 mode.
