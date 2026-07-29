@@ -1,0 +1,386 @@
+import Link from "next/link";
+import { OUTCOME_HISTORY_LABELS, followUpShortLabel } from "../requests/format";
+
+// The human lens over the durable audit record: plain-language, grouped by
+// practice-local day, linked to the work — never an action code. Storage
+// vocabulary stays in the technical table beneath. Patient names are
+// deliberately not resolved here; the request itself is the link.
+
+export type AuditEntry = {
+  id: string;
+  actor_email: string;
+  action: string;
+  entity: string;
+  entity_id: string | null;
+  detail: unknown;
+  at: string;
+};
+
+export type RecentWorkContext = {
+  // email -> display name (staff identity for actors)
+  namesByEmail: ReadonlyMap<string, string>;
+  // staff_profiles id -> display name (for staff.* entity references)
+  namesByProfileId: ReadonlyMap<string, string>;
+  // notification_recipients id -> email (recipient references; removed
+  // recipients fall back to "a notification recipient")
+  recipientsById: ReadonlyMap<string, string>;
+  now: Date;
+};
+
+export type RecentWorkItem = {
+  id: string;
+  at: string;
+  actor: string;
+  sentence: string;
+  requestId: string | null;
+  // True when the action is unknown to the human vocabulary and the entry
+  // falls back to the technical form — an honest fallback, never silence.
+  technical: boolean;
+};
+
+const NY_DAY = new Intl.DateTimeFormat("en-CA", {
+  dateStyle: "short",
+  timeZone: "America/New_York",
+});
+
+const NY_WEEKDAY = new Intl.DateTimeFormat("en-US", {
+  weekday: "long",
+  timeZone: "America/New_York",
+});
+
+const NY_MONTH_DAY = new Intl.DateTimeFormat("en-US", {
+  month: "long",
+  day: "numeric",
+  timeZone: "America/New_York",
+});
+
+function nyDayNumber(date: Date): number {
+  return Math.round(
+    Date.parse(`${NY_DAY.format(date)}T00:00:00Z`) / 86_400_000,
+  );
+}
+
+export function dayGroupLabel(iso: string, now: Date): string {
+  const dayDiff = nyDayNumber(now) - nyDayNumber(new Date(iso));
+  if (dayDiff <= 0) return "Today";
+  if (dayDiff === 1) return "Yesterday";
+  if (dayDiff <= 6) return NY_WEEKDAY.format(new Date(iso));
+  return NY_MONTH_DAY.format(new Date(iso));
+}
+
+function detailObject(detail: unknown): Record<string, unknown> {
+  if (typeof detail !== "object" || detail === null || Array.isArray(detail)) {
+    return {};
+  }
+  return detail as Record<string, unknown>;
+}
+
+function nameOrEmail(
+  namesByEmail: ReadonlyMap<string, string>,
+  email: string,
+): string {
+  const name = namesByEmail.get(email.trim().toLowerCase());
+  return name && name.length > 0 ? name : email;
+}
+
+function recipientLabel(
+  recipientsById: ReadonlyMap<string, string>,
+  id: string | null,
+): string {
+  if (!id) return "a notification recipient";
+  return recipientsById.get(id) ?? "a notification recipient";
+}
+
+function profileLabel(
+  namesByProfileId: ReadonlyMap<string, string>,
+  id: string | null,
+): string {
+  if (!id) return "a colleague";
+  return namesByProfileId.get(id) ?? "a colleague";
+}
+
+const STATUS_WORDS: Record<string, string> = {
+  new: "New",
+  contacted: "Contacted",
+  scheduled: "Scheduled",
+  closed: "Closed",
+};
+
+function describeAction(
+  entry: AuditEntry,
+  detail: Record<string, unknown>,
+  ctx: RecentWorkContext,
+): { sentence: string; technical: boolean } {
+  const requestEntity = entry.entity === "requests";
+  switch (entry.action) {
+    case "request.status_change": {
+      const to = typeof detail.to === "string" ? detail.to : "";
+      if (to === "closed" && detail.legacy_unclassified_close === true) {
+        return { sentence: "closed a request without an outcome", technical: false };
+      }
+      return {
+        sentence: `marked a request ${STATUS_WORDS[to] ?? to}`,
+        technical: false,
+      };
+    }
+    case "request.close": {
+      return {
+        sentence: `closed a request — ${
+          detail.disposition === "converted"
+            ? "appointment booked"
+            : "no appointment booked"
+        }`,
+        technical: false,
+      };
+    }
+    case "request.call_outcome": {
+      const outcome = typeof detail.outcome === "string" ? detail.outcome : "";
+      const followUp =
+        typeof detail.follow_up_at === "string"
+          ? ` — call again ${followUpShortLabel(detail.follow_up_at, ctx.now)}`
+          : "";
+      switch (outcome) {
+        case "reached_follow_up":
+          return {
+            sentence: `reached the patient on a request${followUp}`,
+            technical: false,
+          };
+        case "voicemail":
+          return {
+            sentence: `left a voicemail on a request${followUp}`,
+            technical: false,
+          };
+        case "no_answer":
+          return {
+            sentence: `got no answer on a request${followUp}`,
+            technical: false,
+          };
+        case "wont_schedule":
+          return {
+            sentence: "closed a request — patient won't schedule",
+            technical: false,
+          };
+        case "not_actionable":
+          return {
+            sentence: "closed a request — duplicate or not actionable",
+            technical: false,
+          };
+        case "scheduled_transferred":
+          return {
+            sentence: "finished a request — appointment was booked",
+            technical: false,
+          };
+      }
+      return {
+        sentence: `recorded an outcome on a request${
+          OUTCOME_HISTORY_LABELS[outcome] ? ` — ${OUTCOME_HISTORY_LABELS[outcome]}` : ""
+        }`,
+        technical: false,
+      };
+    }
+    case "request.note":
+      return { sentence: "added a note to a request", technical: false };
+    case "request.authorized_delete":
+      return { sentence: "deleted a request early (authorized)", technical: false };
+    case "request.retention_delete":
+      return { sentence: "a request was removed by the retention policy", technical: false };
+    case "request.retention_hold":
+      return {
+        sentence: `${detail.held === false ? "released" : "placed"} a legal hold on a request`,
+        technical: false,
+      };
+    case "requests.export": {
+      const count =
+        typeof detail.row_count === "number" ? detail.row_count : null;
+      return {
+        sentence: `exported the request list${
+          count !== null
+            ? ` (${count} ${count === 1 ? "request" : "requests"})`
+            : ""
+        }`,
+        technical: false,
+      };
+    }
+    case "recipients.add":
+      return {
+        sentence: `added ${recipientLabel(ctx.recipientsById, entry.entity_id)} to notification emails`,
+        technical: false,
+      };
+    case "recipients.remove":
+      return {
+        sentence: `removed ${recipientLabel(ctx.recipientsById, entry.entity_id)} from notification emails`,
+        technical: false,
+      };
+    case "recipients.toggle":
+      return {
+        sentence: `${detail.to === true ? "resumed" : "paused"} notification emails for ${recipientLabel(ctx.recipientsById, entry.entity_id)}`,
+        technical: false,
+      };
+    case "recipients.label_update":
+      return {
+        sentence: `renamed ${recipientLabel(ctx.recipientsById, entry.entity_id)} on the notification list`,
+        technical: false,
+      };
+    case "staff.invite":
+      return {
+        sentence: `invited ${profileLabel(ctx.namesByProfileId, entry.entity_id)} to the portal`,
+        technical: false,
+      };
+    case "staff.onboard":
+      return { sentence: "completed portal setup", technical: false };
+    case "staff.deactivate":
+      return {
+        sentence: `deactivated ${profileLabel(ctx.namesByProfileId, entry.entity_id)}'s portal access`,
+        technical: false,
+      };
+    case "staff.role":
+      return {
+        sentence: `changed ${profileLabel(ctx.namesByProfileId, entry.entity_id)}'s role`,
+        technical: false,
+      };
+    case "staff.password_reset":
+      return {
+        sentence: `sent ${profileLabel(ctx.namesByProfileId, entry.entity_id)} a password reset link`,
+        technical: false,
+      };
+    case "staff.tour_dismiss":
+      return { sentence: "dismissed the portal tour", technical: false };
+    case "staff.tour_restart":
+      return { sentence: "restarted the portal tour", technical: false };
+    case "maintainers.invite":
+      return {
+        sentence: `invited ${typeof detail.target_login === "string" ? detail.target_login : "a maintainer"} to edit the website`,
+        technical: false,
+      };
+    case "maintainers.cancel":
+      return {
+        sentence: `canceled a website-maintainer invitation for ${typeof detail.target_login === "string" ? detail.target_login : "a maintainer"}`,
+        technical: false,
+      };
+    case "maintainers.revoke":
+      return {
+        sentence: `removed ${typeof detail.target_login === "string" ? detail.target_login : "a maintainer"}'s website access`,
+        technical: false,
+      };
+    default:
+      return {
+        sentence: requestEntity
+          ? `${entry.action} on a request`
+          : `${entry.action} (${entry.entity})`,
+        technical: true,
+      };
+  }
+}
+
+export function toRecentWorkItems(
+  entries: readonly AuditEntry[],
+  ctx: RecentWorkContext,
+): RecentWorkItem[] {
+  return entries.map((entry) => {
+    const detail = detailObject(entry.detail);
+    const { sentence, technical } = describeAction(entry, detail, ctx);
+    return {
+      id: entry.id,
+      at: entry.at,
+      actor: nameOrEmail(ctx.namesByEmail, entry.actor_email),
+      sentence,
+      requestId: entry.entity === "requests" ? entry.entity_id : null,
+      technical,
+    };
+  });
+}
+
+export function groupByPracticeDay(
+  items: readonly RecentWorkItem[],
+  now: Date,
+): Array<{ label: string; items: RecentWorkItem[] }> {
+  const groups: Array<{ label: string; items: RecentWorkItem[] }> = [];
+  for (const item of items) {
+    const label = dayGroupLabel(item.at, now);
+    const current = groups[groups.length - 1];
+    if (current && current.label === label) {
+      current.items.push(item);
+    } else {
+      groups.push({ label, items: [item] });
+    }
+  }
+  return groups;
+}
+
+const timeOnly = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+  timeZone: "America/New_York",
+});
+
+export function RecentWorkSection({
+  items,
+  now,
+}: {
+  items: RecentWorkItem[];
+  now: Date;
+}) {
+  const groups = groupByPracticeDay(items, now);
+  return (
+    <section aria-labelledby="recent-work-heading" className="mt-8">
+      <h2
+        id="recent-work-heading"
+        className="text-[1.05rem] font-black text-[var(--color-ink)]"
+      >
+        Recent work
+      </h2>
+      <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
+        Who did what, in plain language. The exact technical record stays
+        below for administrators.
+      </p>
+      <div className="mt-4 space-y-6">
+        {groups.map((group) => (
+          <div key={group.label}>
+            <h3 className="text-[0.8rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
+              {group.label}
+            </h3>
+            <ul
+              data-testid="recent-work-list"
+              className="mt-2 divide-y divide-[var(--color-line)] rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white"
+            >
+              {group.items.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex flex-wrap items-baseline gap-x-2 px-5 py-3 text-[0.95rem]"
+                >
+                  <span className="whitespace-nowrap text-[0.82rem] font-bold tabular-nums text-[var(--color-muted)]">
+                    {timeOnly.format(new Date(item.at))}
+                  </span>
+                  <span
+                    className={
+                      item.technical
+                        ? "text-[var(--color-muted)]"
+                        : "text-[var(--color-body)]"
+                    }
+                  >
+                    <strong className="font-bold text-[var(--color-ink)]">
+                      {item.actor}
+                    </strong>{" "}
+                    {item.sentence}
+                    {item.requestId ? (
+                      <>
+                        {" "}
+                        <Link
+                          href={`/admin/requests/${item.requestId}`}
+                          className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+                        >
+                          open request
+                        </Link>
+                      </>
+                    ) : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
