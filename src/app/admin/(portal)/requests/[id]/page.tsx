@@ -25,6 +25,7 @@ import {
 } from "../queue";
 import { StatusBadge } from "../status-badge";
 import {
+  formatActivityWhen,
   formatReceived,
   followUpWhenLabel,
   LOCALE_LABELS,
@@ -478,11 +479,13 @@ export default async function RequestDetailPage({
               Request activity
             </h2>
             <p className="mt-1.5 text-[0.88rem] leading-relaxed text-[var(--color-muted)]">
-              Call outcomes and status changes, newest first.
+              Every call outcome and status change on this request, newest
+              first — so anyone picking it up sees the whole story.
             </p>
             {entries.length === 0 ? (
               <p className="mt-3 text-[0.95rem] text-[var(--color-muted)]">
-                No call or status activity yet.
+                Nothing logged yet. The first call outcome or status change you
+                save will appear here.
               </p>
             ) : (
               <ul
@@ -525,7 +528,7 @@ export default async function RequestDetailPage({
                       </p>
                       <p className="mt-1.5 text-[0.8rem] font-bold text-[var(--color-teal-ink)]">
                         {displayNameOrEmail(nameMap, entry.author)} ·{" "}
-                        {formatReceived(entry.at, true)}
+                        {formatActivityWhen(entry.at)}
                       </p>
                     </li>
                   );

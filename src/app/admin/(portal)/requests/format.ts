@@ -124,3 +124,21 @@ export function followUpShortLabel(iso: string, now: Date = new Date()): string 
   if (dayDiff <= 6) return `${shortWeekday.format(date)} ${part}`;
   return shortMonthDay.format(date);
 }
+
+// Human, practice-local timestamp for the Request activity timeline. Recent
+// entries read "Today · 2:15 PM" / "Yesterday · 9:03 AM"; older ones fall back
+// to the full dated label so nothing loses its precise time.
+const activityClock = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+  timeZone: "America/New_York",
+});
+
+export function formatActivityWhen(iso: string, now: Date = new Date()): string {
+  const date = new Date(iso);
+  const dayDiff = nyDayNumber(now) - nyDayNumber(date);
+  if (dayDiff === 0) return `Today · ${activityClock.format(date)}`;
+  if (dayDiff === 1) return `Yesterday · ${activityClock.format(date)}`;
+  return formatReceived(iso, true);
+}

@@ -115,9 +115,10 @@ export function RequestNotes({
       {notes.length === 0 ? (
         <p
           data-testid="notes-empty"
-          className="mt-4 text-[0.95rem] text-[var(--color-muted)]"
+          className="mt-4 text-[0.95rem] leading-relaxed text-[var(--color-muted)]"
         >
-          No notes yet.
+          No notes yet. Add the first one to pass along anything the next
+          person should know before they call.
         </p>
       ) : (
         <>
@@ -199,14 +200,15 @@ export function RequestNotes({
                 setDraft(event.target.value);
                 if (feedback?.tone === "error") setFeedback(null);
               }}
-              placeholder="What should the next staff member know?"
+              placeholder="e.g. Prefers a call after 3pm, or spoke with the daughter — anything the next person should know."
               className="mt-2 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 py-3 text-[0.95rem] text-[var(--color-ink)] outline-none transition-[border-color,box-shadow] focus:border-[var(--color-teal-ink)] focus:ring-2 focus:ring-[var(--color-teal-ink)] focus:ring-offset-2 disabled:opacity-60"
             />
             <p
               id="request-note-guidance"
               className="mt-2 text-[0.85rem] leading-relaxed text-[var(--color-muted)]"
             >
-              Keep medical details in the clinical record.
+              Notes stay on this request for the whole team. Keep medical
+              details in the clinical record.
             </p>
             {feedback?.tone === "error" ? (
               <p

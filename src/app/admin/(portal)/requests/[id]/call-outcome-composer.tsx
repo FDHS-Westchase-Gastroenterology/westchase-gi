@@ -363,11 +363,14 @@ function FollowUpFieldset({
   return (
     <fieldset className="mt-5" disabled={pending}>
       <legend className="text-sm font-bold text-[var(--color-ink)]">
-        When should this come back to your attention?
+        When should we call this patient again?
       </legend>
       <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
-        This tells the queue when to bring the request back.
-        {requiresFollowUp(outcome) ? " Required for this outcome." : ""}
+        The request drops out of view and resurfaces at the top of the queue
+        right when it&apos;s time to call back.
+        {requiresFollowUp(outcome)
+          ? " Pick a time to save this outcome."
+          : ""}
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {FOLLOW_UP_KINDS.map((chip) => (
@@ -541,8 +544,8 @@ function StatusActions({
       ) : null}
       <p className="text-[0.85rem] text-[var(--color-muted)]">
         {undoAvailable
-          ? "Undo restores the previous appointment request status, callback time, and Closed details."
-          : "Save creates one Request activity entry."}
+          ? "Changed your mind? Undo puts the status, callback time, and Closed details back exactly as they were."
+          : "Saving adds one line to Request activity — no patient notification is sent."}
       </p>
     </div>
   );
@@ -702,8 +705,9 @@ export function CallOutcomeComposer({
         Update appointment request status
       </h2>
       <p className="mt-1.5 max-w-[68ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
-        Choose where this request belongs next. The outcome and callback
-        timing are saved together.
+        After the call, tell the queue what happened. Pick where the request
+        goes next and, if it needs another call, when — it all saves in one
+        step, and you can undo it right away.
       </p>
       <p
         id="current-request-status"
