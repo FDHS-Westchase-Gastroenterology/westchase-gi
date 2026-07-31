@@ -96,5 +96,4 @@ covered in `CONTRIBUTING.md`.
 | `CONTRIBUTING.md` | Developers | Setup, verification, commit/PR/merge rules, shipping to production, operations |
 | `AGENTS.md` | AI coding agents | Hard rules and fast ramp-up for autonomous work |
 | `PRODUCT.md` / `DESIGN.md` | Product + design | Product definitions (patient site + staff portal) and the design system |
-| `docs/runbooks/` | Operators | Narrow procedures loaded only for the operation at hand |
 | `ui-reference/` | Developers | Checked-in screenshots: the visual baseline for UI work |

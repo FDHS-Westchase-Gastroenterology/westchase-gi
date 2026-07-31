@@ -167,8 +167,9 @@ signed invite/recovery flow cookie.
 Invite and recovery links are single-use and unavailable to deactivated staff. Recovery
 templates put `token_hash` and `type` in the URL fragment, keeping bearer values out of HTTP
 requests and referrer headers. The confirmation page strips the fragment before a deliberate
-Continue action consumes the token. Hosted configuration and manual verification live in
-[`docs/runbooks/supabase-auth-email.md`](docs/runbooks/supabase-auth-email.md).
+Continue action consumes the token. Hosted Auth SMTP, templates, site URL, and
+`/admin/auth/confirm` redirects are project configuration, not migrations — manage and
+verify Development and Production separately.
 
 ### Email
 
@@ -220,8 +221,7 @@ sensitive even though the form asks patients not to submit medical details.
 - The application keeps no duplicate patient-data archive. A downloaded CSV is a
   clinic-controlled sensitive copy outside application retention.
 - Backups are recovery copies, not archives. The lifecycle migrations schedule nothing until
-  the privacy, custody, security, test, preview, and approval gates in
-  [`docs/runbooks/data-lifecycle.md`](docs/runbooks/data-lifecycle.md) are complete.
+  privacy, custody, security, test, preview, and approval gates are complete.
 
 ## External interfaces
 
@@ -295,7 +295,7 @@ This is the change-type → files map. The matching change-type → checks map i
   of the changed interface.
 - **Email:** `intake-notification.ts` for appointment pings, `management-email.ts` for
   staff/recipient composition, `email.ts` for the interface, and `email-provider.ts` for the
-  adapter. Auth recovery configuration follows its runbook.
+  adapter. Auth recovery SMTP, templates, and redirects are hosted project configuration.
 - **Website/GitHub:** `src/app/admin/(portal)/settings/software/`, `integrations.ts`, and the
   maintainer modules. GitHub App only—never a PAT, client-side call, or Vercel integration.
 - **Review flyers:** private artifacts, `review-targets.json`, `review-flyers.ts`, protected

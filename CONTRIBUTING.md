@@ -85,7 +85,7 @@ smoke test.
 | Intake form / API / persistence | Above + `npx playwright test` (intake specs) |
 | Portal page, route, or action | Above + `npx playwright test` (portal specs) |
 | Migration, RLS, RPC, or seed | Above + `verify-schema.mjs --target dev`; disposable-contract job runs in CI on the exact head |
-| Email paths | `npx playwright test e2e/portal-email.spec.ts`; Auth-template changes also follow the [manual recovery verification](docs/runbooks/supabase-auth-email.md#manual-recovery-verification) |
+| Email paths | `npx playwright test e2e/portal-email.spec.ts` |
 | UI-visible change | Refresh covered `ui-reference/` images; before/after screenshots in the PR |
 | CI / dependency automation | `node --test .github/scripts/dependency-automation.test.cjs` — policy and test change together |
 
