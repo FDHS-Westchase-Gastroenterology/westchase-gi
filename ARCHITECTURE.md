@@ -1,498 +1,306 @@
 # Architecture — Westchase GI
 
-Developer-facing system design: how the application works, where logic lives, and how it
-interacts with external systems. Companions: [`CONTRIBUTING.md`](CONTRIBUTING.md) (process:
-setup, verification, commit/PR/merge, production), [`AGENTS.md`](AGENTS.md) (non-negotiable
-hard rules), `PRODUCT.md` (patient-site and staff-portal registers), `DESIGN.md` (design system).
+Developer-facing system design: runtime topology, module interfaces, non-obvious invariants,
+external seams, and where changes belong. Process lives in
+[`CONTRIBUTING.md`](CONTRIBUTING.md), hard agent rules in [`AGENTS.md`](AGENTS.md), product
+truth in `PRODUCT.md`, design rules in `DESIGN.md`, and current custody in `README.md`.
 
-This document describes the design; it is not a status page. When it and the code disagree,
-the code is right — fix this file in the same pull request.
+This document records intended design. Executable contracts show current behavior; a
+disagreement is a defect to investigate and resolve in the same change, not evidence that
+either the prose or the code is automatically right.
 
-## 1. System overview
+## System topology
 
-One Next.js 16 (App Router) + Tailwind CSS 4 application carries **two products** in a single
+One Next.js 16 App Router and Tailwind CSS 4 application carries two products in one
 deployment:
 
-- **Patient site** (`/{en,es,vi,ko,ar}/**`) — static-first, five locales (Arabic RTL), brand
-  register. Renders from one codebase through type-enforced dictionaries.
-- **Staff portal** (`/admin/**`) — authenticated, English-only operations tool: the
-  appointment-request queue, notification recipients, staff accounts, review-flyer printer,
-  audit log, and the Website custody surface.
+- **Patient site** (`/{en,es,vi,ko,ar}/**`) — static-first, five locales, Arabic RTL, and
+  type-enforced dictionaries.
+- **Staff portal** (`/admin/**`) — authenticated, English-only operations for the durable
+  appointment-request queue and practice administration.
 
-Supporting systems:
-
-| System | Role |
+| System | Architectural role |
 |---|---|
-| Supabase | Two hosted projects (development, production): Postgres queue + Auth. RLS closed; all writes through service-role server code. |
-| Email capability | Provider-neutral, text-only, application-owned. Resend is the only production adapter today. Supabase Auth password recovery is a separate hosted SMTP path. |
-| GitHub App (`wgi-portal`) | Clinic-owned; powers the portal's Website surface (read owner/maintainers, invite/cancel/revoke maintainers). Server-side only. |
-| Vercel | Clinic-owned Hobby project `westchase-gi`; push-to-deploy. The portal does not connect to or manage Vercel. |
-| Porkbun | Registrar + DNS for `westchasegi.com` (apex canonical, `www` redirects). |
+| Supabase | Hosted Postgres queue and Auth. Development and Production are separate projects. Application tables are RLS-protected; privileged data access stays in server-only code. |
+| Email capability | Provider-neutral, text-only application interface with a Resend adapter. Supabase Auth recovery uses a separate hosted SMTP path. |
+| GitHub App (`wgi-portal`) | Server-only adapter for reading repository custody and inviting, cancelling, or revoking maintainers. |
+| Vercel + DNS | Vercel runs the application; `https://westchasegi.com` is canonical. The portal does not call or manage Vercel or DNS. |
 
 ```text
-patient browser ──► Vercel: Next.js app
-                      ├─ src/proxy.ts        locale redirect · /admin gate · legacy query scrub
-                      ├─ src/app/[locale]/** patient pages (RSC)
-                      ├─ src/app/api/requests/**  intake API ──► Postgres `requests` (durable queue)
-                      │                                   └─► email capability ──► staff inboxes
-                      │                                        (PHI-free ping; queue is the record)
-staff browser ──────►   ├─ src/app/admin/**   portal (Supabase Auth session)
-                      │      └─ server actions ──► service-role RPCs (RLS closed to clients)
-                      └─ Website surface ──► GitHub App ──► GitHub API (repo custody)
+patient browser ──► Vercel: Next.js application
+                      ├─ src/proxy.ts          locale redirect · admin gate · query scrub
+                      ├─ src/app/[locale]/**   patient pages (RSC)
+                      ├─ intake handlers ─────► Postgres `requests` (durable queue)
+                      │                              └─► email interface ─► PHI-free staff ping
+                      └─ telemetry handler ───► private aggregate counters
+
+staff browser ──────► /admin/** (Supabase Auth session)
+                      ├─ protected pages/actions ─► service-role data interface
+                      └─ Website surface ─────────► GitHub App ─► GitHub API
 ```
 
-## 2. Runtime model
+Application deployment and database promotion are separate release axes: merging `main`
+deploys the application, while a committed migration reaches Production only through a
+separate, explicit decision.
 
-- **Proxy (`src/proxy.ts`)** — Next 16 proxy convention; there is no `middleware.ts`. The
-  matcher is an explicit list (`/`, locale `contact`/`appointment`, `/admin/*`), so a new
-  protected path must be added to it. Responsibilities:
-  - `/` → visitor locale: `wgi-locale` cookie → `Accept-Language` negotiation → `en`
-    (`307`, `no-store`, `Vary: Accept-Language, Cookie`).
-  - Legacy patient-bearing query strings on form paths are scrubbed with a `301` **before**
-    the document (and any third-party resource) loads.
-  - `/admin/**`: Supabase session refresh + optimistic gate. The only public paths are the
-    authentication-entry routes (`login`, `forgot-password`, `auth/confirm`,
-    `auth/callback`) and the flyer-asset route's own server-side check; everything else
-    fails closed (redirect to login, or `401` JSON for `/admin/settings/mutations`).
-- **Pages** — React Server Components by default. Patient routes render all five locales from
-  one page module; portal pages are dynamic and call `requireRole` first.
-- **Route handlers** — `POST /api/requests` (JSON intake), `POST /api/requests/form` (no-JS
-  native POST → `303` to a one-time receipt), `GET /admin/requests/export` (CSV),
-  `GET /admin/review-flyers/assets/[filename]` (protected binary).
-- **Server actions** — portal mutations live in each admin route's `actions.ts`; every one
-  authenticates first.
-- **SEO surface** — `src/app/sitemap.ts`, `src/app/robots.ts`, `src/lib/metadata.ts`, and the
-  legacy `redirects()` map in `next.config.ts`. Canonical origin is the apex
-  `https://westchasegi.com` everywhere.
+## Runtime and trust boundaries
 
-## 3. Module map
+- **Proxy (`src/proxy.ts`)** — Next.js 16 proxy convention; there is no `middleware.ts`. Its
+  matcher is explicit, so new protected paths must be added deliberately. It performs:
+  - `/` locale selection: `wgi-locale` cookie → `Accept-Language` → `en`, returned as a
+    non-cacheable `307` varying on language and cookie;
+  - a `301` scrub of legacy patient-bearing query parameters on appointment/contact paths
+    before a document or third-party resource can load; and
+  - Supabase session refresh plus an optimistic `/admin` gate. Public auth-entry paths are
+    `login`, `forgot-password`, `auth/confirm`, and `auth/callback`. The review-flyer asset
+    route passes the proxy gate only so its own server authorization can return the right
+    binary response. Other unauthenticated admin requests fail closed.
+- **Server rendering and authorization** — React Server Components are the default. Every
+  protected admin page, handler, and mutation reauthorizes with `requireRole`; proxy gating
+  never substitutes for server authorization. Portal pages are dynamic.
+- **External HTTP interfaces** — the important seams are JSON and no-JS intake, aggregate
+  telemetry, authenticated CSV export and flyer assets, and the Auth callback/confirmation
+  flow. Handlers validate at their own interface rather than trusting the browser or proxy.
+- **Server actions** — portal actions are colocated with their routes and authenticate before
+  calling the portal library or a database RPC.
+- **SEO** — metadata, sitemap, robots, and legacy redirects share the apex canonical origin.
 
-### `src/lib/` — patient-site facts and shared primitives
+Only the Supabase URL and publishable key are browser-visible. Service-role, email, and GitHub
+App credentials are server-only; GitHub App credentials are Production-only. Database,
+seed, Preview, and Production-operator credentials are tooling inputs with narrower scopes,
+not browser configuration. [`.env.example`](.env.example) is the exact variable inventory.
 
-| Module | Responsibility |
+## Architectural invariants
+
+- **Five locales move together.** `en.ts` defines the patient dictionary type, so a missing
+  key in ES/VI/KO/AR fails the build. Patient-facing copy changes land in all five locales;
+  localized content libraries enforce the same shape through `Bi`.
+- **Authorization is server-owned.** `staff_profiles`, read through the service client, is
+  the role and active-state source of truth. Never authorize from user-editable metadata or
+  expose a portal secret through `NEXT_PUBLIC_*`.
+- **RLS is closed to clients.** Every application table has RLS enabled; anonymous grants and
+  authenticated writes are absent. Privileged writes originate in server-only service-role
+  code, and multi-record operations that must agree use atomic RPCs.
+- **Intake success means durable persistence.** The application never renders success before
+  the Postgres insert. Failure and unknown states remain distinct and show the staffed
+  call/text fallback.
+- **Patient data stays inside the queue.** Patient fields never enter notification emails,
+  URLs, server logs, audit metadata, analytics, or provider diagnostics. Browser, server, and
+  database caps all constrain patient input.
+- **Staff work is accountable.** Every staff-initiated state change writes metadata-only
+  audit evidence. Patient text belongs in the request and its event stream, not `audit_log`.
+
+## Data interface
+
+### Stored data
+
+| Relation | Role |
 |---|---|
-| `site.ts` | Locale set, `localeDir` (Arabic RTL), office/hours/contact facts, `site` object, locale-path helpers, map/directions URLs. Dated source comments mark confirmation status. |
-| `dictionaries/{en,es,vi,ko,ar}.ts` | All patient-facing strings. `en.ts` defines `export type Dictionary = typeof en`; a missing key in any locale is a build error. |
-| `i18n.ts`, `locale-preference.ts` | Dictionary lookup; locale cookie persistence. |
-| `providers.ts` | Provider roster. **Credentials are verbatim and load-bearing** (AGENTS.md rule 1). |
-| `services.ts`, `resources.ts`, `testimonials.ts` | Page-level fact libraries. |
-| `documents.ts` | The 31-slot patient-document registry (2 record-release, 13 preps, 16 disease sheets). `file` stays `null` until a real PDF exists in `public/documents/`; slots fall back to the staffed text line or the on-site page. |
-| `telemetry.ts` | Client-importable PHI-free analytics contract: `ANALYTICS_EVENTS`, route-template allowlist, `telemetryEventSchema`. |
-| `content/preps/` | Procedure-prep handouts, transcribed from the practice's scans (EN and ES separately; source discrepancies preserved in comments). Registered through `index.ts`; shared `Bi` type from `content/types.ts`. |
-| `content/blog/` | The 16 migrated posts (`batch1–3.ts`, `legacyPath` drives redirects). |
-| `content/education/` | The 17 rebuilt education topics + disease-sheet pages (`procedures.ts`, `conditions-a.ts`, `conditions-b.ts`). |
-| `metadata.ts` | Per-page titles/descriptions, canonical, hreflang, JSON-LD. |
-| `fonts.ts` | Lato + Trocchi loading. |
-| `review-flyers.ts`, `review-targets.json` | Review destinations manifest: filenames, pinned SHA-256 hashes, six targets. |
-| `portal/` | Everything server-side for intake + portal (below). |
+| `public.requests` | Appointment-request system of record. Owns lifecycle, closure classification, receipt-token hash state, and legal-hold state. |
+| `public.request_events` | Child event stream for notification outcomes, attributed appointment-request notes, call outcomes, and Undo evidence. Call outcomes carry versioned lifecycle snapshots; events cascade with the request. |
+| `public.notification_recipients` | Active/paused destinations for new-request pings. |
+| `public.staff_profiles` | Authorization source of truth linked to `auth.users`. |
+| `public.portal_release_states` | PHI-free, bounded per-staff engagement with application-owned release briefings. |
+| `public.audit_log` | Metadata-only record of staff-visible operations and external-operation outcomes. |
+| `private.intake_rate_limits` | Expiring HMAC throttle buckets; no raw or reversibly hashed client address. |
+| `private.analytics_daily` | PHI-free daily counts by allowlisted event, route template, locale, and device class. |
 
-### `src/lib/portal/` — intake and portal server library (server-only)
+### Atomic operations
 
-| Module | Responsibility |
-|---|---|
-| `contracts.ts` | The shared contract: `requestInputSchema` (zod), `REQUEST_FIELD_LIMITS`, `REQUEST_STATUSES`, `RequestClosureDisposition`, `StaffRole`, `AUDIT_ACTIONS`, `IntakeResponse` (the only permitted intake response shape), `INTAKE_API` / `INTAKE_NOJS_ACTION`, `receiptPath`, `HONEYPOT_FIELD` (`"company"`), `INTAKE_RATE_LIMIT`, generic `RESET_REQUEST_MESSAGE`. |
-| `server.ts` | Supabase client factories: `serverClient()` (session-bound), `serviceClient()` (service role). Reads server-only env; never `NEXT_PUBLIC_*`. |
-| `auth.ts` | `requireRole()` for every portal page/action; `staff_profiles` authorization via the service client (never user-editable metadata); password-flow signed-cookie helpers for invite/recovery. |
-| `release-briefing.ts`, `release-state.ts` | Per-staff release-briefing read/mutation boundary, technical audit classifier, and PHI-free five-state model. The application owns release content; Postgres stores bounded per-release view, guide-open, dismiss, acknowledgement, and hide engagement. |
-| `release-engagement.ts`, `release-engagement-model.ts` | Server-only release-engagement report query plus fail-closed row parser. It joins release state to staff identity for the admin Activity surface and never reads patient tables. |
-| `intake.ts` | `processIntake()`: validate → honeypot drop → shared atomic throttle → durable insert → receipt token. `consumeRequestReceipt()` for the one-time receipt page. |
-| `telemetry.ts` | `processTelemetry()`: zod → shared throttle (telemetry HMAC domain) → `portal_record_analytics_event` upsert. |
-| `intake-notification.ts` | Fan-out to ACTIVE recipients; one `request_events` row per recipient with provider outcome. Zero patient fields. |
-| `email.ts` | The transport seam: `PortalEmail*` contract types + `createEmailSender(transport)` — eight-second deadline, idempotency-key pass-through, normalized outcomes, logs exclude recipients/content/keys. |
-| `email-provider.ts` | `sendPortalEmail`: the sender bound to the Resend adapter (`unconfigured` result when `RESEND_API_KEY` is absent). |
-| `management-email.ts` | Message composition for recipient-confirmation and staff lifecycle mail. Appointment pings are composed in `intake-notification.ts`. |
-| `management.ts` | Staff and recipient mutations (invite/resend/deactivate/role change; add/toggle/remove recipient); each returns a typed result and writes audit rows. |
-| `maintainers.ts`, `maintainer-operation.ts`, `maintainer-view.ts`, `github-response.ts` | Website-surface maintainer lifecycle (invite/cancel/revoke) and its view/response shaping. |
-| `integrations.ts` | GitHub App provider: RS256 App JWT → installation token; every token pinned to the numeric owner/repository IDs; configured/unconfigured/unavailable states. |
-| `audit.ts` | `recordAudit`, `beginExternalAudit`/`finishExternalAudit` (atomic external-operation audit). |
-| `request-query.ts` | Queue paging/search parsing and caps. |
-| `business-time.ts` | Practice-local business-time math for queue attention states. |
-
-### `src/app/`
-
-- `[locale]/**` — patient pages; `[...rest]` catch-all; `appointment/received` (receipt).
-- `admin/(portal)/**` — authenticated surfaces behind the group `layout.tsx`: Home
-  (`page.tsx`), `requests/` (+ `[id]`, `export`), `review-flyers/` (+ protected `assets/`),
-  `settings/` (recipients, staff, `mutations` endpoint), `settings/software/` (Website),
-  `audit/`, `help/`, plus `portal-nav.tsx`, `portal-tour.tsx`, `tour-actions.ts`.
-  `admin/(portal)/registry/` is a permanent redirect to `settings/software/` kept for
-  retired-registry bookmarks.
-- `admin/login`, `admin/forgot-password`, `admin/auth/{confirm,callback}` — the deliberate
-  public session-establishment boundaries; they stay generic and fail-closed.
-  `admin/set-password` is the gated completion step, not a public boundary: it requires a
-  verified active staff session plus the signed password-flow cookie (invite or recovery).
-- `api/requests/` — the two intake handlers. `api/telemetry/` — PHI-free aggregate event
-  counters. `review/` — the public review hub.
-
-### `src/components/`
-
-Shared patient-site UI (Header, Footer, NoticeBanner, AppointmentForm, DocumentList,
-ProfileCardViewer, Reveal, etc.). Portal UI is colocated with its routes in
-`src/app/admin/`, strings inline (English-only by scope).
-
-## 4. Contracts that break naive changes
-
-- **Five locales are type-enforced.** A key missing from any dictionary is a build error,
-  not a runtime gap. Content libraries share the same discipline via the `Bi` type. Any
-  patient-facing copy change lands in all five dictionaries in the same PR.
-- **The portal is server-authorized.** Every `/admin` page, handler, and action calls
-  `requireRole`; authorization reads `staff_profiles` through the service client. Never
-  authorize from user-editable metadata; never put a portal secret in `NEXT_PUBLIC_*`.
-- **Intake invariants.** Success renders only after the durable Postgres insert; failure and
-  unknown states stay distinct and always surface the call/text fallback. The honeypot field
-  is deliberately absent from the schema and its submission returns a success-shaped
-  response. Patient fields are capped at browser, server, and database boundaries. No
-  patient value reaches a URL or a log line.
-- **RLS posture.** Enabled on every table, zero anonymous grants, no authenticated write
-  policies. All writes go through service-role server actions, and every staff-visible
-  mutation writes an `audit_log` row.
-
-## 5. Data layer (Supabase Postgres)
-
-### Tables
-
-| Table | Role |
-|---|---|
-| `public.requests` | The appointment-request queue — the system of record. Status lifecycle `new → contacted → scheduled → closed` with explicit closure classification (`converted` / `unconverted`) driving retention. Carries receipt-token hash state and legal-hold/lifecycle columns (later migrations). |
-| `public.request_events` | Per-request event stream: notification attempts, attributed appointment request notes, atomic call outcomes, and their explicit Undo events. Call outcomes carry versioned lifecycle snapshots so Undo can restore the exact preceding request state when no later save has changed it, without deleting the saved call outcome or Undo event. Cascade-deletes with its parent request. |
-| `public.notification_recipients` | Who gets new-request email pings; `active` toggles pause/resume; optional label. |
-| `public.staff_profiles` | Authorization source of truth: `user_id → auth.users`, role (`admin`/`staff`), active flag. |
-| `public.portal_release_states` | PHI-free per-staff release briefing state keyed by `(staff_user_id, release_id)`: immutable first open, last-view and bounded view count, first/last guide open and count, last dismiss and count, plus idempotent acknowledgement and early hide. |
-| `public.audit_log` | Every staff-visible mutation: actor, action, entity, detail JSONB (metadata only — never patient text). Six-year retention. |
-| `private.intake_rate_limits` | Expired-bucket HMAC throttle state, cleaned by the lifecycle run. |
-| `private.analytics_daily` | PHI-free patient-site daily event rollups `(day, event, route_template, locale, device_class)` — aggregate counts only. |
-| ~~`registry_assets` / `registry_grants`~~ | Retired by migration; remain absent. |
-
-### RPCs (service-role only)
-
-Intake: `portal_check_intake_rate_limit`. Telemetry: `portal_record_analytics_event`. Queue:
-`portal_update_request_status`,
-`portal_close_request`, `portal_add_request_note`, `portal_log_call_outcome` (atomic combined
-outcome plus lifecycle snapshot), `portal_undo_call_outcome` (atomic Undo that rejects a stale
-or repeated attempt).
-Recipients: `portal_update_recipient_label`. Staff: `portal_complete_staff_onboarding`,
-`portal_record_staff_password_reset`, `portal_set_staff_tour_dismissed`. Release briefing:
-`portal_open_staff_release`, `portal_record_staff_release_guide_open`,
-`portal_record_staff_release_dismiss`, `portal_acknowledge_staff_release`,
-`portal_hide_staff_release`.
-Lifecycle:
-`portal_preview_data_lifecycle`, `portal_run_data_lifecycle`, `portal_set_request_legal_hold`,
-`portal_delete_request_early`.
+- Intake throttling and analytics increments are database-atomic so multiple application
+  instances share one limit and counter.
+- Saving a call outcome commits the outcome, request lifecycle, callback timing, and closure
+  classification together. Undo records a new event and restores the saved snapshot only
+  when no later mutation has made it stale; it never deletes history.
+- Staff, recipient, release-state, legal-hold, and deletion operations apply their data and
+  audit effects as one database operation where partial success would misrepresent state.
+- Lifecycle preview, scheduled deletion, legal holds, and exceptional early deletion remain
+  distinct privileged interfaces.
 
 ### Migrations
 
-Forward-only, timestamped files in `supabase/migrations/`. Since
-`20260725170000_add_request_data_lifecycle`, each schema-changing migration ships with a
-rollback sibling in `supabase/rollbacks/` (named `<new_version>_to_<prior_version>.sql`); the
-twelve earlier migrations predate the convention and have none. Applied development-first
-(`supabase link` + `supabase db push`); production promotion is a separate, deliberate
-decision — merging the migration does not authorize it. Schema-first rollouts keep the
-deployed status RPC backward-compatible until the new app is live. After an approved hosted
-rollback, mark versions reverted in the migration ledger
-(`supabase migration repair --status reverted ...`) before any later push.
-`supabase/seed.sql` + `scripts/seed-portal.mjs` seed the local/development fixtures.
+The repository uses forward-only timestamped migrations in `supabase/migrations/`. Every new
+schema-changing migration ships with a rollback sibling in `supabase/rollbacks/`. Apply and
+verify Development first; merging does not authorize Production promotion. When old and new
+application versions can overlap, schema-first changes keep the deployed interface backward
+compatible until the new application is live. Seed fixtures live in `supabase/seed.sql` and
+`scripts/seed-portal.mjs`; commands and release procedure live in `CONTRIBUTING.md`.
 
-## 6. Intake pipeline
+## Critical flows
 
-1. The form (`/{locale}/appointment`, `/{locale}/contact`; `AppointmentForm.tsx`) POSTs JSON
-   to `/api/requests`, or without JS does a native POST to `/api/requests/form`.
-2. Server-side validation against `requestInputSchema`; field caps enforced again here and in
-   the database.
-3. Honeypot-filled submissions are dropped with a success-shaped response.
-4. `portal_check_intake_rate_limit` applies the shared, atomic throttle in Postgres, keyed by
-   an HMAC — never a raw address or reversible digest.
-5. **The durable insert into `requests` happens before any success state renders.** Failure
-   and unknown states are distinct and always present the staffed call/text line.
-6. Notification fan-out reads the ACTIVE recipient set at submission time and sends the
-   PHI-free ping (stable notice + portal link) through the email capability, recording one
-   `request_events` row per recipient.
-7. The no-JS path answers `303` to `/{locale}/appointment/received` with a short-lived
-   (15-minute), one-time, opaque receipt token bound to the persisted request; its hash is
-   removed after one hour. No patient field or unsigned success flag ever rides the URL.
+### Intake
 
-## 6b. Patient-site telemetry
+1. `AppointmentForm.tsx` posts JSON to `/api/requests`; without JavaScript the browser posts
+   natively to `/api/requests/form`.
+2. `requestInputSchema` validates server-side and database constraints enforce field caps
+   again.
+3. A filled honeypot is dropped with a success-shaped response and never enters the queue.
+4. The shared Postgres throttle uses a domain-separated HMAC key, never a raw address or a
+   reversible digest.
+5. The durable `requests` insert completes before any success state can render.
+6. Notification fan-out snapshots active recipients, sends a PHI-free portal ping through the
+   email interface, and records one outcome event per recipient. Notification failure never
+   rolls back the queue record.
+7. The no-JS handler returns `303` to a localized receipt page with a 15-minute, one-time
+   opaque token bound to the stored request. Only its hash is stored, and that hash expires
+   after one hour. No patient value or unsigned success flag enters the URL.
 
-`POST /api/telemetry` → zod (`src/lib/telemetry.ts`) → shared throttle
-(`portal_check_intake_rate_limit` with a telemetry-only HMAC domain) → atomic upsert RPC
-(`portal_record_analytics_event`) → `private.analytics_daily`. Service-role writes only;
-RLS on, zero anon/authenticated grants. Read path is the SQL snippet
-`supabase/snippets/analytics-daily-rollup.sql` (dashboard / service role). No staff UI in
-v1. Counts are directional, not forensic; payload is four allowlisted strings and never
-carries free text, raw URLs, or timestamps.
+### Patient-site telemetry
 
-## 7. Staff portal
+`POST /api/telemetry` validates four allowlisted dimensions, uses a telemetry-specific HMAC
+domain in the shared throttle, and atomically increments `private.analytics_daily`. The
+payload contains no free text, raw URL, patient field, or client timestamp. Counts are
+directional aggregates, not a forensic event log; reads use
+`supabase/snippets/analytics-daily-rollup.sql` through a privileged operator context.
 
-- **Authentication** — Supabase Auth over SSR cookies. The proxy refreshes the session and
-  gates `/admin`; `requireRole` authorizes every page/action from `staff_profiles` via the
-  service client. Login, reset request, and one-time-link confirmation are the only public
-  boundaries and stay generic/fail-closed (an unknown address gets the same visible response
-  as an active one).
-- **One-time links** — invite and recovery links are single-use and role-preserving, and are
-  unavailable to deactivated accounts. The recovery e-mail template
-  (`supabase/templates/recovery.html`) carries the token in the URL fragment
-  (`{{ .RedirectTo }}#token_hash=...&type=recovery`), keeping bearer tokens out of HTTP
-  requests and referrer headers; the confirmation page strips the fragment before the user
-  presses Continue, and only that deliberate action consumes the token.
-- **Surfaces** — task-first Home (live new-request status, attention context in
-  business-time terms, zero-recipient warning; a failed read renders "count unavailable",
-  never an empty queue), Requests queue + detail (status control with in-place closure
-  classification, attributed notes, CSV export), Settings (notification recipients; staff
-  accounts with emailed single-use setup links), Website (custody + maintainer controls),
-  Activity (audit log), Help, review-flyer printer (every active staff member), first-login
-  tour. Product truth: the portal register in `PRODUCT.md`.
-- **Mutations** — `management.ts` (staff/recipients) and the maintainer modules return typed
-  results, commit combined actions atomically, and write `audit_log` rows.
-- **Review-flyer printer** — 18 approved binaries in `private/review-flyers/` served through
-  an authenticated asset route; `src/lib/review-targets.json` is the single manifest
-  (destinations, filenames, pinned hashes). Never move flyers to `public/` or regenerate an
-  approved PDF in a routine edit. `scripts/verify-review-flyers.mjs` proves hashes, decodes
-  every PNG to its exact destination, and checks each PDF is one letter page.
+### Staff authentication
 
-## 8. Email system
+Supabase Auth uses SSR cookies. The proxy refreshes sessions; `requireRole` authorizes every
+protected operation from `staff_profiles`. Public auth-entry routes stay generic and fail
+closed so an unknown or inactive address receives the same visible response as an active
+one. `/admin/set-password` is not public: it requires a verified active staff session plus a
+signed invite/recovery flow cookie.
 
-The application owns **one provider-neutral, text-only email capability**; replacing the
-Resend adapter changes `email-provider.ts` plus configuration, not feature workflows.
+Invite and recovery links are single-use and unavailable to deactivated staff. Recovery
+templates put `token_hash` and `type` in the URL fragment, keeping bearer values out of HTTP
+requests and referrer headers. The confirmation page strips the fragment before a deliberate
+Continue action consumes the token. Hosted configuration and manual verification live in
+[`docs/runbooks/supabase-auth-email.md`](docs/runbooks/supabase-auth-email.md).
 
-| Path | Delivery owner |
-|---|---|
-| New appointment notification | Application email capability |
-| Notification-recipient confirmation | Application email capability |
-| Staff setup invitation | Application email capability |
-| Password recovery | Supabase Auth hosted custom SMTP |
+### Email
 
-Application-owned paths share the eight-second deadline, stable idempotency keys, normalized
-failures, and logs that exclude recipients, message text, bearer links, provider errors, and
-idempotency keys. Fan-out is parallel with one recorded outcome per recipient; there are no
-automatic request-path retries (a timeout is ambiguous — a deliberate retry reuses the stable
-key within the provider retention window). An `accepted` outcome means the provider returned
-a message ID; it does not prove inbox delivery. **The queue remains authoritative.**
+The application owns one provider-neutral, text-only email interface; replacing the Resend
+adapter changes `email-provider.ts` and configuration, not feature workflows. Appointment
+pings, recipient confirmation, and staff setup use this interface. Password recovery remains
+owned by Supabase Auth hosted SMTP.
 
-Supabase Auth owns recovery generation, template, rate limits, and delivery via its custom
-SMTP settings. Those settings are project configuration, not migrations, so the development
-and production projects must be kept in sync separately. Per project: configure the Resend
-SMTP sender, set the Auth site URL to that environment's trusted portal origin, and allow the
-exact `/admin/auth/confirm` redirect (no wildcard). Do not add an Auth Send Email Hook unless
-unified Auth telemetry or provider selection becomes a concrete requirement.
+Application-owned sends share an eight-second deadline, stable idempotency keys, normalized
+outcomes, and logs that exclude recipients, content, bearer links, provider errors, message
+IDs, and idempotency keys. Fan-out is parallel with one recorded outcome per recipient. The
+request path does not retry automatically because a timeout is ambiguous; a deliberate retry
+reuses the stable key within the provider's retention window. `accepted` means the provider
+returned a message ID, not that an inbox received the message. The Postgres queue remains
+authoritative.
 
-## 9. Patient-request data lifecycle
+### Protected review artifacts
 
-The portal is a temporary intake and operations system, not a substitute for FDHS's
-authoritative patient record. Patients are asked not to submit PHI, but names, contact
-details, free-text reasons, and staff notes are handled as potentially sensitive.
+Approved review-flyer binaries stay under `private/review-flyers/` and are served only through
+an authenticated route. `src/lib/review-targets.json` is the single destination, filename,
+and hash manifest. Do not move the artifacts to `public/` or regenerate an approved PDF as a
+routine edit.
 
-| Data | Retention |
+## Patient-request data lifecycle
+
+The portal is a temporary intake and operations system, not FDHS's authoritative patient
+record. Names, contact details, patient-supplied reasons, and staff notes are handled as
+sensitive even though the form asks patients not to submit medical details.
+
+| Data | Retention rule |
 |---|---|
 | Legitimately open request | No automatic deletion |
-| Closed, no appointment booked (`unconverted`) | 180 days after classified closure |
-| Closed, appointment booked (`converted`) | 12 months after staff-recorded booking + classified closure |
-| Notes and notification/receipt events | Follow the parent request |
-| Receipt token hash | Removed after one hour (receipt valid 15 minutes) |
-| Expired intake rate-limit buckets | Next hourly lifecycle run |
-| Audit rows | Six years, unless a legal hold protects the related request |
-| Recovery copies | Target 14-day backup/PITR window; verify against the clinic's plan |
+| Closed without an appointment (`unconverted`) | 180 days after classified closure |
+| Closed after booking (`converted`) | 12 months after staff-recorded booking and classified closure |
+| Request notes and notification/receipt events | Follow the parent request |
+| Receipt-token hash | One hour; the receipt itself is valid for 15 minutes |
+| Expired throttle buckets | Next hourly lifecycle run |
+| Audit rows | Six years unless a legal hold protects the related request |
 
-Rules:
+- Closing requires an explicit front-desk disposition. Reopening clears the classification
+  and its clock. Pre-policy closed rows remain unclassified and ineligible for automatic
+  deletion until staff classify them; migrations never guess.
+- Legal holds block scheduled and exceptional deletion. Exceptional early deletion requires
+  a non-PHI authorization reference from the privacy/records custodian, refuses held
+  requests, writes minimized audit evidence, and then deletes the request and child events.
+- Audit metadata may contain identifiers, staff identity, state changes, dispositions,
+  authorization references, and counts—never patient names, contact details, intake text, or
+  appointment-request notes.
+- The application keeps no duplicate patient-data archive. A downloaded CSV is a
+  clinic-controlled sensitive copy outside application retention.
+- Backups are recovery copies, not archives. The lifecycle migrations schedule nothing until
+  the privacy, custody, security, test, preview, and approval gates in
+  [`docs/runbooks/data-lifecycle.md`](docs/runbooks/data-lifecycle.md) are complete.
 
-- Closing a request requires one explicit disposition chosen in front-desk language; the
-  handoff to the practice's scheduling system is always a person. Reopening clears the
-  classification and its clock. Pre-policy closed rows stay unclassified and ineligible for
-  automatic deletion until staff review them — the migration never guesses.
-- **Legal holds** block scheduled and exceptional deletion. No self-serve UI: an operator
-  calls `portal_set_request_legal_hold` with a short non-patient reason; audited.
-- **Exceptional early deletion** is operator-only: `portal_delete_request_early` requires a
-  non-PHI authorization reference from the privacy/records custodian, refuses held requests,
-  and writes a minimized audit row before deleting the request and its events.
-- Audit metadata may carry UUIDs, staff identities, status changes, dispositions,
-  authorization references, and counts — never patient names, contact details, intake
-  messages, or note text.
-- There is no duplicate patient-data archive in Supabase. CSV exports are not retained by the
-  application; a downloaded export is a clinic-controlled sensitive copy.
-- Backups are recovery copies, not archives: deleted data ages out with the backup/PITR
-  window. Restore only into an isolated, access-restricted environment; reapply exceptional
-  deletions, re-run the lifecycle preview, and verify holds/counts/audit continuity before
-  returning a restore to service.
+## External interfaces
 
-**Activation gates** — the lifecycle migrations deliberately schedule nothing. Supabase Cron
-may call `portal_run_data_lifecycle('system@westchasegi.com', now())` hourly only after all
-of these are recorded: (1) FDHS privacy/records authority confirms classification and the
-authoritative handoff destination; (2) practice-controlled Supabase custody, org MFA,
-plan/HIPAA add-on, BAA, SSL/network controls, logging, and recovery posture verified;
-(3) forward migration, boundaries, holds, repeated runs, and exact rollback pass in
-disposable Supabase; (4) a count-only preflight finds zero requests over the new caps —
-never truncate patient-supplied data mid-migration; (5) development passes the same preview
-and verification first; (6) the first production count-only preview is reviewed without
-patient content and explicitly approved.
+### GitHub App
 
-## 10. Interacting systems and custody
+The Website surface reads repository custody and maintainer state live from GitHub; do not
+reintroduce a database-backed software registry. The clinic-owned GitHub App has Repository
+Administration read/write and Metadata read, with no webhook. Server code mints short-lived
+installation tokens pinned to numeric owner and repository IDs and exposes only read,
+invite, cancel-invitation, and revoke operations.
 
-- **GitHub (clinic-owned).** The clinic-controlled personal account
-  `FDHS-Westchase-Gastroenterology` owns the repository; ASTXRTYS holds Write access (Admin
-  only for a concrete settings task, then back to Write). The owner is deliberately a
-  personal account, not an organization — it supports strict branch protection and the Vercel
-  Hobby connection without an organization plan. `main` protection requires current-branch
-  `quality`, `react-doctor`, and `Vercel` statuses plus resolved conversations; force pushes
-  and deletion are blocked.
-- **Vercel (clinic-owned).** Hobby project `westchase-gi` serves the canonical apex;
-  `westchase-gi.vercel.app` remains an attached alias. Hobby could not relink a repository
-  owned by a different GitHub account, so the working path was a fresh clinic-owned project
-  import, environment/alias migration, and deletion of the consultant-owned project. The
-  portal displays hosting custody as a static fact and never calls Vercel.
-- **GitHub App `wgi-portal`.** Registered on the clinic account with Repository
-  Administration read/write + Metadata read, no webhook. The provider mints short-lived
-  installation tokens at request time; every token is pinned to the numeric owner and
-  repository IDs; the app exposes only invite, cancel invitation, and revoke. The three
-  `PORTAL_GITHUB_APP_*` variables exist **only** in the Vercel Production environment —
-  mutable Preview code must not inherit an Administration-capable key. Never use a personal
-  access token, never call GitHub from a client component, never log JWTs/tokens/env values,
-  and remember a code revert is not a privilege rollback (an approved Administration grant
-  survives until the owner reduces it).
-- **Supabase (custody gap).** Both projects live in a clinic-branded organization whose sole
-  member/owner is Jason's non-clinic account (MFA off; no practice member). A dedicated
-  project organization and the queue's system-of-record role are not clinic account custody.
-  Transfer both projects to a practice-owned organization at handoff (Supabase project
-  transfer — no data migration). Until then: never delete or pause either project.
-- **Resend (custody gap).** The `westchasegi.com` sending domain and Production `RESEND_FROM`
-  are configured, but account/team custody is not evidenced. Record the custodian without
-  copying credentials into the repository. Supabase Auth's hosted SMTP sender is a separate
-  configuration tracked with the remaining acceptance items in issue #24.
-- **Porkbun.** Registrar and DNS since the 2026-07-18 cutover; apex is canonical, `www`
-  redirects, TLS live.
-- **External patient services.** The EN/ES Hushforms packet (new-patient forms) and the
-  healow patient portal are external and linked, not operated here. Review destinations live
-  in `src/lib/review-targets.json`. Map embeds send no referrer. Only ship URLs verified
-  live; unconfirmed links stay out (AGENTS.md rule 7).
+GitHub App credentials exist only in Vercel Production so mutable Preview code cannot inherit
+an Administration-capable key. Never substitute a personal access token, call GitHub from a
+client module, or log JWTs, tokens, or environment values. A code rollback is not a privilege
+rollback: a granted repository permission survives until the owner changes it.
 
-Two owner-only defense-in-depth tasks remain open (not portal-readiness gates): enable 2FA on
-the clinic GitHub account, and narrow the App installation from "all repositories" to only
-this repository.
+### Hosting, DNS, and linked services
 
-## 11. Environments and configuration
+Vercel serves the apex canonical site and deploys from `main`; the portal displays hosting
+custody as a static fact and never calls Vercel. Registrar, account ownership, current access,
+and open handoff status live in `README.md`, not here.
 
-| Variable | Scope |
-|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`_ANON_KEY` alias) | Browser-safe Supabase config (RLS enforced) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Temporary server-only compatibility credential for privileged data + Auth Admin; never `NEXT_PUBLIC_*`, never in client bundles |
-| `SUPABASE_PROJECT_REF` / `SUPABASE_DB_PASSWORD` | CLI/migration access for the default (development) project |
-| `PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF` | Exact development-project allowlist for destructive Playwright runs; `local` only with a loopback disposable stack |
-| `SUPABASE_*_PROD` family | Same, for the production project (migrations + verify scripts); the E2E guard rejects its URL and reference |
-| `RESEND_API_KEY` / `RESEND_FROM` | Production email adapter + sender; deliberately absent from Preview |
-| `PORTAL_BASE_URL` | Absolute base URL in notification links |
-| `PORTAL_PREVIEW_USERNAME` / `PORTAL_PREVIEW_PASSWORD` | Shared branch-Preview portal alias; Preview only |
-| `PORTAL_GITHUB_APP_ID` / `PORTAL_GITHUB_APP_INSTALLATION_ID` / `PORTAL_GITHUB_APP_PRIVATE_KEY` | GitHub App credentials; **Production only** |
-| `PORTAL_SEED_ADMIN_EMAIL` / `PORTAL_SEED_ADMIN_PASSWORD` | Seeded development admin; E2E + Preview review identity; never Production |
-| `PORTAL_PROD_ADMIN_EMAIL` / `PORTAL_PROD_ADMIN_PASSWORD` | Operator-only production activation/verification identity; never in Vercel, never read by Playwright, never falls back to the dev seed |
+The Hushforms patient packet and healow patient portal are external links, not application
+interfaces. Review destinations come from `src/lib/review-targets.json`; map embeds send no
+referrer. Unverified patient-service URLs do not ship.
 
-The service-role JWT is a temporary bridge: the configured opaque secrets reached data APIs
-but failed hosted Auth Admin calls. Keep it server-only until the create/delete, invite,
-resend, recovery, deactivate, and cleanup canaries pass in both projects and the Vercel
-Production environment is verified. The Supabase management access token used for
-provisioning is personal, short-lived, and never a runtime dependency.
+## Test isolation and release boundaries
 
-## 12. Testing architecture
+Credential-bearing E2E runs only against the allowlisted Development project or an explicit
+loopback disposable stack. `e2e/target-guard.ts` binds the project reference to the URL and
+rejects Production before the first database call; credentialed runs retain no trace, video,
+or HTML report. Database-adjacent PRs use a disposable Docker Supabase stack in CI with no
+hosted Supabase, Vercel, or repository secrets.
 
-| Layer | Command | Credentials |
-|---|---|---|
-| Portal unit tests | `npm run test:unit` (`node --test src/lib/portal/*.test.mjs`) | None |
-| Target-guard matrix | `npm run test:e2e-guard` | None |
-| Lint / build | `npm run lint` / `npm run build` (placeholder Supabase values) | None |
-| Public smoke | `PLAYWRIGHT_PUBLIC_SMOKE=1 npx playwright test e2e/smoke.spec.ts --project=chromium` | None |
-| Full E2E | `npx playwright test` (boots own server on :3100) | Development Supabase via `.env.local` |
-| Schema/RLS verifier | `node scripts/verify-schema.mjs --target dev\|prod` | Privileged |
-| Secret sweep | `node scripts/verify-no-secrets.mjs` | None |
-| Flyer verifier | `node scripts/verify-review-flyers.mjs` | None |
-| Dependency contract | `e2e/supabase-dependency-contract.spec.ts` in CI (disposable Docker Supabase; no hosted secrets) | CI only |
+`verify-schema.mjs --target prod` creates and deletes a temporary request, so it is an
+authorized maintenance action rather than a read-only inspection. The complete check matrix,
+UI baseline procedure, CI policy, merge rules, and application/database release procedure
+live in [`CONTRIBUTING.md`](CONTRIBUTING.md#verification).
 
-The E2E guard (`e2e/target-guard.ts`) refuses to run when `SUPABASE_PROJECT_REF` does not
-exactly match `PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF`, requires the URL to encode that same
-hosted reference (or the explicit `local` loopback sentinel), and rejects the Production
-reference outright before the first database call. Specs toggle notification recipients off
-so no real email sends, and credential-bearing runs retain no traces, video, or HTML report.
-The committed Playwright config uses **one worker** because the shared development Auth
-project rate-limits concurrent sign-ins; do not override that for login-heavy specs.
-`verify-schema.mjs` creates and deletes a temporary request — running it against Production
-is an authorized maintenance action, not a read-only inspection, and requires the
-`PORTAL_PROD_ADMIN_*` identity.
+## Where logic lives
 
-The checked-in [`ui-reference/`](ui-reference/README.md) atlas is the visual baseline for
-frontend work; `scripts/capture-ui-reference.mjs` refreshes it (live public site by default;
-local/Preview origin for a change under review; portal mode uses the seeded Development or
-Preview identity, redacts in-browser, and never runs against Production).
+This is the change-type → files map. The matching change-type → checks map is
+[`CONTRIBUTING.md`](CONTRIBUTING.md#by-change-type).
 
-## 13. CI/CD and release shape
-
-- `.github/workflows/ci.yml` — the `quality` job: dependency-policy self-test, e2e-guard,
-  unit tests, lint, placeholder build, public smoke. Exactly the credential-free set in
-  `CONTRIBUTING.md`.
-- `react-doctor.yml` — advisory execution signal; a green check proves the scan ran, not a
-  clean 100. Branch protection requires the status; inspect the report.
-- `supabase-dependency-integration.yml` — the disposable-stack contract job for
-  package-changing PRs; runs on the exact head even though it is not a repository-setting
-  requirement; receives no hosted Supabase/Vercel/repository secrets and never touches
-  Development or Production.
-- `dependabot-automerge.yml` + `dependabot-codex-review.yml` — the guarded dependency lane:
-  deterministic gates are authoritative; the read-only Codex review can veto but never
-  overrides; the controller merges at most one verified, manifest-only PR at the exact
-  reviewed SHA, then pauses for post-merge CI, React Doctor, Vercel Production, and live
-  smoke. Executable policy: `.github/scripts/dependency-automation.cjs`; SOP:
-  `.github/codex/dependabot-sop-and-examples.md`.
-- `production-verification.yml` — post-merge exact-commit production verification against the
-  canonical site.
-- `main` **is** production: merge → required checks → automatic Vercel deploy → production
-  verification. Database changes promote separately (§5).
-
-## 14. Where logic lives
-
-Change-type → files. Verification for each area is mapped in `CONTRIBUTING.md` §What to run.
-
-- **Patient-facing copy (any locale):** `src/lib/dictionaries/en.ts` then the same keys in
-  `es/vi/ko/ar`; page facts in `site.ts`, `services.ts`, `resources.ts`, `testimonials.ts`;
-  rendering in `src/app/[locale]/**/page.tsx` and `src/components/`. Portal strings stay
-  inline in `src/app/admin/` (English-only).
-- **A provider or their credentials:** `src/lib/providers.ts` (AGENTS.md rule 1 first),
-  `src/lib/review-targets.json`, headshots in `public/images/staff/`,
-  `src/app/[locale]/physicians/page.tsx`, `meta.physicians` in all five dictionaries.
-- **A patient document slot:** `src/lib/documents.ts` + file in `public/documents/`;
-  `DocumentList.tsx`; `topicForDocument` / `prepForDocument` linkages in the content indexes.
-- **Procedure-prep content:** the handout module in `src/lib/content/preps/` + its
-  `index.ts`; matching `docId`; `procedure-prep/[slug]/page.tsx`; `PrepBody.tsx`;
-  `src/app/sitemap.ts`; legacy redirects in `next.config.ts`.
-- **A blog post:** `src/lib/content/blog/batch{1,2,3}.ts`; `sitemap.ts`; `next.config.ts`
-  redirects keyed off `legacyPath`.
-- **A patient-education topic:** `src/lib/content/education/{procedures,conditions-a,conditions-b}.ts`;
-  `relatedDocId` linkage; `sitemap.ts`; education redirects.
-- **Appointment form / API contract:** `contracts.ts` (`requestInputSchema`,
-  `REQUEST_FIELD_LIMITS`, `IntakeResponse`) → `AppointmentForm.tsx` →
-  `api/requests/route.ts` + `api/requests/form/route.ts`; `appointment.form` strings in all
-  dictionaries; column mapping in `intake.ts` + migrations.
-- **Intake persistence / throttling / receipt:** `intake.ts`; `INTAKE_RATE_LIMIT` and
-  `receiptPath` in `contracts.ts`; `intake-notification.ts`; the rate-limit RPC migration;
-  `appointment/received/page.tsx`.
-- **Patient-site telemetry:** `src/lib/telemetry.ts` (shared contract) →
-  `src/lib/portal/telemetry.ts` → `api/telemetry/route.ts`; analytics migration +
-  `portal_record_analytics_event`; read path `supabase/snippets/analytics-daily-rollup.sql`.
-- **A portal page or route:** the route under `src/app/admin/` with `requireRole` first;
-  `portal-nav.tsx` for permanent nav (occasional tasks are reached from Home/Settings);
-  the route's `actions.ts`; the matcher + public-path allowlist in `src/proxy.ts`.
-- **Portal authz / roles / sessions:** `auth.ts`; session plumbing in `server.ts` and
-  `proxy.ts`; `StaffRole` / `AUDIT_ACTIONS` in `contracts.ts`; auth entry routes;
-  `staff_profiles` in migrations.
-- **A table, column, RLS policy, or RPC:** new timestamped migration + rollback sibling;
-  assertions in `scripts/verify-schema.mjs`; `supabase/seed.sql` / `scripts/seed-portal.mjs`
-  if fixtures change; the reading code in `src/lib/portal/`.
-- **Notification email:** `intake-notification.ts` (appointment ping),
-  `management-email.ts` (staff/recipient mail), `email-provider.ts` (transport).
-- **Website surface / GitHub App:** `src/app/admin/(portal)/settings/software/` and
-  `integrations.ts`. Clinic-owned GitHub App only; never a PAT; never client-side; never
-  Vercel.
-- **SEO / canonical / sitemap / redirects:** `metadata.ts`, `site.ts`, `sitemap.ts`,
-  `robots.ts`, `next.config.ts`. Canonical origin is the apex; locale routing lives in
-  `proxy.ts`.
-- **Design tokens / shared UI:** `src/app/globals.css` (tokens, component classes),
-  `fonts.ts`; refresh `ui-reference/` images for covered surfaces. Use the CSS variables,
-  not ad-hoc colors; `:lang()` blocks remap fonts for VI/KO/AR; source-mirror graphics stay
-  byte-exact.
-- **Proxy behavior (locale routing, scrubbing, gating):** `src/proxy.ts`; the matcher is an
-  explicit list.
-- **CI / dependency automation:** `.github/workflows/`,
-  `.github/scripts/dependency-automation.cjs` — executable policy and its test change
-  together; prose never widens the provenance or manifest-only boundary.
+- **Patient copy and facts:** dictionaries under `src/lib/dictionaries/`; shared office facts
+  and locale helpers in `site.ts`; page libraries in `services.ts`, `resources.ts`, and
+  `testimonials.ts`; rendering under `src/app/[locale]/` and `src/components/`.
+- **Providers:** `src/lib/providers.ts` is the credential source—preserve the verbatim titles
+  documented in its header. Related targets, headshots, physician rendering, and metadata
+  live in `review-targets.json`, `public/images/staff/`, the physicians page, and all locale
+  dictionaries.
+- **Patient documents and long-form content:** `documents.ts` owns document availability;
+  `content/preps/`, `content/blog/`, and `content/education/` own on-site content. Their
+  indexes link document IDs; sitemap and `next.config.ts` own discovery and legacy redirects.
+- **Intake contract and persistence:** `src/lib/portal/contracts.ts` →
+  `AppointmentForm.tsx` → both request handlers → `src/lib/portal/intake.ts` and
+  `intake-notification.ts` → migrations. Receipt rendering lives under
+  `[locale]/appointment/received`.
+- **Telemetry:** `src/lib/telemetry.ts` → `src/lib/portal/telemetry.ts` → the telemetry route
+  → analytics migration and read snippet.
+- **Portal route or mutation:** route under `src/app/admin/`, with `requireRole` at every
+  protected interface; route `actions.ts`; `portal-nav.tsx` for permanent navigation; proxy
+  matcher and public allowlist when access shape changes.
+- **Portal authorization and sessions:** `src/lib/portal/auth.ts`, client construction in
+  `server.ts`, session refresh in `src/proxy.ts`, contract types, auth-entry routes, and
+  `staff_profiles` migrations.
+- **Queue, staff, recipient, release, or audit behavior:** the matching module under
+  `src/lib/portal/`, its colocated route/action, contracts, and the atomic migration/RPC.
+- **Table, column, RLS policy, RPC, or fixture:** timestamped migration plus rollback sibling,
+  `scripts/verify-schema.mjs`, seed files when fixtures change, and every portal reader/writer
+  of the changed interface.
+- **Email:** `intake-notification.ts` for appointment pings, `management-email.ts` for
+  staff/recipient composition, `email.ts` for the interface, and `email-provider.ts` for the
+  adapter. Auth recovery configuration follows its runbook.
+- **Website/GitHub:** `src/app/admin/(portal)/settings/software/`, `integrations.ts`, and the
+  maintainer modules. GitHub App only—never a PAT, client-side call, or Vercel integration.
+- **Review flyers:** private artifacts, `review-targets.json`, `review-flyers.ts`, protected
+  asset route, and `scripts/verify-review-flyers.mjs`.
+- **SEO, canonical URLs, locale routing, and legacy scrubbing:** `metadata.ts`, `site.ts`,
+  `sitemap.ts`, `robots.ts`, `next.config.ts`, and `src/proxy.ts`.
+- **Design and shared UI:** `src/app/globals.css`, `fonts.ts`, route/component modules,
+  `DESIGN.md`, and the affected `ui-reference/` surfaces.
+- **CI and dependency automation:** `.github/workflows/` and
+  `.github/scripts/dependency-automation.cjs`; executable policy and its regression test
+  change together.

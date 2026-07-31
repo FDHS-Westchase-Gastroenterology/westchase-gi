@@ -5,17 +5,15 @@ the path to production. Read [`ARCHITECTURE.md`](ARCHITECTURE.md) for the system
 the where-logic-lives map this guide references. The non-negotiable product and security
 rules are in [`AGENTS.md`](AGENTS.md) — read its hard rules before editing anything.
 
-Product truth lives in `PRODUCT.md` and `DESIGN.md` (patient site) and
-`PRODUCT.md` (patient-site and staff-portal registers) and `DESIGN.md`. Repository custody
-facts are summarized in
-[`README.md`](README.md); the design of every external connection is in
-`ARCHITECTURE.md` §10.
+Product truth lives in `PRODUCT.md` (patient-site and staff-portal registers) and `DESIGN.md`.
+Repository custody facts are summarized in [`README.md`](README.md); the design of every
+external connection is in [`ARCHITECTURE.md`](ARCHITECTURE.md#external-interfaces).
 
 ## Setup
 
 ```bash
 npm ci
-cp .env.example .env.local   # fill in real values; names in ARCHITECTURE.md §11
+cp .env.example .env.local   # fill in real values; this is the variable inventory
 npx playwright install chromium
 npm run dev                  # patient site + portal on :3000
 npm run dev:mission          # the E2E stack's server on :3100
@@ -69,7 +67,7 @@ npm run ui:reference:portal                  # staff-route UI captures
 ```
 
 These need `.env.local` pointing at a development project — never Production (the guard in
-`e2e/target-guard.ts` enforces this; see ARCHITECTURE.md §12). The suite covers the intake
+`e2e/target-guard.ts` enforces this; see [test isolation](ARCHITECTURE.md#test-isolation-and-release-boundaries)). The suite covers the intake
 API contract, form states across all five locales, the no-JS fallback, portal auth/RLS
 boundaries, the queue lifecycle, management surfaces, Website custody, and leak hygiene.
 
@@ -86,14 +84,16 @@ smoke test.
 | Intake form / API / persistence | Above + `npx playwright test` (intake specs) |
 | Portal page, route, or action | Above + `npx playwright test` (portal specs) |
 | Migration, RLS, RPC, or seed | Above + `verify-schema.mjs --target dev`; disposable-contract job runs in CI on the exact head |
-| Email paths | `npx playwright test e2e/portal-email.spec.ts`; Auth-template changes need the manual recovery verification in ARCHITECTURE.md §8 |
+| Email paths | `npx playwright test e2e/portal-email.spec.ts`; Auth-template changes also follow the [manual recovery verification](docs/runbooks/supabase-auth-email.md#manual-recovery-verification) |
 | UI-visible change | Refresh covered `ui-reference/` images; before/after screenshots in the PR |
 | CI / dependency automation | `node --test .github/scripts/dependency-automation.test.cjs` — policy and test change together |
 
-Package-changing PRs additionally run `e2e/supabase-dependency-contract.spec.ts` against a
-disposable local Supabase stack in CI. That job receives no hosted secrets and checks Auth
-refresh, SSR cookie sessions, closed Data API/RLS boundaries, shared intake throttling,
-field caps, request-lifecycle boundaries, and PostgREST persistence/relationships.
+Every PR reports the `supabase-integration` gate. When the workflow's diff detector finds a
+database-adjacent change—including a package change—it runs
+`e2e/supabase-dependency-contract.spec.ts` against a disposable local Supabase stack. That job
+receives no hosted secrets and checks Auth refresh, SSR cookie sessions, closed Data API/RLS
+boundaries, shared intake throttling, field caps, request-lifecycle boundaries, and PostgREST
+persistence/relationships.
 
 ### UI changes
 
@@ -119,11 +119,11 @@ subjects).
 The template (`.github/PULL_REQUEST_TEMPLATE.md`) is the contract: summary/why, scope,
 verification with evidence (paste output or CI links; check only what actually ran), UI
 screenshots for visible changes (or an explicit N/A), medical/content provenance when
-compliance-sensitive text changes (provider credentials are verbatim — AGENTS.md rule 1),
-risk/rollback, and deployment impact.
+compliance-sensitive text changes (provider credentials are verbatim — see
+`src/lib/providers.ts`), risk/rollback, and deployment impact.
 
 Keep PRs small and single-purpose. Link the issue. Anything unverified (links, facts,
-locales) stays out until verified — AGENTS.md rule 7.
+locales) stays out until verified — see `PRODUCT.md` design principle 1.
 
 ## Merging
 
@@ -132,9 +132,9 @@ locales) stays out until verified — AGENTS.md rule 7.
 and deletion are blocked. Treat every merge as patient-facing unless the change is
 explicitly non-user-visible (tooling, governance, docs-only).
 
-Before merge, confirm every path-triggered disposable integration job also succeeded on the
-**exact head**, even when that job is not a repository-setting requirement. Pending, missing,
-stale, or failed signals withhold the merge.
+Before merge, confirm the always-reported `supabase-integration` gate passed on the **exact
+head**. A skipped disposable suite is legitimate only when its detector found no
+database-adjacent change. Pending, missing, stale, or failed signals withhold the merge.
 
 React Doctor is advisory: a green check proves execution, not a clean result — inspect the
 report rather than the badge.
@@ -231,14 +231,11 @@ node scripts/verify-review-flyers.mjs             # QR destinations + artifact f
   box) switches to a download link in all five languages. A slot with no real file keeps its
   honest fallback; never point at a path that does not exist.
 - **Everything else** — provider updates, preps, blog posts, education topics, portal pages,
-  migrations, SEO, CI: the change-type → files map is `ARCHITECTURE.md` §14, and the
-  change-type → checks map is §Verification above.
+  migrations, SEO, CI: use the architecture [change-type → files map](ARCHITECTURE.md#where-logic-lives)
+  and the change-type → checks map under §Verification above.
 
 ## Access lifecycle
 
 Repository access stays limited to maintainers with a concrete need. ASTXRTYS holds Write;
 elevate to Admin only for a specific settings task, then return to Write, and revoke when the
-engagement ends. The clinic account owner's two defense-in-depth tasks (2FA; narrow the App
-installation to this repository only) are tracked with the remaining acceptance work in issue
-[#24](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/24) — they are
-not portal-readiness gates and are only marked complete on owner verification.
+engagement ends.
