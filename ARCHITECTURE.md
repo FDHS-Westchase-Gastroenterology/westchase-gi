@@ -43,7 +43,7 @@ Application deployment and database promotion are separate release axes: merging
 deploys the application, while a committed migration reaches Production only through a
 separate, explicit decision.
 
-## Runtime and trust boundaries
+## Runtime and trust model
 
 - **Proxy (`src/proxy.ts`)** — Next.js 16 proxy convention; there is no `middleware.ts`. Its
   matcher is explicit, so new protected paths must be added deliberately. It performs:
@@ -114,6 +114,9 @@ not browser configuration. [`.env.example`](.env.example) is the exact variable 
   when no later mutation has made it stale; it never deletes history.
 - Staff, recipient, release-state, legal-hold, and deletion operations apply their data and
   audit effects as one database operation where partial success would misrepresent state.
+- GitHub mutations cannot share a database transaction with the provider. They write a
+  `pending` audit row before the call, then finish it as `succeeded`, `failed`, or
+  `unconfirmed`, preserving evidence across ambiguous external outcomes.
 - Lifecycle preview, scheduled deletion, legal holds, and exceptional early deletion remain
   distinct privileged interfaces.
 
@@ -245,7 +248,7 @@ The Hushforms patient packet and healow patient portal are external links, not a
 interfaces. Review destinations come from `src/lib/review-targets.json`; map embeds send no
 referrer. Unverified patient-service URLs do not ship.
 
-## Test isolation and release boundaries
+## Test isolation and release model
 
 Credential-bearing E2E runs only against the allowlisted Development project or an explicit
 loopback disposable stack. `e2e/target-guard.ts` binds the project reference to the URL and

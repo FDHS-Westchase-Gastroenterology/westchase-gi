@@ -66,9 +66,10 @@ node scripts/verify-schema.mjs --target dev  # schema, RLS, seed state
 npm run ui:reference:portal                  # staff-route UI captures
 ```
 
-These need `.env.local` pointing at a development project — never Production (the guard in
-`e2e/target-guard.ts` enforces this; see [test isolation](ARCHITECTURE.md#test-isolation-and-release-boundaries)). The suite covers the intake
-API contract, form states across all five locales, the no-JS fallback, portal auth/RLS
+These need `.env.local` pointing at a development project — never Production.
+`e2e/target-guard.ts` enforces this; see
+[test isolation](ARCHITECTURE.md#test-isolation-and-release-model). The suite covers the
+intake API contract, form states across all five locales, the no-JS fallback, portal auth/RLS
 boundaries, the queue lifecycle, management surfaces, Website custody, and leak hygiene.
 
 **Honesty rule:** if you cannot reach a Supabase project, run the credential-free set and say

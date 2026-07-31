@@ -18,6 +18,10 @@ const SUPABASE_KEY = requiredEnv(
 const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
 
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const PATIENT_PHONE = "8135550199";
+
 function publicClient() {
   return createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: {
@@ -34,6 +38,81 @@ function expectPermissionDenied(result: {
 }): void {
   expect(result.error?.code).toBe("42501");
   expect([401, 403]).toContain(result.status);
+}
+
+function expectUuid(value: unknown): void {
+  expect(value).toMatch(UUID_RE);
+}
+
+function expectNoPatientLeak(blob: unknown, note?: string | null): void {
+  const text = JSON.stringify(blob);
+  expect(text).not.toContain(note ?? "TEST patient value that is never present");
+  expect(text).not.toContain(PATIENT_PHONE);
+}
+
+async function insertRequest(
+  db: ReturnType<typeof serviceDb>,
+  row: Record<string, unknown> & { id: string; name: string },
+) {
+  const inserted = await db.from("requests").insert({
+    phone: PATIENT_PHONE,
+    email: null,
+    location: "tampa",
+    preferred_time: "morning",
+    message: null,
+    locale: "en",
+    source_path: "/e2e/dependency-contract",
+    ...row,
+  });
+  expect(inserted.error).toBeNull();
+}
+
+async function expectDeniedSurface(
+  client: ReturnType<typeof publicClient>,
+  opts: { actorEmail: string; userId: string; hashLabel: string },
+) {
+  const { actorEmail, userId, hashLabel } = opts;
+  const release = (fn: string) =>
+    client.rpc(fn, { p_user_id: userId, p_release_id: "dependency-contract" });
+  for (const probe of [
+    () => client.from("staff_profiles").select("id"),
+    () =>
+      client.rpc("portal_check_intake_rate_limit", {
+        p_client_hash: createHash("sha256").update(hashLabel).digest("hex"),
+        p_limit: 1,
+        p_window_seconds: 1,
+      }),
+    () =>
+      client.rpc("portal_preview_data_lifecycle", {
+        p_now: new Date().toISOString(),
+      }),
+    () =>
+      client.rpc("portal_log_call_outcome", {
+        p_actor_email: actorEmail,
+        p_request_id: randomUUID(),
+        p_outcome: "no_answer",
+      }),
+    () =>
+      client.rpc("portal_undo_call_outcome", {
+        p_actor_email: actorEmail,
+        p_request_id: randomUUID(),
+        p_event_id: randomUUID(),
+      }),
+    () =>
+      client.rpc("portal_update_recipient_label", {
+        p_actor_email: actorEmail,
+        p_recipient_id: randomUUID(),
+        p_label: "Blocked",
+      }),
+    () => client.from("portal_release_states").select("staff_user_id"),
+    () => release("portal_open_staff_release"),
+    () => release("portal_acknowledge_staff_release"),
+    () => release("portal_hide_staff_release"),
+    () => release("portal_record_staff_release_guide_open"),
+    () => release("portal_record_staff_release_dismiss"),
+  ]) {
+    expectPermissionDenied(await probe());
+  }
 }
 
 test.use({ trace: "off" });
@@ -94,73 +173,11 @@ test.describe("Supabase dependency contract", () => {
 
   test("keeps direct Data API access closed while the service client can read", async () => {
     const anon = publicClient();
-    expectPermissionDenied(await anon.from("staff_profiles").select("id"));
-    expectPermissionDenied(
-      await anon.rpc("portal_check_intake_rate_limit", {
-        p_client_hash: createHash("sha256").update("anon").digest("hex"),
-        p_limit: 1,
-        p_window_seconds: 1,
-      }),
-    );
-    expectPermissionDenied(
-      await anon.rpc("portal_preview_data_lifecycle", {
-        p_now: new Date().toISOString(),
-      }),
-    );
-    expectPermissionDenied(
-      await anon.rpc("portal_log_call_outcome", {
-        p_actor_email: "anon@example.test",
-        p_request_id: randomUUID(),
-        p_outcome: "no_answer",
-      }),
-    );
-    expectPermissionDenied(
-      await anon.rpc("portal_undo_call_outcome", {
-        p_actor_email: "anon@example.test",
-        p_request_id: randomUUID(),
-        p_event_id: randomUUID(),
-      }),
-    );
-    expectPermissionDenied(
-      await anon.rpc("portal_update_recipient_label", {
-        p_actor_email: "anon@example.test",
-        p_recipient_id: randomUUID(),
-        p_label: "Blocked",
-      }),
-    );
-    expectPermissionDenied(
-      await anon.from("portal_release_states").select("staff_user_id"),
-    );
-    expectPermissionDenied(
-      await anon.rpc("portal_open_staff_release", {
-        p_user_id: randomUUID(),
-        p_release_id: "dependency-contract",
-      }),
-    );
-    expectPermissionDenied(
-      await anon.rpc("portal_acknowledge_staff_release", {
-        p_user_id: randomUUID(),
-        p_release_id: "dependency-contract",
-      }),
-    );
-    expectPermissionDenied(
-      await anon.rpc("portal_hide_staff_release", {
-        p_user_id: randomUUID(),
-        p_release_id: "dependency-contract",
-      }),
-    );
-    expectPermissionDenied(
-      await anon.rpc("portal_record_staff_release_guide_open", {
-        p_user_id: randomUUID(),
-        p_release_id: "dependency-contract",
-      }),
-    );
-    expectPermissionDenied(
-      await anon.rpc("portal_record_staff_release_dismiss", {
-        p_user_id: randomUUID(),
-        p_release_id: "dependency-contract",
-      }),
-    );
+    await expectDeniedSurface(anon, {
+      actorEmail: "anon@example.test",
+      userId: randomUUID(),
+      hashLabel: "anon",
+    });
 
     const authenticated = publicClient();
     const signIn = await authenticated.auth.signInWithPassword({
@@ -170,85 +187,17 @@ test.describe("Supabase dependency contract", () => {
     expect(signIn.error).toBeNull();
 
     try {
-      expectPermissionDenied(
-        await authenticated.from("staff_profiles").select("id"),
-      );
+      await expectDeniedSurface(authenticated, {
+        actorEmail: SEED_EMAIL,
+        userId: signIn.data.user?.id ?? randomUUID(),
+        hashLabel: "authenticated",
+      });
       expectPermissionDenied(
         await authenticated
           .from("staff_profiles")
           .update({ display_name: "TEST forbidden" })
           .eq("user_id", signIn.data.user?.id ?? "")
           .select("id"),
-      );
-      expectPermissionDenied(
-        await authenticated.rpc("portal_check_intake_rate_limit", {
-          p_client_hash: createHash("sha256")
-            .update("authenticated")
-            .digest("hex"),
-          p_limit: 1,
-          p_window_seconds: 1,
-        }),
-      );
-      expectPermissionDenied(
-        await authenticated.rpc("portal_preview_data_lifecycle", {
-          p_now: new Date().toISOString(),
-        }),
-      );
-      expectPermissionDenied(
-        await authenticated.rpc("portal_log_call_outcome", {
-          p_actor_email: SEED_EMAIL,
-          p_request_id: randomUUID(),
-          p_outcome: "no_answer",
-        }),
-      );
-      expectPermissionDenied(
-        await authenticated.rpc("portal_undo_call_outcome", {
-          p_actor_email: SEED_EMAIL,
-          p_request_id: randomUUID(),
-          p_event_id: randomUUID(),
-        }),
-      );
-      expectPermissionDenied(
-        await authenticated.rpc("portal_update_recipient_label", {
-          p_actor_email: SEED_EMAIL,
-          p_recipient_id: randomUUID(),
-          p_label: "Blocked",
-        }),
-      );
-      expectPermissionDenied(
-        await authenticated
-          .from("portal_release_states")
-          .select("staff_user_id"),
-      );
-      expectPermissionDenied(
-        await authenticated.rpc("portal_open_staff_release", {
-          p_user_id: signIn.data.user?.id ?? randomUUID(),
-          p_release_id: "dependency-contract",
-        }),
-      );
-      expectPermissionDenied(
-        await authenticated.rpc("portal_acknowledge_staff_release", {
-          p_user_id: signIn.data.user?.id ?? randomUUID(),
-          p_release_id: "dependency-contract",
-        }),
-      );
-      expectPermissionDenied(
-        await authenticated.rpc("portal_hide_staff_release", {
-          p_user_id: signIn.data.user?.id ?? randomUUID(),
-          p_release_id: "dependency-contract",
-        }),
-      );
-      expectPermissionDenied(
-        await authenticated.rpc("portal_record_staff_release_guide_open", {
-          p_user_id: signIn.data.user?.id ?? randomUUID(),
-          p_release_id: "dependency-contract",
-        }),
-      );
-      expectPermissionDenied(
-        await authenticated.rpc("portal_record_staff_release_dismiss", {
-          p_user_id: signIn.data.user?.id ?? randomUUID(),
-          p_release_id: "dependency-contract",
-        }),
       );
 
       const serviceRead = await serviceDb()
@@ -522,11 +471,15 @@ test.describe("Supabase dependency contract", () => {
         .order("at");
       expect(seedAudits.error).toBeNull();
       expect(seedAudits.data).toHaveLength(15);
-      const auditCounts = new Map<string, number>();
-      for (const { action } of seedAudits.data ?? []) {
-        auditCounts.set(action, (auditCounts.get(action) ?? 0) + 1);
-      }
-      expect(Object.fromEntries(auditCounts)).toEqual({
+      expect(
+        (seedAudits.data ?? []).reduce<Record<string, number>>(
+          (counts, { action }) => {
+            counts[action] = (counts[action] ?? 0) + 1;
+            return counts;
+          },
+          {},
+        ),
+      ).toEqual({
         "staff.release_open": 1,
         "staff.release_view": 5,
         "staff.release_guide_open": 4,
@@ -541,9 +494,7 @@ test.describe("Supabase dependency contract", () => {
           source: "staff",
           detail: { release_id: releaseId },
         });
-        expect(audit.correlation_id).toMatch(
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-        );
+        expectUuid(audit.correlation_id);
         expect(Object.keys(audit.detail ?? {})).toEqual(["release_id"]);
       }
 
@@ -688,7 +639,7 @@ test.describe("Supabase dependency contract", () => {
     const response = await request.post("/api/requests", {
       data: {
         name: `TEST Supabase ${token}`,
-        phone: "8135550199",
+        phone: PATIENT_PHONE,
         email: `supabase-${token}@example.test`,
         location: "tampa",
         time: "morning",
@@ -825,9 +776,7 @@ test.describe("Supabase dependency contract", () => {
         source: "staff",
         detail: { from: "Before", to: "After" },
       });
-      expect(firstAudits.data?.[0].correlation_id).toMatch(
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-      );
+      expectUuid(firstAudits.data?.[0].correlation_id);
 
       for (const invalidLabel of ["   ", "L".repeat(121)]) {
         const rejected = await db.rpc("portal_update_recipient_label", {
@@ -954,18 +903,11 @@ test.describe("Supabase dependency contract", () => {
       for (const item of cases) {
         const requestId = randomUUID();
         requestIds.push(requestId);
-        const inserted = await db.from("requests").insert({
+        await insertRequest(db, {
           id: requestId,
           name: `TEST call outcome ${item.outcome}`,
-          phone: "8135550199",
-          email: null,
-          location: "tampa",
-          preferred_time: "morning",
-          message: null,
-          locale: "en",
           source_path: "/e2e/call-outcome",
         });
-        expect(inserted.error).toBeNull();
 
         const result = await db.rpc("portal_log_call_outcome", {
           p_actor_email: actor,
@@ -975,9 +917,7 @@ test.describe("Supabase dependency contract", () => {
           p_follow_up_at: item.followUpAt,
         });
         expect(result.error).toBeNull();
-        expect(result.data).toMatch(
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-        );
+        expectUuid(result.data);
         const eventId = String(result.data);
 
         const row = await db
@@ -1064,23 +1004,14 @@ test.describe("Supabase dependency contract", () => {
             ...(item.note ? { note_length: item.note.length } : {}),
           },
         });
-        expect(audits.data?.[0].correlation_id).toMatch(
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-        );
+        expectUuid(audits.data?.[0].correlation_id);
         expect(
           typeof audits.data?.[0].detail?.follow_up_at === "string"
             ? new Date(audits.data[0].detail.follow_up_at).toISOString()
             : null,
         ).toBe(item.followUpAt);
-        expect(JSON.stringify(audits.data?.[0].detail)).not.toContain(
-          item.note ?? "TEST patient value that is never present",
-        );
-        expect(JSON.stringify(outcomeEvents[0].meta)).not.toContain(
-          item.note ?? "TEST patient value that is never present",
-        );
-        expect(JSON.stringify(outcomeEvents[0].meta)).not.toContain(
-          "8135550199",
-        );
+        expectNoPatientLeak(audits.data?.[0].detail, item.note);
+        expectNoPatientLeak(outcomeEvents[0].meta, item.note);
 
         const undone = await db.rpc("portal_undo_call_outcome", {
           p_actor_email: actor,
@@ -1157,15 +1088,8 @@ test.describe("Supabase dependency contract", () => {
             },
           },
         });
-        expect(undoAudits.data?.[0].correlation_id).toMatch(
-          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-        );
-        expect(JSON.stringify(undoAudits.data?.[0].detail)).not.toContain(
-          item.note ?? "TEST patient value that is never present",
-        );
-        expect(JSON.stringify(undoAudits.data?.[0].detail)).not.toContain(
-          "8135550199",
-        );
+        expectUuid(undoAudits.data?.[0].correlation_id);
+        expectNoPatientLeak(undoAudits.data?.[0].detail, item.note);
 
         const duplicateUndo = await db.rpc("portal_undo_call_outcome", {
           p_actor_email: actor,
@@ -1186,18 +1110,11 @@ test.describe("Supabase dependency contract", () => {
 
       const rollbackId = randomUUID();
       requestIds.push(rollbackId);
-      const inserted = await db.from("requests").insert({
+      await insertRequest(db, {
         id: rollbackId,
         name: "TEST atomic call-outcome rollback",
-        phone: "8135550199",
-        email: null,
-        location: "tampa",
-        preferred_time: "morning",
-        message: null,
-        locale: "en",
         source_path: "/e2e/call-outcome-rollback",
       });
-      expect(inserted.error).toBeNull();
 
       const forcedAuditFailure = await db.rpc("portal_log_call_outcome", {
         p_actor_email: "",
@@ -1354,19 +1271,12 @@ test.describe("Supabase dependency contract", () => {
       for (const item of cases) {
         const requestId = randomUUID();
         requestIds.push(requestId);
-        const inserted = await db.from("requests").insert({
+        await insertRequest(db, {
           id: requestId,
           name: `TEST undo previous ${item.name}`,
-          phone: "8135550199",
-          email: null,
-          location: "tampa",
-          preferred_time: "morning",
-          message: null,
-          locale: "en",
           source_path: "/e2e/call-outcome-undo-shapes",
           ...item.before,
         });
-        expect(inserted.error).toBeNull();
 
         const saved = await db.rpc("portal_log_call_outcome", {
           p_actor_email: actor,
@@ -1435,31 +1345,16 @@ test.describe("Supabase dependency contract", () => {
     const requestIds = [firstRequestId, secondRequestId];
 
     try {
-      const inserted = await db.from("requests").insert([
-        {
-          id: firstRequestId,
-          name: "TEST undo rejection first",
-          phone: "8135550199",
-          email: null,
-          location: "tampa",
-          preferred_time: "morning",
-          message: null,
-          locale: "en",
-          source_path: "/e2e/call-outcome-undo-rejection",
-        },
-        {
-          id: secondRequestId,
-          name: "TEST undo rejection second",
-          phone: "8135550199",
-          email: null,
-          location: "tampa",
-          preferred_time: "morning",
-          message: null,
-          locale: "en",
-          source_path: "/e2e/call-outcome-undo-rejection",
-        },
-      ]);
-      expect(inserted.error).toBeNull();
+      await insertRequest(db, {
+        id: firstRequestId,
+        name: "TEST undo rejection first",
+        source_path: "/e2e/call-outcome-undo-rejection",
+      });
+      await insertRequest(db, {
+        id: secondRequestId,
+        name: "TEST undo rejection second",
+        source_path: "/e2e/call-outcome-undo-rejection",
+      });
 
       const firstSave = await db.rpc("portal_log_call_outcome", {
         p_actor_email: actor,
@@ -1601,18 +1496,11 @@ test.describe("Supabase dependency contract", () => {
       : [];
 
     try {
-      const inserted = await db.from("requests").insert({
+      await insertRequest(db, {
         id: requestId,
         name: "TEST undo audit rollback",
-        phone: "8135550199",
-        email: null,
-        location: "tampa",
-        preferred_time: "morning",
-        message: null,
-        locale: "en",
         source_path: "/e2e/call-outcome-undo-audit-rollback",
       });
-      expect(inserted.error).toBeNull();
 
       const saved = await db.rpc("portal_log_call_outcome", {
         p_actor_email: actor,
@@ -1700,7 +1588,7 @@ test.describe("Supabase dependency contract", () => {
   test("enforces intake field caps at the database boundary", async () => {
     const base = {
       name: "TEST database cap",
-      phone: "8135550199",
+      phone: PATIENT_PHONE,
       email: "database-cap@example.test",
       location: "tampa",
       preferred_time: "morning",
