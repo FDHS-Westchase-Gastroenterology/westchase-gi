@@ -1,32 +1,14 @@
 name: Supabase Dependency Integration
 
+# Runs on every PR so the `supabase-integration` gate check always reports.
+# A cheap detection job decides from the actual diff whether the disposable
+# Supabase stack is needed; the gate passes trivially when it is not. This
+# replaces the old hand-enumerated `on.pull_request.paths` list, whose failure
+# mode was a silently absent check when a new database-adjacent file was not
+# added to the list.
 on:
   pull_request:
     branches: ["main"]
-    paths:
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/supabase-dependency-integration.yml"
-      - "e2e/intake-api.spec.ts"
-      - "e2e/portal-lifecycle.spec.ts"
-      - "e2e/portal-requests.spec.ts"
-      - "e2e/portal-scale.spec.ts"
-      - "e2e/support.ts"
-      - "e2e/target-guard.ts"
-      - "e2e/target-guard.test.mjs"
-      - "e2e/supabase-dependency-contract.spec.ts"
-      - "src/app/[locale]/appointment/received/page.tsx"
-      - "src/app/api/requests/form/route.ts"
-      - "src/app/admin/(portal)/audit/page.tsx"
-      - "src/app/admin/(portal)/requests/[id]/page.tsx"
-      - "src/app/admin/(portal)/requests/actions.ts"
-      - "src/app/admin/(portal)/requests/export/route.ts"
-      - "src/app/admin/(portal)/requests/page.tsx"
-      - "src/lib/portal/intake.ts"
-      - "src/lib/portal/request-query.test.mjs"
-      - "src/lib/portal/request-query.ts"
-      - "scripts/seed-portal.mjs"
-      - "supabase/**"
   # The dependency controller uses this after a GITHUB_TOKEN-authored branch
   # refresh, which GitHub deliberately does not emit as a pull_request event.
   workflow_dispatch:
@@ -39,8 +21,47 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  supabase-integration:
-    name: supabase-integration
+  changes:
+    name: detect-database-surface
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      relevant: ${{ steps.detect.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+        with:
+          persist-credentials: false
+
+      - name: Detect database-adjacent changes
+        id: detect
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "Manual dispatch always runs the integration suite."
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git fetch --quiet --depth=1 origin "$BASE_SHA"
+          changed="$(git diff --name-only "$BASE_SHA" HEAD)"
+          printf 'Changed files:\n%s\n' "$changed"
+          relevant=false
+          while IFS= read -r file; do
+            case "$file" in
+              package.json|package-lock.json) relevant=true ;;
+              .github/workflows/supabase-dependency-integration.yml) relevant=true ;;
+              supabase/*|scripts/*|e2e/*) relevant=true ;;
+              src/lib/portal/*|src/app/admin/*|src/app/api/*) relevant=true ;;
+              "src/app/[locale]/appointment/"*) relevant=true ;;
+            esac
+          done <<< "$changed"
+          echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
+
+  integration:
+    name: supabase-integration-test
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -101,7 +122,7 @@ jobs:
           } >> "$GITHUB_ENV"
 
       - name: Seed disposable portal fixtures
-        run: node scripts/seed-portal.mjs --target dev
+        run: node scripts/seed-portal.mjs --target local
 
       - name: Verify Supabase client, SSR Auth, RLS, and PostgREST
         run: >-
@@ -116,3 +137,34 @@ jobs:
       - name: Stop disposable local Supabase
         if: always() && steps.supabase_cli.outcome == 'success'
         run: supabase stop --no-backup --yes
+
+  # Always-reporting gate. This job carries the `supabase-integration` check
+  # name that the dependency controller (.github/scripts/dependency-automation.cjs)
+  # and branch protection consume: success when the integration suite passed or
+  # was legitimately skipped, failure otherwise.
+  gate:
+    name: supabase-integration
+    needs: [changes, integration]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require the integration result
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          INTEGRATION_RESULT: ${{ needs.integration.result }}
+        run: |
+          echo "changes=$CHANGES_RESULT integration=$INTEGRATION_RESULT"
+          if [ "$CHANGES_RESULT" != "success" ]; then
+            echo "Change detection did not succeed."
+            exit 1
+          fi
+          case "$INTEGRATION_RESULT" in
+            success)
+              echo "Integration suite passed." ;;
+            skipped)
+              echo "No database-adjacent changes; integration suite not required." ;;
+            *)
+              echo "Integration suite did not succeed."
+              exit 1 ;;
+          esac
