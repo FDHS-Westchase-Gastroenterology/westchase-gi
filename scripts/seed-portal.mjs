@@ -1,4 +1,4 @@
-const TARGETS = new Set(["dev", "prod"])
+const TARGETS = new Set(["local", "dev", "prod"])
 
 function parseTarget(args) {
   const inline = args.find((arg) => arg.startsWith("--target="))
@@ -8,7 +8,7 @@ function parseTarget(args) {
     (flagIndex >= 0 ? args[flagIndex + 1] : undefined)
 
   if (!value || !TARGETS.has(value)) {
-    throw new Error("Usage: node scripts/seed-portal.mjs --target dev|prod")
+    throw new Error("Usage: node scripts/seed-portal.mjs --target local|dev|prod")
   }
 
   return value
@@ -26,6 +26,18 @@ function requireEnv(...names) {
 }
 
 function projectConfig(target) {
+  if (target === "local") {
+    // The disposable-stack target: refuses anything but a loopback Supabase,
+    // so it can never point at a hosted Development or Production project.
+    const url = requireEnv("NEXT_PUBLIC_SUPABASE_URL")
+    if (!/^https?:\/\/(127\.0\.0\.1|localhost)([:/]|$)/.test(url)) {
+      throw new Error(
+        `--target local requires a loopback Supabase URL; got ${url}`,
+      )
+    }
+    return { url, serviceKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY") }
+  }
+
   if (target === "dev") {
     return {
       url: requireEnv("SUPABASE_DEV_URL", "NEXT_PUBLIC_SUPABASE_URL"),
@@ -46,14 +58,14 @@ function projectConfig(target) {
 }
 
 function adminCredentials(target) {
-  return target === "dev"
+  return target === "prod"
     ? {
-        email: requireEnv("PORTAL_SEED_ADMIN_EMAIL"),
-        password: requireEnv("PORTAL_SEED_ADMIN_PASSWORD"),
-      }
-    : {
         email: requireEnv("PORTAL_PROD_ADMIN_EMAIL"),
         password: requireEnv("PORTAL_PROD_ADMIN_PASSWORD"),
+      }
+    : {
+        email: requireEnv("PORTAL_SEED_ADMIN_EMAIL"),
+        password: requireEnv("PORTAL_SEED_ADMIN_PASSWORD"),
       }
 }
 
