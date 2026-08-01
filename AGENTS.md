@@ -67,3 +67,17 @@ The detector may skip the disposable suite only when the diff is not database-ad
 Commands, credential split, honesty rules, and the change‑type → checks map live in [`CONTRIBUTING.md`](CONTRIBUTING.md#verification); [`ARCHITECTURE.md`](ARCHITECTURE.md#where-logic-lives) owns the change‑type → files map.
 
 **Local React Doctor trap:** a local score is not comparable to CI. Local scans also read untracked build output (`.next/`, `.next-e2e/`); third‑party sourcemaps trip the artifact‑secret rule. Hits under build directories or `node_modules` are noise, never “fix” them by editing generated files. The repository standard is a clean 100 on a clean checkout.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in this repo's GitHub Issues, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage labels are used as-is (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
