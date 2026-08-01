@@ -93,7 +93,7 @@ Every PR reports the `supabase-integration` gate. When the workflow's diff detec
 database-adjacent change—including a package change—it runs
 `e2e/supabase-dependency-contract.spec.ts` against a disposable local Supabase stack. That job
 receives no hosted secrets and checks Auth refresh, SSR cookie sessions, closed Data API/RLS
-boundaries, shared intake throttling, field caps, request-lifecycle boundaries, and PostgREST
+boundaries, shared intake throttling, field caps, appointment-request-lifecycle boundaries, and PostgREST
 persistence/relationships.
 
 ### UI changes

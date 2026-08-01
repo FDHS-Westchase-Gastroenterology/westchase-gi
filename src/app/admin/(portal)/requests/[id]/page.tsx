@@ -4,7 +4,7 @@ import { PrintButton } from "@/components/PrintButton";
 import {
   isMailbox,
   REQUEST_STATUSES,
-  type RequestClosureDisposition,
+  type RequestClosureOutcome,
   type RequestStatus,
 } from "@/lib/portal/contracts";
 import { requireRole } from "@/lib/portal/auth";
@@ -49,7 +49,7 @@ type RequestRow = {
   locale: string;
   source_path: string;
   status: RequestStatus;
-  closure_disposition: RequestClosureDisposition | null;
+  closure_disposition: RequestClosureOutcome | null;
   closed_at: string | null;
   record_handoff_at: string | null;
   created_at: string;
@@ -465,7 +465,7 @@ export default async function RequestDetailPage({
         <CallOutcomeComposer
           requestId={row.id}
           status={row.status}
-          closureDisposition={row.closure_disposition}
+          closureOutcome={row.closure_disposition}
           closedAtLabel={row.closed_at ? formatReceived(row.closed_at) : null}
           nextHref={nextId ? continuityHref(nextId) : null}
         />

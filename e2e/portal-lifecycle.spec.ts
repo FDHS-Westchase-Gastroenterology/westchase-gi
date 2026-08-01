@@ -67,7 +67,7 @@ async function stageRequest(
   return id;
 }
 
-test.describe("disposable-local request lifecycle", () => {
+test.describe("disposable-local appointment-request lifecycle", () => {
   test.describe.configure({ mode: "serial" });
   test.skip(
     !disposableLocal,
@@ -153,7 +153,7 @@ test.describe("disposable-local request lifecycle", () => {
       record_handoff_at: null,
     });
 
-    // Closed carries the converted closure disposition as a detail.
+    // Closed carries the converted closure outcome as a detail.
     await saveLifecycle("Closed", "Appointment booked — request complete");
     await expect(page.getByTestId("request-lifecycle-summary")).toContainText(
       /—\s+appointment booked/,

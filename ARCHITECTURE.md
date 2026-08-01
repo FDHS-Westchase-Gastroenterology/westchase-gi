@@ -96,7 +96,7 @@ not browser configuration. [`.env.example`](.env.example) is the exact variable 
 
 | Relation | Role |
 |---|---|
-| `public.requests` | Appointment-request system of record. Owns lifecycle, closure disposition, receipt-token hash state, and legal-hold state. |
+| `public.requests` | Appointment-request system of record. Owns lifecycle, closure outcome, receipt-token hash state, and legal-hold state. |
 | `public.request_events` | Child event stream for notification outcomes, attributed appointment-request notes, call outcomes, and Undo evidence. Call outcomes carry versioned lifecycle snapshots; events cascade with the request. |
 | `public.notification_recipients` | Active/paused destinations for new-request pings. |
 | `public.staff_profiles` | Authorization source of truth linked to `auth.users`. |
@@ -109,8 +109,8 @@ not browser configuration. [`.env.example`](.env.example) is the exact variable 
 
 - Intake throttling and analytics increments are database-atomic so multiple application
   instances share one limit and counter.
-- Saving a call outcome commits the outcome, request lifecycle, call-again timing, and closure
-  disposition together. Undo records a new event and restores the saved snapshot only
+- Saving a call outcome commits the outcome, appointment-request lifecycle, call-again timing, and closure
+  outcome together. Undo records a new event and restores the saved snapshot only
   when no later mutation has made it stale; it never deletes history.
 - Staff, recipient, release-state, legal-hold, and deletion operations apply their data and
   audit effects as one database operation where partial success would misrepresent state.
@@ -209,13 +209,13 @@ sensitive even though the form asks patients not to submit medical details.
 | Expired throttle buckets | Next hourly lifecycle run |
 | Audit rows | Six years unless a legal hold protects the related request |
 
-- Closing requires an explicit front-desk disposition. Reopening clears the disposition
+- Closing requires an explicit front-desk closure outcome. Reopening clears the outcome
   and its clock. Pre-policy closed rows remain unclassified and ineligible for automatic
   deletion until staff classify them; migrations never guess.
 - Legal holds block scheduled and exceptional deletion. Exceptional early deletion requires
   a non-PHI authorization reference from the privacy/records custodian, refuses held
   requests, writes minimized audit evidence, and then deletes the request and child events.
-- Audit metadata may contain identifiers, staff identity, state changes, dispositions,
+- Audit metadata may contain identifiers, staff identity, state changes, closure outcomes,
   authorization references, and counts—never patient names, contact details, intake text, or
   appointment-request notes.
 - The application keeps no duplicate patient-data archive. A downloaded CSV is a

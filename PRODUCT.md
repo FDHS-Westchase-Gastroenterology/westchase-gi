@@ -182,12 +182,12 @@ Durable workflow truths:
   funnel: direct `new → scheduled` is the normal successful path, and Scheduled
   stays visible rather than converting to a close. Contacted can resurface on a
   staff-chosen day; Closed leaves the active queue and can be reopened as Contacted
-  or Scheduled. Staff never learn a status/disposition split.
+  or Scheduled. Staff never learn a status/outcome split.
 - **One human action, one transaction.** Request detail leads with patient context,
   then the single Appointment request notes surface, then the status workflow.
   Staff choose the next status (the current one is never offered as a destination),
   then only the details that status needs; one Save records outcome, status,
-  optional call-again day, and closure disposition together, atomically. After
+  optional call-again day, and closure outcome together, atomically. After
   a confirmed save, Undo restores the exact preceding lifecycle state without
   erasing the saved call outcome from Request activity, and the next request is
   offered as a separate continuation action, never a second Save.

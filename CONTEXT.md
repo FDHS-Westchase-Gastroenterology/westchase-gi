@@ -37,22 +37,22 @@ _Avoid_: inbox
 The short-lived confirmation a patient sees after a no-JavaScript submission, backed by a
 one-time token.
 
-### Request lifecycle
+### Appointment-request lifecycle
 
 **Request status**:
 Where a request sits in its working life: new, contacted, scheduled, or closed. Not a
 linear funnel — new → scheduled is the normal successful path.
 _Avoid_: stage
 
-**Closure disposition**:
+**Closure outcome**:
 The outcome recorded when a request closes: converted (an appointment was booked) or
 unconverted (closed without one). Classifying a closure assigns it; staff answer a plain
 question and never see this term.
-_Avoid_: closure classification
+_Avoid_: closure disposition, closure classification
 
 **Call outcome**:
 The staff-recorded result of one phone interaction with a patient — the real unit of
-front-desk work. The status change, call-again day, and closure disposition it implies
+front-desk work. The status change, call-again day, and closure outcome it implies
 belong to the same record.
 
 **Call-again day**:
@@ -83,7 +83,7 @@ real scheduling record. Starts a converted request's retention clock.
 
 **Data lifecycle**:
 The retention-and-deletion schedule for patient-request data. Say "data lifecycle" for
-retention and "request lifecycle" for status movement — plain "lifecycle" is ambiguous
+retention and "appointment-request lifecycle" for status movement — plain "lifecycle" is ambiguous
 in this project.
 
 **Legal hold**:
@@ -141,7 +141,7 @@ log.
 
 **Audit log**:
 The exact, metadata-only technical record beneath Recent work — identifiers, action
-codes, and dispositions, never patient text. Labeled "Technical record" on the Activity
+codes, and closure outcomes, never patient text. Labeled "Technical record" on the Activity
 log; administrator territory.
 
 **Release briefing**:

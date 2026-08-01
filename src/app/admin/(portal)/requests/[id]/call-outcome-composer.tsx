@@ -11,7 +11,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type {
-  RequestClosureDisposition,
+  RequestClosureOutcome,
   RequestStatus,
 } from "@/lib/portal/contracts";
 import { Check } from "@/components/icons";
@@ -22,7 +22,7 @@ import {
 } from "../actions";
 import { followUpWhenLabel } from "../format";
 
-// The daily work loop uses the same request-lifecycle vocabulary as the queue.
+// The daily work loop uses the same appointment-request-lifecycle vocabulary as the queue.
 // Staff choose the request's next status first, then only the details that
 // status needs. Appointment request notes stay in their own single,
 // consistent surface instead of appearing as a second input here.
@@ -551,13 +551,13 @@ function StatusActions({
 export function CallOutcomeComposer({
   requestId,
   status,
-  closureDisposition,
+  closureOutcome,
   closedAtLabel,
   nextHref = null,
 }: {
   requestId: string;
   status: RequestStatus;
-  closureDisposition: RequestClosureDisposition | null;
+  closureOutcome: RequestClosureOutcome | null;
   closedAtLabel: string | null;
   nextHref?: string | null;
 }) {
@@ -715,21 +715,21 @@ export function CallOutcomeComposer({
       {status === "closed" ? (
         <p
           data-testid={
-            closureDisposition
+            closureOutcome
               ? "composer-closed-note"
               : "legacy-lifecycle-warning"
           }
           className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-[0.9rem] leading-relaxed text-[var(--color-ink)] ${
-            closureDisposition
+            closureOutcome
               ? "bg-[var(--color-mint)]"
               : "bg-[var(--color-amber-soft)] font-bold"
           }`}
         >
-          {closureDisposition
+          {closureOutcome
             ? `This request is closed${
                 closedAtLabel ? ` (${closedAtLabel})` : ""
               } — ${
-                closureDisposition === "converted"
+                closureOutcome === "converted"
                   ? "appointment booked"
                   : "no appointment booked"
               }. Choose Contacted or Scheduled to reopen it.`

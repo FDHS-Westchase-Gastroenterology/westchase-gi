@@ -857,7 +857,7 @@ async function main() {
       requestLifecycleColumnRows.every(
         (row) => row.is_nullable === "YES" && row.column_default === null,
       ),
-    "Request lifecycle columns are missing or unexpectedly non-null/defaulted",
+    "Appointment-request lifecycle columns are missing or unexpectedly non-null/defaulted",
   )
 
   const auditProvenanceColumnRows = await queryDatabase({
@@ -1438,7 +1438,7 @@ async function main() {
     `Verified ${target} migration: ${CALL_OUTCOME_UNDO_MIGRATION.version}_${CALL_OUTCOME_UNDO_MIGRATION.name}`,
   )
   console.log(
-    `Verified ${target} request lifecycle: nullable legacy-safe columns, constraints, preview, hold-aware deletion`,
+    `Verified ${target} appointment-request lifecycle: nullable legacy-safe columns, constraints, preview, hold-aware deletion`,
   )
   console.log(
     `Verified ${target} intake limiter: persistent private table, RLS, service-only ACL`,
