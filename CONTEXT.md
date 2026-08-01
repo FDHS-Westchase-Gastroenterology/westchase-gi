@@ -37,7 +37,7 @@ _Avoid_: inbox
 The short-lived confirmation a patient sees after a no-JavaScript submission, backed by a
 one-time token.
 
-### Request lifecycle
+### Appointment-request lifecycle
 
 **Request status**:
 Where a request sits in its working life: new, contacted, scheduled, or closed. Not a
@@ -83,7 +83,7 @@ real scheduling record. Starts a converted request's retention clock.
 
 **Data lifecycle**:
 The retention-and-deletion schedule for patient-request data. Say "data lifecycle" for
-retention and "request lifecycle" for status movement — plain "lifecycle" is ambiguous
+retention and "appointment-request lifecycle" for status movement — plain "lifecycle" is ambiguous
 in this project.
 
 **Legal hold**:

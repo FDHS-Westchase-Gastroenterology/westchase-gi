@@ -67,7 +67,7 @@ async function stageRequest(
   return id;
 }
 
-test.describe("disposable-local request lifecycle", () => {
+test.describe("disposable-local appointment-request lifecycle", () => {
   test.describe.configure({ mode: "serial" });
   test.skip(
     !disposableLocal,

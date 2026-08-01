@@ -9,7 +9,7 @@ import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // VAL-ADMIN-003: the queue leads with the oldest unworked requests first.
 // VAL-ADMIN-004: status filtering matches SQL counts exactly.
-// VAL-ADMIN-005: detail shows all fields; the full request lifecycle persists.
+// VAL-ADMIN-005: detail shows all fields; the full appointment-request lifecycle persists.
 // VAL-ADMIN-006: staff notes persist with attribution and re-render.
 
 loadLocalEnv();
@@ -121,7 +121,7 @@ test.describe("portal requests operation", () => {
     expect(firstId && secondId && thirdId).toBeTruthy();
   });
 
-  test("VAL-ADMIN-005: detail shows every field and the composer drives the request lifecycle", async ({
+  test("VAL-ADMIN-005: detail shows every field and the composer drives the appointment-request lifecycle", async ({
     page,
     request,
   }) => {

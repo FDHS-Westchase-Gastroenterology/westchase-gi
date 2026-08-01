@@ -1183,7 +1183,7 @@ test.describe("Supabase dependency contract", () => {
     }
   });
 
-  test("restores every meaningful prior request-lifecycle shape exactly", async () => {
+  test("restores every meaningful prior appointment-request-lifecycle shape exactly", async () => {
     const db = serviceDb();
     const actor = `undo-shapes-${randomUUID()}@example.test`;
     const requestIds: string[] = [];
