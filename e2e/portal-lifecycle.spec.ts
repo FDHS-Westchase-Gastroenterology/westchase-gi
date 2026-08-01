@@ -153,7 +153,7 @@ test.describe("disposable-local request lifecycle", () => {
       record_handoff_at: null,
     });
 
-    // Closed carries the appointment-complete classification as a detail.
+    // Closed carries the converted closure disposition as a detail.
     await saveLifecycle("Closed", "Appointment booked — request complete");
     await expect(page.getByTestId("request-lifecycle-summary")).toContainText(
       /—\s+appointment booked/,
@@ -225,7 +225,7 @@ test.describe("disposable-local request lifecycle", () => {
     requestIds.delete(id);
   });
 
-  test("concurrent lifecycle runs serialize without double deletion", async () => {
+  test("concurrent data-lifecycle runs serialize without double deletion", async () => {
     const id = await stageRequest("concurrent-run", {
       status: "closed",
       closure_disposition: "unconverted",

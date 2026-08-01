@@ -68,7 +68,7 @@ export const OUTCOME_HISTORY_LABELS: Record<string, string> = {
   scheduled_transferred: "Finished — appointment booked",
 };
 
-// A follow-up day in the front desk's practice-local phrasing:
+// A callback date in the front desk's practice-local phrasing:
 // "Friday, August 1 morning" (9:00 ET) / "Friday, August 1 afternoon" (1:00 ET).
 const followUpDay = new Intl.DateTimeFormat("en-US", {
   weekday: "long",

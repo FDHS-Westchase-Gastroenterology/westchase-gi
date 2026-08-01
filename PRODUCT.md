@@ -251,7 +251,7 @@ patient free text or mutates records autonomously.
    destination, and notification failures surface on Home beside the
    zero-recipient warning. Both are attention, not inventory; neither collects
    anything new.
-7. **PHI-minimal.** The portal handles callback leads, not a clinical record. Intake
+7. **PHI-minimal.** The portal handles appointment requests, not a clinical record. Intake
    has no dedicated clinical fields, but it stores an optional patient-supplied
    brief reason, so the queue is still sensitive. Notification emails and
    operational logs stay free of patient fields. Boundary-crossing reads of patient

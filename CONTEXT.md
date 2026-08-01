@@ -10,12 +10,12 @@ practice works what the site brings in.
 
 **Patient site**:
 The public five-locale website where patients reach the practice and prepare for visits.
-_Avoid_: public site, marketing site
+_Avoid_: public site
 
 **Staff portal**:
 The authenticated tool where practice staff do their web-adjacent jobs, centered on the
 appointment-request queue.
-_Avoid_: admin panel, dashboard, back office
+_Avoid_: dashboard
 
 ### Appointment requests
 
@@ -59,7 +59,7 @@ belong to the same record.
 The staff-chosen day a contacted request should resurface for another attempt. Patient
 content uses "follow-up" in its medical sense (a follow-up visit or procedure) — a
 different concept.
-_Avoid_: callback date, follow-up date, snooze
+_Avoid_: callback date, follow-up date
 
 **Undo**:
 The action that restores a request's previous lifecycle position after a saved call
@@ -71,8 +71,9 @@ _Avoid_: comments
 
 **Request activity**:
 A request's staff-visible history: notes, call outcomes, notification results, and Undo
-evidence.
-_Avoid_: event stream, timeline
+evidence. "Event stream" remains correct for the storage layer beneath it — never for
+this staff-facing surface.
+_Avoid_: timeline
 
 **Record handoff**:
 The staff-recorded moment a booked appointment is considered captured in the practice's
@@ -112,12 +113,11 @@ non-administrator role; say "staff role" when the distinction matters.
 **Administrator**:
 The elevated staff role: manages staff access and maintainers and reads the technical
 audit.
-_Avoid_: superuser, owner
+_Avoid_: owner
 
 **Notification recipient**:
 A destination chosen to receive new-request pings, managed independently of sign-in
 access.
-_Avoid_: subscriber
 
 **New-request ping**:
 The PHI-free email telling notification recipients that an appointment request arrived.
@@ -127,17 +127,22 @@ _Avoid_: alert
 **Maintainer**:
 A person who can edit and publish the website — the practice's vocabulary for website
 access, never expressed to staff as repository topology.
-_Avoid_: collaborator, developer
+_Avoid_: collaborator
 
 ### Portal surfaces
 
+**Activity log**:
+The staff page that holds both audit layers: Recent work on top, the technical record
+beneath it.
+
 **Recent work**:
-The plain-language, work-linked view of what staff did; the human layer of the two audit
-layers.
+The plain-language, work-linked view of what staff did; the human layer of the Activity
+log.
 
 **Audit log**:
 The exact, metadata-only technical record beneath Recent work — identifiers, action
-codes, and dispositions, never patient text. Administrator territory.
+codes, and dispositions, never patient text. Labeled "Technical record" on the Activity
+log; administrator territory.
 
 **Release briefing**:
 An application-owned announcement of a portal release, offered to each staff member for a

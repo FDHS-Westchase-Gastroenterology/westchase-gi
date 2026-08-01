@@ -9,7 +9,7 @@ import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // VAL-ADMIN-003: the queue leads with the oldest unworked requests first.
 // VAL-ADMIN-004: status filtering matches SQL counts exactly.
-// VAL-ADMIN-005: detail shows all fields; the full lifecycle persists.
+// VAL-ADMIN-005: detail shows all fields; the full request lifecycle persists.
 // VAL-ADMIN-006: staff notes persist with attribution and re-render.
 
 loadLocalEnv();
@@ -107,7 +107,7 @@ test.describe("portal requests operation", () => {
       .first();
     await expect(newerRow.locator('[data-status="new"]')).toBeVisible();
 
-    // A fresh submission appears after refresh with status new.
+    // A fresh appointment request appears after refresh with status new.
     const thirdId = await stageRequest(request, "fresh");
     await page.reload();
     const freshRow = page
@@ -121,7 +121,7 @@ test.describe("portal requests operation", () => {
     expect(firstId && secondId && thirdId).toBeTruthy();
   });
 
-  test("VAL-ADMIN-005: detail shows every field and the composer drives the lifecycle", async ({
+  test("VAL-ADMIN-005: detail shows every field and the composer drives the request lifecycle", async ({
     page,
     request,
   }) => {
@@ -195,7 +195,7 @@ test.describe("portal requests operation", () => {
       return data;
     }
 
-    // A call-again outcome requires the follow-up choice before saving.
+    // A call-again outcome requires the callback date before saving.
     await composer.getByText("Contacted", { exact: true }).click();
     await composer.getByText("No answer — call again", { exact: true }).click();
     await expect(page.getByTestId("save-outcome")).toBeDisabled();
@@ -222,7 +222,7 @@ test.describe("portal requests operation", () => {
         .getByText("Scheduled", { exact: true }),
     ).toHaveCount(0);
 
-    // Closed then asks for the classification the database needs.
+    // Closed then asks for the closure disposition the database needs.
     await saveLifecycle("Closed", "Patient won't schedule");
     const closed = await statusOf();
     expect(closed?.status).toBe("closed");

@@ -83,7 +83,7 @@ function detailHref({
 
 // Next-action language per attention bucket. The queue leads with what to
 // work next: unworked rows by age, call-again rows whose time arrived,
-// touched rows that went silent with no follow-up set.
+// touched rows that went silent with no callback date set.
 function nextActionHint({
   bucket,
   followUpAt,

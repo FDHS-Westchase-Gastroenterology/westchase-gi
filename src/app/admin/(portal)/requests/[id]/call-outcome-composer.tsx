@@ -22,7 +22,7 @@ import {
 } from "../actions";
 import { followUpWhenLabel } from "../format";
 
-// The daily work loop uses the same lifecycle vocabulary as the queue.
+// The daily work loop uses the same request-lifecycle vocabulary as the queue.
 // Staff choose the request's next status first, then only the details that
 // status needs. Appointment request notes stay in their own single,
 // consistent surface instead of appearing as a second input here.
