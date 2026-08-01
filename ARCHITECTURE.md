@@ -96,7 +96,7 @@ not browser configuration. [`.env.example`](.env.example) is the exact variable 
 
 | Relation | Role |
 |---|---|
-| `public.requests` | Appointment-request system of record. Owns lifecycle, closure classification, receipt-token hash state, and legal-hold state. |
+| `public.requests` | Appointment-request system of record. Owns lifecycle, closure disposition, receipt-token hash state, and legal-hold state. |
 | `public.request_events` | Child event stream for notification outcomes, attributed appointment-request notes, call outcomes, and Undo evidence. Call outcomes carry versioned lifecycle snapshots; events cascade with the request. |
 | `public.notification_recipients` | Active/paused destinations for new-request pings. |
 | `public.staff_profiles` | Authorization source of truth linked to `auth.users`. |
@@ -110,7 +110,7 @@ not browser configuration. [`.env.example`](.env.example) is the exact variable 
 - Intake throttling and analytics increments are database-atomic so multiple application
   instances share one limit and counter.
 - Saving a call outcome commits the outcome, request lifecycle, callback timing, and closure
-  classification together. Undo records a new event and restores the saved snapshot only
+  disposition together. Undo records a new event and restores the saved snapshot only
   when no later mutation has made it stale; it never deletes history.
 - Staff, recipient, release-state, legal-hold, and deletion operations apply their data and
   audit effects as one database operation where partial success would misrepresent state.
@@ -209,7 +209,7 @@ sensitive even though the form asks patients not to submit medical details.
 | Expired throttle buckets | Next hourly lifecycle run |
 | Audit rows | Six years unless a legal hold protects the related request |
 
-- Closing requires an explicit front-desk disposition. Reopening clears the classification
+- Closing requires an explicit front-desk disposition. Reopening clears the disposition
   and its clock. Pre-policy closed rows remain unclassified and ineligible for automatic
   deletion until staff classify them; migrations never guess.
 - Legal holds block scheduled and exceptional deletion. Exceptional early deletion requires
