@@ -4,14 +4,17 @@ Patient‑facing site for FDHS Westchase Gastroenterology (Tampa + Lutz). A 
 
 This file gives an agent with no prior context a fast ramp‑up: the non‑negotiable rules, the environment truths, and pointers to deeper docs. The goal is autonomous work that is correct on the first pass.
 
+[`MEMORY.md`](MEMORY.md) is an extremely lightweight scratch memory — short notes for little important things that are not yet (or do not belong as) durable product/architecture truth. Glance at it early; append sparingly; promote or delete when settled. Convention for each entry: a `##` heading with the local date and time, a line `HEAD` plus the short SHA from `git log -1 --format=%h` at write time, then the note body.
+
 ## Rule authority and ramp‑up
 
 Read in this order, as the task requires:
 
 1. **This file** – the domain‑specific rules and invariants below are hard requirements. They outrank everything, including vendored skills and general framework advice.
-2. [`ARCHITECTURE.md`](ARCHITECTURE.md) – system design, module interfaces, external systems, and the change‑type → files map. Start here in an unfamiliar area.
-3. [`CONTRIBUTING.md`](CONTRIBUTING.md) – the contribution process: setup, verification surface, commit/PR/merge discipline, and the path to production.
-4. Product truth: `PRODUCT.md` (patient‑site brand register and staff‑portal product register) + `DESIGN.md` (design system). UI baseline: `ui‑reference/README.md`.
+2. [`MEMORY.md`](MEMORY.md) – skim for open high‑signal notes that would otherwise be lost between sessions.
+3. [`ARCHITECTURE.md`](ARCHITECTURE.md) – system design, module interfaces, external systems, and the change‑type → files map. Start here in an unfamiliar area.
+4. [`CONTRIBUTING.md`](CONTRIBUTING.md) – the contribution process: setup, verification surface, commit/PR/merge discipline, and the path to production.
+5. Product truth: `PRODUCT.md` (patient‑site brand register and staff‑portal product register) + `DESIGN.md` (design system). UI baseline: `ui‑reference/README.md`.
 
 `README.md` is the human, user‑facing overview – cite it for the documented custody split, but do not treat it as developer documentation.
 
