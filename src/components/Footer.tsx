@@ -207,8 +207,8 @@ export function Footer({ locale, dict }: FooterProps) {
           </p>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
             {/* Staff entry point (issue #18). English-only by the portal's scope
-                decision (AGENTS.md rule 5); the proxy still gates /admin, so the
-                link grants nothing. */}
+                decision (ARCHITECTURE.md §3 / PRODUCT.md portal register); the
+                proxy still gates /admin, so the link grants nothing. */}
             <Link
               href="/admin"
               className="underline decoration-[var(--color-line-dark)] underline-offset-4 transition-colors hover:text-[var(--color-on-dark)] hover:decoration-[var(--color-amber)]"

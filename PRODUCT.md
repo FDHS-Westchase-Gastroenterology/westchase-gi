@@ -1,43 +1,60 @@
 # Product
 
+<!-- impeccable:product-schema 1 -->
+
 One repository, one deployment, **two products**: the patient-facing website (brand register,
 first half) and the staff portal at `/admin` (product register, second half). They share the
-design system in `DESIGN.md`.
+design system in `DESIGN.md`. 
 
-## Register
+## Platform
+
+web
+
+---
+
+## Patient website
+
+### Register
 
 brand
 
-## Users
+### Users
 
 Patients of a two-location gastroenterology practice in Tampa and Lutz, Florida. Mostly adults
 45 and older (colonoscopy screening age), many referred by a primary-care physician, many
-Spanish-speaking. They arrive anxious or task-driven: find the phone number, request an
-appointment, download prep instructions before a procedure, fill out new-patient forms, or check
-directions and hours. Usually on a phone. A second audience is referring physician offices
-verifying credentials, locations, and fax details.
+Spanish-speaking. They arrive anxious or task-driven — and they skim: find the phone number,
+request an appointment, download prep instructions before a procedure, fill out new-patient
+forms, or check directions and hours. Usually on a phone. A second audience is referring
+physician offices verifying credentials, locations, and fax details.
 
-## Product Purpose
+### Product Purpose
 
 The patient-facing website of FDHS Westchase Gastroenterology (Florida Digestive Health
 Specialists network). It exists so patients can reach the practice and prepare for visits without
 friction: request an appointment, call or text a staffed line, access the patient portal and
 online forms, and get accurate location, hours, and provider information in English, Spanish,
 Vietnamese, Korean, or Arabic.
-Success: every link works, every fact is verified, all five languages are first-class, and the site
-reads as the polished front door of a practice that answers its own phones. Success is also
+
+Success: every link works, every fact is verified, all five languages are first-class, and the
+site reads as the polished front door of a practice that answers its own phones. Success is also
 knowable: the practice can tell, from aggregate and PHI-free evidence, whether patients are
 reaching the phone, the text line, and the request form — without watching anyone do it.
 
-## Brand Personality
+### Positioning
 
-Calm, credentialed, human. The practice's differentiator is staffed human attention (a real
-person answers the text line within 24 hours), so the site must feel attended-to rather than
-automated: plain language, warm but clinical, never salesy. The site never shouts: no pop-ups,
-no autoplay, no urgency — its confidence shows in what it doesn't do. Three words: steady,
-attentive, multilingual.
+A real person answers. The practice's differentiator is staffed human attention — a human
+answers the text line within 24 hours — and full five-language service. Template-vendor
+competitors cannot truthfully claim either; this site never undermines the claim with bots,
+pop-ups, or conversion pressure.
 
-## Anti-references
+### Brand Personality
+
+Calm, credentialed, human. The site must feel attended-to rather than automated: plain
+language, warm but clinical, never salesy. The site never shouts: no pop-ups, no autoplay, no
+urgency — its confidence shows in what it doesn't do. Three words: steady, attentive,
+multilingual.
+
+### Anti-references
 
 - Template-vendor medical sites: stock abdominal-pain heroes, content-mill blogs,
   repeated meta descriptions, pop-ups that fire on every page.
@@ -50,7 +67,7 @@ attentive, multilingual.
   review-bait sprinkled through content, interruptions on arrival. The site asks once, in
   context.
 
-## Design Principles
+### Product Principles
 
 1. **Nothing broken, nothing invented.** Every link is verified before it ships. Facts that are
    not yet confirmed by the practice render as honest fallbacks (request from the office), never
@@ -60,29 +77,33 @@ attentive, multilingual.
    blue-teal-and-amber palette stay; published staff headshots are the documented exception and
    use intentionally resized, optimized derivatives.
 3. **The human line is the hero.** Call and text affordances are prominent on every page; the
-   text line is presented as a staffed human channel, never a bot.
+   text line is presented as a staffed human channel, never a bot. Anxious patients skim, so
+   every section offers one clear action and a short path to phone, forms, portal, and
+   directions.
 4. **Every language is a mode, not a footnote.** Every patient-facing surface exists in
    English, Spanish, Vietnamese, Korean, and Arabic with equal care (Arabic fully RTL), and
    no string may claim a smaller language set than the site actually serves — availability
    claims stay true at the sentence level, and clinical-care language claims ship only with
    dated practice confirmation.
-5. **Anxious patients skim.** One clear action per section, generous type, high contrast, short
-   paths to phone, forms, portal, and directions.
-6. **Interruptions are earned, never guessed.** At most one standing first-visit
-   interruption, and it fires only on positive evidence it helps (the language chooser opens
-   itself only on a detected language mismatch; the header menu always works). The
-   once-per-visitor banner is the only standing notice. Any future modal needs an explicit
-   exception here — the old site's daily popup is the anti-precedent.
-7. **Asks are calibrated.** One review ask per page in primary content; the testimonial rail
-   and footer carry the standing invitation. Written contact is one honest pipeline, labeled
-   as what it actually does. The site never trades the trust it is building for a second
-   conversion.
-8. **Measure like a medical practice.** Product evidence is aggregate, first-party, and
+5. **Measure like a medical practice.** Product evidence is aggregate, first-party, and
    PHI-free: counts and funnels, never journeys — no per-visitor profiles, session replay,
    heatmaps, or third-party trackers. If a question can't be answered inside that posture,
    the instrumentation fits the posture, never the reverse.
 
-## Accessibility & Inclusion
+### Capabilities and Constraints
+
+Standing interaction policies, binding until explicitly amended:
+
+- **Interruptions are earned, never guessed.** At most one standing first-visit interruption,
+  and it fires only on positive evidence it helps (the language chooser opens itself only on a
+  detected language mismatch; the header menu always works). The once-per-visitor banner is the
+  only standing notice. Any future modal needs an explicit exception here — the old vendor
+  site's daily popup is the anti-precedent.
+- **Asks are calibrated.** One review ask per page in primary content; the testimonial rail and
+  footer carry the standing invitation. Written contact is one honest pipeline, labeled as what
+  it actually does. The site never trades the trust it is building for a second conversion.
+
+### Accessibility & Inclusion
 
 WCAG 2.1 AA. Older-skewing patient base: body text at 17px or larger, contrast at 4.5:1 or
 better everywhere, visible focus states, large tap targets (44px floor, including dismiss
@@ -111,26 +132,23 @@ Not software people; they run on phone calls, schedules, and paper. They open th
 portal between patient interactions, usually on the front-desk computer, sometimes on
 a phone. A secondary user is the practice's website maintainer / engineering support.
 
-### Product purpose
+### Product Purpose
 
 One place where practice staff do their web-adjacent jobs without reasoning about
 software topology (repositories, hosting projects, asset ledgers). The jobs:
 
 - Work the appointment-request queue — the reason the portal exists: the previous
-  vendor form fed an Officite queue the practice did not know to monitor, where
-  requests accumulated unseen and unworked.
+  vendor form fed a queue the practice did not know to monitor, where requests
+  accumulated unseen and unworked.
 - Reprint a review QR flyer.
 - Choose who receives new-request notification emails.
 - Manage who can sign in (invite staff, change roles, deactivate accounts).
-- See where the website lives, its connection status, and who can change it —
-  and manage that access: invite a maintainer, cancel an invitation, or remove
-  one (administrators only). The clinic works in its own portal vocabulary —
-  people who "can edit and publish the website" — never in repository topology;
-  management controls stay hidden, failing closed, until the one-time
+- See where the website lives, its connection status, and who can change it — and
+  manage that access (administrators only). The clinic works in its own portal
+  vocabulary — people who "can edit and publish the website" — never in repository
+  topology; management controls stay hidden, failing closed, until the one-time
   owner-side setup steps are complete.
-- Request an occasional website change (today: through the website maintainer; a
-  structured change-request workflow, later conversationally assisted, is the
-  planned next step for this seam).
+- Request an occasional website change (today: through the website maintainer).
 
 Success: a new front-desk hire lands on the home page and knows what to do without
 training, and nothing needing attention hides more than one click deep.
@@ -144,58 +162,69 @@ excitement — it is calm confidence that the queue is complete, the next action
 obvious, a colleague can continue my work, and nothing is silently lost or
 misrepresented.
 
-The center of gravity is moving from "staff update records" to "staff finish clinic
-work": the real job is a phone call and its outcome, not a status field. Appointment
-request notes remain a first-class clinic abstraction: every request has one
+The center of gravity is "staff finish clinic work", not "staff update records":
+the real job is a phone call and its outcome, not a status field. Appointment
+request notes are a first-class clinic abstraction: every request has one
 Appointment request notes surface where staff read and add context for the next
 person.
 
-### Current delivery boundary (verified 2026-07-29)
+### Capabilities and Constraints
 
-The task-first Home, Requests queue, recipient and staff management, Activity log,
-Website/maintainer controls, protected review-flyer printer, first-login opt-in
-tour, and Help-page systems explainer/restart path are deployed. Home renders a
-distinct "count unavailable" state when its queue read fails — a failed read never
-presents as an empty queue. All four primary nav destinations stay fully visible on
-a 390px phone.
+The portal's surfaces: a task-first Home, the Requests queue and request detail,
+recipient and staff management, an Activity log, Website/maintainer controls, the
+protected review-flyer printer, an opt-in first-login tour, and a Help-page systems
+explainer with a tour-restart path.
 
-Request detail leads with the patient context, then one compact Appointment request
-notes surface before the status workflow. Appointment request notes are read and
-added only there. The secondary Request activity record carries call outcomes and
-status changes without calling appointment request notes history. The same lifecycle
-vocabulary as the queue remains: Contacted, Scheduled, and Closed. Staff choose
-the next status, then only the details that status needs; the current status is
-not offered as a destination. Choosing Save records the outcome, appointment
-request status, optional call-again time, and closure classification together.
-After that save is confirmed, Undo restores the exact preceding lifecycle state without
-removing the saved call outcome from Request activity, and the next appointment
-request is offered as a separate continuation action rather than a second
-version of Save.
-Scheduled stays visible, Contacted can resurface on a chosen day, Closed leaves
-the active queue, and a closed request can be reopened as Contacted or
-Scheduled. An explicit print action produces the complete patient contact,
-Appointment request notes, and Request activity without portal controls or
-delivery diagnostics.
+Durable workflow truths:
 
-Home also carries attention context in practice-local business terms: how long the
-oldest new request has been waiting ("since Friday"), which previewed requests
-arrived after office hours, and an explicit warning when zero active notification
-recipients exist (a failed recipients read stays silent — absence of evidence is
-not evidence of absence). The queue marks unworked requests that have waited past
-their arrival day. Review-flyer printing is open to every active staff member, not
-only administrators (decision 2026-07-26): printing an approved artifact mutates
-nothing, and handing flyers to patients is a front-desk job. Changing flyer assets
-stays outside the portal.
+- **Lifecycle vocabulary.** Requests move among Contacted, Scheduled, and Closed —
+  the same words in the queue and on request detail. There is no forced linear
+  funnel: direct `new → scheduled` is the normal successful path, and Scheduled
+  stays visible rather than converting to a close. Contacted can resurface on a
+  staff-chosen day; Closed leaves the active queue and can be reopened as Contacted
+  or Scheduled. Staff never learn a status/classification split.
+- **One human action, one transaction.** Request detail leads with patient context,
+  then the single Appointment request notes surface, then the status workflow.
+  Staff choose the next status (the current one is never offered as a destination),
+  then only the details that status needs; one Save records outcome, status,
+  optional call-again time, and closure classification together, atomically. After
+  a confirmed save, Undo restores the exact preceding lifecycle state without
+  erasing the saved call outcome from Request activity, and the next request is
+  offered as a separate continuation action, never a second Save.
+- **Staff author attention.** Urgency comes from staff-chosen callback dates and
+  business-aware age ("since Friday", after-hours arrivals), not from a Settings
+  "N days" knob or a practice meeting. The queue leads with what to work next;
+  next-action hints ride each row.
+- **Honest reads.** A failed read is never presented as an empty result — "nothing
+  waiting" and "could not check" are different truths. Counts are suppressed, never
+  zeroed, when their read fails; a failed recipients read stays silent rather than
+  raising a false zero-recipient warning.
+- **Two audit layers.** The human Recent-work view renders plain-language,
+  work-linked entries; the exact technical audit (action codes, UUID fragments,
+  correlation IDs) is preserved beneath it for administrators. Storage vocabulary
+  is never staff language.
+- **Flyer printing is front-desk work** (practice decision 2026-07-26): open to
+  every active staff member, since printing an approved artifact mutates nothing.
+  Changing flyer assets stays outside the portal. An explicit print action produces
+  the complete patient contact, Appointment request notes, and Request activity
+  without portal controls or delivery diagnostics.
+- **The assistant seam is reserved, not occupied** (decision 2026-07-26): no
+  floating launcher may ship before the capability exists. When an assistant ships
+  it will be a docked, contextual widget with no dedicated page and no nav entry,
+  and it arrives only when it completes a real job (first candidate: drafting
+  structured website-change requests).
 
-The docked "coming soon" assistant launcher was removed (decision 2026-07-26): a
-floating control that completes no job obstructs real work on phones and violates
-the honest-states principle. The seam remains reserved — when an assistant ships it
-will be a docked, contextual widget with no dedicated page and no nav entry, and it
-arrives only when it completes a real job (first candidate: drafting structured
-website-change requests). The remaining future work also includes a full throwaway
-maintainer invite/cancel/accept/revoke acceptance pass.
+Explicitly undecided / open product facts: recoverable staff lifecycle operations;
+the maintainer invite/cancel/accept/revoke acceptance pass; the structured
+website-change-request workflow (later conversationally assisted) planned for the
+maintainer seam.
 
-### Design principles
+Deliberately not building: generic metric dashboards or vanity counts; a forced
+linear status funnel; kanban or bulk mutations; direct browser database access; a
+CMS, flyer editor, or QR generator; page-view surveillance; an assistant that sees
+patient free text or mutates records autonomously.
+
+### Product Principles
 
 1. **Tasks, not topology.** Navigation and copy name staff jobs ("Print review
    flyers", "Manage staff access"), never systems. Occasional tasks are reached from
@@ -210,91 +239,30 @@ maintainer invite/cancel/accept/revoke acceptance pass.
 4. **Honest states.** Delivery, connection, and configuration states render
    truthfully ("Not configured", "Connection unavailable"), no control ships
    before its capability exists, and a failed read is never presented as an empty
-   result — "nothing waiting" and "could not check" are different truths.
+   result.
 5. **One human action, one portal transaction.** Staff experience "set the outcome
    and callback timing" as a single step, while appointment request notes remain
-   in their one familiar section. The interface should not split one real-world
+   in their one familiar section. The interface never splits one real-world
    action across disconnected forms, and server operations backing a combined
-   action must commit atomically.
+   action commit atomically.
 6. **Attention over inventory.** Lead with work that needs action — and its
-   age in business terms — not with counts or tables that merely exist.
-7. **PHI-minimal.** The portal handles callback leads, not a clinical record. Intake has
-   no dedicated clinical fields, but it stores an optional patient-supplied brief reason,
-   so the queue is still sensitive. Notification emails and operational logs stay free of
-   patient fields. Boundary-crossing reads of patient data are audited: a CSV export
-   writes a metadata-only audit row (actor, timestamp, row count, filter) — an export
-   creates a clinic-controlled sensitive copy, and leaving it unaudited was inconsistent
-   with this posture (decision 2026-07-28).
-
-### Direction (adopted 2026-07-26; amended 2026-07-29)
-
-Priorities for the portal's next chapter, in order:
-
-1. **A lifecycle-aligned request workflow** on request detail: one prominent action
-   that uses the queue's Contacted, Scheduled, and Closed vocabulary and records
-   outcome, status, callback timing, and closure classification together, atomically.
-   Production usage (2026-07-28) confirms the normal success path is
-   `new → scheduled` left open — not a converted close. Contacted asks whether the
-   patient was reached, a voicemail was left, or there was no answer; voicemail and
-   no-answer require a "Call again …" date so staff tell the queue when to resurface
-   the row. Scheduled means the appointment is booked and stays visible. Closed asks
-   whether the appointment was booked and the request is complete, the patient will
-   not schedule, or the request is not actionable. The current status is omitted
-   from the destinations so the interaction is stateful; Closed offers Contacted
-   and Scheduled as explicit correction/reopen paths. Staff never learn a
-   status/classification split and never visit Settings to define "Scheduled." The
-   atomic server operation landed in migrations
-   2026-07-27 (`portal_log_call_outcome`; issue #124), so the composer is
-   unblocked frontend work; production promotion of the migration follows its
-   own deliberate path. Appointment request notes and patient context lead the
-   detail page; the composer follows them without returning to disconnected
-   status buttons.
-2. **A queue that says what to work next**: a needs-attention default view
-   (New, then follow-up dates due today or past, then touched rows silent since
-   the previous practice-local business morning with no follow-up set),
-   business-aware age, next-action hint per row ("Call again Friday", "Waiting
-   since Tuesday"), and continuity (previous/next, with the next request
-   offered after a confirmed save). The status workflow has one Save command.
-   After a confirmed save, Undo restores the preceding appointment request
-   status only when no later save has changed it. Save and Undo both remain in
-   Request activity. Staff
-   author attention by picking when they'll call back — not by a Settings
-   "N days" knob and not by a practice meeting. The queue's "once touched,
-   urgency is a triage judgment" premise is retired.
-3. **A human Recent-work view** over the durable audit record: grouped,
-   plain-language entries linked to the work ("finished an appointment request as
-   Scheduled"), with the exact technical audit preserved beneath it for
-   administrators. Storage vocabulary (action codes, UUID fragments) is not staff
-   language. The audit detail already carries from/to statuses, dispositions,
-   actors, and correlation IDs (verified 2026-07-28), so this is a
-   presentation-layer view, not a schema change.
-4. **One feedback-and-forgiveness pattern for every mutation**: the pressed control
-   responds immediately, only the affected row goes pending, success lands beside
-   the changed object, failures preserve input and say whether anything changed,
-   and reversible actions offer undo instead of repeated confirm prompts.
-5. **Attention travels with the worker**: the waiting-request count rides on the
-   Requests nav destination, suppressed — never zeroed — when its read fails, and
-   recent notification failures (trailing 24 hours, from the existing
-   `request_events` rows) aggregate onto Home beside the zero-recipient warning.
-   Both are attention, not inventory; neither collects anything new.
-6. **Names, not addresses**: staff-facing identity renders the display name
-   captured at invite (header, note attribution, the Recent-work view); emails
-   remain in the raw audit. Settings staff rows surface last sign-in from
-   existing Auth state — the highest-value adoption signal available without any
-   new tracking.
-
-Backend prerequisites for this chapter were tracked as scoped issues: the atomic
-call-outcome operation (#124), audit provenance for the Recent-work view (#125),
-and the recipient label-update operation (#126) landed in migrations 2026-07-27
-(production promotion remains the deliberate separate decision); recoverable
-staff lifecycle operations (#127) remain open. Frontend work that needs no schema
-change does not wait on them.
-
-Deliberately not building: generic metric dashboards or vanity counts; a forced
-linear status funnel (direct new → scheduled is the normal successful path); kanban
-or bulk mutations; direct browser database access; a CMS, flyer editor, or QR
-generator; page-view surveillance; an assistant that sees patient free text or
-mutates records autonomously.
+   age in business terms — not with counts or tables that merely exist. Attention
+   travels with the worker: the waiting-request count rides on the Requests nav
+   destination, and notification failures surface on Home beside the
+   zero-recipient warning. Both are attention, not inventory; neither collects
+   anything new.
+7. **PHI-minimal.** The portal handles callback leads, not a clinical record. Intake
+   has no dedicated clinical fields, but it stores an optional patient-supplied
+   brief reason, so the queue is still sensitive. Notification emails and
+   operational logs stay free of patient fields. Boundary-crossing reads of patient
+   data are audited: a CSV export writes a metadata-only audit row (actor,
+   timestamp, row count, filter) — an export creates a clinic-controlled sensitive
+   copy, and leaving it unaudited was inconsistent with this posture (decision
+   2026-07-28).
+8. **Names, not addresses.** Staff-facing identity renders the display name captured
+   at invite (header, note attribution, the Recent-work view); emails remain in the
+   raw audit. Staff rows surface last sign-in from existing Auth state — the
+   highest-value adoption signal available without any new tracking.
 
 ### Anti-references
 

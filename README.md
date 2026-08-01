@@ -73,9 +73,6 @@ The practice controls its own infrastructure:
   handoff item, tracked with the remaining acceptance work in issue
   [#24](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/24).
 
-Two security tasks sit with the clinic GitHub account owner (both are quick settings
-changes, tracked in the same issue): turn on two-factor authentication, and narrow the
-portal's GitHub App to this repository only.
 
 ## Run it on your computer
 
@@ -100,37 +97,3 @@ covered in `CONTRIBUTING.md`.
 | `AGENTS.md` | AI coding agents | Hard rules and fast ramp-up for autonomous work |
 | `PRODUCT.md` / `DESIGN.md` | Product + design | Product definitions (patient site + staff portal) and the design system |
 | `ui-reference/` | Developers | Checked-in screenshots: the visual baseline for UI work |
-
-Release progress and open operational work are deliberately **not** restated here — a stale
-status line misleads everyone who reads it first. Issue
-[#24](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/24) is the
-canonical Production workflow checklist.
-
-## Pending practice confirmations
-
-Confirmed facts carry dated source comments where useful; unresolved practice questions live
-here rather than behind a generic marker. Tampa hours are 8:00–5:00, Lutz hours are
-8:00–4:30, and the Facebook page/reviews are verified and live. Still open:
-
-- Yelp profile, if the practice wants one linked (held until confirmed live)
-- Physician bios (2–3 sentences each)
-- Current PDFs for the remaining document slots — the two record-release forms, printable
-  disease sheets, and optional clean per-document prep PDFs. Procedure-prep source scans
-  arrived and shipped as native printable pages on 2026-07-07; registration/privacy
-  printables were deliberately retired because the live online packet covers them.
-- Prep wording questions for the practice (originals reproduced verbatim meanwhile, flagged
-  in the prep content modules): the split-dose MiraLAX English vs Spanish sheets disagree on
-  afternoon timings (2/4/6 PM vs 1/3/5 PM); the Spanish colonoscopy sheet's GLP-1 hold
-  instruction names the drugs but no day count (English says 7 days); the Golytely
-  split-dose sheet's "one hour after completing step 4" forward reference.
-- Vietnamese, Korean, and Arabic medical content shipped translated by the build process and
-  awaits native-speaker verification (the established ship-then-verify policy). English is
-  the source baseline; the practice-published Spanish homepage block is source-grounded,
-  while the remaining Spanish translation also awaits the practice's native-speaker review.
-
-## Known content mismatch
-
-- Some patient-facing procedure-prep, blog, and education availability copy still says
-  "English and Spanish" even though those pages exist in all five locales. External
-  Hushforms packets are genuinely EN/ES-only; clinical-care language claims need practice
-  confirmation before editing.

@@ -72,9 +72,9 @@ export default async function AdminSettingsSoftwarePage() {
           </h3>
           <p className="mt-3 max-w-[62ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
             Westchase GI controls this website&apos;s domain, source repository,
-            and deployment. Database and email account custody is still being
-            completed with the practice, so this page is not yet proof that the
-            practice holds every service credential.
+            and deployment. Database and email account custody is documented
+            separately, so this page is not proof that the practice holds every
+            service credential.
           </p>
           <dl className="mt-3 max-w-[62ch] space-y-3 text-[0.9rem] leading-relaxed text-[var(--color-body)]">
             <div>
