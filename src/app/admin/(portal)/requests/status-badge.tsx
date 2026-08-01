@@ -1,7 +1,7 @@
 import type { RequestStatus } from "@/lib/portal/contracts";
 import { STATUS_LABELS } from "./format";
 
-// One visual vocabulary for request state across queue and detail:
+// One visual vocabulary for request status across queue and detail:
 // new demands attention (amber), contacted is in-motion (mint/teal),
 // scheduled is settled (navy), closed recedes (neutral).
 

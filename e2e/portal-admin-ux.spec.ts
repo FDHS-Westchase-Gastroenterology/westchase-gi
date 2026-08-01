@@ -3,7 +3,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // VAL-ADMIN-007: recipients are manageable from the UI and a staged
-// submission attempts notification for exactly the active set.
+// appointment request attempts notification for exactly the active set.
 // VAL-ADMIN-008: invite -> one-time setup link -> own password -> deactivate
 // -> login refused, across two browser contexts.
 // VAL-ADMIN-012: the help page is substantive plain English (>=400 words).
@@ -175,7 +175,7 @@ test.describe("portal management UI", () => {
       .eq("email", emailC);
     expect(cRows).toHaveLength(0);
 
-    // A staged submission attempts notification for EXACTLY the active set.
+    // A staged appointment request attempts notification for EXACTLY the active set.
     // Global setup paused every pre-existing recipient, so the active set
     // right now is {A}. A rejected provider outcome still counts as an
     // attempt — that is the assertion, not deliverability.

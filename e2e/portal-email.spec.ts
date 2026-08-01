@@ -101,7 +101,7 @@ test("normalizes transport throws and deadline expiry without leaking message da
   }
 });
 
-test("fans out stable PHI-free appointment messages with one event per recipient", async () => {
+test("fans out stable PHI-free new-request pings with one event per recipient", async () => {
   const messages: PortalEmailMessage[] = [];
   const send = createEmailSender(
     fakeTransport(async (message) => {

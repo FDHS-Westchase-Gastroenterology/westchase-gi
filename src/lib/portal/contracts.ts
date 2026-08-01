@@ -1,5 +1,5 @@
 // Pinned mission contracts — the bridge between the intake pipeline, the
-// admin portal, and the E2E suite. Both the patient form and the server
+// staff portal, and the E2E suite. Both the patient form and the server
 // route validate against THIS schema; the portal and audit trail consume
 // THESE types and constants. Field names are the wire format (camelCase);
 // the database layer maps time -> preferred_time and sourcePath ->

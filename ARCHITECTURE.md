@@ -31,7 +31,7 @@ patient browser ──► Vercel: Next.js application
                       ├─ src/proxy.ts          locale redirect · admin gate · query scrub
                       ├─ src/app/[locale]/**   patient pages (RSC)
                       ├─ intake handlers ─────► Postgres `requests` (durable queue)
-                      │                              └─► email interface ─► PHI-free staff ping
+                      │                              └─► email interface ─► PHI-free new-request ping
                       └─ telemetry handler ───► private aggregate counters
 
 staff browser ──────► /admin/** (Supabase Auth session)
@@ -141,7 +141,7 @@ compatible until the new application is live. Seed fixtures live in `supabase/se
 4. The shared Postgres throttle uses a domain-separated HMAC key, never a raw address or a
    reversible digest.
 5. The durable `requests` insert completes before any success state can render.
-6. Notification fan-out snapshots active recipients, sends a PHI-free portal ping through the
+6. Notification fan-out snapshots active recipients, sends a PHI-free new-request ping through the
    email interface, and records one outcome event per recipient. Notification failure never
    rolls back the queue record.
 7. The no-JS handler returns `303` to a localized receipt page with a 15-minute, one-time
@@ -174,7 +174,7 @@ verify Development and Production separately.
 ### Email
 
 The application owns one provider-neutral, text-only email interface; replacing the Resend
-adapter changes `email-provider.ts` and configuration, not feature workflows. Appointment
+adapter changes `email-provider.ts` and configuration, not feature workflows. New-request
 pings, recipient confirmation, and staff setup use this interface. Password recovery remains
 owned by Supabase Auth hosted SMTP.
 
@@ -203,7 +203,7 @@ sensitive even though the form asks patients not to submit medical details.
 |---|---|
 | Legitimately open request | No automatic deletion |
 | Closed without an appointment (`unconverted`) | 180 days after classified closure |
-| Closed after booking (`converted`) | 12 months after staff-recorded booking and classified closure |
+| Closed after booking (`converted`) | 12 months after record handoff and classified closure |
 | Request notes and notification/receipt events | Follow the parent request |
 | Receipt-token hash | One hour; the receipt itself is valid for 15 minutes |
 | Expired throttle buckets | Next hourly lifecycle run |
@@ -293,7 +293,7 @@ This is the change-type → files map. The matching change-type → checks map i
 - **Table, column, RLS policy, RPC, or fixture:** timestamped migration plus rollback sibling,
   `scripts/verify-schema.mjs`, seed files when fixtures change, and every portal reader/writer
   of the changed interface.
-- **Email:** `intake-notification.ts` for appointment pings, `management-email.ts` for
+- **Email:** `intake-notification.ts` for new-request pings, `management-email.ts` for
   staff/recipient composition, `email.ts` for the interface, and `email-provider.ts` for the
   adapter. Auth recovery SMTP, templates, and redirects are hosted project configuration.
 - **Website/GitHub:** `src/app/admin/(portal)/settings/software/`, `integrations.ts`, and the
