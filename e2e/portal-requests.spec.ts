@@ -222,7 +222,7 @@ test.describe("portal requests operation", () => {
         .getByText("Scheduled", { exact: true }),
     ).toHaveCount(0);
 
-    // Closed then asks for the closure disposition the database needs.
+    // Closed then asks for the closure outcome the database needs.
     await saveLifecycle("Closed", "Patient won't schedule");
     const closed = await statusOf();
     expect(closed?.status).toBe("closed");

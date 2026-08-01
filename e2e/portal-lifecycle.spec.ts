@@ -153,7 +153,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
       record_handoff_at: null,
     });
 
-    // Closed carries the converted closure disposition as a detail.
+    // Closed carries the converted closure outcome as a detail.
     await saveLifecycle("Closed", "Appointment booked — request complete");
     await expect(page.getByTestId("request-lifecycle-summary")).toContainText(
       /—\s+appointment booked/,

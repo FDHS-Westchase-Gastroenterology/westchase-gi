@@ -36,9 +36,9 @@ export const REQUEST_STATUSES = [
 ] as const;
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
-// The closure dispositions the database's close paths validate
+// The closure outcomes the database's close paths validate
 // ('unconverted' / 'converted').
-export type RequestClosureDisposition = "unconverted" | "converted";
+export type RequestClosureOutcome = "unconverted" | "converted";
 
 export type StaffRole = "admin" | "staff";
 

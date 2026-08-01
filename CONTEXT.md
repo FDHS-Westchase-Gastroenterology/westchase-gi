@@ -44,15 +44,15 @@ Where a request sits in its working life: new, contacted, scheduled, or closed. 
 linear funnel — new → scheduled is the normal successful path.
 _Avoid_: stage
 
-**Closure disposition**:
+**Closure outcome**:
 The outcome recorded when a request closes: converted (an appointment was booked) or
 unconverted (closed without one). Classifying a closure assigns it; staff answer a plain
 question and never see this term.
-_Avoid_: closure classification
+_Avoid_: closure disposition, closure classification
 
 **Call outcome**:
 The staff-recorded result of one phone interaction with a patient — the real unit of
-front-desk work. The status change, call-again day, and closure disposition it implies
+front-desk work. The status change, call-again day, and closure outcome it implies
 belong to the same record.
 
 **Call-again day**:
@@ -141,7 +141,7 @@ log.
 
 **Audit log**:
 The exact, metadata-only technical record beneath Recent work — identifiers, action
-codes, and dispositions, never patient text. Labeled "Technical record" on the Activity
+codes, and closure outcomes, never patient text. Labeled "Technical record" on the Activity
 log; administrator territory.
 
 **Release briefing**:
