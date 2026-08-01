@@ -109,7 +109,7 @@ not browser configuration. [`.env.example`](.env.example) is the exact variable 
 
 - Intake throttling and analytics increments are database-atomic so multiple application
   instances share one limit and counter.
-- Saving a call outcome commits the outcome, request lifecycle, callback timing, and closure
+- Saving a call outcome commits the outcome, request lifecycle, call-again timing, and closure
   disposition together. Undo records a new event and restores the saved snapshot only
   when no later mutation has made it stale; it never deletes history.
 - Staff, recipient, release-state, legal-hold, and deletion operations apply their data and
