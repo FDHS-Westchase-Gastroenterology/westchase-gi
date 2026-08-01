@@ -187,11 +187,11 @@ Durable workflow truths:
   then the single Appointment request notes surface, then the status workflow.
   Staff choose the next status (the current one is never offered as a destination),
   then only the details that status needs; one Save records outcome, status,
-  optional call-again time, and closure disposition together, atomically. After
+  optional call-again day, and closure disposition together, atomically. After
   a confirmed save, Undo restores the exact preceding lifecycle state without
   erasing the saved call outcome from Request activity, and the next request is
   offered as a separate continuation action, never a second Save.
-- **Staff author attention.** Urgency comes from staff-chosen callback dates and
+- **Staff author attention.** Urgency comes from staff-chosen call-again days and
   business-aware age ("since Friday", after-hours arrivals), not from a Settings
   "N days" knob or a practice meeting. The queue leads with what to work next;
   next-action hints ride each row.
@@ -241,7 +241,7 @@ patient free text or mutates records autonomously.
    before its capability exists, and a failed read is never presented as an empty
    result.
 5. **One human action, one portal transaction.** Staff experience "set the outcome
-   and callback timing" as a single step, while appointment request notes remain
+   and call-again timing" as a single step, while appointment request notes remain
    in their one familiar section. The interface never splits one real-world
    action across disconnected forms, and server operations backing a combined
    action commit atomically.

@@ -52,12 +52,14 @@ _Avoid_: closure classification
 
 **Call outcome**:
 The staff-recorded result of one phone interaction with a patient — the real unit of
-front-desk work. The status change, callback date, and closure disposition it implies
+front-desk work. The status change, call-again day, and closure disposition it implies
 belong to the same record.
 
-**Callback date**:
-The staff-chosen day a contacted request should resurface for another attempt.
-_Avoid_: snooze, follow-up date
+**Call-again day**:
+The staff-chosen day a contacted request should resurface for another attempt. Patient
+content uses "follow-up" in its medical sense (a follow-up visit or procedure) — a
+different concept.
+_Avoid_: callback date, follow-up date, snooze
 
 **Undo**:
 The action that restores a request's previous lifecycle position after a saved call
@@ -119,6 +121,7 @@ _Avoid_: subscriber
 
 **New-request ping**:
 The PHI-free email telling notification recipients that an appointment request arrived.
+Staff-facing surfaces call it a "notification email"; "ping" is the developer register.
 _Avoid_: alert
 
 **Maintainer**:
