@@ -494,6 +494,36 @@ test.describe("portal management server boundaries", () => {
     expect(addedRecipient.body.ok).toBe(true);
     expect(addedRecipient.body.delivery).toBe("failed");
 
+    const duplicateRecipient = await mutate(adminPage, "recipient.add", {
+      email: recipientEmail.toUpperCase(),
+      label: "TEST duplicate recipient",
+      active: true,
+    });
+    expect(duplicateRecipient.status).toBe(409);
+    expect(duplicateRecipient.body).toMatchObject({
+      ok: false,
+      code: "conflict",
+    });
+
+    const missingRecipientId = randomUUID();
+    const missingToggle = await mutate(staffPage, "recipient.toggle", {
+      recipientId: missingRecipientId,
+      active: false,
+    });
+    expect(missingToggle.status).toBe(404);
+    expect(missingToggle.body).toMatchObject({
+      ok: false,
+      code: "not_found",
+    });
+    const missingRemove = await mutate(adminPage, "recipient.remove", {
+      id: missingRecipientId,
+    });
+    expect(missingRemove.status).toBe(404);
+    expect(missingRemove.body).toMatchObject({
+      ok: false,
+      code: "not_found",
+    });
+
     const { data: recipient, error: recipientError } = await db
       .from("notification_recipients")
       .select("id, active")

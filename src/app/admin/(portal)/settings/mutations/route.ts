@@ -65,7 +65,7 @@ function isSameOrigin(request: NextRequest): boolean {
 /**
  * Explicit HTTP adapter for the settings UI. The mutation implementations are
  * also exported as Server Actions; both transports share the same role checks,
- * validation, compensation, and audit writes.
+ * validation, atomic database writes, and failure mapping.
  */
 export async function POST(request: NextRequest): Promise<Response> {
   if (!isSameOrigin(request)) {

@@ -104,6 +104,24 @@ async function expectDeniedSurface(
         p_recipient_id: randomUUID(),
         p_label: "Blocked",
       }),
+    () =>
+      client.rpc("portal_add_notification_recipient", {
+        p_actor_email: actorEmail,
+        p_email: `blocked-${randomUUID()}@example.test`,
+        p_label: null,
+        p_active: true,
+      }),
+    () =>
+      client.rpc("portal_toggle_notification_recipient", {
+        p_actor_email: actorEmail,
+        p_recipient_id: randomUUID(),
+        p_active: false,
+      }),
+    () =>
+      client.rpc("portal_remove_notification_recipient", {
+        p_actor_email: actorEmail,
+        p_recipient_id: randomUUID(),
+      }),
     () => client.from("portal_release_states").select("staff_user_id"),
     () => release("portal_open_staff_release"),
     () => release("portal_acknowledge_staff_release"),
@@ -721,6 +739,186 @@ test.describe("Supabase dependency contract", () => {
     );
     expect(claims.filter(Boolean)).toHaveLength(INTAKE_RATE_LIMIT.limit);
     expect(claims.filter((allowed) => !allowed)).toHaveLength(3);
+  });
+
+  test("adds, toggles, and removes recipients with atomic classified audits", async () => {
+    const db = serviceDb();
+    const actor = `recipient-atomic-${randomUUID()}@example.test`;
+    const rawEmail = `Recipient-Atomic-${randomUUID()}@Example.Test`;
+    const email = rawEmail.toLowerCase();
+    const failedAddEmail = `recipient-failed-${randomUUID()}@example.test`;
+    let recipientId: string | null = null;
+
+    try {
+      const added = await db.rpc("portal_add_notification_recipient", {
+        p_actor_email: actor,
+        p_email: `  ${rawEmail}  `,
+        p_label: "  Front desk  ",
+        p_active: true,
+      });
+      expect(added.error).toBeNull();
+      expectUuid(added.data);
+      recipientId = String(added.data);
+
+      const inserted = await db
+        .from("notification_recipients")
+        .select("email, label, active")
+        .eq("id", recipientId)
+        .single();
+      expect(inserted.error).toBeNull();
+      expect(inserted.data).toEqual({
+        email,
+        label: "Front desk",
+        active: true,
+      });
+
+      const duplicate = await db.rpc("portal_add_notification_recipient", {
+        p_actor_email: actor,
+        p_email: email.toUpperCase(),
+        p_label: null,
+        p_active: true,
+      });
+      expect(duplicate.error?.code).toBe("23505");
+
+      const noOp = await db.rpc("portal_toggle_notification_recipient", {
+        p_actor_email: actor,
+        p_recipient_id: recipientId,
+        p_active: true,
+      });
+      expect(noOp.error).toBeNull();
+      expect(noOp.data).toBe(false);
+
+      const failedToggle = await db.rpc(
+        "portal_toggle_notification_recipient",
+        {
+          p_actor_email: "",
+          p_recipient_id: recipientId,
+          p_active: false,
+        },
+      );
+      expect(failedToggle.error?.code).toBe("23514");
+      expect(
+        (
+          await db
+            .from("notification_recipients")
+            .select("active")
+            .eq("id", recipientId)
+            .single()
+        ).data?.active,
+      ).toBe(true);
+
+      const toggled = await db.rpc("portal_toggle_notification_recipient", {
+        p_actor_email: actor,
+        p_recipient_id: recipientId,
+        p_active: false,
+      });
+      expect(toggled.error).toBeNull();
+      expect(toggled.data).toBe(true);
+
+      const failedRemove = await db.rpc(
+        "portal_remove_notification_recipient",
+        {
+          p_actor_email: "",
+          p_recipient_id: recipientId,
+        },
+      );
+      expect(failedRemove.error?.code).toBe("23514");
+      expect(
+        (
+          await db
+            .from("notification_recipients")
+            .select("active")
+            .eq("id", recipientId)
+            .single()
+        ).data?.active,
+      ).toBe(false);
+
+      const removed = await db.rpc("portal_remove_notification_recipient", {
+        p_actor_email: actor,
+        p_recipient_id: recipientId,
+      });
+      expect(removed.error).toBeNull();
+      expect(removed.data).toBe(true);
+      expect(
+        (
+          await db
+            .from("notification_recipients")
+            .select("id")
+            .eq("id", recipientId)
+            .maybeSingle()
+        ).data,
+      ).toBeNull();
+
+      const audits = await db
+        .from("audit_log")
+        .select("action, source, correlation_id, detail")
+        .eq("entity_id", recipientId);
+      expect(audits.error).toBeNull();
+      expect(audits.data).toHaveLength(3);
+      expect(audits.data).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            action: "recipients.add",
+            source: "staff",
+            detail: { active: true, has_label: true },
+          }),
+          expect.objectContaining({
+            action: "recipients.toggle",
+            source: "staff",
+            detail: { from: true, to: false },
+          }),
+          expect.objectContaining({
+            action: "recipients.remove",
+            source: "staff",
+            detail: { active: false },
+          }),
+        ]),
+      );
+      const correlationIds = new Set(
+        (audits.data ?? []).map((row) => row.correlation_id),
+      );
+      expect(correlationIds.size).toBe(3);
+      for (const correlationId of correlationIds) expectUuid(correlationId);
+
+      for (const mutation of [
+        db.rpc("portal_toggle_notification_recipient", {
+          p_actor_email: actor,
+          p_recipient_id: randomUUID(),
+          p_active: false,
+        }),
+        db.rpc("portal_remove_notification_recipient", {
+          p_actor_email: actor,
+          p_recipient_id: randomUUID(),
+        }),
+      ]) {
+        expect((await mutation).error?.code).toBe("P0002");
+      }
+
+      const failedAdd = await db.rpc("portal_add_notification_recipient", {
+        p_actor_email: "",
+        p_email: failedAddEmail,
+        p_label: null,
+        p_active: true,
+      });
+      expect(failedAdd.error?.code).toBe("23514");
+      expect(
+        (
+          await db
+            .from("notification_recipients")
+            .select("id")
+            .eq("email", failedAddEmail)
+        ).data,
+      ).toHaveLength(0);
+    } finally {
+      if (recipientId) {
+        await db.from("audit_log").delete().eq("entity_id", recipientId);
+        await db.from("notification_recipients").delete().eq("id", recipientId);
+      }
+      await db
+        .from("notification_recipients")
+        .delete()
+        .in("email", [email, failedAddEmail]);
+    }
   });
 
   test("updates recipient labels in place with one classified audit per change", async () => {

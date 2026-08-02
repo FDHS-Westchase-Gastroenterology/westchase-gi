@@ -92,6 +92,7 @@ test.describe("portal management UI", () => {
     const emailA = `ux-${runId}-keep@example.test`;
     const emailB = `ux-${runId}-paused@example.test`;
     const emailC = `ux-${runId}-removed@example.test`;
+    const emailD = `ux-${runId}-stale@example.test`;
 
     await signInExpectingPortal(page, SEED_EMAIL, SEED_PASSWORD);
     await page.goto("/admin/settings");
@@ -99,8 +100,8 @@ test.describe("portal management UI", () => {
       timeout: 30_000,
     });
 
-    // Add three recipients through the UI.
-    for (const email of [emailA, emailB, emailC]) {
+    // Add four recipients through the Server Action-backed UI.
+    for (const email of [emailA, emailB, emailC, emailD]) {
       await page.locator("#recipient-email").fill(email);
       await page.getByRole("button", { name: "Add", exact: true }).click();
       await expect(recipientItem(page, email)).toBeVisible({
@@ -110,6 +111,29 @@ test.describe("portal management UI", () => {
         "Recipient added, but confirmation email delivery could not be confirmed.",
       );
     }
+
+    // Database failures keep their stable Server Action mappings: duplicate
+    // normalized mailboxes conflict, while a row removed by another actor is
+    // reported as not found rather than generic success.
+    await page.locator("#recipient-email").fill(emailA.toUpperCase());
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(page.getByRole("alert")).toHaveText(
+      "That address is already on the list.",
+    );
+
+    const { data: staleRecipient } = await db
+      .from("notification_recipients")
+      .delete()
+      .eq("email", emailD)
+      .select("id")
+      .single();
+    expect(staleRecipient?.id).toBeTruthy();
+    await recipientItem(page, emailD).locator('[data-action="toggle"]').click();
+    await expect(page.getByRole("alert")).toHaveText(
+      "That recipient no longer exists — the list has been refreshed.",
+    );
+    await page.reload();
+    await expect(recipientItem(page, emailD)).toHaveCount(0);
 
     // Toggle B to paused; it persists — and the undo offer restores it
     // without a re-toggle.
