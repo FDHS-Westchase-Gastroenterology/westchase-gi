@@ -7,6 +7,13 @@ import {
   resolveFollowUpAt,
   type FollowUpChoice,
 } from "@/lib/portal/business-time";
+import {
+  CALL_OUTCOME_POLICY,
+  allowsCallAgainDay,
+  isCallOutcomeId,
+  requiresCallAgainDay,
+  type CallOutcomeId,
+} from "@/lib/portal/call-outcomes";
 import { serviceClient } from "@/lib/portal/server";
 
 function revalidateRequestViews(requestId: string) {
@@ -52,15 +59,8 @@ export async function addRequestNote(
 }
 
 // ---- Call-outcome composer (P1) -----------------------------------------
-
-export type CallOutcomeId =
-  | "booked"
-  | "reached_follow_up"
-  | "voicemail"
-  | "no_answer"
-  | "wont_schedule"
-  | "not_actionable"
-  | "scheduled_transferred";
+// The outcome vocabulary, call-again-day rules, and implied statuses live in
+// @/lib/portal/call-outcomes; this action only validates against that policy.
 
 export type CallOutcomeInput = {
   requestId: string;
@@ -85,38 +85,6 @@ export type CallOutcomeResult =
         | "unavailable";
     };
 
-const CALL_OUTCOME_IDS: readonly CallOutcomeId[] = [
-  "booked",
-  "reached_follow_up",
-  "voicemail",
-  "no_answer",
-  "wont_schedule",
-  "not_actionable",
-  "scheduled_transferred",
-];
-
-const FORBIDS_FOLLOW_UP = new Set<CallOutcomeId>([
-  "booked",
-  "wont_schedule",
-  "not_actionable",
-  "scheduled_transferred",
-]);
-
-const REQUIRES_FOLLOW_UP = new Set<CallOutcomeId>(["voicemail", "no_answer"]);
-
-const OUTCOME_STATUS: Record<
-  CallOutcomeId,
-  "contacted" | "scheduled" | "closed"
-> = {
-  booked: "scheduled",
-  reached_follow_up: "contacted",
-  voicemail: "contacted",
-  no_answer: "contacted",
-  wont_schedule: "closed",
-  not_actionable: "closed",
-  scheduled_transferred: "closed",
-};
-
 const uuidSchema = z.uuid();
 const undoCallOutcomeInputSchema = z.object({
   requestId: uuidSchema,
@@ -126,13 +94,6 @@ const requestStatusSchema = z.enum(["new", "contacted", "scheduled", "closed"]);
 const undoCallOutcomeResultSchema = z.object({
   status: requestStatusSchema,
 });
-
-function isCallOutcomeId(value: unknown): value is CallOutcomeId {
-  return (
-    typeof value === "string" &&
-    (CALL_OUTCOME_IDS as readonly string[]).includes(value)
-  );
-}
 
 function mapCallOutcomeRpcError(code: string | undefined): CallOutcomeResult {
   if (code === "P0002" || code === "22P02") {
@@ -168,14 +129,12 @@ export async function logCallOutcome(
   }
 
   const followUp = input.followUp;
-  if (FORBIDS_FOLLOW_UP.has(outcome)) {
+  if (!allowsCallAgainDay(outcome)) {
     if (followUp !== undefined) {
       return { ok: false, code: "invalid" };
     }
-  } else if (REQUIRES_FOLLOW_UP.has(outcome)) {
-    if (followUp === undefined) {
-      return { ok: false, code: "follow_up_required" };
-    }
+  } else if (requiresCallAgainDay(outcome) && followUp === undefined) {
+    return { ok: false, code: "follow_up_required" };
   }
 
   let followUpAt: string | null = null;
@@ -212,7 +171,7 @@ export async function logCallOutcome(
   revalidateRequestViews(requestId);
   return {
     ok: true,
-    status: OUTCOME_STATUS[outcome],
+    status: CALL_OUTCOME_POLICY[outcome].impliedStatus,
     followUpAt,
     eventId: eventId.data,
   };

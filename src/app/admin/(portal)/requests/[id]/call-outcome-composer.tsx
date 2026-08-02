@@ -14,12 +14,14 @@ import type {
   RequestClosureOutcome,
   RequestStatus,
 } from "@/lib/portal/contracts";
-import { Check } from "@/components/icons";
 import {
-  logCallOutcome,
-  undoCallOutcome,
+  allowsCallAgainDay,
+  outcomesImplying,
+  requiresCallAgainDay,
   type CallOutcomeId,
-} from "../actions";
+} from "@/lib/portal/call-outcomes";
+import { Check } from "@/components/icons";
+import { logCallOutcome, undoCallOutcome } from "../actions";
 import { followUpWhenLabel } from "../format";
 
 // The daily work loop uses the same appointment-request-lifecycle vocabulary as the queue.
@@ -33,35 +35,42 @@ type OutcomeOption = {
   helper?: string;
 };
 
-const CONTACTED_OUTCOMES: OutcomeOption[] = [
-  {
-    id: "reached_follow_up",
+// Staff-facing wording only — which outcomes exist, what each one implies,
+// and its call-again rule all come from the shared call-outcome policy.
+// The exhaustive Record means an outcome added there without copy here
+// fails to typecheck.
+const OUTCOME_COPY: Record<CallOutcomeId, Omit<OutcomeOption, "id">> = {
+  reached_follow_up: {
     label: "Reached the patient — follow-up needed",
     helper: "Talked it through; call again to finish.",
   },
-  { id: "voicemail", label: "Left a voicemail — call again" },
-  { id: "no_answer", label: "No answer — call again" },
-];
-
-const CLOSING_OUTCOMES: OutcomeOption[] = [
-  {
-    id: "wont_schedule",
+  voicemail: { label: "Left a voicemail — call again" },
+  no_answer: { label: "No answer — call again" },
+  // Auto-selected when staff choose Scheduled; never rendered as a row.
+  booked: { label: "Appointment booked" },
+  scheduled_transferred: {
+    label: "Appointment booked — request complete",
+    helper:
+      "The booking is on the practice schedule and no more follow-up is needed.",
+  },
+  wont_schedule: {
     label: "Patient won't schedule",
     helper: "Done — no appointment. Leaves the active queue.",
   },
-  {
-    id: "not_actionable",
+  not_actionable: {
     label: "Duplicate or not actionable",
     helper: "Done — no appointment. Leaves the active queue.",
   },
-];
-
-const FINISH_OUTCOME: OutcomeOption = {
-  id: "scheduled_transferred",
-  label: "Appointment booked — request complete",
-  helper:
-    "The booking is on the practice schedule and no more follow-up is needed.",
 };
+
+function optionsImplying(status: "contacted" | "closed"): OutcomeOption[] {
+  return outcomesImplying(status).map((id) => ({ id, ...OUTCOME_COPY[id] }));
+}
+
+const CONTACTED_OUTCOMES = optionsImplying("contacted");
+const CLOSED_OUTCOMES = optionsImplying("closed");
+const BOOKED_OUTCOME: CallOutcomeId | null =
+  outcomesImplying("scheduled")[0] ?? null;
 
 type LifecycleDestination = Exclude<RequestStatus, "new">;
 
@@ -117,33 +126,27 @@ const NY_DAY_INPUT = new Intl.DateTimeFormat("en-CA", {
   timeZone: "America/New_York",
 });
 
-function requiresFollowUp(outcome: CallOutcomeId | null): boolean {
-  return outcome === "voicemail" || outcome === "no_answer";
-}
-
-function allowsFollowUp(outcome: CallOutcomeId | null): boolean {
-  return requiresFollowUp(outcome) || outcome === "reached_follow_up";
-}
+// Success copy per outcome; the server resolves a call-again day only for
+// outcomes whose policy allows one, so the resurface sentence appends itself.
+const CONFIRMATION_COPY: Record<CallOutcomeId, string> = {
+  booked:
+    "Saved — appointment booked. It stays on the Scheduled list if you need it.",
+  reached_follow_up: "Saved — marked Contacted.",
+  voicemail: "Saved — marked Contacted.",
+  no_answer: "Saved — marked Contacted.",
+  scheduled_transferred: "Saved — closed as finished, appointment booked.",
+  wont_schedule: "Saved — the request is closed.",
+  not_actionable: "Saved — the request is closed.",
+};
 
 function confirmationFor(
   outcome: CallOutcomeId,
   followUpAt: string | null,
 ): string {
-  switch (outcome) {
-    case "booked":
-      return "Saved — appointment booked. It stays on the Scheduled list if you need it.";
-    case "reached_follow_up":
-    case "voicemail":
-    case "no_answer":
-      return followUpAt
-        ? `Saved — marked Contacted. It will resurface ${followUpWhenLabel(followUpAt)}.`
-        : "Saved — marked Contacted.";
-    case "wont_schedule":
-    case "not_actionable":
-      return "Saved — the request is closed.";
-    case "scheduled_transferred":
-      return "Saved — closed as finished, appointment booked.";
-  }
+  const saved = CONFIRMATION_COPY[outcome];
+  return followUpAt
+    ? `${saved} It will resurface ${followUpWhenLabel(followUpAt)}.`
+    : saved;
 }
 
 const ERROR_COPY = {
@@ -218,7 +221,7 @@ function composerReducer(
       return {
         ...state,
         destination: action.destination,
-        selected: action.destination === "scheduled" ? "booked" : null,
+        selected: action.destination === "scheduled" ? BOOKED_OUTCOME : null,
         followUpKind: null,
         followUpDay: "",
         attempted: false,
@@ -230,7 +233,7 @@ function composerReducer(
         selected: action.outcome,
         attempted: false,
         feedback: null,
-        ...(allowsFollowUp(action.outcome)
+        ...(allowsCallAgainDay(action.outcome)
           ? {}
           : { followUpKind: null, followUpDay: "" }),
       };
@@ -357,7 +360,7 @@ function FollowUpFieldset({
   dispatch: React.Dispatch<ComposerAction>;
 }) {
   const followUpMissing =
-    attempted && requiresFollowUp(outcome) && !followUpKind;
+    attempted && requiresCallAgainDay(outcome) && !followUpKind;
   const dayMissing = attempted && followUpKind === "day" && !followUpDay;
 
   return (
@@ -367,7 +370,7 @@ function FollowUpFieldset({
       </legend>
       <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
         This tells the queue when to bring the request back.
-        {requiresFollowUp(outcome) ? " Required for this outcome." : ""}
+        {requiresCallAgainDay(outcome) ? " Required for this outcome." : ""}
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {FOLLOW_UP_KINDS.map((chip) => (
@@ -601,11 +604,11 @@ export function CallOutcomeComposer({
   function submit(animateConfirmation: boolean) {
     if (!selected || pending) return;
     dispatch({ type: "attempt" });
-    if (requiresFollowUp(selected) && !followUpKind) return;
+    if (requiresCallAgainDay(selected) && !followUpKind) return;
     if (followUpKind === "day" && !followUpDay) return;
 
     const followUp =
-      allowsFollowUp(selected) && followUpKind
+      allowsCallAgainDay(selected) && followUpKind
         ? followUpKind === "day"
           ? { kind: "day" as const, date: followUpDay }
           : { kind: followUpKind }
@@ -800,14 +803,14 @@ export function CallOutcomeComposer({
             Why is this request closed?
           </legend>
           <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
-            {[FINISH_OUTCOME, ...CLOSING_OUTCOMES].map((option) => (
+            {CLOSED_OUTCOMES.map((option) => (
               <OutcomeRow key={option.id} {...outcomeRowProps(option)} />
             ))}
           </div>
         </fieldset>
       ) : null}
 
-      {selected && allowsFollowUp(selected) ? (
+      {selected && allowsCallAgainDay(selected) ? (
         <FollowUpFieldset
           outcome={selected}
           followUpKind={followUpKind}
@@ -823,7 +826,7 @@ export function CallOutcomeComposer({
         saveDisabled={
           pending ||
           !selected ||
-          (requiresFollowUp(selected) && !followUpKind) ||
+          (requiresCallAgainDay(selected) && !followUpKind) ||
           (followUpKind === "day" && !followUpDay)
         }
         operation={operation}
