@@ -11,9 +11,9 @@ import {
   parsePage,
   parseRequestSearch,
   requestSearchFilter,
-  REQUEST_PAGE_SIZE,
   REQUEST_SEARCH_MAX_LENGTH,
 } from "@/lib/portal/request-query";
+import { requestPageWindow } from "@/lib/portal/request-window";
 import { serviceClient } from "@/lib/portal/server";
 import {
   fetchAttentiveOpenRows,
@@ -276,7 +276,6 @@ export default async function AdminRequestsPage({
   const page = parsePage(params.page);
   const search = parseRequestSearch(params.q);
   const searchFilter = search ? requestSearchFilter(search) : "";
-  const from = (page - 1) * REQUEST_PAGE_SIZE;
   const now = new Date();
 
   const db = serviceClient();
@@ -323,41 +322,36 @@ export default async function AdminRequestsPage({
     0,
   );
 
-  const openTotal = orderedOpen.length;
-  const closedTotal = wantsClosed ? (closedCountProbe.count ?? 0) : 0;
-  // Display totals come from the SQL counts (the open fetch is capped);
-  // under the cap they are identical, and the window math uses the same
-  // numbers, so "Showing x–y of z" stays exact.
-  const openSqlTotal =
-    filter === "all"
-      ? counts.new + counts.contacted + counts.scheduled
-      : filter === "closed"
-        ? 0
-        : counts[filter];
-  const filteredTotal = openSqlTotal + closedTotal;
-  const totalPages = Math.max(1, Math.ceil(filteredTotal / REQUEST_PAGE_SIZE));
-  if (page > totalPages) {
-    redirect(requestsHref({ page: totalPages, search, status: filter }));
+  // The page window — open slice, closed-tail range, display totals, and the
+  // past-the-end redirect — is pure math, unit-tested in request-window.
+  const pageWindow = requestPageWindow({
+    filter,
+    page,
+    counts,
+    openRows: orderedOpen.length,
+    closedCount: closedCountProbe.count ?? 0,
+  });
+  if (pageWindow.redirectPage !== null) {
+    redirect(
+      requestsHref({ page: pageWindow.redirectPage, search, status: filter }),
+    );
   }
+  const { filteredTotal, totalPages, firstShown, lastShown } = pageWindow;
 
   // The page window: open rows first (attention-ordered), then the closed
   // tail (newest first) fetched from its own offset.
-  const openSlice = orderedOpen.slice(from, from + REQUEST_PAGE_SIZE);
-  const closedFrom = Math.max(0, from - openTotal);
-  const closedLimit = REQUEST_PAGE_SIZE - openSlice.length;
+  const openSlice = orderedOpen.slice(pageWindow.openFrom, pageWindow.openTo);
   let closedSlice: QueueRow[] = [];
-  if (wantsClosed && closedLimit > 0 && closedFrom < closedTotal) {
+  if (pageWindow.closedLimit > 0) {
     closedSlice = await fetchClosedRows(db, {
-      from: closedFrom,
-      limit: closedLimit,
+      from: pageWindow.closedFrom,
+      limit: pageWindow.closedLimit,
       searchFilter,
     });
   }
 
   const openBuckets = new Map(openSlice.map((row) => [row.id, row]));
   const requests = [...openSlice, ...closedSlice];
-  const firstShown = filteredTotal === 0 ? 0 : from + 1;
-  const lastShown = from + requests.length;
 
   const filters: Array<{ key: RequestStatus | "all"; label: string; count: number }> = [
     { key: "all", label: "All", count: total },
