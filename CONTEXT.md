@@ -160,6 +160,21 @@ bounded window with per-person engagement state.
 An approved printable page carrying a review QR code for one destination. Printing one is
 front-desk work; changing the artwork is not portal work.
 
+### Design
+
+**Register**:
+The voice a product speaks in. The patient site speaks in the brand register; the staff
+portal speaks in the product register.
+
+**Anchor**:
+A practice-owned design commitment every visual world composes around. Amending one is a
+practice decision, never a design judgment.
+_Avoid_: constraint, brand rule
+
+**Incumbent surface**:
+A surface whose implementation predates the latest committed visual world. Maintenance
+matches the surface itself until a rebuild replaces it.
+
 ### Patient site
 
 **Locale**:
