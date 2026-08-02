@@ -5,6 +5,13 @@ exported_at: 2026-07-30T00:48:26.954Z
 open_annotations: 4
 ---
 
+> **Status (2026-08-01): superseded where it conflicts with the glossary.** This draft
+> was annotated but never accepted; its "Protected familiarity contract" does not bind.
+> In particular, the invariant that the staff destination remains "Appointment requests"
+> is overturned: the destination renames to "Appointments" under the reserved-word model
+> recorded in `CONTEXT.md` and `docs/adr/0002-appointment-names-the-booked-visit.md`.
+> Where this brief and those documents disagree, they win.
+
 # Instructions for the revising collaborator
 
 The annotations below are anchored to the canonical manuscript included later in this file. Apply them deliberately, preserve the document's voice and evidence discipline, and report any conflict instead of silently choosing between incompatible directions.
