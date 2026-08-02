@@ -17,12 +17,19 @@ The authenticated tool where practice staff do their web-adjacent jobs, centered
 appointment-request queue.
 _Avoid_: dashboard
 
-### Appointment requests
+### Appointments
 
 **Appointment request**:
 A patient's ask for a callback to schedule a visit, submitted from the patient site. The
 portal's unit of work.
 _Avoid_: lead, booking, appointment, submission
+
+**Appointment**:
+The booked visit a request produces, as staff recorded it at scheduling: the visit date
+and, when known, the time. A point-in-time record — the practice's real scheduling
+system stays the system of record, so the portal shows what was booked, never what the
+schedule says now. A reserved word: never the request itself.
+_Avoid_: booking
 
 **Intake**:
 The pipeline that accepts an appointment request from the patient site and durably stores
@@ -30,7 +37,7 @@ it in the queue before the patient sees success.
 
 **Queue**:
 The durable collection of appointment requests awaiting or under staff work; the system of
-record for them. The staff-facing surface is called Requests.
+record for them. The staff-facing surface is called Appointments.
 _Avoid_: inbox
 
 **Receipt**:
@@ -63,17 +70,18 @@ _Avoid_: callback date, follow-up date
 
 **Undo**:
 The action that restores a request's previous lifecycle position after a saved call
-outcome, without erasing that outcome from Request activity.
+outcome, without erasing that outcome from Request history.
 
 **Appointment request notes**:
 The single per-request surface where staff read and leave context for the next person.
 _Avoid_: comments
 
-**Request activity**:
+**Request history**:
 A request's staff-visible history: notes, call outcomes, notification results, and Undo
-evidence. "Event stream" remains correct for the storage layer beneath it — never for
-this staff-facing surface.
-_Avoid_: timeline
+evidence. Named for the request — a history exists before any appointment does. "Event
+stream" remains correct for the storage layer beneath it — never for this staff-facing
+surface.
+_Avoid_: timeline, request activity, appointment history
 
 **Record handoff**:
 The staff-recorded moment a booked appointment is considered captured in the practice's
