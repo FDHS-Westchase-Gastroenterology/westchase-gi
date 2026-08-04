@@ -25,10 +25,9 @@ portal's unit of work.
 _Avoid_: lead, booking, appointment, submission
 
 **Appointment**:
-The booked visit a request produces, as staff recorded it at scheduling: the visit date
-and, when known, the time. A point-in-time record — the practice's real scheduling
-system stays the system of record, so the portal shows what was booked, never what the
-schedule says now. A reserved word: never the request itself.
+The real booked visit in the practice scheduling system. The portal confirms a booking
+handoff but does not create an Appointment or own its post-booking lifecycle. A reserved
+word: never the request itself.
 _Avoid_: booking
 
 **Intake**:
@@ -36,8 +35,8 @@ The pipeline that accepts an appointment request from the patient site and durab
 it in the queue before the patient sees success.
 
 **Queue**:
-The durable collection of appointment requests awaiting or under staff work; the system of
-record for them. The staff-facing surface is called Appointments.
+The durable collection of appointment requests staff work and later reference; the system of
+record for those requests. The staff-facing surface is called Appointments.
 _Avoid_: inbox
 
 **Receipt**:
@@ -47,20 +46,26 @@ one-time token.
 ### Appointment-request lifecycle
 
 **Request status**:
-Where a request sits in its working life: new, contacted, scheduled, or closed. Not a
-linear funnel — new → scheduled is the normal successful path.
+Where a request sits in its working life: NEW, CONTACTED, BOOKED, or CLOSED. NEW and
+CONTACTED are unresolved; BOOKED and CLOSED are terminal for ordinary work.
 _Avoid_: stage
 
-**Closure outcome**:
-The outcome recorded when a request closes: converted (an appointment was booked) or
-unconverted (closed without one). Classifying a closure assigns it; staff answer a plain
-question and never see this term.
+**BOOKED**:
+The terminal appointment-request state meaning staff confirmed the booking handoff in the
+practice scheduling system. It describes the request's resolution, not the Appointment's
+status.
+
+**Scheduled**:
+The staff-facing action label for confirming a booking handoff. The action moves a request
+to BOOKED; Scheduled is not a request state.
+
+**Closure reason**:
+The staff-recorded reason an appointment request reached CLOSED without a booking.
 _Avoid_: closure disposition, closure classification
 
-**Call outcome**:
-The staff-recorded result of one phone interaction with a patient — the real unit of
-front-desk work. The status change, call-again day, and closure outcome it implies
-belong to the same record.
+**Contact attempt**:
+Append-only evidence of one staff attempt to reach a patient. Repeated attempts preserve
+their own outcomes; CONTACTED does not claim the patient was reached.
 
 **Call-again day**:
 The staff-chosen day a contacted request should resurface for another attempt. Patient
@@ -69,23 +74,24 @@ different concept.
 _Avoid_: callback date, follow-up date
 
 **Undo**:
-The action that restores a request's previous lifecycle position after a saved call
-outcome, without erasing that outcome from Request history.
+The immediate correction that restores the latest eligible request transition's previous
+position without erasing that transition from Request history.
 
 **Appointment request notes**:
 The single per-request surface where staff read and leave context for the next person.
 _Avoid_: comments
 
 **Request history**:
-A request's staff-visible history: notes, call outcomes, notification results, and Undo
-evidence. Named for the request — a history exists before any appointment does. "Event
-stream" remains correct for the storage layer beneath it — never for this staff-facing
-surface.
+A request's staff-visible history: notes, contact attempts, transitions, notification
+results, and Undo evidence. Named for the request — a history exists before any appointment
+does. "Event stream" remains correct for the storage layer beneath it — never for this
+staff-facing surface.
 _Avoid_: timeline, request activity, appointment history
 
-**Record handoff**:
-The staff-recorded moment a booked appointment is considered captured in the practice's
-real scheduling record. Starts a converted request's retention clock.
+**Booking handoff**:
+The staff-confirmed fact that a visit was booked in the practice scheduling system. It moves
+the appointment request to BOOKED and starts its resolved-request retention clock; it does
+not create a portal Appointment.
 
 ### Retention and privacy
 
