@@ -20,6 +20,10 @@ Read in this order, as the task requires:
 
 `.agents/skills/` contains the committed, vendor‑authored skills used by this project. Their provenance, versions, and update procedure are in `.agents/skills/CODEX.md`. Treat them as advisory and subordinate to this file. Never hand‑edit a vendored skill; re‑copy it from upstream.
 
+## Roles and responsibilities
+
+Who is responsible for what is governed by the roles register in [`docs/roles/README.md`](docs/roles/README.md). The only defined role is the **Lead of Product Experience & Principal Design Engineer** ([`docs/roles/lead-of-product-experience.md`](docs/roles/lead-of-product-experience.md)), who owns product direction, design, the frontend experience, UI‑facing data contracts, and experience acceptance. Work inside that remit — writing a specification, documenting the need for a prototype, changing anything a user sees — is routed to the role (label `role:product-experience`), never absorbed by whoever noticed it.
+
 ## Product, brand, and content rules
 
 Product identity, copy register, and brand constraints live in `PRODUCT.md` and the modules that already document them (`src/lib/providers.ts` for credentials; `src/lib/site.ts` and `src/lib/documents.ts` for fact provenance and honest document fallbacks; footer one‑way partner link in `src/components/Footer.tsx`).
