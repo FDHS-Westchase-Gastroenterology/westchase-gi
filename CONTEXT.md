@@ -108,8 +108,10 @@ Carrying no patient-supplied data: no name, contact detail, reason text, or note
 for everything that leaves the queue — notifications, logs, telemetry, audit metadata.
 
 **Telemetry**:
-The patient site's aggregate, PHI-free usage counts. Directional evidence — counts and
-funnels, never per-visitor journeys.
+Software-recorded usage evidence; every payload is PHI-free. On the patient site:
+aggregate counts and funnels, never per-visitor journeys. In the staff portal:
+staff-usage telemetry, disclosed to the practice and recorded to improve the product
+for staff.
 _Avoid_: tracking
 
 ### People and access
