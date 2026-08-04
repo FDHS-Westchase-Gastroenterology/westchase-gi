@@ -22,24 +22,33 @@ function revalidateRequestViews(requestId: string) {
   revalidatePath(`/admin/requests/${requestId}`);
 }
 
+export type AddRequestNoteState =
+  | { status: "idle" }
+  | { status: "success"; message: string }
+  | { status: "error"; message: string };
+
+const NOTE_WRITE_ERROR =
+  "We couldn’t confirm this note was saved. Your note is still here. Check the notes before trying again.";
+
 export async function addRequestNote(
-  requestId: string,
+  _state: AddRequestNoteState,
   formData: FormData,
-): Promise<void> {
+): Promise<AddRequestNoteState> {
   const session = await requireRole("staff");
 
+  const requestId = formData.get("requestId");
   const rawNote = formData.get("note");
   if (typeof rawNote !== "string") {
-    throw new Error("Notes must be 1-2000 characters");
+    return { status: "error", message: NOTE_WRITE_ERROR };
   }
 
   const note = rawNote.trim();
   if (note.length === 0 || note.length > 2000) {
-    throw new Error("Notes must be 1-2000 characters");
+    return { status: "error", message: NOTE_WRITE_ERROR };
   }
 
   if (typeof requestId !== "string" || requestId.trim().length === 0) {
-    throw new Error("Request not found");
+    return { status: "error", message: NOTE_WRITE_ERROR };
   }
 
   const { error } = await serviceClient().rpc("portal_add_request_note", {
@@ -49,13 +58,11 @@ export async function addRequestNote(
     p_note_length: note.length,
   });
   if (error) {
-    if (error.code === "P0002" || error.code === "22P02") {
-      throw new Error("Request not found");
-    }
-    throw new Error(`Note write failed: ${error.code}`);
+    return { status: "error", message: NOTE_WRITE_ERROR };
   }
 
   revalidateRequestViews(requestId);
+  return { status: "success", message: "Note added." };
 }
 
 // ---- Call-outcome composer (P1) -----------------------------------------
