@@ -24,23 +24,38 @@ export function ConfirmAuthForm() {
   );
 
   useEffect(() => {
-    // Strict Mode replays effects in development (Next 16.3 enables it):
-    // parse exactly once, or the replay would read the fragment this effect
-    // just stripped and report a valid link as invalid.
-    if (parsedOnce.current) return;
-    parsedOnce.current = true;
+    function parseFragment() {
+      const hash = window.location.hash;
+      if (!hash) {
+        // Strict Mode replays effects in development (Next 16.3 enables it).
+        // Do not replace a valid parsed link with invalid after the first pass
+        // stripped its fragment, but do reject a genuinely fragment-free load.
+        if (!parsedOnce.current) {
+          parsedOnce.current = true;
+          setLink("invalid");
+        }
+        return;
+      }
 
-    const params = new URLSearchParams(window.location.hash.slice(1));
-    const tokenHash = params.get("token_hash")?.trim() ?? "";
-    const type = params.get("type");
-    const parsedLink: AuthLink | "invalid" =
-      tokenHash.length >= 20 && (type === "invite" || type === "recovery")
-        ? { tokenHash, type }
-        : "invalid";
+      parsedOnce.current = true;
+      const params = new URLSearchParams(hash.slice(1));
+      const tokenHash = params.get("token_hash")?.trim() ?? "";
+      const type = params.get("type");
+      const parsedLink: AuthLink | "invalid" =
+        tokenHash.length >= 20 && (type === "invite" || type === "recovery")
+          ? { tokenHash, type }
+          : "invalid";
 
-    // Remove the bearer token from the address bar before any navigation.
-    window.history.replaceState(null, "", window.location.pathname);
-    setLink(parsedLink);
+      // Remove the bearer token from the address bar before any navigation.
+      window.history.replaceState(null, "", window.location.pathname);
+      setLink(parsedLink);
+    }
+
+    parseFragment();
+    // Opening a newer email in the same tab can navigate only the fragment,
+    // leaving this Client Component mounted. Parse that new bearer too.
+    window.addEventListener("hashchange", parseFragment);
+    return () => window.removeEventListener("hashchange", parseFragment);
   }, []);
 
   if (link === null) {
