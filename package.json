@@ -15,29 +15,29 @@
     "ui:reference:portal": "node --env-file-if-exists=.env.local scripts/capture-ui-reference.mjs --portal"
   },
   "dependencies": {
-    "@supabase/ssr": "0.12.3",
-    "@supabase/supabase-js": "2.110.8",
+    "@supabase/ssr": "0.12.4",
+    "@supabase/supabase-js": "2.111.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
-    "next": "16.2.11",
+    "next": "16.3.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-zoom-pan-pinch": "^4.0.3",
-    "resend": "6.18.0",
+    "resend": "6.18.1",
     "zod": "4.4.3"
   },
   "devDependencies": {
-    "@playwright/test": "1.62.0",
+    "@playwright/test": "1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^26",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.11",
+    "eslint-config-next": "16.3.0",
     "jsqr": "^1.4.0",
     "pdf-lib": "^1.17.1",
     "pngjs": "^7.0.0",
-    "react-doctor": "^0.9.1",
+    "react-doctor": "^0.9.2",
     "tailwindcss": "^4",
     "typescript": "^6"
   }

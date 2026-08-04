@@ -16,8 +16,8 @@ const SUPABASE_KEY = requiredEnv(
 );
 const SEED_ADMIN_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_ADMIN_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
-const PREVIEW_USERNAME = process.env.PORTAL_PREVIEW_USERNAME;
-const PREVIEW_PASSWORD = process.env.PORTAL_PREVIEW_PASSWORD;
+const PREVIEW_USERNAME = process.env.PORTAL_PREVIEW_USERNAME ?? "";
+const PREVIEW_PASSWORD = process.env.PORTAL_PREVIEW_PASSWORD ?? "";
 const GENERIC_LOGIN_ERROR =
   "Unable to sign in. Check your credentials and try again.";
 const RESET_REQUEST_MESSAGE =

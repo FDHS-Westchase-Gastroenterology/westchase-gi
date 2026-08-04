@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import {
   confirmAuthLinkAction,
   type ConfirmAuthActionState,
@@ -15,12 +15,19 @@ const INITIAL_STATE: ConfirmAuthActionState = { error: null };
 
 export function ConfirmAuthForm() {
   const [link, setLink] = useState<AuthLink | "invalid" | null>(null);
+  const parsedOnce = useRef(false);
   const [state, formAction, pending] = useActionState(
     confirmAuthLinkAction,
     INITIAL_STATE,
   );
 
   useEffect(() => {
+    // Strict Mode replays effects in development (Next 16.3 enables it):
+    // parse exactly once, or the replay would read the fragment this effect
+    // just stripped and report a valid link as invalid.
+    if (parsedOnce.current) return;
+    parsedOnce.current = true;
+
     const params = new URLSearchParams(window.location.hash.slice(1));
     const tokenHash = params.get("token_hash")?.trim() ?? "";
     const type = params.get("type");
@@ -31,8 +38,7 @@ export function ConfirmAuthForm() {
 
     // Remove the bearer token from the address bar before any navigation.
     window.history.replaceState(null, "", window.location.pathname);
-    const timer = window.setTimeout(() => setLink(parsedLink), 0);
-    return () => window.clearTimeout(timer);
+    setLink(parsedLink);
   }, []);
 
   if (link === null) {

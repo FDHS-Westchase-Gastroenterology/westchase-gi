@@ -108,8 +108,10 @@ Carrying no patient-supplied data: no name, contact detail, reason text, or note
 for everything that leaves the queue — notifications, logs, telemetry, audit metadata.
 
 **Telemetry**:
-The patient site's aggregate, PHI-free usage counts. Directional evidence — counts and
-funnels, never per-visitor journeys.
+Software-recorded usage evidence; every payload is PHI-free. On the patient site:
+aggregate counts and funnels, never per-visitor journeys. In the staff portal:
+staff-usage telemetry, disclosed to the practice and recorded to improve the product
+for staff.
 _Avoid_: tracking
 
 ### People and access
@@ -159,6 +161,21 @@ bounded window with per-person engagement state.
 **Review flyer**:
 An approved printable page carrying a review QR code for one destination. Printing one is
 front-desk work; changing the artwork is not portal work.
+
+### Design
+
+**Register**:
+The voice a product speaks in. The patient site speaks in the brand register; the staff
+portal speaks in the product register.
+
+**Anchor**:
+A practice-owned design commitment every visual world composes around. Amending one is a
+practice decision, never a design judgment.
+_Avoid_: constraint, brand rule
+
+**Incumbent surface**:
+A surface whose implementation predates the latest committed visual world. Maintenance
+matches the surface itself until a rebuild replaces it.
 
 ### Patient site
 
