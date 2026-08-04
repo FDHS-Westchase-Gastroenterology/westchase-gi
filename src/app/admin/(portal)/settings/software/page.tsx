@@ -141,7 +141,7 @@ export default async function AdminSettingsSoftwarePage() {
             </div>
           </dl>
           <p className="mt-3 max-w-[62ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-            The practice can grant a new developer access to GitHub, Vercel,
+            The practice can grant a new maintainer access to GitHub, Vercel,
             and Porkbun now. After the Supabase project transfer and Resend
             handoff are documented, it can grant those services too. The
             application does not need to be rebuilt, and the Supabase transfer

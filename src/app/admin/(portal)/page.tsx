@@ -271,7 +271,7 @@ export default async function AdminHomePage() {
               data-testid="no-recipients-warning"
               className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.92rem] leading-relaxed text-[var(--color-ink)]"
             >
-              No one is getting email alerts right now. New requests still
+              No one is getting notification emails right now. New requests still
               land here, but no email goes out when one arrives.{" "}
               <Link
                 href="/admin/settings#notifications"
@@ -288,10 +288,10 @@ export default async function AdminHomePage() {
               className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.92rem] leading-relaxed text-[var(--color-ink)]"
             >
               {deliveryFailureCount === 1
-                ? "An email alert failed to send in the last 24 hours."
-                : `${deliveryFailureCount} email alerts failed to send in the last 24 hours.`}{" "}
+                ? "A notification email failed to send in the last 24 hours."
+                : `${deliveryFailureCount} notification emails failed to send in the last 24 hours.`}{" "}
               Requests still land here — the queue is always the system of
-              record — but the email pings may not be reaching anyone.{" "}
+              record — but notification emails may not be reaching anyone.{" "}
               <Link
                 href="/admin/help#something-wrong"
                 className="font-bold underline underline-offset-2"
