@@ -81,10 +81,5 @@ if [ ! -x "$supabase_bin" ] || [ "$($supabase_bin --version 2>/dev/null || true)
 fi
 export PATH="$HOME/.local/bin:$PATH"
 
-if [ ! -f .env.local ]; then
-  echo "Creating an unconfigured .env.local from the variable inventory..."
-  cp -- .env.example .env.local
-fi
-
 printf 'Orb setup complete: Node %s, npm %s, Supabase CLI %s.\n' \
   "$(node --version)" "$(npm --version)" "$(supabase --version)"
