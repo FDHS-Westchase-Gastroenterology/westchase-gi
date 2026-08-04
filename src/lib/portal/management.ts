@@ -14,7 +14,15 @@ import {
   sendStaffSetupLink,
   type StaffSetupType,
 } from "@/lib/portal/management-email";
-import { recipientRpcFailureCode } from "@/lib/portal/recipient-rpc";
+import {
+  addRecipientWithCompatibility,
+  removeRecipientWithCompatibility,
+  toggleRecipientWithCompatibility,
+} from "@/lib/portal/recipient-compatibility";
+import {
+  recipientRpcFailureCode,
+  runRecipientMutationTransport,
+} from "@/lib/portal/recipient-rpc";
 import { portalUrl, serviceClient } from "@/lib/portal/server";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -210,21 +218,54 @@ export async function addNotificationRecipientMutation(
   const db = serviceClient();
   const email = normalizeEmail(parsed.data.email);
   const active = parsed.data.active ?? true;
-  const { data: recipientId, error } = await db.rpc(
-    "portal_add_notification_recipient",
-    {
-      p_actor_email: session.email,
-      p_email: email,
-      p_label: parsed.data.label || null,
-      p_active: active,
-    },
+  const label = parsed.data.label || null;
+  const mutation = await runRecipientMutationTransport(
+    () =>
+      db.rpc("portal_add_notification_recipient", {
+        p_actor_email: session.email,
+        p_email: email,
+        p_label: label,
+        p_active: active,
+      }),
+    () =>
+      addRecipientWithCompatibility(db, {
+        actorEmail: session.email,
+        email,
+        label,
+        active,
+      }),
   );
 
-  if (error || typeof recipientId !== "string") {
-    if (recipientRpcFailureCode("add", error?.code) === "conflict") {
-      return failure("conflict", "That notification recipient already exists.");
+  let recipientId: string;
+  if (mutation.transport === "compatibility") {
+    if (!mutation.response.ok) {
+      if (mutation.response.code === "conflict") {
+        return failure(
+          "conflict",
+          "That notification recipient already exists.",
+        );
+      }
+      return failure(
+        "unavailable",
+        "The notification recipient could not be added.",
+      );
     }
-    return failure("unavailable", "The notification recipient could not be added.");
+    recipientId = mutation.response.recipientId;
+  } else {
+    const { data, error } = mutation.response;
+    if (error || typeof data !== "string") {
+      if (recipientRpcFailureCode("add", error?.code) === "conflict") {
+        return failure(
+          "conflict",
+          "That notification recipient already exists.",
+        );
+      }
+      return failure(
+        "unavailable",
+        "The notification recipient could not be added.",
+      );
+    }
+    recipientId = data;
   }
 
   revalidateManagementViews();
@@ -296,19 +337,43 @@ export async function toggleNotificationRecipientMutation(
     return failure("invalid", "Choose a valid notification recipient.");
   }
 
-  const { error } = await serviceClient().rpc(
-    "portal_toggle_notification_recipient",
-    {
-      p_actor_email: session.email,
-      p_recipient_id: parsed.data.recipientId,
-      p_active: parsed.data.active,
-    },
+  const db = serviceClient();
+  const mutation = await runRecipientMutationTransport(
+    () =>
+      db.rpc("portal_toggle_notification_recipient", {
+        p_actor_email: session.email,
+        p_recipient_id: parsed.data.recipientId,
+        p_active: parsed.data.active,
+      }),
+    () =>
+      toggleRecipientWithCompatibility(db, {
+        actorEmail: session.email,
+        recipientId: parsed.data.recipientId,
+        active: parsed.data.active,
+      }),
   );
-  if (error) {
-    if (recipientRpcFailureCode("toggle", error.code) === "not_found") {
+
+  if (mutation.transport === "compatibility") {
+    if (!mutation.response.ok) {
+      if (mutation.response.code === "not_found") {
+        return failure("not_found", "Notification recipient not found.");
+      }
+      return failure(
+        "unavailable",
+        "The notification recipient could not be updated.",
+      );
+    }
+  } else if (mutation.response.error) {
+    if (
+      recipientRpcFailureCode("toggle", mutation.response.error.code) ===
+      "not_found"
+    ) {
       return failure("not_found", "Notification recipient not found.");
     }
-    return failure("unavailable", "The notification recipient could not be updated.");
+    return failure(
+      "unavailable",
+      "The notification recipient could not be updated.",
+    );
   }
 
   revalidateManagementViews();
@@ -324,18 +389,41 @@ export async function removeNotificationRecipientMutation(
     return failure("invalid", "Choose a valid notification recipient.");
   }
 
-  const { error } = await serviceClient().rpc(
-    "portal_remove_notification_recipient",
-    {
-      p_actor_email: session.email,
-      p_recipient_id: parsed.data.id,
-    },
+  const db = serviceClient();
+  const mutation = await runRecipientMutationTransport(
+    () =>
+      db.rpc("portal_remove_notification_recipient", {
+        p_actor_email: session.email,
+        p_recipient_id: parsed.data.id,
+      }),
+    () =>
+      removeRecipientWithCompatibility(db, {
+        actorEmail: session.email,
+        recipientId: parsed.data.id,
+      }),
   );
-  if (error) {
-    if (recipientRpcFailureCode("remove", error.code) === "not_found") {
+
+  if (mutation.transport === "compatibility") {
+    if (!mutation.response.ok) {
+      if (mutation.response.code === "not_found") {
+        return failure("not_found", "Notification recipient not found.");
+      }
+      return failure(
+        "unavailable",
+        "The notification recipient could not be removed.",
+      );
+    }
+  } else if (mutation.response.error) {
+    if (
+      recipientRpcFailureCode("remove", mutation.response.error.code) ===
+      "not_found"
+    ) {
       return failure("not_found", "Notification recipient not found.");
     }
-    return failure("unavailable", "The notification recipient could not be removed.");
+    return failure(
+      "unavailable",
+      "The notification recipient could not be removed.",
+    );
   }
 
   revalidateManagementViews();

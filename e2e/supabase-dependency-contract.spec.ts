@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { test, expect } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { test, expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 import {
@@ -21,6 +22,23 @@ const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PATIENT_PHONE = "8135550199";
+const RECIPIENT_RPC_MIGRATION =
+  "supabase/migrations/20260802005123_atomic_notification_recipient_mutations.sql";
+const DROP_RECIPIENT_RPCS_SQL = `
+drop function if exists public.portal_add_notification_recipient(
+  text,
+  text,
+  text,
+  boolean
+);
+drop function if exists public.portal_toggle_notification_recipient(
+  text,
+  uuid,
+  boolean
+);
+drop function if exists public.portal_remove_notification_recipient(text, uuid);
+notify pgrst, 'reload schema';
+`;
 
 function publicClient() {
   return createClient(SUPABASE_URL, SUPABASE_KEY, {
@@ -48,6 +66,44 @@ function expectNoPatientLeak(blob: unknown, note?: string | null): void {
   const text = JSON.stringify(blob);
   expect(text).not.toContain(note ?? "TEST patient value that is never present");
   expect(text).not.toContain(PATIENT_PHONE);
+}
+
+async function mutateSettings(
+  page: Page,
+  operation: string,
+  input: Record<string, unknown>,
+): Promise<{ status: number; body: Record<string, unknown> }> {
+  return page.evaluate(
+    async ({ operation: selectedOperation, input: selectedInput }) => {
+      const response = await fetch("/admin/settings/mutations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          operation: selectedOperation,
+          input: selectedInput,
+        }),
+      });
+      return {
+        status: response.status,
+        body: (await response.json()) as Record<string, unknown>,
+      };
+    },
+    { operation, input },
+  );
+}
+
+function queryDisposableDatabase(sql: string): void {
+  if (process.env.SUPABASE_PROJECT_REF !== "local") {
+    throw new Error("Disposable database query refused outside the local stack");
+  }
+  const workdirArgs = process.env.SUPABASE_DISPOSABLE_WORKDIR
+    ? ["--workdir", process.env.SUPABASE_DISPOSABLE_WORKDIR]
+    : [];
+  execFileSync(
+    "supabase",
+    ["db", "query", sql, "--local", ...workdirArgs, "--agent=no"],
+    { cwd: process.cwd(), stdio: "pipe" },
+  );
 }
 
 async function insertRequest(
@@ -918,6 +974,274 @@ test.describe("Supabase dependency contract", () => {
         .from("notification_recipients")
         .delete()
         .in("email", [email, failedAddEmail]);
+    }
+  });
+
+  test("bridges only missing recipient RPCs and compensates compatibility failures", async ({
+    page,
+  }) => {
+    test.skip(
+      process.env.SUPABASE_PROJECT_REF !== "local",
+      "RPC removal and forced audit failures use only the disposable database.",
+    );
+
+    const db = serviceDb();
+    const permissionEmail = `recipient-permission-${randomUUID()}@example.test`;
+    const failedAddEmail = `recipient-compat-failed-${randomUUID()}@example.test`;
+    const recipientEmail = `recipient-compat-${randomUUID()}@example.test`;
+    const auditConstraint = "audit_log_test_reject_recipient_compatibility";
+    const migrationSql = readFileSync(RECIPIENT_RPC_MIGRATION, "utf8");
+    let recipientId: string | null = null;
+
+    const clearAuditConstraint = () =>
+      queryDisposableDatabase(
+        `alter table public.audit_log drop constraint if exists ${auditConstraint}`,
+      );
+    const rejectAuditAction = (action: string) => {
+      clearAuditConstraint();
+      queryDisposableDatabase(
+        `alter table public.audit_log add constraint ${auditConstraint} check (action <> '${action}') not valid`,
+      );
+    };
+    const recipientRows = (email: string) =>
+      db.from("notification_recipients").select("id, active").eq("email", email);
+
+    await page.goto("/admin/login");
+    await page.getByLabel("Email").fill(SEED_EMAIL);
+    await page.getByLabel("Password").fill(SEED_PASSWORD);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page).toHaveURL(/\/admin\/?$/);
+
+    try {
+      queryDisposableDatabase(`
+        revoke execute on function public.portal_add_notification_recipient(
+          text,
+          text,
+          text,
+          boolean
+        ) from service_role;
+      `);
+      try {
+        const permissionProbe = await db.rpc(
+          "portal_add_notification_recipient",
+          {
+            p_actor_email: SEED_EMAIL,
+            p_email: permissionEmail,
+            p_label: null,
+            p_active: true,
+          },
+        );
+        expect(permissionProbe.error?.code).toBe("42501");
+
+        const denied = await mutateSettings(page, "recipient.add", {
+          email: permissionEmail,
+          label: "Permission failure must stay closed",
+          active: true,
+        });
+        expect(denied.status).toBe(503);
+        expect(denied.body).toMatchObject({
+          ok: false,
+          code: "unavailable",
+        });
+        expect((await recipientRows(permissionEmail)).data).toHaveLength(0);
+      } finally {
+        queryDisposableDatabase(`
+          grant execute on function public.portal_add_notification_recipient(
+            text,
+            text,
+            text,
+            boolean
+          ) to service_role;
+        `);
+      }
+
+      queryDisposableDatabase(DROP_RECIPIENT_RPCS_SQL);
+      const missingProbes = [
+        () =>
+          db.rpc("portal_add_notification_recipient", {
+            p_actor_email: "",
+            p_email: `recipient-probe-${randomUUID()}@example.test`,
+            p_label: null,
+            p_active: true,
+          }),
+        () =>
+          db.rpc("portal_toggle_notification_recipient", {
+            p_actor_email: SEED_EMAIL,
+            p_recipient_id: randomUUID(),
+            p_active: false,
+          }),
+        () =>
+          db.rpc("portal_remove_notification_recipient", {
+            p_actor_email: SEED_EMAIL,
+            p_recipient_id: randomUUID(),
+          }),
+      ];
+      for (const probe of missingProbes) {
+        await expect
+          .poll(async () => (await probe()).error?.code, { timeout: 15_000 })
+          .toBe("PGRST202");
+      }
+
+      rejectAuditAction("recipients.add");
+      const failedAdd = await mutateSettings(page, "recipient.add", {
+        email: failedAddEmail,
+        label: "Forced compatibility rollback",
+        active: true,
+      });
+      expect(failedAdd.status).toBe(503);
+      expect(failedAdd.body).toMatchObject({
+        ok: false,
+        code: "unavailable",
+      });
+      expect((await recipientRows(failedAddEmail)).data).toHaveLength(0);
+      clearAuditConstraint();
+
+      const added = await mutateSettings(page, "recipient.add", {
+        email: recipientEmail,
+        label: "Compatibility recipient",
+        active: true,
+      });
+      expect(added.status).toBe(201);
+      expect(added.body.ok).toBe(true);
+
+      const inserted = await recipientRows(recipientEmail);
+      expect(inserted.error).toBeNull();
+      expect(inserted.data).toHaveLength(1);
+      expect(inserted.data?.[0].active).toBe(true);
+      recipientId = String(inserted.data?.[0].id);
+      expectUuid(recipientId);
+
+      const duplicate = await mutateSettings(page, "recipient.add", {
+        email: recipientEmail.toUpperCase(),
+        label: "Duplicate compatibility recipient",
+        active: true,
+      });
+      expect(duplicate.status).toBe(409);
+      expect(duplicate.body).toMatchObject({ ok: false, code: "conflict" });
+
+      rejectAuditAction("recipients.toggle");
+      const failedToggle = await mutateSettings(page, "recipient.toggle", {
+        recipientId,
+        active: false,
+      });
+      expect(failedToggle.status).toBe(503);
+      expect(failedToggle.body).toMatchObject({
+        ok: false,
+        code: "unavailable",
+      });
+      expect((await recipientRows(recipientEmail)).data?.[0].active).toBe(true);
+      clearAuditConstraint();
+
+      const toggled = await mutateSettings(page, "recipient.toggle", {
+        recipientId,
+        active: false,
+      });
+      expect(toggled.status).toBe(200);
+      expect(toggled.body.ok).toBe(true);
+      expect((await recipientRows(recipientEmail)).data?.[0].active).toBe(false);
+
+      const missingId = randomUUID();
+      const missingToggle = await mutateSettings(page, "recipient.toggle", {
+        recipientId: missingId,
+        active: false,
+      });
+      expect(missingToggle.status).toBe(404);
+      expect(missingToggle.body).toMatchObject({
+        ok: false,
+        code: "not_found",
+      });
+
+      rejectAuditAction("recipients.remove");
+      const failedRemove = await mutateSettings(page, "recipient.remove", {
+        id: recipientId,
+      });
+      expect(failedRemove.status).toBe(503);
+      expect(failedRemove.body).toMatchObject({
+        ok: false,
+        code: "unavailable",
+      });
+      expect((await recipientRows(recipientEmail)).data?.[0].active).toBe(false);
+      clearAuditConstraint();
+
+      const removed = await mutateSettings(page, "recipient.remove", {
+        id: recipientId,
+      });
+      expect(removed.status).toBe(200);
+      expect(removed.body.ok).toBe(true);
+      expect((await recipientRows(recipientEmail)).data).toHaveLength(0);
+
+      const missingRemove = await mutateSettings(page, "recipient.remove", {
+        id: missingId,
+      });
+      expect(missingRemove.status).toBe(404);
+      expect(missingRemove.body).toMatchObject({
+        ok: false,
+        code: "not_found",
+      });
+
+      const audits = await db
+        .from("audit_log")
+        .select("action, source, correlation_id, detail")
+        .eq("entity_id", recipientId);
+      expect(audits.error).toBeNull();
+      expect(audits.data).toHaveLength(3);
+      expect(audits.data).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            action: "recipients.add",
+            source: "staff",
+            detail: { active: true, has_label: true },
+          }),
+          expect.objectContaining({
+            action: "recipients.toggle",
+            source: "staff",
+            detail: { from: true, to: false },
+          }),
+          expect.objectContaining({
+            action: "recipients.remove",
+            source: "staff",
+            detail: { active: false },
+          }),
+        ]),
+      );
+      for (const audit of audits.data ?? []) {
+        expectUuid(audit.correlation_id);
+      }
+    } finally {
+      try {
+        clearAuditConstraint();
+      } finally {
+        try {
+          queryDisposableDatabase(
+            `${DROP_RECIPIENT_RPCS_SQL}\n${migrationSql}\nnotify pgrst, 'reload schema';`,
+          );
+          await expect
+            .poll(
+              async () =>
+                (
+                  await db.rpc("portal_toggle_notification_recipient", {
+                    p_actor_email: SEED_EMAIL,
+                    p_recipient_id: randomUUID(),
+                    p_active: false,
+                  })
+                ).error?.code,
+              { timeout: 15_000 },
+            )
+            .toBe("P0002");
+        } finally {
+          if (recipientId) {
+            await db.from("audit_log").delete().eq("entity_id", recipientId);
+            await db
+              .from("notification_recipients")
+              .delete()
+              .eq("id", recipientId);
+          }
+          await db
+            .from("notification_recipients")
+            .delete()
+            .in("email", [permissionEmail, failedAddEmail, recipientEmail]);
+        }
+      }
     }
   });
 
