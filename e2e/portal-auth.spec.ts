@@ -886,6 +886,9 @@ test.describe("portal authentication and direct REST boundaries", () => {
         const tokenHash = generated.data.properties?.hashed_token;
         if (!tokenHash) throw new Error("Ineligible recovery link failed");
 
+        // Keep the two identity fixtures isolated from one another's failed
+        // server-action state before opening each generated email link.
+        await page.goto("/admin/login");
         await page.goto(
           "/admin/auth/confirm#token_hash=" +
             encodeURIComponent(tokenHash) +
