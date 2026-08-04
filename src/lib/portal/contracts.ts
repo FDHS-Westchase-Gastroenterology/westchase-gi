@@ -43,7 +43,12 @@ export type RequestClosureOutcome = "unconverted" | "converted";
 export type StaffRole = "admin" | "staff";
 
 export const RESET_REQUEST_MESSAGE =
-  "If an active staff account exists for that email, a password reset link has been sent.";
+  "If an active staff account exists for that email, you’ll receive a password reset link.";
+
+// These mirror the intended hosted Auth settings and the committed local
+// configuration. Development and Production are still verified separately.
+export const PASSWORD_RESET_LINK_EXPIRY_MINUTES = 60;
+export const PASSWORD_RESET_RESEND_COOLDOWN_SECONDS = 60;
 
 /**
  * Validation rules mirror the client rules the form applies: name required,

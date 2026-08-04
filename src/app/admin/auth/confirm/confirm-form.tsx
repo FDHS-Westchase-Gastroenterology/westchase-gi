@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import {
   confirmAuthLinkAction,
   type ConfirmAuthActionState,
 } from "@/app/admin/actions";
+import { PasswordForm } from "@/app/admin/set-password/password-form";
 
 type AuthLink = {
   tokenHash: string;
@@ -51,14 +53,26 @@ export function ConfirmAuthForm() {
 
   if (link === "invalid") {
     return (
-      <p
-        role="alert"
-        className="mt-6 rounded-[var(--radius)] bg-[var(--color-amber-soft)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
-      >
-        This link is incomplete or no longer valid. Request another reset or
-        ask your portal administrator for a new invitation.
-      </p>
+      <div className="mt-6">
+        <p
+          role="alert"
+          className="rounded-[var(--radius)] bg-[var(--color-amber-soft)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
+        >
+          This link is incomplete or no longer valid. Request a new link to
+          continue.
+        </p>
+        <Link
+          href="/admin/forgot-password"
+          className="btn btn-navy mt-4 min-h-11 w-full"
+        >
+          Request a new link
+        </Link>
+      </div>
     );
+  }
+
+  if (link.type === "recovery") {
+    return <PasswordForm mode="recovery" recoveryTokenHash={link.tokenHash} />;
   }
 
   return (
@@ -76,7 +90,7 @@ export function ConfirmAuthForm() {
       <button
         type="submit"
         disabled={pending}
-        className="btn btn-navy w-full disabled:cursor-wait disabled:opacity-65"
+        className="btn btn-navy min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
       >
         {pending ? "Verifying…" : "Continue"}
       </button>
