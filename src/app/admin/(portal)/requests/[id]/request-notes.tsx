@@ -1,7 +1,10 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
-import { addRequestNote } from "../actions";
+import { useActionState, useCallback, useRef, useState } from "react";
+import {
+  addRequestNote,
+  type AddRequestNoteState,
+} from "../actions";
 
 export type RequestNoteView = {
   id: string;
@@ -10,10 +13,7 @@ export type RequestNoteView = {
 };
 
 const INITIAL_VISIBLE_NOTES = 3;
-
-type NoteFeedback =
-  | { tone: "success"; text: string }
-  | { tone: "error"; text: string };
+const INITIAL_ACTION_STATE: AddRequestNoteState = { status: "idle" };
 
 export function RequestNotes({
   requestId,
@@ -26,16 +26,31 @@ export function RequestNotes({
   const [composerMotion, setComposerMotion] = useState(true);
   const [showAll, setShowAll] = useState(false);
   const [draft, setDraft] = useState("");
-  const [feedback, setFeedback] = useState<NoteFeedback | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [feedbackDismissed, setFeedbackDismissed] = useState(false);
+  const [feedback, formAction, pending] = useActionState(
+    addRequestNote,
+    INITIAL_ACTION_STATE,
+  );
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const submitWithMotionRef = useRef(false);
   const canSave = draft.trim().length > 0;
   const hiddenCount = Math.max(notes.length - INITIAL_VISIBLE_NOTES, 0);
+  const saved =
+    feedback.status === "success" && !feedbackDismissed && !pending;
+  const composerVisible = composerOpen && !saved;
+  const focusAddButtonOnSave = useCallback(
+    (feedbackElement: HTMLParagraphElement | null) => {
+      if (feedbackElement) {
+        requestAnimationFrame(() => addButtonRef.current?.focus());
+      }
+    },
+    [],
+  );
 
   function openComposer(event: React.MouseEvent<HTMLButtonElement>) {
-    setFeedback(null);
+    setDraft("");
+    setFeedbackDismissed(true);
     setComposerMotion(event.detail > 0);
     setComposerOpen(true);
     requestAnimationFrame(() => textareaRef.current?.focus());
@@ -43,35 +58,10 @@ export function RequestNotes({
 
   function closeComposer(event: React.MouseEvent<HTMLButtonElement>) {
     setDraft("");
-    setFeedback(null);
+    setFeedbackDismissed(true);
     setComposerMotion(event.detail > 0);
     setComposerOpen(false);
     requestAnimationFrame(() => addButtonRef.current?.focus());
-  }
-
-  function submitNote(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!canSave || pending) return;
-
-    const formData = new FormData();
-    formData.set("note", draft);
-    setFeedback(null);
-
-    startTransition(async () => {
-      try {
-        await addRequestNote(requestId, formData);
-        setDraft("");
-        setComposerMotion(submitWithMotionRef.current);
-        setComposerOpen(false);
-        setFeedback({ tone: "success", text: "Note added." });
-        requestAnimationFrame(() => addButtonRef.current?.focus());
-      } catch {
-        setFeedback({
-          tone: "error",
-          text: "We couldn’t confirm this note was saved. Your note is still here. Check the notes before trying again.",
-        });
-      }
-    });
   }
 
   return (
@@ -90,11 +80,11 @@ export function RequestNotes({
           ref={addButtonRef}
           type="button"
           aria-controls="request-note-form"
-          aria-expanded={composerOpen}
-          aria-hidden={composerOpen}
-          data-open={composerOpen}
+          aria-expanded={composerVisible}
+          aria-hidden={composerVisible}
+          data-open={composerVisible}
           data-animate={composerMotion}
-          inert={composerOpen}
+          inert={composerVisible}
           onClick={openComposer}
           className="request-note-add-trigger btn btn-outline btn-sm print-hide min-h-11"
         >
@@ -102,13 +92,14 @@ export function RequestNotes({
         </button>
       </div>
 
-      {feedback?.tone === "success" ? (
+      {saved ? (
         <p
+          ref={focusAddButtonOnSave}
           role="status"
           data-testid="request-note-feedback"
           className="print-hide mt-4 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-4 py-3 text-[0.9rem] font-bold leading-relaxed text-[var(--color-ink)]"
         >
-          {feedback.text}
+          {feedback.message}
         </p>
       ) : null}
 
@@ -163,18 +154,23 @@ export function RequestNotes({
       )}
 
       <div
-        aria-hidden={!composerOpen}
-        data-open={composerOpen}
+        aria-hidden={!composerVisible}
+        data-open={composerVisible}
         data-animate={composerMotion}
-        inert={!composerOpen}
+        inert={!composerVisible}
         className="request-note-disclosure print-hide"
       >
         <div className="request-note-disclosure__clip">
           <form
             id="request-note-form"
-            onSubmit={submitNote}
+            action={formAction}
+            onSubmit={() => {
+              setFeedbackDismissed(false);
+              setComposerMotion(submitWithMotionRef.current);
+            }}
             className="request-note-composer mt-5 border-t border-[var(--color-line)] pt-5"
           >
+            <input type="hidden" name="requestId" value={requestId} />
             <label
               htmlFor="request-note"
               className="block text-sm font-bold text-[var(--color-ink)]"
@@ -191,13 +187,13 @@ export function RequestNotes({
               value={draft}
               disabled={pending}
               aria-describedby={
-                feedback?.tone === "error"
+                feedback.status === "error" && !feedbackDismissed
                   ? "request-note-guidance request-note-error"
                   : "request-note-guidance"
               }
               onChange={(event) => {
                 setDraft(event.target.value);
-                if (feedback?.tone === "error") setFeedback(null);
+                if (feedback.status === "error") setFeedbackDismissed(true);
               }}
               placeholder="What should the next staff member know?"
               className="mt-2 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 py-3 text-[0.95rem] text-[var(--color-ink)] outline-none transition-[border-color,box-shadow] focus:border-[var(--color-teal-ink)] focus:ring-2 focus:ring-[var(--color-teal-ink)] focus:ring-offset-2 disabled:opacity-60"
@@ -208,14 +204,16 @@ export function RequestNotes({
             >
               Keep medical details in the clinical record.
             </p>
-            {feedback?.tone === "error" ? (
+            {feedback.status === "error" &&
+            !feedbackDismissed &&
+            !pending ? (
               <p
                 id="request-note-error"
                 role="alert"
                 data-testid="request-note-feedback"
                 className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.9rem] font-bold leading-relaxed text-[var(--color-ink)]"
               >
-                {feedback.text}
+                {feedback.message}
               </p>
             ) : null}
             <div className="mt-4 flex flex-wrap items-center gap-3">
