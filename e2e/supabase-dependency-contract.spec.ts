@@ -1,6 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 import { test, expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
@@ -92,7 +91,7 @@ async function mutateSettings(
   );
 }
 
-function queryDisposableDatabase(sql: string): void {
+function runDisposableDatabaseQuery(queryArgs: string[]): void {
   if (process.env.SUPABASE_PROJECT_REF !== "local") {
     throw new Error("Disposable database query refused outside the local stack");
   }
@@ -101,9 +100,17 @@ function queryDisposableDatabase(sql: string): void {
     : [];
   execFileSync(
     "supabase",
-    ["db", "query", sql, "--local", ...workdirArgs, "--agent=no"],
+    ["db", "query", ...queryArgs, "--local", ...workdirArgs, "--agent=no"],
     { cwd: process.cwd(), stdio: "pipe" },
   );
+}
+
+function queryDisposableDatabase(sql: string): void {
+  runDisposableDatabaseQuery([sql]);
+}
+
+function applyDisposableDatabaseFile(file: string): void {
+  runDisposableDatabaseQuery(["--file", file]);
 }
 
 async function insertRequest(
@@ -990,7 +997,6 @@ test.describe("Supabase dependency contract", () => {
     const failedAddEmail = `recipient-compat-failed-${randomUUID()}@example.test`;
     const recipientEmail = `recipient-compat-${randomUUID()}@example.test`;
     const auditConstraint = "audit_log_test_reject_recipient_compatibility";
-    const migrationSql = readFileSync(RECIPIENT_RPC_MIGRATION, "utf8");
     let recipientId: string | null = null;
 
     const clearAuditConstraint = () =>
@@ -1212,9 +1218,9 @@ test.describe("Supabase dependency contract", () => {
         clearAuditConstraint();
       } finally {
         try {
-          queryDisposableDatabase(
-            `${DROP_RECIPIENT_RPCS_SQL}\n${migrationSql}\nnotify pgrst, 'reload schema';`,
-          );
+          queryDisposableDatabase(DROP_RECIPIENT_RPCS_SQL);
+          applyDisposableDatabaseFile(RECIPIENT_RPC_MIGRATION);
+          queryDisposableDatabase("notify pgrst, 'reload schema'");
           await expect
             .poll(
               async () =>
