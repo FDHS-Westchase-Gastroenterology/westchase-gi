@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { requireRole } from "@/lib/portal/auth";
+import { authorizationStatus, requireRole } from "@/lib/portal/auth";
 import {
   addNotificationRecipientMutation,
   changeStaffRoleMutation,
@@ -24,14 +24,6 @@ const JSON_HEADERS = {
 
 function json(body: unknown, status: number): Response {
   return Response.json(body, { status, headers: JSON_HEADERS });
-}
-
-function authorizationStatus(error: unknown): 401 | 403 | null {
-  if (typeof error !== "object" || error === null || !("status" in error)) {
-    return null;
-  }
-  const status = error.status;
-  return status === 401 || status === 403 ? status : null;
 }
 
 function failureStatus(failure: ManagementFailure | Exclude<MaintainerMutationResult, { ok: true }>): number {
