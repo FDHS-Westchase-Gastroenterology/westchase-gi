@@ -1,0 +1,85 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+for tool in curl tar; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    echo "error: required setup tool is unavailable: $tool" >&2
+    exit 1
+  fi
+done
+
+echo "Installing the Node.js version pinned by .nvmrc..."
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+nvm_version="v0.40.3"
+if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+  mkdir -p "$NVM_DIR"
+  curl -fsSL --retry 3 \
+    "https://github.com/nvm-sh/nvm/archive/refs/tags/${nvm_version}.tar.gz" \
+    | tar -xz --strip-components=1 -C "$NVM_DIR"
+fi
+
+# The installer cannot update this running process.
+# shellcheck disable=SC1091
+. "$NVM_DIR/nvm.sh" --no-use
+node_version="$(tr -d '[:space:]' < .nvmrc)"
+nvm install "$node_version"
+nvm alias default "$node_version" >/dev/null
+nvm use --silent "$node_version"
+
+profile_marker="# westchase-gi orb toolchain"
+if ! grep -Fqx "$profile_marker" "$HOME/.bash_profile" 2>/dev/null; then
+  cat >> "$HOME/.bash_profile" <<EOF
+
+$profile_marker
+case "\$PWD/" in
+  "$repo_root/"*)
+    export NVM_DIR="\$HOME/.nvm"
+    if [ -s "\$NVM_DIR/nvm.sh" ]; then
+      . "\$NVM_DIR/nvm.sh" --no-use
+      nvm use --silent "\$(tr -d '[:space:]' < "$repo_root/.nvmrc")" >/dev/null
+    fi
+    case ":\$PATH:" in
+      *":\$HOME/.local/bin:"*) ;;
+      *) export PATH="\$HOME/.local/bin:\$PATH" ;;
+    esac
+    ;;
+esac
+EOF
+fi
+
+echo "Installing locked npm dependencies..."
+npm ci --no-audit --no-fund
+
+echo "Installing Chromium and its system dependencies..."
+npx playwright install --with-deps chromium
+
+echo "Installing the CI-pinned Supabase CLI for authoring tasks..."
+supabase_cli_version="2.109.1"
+supabase_bin="$HOME/.local/bin/supabase"
+mkdir -p "$(dirname "$supabase_bin")"
+if [ ! -x "$supabase_bin" ] || [ "$($supabase_bin --version 2>/dev/null || true)" != "$supabase_cli_version" ]; then
+  case "$(uname -m)" in
+    x86_64) supabase_arch="amd64" ;;
+    aarch64 | arm64) supabase_arch="arm64" ;;
+    *)
+      echo "error: unsupported architecture for the Supabase CLI: $(uname -m)" >&2
+      exit 1
+      ;;
+  esac
+
+  supabase_tmp="$(mktemp -d)"
+  trap 'rm -rf "$supabase_tmp"' EXIT
+  curl -fsSL --retry 3 \
+    "https://github.com/supabase/cli/releases/download/v${supabase_cli_version}/supabase_linux_${supabase_arch}.tar.gz" \
+    | tar -xz -C "$supabase_tmp" supabase
+  install -m 0755 "$supabase_tmp/supabase" "$supabase_bin"
+  rm -rf "$supabase_tmp"
+  trap - EXIT
+fi
+export PATH="$HOME/.local/bin:$PATH"
+
+printf 'Orb setup complete: Node %s, npm %s, Supabase CLI %s.\n' \
+  "$(node --version)" "$(npm --version)" "$(supabase --version)"

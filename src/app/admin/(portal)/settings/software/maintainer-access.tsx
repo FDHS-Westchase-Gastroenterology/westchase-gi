@@ -216,7 +216,7 @@ export function MaintainerAccess({
           <p className="mt-2 max-w-[70ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
             Everyone listed here can edit and publish the practice&rsquo;s
             website. Administrators can add a maintainer or remove one — for
-            example, when the practice changes developers.
+            example, when the practice changes maintainers.
           </p>
 
           {error && (

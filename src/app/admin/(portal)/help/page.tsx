@@ -57,7 +57,7 @@ export default async function AdminHelpPage() {
             every notification email went missing, the request would still
             be sitting safely in the queue. That is the whole point of this
             system — the practice can never lose one again. These are
-            callback leads, not booked appointments: someone still calls
+            appointment requests, not booked appointments: someone still calls
             the patient to schedule.
           </p>
         </div>

@@ -19,6 +19,8 @@ const POLICIES = []
 
 const RPC_SIGNATURES = {
   portal_acknowledge_staff_release: "p_user_id uuid, p_release_id text",
+  portal_add_notification_recipient:
+    "p_actor_email text, p_email text, p_label text, p_active boolean",
   portal_add_request_note:
     "p_actor_email text, p_request_id uuid, p_note text, p_note_length integer",
   portal_check_intake_rate_limit:
@@ -40,11 +42,15 @@ const RPC_SIGNATURES = {
   portal_record_staff_password_reset: "p_user_id uuid",
   portal_record_staff_release_dismiss: "p_user_id uuid, p_release_id text",
   portal_record_staff_release_guide_open: "p_user_id uuid, p_release_id text",
+  portal_remove_notification_recipient:
+    "p_actor_email text, p_recipient_id uuid",
   portal_run_data_lifecycle:
     "p_actor_email text, p_now timestamp with time zone",
   portal_set_request_legal_hold:
     "p_actor_email text, p_request_id uuid, p_held boolean, p_reason text",
   portal_set_staff_tour_dismissed: "p_user_id uuid, p_dismissed boolean",
+  portal_toggle_notification_recipient:
+    "p_actor_email text, p_recipient_id uuid, p_active boolean",
   portal_update_recipient_label:
     "p_actor_email text, p_recipient_id uuid, p_label text",
   portal_update_request_status:
@@ -80,6 +86,7 @@ const RETIRED_RPC_SIGNATURES = [
 const RPCS = Object.keys(RPC_SIGNATURES).sort()
 const RPC_RESULTS = {
   portal_acknowledge_staff_release: "boolean",
+  portal_add_notification_recipient: "uuid",
   portal_add_request_note: "uuid",
   portal_check_intake_rate_limit: "boolean",
   portal_record_analytics_event: "boolean",
@@ -94,14 +101,17 @@ const RPC_RESULTS = {
   portal_record_staff_password_reset: "boolean",
   portal_record_staff_release_dismiss: "boolean",
   portal_record_staff_release_guide_open: "boolean",
+  portal_remove_notification_recipient: "boolean",
   portal_run_data_lifecycle: "jsonb",
   portal_set_request_legal_hold: "boolean",
   portal_set_staff_tour_dismissed: "boolean",
+  portal_toggle_notification_recipient: "boolean",
   portal_update_recipient_label: "boolean",
   portal_update_request_status: "boolean",
 }
 const AUDIT_RPC_SOURCES = {
   portal_acknowledge_staff_release: "staff",
+  portal_add_notification_recipient: "staff",
   portal_add_request_note: "staff",
   portal_close_request: "staff",
   portal_complete_staff_onboarding: "staff",
@@ -113,9 +123,11 @@ const AUDIT_RPC_SOURCES = {
   portal_record_staff_password_reset: "staff",
   portal_record_staff_release_dismiss: "staff",
   portal_record_staff_release_guide_open: "staff",
+  portal_remove_notification_recipient: "staff",
   portal_run_data_lifecycle: "system",
   portal_set_request_legal_hold: "staff",
   portal_set_staff_tour_dismissed: "staff",
+  portal_toggle_notification_recipient: "staff",
   portal_update_recipient_label: "staff",
   portal_update_request_status: "staff",
 }
@@ -178,6 +190,10 @@ const PORTAL_RELEASE_GUIDE_FIX_MIGRATION = {
 const CALL_OUTCOME_UNDO_MIGRATION = {
   version: "20260729172311",
   name: "add_atomic_call_outcome_undo",
+}
+const RECIPIENT_MUTATIONS_MIGRATION = {
+  version: "20260802005123",
+  name: "atomic_notification_recipient_mutations",
 }
 
 const TARGETS = new Set(["dev", "prod"])
@@ -642,6 +658,14 @@ async function main() {
         row.name === CALL_OUTCOME_UNDO_MIGRATION.name,
     ),
     `Call-outcome undo migration ${CALL_OUTCOME_UNDO_MIGRATION.version}_${CALL_OUTCOME_UNDO_MIGRATION.name} is not applied`,
+  )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === RECIPIENT_MUTATIONS_MIGRATION.version &&
+        row.name === RECIPIENT_MUTATIONS_MIGRATION.name,
+    ),
+    `Recipient-mutations migration ${RECIPIENT_MUTATIONS_MIGRATION.version}_${RECIPIENT_MUTATIONS_MIGRATION.name} is not applied`,
   )
 
   const onboardingColumnRows = await queryDatabase({
@@ -1242,6 +1266,36 @@ async function main() {
         "portal_update_recipient_label must lock, trim, cap, and audit the label change",
       )
     }
+    if (rpc.proname === "portal_add_notification_recipient") {
+      const definition = rpc.definition.toLowerCase()
+      assert(
+        definition.includes("insert into public.notification_recipients") &&
+          definition.includes("recipients.add") &&
+          definition.includes("lower") &&
+          definition.includes("btrim") &&
+          definition.includes("char_length"),
+        "portal_add_notification_recipient must normalize, bound, insert, and audit the recipient",
+      )
+    }
+    if (rpc.proname === "portal_toggle_notification_recipient") {
+      const definition = rpc.definition.toLowerCase()
+      assert(
+        definition.includes("for update") &&
+          definition.includes("recipients.toggle") &&
+          definition.includes("'from'") &&
+          definition.includes("'to'"),
+        "portal_toggle_notification_recipient must lock, update, and audit the active state",
+      )
+    }
+    if (rpc.proname === "portal_remove_notification_recipient") {
+      const definition = rpc.definition.toLowerCase()
+      assert(
+        definition.includes("for update") &&
+          definition.includes("delete from public.notification_recipients") &&
+          definition.includes("recipients.remove"),
+        "portal_remove_notification_recipient must lock, delete, and audit the recipient",
+      )
+    }
     if (
       rpc.proname === "portal_open_staff_release" ||
       rpc.proname === "portal_acknowledge_staff_release" ||
@@ -1436,6 +1490,9 @@ async function main() {
   )
   console.log(
     `Verified ${target} migration: ${CALL_OUTCOME_UNDO_MIGRATION.version}_${CALL_OUTCOME_UNDO_MIGRATION.name}`,
+  )
+  console.log(
+    `Verified ${target} migration: ${RECIPIENT_MUTATIONS_MIGRATION.version}_${RECIPIENT_MUTATIONS_MIGRATION.name}`,
   )
   console.log(
     `Verified ${target} appointment-request lifecycle: nullable legacy-safe columns, constraints, preview, hold-aware deletion`,
