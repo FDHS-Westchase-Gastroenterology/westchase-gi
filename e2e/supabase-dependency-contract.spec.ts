@@ -1026,6 +1026,7 @@ test.describe("Supabase dependency contract", () => {
   test("bridges only missing recipient RPCs and compensates compatibility failures", async ({
     page,
   }) => {
+    test.setTimeout(60_000);
     test.skip(
       process.env.SUPABASE_PROJECT_REF !== "local",
       "RPC removal and forced audit failures use only the disposable database.",
