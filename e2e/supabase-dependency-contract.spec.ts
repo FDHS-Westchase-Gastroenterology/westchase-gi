@@ -23,21 +23,20 @@ const UUID_RE =
 const PATIENT_PHONE = "8135550199";
 const RECIPIENT_RPC_MIGRATION =
   "supabase/migrations/20260802005123_atomic_notification_recipient_mutations.sql";
-const DROP_RECIPIENT_RPCS_SQL = `
-drop function if exists public.portal_add_notification_recipient(
-  text,
-  text,
-  text,
-  boolean
-);
-drop function if exists public.portal_toggle_notification_recipient(
-  text,
-  uuid,
-  boolean
-);
-drop function if exists public.portal_remove_notification_recipient(text, uuid);
-notify pgrst, 'reload schema';
-`;
+const DROP_RECIPIENT_RPC_QUERIES = [
+  `drop function if exists public.portal_add_notification_recipient(
+    text,
+    text,
+    text,
+    boolean
+  )`,
+  `drop function if exists public.portal_toggle_notification_recipient(
+    text,
+    uuid,
+    boolean
+  )`,
+  "drop function if exists public.portal_remove_notification_recipient(text, uuid)",
+] as const;
 
 function publicClient() {
   return createClient(SUPABASE_URL, SUPABASE_KEY, {
@@ -111,6 +110,13 @@ function queryDisposableDatabase(sql: string): void {
 
 function applyDisposableDatabaseFile(file: string): void {
   runDisposableDatabaseQuery(["--file", file]);
+}
+
+function dropRecipientRpcs(): void {
+  for (const sql of DROP_RECIPIENT_RPC_QUERIES) {
+    queryDisposableDatabase(sql);
+  }
+  queryDisposableDatabase("notify pgrst, 'reload schema'");
 }
 
 async function insertRequest(
@@ -1061,7 +1067,7 @@ test.describe("Supabase dependency contract", () => {
         `);
       }
 
-      queryDisposableDatabase(DROP_RECIPIENT_RPCS_SQL);
+      dropRecipientRpcs();
       const missingProbes = [
         () =>
           db.rpc("portal_add_notification_recipient", {
@@ -1218,7 +1224,7 @@ test.describe("Supabase dependency contract", () => {
         clearAuditConstraint();
       } finally {
         try {
-          queryDisposableDatabase(DROP_RECIPIENT_RPCS_SQL);
+          dropRecipientRpcs();
           applyDisposableDatabaseFile(RECIPIENT_RPC_MIGRATION);
           queryDisposableDatabase("notify pgrst, 'reload schema'");
           await expect
