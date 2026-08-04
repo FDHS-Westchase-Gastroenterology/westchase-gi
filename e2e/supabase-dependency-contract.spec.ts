@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { test, expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
@@ -108,12 +109,44 @@ function queryDisposableDatabase(sql: string): void {
   runDisposableDatabaseQuery([sql]);
 }
 
-function applyDisposableDatabaseFile(file: string): void {
-  runDisposableDatabaseQuery(["--file", file]);
+function recipientRpcMigrationStatements(): string[] {
+  let remaining = readFileSync(RECIPIENT_RPC_MIGRATION, "utf8").trim();
+  const statements: string[] = [];
+
+  // Each PL/pgSQL body contains ordinary semicolons inside its dollar quotes.
+  // Extract the three function definitions at their real top-level boundary,
+  // then split the remaining revoke/grant statements normally.
+  for (let index = 0; index < 3; index += 1) {
+    const boundary = remaining.indexOf("$$;");
+    if (boundary < 0) {
+      throw new Error("Recipient RPC migration has an unexpected function body");
+    }
+    statements.push(remaining.slice(0, boundary + 3).trim());
+    remaining = remaining.slice(boundary + 3).trim();
+  }
+
+  statements.push(
+    ...remaining
+      .split(";")
+      .map((statement) => statement.trim())
+      .filter(Boolean),
+  );
+  if (statements.length !== 9) {
+    throw new Error("Recipient RPC migration has an unexpected statement count");
+  }
+  return statements;
 }
 
 function dropRecipientRpcs(): void {
   for (const sql of DROP_RECIPIENT_RPC_QUERIES) {
+    queryDisposableDatabase(sql);
+  }
+  queryDisposableDatabase("notify pgrst, 'reload schema'");
+}
+
+function restoreRecipientRpcs(): void {
+  dropRecipientRpcs();
+  for (const sql of recipientRpcMigrationStatements()) {
     queryDisposableDatabase(sql);
   }
   queryDisposableDatabase("notify pgrst, 'reload schema'");
@@ -1224,9 +1257,7 @@ test.describe("Supabase dependency contract", () => {
         clearAuditConstraint();
       } finally {
         try {
-          dropRecipientRpcs();
-          applyDisposableDatabaseFile(RECIPIENT_RPC_MIGRATION);
-          queryDisposableDatabase("notify pgrst, 'reload schema'");
+          restoreRecipientRpcs();
           await expect
             .poll(
               async () =>
