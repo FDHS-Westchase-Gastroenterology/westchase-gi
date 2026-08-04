@@ -155,9 +155,9 @@ software topology (repositories, hosting projects, asset ledgers). The jobs:
   a state machine staff use to manage, continuously update, and eventually close
   incoming appointment requests. The machine itself — its states, transitions,
   operations, invariants, and its boundary with the practice's real scheduling
-  system — is defined in its own effort
-  ([issue #191](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/191));
-  this charter claims the job, not the mechanics.
+  system — is defined in the
+  [Appointment Request Workflow Specification](docs/appointment-request-workflow-specification.md);
+  this charter claims the job while that specification owns the mechanics.
 - Reprint a review QR flyer.
 - Choose who receives new-request notification emails.
 - Manage who can sign in (invite staff, change roles, deactivate accounts).
@@ -243,14 +243,14 @@ Durable truths, re-owned in the 2026-08-04 re-charter session:
 - Deliberately not building: generic metric dashboards or vanity counts; kanban or
   bulk mutations; a CMS, flyer editor, or QR generator.
 
-Awaiting the appointments state machine
-([issue #191](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/191)),
-held as incumbent code rather than charter truth:
+Appointments workflow contract, defined in the
+[Appointment Request Workflow Specification](docs/appointment-request-workflow-specification.md):
 
-- The request lifecycle vocabulary (Contacted / Scheduled / Closed, resurfacing,
-  reopening) and the save-flow choreography (status choice, call-again day, closure
-  outcome, Undo). The running implementation is the reference until the machine is
-  defined; "no forced linear funnel" travels to that session as input, not as law.
+- The portal resolves appointment requests through NEW, CONTACTED, BOOKED, or CLOSED;
+  contact attempts remain append-only evidence; booking handoff ends the portal's ownership
+  without creating a portal Appointment. **Scheduled** remains the staff-facing action label
+  for the transition to BOOKED. Semantic commands, versioning, idempotency, an append-only
+  transition log, and post-commit notifications govern the build era.
 
 Incumbent inventory, true today as code rather than commitment:
 
@@ -260,10 +260,9 @@ Incumbent inventory, true today as code rather than commitment:
   explainer with a tour-restart path. The design charter's transition rule governs
   them until rebuilds.
 
-Explicitly undecided / open product facts: recoverable staff lifecycle operations;
-the maintainer invite/cancel/accept/revoke acceptance pass; the structured
-website-change-request workflow (later conversationally assisted) planned for the
-maintainer seam.
+Explicitly undecided / open product facts: the maintainer invite/cancel/accept/revoke
+acceptance pass; the structured website-change-request workflow (later conversationally
+assisted) planned for the maintainer seam.
 
 ### Product Principles
 

@@ -1,3 +1,7 @@
+---
+status: superseded by ADR-0003
+---
+
 # "Appointment" names the booked visit, never the request
 
 The staff destination renames from "Appointment requests" to "Appointments," and the
