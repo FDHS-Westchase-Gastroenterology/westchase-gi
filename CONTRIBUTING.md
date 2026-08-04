@@ -9,6 +9,12 @@ Product truth lives in `PRODUCT.md` (patient-site and staff-portal registers) an
 Repository custody facts are summarized in [`README.md`](README.md); the design of every
 external connection is in [`ARCHITECTURE.md`](ARCHITECTURE.md#external-interfaces).
 
+Task responsibility is governed by the roles register in
+[`docs/roles/README.md`](docs/roles/README.md). Before starting or assigning
+specification, prototype, or user-facing work, check whether it falls inside a defined
+role's remit — if so, it routes to that role (label `role:product-experience`) rather
+than being absorbed by whoever noticed it.
+
 ## Setup
 
 ```bash
@@ -125,6 +131,10 @@ compliance-sensitive text changes (provider credentials are verbatim — see
 
 Keep PRs small and single-purpose. Link the issue. Anything unverified (links, facts,
 locales) stays out until verified — see `PRODUCT.md` design principle 1.
+
+A PR inside a defined role's remit (see [`docs/roles/README.md`](docs/roles/README.md))
+carries that role's acceptance before merge: for anything a user sees, the Lead of
+Product Experience's.
 
 ## Merging
 
