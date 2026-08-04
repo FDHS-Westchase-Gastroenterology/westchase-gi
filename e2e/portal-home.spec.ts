@@ -230,8 +230,8 @@ test.describe("portal home", () => {
     await expect(warning).toBeVisible();
     await expect(warning).toContainText(
       expectedCount === 1
-        ? "An email alert failed to send in the last 24 hours."
-        : `${expectedCount} email alerts failed to send in the last 24 hours.`,
+        ? "A notification email failed to send in the last 24 hours."
+        : `${expectedCount} notification emails failed to send in the last 24 hours.`,
     );
 
     // Removing the staged failure restores the honest quiet state: the
