@@ -886,14 +886,18 @@ test.describe("portal authentication and direct REST boundaries", () => {
         const tokenHash = generated.data.properties?.hashed_token;
         if (!tokenHash) throw new Error("Ineligible recovery link failed");
 
-        // Keep the two identity fixtures isolated from one another's failed
-        // server-action state before opening each generated email link.
-        await page.goto("/admin/login");
+        // Force a fresh document so the two identity fixtures cannot share
+        // mounted server-action or fragment state. Same-tab replacement is
+        // exercised separately by VAL-ADMIN-020.
+        await page.goto("about:blank");
         await page.goto(
           "/admin/auth/confirm#token_hash=" +
             encodeURIComponent(tokenHash) +
             "&type=recovery",
         );
+        await expect
+          .poll(() => page.evaluate(() => window.location.hash))
+          .toBe("");
         await page.getByLabel("New password").fill(attemptedPassword);
         await page.getByLabel("Confirm password").fill(attemptedPassword);
         await page
