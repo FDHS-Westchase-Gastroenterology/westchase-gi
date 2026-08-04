@@ -14,6 +14,15 @@ import {
   sendStaffSetupLink,
   type StaffSetupType,
 } from "@/lib/portal/management-email";
+import {
+  addRecipientWithCompatibility,
+  removeRecipientWithCompatibility,
+  toggleRecipientWithCompatibility,
+} from "@/lib/portal/recipient-compatibility";
+import {
+  recipientRpcFailureCode,
+  runRecipientMutationTransport,
+} from "@/lib/portal/recipient-rpc";
 import { portalUrl, serviceClient } from "@/lib/portal/server";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -207,63 +216,63 @@ export async function addNotificationRecipientMutation(
   }
 
   const db = serviceClient();
-  const { data: recipient, error: insertError } = await db
-    .from("notification_recipients")
-    .insert({
-      email: normalizeEmail(parsed.data.email),
-      label: parsed.data.label || null,
-      active: parsed.data.active ?? true,
-    })
-    .select("id, email, active")
-    .single();
+  const email = normalizeEmail(parsed.data.email);
+  const active = parsed.data.active ?? true;
+  const label = parsed.data.label || null;
+  const mutation = await runRecipientMutationTransport(
+    () =>
+      db.rpc("portal_add_notification_recipient", {
+        p_actor_email: session.email,
+        p_email: email,
+        p_label: label,
+        p_active: active,
+      }),
+    () =>
+      addRecipientWithCompatibility(db, {
+        actorEmail: session.email,
+        email,
+        label,
+        active,
+      }),
+  );
 
-  if (insertError || !recipient) {
-    if (insertError?.code === "23505") {
-      return failure("conflict", "That notification recipient already exists.");
-    }
-    return failure("unavailable", "The notification recipient could not be added.");
-  }
-
-  try {
-    await recordAudit(db, {
-      actorEmail: session.email,
-      action: AUDIT_ACTIONS.RECIPIENTS_ADD,
-      entity: "notification_recipients",
-      entityId: recipient.id,
-      detail: {
-        active: recipient.active,
-        has_label: Boolean(parsed.data.label),
-      },
-    });
-  } catch {
-    const initialDeleteFailed = await operationFailed(() =>
-      db.from("notification_recipients").delete().eq("id", recipient.id),
-    );
-    if (initialDeleteFailed) {
-      // Fail closed for intake delivery if deletion is temporarily
-      // unavailable, then retry the compensating delete once.
-      const disableFailed = await operationFailed(() =>
-        db
-          .from("notification_recipients")
-          .update({ active: false })
-          .eq("id", recipient.id),
-      );
-      const finalDeleteFailed = await operationFailed(() =>
-        db.from("notification_recipients").delete().eq("id", recipient.id),
-      );
-      if (finalDeleteFailed) {
-        console.error("[portal-management] recipient rollback incomplete", {
-          recipientId: recipient.id,
-          disableFailed,
-          finalDeleteFailed,
-        });
+  let recipientId: string;
+  if (mutation.transport === "compatibility") {
+    if (!mutation.response.ok) {
+      if (mutation.response.code === "conflict") {
+        return failure(
+          "conflict",
+          "That notification recipient already exists.",
+        );
       }
+      return failure(
+        "unavailable",
+        "The notification recipient could not be added.",
+      );
     }
-    return failure("unavailable", "The notification recipient could not be added.");
+    recipientId = mutation.response.recipientId;
+  } else {
+    const { data, error } = mutation.response;
+    if (error || typeof data !== "string") {
+      if (recipientRpcFailureCode("add", error?.code) === "conflict") {
+        return failure(
+          "conflict",
+          "That notification recipient already exists.",
+        );
+      }
+      return failure(
+        "unavailable",
+        "The notification recipient could not be added.",
+      );
+    }
+    recipientId = data;
   }
 
   revalidateManagementViews();
-  const delivery = await sendRecipientConfirmation(sendPortalEmail, recipient);
+  const delivery = await sendRecipientConfirmation(sendPortalEmail, {
+    id: recipientId,
+    email,
+  });
 
   return { ok: true, delivery };
 }
@@ -329,43 +338,42 @@ export async function toggleNotificationRecipientMutation(
   }
 
   const db = serviceClient();
-  const { data: current, error: readError } = await db
-    .from("notification_recipients")
-    .select("id, active")
-    .eq("id", parsed.data.recipientId)
-    .maybeSingle();
-  if (readError) {
-    return failure("unavailable", "The notification recipient could not be read.");
-  }
-  if (!current) {
-    return failure("not_found", "Notification recipient not found.");
-  }
-  if (current.active === parsed.data.active) {
-    return { ok: true };
-  }
+  const mutation = await runRecipientMutationTransport(
+    () =>
+      db.rpc("portal_toggle_notification_recipient", {
+        p_actor_email: session.email,
+        p_recipient_id: parsed.data.recipientId,
+        p_active: parsed.data.active,
+      }),
+    () =>
+      toggleRecipientWithCompatibility(db, {
+        actorEmail: session.email,
+        recipientId: parsed.data.recipientId,
+        active: parsed.data.active,
+      }),
+  );
 
-  const { error: updateError } = await db
-    .from("notification_recipients")
-    .update({ active: parsed.data.active })
-    .eq("id", current.id);
-  if (updateError) {
-    return failure("unavailable", "The notification recipient could not be updated.");
-  }
-
-  try {
-    await recordAudit(db, {
-      actorEmail: session.email,
-      action: AUDIT_ACTIONS.RECIPIENTS_TOGGLE,
-      entity: "notification_recipients",
-      entityId: current.id,
-      detail: { from: current.active, to: parsed.data.active },
-    });
-  } catch {
-    await db
-      .from("notification_recipients")
-      .update({ active: current.active })
-      .eq("id", current.id);
-    return failure("unavailable", "The notification recipient could not be updated.");
+  if (mutation.transport === "compatibility") {
+    if (!mutation.response.ok) {
+      if (mutation.response.code === "not_found") {
+        return failure("not_found", "Notification recipient not found.");
+      }
+      return failure(
+        "unavailable",
+        "The notification recipient could not be updated.",
+      );
+    }
+  } else if (mutation.response.error) {
+    if (
+      recipientRpcFailureCode("toggle", mutation.response.error.code) ===
+      "not_found"
+    ) {
+      return failure("not_found", "Notification recipient not found.");
+    }
+    return failure(
+      "unavailable",
+      "The notification recipient could not be updated.",
+    );
   }
 
   revalidateManagementViews();
@@ -382,37 +390,40 @@ export async function removeNotificationRecipientMutation(
   }
 
   const db = serviceClient();
-  const { data: current, error: readError } = await db
-    .from("notification_recipients")
-    .select("id, email, label, active, created_at, updated_at")
-    .eq("id", parsed.data.id)
-    .maybeSingle();
-  if (readError) {
-    return failure("unavailable", "The notification recipient could not be read.");
-  }
-  if (!current) {
-    return failure("not_found", "Notification recipient not found.");
-  }
+  const mutation = await runRecipientMutationTransport(
+    () =>
+      db.rpc("portal_remove_notification_recipient", {
+        p_actor_email: session.email,
+        p_recipient_id: parsed.data.id,
+      }),
+    () =>
+      removeRecipientWithCompatibility(db, {
+        actorEmail: session.email,
+        recipientId: parsed.data.id,
+      }),
+  );
 
-  const { error: deleteError } = await db
-    .from("notification_recipients")
-    .delete()
-    .eq("id", current.id);
-  if (deleteError) {
-    return failure("unavailable", "The notification recipient could not be removed.");
-  }
-
-  try {
-    await recordAudit(db, {
-      actorEmail: session.email,
-      action: AUDIT_ACTIONS.RECIPIENTS_REMOVE,
-      entity: "notification_recipients",
-      entityId: current.id,
-      detail: { active: current.active },
-    });
-  } catch {
-    await db.from("notification_recipients").insert(current);
-    return failure("unavailable", "The notification recipient could not be removed.");
+  if (mutation.transport === "compatibility") {
+    if (!mutation.response.ok) {
+      if (mutation.response.code === "not_found") {
+        return failure("not_found", "Notification recipient not found.");
+      }
+      return failure(
+        "unavailable",
+        "The notification recipient could not be removed.",
+      );
+    }
+  } else if (mutation.response.error) {
+    if (
+      recipientRpcFailureCode("remove", mutation.response.error.code) ===
+      "not_found"
+    ) {
+      return failure("not_found", "Notification recipient not found.");
+    }
+    return failure(
+      "unavailable",
+      "The notification recipient could not be removed.",
+    );
   }
 
   revalidateManagementViews();
