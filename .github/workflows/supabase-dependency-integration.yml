@@ -129,6 +129,7 @@ jobs:
           npx playwright test
           e2e/supabase-dependency-contract.spec.ts
           e2e/intake-api.spec.ts
+          e2e/portal-auth.spec.ts
           e2e/portal-lifecycle.spec.ts
           e2e/portal-requests.spec.ts
           e2e/portal-scale.spec.ts

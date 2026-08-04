@@ -187,6 +187,12 @@ secret; never copy it into source, logs, PR text, Dependabot secrets, or an agen
    clinic-owned App settings, update Production, redeploy, prove the live GitHub status,
    then revoke the old key — and never make the Administration-capable key available to
    Preview.
+5. **Password-recovery configuration:** verify Development and Production independently in
+   Supabase Auth. Each needs the canonical Site URL, the exact
+   `/admin/auth/confirm` redirect allowlist, the repository recovery template, a one-hour OTP
+   expiry, a 60-second same-user resend cooldown, custom SMTP, and disabled public signup.
+   Inspect provider/Auth evidence without copying recipient addresses, email bodies, or
+   bearer links. A code deploy does not prove these hosted settings.
 
 ## Operating the system
 
@@ -201,6 +207,11 @@ Day-to-day incident basics (the portal's Help page covers the front-desk view):
 - **Notifications not arriving:** the queue is the system of record — check the request
   there first, then Settings → recipients (is the address active?), the `request_events`
   rows (what did the provider say?), then the Resend dashboard.
+- **Staff reset email not arriving:** confirm the expected address and active profile in
+  Settings → Staff, ask the staff member to check Inbox and Spam or Junk, confirm the link is
+  no more than one hour old, and have them use the public resend action after its cooldown.
+  If it still fails, an authorized operator checks Supabase Auth audit evidence and SMTP
+  delivery logs. Never request the password, bearer link, or copied email content.
 - **Website shows Not configured:** confirm all three `PORTAL_GITHUB_APP_*` variables exist
   on that Vercel target and redeploy. Do not print their values while diagnosing; if it
   shows an upstream failure instead, check the App installation and permissions in the

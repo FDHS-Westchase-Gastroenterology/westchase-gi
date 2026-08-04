@@ -234,8 +234,14 @@ export default async function AdminHelpPage() {
             accounts; the link stops working and the person is removed from
             the default staff list immediately. Active staff who forget a
             password can request a reset from the sign-in page without an
-            administrator learning or choosing the new password. Every
-            access change is recorded in the{" "}
+            administrator learning or choosing the new password. If a reset
+            email does not arrive, confirm the expected email and active
+            status here in Settings, ask the staff member to check Inbox and
+            Spam or Junk, confirm the link is less than one hour old, and have
+            them resend from the public recovery screen after its cooldown.
+            An authorized operator can then check Supabase Auth and SMTP
+            delivery evidence. Never ask for the password, one-time link, or
+            copied email content. Every access change is recorded in the{" "}
             <Link href="/admin/audit" className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2">
               activity log
             </Link>{" "}

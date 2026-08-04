@@ -10,6 +10,8 @@ import {
   readPasswordAuthFlow,
   requireRole,
   resolveStaffAuthState,
+  type PasswordAuthFlow,
+  type PortalStaffAuthState,
 } from "@/lib/portal/auth";
 import { portalUrl, serverClient, serviceClient } from "@/lib/portal/server";
 
@@ -19,6 +21,8 @@ export type LoginActionState = {
 
 export type ResetRequestActionState = {
   submitted: boolean;
+  email: string;
+  requestKey: number;
 };
 
 export type ConfirmAuthActionState = {
@@ -27,6 +31,7 @@ export type ConfirmAuthActionState = {
 
 export type SetPasswordActionState = {
   error: string | null;
+  changeCommitted: boolean;
 };
 
 const GENERIC_LOGIN_ERROR =
@@ -34,11 +39,13 @@ const GENERIC_LOGIN_ERROR =
 const INVALID_AUTH_LINK_ERROR =
   "This link is invalid or expired. Request another reset or ask your portal administrator for a new invitation.";
 const SET_PASSWORD_ERROR =
-  "Unable to set your password. Request a new link and try again.";
+  "We couldn’t use that password. Choose a different password and try again. If the problem continues, ask your portal administrator for help.";
 const INVITE_PASSWORD_UPDATED_INCOMPLETE =
   "Your password was changed, but account setup could not finish. Ask your portal administrator for a new invitation.";
 const RECOVERY_PASSWORD_UPDATED_INCOMPLETE =
   "Your password was changed, but the reset could not be fully recorded. Sign in with your new password and tell your portal administrator.";
+const RECOVERY_SIGN_IN_INCOMPLETE =
+  "Your password was changed, but we couldn’t sign you in automatically. Sign in with your new password or ask your portal administrator for help.";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function loginError(): LoginActionState {
@@ -85,6 +92,7 @@ function credential(
 
 async function passwordUpdatedIncomplete(
   flow: "invite" | "recovery",
+  automaticSignInFailed = false,
 ): Promise<SetPasswordActionState> {
   try {
     await clearPasswordAuthFlow();
@@ -102,8 +110,106 @@ async function passwordUpdatedIncomplete(
     error:
       flow === "invite"
         ? INVITE_PASSWORD_UPDATED_INCOMPLETE
-        : RECOVERY_PASSWORD_UPDATED_INCOMPLETE,
+        : automaticSignInFailed
+          ? RECOVERY_SIGN_IN_INCOMPLETE
+          : RECOVERY_PASSWORD_UPDATED_INCOMPLETE,
+    changeCommitted: true,
   };
+}
+
+function validateNewPassword(
+  password: string,
+  confirmation: string,
+): SetPasswordActionState | null {
+  if (password.length < 12) {
+    return {
+      error: "Use at least 12 characters for your new password.",
+      changeCommitted: false,
+    };
+  }
+  if (password !== confirmation) {
+    return { error: "The passwords do not match.", changeCommitted: false };
+  }
+  if (password.length > 1024) {
+    return { error: SET_PASSWORD_ERROR, changeCommitted: false };
+  }
+  return null;
+}
+
+async function completePasswordChange(
+  supabase: Awaited<ReturnType<typeof serverClient>>,
+  staff: PortalStaffAuthState,
+  flow: PasswordAuthFlow,
+  password: string,
+): Promise<SetPasswordActionState | null> {
+  let passwordUpdated = false;
+  let recoveryRecorded = false;
+  try {
+    const { data, error } = await supabase.auth.updateUser({ password });
+    if (error || !data.user) {
+      return { error: SET_PASSWORD_ERROR, changeCommitted: false };
+    }
+    passwordUpdated = true;
+
+    const currentStaff = await resolveStaffAuthState(data.user);
+    if (!currentStaff?.active) {
+      return passwordUpdatedIncomplete(flow);
+    }
+
+    if (flow === "invite") {
+      if (currentStaff.onboardedAt) {
+        return passwordUpdatedIncomplete(flow);
+      }
+
+      const { data: completed, error: completionError } =
+        await serviceClient().rpc("portal_complete_staff_onboarding", {
+          p_user_id: currentStaff.id,
+        });
+      if (completionError || completed !== true) {
+        return passwordUpdatedIncomplete(flow);
+      }
+    } else {
+      if (!currentStaff.onboardedAt) {
+        return passwordUpdatedIncomplete(flow);
+      }
+
+      const { data: recorded, error: auditError } = await serviceClient().rpc(
+        "portal_record_staff_password_reset",
+        { p_user_id: currentStaff.id },
+      );
+      if (auditError || recorded !== true) {
+        return passwordUpdatedIncomplete(flow);
+      }
+      recoveryRecorded = true;
+    }
+
+    await clearPasswordAuthFlow();
+
+    if (flow === "recovery") {
+      await supabase.auth.signOut({ scope: "local" });
+      const { data: signedIn, error: signInError } =
+        await supabase.auth.signInWithPassword({
+          email: staff.email,
+          password,
+        });
+      if (signInError || !signedIn.user) {
+        return passwordUpdatedIncomplete(flow, true);
+      }
+
+      // A new Auth session is not enough on its own. Re-read the
+      // authoritative profile before allowing the portal redirect.
+      const freshStaff = await resolveStaffAuthState(signedIn.user);
+      if (!freshStaff?.active || !freshStaff.onboardedAt) {
+        return passwordUpdatedIncomplete(flow, true);
+      }
+    }
+  } catch {
+    return passwordUpdated
+      ? passwordUpdatedIncomplete(flow, recoveryRecorded)
+      : { error: SET_PASSWORD_ERROR, changeCommitted: false };
+  }
+
+  return null;
 }
 
 /**
@@ -174,7 +280,13 @@ export async function requestPasswordResetAction(
     }
   }
 
-  return { submitted: true };
+  return {
+    submitted: true,
+    // This is only an echo of the caller's own valid-looking input. It says
+    // nothing about account existence, staff status, or provider delivery.
+    email: email.length <= 254 && EMAIL_RE.test(email) ? email : "",
+    requestKey: Date.now(),
+  };
 }
 
 /**
@@ -246,18 +358,8 @@ export async function setPasswordAction(
 ): Promise<SetPasswordActionState> {
   const password = credential(formData, "password", false);
   const confirmation = credential(formData, "passwordConfirmation", false);
-
-  if (password.length < 12) {
-    return { error: "Use at least 12 characters for your new password." };
-  }
-  if (password.length > 1024 || password !== confirmation) {
-    return {
-      error:
-        password !== confirmation
-          ? "The passwords do not match."
-          : SET_PASSWORD_ERROR,
-    };
-  }
+  const validationError = validateNewPassword(password, confirmation);
+  if (validationError) return validationError;
 
   const [supabase, staff] = await Promise.all([
     serverClient(),
@@ -269,55 +371,101 @@ export async function setPasswordAction(
   if (!staff?.active || !flow || flow !== expectedFlow) {
     await clearPasswordAuthFlow();
     await supabase.auth.signOut({ scope: "local" });
-    return { error: INVALID_AUTH_LINK_ERROR };
+    return { error: INVALID_AUTH_LINK_ERROR, changeCommitted: false };
   }
 
-  let passwordUpdated = false;
-  try {
-    const { data, error } = await supabase.auth.updateUser({ password });
-    if (error || !data.user) return { error: SET_PASSWORD_ERROR };
-    passwordUpdated = true;
+  const completionError = await completePasswordChange(
+    supabase,
+    staff,
+    flow,
+    password,
+  );
+  if (completionError) return completionError;
+  redirect("/admin");
+}
 
-    const currentStaff = await resolveStaffAuthState(data.user);
-    if (!currentStaff?.active) {
-      return passwordUpdatedIncomplete(flow);
+/**
+ * Recovery's one deliberate submit: validate before consuming the bearer,
+ * verify it (or reuse the bounded signed retry flow), reauthorize from the
+ * staff profile, update and audit the password, then establish a fresh
+ * password session before entering the portal.
+ */
+// react-doctor-disable-next-line react-doctor/server-auth-actions
+export async function recoverPasswordAction(
+  _state: SetPasswordActionState,
+  formData: FormData,
+): Promise<SetPasswordActionState> {
+  const password = credential(formData, "password", false);
+  const confirmation = credential(formData, "passwordConfirmation", false);
+  const validationError = validateNewPassword(password, confirmation);
+  if (validationError) return validationError;
+
+  const tokenHash = credential(formData, "tokenHash");
+  const supabase = await serverClient();
+  let staff: PortalStaffAuthState | null = null;
+  let flow: PasswordAuthFlow | null = null;
+
+  try {
+    const {
+      data: { user: sessionUser },
+    } = await supabase.auth.getUser();
+    if (sessionUser) {
+      const candidate = await resolveStaffAuthState(sessionUser);
+      const candidateFlow = candidate
+        ? await readPasswordAuthFlow(candidate.id)
+        : null;
+      if (
+        candidate?.active &&
+        candidate.onboardedAt &&
+        candidateFlow === "recovery"
+      ) {
+        staff = candidate;
+        flow = "recovery";
+      }
     }
 
-    if (flow === "invite") {
-      if (currentStaff.onboardedAt) {
-        return passwordUpdatedIncomplete(flow);
+    if (!staff || !flow) {
+      if (tokenHash.length < 20 || tokenHash.length > 2048) {
+        return { error: INVALID_AUTH_LINK_ERROR, changeCommitted: false };
       }
 
-      const { data: completed, error: completionError } =
-        await serviceClient().rpc("portal_complete_staff_onboarding", {
-          p_user_id: currentStaff.id,
-        });
-      if (completionError || completed !== true) {
-        return passwordUpdatedIncomplete(flow);
-      }
-    } else {
-      if (!currentStaff.onboardedAt) {
-        return passwordUpdatedIncomplete(flow);
+      await clearPasswordAuthFlow();
+      await supabase.auth.signOut({ scope: "local" });
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: tokenHash,
+        type: "recovery",
+      });
+      if (error || !data.user) {
+        await supabase.auth.signOut({ scope: "local" });
+        return { error: INVALID_AUTH_LINK_ERROR, changeCommitted: false };
       }
 
-      const { data: recorded, error: auditError } = await serviceClient().rpc(
-        "portal_record_staff_password_reset",
-        { p_user_id: currentStaff.id },
-      );
-      if (auditError || recorded !== true) {
-        return passwordUpdatedIncomplete(flow);
+      const verifiedStaff = await resolveStaffAuthState(data.user);
+      if (!verifiedStaff?.active || !verifiedStaff.onboardedAt) {
+        await supabase.auth.signOut({ scope: "local" });
+        return { error: INVALID_AUTH_LINK_ERROR, changeCommitted: false };
       }
+
+      await establishPasswordAuthFlow("recovery", verifiedStaff.id);
+      staff = verifiedStaff;
+      flow = "recovery";
     }
   } catch {
-    return passwordUpdated
-      ? passwordUpdatedIncomplete(flow)
-      : { error: SET_PASSWORD_ERROR };
+    try {
+      await clearPasswordAuthFlow();
+      await supabase.auth.signOut({ scope: "local" });
+    } catch {
+      // Best-effort cleanup; the visible failure remains generic.
+    }
+    return { error: INVALID_AUTH_LINK_ERROR, changeCommitted: false };
   }
 
-  await clearPasswordAuthFlow();
-  if (flow === "recovery") {
-    await supabase.auth.signOut({ scope: "local" });
-    redirect("/admin/login?password=updated");
-  }
+  const completionError = await completePasswordChange(
+    supabase,
+    staff,
+    flow,
+    password,
+  );
+  if (completionError) return completionError;
   redirect("/admin");
 }

@@ -166,10 +166,22 @@ signed invite/recovery flow cookie.
 
 Invite and recovery links are single-use and unavailable to deactivated staff. Recovery
 templates put `token_hash` and `type` in the URL fragment, keeping bearer values out of HTTP
-requests and referrer headers. The confirmation page strips the fragment before a deliberate
-Continue action consumes the token. Hosted Auth SMTP, templates, site URL, and
-`/admin/auth/confirm` redirects are project configuration, not migrations — manage and
-verify Development and Production separately.
+requests and referrer headers. The confirmation page parses and strips the fragment before
+rendering. Invitation links keep the deliberate Continue step; recovery links render the
+new-password form directly and are not consumed until **Set password and continue** validates
+the inputs. That action verifies the bearer, rechecks active/onboarded profile state, updates
+the password, records one `staff.password_reset` event, and signs in again with the new
+credential before redirecting to the portal. A signed, ten-minute user-bound flow marker
+allows a provider-rejected password to be corrected without a second email. A committed
+password change followed by audit or fresh-session failure is reported as partial success,
+never as an unchanged password.
+
+The reset-request response remains identical for active, inactive, unknown, rate-limited,
+and provider-failed requests. The browser may echo its own submitted address, but never
+receives account or delivery state. Hosted Auth SMTP, custom recovery template, one-hour link
+expiry, 60-second resend cooldown, site URL, disabled public signup, and the exact
+`/admin/auth/confirm` redirect allowlist are project configuration, not migrations — manage
+and verify Development and Production separately.
 
 ### Email
 

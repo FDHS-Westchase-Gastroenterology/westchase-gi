@@ -23,7 +23,7 @@ export default async function SetPasswordPage() {
       }
       description="Use at least 12 characters. This one-time setup expires shortly."
     >
-      <PasswordForm />
+      <PasswordForm mode={flow} />
     </AuthCard>
   );
 }

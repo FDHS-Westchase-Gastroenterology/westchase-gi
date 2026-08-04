@@ -21,7 +21,7 @@ const PREVIEW_PASSWORD = process.env.PORTAL_PREVIEW_PASSWORD ?? "";
 const GENERIC_LOGIN_ERROR =
   "Unable to sign in. Check your credentials and try again.";
 const RESET_REQUEST_MESSAGE =
-  "If an active staff account exists for that email, a password reset link has been sent.";
+  "If an active staff account exists for that email, you’ll receive a password reset link.";
 
 type RestResult = {
   data: unknown;
@@ -255,8 +255,45 @@ test.describe("portal authentication and direct REST boundaries", () => {
       }
 
       const outcomes: string[] = [];
-      for (const email of [
+
+      // The sign-in card owns the normal entry point: preserve a previously
+      // entered address, move focus, and do not navigate or send on mode
+      // change alone.
+      await page.goto("/admin/login");
+      await page.getByLabel("Email").fill(accounts[0].email);
+      const togglePosts: string[] = [];
+      page.on("request", (outgoingRequest) => {
+        if (outgoingRequest.method() === "POST") {
+          togglePosts.push(outgoingRequest.url());
+        }
+      });
+      await page.getByRole("button", { name: "Forgot password?" }).click();
+      await page.waitForTimeout(100);
+      expect(togglePosts).toHaveLength(0);
+      await expect(page).toHaveURL(/\/admin\/login\/?$/);
+      const inlineEmail = page.getByLabel("Email");
+      await expect(inlineEmail).toBeFocused();
+      await expect(inlineEmail).toHaveValue(accounts[0].email);
+      await page.getByRole("button", { name: "Send reset link" }).click();
+      const activeResult = page.getByTestId("reset-request-result");
+      await expect(activeResult).toHaveText(RESET_REQUEST_MESSAGE);
+      outcomes.push((await activeResult.textContent())?.trim() ?? "");
+      await expect(page.getByTestId("reset-request-email")).toHaveText(
         accounts[0].email,
+      );
+      await expect(page.getByText(/Inbox and Spam or Junk/)).toBeVisible();
+      await expect(page.getByText(/expires in one hour/)).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: /Resend in 60s/ }),
+      ).toBeDisabled();
+
+      await page.getByRole("button", { name: "Change email" }).click();
+      await expect(page.getByLabel("Email")).toBeFocused();
+      await expect(page.getByLabel("Email")).toHaveValue(accounts[0].email);
+      await page.getByRole("button", { name: "Back to sign in" }).click();
+      await expect(page.getByLabel("Email")).toHaveValue(accounts[0].email);
+
+      for (const email of [
         accounts[1].email,
         "unknown-" + randomUUID().slice(0, 8) + "@example.test",
       ]) {
@@ -434,6 +471,174 @@ test.describe("portal authentication and direct REST boundaries", () => {
     }
   });
 
+  test("VAL-ADMIN-020: recovery rejects superseded links without consuming valid links on refresh or validation", async ({
+    page,
+  }) => {
+    const db = serviceDb();
+    const email =
+      "recovery-validation-" + randomUUID().slice(0, 8) + "@example.test";
+    const originalPassword = `Original-${randomUUID()}-aA1!`;
+    const validPassword = `Replacement-${randomUUID()}-aA1!`;
+    const created = await db.auth.admin.createUser({
+      email,
+      password: originalPassword,
+      email_confirm: true,
+    });
+    expect(created.error).toBeNull();
+    const userId = created.data.user?.id;
+    if (!userId) throw new Error("Recovery validation fixture failed");
+
+    let profileId: string | null = null;
+    try {
+      const profile = await db
+        .from("staff_profiles")
+        .insert({
+          user_id: userId,
+          email,
+          display_name: "TEST Recovery Validation",
+          role: "staff",
+          active: true,
+          onboarded_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+      expect(profile.error).toBeNull();
+      profileId = profile.data?.id ?? null;
+      if (!profileId) throw new Error("Recovery validation profile failed");
+
+      const generated = await db.auth.admin.generateLink({
+        type: "recovery",
+        email,
+      });
+      expect(generated.error).toBeNull();
+      const supersededTokenHash = generated.data.properties?.hashed_token;
+      if (!supersededTokenHash) {
+        throw new Error("Superseded recovery link failed");
+      }
+
+      const latestGenerated = await db.auth.admin.generateLink({
+        type: "recovery",
+        email,
+      });
+      expect(latestGenerated.error).toBeNull();
+      const tokenHash = latestGenerated.data.properties?.hashed_token;
+      if (!tokenHash) throw new Error("Recovery validation link failed");
+      const confirmPath =
+        "/admin/auth/confirm#token_hash=" +
+        encodeURIComponent(tokenHash) +
+        "&type=recovery";
+
+      await page.goto(
+        "/admin/auth/confirm#token_hash=" +
+          encodeURIComponent(supersededTokenHash) +
+          "&type=recovery",
+      );
+      await page.getByLabel("New password").fill(validPassword);
+      await page.getByLabel("Confirm password").fill(validPassword);
+      await page
+        .getByRole("button", { name: "Set password and continue" })
+        .click();
+      await expect(
+        page.getByRole("alert").filter({ hasText: "invalid or expired" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("link", { name: "Request a new link" }).first(),
+      ).toBeVisible();
+
+      await page.goto(confirmPath);
+      await expect(page.getByLabel("New password")).toBeVisible();
+      await expect
+        .poll(() => page.evaluate(() => window.location.hash))
+        .toBe("");
+      await page.reload();
+      await expect(page).toHaveURL(/\/admin\/auth\/confirm\/?$/);
+      await expect(
+        page.getByRole("link", { name: "Request a new link" }).first(),
+      ).toBeVisible();
+
+      // Reopening the email link is still valid because page load and refresh
+      // did not verify the bearer.
+      await page.goto(confirmPath);
+      const newPasswordInput = page.getByLabel("New password");
+      const confirmationInput = page.getByLabel("Confirm password");
+      await expect(newPasswordInput).toHaveAttribute(
+        "autocomplete",
+        "new-password",
+      );
+      await expect(confirmationInput).toHaveAttribute(
+        "autocomplete",
+        "new-password",
+      );
+
+      // Browser-known minimum failure does not dispatch the action.
+      await newPasswordInput.fill("12345678901");
+      await confirmationInput.fill("12345678901");
+      await page
+        .getByRole("button", { name: "Set password and continue" })
+        .click();
+      expect(
+        await newPasswordInput.evaluate(
+          (input: HTMLInputElement) => input.validationMessage.length,
+        ),
+      ).toBeGreaterThan(0);
+
+      // Server-known mismatch also returns before verifyOtp. Enter-key
+      // submission is part of the keyboard contract.
+      await newPasswordInput.fill(validPassword);
+      await confirmationInput.fill(`${validPassword}-different`);
+      await confirmationInput.press("Enter");
+      await expect(page.locator("#password-error")).toHaveText(
+        "The passwords do not match.",
+      );
+      const beforeSuccessAudit = await db
+        .from("audit_log")
+        .select("action")
+        .eq("entity_id", profileId)
+        .eq("action", "staff.password_reset");
+      expect(beforeSuccessAudit.error).toBeNull();
+      expect(beforeSuccessAudit.data).toHaveLength(0);
+
+      // GoTrue rejects reusing the current password after verifyOtp. The
+      // signed retry marker must keep this bounded verified flow usable
+      // without a second email or a second audit event.
+      await newPasswordInput.fill(originalPassword);
+      await confirmationInput.fill(originalPassword);
+      await page
+        .getByRole("button", { name: "Set password and continue" })
+        .click();
+      await expect(page.locator("#password-error")).toContainText(
+        "We couldn’t use that password.",
+      );
+      const afterProviderRejectionAudit = await db
+        .from("audit_log")
+        .select("action")
+        .eq("entity_id", profileId)
+        .eq("action", "staff.password_reset");
+      expect(afterProviderRejectionAudit.error).toBeNull();
+      expect(afterProviderRejectionAudit.data).toHaveLength(0);
+
+      await newPasswordInput.fill(validPassword);
+      await confirmationInput.fill(validPassword);
+      await page
+        .getByRole("button", { name: "Set password and continue" })
+        .click();
+      await expect(page).toHaveURL(/\/admin\/?$/);
+      const afterSuccessAudit = await db
+        .from("audit_log")
+        .select("action")
+        .eq("entity_id", profileId)
+        .eq("action", "staff.password_reset");
+      expect(afterSuccessAudit.error).toBeNull();
+      expect(afterSuccessAudit.data).toHaveLength(1);
+    } finally {
+      if (profileId) {
+        await db.from("audit_log").delete().eq("entity_id", profileId);
+      }
+      await db.from("staff_profiles").delete().eq("user_id", userId);
+      await db.auth.admin.deleteUser(userId);
+    }
+  });
+
   test("VAL-ADMIN-016: recovery changes an active password once, audits it, and rejects deactivated staff", async ({
     page,
   }) => {
@@ -470,6 +675,23 @@ test.describe("portal authentication and direct REST boundaries", () => {
       profileId = profile.data?.id ?? null;
       if (!profileId) throw new Error("Recovery profile creation failed");
 
+      let deliberateActivations = 0;
+      await page.goto("/admin/login");
+      await page.getByLabel("Email").fill(email);
+      await page.getByRole("button", { name: "Forgot password?" }).click();
+      deliberateActivations += 1;
+      await expect(page).toHaveURL(/\/admin\/login\/?$/);
+      await expect(page.getByLabel("Email")).toBeFocused();
+      await expect(page.getByLabel("Email")).toHaveValue(email);
+
+      await page.getByRole("button", { name: "Send reset link" }).click();
+      deliberateActivations += 1;
+      await expect(page.getByTestId("reset-request-result")).toHaveText(
+        RESET_REQUEST_MESSAGE,
+      );
+
+      // Generated-link seam stands in for opening hosted SMTP while keeping
+      // bearer values out of retained artifacts and test output.
       const generated = await db.auth.admin.generateLink({
         type: "recovery",
         email,
@@ -483,13 +705,31 @@ test.describe("portal authentication and direct REST boundaries", () => {
         "&type=recovery";
 
       await page.goto(confirmPath);
-      await page.getByRole("button", { name: "Continue" }).click();
-      await expect(page).toHaveURL(/\/admin\/set-password\/?$/);
+      deliberateActivations += 1;
+      await expect
+        .poll(() => page.evaluate(() => window.location.hash))
+        .toBe("");
+      await expect(page.getByLabel("New password")).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Continue", exact: true }),
+      ).toHaveCount(0);
       await page.getByLabel("New password").fill(newPassword);
       await page.getByLabel("Confirm password").fill(newPassword);
-      await page.getByRole("button", { name: "Set password" }).click();
-      await expect(page).toHaveURL(/\/admin\/login\?password=updated$/);
-      await expect(page.getByTestId("password-updated")).toBeVisible();
+      await page
+        .getByRole("button", { name: "Set password and continue" })
+        .click();
+      deliberateActivations += 1;
+      expect(deliberateActivations).toBe(4);
+      await expect(page).toHaveURL(/\/admin\/?$/);
+      await expect(page.getByTestId("session-user")).toContainText(
+        "TEST Recovery Staff",
+      );
+      await expect(page.getByLabel("Password")).toHaveCount(0);
+      await page.reload();
+      await expect(page).toHaveURL(/\/admin\/?$/);
+      await expect(page.getByTestId("session-user")).toContainText(
+        "TEST Recovery Staff",
+      );
 
       const audit = await db
         .from("audit_log")
@@ -499,9 +739,14 @@ test.describe("portal authentication and direct REST boundaries", () => {
       expect(audit.error).toBeNull();
       expect(audit.data).toHaveLength(1);
 
-      // The bearer token was consumed by the explicit confirmation POST.
+      // The bearer was consumed by the combined submit and cannot be reused.
+      await page.getByRole("button", { name: "Sign out" }).click();
       await page.goto(confirmPath);
-      await page.getByRole("button", { name: "Continue" }).click();
+      await page.getByLabel("New password").fill(newPassword);
+      await page.getByLabel("Confirm password").fill(newPassword);
+      await page
+        .getByRole("button", { name: "Set password and continue" })
+        .click();
       await expect(
         page.getByRole("alert").filter({ hasText: "invalid or expired" }),
       ).toBeVisible();
@@ -559,7 +804,11 @@ test.describe("portal authentication and direct REST boundaries", () => {
             encodeURIComponent(deactivatedToken) +
             "&type=recovery",
         );
-        await page.getByRole("button", { name: "Continue" }).click();
+        await page.getByLabel("New password").fill(newPassword);
+        await page.getByLabel("Confirm password").fill(newPassword);
+        await page
+          .getByRole("button", { name: "Set password and continue" })
+          .click();
         await expect(
           page.getByRole("alert").filter({ hasText: "invalid or expired" }),
         ).toBeVisible();
@@ -583,6 +832,107 @@ test.describe("portal authentication and direct REST boundaries", () => {
       }
       await db.from("staff_profiles").delete().eq("user_id", userId);
       await db.auth.admin.deleteUser(userId);
+    }
+  });
+
+  test("VAL-ADMIN-016: recovery refuses missing and non-onboarded staff profiles", async ({
+    page,
+  }) => {
+    const db = serviceDb();
+
+    for (const eligibility of ["missing", "non-onboarded"] as const) {
+      const email =
+        `recovery-${eligibility}-` +
+        randomUUID().slice(0, 8) +
+        "@example.test";
+      const originalPassword = `Original-${randomUUID()}-aA1!`;
+      const attemptedPassword = `Attempted-${randomUUID()}-aA1!`;
+      const created = await db.auth.admin.createUser({
+        email,
+        password: originalPassword,
+        email_confirm: true,
+      });
+      expect(created.error).toBeNull();
+      const userId = created.data.user?.id;
+      if (!userId) throw new Error("Ineligible recovery fixture failed");
+
+      let profileId: string | null = null;
+      try {
+        if (eligibility === "non-onboarded") {
+          const profile = await db
+            .from("staff_profiles")
+            .insert({
+              user_id: userId,
+              email,
+              display_name: "TEST Non-onboarded Recovery",
+              role: "staff",
+              active: true,
+              onboarded_at: null,
+            })
+            .select("id")
+            .single();
+          expect(profile.error).toBeNull();
+          profileId = profile.data?.id ?? null;
+          if (!profileId) {
+            throw new Error("Non-onboarded recovery profile failed");
+          }
+        }
+
+        const generated = await db.auth.admin.generateLink({
+          type: "recovery",
+          email,
+        });
+        expect(generated.error).toBeNull();
+        const tokenHash = generated.data.properties?.hashed_token;
+        if (!tokenHash) throw new Error("Ineligible recovery link failed");
+
+        // Force a fresh document so the two identity fixtures cannot share
+        // mounted server-action or fragment state. Same-tab replacement is
+        // exercised separately by VAL-ADMIN-020.
+        await page.goto("about:blank");
+        await page.goto(
+          "/admin/auth/confirm#token_hash=" +
+            encodeURIComponent(tokenHash) +
+            "&type=recovery",
+        );
+        await expect
+          .poll(() => page.evaluate(() => window.location.hash))
+          .toBe("");
+        await page.getByLabel("New password").fill(attemptedPassword);
+        await page.getByLabel("Confirm password").fill(attemptedPassword);
+        await page
+          .getByRole("button", { name: "Set password and continue" })
+          .click();
+        await expect(
+          page.getByRole("alert").filter({ hasText: "invalid or expired" }),
+        ).toBeVisible();
+        await expect(page).toHaveURL(/\/admin\/auth\/confirm\/?$/);
+
+        if (profileId) {
+          const audit = await db
+            .from("audit_log")
+            .select("action")
+            .eq("entity_id", profileId)
+            .eq("action", "staff.password_reset");
+          expect(audit.error).toBeNull();
+          expect(audit.data).toHaveLength(0);
+        }
+
+        const loginProbe = browserDb();
+        const oldPasswordStillWorks = await loginProbe.auth.signInWithPassword({
+          email,
+          password: originalPassword,
+        });
+        expect(oldPasswordStillWorks.error).toBeNull();
+        expect(oldPasswordStillWorks.data.user?.id).toBe(userId);
+        await loginProbe.auth.signOut();
+      } finally {
+        if (profileId) {
+          await db.from("audit_log").delete().eq("entity_id", profileId);
+        }
+        await db.from("staff_profiles").delete().eq("user_id", userId);
+        await db.auth.admin.deleteUser(userId);
+      }
     }
   });
 

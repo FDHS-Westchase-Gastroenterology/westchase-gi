@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 import {
   confirmAuthLinkAction,
   type ConfirmAuthActionState,
 } from "@/app/admin/actions";
+import { PasswordForm } from "@/app/admin/set-password/password-form";
 
 type AuthLink = {
   tokenHash: string;
@@ -22,23 +24,38 @@ export function ConfirmAuthForm() {
   );
 
   useEffect(() => {
-    // Strict Mode replays effects in development (Next 16.3 enables it):
-    // parse exactly once, or the replay would read the fragment this effect
-    // just stripped and report a valid link as invalid.
-    if (parsedOnce.current) return;
-    parsedOnce.current = true;
+    function parseFragment() {
+      const hash = window.location.hash;
+      if (!hash) {
+        // Strict Mode replays effects in development (Next 16.3 enables it).
+        // Do not replace a valid parsed link with invalid after the first pass
+        // stripped its fragment, but do reject a genuinely fragment-free load.
+        if (!parsedOnce.current) {
+          parsedOnce.current = true;
+          setLink("invalid");
+        }
+        return;
+      }
 
-    const params = new URLSearchParams(window.location.hash.slice(1));
-    const tokenHash = params.get("token_hash")?.trim() ?? "";
-    const type = params.get("type");
-    const parsedLink: AuthLink | "invalid" =
-      tokenHash.length >= 20 && (type === "invite" || type === "recovery")
-        ? { tokenHash, type }
-        : "invalid";
+      parsedOnce.current = true;
+      const params = new URLSearchParams(hash.slice(1));
+      const tokenHash = params.get("token_hash")?.trim() ?? "";
+      const type = params.get("type");
+      const parsedLink: AuthLink | "invalid" =
+        tokenHash.length >= 20 && (type === "invite" || type === "recovery")
+          ? { tokenHash, type }
+          : "invalid";
 
-    // Remove the bearer token from the address bar before any navigation.
-    window.history.replaceState(null, "", window.location.pathname);
-    setLink(parsedLink);
+      // Remove the bearer token from the address bar before any navigation.
+      window.history.replaceState(null, "", window.location.pathname);
+      setLink(parsedLink);
+    }
+
+    parseFragment();
+    // Opening a newer email in the same tab can navigate only the fragment,
+    // leaving this Client Component mounted. Parse that new bearer too.
+    window.addEventListener("hashchange", parseFragment);
+    return () => window.removeEventListener("hashchange", parseFragment);
   }, []);
 
   if (link === null) {
@@ -51,14 +68,26 @@ export function ConfirmAuthForm() {
 
   if (link === "invalid") {
     return (
-      <p
-        role="alert"
-        className="mt-6 rounded-[var(--radius)] bg-[var(--color-amber-soft)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
-      >
-        This link is incomplete or no longer valid. Request another reset or
-        ask your portal administrator for a new invitation.
-      </p>
+      <div className="mt-6">
+        <p
+          role="alert"
+          className="rounded-[var(--radius)] bg-[var(--color-amber-soft)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
+        >
+          This link is incomplete or no longer valid. Request a new link to
+          continue.
+        </p>
+        <Link
+          href="/admin/forgot-password"
+          className="btn btn-navy mt-4 min-h-11 w-full"
+        >
+          Request a new link
+        </Link>
+      </div>
     );
+  }
+
+  if (link.type === "recovery") {
+    return <PasswordForm mode="recovery" recoveryTokenHash={link.tokenHash} />;
   }
 
   return (
@@ -76,7 +105,7 @@ export function ConfirmAuthForm() {
       <button
         type="submit"
         disabled={pending}
-        className="btn btn-navy w-full disabled:cursor-wait disabled:opacity-65"
+        className="btn btn-navy min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
       >
         {pending ? "Verifying…" : "Continue"}
       </button>

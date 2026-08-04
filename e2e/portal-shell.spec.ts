@@ -211,6 +211,39 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
     expect(overflow, `login overflow at ${viewport.name}`).toBeLessThanOrEqual(
       0,
     );
+
+    await page.getByLabel("Email").fill("recovery-layout@example.test");
+    const forgotButton = page.getByRole("button", {
+      name: "Forgot password?",
+    });
+    expect((await forgotButton.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(
+      44,
+    );
+    await forgotButton.click();
+    await expect(page.getByLabel("Email")).toBeFocused();
+    await expect(page.getByLabel("Email")).toHaveValue(
+      "recovery-layout@example.test",
+    );
+    const recoveryOverflow = await page.evaluate(() => {
+      const el = document.documentElement;
+      return el.scrollWidth - el.clientWidth;
+    });
+    expect(
+      recoveryOverflow,
+      `recovery overflow at ${viewport.name}`,
+    ).toBeLessThanOrEqual(0);
+    for (const control of [
+      page.getByRole("button", { name: "Send reset link" }),
+      page.getByRole("button", { name: "Back to sign in" }),
+    ]) {
+      expect((await control.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(
+        44,
+      );
+    }
+    await page.getByRole("button", { name: "Back to sign in" }).click();
+    await expect(page.getByLabel("Email")).toHaveValue(
+      "recovery-layout@example.test",
+    );
   }
 });
 
