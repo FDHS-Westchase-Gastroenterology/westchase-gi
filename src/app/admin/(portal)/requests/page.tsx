@@ -441,7 +441,7 @@ export default async function AdminRequestsPage({
             {search
               ? "Try a name, phone number, or email address."
               : filter === "all"
-                ? "When a patient submits the appointment form on the website, the appointment request appears here instantly and the notification list gets an email ping."
+                ? "When a patient submits the appointment form on the website, the appointment request appears here instantly and everyone on the notification list gets a notification email."
                 : "Appointment requests move between statuses from their detail page — open one from another filter to triage it."}
           </p>
         </div>
