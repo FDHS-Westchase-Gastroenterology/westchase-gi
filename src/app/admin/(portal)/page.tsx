@@ -184,6 +184,33 @@ export default async function AdminHomePage() {
       {session.portalTourDismissedAt === null ? <PortalTour /> : null}
       <PortalReleaseHomeAnnouncement />
 
+      {/* PROTOTYPE BRANCH ONLY — drop before any merge to main. Reviewers
+          land here after sign-in, so the v2 day-sheet prototype needs its
+          entry where they arrive, not only in the pull-request body. */}
+      <section
+        aria-labelledby="v2-prototype-heading"
+        className="mt-7 rounded-[var(--radius)] border-2 border-dashed border-[var(--color-teal-ink)] bg-white px-5 py-4"
+      >
+        <h2
+          id="v2-prototype-heading"
+          className="text-[0.78rem] font-black uppercase tracking-[0.08em] text-[var(--color-teal-ink)]"
+        >
+          Prototype preview
+        </h2>
+        <p className="mt-1 max-w-[62ch] text-[0.95rem] text-[var(--color-ink)]">
+          The staff portal v2 prototype is on this deployment: the appointment
+          queue as a day sheet, running on synthetic data — nothing here touches
+          real requests.
+        </p>
+        <Link
+          href="/admin/v2"
+          className="btn btn-navy mt-3 inline-flex min-h-11 items-center"
+        >
+          Open the day-sheet prototype
+          <ArrowRight className="ml-2 h-4 w-4" />
+        </Link>
+      </section>
+
       <div className="mt-7 grid items-start gap-6 lg:grid-cols-[1.55fr_1fr]">
         <section
           aria-labelledby="queue-overview-heading"
