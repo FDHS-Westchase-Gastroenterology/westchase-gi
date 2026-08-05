@@ -5,6 +5,7 @@
 // corrections struck through, never erased.
 
 import Link from "next/link";
+import { Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { practiceToday, receivedLabel } from "../../prototype/format";
 import { entryLine } from "../../prototype/lines";
@@ -17,6 +18,14 @@ import { useQueue, useStoreApi } from "../../prototype/store";
 import { ActionDesk } from "./action-desk";
 
 export default function RequestPage() {
+  return (
+    <Suspense fallback={null}>
+      <RequestSheet />
+    </Suspense>
+  );
+}
+
+function RequestSheet() {
   const { id } = useParams<{ id: string }>();
   const from = useSearchParams().get("from");
   const { requests } = useQueue();

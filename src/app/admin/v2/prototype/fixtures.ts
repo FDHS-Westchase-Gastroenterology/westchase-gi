@@ -434,20 +434,21 @@ function buildRequest(spec: SeedSpec, today: string): PrototypeRequest {
     }
 
     const id = entryId();
+    const { resultingVersion } = decision.fact;
     const body: HistoryEntry["body"] =
       action.kind === "attempt"
         ? {
             t: "attempt",
             outcome: action.outcome,
             callAgainDay: command.kind === "record_contact_attempt" ? command.callAgainDay : null,
-            transitionVersion: decision.fact.resultingVersion,
+            transitionVersion: resultingVersion,
           }
         : action.kind === "booked"
-          ? { t: "booked", transitionVersion: decision.fact.resultingVersion }
+          ? { t: "booked", transitionVersion: resultingVersion }
           : {
               t: "closed",
               reason: action.reason,
-              transitionVersion: decision.fact.resultingVersion,
+              transitionVersion: resultingVersion,
             };
 
     entries.push({ id, at, actor: FIXTURE_COLLEAGUE, struck: false, body });

@@ -24,12 +24,13 @@ export function lastAction(request: PrototypeRequest): HistoryEntry | null {
   for (let i = request.entries.length - 1; i >= 0; i -= 1) {
     const entry = request.entries[i];
     if (entry.struck) continue;
+    const kind = entry.body.t;
     if (
-      entry.body.t === "attempt" ||
-      entry.body.t === "booked" ||
-      entry.body.t === "closed" ||
-      entry.body.t === "reopened" ||
-      entry.body.t === "classified"
+      kind === "attempt" ||
+      kind === "booked" ||
+      kind === "closed" ||
+      kind === "reopened" ||
+      kind === "classified"
     ) {
       return entry;
     }
