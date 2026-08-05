@@ -65,6 +65,42 @@ Operate posture: scanability, consistency, and native expectations outrank expre
 brand lives in precise details, at restraint. Motion is state-conveying only, within
 ordinary UI budgets. Task vocabulary and workflow truths are product law in `PRODUCT.md`.
 
+### Committed portal world — The Day Sheet (2026-08-04)
+
+Derived through the full direction derivation inside the staff-portal v2 prototype
+([issue #220](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/220),
+seed key `0064b225`) and approved by the driving dev. The portal renders as the front
+desk's own paper day sheet: the queue is a ruled page whose order *is* the working
+order, the request detail is the request's own page, and history is a ledger —
+append-only, corrected by strike-through, never erased. First build:
+`src/app/admin/v2/` (prototype). Incumbent portal surfaces keep the transition rule
+until rebuilt under this world; the patient site is untouched.
+
+Durable system rules:
+
+- **Palette roles.** Brand hues carry as desk materials: paper page on a mint-washed
+  desk ground; navy is ink (text, rules, structure); teal is the pen (actions, links,
+  the acting hand); amber is the margin flag (attention, overdue, NEW); mint is the
+  confirmation wash. Terminal states stamp — Booked in teal, Closed in slate-navy —
+  with the date inside the stamp.
+- **The attention gutter.** Every queue row reserves a left gutter column for one
+  mark: a NEW flag, a due chip, an attempt tally, or a mini stamp. Attention is
+  structural (position on the page plus the gutter), never a bell or a badge pile.
+- **Ledger grammar.** Ruled section heads carry a label and a count sitting on the
+  rule; rows separate with fine rules, not cards; dates, times, phones, and counts
+  set in tabular figures. No card grids, no nested containers.
+- **Type.** One workhorse family, Public Sans, with weight doing hierarchy and
+  `tabular-nums` on every figure column. The staff-facing state vocabulary renders
+  Booked, never BOOKED; Scheduled remains the action label only.
+- **Motion.** State-conveying, ≤300ms, strong ease-out, never ease-in. The stamp
+  settle on a terminal save is the single standard-tier moment (~220ms scale
+  1.06→1 + opacity). Reduced motion keeps opacity and color, drops movement.
+- **Corrections strike, never erase.** Undo renders the compensated entry struck
+  through with a compensating line beneath — the visual contract of the machine's
+  append-only history.
+- **Honest paper.** The grammar stays grammar: rules, stamps, tabular figures.
+  No paper textures, no skeuomorphic shadows, no handwriting faces.
+
 ## Transition
 
 Until a surface is rebuilt under a committed world, maintenance matches the surface's
