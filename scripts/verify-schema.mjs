@@ -244,6 +244,8 @@ function projectConfig(target) {
       serviceKey: requireEnv(
         "SUPABASE_DEV_SERVICE_ROLE_KEY",
         "SUPABASE_SERVICE_ROLE_KEY",
+        "SUPABASE_DEV_SECRET_KEY",
+        "SUPABASE_SECRET_KEY",
       ),
     }
   }
@@ -260,6 +262,8 @@ function projectConfig(target) {
     serviceKey: requireEnv(
       "SUPABASE_PROD_SERVICE_ROLE_KEY",
       "SUPABASE_SERVICE_ROLE_KEY_PROD",
+      "SUPABASE_PROD_SECRET_KEY",
+      "SUPABASE_SECRET_KEY_PROD",
     ),
   }
 }

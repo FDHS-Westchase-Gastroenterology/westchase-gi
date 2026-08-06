@@ -45,7 +45,7 @@ export function serviceDb(): SupabaseClient {
   assertSafeE2ETarget(process.env);
   return createClient(
     requiredEnv("NEXT_PUBLIC_SUPABASE_URL"),
-    requiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
+    requiredEnv("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY"),
     {
       auth: {
         autoRefreshToken: false,

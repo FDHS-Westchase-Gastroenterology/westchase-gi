@@ -36,7 +36,11 @@ script:
    `PORTAL_PREVIEW_*` credentials, plus the non-secret long-lived guard values
    `PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF`, `SUPABASE_PROJECT_REF_PROD`, and
    `SUPABASE_URL_PROD`. Do not add those credentials to Production. Supabase's
-   integration owns the active branch URL and keys.
+   integration owns the active branch URL and keys. Its current marketplace
+   variables include `NEXT_PUBLIC_SUPABASE_URL`,
+   `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and `SUPABASE_SECRET_KEY`; the app
+   accepts that modern server key while retaining the canary-proven legacy
+   `SUPABASE_SERVICE_ROLE_KEY` fallback for existing environments.
 4. In GitHub branch protection, require **`preview-database-readiness`** in
    addition to the existing `Vercel`, `quality`, `react-doctor`, and
    `supabase-integration` checks. A missing, pending, stale, or failed check

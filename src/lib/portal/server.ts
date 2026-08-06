@@ -25,12 +25,12 @@ function publishableKey(): string {
 }
 
 /**
- * Temporary compatibility bridge: both hosted projects rejected the configured
- * opaque secret for Auth Admin while the legacy service-role JWT succeeded.
- * Keep this single selector until provider canaries prove opaque-key parity.
+ * Prefer the legacy service-role JWT on existing hosted projects, where it is
+ * already canary-proven. New Supabase/Vercel branch integrations inject the
+ * modern opaque secret key instead, so Preview accepts it as a fallback.
  */
 export function serviceRoleKey(): string {
-  return requiredEnv(["SUPABASE_SERVICE_ROLE_KEY"]);
+  return requiredEnv(["SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY"]);
 }
 
 /** Build an application-owned URL without accepting an absolute/open-redirect
