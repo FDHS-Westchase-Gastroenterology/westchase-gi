@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process"
 import { readFileSync } from "node:fs"
+import { isSafeDevelopmentPoolerUrl } from "./orb-env-doctor.mjs"
 
 const TABLES = [
   "audit_log",
@@ -38,6 +39,7 @@ const RPC_SIGNATURES = {
     "p_actor_email text, p_request_id uuid, p_event_id uuid",
   portal_hide_staff_release: "p_user_id uuid, p_release_id text",
   portal_open_staff_release: "p_user_id uuid, p_release_id text",
+  portal_preview_schema_readiness: "",
   portal_preview_data_lifecycle: "p_now timestamp with time zone",
   portal_record_staff_password_reset: "p_user_id uuid",
   portal_record_staff_release_dismiss: "p_user_id uuid, p_release_id text",
@@ -97,6 +99,7 @@ const RPC_RESULTS = {
   portal_undo_call_outcome: "jsonb",
   portal_hide_staff_release: "boolean",
   portal_open_staff_release: "boolean",
+  portal_preview_schema_readiness: "text[]",
   portal_preview_data_lifecycle: "jsonb",
   portal_record_staff_password_reset: "boolean",
   portal_record_staff_release_dismiss: "boolean",
@@ -194,6 +197,10 @@ const CALL_OUTCOME_UNDO_MIGRATION = {
 const RECIPIENT_MUTATIONS_MIGRATION = {
   version: "20260802005123",
   name: "atomic_notification_recipient_mutations",
+}
+const PREVIEW_READINESS_MIGRATION = {
+  version: "20260806160751",
+  name: "preview_schema_readiness",
 }
 
 const TARGETS = new Set(["dev", "prod"])
@@ -301,26 +308,34 @@ async function readResponse(response, operation) {
 }
 
 async function queryDatabase({ accessToken, ref, query }) {
-  const response = await fetch(
-    `https://api.supabase.com/v1/projects/${encodeURIComponent(ref)}/database/query`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ query }),
-    },
-  )
-  if (response.status === 401) {
+  const response = accessToken
+    ? await fetch(
+        `https://api.supabase.com/v1/projects/${encodeURIComponent(ref)}/database/query`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ query }),
+        },
+      )
+    : null
+  if (!response || response.status === 401) {
     const linkedRef = readFileSync("supabase/.temp/project-ref", "utf8").trim()
     const devRef =
       process.env.SUPABASE_DEV_PROJECT_REF ?? process.env.SUPABASE_PROJECT_REF
+    const allowedRef = requireEnv("PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF")
     assert(
-      ref === devRef && linkedRef === devRef,
+      ref === devRef && linkedRef === devRef && allowedRef === devRef,
       "Direct database verification fallback is Development-only",
     )
     const dbUrl = readFileSync("supabase/.temp/pooler-url", "utf8").trim()
+    assert(
+      dbUrl === requireEnv("SUPABASE_DEV_POOLER_URL") &&
+        isSafeDevelopmentPoolerUrl(dbUrl, devRef),
+      "Direct database verification fallback requires the allowlisted Development pooler",
+    )
     const password = requireEnv(
       "SUPABASE_DEV_DB_PASSWORD",
       "SUPABASE_DB_PASSWORD",
@@ -521,7 +536,7 @@ function sameValues(actual, expected) {
 async function main() {
   const target = parseTarget(process.argv.slice(2))
   const config = projectConfig(target)
-  const accessToken = requireEnv("SUPABASE_ACCESS_TOKEN")
+  const accessToken = process.env.SUPABASE_ACCESS_TOKEN?.trim()
   const credentials = adminCredentials(target)
   const email = credentials.email.trim().toLowerCase()
   const password = credentials.password
@@ -666,6 +681,14 @@ async function main() {
         row.name === RECIPIENT_MUTATIONS_MIGRATION.name,
     ),
     `Recipient-mutations migration ${RECIPIENT_MUTATIONS_MIGRATION.version}_${RECIPIENT_MUTATIONS_MIGRATION.name} is not applied`,
+  )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === PREVIEW_READINESS_MIGRATION.version &&
+        row.name === PREVIEW_READINESS_MIGRATION.name,
+    ),
+    `Preview-readiness migration ${PREVIEW_READINESS_MIGRATION.version}_${PREVIEW_READINESS_MIGRATION.name} is not applied`,
   )
 
   const onboardingColumnRows = await queryDatabase({
@@ -1177,7 +1200,13 @@ async function main() {
       rpc.result_type === RPC_RESULTS[rpc.proname],
       `${rpc.proname} result mismatch: ${rpc.result_type}`,
     )
-    assert(!rpc.prosecdef, `${rpc.proname} must use SECURITY INVOKER`)
+    const previewReadinessRpc = rpc.proname === "portal_preview_schema_readiness"
+    assert(
+      rpc.prosecdef === previewReadinessRpc,
+      previewReadinessRpc
+        ? `${rpc.proname} must use tightly scoped SECURITY DEFINER`
+        : `${rpc.proname} must use SECURITY INVOKER`,
+    )
     assert(
       rpc.config.split(",").includes('search_path=""'),
       `${rpc.proname} does not pin an empty search_path`,
@@ -1493,6 +1522,9 @@ async function main() {
   )
   console.log(
     `Verified ${target} migration: ${RECIPIENT_MUTATIONS_MIGRATION.version}_${RECIPIENT_MUTATIONS_MIGRATION.name}`,
+  )
+  console.log(
+    `Verified ${target} migration: ${PREVIEW_READINESS_MIGRATION.version}_${PREVIEW_READINESS_MIGRATION.name}`,
   )
   console.log(
     `Verified ${target} appointment-request lifecycle: nullable legacy-safe columns, constraints, preview, hold-aware deletion`,

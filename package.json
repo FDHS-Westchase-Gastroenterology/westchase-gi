@@ -5,11 +5,12 @@
   "scripts": {
     "dev": "next dev",
     "dev:mission": "mkdir -p .logs; lsof -ti tcp:3100 | xargs -r kill -9; exec next dev -p 3100",
-    "build": "next build",
+    "build": "node scripts/prepare-preview.mjs && next build",
     "start": "next start",
     "lint": "eslint",
     "doctor": "npx react-doctor --blocking none",
-    "test:e2e-guard": "node --test e2e/target-guard.test.mjs e2e/dictionary-availability.test.mjs",
+    "env:doctor": "node --env-file-if-exists=.env.local scripts/orb-env-doctor.mjs",
+    "test:e2e-guard": "node --test e2e/target-guard.test.mjs e2e/dictionary-availability.test.mjs e2e/orb-environment.test.mjs",
     "test:unit": "node --test src/lib/portal/*.test.mjs",
     "ui:reference": "node scripts/capture-ui-reference.mjs",
     "ui:reference:portal": "node --env-file-if-exists=.env.local scripts/capture-ui-reference.mjs --portal"

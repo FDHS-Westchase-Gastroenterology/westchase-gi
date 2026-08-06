@@ -4,6 +4,11 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
+if [ "${AMP_ORB:-}" = "1" ] && [ -n "${SUPABASE_ACCESS_TOKEN:-}" ]; then
+  echo "error: SUPABASE_ACCESS_TOKEN is operator-only and must not enter an orb" >&2
+  exit 1
+fi
+
 for tool in curl tar; do
   if ! command -v "$tool" >/dev/null 2>&1; then
     echo "error: required setup tool is unavailable: $tool" >&2
@@ -29,26 +34,38 @@ nvm install "$node_version"
 nvm alias default "$node_version" >/dev/null
 nvm use --silent "$node_version"
 
-profile_marker="# westchase-gi orb toolchain"
-if ! grep -Fqx "$profile_marker" "$HOME/.bash_profile" 2>/dev/null; then
-  cat >> "$HOME/.bash_profile" <<EOF
+mkdir -p "$HOME/.local/bin"
+for executable in node npm npx corepack; do
+  executable_path="$(command -v "$executable" 2>/dev/null || true)"
+  if [ -n "$executable_path" ]; then
+    ln -sfn "$executable_path" "$HOME/.local/bin/$executable"
+  fi
+done
+export PATH="$HOME/.local/bin:$PATH"
+
+profile_marker="# westchase-gi orb toolchain v2"
+for profile in "$HOME/.bash_profile" "$HOME/.bashrc"; do
+  if grep -Fqx "$profile_marker" "$profile" 2>/dev/null; then
+    continue
+  fi
+  cat >> "$profile" <<EOF
 
 $profile_marker
 case "\$PWD/" in
   "$repo_root/"*)
+    case ":\$PATH:" in
+      *":\$HOME/.local/bin:"*) ;;
+      *) export PATH="\$HOME/.local/bin:\$PATH" ;;
+    esac
     export NVM_DIR="\$HOME/.nvm"
     if [ -s "\$NVM_DIR/nvm.sh" ]; then
       . "\$NVM_DIR/nvm.sh" --no-use
       nvm use --silent "\$(tr -d '[:space:]' < "$repo_root/.nvmrc")" >/dev/null
     fi
-    case ":\$PATH:" in
-      *":\$HOME/.local/bin:"*) ;;
-      *) export PATH="\$HOME/.local/bin:\$PATH" ;;
-    esac
     ;;
 esac
 EOF
-fi
+done
 
 echo "Installing locked npm dependencies..."
 npm ci --no-audit --no-fund
@@ -57,10 +74,11 @@ echo "Installing Chromium and its system dependencies..."
 npx playwright install --with-deps chromium
 
 echo "Installing the CI-pinned Supabase CLI for authoring tasks..."
-supabase_cli_version="2.109.1"
+supabase_cli_version="2.111.0"
 supabase_bin="$HOME/.local/bin/supabase"
+supabase_real_bin="$HOME/.local/bin/supabase-real"
 mkdir -p "$(dirname "$supabase_bin")"
-if [ ! -x "$supabase_bin" ] || [ "$($supabase_bin --version 2>/dev/null || true)" != "$supabase_cli_version" ]; then
+if [ ! -x "$supabase_real_bin" ] || [ "$($supabase_real_bin --version 2>/dev/null || true)" != "$supabase_cli_version" ]; then
   case "$(uname -m)" in
     x86_64) supabase_arch="amd64" ;;
     aarch64 | arm64) supabase_arch="arm64" ;;
@@ -75,11 +93,98 @@ if [ ! -x "$supabase_bin" ] || [ "$($supabase_bin --version 2>/dev/null || true)
   curl -fsSL --retry 3 \
     "https://github.com/supabase/cli/releases/download/v${supabase_cli_version}/supabase_linux_${supabase_arch}.tar.gz" \
     | tar -xz -C "$supabase_tmp" supabase
-  install -m 0755 "$supabase_tmp/supabase" "$supabase_bin"
+  install -m 0755 "$supabase_tmp/supabase" "$supabase_real_bin"
   rm -rf "$supabase_tmp"
   trap - EXIT
 fi
-export PATH="$HOME/.local/bin:$PATH"
+ln -sfn "$repo_root/.agents/supabase-guard" "$supabase_bin"
 
-printf 'Orb setup complete: Node %s, npm %s, Supabase CLI %s.\n' \
-  "$(node --version)" "$(npm --version)" "$(supabase --version)"
+echo "Installing the pinned Vercel CLI..."
+vercel_cli_version="58.7.1"
+if [ ! -x "$HOME/.local/bin/vercel" ] || [ "$("$HOME/.local/bin/vercel" --version 2>/dev/null | awk '{print $NF}' || true)" != "$vercel_cli_version" ]; then
+  npm install --global --prefix "$HOME/.local" --no-audit --no-fund "vercel@$vercel_cli_version"
+fi
+
+if [ "${AMP_ORB:-}" = "1" ]; then
+  echo "Preparing Docker for disposable Supabase stacks..."
+  if ! command -v docker >/dev/null 2>&1; then
+    sudo apt-get update
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y docker.io
+  fi
+  sudo groupadd -f docker
+  sudo usermod -aG docker "$(id -un)"
+  sudo service docker start >/dev/null 2>&1 || true
+  if [ -S /var/run/docker.sock ]; then
+    sudo chgrp "$(id -gn)" /var/run/docker.sock
+    sudo chmod g+rw /var/run/docker.sock
+  fi
+  if ! docker info >/dev/null 2>&1; then
+    echo "error: Docker is installed but unavailable to the orb user" >&2
+    exit 1
+  fi
+  if [ -d supabase/.temp ]; then
+    sudo chown -R "$(id -u):$(id -g)" supabase/.temp
+  fi
+
+  echo "Writing the Development-only orb environment..."
+  node <<'NODE'
+const { chmodSync, writeFileSync } = require("node:fs");
+
+const copiedNames = [
+  "NEXT_PUBLIC_SUPABASE_URL",
+  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "SUPABASE_PROJECT_REF",
+  "SUPABASE_DB_PASSWORD",
+  "SUPABASE_DEV_POOLER_URL",
+  "PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF",
+  "SUPABASE_PROJECT_REF_PROD",
+  "SUPABASE_URL_PROD",
+  "PORTAL_SEED_ADMIN_EMAIL",
+  "PORTAL_SEED_ADMIN_PASSWORD",
+  "PORTAL_PREVIEW_USERNAME",
+  "PORTAL_PREVIEW_PASSWORD",
+  "VERCEL_ORG_ID",
+  "VERCEL_PROJECT_ID",
+];
+const values = Object.fromEntries(
+  copiedNames.flatMap((name) => process.env[name] ? [[name, process.env[name]]] : []),
+);
+values.PORTAL_BASE_URL = "http://localhost:3100";
+values.SUPABASE_TELEMETRY_DISABLED = "1";
+
+const body = Object.entries(values)
+  .map(([name, value]) => `${name}=${JSON.stringify(value)}`)
+  .join("\n");
+writeFileSync(".env.local", `${body}\n`, { mode: 0o600 });
+chmodSync(".env.local", 0o600);
+
+if (values.SUPABASE_PROJECT_REF && values.SUPABASE_DEV_POOLER_URL) {
+  const { mkdirSync } = require("node:fs");
+  mkdirSync("supabase/.temp", { recursive: true });
+  writeFileSync("supabase/.temp/project-ref", `${values.SUPABASE_PROJECT_REF}\n`);
+  writeFileSync("supabase/.temp/pooler-url", `${values.SUPABASE_DEV_POOLER_URL}\n`, {
+    mode: 0o600,
+  });
+  chmodSync("supabase/.temp/pooler-url", 0o600);
+}
+if (values.VERCEL_ORG_ID && values.VERCEL_PROJECT_ID) {
+  const { mkdirSync } = require("node:fs");
+  mkdirSync(".vercel", { recursive: true });
+  writeFileSync(
+    ".vercel/project.json",
+    `${JSON.stringify({
+      orgId: values.VERCEL_ORG_ID,
+      projectId: values.VERCEL_PROJECT_ID,
+      projectName: "westchase-gi",
+    })}\n`,
+  );
+}
+NODE
+fi
+
+npm run env:doctor
+
+printf 'Orb setup complete: Node %s, npm %s, Supabase CLI %s, Vercel CLI %s.\n' \
+  "$(node --version)" "$(npm --version)" "$(supabase --version)" "$(vercel --version)"

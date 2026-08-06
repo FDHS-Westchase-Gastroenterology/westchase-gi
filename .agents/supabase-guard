@@ -1,0 +1,148 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+real_supabase="${SUPABASE_REAL_BIN:-$HOME/.local/bin/supabase-real}"
+if [ ! -x "$real_supabase" ]; then
+  echo "error: guarded Supabase CLI backend is missing; run .agents/setup" >&2
+  exit 1
+fi
+
+if [ "${AMP_ORB:-}" != "1" ]; then
+  exec "$real_supabase" "$@"
+fi
+
+allowed_ref="${PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF:-}"
+if [ -z "$allowed_ref" ]; then
+  echo "error: missing the orb Supabase project allowlist; run npm run env:doctor" >&2
+  exit 1
+fi
+safe_pooler_url="${SUPABASE_DEV_POOLER_URL:-}"
+case "$safe_pooler_url" in
+  "postgresql://postgres.${allowed_ref}@"*.pooler.supabase.com:5432/postgres) ;;
+  *)
+    echo "error: orb Supabase commands require the official allowlisted Development pooler" >&2
+    exit 1
+    ;;
+esac
+if [ -n "${SUPABASE_PROJECT_ID:-}" ]; then
+  echo "error: orb Supabase commands reject SUPABASE_PROJECT_ID overrides" >&2
+  exit 1
+fi
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [ -z "$repo_root" ] || [ "$(pwd -P)" != "$(cd "$repo_root" && pwd -P)" ]; then
+  echo "error: orb Supabase commands must run from the repository root" >&2
+  exit 1
+fi
+
+arguments=("$@")
+link_command=0
+db_push_command=0
+db_query_command=0
+db_reset_command=0
+migration_mutation=0
+for ((index = 0; index < ${#arguments[@]}; index += 1)); do
+  case "${arguments[$index]}" in
+    --workdir | --workdir=*)
+      echo "error: orb Supabase commands must run from the repository root without --workdir" >&2
+      exit 1
+      ;;
+  esac
+  if [ "${arguments[$index]}" = "link" ]; then
+    link_command=1
+  fi
+  if [ "${arguments[$index]}" = "db" ] && [ "${arguments[$((index + 1))]:-}" = "push" ]; then
+    db_push_command=1
+  fi
+  if [ "${arguments[$index]}" = "db" ] && [ "${arguments[$((index + 1))]:-}" = "query" ]; then
+    db_query_command=1
+  fi
+  if [ "${arguments[$index]}" = "db" ] && [ "${arguments[$((index + 1))]:-}" = "reset" ]; then
+    db_reset_command=1
+  fi
+  if [ "${arguments[$index]}" = "migration" ]; then
+    case "${arguments[$((index + 1))]:-}" in
+      up | down | repair) migration_mutation=1 ;;
+    esac
+  fi
+done
+
+if [ "$link_command" -eq 1 ]; then
+  requested_ref=""
+  previous=""
+  for argument in "$@"; do
+    if [ "$previous" = "--project-ref" ]; then
+      requested_ref="$argument"
+    fi
+    case "$argument" in
+      --project-ref=*) requested_ref="${argument#--project-ref=}" ;;
+    esac
+    previous="$argument"
+  done
+  if [ -z "$requested_ref" ] || [ "$requested_ref" != "$allowed_ref" ]; then
+    echo "error: orb Supabase link rejected; only the allowlisted Development project is permitted" >&2
+    exit 1
+  fi
+fi
+
+if [ "$db_reset_command" -eq 1 ] || [ "$migration_mutation" -eq 1 ]; then
+  local_operation=0
+  for argument in "$@"; do
+    [ "$argument" = "--local" ] && local_operation=1
+  done
+  if [ "$local_operation" -ne 1 ]; then
+    echo "error: orb Supabase reset and migration mutation commands must be explicitly local" >&2
+    exit 1
+  fi
+fi
+
+if [ "$db_query_command" -eq 1 ]; then
+  requested_url=""
+  previous=""
+  for argument in "$@"; do
+    if [ "$previous" = "--db-url" ]; then
+      requested_url="$argument"
+    fi
+    case "$argument" in
+      --db-url=*) requested_url="${argument#--db-url=}" ;;
+      --linked)
+        echo "error: orb Supabase db query rejects linked targets" >&2
+        exit 1
+        ;;
+    esac
+    previous="$argument"
+  done
+  if [ -z "$requested_url" ] || [ "$requested_url" != "$safe_pooler_url" ]; then
+    echo "error: orb Supabase db query requires the exact allowlisted Development pooler URL" >&2
+    exit 1
+  fi
+fi
+
+if [ "$db_push_command" -eq 1 ]; then
+  local_push=0
+  for argument in "$@"; do
+    case "$argument" in
+      --local) local_push=1 ;;
+      --db-url | --db-url=*)
+        echo "error: orb Supabase db push rejects arbitrary database URLs" >&2
+        exit 1
+        ;;
+    esac
+  done
+
+  if [ "$local_push" -ne 1 ]; then
+    linked_ref=""
+    linked_url=""
+    if [ -f "supabase/.temp/project-ref" ]; then
+      linked_ref="$(tr -d '[:space:]' < supabase/.temp/project-ref)"
+    fi
+    if [ -f "supabase/.temp/pooler-url" ]; then
+      linked_url="$(tr -d '[:space:]' < supabase/.temp/pooler-url)"
+    fi
+    if [ -z "$linked_ref" ] || [ "$linked_ref" != "$allowed_ref" ] || [ "$linked_url" != "$safe_pooler_url" ]; then
+      echo "error: orb Supabase db push rejected; link the allowlisted Development project first" >&2
+      exit 1
+    fi
+  fi
+fi
+
+exec "$real_supabase" "$@"

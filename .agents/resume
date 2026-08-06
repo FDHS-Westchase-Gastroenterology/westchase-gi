@@ -14,8 +14,9 @@ fi
 . "$NVM_DIR/nvm.sh" --no-use
 node_version="$(tr -d '[:space:]' < .nvmrc)"
 nvm use --silent "$node_version" >/dev/null
+export PATH="$HOME/.local/bin:$PATH"
 
-for executable in node_modules/.bin/next node_modules/.bin/playwright; do
+for executable in node_modules/.bin/next node_modules/.bin/playwright "$HOME/.local/bin/supabase" "$HOME/.local/bin/vercel"; do
   if [ ! -x "$executable" ]; then
     echo "error: orb dependencies are incomplete; run .agents/setup" >&2
     exit 1
@@ -32,4 +33,23 @@ if (!existsSync(chromium.executablePath())) {
 }
 NODE
 
-echo "Orb prerequisites are ready; this repository has no persistent local services to resume."
+if [ "${AMP_ORB:-}" = "1" ]; then
+  if ! timeout 1s docker info >/dev/null 2>&1; then
+    timeout 3s sudo -n service docker start >/dev/null 2>&1 || true
+  fi
+  if [ -S /var/run/docker.sock ]; then
+    timeout 1s sudo -n chgrp "$(id -gn)" /var/run/docker.sock
+    timeout 1s sudo -n chmod g+rw /var/run/docker.sock
+  fi
+  if ! timeout 1s docker info >/dev/null 2>&1; then
+    echo "error: Docker is unavailable; run .agents/setup" >&2
+    exit 1
+  fi
+  if [ -d supabase/.temp ]; then
+    timeout 1s sudo -n chown -R "$(id -u):$(id -g)" supabase/.temp
+  fi
+fi
+
+node --env-file-if-exists=.env.local scripts/orb-env-doctor.mjs
+
+echo "Orb prerequisites are ready; Docker and Supabase workspace ownership are repaired."

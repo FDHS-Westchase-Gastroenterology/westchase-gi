@@ -1,4 +1,4 @@
-const TARGETS = new Set(["local", "dev", "prod"])
+const TARGETS = new Set(["local", "dev", "preview", "prod"])
 
 function parseTarget(args) {
   const inline = args.find((arg) => arg.startsWith("--target="))
@@ -8,7 +8,9 @@ function parseTarget(args) {
     (flagIndex >= 0 ? args[flagIndex + 1] : undefined)
 
   if (!value || !TARGETS.has(value)) {
-    throw new Error("Usage: node scripts/seed-portal.mjs --target local|dev|prod")
+    throw new Error(
+      "Usage: node scripts/seed-portal.mjs --target local|dev|preview|prod",
+    )
   }
 
   return value
@@ -46,6 +48,38 @@ function projectConfig(target) {
         "SUPABASE_SERVICE_ROLE_KEY",
       ),
     }
+  }
+
+  if (target === "preview") {
+    if (process.env.VERCEL_ENV !== "preview") {
+      throw new Error("--target preview requires VERCEL_ENV=preview")
+    }
+
+    const ref = requireEnv("SUPABASE_PREVIEW_PROJECT_REF")
+    const url = requireEnv("NEXT_PUBLIC_SUPABASE_URL")
+    const expectedUrl = `https://${ref}.supabase.co`
+    if (url !== expectedUrl) {
+      throw new Error(
+        "--target preview requires NEXT_PUBLIC_SUPABASE_URL for SUPABASE_PREVIEW_PROJECT_REF",
+      )
+    }
+
+    const developmentRef = requireEnv(
+      "PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF",
+    )
+    const productionRef = requireEnv(
+      "SUPABASE_PROD_PROJECT_REF",
+      "SUPABASE_PROJECT_REF_PROD",
+    )
+    const productionUrl = requireEnv("SUPABASE_PROD_URL", "SUPABASE_URL_PROD")
+    if (ref === developmentRef) {
+      throw new Error("--target preview refuses the long-lived Development project")
+    }
+    if (ref === productionRef || url === productionUrl) {
+      throw new Error("--target preview refuses the Production project")
+    }
+
+    return { url, serviceKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY") }
   }
 
   return {
