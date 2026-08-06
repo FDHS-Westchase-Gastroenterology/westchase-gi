@@ -1,23 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
-
-import { expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
-import { z } from "zod";
-
-import { jsonObjectSchema } from "../src/lib/json";
-import type { JsonObject } from "../src/lib/json";
+import { expect, test, type Page } from "@playwright/test";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
-
-interface LifecycleFixture {
-  status?: string;
-  closure_disposition?: string;
-  closed_at?: string;
-  record_handoff_at?: string;
-  retention_hold_at?: string;
-  retention_hold_by?: string;
-  retention_hold_reason?: string;
-  created_at?: string;
-}
 
 loadLocalEnv();
 
@@ -33,7 +16,9 @@ const lifecycleActor = `lifecycle-${runId}@example.test`;
 const requestIds = new Set<string>();
 
 const CLOCK = new Date(Date.now() + 2 * 60 * 1000);
-const UNCONVERTED_CUTOFF = new Date(CLOCK.getTime() - 180 * 24 * 60 * 60 * 1000);
+const UNCONVERTED_CUTOFF = new Date(
+  CLOCK.getTime() - 180 * 24 * 60 * 60 * 1000,
+);
 const CONVERTED_CUTOFF = new Date(CLOCK);
 CONVERTED_CUTOFF.setUTCFullYear(CONVERTED_CUTOFF.getUTCFullYear() - 1);
 const AUDIT_CUTOFF = new Date(CLOCK);
@@ -43,11 +28,11 @@ function shifted(date: Date, milliseconds: number): string {
   return new Date(date.getTime() + milliseconds).toISOString();
 }
 
-function count(result: JsonObject, key: string): number {
-  if (!(key in result)) {
+function count(result: unknown, key: string): number {
+  if (typeof result !== "object" || result === null || !(key in result)) {
     throw new Error(`Lifecycle result is missing ${key}`);
   }
-  return Number(result[key]);
+  return Number((result as Record<string, unknown>)[key]);
 }
 
 async function signIn(page: Page): Promise<void> {
@@ -60,7 +45,7 @@ async function signIn(page: Page): Promise<void> {
 
 async function stageRequest(
   suffix: string,
-  lifecycle: Readonly<LifecycleFixture> = {},
+  lifecycle: Record<string, unknown> = {},
 ): Promise<string> {
   const id = randomUUID();
   requestIds.add(id);
@@ -84,9 +69,15 @@ async function stageRequest(
 
 test.describe("disposable-local appointment-request lifecycle", () => {
   test.describe.configure({ mode: "serial" });
-  test.skip(!disposableLocal, "destructive lifecycle coverage is disposable-local only");
+  test.skip(
+    !disposableLocal,
+    "destructive lifecycle coverage is disposable-local only",
+  );
   test.beforeEach(({}, testInfo) => {
-    test.skip(testInfo.project.name !== "chromium", "lifecycle coverage requires JavaScript");
+    test.skip(
+      testInfo.project.name !== "chromium",
+      "lifecycle coverage requires JavaScript",
+    );
   });
 
   const db = serviceDb();
@@ -105,99 +96,132 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     await db.from("audit_log").delete().eq("actor_email", lifecycleActor);
   });
 
-  test("staff classifies closure from the request detail page", async ({ page }) => {
-    const id = await stageRequest("workflow");
+  test("staff classifies closure from the request detail page", async ({
+    page,
+  }) => {
+    // A migrated closure with no recorded outcome (DEC-13): closed, review
+    // flag set, no invented closure fact. It resolves only through the
+    // dedicated ClassifyLegacyClosure repair path in the workflow panel.
+    const bookedReviewId = await stageRequest("legacy-booked", {
+      status: "closed",
+      legacy_review_required: true,
+    });
+    const unbookedReviewId = await stageRequest("legacy-unbooked", {
+      status: "closed",
+      legacy_review_required: true,
+    });
     await signIn(page);
-    await page.goto(`/admin/requests/${id}`);
 
-    const composer = page.getByTestId("call-outcome-composer");
-    async function saveLifecycle(
-      destination: "Contacted" | "Scheduled" | "Closed",
-      detail?: string,
-    ) {
-      await composer.getByText(destination, { exact: true }).click();
-      if (detail !== undefined && detail !== "") {
-        await composer.getByText(detail, { exact: true }).click();
-      }
-      await page.getByTestId("save-outcome").click();
-      await expect(page.getByTestId("composer-feedback")).toBeVisible();
+    // Reviewed as booked: the record resolves to durable `booked`,
+    // presented to staff as Scheduled (DEC-04) with migration-safe
+    // retention (the clock starts at review, not in the past).
+    await page.goto(`/admin/requests/${bookedReviewId}`);
+    const panel = page.getByTestId("workflow-panel");
+    await expect(panel).toContainText("Finish this request's record");
+    // The review is not an ordinary work surface: no contact/close rows.
+    await expect(page.getByTestId("save-workflow")).toHaveCount(0);
+    await panel
+      .getByText("An appointment was booked", { exact: true })
+      .click();
+    await page.getByTestId("classify-legacy").click();
+    await expect(page.getByTestId("workflow-feedback")).toContainText(
+      "marked Scheduled",
+    );
+
+    const bookedRow = await db
+      .from("requests")
+      .select(
+        "status, legacy_review_required, record_handoff_at, closed_at, closure_reason, version",
+      )
+      .eq("id", bookedReviewId)
+      .single();
+    expect(bookedRow.error).toBeNull();
+    expect(bookedRow.data).toMatchObject({
+      status: "booked",
+      legacy_review_required: false,
+      closed_at: null,
+      closure_reason: null,
+    });
+    expect(bookedRow.data?.record_handoff_at).toBeTruthy();
+    expect(Number(bookedRow.data?.version)).toBe(2);
+
+    // Reviewed as unbooked: normal CLOSED with a typed reason; the
+    // retention clock starts no earlier than the review itself.
+    await page.goto(`/admin/requests/${unbookedReviewId}`);
+    await page
+      .getByTestId("workflow-panel")
+      .getByText("No appointment — patient wouldn't schedule", {
+        exact: true,
+      })
+      .click();
+    await page.getByTestId("classify-legacy").click();
+    await expect(page.getByTestId("workflow-feedback")).toContainText(
+      "stays closed",
+    );
+
+    const unbookedRow = await db
+      .from("requests")
+      .select(
+        "status, legacy_review_required, record_handoff_at, closed_at, closure_reason",
+      )
+      .eq("id", unbookedReviewId)
+      .single();
+    expect(unbookedRow.error).toBeNull();
+    expect(unbookedRow.data).toMatchObject({
+      status: "closed",
+      legacy_review_required: false,
+      record_handoff_at: null,
+      closure_reason: "wont_schedule",
+    });
+    expect(unbookedRow.data?.closed_at).toBeTruthy();
+
+    // Each classification appends one immutable legacy_review transition
+    // and one PHI-free technical audit entry.
+    for (const [id, toState] of [
+      [bookedReviewId, "booked"],
+      [unbookedReviewId, "closed"],
+    ] as const) {
+      const { data: transitions, error: transitionsError } = await db
+        .from("request_transitions")
+        .select("command, from_state, to_state, provenance")
+        .eq("request_id", id);
+      expect(transitionsError).toBeNull();
+      expect(transitions).toEqual([
+        {
+          command: "classify_legacy_closure",
+          from_state: "closed",
+          to_state: toState,
+          provenance: "legacy_review",
+        },
+      ]);
     }
 
-    await saveLifecycle("Closed", "Patient won't schedule");
-    await expect(page.getByTestId("request-lifecycle-summary")).toContainText(
-      "— no appointment booked",
-    );
-
-    let row = await db
+    await db
       .from("requests")
-      .select("status, closure_disposition, closed_at, record_handoff_at, retention_hold_at")
-      .eq("id", id)
-      .single();
-    expect(row.error).toBeNull();
-    expect(row.data).toMatchObject({
-      status: "closed",
-      closure_disposition: "unconverted",
-      record_handoff_at: null,
-    });
-    expect(row.data?.closed_at).toBeTruthy();
-
-    // Closed exposes the explicit correction/reopen destinations.
-    await saveLifecycle("Contacted", "Reached the patient — follow-up needed");
-    await expect(page.getByTestId("request-lifecycle-summary")).toHaveCount(0);
-    row = await db
-      .from("requests")
-      .select("status, closure_disposition, closed_at, record_handoff_at, retention_hold_at")
-      .eq("id", id)
-      .single();
-    expect(row.data).toMatchObject({
-      status: "contacted",
-      closure_disposition: null,
-      closed_at: null,
-      record_handoff_at: null,
-    });
-
-    // Closed carries the converted closure outcome as a detail.
-    await saveLifecycle("Closed", "Appointment booked — request complete");
-    await expect(page.getByTestId("request-lifecycle-summary")).toContainText(
-      /—\s+appointment booked/,
-    );
-
-    row = await db
-      .from("requests")
-      .select("status, closure_disposition, closed_at, record_handoff_at, retention_hold_at")
-      .eq("id", id)
-      .single();
-    expect(row.data?.closure_disposition).toBe("converted");
-    expect(row.data?.record_handoff_at).toBeTruthy();
-    expect(row.data?.retention_hold_at).toBeNull();
-
-    const audits = await db
+      .delete()
+      .in("id", [bookedReviewId, unbookedReviewId]);
+    await db
       .from("audit_log")
-      .select("action")
-      .eq("entity_id", id)
-      .in("action", ["request.call_outcome"]);
-    expect(audits.error).toBeNull();
-    expect(
-      z
-        .array(z.object({ action: z.string() }))
-        .parse(audits.data ?? [])
-        .map(({ action }) => action),
-    ).toEqual(["request.call_outcome", "request.call_outcome", "request.call_outcome"]);
-
-    await db.from("requests").delete().eq("id", id);
-    await db.from("audit_log").delete().eq("entity_id", id);
-    requestIds.delete(id);
+      .delete()
+      .in("entity_id", [bookedReviewId, unbookedReviewId]);
+    requestIds.delete(bookedReviewId);
+    requestIds.delete(unbookedReviewId);
   });
 
-  test("schema-first rollout keeps the deployed close path non-destructive", async () => {
+  test("the retired generic close path can no longer manufacture an unclassified closure", async () => {
+    // DEC-15: the generic status setter is retired from the application.
+    // The RPC survives only for deploy-overlap compatibility, and the new
+    // workflow shape constraint now rejects the incoherent closure it used
+    // to write (closed with no clock, no reason, no review flag) — it
+    // fails loudly with no partial write instead of silently minting an
+    // unclassifiable row.
     const id = await stageRequest("old-app-close");
     const closed = await db.rpc("portal_update_request_status", {
       p_actor_email: lifecycleActor,
       p_request_id: id,
       p_next_status: "closed",
     });
-    expect(closed.error).toBeNull();
-    expect(closed.data).toBe(true);
+    expect(closed.error?.code).toBe("23514");
 
     const row = await db
       .from("requests")
@@ -206,18 +230,26 @@ test.describe("disposable-local appointment-request lifecycle", () => {
       .single();
     expect(row.error).toBeNull();
     expect(row.data).toEqual({
-      status: "closed",
+      status: "new",
       closure_disposition: null,
       closed_at: null,
       record_handoff_at: null,
     });
+
+    // No transition evidence appears for the rejected write, and the
+    // retention motor has nothing to act on.
+    const { data: transitions } = await db
+      .from("request_transitions")
+      .select("id")
+      .eq("request_id", id);
+    expect(transitions).toHaveLength(0);
 
     const run = await db.rpc("portal_run_data_lifecycle", {
       p_actor_email: lifecycleActor,
       p_now: CLOCK.toISOString(),
     });
     expect(run.error).toBeNull();
-    expect(count(jsonObjectSchema.parse(run.data), "requests_removed")).toBe(0);
+    expect(count(run.data, "requests_removed")).toBe(0);
 
     const survivor = await db.from("requests").select("id").eq("id", id);
     expect(survivor.data).toEqual([{ id }]);
@@ -231,6 +263,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     const id = await stageRequest("concurrent-run", {
       status: "closed",
       closure_disposition: "unconverted",
+      closure_provenance: "migration_unconverted",
       closed_at: UNCONVERTED_CUTOFF.toISOString(),
     });
 
@@ -245,7 +278,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     expect(runs.every(({ error }) => error === null)).toBe(true);
     expect(
       runs.reduce(
-        (total, { data }) => total + count(jsonObjectSchema.parse(data), "requests_removed"),
+        (total, { data }) => total + count(data, "requests_removed"),
         0,
       ),
     ).toBe(1);
@@ -255,38 +288,44 @@ test.describe("disposable-local appointment-request lifecycle", () => {
   });
 
   test("exact boundaries, holds, secrets, cascades, and repeat runs are safe", async () => {
+    // Closed retention runs on typed/provenance-backed closures (the
+    // workflow shape constraint forbids the old bare `closed` rows), and
+    // converted requests are durable `booked` rows whose retention clock is
+    // the booking-handoff time (spec §14.1).
     const unconvertedBefore = await stageRequest("unconverted-before", {
       status: "closed",
       closure_disposition: "unconverted",
+      closure_provenance: "migration_unconverted",
       closed_at: shifted(UNCONVERTED_CUTOFF, 1),
     });
     const unconvertedExact = await stageRequest("unconverted-exact", {
       status: "closed",
       closure_disposition: "unconverted",
+      closure_provenance: "migration_unconverted",
       closed_at: UNCONVERTED_CUTOFF.toISOString(),
     });
     const convertedBefore = await stageRequest("converted-before", {
-      status: "closed",
-      closure_disposition: "converted",
-      closed_at: shifted(CONVERTED_CUTOFF, 1),
+      status: "booked",
       record_handoff_at: shifted(CONVERTED_CUTOFF, 1),
     });
     const convertedExact = await stageRequest("converted-exact", {
-      status: "closed",
-      closure_disposition: "converted",
-      closed_at: CONVERTED_CUTOFF.toISOString(),
+      status: "booked",
       record_handoff_at: CONVERTED_CUTOFF.toISOString(),
     });
     const heldExpired = await stageRequest("held-expired", {
       status: "closed",
       closure_disposition: "unconverted",
+      closure_provenance: "migration_unconverted",
       closed_at: shifted(UNCONVERTED_CUTOFF, -1),
       retention_hold_at: shifted(CLOCK, -60_000),
       retention_hold_by: lifecycleActor,
       retention_hold_reason: "CASE-HOLD",
     });
+    // An unclassified legacy closure stays visible, review-required, and
+    // retention-ineligible until classified (DEC-26).
     const legacyClosed = await stageRequest("legacy-closed", {
       status: "closed",
+      legacy_review_required: true,
     });
     const openOld = await stageRequest("open-old", {
       status: "contacted",
@@ -346,7 +385,9 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     ]);
     expect(auditError).toBeNull();
 
-    const rateHash = createHash("sha256").update(`lifecycle-${runId}`).digest("hex");
+    const rateHash = createHash("sha256")
+      .update(`lifecycle-${runId}`)
+      .digest("hex");
     const rateClaim = await db.rpc("portal_check_intake_rate_limit", {
       p_client_hash: rateHash,
       p_limit: 5,
@@ -358,14 +399,15 @@ test.describe("disposable-local appointment-request lifecycle", () => {
       p_now: CLOCK.toISOString(),
     });
     expect(preview.error).toBeNull();
-    const previewCounts = jsonObjectSchema.parse(preview.data);
-    expect(count(previewCounts, "unconverted_requests")).toBe(1);
-    expect(count(previewCounts, "converted_requests")).toBe(1);
-    expect(count(previewCounts, "held_requests")).toBeGreaterThanOrEqual(1);
-    expect(count(previewCounts, "legacy_unclassified_requests")).toBeGreaterThanOrEqual(1);
-    expect(count(previewCounts, "receipt_secrets")).toBe(1);
-    expect(count(previewCounts, "rate_limits")).toBeGreaterThanOrEqual(1);
-    expect(count(previewCounts, "audits")).toBe(1);
+    expect(count(preview.data, "unconverted_requests")).toBe(1);
+    expect(count(preview.data, "converted_requests")).toBe(1);
+    expect(count(preview.data, "held_requests")).toBeGreaterThanOrEqual(1);
+    expect(
+      count(preview.data, "legacy_unclassified_requests"),
+    ).toBeGreaterThanOrEqual(1);
+    expect(count(preview.data, "receipt_secrets")).toBe(1);
+    expect(count(preview.data, "rate_limits")).toBeGreaterThanOrEqual(1);
+    expect(count(preview.data, "audits")).toBe(1);
 
     const unsafeClock = await db.rpc("portal_run_data_lifecycle", {
       p_actor_email: lifecycleActor,
@@ -378,11 +420,12 @@ test.describe("disposable-local appointment-request lifecycle", () => {
       p_now: CLOCK.toISOString(),
     });
     expect(firstRun.error).toBeNull();
-    const firstRunCounts = jsonObjectSchema.parse(firstRun.data);
-    expect(count(firstRunCounts, "requests_removed")).toBe(2);
-    expect(count(firstRunCounts, "receipt_secrets_removed")).toBe(1);
-    expect(count(firstRunCounts, "rate_limits_removed")).toBeGreaterThanOrEqual(1);
-    expect(count(firstRunCounts, "audits_removed")).toBe(1);
+    expect(count(firstRun.data, "requests_removed")).toBe(2);
+    expect(count(firstRun.data, "receipt_secrets_removed")).toBe(1);
+    expect(count(firstRun.data, "rate_limits_removed")).toBeGreaterThanOrEqual(
+      1,
+    );
+    expect(count(firstRun.data, "audits_removed")).toBe(1);
 
     const survivors = await db
       .from("requests")
@@ -397,16 +440,14 @@ test.describe("disposable-local appointment-request lifecycle", () => {
         openOld,
       ]);
     expect(survivors.error).toBeNull();
-    expect(
-      z
-        .array(z.object({ id: z.string() }))
-        .parse(survivors.data ?? [])
-        .map(({ id }) => id)
-        .sort((left, right) => left.localeCompare(right)),
-    ).toEqual(
-      [unconvertedBefore, convertedBefore, heldExpired, legacyClosed, openOld].sort((left, right) =>
-        left.localeCompare(right),
-      ),
+    expect((survivors.data ?? []).map(({ id }) => id).sort()).toEqual(
+      [
+        unconvertedBefore,
+        convertedBefore,
+        heldExpired,
+        legacyClosed,
+        openOld,
+      ].sort(),
     );
 
     const cascadedEvent = await db
@@ -424,7 +465,9 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     const expiredReceipt = receipts.data?.find(
       ({ request_id }) => request_id === unconvertedBefore,
     );
-    const liveReceipt = receipts.data?.find(({ request_id }) => request_id === convertedBefore);
+    const liveReceipt = receipts.data?.find(
+      ({ request_id }) => request_id === convertedBefore,
+    );
     expect(expiredReceipt?.status).toBe("expired");
     expect(expiredReceipt?.meta).not.toHaveProperty("token_hash");
     expect(liveReceipt?.status).toBe("issued");
@@ -444,25 +487,23 @@ test.describe("disposable-local appointment-request lifecycle", () => {
         openOld,
       ]);
     expect(audits.error).toBeNull();
-    const auditActions = z
-      .array(z.object({ action: z.string() }))
-      .parse(audits.data ?? [])
-      .map(({ action }) => action);
+    const auditActions = (audits.data ?? []).map(({ action }) => action);
     expect(auditActions).not.toContain("test.audit.exact");
     expect(auditActions).toContain("test.audit.before");
     expect(auditActions).toContain("test.audit.held");
-    expect(auditActions.filter((action) => action === "request.retention_delete")).toHaveLength(2);
+    expect(
+      auditActions.filter((action) => action === "request.retention_delete"),
+    ).toHaveLength(2);
 
     const secondRun = await db.rpc("portal_run_data_lifecycle", {
       p_actor_email: lifecycleActor,
       p_now: CLOCK.toISOString(),
     });
     expect(secondRun.error).toBeNull();
-    const secondRunCounts = jsonObjectSchema.parse(secondRun.data);
-    expect(count(secondRunCounts, "requests_removed")).toBe(0);
-    expect(count(secondRunCounts, "receipt_secrets_removed")).toBe(0);
-    expect(count(secondRunCounts, "rate_limits_removed")).toBe(0);
-    expect(count(secondRunCounts, "audits_removed")).toBe(0);
+    expect(count(secondRun.data, "requests_removed")).toBe(0);
+    expect(count(secondRun.data, "receipt_secrets_removed")).toBe(0);
+    expect(count(secondRun.data, "rate_limits_removed")).toBe(0);
+    expect(count(secondRun.data, "audits_removed")).toBe(0);
 
     const release = await db.rpc("portal_set_request_legal_hold", {
       p_actor_email: lifecycleActor,
@@ -476,7 +517,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
       p_now: CLOCK.toISOString(),
     });
     expect(afterRelease.error).toBeNull();
-    expect(count(jsonObjectSchema.parse(afterRelease.data), "requests_removed")).toBe(1);
+    expect(count(afterRelease.data, "requests_removed")).toBe(1);
   });
 
   test("exceptional deletion is authorized, hold-aware, and replayable after restore", async () => {
@@ -527,8 +568,14 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     expect(deleted.error).toBeNull();
     expect(deleted.data).toBe(true);
 
-    const deletedRequest = await db.from("requests").select("id").eq("id", earlyId);
-    const deletedEvents = await db.from("request_events").select("id").eq("request_id", earlyId);
+    const deletedRequest = await db
+      .from("requests")
+      .select("id")
+      .eq("id", earlyId);
+    const deletedEvents = await db
+      .from("request_events")
+      .select("id")
+      .eq("request_id", earlyId);
     expect(deletedRequest.data).toHaveLength(0);
     expect(deletedEvents.data).toHaveLength(0);
 
@@ -546,21 +593,25 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     const restoredId = await stageRequest("restored-expired", {
       status: "closed",
       closure_disposition: "unconverted",
+      closure_provenance: "migration_unconverted",
       closed_at: UNCONVERTED_CUTOFF.toISOString(),
     });
     const preview = await db.rpc("portal_preview_data_lifecycle", {
       p_now: CLOCK.toISOString(),
     });
-    expect(count(jsonObjectSchema.parse(preview.data), "unconverted_requests")).toBe(1);
+    expect(count(preview.data, "unconverted_requests")).toBe(1);
 
     const replay = await db.rpc("portal_run_data_lifecycle", {
       p_actor_email: lifecycleActor,
       p_now: CLOCK.toISOString(),
     });
     expect(replay.error).toBeNull();
-    expect(count(jsonObjectSchema.parse(replay.data), "requests_removed")).toBe(1);
+    expect(count(replay.data, "requests_removed")).toBe(1);
 
-    const restoredRequest = await db.from("requests").select("id").eq("id", restoredId);
+    const restoredRequest = await db
+      .from("requests")
+      .select("id")
+      .eq("id", restoredId);
     expect(restoredRequest.data).toHaveLength(0);
   });
 });

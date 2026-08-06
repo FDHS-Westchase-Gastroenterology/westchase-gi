@@ -13,11 +13,11 @@ import {
   useRef,
   useState,
 } from "react";
-
 import { ArrowRight, ChevronDown, X } from "@/components/icons";
-import { PORTAL_RELEASE_BRIEFING } from "@/lib/portal/release-briefing-content";
-import type { PortalReleaseViewState } from "@/lib/portal/release-briefing-content";
-
+import {
+  PORTAL_RELEASE_BRIEFING,
+  type PortalReleaseViewState,
+} from "@/lib/portal/release-briefing-content";
 import {
   acknowledgePortalReleaseAction,
   hidePortalReleaseAction,
@@ -26,13 +26,11 @@ import {
   recordPortalReleaseGuideOpenAction,
 } from "./release-briefing-actions";
 
-type ReleaseActionResult = { ok: true } | { ok: false; code: "invalid" | "unavailable" };
+type ReleaseActionResult =
+  | { ok: true }
+  | { ok: false; code: "invalid" | "unavailable" };
 
-interface PortalNavigator {
-  push(href: string): void;
-}
-
-interface PortalReleaseContextValue {
+type PortalReleaseContextValue = {
   available: boolean;
   announcementVisible: boolean;
   homeOpen: boolean;
@@ -49,30 +47,34 @@ interface PortalReleaseContextValue {
   hide: () => void;
   toggleQuick: (animate: boolean) => void;
   dismissQuick: () => void;
-  openGuide: (navigator: PortalNavigator) => void;
-}
+  openGuide: () => void;
+};
 
-const PortalReleaseContext = createContext<PortalReleaseContextValue | null>(null);
+const PortalReleaseContext = createContext<PortalReleaseContextValue | null>(
+  null,
+);
 
 function usePortalRelease(): PortalReleaseContextValue {
   const context = use(PortalReleaseContext);
   if (!context) {
-    throw new Error("Portal release briefing must be rendered inside its provider.");
+    throw new Error(
+      "Portal release briefing must be rendered inside its provider.",
+    );
   }
   return context;
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 export function PortalReleaseProvider({
   children,
   eligible,
   initialState,
-}: Readonly<{
+}: {
   children: React.ReactNode;
   eligible: boolean;
   initialState: PortalReleaseViewState;
-}>) {
+}) {
   const pathname = usePathname();
+  const router = useRouter();
   const initiallyAvailable = initialState.status === "available";
   const [available, setAvailable] = useState(initiallyAvailable);
   const [homeOpen, setHomeOpen] = useState(false);
@@ -92,7 +94,7 @@ export function PortalReleaseProvider({
   const previousPathname = useRef(pathname);
 
   useEffect(() => {
-    if (previousPathname.current === pathname) return undefined;
+    if (previousPathname.current === pathname) return;
 
     previousPathname.current = pathname;
     const frame = requestAnimationFrame(() => {
@@ -100,9 +102,7 @@ export function PortalReleaseProvider({
       if (pathname !== "/admin") setHomeOpen(false);
     });
 
-    return () => {
-      cancelAnimationFrame(frame);
-    };
+    return () => cancelAnimationFrame(frame);
   }, [pathname]);
 
   const runAction = useCallback(
@@ -128,14 +128,14 @@ export function PortalReleaseProvider({
       setFirstOpenMotion(animate);
       setAvailable(true);
       setHomeOpen(true);
-      runAction(async () => openPortalReleaseAction(PORTAL_RELEASE_BRIEFING.id));
+      runAction(() => openPortalReleaseAction(PORTAL_RELEASE_BRIEFING.id));
     },
     [runAction],
   );
 
   const recordDismiss = useCallback(() => {
     runAction(
-      async () => recordPortalReleaseDismissAction(PORTAL_RELEASE_BRIEFING.id),
+      () => recordPortalReleaseDismissAction(PORTAL_RELEASE_BRIEFING.id),
       "The summary closed, but the portal could not record that dismissal.",
     );
   }, [runAction]);
@@ -151,7 +151,9 @@ export function PortalReleaseProvider({
     setActionError(null);
     startTransition(async () => {
       try {
-        const result = await acknowledgePortalReleaseAction(PORTAL_RELEASE_BRIEFING.id);
+        const result = await acknowledgePortalReleaseAction(
+          PORTAL_RELEASE_BRIEFING.id,
+        );
         const message = result.ok
           ? null
           : "The portal could not save that preference. The update will stay available so nothing is lost.";
@@ -176,7 +178,9 @@ export function PortalReleaseProvider({
     setActionError(null);
     startTransition(async () => {
       try {
-        const result = await hidePortalReleaseAction(PORTAL_RELEASE_BRIEFING.id);
+        const result = await hidePortalReleaseAction(
+          PORTAL_RELEASE_BRIEFING.id,
+        );
         const message = result.ok
           ? null
           : "The portal could not hide the update. It will remain available so the preference is not misrepresented.";
@@ -205,7 +209,7 @@ export function PortalReleaseProvider({
         return;
       }
       setQuickOpen(true);
-      runAction(async () => openPortalReleaseAction(PORTAL_RELEASE_BRIEFING.id));
+      runAction(() => openPortalReleaseAction(PORTAL_RELEASE_BRIEFING.id));
     },
     [quickOpen, recordDismiss, runAction],
   );
@@ -216,25 +220,29 @@ export function PortalReleaseProvider({
     requestAnimationFrame(() => quickButtonRef.current?.focus());
   }, [recordDismiss]);
 
-  const openGuide = useCallback((navigator: PortalNavigator) => {
+  const openGuide = useCallback(() => {
     setGuidePending(true);
     setActionError(null);
     startTransition(async () => {
       try {
-        const result = await recordPortalReleaseGuideOpenAction(PORTAL_RELEASE_BRIEFING.id);
+        const result = await recordPortalReleaseGuideOpenAction(
+          PORTAL_RELEASE_BRIEFING.id,
+        );
         setActionError(
           result.ok
             ? null
             : "The guide is opening, but the portal could not record that selection.",
         );
       } catch {
-        setActionError("The guide is opening, but the portal could not record that selection.");
+        setActionError(
+          "The guide is opening, but the portal could not record that selection.",
+        );
       } finally {
         setGuidePending(false);
-        navigator.push(PORTAL_RELEASE_BRIEFING.guideHref);
+        router.push(PORTAL_RELEASE_BRIEFING.guideHref);
       }
     });
-  }, []);
+  }, [router]);
 
   const handleEscape = useEffectEvent(() => {
     setQuickOpen(false);
@@ -244,21 +252,23 @@ export function PortalReleaseProvider({
   });
 
   useEffect(() => {
-    if (!quickOpen && !homeOpen) return undefined;
+    if (!quickOpen && !homeOpen) return;
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
       handleEscape();
     }
     window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-    };
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, [homeOpen, quickOpen]);
 
   const value = useMemo<PortalReleaseContextValue>(
     () => ({
       available: available && !hidden,
-      announcementVisible: eligible && initialState.status === "unseen" && !available && !hidden,
+      announcementVisible:
+        eligible &&
+        initialState.status === "unseen" &&
+        !available &&
+        !hidden,
       homeOpen,
       quickOpen,
       quickMotion,
@@ -311,11 +321,11 @@ function ReleaseSignal({
   animate,
   resolved,
   compact = false,
-}: Readonly<{
+}: {
   animate: boolean;
   resolved: boolean;
   compact?: boolean;
-}>) {
+}) {
   return (
     <span
       aria-hidden="true"
@@ -350,15 +360,20 @@ function ReleaseSummary({
   id,
   open,
   onClose,
-}: Readonly<{
+}: {
   animate: boolean;
   id: string;
   open: boolean;
   onClose: () => void;
-}>) {
-  const router = useRouter();
-  const { acknowledge, actionError, actionPending, guidePending, hide, openGuide } =
-    usePortalRelease();
+}) {
+  const {
+    acknowledge,
+    actionError,
+    actionPending,
+    guidePending,
+    hide,
+    openGuide,
+  } = usePortalRelease();
 
   return (
     <section
@@ -372,12 +387,14 @@ function ReleaseSummary({
     >
       <div className="flex items-start justify-between gap-5">
         <div>
-          <p className="text-[0.8rem] font-bold text-[var(--color-amber-deep)]">Updated July 29</p>
+          <p className="text-[0.8rem] font-bold text-[var(--color-amber-deep)]">
+            Updated August 6
+          </p>
           <h2
             id={`${id}-heading`}
-            className="mt-1 text-[1.25rem] leading-snug font-black text-[var(--color-ink)]"
+            className="mt-1 text-[1.25rem] font-black leading-snug text-[var(--color-ink)]"
           >
-            A smoother way to manage appointment requests
+            Record what happened — the portal does the rest
           </h2>
         </div>
         <button
@@ -392,34 +409,38 @@ function ReleaseSummary({
 
       <dl className="mt-5 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
         {[
-          ["Start with the next status.", "Choose Contacted, Scheduled, or Closed."],
-          ["Save once.", "Status, call result, call-again timing, and note stay together."],
+          [
+            "Say what happened.",
+            "Pick the call's real outcome — the portal sets the status itself.",
+          ],
+          [
+            "Save once, undo for 15 minutes.",
+            "Outcome, call-again timing, and note save together. Undo restores everything.",
+          ],
           [
             "Work from the top.",
-            "New requests and due callbacks rise. Scheduled requests stay visible.",
+            "New requests and due call-agains rise. Scheduled requests stay visible.",
           ],
-        ].map(([term, detail], index) => {
-          const releaseRowStyle: React.CSSProperties = {};
-          Object.assign(releaseRowStyle, { "--release-row": String(index) });
-          return (
-            <div
-              key={term}
-              className="release-summary__row grid gap-1 py-3 sm:grid-cols-[10rem_1fr] sm:gap-4"
-              style={releaseRowStyle}
-            >
-              <dt className="font-black text-[var(--color-ink)]">{term}</dt>
-              <dd className="text-[0.92rem] leading-relaxed text-[var(--color-body)]">{detail}</dd>
-            </div>
-          );
-        })}
+        ].map(([term, detail], index) => (
+          <div
+            key={term}
+            className="release-summary__row grid gap-1 py-3 sm:grid-cols-[10rem_1fr] sm:gap-4"
+            style={{ "--release-row": index } as React.CSSProperties}
+          >
+            <dt className="font-black text-[var(--color-ink)]">{term}</dt>
+            <dd className="text-[0.92rem] leading-relaxed text-[var(--color-body)]">
+              {detail}
+            </dd>
+          </div>
+        ))}
       </dl>
 
       <p className="mt-4 text-[0.86rem] leading-relaxed text-[var(--color-muted)]">
-        Also improved: language help on the patient site now appears only when useful, and the
-        review invitation is simpler.
+        Also improved: language help on the patient site now appears only
+        when useful, and the review invitation is simpler.
       </p>
 
-      {actionError !== null && actionError !== "" ? (
+      {actionError ? (
         <p
           role="status"
           className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-3 py-2 text-[0.86rem] leading-relaxed text-[var(--color-ink)]"
@@ -429,15 +450,16 @@ function ReleaseSummary({
       ) : null}
 
       <div className="mt-5 flex flex-wrap items-center gap-2.5">
-        <Link href="/admin/requests" className="btn btn-amber btn-sm min-h-11">
+        <Link
+          href="/admin/requests"
+          className="btn btn-amber btn-sm min-h-11"
+        >
           Open requests
           <ArrowRight className="h-4 w-4" />
         </Link>
         <button
           type="button"
-          onClick={() => {
-            openGuide(router);
-          }}
+          onClick={openGuide}
           disabled={guidePending}
           className="btn btn-outline btn-sm min-h-11"
         >
@@ -466,8 +488,13 @@ function ReleaseSummary({
 }
 
 export function PortalReleaseHomeAnnouncement() {
-  const { dismissHome, firstOpenMotion, homeOpen, openHome, announcementVisible } =
-    usePortalRelease();
+  const {
+    dismissHome,
+    firstOpenMotion,
+    homeOpen,
+    openHome,
+    announcementVisible,
+  } = usePortalRelease();
   const pointerActivation = useRef(false);
 
   if (!announcementVisible && !homeOpen) return null;
@@ -480,12 +507,14 @@ export function PortalReleaseHomeAnnouncement() {
     >
       <div className="relative z-10 flex flex-col gap-4 rounded-[var(--radius-lg)] bg-[var(--color-mint)] px-5 py-5 shadow-[var(--shadow-soft)] sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div>
-          <p className="text-[0.8rem] font-bold text-[var(--color-amber-deep)]">Updated July 29</p>
+          <p className="text-[0.8rem] font-bold text-[var(--color-amber-deep)]">
+            Updated August 6
+          </p>
           <h2
             id="portal-release-title"
             className="mt-1 text-[1.08rem] font-black text-[var(--color-ink)]"
           >
-            A smoother way to manage appointment requests is here.
+            Recording calls now starts with one question: what happened?
           </h2>
         </div>
         <button
@@ -498,9 +527,7 @@ export function PortalReleaseHomeAnnouncement() {
           onKeyDown={() => {
             pointerActivation.current = false;
           }}
-          onClick={() => {
-            openHome(pointerActivation.current);
-          }}
+          onClick={() => openHome(pointerActivation.current)}
           className="release-open-button min-h-12"
         >
           <ReleaseSignal animate={firstOpenMotion} resolved={homeOpen} />
@@ -518,8 +545,15 @@ export function PortalReleaseHomeAnnouncement() {
 }
 
 export function PortalReleaseUtility() {
-  const { available, dismissQuick, homeOpen, quickMotion, quickButtonRef, quickOpen, toggleQuick } =
-    usePortalRelease();
+  const {
+    available,
+    dismissQuick,
+    homeOpen,
+    quickMotion,
+    quickButtonRef,
+    quickOpen,
+    toggleQuick,
+  } = usePortalRelease();
   const pointerActivation = useRef(false);
   const pathname = usePathname();
 
@@ -545,9 +579,7 @@ export function PortalReleaseUtility() {
           onKeyDown={() => {
             pointerActivation.current = false;
           }}
-          onClick={() => {
-            toggleQuick(pointerActivation.current);
-          }}
+          onClick={() => toggleQuick(pointerActivation.current)}
           className="release-quick-button"
         >
           <ReleaseSignal animate={false} resolved compact />

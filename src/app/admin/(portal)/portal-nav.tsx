@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// One task-first primary nav for every role. Home is the landing
-// Surface; the queue lives under /admin/requests; occasional tasks
-// (review flyers, website custody) are reached from Home and Settings
-// Instead of holding permanent tabs. Every destination stays visible on
-// A phone: the queue tab compacts to "Requests" below `sm` so the row
-// Never depends on unmarked horizontal scrolling.
+// The four fixed staff destinations, in the spec's fixed order
+// (DEC-UX-02): Home, Appointments, Settings, Help. Home is the landing
+// surface; the appointment workbench lives under /admin/requests (the
+// records remain appointment requests — the portal owns no Appointment
+// entity); occasional tasks (review flyers, website custody) are
+// reached from Home and Settings instead of holding permanent tabs.
+// Every destination stays visible on a phone without unmarked
+// horizontal scrolling.
 
 interface NavItem {
   href: string;
@@ -18,11 +20,7 @@ interface NavItem {
 
 const NAV_ITEMS: readonly NavItem[] = [
   { href: "/admin", label: "Home" },
-  {
-    href: "/admin/requests",
-    label: "Appointment requests",
-    compactLabel: "Requests",
-  },
+  { href: "/admin/requests", label: "Appointments" },
   { href: "/admin/settings", label: "Settings" },
   { href: "/admin/help", label: "Help" },
 ];

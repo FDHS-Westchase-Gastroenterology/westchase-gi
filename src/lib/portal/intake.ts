@@ -195,11 +195,18 @@ async function recordNotificationEvents(
   }
 }
 
+const recipientSchema = z.object({ id: z.string(), email: z.string() });
+const outboxItemSchema = z.object({
+  id: z.string(),
+  notification_recipients: z.union([recipientSchema, z.array(recipientSchema)]).nullable(),
+});
+
 async function notifyActiveRecipients(client: SupabaseClient, requestId: string) {
   const { data, error } = await client
-    .from("notification_recipients")
-    .select("id, email")
-    .eq("active", true);
+    .from("notification_outbox")
+    .select("id, delivery_key, recipient_id, notification_recipients(id,email)")
+    .eq("request_id", requestId)
+    .eq("status", "pending");
 
   if (error !== null) {
     logOperationalFailure("recipient lookup failed", {
@@ -209,8 +216,16 @@ async function notifyActiveRecipients(client: SupabaseClient, requestId: string)
     return;
   }
 
-  const recipients = z.array(z.object({ id: z.string(), email: z.string() })).safeParse(data);
-  if (!recipients.success || recipients.data.length === 0) return;
+  const items = z.array(outboxItemSchema).safeParse(data);
+  if (!items.success || items.data.length === 0) return;
+
+  const recipients = items.data.flatMap((item) => {
+    const recipient = Array.isArray(item.notification_recipients)
+      ? item.notification_recipients[0]
+      : item.notification_recipients;
+    return recipient === undefined || recipient === null ? [] : [recipient];
+  });
+  if (recipients.length === 0) return;
 
   const adminUrl = portalUrl("/admin");
   if (adminUrl === null || adminUrl === "") {
@@ -220,11 +235,33 @@ async function notifyActiveRecipients(client: SupabaseClient, requestId: string)
   const events = await createAppointmentNotificationEvents(
     sendPortalEmail,
     requestId,
-    recipients.data,
+    recipients,
     adminUrl,
   );
 
   await recordNotificationEvents(client, requestId, events);
+  await Promise.all(
+    items.data.map((item, index) => {
+      const event = events[index];
+      const accepted = event?.status === "accepted";
+      const failedReason =
+        event?.status === "failed" && "reason" in event.meta ? event.meta.reason : null;
+      return client
+        .from("notification_outbox")
+        .update({
+          status: accepted ? "delivered" : "failed",
+          attempts: 1,
+          normalized_outcome: accepted
+            ? "accepted"
+            : failedReason === "timed_out"
+              ? "timeout"
+              : (failedReason ?? "transport_failure"),
+          delivered_at: accepted ? new Date().toISOString() : null,
+        })
+        .eq("id", item.id)
+        .eq("status", "pending");
+    }),
+  );
 }
 
 export async function processIntake(
@@ -278,9 +315,8 @@ export async function processIntake(
   }
 
   const input = parsed.data;
-  const result = await client
-    .from("requests")
-    .insert({
+  const result = await client.rpc("portal_create_request_with_outbox", {
+    p_request: {
       name: input.name,
       phone: input.phone,
       email: input.email !== "" ? input.email : null,
@@ -289,10 +325,9 @@ export async function processIntake(
       message: input.message !== undefined && input.message !== "" ? input.message : null,
       locale: input.locale,
       source_path: input.sourcePath,
-    })
-    .select("id")
-    .single();
-  const inserted = z.object({ id: z.string() }).safeParse(result.data);
+    },
+  });
+  const inserted = z.string().safeParse(result.data);
 
   if (result.error !== null || !inserted.success) {
     logOperationalFailure("request insert failed", {
@@ -304,22 +339,23 @@ export async function processIntake(
     };
   }
 
+  const requestId = inserted.data;
   const receiptToken = issueReceipt
-    ? await issueRequestReceipt(client, inserted.data.id, input.locale)
+    ? await issueRequestReceipt(client, requestId, input.locale)
     : undefined;
 
   try {
-    await notifyActiveRecipients(client, inserted.data.id);
+    await notifyActiveRecipients(client, requestId);
   } catch {
     // The durable request is authoritative; notification failures never
     // Downgrade the accepted response.
     logOperationalFailure("notification fan-out failed", {
-      requestId: inserted.data.id,
+      requestId,
     });
   }
 
   return {
-    response: { ok: true, id: inserted.data.id },
+    response: { ok: true, id: requestId },
     status: 201,
     receiptToken,
   };
