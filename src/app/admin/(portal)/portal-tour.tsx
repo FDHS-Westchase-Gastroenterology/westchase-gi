@@ -10,7 +10,7 @@ const STEPS = [
     body: "Start here to see whether new appointment requests are waiting. Home also gives you quick links to the other jobs you may need around the portal.",
   },
   {
-    title: "Appointment requests",
+    title: "Appointments",
     body: "Open a request, call the patient, and record what happened on the call. The queue is the practice’s complete list even if a notification email is missed.",
   },
   {

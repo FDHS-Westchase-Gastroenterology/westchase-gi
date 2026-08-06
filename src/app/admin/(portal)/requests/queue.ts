@@ -17,21 +17,36 @@ export type QueueRow = {
   location: "any" | "tampa" | "lutz";
   preferred_time: "any" | "morning" | "afternoon";
   locale: string;
+  /** Deploy-overlap presentation shape: durable `booked` normalizes to legacy UI `scheduled`. */
   status: RequestStatus;
   created_at: string;
   follow_up_at: string | null;
+  /** Migrated closure awaiting staff review (spec DEC-26): stays visible. */
+  legacy_review_required: boolean;
 };
 
 export type AttentiveQueueRow = AttentiveRow<QueueRow>;
 
 const COLUMNS =
-  "id, name, phone, location, preferred_time, locale, status, created_at, follow_up_at";
+  "id, name, phone, location, preferred_time, locale, status, created_at, follow_up_at, legacy_review_required";
 
 // Open-queue candidates are bounded well past any realistic front-desk
 // backlog; beyond this the attention ordering would need a database view.
 // ponytail: if open rows ever approach the cap, revisit with a computed
 // ordering column instead of widening it.
 export const OPEN_CANDIDATE_LIMIT = 500;
+
+// The five staff views are presentation vocabulary (spec DEC-UX-04);
+// Scheduled is a label over durable `booked` (DEC-04). Each view queries
+// its durable statuses here — including legacy `scheduled` rows during
+// the deploy-overlap window (spec §14.2 step 3) — and every row
+// normalizes back to presentation vocabulary before rendering.
+export const VIEW_DB_STATUSES = {
+  new: ["new"],
+  contacted: ["contacted"],
+  scheduled: ["booked", "scheduled"],
+  closed: ["closed"],
+} as const satisfies Record<RequestStatus, readonly string[]>;
 
 export const OPEN_STATUSES = ["new", "contacted", "scheduled"] as const;
 export type OpenStatus = (typeof OPEN_STATUSES)[number];
@@ -53,16 +68,20 @@ export async function fetchAttentiveOpenRows(
     now?: Date;
   } = {},
 ): Promise<AttentiveQueueRow[]> {
+  const dbStatuses = statuses.flatMap((view) => VIEW_DB_STATUSES[view]);
   let query = db
     .from("requests")
     .select(COLUMNS)
-    .in("status", [...statuses])
+    .in("status", dbStatuses)
     .order("created_at", { ascending: false })
     .limit(OPEN_CANDIDATE_LIMIT);
   if (searchFilter) query = query.or(searchFilter);
   const { data, error } = await query;
   if (error) throw new Error(`Queue read failed: ${error.code}`);
-  const rows = (data ?? []) as QueueRow[];
+  const rows = (data ?? []).map((row) => ({
+    ...row,
+    status: row.status === "booked" ? "scheduled" : row.status,
+  })) as QueueRow[];
 
   const activityById = new Map<string, string>();
   const ids = rows.map((row) => row.id);

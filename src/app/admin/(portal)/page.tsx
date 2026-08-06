@@ -7,6 +7,7 @@ import {
 } from "@/lib/portal/business-time";
 import { availableQueueCount } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
+import { fetchAttentionSummary } from "@/lib/portal/workflow/reads";
 import {
   ArrowRight,
   ChevronRight,
@@ -113,12 +114,11 @@ export default async function AdminHomePage() {
   // A failed read must never present as an empty queue: "No new requests"
   // and "the count could not load" are different truths, and conflating
   // them recreates the silent-queue failure this portal exists to end.
-  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
   const [
     { data: newestRows, count: newCount, error: queueReadError },
     { data: oldestRows },
     { count: recipientCount, error: recipientsReadError },
-    { count: failedNotificationCount, error: notificationsReadError },
+    attention,
   ] = await Promise.all([
     db
       .from("requests")
@@ -136,12 +136,10 @@ export default async function AdminHomePage() {
       .from("notification_recipients")
       .select("id", { count: "exact", head: true })
       .eq("active", true),
-    db
-      .from("request_events")
-      .select("id", { count: "exact", head: true })
-      .eq("type", "notification")
-      .eq("status", "failed")
-      .gte("created_at", oneDayAgo),
+    // The workflow attention summary: due call-agains, silent contacted
+    // requests, and closed records awaiting legacy review. Each count is
+    // independently honest — a failed read is null, never zero.
+    fetchAttentionSummary(db, now),
   ]);
   const newest = (newestRows ?? []) as Array<{
     id: string;
@@ -157,11 +155,49 @@ export default async function AdminHomePage() {
   const noActiveRecipients = !recipientsReadError && recipientCount === 0;
   // Delivery health is the other silent failure mode: the provider can start
   // failing while every request still lands in the queue. Same discipline —
-  // a failed events read is not evidence of an outage, so it stays silent.
+  // a failed outbox read is not evidence of an outage, so it stays silent.
   const deliveryFailureCount =
-    !notificationsReadError && (failedNotificationCount ?? 0) > 0
-      ? failedNotificationCount
+    attention.outboxTrouble !== null && attention.outboxTrouble > 0
+      ? attention.outboxTrouble
       : null;
+
+  // The rest of the day's attention, beyond brand-new requests: call-agains
+  // whose day arrived, contacted requests with no call-again set, and
+  // closed records still awaiting legacy review. Rendered only when real
+  // (count > 0); an unavailable count gets an honest caveat, never a zero.
+  const attentionPaths = [
+    {
+      key: "due",
+      count: attention.dueCallAgainCount,
+      href: "/admin/requests?status=contacted",
+      label: (n: number) =>
+        n === 1 ? "1 call-again is due" : `${n} call-agains are due`,
+    },
+    {
+      key: "silent",
+      count: attention.silentContactedCount,
+      href: "/admin/requests?status=contacted",
+      label: (n: number) =>
+        n === 1
+          ? "1 contacted request has no call-again day"
+          : `${n} contacted requests have no call-again day`,
+    },
+    {
+      key: "legacy",
+      count: attention.legacyReviewCount,
+      href: "/admin/requests?status=closed",
+      label: (n: number) =>
+        n === 1
+          ? "1 closed record needs review"
+          : `${n} closed records need review`,
+    },
+  ] as const;
+  const visibleAttention = attentionPaths.filter(
+    (item) => item.count !== null && item.count > 0,
+  );
+  const attentionUnavailable = attentionPaths.some(
+    (item) => item.count === null,
+  );
 
   return (
     <section aria-labelledby="home-heading">
@@ -194,7 +230,7 @@ export default async function AdminHomePage() {
             id="queue-overview-heading"
             className="text-[1.02rem] font-black text-[var(--color-ink)]"
           >
-            Appointment requests
+            Appointments
           </h2>
           {availableNewCount === null ? (
             <div data-testid="queue-overview-unavailable">
@@ -263,6 +299,36 @@ export default async function AdminHomePage() {
                   New website submissions appear here the moment they arrive.
                 </p>
               )}
+
+              {visibleAttention.length > 0 ? (
+                <ul
+                  data-testid="attention-summary"
+                  className="mt-5 space-y-1.5 border-t border-[var(--color-line)] pt-4"
+                >
+                  {visibleAttention.map((item) => (
+                    <li key={item.key}>
+                      <Link
+                        href={item.href}
+                        className="group inline-flex min-h-11 items-center gap-2 text-[0.95rem] font-bold text-[var(--color-ink)]"
+                      >
+                        <span className="h-1.5 w-1.5 flex-none rounded-full bg-[var(--color-amber)]" />
+                        <span className="underline-offset-2 group-hover:underline group-hover:decoration-[var(--color-teal-ink)]">
+                          {item.label(item.count as number)}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {attentionUnavailable ? (
+                <p
+                  data-testid="attention-summary-unavailable"
+                  className="mt-4 text-[0.9rem] text-[var(--color-muted)]"
+                >
+                  Some attention counts could not load just now — open
+                  Appointments to see everything.
+                </p>
+              ) : null}
             </>
           )}
 
@@ -288,8 +354,8 @@ export default async function AdminHomePage() {
               className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.92rem] leading-relaxed text-[var(--color-ink)]"
             >
               {deliveryFailureCount === 1
-                ? "A notification email failed to send in the last 24 hours."
-                : `${deliveryFailureCount} notification emails failed to send in the last 24 hours.`}{" "}
+                ? "A notification email had trouble sending in the last 24 hours."
+                : `${deliveryFailureCount} notification emails had trouble sending in the last 24 hours.`}{" "}
               Requests still land here — the queue is always the system of
               record — but notification emails may not be reaching anyone.{" "}
               <Link
@@ -303,7 +369,7 @@ export default async function AdminHomePage() {
 
           <div className="mt-6">
             <Link href="/admin/requests" className="btn btn-amber">
-              Open appointment requests
+              Open Appointments
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </div>

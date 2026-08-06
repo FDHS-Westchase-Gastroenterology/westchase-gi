@@ -3,12 +3,44 @@ import type {
   RequestStatus,
   RequestTime,
 } from "@/lib/portal/contracts";
+import type {
+  ClosureReason,
+  ContactOutcome,
+  RequestState,
+} from "@/lib/portal/workflow/contracts";
 
 export const STATUS_LABELS: Record<RequestStatus, string> = {
   new: "New",
   contacted: "Contacted",
   scheduled: "Scheduled",
   closed: "Closed",
+};
+
+// DEC-04: the durable `booked` state always renders as **Scheduled** on
+// staff surfaces. This is the one place that translation happens for
+// presentation; nothing translates the label back into a stored state.
+export function presentationStatus(state: RequestState): RequestStatus {
+  return state === "booked" ? "scheduled" : state;
+}
+
+export const STATE_LABELS: Record<RequestState, string> = {
+  new: "New",
+  contacted: "Contacted",
+  booked: "Scheduled",
+  closed: "Closed",
+};
+
+/** Contact-attempt outcomes in front-desk past tense (Request history). */
+export const CONTACT_OUTCOME_LABELS: Record<ContactOutcome, string> = {
+  reached_follow_up: "Reached the patient — follow-up needed",
+  voicemail: "Left a voicemail",
+  no_answer: "No answer",
+};
+
+/** Typed unbooked closure reasons in front-desk language. */
+export const CLOSURE_REASON_LABELS: Record<ClosureReason, string> = {
+  not_actionable: "duplicate or not actionable",
+  wont_schedule: "patient won't schedule",
 };
 
 // Practice-local time: front desk staff read these in Tampa.
