@@ -38,7 +38,7 @@ The visual baseline is required. Before working on the frontend UI, open `ui-ref
 
 Refresh the affected images against the matching local or Preview origin before committing. After deployment, use the default live‑origin capture for public pages.
 
-The atlas includes the seven top‑level staff routes. Refresh them only with the Development/Preview seed identity, preserve the browser‑side redaction, and never include an individual request or Production data.
+The atlas includes the seven top‑level staff routes. Refresh them only with the Development/Preview seed identity after explicitly confirming every visible record is synthetic, and never include an individual request or Production data. Keep the confirmed-synthetic text visible so the references preserve real hierarchy, spacing, wrapping, and density.
 
 ## Backend development
 

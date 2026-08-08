@@ -69,10 +69,12 @@ on a clean checkout.
 npx playwright test                          # full serial E2E suite (boots :3100 itself)
 npx playwright test e2e/smoke.spec.ts        # focused file
 node scripts/verify-schema.mjs --target dev  # schema, RLS, seed state
-npm run ui:reference:portal                  # staff-route UI captures
+# Staff-route UI captures, after confirming every visible record is synthetic:
+UI_REFERENCE_SYNTHETIC_DATA_CONFIRMED=1 npm run ui:reference:portal -- http://localhost:3000
 ```
 
-These need `.env.local` pointing at a development project — never Production.
+These need `.env.local` pointing at a development project — never Production. Set the UI-reference
+confirmation only after checking that every record visible in the top-level portal routes is synthetic.
 `e2e/target-guard.ts` enforces this; see
 [test isolation](ARCHITECTURE.md#test-isolation-and-release-model). The suite covers the
 intake API contract, form states across all five locales, the no-JS fallback, portal auth/RLS
@@ -107,7 +109,8 @@ persistence/relationships.
 Open [`ui-reference/README.md`](ui-reference/README.md) before frontend work. Refresh the
 affected images against the matching local or Preview origin; use the default live-origin
 capture after deployment for public pages. The portal atlas covers only the seven top-level
-staff routes with the Development/Preview seed identity, redacts in-browser, and never runs
+staff routes with the Development/Preview seed identity after every visible record is explicitly
+confirmed synthetic. It preserves that rendered text for accurate visual assessment and never runs
 against Production.
 
 ## Commit messages
