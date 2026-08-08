@@ -18,11 +18,12 @@ These need no credentials and mirror the required CI checks. Run all of them:
 - [ ] `npm run doctor` — local React Doctor standard is 100; inspect the report, not just the status
 - [ ] `PLAYWRIGHT_PUBLIC_SMOKE=1 npx playwright test e2e/smoke.spec.ts --project=chromium`
 
-These need a development Supabase project via `.env.local`. State the real outcome — "not run" is
-an acceptable answer, silently implying a pass is not:
+These run automatically against this PR's hosted Supabase Preview Branch. State the real
+outcome — “not run” is acceptable before CI reports, silently implying a pass is not:
 
-- [ ] `npx playwright test` — passed / not run:
-- [ ] `node scripts/verify-schema.mjs --target dev` — required when migrations changed; N/A:
+- [ ] `Supabase Preview` — configuration/migrations/seed passed on the exact head:
+- [ ] `supabase-integration` — hosted branch schema + credentialed E2E passed:
+- [ ] `node scripts/verify-schema.mjs --target branch` — included in the hosted gate; manual rerun / N/A:
 
 <!-- Paste command output, CI links, or manual checks that back the boxes above. -->
 

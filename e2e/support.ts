@@ -4,8 +4,8 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { assertSafeE2ETarget } from "./target-guard";
 
 /**
- * Loads .env.local when present. CI injects disposable local-stack values
- * directly into process.env, so it does not need a credentials file.
+ * Loads .env.local when present. Hosted-branch CI injects its ephemeral
+ * credentials directly into process.env, so it does not need a local file.
  */
 export function loadLocalEnv(): void {
   const path = resolve(process.cwd(), ".env.local");
@@ -39,7 +39,7 @@ export function requiredEnv(...names: string[]): string {
   throw new Error(`Missing test environment: ${names.join(" or ")}`);
 }
 
-/** Service-role client against the DEV project (from .env.local). */
+/** Service-role client against an allowlisted Preview Branch or local stack. */
 export function serviceDb(): SupabaseClient {
   loadLocalEnv();
   assertSafeE2ETarget(process.env);

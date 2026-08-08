@@ -43,8 +43,8 @@ function safeUrl(value: string, label: string) {
 export function assertSafeE2ETarget(env: E2ETargetEnvironment) {
   const projectRef = required(
     env,
-    "development project reference",
-    "SUPABASE_DEV_PROJECT_REF",
+    "test project reference",
+    "SUPABASE_BRANCH_PROJECT_REF",
     "SUPABASE_PROJECT_REF",
   );
   const allowedRef = required(
@@ -63,6 +63,11 @@ export function assertSafeE2ETarget(env: E2ETargetEnvironment) {
   if (!hosted && !loopback) {
     throw new Error(
       "E2E safety check failed: only matching Supabase or explicit local targets are allowed",
+    );
+  }
+  if (hosted && env.SUPABASE_PREVIEW_BRANCH !== "1") {
+    throw new Error(
+      "E2E safety check failed: hosted targets must be ephemeral Supabase Preview Branches",
     );
   }
 

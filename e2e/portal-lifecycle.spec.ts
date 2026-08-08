@@ -5,7 +5,8 @@ import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 loadLocalEnv();
 
 const supabaseUrl = new URL(requiredEnv("NEXT_PUBLIC_SUPABASE_URL"));
-const disposableLocal =
+const isolatedTestDatabase =
+  process.env.SUPABASE_PREVIEW_BRANCH === "1" ||
   ["127.0.0.1", "localhost", "[::1]"].includes(supabaseUrl.hostname) &&
   requiredEnv("SUPABASE_PROJECT_REF") === "local";
 const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
@@ -67,11 +68,11 @@ async function stageRequest(
   return id;
 }
 
-test.describe("disposable-local appointment-request lifecycle", () => {
+test.describe("isolated appointment-request lifecycle", () => {
   test.describe.configure({ mode: "serial" });
   test.skip(
-    !disposableLocal,
-    "destructive lifecycle coverage is disposable-local only",
+    !isolatedTestDatabase,
+    "destructive lifecycle coverage requires local Supabase or a Preview Branch",
   );
   test.beforeEach(({}, testInfo) => {
     test.skip(

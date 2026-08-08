@@ -115,7 +115,7 @@ test.describe("portal release briefing", () => {
         dismiss_count: 0,
       });
 
-    // Reset only this disposable fixture to exercise the pointer-authored
+    // Reset only this isolated fixture to exercise the pointer-authored
     // first opening independently from the keyboard path above.
     await db
       .from("portal_release_states")

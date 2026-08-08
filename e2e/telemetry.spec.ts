@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { test, expect } from "@playwright/test";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+import { assertSafeE2ETarget } from "./target-guard";
 
 // Telemetry e2e: proves the aggregate counters land, stay off the staff
 // surface, and never carry patient fields. Reads private.analytics_daily
@@ -15,22 +16,42 @@ const db = serviceDb();
 const runId = randomUUID().slice(0, 8);
 
 function analyticsQuery(sql: string): unknown[] {
-  const poolerUrl = readFileSync(
-    resolve(process.cwd(), "supabase/.temp/pooler-url"),
-    "utf8",
-  ).trim();
-  const password = requiredEnv("SUPABASE_DEV_DB_PASSWORD", "SUPABASE_DB_PASSWORD");
-  const output = execFileSync(
-    "supabase",
-    ["db", "query", "--db-url", poolerUrl, "--agent=no", "--output", "json", sql],
-    {
-      encoding: "utf8",
-      env: { ...process.env, PGPASSWORD: password },
-      stdio: ["ignore", "pipe", "pipe"],
-    },
-  );
-  const parsed = JSON.parse(output);
-  return Array.isArray(parsed) ? parsed : [];
+  assertSafeE2ETarget(process.env);
+  const preview = process.env.SUPABASE_PREVIEW_BRANCH === "1";
+  const dbUrl = preview
+    ? requiredEnv("POSTGRES_URL_NON_POOLING")
+    : readFileSync(
+        resolve(process.cwd(), "supabase/.temp/pooler-url"),
+        "utf8",
+      ).trim();
+  if (
+    preview &&
+    new URL(dbUrl).hostname !==
+      `db.${requiredEnv("SUPABASE_BRANCH_PROJECT_REF", "SUPABASE_PROJECT_REF")}.supabase.co`
+  ) {
+    throw new Error("Telemetry query refused a non-Preview database URL");
+  }
+
+  try {
+    const output = execFileSync(
+      "supabase",
+      ["db", "query", "--db-url", dbUrl, "--agent=no", "--output", "json", sql],
+      {
+        encoding: "utf8",
+        env: preview
+          ? process.env
+          : {
+              ...process.env,
+              PGPASSWORD: requiredEnv("SUPABASE_DB_PASSWORD"),
+            },
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+    const parsed = JSON.parse(output);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    throw new Error("Telemetry database query failed");
+  }
 }
 
 type Rollup = { event: string; route_template: string; count: number };

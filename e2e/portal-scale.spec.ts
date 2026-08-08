@@ -5,7 +5,8 @@ import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 loadLocalEnv();
 
 const supabaseUrl = new URL(requiredEnv("NEXT_PUBLIC_SUPABASE_URL"));
-const disposableLocal =
+const isolatedTestDatabase =
+  process.env.SUPABASE_PREVIEW_BRANCH === "1" ||
   ["127.0.0.1", "localhost", "[::1]"].includes(supabaseUrl.hostname) &&
   requiredEnv("SUPABASE_PROJECT_REF") === "local";
 const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
@@ -25,9 +26,12 @@ async function signIn(page: Page) {
   await expect(page).toHaveURL(/\/admin\/?$/);
 }
 
-test.describe("disposable-local portal scale boundaries", () => {
+test.describe("isolated portal scale boundaries", () => {
   test.describe.configure({ mode: "serial" });
-  test.skip(!disposableLocal, "bulk boundary coverage is disposable-local only");
+  test.skip(
+    !isolatedTestDatabase,
+    "bulk boundary coverage requires local Supabase or a Preview Branch",
+  );
   test.beforeEach(({}, testInfo) => {
     test.skip(
       testInfo.project.name !== "chromium",

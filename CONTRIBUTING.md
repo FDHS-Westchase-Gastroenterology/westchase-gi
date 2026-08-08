@@ -25,9 +25,10 @@ npm run dev                  # patient site + portal on :3000
 npm run dev:mission          # the E2E stack's server on :3100
 ```
 
-`.env.local` points the DEFAULT environment at a **development** Supabase project; production
-values live under the `_PROD`-suffixed names and in the Vercel environment store. Never point
-local tests at production — the E2E target guard refuses, but don't rely on it.
+`.env.local` may point the default environment at the Git branch's ephemeral **Supabase
+Preview Branch**; Production values live under the `_PROD`-suffixed names and in Vercel.
+Never point local tests at Production — the E2E target guard requires an explicit Preview
+Branch marker (or the optional loopback `local` sentinel) and rejects Production.
 
 Node version is pinned in `.nvmrc`. It deliberately does not live in `engines.node`: Vercel
 reads that field and would take Production off the version chosen in Project Settings.
@@ -63,17 +64,26 @@ Read the path on every finding: anything under a build directory or `node_module
 noise — never "fix" it by editing generated files. The repository standard is a clean 100
 on a clean checkout.
 
-### What to run — with a development Supabase project
+### What to run — with a Supabase Preview Branch
 
 ```bash
 npx playwright test                          # full serial E2E suite (boots :3100 itself)
 npx playwright test e2e/smoke.spec.ts        # focused file
-node scripts/verify-schema.mjs --target dev  # schema, RLS, seed state
+node scripts/verify-schema.mjs --target branch # schema, RLS, RPC, seed state
 npm run ui:reference:portal                  # staff-route UI captures
 ```
 
-These need `.env.local` pointing at a development project — never Production.
-`e2e/target-guard.ts` enforces this; see
+Every PR gets its own hosted branch from Supabase GitHub Branching. The required
+`Supabase Preview` check proves its configuration, migrations, and SQL seed deployed; the
+required `supabase-integration` job then fetches that branch's ephemeral credentials, creates
+the fictional portal Auth fixture, runs `verify-schema --target branch`, and exercises the
+credentialed portal contract. No Docker service or shared Development project is part of the
+gate.
+
+For an optional local run, export credentials from
+`supabase branches get <git-branch> --project-ref <production-ref> --output env`, map them to
+the names in `.env.example`, and set `SUPABASE_PREVIEW_BRANCH=1`. `e2e/target-guard.ts`
+enforces the branch/ref/URL match; see
 [test isolation](ARCHITECTURE.md#test-isolation-and-release-model). The suite covers the
 intake API contract, form states across all five locales, the no-JS fallback, portal auth/RLS
 boundaries, the queue lifecycle, management surfaces, Website custody, and leak hygiene.
@@ -90,24 +100,30 @@ smoke test.
 | Patient copy / locale content | `test:unit`, `lint`, `build`, public smoke; E2E intake-form + language-chooser when behavior shifts |
 | Intake form / API / persistence | Above + `npx playwright test` (intake specs) |
 | Portal page, route, or action | Above + `npx playwright test` (portal specs) |
-| Migration, RLS, RPC, or seed | Above + `verify-schema.mjs --target dev`; disposable-contract job runs in CI on the exact head |
+| Migration, RLS, RPC, or seed | Above + green `Supabase Preview` and `supabase-integration` on the exact head |
 | Email paths | `npx playwright test e2e/portal-email.spec.ts` |
 | UI-visible change | Refresh covered `ui-reference/` images; before/after screenshots in the PR |
 | CI / dependency automation | `node --test .github/scripts/dependency-automation.test.cjs` — policy and test change together |
 
-Every PR reports the `supabase-integration` gate. When the workflow's diff detector finds a
-database-adjacent change—including a package change—it runs
-`e2e/supabase-dependency-contract.spec.ts` against a disposable local Supabase stack. That job
-receives no hosted secrets and checks Auth refresh, SSR cookie sessions, closed Data API/RLS
-boundaries, shared intake throttling, field caps, appointment-request-lifecycle boundaries, and PostgREST
-persistence/relationships.
+Every PR reports both `Supabase Preview` and `supabase-integration`. Automatic branching must
+remain enabled for every PR (not “Supabase changes only”): application and schema changes are
+reviewed against the same isolated database. The integration job receives only branch-scoped
+database credentials after the Supabase deployment succeeds; the parent access token exists
+only in the credential-fetch step. It checks Auth refresh, SSR cookie sessions, closed Data
+API/RLS boundaries, shared intake throttling, field caps, appointment-request-lifecycle boundaries,
+and PostgREST persistence/relationships.
+
+Preview Branches apply only migration files they have not recorded yet. Prefer a new forward
+corrective migration after a pushed migration changes. If a pre-merge migration truly must be
+rewritten, close and reopen the PR to recreate the branch and replay the complete lineage;
+never hand-patch the hosted branch into an unreproducible state.
 
 ### UI changes
 
 Open [`ui-reference/README.md`](ui-reference/README.md) before frontend work. Refresh the
 affected images against the matching local or Preview origin; use the default live-origin
 capture after deployment for public pages. The portal atlas covers only the seven top-level
-staff routes with the Development/Preview seed identity, redacts in-browser, and never runs
+staff routes with the Preview Branch seed identity, redacts in-browser, and never runs
 against Production.
 
 ## Commit messages
@@ -143,9 +159,8 @@ Product Experience's.
 and deletion are blocked. Treat every merge as patient-facing unless the change is
 explicitly non-user-visible (tooling, governance, docs-only).
 
-Before merge, confirm the always-reported `supabase-integration` gate passed on the **exact
-head**. A skipped disposable suite is legitimate only when its detector found no
-database-adjacent change. Pending, missing, stale, or failed signals withhold the merge.
+Before merge, confirm `Supabase Preview` and `supabase-integration` passed on the **exact
+head**. Skipped, pending, missing, stale, or failed signals withhold the merge.
 
 React Doctor is advisory: a green check proves execution, not a clean result — inspect the
 report rather than the badge.
@@ -181,9 +196,10 @@ secret; never copy it into source, logs, PR text, Dependabot secrets, or an agen
 
 1. Merge to `main` → required checks → automatic deploy on the clinic-owned Vercel project →
    exact-commit production verification against the canonical site.
-2. **Migrations promote separately.** Apply to development first
-   (`supabase link` + `supabase db push`), verify, then make the production decision
-   explicitly — merging a migration PR does not authorize production promotion. Every new
+2. **Migrations promote separately.** Keep the Supabase GitHub integration's **Deploy to
+   production** switch off. A green Preview Branch and merged PR establish the exact
+   migration lineage; apply that committed migration to Production only after the separate
+   Production decision, then run `verify-schema.mjs --target prod`. Every new
    schema-changing migration ships with a rollback sibling in `supabase/rollbacks/` (migrations
    before `20260725170000` predate the convention); after an
    approved hosted rollback, mark versions reverted in the migration ledger before any later
@@ -192,13 +208,13 @@ secret; never copy it into source, logs, PR text, Dependabot secrets, or an agen
    (`printf '%s' "$NEW_VALUE" | vercel env add NAME production`), never into shell history
    echoes, source, or `NEXT_PUBLIC_*`. Redeploy and spot-check after a change.
 4. **Rotating a credential:** generate at the provider → update the Vercel targets (and
-   `.env.local`) → redeploy → spot-check (test submission on a preview URL;
-   `verify-schema.mjs --target dev`). For the GitHub App private key: generate in the
+   `.env.local`) → redeploy → spot-check (test submission on a Preview URL;
+   `verify-schema.mjs --target branch`). For the GitHub App private key: generate in the
    clinic-owned App settings, update Production, redeploy, prove the live GitHub status,
    then revoke the old key — and never make the Administration-capable key available to
    Preview.
-5. **Password-recovery configuration:** verify Development and Production independently in
-   Supabase Auth. Each needs the canonical Site URL, the exact
+5. **Password-recovery configuration:** verify Preview Branch and Production independently
+   in Supabase Auth. Each needs its intended Site URL, the exact
    `/admin/auth/confirm` redirect allowlist, the repository recovery template, a one-hour OTP
    expiry, a 60-second same-user resend cooldown, custom SMTP, and disabled public signup.
    Inspect provider/Auth evidence without copying recipient addresses, email bodies, or
@@ -241,7 +257,8 @@ handle and dispose of it under clinic rules.
 npm run build && npm run lint && npm run doctor   # build + lint + React Doctor (100 baseline)
 npm run test:e2e-guard                            # target-guard matrix; no server/DB
 npx playwright test                               # full E2E contract
-node scripts/verify-schema.mjs --target dev       # schema/RLS/seed health (--target prod is an authorized maintenance action)
+node scripts/verify-schema.mjs --target branch    # Preview Branch schema/RLS/RPC/seed health
+node scripts/verify-schema.mjs --target prod      # authorized Production maintenance action
 node scripts/verify-no-secrets.mjs                # git history secret sweep
 node scripts/verify-review-flyers.mjs             # QR destinations + artifact fidelity
 ```

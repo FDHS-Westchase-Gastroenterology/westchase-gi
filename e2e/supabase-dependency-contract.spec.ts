@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { test, expect, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+import { assertSafeE2ETarget } from "./target-guard";
 import {
   INTAKE_RATE_LIMIT,
   REQUEST_FIELD_LIMITS,
@@ -91,22 +92,38 @@ async function mutateSettings(
   );
 }
 
-function runDisposableDatabaseQuery(queryArgs: string[]): void {
-  if (process.env.SUPABASE_PROJECT_REF !== "local") {
-    throw new Error("Disposable database query refused outside the local stack");
+function testDatabaseConnectionArgs(): string[] {
+  assertSafeE2ETarget(process.env);
+  if (process.env.SUPABASE_PROJECT_REF === "local") {
+    return [
+      "--local",
+      ...(process.env.SUPABASE_DISPOSABLE_WORKDIR
+        ? ["--workdir", process.env.SUPABASE_DISPOSABLE_WORKDIR]
+        : []),
+    ];
   }
-  const workdirArgs = process.env.SUPABASE_DISPOSABLE_WORKDIR
-    ? ["--workdir", process.env.SUPABASE_DISPOSABLE_WORKDIR]
-    : [];
-  execFileSync(
-    "supabase",
-    ["db", "query", ...queryArgs, "--local", ...workdirArgs, "--agent=no"],
-    { cwd: process.cwd(), stdio: "pipe" },
-  );
+
+  const ref = requiredEnv("SUPABASE_BRANCH_PROJECT_REF", "SUPABASE_PROJECT_REF");
+  const dbUrl = requiredEnv("POSTGRES_URL_NON_POOLING");
+  if (
+    process.env.SUPABASE_PREVIEW_BRANCH !== "1" ||
+    new URL(dbUrl).hostname !== `db.${ref}.supabase.co`
+  ) {
+    throw new Error("Destructive database query refused outside a Preview Branch");
+  }
+  return ["--db-url", dbUrl];
 }
 
-function queryDisposableDatabase(sql: string): void {
-  runDisposableDatabaseQuery([sql]);
+function queryTestDatabase(sql: string): void {
+  try {
+    execFileSync(
+      "supabase",
+      ["db", "query", sql, ...testDatabaseConnectionArgs(), "--agent=no"],
+      { cwd: process.cwd(), stdio: "pipe" },
+    );
+  } catch {
+    throw new Error("Destructive test database query failed");
+  }
 }
 
 function recipientRpcMigrationStatements(): string[] {
@@ -139,17 +156,17 @@ function recipientRpcMigrationStatements(): string[] {
 
 function dropRecipientRpcs(): void {
   for (const sql of DROP_RECIPIENT_RPC_QUERIES) {
-    queryDisposableDatabase(sql);
+    queryTestDatabase(sql);
   }
-  queryDisposableDatabase("notify pgrst, 'reload schema'");
+  queryTestDatabase("notify pgrst, 'reload schema'");
 }
 
 function restoreRecipientRpcs(): void {
   dropRecipientRpcs();
   for (const sql of recipientRpcMigrationStatements()) {
-    queryDisposableDatabase(sql);
+    queryTestDatabase(sql);
   }
-  queryDisposableDatabase("notify pgrst, 'reload schema'");
+  queryTestDatabase("notify pgrst, 'reload schema'");
 }
 
 async function insertRequest(
@@ -1034,8 +1051,9 @@ test.describe("Supabase dependency contract", () => {
   }) => {
     test.setTimeout(60_000);
     test.skip(
-      process.env.SUPABASE_PROJECT_REF !== "local",
-      "RPC removal and forced audit failures use only the disposable database.",
+      process.env.SUPABASE_PROJECT_REF !== "local" &&
+        process.env.SUPABASE_PREVIEW_BRANCH !== "1",
+      "RPC removal and forced audit failures require an isolated test database.",
     );
 
     const db = serviceDb();
@@ -1046,12 +1064,12 @@ test.describe("Supabase dependency contract", () => {
     let recipientId: string | null = null;
 
     const clearAuditConstraint = () =>
-      queryDisposableDatabase(
+      queryTestDatabase(
         `alter table public.audit_log drop constraint if exists ${auditConstraint}`,
       );
     const rejectAuditAction = (action: string) => {
       clearAuditConstraint();
-      queryDisposableDatabase(
+      queryTestDatabase(
         `alter table public.audit_log add constraint ${auditConstraint} check (action <> '${action}') not valid`,
       );
     };
@@ -1065,7 +1083,7 @@ test.describe("Supabase dependency contract", () => {
     await expect(page).toHaveURL(/\/admin\/?$/);
 
     try {
-      queryDisposableDatabase(`
+      queryTestDatabase(`
         revoke execute on function public.portal_add_notification_recipient(
           text,
           text,
@@ -1097,7 +1115,7 @@ test.describe("Supabase dependency contract", () => {
         });
         expect((await recipientRows(permissionEmail)).data).toHaveLength(0);
       } finally {
-        queryDisposableDatabase(`
+        queryTestDatabase(`
           grant execute on function public.portal_add_notification_recipient(
             text,
             text,
@@ -2067,18 +2085,15 @@ test.describe("Supabase dependency contract", () => {
 
   test("rolls back an undo when its audit insert fails", async () => {
     test.skip(
-      process.env.SUPABASE_PROJECT_REF !== "local",
-      "The forced audit failure uses only the disposable local database.",
+      process.env.SUPABASE_PROJECT_REF !== "local" &&
+        process.env.SUPABASE_PREVIEW_BRANCH !== "1",
+      "The forced audit failure requires an isolated test database.",
     );
 
     const db = serviceDb();
     const actor = `undo-audit-rollback-${randomUUID()}@example.test`;
     const requestId = randomUUID();
     const constraintName = "audit_log_test_reject_call_outcome_undo";
-    const localWorkdirArgs = process.env.SUPABASE_DISPOSABLE_WORKDIR
-      ? ["--workdir", process.env.SUPABASE_DISPOSABLE_WORKDIR]
-      : [];
-
     try {
       await insertRequest(db, {
         id: requestId,
@@ -2093,17 +2108,8 @@ test.describe("Supabase dependency contract", () => {
       });
       expect(saved.error).toBeNull();
 
-      execFileSync(
-        "supabase",
-        [
-          "db",
-          "query",
-          `alter table public.audit_log add constraint ${constraintName} check (action <> 'request.call_outcome_undo') not valid`,
-          "--local",
-          ...localWorkdirArgs,
-          "--agent=no",
-        ],
-        { cwd: process.cwd(), stdio: "pipe" },
+      queryTestDatabase(
+        `alter table public.audit_log add constraint ${constraintName} check (action <> 'request.call_outcome_undo') not valid`,
       );
 
       const undo = await db.rpc("portal_undo_call_outcome", {
@@ -2150,17 +2156,8 @@ test.describe("Supabase dependency contract", () => {
       ).toHaveLength(0);
     } finally {
       try {
-        execFileSync(
-          "supabase",
-          [
-            "db",
-            "query",
-            `alter table public.audit_log drop constraint if exists ${constraintName}`,
-            "--local",
-            ...localWorkdirArgs,
-            "--agent=no",
-          ],
-          { cwd: process.cwd(), stdio: "pipe" },
+        queryTestDatabase(
+          `alter table public.audit_log drop constraint if exists ${constraintName}`,
         );
       } finally {
         await db.from("requests").delete().eq("id", requestId);

@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Patient-only coverage that does not mutate the development Supabase project.
+// Patient-only coverage that does not mutate the active Supabase target.
 export default defineConfig({
   testDir: "./e2e",
   testMatch: "language-chooser.spec.ts",
