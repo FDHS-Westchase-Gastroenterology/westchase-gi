@@ -336,13 +336,21 @@ async function readResponse(response, operation) {
 }
 
 function queryBranchDatabase({ ref, query }) {
-  const dbUrl = requireEnv("POSTGRES_URL_NON_POOLING")
+  const dbUrl = requireEnv("POSTGRES_URL", "POSTGRES_URL_NON_POOLING")
   const parsedUrl = new URL(dbUrl)
+  const direct = parsedUrl.hostname === `db.${ref}.supabase.co`
+  const pooler =
+    parsedUrl.hostname.endsWith(".pooler.supabase.com") &&
+    decodeURIComponent(parsedUrl.username) === `postgres.${ref}`
   assert(
     process.env.SUPABASE_PREVIEW_BRANCH === "1" &&
-      parsedUrl.hostname === `db.${ref}.supabase.co`,
-    "Direct database verification is Preview-Branch-only",
+      (direct || pooler),
+    "Database verification is Preview-Branch-only",
   )
+  if (pooler && parsedUrl.port === "6543") {
+    parsedUrl.port = "5432"
+  }
+  const queryUrl = parsedUrl.toString()
 
   try {
     return JSON.parse(
@@ -352,7 +360,7 @@ function queryBranchDatabase({ ref, query }) {
           "db",
           "query",
           "--db-url",
-          dbUrl,
+          queryUrl,
           "--agent=no",
           "--output",
           "json",
