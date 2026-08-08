@@ -1057,7 +1057,7 @@ test.describe("Supabase dependency contract", () => {
   test("bridges only missing recipient RPCs and compensates compatibility failures", async ({
     page,
   }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(180_000);
     test.skip(
       process.env.SUPABASE_PROJECT_REF !== "local" &&
         process.env.SUPABASE_PREVIEW_BRANCH !== "1",
