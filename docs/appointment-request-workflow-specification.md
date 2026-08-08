@@ -1123,7 +1123,7 @@ preserved under their current retention rules.
 #### 14.2 Delivery sequence
 
 1. **Inventory and rehearsal:** run aggregate, PHI-free preflight counts for every mapping and
-   invalid combination; rehearse against disposable seeded and synthetic legacy fixtures.
+   invalid combination on the PR's seeded Preview Branch and synthetic legacy fixtures.
 2. **Expand schema:** add versioning, transition/idempotency/outbox responsibilities, new-state
    support, constraints that are safe during overlap, and rollback support without yet deleting
    old interfaces.
@@ -1141,9 +1141,9 @@ preserved under their current retention rules.
 7. **Activate motors deliberately:** provision and observe outbox processing and, under its
    separate approval gates, scheduled data lifecycle. A deployed function without a scheduler
    and alerting is not operational.
-8. **Promote separately:** Development migration and application acceptance do not authorize
+8. **Promote separately:** Preview Branch migration and application acceptance do not authorize
    Production. Record the exact approved migration, rollback, application SHA, and post-deploy
-   verification when that later decision occurs.
+   verification when that decision occurs.
 
 #### 14.3 Rollback posture
 
@@ -1245,9 +1245,9 @@ happy-path examples.
 - failed reads never render as an empty/caught-up queue.
 - staff controls, views, badges, summaries, and Request history preserve the Scheduled
   presentation / `BOOKED` state split and never expose Booked as the staff-facing status label.
-- Development/disposable Supabase verification, full credentialed portal E2E, migration rollback,
-  outbox worker operation, and scheduled-motor observation follow `CONTRIBUTING.md` before any
-  Production decision.
+- Preview Branch schema verification, full credentialed portal E2E, migration rollback, outbox
+  worker operation, and scheduled-motor observation follow `CONTRIBUTING.md` before any Production
+  decision.
 
 #### 16.6 Portal experience acceptance
 
@@ -1302,5 +1302,5 @@ implementation is not complete until:
 - notification dispatch is post-commit and operationally visible;
 - all existing rows have a verified mapping or an explicit legacy review path;
 - the generic setter and caller-attested actor path are gone;
-- migration and rollback have passed Development/disposable verification; and
+- migration and rollback have passed Preview Branch verification; and
 - Production promotion and scheduler activation receive their own explicit authorization.

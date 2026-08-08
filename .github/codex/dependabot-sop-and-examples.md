@@ -23,10 +23,6 @@
 
 ## Runtime architecture and safety boundary
 
-The word "local" in the Supabase integration job means local to an ephemeral
-GitHub-hosted Ubuntu runner, not local to a maintainer workstation and not a
-hosted Supabase project.
-
 1. Dependabot creates the dependency commit.
 2. The trusted preflight job reads GitHub/Dependabot metadata without checking
    out PR code. Only a verified Dependabot author, `main` target, root npm
@@ -37,18 +33,18 @@ hosted Supabase project.
    and cannot repair, push, or merge the PR. If the service is unavailable or
    its response is malformed, the workflow records that fact and continues to
    the authoritative deterministic gates.
-4. A separate `ubuntu-latest` job starts Supabase in Docker, replays the
-   committed migrations, generates local API keys, seeds local-only fixtures,
-   starts the application, runs the contract, and executes `supabase stop`
-   under `if: always()` after CLI setup succeeds. GitHub destroys the runner
-   afterward.
-5. That job has `contents: read`, does not receive hosted Supabase or deployment
-   secrets, and cannot apply its migrations or test writes to Development or
-   Production. The service key used by the contract belongs only to the
-   disposable stack.
-6. The trusted controller re-reads statuses for the exact SHA, requests a
+4. Supabase creates an isolated Preview Branch for the PR and reports the
+   `Supabase Preview` check after configuration, migrations, and fictional SQL
+   seed data deploy.
+5. The `supabase-integration` job waits for that deployment, fetches only the
+   branch credentials, creates the fictional Auth fixture, verifies
+   schema/RLS/RPCs, starts the application, and runs the credentialed contract.
+   The parent access token is scoped to the credential-fetch step. Test writes
+   remain inside the PR branch, which contains no Production rows.
+6. The trusted controller re-reads both Supabase checks and every other required
+   status for the exact SHA, requests a
    normal GitHub squash merge without bypass, and dispatches post-merge checks.
-   Production verification waits for the matching Vercel deployment and sends
+7. Production verification waits for the matching Vercel deployment and sends
    a read-only `GET` to `https://westchasegi.com/en`; it does not run SQL,
    migrations, seeds, or write probes against the live database.
 
@@ -72,11 +68,12 @@ secret-bearing dependency run.
 4. When Codex is available, review the exact diff for unexpected lockfile
    churn, scripts, engines, registries, transitive changes, and repository
    compatibility.
-5. Run no-secret CI: clean install, policy self-check, lint, build, public
-   Playwright smoke, and the isolated Supabase contract. The Supabase job uses
-   disposable local keys only and verifies direct Auth refresh, SSR cookie
-   sessions, closed Data API/RLS boundaries, and representative PostgREST
-   persistence/relationships. Require React Doctor and Vercel preview success.
+5. Run clean install, policy self-check, lint, build, public Playwright smoke,
+   and the isolated Supabase Preview Branch contract. The Supabase job verifies
+   direct Auth refresh, SSR cookie sessions, closed Data API/RLS boundaries,
+   destructive lifecycle boundaries, and representative PostgREST
+   persistence/relationships. Require both Supabase checks, React Doctor, and
+   Vercel Preview success.
 6. Bind the policy and automation decision to the exact head SHA using a commit
    status. Any new commit invalidates the prior authority.
 7. Select the oldest exact-head-approved PR whose gates are green. A failing
@@ -115,7 +112,7 @@ secret-bearing dependency run.
 |---|---|---|---|
 | 1 | `@types/react` direct-development patch; manifest-only diff; all checks green | Approve and merge exact SHA | One merge, followed by successful production verification |
 | 2 | Direct-development minor update | Eligible | Version size alone does not block automation |
-| 3 | `@supabase/supabase-js` production patch; disposable integration green | Eligible | Runtime patch merges only after Auth/data contract success |
+| 3 | `@supabase/supabase-js` production patch; Preview Branch integration green | Eligible | Runtime patch merges only after Auth/data contract success |
 | 4 | Other runtime update (`next`, React, Resend, or Zod) | Eligible | Exact-head deterministic gates pass; an available Codex review finds no blocker |
 | 5 | TypeScript, Playwright, or React Doctor update | Eligible | The updated gate proves itself before merge |
 | 6 | Grouped React + React DOM update | Eligible | Coupled peers are tested and merged together |
@@ -127,36 +124,23 @@ secret-bearing dependency run.
 | 12 | First merge deploys unsuccessfully or live smoke fails | Queue pauses | No second dependency PR merges |
 | 13 | Oldest PR fails install but a compatible sibling is green | Skip failure and merge green sibling | Rebased older PR gets a fresh exact-head run |
 
-## Readiness evidence — 2026-07-24
+## Contract coverage
 
-PR #60 established the disposable Supabase gate and expanded the deterministic
-lane. Its GitHub run passed clean install, lint, build, public smoke, React
-Doctor, Vercel preview, and all three isolated Supabase contracts:
+The deterministic lane covers:
 
-- password sign-in, refresh-token/user verification, SSR cookie persistence,
-  reload, and logout;
-- denied anonymous/authenticated Data API access plus permitted local
-  service-client access; and
+- clean install, lint, build, public smoke, React Doctor, and Vercel Preview;
+- Supabase Preview Branch configuration, migration, and fictional seed
+  deployment;
+- password sign-in, token refresh, SSR cookie persistence, reload, and logout;
+- denied anonymous/authenticated Data API access plus permitted branch
+  service-client access;
 - application intake persistence, related event insertion, embedded PostgREST
-  relationship reads, and cleanup.
-
-The original policy admitted only four of the six Dependabot PRs opened that
-day. That package/version allowlist was removed on 2026-07-26: the executable
-regression now proves every trusted manifest-only update is eligible, including
-all seven PRs from the 2026-07-26 batch.
-
-| PR | Dependency | Result |
-|---|---|---|
-| #45 | `@supabase/supabase-js` patch | Eligible through the isolated Supabase runtime lane |
-| #46 | TypeScript major | Eligible; compiler/build checks are authoritative |
-| #47 | `tailwindcss` patch | Eligible direct-development patch |
-| #48 | `@tailwindcss/postcss` patch | Eligible direct-development patch |
-| #49 | React Doctor minor | Eligible; exact-head React Doctor must pass |
-| #50 | ESLint patch | Eligible direct-development patch |
+  relationship reads, destructive lifecycle boundaries, and cleanup; and
+- exact-head policy, merge, deployment, and live-health status.
 
 Run `node --test .github/scripts/dependency-automation.test.cjs` after any
-policy edit. A documentation claim never expands eligibility; only a reviewed
-policy-and-test change can do that.
+policy edit. Eligibility changes only through a reviewed policy-and-test
+change.
 
 ## Sign-off
 

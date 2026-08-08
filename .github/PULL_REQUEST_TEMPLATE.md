@@ -23,6 +23,7 @@ outcome — “not run” is acceptable before CI reports, silently implying a p
 
 - [ ] `Supabase Preview` — configuration/migrations/seed passed on the exact head:
 - [ ] `supabase-integration` — hosted branch schema + credentialed E2E passed:
+- [ ] `Vercel` — Preview uses the matching Supabase branch reference:
 - [ ] `node scripts/verify-schema.mjs --target branch` — included in the hosted gate; manual rerun / N/A:
 
 <!-- Paste command output, CI links, or manual checks that back the boxes above. -->

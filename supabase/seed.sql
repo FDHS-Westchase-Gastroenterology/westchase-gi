@@ -1,6 +1,6 @@
 -- Auth and portal fixtures are seeded after local keys are generated.
 
--- Fictional workflow fixtures for local/disposable review only.
+-- Fictional workflow fixtures for Preview Branch review only.
 insert into public.requests(id,name,phone,email,location,preferred_time,message,locale,source_path,status,created_at,follow_up_at,record_handoff_at,closed_at,closure_reason,legacy_review_required)
 values
  ('10000000-0000-4000-8000-000000000001','Test Patient A','8135550101',null,'tampa','morning',null,'en','/seed','new',now()-interval '2 days',null,null,null,null,false),

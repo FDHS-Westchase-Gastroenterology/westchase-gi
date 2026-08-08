@@ -264,13 +264,13 @@ referrer. Unverified patient-service URLs do not ship.
 
 ## Test isolation and release model
 
-Credential-bearing E2E runs only against the PR's explicitly allowlisted Supabase Preview
-Branch or an optional loopback stack. `e2e/target-guard.ts` binds the project reference to
-the URL, requires the hosted-branch marker, and rejects Production before the first database
-call; credentialed runs retain no trace, video, or HTML report. GitHub Branching creates the
-hosted database from the Production schema lineage without Production rows. CI waits for
-that deployment, seeds fictional Auth state, runs destructive checks, and discards the
-branch when the PR closes.
+Credential-bearing release E2E runs against the PR's explicitly allowlisted Supabase Preview
+Branch. `e2e/target-guard.ts` binds the project reference to the URL, requires the hosted-branch
+marker, and rejects Production before the first database call; credentialed runs retain no trace,
+video, or HTML report. GitHub Branching creates the hosted database from the Production schema
+lineage without Production rows. CI waits for that deployment, seeds fictional Auth state, runs
+destructive checks, and discards the branch when the PR closes. The Supabase Vercel integration
+assigns the same branch credentials to the matching Vercel Preview and redeploys it.
 
 `verify-schema.mjs --target prod` creates and deletes a temporary request, so it is an
 authorized maintenance action rather than a read-only inspection. The complete check matrix,

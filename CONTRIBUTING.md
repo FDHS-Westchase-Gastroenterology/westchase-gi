@@ -64,7 +64,7 @@ Read the path on every finding: anything under a build directory or `node_module
 noise — never "fix" it by editing generated files. The repository standard is a clean 100
 on a clean checkout.
 
-### What to run — with a Supabase Preview Branch
+### How to contribute with a Supabase Preview Branch
 
 ```bash
 npx playwright test                          # full serial E2E suite (boots :3100 itself)
@@ -77,10 +77,14 @@ Every PR gets its own hosted branch from Supabase GitHub Branching. The required
 `Supabase Preview` check proves its configuration, migrations, and SQL seed deployed; the
 required `supabase-integration` job then fetches that branch's ephemeral credentials, creates
 the fictional portal Auth fixture, runs `verify-schema --target branch`, and exercises the
-credentialed portal contract. No Docker service or shared Development project is part of the
-gate.
+credentialed portal contract. The hosted branch is the PR's database for schema iteration,
+application review, and destructive contract testing.
 
-For an optional local run, export credentials from
+The Supabase Vercel integration is anchored to the Production parent project. When a PR opens,
+Supabase assigns the matching branch credentials to that Vercel Preview and redeploys it. A valid
+review environment has the same Git branch in GitHub, Supabase, and Vercel.
+
+For a workstation run against the PR database, export credentials from
 `supabase branches get <git-branch> --project-ref <production-ref> --output env`, map them to
 the names in `.env.example`, and set `SUPABASE_PREVIEW_BRANCH=1`. `e2e/target-guard.ts`
 enforces the branch/ref/URL match; see
@@ -105,13 +109,13 @@ smoke test.
 | UI-visible change | Refresh covered `ui-reference/` images; before/after screenshots in the PR |
 | CI / dependency automation | `node --test .github/scripts/dependency-automation.test.cjs` — policy and test change together |
 
-Every PR reports both `Supabase Preview` and `supabase-integration`. Automatic branching must
-remain enabled for every PR (not “Supabase changes only”): application and schema changes are
+Every PR reports both `Supabase Preview` and `supabase-integration`. Automatic branching applies
+to every PR, and **Supabase changes only** remains disabled, so application and schema changes are
 reviewed against the same isolated database. The integration job receives only branch-scoped
-database credentials after the Supabase deployment succeeds; the parent access token exists
-only in the credential-fetch step. It checks Auth refresh, SSR cookie sessions, closed Data
-API/RLS boundaries, shared intake throttling, field caps, appointment-request-lifecycle boundaries,
-and PostgREST persistence/relationships.
+database credentials after the Supabase deployment succeeds; the parent access token exists only
+in the credential-fetch step. It checks Auth refresh, SSR cookie sessions, closed Data API/RLS
+boundaries, shared intake throttling, field caps, appointment-request-lifecycle boundaries, and
+PostgREST persistence/relationships.
 
 Preview Branches apply only migration files they have not recorded yet. Prefer a new forward
 corrective migration after a pushed migration changes. If a pre-merge migration truly must be

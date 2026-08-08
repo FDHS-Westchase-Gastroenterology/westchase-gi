@@ -14,6 +14,7 @@ Discovery is progressive. An agent sees each skill's name and description first 
 | `supabase` | [supabase/agent-skills](https://github.com/supabase/agent-skills) | 0.1.2 | Vendor-published |
 | `supabase-postgres-best-practices` | [supabase/agent-skills](https://github.com/supabase/agent-skills) | 1.1.1 | MIT |
 | `vercel-react-best-practices` | Vercel Engineering | 1.0.0 | MIT |
+| `wgi-supabase-branching` | Project-authored | 1.0.0 | Repository |
 
 ## Precedence
 
@@ -27,14 +28,16 @@ practice, so they rank below the repository's own rules:
    `node_modules/next/dist/docs/` before acting on any framework recommendation from a vendored
    skill, and prefer what the installed version documents.
 3. `ARCHITECTURE.md` for where a change belongs and `CONTRIBUTING.md` for how to verify it.
-4. The vendored skill.
+4. A project-authored workflow skill.
+5. The vendored skill.
 
 A vendored skill that contradicts a hard rule is wrong for this repository, not a reason to
 revisit the rule.
 
-## Updating
+## Updating vendor skills
 
 Re-copy the whole directory from upstream and record the new version in the table above. Do not
 hand-edit vendored content: a local edit is invisible to the next person who refreshes the skill,
-and it silently forks a document that claims to be the vendor's. Repository-specific guidance
-belongs in `AGENTS.md`, `ARCHITECTURE.md`, or `CONTRIBUTING.md`, never inside a vendored skill.
+and it silently forks a document that claims to be the vendor's.
+
+Project-authored workflow skills are edited in place with the repository docs they operationalize.
