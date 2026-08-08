@@ -240,9 +240,9 @@ test("VAL-ADMIN-016: the waiting count rides on the Requests nav item", async ({
     await signIn(page);
     await page.goto("/admin/settings");
 
-    // Parallel specs and the shared development project can add or remove
-    // New requests mid-run; accept the badge once it matches the SQL count
-    // At the same instant (and is gone only when that count is zero).
+    // Other specs on the same Preview Branch can add or remove
+    // new requests mid-run; accept the badge once it matches the SQL count
+    // at the same instant (and is gone only when that count is zero).
     await expect
       .poll(
         async () => {

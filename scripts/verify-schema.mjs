@@ -1,5 +1,4 @@
 import { execFileSync } from "node:child_process"
-import { readFileSync } from "node:fs"
 
 try {
   process.loadEnvFile(".env.local")
@@ -217,7 +216,7 @@ const APPOINTMENT_WORKFLOW_AUTHORITY_MIGRATION = {
   name: "appointment_workflow_authority",
 }
 
-const TARGETS = new Set(["dev", "prod"])
+const TARGETS = new Set(["branch", "prod"])
 
 function parseTarget(args) {
   const inline = args.find((arg) => arg.startsWith("--target="))
@@ -227,7 +226,7 @@ function parseTarget(args) {
     (flagIndex >= 0 ? args[flagIndex + 1] : undefined)
 
   if (!value || !TARGETS.has(value)) {
-    throw new Error("Usage: node scripts/verify-schema.mjs --target dev|prod")
+    throw new Error("Usage: node scripts/verify-schema.mjs --target branch|prod")
   }
 
   return value
@@ -245,19 +244,34 @@ function requireEnv(...names) {
 }
 
 function projectConfig(target) {
-  if (target === "dev") {
+  if (target === "branch") {
+    const ref = requireEnv(
+      "SUPABASE_BRANCH_PROJECT_REF",
+      "SUPABASE_PROJECT_REF",
+    )
+    const url = requireEnv("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL")
+    const productionRef = requireEnv(
+      "SUPABASE_PROD_PROJECT_REF",
+      "SUPABASE_PROJECT_REF_PROD",
+    )
+    assert(
+      process.env.SUPABASE_PREVIEW_BRANCH === "1" &&
+        ref !== productionRef &&
+        new URL(url).origin === `https://${ref}.supabase.co`,
+      "Preview Branch verification refused a non-branch or Production target",
+    )
     return {
-      ref: requireEnv("SUPABASE_DEV_PROJECT_REF", "SUPABASE_PROJECT_REF"),
-      url: requireEnv("SUPABASE_DEV_URL", "NEXT_PUBLIC_SUPABASE_URL"),
+      ref,
+      url,
       anonKey: requireEnv(
-        "SUPABASE_DEV_ANON_KEY",
-        "SUPABASE_DEV_PUBLISHABLE_KEY",
-        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "SUPABASE_ANON_KEY",
         "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
       ),
       serviceKey: requireEnv(
-        "SUPABASE_DEV_SERVICE_ROLE_KEY",
         "SUPABASE_SERVICE_ROLE_KEY",
+        "SUPABASE_SECRET_KEY",
       ),
     }
   }
@@ -279,7 +293,7 @@ function projectConfig(target) {
 }
 
 function adminCredentials(target) {
-  return target === "dev"
+  return target === "branch"
     ? {
         email: requireEnv("PORTAL_SEED_ADMIN_EMAIL"),
         password: requireEnv("PORTAL_SEED_ADMIN_PASSWORD"),
@@ -321,46 +335,49 @@ async function readResponse(response, operation) {
   return payload
 }
 
-function queryDevelopmentDatabase({ ref, query }) {
-  const linkedRef = readFileSync("supabase/.temp/project-ref", "utf8").trim()
-  const devRef =
-    process.env.SUPABASE_DEV_PROJECT_REF ?? process.env.SUPABASE_PROJECT_REF
+function queryBranchDatabase({ ref, query }) {
+  const dbUrl = requireEnv("POSTGRES_URL_NON_POOLING")
+  const parsedUrl = new URL(dbUrl)
   assert(
-    ref === devRef && linkedRef === devRef,
-    "Direct database verification fallback is Development-only",
+    process.env.SUPABASE_PREVIEW_BRANCH === "1" &&
+      parsedUrl.hostname === `db.${ref}.supabase.co`,
+    "Direct database verification is Preview-Branch-only",
   )
-  const dbUrl = readFileSync("supabase/.temp/pooler-url", "utf8").trim()
-  const password = requireEnv(
-    "SUPABASE_DEV_DB_PASSWORD",
-    "SUPABASE_DB_PASSWORD",
-  )
-  return JSON.parse(
-    execFileSync(
-      "supabase",
-      [
-        "db",
-        "query",
-        "--db-url",
-        dbUrl,
-        "--agent=no",
-        "--output",
-        "json",
-        query,
-      ],
-      {
-        encoding: "utf8",
-        env: { ...process.env, PGPASSWORD: password },
-        stdio: ["ignore", "pipe", "inherit"],
-      },
-    ),
-  )
+
+  try {
+    return JSON.parse(
+      execFileSync(
+        "supabase",
+        [
+          "db",
+          "query",
+          "--db-url",
+          dbUrl,
+          "--agent=no",
+          "--output",
+          "json",
+          query,
+        ],
+        {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      ),
+    )
+  } catch {
+    throw new Error("Preview Branch database verification query failed")
+  }
 }
 
 async function queryDatabase({ accessToken, ref, query }) {
-  if (!accessToken) {
-    return queryDevelopmentDatabase({ ref, query })
+  if (process.env.SUPABASE_PREVIEW_BRANCH === "1") {
+    return queryBranchDatabase({ ref, query })
   }
 
+  assert(
+    accessToken,
+    "SUPABASE_ACCESS_TOKEN is required for Production schema verification",
+  )
   const response = await fetch(
     `https://api.supabase.com/v1/projects/${encodeURIComponent(ref)}/database/query`,
     {
@@ -372,9 +389,6 @@ async function queryDatabase({ accessToken, ref, query }) {
       body: JSON.stringify({ query }),
     },
   )
-  if (response.status === 401) {
-    return queryDevelopmentDatabase({ ref, query })
-  }
   const payload = await readResponse(response, "Database verification query")
 
   if (Array.isArray(payload)) {
@@ -1650,7 +1664,7 @@ async function main() {
   console.log(
     `Verified ${target} seed rows: staff_profiles=${staffRows.length}, notification_recipients=${recipientRows.length}`,
   )
-  console.log(`Verified ${target} seed admin sign-in: ${user.id}`)
+  console.log(`Verified ${target} seed admin sign-in`)
 }
 
 main().catch((error) => {

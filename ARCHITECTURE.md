@@ -19,12 +19,12 @@ deployment:
 - **Staff portal** (`/admin/**`): authenticated, English-only operations for the durable
   appointment-request queue and practice administration.
 
-| System                    | Role                                                                                                                                                                      |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Supabase                  | Hosted Postgres queue and Auth. Development and Production are separate projects. Application tables are RLS-protected; privileged data access stays in server-only code. |
-| Email capability          | Provider-neutral, text-only application interface with a Resend adapter. Supabase Auth recovery uses a separate hosted SMTP path.                                         |
-| GitHub App (`wgi-portal`) | Server-only adapter for reading repository custody and inviting, cancelling, or revoking maintainers.                                                                     |
-| Vercel + DNS              | Vercel runs the application; `https://westchasegi.com` is canonical. The portal does not call or manage Vercel or DNS.                                                    |
+| System                    | Role                                                                                                                                                                                                                                                  |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Supabase                  | Hosted Postgres queue and Auth. Production is the schema parent; every GitHub PR gets a data-less, fictionally seeded Preview Branch with separate credentials. Application tables are RLS-protected; privileged data access stays in server-only code. |
+| Email capability          | Provider-neutral, text-only application interface with a Resend adapter. Supabase Auth recovery uses a separate hosted SMTP path.                                                                                                                     |
+| GitHub App (`wgi-portal`) | Server-only adapter for reading repository custody and inviting, cancelling, or revoking maintainers.                                                                                                                                                 |
+| Vercel + DNS              | Vercel runs the application; `https://westchasegi.com` is canonical. The portal does not call or manage Vercel or DNS.                                                                                                                                |
 
 ```text
 patient browser ──► Vercel: Next.js application
@@ -123,11 +123,13 @@ not browser configuration. [`.env.example`](.env.example) is the exact variable 
 ### Migrations
 
 Migrations are forward-only and timestamped in `supabase/migrations/`. Every schema-changing
-migration has a rollback sibling in `supabase/rollbacks/`. Apply and verify Development
-first. Merging does not authorize Production promotion. When old and new application
-versions can overlap, change the schema first and keep the deployed interface backward
-compatible until the new application is live. Seed fixtures live in `supabase/seed.sql` and
-`scripts/seed-portal.mjs`. Commands and release procedure live in `CONTRIBUTING.md`.
+migration has a rollback sibling in `supabase/rollbacks/`. Supabase replays the committed
+lineage into the PR's isolated Preview Branch; both its native deployment check and the
+hosted integration suite must pass on the exact head. Merging does not authorize Production
+promotion. When old and new application versions can overlap, change the schema first and
+keep the deployed interface backward compatible until the new application is live. Fictional
+seed fixtures live in `supabase/seed.sql` and `scripts/seed-portal.mjs`. Commands and release
+procedure live in `CONTRIBUTING.md`.
 
 ## Critical flows
 
@@ -181,7 +183,7 @@ and provider-failed requests. The browser may echo its own submitted address, bu
 receives account or delivery state. Hosted Auth SMTP, custom recovery template, one-hour link
 expiry, 60-second resend cooldown, site URL, disabled public signup, and the exact
 `/admin/auth/confirm` redirect allowlist are project configuration, not migrations. Manage
-and verify Development and Production separately.
+and verify Preview Branches and Production separately.
 
 ### Email
 
@@ -262,11 +264,13 @@ referrer. Unverified patient-service URLs do not ship.
 
 ## Test isolation and release model
 
-Credential-bearing E2E runs only against the allowlisted Development project or an explicit
-loopback disposable stack. `e2e/target-guard.ts` binds the project reference to the URL and
-rejects Production before the first database call; credentialed runs retain no trace, video,
-or HTML report. Database-adjacent PRs use a disposable Docker Supabase stack in CI with no
-hosted Supabase, Vercel, or repository secrets.
+Credential-bearing E2E runs only against the PR's explicitly allowlisted Supabase Preview
+Branch or an optional loopback stack. `e2e/target-guard.ts` binds the project reference to
+the URL, requires the hosted-branch marker, and rejects Production before the first database
+call; credentialed runs retain no trace, video, or HTML report. GitHub Branching creates the
+hosted database from the Production schema lineage without Production rows. CI waits for
+that deployment, seeds fictional Auth state, runs destructive checks, and discards the
+branch when the PR closes.
 
 `verify-schema.mjs --target prod` creates and deletes a temporary request. Treat that as
 authorized maintenance, not a read-only check. The complete check matrix, UI baseline

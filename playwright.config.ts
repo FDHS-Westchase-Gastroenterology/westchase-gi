@@ -11,12 +11,12 @@ const publicSmoke = process.env.PLAYWRIGHT_PUBLIC_SMOKE === "1";
 export default defineConfig({
   testDir: "./e2e",
   // CI's public smoke has no credentials and must never touch the shared
-  // Development Supabase project. The normal/full suite is unchanged.
+  // Preview Branch. The normal/full suite is unchanged.
   globalSetup: publicSmoke ? undefined : "./e2e/global-setup.ts",
   globalTeardown: publicSmoke ? undefined : "./e2e/global-teardown.ts",
-  // The hosted development Auth project rate-limits concurrent sign-ins and
-  // Email OTP requests. Keep the shared-project contract deterministic across
-  // Files instead of relying on every caller to remember `--workers=1`.
+  // Hosted Auth rate-limits concurrent sign-ins and email OTP requests. Keep
+  // the branch contract deterministic across files instead of relying on every
+  // caller to remember `--workers=1`.
   fullyParallel: false,
   workers: 1,
   forbidOnly: process.env.CI !== undefined && process.env.CI !== "",
