@@ -5,7 +5,7 @@ import { loadLocalEnv, serviceDb } from "./support";
 loadLocalEnv();
 
 const db = serviceDb();
-const releaseId = "2026-07-29-request-workflow";
+const releaseId = "2026-08-06-appointment-workflow";
 const runId = randomUUID().slice(0, 8);
 const staffEmail = `release-${runId}@example.test`;
 const staffPassword = `Release-${randomUUID()}-aA1!`;
@@ -84,13 +84,13 @@ test.describe("portal release briefing", () => {
     await expect(homeSummary).toHaveAttribute("data-animate", "false");
     await expect(
       homeSummary.getByRole("heading", {
-        name: "A smoother way to manage appointment requests",
+        name: "Record what happened — the portal does the rest",
       }),
     ).toBeVisible();
     for (const sentence of [
-      "Choose Contacted, Scheduled, or Closed.",
-      "Status, call result, call-again timing, and note stay together.",
-      "New requests and due callbacks rise. Scheduled requests stay visible.",
+      "Pick the call's real outcome — the portal sets the status itself.",
+      "Outcome, call-again timing, and note save together. Undo restores everything.",
+      "New requests and due call-agains rise. Scheduled requests stay visible.",
     ]) {
       await expect(homeSummary).toContainText(sentence);
     }
@@ -138,7 +138,7 @@ test.describe("portal release briefing", () => {
 
     const utility = page.getByTestId("portal-release-utility");
     await expect(utility).toBeVisible();
-    await page.getByRole("link", { name: /^Appointment requests/ }).click();
+    await page.getByRole("link", { name: /^Appointments/ }).click();
     await expect(page).toHaveURL(/\/admin\/requests\/?$/);
     await expect(utility).toBeVisible();
 
@@ -169,7 +169,7 @@ test.describe("portal release briefing", () => {
       page.getByRole("heading", { name: "Work an appointment request" }),
     ).toBeVisible();
     await expect(
-      page.getByRole("heading", { name: "Which status should I choose?" }),
+      page.getByRole("heading", { name: "What do the statuses mean?" }),
     ).toBeVisible();
 
     await utility.getByRole("button", { name: /What’s new/ }).click();

@@ -107,7 +107,7 @@ export function ReleaseEngagementSection({
             Release update engagement
           </h2>
           <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
-            Who opened the July 29 update, selected the guide, or dismissed
+            Who opened the August 6 update, selected the guide, or dismissed
             it. This records release interactions only—never patient
             information.
           </p>

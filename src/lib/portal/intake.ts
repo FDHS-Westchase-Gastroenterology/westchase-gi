@@ -203,10 +203,11 @@ async function notifyActiveRecipients(
   client: SupabaseClient,
   requestId: string,
 ) {
-  const { data, error } = await client
-    .from("notification_recipients")
-    .select("id, email")
-    .eq("active", true);
+  const { data: items, error } = await client
+    .from("notification_outbox")
+    .select("id, delivery_key, recipient_id, notification_recipients(id,email)")
+    .eq("request_id", requestId)
+    .eq("status", "pending");
 
   if (error) {
     logOperationalFailure("recipient lookup failed", {
@@ -216,7 +217,12 @@ async function notifyActiveRecipients(
     return;
   }
 
-  const recipients = (data ?? []) as NotificationRecipient[];
+  const recipients = (items ?? []).flatMap((item) => {
+    const recipient = Array.isArray(item.notification_recipients)
+      ? item.notification_recipients[0]
+      : item.notification_recipients;
+    return recipient ? [{ id: recipient.id, email: recipient.email }] : [];
+  }) as NotificationRecipient[];
   if (recipients.length === 0) return;
 
   const adminUrl = portalUrl("/admin");
@@ -232,6 +238,29 @@ async function notifyActiveRecipients(
   );
 
   await recordNotificationEvents(client, requestId, events);
+  await Promise.all(
+    (items ?? []).map((item, index) => {
+      const event = events[index];
+      return client
+        .from("notification_outbox")
+        .update({
+          status: event?.status === "accepted" ? "delivered" : "failed",
+          attempts: 1,
+          normalized_outcome:
+            event?.status === "accepted"
+              ? "accepted"
+              : event?.status === "failed" && "reason" in event.meta
+                ? event.meta.reason === "timed_out"
+                  ? "timeout"
+                  : event.meta.reason
+                : "transport_failure",
+          delivered_at:
+            event?.status === "accepted" ? new Date().toISOString() : null,
+        })
+        .eq("id", item.id)
+        .eq("status", "pending");
+    }),
+  );
 }
 
 export async function processIntake(
@@ -285,9 +314,8 @@ export async function processIntake(
   }
 
   const input = parsed.data;
-  const { data, error } = await client
-    .from("requests")
-    .insert({
+  const { data, error } = await client.rpc("portal_create_request_with_outbox", {
+    p_request: {
       name: input.name,
       phone: input.phone,
       email: input.email || null,
@@ -296,9 +324,8 @@ export async function processIntake(
       message: input.message || null,
       locale: input.locale,
       source_path: input.sourcePath,
-    })
-    .select("id")
-    .single();
+    },
+  });
 
   if (error || !data) {
     logOperationalFailure("request insert failed", {
@@ -311,21 +338,21 @@ export async function processIntake(
   }
 
   const receiptToken = issueReceipt
-    ? await issueRequestReceipt(client, data.id, input.locale)
+    ? await issueRequestReceipt(client, data, input.locale)
     : undefined;
 
   try {
-    await notifyActiveRecipients(client, data.id);
+    await notifyActiveRecipients(client, data);
   } catch {
     // The durable request is authoritative; notification failures never
     // downgrade the accepted response.
     logOperationalFailure("notification fan-out failed", {
-      requestId: data.id,
+      requestId: data,
     });
   }
 
   return {
-    response: { ok: true, id: data.id },
+    response: { ok: true, id: data },
     status: 201,
     receiptToken,
   };

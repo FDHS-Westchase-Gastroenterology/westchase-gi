@@ -32,7 +32,7 @@ export default async function AdminHelpPage() {
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-mint)] p-6 sm:p-8">
           <h2 className={SECTION_HEADING}>Portal tour</h2>
           <p className={SECTION_BODY}>
-            Reopen the short introduction to Home, Appointment requests, and
+            Reopen the short introduction to Home, Appointments, and
             Settings whenever a refresher would help. This takes you back to
             Home, where you can choose when to start it.
           </p>
@@ -51,7 +51,7 @@ export default async function AdminHelpPage() {
             saved instantly
             to the practice&apos;s own secure database and appears on the{" "}
             <Link href="/admin/requests" className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2">
-              Appointment requests
+              Appointments
             </Link>{" "}
             page. Nothing depends on anyone watching an email inbox: even if
             every notification email went missing, the request would still
@@ -70,8 +70,8 @@ export default async function AdminHelpPage() {
             <div>
               <h2 className={SECTION_HEADING}>Work an appointment request</h2>
               <p className={SECTION_BODY}>
-                A two-minute guide to choosing the next status and leaving the
-                queue ready for whoever works it next.
+                A two-minute guide to recording what happened on a call and
+                leaving the queue ready for whoever works it next.
               </p>
             </div>
             <span className="rounded-full bg-[var(--color-amber-soft)] px-3 py-1 text-[0.78rem] font-bold text-[var(--color-amber-deep)]">
@@ -80,8 +80,13 @@ export default async function AdminHelpPage() {
           </div>
 
           <h3 className="mt-7 text-[1rem] font-black text-[var(--color-ink)]">
-            Which status should I choose?
+            What do the statuses mean?
           </h3>
+          <p className="mt-2 max-w-[70ch] text-[0.95rem] leading-relaxed text-[var(--color-body)]">
+            You never pick a status directly. You record what happened on the
+            call, and the portal moves the request to the right place. Here is
+            how to read the words you will see in the queue:
+          </p>
           <dl className="mt-3 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
             <div className="grid gap-1.5 py-4 sm:grid-cols-[8rem_1fr] sm:gap-5">
               <dt>
@@ -90,9 +95,10 @@ export default async function AdminHelpPage() {
                 </span>
               </dt>
               <dd className="text-[0.94rem] leading-relaxed text-[var(--color-body)]">
-                You reached the patient but more work remains, left a
-                voicemail, or received no answer. If another call is needed,
-                tell the portal when to bring the request back.
+                Someone has called the patient at least once — reached them,
+                left a voicemail, or got no answer. If another call is needed,
+                the request carries a call-again time so the queue brings it
+                back at the right moment.
               </dd>
             </div>
             <div className="grid gap-1.5 py-4 sm:grid-cols-[8rem_1fr] sm:gap-5">
@@ -102,8 +108,8 @@ export default async function AdminHelpPage() {
                 </span>
               </dt>
               <dd className="text-[0.94rem] leading-relaxed text-[var(--color-body)]">
-                The appointment is booked. The request stays visible so the
-                team can still find it.
+                An appointment was booked in the practice scheduling system.
+                The request stays visible so the team can still find it.
               </dd>
             </div>
             <div className="grid gap-1.5 py-4 sm:grid-cols-[8rem_1fr] sm:gap-5">
@@ -113,9 +119,9 @@ export default async function AdminHelpPage() {
                 </span>
               </dt>
               <dd className="text-[0.94rem] leading-relaxed text-[var(--color-body)]">
-                Nobody needs to work the request again. Record whether the
-                appointment was booked and the request is complete, the
-                patient will not schedule, or the request is not actionable.
+                No appointment is coming — the patient won&apos;t schedule, or
+                the request was a duplicate or not actionable. Nobody needs to
+                work it again unless it is reopened.
               </dd>
             </div>
           </dl>
@@ -127,19 +133,19 @@ export default async function AdminHelpPage() {
             {[
               [
                 "Start at the top",
-                "The queue puts new requests and due callbacks first, then older requests without a call-again date.",
+                "The queue puts new requests and due call-agains first, then older requests without a call-again time.",
               ],
               [
-                "Add an appointment request note",
-                "Use appointment request notes when the next person needs context. Keep medical details in the clinical record, not the portal.",
+                "Record what happened",
+                "Answer the panel's one question. Pick the outcome you just lived — reached the patient, left a voicemail, no answer, appointment booked, or no appointment coming. The portal asks only for the details that outcome needs, like when to call again, and sets the status itself.",
               ],
               [
-                "Choose the next status",
-                "Select Contacted, Scheduled, or Closed. The portal then asks only for the details that status needs.",
+                "Add a note when the next person needs context",
+                "Use appointment request notes to pass along what matters. Keep medical details in the clinical record, not the portal.",
               ],
               [
                 "Save and Undo",
-                "Choose Save. After it is saved, choose Undo to restore the previous appointment request status, callback time, and Closed details.",
+                "Choose Save. For 15 minutes afterward, Undo restores the request exactly as it was — status, call-again time, and closed details included.",
               ],
             ].map(([title, body], index) => (
               <li
@@ -173,8 +179,8 @@ export default async function AdminHelpPage() {
           </p>
           <p className="mt-3 max-w-[70ch] text-[0.95rem] leading-relaxed text-[var(--color-body)]">
             Keep medical details in the clinical record, not the portal.
-            Status updates are saved separately and appear under{" "}
-            <strong>Request activity</strong>, so they never hide or rename
+            Calls and status changes are saved separately and appear under{" "}
+            <strong>Request history</strong>, so they never hide or rename
             the notes staff are looking for.
           </p>
 
@@ -183,9 +189,15 @@ export default async function AdminHelpPage() {
               Need to correct something?
             </p>
             <p className="mt-1 text-[0.92rem] leading-relaxed text-[var(--color-body)]">
-              A Closed request can be reopened as Contacted or Scheduled.
-              Earlier notes remain under Appointment request notes, and
-              earlier outcomes remain under Request activity.
+              A Scheduled or Closed request can be reopened for more work — it
+              returns to Contacted so the next call gets planned. Earlier notes
+              remain under Appointment request notes, and earlier saves remain
+              under Request history.
+            </p>
+            <p className="mt-3 text-[0.92rem] leading-relaxed text-[var(--color-body)]">
+              Some older closed requests from the previous system show a{" "}
+              <strong>Needs review</strong> tag. Open one and record whether an
+              appointment was ever booked — that finishes its record.
             </p>
           </div>
 
@@ -194,7 +206,7 @@ export default async function AdminHelpPage() {
               href="/admin/requests"
               className="btn btn-amber btn-sm min-h-11"
             >
-              Open appointment requests
+              Open Appointments
             </Link>
             <Link
               href="/admin"

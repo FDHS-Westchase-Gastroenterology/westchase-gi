@@ -169,18 +169,18 @@ test.describe("portal home", () => {
       ).toHaveAttribute("href", href);
     }
 
-    // The primary action opens the queue.
-    await page.getByRole("link", { name: "Open appointment requests" }).click();
+    // The primary action opens the Appointments workbench (DEC-UX-02: the
+    // destination is named Appointments; the records remain appointment
+    // requests under /admin/requests).
+    await page.getByRole("link", { name: "Open Appointments" }).click();
     await expect(page).toHaveURL(/\/admin\/requests\/?$/);
     await expect(
-      page.getByRole("heading", { name: "Appointment requests", exact: true }),
+      page.getByRole("heading", { name: "Appointments", exact: true }),
     ).toBeVisible();
-    // The queue tab renders a compact "Requests" label below `sm`; assert
-    // the visible desktop text rather than the concatenated textContent. The
-    // waiting-count badge may append a count inside the same link.
+    // The waiting-count badge may append a count inside the same link.
     await expect(
       page.locator('nav[aria-label="Portal sections"] a[aria-current="page"]'),
-    ).toHaveText(/^Appointment requests/, { useInnerText: true });
+    ).toHaveText(/^Appointments/, { useInnerText: true });
   });
 
   test("home flags recent notification delivery failures honestly", async ({
@@ -200,22 +200,31 @@ test.describe("portal home", () => {
     });
     expect(staged.status()).toBe(201);
     const { id } = (await staged.json()) as { id: string };
-    const { error: eventError } = await db.from("request_events").insert({
+    // Delivery truth now lives in the transactional outbox (DEC-22/DEC-24):
+    // Home reports failed, retrying, or exhausted outbox work from the last
+    // 24 hours, never the legacy request_events notification rows.
+    const { data: anyRecipient, error: recipientError } = await db
+      .from("notification_recipients")
+      .select("id")
+      .limit(1)
+      .single();
+    expect(recipientError).toBeNull();
+    const { error: outboxError } = await db.from("notification_outbox").insert({
       request_id: id,
-      type: "notification",
-      recipient: `home-${runId}-recipient@example.test`,
+      kind: "new_request",
+      recipient_id: anyRecipient!.id,
       status: "failed",
+      normalized_outcome: "transport_failure",
     });
-    expect(eventError).toBeNull();
+    expect(outboxError).toBeNull();
 
-    async function recentFailures(): Promise<number> {
+    async function recentTrouble(): Promise<number> {
       const { count, error } = await db
-        .from("request_events")
+        .from("notification_outbox")
         .select("id", { count: "exact", head: true })
-        .eq("type", "notification")
-        .eq("status", "failed")
+        .in("status", ["failed", "retry_pending", "exhausted"])
         .gte(
-          "created_at",
+          "updated_at",
           new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
         );
       expect(error).toBeNull();
@@ -224,24 +233,24 @@ test.describe("portal home", () => {
 
     await signIn(page, SEED_EMAIL, SEED_PASSWORD);
 
-    const expectedCount = await recentFailures();
+    const expectedCount = await recentTrouble();
     expect(expectedCount).toBeGreaterThanOrEqual(1);
     const warning = page.getByTestId("delivery-failure-warning");
     await expect(warning).toBeVisible();
     await expect(warning).toContainText(
       expectedCount === 1
-        ? "A notification email failed to send in the last 24 hours."
-        : `${expectedCount} notification emails failed to send in the last 24 hours.`,
+        ? "A notification email had trouble sending in the last 24 hours."
+        : `${expectedCount} notification emails had trouble sending in the last 24 hours.`,
     );
 
     // Removing the staged failure restores the honest quiet state: the
-    // warning shows only while a real recent failure exists.
+    // warning shows only while real recent outbox trouble exists.
     await db
-      .from("request_events")
+      .from("notification_outbox")
       .delete()
       .eq("request_id", id)
       .eq("status", "failed");
-    const remaining = await recentFailures();
+    const remaining = await recentTrouble();
     await page.reload();
     await expect(page.getByTestId("delivery-failure-warning")).toHaveCount(
       remaining > 0 ? 1 : 0,
@@ -298,7 +307,7 @@ test.describe("portal home", () => {
       await dialog.getByRole("button", { name: "Next" }).click();
       await expect(
         dialog.getByRole("heading", {
-          name: "Appointment requests",
+          name: "Appointments",
           exact: true,
         }),
       ).toBeVisible();
