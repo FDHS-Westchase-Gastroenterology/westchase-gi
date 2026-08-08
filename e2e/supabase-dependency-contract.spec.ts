@@ -104,14 +104,22 @@ function testDatabaseConnectionArgs(): string[] {
   }
 
   const ref = requiredEnv("SUPABASE_BRANCH_PROJECT_REF", "SUPABASE_PROJECT_REF");
-  const dbUrl = requiredEnv("POSTGRES_URL_NON_POOLING");
+  const dbUrl = requiredEnv("POSTGRES_URL", "POSTGRES_URL_NON_POOLING");
+  const parsedUrl = new URL(dbUrl);
+  const direct = parsedUrl.hostname === `db.${ref}.supabase.co`;
+  const pooler =
+    parsedUrl.hostname.endsWith(".pooler.supabase.com") &&
+    decodeURIComponent(parsedUrl.username) === `postgres.${ref}`;
   if (
     process.env.SUPABASE_PREVIEW_BRANCH !== "1" ||
-    new URL(dbUrl).hostname !== `db.${ref}.supabase.co`
+    (!direct && !pooler)
   ) {
     throw new Error("Destructive database query refused outside a Preview Branch");
   }
-  return ["--db-url", dbUrl];
+  if (pooler && parsedUrl.port === "6543") {
+    parsedUrl.port = "5432";
+  }
+  return ["--db-url", parsedUrl.toString()];
 }
 
 function queryTestDatabase(sql: string): void {

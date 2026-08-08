@@ -111,6 +111,7 @@ jobs:
             printf 'NEXT_PUBLIC_SUPABASE_URL=%s\n' "$SUPABASE_URL"
             printf 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=%s\n' "$public_key"
             printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$service_key"
+            printf 'POSTGRES_URL=%s\n' "$POSTGRES_URL"
             printf 'POSTGRES_URL_NON_POOLING=%s\n' "$POSTGRES_URL_NON_POOLING"
             printf 'SUPABASE_BRANCH_PROJECT_REF=%s\n' "$branch_ref"
             printf 'SUPABASE_PROJECT_REF=%s\n' "$branch_ref"

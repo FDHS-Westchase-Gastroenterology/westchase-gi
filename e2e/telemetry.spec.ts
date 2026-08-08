@@ -36,20 +36,39 @@ function analyticsQuery(sql: string): readonly Json[] {
   assertSafeE2ETarget(process.env);
   const preview = process.env.SUPABASE_PREVIEW_BRANCH === "1";
   const dbUrl = preview
-    ? requiredEnv("POSTGRES_URL_NON_POOLING")
+    ? requiredEnv("POSTGRES_URL", "POSTGRES_URL_NON_POOLING")
     : readFileSync(resolve(process.cwd(), "supabase/.temp/pooler-url"), "utf8").trim();
+  const parsedUrl = new URL(dbUrl);
+  const ref = preview ? requiredEnv("SUPABASE_BRANCH_PROJECT_REF", "SUPABASE_PROJECT_REF") : "";
+  const direct = parsedUrl.hostname === `db.${ref}.supabase.co`;
+  const pooler =
+    parsedUrl.hostname.endsWith(".pooler.supabase.com") &&
+    decodeURIComponent(parsedUrl.username) === `postgres.${ref}`;
   if (
     preview &&
-    new URL(dbUrl).hostname !==
-      `db.${requiredEnv("SUPABASE_BRANCH_PROJECT_REF", "SUPABASE_PROJECT_REF")}.supabase.co`
+    !direct &&
+    !pooler
   ) {
     throw new Error("Telemetry query refused a non-Preview database URL");
   }
+  if (preview && pooler && parsedUrl.port === "6543") {
+    parsedUrl.port = "5432";
+  }
+  const queryUrl = preview ? parsedUrl.toString() : dbUrl;
 
   try {
     const output = execFileSync(
       "supabase",
-      ["db", "query", "--db-url", dbUrl, "--agent=no", "--output", "json", sql],
+      [
+        "db",
+        "query",
+        "--db-url",
+        queryUrl,
+        "--agent=no",
+        "--output",
+        "json",
+        sql,
+      ],
       {
         encoding: "utf8",
         env: preview
