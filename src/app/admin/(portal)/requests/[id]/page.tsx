@@ -366,7 +366,7 @@ export default async function RequestDetailPage({
                   {safeMailbox}
                 </a>
               ) : (
-                <p>Not provided — call the phone number</p>
+                <p>Not provided — call the phone number above</p>
               )}
             </div>
           </div>

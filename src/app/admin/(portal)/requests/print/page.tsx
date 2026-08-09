@@ -90,8 +90,13 @@ function RequestWorksheet({
   total: number;
   generatedAt: string;
 }) {
+  const hasLongMessage = (request.message?.length ?? 0) > 1_000;
+
   return (
-    <article className="portal-print-sheet" data-testid="print-request-sheet">
+    <article
+      className={`portal-print-sheet${hasLongMessage ? " portal-print-sheet--dense" : ""}`}
+      data-testid="print-request-sheet"
+    >
       <header className="portal-print-sheet-header">
         <div>
           <p>Westchase Gastroenterology</p>

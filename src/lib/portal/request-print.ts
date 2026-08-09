@@ -69,12 +69,28 @@ function hasExactKeys(value: object, expected: string[]): boolean {
   return Object.keys(value).sort().join("\0") === expected.join("\0");
 }
 
+type PostgresTimestampKey = {
+  epochMilliseconds: number;
+  microsecondsWithinMillisecond: number;
+};
+
+function postgresTimestampKey(value: unknown): PostgresTimestampKey | null {
+  if (typeof value !== "string") return null;
+  const match = value.match(
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.(\d{1,6}))?(?:Z|[+-]\d{2}:\d{2})$/,
+  );
+  const epochMilliseconds = Date.parse(value);
+  if (!match || !Number.isFinite(epochMilliseconds)) return null;
+
+  const microseconds = (match[1] ?? "").padEnd(6, "0").slice(3, 6);
+  return {
+    epochMilliseconds,
+    microsecondsWithinMillisecond: Number.parseInt(microseconds || "0", 10),
+  };
+}
+
 function isIsoTimestamp(value: unknown): value is string {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}T/.test(value)) {
-    return false;
-  }
-  const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) && /(?:Z|[+-]\d{2}:\d{2})$/.test(value);
+  return postgresTimestampKey(value) !== null;
 }
 
 function toPrintRow(value: unknown): NewRequestPrintRow | null {
@@ -143,8 +159,16 @@ export async function prepareNewRequestPrintPacket(input: {
       const row = toPrintRow(value);
       if (!row || ids.has(row.id)) return { ok: false };
       if (previous) {
-        const timeOrder = Date.parse(previous.createdAt) - Date.parse(row.createdAt);
-        if (timeOrder > 0 || (timeOrder === 0 && previous.id > row.id)) {
+        const previousTime = postgresTimestampKey(previous.createdAt);
+        const currentTime = postgresTimestampKey(row.createdAt);
+        if (previousTime === null || currentTime === null) return { ok: false };
+        const timeOrder =
+          previousTime.epochMilliseconds - currentTime.epochMilliseconds ||
+          previousTime.microsecondsWithinMillisecond - currentTime.microsecondsWithinMillisecond;
+        if (
+          timeOrder > 0 ||
+          (timeOrder === 0 && previous.id > row.id)
+        ) {
           return { ok: false };
         }
       }

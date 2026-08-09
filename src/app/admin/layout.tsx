@@ -20,7 +20,7 @@ export const viewport: Viewport = {
 
 export default function AdminLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={fontVariables}>
+    <html lang="en" className={fontVariables} data-scroll-behavior="smooth">
       <body className="portal-scope min-h-dvh bg-[var(--color-paper)] text-[var(--color-body)]">
         <template
           data-design-contract="admin-front-desk-ledger"

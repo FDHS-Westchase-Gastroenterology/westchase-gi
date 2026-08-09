@@ -89,7 +89,9 @@ test.describe("isolated portal scale boundaries", () => {
 
     await expect(page.getByTestId("request-row")).toHaveCount(50);
     await expect(page.getByTestId("request-page-summary")).toHaveText("Showing 1–50 of 1001");
-    const next = page.getByRole("link", { name: "Next" });
+    const next = page
+      .getByRole("navigation", { name: "Appointment request pages" })
+      .getByRole("link", { name: "Next", exact: true });
     const nextUrl = new URL((await next.getAttribute("href")) ?? "", "http://localhost:3100");
     expect(nextUrl.searchParams.get("status")).toBe("contacted");
     expect(nextUrl.searchParams.get("q")).toBe(searchToken);

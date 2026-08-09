@@ -194,7 +194,6 @@ async function redactPortalData(page) {
         '[data-testid="queue-overview-unavailable"] > :not([data-testid="queue-overview-headline"])',
       )
       .forEach((element) => element.remove());
-    document.querySelector('[data-testid="queue-overview-preview"]')?.remove();
     document.querySelector('[data-testid="queue-overview-oldest"]')?.remove();
     document.querySelector(".portal-attention-next")?.remove();
     document.querySelector('[data-testid="no-recipients-warning"]')?.remove();

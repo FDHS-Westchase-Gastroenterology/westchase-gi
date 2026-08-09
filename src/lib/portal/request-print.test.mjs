@@ -178,3 +178,45 @@ test("fails closed for duplicate IDs and out-of-order rows", async () => {
     }), { ok: false });
   }
 });
+
+test("preserves PostgreSQL microsecond order before applying the UUID tie-breaker", async () => {
+  const earlier = {
+    ...FIRST_ROW,
+    id: SECOND_ROW.id,
+    created_at: "2026-08-09T09:00:00.000001+00:00",
+  };
+  const later = {
+    ...SECOND_ROW,
+    id: FIRST_ROW.id,
+    created_at: "2026-08-09T09:00:00.000999+00:00",
+  };
+  const harness = rpcHarness(packet([earlier, later]));
+
+  const result = await prepareNewRequestPrintPacket({
+    db: harness.db,
+    actorEmail: "staff@example.test",
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(
+    result.ok ? result.requests.map((request) => request.id) : [],
+    [SECOND_ROW.id, FIRST_ROW.id],
+  );
+});
+
+test("rejects reversed PostgreSQL microseconds inside one millisecond", async () => {
+  const later = {
+    ...FIRST_ROW,
+    created_at: "2026-08-09T09:00:00.000999+00:00",
+  };
+  const earlier = {
+    ...SECOND_ROW,
+    created_at: "2026-08-09T09:00:00.000001+00:00",
+  };
+  const harness = rpcHarness(packet([later, earlier]));
+
+  assert.deepEqual(await prepareNewRequestPrintPacket({
+    db: harness.db,
+    actorEmail: "staff@example.test",
+  }), { ok: false });
+});
