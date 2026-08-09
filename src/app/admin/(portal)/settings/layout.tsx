@@ -1,4 +1,5 @@
 import { SettingsTabs } from "./settings-tabs";
+import { PortalPageHeader } from "../portal-page-header";
 
 // Settings is one primary-nav destination with two sub-pages: the
 // Frequent staff-facing configuration (notifications, access) and the
@@ -12,9 +13,10 @@ export default function SettingsLayout({
 }>) {
   return (
     <section aria-labelledby="settings-heading">
-      <h1 id="settings-heading" className="portal-title">
-        Settings
-      </h1>
+      <PortalPageHeader
+        title={<span id="settings-heading">Settings</span>}
+        description="Manage the people and systems around the appointment-request workflow. Changes here are infrequent and stay out of the daily work stack."
+      />
       <SettingsTabs />
       <div className="mt-6 sm:mt-8">{children}</div>
     </section>

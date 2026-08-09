@@ -2,28 +2,24 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  CircleHelp,
+  ClipboardCheck,
+  Home,
+  Settings,
+} from "@/components/icons";
 
-// The four fixed staff destinations, in the spec's fixed order
-// (DEC-UX-02): Home, Appointments, Settings, Help. Home is the landing
-// Surface; the appointment workbench lives under /admin/requests (the
-// Records remain appointment requests — the portal owns no Appointment
-// Entity); occasional tasks (review flyers, website custody) are
-// Reached from Home and Settings instead of holding permanent tabs.
-// Every destination stays visible on a phone without unmarked
-// Horizontal scrolling.
+// The four fixed staff destinations, in the specification's fixed order.
+// Their presentation adapts from a persistent desktop rail to a mobile
+// tab bar, but the vocabulary, order, current-location signal, and waiting
+// count never move. Occasional utilities stay outside this primary index.
 
-type NavItem = {
-  href: string;
-  label: string;
-  compactLabel?: string;
-};
-
-const NAV_ITEMS: readonly NavItem[] = [
-  { href: "/admin", label: "Home" },
-  { href: "/admin/requests", label: "Appointments", compactLabel: "Appts" },
-  { href: "/admin/settings", label: "Settings" },
-  { href: "/admin/help", label: "Help" },
-];
+const NAV_ITEMS = [
+  { href: "/admin", label: "Home", icon: Home },
+  { href: "/admin/requests", label: "Appointments", icon: ClipboardCheck },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
+  { href: "/admin/help", label: "Help", icon: CircleHelp },
+] as const;
 
 function isActive(pathname: string, href: string): boolean {
   if (href === "/admin") return pathname === "/admin";
@@ -34,16 +30,18 @@ export function PortalNav({ waitingCount }: { waitingCount: number | null }) {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Portal sections" className="-mb-px">
-      <ul className="flex w-full items-stretch gap-0 sm:gap-1">
+    <nav aria-label="Portal sections" className="portal-primary-nav">
+      <ul>
         {NAV_ITEMS.map((item) => {
           const active = isActive(pathname, item.href);
           const showBadge =
             item.href === "/admin/requests" &&
             waitingCount !== null &&
             waitingCount > 0;
+          const Icon = item.icon;
+
           return (
-            <li key={item.href} className="flex">
+            <li key={item.href}>
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
@@ -52,25 +50,15 @@ export function PortalNav({ waitingCount }: { waitingCount: number | null }) {
                     ? `${item.label}, ${waitingCount} waiting`
                     : item.label
                 }
-                className={`flex min-h-11 items-center whitespace-nowrap border-b-[3px] px-1.5 text-[0.9rem] font-bold transition-colors min-[380px]:px-2 sm:px-4 sm:text-[0.95rem] ${
-                  active
-                    ? "border-[var(--color-amber)] text-white"
-                    : "border-transparent text-[var(--color-on-dark-muted)] hover:text-white"
-                }`}
+                className="portal-nav-link"
               >
-                {item.compactLabel ? (
-                  <>
-                    <span className="min-[360px]:hidden">{item.compactLabel}</span>
-                    <span className="hidden min-[360px]:inline">{item.label}</span>
-                  </>
-                ) : (
-                  item.label
-                )}
+                <Icon className="portal-nav-icon" />
+                <span>{item.label}</span>
                 {showBadge ? (
                   <span
                     data-testid="nav-waiting-badge"
                     aria-hidden="true"
-                    className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--color-amber)] px-1.5 py-0.5 text-center text-[0.72rem] font-extrabold tabular-nums text-[var(--color-navy-2)] sm:ml-2"
+                    className="portal-nav-count"
                   >
                     {waitingCount > 99 ? "99+" : waitingCount}
                   </span>

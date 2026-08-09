@@ -2,6 +2,7 @@ import Link from "next/link";
 import { requireRole } from "@/lib/portal/auth";
 import { site } from "@/lib/site";
 import { restartPortalTourAction } from "../tour-actions";
+import { PortalPageHeader } from "../portal-page-header";
 
 // Plain-language operations guide for the front desk (VAL-ADMIN-012:
 // authenticated, substantive, >= 400 words, no engineering jargon).
@@ -20,13 +21,10 @@ export default async function AdminHelpPage() {
 
   return (
     <section aria-labelledby="help-heading">
-      <h1 id="help-heading" className="portal-title">
-        Help
-      </h1>
-      <p className="mt-1.5 max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
-        How this portal works, in plain language. Five minutes here covers
-        everything.
-      </p>
+      <PortalPageHeader
+        title={<span id="help-heading">Help</span>}
+        description="How the staff portal works, in plain language. Start with the task in front of you; the technical background stays optional."
+      />
 
       <div className="portal-help mt-8">
         <div className="portal-help-section portal-help-tour">
@@ -60,6 +58,26 @@ export default async function AdminHelpPage() {
             appointment requests, not booked appointments: someone still calls
             the patient to schedule.
           </p>
+        </div>
+
+        <div className="portal-help-section">
+          <h2 className={SECTION_HEADING}>Print a paper handoff</h2>
+          <p className={SECTION_BODY}>
+            Home shows a <strong>Print all</strong> action whenever New
+            appointment requests are waiting. It prepares one work sheet per
+            request, oldest first, so a manager can hand the pages to staff.
+            The packet is a time-stamped snapshot: printing does not assign a
+            request, mark it contacted, or change its history. After a call,
+            open the live request in Appointments and record what happened so
+            everyone sees the durable result. If a packet has sat unattended,
+            check the New view before distributing it.
+          </p>
+          <Link
+            href="/admin/requests/print"
+            className="mt-3 inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+          >
+            Prepare the current New-request packet
+          </Link>
         </div>
 
         <div
@@ -255,10 +273,10 @@ export default async function AdminHelpPage() {
             delivery evidence. Never ask for the password, one-time link, or
             copied email content. Every access change is recorded in the{" "}
             <Link href="/admin/audit" className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2">
-              activity log
+              Activity log
             </Link>{" "}
-            (the Activity log link at the bottom of every page), so there
-            is always a clear record of who did what.
+            from the desktop task rail or the mobile account menu, so there is
+            always a clear record of who did what.
           </p>
         </div>
 

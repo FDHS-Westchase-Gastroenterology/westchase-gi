@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { logoutAction } from "@/app/admin/actions";
+import {
+  Activity,
+  ExternalLink,
+  FileText,
+  LogOut,
+  Users,
+} from "@/components/icons";
 import { getSessionUser } from "@/lib/portal/auth";
 import { getPortalReleaseState } from "@/lib/portal/release-briefing";
 import {
@@ -15,10 +22,9 @@ import {
   PortalReleaseUtility,
 } from "./portal-release-briefing";
 
-// Authenticated portal chrome: a navy work-desk header carrying the
-// practice identity (wordmark, amber active tick) over a calm paper
-// canvas. Deliberately NOT the patient site's marketing chrome and NOT
-// a generic SaaS sidebar shell. Login lives outside this group.
+// The Front Desk Ledger: one persistent desktop index becomes the same four
+// thumb-reachable destinations on mobile. The navigation stays put while the
+// appointment-request canvas changes, preserving location and task continuity.
 
 export default async function PortalLayout({
   children,
@@ -28,8 +34,8 @@ export default async function PortalLayout({
   const session = await getSessionUser();
   if (!session) redirect("/admin/login");
 
-  // The waiting signal travels with the worker: the same read discipline as
-  // Home (failed read = no badge, never a false zero).
+  // The waiting signal travels with the worker: a failed read suppresses the
+  // badge instead of inventing a reassuring zero.
   const releaseEligible =
     session.portalTourDismissedAt !== null &&
     isPortalReleaseEligible(session.onboardedAt);
@@ -42,90 +48,98 @@ export default async function PortalLayout({
       ? getPortalReleaseState(session, PORTAL_RELEASE_BRIEFING.id)
       : Promise.resolve({ status: "hidden" } as const),
   ]);
-  const { count, error } = queueResult;
-  const waitingCount = availableQueueCount(count, error);
+  const waitingCount = availableQueueCount(queueResult.count, queueResult.error);
 
   return (
     <PortalReleaseProvider
       eligible={releaseEligible}
       initialState={releaseState}
     >
-      <div className="flex min-h-dvh flex-col">
+      <div className="portal-workspace min-h-dvh">
         <a href="#portal-main" className="skip-link">
           Skip to staff portal content
         </a>
-        <header className="portal-header bg-[var(--color-navy)] text-[var(--color-on-dark)]">
-          <div className="container-x">
-            <div className="flex min-h-14 flex-wrap items-center justify-between gap-x-6 gap-y-0.5 py-1.5">
-              <Link
-                href="/admin"
-                className="flex min-h-11 items-center gap-x-2.5"
-              >
-                <span className="font-[var(--font-display)] text-[1rem] leading-none sm:text-[1.05rem]">
-                  Westchase Gastroenterology
-                </span>
-                <span className="border-s border-[var(--color-line-dark)] ps-2.5 text-[0.68rem] font-bold uppercase tracking-[0.08em] text-[var(--color-on-dark-muted)]">
-                  Staff portal
-                </span>
+
+        <aside className="portal-sidebar print-hide" aria-label="Portal workspace">
+          <Link
+            href="/admin"
+            className="portal-sidebar-brand"
+            aria-label="Westchase Gastroenterology staff portal home"
+          >
+            <span className="portal-sidebar-mark" aria-hidden="true">
+              W
+            </span>
+            <span>
+              <strong>Westchase Gastroenterology</strong>
+              <small>Staff portal</small>
+            </span>
+          </Link>
+
+          <PortalNav waitingCount={waitingCount} />
+
+          <div className="portal-sidebar-tools">
+            <p>Practice tools</p>
+            <Link href="/admin/review-flyers">
+              <FileText className="h-[1.1rem] w-[1.1rem]" />
+              Review flyers
+            </Link>
+            <Link href="/admin/audit">
+              <Activity className="h-[1.1rem] w-[1.1rem]" />
+              Activity log
+            </Link>
+          </div>
+
+          <div className="portal-sidebar-account">
+            <p className="portal-sidebar-person">
+              <span data-testid="session-user">{session.displayName}</span>
+              <small data-testid="session-email" title={session.email}>
+                {session.email}
+              </small>
+            </p>
+            <div className="portal-sidebar-account-actions">
+              <Link href="/">
+                <ExternalLink className="h-4 w-4" />
+                View website
               </Link>
-              <div className="flex items-center gap-x-3 sm:gap-x-4">
-                <p className="hidden text-[0.85rem] text-[var(--color-on-dark-muted)] md:block">
-                  <span data-testid="session-user">{session.displayName}</span>
-                  <span aria-hidden="true" className="mx-2">
-                    ·
-                  </span>
+              <form action={logoutAction}>
+                <button type="submit">
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </button>
+              </form>
+            </div>
+          </div>
+        </aside>
+
+        <div className="portal-stage">
+          <header className="portal-mobile-header print-hide">
+            <Link href="/admin" className="portal-mobile-brand">
+              <span aria-hidden="true">W</span>
+              <strong>Staff portal</strong>
+            </Link>
+            <details className="portal-account-menu">
+              <summary aria-label="Open account menu">
+                <Users className="h-5 w-5" />
+              </summary>
+              <div>
+                <p>
+                  <strong>{session.displayName}</strong>
                   <span className="capitalize">{session.role}</span>
                 </p>
-                <Link
-                  href="/"
-                  className="flex min-h-11 items-center rounded-[var(--radius-sm)] px-1 text-[0.9rem] font-bold text-[var(--color-on-dark)] underline underline-offset-2"
-                >
-                  View website
-                </Link>
+                <Link href="/admin/audit">Activity log</Link>
+                <Link href="/">View website</Link>
                 <form action={logoutAction}>
-                  <button
-                    type="submit"
-                    className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-dark)] px-3.5 text-[0.9rem] font-bold text-[var(--color-on-dark)] transition-colors hover:bg-white/10"
-                  >
-                    Sign out
-                  </button>
+                  <button type="submit">Sign out</button>
                 </form>
               </div>
-            </div>
-            <PortalNav waitingCount={waitingCount} />
-          </div>
-        </header>
-        <PortalReleaseUtility />
-        <main
-          id="portal-main"
-          tabIndex={-1}
-          className="flex-1 pb-14 pt-7 sm:pt-9"
-        >
-          <div className="container-x">{children}</div>
-        </main>
-        <footer className="border-t border-[var(--color-line-2)] bg-[var(--portal-surface)] py-5">
-          <div className="container-x flex flex-wrap items-center justify-between gap-3 text-[0.85rem] text-[var(--color-muted)]">
-            <p>
-              <Link
-                href="/admin/audit"
-                className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-              >
-                Activity log
-              </Link>
-            </p>
-            <p>
-              <span>
-                Questions? See{" "}
-                <Link
-                  href="/admin/help"
-                  className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-                >
-                  Help
-                </Link>
-              </span>
-            </p>
-          </div>
-        </footer>
+            </details>
+          </header>
+
+          <PortalReleaseUtility />
+          <main id="portal-main" tabIndex={-1}>
+            <div className="portal-content">{children}</div>
+          </main>
+        </div>
       </div>
     </PortalReleaseProvider>
   );

@@ -41,6 +41,7 @@ import {
   RequestNotes,
   type RequestNoteView,
 } from "./request-notes";
+import { PortalPageHeader } from "../../portal-page-header";
 
 type RequestRow = {
   id: string;
@@ -198,7 +199,8 @@ export default async function RequestDetailPage({
     fetchStaffNameMap(db),
   ]);
 
-  if (error || !request || !surface) notFound();
+  if (error) throw new Error("Request detail read failed");
+  if (!request || !surface) notFound();
 
   // Previous/next within the viewer's queue scope: the same attention
   // ordering the list renders, so staff can keep working without
@@ -254,32 +256,6 @@ export default async function RequestDetailPage({
     .filter((line): line is HistoryLine => line !== null);
 
   const fields: Array<{ label: string; value: React.ReactNode }> = [
-    {
-      label: "Phone",
-      value: (
-        <a
-          href={`tel:${row.phone}`}
-          className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-        >
-          {row.phone}
-        </a>
-      ),
-    },
-    {
-      label: "Email",
-      value: safeMailbox ? (
-        <a
-          href={`mailto:${safeMailbox}`}
-          className="break-all font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-        >
-          {safeMailbox}
-        </a>
-      ) : (
-        <span className="text-[var(--color-muted)]">
-          Not provided — call the phone number above
-        </span>
-      ),
-    },
     { label: "Preferred office", value: LOCATION_LABELS[row.location] },
     { label: "Preferred time", value: TIME_LABELS[row.preferred_time] },
     {
@@ -302,30 +278,50 @@ export default async function RequestDetailPage({
         </p>
       </div>
 
-      <nav
-        aria-label="Breadcrumb"
-        className="print-hide flex items-center text-[0.9rem]"
-      >
-        <Link
-          href={queueHref}
-          className="inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-        >
-          Appointments
-        </Link>
-        <span aria-hidden="true" className="mx-2 text-[var(--color-muted)]">
-          /
-        </span>
-        <span className="truncate text-[var(--color-muted)]">{row.name}</span>
-        {prevId || nextId ? (
-          <span className="ml-auto flex items-center gap-3">
+      <PortalPageHeader
+        back={{ href: queueHref, label: "Back to Appointments" }}
+        title={
+          <span
+            id="request-heading"
+            data-testid="request-detail-name"
+            data-ui-redact="patient-name"
+          >
+            {row.name}
+          </span>
+        }
+        description={
+          surface.state === "closed" && surface.closedAt ? (
+            <span data-testid="request-lifecycle-summary">
+              Closed {formatReceived(surface.closedAt, true)}
+              {surface.closureReason
+                ? ` — ${CLOSURE_REASON_LABELS[surface.closureReason]}`
+                : " — no appointment booked"}
+              .
+            </span>
+          ) : surface.state === "closed" && surface.legacyReviewRequired ? (
+            <span data-testid="request-lifecycle-summary">
+              Closed before outcomes were recorded — how it ended still needs
+              review.
+            </span>
+          ) : surface.state === "booked" && surface.bookingConfirmedAt ? (
+            <span data-testid="request-lifecycle-summary">
+              Marked Scheduled {formatReceived(surface.bookingConfirmedAt, true)} —
+              the appointment lives in the practice scheduling system.
+            </span>
+          ) : (
+            `Received ${formatReceived(row.created_at, true)}.`
+          )
+        }
+        actions={
+          <>
             {prevId ? (
               <Link
                 href={continuityHref(prevId)}
                 rel="prev"
                 data-testid="prev-request"
-                className="inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+                className="btn btn-outline min-h-11"
               >
-                ← Previous
+                Previous
               </Link>
             ) : null}
             {nextId ? (
@@ -333,97 +329,63 @@ export default async function RequestDetailPage({
                 href={continuityHref(nextId)}
                 rel="next"
                 data-testid="next-request"
-                className="inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+                className="btn btn-outline min-h-11"
               >
-                Next →
+                Next
               </Link>
             ) : null}
-          </span>
-        ) : null}
-      </nav>
+            {surface.legacyReviewRequired ? (
+              <span data-testid="legacy-review-tag" className="portal-review-tag">
+                Needs review
+              </span>
+            ) : null}
+            <StatusBadge status={presentationStatus(surface.state)} />
+            <PrintButton label="Print request" />
+          </>
+        }
+      />
 
-      <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
-        <h1
-          id="request-heading"
-          data-testid="request-detail-name"
-          className="portal-title"
-        >
-          {row.name}
-        </h1>
-        <div className="flex flex-wrap items-center gap-3">
-          {surface.legacyReviewRequired ? (
-            <span
-              data-testid="legacy-review-tag"
-              className="inline-flex items-center rounded-full bg-[var(--color-amber-soft)] px-2.5 py-1 text-[0.78rem] font-bold text-[var(--color-ink)]"
-            >
-              Needs review
-            </span>
-          ) : null}
-          <StatusBadge status={presentationStatus(surface.state)} />
-          <PrintButton label="Print patient page" />
-        </div>
-      </div>
-      {surface.state === "closed" && surface.closedAt ? (
-        <p
-          data-testid="request-lifecycle-summary"
-          className="mt-1.5 text-[0.9rem] text-[var(--color-muted)]"
-        >
-          Closed {formatReceived(surface.closedAt, true)}
-          {surface.closureReason
-            ? ` — ${CLOSURE_REASON_LABELS[surface.closureReason]}`
-            : " — no appointment booked"}
-          .
-        </p>
-      ) : surface.state === "closed" && surface.legacyReviewRequired ? (
-        <p
-          data-testid="request-lifecycle-summary"
-          className="mt-1.5 text-[0.9rem] text-[var(--color-muted)]"
-        >
-          Closed before outcomes were recorded — how it ended still needs
-          review.
-        </p>
-      ) : surface.state === "booked" && surface.bookingConfirmedAt ? (
-        <p
-          data-testid="request-lifecycle-summary"
-          className="mt-1.5 text-[0.9rem] text-[var(--color-muted)]"
-        >
-          Marked Scheduled {formatReceived(surface.bookingConfirmedAt, true)} —
-          the appointment lives in the practice scheduling system.
-        </p>
-      ) : null}
-
-      <div className="request-print-card portal-panel mt-6 p-6 sm:p-7">
-        <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
-          Appointment request details
-        </h2>
-        <dl className="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-2">
+      <div className="portal-request-layout">
+        <section className="request-print-card portal-request-details" aria-labelledby="request-details-heading">
+          <h2 id="request-details-heading">Contact and request</h2>
+          <div className="portal-request-contact">
+            <div>
+              <span>Phone</span>
+              <a href={`tel:${row.phone}`} data-ui-redact="patient-contact">
+                {row.phone}
+              </a>
+            </div>
+            <div>
+              <span>Email</span>
+              {safeMailbox ? (
+                <a href={`mailto:${safeMailbox}`} data-ui-redact="patient-contact">
+                  {safeMailbox}
+                </a>
+              ) : (
+                <p>Not provided — call the phone number</p>
+              )}
+            </div>
+          </div>
+          <dl className="portal-request-fields">
           {fields.map((field) => (
             <div key={field.label}>
-              <dt className="text-[0.8rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
-                {field.label}
-              </dt>
-              <dd className="mt-1 text-[0.95rem] text-[var(--color-ink)]">
-                {field.value}
-              </dd>
+              <dt>{field.label}</dt>
+              <dd>{field.value}</dd>
             </div>
           ))}
-        </dl>
-        <div className="mt-5 border-t border-[var(--color-line)] pt-5">
-          <h3 className="text-[0.8rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
-            Reason for requesting this appointment
-          </h3>
+          </dl>
+          <div className="portal-request-message">
+            <h3>What the patient shared</h3>
           <p
             data-testid="request-message"
-            className="mt-2 whitespace-pre-wrap text-[0.95rem] leading-relaxed text-[var(--color-body)]"
+              data-ui-redact="patient-message"
           >
             {row.message?.trim() || "— none provided —"}
           </p>
-        </div>
-      </div>
+          </div>
+        </section>
 
-      <div className="request-print-card portal-panel mt-6 p-6 sm:p-7">
-        <RequestNotes requestId={row.id} notes={noteViews} />
-
+        <aside className="portal-workflow-shell" aria-label="Record request outcome">
         <WorkflowPanel
           requestId={row.id}
           state={surface.state}
@@ -433,19 +395,23 @@ export default async function RequestDetailPage({
           undo={surface.undo}
           nextHref={nextId ? continuityHref(nextId) : null}
         />
-      </div>
+        </aside>
 
-      <div className="request-print-card portal-panel mt-6 p-6 sm:p-7">
-        <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
+        <section className="request-print-card portal-request-notes">
+          <RequestNotes requestId={row.id} notes={noteViews} />
+        </section>
+
+        <section className="request-print-card portal-request-history">
+          <h2>
           Request history
         </h2>
-        <p className="mt-1.5 text-[0.88rem] leading-relaxed text-[var(--color-muted)]">
+          <p className="portal-request-section-description">
           Everything recorded about this request, newest first — contact
           attempts, status changes, undo corrections, and notification
           outcomes.
         </p>
         {historyLines.length === 0 ? (
-          <p className="mt-3 text-[0.95rem] text-[var(--color-muted)]">
+            <p className="mt-3 text-[0.95rem] text-[var(--color-muted)]">
             Nothing recorded yet.
           </p>
         ) : (
@@ -479,6 +445,7 @@ export default async function RequestDetailPage({
             ))}
           </ul>
         )}
+        </section>
       </div>
     </section>
   );

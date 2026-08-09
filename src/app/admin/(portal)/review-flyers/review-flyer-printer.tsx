@@ -1,10 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect } from "react";
 import { Check } from "@/components/icons";
 import type { ReviewFlyer, ReviewTargetKey } from "@/lib/review-flyers";
+import { PortalPageHeader } from "../portal-page-header";
 
 const DOWNLOAD_ACTIONS = [
   ["pdf", "Flyer PDF"],
@@ -115,35 +115,20 @@ export function ReviewFlyerPrinter({ flyers }: { flyers: ReviewFlyer[] }) {
   return (
     <>
       <div className="review-flyer-screen">
-        <nav aria-label="Breadcrumb" className="flex items-center text-[0.9rem]">
-          <Link
-            href="/admin"
-            className="inline-flex min-h-11 min-w-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-          >
-            Home
-          </Link>
-          <span aria-hidden="true" className="mx-2 text-[var(--color-muted)]">
-            /
-          </span>
-          <span className="text-[var(--color-muted)]">Print review flyers</span>
-        </nav>
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-5">
-          <div className="max-w-[46rem]">
-            <h1 className="portal-title">Print review flyers</h1>
-            <p className="mt-2 max-w-[62ch] text-[0.95rem] text-[var(--color-muted)]">
-              Choose one ready-to-print bilingual flyer, or print the full set.
-              The PDF option is best for a print shop or when another device
-              needs a guaranteed one-page file.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="btn btn-navy shrink-0"
-            onClick={() => printFlyer("all")}
-          >
-            Print all six flyers
-          </button>
-        </div>
+        <PortalPageHeader
+          back={{ href: "/admin", label: "Back to Home" }}
+          title="Print review flyers"
+          description="Choose one ready-to-print bilingual flyer, or print the full set. Use the PDF when a print shop or another device needs a guaranteed one-page file."
+          actions={
+            <button
+              type="button"
+              className="btn btn-navy min-h-11"
+              onClick={() => printFlyer("all")}
+            >
+              Print all six flyers
+            </button>
+          }
+        />
 
         <p className="mt-6 inline-flex items-center gap-2 rounded-[var(--radius)] bg-[var(--color-mint)] px-3.5 py-2 text-[0.88rem] font-bold text-[var(--color-navy)]">
           <Check className="h-4 w-4 flex-none" />

@@ -248,3 +248,50 @@ export function Users(p: IconProps) {
     </svg>
   );
 }
+
+export function Home(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="m3 11 9-8 9 8" />
+      <path d="M5 10v10h14V10" />
+      <path d="M9 20v-6h6v6" />
+    </svg>
+  );
+}
+
+export function Settings(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
+      <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 9 19.37a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.63 15 1.7 1.7 0 0 0 3.08 14H3v-4h.08A1.7 1.7 0 0 0 4.63 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.63a1.7 1.7 0 0 0 1-1.55V3h4v.08A1.7 1.7 0 0 0 15 4.63a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.37 9 1.7 1.7 0 0 0 20.92 10H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z" />
+    </svg>
+  );
+}
+
+export function CircleHelp(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.1 9a3 3 0 1 1 5.83 1c0 2-3 2-3 4" />
+      <path d="M12 18h.01" />
+    </svg>
+  );
+}
+
+export function Activity(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M3 12h4l2-7 4 14 2-7h6" />
+    </svg>
+  );
+}
+
+export function LogOut(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M10 17l5-5-5-5" />
+      <path d="M15 12H3" />
+      <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+    </svg>
+  );
+}

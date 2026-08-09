@@ -1,6 +1,8 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const publicSmoke = process.env.PLAYWRIGHT_PUBLIC_SMOKE === "1";
+const chromiumExecutablePath =
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?.trim();
 
 // E2E harness for the intake pipeline + staff portal. The stack runs on
 // Port 3100 (3000 is off-limits in this environment); webServer boots the
@@ -27,6 +29,9 @@ export default defineConfig({
     screenshot: "off",
     trace: "off",
     video: "off",
+    ...(chromiumExecutablePath
+      ? { launchOptions: { executablePath: chromiumExecutablePath } }
+      : {}),
   },
   projects: [
     {

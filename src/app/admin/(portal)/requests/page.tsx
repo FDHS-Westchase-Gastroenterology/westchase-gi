@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { ChevronRight, Printer } from "@/components/icons";
 import { REQUEST_STATUSES } from "@/lib/portal/contracts";
 import type { RequestStatus } from "@/lib/portal/contracts";
 import { requireRole } from "@/lib/portal/auth";
@@ -30,6 +31,7 @@ import {
   STATUS_LABELS,
   TIME_LABELS,
 } from "./format";
+import { PortalPageHeader } from "../portal-page-header";
 
 type SearchParams = Promise<{
   page?: string | string[];
@@ -138,8 +140,8 @@ function FilterChips({
   search: string;
 }) {
   return (
-    <nav aria-label="Filter by status" className="mt-5">
-      <ul className="flex flex-wrap gap-2">
+    <nav aria-label="Filter by status" className="portal-filter-tabs">
+      <ul>
         {filters.map((item) => {
           const isActive = active === item.key;
           const href = requestsHref({
@@ -152,24 +154,12 @@ function FilterChips({
                 href={href}
                 aria-current={isActive ? "page" : undefined}
                 data-filter={item.key}
-                className={`flex min-h-11 items-center gap-x-2 rounded-full border px-3.5 text-[0.9rem] font-bold transition-colors ${
-                  isActive
-                    ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-[var(--color-on-dark)]"
-                    : item.count === 0
-                      ? "border-[var(--color-line)] bg-white text-[var(--color-muted)] hover:border-[var(--color-navy)]"
-                      : "border-[var(--color-line-2)] bg-white text-[var(--color-body)] hover:border-[var(--color-navy)]"
-                }`}
+                className="portal-filter-tab"
               >
                 {item.label}
                 <span
                   data-filter-count={item.key}
-                  className={`rounded-full px-1.5 text-[0.75rem] tabular-nums ${
-                    isActive
-                      ? "bg-white/15"
-                      : item.count === 0
-                        ? "text-[var(--color-muted)]"
-                        : "bg-[var(--color-mint)] text-[var(--color-teal-ink)]"
-                  }`}
+                  data-empty={item.count === 0 ? "true" : undefined}
                 >
                   {item.count}
                 </span>
@@ -208,6 +198,13 @@ function QueueRowLink({
   });
   const waiting =
     request.status === "new" ? waitingSince(request.created_at, now) : null;
+  const nextAction =
+    hint ??
+    (request.status === "new"
+      ? { text: "Make first contact", attention: true }
+      : request.status === "closed"
+        ? { text: "No further action", attention: false }
+        : null);
   return (
     <li>
       <Link
@@ -218,58 +215,52 @@ function QueueRowLink({
           status: filter,
         })}
         data-testid="request-row"
-        className="portal-queue-row grid gap-x-6 gap-y-2 px-5 py-4 sm:grid-cols-[1.4fr_1fr_auto] sm:items-center sm:px-6"
+        className="portal-ledger-row"
       >
-        <span className="min-w-0">
+        <span className="portal-ledger-person">
           <span
             data-testid="request-name"
-            className="block truncate font-bold text-[var(--color-ink)]"
+            data-ui-redact="patient-name"
           >
             {request.name}
           </span>
-          <span className="mt-0.5 block text-[0.9rem] text-[var(--color-muted)]">
+          <span data-ui-redact="patient-contact">
             {request.phone}
           </span>
         </span>
-        <span className="text-[0.9rem] text-[var(--color-body)]">
-          <span className="block">
+        <span className="portal-ledger-next">
+          <small>Next step</small>
+          {nextAction ? (
+            <strong
+              data-testid="request-next-action"
+              data-attention={nextAction.attention ? "true" : undefined}
+            >
+              {nextAction.text}
+            </strong>
+          ) : null}
+          <span>
             {LOCATION_LABELS[request.location]} ·{" "}
             {TIME_LABELS[request.preferred_time]}
-          </span>
-          <span className="mt-0.5 block text-[var(--color-muted)]">
-            Received {formatReceived(request.created_at)}
           </span>
           {waiting ? (
             <span
               data-testid="request-waiting"
-              className="mt-0.5 block text-[0.85rem] font-bold text-[var(--portal-attention-ink)]"
             >
               Waiting since {waiting}
             </span>
           ) : null}
-          {hint ? (
-            <span
-              data-testid="request-next-action"
-              className={`mt-0.5 block text-[0.85rem] ${
-                hint.attention
-                  ? "font-bold text-[var(--portal-attention-ink)]"
-                  : "text-[var(--color-muted)]"
-              }`}
-            >
-              {hint.text}
-            </span>
-          ) : null}
         </span>
-        <span className="flex flex-wrap items-center gap-2 justify-self-start sm:flex-col sm:items-end sm:justify-self-end">
-          <StatusBadge status={request.status} />
-          {request.legacy_review_required ? (
-            <span
-              data-testid="legacy-review-tag"
-              className="inline-flex items-center rounded-full bg-[var(--color-amber-soft)] px-2.5 py-1 text-[0.75rem] font-bold text-[var(--color-ink)]"
-            >
-              Needs review
-            </span>
-          ) : null}
+        <span className="portal-ledger-meta">
+          <span>
+            <StatusBadge status={request.status} />
+            {request.legacy_review_required ? (
+              <span data-testid="legacy-review-tag" className="portal-review-tag">
+                Needs review
+              </span>
+            ) : null}
+          </span>
+          <small>Received {formatReceived(request.created_at)}</small>
+          <ChevronRight className="h-4 w-4" />
         </span>
       </Link>
     </li>
@@ -375,73 +366,76 @@ export default async function AdminRequestsPage({
 
   return (
     <section aria-labelledby="requests-heading">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1
-            id="requests-heading"
-            className="portal-title"
-          >
-            Appointments
-          </h1>
-          <p className="mt-1.5 max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
-            Every appointment request — what needs attention first, then the rest.
-          </p>
-        </div>
-        <a
-          href={requestsHref({
-            path: "/admin/requests/export",
-            search,
-            status: filter,
-          })}
-          data-testid="export-csv"
-          className="btn btn-outline"
-        >
-          Export CSV
-        </a>
-      </div>
+      <PortalPageHeader
+        title={<span id="requests-heading">Appointments</span>}
+        description="Every appointment request, ordered by what needs attention first. Open one to call, document the outcome, and continue without losing your place."
+        actions={
+          <>
+            {counts.new > 0 ? (
+              <Link
+                href="/admin/requests/print?auto=1"
+                target="_blank"
+                rel="noopener"
+                className="btn btn-navy min-h-11"
+              >
+                <Printer className="h-4 w-4" />
+                Print new ({counts.new})
+              </Link>
+            ) : null}
+            <a
+              href={requestsHref({
+                path: "/admin/requests/export",
+                search,
+                status: filter,
+              })}
+              data-testid="export-csv"
+              className="btn btn-outline min-h-11"
+            >
+              Export CSV
+            </a>
+          </>
+        }
+      />
 
-      <form
-        action="/admin/requests"
-        method="get"
-        role="search"
-        className="portal-toolbar mt-6 flex max-w-3xl flex-wrap items-end gap-3"
-      >
-        {filter !== "all" ? (
-          <input type="hidden" name="status" value={filter} />
-        ) : null}
-        <label
-          htmlFor="request-search"
-          className="min-w-0 basis-full text-sm font-bold text-[var(--color-ink)] sm:min-w-64 sm:flex-1 sm:basis-auto"
+      <section className="portal-queue-workbench" aria-label="Appointment request queue">
+        <form
+          action="/admin/requests"
+          method="get"
+          role="search"
+          className="portal-queue-search"
         >
-          Search requests
-          <input
-            id="request-search"
-            name="q"
-            type="search"
-            defaultValue={search}
-            maxLength={REQUEST_SEARCH_MAX_LENGTH}
-            placeholder="Name, phone, or email"
-            className="mt-2 min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] font-normal outline-none transition-colors focus:border-[var(--color-teal-ink)]"
-          />
-        </label>
-        <button type="submit" className="btn btn-navy">
-          Search
-        </button>
-        {search ? (
-          <Link
-            href={requestsHref({ search: "", status: filter })}
-            className="btn btn-outline"
-          >
-            Clear
-          </Link>
-        ) : null}
-      </form>
+          {filter !== "all" ? (
+            <input type="hidden" name="status" value={filter} />
+          ) : null}
+          <label htmlFor="request-search">
+            Search requests
+            <input
+              id="request-search"
+              name="q"
+              type="search"
+              defaultValue={search}
+              maxLength={REQUEST_SEARCH_MAX_LENGTH}
+              placeholder="Name, phone, or email"
+            />
+          </label>
+          <button type="submit" className="btn btn-navy min-h-11">
+            Search
+          </button>
+          {search ? (
+            <Link
+              href={requestsHref({ search: "", status: filter })}
+              className="btn btn-outline min-h-11"
+            >
+              Clear
+            </Link>
+          ) : null}
+        </form>
 
-      <FilterChips filters={filters} active={filter} search={search} />
+        <FilterChips filters={filters} active={filter} search={search} />
 
       {requests.length === 0 ? (
-        <div className="portal-empty mt-8 p-8 text-center sm:p-12">
-          <h2 className="text-[1.1rem] font-black text-[var(--color-ink)]">
+        <div className="portal-queue-empty">
+          <h2>
             {page > 1
               ? "No requests are available on this page"
               : search
@@ -450,7 +444,7 @@ export default async function AdminRequestsPage({
                   ? "No appointment requests yet"
                   : `Nothing marked ${STATUS_LABELS[filter].toLowerCase()}`}
           </h2>
-          <p className="mx-auto mt-2 max-w-[52ch] text-[0.95rem] leading-relaxed text-[var(--color-body)]">
+          <p>
             {page > 1
               ? "Go back to the previous page to continue reviewing requests."
               : search
@@ -461,7 +455,7 @@ export default async function AdminRequestsPage({
           </p>
         </div>
       ) : (
-        <ul data-testid="request-list" className="portal-queue-list mt-8">
+        <ul data-testid="request-list" className="portal-ledger-list">
           {requests.map((request) => {
             const derived = openBuckets.get(request.id);
             return (
@@ -481,11 +475,10 @@ export default async function AdminRequestsPage({
       )}
 
       {filteredTotal > 0 && (requests.length > 0 || page > 1) ? (
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="portal-queue-pagination">
           {requests.length > 0 ? (
             <p
               data-testid="request-page-summary"
-              className="text-[0.9rem] text-[var(--color-muted)]"
             >
               Showing {firstShown}–{lastShown} of {filteredTotal}
             </p>
@@ -493,7 +486,7 @@ export default async function AdminRequestsPage({
           {totalPages > 1 ? (
             <nav
               aria-label="Appointment request pages"
-              className="ml-auto flex items-center gap-3"
+              className="portal-page-nav"
             >
               {page > 1 ? (
                 <Link
@@ -528,6 +521,7 @@ export default async function AdminRequestsPage({
           ) : null}
         </div>
       ) : null}
+      </section>
     </section>
   );
 }
