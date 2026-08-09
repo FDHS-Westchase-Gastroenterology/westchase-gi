@@ -95,7 +95,7 @@ function headlineFor(newCount: number): React.ReactNode {
   if (newCount === 0) return "No new appointment requests are waiting.";
   return (
     <>
-      <strong className="font-black text-[var(--color-amber-deep)]">
+      <strong className="font-black text-[var(--portal-attention-ink)]">
         {newCount}
       </strong>{" "}
       new appointment {newCount === 1 ? "request is" : "requests are"} waiting.
@@ -220,11 +220,11 @@ export default async function AdminHomePage() {
       {session.portalTourDismissedAt === null ? <PortalTour /> : null}
       <PortalReleaseHomeAnnouncement />
 
-      <div className="mt-7 grid items-start gap-6 lg:grid-cols-[1.55fr_1fr]">
+      <div className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1.7fr)_minmax(18rem,0.8fr)]">
         <section
           aria-labelledby="queue-overview-heading"
           data-testid="queue-overview"
-          className="card-lined p-6 sm:p-8"
+          className="portal-panel portal-panel--primary p-6 sm:p-8"
         >
           <h2
             id="queue-overview-heading"
@@ -263,7 +263,7 @@ export default async function AdminHomePage() {
                   {availableNewCount === 1
                     ? "It has been waiting since "
                     : "The oldest has been waiting since "}
-                  <strong className="font-bold text-[var(--color-amber-deep)]">
+                  <strong className="font-bold text-[var(--portal-attention-ink)]">
                     {oldestWaiting}
                   </strong>
                   .
@@ -368,7 +368,7 @@ export default async function AdminHomePage() {
           ) : null}
 
           <div className="mt-6">
-            <Link href="/admin/requests" className="btn btn-amber">
+            <Link href="/admin/requests" className="btn btn-navy">
               Open Appointments
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
@@ -377,7 +377,7 @@ export default async function AdminHomePage() {
 
         <section
           aria-labelledby="tasks-heading"
-          className="card-lined p-4 sm:p-5"
+          className="min-w-0"
         >
           <h2
             id="tasks-heading"
@@ -385,18 +385,18 @@ export default async function AdminHomePage() {
           >
             Around the portal
           </h2>
-          <ul className="mt-2.5">
+          <ul className="portal-utility-list mt-3">
             {TASKS.map((task) => {
               const slug = task.label.toLowerCase().replace(/[^a-z]+/g, "-");
               return (
                 <li key={task.href}>
                   <Link
                     href={task.href}
-                    className="group -mx-3 flex items-center gap-[0.95rem] rounded-[var(--radius)] px-3 py-[0.9rem] transition-colors duration-[180ms] ease-out hover:bg-[var(--color-mint)] active:bg-[var(--color-mint-2)]"
+                    className="group flex min-h-16 items-center gap-[0.95rem] px-1 py-3.5 transition-colors duration-150 hover:bg-[var(--color-mint)] active:bg-[var(--color-mint-2)] sm:px-2"
                     aria-labelledby={`task-${slug}-label`}
                     aria-describedby={`task-${slug}-desc`}
                   >
-                    <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-[var(--color-mint-2)] text-[var(--color-teal-ink)]">
+                    <span className="grid h-9 w-9 flex-none place-items-center rounded-[var(--radius-sm)] bg-[var(--color-mint-2)] text-[var(--color-teal-ink)]">
                       <task.icon className="h-5 w-5" aria-hidden="true" />
                     </span>
                     <span className="min-w-0 flex-1">
@@ -414,7 +414,7 @@ export default async function AdminHomePage() {
                       </span>
                     </span>
                     <ChevronRight
-                      className="h-4.5 w-4.5 flex-none text-[var(--color-muted)] transition-transform duration-200 [transition-timing-function:var(--ease-out-quint)] group-hover:translate-x-[3px]"
+                      className="h-4.5 w-4.5 flex-none text-[var(--color-muted)] transition-colors duration-150 group-hover:text-[var(--color-teal-ink)]"
                       aria-hidden="true"
                     />
                   </Link>

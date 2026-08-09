@@ -51,21 +51,24 @@ export default async function PortalLayout({
       initialState={releaseState}
     >
       <div className="flex min-h-dvh flex-col">
-        <header className="bg-[var(--color-navy)] text-[var(--color-on-dark)]">
+        <a href="#portal-main" className="skip-link">
+          Skip to staff portal content
+        </a>
+        <header className="portal-header bg-[var(--color-navy)] text-[var(--color-on-dark)]">
           <div className="container-x">
-            <div className="flex min-h-14 flex-wrap items-center justify-between gap-x-6 gap-y-1 py-2">
+            <div className="flex min-h-14 flex-wrap items-center justify-between gap-x-6 gap-y-0.5 py-1.5">
               <Link
                 href="/admin"
                 className="flex min-h-11 items-center gap-x-2.5"
               >
-                <span className="font-[var(--font-display)] text-[1.05rem] leading-none">
+                <span className="font-[var(--font-display)] text-[1rem] leading-none sm:text-[1.05rem]">
                   Westchase Gastroenterology
                 </span>
-                <span className="rounded-full bg-white/12 px-2.5 py-1 text-[0.7rem] font-bold uppercase tracking-[0.08em] text-[var(--color-on-dark-muted)]">
+                <span className="border-s border-[var(--color-line-dark)] ps-2.5 text-[0.68rem] font-bold uppercase tracking-[0.08em] text-[var(--color-on-dark-muted)]">
                   Staff portal
                 </span>
               </Link>
-              <div className="flex items-center gap-x-4">
+              <div className="flex items-center gap-x-3 sm:gap-x-4">
                 <p className="hidden text-[0.85rem] text-[var(--color-on-dark-muted)] md:block">
                   <span data-testid="session-user">{session.displayName}</span>
                   <span aria-hidden="true" className="mx-2">
@@ -93,10 +96,14 @@ export default async function PortalLayout({
           </div>
         </header>
         <PortalReleaseUtility />
-        <main className="flex-1 pb-16 pt-8 sm:pt-10">
+        <main
+          id="portal-main"
+          tabIndex={-1}
+          className="flex-1 pb-14 pt-7 sm:pt-9"
+        >
           <div className="container-x">{children}</div>
         </main>
-        <footer className="border-t border-[var(--color-line)] py-5">
+        <footer className="border-t border-[var(--color-line-2)] bg-[var(--portal-surface)] py-5">
           <div className="container-x flex flex-wrap items-center justify-between gap-3 text-[0.85rem] text-[var(--color-muted)]">
             <p>
               <Link

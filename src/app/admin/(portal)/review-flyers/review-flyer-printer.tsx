@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect } from "react";
+import { Check } from "@/components/icons";
 import type { ReviewFlyer, ReviewTargetKey } from "@/lib/review-flyers";
 
 const DOWNLOAD_ACTIONS = [
@@ -144,17 +145,17 @@ export function ReviewFlyerPrinter({ flyers }: { flyers: ReviewFlyer[] }) {
           </button>
         </div>
 
-        <p className="mt-6 inline-flex items-center gap-2 rounded-full bg-[var(--color-mint)] px-3.5 py-2 text-[0.88rem] font-bold text-[var(--color-navy)]">
-          <span aria-hidden="true">✓</span>
+        <p className="mt-6 inline-flex items-center gap-2 rounded-[var(--radius)] bg-[var(--color-mint)] px-3.5 py-2 text-[0.88rem] font-bold text-[var(--color-navy)]">
+          <Check className="h-4 w-4 flex-none" />
           All six codes and one-page PDFs are machine-verified.
         </p>
 
         <section className="mt-8" aria-label="Available review flyers">
-          <div className="grid gap-4">
+          <div className="portal-flyer-list">
             {flyers.map((flyer) => (
               <article
                 key={flyer.key}
-                className="card-lined grid min-w-0 gap-5 p-5 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:p-6"
+                className="portal-flyer-row grid min-w-0 gap-5 p-5 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:p-6"
                 data-review-target={flyer.key}
               >
                 <Image

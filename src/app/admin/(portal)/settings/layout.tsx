@@ -16,7 +16,7 @@ export default function SettingsLayout({
         Settings
       </h1>
       <SettingsTabs />
-      <div className="mt-8">{children}</div>
+      <div className="mt-6 sm:mt-8">{children}</div>
     </section>
   );
 }

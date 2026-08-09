@@ -354,7 +354,7 @@ export default async function RequestDetailPage({
           {surface.legacyReviewRequired ? (
             <span
               data-testid="legacy-review-tag"
-              className="inline-flex items-center rounded-full bg-[var(--color-amber-soft)] px-2.5 py-1 text-[0.75rem] font-bold uppercase tracking-[0.05em] text-[var(--color-ink)]"
+              className="inline-flex items-center rounded-full bg-[var(--color-amber-soft)] px-2.5 py-1 text-[0.78rem] font-bold text-[var(--color-ink)]"
             >
               Needs review
             </span>
@@ -392,7 +392,7 @@ export default async function RequestDetailPage({
         </p>
       ) : null}
 
-      <div className="request-print-card mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
+      <div className="request-print-card portal-panel mt-6 p-6 sm:p-7">
         <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
           Appointment request details
         </h2>
@@ -421,7 +421,7 @@ export default async function RequestDetailPage({
         </div>
       </div>
 
-      <div className="request-print-card mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
+      <div className="request-print-card portal-panel mt-6 p-6 sm:p-7">
         <RequestNotes requestId={row.id} notes={noteViews} />
 
         <WorkflowPanel
@@ -435,7 +435,7 @@ export default async function RequestDetailPage({
         />
       </div>
 
-      <div className="request-print-card mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
+      <div className="request-print-card portal-panel mt-6 p-6 sm:p-7">
         <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
           Request history
         </h2>
@@ -460,7 +460,7 @@ export default async function RequestDetailPage({
                     line.undone
                       ? "font-bold text-[var(--color-muted)] line-through decoration-1"
                       : line.attention
-                        ? "font-bold text-[var(--color-amber-deep)]"
+                        ? "font-bold text-[var(--portal-attention-ink)]"
                         : line.quiet
                           ? "text-[var(--color-muted)]"
                           : "font-bold text-[var(--color-ink)]"

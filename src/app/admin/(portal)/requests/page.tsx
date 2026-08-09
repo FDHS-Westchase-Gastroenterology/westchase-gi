@@ -136,8 +136,8 @@ function FilterChips({
   search: string;
 }) {
   return (
-    <nav aria-label="Filter by status" className="mt-6 overflow-x-auto">
-      <ul className="flex min-w-max gap-2">
+    <nav aria-label="Filter by status" className="mt-5">
+      <ul className="flex flex-wrap gap-2">
         {filters.map((item) => {
           const isActive = active === item.key;
           const href = requestsHref({
@@ -150,7 +150,7 @@ function FilterChips({
                 href={href}
                 aria-current={isActive ? "page" : undefined}
                 data-filter={item.key}
-                className={`flex min-h-10 items-center gap-x-2 rounded-full border px-3.5 text-[0.9rem] font-bold transition-colors ${
+                className={`flex min-h-11 items-center gap-x-2 rounded-full border px-3.5 text-[0.9rem] font-bold transition-colors ${
                   isActive
                     ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-[var(--color-on-dark)]"
                     : item.count === 0
@@ -216,7 +216,7 @@ function QueueRowLink({
           status: filter,
         })}
         data-testid="request-row"
-        className="grid gap-x-6 gap-y-2 rounded-[var(--radius)] border border-[var(--color-line)] bg-white px-5 py-4 transition-colors hover:border-[var(--color-teal)] sm:grid-cols-[1.4fr_1fr_auto] sm:items-center"
+        className="portal-queue-row grid gap-x-6 gap-y-2 px-5 py-4 sm:grid-cols-[1.4fr_1fr_auto] sm:items-center sm:px-6"
       >
         <span className="min-w-0">
           <span
@@ -240,7 +240,7 @@ function QueueRowLink({
           {waiting ? (
             <span
               data-testid="request-waiting"
-              className="mt-0.5 block text-[0.85rem] font-bold text-[var(--color-amber-deep)]"
+              className="mt-0.5 block text-[0.85rem] font-bold text-[var(--portal-attention-ink)]"
             >
               Waiting since {waiting}
             </span>
@@ -250,7 +250,7 @@ function QueueRowLink({
               data-testid="request-next-action"
               className={`mt-0.5 block text-[0.85rem] ${
                 hint.attention
-                  ? "font-bold text-[var(--color-amber-deep)]"
+                  ? "font-bold text-[var(--portal-attention-ink)]"
                   : "text-[var(--color-muted)]"
               }`}
             >
@@ -403,14 +403,14 @@ export default async function AdminRequestsPage({
         action="/admin/requests"
         method="get"
         role="search"
-        className="mt-6 flex max-w-2xl flex-wrap items-end gap-3"
+        className="portal-toolbar mt-6 flex max-w-3xl flex-wrap items-end gap-3"
       >
         {filter !== "all" ? (
           <input type="hidden" name="status" value={filter} />
         ) : null}
         <label
           htmlFor="request-search"
-          className="min-w-64 flex-1 text-sm font-bold text-[var(--color-ink)]"
+          className="min-w-0 basis-full text-sm font-bold text-[var(--color-ink)] sm:min-w-64 sm:flex-1 sm:basis-auto"
         >
           Search requests
           <input
@@ -439,24 +439,28 @@ export default async function AdminRequestsPage({
       <FilterChips filters={filters} active={filter} search={search} />
 
       {requests.length === 0 ? (
-        <div className="mt-8 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-8 text-center sm:p-12">
+        <div className="portal-empty mt-8 p-8 text-center sm:p-12">
           <h2 className="text-[1.1rem] font-black text-[var(--color-ink)]">
-            {search
-              ? "No appointment requests match that search"
-              : filter === "all"
-                ? "No appointment requests yet"
-                : `Nothing marked ${STATUS_LABELS[filter as RequestStatus].toLowerCase()}`}
+            {page > 1
+              ? "No requests are available on this page"
+              : search
+                ? "No appointment requests match that search"
+                : filter === "all"
+                  ? "No appointment requests yet"
+                  : `Nothing marked ${STATUS_LABELS[filter as RequestStatus].toLowerCase()}`}
           </h2>
           <p className="mx-auto mt-2 max-w-[52ch] text-[0.95rem] leading-relaxed text-[var(--color-body)]">
-            {search
-              ? "Try a name, phone number, or email address."
-              : filter === "all"
-                ? "When a patient submits the appointment form on the website, the appointment request appears here instantly and everyone on the notification list gets a notification email."
-                : "Requests reach this view as staff work them from their request page — open one from another view to record what happened."}
+            {page > 1
+              ? "Go back to the previous page to continue reviewing requests."
+              : search
+                ? "Try a name, phone number, or email address."
+                : filter === "all"
+                  ? "When a patient submits the appointment form on the website, the appointment request appears here instantly and everyone on the notification list gets a notification email."
+                  : "Requests reach this view as staff work them from their request page — open one from another view to record what happened."}
           </p>
         </div>
       ) : (
-        <ul data-testid="request-list" className="mt-8 space-y-3">
+        <ul data-testid="request-list" className="portal-queue-list mt-8">
           {requests.map((request) => {
             const derived = openBuckets.get(request.id);
             return (
@@ -475,18 +479,20 @@ export default async function AdminRequestsPage({
         </ul>
       )}
 
-      {filteredTotal > 0 ? (
+      {filteredTotal > 0 && (requests.length > 0 || page > 1) ? (
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <p
-            data-testid="request-page-summary"
-            className="text-[0.9rem] text-[var(--color-muted)]"
-          >
-            Showing {firstShown}–{lastShown} of {filteredTotal}
-          </p>
+          {requests.length > 0 ? (
+            <p
+              data-testid="request-page-summary"
+              className="text-[0.9rem] text-[var(--color-muted)]"
+            >
+              Showing {firstShown}–{lastShown} of {filteredTotal}
+            </p>
+          ) : null}
           {totalPages > 1 ? (
             <nav
               aria-label="Appointment request pages"
-              className="flex items-center gap-3"
+              className="ml-auto flex items-center gap-3"
             >
               {page > 1 ? (
                 <Link
@@ -504,7 +510,7 @@ export default async function AdminRequestsPage({
               <span className="text-[0.9rem] font-bold text-[var(--color-body)]">
                 Page {page} of {totalPages}
               </span>
-              {page < totalPages ? (
+              {requests.length > 0 && page < totalPages ? (
                 <Link
                   href={requestsHref({
                     page: page + 1,

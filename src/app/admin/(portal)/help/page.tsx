@@ -28,8 +28,8 @@ export default async function AdminHelpPage() {
         everything.
       </p>
 
-      <div className="mt-8 space-y-6">
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-mint)] p-6 sm:p-8">
+      <div className="portal-help mt-8">
+        <div className="portal-help-section portal-help-tour">
           <h2 className={SECTION_HEADING}>Portal tour</h2>
           <p className={SECTION_BODY}>
             Reopen the short introduction to Home, Appointments, and
@@ -43,7 +43,7 @@ export default async function AdminHelpPage() {
           </form>
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
+        <div className="portal-help-section">
           <h2 className={SECTION_HEADING}>What the appointment request queue is</h2>
           <p className={SECTION_BODY}>
             When a patient fills out the appointment form on the website —
@@ -64,7 +64,7 @@ export default async function AdminHelpPage() {
 
         <div
           id="appointment-workflow-guide"
-          className="scroll-mt-20 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8"
+          className="portal-help-section scroll-mt-20"
         >
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -74,7 +74,7 @@ export default async function AdminHelpPage() {
                 leaving the queue ready for whoever works it next.
               </p>
             </div>
-            <span className="rounded-full bg-[var(--color-amber-soft)] px-3 py-1 text-[0.78rem] font-bold text-[var(--color-amber-deep)]">
+            <span className="rounded-full bg-[var(--color-amber-soft)] px-3 py-1 text-[0.78rem] font-bold text-[var(--portal-attention-ink)]">
               2-minute guide
             </span>
           </div>
@@ -217,7 +217,7 @@ export default async function AdminHelpPage() {
           </div>
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
+        <div className="portal-help-section">
           <h2 className={SECTION_HEADING}>Notification emails</h2>
           <p className={SECTION_BODY}>
             The addresses listed under{" "}
@@ -235,7 +235,7 @@ export default async function AdminHelpPage() {
           </p>
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
+        <div className="portal-help-section">
           <h2 className={SECTION_HEADING}>Staff access</h2>
           <p className={SECTION_BODY}>
             Administrators can invite a new staff member from the Settings
@@ -264,7 +264,7 @@ export default async function AdminHelpPage() {
 
         <div
           id="website-changes"
-          className="scroll-mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8"
+          className="portal-help-section scroll-mt-6"
         >
           <h2 className={SECTION_HEADING}>Getting website changes made</h2>
           <p className={SECTION_BODY}>
@@ -280,7 +280,7 @@ export default async function AdminHelpPage() {
           </p>
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
+        <div className="portal-help-section">
           <h2 className={SECTION_HEADING}>
             How the website systems fit together
           </h2>
@@ -328,7 +328,7 @@ export default async function AdminHelpPage() {
 
         <div
           id="something-wrong"
-          className="scroll-mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8"
+          className="portal-help-section scroll-mt-6"
         >
           <h2 className={SECTION_HEADING}>If something looks wrong</h2>
           <p className={SECTION_BODY}>

@@ -112,12 +112,30 @@ async function settle(page) {
   });
 }
 
+async function assertNoHorizontalOverflow(page, label) {
+  const dimensions = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: Math.max(
+      document.documentElement.scrollWidth,
+      document.body.scrollWidth,
+    ),
+  }));
+  if (dimensions.scrollWidth > dimensions.clientWidth + 1) {
+    throw new Error(
+      `${label} overflows horizontally: ${dimensions.scrollWidth}px content in a ${dimensions.clientWidth}px viewport`,
+    );
+  }
+}
+
 async function redactPortalData(page) {
   await page.addStyleTag({
     content: `
       [data-testid="recipient-list"],
       [data-testid="staff-list"],
       [data-testid="audit-table"] tbody,
+      [data-testid="release-engagement-table"] tbody,
+      [data-testid="release-engagement-cards"],
+      [data-testid="recent-work-list"],
       [data-testid="maintainer-list"] {
         filter: blur(8px);
         user-select: none;
@@ -129,8 +147,35 @@ async function redactPortalData(page) {
     if (sessionUser) sessionUser.textContent = "Staff Member";
     const greeting = document.querySelector('[data-testid="home-greeting"]');
     if (greeting) greeting.textContent = "Good morning, Staff.";
+    const queueHeadline = document.querySelector(
+      '[data-testid="queue-overview-headline"]',
+    );
+    if (queueHeadline) {
+      const count = document.createElement("strong");
+      count.className = "font-black text-[var(--portal-attention-ink)]";
+      count.textContent = "3";
+      queueHeadline.replaceChildren(
+        count,
+        " new appointment requests are waiting.",
+      );
+    }
+    document.querySelector('[data-testid="nav-waiting-badge"]')?.remove();
+    document
+      .querySelectorAll(
+        '[data-testid="queue-overview-unavailable"] > :not([data-testid="queue-overview-headline"])',
+      )
+      .forEach((element) => element.remove());
     document.querySelector('[data-testid="queue-overview-preview"]')?.remove();
+    document.querySelector('[data-testid="queue-overview-oldest"]')?.remove();
+    document.querySelector('[data-testid="attention-summary"]')?.remove();
+    document
+      .querySelector('[data-testid="attention-summary-unavailable"]')
+      ?.remove();
+    document.querySelector('[data-testid="no-recipients-warning"]')?.remove();
+    document.querySelector('[data-testid="delivery-failure-warning"]')?.remove();
     document.querySelector('[data-testid="portal-tour-nudge"]')?.remove();
+    document.querySelector('[data-testid="portal-release-announcement"]')?.remove();
+    document.querySelector('[data-testid="portal-release-utility"]')?.remove();
     document.querySelector("nextjs-portal")?.remove();
   });
 }
@@ -168,16 +213,26 @@ async function capturePortalReferences(browser, credentials) {
           const images = Array.from(
             document.querySelectorAll("[data-review-target] img"),
           );
-          return images.length > 0 && images.every(
+          const visibleImages = images.filter((image) => {
+            const bounds = image.getBoundingClientRect();
+            return bounds.bottom > 0 && bounds.top < window.innerHeight;
+          });
+          return visibleImages.length > 0 && visibleImages.every(
             (image) => image.complete && image.naturalWidth > 0,
           );
         });
       }
       await redactPortalData(page);
       await settle(page);
+      await assertNoHorizontalOverflow(page, capture.name);
       await page.screenshot({
         path: resolve(outputDirectory, `${capture.name}.png`),
       });
+      if (capture.name.startsWith("mobile-")) {
+        await page.setViewportSize({ width: 320, height: capture.viewport.height });
+        await settle(page);
+        await assertNoHorizontalOverflow(page, `${capture.name} at 320px`);
+      }
       console.log(`Captured ${capture.name}.png`);
     }
   } finally {

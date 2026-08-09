@@ -387,7 +387,7 @@ function ReleaseSummary({
     >
       <div className="flex items-start justify-between gap-5">
         <div>
-          <p className="text-[0.8rem] font-bold text-[var(--color-amber-deep)]">
+          <p className="text-[0.8rem] font-bold text-[var(--portal-attention-ink)]">
             Updated August 6
           </p>
           <h2
@@ -505,9 +505,9 @@ export function PortalReleaseHomeAnnouncement() {
       data-testid="portal-release-announcement"
       className="portal-release-home relative mt-6"
     >
-      <div className="relative z-10 flex flex-col gap-4 rounded-[var(--radius-lg)] bg-[var(--color-mint)] px-5 py-5 shadow-[var(--shadow-soft)] sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="relative z-10 flex flex-col gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line-2)] bg-[var(--color-mint)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div>
-          <p className="text-[0.8rem] font-bold text-[var(--color-amber-deep)]">
+          <p className="text-[0.8rem] font-bold text-[var(--portal-attention-ink)]">
             Updated August 6
           </p>
           <h2

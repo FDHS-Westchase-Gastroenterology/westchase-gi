@@ -140,7 +140,7 @@ export default async function AdminAuditPage({
       ) : null}
 
       {entries.length === 0 ? (
-        <div className="mt-10 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-8 text-center sm:p-12">
+        <div className="portal-empty mt-10 p-8 text-center sm:p-12">
           <h2 className="text-[1.1rem] font-black text-[var(--color-ink)]">
             Nothing recorded yet
           </h2>
@@ -163,7 +163,12 @@ export default async function AdminAuditPage({
             <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
               The exact actions behind the entries above, for administrators.
             </p>
-            <div className="mt-4 overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white">
+            <div
+              role="region"
+              aria-labelledby="technical-record-heading"
+              tabIndex={0}
+              className="mt-4 overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white"
+            >
               <table data-testid="audit-table" className="w-full min-w-[640px] text-left">
                 <thead>
                   <tr className="border-b border-[var(--color-line)] text-[0.8rem] uppercase tracking-[0.06em] text-[var(--color-muted)]">

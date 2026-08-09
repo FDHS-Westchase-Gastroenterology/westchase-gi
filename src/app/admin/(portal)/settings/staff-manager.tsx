@@ -122,7 +122,7 @@ function StaffList({
                             resendFromRow(person);
                           }
                         }}
-                        className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
+                        className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
                       >
                         Resend invite
                       </button>
@@ -141,7 +141,7 @@ function StaffList({
                             );
                           }
                         }}
-                        className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+                        className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
                       >
                         Deactivate
                       </button>
@@ -163,7 +163,7 @@ function StaffList({
                         event.target.value as "admin" | "staff",
                       )
                     }
-                    className="min-h-10 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-2.5 text-[0.85rem] font-bold text-[var(--color-body)]"
+                    className="min-h-11 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-2.5 text-[0.85rem] font-bold text-[var(--color-body)]"
                   >
                     <option value="staff">Staff</option>
                     <option value="admin">Admin</option>
@@ -181,7 +181,7 @@ function StaffList({
                           }),
                         )
                       }
-                      className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
+                      className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
                     >
                       Apply
                     </button>
@@ -201,7 +201,7 @@ function StaffList({
                         );
                       }
                     }}
-                    className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+                    className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
                   >
                     Deactivate
                   </button>
@@ -312,7 +312,7 @@ export function StaffManager({
   return (
     <div
       data-testid="staff-manager"
-      className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7"
+      className="portal-panel p-6 sm:p-7"
     >
       <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
         Staff access
@@ -379,7 +379,7 @@ export function StaffManager({
                       );
                     });
                 }}
-                className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)]"
+                className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)]"
               >
                 {issued.copied ? "Copied" : "Copy setup link"}
               </button>
@@ -387,7 +387,7 @@ export function StaffManager({
             <button
               type="button"
               onClick={() => setIssued(null)}
-              className="flex min-h-10 items-center rounded-[var(--radius-sm)] px-3.5 text-[0.85rem] font-bold text-[var(--color-muted)]"
+              className="flex min-h-11 items-center rounded-[var(--radius-sm)] px-3.5 text-[0.85rem] font-bold text-[var(--color-muted)]"
             >
               Dismiss
             </button>

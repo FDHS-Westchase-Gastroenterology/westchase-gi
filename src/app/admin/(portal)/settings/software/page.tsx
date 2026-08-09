@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Check } from "@/components/icons";
 import { requireRole } from "@/lib/portal/auth";
 import { CANONICAL_REPOSITORY } from "@/lib/portal/integrations";
 import { getMaintainerAccessModel } from "@/lib/portal/maintainers";
@@ -23,18 +24,15 @@ export default async function AdminSettingsSoftwarePage() {
     <section
       data-testid="managed-product"
       aria-labelledby="website-heading"
-      className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8"
+      className="portal-panel p-6 sm:p-8"
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-[0.75rem] font-bold uppercase tracking-[0.08em] text-[var(--color-teal-ink)]">
-            Clinic website
-          </p>
           <h2
             id="website-heading"
-            className="mt-1 text-[1.3rem] font-black leading-tight text-[var(--color-ink)]"
+            className="text-[1.3rem] font-black leading-tight text-[var(--color-ink)]"
           >
-            Westchase GI
+            Clinic website
           </h2>
           <p className="mt-2 max-w-[62ch] text-[0.92rem] leading-relaxed text-[var(--color-body)]">
             This is the practice&rsquo;s own software — the public website
@@ -49,7 +47,7 @@ export default async function AdminSettingsSoftwarePage() {
         </Link>
       </div>
 
-      <div className="mt-6 grid gap-6 border-t border-[var(--color-line)] pt-6 md:grid-cols-2">
+      <div className="mt-6 grid gap-6 border-t border-[var(--color-line)] pt-6 md:grid-cols-[minmax(14rem,0.65fr)_minmax(0,1.35fr)] md:gap-10">
         <div>
           <h3 className="text-[0.82rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
             Included capabilities
@@ -57,9 +55,7 @@ export default async function AdminSettingsSoftwarePage() {
           <ul className="mt-3 space-y-2 text-[0.92rem] text-[var(--color-ink)]">
             {CAPABILITIES.map((capability) => (
               <li key={capability} className="flex gap-2.5">
-                <span aria-hidden="true" className="text-[var(--color-teal-ink)]">
-                  ✓
-                </span>
+                <Check className="mt-0.5 h-4 w-4 flex-none text-[var(--color-teal-ink)]" />
                 {capability}
               </li>
             ))}
@@ -87,7 +83,7 @@ export default async function AdminSettingsSoftwarePage() {
                 <a
                   data-testid="canonical-repository"
                   href={`https://github.com/${CANONICAL_REPOSITORY}`}
-                  className="mt-1 block w-fit font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+                  className="mt-1 flex min-h-11 w-fit items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
                 >
                   Open the website files in GitHub
                 </a>
@@ -102,7 +98,7 @@ export default async function AdminSettingsSoftwarePage() {
                 patients and staff.
                 <a
                   href="https://vercel.com/login"
-                  className="mt-1 block w-fit font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+                  className="mt-1 flex min-h-11 w-fit items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
                 >
                   Sign in to Vercel
                 </a>
@@ -117,7 +113,7 @@ export default async function AdminSettingsSoftwarePage() {
                 and handles staff sign-in.
                 <a
                   href="https://supabase.com/dashboard/sign-in"
-                  className="mt-1 block w-fit font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+                  className="mt-1 flex min-h-11 w-fit items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
                 >
                   Sign in to Supabase
                 </a>
@@ -133,7 +129,7 @@ export default async function AdminSettingsSoftwarePage() {
                 confirmed in the clinic account.
                 <a
                   href="https://porkbun.com/account/login"
-                  className="mt-1 block w-fit font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+                  className="mt-1 flex min-h-11 w-fit items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
                 >
                   Sign in to Porkbun
                 </a>

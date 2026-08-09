@@ -157,14 +157,14 @@ function RecipientRowItem({
                 }
                 if (event.key === "Escape") onCancelLabel();
               }}
-              className="min-h-10 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-3 text-[0.85rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)] disabled:opacity-60"
+              className="min-h-11 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-3 text-[0.85rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)] disabled:opacity-60"
             />
             <button
               type="button"
               data-action="save-label"
               disabled={labelPending}
               onClick={onSaveLabel}
-              className="min-h-10 rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
+              className="min-h-11 rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
             >
               {labelPending ? "Saving…" : "Save"}
             </button>
@@ -172,7 +172,7 @@ function RecipientRowItem({
               type="button"
               disabled={labelPending}
               onClick={onCancelLabel}
-              className="min-h-10 px-2 text-[0.85rem] font-bold text-[var(--color-muted)] disabled:opacity-60"
+              className="min-h-11 px-2 text-[0.85rem] font-bold text-[var(--color-muted)] disabled:opacity-60"
             >
               Cancel
             </button>
@@ -198,7 +198,7 @@ function RecipientRowItem({
           data-action="toggle"
           disabled={togglePending}
           onClick={onToggle}
-          className={`flex min-h-10 items-center rounded-full border px-3.5 text-[0.85rem] font-bold transition-colors disabled:opacity-60 ${
+          className={`flex min-h-11 items-center rounded-full border px-3.5 text-[0.85rem] font-bold transition-colors disabled:opacity-60 ${
             recipient.active
               ? "border-[var(--color-teal-ink)] bg-[var(--color-mint)] text-[var(--color-teal-ink)]"
               : "border-[var(--color-line-2)] bg-white text-[var(--color-muted)]"
@@ -212,7 +212,7 @@ function RecipientRowItem({
             data-action="remove"
             disabled={removePending}
             onClick={onRemove}
-            className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+            className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
           >
             {removePending ? "Removing…" : "Remove"}
           </button>
@@ -325,7 +325,7 @@ export function RecipientsManager({
   return (
     <div
       data-testid="recipients-manager"
-      className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7"
+      className="portal-panel p-6 sm:p-7"
     >
       <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
         Notification recipients
