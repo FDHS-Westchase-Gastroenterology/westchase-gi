@@ -114,6 +114,10 @@ not browser configuration. [`.env.example`](.env.example) is the exact variable 
   when no later mutation has made it stale; it never deletes history.
 - Staff, recipient, release-state, legal-hold, and deletion operations apply their data and
   audit effects as one database operation where partial success would misrepresent state.
+- New-request packet preparation materializes the exact durable `new` membership and generated
+  time, orders it oldest first, and inserts one metadata-only audit entry in a single statement.
+  The service adapter rejects malformed, duplicate, or out-of-order responses; print behavior
+  never writes to the request or Request history.
 - GitHub mutations cannot share a database transaction with the provider. They write a
   `pending` audit row before the call, then finish it as `succeeded`, `failed`, or
   `unconfirmed`, preserving evidence across ambiguous external outcomes.
@@ -184,6 +188,22 @@ receives account or delivery state. Hosted Auth SMTP, custom recovery template, 
 expiry, 60-second resend cooldown, site URL, disabled public signup, and the exact
 `/admin/auth/confirm` redirect allowlist are project configuration, not migrations — manage
 and verify Preview Branches and Production separately.
+
+### New-request print packet
+
+`/admin/requests/print` reauthorizes every active staff member server-side, then calls
+`portal_prepare_new_request_print_packet` through the service-role client. The security-invoker
+RPC is executable only by `service_role`; browsers retain no database access. One SQL statement
+materializes the durable `new` rows, derives the database snapshot time, aggregates the complete
+bounded request values oldest first, and inserts one `requests.print_new` audit row containing
+only row count and status filter. If any part fails, Postgres returns no packet and the page shows
+an unavailable recovery state.
+
+The RSC renders one letter-sized worksheet per returned request and may ask the browser to open
+its native print dialog after the page loads. Browser printing, cancellation, reload, and tab
+close are deliberately outside the database transaction and cause no request mutation. The paper
+contains patient data and is clinic-only; its staff-name field is physical routing, not a stored
+assignment. The live queue remains authoritative after the snapshot.
 
 ### Email
 

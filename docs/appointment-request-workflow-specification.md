@@ -13,6 +13,7 @@ implementation and verification.
 |---|---|
 | **Original workflow decision date** | 2026-08-04 |
 | **Staff-portal experience expansion date** | 2026-08-05 |
+| **Staff-portal experience resolution date** | 2026-08-09 |
 | **Scope** | The authenticated staff-portal experience, including its Home, Appointments, Settings, and Help destinations, plus appointment-request intake, staff resolution, history, concurrency, notifications, and migration |
 | **Primary audience and implementation lead** | Lead of Product Experience & Principal Design Engineer |
 | **Status** | Active build authorization: implementation and iteration may proceed on an isolated branch until the staff portal satisfies both the standards and taste of the Lead of Product Experience & Principal Design Engineer and the practical judgment of the human developer who serves as the direct channel to clinic staff. Merge, migration, deployment, and Production activation require separate authorization. |
@@ -148,6 +149,7 @@ must be read with the linked detailed section when implementing or accepting the
 | `DEC-UX-04` | The Appointments workbench retains recognizable **All**, **New**, **Contacted**, **Scheduled**, and **Closed** views. Their presentation may change, but the views and labels remain available. | [Staff-familiarity invariants](#staff-familiarity-invariants) |
 | `DEC-UX-05` | The familiarity invariants preserve recognizable landmarks and language, not the current interface. Typography, layout, component form, information structure, interaction design, and visual hierarchy may change, but the fixed navigation, familiar work views, and staff-facing Scheduled vocabulary may not be designed away. | [Staff-familiarity invariants](#staff-familiarity-invariants), [Delegated experience authority](#delegated-experience-authority) |
 | `DEC-UX-06` | Within the fixed product, workflow, and familiarity boundaries, the Lead has broad creative authority and owns the overall experience concept, information hierarchy, page composition, staff journeys, interaction patterns, visual language, responsive behavior, complete state and recovery experiences, portal-wide coherence, and any adopted bounded opportunities. | [Product-experience work that begins now](#product-experience-work-that-begins-now), [Delegated experience authority](#delegated-experience-authority) |
+| `DEC-UX-07` | Home provides every active staff member a direct **Print all New** action. Packet preparation atomically snapshots the exact durable `NEW` set, oldest first, records one metadata-only audit entry, and never changes request status, version, attention, or Request history. The packet carries the available patient contact and request details plus a paper handoff area; staff keep it inside the clinic and record every outcome in the portal. | [Home bulk-print workflow](#home-bulk-print-workflow), [§16.6](#166-portal-experience-acceptance) |
 
 ### Workflow behavior
 
@@ -204,7 +206,7 @@ correctly. Context may explain a decision, but it will not silently change one.
 | `CTX-UX-01` | Appointment-request handling is the portal's only current line-of-business workflow and therefore its center of gravity. | Treat Home and Appointments as the primary experience surfaces rather than presenting the workflow as one miscellaneous portal shortcut among peers. | 2026-08-05 executive product direction recorded in this specification |
 | `CTX-UX-02` | The portal is being substantially overhauled, but existing staff familiarity is valuable. | Preserve the top-level destinations and recognizable work-view vocabulary while improving the surrounding information structure and interaction design. | 2026-08-05 executive product direction recorded in this specification |
 | `CTX-UX-03` | Settings and Help remain necessary, but they are supporting destinations rather than the portal's principal daily-work surfaces. | Keep them coherent and usable without allowing them to dilute the hierarchy of Home and Appointments. | 2026-08-05 executive product direction recorded in this specification |
-| `CTX-UX-04` | Printing all new appointment requests not yet worked by staff is an example of the kind of direct Home action that may feel intuitive. | Treat bulk print as a design opportunity requiring an explicit privacy-safe interaction and acceptance boundary, not as a mandatory feature or an implicit mutation. | 2026-08-05 executive product direction recorded in this specification |
+| `CTX-UX-04` | The practice manager currently prints incoming appointment requests and distributes them to staff; a direct bulk action was requested for that real workflow. | Put the action on Home, preserve one-request-per-sheet physical routing, make the live queue authoritative, and keep packet preparation read-only even though it is audited. | Direct staff feedback relayed for the 2026-08-09 implementation |
 
 ### Open decision register
 
@@ -233,7 +235,7 @@ to exercise judgment. Each entry will state:
 | ID | Topic and context | Fixed by this specification | Deliberately delegated judgment | Forbidden or separately decided | Acceptance boundary |
 |---|---|---|---|---|---|
 | `AUTH-UX-01` | Holistic staff-portal redesign | Four top-level destinations, Home landing, familiar work views, staff/domain vocabulary, and every workflow/privacy invariant | Overall experience concept; information hierarchy and page composition beneath the fixed destinations; staff journeys through the workflow; control and interaction patterns; visual language, typography, density, and component form; responsive behavior; loading, empty, failure, stale-data, conflict, success, and recovery experiences; portal-wide coherence; and truthful navigation-badge/count treatment | Removing or renaming fixed destinations/views; changing workflow semantics; creating new line-of-business behavior without a new decision; allowing a load failure to appear as a zero count | The result feels like one coherent staff product, preserves familiar orientation, and passes the fixed workflow and experience checks |
-| `AUTH-HOME-01` | Home as the post-sign-in operational surface | Home remains the landing destination; appointment work is the center of gravity; attention and failures must be represented truthfully; work is shared rather than assigned | Exact composition, summaries, prioritization, useful direct paths, truthful badge/count semantics, and optional quick actions such as privacy-safe bulk print | Invented assignment or SLA; false zero/caught-up states; workflow mutation caused by viewing or printing; unsafe patient-data handling | Staff can understand and enter relevant work directly, error and empty states remain distinct, and every action respects authorization and workflow boundaries |
+| `AUTH-HOME-01` | Home as the post-sign-in operational surface | Home remains the landing destination; appointment work is the center of gravity; attention and failures must be represented truthfully; work is shared rather than assigned; `DEC-UX-07` fixes the New-request print action and its behavior | Exact composition, summaries, prioritization, useful direct paths, truthful badge/count semantics, and the print action's presentation within the fixed contract | Invented portal assignment or SLA; false zero/caught-up states; workflow mutation caused by viewing or printing; unsafe patient-data handling | Staff can understand and enter relevant work directly, distinguish error from empty, and prepare a truthful paper handoff without changing the live workflow |
 | `AUTH-APPT-01` | Appointments workbench redesign | Appointments name; All/New/Contacted/Scheduled/Closed views and mappings; Scheduled staff vocabulary; semantic command and history contracts | View control form and placement, search and filtering composition, information density, card/table/list structure, action presentation, responsive behavior, and visual hierarchy | Removing or relabeling fixed views; rendering `BOOKED` as Booked; persisting `SCHEDULED`; exposing a generic status editor | Staff retain familiar orientation while the redesigned workbench exposes only legal actions and makes attention, state, history, stale data, errors, and success understandable |
 | `AUTH-SUPPORT-01` | Settings and Help within the redesign | Both destinations continue to exist and obey existing authorization and privacy boundaries | Their internal organization, visual polish, relationship to Home, and presentation as supporting portal capabilities | Removing either destination or elevating unsupported settings/help behavior into a new line-of-business workflow | Both remain easy to find, coherent with the portal, and appropriately secondary to Home and Appointments |
 
@@ -381,14 +383,34 @@ lifecycle, concealment of read failures as zero work, invention of staff assignm
 authorization or privacy boundaries, or expansion into a new line-of-business workflow without
 a new decision.
 
-#### Home quick-action opportunity
+#### Home bulk-print workflow
 
-A Home action that prints the current set of new appointment requests not yet worked by staff is
-an illustrative design opportunity, not a mandatory feature decided by this specification. The
-lead may adopt, refine, or reject it. If adopted, its authorized audience, included patient data,
-print scope, empty and failure states, and safe handling of the resulting paper must be made
-explicit before experience acceptance. The action must be read-only and must not mark a request
-contacted or otherwise move the workflow merely because it was printed.
+Home exposes **Print all New** to every active staff member. The action opens a dedicated secure
+print surface in a new browser tab so Home and the live queue remain available. Preparing that
+surface performs one database statement that materializes the exact durable `NEW` membership and
+its generated time, orders the rows oldest first (then by identifier for deterministic ties), and
+commits exactly one metadata-only audit entry with actor, timestamp, row count, and `new` filter.
+The database returns the packet only when the snapshot and audit agree.
+
+The packet prints one request worksheet per page. Each worksheet contains the patient name,
+phone, optional email, preferred language, requested office, best time to call, received time,
+patient-supplied message, request reference, and source path. A paper handoff area repeats the
+patient identity, gives the manager room to write a staff name and first-call time, lists only
+outcomes supported by the workflow, and explicitly tells staff to record the result in the
+portal. A paper name is physical routing only; it does not create portal assignment or ownership.
+
+Preparing, viewing, auto-opening the print dialog, printing, cancelling, reloading, or closing the
+packet never changes request status, lifecycle version, attention state, terminal fields, or
+Request history. The packet is a point-in-time handoff, not a claim that its rows remain New after
+preparation. Screen guidance therefore names when it was prepared, instructs staff to check the
+live queue if the packet sat unattended, and returns them to the current New view after printing.
+Printed sheets carry patient data and stay inside the clinic.
+
+An empty snapshot renders a completed, non-error state and prints nothing. A database, snapshot,
+validation, or audit failure renders an unavailable state, exposes no packet, changes nothing,
+and provides a direct recovery path to the current New view plus a retry. The Home count is an
+orientation aid; the packet's own atomic snapshot is the print authority when work changes
+between Home and preparation.
 
 ---
 
@@ -1269,8 +1291,17 @@ happy-path examples.
   ownership.
 - Any Home quick action observes the same server authorization, semantic command, stale-state,
   privacy, and error rules as its full-workbench equivalent.
-- If bulk printing is included, experience acceptance explicitly verifies its authorized
-  audience, patient-data scope, read-only behavior, empty/error handling, and safe-paper guidance.
+- **Print all New** is available to every active staff member and prepares exactly the durable
+  `NEW` membership from one atomic database snapshot, oldest first, with one metadata-only audit
+  entry and no patient values outside the returned packet.
+- Every printed request includes the available patient contact and request details, its request
+  reference, workflow-derived paper outcomes, and an instruction to record the result in the
+  portal; one request occupies each printed page, including at the maximum patient-message length.
+- Packet preparation, viewing, auto-print, printing, cancellation, reload, and close leave status,
+  version, attention, terminal fields, and Request history unchanged. Empty and unavailable states
+  are distinct, expose no misleading packet, and provide direct completion or recovery paths.
+- Screen and paper guidance make the snapshot age, clinic-only handling, physical-routing-only
+  staff name, and live-queue authority explicit.
 - The Lead of Product Experience & Principal Design Engineer and the human developer who serves
   as the direct channel to clinic staff both accept the four-destination portal as one coherent
   experience rather than accepting the Appointments screen in isolation. Neither acceptance
@@ -1295,6 +1326,9 @@ implementation is not complete until:
   continue to use `BOOKED` and reject `SCHEDULED`;
 - Home and Appointments express the portal's line-of-business center of gravity without inventing
   assignment, an Appointment entity, or a new workflow;
+- the New-request print packet passes its atomic membership, oldest-first order, one-sheet-per-
+  request, metadata-only audit, no-mutation, empty, unavailable, maximum-length, and safe-paper
+  checks on the hosted Preview Branch;
 - the to-be matrix is the sole lifecycle authority;
 - current state, immutable transition evidence, audit, idempotency, and outbox effects agree
   transactionally;

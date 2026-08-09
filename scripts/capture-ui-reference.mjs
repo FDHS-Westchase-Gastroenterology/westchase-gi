@@ -89,14 +89,14 @@ const publicCaptures = [
 
 const portalCaptures = [
   { name: "desktop-portal-home", path: "/admin", viewport: { width: 1440, height: 900 }, ready: "main h1" },
-  { name: "desktop-portal-requests", path: "/admin/requests?q=ui-reference-placeholder", viewport: { width: 1440, height: 900 }, ready: "main h1" },
+  { name: "desktop-portal-requests", path: "/admin/requests?q=Sample+patient", viewport: { width: 1440, height: 900 }, ready: "main h1" },
   { name: "desktop-portal-review-flyers", path: "/admin/review-flyers", viewport: { width: 1440, height: 900 }, ready: "main h1" },
   { name: "desktop-portal-settings", path: "/admin/settings", viewport: { width: 1440, height: 900 }, ready: '[data-testid="recipients-manager"]' },
   { name: "desktop-portal-settings-software", path: "/admin/settings/software", viewport: { width: 1440, height: 900 }, ready: '[data-testid="managed-product"]' },
   { name: "desktop-portal-audit", path: "/admin/audit", viewport: { width: 1440, height: 900 }, ready: "main h1" },
   { name: "desktop-portal-help", path: "/admin/help", viewport: { width: 1440, height: 900 }, ready: "main h1" },
   { name: "mobile-portal-home", path: "/admin", viewport: { width: 390, height: 844 }, ready: "main h1" },
-  { name: "mobile-portal-requests", path: "/admin/requests?q=ui-reference-placeholder", viewport: { width: 390, height: 844 }, ready: "main h1" },
+  { name: "mobile-portal-requests", path: "/admin/requests?q=Sample+patient", viewport: { width: 390, height: 844 }, ready: "main h1" },
   { name: "mobile-portal-review-flyers", path: "/admin/review-flyers", viewport: { width: 390, height: 844 }, ready: "main h1" },
   { name: "mobile-portal-settings", path: "/admin/settings", viewport: { width: 390, height: 844 }, ready: '[data-testid="recipients-manager"]' },
   { name: "mobile-portal-settings-software", path: "/admin/settings/software", viewport: { width: 390, height: 844 }, ready: '[data-testid="managed-product"]' },
@@ -143,8 +143,25 @@ async function redactPortalData(page) {
     `,
   });
   await page.evaluate(() => {
+    const syntheticPatientText = {
+      "patient-name": "Sample Patient",
+      "patient-contact": "(813) 555-0100",
+      "patient-message": "Fictional appointment request details.",
+    };
+    document.querySelectorAll("[data-ui-redact]").forEach((element) => {
+      const kind = element.getAttribute("data-ui-redact");
+      if (!kind || !(kind in syntheticPatientText)) return;
+      element.textContent = syntheticPatientText[kind];
+      element.removeAttribute("title");
+      if (element instanceof HTMLAnchorElement) element.removeAttribute("href");
+    });
     const sessionUser = document.querySelector('[data-testid="session-user"]');
     if (sessionUser) sessionUser.textContent = "Staff Member";
+    const sessionEmail = document.querySelector('[data-testid="session-email"]');
+    if (sessionEmail) {
+      sessionEmail.textContent = "staff@example.com";
+      sessionEmail.removeAttribute("title");
+    }
     const greeting = document.querySelector('[data-testid="home-greeting"]');
     if (greeting) greeting.textContent = "Good morning, Staff.";
     const queueHeadline = document.querySelector(
@@ -159,6 +176,18 @@ async function redactPortalData(page) {
         " new appointment requests are waiting.",
       );
     }
+    const printNewCount = document.querySelector('[data-testid="print-new-count"]');
+    if (printNewCount) printNewCount.textContent = "Print all 3";
+    const emptyPrint = document.querySelector('[data-testid="print-new-empty"]');
+    if (emptyPrint instanceof HTMLElement) {
+      emptyPrint.textContent = "Print all 3";
+      const control = emptyPrint.closest("button");
+      if (control) {
+        control.disabled = false;
+        control.classList.remove("btn-outline");
+        control.classList.add("btn-navy");
+      }
+    }
     document.querySelector('[data-testid="nav-waiting-badge"]')?.remove();
     document
       .querySelectorAll(
@@ -167,10 +196,7 @@ async function redactPortalData(page) {
       .forEach((element) => element.remove());
     document.querySelector('[data-testid="queue-overview-preview"]')?.remove();
     document.querySelector('[data-testid="queue-overview-oldest"]')?.remove();
-    document.querySelector('[data-testid="attention-summary"]')?.remove();
-    document
-      .querySelector('[data-testid="attention-summary-unavailable"]')
-      ?.remove();
+    document.querySelector(".portal-attention-next")?.remove();
     document.querySelector('[data-testid="no-recipients-warning"]')?.remove();
     document.querySelector('[data-testid="delivery-failure-warning"]')?.remove();
     document.querySelector('[data-testid="portal-tour-nudge"]')?.remove();
@@ -242,7 +268,11 @@ async function capturePortalReferences(browser, credentials) {
 
 await mkdir(outputDirectory, { recursive: true });
 console.log(`Capturing UI reference from ${origin.origin}`);
-const browser = await chromium.launch();
+const chromiumExecutablePath =
+  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?.trim();
+const browser = await chromium.launch(
+  chromiumExecutablePath ? { executablePath: chromiumExecutablePath } : undefined,
+);
 
 try {
   if (!portalMode) {

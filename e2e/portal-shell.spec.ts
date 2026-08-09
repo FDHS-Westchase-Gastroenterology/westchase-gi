@@ -114,6 +114,12 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
         ).toBeLessThanOrEqual(viewport.width);
       }
 
+      if (viewport.width < 960) {
+        await page
+          .getByRole("button", { name: "Open account menu" })
+          .click();
+      }
+
       const websiteLink = page.getByRole("link", { name: "View website" });
       await expect(websiteLink).toBeVisible();
       await expect(websiteLink).toHaveAttribute("href", "/");
@@ -130,9 +136,11 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
         const website = Array.from(document.querySelectorAll("a")).find(
           (link) => link.textContent?.trim() === "View website",
         )?.getBoundingClientRect();
-        const signOut = document
-          .querySelector('button[type="submit"]')
-          ?.getBoundingClientRect();
+        const signOut = Array.from(
+          document.querySelectorAll<HTMLButtonElement>('button[type="submit"]'),
+        )
+          .map((button) => button.getBoundingClientRect())
+          .find((rect) => rect.width > 0 && rect.height > 0);
         const identity = document
           .querySelector('[data-testid="session-user"]')
           ?.parentElement?.getBoundingClientRect();
@@ -154,6 +162,12 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
       });
       expect(utilityCollision).toEqual({ signOut: false, identity: false });
 
+      if (viewport.width < 960) {
+        await page
+          .getByRole("button", { name: "Open account menu" })
+          .click();
+      }
+
       // Settings is active on both of its sub-pages.
       if (portalPage.path.startsWith("/admin/settings")) {
         await expect(
@@ -165,34 +179,34 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
 
     }
 
-    // Token discipline: the header carries the navy token, the active nav
-    // item the amber token — resolved from the stylesheet, not ad-hoc hex.
+    // Token discipline: the task rail carries navy and the active location
+    // carries teal. Amber remains reserved for requests that need attention.
     await page.goto("/admin");
     const tokenCheck = await page.evaluate(() => {
       const probe = document.createElement("div");
-      probe.style.backgroundColor = "var(--color-navy)";
-      probe.style.borderColor = "var(--color-amber)";
+      probe.style.backgroundColor = "var(--color-navy-2)";
+      probe.style.borderColor = "var(--color-teal)";
       document.body.appendChild(probe);
       const probeStyles = getComputedStyle(probe);
       const expectedNavy = probeStyles.backgroundColor;
       const expectedAmber = probeStyles.borderColor;
       probe.remove();
 
-      const header = document.querySelector("header");
+      const rail = document.querySelector(".portal-sidebar");
       const active = document.querySelector(
         'nav[aria-label="Portal sections"] a[aria-current="page"]',
       );
       return {
         expectedNavy,
         expectedAmber,
-        headerBg: header ? getComputedStyle(header).backgroundColor : null,
-        activeBorder: active
-          ? getComputedStyle(active).borderBottomColor
+        railBg: rail ? getComputedStyle(rail).backgroundColor : null,
+        activeIndicator: active
+          ? getComputedStyle(active, "::before").backgroundColor
           : null,
       };
     });
-    expect(tokenCheck.headerBg).toBe(tokenCheck.expectedNavy);
-    expect(tokenCheck.activeBorder).toBe(tokenCheck.expectedAmber);
+    expect(tokenCheck.railBg).toBe(tokenCheck.expectedNavy);
+    expect(tokenCheck.activeIndicator).toBe(tokenCheck.expectedAmber);
   }
 
   // Logged-out login page measurements.
@@ -319,11 +333,14 @@ test("staff can view the locale-negotiated website and return with their session
   const websiteLink = page.getByRole("link", { name: "View website" });
   await wordmark.focus();
   await page.keyboard.press("Tab");
-  await expect(websiteLink).toBeFocused();
-  expect(await websiteLink.evaluate((link) => getComputedStyle(link).outlineStyle)).not.toBe(
+  const homeLink = page
+    .locator('nav[aria-label="Portal sections"]')
+    .getByRole("link", { name: "Home", exact: true });
+  await expect(homeLink).toBeFocused();
+  expect(await homeLink.evaluate((link) => getComputedStyle(link).outlineStyle)).not.toBe(
     "none",
   );
-  await page.keyboard.press("Enter");
+  await websiteLink.click();
   await expect(page).toHaveURL(/\/es\/?$/);
 
   await page.goto("/admin");

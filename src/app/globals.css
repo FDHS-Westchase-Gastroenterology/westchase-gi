@@ -1945,8 +1945,6 @@
     page: request-detail;
   }
 
-  body.portal-scope:has(.request-detail-print) header,
-  body.portal-scope:has(.request-detail-print) footer,
   body.portal-scope:has(.request-detail-print) .portal-release-utility {
     display: none !important;
   }
@@ -1964,7 +1962,7 @@
     break-inside: auto !important;
   }
 
-  .request-detail-print .portal-title {
+  .request-detail-print .portal-page-title {
     font-size: 18pt;
   }
 

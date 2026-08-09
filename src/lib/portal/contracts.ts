@@ -129,6 +129,7 @@ export const AUDIT_ACTIONS = {
   MAINTAINERS_CANCEL: "maintainers.cancel",
   MAINTAINERS_REVOKE: "maintainers.revoke",
   REQUESTS_EXPORT: "requests.export",
+  REQUESTS_PRINT_NEW: "requests.print_new",
   ...RELEASE_AUDIT_ACTIONS,
 } as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

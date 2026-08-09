@@ -162,10 +162,10 @@ test.describe("portal requests operation", () => {
     await expect(page.getByTestId("request-detail-name")).toHaveText(
       staged.name,
     );
-    // The breadcrumb's current page is the request's name, not "Detail".
+    // The detail workspace preserves a clear return path to the same queue.
     await expect(
-      page.getByRole("navigation", { name: "Breadcrumb" }),
-    ).toContainText(staged.name);
+      page.getByRole("link", { name: "Back to Appointments" }),
+    ).toHaveAttribute("href", "/admin/requests");
     await expect(page.getByText(staged.phone).first()).toBeVisible();
     await expect(
       page.getByRole("link", { name: staged.email }),
@@ -658,7 +658,7 @@ test.describe("portal requests operation", () => {
         document.documentElement.dataset.testRequestPrint = "called";
       };
     });
-    await page.getByRole("button", { name: "Print patient page" }).click();
+    await page.getByRole("button", { name: "Print request" }).click();
     await expect(page.locator("html")).toHaveAttribute(
       "data-test-request-print",
       "called",
@@ -675,7 +675,7 @@ test.describe("portal requests operation", () => {
     );
     await expect(page.getByTestId("workflow-panel")).toBeHidden();
     await expect(
-      page.getByRole("navigation", { name: "Breadcrumb" }),
+      page.getByRole("link", { name: "Back to Appointments" }),
     ).toBeHidden();
     expect(
       await page

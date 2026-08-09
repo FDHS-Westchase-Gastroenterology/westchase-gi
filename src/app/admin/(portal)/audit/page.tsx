@@ -11,6 +11,7 @@ import { formatReceived } from "../requests/format";
 import { RecentWorkSection } from "./recent-work";
 import { toRecentWorkItems } from "./recent-work-model";
 import { ReleaseEngagementSection } from "./release-engagement";
+import { PortalPageHeader } from "../portal-page-header";
 
 type AuditRow = {
   id: string;
@@ -111,29 +112,11 @@ export default async function AdminAuditPage({
 
   return (
     <section aria-labelledby="audit-heading">
-      <nav aria-label="Breadcrumb" className="flex items-center text-[0.9rem]">
-        <Link
-          href="/admin"
-          className="inline-flex min-h-11 min-w-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-        >
-          Home
-        </Link>
-        <span aria-hidden="true" className="mx-2 text-[var(--color-muted)]">
-          /
-        </span>
-        <span className="text-[var(--color-muted)]">Activity log</span>
-      </nav>
-
-      <h1
-        id="audit-heading"
-        className="portal-title mt-4"
-      >
-        Activity log
-      </h1>
-      <p className="mt-1.5 max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
-        Who did what, in plain language — with the exact technical record
-        beneath for administrators.
-      </p>
+      <PortalPageHeader
+        back={{ href: "/admin", label: "Back to Home" }}
+        title={<span id="audit-heading">Activity log</span>}
+        description="Who did what, in plain language. Administrators can inspect the exact technical record below when they need it."
+      />
 
       {releaseEngagement ? (
         <ReleaseEngagementSection engagement={releaseEngagement} />

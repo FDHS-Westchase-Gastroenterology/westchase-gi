@@ -3,9 +3,8 @@ import { test, expect, type Page } from "@playwright/test";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // The portal home page: staff land on a greeting and their tasks, not on
-// software. The queue overview count is real data, the task list is
-// role-gated (the flyer printer is an admin task, not a tab), and the
-// primary action leads to the queue at /admin/requests.
+// software. The queue overview count is real data, paper handoff is one
+// truthful action away, and occasional tools stay out of the primary path.
 
 loadLocalEnv();
 
@@ -122,7 +121,7 @@ test.describe("portal home", () => {
     await expect(oldestLine).toHaveCount(oldestIsPastDay ? 1 : 0);
     if (oldestIsPastDay) {
       await expect(oldestLine).toHaveText(
-        /^(It|The oldest) has been waiting since .+\.$/,
+        /^(Waiting|Oldest waiting) since .+\.$/,
       );
     }
 
@@ -155,12 +154,12 @@ test.describe("portal home", () => {
     // Task list: five rows for every role — flyer printing is staff-wide
     // (product decision 2026-07-26) — each a working link. Scoped to the
     // tasks section: the zero-recipients warning may repeat a task's name.
-    const tasks = page.locator('section[aria-labelledby="tasks-heading"]');
+    const tasks = page.locator('aside[aria-labelledby="desk-tools-heading"]');
     for (const [label, href] of [
       ["Print review flyers", "/admin/review-flyers"],
-      ["Manage notification emails", "/admin/settings#notifications"],
-      ["Manage staff access", "/admin/settings#staff"],
-      ["Website", "/admin/settings/software"],
+      ["Notification emails", "/admin/settings#notifications"],
+      ["Staff access", "/admin/settings#staff"],
+      ["Website status", "/admin/settings/software"],
       ["Request a website change", "/admin/help#website-changes"],
     ] as const) {
       await expect(
@@ -168,6 +167,19 @@ test.describe("portal home", () => {
         `task row: ${label}`,
       ).toHaveAttribute("href", href);
     }
+
+    // The manager's paper handoff is directly available from Home, opens a
+    // dedicated print surface, and keeps the live workbench in place.
+    const printLink = page.getByRole("link", {
+      name: `Print all ${newCount} new appointment ${
+        newCount === 1 ? "request" : "requests"
+      }`,
+    });
+    await expect(printLink).toHaveAttribute(
+      "href",
+      "/admin/requests/print?auto=1",
+    );
+    await expect(printLink).toHaveAttribute("target", "_blank");
 
     // The primary action opens the Appointments workbench (DEC-UX-02: the
     // destination is named Appointments; the records remain appointment

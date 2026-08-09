@@ -7,7 +7,7 @@ import { dismissPortalTourAction, finishPortalTourAction } from "./tour-actions"
 const STEPS = [
   {
     title: "Home",
-    body: "Start here to see whether new appointment requests are waiting. Home also gives you quick links to the other jobs you may need around the portal.",
+    body: "Start here to see what needs contact now. When New appointment requests are waiting, a manager can print the complete paper handoff here without changing their status.",
   },
   {
     title: "Appointments",
@@ -15,7 +15,7 @@ const STEPS = [
   },
   {
     title: "Settings",
-    body: "Manage notification email recipients here. Administrators can also invite staff and manage access. Help is always available in the top navigation.",
+    body: "Manage notification email recipients here. Administrators can also invite staff and manage access. Help stays in the desktop task rail or the mobile navigation.",
   },
 ] as const;
 

@@ -129,11 +129,10 @@ patient site is a brand surface; the portal is a tool. UI work inside `src/app/a
 follows this register plus the design charter in `DESIGN.md`.
 
 Re-chartered 2026-08-04
-([issue #190](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/190)):
-the polish-era charter framed the portal around a queue to be watched; this charter claims
-the deeper job the practice now asks for. Sections marked deferred are deliberately empty
-of direction — they are rewritten after prototyping under this purpose, not carried forward
-stale.
+([issue #190](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/190))
+and resolved into its first committed experience world on 2026-08-09: the polish-era charter
+framed the portal around a queue to be watched; this charter claims the deeper job the practice
+now asks for and the working system built around it.
 
 ### Register
 
@@ -181,18 +180,23 @@ never silently lost, quality in details staff notice without naming.
 
 ### North star
 
-Deliberately deferred (2026-08-04). Rewritten from scratch once prototyping under the
-new purpose gives direction something concrete to react to. The v1 north star is
-retired and carries no authority; the durable law it rode alongside lives in
-Capabilities and Constraints below.
+**The Front Desk Ledger.** Staff should be able to look once, understand what needs attention,
+and either enter the live appointment request or create a safe paper handoff without losing the
+truth of the shared queue. Each request moves from an unanswered patient ask to a documented
+real-world outcome; interruptions, handoffs, narrow screens, stale data, and failed reads never
+make staff reconstruct what the software meant.
 
 ### Evidence
 
-Evidence comes from software, plus the practice channel. The portal measures its own
-use — staff-usage telemetry, chartered to be built out fully, disclosed to the practice
-(staff know it exists and that it exists for them), with event payloads PHI-free by
-floor. Product decisions are grounded in that telemetry plus the driving dev's input as
-the channel to the practice. The audit layers and sign-in state remain operational
+Evidence comes from software, plus the practice channel. The bulk New-request print workflow is
+grounded in direct staff feedback relayed for this build: the practice manager prints incoming
+requests and distributes them to staff. Other experience priorities come from the implemented
+workflow contract and repository decisions; no additional usage observation is claimed.
+
+The portal measures its own use — staff-usage telemetry, chartered to be built out fully,
+disclosed to the practice (staff know it exists and that it exists for them), with event payloads
+PHI-free by floor. Product decisions are grounded in that telemetry plus the driving developer's
+input as the channel to the practice. The audit layers and sign-in state remain operational
 records, not the evidence system.
 
 Today only the patient site is instrumented; portal usage instrumentation is early
@@ -214,7 +218,8 @@ Floors, riding on their own authority:
   but intake stores an optional patient-supplied brief reason, so the queue is
   sensitive. Notification emails, operational logs, and telemetry payloads stay free
   of patient fields. Boundary-crossing reads of patient data are audited: a CSV
-  export writes a metadata-only audit row (actor, timestamp, row count, filter).
+  export and a prepared New-request print packet each write a metadata-only audit row
+  (actor, timestamp, row count, filter).
 - No direct browser database access; no assistant that sees patient free text or
   mutates records autonomously.
 
@@ -224,6 +229,12 @@ Durable truths, re-owned in the 2026-08-04 re-charter session:
   real-world action across disconnected forms, and server operations backing a
   combined action commit atomically. The concrete save choreography is not chartered
   here — see the state-machine deferral below.
+- **Paper handoff is an output, never workflow state.** Every active staff member may prepare
+  one oldest-first packet containing the exact durable `NEW` set at that database snapshot.
+  Preparing or printing it changes no request status, version, attention state, or Request
+  history. The packet carries the patient details staff need for the call, a paper routing area,
+  safe-paper guidance, and the instruction to record the result in the portal. Paper can
+  distribute work; the live queue remains authoritative.
 - **Staff author attention.** Urgency comes from staff, never from configuration: no
   Settings "N days" knob, no practice-meeting threshold. The mechanics through which
   staff express it belong to the state machine's definition.
@@ -252,13 +263,18 @@ Appointments workflow contract, defined in the
   for the transition to BOOKED. Semantic commands, versioning, idempotency, an append-only
   transition log, and post-commit notifications govern the build era.
 
-Incumbent inventory, true today as code rather than commitment:
+Committed operational information architecture:
 
-- The portal's surfaces: a task-first Home, the Requests queue and request detail,
-  recipient and staff management, an Activity log, Website/maintainer controls, the
-  protected review-flyer printer, an opt-in first-login tour, and a Help-page systems
-  explainer with a tour-restart path. The design charter's transition rule governs
-  them until rebuilds.
+- **Home** is the triage and handoff surface: the ordered shared work stack, the direct
+  New-request print action, the next request to work, recent operational context, and secondary
+  routes into staff jobs.
+- **Appointments** is the complete queue and request workspace, retaining All, New, Contacted,
+  Scheduled, and Closed as familiar views.
+- **Settings** groups people, notification emails, and software administration without
+  competing with daily appointment work.
+- **Help** explains the workflow, privacy and recovery paths. Activity and review-flyer printing
+  remain named utilities reached from the places they support, not additional top-level
+  destinations.
 
 Explicitly undecided / open product facts: the maintainer invite/cancel/accept/revoke
 acceptance pass; the structured website-change-request workflow (later conversationally
@@ -266,17 +282,36 @@ assisted) planned for the maintainer seam.
 
 ### Product Principles
 
-Deliberately deferred (2026-08-04). Rewritten after prototyping under the new purpose.
-The binding law the v1 principles carried — honest states, PHI-minimal, names-not-
-addresses, one human action one portal transaction — lives in Capabilities and
-Constraints above; the v1 principles otherwise carry no authority, and their token
-rulebook was retired with the v1 `DESIGN.md`.
+1. **Work first; administration second.** Home and Appointments carry the portal's center of
+   gravity. Settings and Help stay easy to reach without turning every capability into an equal
+   card on a dashboard.
+2. **Truth before reassurance.** Empty, waiting, unavailable, stale, conflicted, and completed
+   are different states and say so. A failed read never becomes a zero, a print never becomes a
+   contact attempt, and an optimistic action never hides its durable outcome.
+3. **Resume without reconstruction.** Staff work between calls and patient arrivals. Location,
+   request state, next legal action, recovery, and follow-up remain explicit across page changes,
+   interruptions, desktop, and mobile.
+4. **Familiarity carries the workflow.** Preserve the four destinations, five Appointments views,
+   plain staff language, standard controls, and predictable navigation. Personality comes from
+   precise hierarchy and the paper-ledger metaphor, never from novel affordances staff must learn.
+5. **The shared queue stays shared.** The portal may surface attention and support a manager's
+   paper routing, but it never invents personal ownership or hides work behind "my tasks."
+6. **One system at every size.** Desktop uses a persistent task index and dense working canvas;
+   mobile keeps the same destinations and actions in reach, with information recomposed rather
+   than clipped or reduced to a desktop table.
 
 ### Anti-references
 
-Deliberately deferred (2026-08-04). Re-derived at prototyping alongside the portal's
-visual world; the deliberately-not-building list in Capabilities and Constraints
-carries the surviving refusals until then.
+- Generic SaaS dashboards made from interchangeable metric cards, equal-weight shortcuts, and
+  charts that stand in for the work.
+- Kanban boards, invented assignees, personal task queues, or any interface that implies a domain
+  model the portal does not own.
+- Decorative clinical styling: excessive white cards, blue gradients, stock-health iconography,
+  glass, and motion used to make routine work feel more "digital."
+- Hidden mutation, ambiguous save states, reassuring zeroes after failed reads, and paper actions
+  that silently advance a request.
+- Desktop-only density squeezed onto a phone, or mobile simplification that removes status,
+  recovery, or the next safe action.
 
 ### Accessibility
 

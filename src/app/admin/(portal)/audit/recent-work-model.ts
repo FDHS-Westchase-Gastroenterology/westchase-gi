@@ -205,6 +205,18 @@ function describeAction(
         technical: false,
       };
     }
+    case "requests.print_new": {
+      const count =
+        typeof detail.row_count === "number" ? detail.row_count : null;
+      return {
+        sentence: `prepared the New-request print packet${
+          count !== null
+            ? ` (${count} ${count === 1 ? "request" : "requests"})`
+            : ""
+        }`,
+        technical: false,
+      };
+    }
     case "recipients.add":
       return {
         sentence: `added ${recipientLabel(ctx.recipientsById, entry.entity_id)} to notification emails`,
