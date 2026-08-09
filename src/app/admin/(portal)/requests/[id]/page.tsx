@@ -241,19 +241,23 @@ export default async function RequestDetailPage({
   const safeMailbox = mailbox && isMailbox(mailbox) ? mailbox : null;
   // Notes and history come from one composed read. Notes keep their own
   // surface; every other evidence kind renders in Request history.
-  const noteViews: RequestNoteView[] = surface.history
-    .filter((entry) => entry.kind === "note")
-    .map((note) => ({
-      id: note.id,
-      text: note.text,
-      byline: `${displayNameOrEmail(nameMap, note.actor)} · ${formatReceived(
-        note.at,
-        true,
-      )}`,
-    }));
-  const historyLines = surface.history
-    .map(historyLine)
-    .filter((line): line is HistoryLine => line !== null);
+  const noteViews: RequestNoteView[] = [];
+  const historyLines: HistoryLine[] = [];
+  for (const entry of surface.history) {
+    if (entry.kind === "note") {
+      noteViews.push({
+        id: entry.id,
+        text: entry.text,
+        byline: `${displayNameOrEmail(nameMap, entry.actor)} · ${formatReceived(
+          entry.at,
+          true,
+        )}`,
+      });
+      continue;
+    }
+    const line = historyLine(entry);
+    if (line) historyLines.push(line);
+  }
 
   const fields: Array<{ label: string; value: React.ReactNode }> = [
     { label: "Preferred office", value: LOCATION_LABELS[row.location] },
