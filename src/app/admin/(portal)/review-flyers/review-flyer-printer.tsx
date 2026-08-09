@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect } from "react";
-
+import { Check } from "@/components/icons";
 import type { ReviewFlyer, ReviewTargetKey } from "@/lib/review-flyers";
 
 const DOWNLOAD_ACTIONS = [
@@ -22,15 +22,17 @@ function printFlyer(key: ReviewTargetKey | "all") {
   window.print();
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-function Flyer({ flyer }: Readonly<{ flyer: ReviewFlyer }>) {
-  const providerLine =
-    flyer.credentials !== null && flyer.credentials !== ""
-      ? `${flyer.title}, ${flyer.credentials}`
-      : null;
+function Flyer({ flyer }: { flyer: ReviewFlyer }) {
+  const providerLine = flyer.credentials
+    ? `${flyer.title}, ${flyer.credentials}`
+    : null;
 
   return (
-    <section className="review-flyer" data-review-flyer={flyer.key} aria-hidden="true">
+    <section
+      className="review-flyer"
+      data-review-flyer={flyer.key}
+      aria-hidden="true"
+    >
       <div className="review-flyer-band">
         <div className="review-flyer-brand">
           <Image
@@ -66,9 +68,11 @@ function Flyer({ flyer }: Readonly<{ flyer: ReviewFlyer }>) {
         <em lang="es">{flyer.scanEs}</em>
       </p>
       {flyer.showLanguages ? (
-        <p className="review-flyer-langs">English · Español · Tiếng Việt · 한국어 · العربية</p>
+        <p className="review-flyer-langs">
+          English · Español · Tiếng Việt · 한국어 · العربية
+        </p>
       ) : null}
-      {providerLine !== null && providerLine !== "" ? (
+      {providerLine ? (
         <p className="review-flyer-provider">
           {providerLine}
           <small>
@@ -89,12 +93,10 @@ function Flyer({ flyer }: Readonly<{ flyer: ReviewFlyer }>) {
   );
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-export function ReviewFlyerPrinter({ flyers }: Readonly<{ flyers: ReviewFlyer[] }>) {
+export function ReviewFlyerPrinter({ flyers }: { flyers: ReviewFlyer[] }) {
   useEffect(() => {
     const beforePrint = () => {
-      const currentPrint = document.body.dataset.reviewFlyerPrint;
-      if (currentPrint === undefined || currentPrint === "") {
+      if (!document.body.dataset.reviewFlyerPrint) {
         document.body.dataset.reviewFlyerPrint = "practice";
       }
     };
@@ -129,32 +131,31 @@ export function ReviewFlyerPrinter({ flyers }: Readonly<{ flyers: ReviewFlyer[] 
           <div className="max-w-[46rem]">
             <h1 className="portal-title">Print review flyers</h1>
             <p className="mt-2 max-w-[62ch] text-[0.95rem] text-[var(--color-muted)]">
-              Choose one ready-to-print bilingual flyer, or print the full set. The PDF option is
-              best for a print shop or when another device needs a guaranteed one-page file.
+              Choose one ready-to-print bilingual flyer, or print the full set.
+              The PDF option is best for a print shop or when another device
+              needs a guaranteed one-page file.
             </p>
           </div>
           <button
             type="button"
             className="btn btn-navy shrink-0"
-            onClick={() => {
-              printFlyer("all");
-            }}
+            onClick={() => printFlyer("all")}
           >
             Print all six flyers
           </button>
         </div>
 
-        <p className="mt-6 inline-flex items-center gap-2 rounded-full bg-[var(--color-mint)] px-3.5 py-2 text-[0.88rem] font-bold text-[var(--color-navy)]">
-          <span aria-hidden="true">✓</span>
+        <p className="mt-6 inline-flex items-center gap-2 rounded-[var(--radius)] bg-[var(--color-mint)] px-3.5 py-2 text-[0.88rem] font-bold text-[var(--color-navy)]">
+          <Check className="h-4 w-4 flex-none" />
           All six codes and one-page PDFs are machine-verified.
         </p>
 
         <section className="mt-8" aria-label="Available review flyers">
-          <div className="grid gap-4">
+          <div className="portal-flyer-list">
             {flyers.map((flyer) => (
               <article
                 key={flyer.key}
-                className="card-lined grid min-w-0 gap-5 p-5 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:p-6"
+                className="portal-flyer-row grid min-w-0 gap-5 p-5 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:p-6"
                 data-review-target={flyer.key}
               >
                 <Image
@@ -172,8 +173,10 @@ export function ReviewFlyerPrinter({ flyers }: Readonly<{ flyers: ReviewFlyer[] 
                       Verified
                     </span>
                   </div>
-                  {flyer.credentials !== null && flyer.credentials !== "" ? (
-                    <p className="mt-1 font-bold text-[var(--color-ink)]">{flyer.credentials}</p>
+                  {flyer.credentials ? (
+                    <p className="mt-1 font-bold text-[var(--color-ink)]">
+                      {flyer.credentials}
+                    </p>
                   ) : null}
                   <p className="mt-2 max-w-[56ch] text-[0.95rem] text-[var(--color-muted)]">
                     {flyer.description}
@@ -182,9 +185,7 @@ export function ReviewFlyerPrinter({ flyers }: Readonly<{ flyers: ReviewFlyer[] 
                     <button
                       type="button"
                       className="btn btn-amber btn-sm min-h-11"
-                      onClick={() => {
-                        printFlyer(flyer.key);
-                      }}
+                      onClick={() => printFlyer(flyer.key)}
                     >
                       Print flyer
                     </button>
@@ -207,9 +208,9 @@ export function ReviewFlyerPrinter({ flyers }: Readonly<{ flyers: ReviewFlyer[] 
 
         <aside className="mt-8 max-w-[68ch] border-t border-[var(--color-line)] pt-6 text-[0.9rem] text-[var(--color-muted)]">
           <p>
-            <strong className="text-[var(--color-ink)]">Printing tip:</strong> use bright-white
-            cardstock and color ink. Keep the white area around each QR code clear so phone cameras
-            can scan it reliably.
+            <strong className="text-[var(--color-ink)]">Printing tip:</strong>{" "}
+            use bright-white cardstock and color ink. Keep the white area around
+            each QR code clear so phone cameras can scan it reliably.
           </p>
         </aside>
       </div>

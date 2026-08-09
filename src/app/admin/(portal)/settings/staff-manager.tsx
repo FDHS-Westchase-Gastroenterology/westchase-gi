@@ -1,13 +1,16 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import {
+  changeStaffRole,
+  deactivateStaff,
+  inviteStaff,
+  resendStaffInvite,
+} from "./actions";
+import { formatReceived } from "../requests/format";
 
-import { formatReceived } from "@/app/admin/(portal)/requests/format";
-
-import { changeStaffRole, deactivateStaff, inviteStaff, resendStaffInvite } from "./actions";
-
-export interface StaffRow {
+export type StaffRow = {
   user_id: string;
   email: string;
   display_name: string;
@@ -15,38 +18,30 @@ export interface StaffRow {
   active: boolean;
   onboarded_at: string | null;
   lastSignInAt?: string | null;
-}
+};
 
-interface MutationOutcome {
+type MutationOutcome = {
   ok: boolean;
   code?: string;
   delivery?: "accepted" | "failed";
   fallbackSetupUrl?: string;
-}
+};
 
-type StaffFailureCode = "invalid" | "conflict" | "not_found" | "unavailable";
-
-const FAILURE_COPY = {
+const FAILURE_COPY: Record<string, string> = {
   invalid: "Check the email and name — one of them isn't valid.",
   conflict: "That person already has portal access.",
   not_found: "That account no longer exists — the list has been refreshed.",
   unavailable: "Something went wrong saving the change. Try again.",
-} as const satisfies Record<StaffFailureCode, string>;
+};
 
-function isStaffFailureCode(value: string): value is StaffFailureCode {
-  return value in FAILURE_COPY;
-}
-
-function failureMessage(result: Readonly<MutationOutcome>): string {
-  const code = result.code ?? "unavailable";
-  return isStaffFailureCode(code) ? FAILURE_COPY[code] : FAILURE_COPY.unavailable;
+function failureMessage(result: MutationOutcome): string {
+  return FAILURE_COPY[result.code ?? "unavailable"] ?? FAILURE_COPY.unavailable;
 }
 
 function parseStaffRole(value: string): "admin" | "staff" | null {
   return value === "admin" || value === "staff" ? value : null;
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function StaffList({
   staff,
   isAdmin,
@@ -57,7 +52,7 @@ function StaffList({
   onRoleDraft,
   run,
   resendFromRow,
-}: Readonly<{
+}: {
   staff: StaffRow[];
   isAdmin: boolean;
   selfUserId: string;
@@ -66,8 +61,8 @@ function StaffList({
   roleDrafts: Record<string, "admin" | "staff">;
   onRoleDraft: (userId: string, role: "admin" | "staff") => void;
   run: (key: string, action: () => Promise<MutationOutcome>) => void;
-  resendFromRow: (person: Readonly<StaffRow>) => void;
-}>) {
+  resendFromRow: (person: StaffRow) => void;
+}) {
   return (
     <ul data-testid="staff-list" className="mt-5 divide-y divide-[var(--color-line)]">
       {staff.map((person) => {
@@ -88,21 +83,21 @@ function StaffList({
               <p className="truncate font-bold text-[var(--color-ink)]">
                 {person.display_name}
                 {isSelf && (
-                  <span className="ml-2 text-[0.75rem] font-bold tracking-[0.06em] text-[var(--color-teal-ink)] uppercase">
+                  <span className="ml-2 text-[0.75rem] font-bold uppercase tracking-[0.06em] text-[var(--color-teal-ink)]">
                     You
                   </span>
                 )}
               </p>
-              <p className="truncate text-[0.85rem] text-[var(--color-muted)]">{person.email}</p>
+              <p className="truncate text-[0.85rem] text-[var(--color-muted)]">
+                {person.email}
+              </p>
               <p
                 data-testid="staff-last-sign-in"
                 className="mt-0.5 text-[0.8rem] text-[var(--color-muted)]"
               >
                 {signInReadFailed
                   ? "Sign-in info unavailable"
-                  : person.lastSignInAt !== undefined &&
-                      person.lastSignInAt !== null &&
-                      person.lastSignInAt !== ""
+                  : person.lastSignInAt
                     ? `Last sign in ${formatReceived(person.lastSignInAt)}`
                     : "No sign-ins yet"}
               </p>
@@ -113,7 +108,7 @@ function StaffList({
                   <span className="flex min-h-10 items-center rounded-full bg-[var(--color-amber-soft)] px-3.5 text-[0.85rem] font-bold text-[var(--color-ink)]">
                     Pending setup
                   </span>
-                  <span className="flex min-h-10 items-center rounded-full bg-[var(--color-mint)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] capitalize">
+                  <span className="flex min-h-10 items-center rounded-full bg-[var(--color-mint)] px-3.5 text-[0.85rem] font-bold capitalize text-[var(--color-teal-ink)]">
                     {person.role}
                   </span>
                   {isAdmin && !isSelf && (
@@ -131,7 +126,7 @@ function StaffList({
                             resendFromRow(person);
                           }
                         }}
-                        className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
+                        className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
                       >
                         Resend invite
                       </button>
@@ -145,12 +140,12 @@ function StaffList({
                               `Cancel the pending invitation for ${person.display_name}? Their setup link will stop working.`,
                             )
                           ) {
-                            run(`deactivate:${person.user_id}`, async () =>
+                            run(`deactivate:${person.user_id}`, () =>
                               deactivateStaff({ id: person.user_id }),
                             );
                           }
                         }}
-                        className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+                        className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
                       >
                         Deactivate
                       </button>
@@ -170,7 +165,7 @@ function StaffList({
                       const role = parseStaffRole(event.target.value);
                       if (role) onRoleDraft(person.user_id, role);
                     }}
-                    className="min-h-10 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-2.5 text-[0.85rem] font-bold text-[var(--color-body)]"
+                    className="min-h-11 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-2.5 text-[0.85rem] font-bold text-[var(--color-body)]"
                   >
                     <option value="staff">Staff</option>
                     <option value="admin">Admin</option>
@@ -180,15 +175,15 @@ function StaffList({
                       type="button"
                       data-action="apply-role"
                       disabled={rowPending}
-                      onClick={() => {
-                        run(`role:${person.user_id}`, async () =>
+                      onClick={() =>
+                        run(`role:${person.user_id}`, () =>
                           changeStaffRole({
                             userId: person.user_id,
                             role: draft,
                           }),
-                        );
-                      }}
-                      className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
+                        )
+                      }
+                      className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
                     >
                       Apply
                     </button>
@@ -203,18 +198,18 @@ function StaffList({
                           `Deactivate ${person.display_name}? They are locked out immediately and this can only be undone by an engineer.`,
                         )
                       ) {
-                        run(`deactivate:${person.user_id}`, async () =>
+                        run(`deactivate:${person.user_id}`, () =>
                           deactivateStaff({ id: person.user_id }),
                         );
                       }
                     }}
-                    className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+                    className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
                   >
                     Deactivate
                   </button>
                 </>
               ) : (
-                <span className="flex min-h-10 items-center rounded-full bg-[var(--color-mint)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] capitalize">
+                <span className="flex min-h-10 items-center rounded-full bg-[var(--color-mint)] px-3.5 text-[0.85rem] font-bold capitalize text-[var(--color-teal-ink)]">
                   {person.role}
                 </span>
               )}
@@ -226,18 +221,17 @@ function StaffList({
   );
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 export function StaffManager({
   staff,
   isAdmin,
   selfUserId,
   signInReadFailed = false,
-}: Readonly<{
+}: {
   staff: StaffRow[];
   isAdmin: boolean;
   selfUserId: string;
   signInReadFailed?: boolean;
-}>) {
+}) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [pendingKey, setPendingKey] = useState<string | null>(null);
@@ -248,7 +242,9 @@ export function StaffManager({
     fallbackSetupUrl?: string;
     copied: boolean;
   } | null>(null);
-  const [roleDrafts, setRoleDrafts] = useState<Record<string, "admin" | "staff">>({});
+  const [roleDrafts, setRoleDrafts] = useState<Record<string, "admin" | "staff">>(
+    {},
+  );
 
   function run(key: string, action: () => Promise<MutationOutcome>) {
     setError(null);
@@ -265,15 +261,14 @@ export function StaffManager({
     });
   }
 
-  function showInviteResult(email: string, result: Readonly<MutationOutcome>): boolean {
+  function showInviteResult(email: string, result: MutationOutcome): boolean {
     if (!result.ok) {
       setError(failureMessage(result));
       return false;
     }
     if (
       (result.delivery !== "accepted" && result.delivery !== "failed") ||
-      (result.delivery === "failed" &&
-        (result.fallbackSetupUrl === undefined || result.fallbackSetupUrl === ""))
+      (result.delivery === "failed" && !result.fallbackSetupUrl)
     ) {
       setError(FAILURE_COPY.unavailable);
       return false;
@@ -289,14 +284,10 @@ export function StaffManager({
   }
 
   function inviteFromForm(formData: FormData) {
-    const rawEmail = formData.get("email");
-    const rawDisplayName = formData.get("displayName");
-    const rawRole = formData.get("role");
-    const email = rawEmail === null || rawEmail instanceof File ? "" : rawEmail.trim();
-    const displayName =
-      rawDisplayName === null || rawDisplayName instanceof File ? "" : rawDisplayName.trim();
-    const roleValue = rawRole === null || rawRole instanceof File ? "staff" : rawRole;
-    const role = roleValue === "admin" ? "admin" : "staff";
+    const email = String(formData.get("email") ?? "").trim();
+    const displayName = String(formData.get("displayName") ?? "").trim();
+    const role =
+      String(formData.get("role") ?? "staff") === "admin" ? "admin" : "staff";
     if (!email || !displayName) return;
 
     setError(null);
@@ -309,7 +300,7 @@ export function StaffManager({
     });
   }
 
-  function resendFromRow(person: Readonly<StaffRow>) {
+  function resendFromRow(person: StaffRow) {
     setError(null);
     setIssued(null);
     setPendingKey(`resend:${person.user_id}`);
@@ -323,15 +314,18 @@ export function StaffManager({
   return (
     <div
       data-testid="staff-manager"
-      className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7"
+      className="portal-panel p-6 sm:p-7"
     >
-      <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">Staff access</h2>
+      <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
+        Staff access
+      </h2>
       <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
-        Everyone who can open this portal. Administrators can invite people, change roles, and
-        deactivate accounts; deactivated staff are locked out immediately.
+        Everyone who can open this portal. Administrators can invite
+        people, change roles, and deactivate accounts; deactivated staff
+        are locked out immediately.
       </p>
 
-      {error !== null && error !== "" && (
+      {error && (
         <p
           role="alert"
           className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
@@ -343,7 +337,9 @@ export function StaffManager({
       {issued && (
         <div
           data-testid={
-            issued.delivery === "accepted" ? "invite-delivery-panel" : "invite-fallback-panel"
+            issued.delivery === "accepted"
+              ? "invite-delivery-panel"
+              : "invite-fallback-panel"
           }
           className="mt-4 rounded-[var(--radius)] border border-[var(--color-teal-ink)] bg-[var(--color-mint)] p-4"
         >
@@ -359,45 +355,41 @@ export function StaffManager({
                 : "Email delivery could not be confirmed. Share this one-time setup link securely if they do not receive the message; it is shown only this once."}
             </p>
           </div>
-          {issued.delivery === "failed" &&
-            issued.fallbackSetupUrl !== undefined &&
-            issued.fallbackSetupUrl !== "" && (
-              <code
-                data-testid="fallback-setup-url"
-                className="mt-3 block rounded-[var(--radius-sm)] bg-white px-3 py-2 font-mono text-[0.8rem] leading-relaxed break-all text-[var(--color-ink)]"
-              >
-                {issued.fallbackSetupUrl}
-              </code>
-            )}
+          {issued.delivery === "failed" && issued.fallbackSetupUrl && (
+            <code
+              data-testid="fallback-setup-url"
+              className="mt-3 block break-all rounded-[var(--radius-sm)] bg-white px-3 py-2 font-mono text-[0.8rem] leading-relaxed text-[var(--color-ink)]"
+            >
+              {issued.fallbackSetupUrl}
+            </code>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {issued.delivery === "failed" &&
-              issued.fallbackSetupUrl !== undefined &&
-              issued.fallbackSetupUrl !== "" && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    void navigator.clipboard
-                      .writeText(issued.fallbackSetupUrl ?? "")
-                      .then(() => {
-                        setIssued((current) =>
-                          current !== null ? { ...current, copied: true } : current,
-                        );
-                      })
-                      .catch(() => {
-                        setError("Could not copy the setup link. Select and copy it manually.");
-                      });
-                  }}
-                  className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)]"
-                >
-                  {issued.copied ? "Copied" : "Copy setup link"}
-                </button>
-              )}
+            {issued.delivery === "failed" && issued.fallbackSetupUrl && (
+              <button
+                type="button"
+                onClick={() => {
+                  void navigator.clipboard
+                    .writeText(issued.fallbackSetupUrl ?? "")
+                    .then(() =>
+                      setIssued((current) =>
+                        current ? { ...current, copied: true } : current,
+                      ),
+                    )
+                    .catch(() => {
+                      setError(
+                        "Could not copy the setup link. Select and copy it manually.",
+                      );
+                    });
+                }}
+                className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)]"
+              >
+                {issued.copied ? "Copied" : "Copy setup link"}
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => {
-                setIssued(null);
-              }}
-              className="flex min-h-10 items-center rounded-[var(--radius-sm)] px-3.5 text-[0.85rem] font-bold text-[var(--color-muted)]"
+              onClick={() => setIssued(null)}
+              className="flex min-h-11 items-center rounded-[var(--radius-sm)] px-3.5 text-[0.85rem] font-bold text-[var(--color-muted)]"
             >
               Dismiss
             </button>
@@ -412,16 +404,21 @@ export function StaffManager({
         signInReadFailed={signInReadFailed}
         pendingKey={pendingKey}
         roleDrafts={roleDrafts}
-        onRoleDraft={(userId, role) => {
-          setRoleDrafts((current) => ({ ...current, [userId]: role }));
-        }}
+        onRoleDraft={(userId, role) =>
+          setRoleDrafts((current) => ({ ...current, [userId]: role }))
+        }
         run={run}
         resendFromRow={resendFromRow}
       />
 
       {isAdmin ? (
-        <form className="mt-5 border-t border-[var(--color-line)] pt-5" action={inviteFromForm}>
-          <h3 className="text-sm font-bold text-[var(--color-ink)]">Invite a staff member</h3>
+        <form
+          className="mt-5 border-t border-[var(--color-line)] pt-5"
+          action={inviteFromForm}
+        >
+          <h3 className="text-sm font-bold text-[var(--color-ink)]">
+            Invite a staff member
+          </h3>
           <div className="mt-3 grid gap-3 sm:grid-cols-[1.3fr_1.3fr_auto_auto]">
             <div>
               <label htmlFor="invite-email" className="sr-only">
@@ -434,7 +431,7 @@ export function StaffManager({
                 required
                 placeholder="person@example.com"
                 disabled={pendingKey === "invite"}
-                className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
+                className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)]"
               />
             </div>
             <div>
@@ -448,7 +445,7 @@ export function StaffManager({
                 required
                 placeholder="Full name"
                 disabled={pendingKey === "invite"}
-                className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
+                className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)]"
               />
             </div>
             <div>

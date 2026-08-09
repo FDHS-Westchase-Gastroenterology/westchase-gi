@@ -1,7 +1,6 @@
 import { mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-
 import { chromium } from "@playwright/test";
 
 const DEFAULT_ORIGIN = "https://westchasegi.com";
@@ -26,7 +25,9 @@ function originFrom(input) {
 
 const args = process.argv.slice(2);
 const portalMode = args.includes("--portal");
-const origin = originFrom(args.find((argument) => argument !== "--portal") ?? DEFAULT_ORIGIN);
+const origin = originFrom(
+  args.find((argument) => argument !== "--portal") ?? DEFAULT_ORIGIN,
+);
 
 function requiredEnv(name) {
   const value = process.env[name]?.trim();
@@ -41,7 +42,10 @@ function portalCredentials() {
       password: requiredEnv("PORTAL_SEED_ADMIN_PASSWORD"),
     };
   }
-  if (origin.hostname.endsWith(".vercel.app") && origin.hostname.includes("-git-")) {
+  if (
+    origin.hostname.endsWith(".vercel.app") &&
+    origin.hostname.includes("-git-")
+  ) {
     return {
       email: requiredEnv("PORTAL_PREVIEW_USERNAME"),
       password: requiredEnv("PORTAL_PREVIEW_PASSWORD"),
@@ -53,86 +57,21 @@ function portalCredentials() {
 }
 
 const publicCaptures = [
-  {
-    name: "desktop-en-home",
-    path: "/en",
-    viewport: { width: 1440, height: 900 },
-    locale: "en",
-    ready: "main h1",
-  },
+  { name: "desktop-en-home", path: "/en", viewport: { width: 1440, height: 900 }, locale: "en", ready: "main h1" },
   // The English-evidence first visit is banner + hero alone: the chooser only
-  // Interrupts on a locale mismatch (I4).
-  {
-    name: "desktop-en-home-first-visit",
-    path: "/en",
-    viewport: { width: 1440, height: 900 },
-    firstVisit: true,
-    ready: "main h1",
-  },
+  // interrupts on a locale mismatch (I4).
+  { name: "desktop-en-home-first-visit", path: "/en", viewport: { width: 1440, height: 900 }, firstVisit: true, ready: "main h1" },
   // The one standing interruption: the chooser when the browser's language
-  // Mismatches the served locale, with that language suggested.
-  {
-    name: "desktop-en-home-locale-hint",
-    path: "/en",
-    viewport: { width: 1440, height: 900 },
-    firstVisit: true,
-    browserLocale: "es",
-    ready: "dialog.language-dialog[open]",
-  },
-  {
-    name: "desktop-en-services",
-    path: "/en/services",
-    viewport: { width: 1440, height: 900 },
-    locale: "en",
-    ready: "main h1",
-  },
-  {
-    name: "desktop-en-physicians",
-    path: "/en/physicians",
-    viewport: { width: 1440, height: 900 },
-    locale: "en",
-    ready: "main h1",
-  },
-  {
-    name: "desktop-en-appointment",
-    path: "/en/appointment",
-    viewport: { width: 1440, height: 900 },
-    locale: "en",
-    ready: "main form",
-  },
-  {
-    name: "desktop-en-contact",
-    path: "/en/contact",
-    viewport: { width: 1440, height: 900 },
-    locale: "en",
-    ready: "main form",
-  },
-  {
-    name: "desktop-ar-home",
-    path: "/ar",
-    viewport: { width: 1440, height: 900 },
-    locale: "ar",
-    ready: "main h1",
-  },
-  {
-    name: "desktop-review",
-    path: "/review",
-    viewport: { width: 1440, height: 900 },
-    ready: "main h1",
-  },
-  {
-    name: "desktop-admin-login",
-    path: "/admin/login",
-    viewport: { width: 1440, height: 900 },
-    ready: "form",
-  },
-  {
-    name: "mobile-en-home",
-    path: "/en",
-    viewport: { width: 390, height: 844 },
-    locale: "en",
-    ready: "main h1",
-  },
+  // mismatches the served locale, with that language suggested.
+  { name: "desktop-en-home-locale-hint", path: "/en", viewport: { width: 1440, height: 900 }, firstVisit: true, browserLocale: "es", ready: "dialog.language-dialog[open]" },
+  { name: "desktop-en-services", path: "/en/services", viewport: { width: 1440, height: 900 }, locale: "en", ready: "main h1" },
+  { name: "desktop-en-physicians", path: "/en/physicians", viewport: { width: 1440, height: 900 }, locale: "en", ready: "main h1" },
+  { name: "desktop-en-appointment", path: "/en/appointment", viewport: { width: 1440, height: 900 }, locale: "en", ready: "main form" },
+  { name: "desktop-en-contact", path: "/en/contact", viewport: { width: 1440, height: 900 }, locale: "en", ready: "main form" },
+  { name: "desktop-ar-home", path: "/ar", viewport: { width: 1440, height: 900 }, locale: "ar", ready: "main h1" },
+  { name: "desktop-review", path: "/review", viewport: { width: 1440, height: 900 }, ready: "main h1" },
+  { name: "desktop-admin-login", path: "/admin/login", viewport: { width: 1440, height: 900 }, ready: "form" },
+  { name: "mobile-en-home", path: "/en", viewport: { width: 390, height: 844 }, locale: "en", ready: "main h1" },
   {
     name: "mobile-en-menu",
     path: "/en",
@@ -144,107 +83,25 @@ const publicCaptures = [
       await page.getByRole("button", { name: "Close", exact: true }).waitFor();
     },
   },
-  {
-    name: "mobile-en-procedure-prep",
-    path: "/en/procedure-prep",
-    viewport: { width: 390, height: 844 },
-    locale: "en",
-    ready: "main h1",
-  },
-  {
-    name: "mobile-ar-home",
-    path: "/ar",
-    viewport: { width: 390, height: 844 },
-    locale: "ar",
-    ready: "main h1",
-  },
+  { name: "mobile-en-procedure-prep", path: "/en/procedure-prep", viewport: { width: 390, height: 844 }, locale: "en", ready: "main h1" },
+  { name: "mobile-ar-home", path: "/ar", viewport: { width: 390, height: 844 }, locale: "ar", ready: "main h1" },
 ];
 
 const portalCaptures = [
-  {
-    name: "desktop-portal-home",
-    path: "/admin",
-    viewport: { width: 1440, height: 900 },
-    ready: "main h1",
-  },
-  {
-    name: "desktop-portal-requests",
-    path: "/admin/requests?q=ui-reference-placeholder",
-    viewport: { width: 1440, height: 900 },
-    ready: "main h1",
-  },
-  {
-    name: "desktop-portal-review-flyers",
-    path: "/admin/review-flyers",
-    viewport: { width: 1440, height: 900 },
-    ready: "main h1",
-  },
-  {
-    name: "desktop-portal-settings",
-    path: "/admin/settings",
-    viewport: { width: 1440, height: 900 },
-    ready: '[data-testid="recipients-manager"]',
-  },
-  {
-    name: "desktop-portal-settings-software",
-    path: "/admin/settings/software",
-    viewport: { width: 1440, height: 900 },
-    ready: '[data-testid="managed-product"]',
-  },
-  {
-    name: "desktop-portal-audit",
-    path: "/admin/audit",
-    viewport: { width: 1440, height: 900 },
-    ready: "main h1",
-  },
-  {
-    name: "desktop-portal-help",
-    path: "/admin/help",
-    viewport: { width: 1440, height: 900 },
-    ready: "main h1",
-  },
-  {
-    name: "mobile-portal-home",
-    path: "/admin",
-    viewport: { width: 390, height: 844 },
-    ready: "main h1",
-  },
-  {
-    name: "mobile-portal-requests",
-    path: "/admin/requests?q=ui-reference-placeholder",
-    viewport: { width: 390, height: 844 },
-    ready: "main h1",
-  },
-  {
-    name: "mobile-portal-review-flyers",
-    path: "/admin/review-flyers",
-    viewport: { width: 390, height: 844 },
-    ready: "main h1",
-  },
-  {
-    name: "mobile-portal-settings",
-    path: "/admin/settings",
-    viewport: { width: 390, height: 844 },
-    ready: '[data-testid="recipients-manager"]',
-  },
-  {
-    name: "mobile-portal-settings-software",
-    path: "/admin/settings/software",
-    viewport: { width: 390, height: 844 },
-    ready: '[data-testid="managed-product"]',
-  },
-  {
-    name: "mobile-portal-audit",
-    path: "/admin/audit",
-    viewport: { width: 390, height: 844 },
-    ready: "main h1",
-  },
-  {
-    name: "mobile-portal-help",
-    path: "/admin/help",
-    viewport: { width: 390, height: 844 },
-    ready: "main h1",
-  },
+  { name: "desktop-portal-home", path: "/admin", viewport: { width: 1440, height: 900 }, ready: "main h1" },
+  { name: "desktop-portal-requests", path: "/admin/requests?q=ui-reference-placeholder", viewport: { width: 1440, height: 900 }, ready: "main h1" },
+  { name: "desktop-portal-review-flyers", path: "/admin/review-flyers", viewport: { width: 1440, height: 900 }, ready: "main h1" },
+  { name: "desktop-portal-settings", path: "/admin/settings", viewport: { width: 1440, height: 900 }, ready: '[data-testid="recipients-manager"]' },
+  { name: "desktop-portal-settings-software", path: "/admin/settings/software", viewport: { width: 1440, height: 900 }, ready: '[data-testid="managed-product"]' },
+  { name: "desktop-portal-audit", path: "/admin/audit", viewport: { width: 1440, height: 900 }, ready: "main h1" },
+  { name: "desktop-portal-help", path: "/admin/help", viewport: { width: 1440, height: 900 }, ready: "main h1" },
+  { name: "mobile-portal-home", path: "/admin", viewport: { width: 390, height: 844 }, ready: "main h1" },
+  { name: "mobile-portal-requests", path: "/admin/requests?q=ui-reference-placeholder", viewport: { width: 390, height: 844 }, ready: "main h1" },
+  { name: "mobile-portal-review-flyers", path: "/admin/review-flyers", viewport: { width: 390, height: 844 }, ready: "main h1" },
+  { name: "mobile-portal-settings", path: "/admin/settings", viewport: { width: 390, height: 844 }, ready: '[data-testid="recipients-manager"]' },
+  { name: "mobile-portal-settings-software", path: "/admin/settings/software", viewport: { width: 390, height: 844 }, ready: '[data-testid="managed-product"]' },
+  { name: "mobile-portal-audit", path: "/admin/audit", viewport: { width: 390, height: 844 }, ready: "main h1" },
+  { name: "mobile-portal-help", path: "/admin/help", viewport: { width: 390, height: 844 }, ready: "main h1" },
 ];
 
 async function settle(page) {
@@ -255,12 +112,30 @@ async function settle(page) {
   });
 }
 
+async function assertNoHorizontalOverflow(page, label) {
+  const dimensions = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: Math.max(
+      document.documentElement.scrollWidth,
+      document.body.scrollWidth,
+    ),
+  }));
+  if (dimensions.scrollWidth > dimensions.clientWidth + 1) {
+    throw new Error(
+      `${label} overflows horizontally: ${dimensions.scrollWidth}px content in a ${dimensions.clientWidth}px viewport`,
+    );
+  }
+}
+
 async function redactPortalData(page) {
   await page.addStyleTag({
     content: `
       [data-testid="recipient-list"],
       [data-testid="staff-list"],
       [data-testid="audit-table"] tbody,
+      [data-testid="release-engagement-table"] tbody,
+      [data-testid="release-engagement-cards"],
+      [data-testid="recent-work-list"],
       [data-testid="maintainer-list"] {
         filter: blur(8px);
         user-select: none;
@@ -272,8 +147,35 @@ async function redactPortalData(page) {
     if (sessionUser) sessionUser.textContent = "Staff Member";
     const greeting = document.querySelector('[data-testid="home-greeting"]');
     if (greeting) greeting.textContent = "Good morning, Staff.";
+    const queueHeadline = document.querySelector(
+      '[data-testid="queue-overview-headline"]',
+    );
+    if (queueHeadline) {
+      const count = document.createElement("strong");
+      count.className = "font-black text-[var(--portal-attention-ink)]";
+      count.textContent = "3";
+      queueHeadline.replaceChildren(
+        count,
+        " new appointment requests are waiting.",
+      );
+    }
+    document.querySelector('[data-testid="nav-waiting-badge"]')?.remove();
+    document
+      .querySelectorAll(
+        '[data-testid="queue-overview-unavailable"] > :not([data-testid="queue-overview-headline"])',
+      )
+      .forEach((element) => element.remove());
     document.querySelector('[data-testid="queue-overview-preview"]')?.remove();
+    document.querySelector('[data-testid="queue-overview-oldest"]')?.remove();
+    document.querySelector('[data-testid="attention-summary"]')?.remove();
+    document
+      .querySelector('[data-testid="attention-summary-unavailable"]')
+      ?.remove();
+    document.querySelector('[data-testid="no-recipients-warning"]')?.remove();
+    document.querySelector('[data-testid="delivery-failure-warning"]')?.remove();
     document.querySelector('[data-testid="portal-tour-nudge"]')?.remove();
+    document.querySelector('[data-testid="portal-release-announcement"]')?.remove();
+    document.querySelector('[data-testid="portal-release-utility"]')?.remove();
     document.querySelector("nextjs-portal")?.remove();
   });
 }
@@ -293,7 +195,9 @@ async function capturePortalReferences(browser, credentials) {
     await page.getByLabel("Email").fill(credentials.email);
     await page.getByLabel("Password").fill(credentials.password);
     await Promise.all([
-      page.waitForURL((url) => url.origin === origin.origin && url.pathname === "/admin"),
+      page.waitForURL((url) =>
+        url.origin === origin.origin && url.pathname === "/admin",
+      ),
       page.getByRole("button", { name: "Sign in", exact: true }).click(),
     ]);
 
@@ -306,17 +210,29 @@ async function capturePortalReferences(browser, credentials) {
       await page.waitForTimeout(250);
       if (capture.path === "/admin/review-flyers") {
         await page.waitForFunction(() => {
-          const images = Array.from(document.querySelectorAll("[data-review-target] img"));
-          return (
-            images.length > 0 && images.every((image) => image.complete && image.naturalWidth > 0)
+          const images = Array.from(
+            document.querySelectorAll("[data-review-target] img"),
+          );
+          const visibleImages = images.filter((image) => {
+            const bounds = image.getBoundingClientRect();
+            return bounds.bottom > 0 && bounds.top < window.innerHeight;
+          });
+          return visibleImages.length > 0 && visibleImages.every(
+            (image) => image.complete && image.naturalWidth > 0,
           );
         });
       }
       await redactPortalData(page);
       await settle(page);
+      await assertNoHorizontalOverflow(page, capture.name);
       await page.screenshot({
         path: resolve(outputDirectory, `${capture.name}.png`),
       });
+      if (capture.name.startsWith("mobile-")) {
+        await page.setViewportSize({ width: 320, height: capture.viewport.height });
+        await settle(page);
+        await assertNoHorizontalOverflow(page, `${capture.name} at 320px`);
+      }
       console.log(`Captured ${capture.name}.png`);
     }
   } finally {
@@ -331,15 +247,12 @@ const browser = await chromium.launch();
 try {
   if (!portalMode) {
     for (const capture of publicCaptures) {
-      const contextOptions = {
+      const context = await browser.newContext({
         viewport: capture.viewport,
         deviceScaleFactor: 1,
         reducedMotion: "reduce",
-      };
-      if (capture.browserLocale) {
-        contextOptions.locale = capture.browserLocale;
-      }
-      const context = await browser.newContext(contextOptions);
+        ...(capture.browserLocale ? { locale: capture.browserLocale } : {}),
+      });
       try {
         if (!capture.firstVisit && capture.locale) {
           await context.addCookies([

@@ -1,7 +1,13 @@
 import Link from "next/link";
 import type { SVGProps } from "react";
-import { z } from "zod";
-
+import { requireRole } from "@/lib/portal/auth";
+import {
+  arrivedOutsideOfficeHours,
+  waitingSince,
+} from "@/lib/portal/business-time";
+import { availableQueueCount } from "@/lib/portal/request-query";
+import { serviceClient } from "@/lib/portal/server";
+import { fetchAttentionSummary } from "@/lib/portal/workflow/reads";
 import {
   ArrowRight,
   ChevronRight,
@@ -12,20 +18,14 @@ import {
   Printer,
   Users,
 } from "@/components/icons";
-import { requireRole } from "@/lib/portal/auth";
-import { arrivedOutsideOfficeHours, waitingSince } from "@/lib/portal/business-time";
-import { availableQueueCount } from "@/lib/portal/request-query";
-import { serviceClient } from "@/lib/portal/server";
-import { fetchAttentionSummary } from "@/lib/portal/workflow/reads";
-
-import { PortalReleaseHomeAnnouncement } from "./portal-release-briefing";
-import { PortalTour } from "./portal-tour";
 import { formatReceived } from "./requests/format";
+import { PortalTour } from "./portal-tour";
+import { PortalReleaseHomeAnnouncement } from "./portal-release-briefing";
 
 // The portal's front door. Staff land on their day, not on software:
-// A greeting, the one thing that may need attention (new appointment
-// Requests), and the rest of the portal phrased as plain-language
-// Tasks. Occasional tasks live here instead of holding permanent tabs.
+// a greeting, the one thing that may need attention (new appointment
+// requests), and the rest of the portal phrased as plain-language
+// tasks. Occasional tasks live here instead of holding permanent tabs.
 
 const NY_TIME = new Intl.DateTimeFormat("en-US", {
   hour: "2-digit",
@@ -51,22 +51,12 @@ function greetingFor(minutes: number): string {
   return "Good evening";
 }
 
-interface Task {
+type Task = {
   href: string;
   label: string;
   description: string;
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-  icon: (props: Readonly<SVGProps<SVGSVGElement>>) => React.ReactNode;
-}
-
-const newestPreviewSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  created_at: z.string(),
-});
-const oldestPreviewSchema = z.object({
-  created_at: z.string(),
-});
+  icon: (props: SVGProps<SVGSVGElement>) => React.ReactNode;
+};
 
 const TASKS: Task[] = [
   {
@@ -105,56 +95,11 @@ function headlineFor(newCount: number): React.ReactNode {
   if (newCount === 0) return "No new appointment requests are waiting.";
   return (
     <>
-      <strong className="font-black text-[var(--color-amber-deep)]">{newCount}</strong> new
-      appointment {newCount === 1 ? "request is" : "requests are"} waiting.
+      <strong className="font-black text-[var(--portal-attention-ink)]">
+        {newCount}
+      </strong>{" "}
+      new appointment {newCount === 1 ? "request is" : "requests are"} waiting.
     </>
-  );
-}
-
-function AroundThePortal() {
-  return (
-    <section aria-labelledby="tasks-heading" className="card-lined p-4 sm:p-5">
-      <h2 id="tasks-heading" className="pt-1 text-[1.02rem] font-black text-[var(--color-ink)]">
-        Around the portal
-      </h2>
-      <ul className="mt-2.5">
-        {TASKS.map((task) => {
-          const slug = task.label.toLowerCase().replace(/[^a-z]+/g, "-");
-          return (
-            <li key={task.href}>
-              <Link
-                href={task.href}
-                className="group -mx-3 flex items-center gap-[0.95rem] rounded-[var(--radius)] px-3 py-[0.9rem] transition-colors duration-[180ms] ease-out hover:bg-[var(--color-mint)] active:bg-[var(--color-mint-2)]"
-                aria-labelledby={`task-${slug}-label`}
-                aria-describedby={`task-${slug}-desc`}
-              >
-                <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-[var(--color-mint-2)] text-[var(--color-teal-ink)]">
-                  <task.icon className="h-5 w-5" aria-hidden="true" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span
-                    id={`task-${slug}-label`}
-                    className="block text-[0.95rem] leading-snug font-bold text-[var(--color-ink)]"
-                  >
-                    {task.label}
-                  </span>
-                  <span
-                    id={`task-${slug}-desc`}
-                    className="mt-0.5 block text-[0.85rem] leading-snug text-[var(--color-muted)]"
-                  >
-                    {task.description}
-                  </span>
-                </span>
-                <ChevronRight
-                  className="h-4.5 w-4.5 flex-none text-[var(--color-muted)] transition-transform duration-200 [transition-timing-function:var(--ease-out-quint)] group-hover:translate-x-[3px]"
-                  aria-hidden="true"
-                />
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </section>
   );
 }
 
@@ -167,8 +112,8 @@ export default async function AdminHomePage() {
 
   const db = serviceClient();
   // A failed read must never present as an empty queue: "No new requests"
-  // And "the count could not load" are different truths, and conflating
-  // Them recreates the silent-queue failure this portal exists to end.
+  // and "the count could not load" are different truths, and conflating
+  // them recreates the silent-queue failure this portal exists to end.
   const [
     { data: newestRows, count: newCount, error: queueReadError },
     { data: oldestRows },
@@ -192,47 +137,41 @@ export default async function AdminHomePage() {
       .select("id", { count: "exact", head: true })
       .eq("active", true),
     // The workflow attention summary: due call-agains, silent contacted
-    // Requests, and closed records awaiting legacy review. Each count is
-    // Independently honest — a failed read is null, never zero.
+    // requests, and closed records awaiting legacy review. Each count is
+    // independently honest — a failed read is null, never zero.
     fetchAttentionSummary(db, now),
   ]);
-  const newestParsed = z.array(newestPreviewSchema).safeParse(newestRows ?? []);
-  if (!newestParsed.success) {
-    throw new Error("Queue preview read failed: invalid");
-  }
-  const newest = newestParsed.data;
-  const availableNewCount = availableQueueCount(newCount, Boolean(queueReadError));
-  const oldestParsed = z.array(oldestPreviewSchema).safeParse(oldestRows ?? []);
-  if (!oldestParsed.success) {
-    throw new Error("Queue preview read failed: invalid");
-  }
-  const oldest = oldestParsed.data;
-  const oldestPreview = oldest.at(0);
+  const newest = (newestRows ?? []) as Array<{
+    id: string;
+    name: string;
+    created_at: string;
+  }>;
+  const availableNewCount = availableQueueCount(newCount, queueReadError);
+  const oldest = (oldestRows ?? []) as Array<{ created_at: string }>;
   const oldestWaiting =
-    availableNewCount !== null && availableNewCount !== 0 && oldestPreview !== undefined
-      ? waitingSince(oldestPreview.created_at, now)
-      : null;
+    availableNewCount && oldest[0] ? waitingSince(oldest[0].created_at, now) : null;
   // Zero recipients is a real, legal state worth flagging; a failed
-  // Recipients read is not evidence of it, so the warning stays silent then.
-  const noActiveRecipients = recipientsReadError === null && recipientCount === 0;
+  // recipients read is not evidence of it, so the warning stays silent then.
+  const noActiveRecipients = !recipientsReadError && recipientCount === 0;
   // Delivery health is the other silent failure mode: the provider can start
-  // Failing while every request still lands in the queue. Same discipline —
-  // A failed outbox read is not evidence of an outage, so it stays silent.
+  // failing while every request still lands in the queue. Same discipline —
+  // a failed outbox read is not evidence of an outage, so it stays silent.
   const deliveryFailureCount =
     attention.outboxTrouble !== null && attention.outboxTrouble > 0
       ? attention.outboxTrouble
       : null;
 
   // The rest of the day's attention, beyond brand-new requests: call-agains
-  // Whose day arrived, contacted requests with no call-again set, and
-  // Closed records still awaiting legacy review. Rendered only when real
-  // (Count > 0); an unavailable count gets an honest caveat, never a zero.
+  // whose day arrived, contacted requests with no call-again set, and
+  // closed records still awaiting legacy review. Rendered only when real
+  // (count > 0); an unavailable count gets an honest caveat, never a zero.
   const attentionPaths = [
     {
       key: "due",
       count: attention.dueCallAgainCount,
       href: "/admin/requests?status=contacted",
-      label: (n: number) => (n === 1 ? "1 call-again is due" : `${n} call-agains are due`),
+      label: (n: number) =>
+        n === 1 ? "1 call-again is due" : `${n} call-agains are due`,
     },
     {
       key: "silent",
@@ -248,11 +187,17 @@ export default async function AdminHomePage() {
       count: attention.legacyReviewCount,
       href: "/admin/requests?status=closed",
       label: (n: number) =>
-        n === 1 ? "1 closed record needs review" : `${n} closed records need review`,
+        n === 1
+          ? "1 closed record needs review"
+          : `${n} closed records need review`,
     },
   ] as const;
-  const visibleAttention = attentionPaths.filter((item) => item.count !== null && item.count > 0);
-  const attentionUnavailable = attentionPaths.some((item) => item.count === null);
+  const visibleAttention = attentionPaths.filter(
+    (item) => item.count !== null && item.count > 0,
+  );
+  const attentionUnavailable = attentionPaths.some(
+    (item) => item.count === null,
+  );
 
   return (
     <section aria-labelledby="home-heading">
@@ -275,11 +220,11 @@ export default async function AdminHomePage() {
       {session.portalTourDismissedAt === null ? <PortalTour /> : null}
       <PortalReleaseHomeAnnouncement />
 
-      <div className="mt-7 grid items-start gap-6 lg:grid-cols-[1.55fr_1fr]">
+      <div className="mt-8 grid items-start gap-8 lg:grid-cols-[minmax(0,1.7fr)_minmax(18rem,0.8fr)]">
         <section
           aria-labelledby="queue-overview-heading"
           data-testid="queue-overview"
-          className="card-lined p-6 sm:p-8"
+          className="portal-panel portal-panel--primary p-6 sm:p-8"
         >
           <h2
             id="queue-overview-heading"
@@ -291,25 +236,26 @@ export default async function AdminHomePage() {
             <div data-testid="queue-overview-unavailable">
               <p
                 data-testid="queue-overview-headline"
-                className="mt-3 max-w-[26ch] text-[1.4rem] leading-snug font-bold text-[var(--color-ink)]"
+                className="mt-3 max-w-[26ch] text-[1.4rem] font-bold leading-snug text-[var(--color-ink)]"
               >
                 The request count is unavailable right now.
               </p>
               <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.92rem] leading-relaxed text-[var(--color-ink)]">
-                This does not mean the queue is empty — this page could not check it. Refresh in a
-                moment, or open the queue below to see every request.
+                This does not mean the queue is empty — this page could not
+                check it. Refresh in a moment, or open the queue below to
+                see every request.
               </p>
             </div>
           ) : (
             <>
               <p
                 data-testid="queue-overview-headline"
-                className="mt-3 max-w-[26ch] text-[1.4rem] leading-snug font-bold text-[var(--color-ink)]"
+                className="mt-3 max-w-[26ch] text-[1.4rem] font-bold leading-snug text-[var(--color-ink)]"
               >
                 {headlineFor(availableNewCount)}
               </p>
 
-              {oldestWaiting !== null && oldestWaiting !== "" ? (
+              {oldestWaiting ? (
                 <p
                   data-testid="queue-overview-oldest"
                   className="mt-2 text-[0.92rem] text-[var(--color-body)]"
@@ -317,7 +263,7 @@ export default async function AdminHomePage() {
                   {availableNewCount === 1
                     ? "It has been waiting since "
                     : "The oldest has been waiting since "}
-                  <strong className="font-bold text-[var(--color-amber-deep)]">
+                  <strong className="font-bold text-[var(--portal-attention-ink)]">
                     {oldestWaiting}
                   </strong>
                   .
@@ -340,7 +286,9 @@ export default async function AdminHomePage() {
                         </span>
                         <span className="flex-none text-[0.88rem] text-[var(--color-muted)]">
                           {formatReceived(request.created_at)}
-                          {arrivedOutsideOfficeHours(request.created_at) ? " · after hours" : ""}
+                          {arrivedOutsideOfficeHours(request.created_at)
+                            ? " · after hours"
+                            : ""}
                         </span>
                       </Link>
                     </li>
@@ -357,23 +305,19 @@ export default async function AdminHomePage() {
                   data-testid="attention-summary"
                   className="mt-5 space-y-1.5 border-t border-[var(--color-line)] pt-4"
                 >
-                  {visibleAttention.map((item) => {
-                    const count = item.count;
-                    if (count === null) return null;
-                    return (
-                      <li key={item.key}>
-                        <Link
-                          href={item.href}
-                          className="group inline-flex min-h-11 items-center gap-2 text-[0.95rem] font-bold text-[var(--color-ink)]"
-                        >
-                          <span className="h-1.5 w-1.5 flex-none rounded-full bg-[var(--color-amber)]" />
-                          <span className="underline-offset-2 group-hover:underline group-hover:decoration-[var(--color-teal-ink)]">
-                            {item.label(count)}
-                          </span>
-                        </Link>
-                      </li>
-                    );
-                  })}
+                  {visibleAttention.map((item) => (
+                    <li key={item.key}>
+                      <Link
+                        href={item.href}
+                        className="group inline-flex min-h-11 items-center gap-2 text-[0.95rem] font-bold text-[var(--color-ink)]"
+                      >
+                        <span className="h-1.5 w-1.5 flex-none rounded-full bg-[var(--color-amber)]" />
+                        <span className="underline-offset-2 group-hover:underline group-hover:decoration-[var(--color-teal-ink)]">
+                          {item.label(item.count as number)}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
                 </ul>
               ) : null}
               {attentionUnavailable ? (
@@ -381,8 +325,8 @@ export default async function AdminHomePage() {
                   data-testid="attention-summary-unavailable"
                   className="mt-4 text-[0.9rem] text-[var(--color-muted)]"
                 >
-                  Some attention counts could not load just now — open Appointments to see
-                  everything.
+                  Some attention counts could not load just now — open
+                  Appointments to see everything.
                 </p>
               ) : null}
             </>
@@ -393,8 +337,8 @@ export default async function AdminHomePage() {
               data-testid="no-recipients-warning"
               className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.92rem] leading-relaxed text-[var(--color-ink)]"
             >
-              No one is getting notification emails right now. New requests still land here, but no
-              email goes out when one arrives.{" "}
+              No one is getting notification emails right now. New requests still
+              land here, but no email goes out when one arrives.{" "}
               <Link
                 href="/admin/settings#notifications"
                 className="font-bold underline underline-offset-2"
@@ -404,7 +348,7 @@ export default async function AdminHomePage() {
             </p>
           ) : null}
 
-          {deliveryFailureCount !== null && deliveryFailureCount !== 0 ? (
+          {deliveryFailureCount ? (
             <p
               data-testid="delivery-failure-warning"
               className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.92rem] leading-relaxed text-[var(--color-ink)]"
@@ -412,8 +356,8 @@ export default async function AdminHomePage() {
               {deliveryFailureCount === 1
                 ? "A notification email had trouble sending in the last 24 hours."
                 : `${deliveryFailureCount} notification emails had trouble sending in the last 24 hours.`}{" "}
-              Requests still land here — the queue is always the system of record — but notification
-              emails may not be reaching anyone.{" "}
+              Requests still land here — the queue is always the system of
+              record — but notification emails may not be reaching anyone.{" "}
               <Link
                 href="/admin/help#something-wrong"
                 className="font-bold underline underline-offset-2"
@@ -424,14 +368,61 @@ export default async function AdminHomePage() {
           ) : null}
 
           <div className="mt-6">
-            <Link href="/admin/requests" className="btn btn-amber">
+            <Link href="/admin/requests" className="btn btn-navy">
               Open Appointments
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </div>
         </section>
 
-        <AroundThePortal />
+        <section
+          aria-labelledby="tasks-heading"
+          className="min-w-0"
+        >
+          <h2
+            id="tasks-heading"
+            className="pt-1 text-[1.02rem] font-black text-[var(--color-ink)]"
+          >
+            Around the portal
+          </h2>
+          <ul className="portal-utility-list mt-3">
+            {TASKS.map((task) => {
+              const slug = task.label.toLowerCase().replace(/[^a-z]+/g, "-");
+              return (
+                <li key={task.href}>
+                  <Link
+                    href={task.href}
+                    className="group flex min-h-16 items-center gap-[0.95rem] px-1 py-3.5 transition-colors duration-150 hover:bg-[var(--color-mint)] active:bg-[var(--color-mint-2)] sm:px-2"
+                    aria-labelledby={`task-${slug}-label`}
+                    aria-describedby={`task-${slug}-desc`}
+                  >
+                    <span className="grid h-9 w-9 flex-none place-items-center rounded-[var(--radius-sm)] bg-[var(--color-mint-2)] text-[var(--color-teal-ink)]">
+                      <task.icon className="h-5 w-5" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span
+                        id={`task-${slug}-label`}
+                        className="block text-[0.95rem] font-bold leading-snug text-[var(--color-ink)]"
+                      >
+                        {task.label}
+                      </span>
+                      <span
+                        id={`task-${slug}-desc`}
+                        className="mt-0.5 block text-[0.85rem] leading-snug text-[var(--color-muted)]"
+                      >
+                        {task.description}
+                      </span>
+                    </span>
+                    <ChevronRight
+                      className="h-4.5 w-4.5 flex-none text-[var(--color-muted)] transition-colors duration-150 group-hover:text-[var(--color-teal-ink)]"
+                      aria-hidden="true"
+                    />
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       </div>
     </section>
   );

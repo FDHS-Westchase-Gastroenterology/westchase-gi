@@ -12,15 +12,15 @@ import { usePathname } from "next/navigation";
 // Every destination stays visible on a phone without unmarked
 // Horizontal scrolling.
 
-interface NavItem {
+type NavItem = {
   href: string;
   label: string;
   compactLabel?: string;
-}
+};
 
 const NAV_ITEMS: readonly NavItem[] = [
   { href: "/admin", label: "Home" },
-  { href: "/admin/requests", label: "Appointments" },
+  { href: "/admin/requests", label: "Appointments", compactLabel: "Appts" },
   { href: "/admin/settings", label: "Settings" },
   { href: "/admin/help", label: "Help" },
 ];
@@ -30,31 +30,38 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function PortalNav({ waitingCount }: Readonly<{ waitingCount: number | null }>) {
+export function PortalNav({ waitingCount }: { waitingCount: number | null }) {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Portal sections" className="-mb-px overflow-x-auto">
-      <ul className="flex min-w-max items-stretch gap-1">
+    <nav aria-label="Portal sections" className="-mb-px">
+      <ul className="flex w-full items-stretch gap-0 sm:gap-1">
         {NAV_ITEMS.map((item) => {
           const active = isActive(pathname, item.href);
           const showBadge =
-            item.href === "/admin/requests" && waitingCount !== null && waitingCount > 0;
+            item.href === "/admin/requests" &&
+            waitingCount !== null &&
+            waitingCount > 0;
           return (
             <li key={item.href} className="flex">
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-11 items-center border-b-[3px] px-2.5 text-[0.95rem] font-bold transition-colors sm:px-4 ${
+                aria-label={
+                  showBadge
+                    ? `${item.label}, ${waitingCount} waiting`
+                    : item.label
+                }
+                className={`flex min-h-11 items-center whitespace-nowrap border-b-[3px] px-1.5 text-[0.9rem] font-bold transition-colors min-[380px]:px-2 sm:px-4 sm:text-[0.95rem] ${
                   active
                     ? "border-[var(--color-amber)] text-white"
                     : "border-transparent text-[var(--color-on-dark-muted)] hover:text-white"
                 }`}
               >
-                {item.compactLabel !== undefined && item.compactLabel !== "" ? (
+                {item.compactLabel ? (
                   <>
-                    <span className="sm:hidden">{item.compactLabel}</span>
-                    <span className="hidden sm:inline">{item.label}</span>
+                    <span className="min-[360px]:hidden">{item.compactLabel}</span>
+                    <span className="hidden min-[360px]:inline">{item.label}</span>
                   </>
                 ) : (
                   item.label
@@ -62,10 +69,10 @@ export function PortalNav({ waitingCount }: Readonly<{ waitingCount: number | nu
                 {showBadge ? (
                   <span
                     data-testid="nav-waiting-badge"
-                    className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--color-amber)] px-1.5 py-0.5 text-center text-[0.72rem] font-extrabold text-[var(--color-navy-2)] tabular-nums"
+                    aria-hidden="true"
+                    className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--color-amber)] px-1.5 py-0.5 text-center text-[0.72rem] font-extrabold tabular-nums text-[var(--color-navy-2)] sm:ml-2"
                   >
-                    {waitingCount}
-                    <span className="sr-only"> waiting</span>
+                    {waitingCount > 99 ? "99+" : waitingCount}
                   </span>
                 ) : null}
               </Link>
