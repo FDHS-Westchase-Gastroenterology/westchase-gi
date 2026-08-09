@@ -166,6 +166,29 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
         await page
           .getByRole("button", { name: "Open account menu" })
           .click();
+
+        const bottomClearance = await page.evaluate(() => {
+          document.documentElement.style.scrollBehavior = "auto";
+          window.scrollTo(0, document.documentElement.scrollHeight);
+          const navigation = document.querySelector(".portal-sidebar");
+          const lastContent = document.querySelector(".portal-content")?.lastElementChild;
+          if (
+            !(navigation instanceof HTMLElement) ||
+            !(lastContent instanceof HTMLElement)
+          ) {
+            return null;
+          }
+          return navigation.getBoundingClientRect().top -
+            lastContent.getBoundingClientRect().bottom;
+        });
+        expect(
+          bottomClearance,
+          `${portalPage.path} final content clears mobile navigation`,
+        ).not.toBeNull();
+        expect(
+          bottomClearance ?? -1,
+          `${portalPage.path} final content clears mobile navigation`,
+        ).toBeGreaterThanOrEqual(0);
       }
 
       // Settings is active on both of its sub-pages.

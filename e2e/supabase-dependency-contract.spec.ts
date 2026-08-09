@@ -820,8 +820,9 @@ test.describe("Supabase dependency contract", () => {
         status: "new",
       });
       // Intake itself records a `created` event (workflow authority migration),
-      // plus the event this test inserted through PostgREST.
-      expect(joined.data?.request_events).toHaveLength(2);
+      // plus the event this test inserted through PostgREST. Delivery events may
+      // also exist when a recipient is active; they are valid children and do
+      // not change the relationship contract under test.
       expect(joined.data?.request_events).toEqual(
         expect.arrayContaining([
           expect.objectContaining({ type: "created", status: "recorded" }),

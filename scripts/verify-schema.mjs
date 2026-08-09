@@ -222,6 +222,14 @@ const NEW_REQUEST_PRINT_PACKET_MIGRATION = {
   version: "20260809214522",
   name: "prepare_new_request_print_packet",
 }
+const PRINT_PACKET_COALESCE_REPAIR_MIGRATION = {
+  version: "20260809221925",
+  name: "repair_print_packet_coalesce",
+}
+const PRINT_PACKET_RETURN_STATEMENT_FIX_MIGRATION = {
+  version: "20260809222335",
+  name: "fix_print_packet_return_statement",
+}
 
 const TARGETS = new Set(["branch", "prod"])
 
@@ -740,6 +748,22 @@ async function main() {
         row.name === NEW_REQUEST_PRINT_PACKET_MIGRATION.name,
     ),
     "New-request print-packet migration is not applied",
+  )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === PRINT_PACKET_COALESCE_REPAIR_MIGRATION.version &&
+        row.name === PRINT_PACKET_COALESCE_REPAIR_MIGRATION.name,
+    ),
+    "Print-packet coalesce repair migration is not applied",
+  )
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === PRINT_PACKET_RETURN_STATEMENT_FIX_MIGRATION.version &&
+        row.name === PRINT_PACKET_RETURN_STATEMENT_FIX_MIGRATION.name,
+    ),
+    "Print-packet return-statement fix migration is not applied",
   )
 
   const onboardingColumnRows = await queryDatabase({
@@ -1356,9 +1380,12 @@ async function main() {
           definition.includes("snapshot as materialized") &&
           definition.includes("where request.status = 'new'") &&
           definition.includes("order by packet.created_at asc, packet.id asc") &&
+          definition.includes("coalesce(") &&
+          !definition.includes("pg_catalog.coalesce(") &&
+          definition.includes("into v_packet") &&
           definition.includes("'row_count', snapshot.row_count") &&
           definition.includes("'status_filter', 'new'"),
-        "portal_prepare_new_request_print_packet must materialize one ordered new set for its result and audit count",
+        "portal_prepare_new_request_print_packet must materialize one ordered new set with built-in coalesce and a top-level statement for its result and audit count",
       )
     }
     if (rpc.proname === "portal_log_call_outcome") {
@@ -1662,6 +1689,12 @@ async function main() {
   )
   console.log(
     `Verified ${target} migration: ${NEW_REQUEST_PRINT_PACKET_MIGRATION.version}_${NEW_REQUEST_PRINT_PACKET_MIGRATION.name}`,
+  )
+  console.log(
+    `Verified ${target} migration: ${PRINT_PACKET_COALESCE_REPAIR_MIGRATION.version}_${PRINT_PACKET_COALESCE_REPAIR_MIGRATION.name}`,
+  )
+  console.log(
+    `Verified ${target} migration: ${PRINT_PACKET_RETURN_STATEMENT_FIX_MIGRATION.version}_${PRINT_PACKET_RETURN_STATEMENT_FIX_MIGRATION.name}`,
   )
   console.log(
     `Verified ${target} appointment-request workflow: versioned state shape, legacy-review safety, immutable command evidence, outbox, and hold-aware deletion`,

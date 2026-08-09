@@ -15,8 +15,9 @@ export function PrintPacketControls({
 
   useEffect(() => {
     if (!autoStart || started.current) return;
-    started.current = true;
     const timer = window.setTimeout(() => {
+      if (started.current) return;
+      started.current = true;
       setPrinting(true);
       window.print();
       setPrinting(false);

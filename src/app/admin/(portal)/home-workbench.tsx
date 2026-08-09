@@ -265,8 +265,8 @@ export function HomeWorkbench({
             <p data-testid="delivery-failure-warning" className="portal-operational-warning">
               <strong>
                 {deliveryFailureCount === 1
-                  ? "A notification email had trouble sending."
-                  : `${deliveryFailureCount} notification emails had trouble sending.`}
+                  ? "A notification email had trouble sending in the last 24 hours."
+                  : `${deliveryFailureCount} notification emails had trouble sending in the last 24 hours.`}
               </strong>{" "}
               The queue remains the system of record. {" "}
               <Link href="/admin/help#something-wrong">See what to check</Link>

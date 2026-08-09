@@ -92,8 +92,12 @@ export default async function PortalLayout({
           <div className="portal-sidebar-account">
             <p className="portal-sidebar-person">
               <span data-testid="session-user">{session.displayName}</span>
-              <small data-testid="session-email" title={session.email}>
-                {session.email}
+              <small className="portal-sidebar-person-meta">
+                <span className="capitalize">{session.role}</span>
+                <span aria-hidden="true">·</span>
+                <span data-testid="session-email" title={session.email}>
+                  {session.email}
+                </span>
               </small>
             </p>
             <div className="portal-sidebar-account-actions">
@@ -118,7 +122,7 @@ export default async function PortalLayout({
               <strong>Staff portal</strong>
             </Link>
             <details className="portal-account-menu">
-              <summary aria-label="Open account menu">
+              <summary role="button" aria-label="Open account menu">
                 <Users className="h-5 w-5" />
               </summary>
               <div>
