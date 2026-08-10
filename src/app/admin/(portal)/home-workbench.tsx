@@ -33,7 +33,7 @@ const DESK_TOOLS: HomeTask[] = [
   },
   {
     href: "/admin/settings#notifications",
-    label: "Notification emails",
+    label: "Notification recipients",
     description: "Choose who hears when a new request arrives.",
     icon: Mail,
   },

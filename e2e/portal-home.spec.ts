@@ -161,7 +161,7 @@ test.describe("portal home", () => {
     const tasks = page.locator('aside[aria-labelledby="desk-tools-heading"]');
     for (const [label, href] of [
       ["Print review flyers", "/admin/review-flyers"],
-      ["Notification emails", "/admin/settings#notifications"],
+      ["Notification recipients", "/admin/settings#notifications"],
       ["Staff access", "/admin/settings#staff"],
       ["Website status", "/admin/settings/software"],
       ["Request a website change", "/admin/help#website-changes"],
