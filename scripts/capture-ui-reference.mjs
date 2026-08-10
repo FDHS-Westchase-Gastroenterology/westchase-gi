@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises";
+import { mkdir, readdir, unlink } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
@@ -87,29 +87,229 @@ const publicCaptures = [
   { name: "mobile-ar-home", path: "/ar", viewport: { width: 390, height: 844 }, locale: "ar", ready: "main h1" },
 ];
 
-const portalCaptures = [
-  { name: "desktop-portal-home", path: "/admin", viewport: { width: 1440, height: 900 }, ready: "main h1" },
-  { name: "desktop-portal-requests", path: "/admin/requests?q=Sample+patient", viewport: { width: 1440, height: 900 }, ready: "main h1" },
-  { name: "desktop-portal-review-flyers", path: "/admin/review-flyers", viewport: { width: 1440, height: 900 }, ready: "main h1" },
-  { name: "desktop-portal-settings", path: "/admin/settings", viewport: { width: 1440, height: 900 }, ready: '[data-testid="recipients-manager"]' },
-  { name: "desktop-portal-settings-software", path: "/admin/settings/software", viewport: { width: 1440, height: 900 }, ready: '[data-testid="managed-product"]' },
-  { name: "desktop-portal-audit", path: "/admin/audit", viewport: { width: 1440, height: 900 }, ready: "main h1" },
-  { name: "desktop-portal-help", path: "/admin/help", viewport: { width: 1440, height: 900 }, ready: "main h1" },
-  { name: "mobile-portal-home", path: "/admin", viewport: { width: 390, height: 844 }, ready: "main h1" },
-  { name: "mobile-portal-requests", path: "/admin/requests?q=Sample+patient", viewport: { width: 390, height: 844 }, ready: "main h1" },
-  { name: "mobile-portal-review-flyers", path: "/admin/review-flyers", viewport: { width: 390, height: 844 }, ready: "main h1" },
-  { name: "mobile-portal-settings", path: "/admin/settings", viewport: { width: 390, height: 844 }, ready: '[data-testid="recipients-manager"]' },
-  { name: "mobile-portal-settings-software", path: "/admin/settings/software", viewport: { width: 390, height: 844 }, ready: '[data-testid="managed-product"]' },
-  { name: "mobile-portal-audit", path: "/admin/audit", viewport: { width: 390, height: 844 }, ready: "main h1" },
-  { name: "mobile-portal-help", path: "/admin/help", viewport: { width: 390, height: 844 }, ready: "main h1" },
+const portalSurfaces = [
+  {
+    name: "portal-home",
+    path: "/admin",
+    ready: "main h1",
+    continuations: [
+      {
+        suffix: "desk-tools",
+        selector: "#desk-tools-heading",
+        devices: ["mobile"],
+      },
+    ],
+  },
+  {
+    name: "portal-requests",
+    path: "/admin/requests",
+    ready: '[data-testid="request-list"]',
+    continuations: [
+      {
+        suffix: "queue-end",
+        selector: '[data-testid="request-page-summary"]',
+        bottom: true,
+      },
+    ],
+  },
+  {
+    name: "portal-review-flyers",
+    path: "/admin/review-flyers",
+    ready: "main h1",
+    continuations: [
+      {
+        suffix: "flyer-list-middle",
+        selector: '[data-review-target="chang"]',
+        devices: ["mobile"],
+      },
+      {
+        suffix: "flyer-list-end",
+        selector: '[data-review-target="taylor"]',
+        bottom: true,
+      },
+    ],
+  },
+  {
+    name: "portal-settings",
+    path: "/admin/settings",
+    ready: '[data-testid="recipients-manager"]',
+    continuations: [
+      { suffix: "staff", selector: "#staff" },
+    ],
+  },
+  {
+    name: "portal-settings-software",
+    path: "/admin/settings/software",
+    ready: '[data-testid="managed-product"]',
+    continuations: [
+      {
+        suffix: "ownership",
+        heading: "Who owns the website",
+        devices: ["mobile"],
+      },
+      {
+        suffix: "maintainers",
+        selector: '[data-testid="maintainer-access"]',
+        bottom: true,
+      },
+    ],
+  },
+  {
+    name: "portal-audit",
+    path: "/admin/audit",
+    ready: "main h1",
+    // The seeded activity list contains many repeated, blurred rows. Capture
+    // its distinct regions instead of producing dozens of redundant frames.
+    continuations: [
+      {
+        suffix: "recent-work",
+        selector: "#recent-work-heading",
+        devices: ["mobile"],
+      },
+      { suffix: "technical-record", selector: "#technical-record-heading" },
+      {
+        suffix: "bottom",
+        selector: '[data-testid="audit-page-summary"]',
+        bottom: true,
+      },
+    ],
+  },
+  {
+    name: "portal-help",
+    path: "/admin/help",
+    ready: "main h1",
+    continuations: [
+      {
+        suffix: "paper-handoff",
+        heading: "Print a paper handoff",
+        devices: ["mobile"],
+      },
+      {
+        suffix: "workflow-statuses",
+        selector: "#appointment-workflow-guide",
+        devices: ["desktop"],
+      },
+      {
+        suffix: "workflow-steps",
+        heading: "Work the queue in four steps",
+        devices: ["mobile"],
+      },
+      {
+        suffix: "workflow-notes",
+        heading: "Appointment request notes stay together",
+      },
+      {
+        suffix: "staff-operations",
+        heading: "Notification emails",
+        devices: ["mobile"],
+      },
+      {
+        suffix: "website-changes",
+        selector: "#website-changes",
+        devices: ["mobile"],
+      },
+      {
+        suffix: "bottom",
+        selector: "#something-wrong",
+        bottom: true,
+      },
+    ],
+  },
 ];
 
-async function settle(page) {
-  await page.evaluate(async () => {
-    window.scrollTo(0, 0);
+const portalCaptures = [
+  { prefix: "desktop", viewport: { width: 1440, height: 900 } },
+  { prefix: "mobile", viewport: { width: 390, height: 844 } },
+].flatMap(({ prefix, viewport }) =>
+  portalSurfaces.map((surface) => ({
+    ...surface,
+    name: `${prefix}-${surface.name}`,
+    device: prefix,
+    viewport,
+  })),
+);
+
+async function settle(page, { scrollToTop = false } = {}) {
+  await page.evaluate(async (shouldScrollToTop) => {
+    if (shouldScrollToTop) window.scrollTo(0, 0);
     await document.fonts.ready;
     await new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+  }, scrollToTop);
+}
+
+async function waitForVisibleImages(page) {
+  await page.waitForFunction(() => {
+    const visibleImages = Array.from(document.images).filter((image) => {
+      const bounds = image.getBoundingClientRect();
+      return bounds.bottom > 0 && bounds.top < window.innerHeight;
+    });
+    return visibleImages.every(
+      (image) => image.complete && image.naturalWidth > 0,
+    );
   });
+}
+
+function portalContinuationLocator(page, continuation) {
+  if (continuation.heading) {
+    return page.getByRole("heading", {
+      name: continuation.heading,
+      exact: true,
+    });
+  }
+  const matches = page.locator(continuation.selector);
+  if (continuation.last) return matches.last();
+  return matches.nth(continuation.index ?? 0);
+}
+
+async function scrollToPortalContinuation(page, continuation) {
+  const target = portalContinuationLocator(page, continuation);
+  await target.waitFor({ state: "visible" });
+
+  if (continuation.bottom) {
+    // Images revealed at the bottom can finish loading and adjust layout. A
+    // second pass guarantees the final frame is the browser's real maximum
+    // scroll position, not a stale pre-image measurement.
+    for (let pass = 0; pass < 2; pass += 1) {
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await settle(page);
+      await waitForVisibleImages(page);
+    }
+    return page.evaluate(() => Math.round(window.scrollY));
+  }
+
+  await target.evaluate((element, align) => {
+    const bounds = element.getBoundingClientRect();
+    const absoluteTop = bounds.top + window.scrollY;
+    const absoluteBottom = bounds.bottom + window.scrollY;
+    const mobileHeader = document.querySelector(".portal-mobile-header");
+    const mobileNavigation = document.querySelector(".portal-sidebar");
+    const mobile = window.matchMedia("(max-width: 59.999rem)").matches;
+    const topInset = mobile && mobileHeader instanceof HTMLElement
+      ? mobileHeader.getBoundingClientRect().height
+      : 0;
+    const bottomInset = mobile && mobileNavigation instanceof HTMLElement
+      ? mobileNavigation.getBoundingClientRect().height
+      : 0;
+    const topEdge = topInset + 20;
+    const bottomEdge = window.innerHeight - bottomInset - 20;
+    const desiredTop = align === "end"
+      ? absoluteBottom - bottomEdge
+      : absoluteTop - topEdge;
+    window.scrollTo(0, Math.max(0, desiredTop));
+  }, continuation.align ?? "start");
+  await settle(page);
+  await waitForVisibleImages(page);
+  return page.evaluate(() => Math.round(window.scrollY));
+}
+
+function assertViewportPng(image, viewport, label) {
+  const width = image.readUInt32BE(16);
+  const height = image.readUInt32BE(20);
+  if (width !== viewport.width || height !== viewport.height) {
+    throw new Error(
+      `${label} is ${width}x${height}; expected one ${viewport.width}x${viewport.height} viewport`,
+    );
+  }
 }
 
 async function assertNoHorizontalOverflow(page, label) {
@@ -205,6 +405,95 @@ async function redactPortalData(page) {
   });
 }
 
+async function assertPortalDataRedacted(page, label) {
+  const failures = await page.evaluate(() => {
+    const problems = [];
+    const syntheticPatientText = {
+      "patient-name": "Sample Patient",
+      "patient-contact": "(813) 555-0100",
+      "patient-message": "Fictional appointment request details.",
+    };
+
+    document.querySelectorAll("[data-ui-redact]").forEach((element) => {
+      const kind = element.getAttribute("data-ui-redact");
+      if (!kind || !(kind in syntheticPatientText)) {
+        problems.push(`unknown patient redaction kind: ${kind ?? "missing"}`);
+        return;
+      }
+      if (element.textContent !== syntheticPatientText[kind]) {
+        problems.push(`${kind} was not replaced`);
+      }
+      if (element instanceof HTMLAnchorElement && element.hasAttribute("href")) {
+        problems.push(`${kind} retained a link target`);
+      }
+    });
+
+    const expectedAccountText = [
+      ['[data-testid="session-user"]', "Staff Member"],
+      ['[data-testid="session-email"]', "staff@example.com"],
+    ];
+    for (const [selector, expected] of expectedAccountText) {
+      const element = document.querySelector(selector);
+      if (element?.textContent !== expected) {
+        problems.push(`${selector} was not replaced`);
+      }
+    }
+
+    const blurredSelectors = [
+      '[data-testid="recipient-list"]',
+      '[data-testid="staff-list"]',
+      '[data-testid="audit-table"] tbody',
+      '[data-testid="release-engagement-table"] tbody',
+      '[data-testid="release-engagement-cards"]',
+      '[data-testid="recent-work-list"]',
+      '[data-testid="maintainer-list"]',
+    ];
+    for (const selector of blurredSelectors) {
+      document.querySelectorAll(selector).forEach((element) => {
+        if (!getComputedStyle(element).filter.includes("blur(")) {
+          problems.push(`${selector} is not blurred`);
+        }
+      });
+    }
+    return problems;
+  });
+  if (failures.length > 0) {
+    throw new Error(`${label} redaction failed: ${failures.join("; ")}`);
+  }
+}
+
+async function capturePortalViewport(page, capture, filename, generatedFiles) {
+  await settle(page);
+  await waitForVisibleImages(page);
+  await assertNoHorizontalOverflow(page, filename);
+  const image = await page.screenshot({
+    path: resolve(outputDirectory, filename),
+    fullPage: false,
+  });
+  assertViewportPng(image, capture.viewport, filename);
+  generatedFiles.add(filename);
+  const position = await page.evaluate(() => ({
+    scrollY: Math.round(window.scrollY),
+    maxScrollY: Math.max(
+      0,
+      document.documentElement.scrollHeight - window.innerHeight,
+    ),
+  }));
+  console.log(
+    `Captured ${filename} at ${position.scrollY}/${position.maxScrollY}px`,
+  );
+}
+
+async function pruneStalePortalReferences(generatedFiles) {
+  const portalReference = /^(?:desktop|mobile)-portal-.*\.png$/;
+  const existingFiles = await readdir(outputDirectory);
+  for (const filename of existingFiles) {
+    if (!portalReference.test(filename) || generatedFiles.has(filename)) continue;
+    await unlink(resolve(outputDirectory, filename));
+    console.log(`Removed stale ${filename}`);
+  }
+}
+
 async function capturePortalReferences(browser, credentials) {
   const context = await browser.newContext({
     viewport: portalCaptures[0].viewport,
@@ -212,6 +501,7 @@ async function capturePortalReferences(browser, credentials) {
     reducedMotion: "reduce",
   });
   try {
+    const generatedFiles = new Set();
     const page = await context.newPage();
     page.setDefaultTimeout(15_000);
     await page.goto(new URL("/admin/login", origin).toString(), {
@@ -233,33 +523,40 @@ async function capturePortalReferences(browser, credentials) {
       });
       await page.locator(capture.ready).waitFor({ state: "visible" });
       await page.waitForTimeout(250);
-      if (capture.path === "/admin/review-flyers") {
-        await page.waitForFunction(() => {
-          const images = Array.from(
-            document.querySelectorAll("[data-review-target] img"),
-          );
-          const visibleImages = images.filter((image) => {
-            const bounds = image.getBoundingClientRect();
-            return bounds.bottom > 0 && bounds.top < window.innerHeight;
-          });
-          return visibleImages.length > 0 && visibleImages.every(
-            (image) => image.complete && image.naturalWidth > 0,
-          );
-        });
-      }
       await redactPortalData(page);
-      await settle(page);
-      await assertNoHorizontalOverflow(page, capture.name);
-      await page.screenshot({
-        path: resolve(outputDirectory, `${capture.name}.png`),
-      });
+      await assertPortalDataRedacted(page, capture.name);
+      await settle(page, { scrollToTop: true });
+
+      const capturedPositions = new Set();
+      const topFilename = `${capture.name}.png`;
+      await capturePortalViewport(page, capture, topFilename, generatedFiles);
+      capturedPositions.add(0);
+
+      const continuations = capture.continuations.filter(
+        (continuation) =>
+          !continuation.devices || continuation.devices.includes(capture.device),
+      );
+      for (const continuation of continuations) {
+        const scrollY = await scrollToPortalContinuation(page, continuation);
+        if (capturedPositions.has(scrollY)) {
+          console.log(
+            `Skipped ${capture.name}-${continuation.suffix}.png; ` +
+              `scroll position ${scrollY}px is already represented`,
+          );
+          continue;
+        }
+        const filename = `${capture.name}-${continuation.suffix}.png`;
+        await capturePortalViewport(page, capture, filename, generatedFiles);
+        capturedPositions.add(scrollY);
+      }
+
       if (capture.name.startsWith("mobile-")) {
         await page.setViewportSize({ width: 320, height: capture.viewport.height });
-        await settle(page);
+        await settle(page, { scrollToTop: true });
         await assertNoHorizontalOverflow(page, `${capture.name} at 320px`);
       }
-      console.log(`Captured ${capture.name}.png`);
     }
+    await pruneStalePortalReferences(generatedFiles);
   } finally {
     await context.close();
   }
@@ -298,11 +595,12 @@ try {
           throw new Error(`Unexpected redirect for ${capture.path}: ${page.url()}`);
         }
         await page.locator(capture.ready).waitFor({ state: "visible" });
-        await settle(page);
+        await settle(page, { scrollToTop: true });
         await capture.afterReady?.(page);
-        await settle(page);
+        await settle(page, { scrollToTop: true });
         await page.screenshot({
           path: resolve(outputDirectory, `${capture.name}.png`),
+          fullPage: false,
         });
         console.log(`Captured ${capture.name}.png`);
       } finally {
