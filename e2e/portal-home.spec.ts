@@ -173,7 +173,7 @@ test.describe("portal home", () => {
     const printLink = page.getByRole("link", {
       name: `Print all ${newCount} new appointment ${
         newCount === 1 ? "request" : "requests"
-      }`,
+      }; opens in a new tab`,
     });
     await expect(printLink).toHaveAttribute(
       "href",
@@ -193,6 +193,13 @@ test.describe("portal home", () => {
     await expect(
       page.locator('nav[aria-label="Portal sections"] a[aria-current="page"]'),
     ).toHaveText(/^Appointments/, { useInnerText: true });
+    await expect(
+      page.getByRole("link", {
+        name: `Print ${newCount} new appointment ${
+          newCount === 1 ? "request" : "requests"
+        }; opens in a new tab`,
+      }),
+    ).toHaveAttribute("target", "_blank");
   });
 
   test("home flags recent notification delivery failures honestly", async ({

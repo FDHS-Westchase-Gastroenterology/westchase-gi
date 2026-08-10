@@ -74,6 +74,7 @@ export default async function AdminHelpPage() {
           </p>
           <Link
             href="/admin/requests/print"
+            prefetch={false}
             className="mt-3 inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
           >
             Prepare the current New-request packet

@@ -1,7 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Printer } from "@/components/icons";
+
+function afterNextPaint(): Promise<void> {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => resolve());
+    });
+  });
+}
 
 export function PrintPacketControls({
   autoStart,
@@ -11,18 +19,25 @@ export function PrintPacketControls({
   count: number;
 }) {
   const started = useRef(false);
-  const [printing, setPrinting] = useState(false);
 
   useEffect(() => {
     if (!autoStart || started.current) return;
-    const timer = window.setTimeout(() => {
-      if (started.current) return;
+
+    let cancelled = false;
+    async function openPrintDialog() {
+      if ("fonts" in document) {
+        await document.fonts.ready.catch(() => undefined);
+      }
+      await afterNextPaint();
+      if (cancelled || started.current) return;
       started.current = true;
-      setPrinting(true);
       window.print();
-      setPrinting(false);
-    }, 250);
-    return () => window.clearTimeout(timer);
+    }
+
+    void openPrintDialog();
+    return () => {
+      cancelled = true;
+    };
   }, [autoStart]);
 
   return (
@@ -30,16 +45,13 @@ export function PrintPacketControls({
       <button
         type="button"
         onClick={() => {
-          setPrinting(true);
+          started.current = true;
           window.print();
-          setPrinting(false);
         }}
         className="btn btn-navy min-h-11"
       >
         <Printer className="h-[1.05rem] w-[1.05rem]" />
-        {printing
-          ? "Opening print dialog…"
-          : `Print ${count} ${count === 1 ? "request" : "requests"}`}
+        Print {count} {count === 1 ? "request" : "requests"}
       </button>
       <p>
         Printing creates a paper copy only. It does not mark any appointment

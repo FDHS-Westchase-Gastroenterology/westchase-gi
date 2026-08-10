@@ -142,7 +142,10 @@ function RequestWorksheet({
             label="Received"
             value={formatReceived(request.createdAt, true)}
           />
-          <PacketField label="Status" value="New — not yet contacted" />
+          <PacketField
+            label="Status when prepared"
+            value="New — not yet contacted"
+          />
           <PacketField
             label="What the patient shared"
             value={valueOrDash(request.message)}
@@ -194,6 +197,10 @@ function RequestWorksheet({
       </section>
 
       <footer className="portal-print-sheet-footer">
+        <strong className="portal-print-confidentiality">
+          Confidential patient information — clinic use only. Keep inside the
+          clinic and dispose of securely.
+        </strong>
         <span>Request reference {request.id}</span>
         <span>Source {request.sourcePath}</span>
       </footer>
@@ -220,22 +227,30 @@ export default async function PrintNewRequestsPage({
       <>
         <PortalPageHeader
           back={{ href: "/admin", label: "Back to Home" }}
-          title="The print packet could not be prepared"
-          description="No patient details were opened and nothing changed. The appointment-request list may be updating, or the secure audit record may be temporarily unavailable."
+          title="Printing is temporarily unavailable"
+          description="No patient details were shown and no appointment request changed."
         />
         <section className="portal-empty-state" role="alert">
-          <h2>Try again from the current queue</h2>
+          <h2>Try preparing the packet again</h2>
           <p>
-            Refresh the New view before printing so the paper handoff matches
-            the appointment requests that are still waiting for first contact.
+            The secure print service did not prepare a packet. Try again once.
+            If it still fails, continue from the live New view so work is not
+            blocked, then report the printing problem.
           </p>
           <div>
-            <Link href="/admin/requests?status=new" className="btn btn-navy min-h-11">
+            <Link
+              href="/admin/requests/print"
+              prefetch={false}
+              className="btn btn-navy min-h-11"
+            >
+              Try again
+            </Link>
+            <Link
+              href="/admin/requests?status=new"
+              className="btn btn-outline min-h-11"
+            >
               Open New requests
               <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link href="/admin/requests/print" className="btn btn-outline min-h-11">
-              Try again
             </Link>
           </div>
         </section>
@@ -249,14 +264,15 @@ export default async function PrintNewRequestsPage({
         <PortalPageHeader
           back={{ href: "/admin", label: "Back to Home" }}
           title="No new appointment requests to print"
-          description="Every appointment request has already moved beyond New. No packet was created and nothing changed."
+          description="No appointment requests were New when this packet was prepared. No pages were created for printing and no request changed."
         />
         <section className="portal-empty-state">
           <Printer className="h-7 w-7" />
-          <h2>The paper handoff is caught up</h2>
+          <h2>There is no New work to hand off</h2>
           <p>
+            The live queue may have changed since you opened this window.
             Return to Home for the next task, or open Appointments to review
-            requests in other states.
+            the current queue.
           </p>
           <div>
             <Link href="/admin" className="btn btn-navy min-h-11">
@@ -278,8 +294,8 @@ export default async function PrintNewRequestsPage({
           back={{ href: "/admin", label: "Back to Home" }}
           title="Print new appointment requests"
           description={`${packet.requests.length} ${
-            packet.requests.length === 1 ? "request is" : "requests are"
-          } still New, ordered oldest first for a fair paper handoff.`}
+            packet.requests.length === 1 ? "request was" : "requests were"
+          } New when this packet was prepared, ordered oldest first for a fair paper handoff.`}
           meta={
             <>
               <span>Prepared {referenceTime.format(new Date(packet.generatedAt))}</span>
@@ -288,10 +304,10 @@ export default async function PrintNewRequestsPage({
           }
         />
         <div className="portal-print-guidance">
-          <strong>Review the count before printing.</strong>
+          <strong>Confirm the page count before printing.</strong>
           <span>
-            This packet is a snapshot of requests that were New when it was
-            prepared. If it sits unattended, check Appointments before assigning it.
+            This is a time-stamped snapshot. If the packet sits unattended,
+            compare it with the live New view before handing out the pages.
           </span>
         </div>
         <PrintPacketControls
@@ -314,8 +330,8 @@ export default async function PrintNewRequestsPage({
 
       <div className="portal-print-follow-up print-hide">
         <p>
-          Finished printing? Return to the live queue before staff begin work.
-          Paper notes do not update the portal.
+          Finished printing? Close this packet window, then return to the live
+          queue before staff begin work. Paper notes do not update the portal.
         </p>
         <Link href="/admin/requests?status=new" className="btn btn-outline min-h-11">
           Open New requests

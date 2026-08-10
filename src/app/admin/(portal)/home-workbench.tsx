@@ -185,10 +185,11 @@ export function HomeWorkbench({
                     href="/admin/requests/print?auto=1"
                     target="_blank"
                     rel="noopener"
+                    prefetch={false}
                     className="btn btn-navy min-h-11"
                     aria-label={`Print all ${newCount} new appointment ${
                       newCount === 1 ? "request" : "requests"
-                    }`}
+                    }; opens in a new tab`}
                   >
                     <Printer className="h-4 w-4" />
                     <span data-testid="print-new-count">Print all {newCount}</span>

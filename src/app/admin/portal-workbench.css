@@ -1708,6 +1708,12 @@
     overflow-wrap: anywhere;
   }
 
+  .portal-print-confidentiality {
+    flex-basis: 100%;
+    color: #172b39;
+    font-weight: 850;
+  }
+
   .portal-print-follow-up {
     display: flex;
     flex-direction: column;

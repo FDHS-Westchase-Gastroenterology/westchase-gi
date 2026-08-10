@@ -87,6 +87,7 @@ test.describe("new appointment-request print packet", () => {
   });
 
   test("prints every New request oldest first without changing request truth", async ({
+    context,
     page,
     request,
   }) => {
@@ -128,26 +129,75 @@ test.describe("new appointment-request print packet", () => {
     expect(priorAuditError).toBeNull();
     const priorAuditIds = new Set((priorAudits ?? []).map((row) => row.id));
 
-    await page.addInitScript(() => {
+    await context.addInitScript(() => {
+      let releaseFonts = () => {};
+      const fontsReady = new Promise<void>((resolve) => {
+        releaseFonts = resolve;
+      });
+      Object.defineProperty(document, "fonts", {
+        configurable: true,
+        value: { ready: fontsReady },
+      });
+      window.addEventListener("test-release-print-layout", releaseFonts, {
+        once: true,
+      });
       window.print = () => {
-        document.documentElement.dataset.testPacketPrint = "called";
+        const calls = Number.parseInt(
+          document.documentElement.dataset.testPacketPrintCalls ?? "0",
+          10,
+        );
+        document.documentElement.dataset.testPacketPrintCalls = String(calls + 1);
       };
     });
     await signIn(page);
-    await page.goto("/admin/requests/print?auto=1");
+
+    const { data: auditsAfterHome, error: auditsAfterHomeError } = await db
+      .from("audit_log")
+      .select("id")
+      .eq("actor_email", SEED_EMAIL.trim().toLowerCase())
+      .eq("action", "requests.print_new");
+    expect(auditsAfterHomeError).toBeNull();
+    expect(
+      (auditsAfterHome ?? []).filter((row) => !priorAuditIds.has(row.id)),
+      "rendering Home must not prefetch an audited print packet",
+    ).toHaveLength(0);
+
+    const printLink = page.getByRole("link", {
+      name: new RegExp(
+        `^Print all ${newCount} new appointment ${
+          newCount === 1 ? "request" : "requests"
+        }`,
+      ),
+    });
+    const popupPromise = page.waitForEvent("popup");
+    await printLink.click();
+    const printPage = await popupPromise;
 
     await expect(
-      page.getByRole("heading", {
+      printPage.getByRole("heading", {
         name: "Print new appointment requests",
         exact: true,
       }),
     ).toBeVisible();
-    await expect(page.locator("html")).toHaveAttribute(
-      "data-test-packet-print",
-      "called",
+    await expect(page).toHaveURL(/\/admin\/?$/);
+    await expect(printPage).toHaveURL(/\/admin\/requests\/print\?auto=1$/);
+
+    // Auto-print waits for the final font metrics and layout instead of
+    // racing the packet into the browser dialog on an arbitrary timer.
+    await printPage.waitForTimeout(350);
+    await expect(printPage.locator("html")).not.toHaveAttribute(
+      "data-test-packet-print-calls",
+      /.+/,
+    );
+    await printPage.evaluate(() => {
+      window.dispatchEvent(new Event("test-release-print-layout"));
+    });
+    await expect(printPage.locator("html")).toHaveAttribute(
+      "data-test-packet-print-calls",
+      "1",
     );
 
-    const sheets = page.getByTestId("print-request-sheet");
+    const sheets = printPage.getByTestId("print-request-sheet");
     await expect(sheets).toHaveCount(newCount ?? 0);
     const sheetText = await sheets.allTextContents();
     const olderIndex = sheetText.findIndex((text) => text.includes(older.name));
@@ -162,6 +212,7 @@ test.describe("new appointment-request print packet", () => {
     await expect(olderSheet).toContainText("Tampa");
     await expect(olderSheet).toContainText("Morning");
     await expect(olderSheet).toContainText(older.message);
+    await expect(olderSheet).toContainText("Status when prepared");
     await expect(olderSheet).toContainText("New — not yet contacted");
     await expect(olderSheet).toContainText("Paper handoff");
     await expect(olderSheet).toContainText("Record first in the portal");
@@ -173,33 +224,49 @@ test.describe("new appointment-request print packet", () => {
     await expect(olderSheet).toContainText(
       "Patient won't schedule — record the contact attempt first, then close the request.",
     );
+    expect(
+      sheetText.every((text) =>
+        text.includes(
+          "Confidential patient information — clinic use only. Keep inside the clinic and dispose of securely.",
+        ),
+      ),
+    ).toBe(true);
 
     for (const viewport of [
       { width: 390, height: 844 },
       { width: 1440, height: 900 },
     ]) {
-      await page.setViewportSize(viewport);
+      await printPage.setViewportSize(viewport);
       expect(
-        await page.evaluate(
+        await printPage.evaluate(
           () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
         ),
       ).toBeLessThanOrEqual(0);
     }
 
-    await page.emulateMedia({ media: "print" });
-    await expect(page.locator(".portal-sidebar")).toBeHidden();
-    await expect(page.getByText("Review the count before printing.")).toBeHidden();
+    await printPage.emulateMedia({ media: "print" });
+    await expect(printPage.locator(".portal-sidebar")).toBeHidden();
+    await expect(printPage.getByText("Confirm the page count before printing.")).toBeHidden();
     const pageBreaks = await sheets.evaluateAll((elements) =>
       elements.map((element) => getComputedStyle(element).breakAfter),
     );
     expect(pageBreaks.slice(0, -1).every((value) => value === "page")).toBe(true);
     const packetPdf = await PDFDocument.load(
-      await page.pdf({ preferCSSPageSize: true, printBackground: true }),
+      await printPage.pdf({ preferCSSPageSize: true, printBackground: true }),
     );
     expect(packetPdf.getPageCount()).toBe(newCount);
-    await page.emulateMedia({ media: "screen" });
+    await printPage.emulateMedia({ media: "screen" });
+    await printPage
+      .getByRole("button", {
+        name: `Print ${newCount} ${newCount === 1 ? "request" : "requests"}`,
+      })
+      .click();
+    await expect(printPage.locator("html")).toHaveAttribute(
+      "data-test-packet-print-calls",
+      "2",
+    );
     await expect(
-      page.getByRole("link", { name: "Open New requests" }),
+      printPage.getByRole("link", { name: "Open New requests" }),
     ).toHaveAttribute("href", "/admin/requests?status=new");
 
     expect(await durableRequest(olderId)).toEqual(beforeOlder);
@@ -235,8 +302,8 @@ test.describe("new appointment-request print packet", () => {
       expect(serializedDetail).not.toContain(patientValue);
     }
 
-    await page.goto("/admin/audit");
-    await expect(page.getByTestId("recent-work-list").first()).toContainText(
+    await printPage.goto("/admin/audit");
+    await expect(printPage.getByTestId("recent-work-list").first()).toContainText(
       `prepared the New-request print packet (${newCount} ${
         newCount === 1 ? "request" : "requests"
       })`,

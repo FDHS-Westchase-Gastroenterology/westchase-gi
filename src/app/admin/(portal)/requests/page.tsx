@@ -376,6 +376,10 @@ export default async function AdminRequestsPage({
                 href="/admin/requests/print?auto=1"
                 target="_blank"
                 rel="noopener"
+                prefetch={false}
+                aria-label={`Print ${counts.new} new appointment ${
+                  counts.new === 1 ? "request" : "requests"
+                }; opens in a new tab`}
                 className="btn btn-navy min-h-11"
               >
                 <Printer className="h-4 w-4" />
