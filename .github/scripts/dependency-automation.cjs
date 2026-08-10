@@ -329,28 +329,50 @@ function evaluateGate(checkRuns, statuses, { production = false } = {}) {
   return { passed: missing.length === 0, missing };
 }
 
-async function commitGate(github, owner, repo, sha, options) {
-  const [checksResponse, statusesResponse] = await Promise.all([
-    github.rest.checks.listForRef({
+async function listAllCheckRuns(github, owner, repo, sha) {
+  const checkRuns = [];
+  for (let page = 1; ; page += 1) {
+    const response = await github.rest.checks.listForRef({
       owner,
       repo,
       ref: sha,
       filter: "latest",
       per_page: 100,
-    }),
-    github.rest.repos.getCombinedStatusForRef({
+      page,
+    });
+    const pageRuns = response.data.check_runs || [];
+    checkRuns.push(...pageRuns);
+    // Automerge itself posts many merge-next runs onto main; a single page can
+    // hide the quality/react-doctor/production gates that pause the queue.
+    if (pageRuns.length < 100) break;
+  }
+  return checkRuns;
+}
+
+async function listAllCommitStatuses(github, owner, repo, sha) {
+  const statuses = [];
+  for (let page = 1; ; page += 1) {
+    const response = await github.rest.repos.getCombinedStatusForRef({
       owner,
       repo,
       ref: sha,
       per_page: 100,
-    }),
+      page,
+    });
+    const pageStatuses = response.data.statuses || [];
+    statuses.push(...pageStatuses);
+    if (pageStatuses.length < 100) break;
+  }
+  return statuses;
+}
+
+async function commitGate(github, owner, repo, sha, options) {
+  const [checkRuns, statuses] = await Promise.all([
+    listAllCheckRuns(github, owner, repo, sha),
+    listAllCommitStatuses(github, owner, repo, sha),
   ]);
 
-  return evaluateGate(
-    checksResponse.data.check_runs,
-    statusesResponse.data.statuses,
-    options,
-  );
+  return evaluateGate(checkRuns, statuses, options);
 }
 
 async function ensureLabels(github, owner, repo) {
