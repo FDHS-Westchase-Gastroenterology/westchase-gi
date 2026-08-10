@@ -131,7 +131,7 @@ test.describe("portal requests operation", () => {
     expect(firstId && secondId && thirdId).toBeTruthy();
   });
 
-  test("VAL-ADMIN-005: detail shows every field and the workflow panel drives the appointment-request lifecycle", async ({
+  test("VAL-ADMIN-005: detail prioritizes contact context and the workflow panel drives the appointment-request lifecycle", async ({
     page,
     request,
   }) => {
@@ -170,12 +170,27 @@ test.describe("portal requests operation", () => {
     await expect(
       page.getByRole("link", { name: staged.email }),
     ).toHaveAttribute("href", `mailto:${staged.email}`);
-    await expect(page.getByText("Tampa", { exact: true })).toBeVisible();
-    await expect(page.getByText("Morning", { exact: true })).toBeVisible();
+    const details = page.locator(
+      'section[aria-labelledby="request-details-heading"]',
+    );
+    await expect(details.getByTestId("request-preferences")).toContainText(
+      "Tampa",
+    );
+    await expect(details.getByTestId("request-preferences")).toContainText(
+      "Morning",
+    );
+    await expect(details.getByTestId("request-intake-meta")).toContainText(
+      "Received",
+    );
+    await expect(details.getByTestId("request-intake-meta")).toContainText(
+      "English form",
+    );
     await expect(page.getByTestId("request-message")).toContainText(
       staged.message,
     );
-    await expect(page.getByText("/en/appointment").first()).toBeVisible();
+    await expect(page.getByText("/en/appointment", { exact: true })).toHaveCount(
+      0,
+    );
     // Every recorded delivery attempt renders in Request history — no
     // address is hidden (staff addresses are operational, not PHI).
     const history = page.getByTestId("request-history");

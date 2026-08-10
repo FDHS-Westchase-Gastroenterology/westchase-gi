@@ -52,7 +52,6 @@ type RequestRow = {
   preferred_time: "any" | "morning" | "afternoon";
   message: string | null;
   locale: string;
-  source_path: string;
   created_at: string;
 };
 
@@ -191,7 +190,7 @@ export default async function RequestDetailPage({
     db
       .from("requests")
       .select(
-        "id, name, phone, email, location, preferred_time, message, locale, source_path, created_at",
+        "id, name, phone, email, location, preferred_time, message, locale, created_at",
       )
       .eq("id", id)
       .maybeSingle(),
@@ -239,6 +238,7 @@ export default async function RequestDetailPage({
   const row = request as RequestRow;
   const mailbox = row.email?.trim();
   const safeMailbox = mailbox && isMailbox(mailbox) ? mailbox : null;
+  const formLanguage = LOCALE_LABELS[row.locale] ?? row.locale.toUpperCase();
   // Notes and history come from one composed read. Notes keep their own
   // surface; every other evidence kind renders in Request history.
   const noteViews: RequestNoteView[] = [];
@@ -258,17 +258,6 @@ export default async function RequestDetailPage({
     const line = historyLine(entry);
     if (line) historyLines.push(line);
   }
-
-  const fields: Array<{ label: string; value: React.ReactNode }> = [
-    { label: "Preferred office", value: LOCATION_LABELS[row.location] },
-    { label: "Preferred time", value: TIME_LABELS[row.preferred_time] },
-    {
-      label: "Submitted in",
-      value: LOCALE_LABELS[row.locale] ?? row.locale,
-    },
-    { label: "From page", value: row.source_path },
-    { label: "Received", value: formatReceived(row.created_at, true) },
-  ];
 
   return (
     <section
@@ -312,9 +301,7 @@ export default async function RequestDetailPage({
               Marked Scheduled {formatReceived(surface.bookingConfirmedAt, true)} —
               the appointment lives in the practice scheduling system.
             </span>
-          ) : (
-            `Received ${formatReceived(row.created_at, true)}.`
-          )
+          ) : undefined
         }
         actions={
           <>
@@ -350,8 +337,18 @@ export default async function RequestDetailPage({
       />
 
       <div className="portal-request-layout">
-        <section className="request-print-card portal-request-details" aria-labelledby="request-details-heading">
-          <h2 id="request-details-heading">Contact and request</h2>
+        <section
+          className="request-print-card portal-request-details"
+          aria-labelledby="request-details-heading"
+        >
+          <header className="portal-request-details-header">
+            <h2 id="request-details-heading">Contact and request</h2>
+            <p data-testid="request-intake-meta">
+              <span>Received {formatReceived(row.created_at, true)}</span>
+              <span aria-hidden="true">·</span>
+              <span>{formLanguage} form</span>
+            </p>
+          </header>
           <div className="portal-request-contact">
             <div>
               <span>Phone</span>
@@ -370,22 +367,27 @@ export default async function RequestDetailPage({
               )}
             </div>
           </div>
-          <dl className="portal-request-fields">
-          {fields.map((field) => (
-            <div key={field.label}>
-              <dt>{field.label}</dt>
-              <dd>{field.value}</dd>
-            </div>
-          ))}
-          </dl>
+          <div className="portal-request-preferences">
+            <p>Preferences</p>
+            <dl data-testid="request-preferences">
+              <div>
+                <dt className="sr-only">Preferred office</dt>
+                <dd>{LOCATION_LABELS[row.location]}</dd>
+              </div>
+              <div>
+                <dt className="sr-only">Preferred time</dt>
+                <dd>{TIME_LABELS[row.preferred_time]}</dd>
+              </div>
+            </dl>
+          </div>
           <div className="portal-request-message">
             <h3>What the patient shared</h3>
-          <p
-            data-testid="request-message"
+            <p
+              data-testid="request-message"
               data-ui-redact="patient-message"
-          >
-            {row.message?.trim() || "— none provided —"}
-          </p>
+            >
+              {row.message?.trim() || "— none provided —"}
+            </p>
           </div>
         </section>
 
