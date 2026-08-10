@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Clock, Mail, MapPin, MessageSquare, Phone } from "@/components/icons";
 import { PrintButton } from "@/components/PrintButton";
 import {
   isMailbox,
@@ -57,6 +58,18 @@ type RequestRow = {
 
 function firstParam(value: string | string[] | undefined): string | null {
   return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+}
+
+function formatPhoneForDisplay(value: string): string {
+  const trimmed = value.trim();
+  const digits = trimmed.replace(/\D/g, "");
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return trimmed;
 }
 
 // Request history keeps each evidence kind distinct (DEC-05): contact
@@ -238,7 +251,9 @@ export default async function RequestDetailPage({
   const row = request as RequestRow;
   const mailbox = row.email?.trim();
   const safeMailbox = mailbox && isMailbox(mailbox) ? mailbox : null;
+  const phoneDisplay = formatPhoneForDisplay(row.phone);
   const formLanguage = LOCALE_LABELS[row.locale] ?? row.locale.toUpperCase();
+  const patientMessage = row.message?.trim();
   // Notes and history come from one composed read. Notes keep their own
   // surface; every other evidence kind renders in Request history.
   const noteViews: RequestNoteView[] = [];
@@ -344,50 +359,102 @@ export default async function RequestDetailPage({
           <header className="portal-request-details-header">
             <h2 id="request-details-heading">Contact and request</h2>
             <p data-testid="request-intake-meta">
-              <span>Received {formatReceived(row.created_at, true)}</span>
-              <span aria-hidden="true">·</span>
+              <span>
+                Received{" "}
+                <time dateTime={row.created_at}>
+                  {formatReceived(row.created_at, true)}
+                </time>
+              </span>
               <span>{formLanguage} form</span>
             </p>
           </header>
-          <div className="portal-request-contact">
-            <div>
-              <span>Phone</span>
-              <a href={`tel:${row.phone}`} data-ui-redact="patient-contact">
-                {row.phone}
+          <div
+            className="portal-request-contact"
+            role="group"
+            aria-label="Patient contact options"
+          >
+            <a
+              href={`tel:${row.phone}`}
+              data-testid="request-phone-link"
+              className="portal-request-contact-action"
+            >
+              <Phone className="portal-request-contact-icon" />
+              <span className="portal-request-contact-copy">
+                <span className="portal-request-contact-label">Call patient</span>
+                <strong
+                  className="portal-request-contact-value portal-request-contact-value--phone"
+                  data-ui-redact="patient-contact"
+                >
+                  {phoneDisplay}
+                </strong>
+              </span>
+            </a>
+            {safeMailbox ? (
+              <a
+                href={`mailto:${safeMailbox}`}
+                data-testid="request-email-link"
+                className="portal-request-contact-action"
+              >
+                <Mail className="portal-request-contact-icon" />
+                <span className="portal-request-contact-copy">
+                  <span className="portal-request-contact-label">Email patient</span>
+                  <strong
+                    className="portal-request-contact-value"
+                    data-ui-redact="patient-contact"
+                  >
+                    {safeMailbox}
+                  </strong>
+                </span>
               </a>
-            </div>
-            <div>
-              <span>Email</span>
-              {safeMailbox ? (
-                <a href={`mailto:${safeMailbox}`} data-ui-redact="patient-contact">
-                  {safeMailbox}
-                </a>
-              ) : (
-                <p>Not provided — call the phone number above</p>
-              )}
-            </div>
+            ) : (
+              <div
+                data-testid="request-email-unavailable"
+                className="portal-request-contact-action portal-request-contact-action--unavailable"
+              >
+                <Mail className="portal-request-contact-icon" />
+                <span className="portal-request-contact-copy">
+                  <span className="portal-request-contact-label">Email patient</span>
+                  <strong className="portal-request-contact-value">
+                    No email provided
+                  </strong>
+                </span>
+              </div>
+            )}
           </div>
-          <div className="portal-request-preferences">
-            <p>Preferences</p>
-            <dl data-testid="request-preferences">
+          <div className="portal-request-context">
+            <div className="portal-request-message">
+              <h3>
+                <MessageSquare />
+                Patient note
+              </h3>
+              <blockquote
+                data-testid="request-message"
+                data-ui-redact="patient-message"
+                data-empty={patientMessage ? undefined : "true"}
+              >
+                {patientMessage || "No note was included with this request."}
+              </blockquote>
+            </div>
+            <dl
+              className="portal-request-preferences"
+              data-testid="request-preferences"
+              aria-label="Appointment preferences"
+            >
               <div>
-                <dt className="sr-only">Preferred office</dt>
+                <dt>
+                  <MapPin />
+                  Preferred office
+                </dt>
                 <dd>{LOCATION_LABELS[row.location]}</dd>
               </div>
               <div>
-                <dt className="sr-only">Preferred time</dt>
+                <dt>
+                  <Clock />
+                  Preferred time
+                </dt>
                 <dd>{TIME_LABELS[row.preferred_time]}</dd>
               </div>
             </dl>
-          </div>
-          <div className="portal-request-message">
-            <h3>What the patient shared</h3>
-            <p
-              data-testid="request-message"
-              data-ui-redact="patient-message"
-            >
-              {row.message?.trim() || "— none provided —"}
-            </p>
           </div>
         </section>
 

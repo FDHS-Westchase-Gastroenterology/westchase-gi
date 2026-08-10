@@ -166,13 +166,26 @@ test.describe("portal requests operation", () => {
     await expect(
       page.getByRole("link", { name: "Back to Appointments" }),
     ).toHaveAttribute("href", "/admin/requests");
-    await expect(page.getByText(staged.phone).first()).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: staged.email }),
-    ).toHaveAttribute("href", `mailto:${staged.email}`);
     const details = page.locator(
       'section[aria-labelledby="request-details-heading"]',
     );
+    await expect(details.getByTestId("request-phone-link")).toHaveAttribute(
+      "href",
+      `tel:${staged.phone}`,
+    );
+    await expect(
+      details.getByRole("link", { name: /^Call patient/ }),
+    ).toBeVisible();
+    await expect(details.getByTestId("request-phone-link")).toContainText(
+      "(813) 555-0177",
+    );
+    await expect(details.getByTestId("request-email-link")).toHaveAttribute(
+      "href",
+      `mailto:${staged.email}`,
+    );
+    await expect(
+      details.getByRole("link", { name: /^Email patient/ }),
+    ).toBeVisible();
     await expect(details.getByTestId("request-preferences")).toContainText(
       "Tampa",
     );
@@ -255,6 +268,15 @@ test.describe("portal requests operation", () => {
     expect(closed?.closure_reason).toBe("wont_schedule");
     expect(closed?.closed_at).toBeTruthy();
     expect(closed?.follow_up_at).toBeNull();
+    // The call sheet is the request's stable anchor. Contact details,
+    // preferences, and the patient note remain available after resolution.
+    await expect(details.getByTestId("request-phone-link")).toBeVisible();
+    await expect(details.getByTestId("request-preferences")).toContainText(
+      "Tampa",
+    );
+    await expect(details.getByTestId("request-message")).toContainText(
+      staged.message,
+    );
 
     // Every accepted command leaves exactly one immutable transition and
     // one PHI-free workflow audit entry; the retired generic status
@@ -300,7 +322,7 @@ test.describe("portal requests operation", () => {
     expect(statusAudits).toHaveLength(0);
   });
 
-  test("VAL-ADMIN-005b: unsafe legacy email uses the phone fallback", async ({
+  test("VAL-ADMIN-005b: unsafe legacy email never becomes a mail link", async ({
     page,
   }) => {
     const unsafeEmail = `queue-${runId}-unsafe@example.test?subject=Injected`;
@@ -324,13 +346,69 @@ test.describe("portal requests operation", () => {
     await signIn(page);
     await page.goto(`/admin/requests/${data.id}`);
 
-    const fallback = page.getByText(
-      "Not provided — call the phone number above",
-    );
+    const fallback = page.getByTestId("request-email-unavailable");
     await expect(fallback).toBeVisible();
-    await expect(
-      fallback.locator("..").locator('a[href^="mailto:"]'),
-    ).toHaveCount(0);
+    await expect(fallback).toContainText("No email provided");
+    await expect(fallback.locator('a[href^="mailto:"]')).toHaveCount(0);
+  });
+
+  test("VAL-ADMIN-005c: long intake content reflows without clipping", async ({
+    page,
+  }) => {
+    const longEmail = `queue-${runId}-edge@${"a".repeat(50)}.${"b".repeat(50)}.${"c".repeat(50)}.test`;
+    const longMessage = `TEST ${"unbrokenintakedetail".repeat(90)}`;
+    const { data, error } = await db
+      .from("requests")
+      .insert({
+        name: `TEST Queue ${runId} long content`,
+        phone: "18135550179",
+        email: longEmail,
+        location: "any",
+        preferred_time: "any",
+        message: longMessage,
+        locale: "vi",
+        source_path: "/vi/appointment",
+      })
+      .select("id")
+      .single();
+    expect(error).toBeNull();
+    if (!data) throw new Error("Long-content fixture was not created");
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn(page);
+    await page.goto(`/admin/requests/${data.id}`);
+
+    const details = page.locator(
+      'section[aria-labelledby="request-details-heading"]',
+    );
+    const wrappingTargets = [
+      details.getByTestId("request-email-link").locator(
+        ".portal-request-contact-copy",
+      ),
+      details.getByTestId("request-message"),
+    ];
+    for (const target of wrappingTargets) {
+      const box = await target.evaluate((element) => ({
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+      }));
+      expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth + 1);
+    }
+    const cardBox = await details.boundingBox();
+    expect(cardBox).not.toBeNull();
+    expect((cardBox?.x ?? 0) + (cardBox?.width ?? 0)).toBeLessThanOrEqual(390);
+
+    await page.emulateMedia({ media: "print" });
+    await expect(details).toHaveCSS("overflow", "visible");
+    const printMessage = await details
+      .getByTestId("request-message")
+      .evaluate((element) => ({
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+      }));
+    expect(printMessage.scrollWidth).toBeLessThanOrEqual(
+      printMessage.clientWidth + 1,
+    );
   });
 
   test("VAL-ADMIN-004: status filters match SQL counts exactly", async ({

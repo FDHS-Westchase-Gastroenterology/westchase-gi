@@ -2071,6 +2071,13 @@
     page: request-detail;
   }
 
+  body.portal-scope:has(.request-detail-print) .portal-workspace,
+  body.portal-scope:has(.request-detail-print) .portal-stage,
+  body.portal-scope:has(.request-detail-print) .portal-content {
+    min-height: auto !important;
+    background: white !important;
+  }
+
   body.portal-scope:has(.request-detail-print) .portal-release-utility {
     display: none !important;
   }
@@ -2099,6 +2106,19 @@
     border-radius: 0;
     padding: 12pt;
     background: white !important;
+  }
+
+  .request-print-card.portal-request-details {
+    overflow: visible;
+    padding: 0;
+  }
+
+  .request-print-card.portal-request-details .portal-request-contact {
+    background: white !important;
+  }
+
+  .request-print-card.portal-request-details svg {
+    color: black !important;
   }
 
   .request-print-card h2,
