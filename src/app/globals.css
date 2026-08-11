@@ -1216,7 +1216,7 @@
      hold editable work, and amber is reserved for attention rather than
      decoration. :where() keeps the rule easy to override in print layouts. */
   .portal-scope {
-    --portal-canvas: oklch(0.965 0.008 230);
+    --portal-canvas: oklch(0.955 0.01 230);
     --portal-surface: oklch(0.995 0.002 220);
     --portal-attention-ink: oklch(0.5 0.11 70);
     background: var(--portal-canvas);
@@ -1257,6 +1257,10 @@
 
   .portal-scope .btn:hover {
     transform: none;
+  }
+
+  .portal-scope :where(.btn-amber, .btn-navy):hover {
+    box-shadow: none;
   }
 
   .portal-scope .btn:active {

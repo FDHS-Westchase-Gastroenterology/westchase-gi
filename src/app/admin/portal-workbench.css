@@ -598,6 +598,16 @@
     min-width: 0;
     overflow: hidden;
     border: 1px solid var(--color-line-2);
+    border-block-start-color: color-mix(
+      in oklch,
+      var(--color-line-2) 72%,
+      white
+    );
+    border-block-end-color: color-mix(
+      in oklch,
+      var(--color-line-2) 86%,
+      var(--color-navy)
+    );
     border-radius: var(--radius);
     background: var(--portal-surface);
   }
@@ -643,7 +653,7 @@
     flex-direction: column;
     gap: 1rem;
     border-block: 1px solid var(--color-line-2);
-    background: color-mix(in oklch, var(--color-amber-soft) 50%, white);
+    background: color-mix(in oklch, var(--color-amber-soft) 58%, white);
     padding: 1.25rem 1.15rem;
   }
 
@@ -730,7 +740,11 @@
     grid-template-columns: minmax(0, 1fr) auto auto;
     align-items: center;
     gap: 0.65rem;
+    margin-inline: -0.55rem;
+    border-radius: 0.4rem;
+    padding-inline: 0.55rem;
     color: var(--color-ink);
+    transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
   }
 
   .portal-arrivals a > span {
@@ -763,8 +777,19 @@
     grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
     gap: 0.65rem;
+    margin-inline: -0.55rem;
+    border-radius: 0.4rem;
+    padding-inline: 0.55rem;
     color: var(--color-ink);
     font-size: 0.86rem;
+    transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-arrivals a:hover,
+  .portal-arrivals a:focus-visible,
+  .portal-attention-next a:hover,
+  .portal-attention-next a:focus-visible {
+    background: color-mix(in oklch, var(--color-mint) 78%, transparent);
   }
 
   .portal-attention-next a > span {
@@ -811,11 +836,11 @@
 
   .portal-desk-tools > ul {
     margin-top: 0.75rem;
-    border-block: 1px solid var(--color-line-2);
+    border-block: 1px solid var(--color-line);
   }
 
   .portal-desk-tools li + li {
-    border-top: 1px solid var(--color-line-2);
+    border-top: 1px solid var(--color-line);
   }
 
   .portal-desk-tools a {
@@ -881,6 +906,10 @@
     .portal-home-layout {
       grid-template-columns: minmax(0, 1.7fr) minmax(19rem, 0.75fr);
       gap: 2.4rem;
+    }
+
+    .portal-desk-tools {
+      padding-block-start: 1.2rem;
     }
   }
 
