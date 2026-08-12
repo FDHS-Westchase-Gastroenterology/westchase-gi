@@ -12,6 +12,7 @@ import {
 } from "@/components/icons";
 import { arrivedOutsideOfficeHours } from "@/lib/portal/business-time";
 import { PortalPageHeader } from "./portal-page-header";
+import { PrintPacketLink } from "./print-packet-link";
 import { formatReceived } from "./requests/format";
 
 type HomeTask = {
@@ -181,18 +182,7 @@ export function HomeWorkbench({
               </div>
               <div className="portal-new-work-actions">
                 {newCount > 0 ? (
-                  <Link
-                    href="/admin/requests/print?auto=1"
-                    target="_blank"
-                    rel="noopener"
-                    className="btn btn-navy min-h-11"
-                    aria-label={`Print all ${newCount} new appointment ${
-                      newCount === 1 ? "request" : "requests"
-                    }`}
-                  >
-                    <Printer className="h-4 w-4" />
-                    <span data-testid="print-new-count">Print all {newCount}</span>
-                  </Link>
+                  <PrintPacketLink count={newCount} />
                 ) : (
                   <button type="button" className="btn btn-outline min-h-11" disabled>
                     <Printer className="h-4 w-4" />

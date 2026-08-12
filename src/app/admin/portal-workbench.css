@@ -707,6 +707,75 @@
     opacity: 0.58;
   }
 
+  .portal-print-action {
+    position: relative;
+    display: inline-flex;
+    flex: none;
+  }
+
+  .portal-print-packet-link {
+    position: relative;
+    z-index: 2;
+    transform-origin: 1.7rem center;
+  }
+
+  .portal-print-glyph {
+    position: relative;
+    display: grid;
+    width: 1rem;
+    height: 1rem;
+    flex: none;
+    place-items: center;
+    z-index: 2;
+  }
+
+  .portal-print-paper-stack {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .portal-print-paper {
+    position: absolute;
+    top: calc(50% - 0.2rem);
+    left: 1.7rem;
+    width: 1.8rem;
+    height: 2.25rem;
+    border: 1px solid color-mix(in oklch, var(--color-navy) 76%, white);
+    border-radius: 0.12rem;
+    background: white;
+    box-shadow: 0 0.42rem 0.9rem rgb(23 51 71 / 28%);
+    opacity: 0;
+    transform: translate3d(-50%, -34%, 0) scale(0.92);
+    transform-origin: 50% 0;
+  }
+
+  .portal-print-paper::before {
+    position: absolute;
+    inset: 0.3rem 0.22rem auto;
+    height: 2px;
+    background: var(--color-amber);
+    box-shadow:
+      0 0.35rem 0 rgb(52 93 116 / 84%),
+      0 0.7rem 0 rgb(52 93 116 / 68%),
+      0 1.05rem 0 rgb(52 93 116 / 46%);
+    content: "";
+  }
+
+  .portal-print-paper--back {
+    background: color-mix(in oklch, white 88%, var(--color-mint));
+  }
+
+  .portal-print-paper--middle {
+    background: color-mix(in oklch, white 94%, var(--color-amber-soft));
+  }
+
+  .portal-new-work-actions > .btn {
+    position: relative;
+    z-index: 2;
+  }
+
   .portal-arrivals,
   .portal-attention-next {
     padding: 1.15rem;
