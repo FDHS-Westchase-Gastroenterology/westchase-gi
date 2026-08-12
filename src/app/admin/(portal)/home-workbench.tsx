@@ -11,6 +11,7 @@ import {
   Users,
 } from "@/components/icons";
 import { arrivedOutsideOfficeHours } from "@/lib/portal/business-time";
+import { HomePrintPacket } from "./home-print-packet";
 import { PortalPageHeader } from "./portal-page-header";
 import { formatReceived } from "./requests/format";
 
@@ -126,6 +127,7 @@ export function HomeWorkbench({
 
       <div className="portal-home-layout">
         <section
+          id="queue-overview"
           aria-labelledby="queue-overview-heading"
           data-testid="queue-overview"
           className="portal-work-stack"
@@ -181,18 +183,10 @@ export function HomeWorkbench({
               </div>
               <div className="portal-new-work-actions">
                 {newCount > 0 ? (
-                  <Link
-                    href="/admin/requests/print?auto=1"
-                    target="_blank"
-                    rel="noopener"
-                    className="btn btn-navy min-h-11"
-                    aria-label={`Print all ${newCount} new appointment ${
-                      newCount === 1 ? "request" : "requests"
-                    }`}
-                  >
-                    <Printer className="h-4 w-4" />
-                    <span data-testid="print-new-count">Print all {newCount}</span>
-                  </Link>
+                  <HomePrintPacket
+                    homeCount={newCount}
+                    newestIds={newest.map((request) => request.id)}
+                  />
                 ) : (
                   <button type="button" className="btn btn-outline min-h-11" disabled>
                     <Printer className="h-4 w-4" />
@@ -213,7 +207,12 @@ export function HomeWorkbench({
                 {newest.map((request) => (
                   <li key={request.id}>
                     <Link href={`/admin/requests/${request.id}`}>
-                      <span data-ui-redact="patient-name">{request.name}</span>
+                      <span
+                        data-print-source-id={request.id}
+                        data-ui-redact="patient-name"
+                      >
+                        {request.name}
+                      </span>
                       <small>
                         {formatReceived(request.created_at)}
                         {arrivedOutsideOfficeHours(request.created_at)

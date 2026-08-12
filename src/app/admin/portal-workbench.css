@@ -17,6 +17,10 @@
     background: var(--portal-canvas);
   }
 
+  #portal-print-root {
+    display: none;
+  }
+
   .portal-stage {
     min-width: 0;
   }
@@ -705,6 +709,201 @@
   .portal-new-work-actions .btn:disabled {
     cursor: not-allowed;
     opacity: 0.58;
+  }
+
+  .portal-print-handoff {
+    display: grid;
+    min-width: 0;
+    max-width: 16rem;
+    justify-items: start;
+  }
+
+  .portal-print-handoff[data-state="ready"] {
+    width: min(16rem, 100%);
+  }
+
+  .portal-print-action {
+    max-width: 100%;
+    justify-content: flex-start;
+    text-align: start;
+  }
+
+  .portal-print-action[data-state="ready"] {
+    display: grid;
+    width: 100%;
+    min-height: 0;
+    overflow: hidden;
+    grid-template-columns: minmax(0, 1fr);
+    justify-content: stretch;
+    gap: 0;
+    border: 1px solid color-mix(in oklch, var(--color-teal-ink) 72%, white);
+    border-radius: 0.55rem;
+    background: white;
+    padding: 0;
+    color: var(--color-ink);
+    box-shadow: none;
+    transition:
+      border-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 120ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-print-action[data-state="ready"]:hover {
+    border-color: var(--color-teal-ink);
+    background: white;
+  }
+
+  .portal-scope .portal-print-action:active {
+    transform: none;
+  }
+
+  .portal-scope .portal-print-action[data-pointer-press="true"]:active {
+    transform: scale(0.98);
+  }
+
+  .portal-print-action-paper {
+    display: grid;
+    width: 100%;
+    gap: 0.28rem;
+    background: color-mix(in oklch, var(--portal-surface-muted) 76%, white);
+    padding: 0.55rem 0.65rem 0.5rem;
+  }
+
+  .portal-print-action-ready {
+    display: flex;
+    align-items: center;
+    gap: 0.32rem;
+    color: var(--color-teal-ink);
+    font-size: 0.68rem;
+    font-weight: 900;
+    line-height: 1.2;
+  }
+
+  .portal-print-action-ready svg {
+    flex: none;
+    stroke-width: 2.5;
+  }
+
+  .portal-print-action-names {
+    display: grid;
+    border-block: 1px solid var(--color-line-2);
+  }
+
+  .portal-print-action-names > span,
+  .portal-print-action-summary {
+    min-width: 0;
+    overflow: hidden;
+    padding-block: 0.22rem;
+    color: var(--color-ink);
+    font-size: 0.74rem;
+    font-weight: 780;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .portal-print-action-names > span + span {
+    border-top: 1px solid color-mix(in oklch, var(--color-line-2) 72%, white);
+  }
+
+  .portal-print-action-more {
+    padding-block: 0.08rem;
+    color: var(--color-muted);
+    font-size: 0.66rem;
+    font-weight: 760;
+    line-height: 1.25;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .portal-print-action-command {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    gap: 0.48rem;
+  }
+
+  .portal-print-action[data-state="ready"] .portal-print-action-command {
+    width: 100%;
+    min-height: 2.75rem;
+    background: var(--color-navy);
+    padding: 0.72rem 0.8rem;
+    color: white;
+    font-size: 0.86rem;
+    font-weight: 850;
+    line-height: 1;
+  }
+
+  .portal-print-action[data-state="ready"]:hover .portal-print-action-command {
+    background: var(--color-navy-2);
+  }
+
+  .portal-print-action-command svg {
+    flex: none;
+  }
+
+  .portal-print-action[data-motion="true"] .portal-print-action-names > span {
+    animation: portal-print-name-arrive 40ms cubic-bezier(0.23, 1, 0.32, 1) both;
+    animation-delay: calc(var(--arrival-index) * 20ms + 220ms);
+  }
+
+  .portal-print-handoff-guidance,
+  .portal-print-handoff-error {
+    width: 100%;
+    margin-top: 0.55rem;
+    color: var(--color-body);
+    font-size: 0.72rem;
+    line-height: 1.45;
+  }
+
+  .portal-print-handoff-guidance button {
+    min-height: 2.75rem;
+    margin-top: 0.15rem;
+    color: var(--color-teal-ink);
+    font-size: 0.74rem;
+    font-weight: 850;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .portal-print-handoff-error {
+    color: var(--portal-attention-ink);
+    font-weight: 730;
+  }
+
+  .portal-print-flight {
+    position: fixed;
+    z-index: 90;
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid color-mix(in oklch, var(--color-line-2) 82%, white);
+    border-radius: 0.34rem;
+    background: white;
+    padding: 0.3rem 0.48rem;
+    color: var(--color-ink);
+    box-shadow: 0 8px 18px -12px oklch(0.2 0.04 232 / 0.48);
+    font-size: 0.76rem;
+    font-weight: 780;
+    line-height: 1.2;
+    pointer-events: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    will-change: transform, opacity, clip-path;
+  }
+
+  @keyframes portal-print-name-arrive {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .portal-print-action[data-motion="true"] .portal-print-action-names > span {
+      animation: none;
+    }
   }
 
   .portal-arrivals,
@@ -1925,6 +2124,14 @@
 @media print {
   body.portal-scope:has(.portal-print-packet) {
     page: request-packet;
+  }
+
+  body.portal-scope:has(#portal-print-root:not(:empty)) .portal-workspace {
+    display: none !important;
+  }
+
+  body.portal-scope:has(#portal-print-root:not(:empty)) #portal-print-root {
+    display: block !important;
   }
 
   html,

@@ -63,20 +63,20 @@ export default async function AdminHelpPage() {
         <div className="portal-help-section">
           <h2 className={SECTION_HEADING}>Print a paper handoff</h2>
           <p className={SECTION_BODY}>
-            Home shows a <strong>Print all</strong> action whenever New
-            appointment requests are waiting. It prepares one work sheet per
-            request, oldest first, so a manager can hand the pages to staff.
-            The packet is a time-stamped snapshot: printing does not assign a
-            request, mark it contacted, or change its history. After a call,
-            open the live request in Appointments and record what happened so
-            everyone sees the durable result. If a packet has sat unattended,
-            check the New view before distributing it.
+            Home shows <strong>Prepare print packet</strong> whenever New
+            appointment requests are waiting. It gathers the current New queue
+            into one time-stamped packet, oldest first. When the packet is ready,
+            choose Print without leaving Home. Printing does not assign a request,
+            mark it contacted, or change its history. After a call, open the live
+            request in Appointments and record what happened so everyone sees the
+            durable result. If a packet has sat unattended, check the New view
+            before distributing it.
           </p>
           <Link
-            href="/admin/requests/print"
+            href="/admin#queue-overview"
             className="mt-3 inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
           >
-            Prepare the current New-request packet
+            Go to the Home print handoff
           </Link>
         </div>
 

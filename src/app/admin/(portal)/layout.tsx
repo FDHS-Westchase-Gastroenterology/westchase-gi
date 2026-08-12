@@ -145,6 +145,7 @@ export default async function PortalLayout({
           </main>
         </div>
       </div>
+      <div id="portal-print-root" />
     </PortalReleaseProvider>
   );
 }

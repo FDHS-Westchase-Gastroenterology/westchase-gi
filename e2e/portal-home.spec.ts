@@ -13,6 +13,7 @@ const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
 
 const db = serviceDb();
 const runId = randomUUID().slice(0, 8);
+const testAuditIds: string[] = [];
 
 function testIp(label: string): string {
   const hex = createHash("sha256").update(`${runId}:${label}`).digest("hex");
@@ -34,6 +35,9 @@ test.describe("portal home", () => {
 
   test.afterAll(async () => {
     await db.from("requests").delete().like("email", `home-${runId}-%`);
+    if (testAuditIds.length > 0) {
+      await db.from("audit_log").delete().in("id", testAuditIds);
+    }
   });
 
   test("admin lands on a greeting, live queue status, and the full task list", async ({
@@ -168,18 +172,100 @@ test.describe("portal home", () => {
       ).toHaveAttribute("href", href);
     }
 
-    // The manager's paper handoff is directly available from Home, opens a
-    // dedicated print surface, and keeps the live workbench in place.
-    const printLink = page.getByRole("link", {
-      name: `Print all ${newCount} new appointment ${
-        newCount === 1 ? "request" : "requests"
-      }`,
-    });
-    await expect(printLink).toHaveAttribute(
-      "href",
-      "/admin/requests/print?auto=1",
+    // The manager's paper handoff stays on Home: preparation creates the
+    // audited live snapshot, then a separate explicit click opens printing.
+    // The ready control and hidden print root both use the returned packet as
+    // their authority rather than the earlier Home count.
+    const { data: priorPrintAudits, error: priorPrintAuditError } = await db
+      .from("audit_log")
+      .select("id")
+      .eq("actor_email", SEED_EMAIL.trim().toLowerCase())
+      .eq("action", "requests.print_new");
+    expect(priorPrintAuditError).toBeNull();
+    const priorPrintAuditIds = new Set(
+      (priorPrintAudits ?? []).map((row) => row.id),
     );
-    await expect(printLink).toHaveAttribute("target", "_blank");
+
+    await page.evaluate(() => {
+      window.print = () => {
+        const printCount = Number(
+          document.documentElement.dataset.testHomePrintCount ?? "0",
+        );
+        document.documentElement.dataset.testHomePrintCount = String(
+          printCount + 1,
+        );
+      };
+    });
+    const pageCountBeforePreparation = page.context().pages().length;
+    const printControl = page.getByTestId("home-print-packet-primary");
+    await expect(printControl).toHaveAccessibleName("Prepare print packet");
+    await printControl.click();
+    await expect(page).toHaveURL(/\/admin\/?$/);
+    await expect(page.context().pages()).toHaveLength(pageCountBeforePreparation);
+    await expect(printControl).toHaveAttribute("data-state", "ready");
+    const preparedSheets = page
+      .locator("#portal-print-root")
+      .getByTestId("print-request-sheet");
+    const packetCount = await preparedSheets.count();
+    expect(packetCount).toBeGreaterThan(0);
+    await expect(printControl).toHaveAccessibleName(
+      `Print ${packetCount} ${packetCount === 1 ? "request" : "requests"}`,
+    );
+    await expect(preparedSheets).toHaveCount(packetCount);
+    const representedPacketIds = await printControl
+      .locator("[data-print-target-id]")
+      .evaluateAll((elements) =>
+        elements.flatMap((element) => {
+          const id = element.getAttribute("data-print-target-id");
+          return id ? [id] : [];
+        }),
+      );
+    for (const id of representedPacketIds) {
+      await expect(page.locator(`#portal-print-root #patient-${id}`)).toHaveCount(1);
+    }
+    const { data: currentPrintAudits, error: currentPrintAuditError } = await db
+      .from("audit_log")
+      .select("id, detail")
+      .eq("actor_email", SEED_EMAIL.trim().toLowerCase())
+      .eq("action", "requests.print_new");
+    expect(currentPrintAuditError).toBeNull();
+    const homePrintAudits = (currentPrintAudits ?? []).filter(
+      (row) => !priorPrintAuditIds.has(row.id),
+    );
+    expect(homePrintAudits).toHaveLength(1);
+    testAuditIds.push(homePrintAudits[0].id);
+    expect(homePrintAudits[0].detail).toEqual({
+      row_count: packetCount,
+      status_filter: "new",
+    });
+    await page.emulateMedia({ media: "print" });
+    await expect(page.locator(".portal-workspace")).toBeHidden();
+    await expect(
+      page.locator("#portal-print-root").getByTestId("print-request-sheet").first(),
+    ).toBeVisible();
+    await page.emulateMedia({ media: "screen" });
+
+    await printControl.click();
+    await printControl.click();
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-test-home-print-count",
+      "2",
+    );
+    await expect(page).toHaveURL(/\/admin\/?$/);
+    const { data: auditsAfterReprint, error: auditsAfterReprintError } = await db
+      .from("audit_log")
+      .select("id")
+      .eq("actor_email", SEED_EMAIL.trim().toLowerCase())
+      .eq("action", "requests.print_new");
+    expect(auditsAfterReprintError).toBeNull();
+    expect(
+      (auditsAfterReprint ?? []).filter(
+        (row) => !priorPrintAuditIds.has(row.id),
+      ),
+    ).toEqual([{ id: homePrintAudits[0].id }]);
+    await page.getByRole("button", { name: "Close packet" }).click();
+    await expect(printControl).toHaveAccessibleName("Prepare print packet");
+    await expect(page.locator("#portal-print-root")).toBeEmpty();
 
     // The primary action opens the Appointments workbench (DEC-UX-02: the
     // destination is named Appointments; the records remain appointment

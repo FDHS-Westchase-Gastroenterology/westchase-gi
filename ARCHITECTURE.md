@@ -191,19 +191,21 @@ and verify Preview Branches and Production separately.
 
 ### New-request print packet
 
-`/admin/requests/print` reauthorizes every active staff member server-side, then calls
-`portal_prepare_new_request_print_packet` through the service-role client. The security-invoker
-RPC is executable only by `service_role`; browsers retain no database access. One SQL statement
-materializes the durable `new` rows, derives the database snapshot time, aggregates the complete
-bounded request values oldest first, and inserts one `requests.print_new` audit row containing
-only row count and status filter. If any part fails, Postgres returns no packet and the page shows
-an unavailable recovery state.
+Home's `prepareHomePrintPacket` Server Action and `/admin/requests/print` each reauthorize every
+active staff member server-side, then call `portal_prepare_new_request_print_packet` through the
+service-role client. The security-invoker RPC is executable only by `service_role`; browsers retain
+no database access. One SQL statement materializes the durable `new` rows, derives the database
+snapshot time, aggregates the complete bounded request values oldest first, and inserts one
+`requests.print_new` audit row containing only row count and status filter. If any part fails,
+Postgres returns no packet and the calling surface shows an unavailable recovery state.
 
-The RSC renders one letter-sized worksheet per returned request and may ask the browser to open
-its native print dialog after the page loads. Browser printing, cancellation, reload, and tab
-close are deliberately outside the database transaction and cause no request mutation. The paper
-contains patient data and is clinic-only; its staff-name field is physical routing, not a stored
-assignment. The live queue remains authoritative after the snapshot.
+A shared packet renderer creates one letter-sized worksheet per returned request. Home portals the
+prepared packet into a screen-hidden print root, then opens the browser's native print dialog only
+after a separate explicit staff action; the dedicated print route may request that dialog after it
+loads. Browser printing, cancellation, reprinting, reload, and tab close are deliberately outside
+the database transaction and cause no request mutation or additional audit. The paper contains
+patient data and is clinic-only; its staff-name field is physical routing, not a stored assignment.
+The live queue remains authoritative after the snapshot.
 
 ### Email
 
