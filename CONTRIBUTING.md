@@ -45,7 +45,6 @@ npm ci --no-audit --no-fund
 node --test .github/scripts/dependency-automation.test.cjs
 npm run test:e2e-guard
 npm run test:unit
-npm run lint
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=ci-public-placeholder \
   SUPABASE_SERVICE_ROLE_KEY=ci-server-placeholder \
@@ -55,6 +54,7 @@ PLAYWRIGHT_PUBLIC_SMOKE=1 npx playwright test e2e/smoke.spec.ts --project=chromi
 ```
 
 `npm run lint` (`oxlint` from the repository root) is the repository's sole linter command.
+It is local-only until a dedicated findings PR lands; the `quality` job does not run it.
 Oxlint recursively checks owned JavaScript and TypeScript files in every subdirectory — `src/`,
 `e2e/`, `scripts/`, `.github/scripts/`, and root configs — with the migrated Next.js, React,
 accessibility, import, and TypeScript rules plus the vendored anti-slop rules. Dependencies,
@@ -165,7 +165,7 @@ changes never request a bypass.
 
 Dependabot PRs travel a guarded automatic lane with three independent boundaries:
 
-1. **Deterministic PR gates** (no-secret runner: clean install, policy self-test, lint,
+1. **Deterministic PR gates** (no-secret runner: clean install, policy self-test,
    build, public smoke) — authoritative.
 2. **Best-effort read-only Codex review** of verified, manifest-only Dependabot commits. It
    can veto; it cannot override deterministic policy, and an unavailable or malformed

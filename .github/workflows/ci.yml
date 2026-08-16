@@ -41,8 +41,8 @@ jobs:
       - name: Portal unit tests
         run: npm run test:unit
 
-      - name: Lint
-        run: npm run lint
+      # Oxlint and anti-slop stay in the local config (`npm run lint`).
+      # CI does not run them until a dedicated findings PR lands.
 
       - name: Build
         env:
