@@ -68,7 +68,7 @@ export function LanguageChooser({ locale, dict }: LanguageChooserProps) {
       option.focus();
       trackChooser("chooser_shown");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [locale]);
 
   function finish(target: Locale) {

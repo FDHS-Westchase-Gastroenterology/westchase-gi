@@ -1,6 +1,6 @@
 "use strict";
 
-/* eslint-disable @typescript-eslint/no-require-imports -- GitHub Script loads this CommonJS bridge with require(). */
+/* oxlint-disable typescript/no-require-imports -- GitHub Script loads this CommonJS bridge with require(). */
 
 const { appendFileSync } = require("node:fs");
 

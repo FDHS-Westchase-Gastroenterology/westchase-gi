@@ -10,6 +10,7 @@ Discovery is progressive. An agent sees each skill's name and description first 
 
 | Skill | Origin | Declared version | License |
 |---|---|---|---|
+| `install-anti-slop` | [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop) | Not declared | MIT |
 | `react-doctor` | [react.doctor](https://www.react.doctor), already in this repository | 1.2.0 | Not declared |
 | `supabase` | [supabase/agent-skills](https://github.com/supabase/agent-skills) | 0.1.2 | Vendor-published |
 | `supabase-postgres-best-practices` | [supabase/agent-skills](https://github.com/supabase/agent-skills) | 1.1.1 | MIT |
