@@ -10,7 +10,7 @@ import {
 } from "./actions";
 import { formatReceived } from "../requests/format";
 
-export type StaffRow = {
+export interface StaffRow {
   user_id: string;
   email: string;
   display_name: string;
@@ -18,24 +18,35 @@ export type StaffRow = {
   active: boolean;
   onboarded_at: string | null;
   lastSignInAt?: string | null;
-};
+}
 
-type MutationOutcome = {
+interface MutationOutcome {
   ok: boolean;
   code?: string;
   delivery?: "accepted" | "failed";
   fallbackSetupUrl?: string;
-};
+}
 
-const FAILURE_COPY: Record<string, string> = {
+type StaffFailureCode = "invalid" | "conflict" | "not_found" | "unavailable";
+
+const FAILURE_COPY = {
   invalid: "Check the email and name — one of them isn't valid.",
   conflict: "That person already has portal access.",
   not_found: "That account no longer exists — the list has been refreshed.",
   unavailable: "Something went wrong saving the change. Try again.",
-};
+} as const satisfies Record<StaffFailureCode, string>;
+
+function isStaffFailureCode(value: string): value is StaffFailureCode {
+  return value in FAILURE_COPY;
+}
 
 function failureMessage(result: MutationOutcome): string {
-  return FAILURE_COPY[result.code ?? "unavailable"] ?? FAILURE_COPY.unavailable;
+  const code = result.code ?? "unavailable";
+  return isStaffFailureCode(code) ? FAILURE_COPY[code] : FAILURE_COPY.unavailable;
+}
+
+function parseStaffRole(value: string): "admin" | "staff" | null {
+  return value === "admin" || value === "staff" ? value : null;
 }
 
 function StaffList({
@@ -157,12 +168,10 @@ function StaffList({
                     id={`role-${person.user_id}`}
                     value={draft}
                     disabled={rowPending}
-                    onChange={(event) =>
-                      onRoleDraft(
-                        person.user_id,
-                        event.target.value as "admin" | "staff",
-                      )
-                    }
+                    onChange={(event) => {
+                      const role = parseStaffRole(event.target.value);
+                      if (role) onRoleDraft(person.user_id, role);
+                    }}
                     className="min-h-10 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-2.5 text-[0.85rem] font-bold text-[var(--color-body)]"
                   >
                     <option value="staff">Staff</option>

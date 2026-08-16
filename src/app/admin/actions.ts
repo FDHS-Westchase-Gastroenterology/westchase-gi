@@ -2,37 +2,28 @@
 
 import { timingSafeEqual } from "node:crypto";
 import { redirect } from "next/navigation";
-import {
-  clearPasswordAuthFlow,
-  establishPasswordAuthFlow,
-  getSessionUser,
-  getVerifiedStaffAuthState,
-  readPasswordAuthFlow,
-  requireRole,
-  resolveStaffAuthState,
-  type PasswordAuthFlow,
-  type PortalStaffAuthState,
-} from "@/lib/portal/auth";
+import { clearPasswordAuthFlow, establishPasswordAuthFlow, getSessionUser, getVerifiedStaffAuthState, readPasswordAuthFlow, requireRole, resolveStaffAuthState } from "@/lib/portal/auth";
+import type { PasswordAuthFlow, PortalStaffAuthState } from "@/lib/portal/auth";
 import { portalUrl, serverClient, serviceClient } from "@/lib/portal/server";
 
-export type LoginActionState = {
+export interface LoginActionState {
   error: string | null;
-};
+}
 
-export type ResetRequestActionState = {
+export interface ResetRequestActionState {
   submitted: boolean;
   email: string;
   requestKey: number;
-};
+}
 
-export type ConfirmAuthActionState = {
+export interface ConfirmAuthActionState {
   error: string | null;
-};
+}
 
-export type SetPasswordActionState = {
+export interface SetPasswordActionState {
   error: string | null;
   changeCommitted: boolean;
-};
+}
 
 const GENERIC_LOGIN_ERROR =
   "Unable to sign in. Check your credentials and try again.";
@@ -86,7 +77,7 @@ function credential(
   trim = true,
 ): string {
   const value = formData.get(name);
-  if (typeof value !== "string") return "";
+  if (value instanceof File || value === null) return "";
   return trim ? value.trim() : value;
 }
 
@@ -197,7 +188,7 @@ async function completePasswordChange(
       }
 
       // A new Auth session is not enough on its own. Re-read the
-      // authoritative profile before allowing the portal redirect.
+      // Authoritative profile before allowing the portal redirect.
       const freshStaff = await resolveStaffAuthState(signedIn.user);
       if (!freshStaff?.active || !freshStaff.onboardedAt) {
         return passwordUpdatedIncomplete(flow, true);
@@ -283,7 +274,7 @@ export async function requestPasswordResetAction(
   return {
     submitted: true,
     // This is only an echo of the caller's own valid-looking input. It says
-    // nothing about account existence, staff status, or provider delivery.
+    // Nothing about account existence, staff status, or provider delivery.
     email: email.length <= 254 && EMAIL_RE.test(email) ? email : "",
     requestKey: Date.now(),
   };
@@ -350,7 +341,7 @@ export async function confirmAuthLinkAction(
 }
 
 // Mutation requires both an authenticated active staff identity and the
-// recent, signed, user-bound invite/recovery flow cookie established above.
+// Recent, signed, user-bound invite/recovery flow cookie established above.
 // react-doctor-disable-next-line react-doctor/server-auth-actions
 export async function setPasswordAction(
   _state: SetPasswordActionState,

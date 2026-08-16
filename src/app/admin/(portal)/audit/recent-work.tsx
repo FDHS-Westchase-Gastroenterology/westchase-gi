@@ -1,13 +1,11 @@
 import Link from "next/link";
-import {
-  groupByPracticeDay,
-  type RecentWorkItem,
-} from "./recent-work-model";
+import { groupByPracticeDay } from "./recent-work-model";
+import type { RecentWorkItem } from "./recent-work-model";
 
 // The human lens over the durable audit record: plain-language, grouped by
-// practice-local day, linked to the work — never an action code. The model
+// Practice-local day, linked to the work — never an action code. The model
 // (vocabulary, grouping) lives in recent-work-model.ts so this file exports
-// components only.
+// Components only.
 
 const timeOnly = new Intl.DateTimeFormat("en-US", {
   hour: "numeric",

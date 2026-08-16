@@ -2,15 +2,15 @@ import type { RequestStatus } from "@/lib/portal/contracts";
 import { STATUS_LABELS } from "./format";
 
 // One visual vocabulary for request status across queue and detail:
-// new demands attention (amber), contacted is in-motion (mint/teal),
-// scheduled is settled (navy), closed recedes (neutral).
+// New demands attention (amber), contacted is in-motion (mint/teal),
+// Scheduled is settled (navy), closed recedes (neutral).
 
-const BADGE_STYLES: Record<RequestStatus, string> = {
+const BADGE_STYLES = {
   new: "bg-[var(--color-amber-soft)] text-[var(--color-ink)]",
   contacted: "bg-[var(--color-mint-2)] text-[var(--color-teal-ink)]",
   scheduled: "bg-[var(--color-navy)] text-[var(--color-on-dark)]",
   closed: "bg-[var(--color-line)] text-[var(--color-muted)]",
-};
+} as const satisfies Record<RequestStatus, string>;
 
 export function StatusBadge({ status }: { status: RequestStatus }) {
   return (

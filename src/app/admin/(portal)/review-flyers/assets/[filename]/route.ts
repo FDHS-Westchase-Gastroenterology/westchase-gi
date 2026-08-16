@@ -1,6 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { authorizationStatus, requireRole } from "@/lib/portal/auth";
+import {
+  PortalAuthorizationError,
+  requireRole,
+} from "@/lib/portal/auth";
 import { reviewFlyerAssetByFilename } from "@/lib/review-flyers";
 
 export const runtime = "nodejs";
@@ -12,7 +15,8 @@ export async function GET(
   try {
     await requireRole("staff", { unauthenticated: "throw" });
   } catch (error) {
-    const status = authorizationStatus(error) ?? 401;
+    const status =
+      error instanceof PortalAuthorizationError ? error.status : 401;
     return new Response(status === 401 ? "Unauthenticated" : "Forbidden", {
       status,
     });

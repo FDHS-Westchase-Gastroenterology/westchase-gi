@@ -1,16 +1,14 @@
 "use client";
 
 import { useActionState, useCallback, useRef, useState } from "react";
-import {
-  addRequestNote,
-  type AddRequestNoteState,
-} from "../actions";
+import { addRequestNote } from "../actions";
+import type { AddRequestNoteState } from "../actions";
 
-export type RequestNoteView = {
+export interface RequestNoteView {
   id: string;
   text: string;
   byline: string;
-};
+}
 
 const INITIAL_VISIBLE_NOTES = 3;
 const INITIAL_ACTION_STATE: AddRequestNoteState = { status: "idle" };

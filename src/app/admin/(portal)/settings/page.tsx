@@ -1,8 +1,27 @@
+import { z } from "zod";
 import { requireRole } from "@/lib/portal/auth";
 import { fetchLastSignInMap } from "@/lib/portal/staff-identity";
 import { serviceClient } from "@/lib/portal/server";
-import { RecipientsManager, type RecipientRow } from "./recipients-manager";
-import { StaffManager, type StaffRow } from "./staff-manager";
+import { RecipientsManager } from "./recipients-manager";
+import type { RecipientRow } from "./recipients-manager";
+import { StaffManager } from "./staff-manager";
+import type { StaffRow } from "./staff-manager";
+
+const recipientRowSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  label: z.string().nullable(),
+  active: z.boolean(),
+}) satisfies z.ZodType<RecipientRow>;
+
+const staffRowSchema = z.object({
+  user_id: z.string(),
+  email: z.string(),
+  display_name: z.string(),
+  role: z.enum(["admin", "staff"]),
+  active: z.boolean(),
+  onboarded_at: z.string().nullable(),
+}) satisfies z.ZodType<StaffRow>;
 
 // Default Settings sub-page: the frequent, staff-facing configuration.
 // The website custody record lives on the sibling /admin/settings/software.
@@ -31,8 +50,18 @@ export default async function AdminSettingsPage() {
   }
 
   // Last sign-in is the highest-value adoption signal available without any
-  // new tracking: a read of existing Auth state, honest when it fails.
-  const staffRows = (staffResult.data ?? []) as StaffRow[];
+  // New tracking: a read of existing Auth state, honest when it fails.
+  const parsedRecipients = z
+    .array(recipientRowSchema)
+    .safeParse(recipientsResult.data ?? []);
+  if (!parsedRecipients.success) {
+    throw new Error("Recipient read failed: invalid");
+  }
+  const parsedStaff = z.array(staffRowSchema).safeParse(staffResult.data ?? []);
+  if (!parsedStaff.success) {
+    throw new Error("Staff read failed: invalid");
+  }
+  const staffRows = parsedStaff.data;
   const { map: lastSignInById, readFailed: signInReadFailed } =
     await fetchLastSignInMap(
       db,
@@ -53,7 +82,7 @@ export default async function AdminSettingsPage() {
       {/* Anchor wrappers give the home-page task rows stable deep links. */}
       <div id="notifications" className="scroll-mt-6">
         <RecipientsManager
-          recipients={(recipientsResult.data ?? []) as RecipientRow[]}
+          recipients={parsedRecipients.data}
           isAdmin={isAdmin}
         />
       </div>

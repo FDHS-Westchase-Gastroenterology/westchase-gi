@@ -1,9 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  REQUEST_STATUSES,
-  type RequestStatus,
-} from "@/lib/portal/contracts";
+import { z } from "zod";
+import { REQUEST_STATUSES } from "@/lib/portal/contracts";
+import type { RequestStatus } from "@/lib/portal/contracts";
 import { requireRole } from "@/lib/portal/auth";
 import { waitingSince } from "@/lib/portal/business-time";
 import type { AttentionBucket } from "@/lib/portal/queue-attention";
@@ -15,12 +14,8 @@ import {
 } from "@/lib/portal/request-query";
 import { requestPageWindow } from "@/lib/portal/request-window";
 import { serviceClient } from "@/lib/portal/server";
-import {
-  fetchAttentiveOpenRows,
-  fetchClosedRows,
-  OPEN_STATUSES,
-  type QueueRow,
-} from "./queue";
+import { fetchAttentiveOpenRows, fetchClosedRows, OPEN_STATUSES } from "./queue";
+import type { QueueRow } from "./queue";
 import { StatusBadge } from "./status-badge";
 import {
   followUpShortLabel,
@@ -36,11 +31,12 @@ type SearchParams = Promise<{
   status?: string | string[];
 }>;
 
+const requestStatusSchema = z.enum(REQUEST_STATUSES);
+
 function activeFilter(raw: string | string[] | undefined): RequestStatus | "all" {
   const value = Array.isArray(raw) ? raw[0] : raw;
-  return value && (REQUEST_STATUSES as readonly string[]).includes(value)
-    ? (value as RequestStatus)
-    : "all";
+  const parsed = requestStatusSchema.safeParse(value);
+  return parsed.success ? parsed.data : "all";
 }
 
 function requestsHref({
@@ -82,8 +78,8 @@ function detailHref({
 }
 
 // Next-action language per attention bucket. The queue leads with what to
-// work next: unworked rows by age, call-again rows whose time arrived,
-// touched rows that went silent with no callback date set.
+// Work next: unworked rows by age, call-again rows whose time arrived,
+// Touched rows that went silent with no callback date set.
 function nextActionHint({
   bucket,
   followUpAt,
@@ -123,7 +119,7 @@ function nextActionHint({
   }
 }
 
-type FilterItem = { key: RequestStatus | "all"; label: string; count: number };
+interface FilterItem { key: RequestStatus | "all"; label: string; count: number }
 
 function FilterChips({
   filters,
@@ -281,7 +277,7 @@ export default async function AdminRequestsPage({
   const db = serviceClient();
 
   // Chip counts and the closed tail stay database-paged exactly as before;
-  // the open set is small enough to order by attention in memory.
+  // The open set is small enough to order by attention in memory.
   const countQueries = REQUEST_STATUSES.map((status) => {
     let countQuery = db
       .from("requests")
@@ -299,7 +295,7 @@ export default async function AdminRequestsPage({
       ? fetchAttentiveOpenRows(db, { statuses: openStatuses, searchFilter, now })
       : Promise.resolve([]),
     // Closed rows join the default view after the open set; their own window
-    // is computed once the open size is known.
+    // Is computed once the open size is known.
     wantsClosed
       ? db.from("requests").select("id", { count: "exact", head: true }).eq("status", "closed")
       : Promise.resolve({ count: 0, error: null }),
@@ -311,19 +307,19 @@ export default async function AdminRequestsPage({
   if (countError) {
     throw new Error(`Queue read failed: ${countError.code}`);
   }
-  const counts = Object.fromEntries(
-    REQUEST_STATUSES.map((status, index) => [
-      status,
-      countResults[index].count ?? 0,
-    ]),
-  ) as Record<RequestStatus, number>;
+  const counts = {
+    new: countResults[0].count ?? 0,
+    contacted: countResults[1].count ?? 0,
+    scheduled: countResults[2].count ?? 0,
+    closed: countResults[3].count ?? 0,
+  } as const satisfies Record<RequestStatus, number>;
   const total = REQUEST_STATUSES.reduce(
     (sum, status) => sum + counts[status],
     0,
   );
 
   // The page window — open slice, closed-tail range, display totals, and the
-  // past-the-end redirect — is pure math, unit-tested in request-window.
+  // Past-the-end redirect — is pure math, unit-tested in request-window.
   const pageWindow = requestPageWindow({
     filter,
     page,
@@ -339,7 +335,7 @@ export default async function AdminRequestsPage({
   const { filteredTotal, totalPages, firstShown, lastShown } = pageWindow;
 
   // The page window: open rows first (attention-ordered), then the closed
-  // tail (newest first) fetched from its own offset.
+  // Tail (newest first) fetched from its own offset.
   const openSlice = orderedOpen.slice(pageWindow.openFrom, pageWindow.openTo);
   let closedSlice: QueueRow[] = [];
   if (pageWindow.closedLimit > 0) {
@@ -435,7 +431,7 @@ export default async function AdminRequestsPage({
               ? "No appointment requests match that search"
               : filter === "all"
                 ? "No appointment requests yet"
-                : `Nothing marked ${STATUS_LABELS[filter as RequestStatus].toLowerCase()}`}
+                : `Nothing marked ${STATUS_LABELS[filter].toLowerCase()}`}
           </h2>
           <p className="mx-auto mt-2 max-w-[52ch] text-[0.95rem] leading-relaxed text-[var(--color-body)]">
             {search

@@ -1,9 +1,9 @@
 // Loading boundary for the Settings sub-pages. The heading and tab row
-// live in layout.tsx above this boundary, so switching tabs commits
-// navigation immediately (the underline moves on click) while only the
-// content area shows this placeholder until the server payload arrives.
+// Live in layout.tsx above this boundary, so switching tabs commits
+// Navigation immediately (the underline moves on click) while only the
+// Content area shows this placeholder until the server payload arrives.
 // The global reduced-motion rule freezes animate-pulse, so the skeleton
-// is static under prefers-reduced-motion with no extra handling here.
+// Is static under prefers-reduced-motion with no extra handling here.
 
 export default function SettingsSectionLoading() {
   return (

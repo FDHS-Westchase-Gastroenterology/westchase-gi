@@ -14,10 +14,8 @@ import {
   useState,
 } from "react";
 import { ArrowRight, ChevronDown, X } from "@/components/icons";
-import {
-  PORTAL_RELEASE_BRIEFING,
-  type PortalReleaseViewState,
-} from "@/lib/portal/release-briefing-content";
+import { PORTAL_RELEASE_BRIEFING } from "@/lib/portal/release-briefing-content";
+import type { PortalReleaseViewState } from "@/lib/portal/release-briefing-content";
 import {
   acknowledgePortalReleaseAction,
   hidePortalReleaseAction,
@@ -30,7 +28,11 @@ type ReleaseActionResult =
   | { ok: true }
   | { ok: false; code: "invalid" | "unavailable" };
 
-type PortalReleaseContextValue = {
+interface PortalNavigator {
+  push(href: string): void;
+}
+
+interface PortalReleaseContextValue {
   available: boolean;
   announcementVisible: boolean;
   homeOpen: boolean;
@@ -47,8 +49,8 @@ type PortalReleaseContextValue = {
   hide: () => void;
   toggleQuick: (animate: boolean) => void;
   dismissQuick: () => void;
-  openGuide: () => void;
-};
+  openGuide: (navigator: PortalNavigator) => void;
+}
 
 const PortalReleaseContext = createContext<PortalReleaseContextValue | null>(
   null,
@@ -74,7 +76,6 @@ export function PortalReleaseProvider({
   initialState: PortalReleaseViewState;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const initiallyAvailable = initialState.status === "available";
   const [available, setAvailable] = useState(initiallyAvailable);
   const [homeOpen, setHomeOpen] = useState(false);
@@ -220,7 +221,7 @@ export function PortalReleaseProvider({
     requestAnimationFrame(() => quickButtonRef.current?.focus());
   }, [recordDismiss]);
 
-  const openGuide = useCallback(() => {
+  const openGuide = useCallback((navigator: PortalNavigator) => {
     setGuidePending(true);
     setActionError(null);
     startTransition(async () => {
@@ -239,10 +240,10 @@ export function PortalReleaseProvider({
         );
       } finally {
         setGuidePending(false);
-        router.push(PORTAL_RELEASE_BRIEFING.guideHref);
+        navigator.push(PORTAL_RELEASE_BRIEFING.guideHref);
       }
     });
-  }, [router]);
+  }, []);
 
   const handleEscape = useEffectEvent(() => {
     setQuickOpen(false);
@@ -366,6 +367,7 @@ function ReleaseSummary({
   open: boolean;
   onClose: () => void;
 }) {
+  const router = useRouter();
   const {
     acknowledge,
     actionError,
@@ -421,18 +423,24 @@ function ReleaseSummary({
             "Work from the top.",
             "New requests and due callbacks rise. Scheduled requests stay visible.",
           ],
-        ].map(([term, detail], index) => (
-          <div
-            key={term}
-            className="release-summary__row grid gap-1 py-3 sm:grid-cols-[10rem_1fr] sm:gap-4"
-            style={{ "--release-row": index } as React.CSSProperties}
-          >
-            <dt className="font-black text-[var(--color-ink)]">{term}</dt>
-            <dd className="text-[0.92rem] leading-relaxed text-[var(--color-body)]">
-              {detail}
-            </dd>
-          </div>
-        ))}
+        ].map(([term, detail], index) => {
+          // SAFETY: CSS custom properties are valid style values but not in CSSProperties.
+          const releaseRowStyle = {
+            "--release-row": index,
+          } as React.CSSProperties;
+          return (
+            <div
+              key={term}
+              className="release-summary__row grid gap-1 py-3 sm:grid-cols-[10rem_1fr] sm:gap-4"
+              style={releaseRowStyle}
+            >
+              <dt className="font-black text-[var(--color-ink)]">{term}</dt>
+              <dd className="text-[0.92rem] leading-relaxed text-[var(--color-body)]">
+                {detail}
+              </dd>
+            </div>
+          );
+        })}
       </dl>
 
       <p className="mt-4 text-[0.86rem] leading-relaxed text-[var(--color-muted)]">
@@ -459,7 +467,7 @@ function ReleaseSummary({
         </Link>
         <button
           type="button"
-          onClick={openGuide}
+          onClick={() => openGuide(router)}
           disabled={guidePending}
           className="btn btn-outline btn-sm min-h-11"
         >

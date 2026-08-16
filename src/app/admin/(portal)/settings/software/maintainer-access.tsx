@@ -5,25 +5,25 @@ import { useRouter } from "next/navigation";
 import { getMaintainerViewState } from "@/lib/portal/maintainer-view";
 
 // The staff-facing surface for "who can change the website". This component
-// owns presentation and confirmation only; every decision that matters
+// Owns presentation and confirmation only; every decision that matters
 // (authorization, target resolution, auditing, re-reading the provider)
-// happens server-side behind the `MaintainerActions` contract below.
+// Happens server-side behind the `MaintainerActions` contract below.
 //
 // The clinic never "works in GitHub" here: rows are people, the one place
 // GitHub is named is the invite field, because the username is the only
-// credential a maintainer has.
+// Credential a maintainer has.
 
-export type Maintainer = {
+export interface Maintainer {
   /** GitHub numeric user ID — the value revoke submits. */
   userId: number;
   login: string;
-};
+}
 
-export type PendingInvitation = {
+export interface PendingInvitation {
   /** GitHub numeric invitation ID — the value cancel submits. */
   invitationId: number;
   login: string;
-};
+}
 
 export type MaintainerManagementState =
   /** Installation still covers all repositories; owner must narrow it. */
@@ -39,7 +39,7 @@ export type MaintainerAccessModel =
       state: "connected";
       ownerLogin: string;
       management: MaintainerManagementState;
-      /** null = this deployment cannot read the list yet (never stale data). */
+      /** Null = this deployment cannot read the list yet (never stale data). */
       maintainers: Maintainer[] | null;
       invitations: PendingInvitation[] | null;
     };
@@ -59,16 +59,20 @@ export type MaintainerActionResult =
     };
 
 // The exact server contract the backend pass must fulfil (three narrow
-// commands, no permission selector, numeric IDs from rendered records).
-export type MaintainerActions = {
+// Commands, no permission selector, numeric IDs from rendered records).
+export interface MaintainerActions {
   inviteMaintainer: (input: { username: string }) => Promise<MaintainerActionResult>;
   cancelMaintainerInvite: (input: {
     invitationId: number;
   }) => Promise<MaintainerActionResult>;
   revokeMaintainer: (input: { userId: number }) => Promise<MaintainerActionResult>;
-};
+}
 
-const FAILURE_COPY: Record<string, string> = {
+type MaintainerFailureCopyCode = NonNullable<
+  Extract<MaintainerActionResult, { ok: false }>["code"]
+>;
+
+const FAILURE_COPY = {
   invalid: "That doesn't look like a GitHub username — check it and try again.",
   not_found:
     "GitHub doesn't recognize that username. Check the exact spelling with the person you're adding.",
@@ -80,18 +84,27 @@ const FAILURE_COPY: Record<string, string> = {
   unconfirmed:
     "We couldn't confirm whether that change went through. The list below is the latest confirmed state — check it before trying again.",
   unavailable: "Something went wrong making the change. Try again.",
-};
+} as const satisfies Record<MaintainerFailureCopyCode, string>;
+
+function isMaintainerFailureCopyCode(
+  value: string,
+): value is MaintainerFailureCopyCode {
+  return value in FAILURE_COPY;
+}
 
 function failureMessage(result: MaintainerActionResult): string {
   if (result.ok) return "";
-  return FAILURE_COPY[result.code ?? "unavailable"] ?? FAILURE_COPY.unavailable;
+  const code = result.code ?? "unavailable";
+  return isMaintainerFailureCopyCode(code)
+    ? FAILURE_COPY[code]
+    : FAILURE_COPY.unavailable;
 }
 
-const STATUS_LABEL: Record<string, string> = {
+const STATUS_LABEL = {
   not_configured: "Not configured",
   unavailable: "Connection unavailable",
   connected: "Connected",
-};
+} as const satisfies Record<MaintainerAccessModel["state"], string>;
 
 function StatusPill({ state }: { state: MaintainerAccessModel["state"] }) {
   return (

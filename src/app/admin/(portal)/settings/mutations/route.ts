@@ -1,15 +1,12 @@
 import type { NextRequest } from "next/server";
-import { authorizationStatus, requireRole } from "@/lib/portal/auth";
+import { asJsonString, jsonObjectSchema } from "@/lib/json";
+import type { Json } from "@/lib/json";
 import {
-  addNotificationRecipientMutation,
-  changeStaffRoleMutation,
-  deactivateStaffMutation,
-  inviteStaffMutation,
-  removeNotificationRecipientMutation,
-  resendStaffInviteMutation,
-  toggleNotificationRecipientMutation,
-  type ManagementFailure,
-} from "@/lib/portal/management";
+  PortalAuthorizationError,
+  requireRole,
+} from "@/lib/portal/auth";
+import { addNotificationRecipientMutation, changeStaffRoleMutation, deactivateStaffMutation, inviteStaffMutation, removeNotificationRecipientMutation, resendStaffInviteMutation, toggleNotificationRecipientMutation } from "@/lib/portal/management";
+import type { ManagementFailure } from "@/lib/portal/management";
 import {
   cancelMaintainerInviteMutation,
   inviteMaintainerMutation,
@@ -22,7 +19,7 @@ const JSON_HEADERS = {
   "X-Content-Type-Options": "nosniff",
 } as const;
 
-function json(body: unknown, status: number): Response {
+function json(body: Json, status: number): Response {
   return Response.json(body, { status, headers: JSON_HEADERS });
 }
 
@@ -75,51 +72,54 @@ export async function POST(request: NextRequest): Promise<Response> {
 
   try {
     // The adapter itself fails closed with an HTTP status. Each selected
-    // mutation then repeats the operation-specific role check at its boundary.
+    // Mutation then repeats the operation-specific role check at its boundary.
     await requireRole("staff", { unauthenticated: "throw" });
 
-    const body = (await request.json()) as unknown;
-    if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    const parsedBody = jsonObjectSchema.safeParse(await request.json());
+    if (!parsedBody.success) {
       return json({ ok: false, error: "Invalid request" }, 400);
     }
-
-    const payload = body as { operation?: unknown; input?: unknown };
+    const operation = asJsonString(parsedBody.data.operation);
+    if (operation === null) {
+      return json({ ok: false, error: "Unknown operation" }, 400);
+    }
+    const input = parsedBody.data.input ?? null;
     let result;
     let successStatus = 200;
 
-    switch (payload.operation) {
+    switch (operation) {
       case "recipient.add":
-        result = await addNotificationRecipientMutation(payload.input);
+        result = await addNotificationRecipientMutation(input);
         successStatus = 201;
         break;
       case "recipient.toggle":
-        result = await toggleNotificationRecipientMutation(payload.input);
+        result = await toggleNotificationRecipientMutation(input);
         break;
       case "recipient.remove":
-        result = await removeNotificationRecipientMutation(payload.input);
+        result = await removeNotificationRecipientMutation(input);
         break;
       case "staff.invite":
-        result = await inviteStaffMutation(payload.input);
+        result = await inviteStaffMutation(input);
         successStatus = 201;
         break;
       case "staff.invite.resend":
-        result = await resendStaffInviteMutation(payload.input);
+        result = await resendStaffInviteMutation(input);
         break;
       case "staff.deactivate":
-        result = await deactivateStaffMutation(payload.input);
+        result = await deactivateStaffMutation(input);
         break;
       case "staff.role":
-        result = await changeStaffRoleMutation(payload.input);
+        result = await changeStaffRoleMutation(input);
         break;
       case "maintainer.invite":
-        result = await inviteMaintainerMutation(payload.input);
+        result = await inviteMaintainerMutation(input);
         successStatus = 201;
         break;
       case "maintainer.invite.cancel":
-        result = await cancelMaintainerInviteMutation(payload.input);
+        result = await cancelMaintainerInviteMutation(input);
         break;
       case "maintainer.revoke":
-        result = await revokeMaintainerMutation(payload.input);
+        result = await revokeMaintainerMutation(input);
         break;
       default:
         return json({ ok: false, error: "Unknown operation" }, 400);
@@ -127,7 +127,8 @@ export async function POST(request: NextRequest): Promise<Response> {
 
     return json(result, result.ok ? successStatus : failureStatus(result));
   } catch (error) {
-    const status = authorizationStatus(error);
+    const status =
+      error instanceof PortalAuthorizationError ? error.status : null;
     if (status !== null) {
       return json(
         { ok: false, error: status === 401 ? "Unauthenticated" : "Forbidden" },

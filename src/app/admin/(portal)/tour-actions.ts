@@ -2,6 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { z } from "zod";
+import type { Json } from "@/lib/json";
 import type { PortalSessionUser } from "@/lib/portal/auth";
 import { requireRole } from "@/lib/portal/auth";
 import { recordAudit } from "@/lib/portal/audit";
@@ -34,24 +36,29 @@ async function setTourDismissed(
   redirect("/admin");
 }
 
-function parseTourProgress(
-  stepReached: unknown,
-  totalSteps: unknown,
-): { stepReached: number; totalSteps: number } {
-  if (
-    typeof stepReached !== "number" ||
-    typeof totalSteps !== "number" ||
-    !Number.isInteger(stepReached) ||
-    !Number.isInteger(totalSteps) ||
-    stepReached < 1 ||
-    stepReached > 20 ||
-    totalSteps < 1 ||
-    totalSteps > 20 ||
-    stepReached > totalSteps
-  ) {
+interface TourProgress {
+  stepReached: number;
+  totalSteps: number;
+}
+
+interface TourProgressInput {
+  stepReached: Json;
+  totalSteps: Json;
+}
+
+const tourProgressSchema = z
+  .object({
+    stepReached: z.number().int().min(1).max(20),
+    totalSteps: z.number().int().min(1).max(20),
+  })
+  .refine((value) => value.stepReached <= value.totalSteps);
+
+function parseTourProgress(input: TourProgressInput): TourProgress {
+  const parsed = tourProgressSchema.safeParse(input);
+  if (!parsed.success) {
     throw new Error("Invalid tour progress");
   }
-  return { stepReached, totalSteps };
+  return parsed.data;
 }
 
 export async function dismissPortalTourAction(): Promise<never> {
@@ -64,12 +71,11 @@ export async function restartPortalTourAction(): Promise<never> {
   return setTourDismissed(session, false);
 }
 
-export async function finishPortalTourAction(input: {
-  stepReached: unknown;
-  totalSteps: unknown;
-}): Promise<never> {
+export async function finishPortalTourAction(
+  input: TourProgressInput,
+): Promise<never> {
   const session = await requireRole("staff", { unauthenticated: "throw" });
-  const progress = parseTourProgress(input.stepReached, input.totalSteps);
+  const progress = parseTourProgress(input);
 
   await setTourDismissedRpc(session, true);
 

@@ -3,8 +3,8 @@ import "../globals.css";
 import { fontVariables } from "@/lib/fonts";
 
 // The staff portal is a sibling segment to [locale] with its own root
-// layout: English-only, no patient Header/Footer/NoticeBanner, never
-// indexed. m2 packets build the real shell on top of this.
+// Layout: English-only, no patient Header/Footer/NoticeBanner, never
+// Indexed. m2 packets build the real shell on top of this.
 
 export const metadata: Metadata = {
   title: "Staff portal | Westchase Gastroenterology",

@@ -4,17 +4,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 // One task-first primary nav for every role. Home is the landing
-// surface; the queue lives under /admin/requests; occasional tasks
+// Surface; the queue lives under /admin/requests; occasional tasks
 // (review flyers, website custody) are reached from Home and Settings
-// instead of holding permanent tabs. Every destination stays visible on
-// a phone: the queue tab compacts to "Requests" below `sm` so the row
-// never depends on unmarked horizontal scrolling.
+// Instead of holding permanent tabs. Every destination stays visible on
+// A phone: the queue tab compacts to "Requests" below `sm` so the row
+// Never depends on unmarked horizontal scrolling.
 
-type NavItem = {
+interface NavItem {
   href: string;
   label: string;
   compactLabel?: string;
-};
+}
 
 const NAV_ITEMS: readonly NavItem[] = [
   { href: "/admin", label: "Home" },

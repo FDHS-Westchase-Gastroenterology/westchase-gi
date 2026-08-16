@@ -18,7 +18,7 @@ type PortalReleaseMutation =
 
 async function runPortalReleaseAction(
   mutation: PortalReleaseMutation,
-  releaseId: unknown,
+  releaseId: string,
 ): Promise<PortalReleaseActionResult> {
   const session = await requireRole("staff", { unauthenticated: "throw" });
   const parsedReleaseId = parseSupportedPortalReleaseId(
@@ -36,25 +36,25 @@ async function runPortalReleaseAction(
 }
 
 export async function openPortalReleaseAction(
-  releaseId: unknown,
+  releaseId: string,
 ): Promise<PortalReleaseActionResult> {
   return runPortalReleaseAction("portal_open_staff_release", releaseId);
 }
 
 export async function acknowledgePortalReleaseAction(
-  releaseId: unknown,
+  releaseId: string,
 ): Promise<PortalReleaseActionResult> {
   return runPortalReleaseAction("portal_acknowledge_staff_release", releaseId);
 }
 
 export async function hidePortalReleaseAction(
-  releaseId: unknown,
+  releaseId: string,
 ): Promise<PortalReleaseActionResult> {
   return runPortalReleaseAction("portal_hide_staff_release", releaseId);
 }
 
 export async function recordPortalReleaseGuideOpenAction(
-  releaseId: unknown,
+  releaseId: string,
 ): Promise<PortalReleaseActionResult> {
   return runPortalReleaseAction(
     "portal_record_staff_release_guide_open",
@@ -63,7 +63,7 @@ export async function recordPortalReleaseGuideOpenAction(
 }
 
 export async function recordPortalReleaseDismissAction(
-  releaseId: unknown,
+  releaseId: string,
 ): Promise<PortalReleaseActionResult> {
   return runPortalReleaseAction(
     "portal_record_staff_release_dismiss",

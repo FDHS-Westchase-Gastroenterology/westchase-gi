@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { z } from "zod";
 import { PrintButton } from "@/components/PrintButton";
-import {
-  isMailbox,
-  REQUEST_STATUSES,
-  type RequestClosureOutcome,
-  type RequestStatus,
-} from "@/lib/portal/contracts";
+import { asJsonBoolean, asJsonObject, asJsonString, jsonSchema } from "@/lib/json";
+import type { Json, JsonObject } from "@/lib/json";
+import { isMailbox, REQUEST_STATUSES } from "@/lib/portal/contracts";
+import type { RequestClosureOutcome, RequestStatus } from "@/lib/portal/contracts";
+import { isCallOutcomeId } from "@/lib/portal/call-outcomes";
 import { requireRole } from "@/lib/portal/auth";
+import { isLocale } from "@/lib/i18n";
 import {
   parseRequestSearch,
   requestSearchFilter,
@@ -33,12 +34,10 @@ import {
   TIME_LABELS,
 } from "../format";
 import { CallOutcomeComposer } from "./call-outcome-composer";
-import {
-  RequestNotes,
-  type RequestNoteView,
-} from "./request-notes";
+import { RequestNotes } from "./request-notes";
+import type { RequestNoteView } from "./request-notes";
 
-type RequestRow = {
+interface RequestRow {
   id: string;
   name: string;
   phone: string;
@@ -53,30 +52,66 @@ type RequestRow = {
   closed_at: string | null;
   record_handoff_at: string | null;
   created_at: string;
-};
+}
 
-type EventRow = {
+interface EventRow {
   id: string;
   type: string;
   recipient: string | null;
   status: string;
-  meta: Record<string, unknown> | null;
+  meta: Json | null;
   created_at: string;
-};
+}
 
-type AuditRow = {
+interface AuditRow {
   id: string;
   actor_email: string | null;
   action: string;
-  detail: Record<string, unknown> | null;
+  detail: Json | null;
   at: string;
-};
+}
+
+const requestStatusSchema = z.enum(REQUEST_STATUSES);
+
+const requestRowSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  phone: z.string(),
+  email: z.string().nullable(),
+  location: z.enum(["any", "tampa", "lutz"]),
+  preferred_time: z.enum(["any", "morning", "afternoon"]),
+  message: z.string().nullable(),
+  locale: z.string(),
+  source_path: z.string(),
+  status: z.enum(REQUEST_STATUSES),
+  closure_disposition: z.enum(["unconverted", "converted"]).nullable(),
+  closed_at: z.string().nullable(),
+  record_handoff_at: z.string().nullable(),
+  created_at: z.string(),
+}) satisfies z.ZodType<RequestRow>;
+
+const eventRowSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  recipient: z.string().nullable(),
+  status: z.string(),
+  meta: jsonSchema.nullable(),
+  created_at: z.string(),
+}) satisfies z.ZodType<EventRow>;
+
+const requestAuditRowSchema = z.object({
+  id: z.string(),
+  actor_email: z.string().nullable(),
+  action: z.string(),
+  detail: jsonSchema.nullable(),
+  at: z.string(),
+}) satisfies z.ZodType<AuditRow>;
 
 // Call outcomes from the request event stream, plus status moves and closes
-// from the audit record. Appointment request notes remain a separate,
-// first-class staff abstraction; corresponding call-outcome and
-// appointment-request-note audit rows are excluded here so each human action
-// renders exactly once.
+// From the audit record. Appointment request notes remain a separate,
+// First-class staff abstraction; corresponding call-outcome and
+// Appointment-request-note audit rows are excluded here so each human action
+// Renders exactly once.
 type ActivityEntry =
   | {
       kind: "outcome";
@@ -111,9 +146,13 @@ type ActivityEntry =
       at: string;
     };
 
-function metaText(meta: Record<string, unknown> | null, key: string): string {
-  const value = meta?.[key];
-  return typeof value === "string" ? value : "";
+function metaText(meta: Json | null, key: string): string {
+  const object = meta === null ? null : asJsonObject(meta);
+  return object ? (asJsonString(object[key]) ?? "") : "";
+}
+
+function auditDetail(detail: Json | null): JsonObject {
+  return detail === null ? {} : (asJsonObject(detail) ?? {});
 }
 
 function firstParam(value: string | string[] | undefined): string | null {
@@ -148,15 +187,15 @@ function activityEntries(
     }
   }
   for (const audit of audits) {
-    const detail = audit.detail ?? {};
+    const detail = auditDetail(audit.detail);
     if (audit.action === "request.status_change") {
-      const to = typeof detail.to === "string" ? detail.to : "";
+      const to = asJsonString(detail.to) ?? "";
       entries.push({
         kind: "status",
         id: `audit-${audit.id}`,
         to,
         legacyClose:
-          to === "closed" && detail.legacy_unclassified_close === true,
+          to === "closed" && asJsonBoolean(detail.legacy_unclassified_close) === true,
         author: audit.actor_email ?? "",
         at: audit.at,
       });
@@ -164,8 +203,7 @@ function activityEntries(
       entries.push({
         kind: "close",
         id: `audit-${audit.id}`,
-        disposition:
-          typeof detail.disposition === "string" ? detail.disposition : "",
+        disposition: asJsonString(detail.disposition) ?? "",
         author: audit.actor_email ?? "",
         at: audit.at,
       });
@@ -174,15 +212,20 @@ function activityEntries(
   return entries.sort((a, b) => b.at.localeCompare(a.at));
 }
 
-const STATUS_LINE_LABELS: Record<string, string> = {
+const STATUS_LINE_LABELS = {
   new: "New",
   contacted: "Contacted",
   scheduled: "Scheduled",
   closed: "Closed",
-};
+} as const satisfies Record<RequestStatus, string>;
+
+function statusLineLabel(status: string): string {
+  const parsed = requestStatusSchema.safeParse(status);
+  return parsed.success ? STATUS_LINE_LABELS[parsed.data] : status;
+}
 
 // One protected fetch feeds one cohesive request workflow; splitting its JSX
-// would add patient-data prop surfaces without isolating reusable behavior.
+// Would add patient-data prop surfaces without isolating reusable behavior.
 // react-doctor-disable-next-line react-doctor/no-giant-component
 export default async function RequestDetailPage({
   params,
@@ -255,14 +298,13 @@ export default async function RequestDetailPage({
   }
 
   // Previous/next within the viewer's queue scope: the same attention
-  // ordering the list renders, so staff can keep working without
-  // returning to the list each time. A request outside the current scope
+  // Ordering the list renders, so staff can keep working without
+  // Returning to the list each time. A request outside the current scope
   // (e.g. an old closed row beyond the tail window) simply shows no chain.
+  const scopedParsed = requestStatusSchema.safeParse(statusParam);
   const scoped =
-    statusParam &&
-    statusParam !== "all" &&
-    (REQUEST_STATUSES as readonly string[]).includes(statusParam)
-      ? (statusParam as RequestStatus)
+    statusParam && statusParam !== "all" && scopedParsed.success
+      ? scopedParsed.data
       : null;
   const neighborIds: string[] = [];
   if (scoped !== "closed") {
@@ -288,10 +330,18 @@ export default async function RequestDetailPage({
       ? neighborIds[selfIndex + 1]
       : null;
 
-  const row = request as RequestRow;
+  const parsedRequest = requestRowSchema.safeParse(request);
+  if (!parsedRequest.success) {
+    throw new Error("Request read failed: invalid");
+  }
+  const row = parsedRequest.data;
   const mailbox = row.email?.trim();
   const safeMailbox = mailbox && isMailbox(mailbox) ? mailbox : null;
-  const allEvents = (events ?? []) as EventRow[];
+  const parsedEvents = z.array(eventRowSchema).safeParse(events ?? []);
+  if (!parsedEvents.success) {
+    throw new Error("Event read failed: invalid");
+  }
+  const allEvents = parsedEvents.data;
   const notes = allEvents
     .filter((event) => event.type === "note")
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -303,10 +353,11 @@ export default async function RequestDetailPage({
       metaText(note.meta, "author_email"),
     )} · ${formatReceived(note.created_at, true)}`,
   }));
-  const entries = activityEntries(
-    allEvents,
-    (auditRows ?? []) as AuditRow[],
-  );
+  const parsedAudits = z.array(requestAuditRowSchema).safeParse(auditRows ?? []);
+  if (!parsedAudits.success) {
+    throw new Error("Request activity read failed: invalid");
+  }
+  const entries = activityEntries(allEvents, parsedAudits.data);
   const notifications = allEvents.filter(
     (event) => event.type === "notification",
   );
@@ -342,7 +393,7 @@ export default async function RequestDetailPage({
     { label: "Preferred time", value: TIME_LABELS[row.preferred_time] },
     {
       label: "Submitted in",
-      value: LOCALE_LABELS[row.locale] ?? row.locale,
+      value: isLocale(row.locale) ? LOCALE_LABELS[row.locale] : row.locale,
     },
     { label: "From page", value: row.source_path },
     { label: "Received", value: formatReceived(row.created_at, true) },
@@ -492,7 +543,7 @@ export default async function RequestDetailPage({
                 {entries.map((entry) => {
                   const line =
                     entry.kind === "outcome"
-                      ? `${OUTCOME_HISTORY_LABELS[entry.outcome] ?? entry.outcome}${
+                      ? `${isCallOutcomeId(entry.outcome) ? OUTCOME_HISTORY_LABELS[entry.outcome] : entry.outcome}${
                           entry.followUpAt
                             ? ` — call again ${followUpWhenLabel(entry.followUpAt)}`
                             : ""
@@ -502,14 +553,11 @@ export default async function RequestDetailPage({
                             : ""
                         }`
                       : entry.kind === "undo"
-                        ? `Undo — appointment request status restored to ${
-                            STATUS_LINE_LABELS[entry.restoredStatus] ??
-                            entry.restoredStatus
-                          }`
+                        ? `Undo — appointment request status restored to ${statusLineLabel(entry.restoredStatus)}`
                       : entry.kind === "status"
                         ? entry.legacyClose
                           ? "Closed without an outcome"
-                          : `Marked ${STATUS_LINE_LABELS[entry.to] ?? entry.to}`
+                          : `Marked ${statusLineLabel(entry.to)}`
                         : `Closed — ${
                             entry.disposition === "converted"
                               ? "appointment booked"

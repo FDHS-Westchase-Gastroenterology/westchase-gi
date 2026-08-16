@@ -2,10 +2,8 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
-import {
-  requestPasswordResetAction,
-  type ResetRequestActionState,
-} from "@/app/admin/actions";
+import { requestPasswordResetAction } from "@/app/admin/actions";
+import type { ResetRequestActionState } from "@/app/admin/actions";
 import {
   PASSWORD_RESET_LINK_EXPIRY_MINUTES,
   PASSWORD_RESET_RESEND_COOLDOWN_SECONDS,

@@ -2,11 +2,8 @@
 
 import Link from "next/link";
 import { useActionState, useLayoutEffect } from "react";
-import {
-  recoverPasswordAction,
-  setPasswordAction,
-  type SetPasswordActionState,
-} from "@/app/admin/actions";
+import { recoverPasswordAction, setPasswordAction } from "@/app/admin/actions";
+import type { SetPasswordActionState } from "@/app/admin/actions";
 
 const INITIAL_STATE: SetPasswordActionState = {
   error: null,
@@ -29,8 +26,8 @@ export function PasswordForm({
 
   useLayoutEffect(() => {
     // A server-action error render can restore the document's original URL,
-    // including its fragment. Keep the recovery bearer out of the address bar
-    // while preserving the hidden value needed for a bounded retry.
+    // Including its fragment. Keep the recovery bearer out of the address bar
+    // While preserving the hidden value needed for a bounded retry.
     if (recoveryTokenHash && window.location.hash) {
       window.history.replaceState(null, "", window.location.pathname);
     }

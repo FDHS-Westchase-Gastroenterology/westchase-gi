@@ -3,21 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/portal/auth";
-import {
-  resolveFollowUpAt,
-  type FollowUpChoice,
-} from "@/lib/portal/business-time";
-import {
-  CALL_OUTCOME_POLICY,
-  allowsCallAgainDay,
-  isCallOutcomeId,
-  requiresCallAgainDay,
-  type CallOutcomeId,
-} from "@/lib/portal/call-outcomes";
+import { resolveFollowUpAt } from "@/lib/portal/business-time";
+import type { FollowUpChoice } from "@/lib/portal/business-time";
+import { CALL_OUTCOME_POLICY, allowsCallAgainDay, isCallOutcomeId, requiresCallAgainDay } from "@/lib/portal/call-outcomes";
+import type { CallOutcomeId } from "@/lib/portal/call-outcomes";
 import { serviceClient } from "@/lib/portal/server";
 
 function revalidateRequestViews(requestId: string) {
-  revalidatePath("/admin"); // home overview counts
+  revalidatePath("/admin"); // Home overview counts
   revalidatePath("/admin/requests");
   revalidatePath(`/admin/requests/${requestId}`);
 }
@@ -38,7 +31,7 @@ export async function addRequestNote(
 
   const requestId = formData.get("requestId");
   const rawNote = formData.get("note");
-  if (typeof rawNote !== "string") {
+  if (rawNote instanceof File || rawNote === null) {
     return { status: "error", message: NOTE_WRITE_ERROR };
   }
 
@@ -47,7 +40,11 @@ export async function addRequestNote(
     return { status: "error", message: NOTE_WRITE_ERROR };
   }
 
-  if (typeof requestId !== "string" || requestId.trim().length === 0) {
+  if (
+    requestId instanceof File ||
+    requestId === null ||
+    requestId.trim().length === 0
+  ) {
     return { status: "error", message: NOTE_WRITE_ERROR };
   }
 
@@ -69,12 +66,12 @@ export async function addRequestNote(
 // The outcome vocabulary, call-again-day rules, and implied statuses live in
 // @/lib/portal/call-outcomes; this action only validates against that policy.
 
-export type CallOutcomeInput = {
+export interface CallOutcomeInput {
   requestId: string;
   outcome: CallOutcomeId;
   note?: string;
   followUp?: FollowUpChoice;
-};
+}
 
 export type CallOutcomeResult =
   | {
@@ -123,8 +120,9 @@ export async function logCallOutcome(
   const outcome = input.outcome;
 
   let note: string | null = null;
-  if (typeof input.note === "string") {
-    const trimmed = input.note.trim();
+  const parsedNote = z.string().safeParse(input.note);
+  if (parsedNote.success) {
+    const trimmed = parsedNote.data.trim();
     if (trimmed.length > 0) {
       if (trimmed.length > 2000) {
         return { ok: false, code: "invalid" };

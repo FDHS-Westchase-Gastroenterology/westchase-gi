@@ -2,16 +2,14 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
-import {
-  confirmAuthLinkAction,
-  type ConfirmAuthActionState,
-} from "@/app/admin/actions";
+import { confirmAuthLinkAction } from "@/app/admin/actions";
+import type { ConfirmAuthActionState } from "@/app/admin/actions";
 import { PasswordForm } from "@/app/admin/set-password/password-form";
 
-type AuthLink = {
+interface AuthLink {
   tokenHash: string;
   type: "invite" | "recovery";
-};
+}
 
 const INITIAL_STATE: ConfirmAuthActionState = { error: null };
 
@@ -29,7 +27,7 @@ export function ConfirmAuthForm() {
       if (!hash) {
         // Strict Mode replays effects in development (Next 16.3 enables it).
         // Do not replace a valid parsed link with invalid after the first pass
-        // stripped its fragment, but do reject a genuinely fragment-free load.
+        // Stripped its fragment, but do reject a genuinely fragment-free load.
         if (!parsedOnce.current) {
           parsedOnce.current = true;
           setLink("invalid");
@@ -53,7 +51,7 @@ export function ConfirmAuthForm() {
 
     parseFragment();
     // Opening a newer email in the same tab can navigate only the fragment,
-    // leaving this Client Component mounted. Parse that new bearer too.
+    // Leaving this Client Component mounted. Parse that new bearer too.
     window.addEventListener("hashchange", parseFragment);
     return () => window.removeEventListener("hashchange", parseFragment);
   }, []);

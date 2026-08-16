@@ -9,42 +9,51 @@ import {
   updateRecipientLabel,
 } from "./actions";
 
-export type RecipientRow = {
+export interface RecipientRow {
   id: string;
   email: string;
   label: string | null;
   active: boolean;
-};
+}
 
-type MutationOutcome = {
+interface MutationOutcome {
   ok: boolean;
   code?: string;
   delivery?: "accepted" | "failed";
-};
+}
 
-const FAILURE_COPY: Record<string, string> = {
+type RecipientFailureCode = "invalid" | "conflict" | "not_found" | "unavailable";
+
+const FAILURE_COPY = {
   invalid: "That doesn't look like a valid email address.",
   conflict: "That address is already on the list.",
   not_found: "That recipient no longer exists — the list has been refreshed.",
   unavailable: "Something went wrong saving the change. Try again.",
-};
+} as const satisfies Record<RecipientFailureCode, string>;
+
+function isRecipientFailureCode(value: string): value is RecipientFailureCode {
+  return value in FAILURE_COPY;
+}
 
 function failureMessage(result: MutationOutcome): string {
-  return FAILURE_COPY[result.code ?? "unavailable"] ?? FAILURE_COPY.unavailable;
+  const code = result.code ?? "unavailable";
+  return isRecipientFailureCode(code)
+    ? FAILURE_COPY[code]
+    : FAILURE_COPY.unavailable;
 }
 
 // Every mutation reports per row, not per panel: only the affected control
-// goes pending while the rest of the list stays live. The reversible toggle
-// offers an undo in plain language instead of making staff reverse it
-// themselves.
-type RecipientsState = {
+// Goes pending while the rest of the list stays live. The reversible toggle
+// Offers an undo in plain language instead of making staff reverse it
+// Themselves.
+interface RecipientsState {
   pendingKey: string | null;
   error: string | null;
   deliveryNotice: { tone: "success" | "warning"; text: string } | null;
   undo: { recipientId: string; email: string; restoredActive: boolean } | null;
   labelDraft: { recipientId: string; value: string } | null;
   labelNotice: string | null;
-};
+}
 
 type RecipientsAction =
   | { type: "begin"; key: string }
@@ -304,7 +313,8 @@ export function RecipientsManager({
     if (!email) return;
     run(
       "add",
-      () => addNotificationRecipient({ email, label: label || undefined }),
+      () =>
+        addNotificationRecipient(label ? { email, label } : { email }),
       (result) =>
         dispatch({
           type: "delivery",

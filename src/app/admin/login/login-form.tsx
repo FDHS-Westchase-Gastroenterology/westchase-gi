@@ -1,10 +1,8 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import {
-  loginAction,
-  type LoginActionState,
-} from "@/app/admin/actions";
+import { loginAction } from "@/app/admin/actions";
+import type { LoginActionState } from "@/app/admin/actions";
 import { ResetRequestForm } from "@/app/admin/forgot-password/reset-request-form";
 
 const INITIAL_STATE: LoginActionState = { error: null };

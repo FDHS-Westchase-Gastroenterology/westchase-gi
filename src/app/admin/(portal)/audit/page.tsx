@@ -1,42 +1,61 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { z } from "zod";
+import { asJsonObject, asJsonString, jsonSchema } from "@/lib/json";
+import type { Json } from "@/lib/json";
 import { requireRole } from "@/lib/portal/auth";
 import { getPortalReleaseEngagement } from "@/lib/portal/release-engagement";
 import { PORTAL_RELEASE_BRIEFING } from "@/lib/portal/release-briefing-content";
 import { parsePage } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
-import { fetchStaffNameMap } from "@/lib/portal/staff-identity";
-import { displayNameOrEmail } from "@/lib/portal/staff-identity";
+import {
+  displayNameOrEmail,
+  fetchStaffNameMap,
+} from "@/lib/portal/staff-identity";
 import { formatReceived } from "../requests/format";
 import { RecentWorkSection } from "./recent-work";
 import { toRecentWorkItems } from "./recent-work-model";
+import type { AuditEntry } from "./recent-work-model";
 import { ReleaseEngagementSection } from "./release-engagement";
-
-type AuditRow = {
-  id: string;
-  actor_email: string;
-  action: string;
-  entity: string;
-  entity_id: string | null;
-  detail: unknown;
-  at: string;
-};
 
 const PAGE_SIZE = 100;
 
-function externalAuditSummary(
-  detail: unknown,
-): { target: string; outcome: string } | null {
-  if (typeof detail !== "object" || detail === null || Array.isArray(detail)) {
-    return null;
-  }
-  const value = detail as Record<string, unknown>;
-  if (typeof value.target_login !== "string") return null;
+const auditEntrySchema = z.object({
+  id: z.string(),
+  actor_email: z.string(),
+  action: z.string(),
+  entity: z.string(),
+  entity_id: z.string().nullable(),
+  detail: jsonSchema,
+  at: z.string(),
+}) satisfies z.ZodType<AuditEntry>;
+
+const profileNameSchema = z.object({
+  id: z.string(),
+  display_name: z.string(),
+});
+
+const recipientEmailSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+});
+
+interface ExternalAuditSummary {
+  target: string;
+  outcome: string;
+}
+
+function externalAuditSummary(detail: Json): ExternalAuditSummary | null {
+  const value = asJsonObject(detail);
+  if (value === null) return null;
+  const target = asJsonString(value.target_login);
+  if (target === null) return null;
+  const outcomeValue = asJsonString(value.outcome);
   const outcome =
-    value.outcome === "succeeded" || value.outcome === "failed"
-      ? value.outcome
+    outcomeValue === "succeeded" || outcomeValue === "failed"
+      ? outcomeValue
       : "unconfirmed";
-  return { target: value.target_login, outcome };
+  return { target, outcome };
 }
 
 export default async function AdminAuditPage({
@@ -76,25 +95,25 @@ export default async function AdminAuditPage({
     throw new Error(`Audit read failed: ${error.code}`);
   }
 
-  const entries = (rows ?? []) as AuditRow[];
-  const namesByProfileId = new Map(
-    (profileRows.data ?? [])
-      .filter(
-        (row): row is { id: string; display_name: string } =>
-          typeof row.id === "string" &&
-          typeof row.display_name === "string" &&
-          row.display_name.trim().length > 0,
-      )
-      .map((row) => [row.id, row.display_name.trim()]),
-  );
-  const recipientsById = new Map(
-    (recipientRows.data ?? [])
-      .filter(
-        (row): row is { id: string; email: string } =>
-          typeof row.id === "string" && typeof row.email === "string",
-      )
-      .map((row) => [row.id, row.email]),
-  );
+  const parsedEntries = z.array(auditEntrySchema).safeParse(rows ?? []);
+  if (!parsedEntries.success) {
+    throw new Error("Audit read failed: invalid");
+  }
+  const entries = parsedEntries.data;
+  const namesByProfileId = new Map<string, string>();
+  for (const row of profileRows.data ?? []) {
+    const parsed = profileNameSchema.safeParse(row);
+    if (!parsed.success) continue;
+    const name = parsed.data.display_name.trim();
+    if (name.length === 0) continue;
+    namesByProfileId.set(parsed.data.id, name);
+  }
+  const recipientsById = new Map<string, string>();
+  for (const row of recipientRows.data ?? []) {
+    const parsed = recipientEmailSchema.safeParse(row);
+    if (!parsed.success) continue;
+    recipientsById.set(parsed.data.id, parsed.data.email);
+  }
   const recentItems = toRecentWorkItems(entries, {
     namesByEmail: nameMap,
     namesByProfileId,

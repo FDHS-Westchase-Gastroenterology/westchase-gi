@@ -1,11 +1,12 @@
 import type { NextRequest } from "next/server";
+import { z } from "zod";
 import { recordAudit } from "@/lib/portal/audit";
+import { AUDIT_ACTIONS, REQUEST_STATUSES } from "@/lib/portal/contracts";
+import type { RequestStatus } from "@/lib/portal/contracts";
 import {
-  AUDIT_ACTIONS,
-  REQUEST_STATUSES,
-  type RequestStatus,
-} from "@/lib/portal/contracts";
-import { authorizationStatus, requireRole } from "@/lib/portal/auth";
+  PortalAuthorizationError,
+  requireRole,
+} from "@/lib/portal/auth";
 import {
   parseRequestSearch,
   requestSearchFilter,
@@ -28,17 +29,41 @@ const CSV_HEADERS = [
 ] as const;
 
 type CsvColumn = (typeof CSV_HEADERS)[number];
-type CsvRow = Record<CsvColumn, unknown>;
-
-function isRequestStatus(value: string | null): value is RequestStatus {
-  return (
-    value !== null &&
-    (REQUEST_STATUSES as readonly string[]).includes(value)
-  );
+interface CsvRow {
+  id: string;
+  created_at: string;
+  status: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  location: string;
+  preferred_time: string;
+  locale: string;
+  source_path: string;
+  message: string | null;
 }
 
-function csvField(raw: unknown): string {
-  const value = raw === null || raw === undefined ? "" : String(raw);
+const requestStatusSchema = z.enum(REQUEST_STATUSES);
+const csvRowSchema = z.object({
+  id: z.string(),
+  created_at: z.string(),
+  status: z.string(),
+  name: z.string(),
+  phone: z.string(),
+  email: z.string().nullable(),
+  location: z.string(),
+  preferred_time: z.string(),
+  locale: z.string(),
+  source_path: z.string(),
+  message: z.string().nullable(),
+}) satisfies z.ZodType<CsvRow>;
+
+function isRequestStatus(value: string | null): value is RequestStatus {
+  return requestStatusSchema.safeParse(value).success;
+}
+
+function csvField(raw: CsvRow[CsvColumn]): string {
+  const value = raw === null ? "" : raw;
   const safeValue = /^[=+\-@\t\r\n]/.test(value) ? `'${value}` : value;
   return /[",\r\n]/.test(safeValue)
     ? `"${safeValue.replaceAll('"', '""')}"`
@@ -60,7 +85,8 @@ export async function GET(request: NextRequest): Promise<Response> {
   try {
     session = await requireRole("staff", { unauthenticated: "throw" });
   } catch (error) {
-    const status = authorizationStatus(error) ?? 401;
+    const status =
+      error instanceof PortalAuthorizationError ? error.status : 401;
     return new Response(
       status === 401 ? "Unauthenticated" : "Forbidden",
       { status },
@@ -71,7 +97,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   const requestedStatus = request.nextUrl.searchParams.get("status");
   if (hasStatus && !isRequestStatus(requestedStatus)) {
     // Invalid filters fail explicitly instead of silently exporting a broader
-    // set of patient contact rows than the user requested.
+    // Set of patient contact rows than the user requested.
     return new Response("Invalid status filter", { status: 400 });
   }
   const search = parseRequestSearch(
@@ -115,7 +141,11 @@ export async function GET(request: NextRequest): Promise<Response> {
     if (error || !data || data.length !== expectedChunkSize) {
       return new Response("Export unavailable", { status: 503 });
     }
-    rows.push(...(data as CsvRow[]));
+    const parsedRows = z.array(csvRowSchema).safeParse(data);
+    if (!parsedRows.success) {
+      return new Response("Export unavailable", { status: 503 });
+    }
+    rows.push(...parsedRows.data);
   }
 
   let finalCountQuery = db
@@ -136,7 +166,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   }
 
   // Export creates a clinic-controlled sensitive copy, so it writes a
-  // metadata-only audit row (actor, row count, filter) — never patient values.
+  // Metadata-only audit row (actor, row count, filter) — never patient values.
   try {
     await recordAudit(db, {
       actorEmail: session.email,

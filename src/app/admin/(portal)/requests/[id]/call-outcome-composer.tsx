@@ -1,45 +1,35 @@
 "use client";
 
-import {
-  useEffect,
-  useReducer,
-  useRef,
-  useState,
-  useTransition,
-  type RefObject,
-} from "react";
+import { useEffect, useReducer, useRef, useState, useTransition } from "react";
+import type { RefObject } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type {
   RequestClosureOutcome,
   RequestStatus,
 } from "@/lib/portal/contracts";
-import {
-  allowsCallAgainDay,
-  outcomesImplying,
-  requiresCallAgainDay,
-  type CallOutcomeId,
-} from "@/lib/portal/call-outcomes";
+import { allowsCallAgainDay, outcomesImplying, requiresCallAgainDay } from "@/lib/portal/call-outcomes";
+import type { CallOutcomeId } from "@/lib/portal/call-outcomes";
 import { Check } from "@/components/icons";
 import { logCallOutcome, undoCallOutcome } from "../actions";
 import { followUpWhenLabel } from "../format";
 
 // The daily work loop uses the same appointment-request-lifecycle vocabulary as the queue.
 // Staff choose the request's next status first, then only the details that
-// status needs. Appointment request notes stay in their own single,
-// consistent surface instead of appearing as a second input here.
+// Status needs. Appointment request notes stay in their own single,
+// Consistent surface instead of appearing as a second input here.
 
-type OutcomeOption = {
+interface OutcomeOption {
   id: CallOutcomeId;
   label: string;
   helper?: string;
-};
+}
 
 // Staff-facing wording only — which outcomes exist, what each one implies,
-// and its call-again rule all come from the shared call-outcome policy.
+// And its call-again rule all come from the shared call-outcome policy.
 // The exhaustive Record means an outcome added there without copy here
-// fails to typecheck.
-const OUTCOME_COPY: Record<CallOutcomeId, Omit<OutcomeOption, "id">> = {
+// Fails to typecheck.
+const OUTCOME_COPY = {
   reached_follow_up: {
     label: "Reached the patient — follow-up needed",
     helper: "Talked it through; call again to finish.",
@@ -61,7 +51,7 @@ const OUTCOME_COPY: Record<CallOutcomeId, Omit<OutcomeOption, "id">> = {
     label: "Duplicate or not actionable",
     helper: "Done — no appointment. Leaves the active queue.",
   },
-};
+} as const satisfies Record<CallOutcomeId, Omit<OutcomeOption, "id">>;
 
 function optionsImplying(status: "contacted" | "closed"): OutcomeOption[] {
   return outcomesImplying(status).map((id) => ({ id, ...OUTCOME_COPY[id] }));
@@ -74,17 +64,14 @@ const BOOKED_OUTCOME: CallOutcomeId | null =
 
 type LifecycleDestination = Exclude<RequestStatus, "new">;
 
-const STATUS_LABEL: Record<RequestStatus, string> = {
+const STATUS_LABEL = {
   new: "New",
   contacted: "Contacted",
   scheduled: "Scheduled",
   closed: "Closed",
-};
+} as const satisfies Record<RequestStatus, string>;
 
-const DESTINATION_COPY: Record<
-  LifecycleDestination,
-  { label: string; helper: string }
-> = {
+const DESTINATION_COPY = {
   contacted: {
     label: "Contacted",
     helper: "The patient was reached or needs another call.",
@@ -97,7 +84,7 @@ const DESTINATION_COPY: Record<
     label: "Closed",
     helper: "No more work remains on this request.",
   },
-};
+} as const satisfies Record<LifecycleDestination, { label: string; helper: string }>;
 
 function destinationsFrom(status: RequestStatus): LifecycleDestination[] {
   switch (status) {
@@ -127,8 +114,8 @@ const NY_DAY_INPUT = new Intl.DateTimeFormat("en-CA", {
 });
 
 // Success copy per outcome; the server resolves a call-again day only for
-// outcomes whose policy allows one, so the resurface sentence appends itself.
-const CONFIRMATION_COPY: Record<CallOutcomeId, string> = {
+// Outcomes whose policy allows one, so the resurface sentence appends itself.
+const CONFIRMATION_COPY = {
   booked:
     "Saved — appointment booked. It stays on the Scheduled list if you need it.",
   reached_follow_up: "Saved — marked Contacted.",
@@ -137,7 +124,7 @@ const CONFIRMATION_COPY: Record<CallOutcomeId, string> = {
   scheduled_transferred: "Saved — closed as finished, appointment booked.",
   wont_schedule: "Saved — the request is closed.",
   not_actionable: "Saved — the request is closed.",
-};
+} as const satisfies Record<CallOutcomeId, string>;
 
 function confirmationFor(
   outcome: CallOutcomeId,
@@ -162,7 +149,7 @@ const ERROR_COPY = {
 
 // Practice-local "today" for the date input's min/max bounds, rendered as
 // YYYY-MM-DD. The server re-validates the resolved day; these bounds only
-// guide the picker.
+// Guide the picker.
 function practiceLocalDay(offsetDays: number): string {
   const todayEt = NY_DAY_INPUT.format(new Date());
   const shifted = new Date(
@@ -180,14 +167,14 @@ type Feedback =
     }
   | { tone: "error"; text: string };
 
-type ComposerState = {
+interface ComposerState {
   destination: LifecycleDestination | null;
   selected: CallOutcomeId | null;
   followUpKind: FollowUpKind | null;
   followUpDay: string;
   attempted: boolean;
   feedback: Feedback | null;
-};
+}
 
 type ComposerAction =
   | { type: "select_destination"; destination: LifecycleDestination }
@@ -227,16 +214,16 @@ function composerReducer(
         attempted: false,
         feedback: null,
       };
-    case "select_outcome":
-      return {
+    case "select_outcome": {
+      const next = {
         ...state,
         selected: action.outcome,
         attempted: false,
         feedback: null,
-        ...(allowsCallAgainDay(action.outcome)
-          ? {}
-          : { followUpKind: null, followUpDay: "" }),
       };
+      if (allowsCallAgainDay(action.outcome)) return next;
+      return { ...next, followUpKind: null, followUpDay: "" };
+    }
     case "select_follow_up":
       return { ...state, followUpKind: action.kind, feedback: null };
     case "set_day":

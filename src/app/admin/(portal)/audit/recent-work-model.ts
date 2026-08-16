@@ -1,46 +1,50 @@
 // The human vocabulary over the audit record: plain-language entries,
-// grouped by practice-local day. Storage codes stay in the technical table.
+// Grouped by practice-local day. Storage codes stay in the technical table.
 // Patient names are deliberately not resolved here; the request is the link.
 
+import { asJsonBoolean, asJsonNumber, asJsonObject, asJsonString } from "@/lib/json";
+import type { Json, JsonObject } from "@/lib/json";
+import { isCallOutcomeId } from "@/lib/portal/call-outcomes";
+import type { RequestStatus } from "@/lib/portal/contracts";
 import { OUTCOME_HISTORY_LABELS, followUpShortLabel } from "../requests/format";
 import { isPortalReleaseAuditAction } from "@/lib/portal/release-state";
 
 // The human lens over the durable audit record: plain-language, grouped by
-// practice-local day, linked to the work — never an action code. Storage
-// vocabulary stays in the technical table beneath. Patient names are
-// deliberately not resolved here; the request itself is the link.
+// Practice-local day, linked to the work — never an action code. Storage
+// Vocabulary stays in the technical table beneath. Patient names are
+// Deliberately not resolved here; the request itself is the link.
 
-export type AuditEntry = {
+export interface AuditEntry {
   id: string;
   actor_email: string;
   action: string;
   entity: string;
   entity_id: string | null;
-  detail: unknown;
+  detail: Json;
   at: string;
-};
+}
 
-export type RecentWorkContext = {
-  // email -> display name (staff identity for actors)
+export interface RecentWorkContext {
+  // Email -> display name (staff identity for actors)
   namesByEmail: ReadonlyMap<string, string>;
-  // staff_profiles id -> display name (for staff.* entity references)
+  // Staff_profiles id -> display name (for staff.* entity references)
   namesByProfileId: ReadonlyMap<string, string>;
-  // notification_recipients id -> email (recipient references; removed
-  // recipients fall back to "a notification recipient")
+  // Notification_recipients id -> email (recipient references; removed
+  // Recipients fall back to "a notification recipient")
   recipientsById: ReadonlyMap<string, string>;
   now: Date;
-};
+}
 
-export type RecentWorkItem = {
+export interface RecentWorkItem {
   id: string;
   at: string;
   actor: string;
   sentence: string;
   requestId: string | null;
   // True when the action is unknown to the human vocabulary and the entry
-  // falls back to the technical form — an honest fallback, never silence.
+  // Falls back to the technical form — an honest fallback, never silence.
   technical: boolean;
-};
+}
 
 const NY_DAY = new Intl.DateTimeFormat("en-CA", {
   dateStyle: "short",
@@ -72,11 +76,8 @@ export function dayGroupLabel(iso: string, now: Date): string {
   return NY_MONTH_DAY.format(new Date(iso));
 }
 
-function detailObject(detail: unknown): Record<string, unknown> {
-  if (typeof detail !== "object" || detail === null || Array.isArray(detail)) {
-    return {};
-  }
-  return detail as Record<string, unknown>;
+function detailObject(detail: Json): JsonObject {
+  return asJsonObject(detail) ?? {};
 }
 
 function nameOrEmail(
@@ -103,27 +104,39 @@ function profileLabel(
   return namesByProfileId.get(id) ?? "a colleague";
 }
 
-const STATUS_WORDS: Record<string, string> = {
+const STATUS_WORDS = {
   new: "New",
   contacted: "Contacted",
   scheduled: "Scheduled",
   closed: "Closed",
-};
+} as const satisfies Record<RequestStatus, string>;
+
+interface ActionDescription {
+  sentence: string;
+  technical: boolean;
+}
 
 function describeAction(
   entry: AuditEntry,
-  detail: Record<string, unknown>,
+  detail: JsonObject,
   ctx: RecentWorkContext,
-): { sentence: string; technical: boolean } {
+): ActionDescription {
   const requestEntity = entry.entity === "requests";
   switch (entry.action) {
     case "request.status_change": {
-      const to = typeof detail.to === "string" ? detail.to : "";
+      const to = asJsonString(detail.to) ?? "";
       if (to === "closed" && detail.legacy_unclassified_close === true) {
         return { sentence: "closed a request without an outcome", technical: false };
       }
       return {
-        sentence: `marked a request ${STATUS_WORDS[to] ?? to}`,
+        sentence: `marked a request ${
+          to === "new" ||
+          to === "contacted" ||
+          to === "scheduled" ||
+          to === "closed"
+            ? STATUS_WORDS[to]
+            : to
+        }`,
         technical: false,
       };
     }
@@ -138,11 +151,11 @@ function describeAction(
       };
     }
     case "request.call_outcome": {
-      const outcome = typeof detail.outcome === "string" ? detail.outcome : "";
-      const followUp =
-        typeof detail.follow_up_at === "string"
-          ? ` — call again ${followUpShortLabel(detail.follow_up_at, ctx.now)}`
-          : "";
+      const outcome = asJsonString(detail.outcome) ?? "";
+      const followUpAt = asJsonString(detail.follow_up_at);
+      const followUp = followUpAt
+        ? ` — call again ${followUpShortLabel(followUpAt, ctx.now)}`
+        : "";
       switch (outcome) {
         case "reached_follow_up":
           return {
@@ -177,7 +190,9 @@ function describeAction(
       }
       return {
         sentence: `recorded an outcome on a request${
-          OUTCOME_HISTORY_LABELS[outcome] ? ` — ${OUTCOME_HISTORY_LABELS[outcome]}` : ""
+          isCallOutcomeId(outcome)
+            ? ` — ${OUTCOME_HISTORY_LABELS[outcome]}`
+            : ""
         }`,
         technical: false,
       };
@@ -190,12 +205,11 @@ function describeAction(
       return { sentence: "a request was removed by the retention policy", technical: false };
     case "request.retention_hold":
       return {
-        sentence: `${detail.held === false ? "released" : "placed"} a legal hold on a request`,
+        sentence: `${asJsonBoolean(detail.held) === false ? "released" : "placed"} a legal hold on a request`,
         technical: false,
       };
     case "requests.export": {
-      const count =
-        typeof detail.row_count === "number" ? detail.row_count : null;
+      const count = asJsonNumber(detail.row_count);
       return {
         sentence: `exported the request list${
           count !== null
@@ -217,7 +231,7 @@ function describeAction(
       };
     case "recipients.toggle":
       return {
-        sentence: `${detail.to === true ? "resumed" : "paused"} notification emails for ${recipientLabel(ctx.recipientsById, entry.entity_id)}`,
+        sentence: `${asJsonBoolean(detail.to) === true ? "resumed" : "paused"} notification emails for ${recipientLabel(ctx.recipientsById, entry.entity_id)}`,
         technical: false,
       };
     case "recipients.label_update":
@@ -249,7 +263,7 @@ function describeAction(
       };
     case "staff.tour_dismiss":
       // Filtered from the human view in toRecentWorkItems (it pairs with
-      // tour_complete on finish); the technical record keeps it.
+      // Tour_complete on finish); the technical record keeps it.
       return { sentence: "dismissed the portal tour nudge", technical: true };
     case "staff.tour_restart":
       return { sentence: "restarted the portal tour", technical: false };
@@ -257,17 +271,17 @@ function describeAction(
       return { sentence: "finished the portal tour", technical: false };
     case "maintainers.invite":
       return {
-        sentence: `invited ${typeof detail.target_login === "string" ? detail.target_login : "a maintainer"} to edit the website`,
+        sentence: `invited ${asJsonString(detail.target_login) ?? "a maintainer"} to edit the website`,
         technical: false,
       };
     case "maintainers.cancel":
       return {
-        sentence: `canceled a website-maintainer invitation for ${typeof detail.target_login === "string" ? detail.target_login : "a maintainer"}`,
+        sentence: `canceled a website-maintainer invitation for ${asJsonString(detail.target_login) ?? "a maintainer"}`,
         technical: false,
       };
     case "maintainers.revoke":
       return {
-        sentence: `removed ${typeof detail.target_login === "string" ? detail.target_login : "a maintainer"}'s website access`,
+        sentence: `removed ${asJsonString(detail.target_login) ?? "a maintainer"}'s website access`,
         technical: false,
       };
     default:
@@ -288,7 +302,7 @@ export function toRecentWorkItems(
   for (const entry of entries) {
     if (isPortalReleaseAuditAction(entry.action)) continue;
     // The dismissal nudge pairs with tour_complete on finish; it stays in
-    // the technical record rather than the human view.
+    // The technical record rather than the human view.
     if (entry.action === "staff.tour_dismiss") continue;
     const detail = detailObject(entry.detail);
     const { sentence, technical } = describeAction(entry, detail, ctx);

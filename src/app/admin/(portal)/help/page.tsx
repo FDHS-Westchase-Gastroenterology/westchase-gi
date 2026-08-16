@@ -4,7 +4,7 @@ import { site } from "@/lib/site";
 import { restartPortalTourAction } from "../tour-actions";
 
 // Plain-language operations guide for the front desk (VAL-ADMIN-012:
-// authenticated, substantive, >= 400 words, no engineering jargon).
+// Authenticated, substantive, >= 400 words, no engineering jargon).
 
 const SECTION_HEADING =
   "text-[1.05rem] font-black text-[var(--color-ink)]";
@@ -12,8 +12,8 @@ const SECTION_BODY =
   "mt-2 max-w-[70ch] text-[0.95rem] leading-relaxed text-[var(--color-body)]";
 
 // One protected read renders one linear, static operations guide. Extracting
-// prose-only sections into components would add indirection without isolating
-// state, data access, or reusable behavior.
+// Prose-only sections into components would add indirection without isolating
+// State, data access, or reusable behavior.
 // react-doctor-disable-next-line react-doctor/no-giant-component
 export default async function AdminHelpPage() {
   await requireRole("staff");
