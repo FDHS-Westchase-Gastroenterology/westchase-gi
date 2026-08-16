@@ -1,9 +1,9 @@
 "use client";
 
-import { LOCALE_COOKIE, locales, type Locale } from "./site";
+import { LOCALE_COOKIE, localeSet } from "./site";
+import type { Locale } from "./site";
 
 const SESSION_KEY = "wgi-language-choice-complete";
-const localeSet = new Set<string>(locales);
 export const LANGUAGE_TRIGGER_ID = "language-menu-trigger";
 let completedInThisSession = false;
 
@@ -19,9 +19,13 @@ function readCookie(name: string): string | undefined {
   return undefined;
 }
 
+function isLocale(value: string): value is Locale {
+  return localeSet.has(value);
+}
+
 function hasRememberedLocale(): boolean {
   const value = readCookie(LOCALE_COOKIE);
-  return value !== undefined && localeSet.has(value);
+  return value !== undefined && isLocale(value);
 }
 
 /** First supported language in the browser's preference list. Mirrors the
@@ -32,7 +36,7 @@ export function browserLocale(): Locale {
   try {
     for (const tag of navigator.languages ?? [navigator.language]) {
       const primary = tag.toLowerCase().split("-")[0];
-      if (localeSet.has(primary)) return primary as Locale;
+      if (isLocale(primary)) return primary;
     }
   } catch {
     // A locked-down navigator falls through to the English default.

@@ -13,14 +13,14 @@ const REVIEW_TARGET_KEYS = [
 export type ReviewTargetKey = (typeof REVIEW_TARGET_KEYS)[number];
 export type ReviewAssetKind = "png" | "svg" | "pdf";
 
-export type ReviewFlyerAsset = {
+export interface ReviewFlyerAsset {
   filename: string;
   sha256: string;
   kind: ReviewAssetKind;
   contentType: string;
-};
+}
 
-export type ReviewFlyer = {
+export interface ReviewFlyer {
   key: ReviewTargetKey;
   destination: string;
   title: string;
@@ -33,14 +33,44 @@ export type ReviewFlyer = {
   roleEn: string | null;
   roleEs: string | null;
   showLanguages: boolean;
-  assets: Record<ReviewAssetKind, ReviewFlyerAsset>;
-};
+  assets: ReviewFlyerAssets;
+}
 
-const CONTENT_TYPES: Record<ReviewAssetKind, string> = {
+export interface ReviewFlyerAssets {
+  png: ReviewFlyerAsset;
+  svg: ReviewFlyerAsset;
+  pdf: ReviewFlyerAsset;
+}
+
+const CONTENT_TYPES = {
   png: "image/png",
   svg: "image/svg+xml",
   pdf: "application/pdf",
-};
+} as const satisfies Record<ReviewAssetKind, string>;
+
+function flyerAsset(
+  kind: ReviewAssetKind,
+  asset: { filename: string; sha256: string },
+): ReviewFlyerAsset {
+  return {
+    filename: asset.filename,
+    sha256: asset.sha256,
+    kind,
+    contentType: CONTENT_TYPES[kind],
+  };
+}
+
+function flyerAssets(assets: {
+  png: { filename: string; sha256: string };
+  svg: { filename: string; sha256: string };
+  pdf: { filename: string; sha256: string };
+}): ReviewFlyerAssets {
+  return {
+    png: flyerAsset("png", assets.png),
+    svg: flyerAsset("svg", assets.svg),
+    pdf: flyerAsset("pdf", assets.pdf),
+  };
+}
 
 const physicianById = new Map(physicians.map((provider) => [provider.id, provider]));
 const nurseById = new Map(
@@ -115,21 +145,13 @@ export const reviewFlyers: ReviewFlyer[] = REVIEW_TARGET_KEYS.map((key) => {
   const target = reviewTargets[key];
   const providerId = "providerId" in target ? target.providerId : null;
   const copy = targetCopy(key, providerId);
-  const assets = Object.fromEntries(
-    (Object.entries(target.assets) as Array<
-      [ReviewAssetKind, { filename: string; sha256: string }]
-    >).map(([kind, asset]) => [
-      kind,
-      { ...asset, kind, contentType: CONTENT_TYPES[kind] },
-    ]),
-  ) as Record<ReviewAssetKind, ReviewFlyerAsset>;
 
   return {
     key,
     destination: target.destination,
     ...copy,
     showLanguages: key === "master",
-    assets,
+    assets: flyerAssets(target.assets),
   };
 });
 

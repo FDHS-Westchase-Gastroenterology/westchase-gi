@@ -1,16 +1,17 @@
-import {
-  createServerClient,
-  type CookieOptions,
-} from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
-import { LOCALE_COOKIE, locales, type Locale } from "@/lib/site";
+import { createServerClient } from "@supabase/ssr";
+import type { CookieOptions } from "@supabase/ssr";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { z } from "zod";
+import { LOCALE_COOKIE, localeSet } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 
 // Legacy URL hygiene (Next 16 proxy convention — middleware.ts is
-// deprecated): the old site's form fell back to GET on some paths, so
-// patient-bearing query strings still arrive from stale links, bookmarks,
-// and crawler caches. Any such request is redirected to the clean path
+// Deprecated): the old site's form fell back to GET on some paths, so
+// Patient-bearing query strings still arrive from stale links, bookmarks,
+// And crawler caches. Any such request is redirected to the clean path
 // BEFORE the document — and therefore any third-party resource it
-// references — can load with those values in the URL.
+// References — can load with those values in the URL.
 
 const PATIENT_PARAMS = [
   "name",
@@ -24,11 +25,11 @@ const PATIENT_PARAMS = [
 const LEGACY_FORM_PATH =
   /^\/(?:en|es|vi|ko|ar)\/(?:contact|appointment)\/?$/;
 
-type PendingCookie = {
+interface PendingCookie {
   name: string;
   value: string;
   options: CookieOptions;
-};
+}
 
 function portalSupabaseConfig(): { url: string; key: string } | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
@@ -41,7 +42,7 @@ function portalSupabaseConfig(): { url: string; key: string } | null {
 }
 
 function isLocaleValue(value: string | undefined): value is Locale {
-  return value !== undefined && (locales as string[]).includes(value);
+  return value !== undefined && localeSet.has(value);
 }
 
 /** First supported language in the Accept-Language list, by q-value. */
@@ -171,8 +172,7 @@ async function protectAdminRequest(request: NextRequest): Promise<NextResponse> 
   let authenticated = false;
   try {
     const { data, error } = await supabase.auth.getClaims();
-    authenticated =
-      !error && typeof data?.claims?.sub === "string";
+    authenticated = !error && z.string().safeParse(data?.claims?.sub).success;
   } catch {
     // Provider failures fail closed for protected portal routes.
   }
@@ -202,7 +202,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // Keep legacy query scrubbing tight while adding only the portal subtree
-  // needed for Supabase session refresh and optimistic route protection.
+  // Needed for Supabase session refresh and optimistic route protection.
   matcher: [
     "/",
     "/:locale(en|es|vi|ko|ar)/contact",

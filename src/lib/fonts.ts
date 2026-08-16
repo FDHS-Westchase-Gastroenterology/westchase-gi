@@ -2,11 +2,11 @@
 //
 // EN/ES keep the practice's own pairing (Lato body / Trocchi display).
 // The other locales pair on the same serif-display + sans-body axis with
-// families that actually cover their scripts (Trocchi/Lato have no
+// Families that actually cover their scripts (Trocchi/Lato have no
 // Vietnamese, Hangul, or Arabic coverage):
-//   vi — Aleo (slab serif, vietnamese subset) + Be Vietnam Pro
-//   ko — Noto Serif KR + Noto Sans KR (unicode-range sliced by next/font)
-//   ar — Noto Naskh Arabic + Noto Sans Arabic
+//   Vi — Aleo (slab serif, vietnamese subset) + Be Vietnam Pro
+//   Ko — Noto Serif KR + Noto Sans KR (unicode-range sliced by next/font)
+//   Ar — Noto Naskh Arabic + Noto Sans Arabic
 // The CSS side lives in globals.css: `:lang()` blocks remap --font-display /
 // --font-body, so components never reference a family directly.
 
@@ -52,8 +52,8 @@ const aleo = Aleo({
 });
 
 // CJK + Arabic families ship as unicode-range slices; browsers fetch only
-// the ranges a page uses, so loading them unconditionally is cheap. preload
-// stays off to keep the EN/ES critical path unchanged.
+// The ranges a page uses, so loading them unconditionally is cheap. preload
+// Stays off to keep the EN/ES critical path unchanged.
 const notoSansKr = Noto_Sans_KR({
   variable: "--font-noto-sans-kr",
   subsets: ["latin"],
