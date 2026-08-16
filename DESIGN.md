@@ -1,4 +1,4 @@
-# Design Charter — Westchase Gastroenterology
+# Design Charter: Westchase Gastroenterology
 
 The v2 frame. Fidelity to the previous vendor site is no longer the mission. This document
 records what the practice owns, the floors that bind every surface, and the guardrails each
@@ -8,19 +8,19 @@ grammar, header treatment, and composition. The v1 rulebook is retired without a
 carries no authority anywhere.
 
 Visual worlds are chosen at build kickoff, per surface effort, through a full direction
-derivation — never inherited from this file. When a first build settles a world, its
-surviving tokens and rules are recorded here; until then this charter deliberately carries
-no palette table, no component vocabulary, and no motion spec.
+derivation. They are never inherited from this file. When a first build settles a world, its
+surviving tokens and rules are recorded here. Until then this charter carries no palette
+table, no component vocabulary, and no motion spec.
 
 ## What the practice owns
 
 Anchors: fixed points every future world composes around. Amending one is a practice
 decision, never a design judgment.
 
-1. **The brand hues.** Navy, teal, amber, and the mint family remain the identity — both
+1. **The brand hues.** Navy, teal, amber, and the mint family remain the identity. Both
    products visibly carry them. The commitment binds the hues, not the retired token
    table: a world may re-weight them, re-derive values, and re-decide their roles.
-2. **The team greets you.** The full-staff photograph opens the patient site — the
+2. **The team greets you.** The full-staff photograph opens the patient site. The
    practice wants its real people meeting visitors. Composition around that fixed point
    is free.
 3. **The hero is static** (practice decision, 2026-07-07). Auto-rotating heroes were
@@ -28,8 +28,8 @@ decision, never a design judgment.
 4. **Real people, real places.** Photography is the practice's own; stock stand-ins for
    its people or places never ship. Authored illustration and iconography remain open to
    the build era.
-5. **FDHS affiliation is present and credible** on every patient-facing surface —
-   referring physician offices come to verify it. The treatment (today's header strip)
+5. **FDHS affiliation is present and credible** on every patient-facing surface.
+   Referring physician offices come to verify it. The treatment (today's header strip)
    is free.
 6. **Essential text is localizable HTML** (practice direction, 2026-07-07). Provider
    names, credentials, and patient information render as real translatable text in every
@@ -39,11 +39,11 @@ decision, never a design judgment.
 
 Non-negotiable in every world, both registers:
 
-- **WCAG 2.1 AA**, with every text/background pair verified — not assumed — at AA or
+- **WCAG 2.1 AA**, with every text/background pair verified, not assumed, at AA or
   better. Accessibility specifics (tap targets, focus, landmarks) live in `PRODUCT.md`.
 - **Reduced motion is honored globally**: gentler, never broken.
 - **Five locales are one design.** Any chosen typeface serves English, Spanish,
-  Vietnamese, Korean, and Arabic — or names script companions — and layout holds under
+  Vietnamese, Korean, and Arabic, or names script companions, and layout holds under
   RTL. Type is free; the languages are not.
 - **Content is visible without JavaScript.** No world may hide content behind script
   that might not run.
@@ -55,19 +55,19 @@ Non-negotiable in every world, both registers:
 ## Patient site guardrails (brand register)
 
 The scene: adults 45 and older, often anxious, usually on phones, in waiting rooms and
-kitchens. The scene — not category habit — keeps the site light-themed, generously typed,
+kitchens. The scene, not category habit, keeps the site light-themed, generously typed,
 and high-contrast until the scene itself changes. Interruption and ask policies are
 product law in `PRODUCT.md`.
 
 ## Staff portal guardrails (product register)
 
 Operate posture: scanability, consistency, and native expectations outrank expression;
-brand lives in precise details, at restraint. Motion is state-conveying only, within
+brand lives in precise details, used with restraint. Motion is state-conveying only, within
 ordinary UI budgets. Task vocabulary and workflow truths are product law in `PRODUCT.md`.
 
 ## Transition
 
 Until a surface is rebuilt under a committed world, maintenance matches the surface's
-existing implementation — the code is the reference, consistency with the surrounding
+existing implementation. The code is the reference; consistency with the surrounding
 surface is the rule. No incumbent grammar constrains a rebuild, and no future world's
 grammar half-adopts into a surface that has not been rebuilt.

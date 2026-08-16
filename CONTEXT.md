@@ -1,7 +1,7 @@
 # Westchase GI
 
 One deployment, two products for FDHS Westchase Gastroenterology: the five-language
-patient site through which patients reach the practice, and the staff portal where the
+patient site where patients reach the practice, and the staff portal where the
 practice works what the site brings in.
 
 ## Language
@@ -46,8 +46,8 @@ one-time token.
 ### Appointment-request lifecycle
 
 **Request status**:
-Where a request sits in its working life: NEW, CONTACTED, BOOKED, or CLOSED. NEW and
-CONTACTED are unresolved; BOOKED and CLOSED are terminal for ordinary work.
+NEW, CONTACTED, BOOKED, or CLOSED. NEW and CONTACTED are unresolved; BOOKED and CLOSED
+are terminal for ordinary work.
 _Avoid_: stage
 
 **BOOKED**:
@@ -69,8 +69,8 @@ their own outcomes; CONTACTED does not claim the patient was reached.
 
 **Call-again day**:
 The staff-chosen day a contacted request should resurface for another attempt. Patient
-content uses "follow-up" in its medical sense (a follow-up visit or procedure) — a
-different concept.
+content uses "follow-up" in its medical sense (a follow-up visit or procedure). That is
+a different concept.
 _Avoid_: callback date, follow-up date
 
 **Undo**:
@@ -83,8 +83,8 @@ _Avoid_: comments
 
 **Request history**:
 A request's staff-visible history: notes, contact attempts, transitions, notification
-results, and Undo evidence. Named for the request — a history exists before any appointment
-does. "Event stream" remains correct for the storage layer beneath it — never for this
+results, and Undo evidence. Named for the request: a history exists before any appointment
+does. "Event stream" remains correct for the storage layer beneath it, never for this
 staff-facing surface.
 _Avoid_: timeline, request activity, appointment history
 
@@ -97,8 +97,8 @@ not create a portal Appointment.
 
 **Data lifecycle**:
 The retention-and-deletion schedule for patient-request data. Say "data lifecycle" for
-retention and "appointment-request lifecycle" for status movement — plain "lifecycle" is ambiguous
-in this project.
+retention and "appointment-request lifecycle" for status movement. Plain "lifecycle" is
+ambiguous in this project.
 
 **Legal hold**:
 A block on every deletion path for a request, scheduled or exceptional, until explicitly
@@ -111,7 +111,7 @@ custodian with a non-PHI reference.
 
 **PHI-free**:
 Carrying no patient-supplied data: no name, contact detail, reason text, or note. The bar
-for everything that leaves the queue — notifications, logs, telemetry, audit metadata.
+for everything that leaves the queue: notifications, logs, telemetry, audit metadata.
 
 **Telemetry**:
 Software-recorded usage evidence; every payload is PHI-free. On the patient site:
@@ -127,7 +127,7 @@ A person who can sign in to the staff portal. "Staff" doubles as the collective 
 non-administrator role; say "staff role" when the distinction matters.
 
 **Administrator**:
-The elevated staff role: manages staff access and maintainers and reads the technical
+The staff role that manages staff access and maintainers and reads the technical
 audit.
 _Avoid_: owner
 
@@ -141,7 +141,7 @@ Staff-facing surfaces call it a "notification email"; "ping" is the developer re
 _Avoid_: alert
 
 **Maintainer**:
-A person who can edit and publish the website — the practice's vocabulary for website
+A person who can edit and publish the website. This is the practice's word for website
 access, never expressed to staff as repository topology.
 _Avoid_: collaborator
 
@@ -156,9 +156,9 @@ The plain-language, work-linked view of what staff did; the human layer of the A
 log.
 
 **Audit log**:
-The exact, metadata-only technical record beneath Recent work — identifiers, action
+The exact, metadata-only technical record beneath Recent work: identifiers, action
 codes, and closure outcomes, never patient text. Labeled "Technical record" on the Activity
-log; administrator territory.
+log; for administrators.
 
 **Release briefing**:
 An application-owned announcement of a portal release, offered to each staff member for a
@@ -190,4 +190,4 @@ One of the five first-class language modes: English, Spanish, Vietnamese, Korean
 Every patient surface exists in all five; none is a partial translation.
 
 **Text line**:
-The staffed human text channel patients can message. A person answers — never a bot.
+The staffed human text channel patients can message. A person answers, never a bot.
