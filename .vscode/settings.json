@@ -1,0 +1,6 @@
+{
+  "eslint.enable": false,
+  "oxc.configPath": ".oxlintrc.json",
+  "oxc.disableNestedConfig": true,
+  "oxc.enable.oxlint": true
+}

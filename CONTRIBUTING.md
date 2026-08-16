@@ -45,7 +45,7 @@ npm ci --no-audit --no-fund
 node --test .github/scripts/dependency-automation.test.cjs
 npm run test:e2e-guard
 npm run test:unit
-npx oxlint
+npm run lint
 NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=ci-public-placeholder \
   SUPABASE_SERVICE_ROLE_KEY=ci-server-placeholder \
@@ -54,10 +54,12 @@ npx playwright install --with-deps chromium
 PLAYWRIGHT_PUBLIC_SMOKE=1 npx playwright test e2e/smoke.spec.ts --project=chromium
 ```
 
-`npx oxlint` is the repository's sole linter command. Run it from the repository root. Oxlint
-recursively checks owned JavaScript and TypeScript files in every subdirectory with the migrated
-Next.js, React, accessibility, import, and TypeScript rules plus the vendored anti-slop rules.
-Dependencies, generated output, agent assets, and the plugin's own source are excluded.
+`npm run lint` (`oxlint` from the repository root) is the repository's sole linter command.
+Oxlint recursively checks owned JavaScript and TypeScript files in every subdirectory — `src/`,
+`e2e/`, `scripts/`, `.github/scripts/`, and root configs — with the migrated Next.js, React,
+accessibility, import, and TypeScript rules plus the vendored anti-slop rules. Dependencies,
+generated output, agent assets, and the plugin's own source are excluded. The Oxc editor
+extension uses the same `.oxlintrc.json` for the whole workspace.
 
 `npm run doctor` and `node scripts/verify-no-secrets.mjs` also run with no credentials.
 
@@ -243,7 +245,7 @@ handle and dispose of it under clinic rules.
 **Verifier toolbox:**
 
 ```bash
-npm run build && npx oxlint && npm run doctor   # build + lint + React Doctor (100 baseline)
+npm run build && npm run lint && npm run doctor   # build + lint + React Doctor (100 baseline)
 npm run test:e2e-guard                            # target-guard matrix; no server/DB
 npx playwright test                               # full E2E contract
 node scripts/verify-schema.mjs --target dev       # schema/RLS/seed health (--target prod is an authorized maintenance action)

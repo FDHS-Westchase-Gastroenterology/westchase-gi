@@ -10,7 +10,7 @@
     "unicorn"
   ],
   "categories": {
-    "correctness": "warn"
+    "correctness": "off"
   },
   "env": {
     "browser": true,

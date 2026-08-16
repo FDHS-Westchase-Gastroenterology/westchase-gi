@@ -9,6 +9,7 @@
     "build": "next build",
     "start": "next start",
     "doctor": "npx react-doctor --blocking none",
+    "lint": "oxlint",
     "test:e2e-guard": "node --test e2e/target-guard.test.mjs e2e/dictionary-availability.test.mjs",
     "test:unit": "node --test src/lib/portal/*.test.mjs",
     "ui:reference": "node scripts/capture-ui-reference.mjs",
