@@ -3,17 +3,17 @@ import { connection } from "next/server";
 import { Check, MessageSquare, Phone } from "@/components/icons";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { consumeRequestReceipt } from "@/lib/portal/intake";
-import { site, type Locale } from "@/lib/site";
+import { site } from "@/lib/site";
 
 export const runtime = "nodejs";
 
-type PageProps = {
+interface PageProps {
   params: Promise<{ locale: string }>;
   searchParams: Promise<{
     failure?: string | string[];
     receipt?: string | string[];
   }>;
-};
+}
 
 async function receiptState({ params, searchParams }: PageProps) {
   await connection();
@@ -21,10 +21,12 @@ async function receiptState({ params, searchParams }: PageProps) {
     params,
     searchParams,
   ]);
-  const locale: Locale = isLocale(rawLocale) ? rawLocale : "en";
+  const locale = isLocale(rawLocale) ? rawLocale : "en";
+  const receipt = query.receipt;
   const receiptAccepted =
-    typeof query.receipt === "string" &&
-    (await consumeRequestReceipt(query.receipt, locale));
+    receipt !== undefined &&
+    !Array.isArray(receipt) &&
+    (await consumeRequestReceipt(receipt, locale));
   const state = receiptAccepted
     ? "success"
     : query.receipt === undefined && query.failure === "1"
@@ -41,7 +43,7 @@ export async function generateMetadata(
   { params }: PageProps,
 ): Promise<Metadata> {
   const { locale: rawLocale } = await params;
-  const locale: Locale = isLocale(rawLocale) ? rawLocale : "en";
+  const locale = isLocale(rawLocale) ? rawLocale : "en";
   const dict = getDictionary(locale);
 
   return {

@@ -2,13 +2,13 @@
 
 import { useState, useSyncExternalStore } from "react";
 import Image from "next/image";
-import { site, locales, type Locale } from "@/lib/site";
+import { site, localeSet } from "@/lib/site";
 import { ExternalLink, Facebook, Globe, MessageSquare, Phone, Star } from "@/components/icons";
 
 // The hub speaks every language the practice serves, on one URL, without a
-// page reload. Printed master QRs stay valid while this encoded hub URL is
-// maintained. Strings are
-// deliberately local to this file: the page must work standalone even before
+// Page reload. Printed master QRs stay valid while this encoded hub URL is
+// Maintained. Strings are
+// Deliberately local to this file: the page must work standalone even before
 // (or after) the main site's locale set changes.
 
 type HubLang = "en" | "es" | "vi" | "ko" | "ar";
@@ -21,7 +21,7 @@ const LANGS: Array<{ code: HubLang; native: string }> = [
   { code: "ar", native: "العربية" },
 ];
 
-type Strings = {
+interface Strings {
   heading: string;
   sub: string;
   google: string;
@@ -35,9 +35,9 @@ type Strings = {
   text: string;
   languageLabel: string;
   locations: string;
-};
+}
 
-const STRINGS: Record<HubLang, Strings> = {
+const STRINGS = {
   en: {
     heading: "How was your visit?",
     sub: "Your review helps neighbors find trusted digestive care. It takes about a minute.",
@@ -113,22 +113,26 @@ const STRINGS: Record<HubLang, Strings> = {
     languageLabel: "اللغة",
     locations: "تامبا ولوتز، فلوريدا",
   },
-};
+} as const satisfies Record<HubLang, Strings>;
 
 /** Deep-link into the main site only for locales it actually serves. */
 function siteHref(lang: HubLang): string {
-  return (locales as string[]).includes(lang) ? `/${lang as Locale}` : "/en";
+  return localeSet.has(lang) ? `/${lang}` : "/en";
+}
+
+function isHubLang(value: string): value is HubLang {
+  return Object.hasOwn(STRINGS, value);
 }
 
 // Site-footer entries carry ?lang= so the hub opens in the visitor's language,
-// while the printed-QR path (no param) stays fully static. Read via
-// useSyncExternalStore: the server snapshot is null, and React reconciles the
-// client value at hydration without a mismatch. The URL never changes within
-// a page load, so the subscription is a no-op.
+// While the printed-QR path (no param) stays fully static. Read via
+// UseSyncExternalStore: the server snapshot is null, and React reconciles the
+// Client value at hydration without a mismatch. The URL never changes within
+// A page load, so the subscription is a no-op.
 const subscribeNever = () => () => {};
 function readLangParam(): HubLang | null {
   const param = new URLSearchParams(window.location.search).get("lang");
-  return param && param in STRINGS ? (param as HubLang) : null;
+  return param && isHubLang(param) ? param : null;
 }
 
 export function ReviewHub() {

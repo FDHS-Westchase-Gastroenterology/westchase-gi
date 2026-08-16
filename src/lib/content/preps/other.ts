@@ -1,5 +1,5 @@
 // Sigmoidoscopy prep, Endocapsule study prep, and the anti-reflux diet
-// guidelines. The anti-reflux sheet exists in both languages (EN p. 3,
+// Guidelines. The anti-reflux sheet exists in both languages (EN p. 3,
 // ES pp. 1–2); sigmoidoscopy (p. 10) and endocapsule (pp. 22–23) are
 // English-only originals with faithful Spanish translations.
 // VI/KO/AR bodies mirror the EN tree and are machine translations
@@ -18,7 +18,7 @@ import {
  * ------------------------------------------------------------------ */
 
 // Sedation is optional for sigmoidoscopy, so the companion requirement is
-// conditional on this sheet (source wording).
+// Conditional on this sheet (source wording).
 const sigCompanionEn =
   "**If you choose to be sedated for this procedure:** you **must** have an adult companion (family member or friend) to take you home after your procedure. Use of public transportation — Uber, Lyft, taxi, etc. — is **not** allowed.";
 const sigCompanionEs =

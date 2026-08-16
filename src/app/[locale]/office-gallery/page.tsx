@@ -2,14 +2,16 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
-import { site, type Locale } from "@/lib/site";
+import { site } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import { PageHero } from "@/components/PageHero";
 import { Reveal } from "@/components/Reveal";
+import { revealDelay } from "@/components/reveal-delay";
 import { LocationCards } from "@/components/LocationCards";
 import { TextBand } from "@/components/TextBand";
 import { ExternalLink, Star } from "@/components/icons";
 
-type PageProps = { params: Promise<{ locale: string }> };
+interface PageProps { params: Promise<{ locale: string }> }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { locale: raw } = await params;
@@ -25,8 +27,8 @@ export default async function GalleryPage({ params }: PageProps) {
   const t = dict.gallery;
 
   // The Tampa storefront from the practice's site, plus practice-provided
-  // photos of the renovated lobby. The decorated lobby photo was restored at
-  // the practice's request on 2026-07-09.
+  // Photos of the renovated lobby. The decorated lobby photo was restored at
+  // The practice's request on 2026-07-09.
   const photos = [
     { src: "/images/facility/storefront-tampa.webp", w: 1067, h: 436, alt: t.photos.storefront, layout: "wide" },
     { src: "/images/facility/lobby.jpeg", w: 2362, h: 1330, alt: t.photos.lobby, layout: "standard" },
@@ -53,7 +55,7 @@ export default async function GalleryPage({ params }: PageProps) {
           {photos.map((photo, i) => (
             <Reveal
               key={photo.src}
-              delay={(i % 2) as 0 | 1}
+              delay={revealDelay(i % 2)}
               className={
                 photo.layout === "wide"
                   ? "sm:col-span-2"

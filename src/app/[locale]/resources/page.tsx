@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
-import { localePath, type Locale } from "@/lib/site";
+import { localePath } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import { patientResources, professionalOrgs, patientEducation } from "@/lib/resources";
 import { PageHero } from "@/components/PageHero";
 import { Reveal } from "@/components/Reveal";
@@ -10,7 +11,7 @@ import { DocumentList } from "@/components/DocumentList";
 import { TextBand } from "@/components/TextBand";
 import { ArrowRight, ExternalLink } from "@/components/icons";
 
-type PageProps = { params: Promise<{ locale: string }> };
+interface PageProps { params: Promise<{ locale: string }> }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { locale: raw } = await params;

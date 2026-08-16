@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
-import { localePath, locales, site, type Locale } from "@/lib/site";
+import { localePath, locales, site } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import { blogPosts, formatPosted, getPost } from "@/lib/content/blog";
 import { ArticleBody } from "@/components/ArticleBody";
 import { JsonLd } from "@/components/JsonLd";
@@ -11,7 +12,7 @@ import { Reveal } from "@/components/Reveal";
 import { TextBand } from "@/components/TextBand";
 import { ArrowRight } from "@/components/icons";
 
-type PageProps = { params: Promise<{ locale: string; slug: string }> };
+interface PageProps { params: Promise<{ locale: string; slug: string }> }
 
 export function generateStaticParams() {
   return locales.flatMap((locale) => blogPosts.map((post) => ({ locale, slug: post.slug })));

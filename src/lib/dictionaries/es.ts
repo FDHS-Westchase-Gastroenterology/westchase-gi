@@ -1,7 +1,7 @@
 // Spanish copy. The homepage welcome block is the practice's own published
 // Spanish text, verbatim (including its closing line). Remaining passages are
-// careful translations of the practice's English copy, in a neutral,
-// respectful "usted" register, pending the practice's native-speaker review.
+// Careful translations of the practice's English copy, in a neutral,
+// Respectful "usted" register, pending the practice's native-speaker review.
 
 import type { Dictionary } from "./en";
 
@@ -89,10 +89,10 @@ export const es: Dictionary = {
         "Elija el idioma que desea usar en este sitio web. Puede cambiarlo en cualquier momento desde el menú Idioma.",
       suggested: "Sugerido",
       // i5-waiver 2026-07-28 common.languageChooser.continue: action label naming
-      // the current locale, not an availability claim.
+      // The current locale, not an availability claim.
       continue: "Continuar en español",
       // i5-waiver 2026-07-28 common.languageChooser.close: action label naming
-      // the current locale, not an availability claim.
+      // The current locale, not an availability claim.
       close: "Cerrar el selector de idioma y continuar en español",
     },
     getDirections: "Cómo llegar",
@@ -118,10 +118,10 @@ export const es: Dictionary = {
       contact: "Contáctenos",
       appointment: "Solicitar Cita",
       // i5-waiver 2026-07-28 common.nav.formsEn: the external Hushforms packet
-      // really is English-only; the label says so honestly.
+      // Really is English-only; the label says so honestly.
       formsEn: "Formularios para pacientes nuevos (inglés)",
       // i5-waiver 2026-07-28 common.nav.formsEs: the external Hushforms packet
-      // really is Spanish-only; the label says so honestly.
+      // Really is Spanish-only; the label says so honestly.
       formsEs: "Formularios para pacientes nuevos (español)",
       printableForms: "Formularios para imprimir",
     },
@@ -214,7 +214,7 @@ export const es: Dictionary = {
     physiciansCta: "Conozca a todo el equipo",
     testimonialsHeading: "Lo que dicen nuestros pacientes",
     // i5-waiver 2026-07-28 home.testimonialsNote: settled decision — testimonials
-    // stay English-only in every locale, with this explicit qualifier.
+    // Stay English-only in every locale, with this explicit qualifier.
     testimonialsNote: "Reseñas compartidas por nuestros pacientes, en sus propias palabras (en inglés).",
     railLabel: "Testimonios de pacientes",
     railPrev: "Testimonios anteriores",
@@ -330,14 +330,14 @@ export const es: Dictionary = {
     ],
     formsHeading: "Formularios para Pacientes",
     // i5-waiver 2026-07-28 newPatients.formsIntro: the EN/ES clause binds to
-    // the external Hushforms packet only — no claim about the site's languages.
+    // The external Hushforms packet only — no claim about the site's languages.
     formsIntro:
       "La opción más rápida es nuestro paquete seguro en línea — el paquete está disponible en español e inglés. Complételo desde cualquier dispositivo antes de su primera visita:",
     // i5-waiver 2026-07-28 newPatients.formsOnlineEn: the external Hushforms
-    // packet really is English-only; the label says so honestly.
+    // Packet really is English-only; the label says so honestly.
     formsOnlineEn: "Formularios en línea para pacientes nuevos (inglés)",
     // i5-waiver 2026-07-28 newPatients.formsOnlineEs: the external Hushforms
-    // packet really is Spanish-only; the label says so honestly.
+    // Packet really is Spanish-only; the label says so honestly.
     formsOnlineEs: "Formularios en línea para pacientes nuevos (español)",
     formsPrintableIntro:
       "¿Prefiere papel? Estos formularios para imprimir se están actualizando; envíenos un texto y le mandaremos las versiones vigentes, o complételos en la recepción cuando llegue.",
@@ -380,7 +380,7 @@ export const es: Dictionary = {
     educationCta: "Ver la educación para pacientes",
     asgeHeading: "Más recursos de la ASGE",
     // i5-waiver 2026-07-28 resources.asgeBody: the external ASGE guides really
-    // are English-only; the qualifier is the truth.
+    // Are English-only; the qualifier is the truth.
     asgeBody:
       "La Sociedad Americana de Endoscopia Gastrointestinal (ASGE) también publica guías para pacientes sobre condiciones y procedimientos digestivos (en inglés).",
     educationCtaConditions: "Guías de la ASGE: condiciones",

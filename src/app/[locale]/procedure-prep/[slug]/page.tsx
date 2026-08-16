@@ -3,14 +3,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
-import { localePath, locales, site, type Locale } from "@/lib/site";
+import { localePath, locales, site } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import { getPrep, prepDocs } from "@/lib/content/preps";
 import { PrepBody } from "@/components/PrepBody";
 import { PrintButton } from "@/components/PrintButton";
 import { TextBand } from "@/components/TextBand";
 import { MessageSquare, Phone } from "@/components/icons";
 
-type PageProps = { params: Promise<{ locale: string; slug: string }> };
+interface PageProps { params: Promise<{ locale: string; slug: string }> }
 
 export function generateStaticParams() {
   return locales.flatMap((locale) => prepDocs.map((d) => ({ locale, slug: d.slug })));

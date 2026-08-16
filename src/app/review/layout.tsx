@@ -4,8 +4,8 @@ import { fontVariables } from "@/lib/fonts";
 import { site } from "@/lib/site";
 
 // The master-QR landing page is deliberately outside the [locale] tree:
-// one stable URL for the printed QR, no site chrome, language switching
-// inline (patients scan it in the office, often on cellular).
+// One stable URL for the printed QR, no site chrome, language switching
+// Inline (patients scan it in the office, often on cellular).
 
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),

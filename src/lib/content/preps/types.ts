@@ -1,15 +1,15 @@
 // Shapes for the procedure-preparation library.
 //
 // Unlike blog/education content, each prep handout is transcribed from the
-// practice's own current instruction sheets (the 2026-07-07 scan, verified
-// against the source page-by-page). EN and ES bodies are therefore stored as
+// Practice's own current instruction sheets (the 2026-07-07 scan, verified
+// Against the source page-by-page). EN and ES bodies are therefore stored as
 // SEPARATE section trees: where the practice publishes both languages, each
-// locale renders its own original verbatim (including their genuine
-// divergences); where only one language exists, the other is a faithful
-// translation of it. Structure is not forced to align across locales.
+// Locale renders its own original verbatim (including their genuine
+// Divergences); where only one language exists, the other is a faithful
+// Translation of it. Structure is not forced to align across locales.
 //
 // Inline syntax inside strings (parsed by <PrepBody>):
-//   **bold**  — load-bearing emphasis from the source handout
+//   **Bold**  — load-bearing emphasis from the source handout
 //   ___       — a fill-in blank the office completes at scheduling
 //               (3+ underscores; rendered as a writing line)
 
@@ -39,12 +39,12 @@ export type PrepBlock =
   /** Generic table (clear-liquid food groups, anti-reflux foods). */
   | { kind: "table"; head: string[]; rows: string[][] };
 
-export type PrepSection = {
+export interface PrepSection {
   heading?: string;
   blocks: PrepBlock[];
-};
+}
 
-export type PrepDoc = {
+export interface PrepDoc {
   /** Route slug under /procedure-prep/. */
   slug: string;
   /** Matching entry in lib/documents.ts (printable-PDF slot). */
@@ -61,4 +61,4 @@ export type PrepDoc = {
   /** Which locales the practice's own original exists in. */
   sourceLangs: Locale[];
   sections: Record<Locale, PrepSection[]>;
-};
+}

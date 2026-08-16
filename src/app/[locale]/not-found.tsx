@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getDictionary, isLocale } from "@/lib/i18n";
-import { localePath, type Locale } from "@/lib/site";
+import { localePath } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 
 export default function NotFound() {
   const pathname = usePathname() || "/en";

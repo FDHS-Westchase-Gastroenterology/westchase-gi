@@ -1,6 +1,6 @@
 // English copy. Practice-authored passages (welcome, about, mission,
-// intros) are verbatim from the practice's published site, with only the
-// documented defect fixes applied (spelling, dead-link removal).
+// Intros) are verbatim from the practice's published site, with only the
+// Documented defect fixes applied (spelling, dead-link removal).
 
 export const en = {
   locale: "en",
@@ -86,10 +86,10 @@ export const en = {
         "Choose the language you would like to use on this website. You can change it anytime from the Language menu.",
       suggested: "Suggested",
       // i5-waiver 2026-07-28 common.languageChooser.continue: action label naming
-      // the current locale, not an availability claim.
+      // The current locale, not an availability claim.
       continue: "Continue in English",
       // i5-waiver 2026-07-28 common.languageChooser.close: action label naming
-      // the current locale, not an availability claim.
+      // The current locale, not an availability claim.
       close: "Close language chooser and continue in English",
     },
     getDirections: "Get directions",
@@ -115,10 +115,10 @@ export const en = {
       contact: "Contact Us",
       appointment: "Request Appointment",
       // i5-waiver 2026-07-28 common.nav.formsEn: the external Hushforms packet
-      // really is English-only; the label says so honestly.
+      // Really is English-only; the label says so honestly.
       formsEn: "Online New Patient Forms (English)",
       // i5-waiver 2026-07-28 common.nav.formsEs: the external Hushforms packet
-      // really is Spanish-only; the label says so honestly.
+      // Really is Spanish-only; the label says so honestly.
       formsEs: "Online New Patient Forms (Spanish)",
       printableForms: "Printable Forms",
     },
@@ -324,14 +324,14 @@ export const en = {
     ],
     formsHeading: "Patient Forms",
     // i5-waiver 2026-07-28 newPatients.formsIntro: the EN/ES clause binds to
-    // the external Hushforms packet only — no claim about the site's languages.
+    // The external Hushforms packet only — no claim about the site's languages.
     formsIntro:
       "The fastest option is our secure online packet — the packet itself is available in English and Spanish. Complete it from any device before your first visit:",
     // i5-waiver 2026-07-28 newPatients.formsOnlineEn: the external Hushforms
-    // packet really is English-only; the label says so honestly.
+    // Packet really is English-only; the label says so honestly.
     formsOnlineEn: "Online New Patient Forms (English)",
     // i5-waiver 2026-07-28 newPatients.formsOnlineEs: the external Hushforms
-    // packet really is Spanish-only; the label says so honestly.
+    // Packet really is Spanish-only; the label says so honestly.
     formsOnlineEs: "Online New Patient Forms (Spanish)",
     formsPrintableIntro:
       "Prefer paper? These printable forms are being updated; text us and we'll send you the current versions, or complete them at the front desk when you arrive.",

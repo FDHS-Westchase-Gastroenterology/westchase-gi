@@ -10,7 +10,7 @@ import { AppointmentForm } from "@/components/AppointmentForm";
 import { TextBand } from "@/components/TextBand";
 import { Reveal } from "@/components/Reveal";
 
-type PageProps = { params: Promise<{ locale: string }> };
+interface PageProps { params: Promise<{ locale: string }> }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { locale: raw } = await params;

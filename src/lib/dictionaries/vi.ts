@@ -1,5 +1,5 @@
 // Vietnamese UI dictionary — machine-translated 2026-07-08, pending
-// native-speaker verification by clinic staff (post-launch gate).
+// Native-speaker verification by clinic staff (post-launch gate).
 import type { Dictionary } from "./en";
 
 export const vi: Dictionary = {
@@ -86,10 +86,10 @@ export const vi: Dictionary = {
         "Chọn ngôn ngữ quý vị muốn sử dụng trên trang web này. Quý vị có thể đổi bất cứ lúc nào trong menu Ngôn ngữ.",
       suggested: "Được đề xuất",
       // i5-waiver 2026-07-28 common.languageChooser.continue: action label naming
-      // the current locale, not an availability claim.
+      // The current locale, not an availability claim.
       continue: "Tiếp tục bằng Tiếng Việt",
       // i5-waiver 2026-07-28 common.languageChooser.close: action label naming
-      // the current locale, not an availability claim.
+      // The current locale, not an availability claim.
       close: "Đóng phần chọn ngôn ngữ và tiếp tục bằng Tiếng Việt",
     },
     getDirections: "Chỉ đường",
@@ -115,10 +115,10 @@ export const vi: Dictionary = {
       contact: "Liên hệ",
       appointment: "Yêu cầu đặt hẹn",
       // i5-waiver 2026-07-28 common.nav.formsEn: the external Hushforms packet
-      // really is English-only; the label says so honestly.
+      // Really is English-only; the label says so honestly.
       formsEn: "Mẫu đơn trực tuyến cho bệnh nhân mới (tiếng Anh)",
       // i5-waiver 2026-07-28 common.nav.formsEs: the external Hushforms packet
-      // really is Spanish-only; the label says so honestly.
+      // Really is Spanish-only; the label says so honestly.
       formsEs: "Mẫu đơn trực tuyến cho bệnh nhân mới (tiếng Tây Ban Nha)",
       printableForms: "Mẫu đơn để in",
     },
@@ -210,7 +210,7 @@ export const vi: Dictionary = {
     physiciansCta: "Gặp gỡ toàn bộ đội ngũ",
     testimonialsHeading: "Bệnh nhân nói gì về chúng tôi",
     // i5-waiver 2026-07-28 home.testimonialsNote: settled decision — testimonials
-    // stay English-only in every locale, with this explicit qualifier.
+    // Stay English-only in every locale, with this explicit qualifier.
     testimonialsNote: "Những đánh giá do bệnh nhân của chúng tôi chia sẻ, bằng chính lời của họ (bằng tiếng Anh).",
     railLabel: "Cảm nhận của bệnh nhân",
     railPrev: "Các cảm nhận trước",
@@ -326,14 +326,14 @@ export const vi: Dictionary = {
     ],
     formsHeading: "Mẫu đơn cho bệnh nhân",
     // i5-waiver 2026-07-28 newPatients.formsIntro: the EN/ES clause binds to
-    // the external Hushforms packet only — no claim about the site's languages.
+    // The external Hushforms packet only — no claim about the site's languages.
     formsIntro:
       "Cách nhanh nhất là bộ hồ sơ trực tuyến bảo mật của chúng tôi — bộ hồ sơ có sẵn bằng tiếng Anh và tiếng Tây Ban Nha. Quý vị có thể hoàn tất từ bất kỳ thiết bị nào trước buổi thăm khám đầu tiên:",
     // i5-waiver 2026-07-28 newPatients.formsOnlineEn: the external Hushforms
-    // packet really is English-only; the label says so honestly.
+    // Packet really is English-only; the label says so honestly.
     formsOnlineEn: "Mẫu đơn trực tuyến cho bệnh nhân mới (tiếng Anh)",
     // i5-waiver 2026-07-28 newPatients.formsOnlineEs: the external Hushforms
-    // packet really is Spanish-only; the label says so honestly.
+    // Packet really is Spanish-only; the label says so honestly.
     formsOnlineEs: "Mẫu đơn trực tuyến cho bệnh nhân mới (tiếng Tây Ban Nha)",
     formsPrintableIntro:
       "Quý vị muốn dùng bản giấy? Các mẫu đơn để in này đang được cập nhật; hãy nhắn tin cho chúng tôi và chúng tôi sẽ gửi quý vị phiên bản hiện hành, hoặc quý vị có thể điền tại quầy lễ tân khi đến.",
@@ -376,7 +376,7 @@ export const vi: Dictionary = {
     educationCta: "Xem trang giáo dục bệnh nhân",
     asgeHeading: "Thông tin thêm từ ASGE",
     // i5-waiver 2026-07-28 resources.asgeBody: the external ASGE guides really
-    // are English-only; the qualifier is the truth.
+    // Are English-only; the qualifier is the truth.
     asgeBody:
       "Hiệp hội Nội soi Tiêu hóa Hoa Kỳ (ASGE) cũng xuất bản các cẩm nang cho bệnh nhân về các bệnh lý và thủ thuật tiêu hóa (bằng tiếng Anh).",
     educationCtaConditions: "Cẩm nang ASGE: bệnh lý",

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
-import { site, type Locale } from "@/lib/site";
+import { site } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import { PageHero } from "@/components/PageHero";
 import { Reveal } from "@/components/Reveal";
 import { DocumentList } from "@/components/DocumentList";
@@ -9,7 +10,7 @@ import { LocationMaps } from "@/components/LocationMaps";
 import { TextBand } from "@/components/TextBand";
 import { ExternalLink, FileText } from "@/components/icons";
 
-type PageProps = { params: Promise<{ locale: string }> };
+interface PageProps { params: Promise<{ locale: string }> }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { locale: raw } = await params;

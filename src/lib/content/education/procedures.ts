@@ -1,7 +1,7 @@
 // Patient-education topics, "procedures" group. Ported 1:1 by topic/title from
-// the old site's ASGE-licensed article library (legacyId = old library id), but
-// every body below uses ORIGINAL plain-language EN/ES writing — the licensed
-// article text was not reused. Spanish follows the site's neutral Latin-American
+// The old site's ASGE-licensed article library (legacyId = old library id), but
+// Every body below uses ORIGINAL plain-language EN/ES writing — the licensed
+// Article text was not reused. Spanish follows the site's neutral Latin-American
 // "usted" register; VI/KO/AR are machine translations awaiting native review.
 
 import type { EducationTopic } from "../types";

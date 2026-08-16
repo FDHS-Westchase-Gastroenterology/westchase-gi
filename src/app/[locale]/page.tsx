@@ -3,15 +3,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
-import { site, localePath, type Locale } from "@/lib/site";
+import { site, localePath } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import { physicians, nursePractitioners, infusionNurse } from "@/lib/providers";
 import { Reveal } from "@/components/Reveal";
+import { revealDelay } from "@/components/reveal-delay";
 import { TestimonialRail } from "@/components/TestimonialRail";
 import { LocationCards } from "@/components/LocationCards";
 import { TextBand } from "@/components/TextBand";
 import { ArrowRight, ClipboardCheck, ExternalLink, Heart, MessageSquare, Phone } from "@/components/icons";
 
-type PageProps = { params: Promise<{ locale: string }> };
+interface PageProps { params: Promise<{ locale: string }> }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { locale: raw } = await params;
@@ -30,10 +32,10 @@ export default async function HomePage({ params }: PageProps) {
   const p = (path: string) => localePath(locale, path);
 
   // Prep replaced the Services tile (2026-07-18 critique): prep instructions
-  // are the most time-critical of the four named patient jobs and had no
-  // home-page path, while Services keeps its own top-level nav link. No
-  // practice-owned wayfinding graphic exists for prep, so the tile uses the
-  // site's own icon set at the same visual weight.
+  // Are the most time-critical of the four named patient jobs and had no
+  // Home-page path, while Services keeps its own top-level nav link. No
+  // Practice-owned wayfinding graphic exists for prep, so the tile uses the
+  // Site's own icon set at the same visual weight.
   const tiles = [
     { ...t.tiles.prep, href: p("/procedure-prep"), icon: ClipboardCheck },
     { ...t.tiles.forms, href: p("/new-patients"), img: "/images/tiles/patient-forms.webp", w: 200, h: 200 },
@@ -103,7 +105,7 @@ export default async function HomePage({ params }: PageProps) {
           <h2 className="sr-only">{t.tiles.heading}</h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {tiles.map((tile, i) => (
-              <Reveal key={tile.href + tile.title} delay={(i % 4) as 0 | 1 | 2 | 3}>
+              <Reveal key={tile.href + tile.title} delay={revealDelay(i % 4)}>
                 <Link
                   href={tile.href}
                   className="group flex h-full items-center gap-4 rounded-[var(--radius-lg)] bg-white p-5 shadow-[var(--shadow-soft)] transition-transform duration-300 ease-[var(--ease-out-quint)] hover:-translate-y-1"
@@ -169,7 +171,7 @@ export default async function HomePage({ params }: PageProps) {
           </div>
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {physicians.map((doc, i) => (
-              <Reveal key={doc.id} delay={(i % 3) as 0 | 1 | 2} className="h-full">
+              <Reveal key={doc.id} delay={revealDelay(i % 3)} className="h-full">
                 {/* One action per card: the profile. Review asks are calibrated
                     (I8) — the testimonial rail CTA and the footer carry the
                     standing invitation; no per-provider ask mid-page. */}

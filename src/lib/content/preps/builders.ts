@@ -1,7 +1,7 @@
 // Section builders for the passages every endoscopy handout shares.
 // A "flavor" is one of the wording sets in common.ts (EN / ES_T / ES_O);
-// the builders keep each document's section tree consistent while letting
-// every locale carry its own source wording.
+// The builders keep each document's section tree consistent while letting
+// Every locale carry its own source wording.
 
 import type { PrepSection } from "./types";
 import type { EN } from "./common";
