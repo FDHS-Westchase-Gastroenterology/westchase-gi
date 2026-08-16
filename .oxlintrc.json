@@ -7,7 +7,8 @@
     "oxc",
     "react",
     "typescript",
-    "unicorn"
+    "unicorn",
+    "vue"
   ],
   "categories": {
     "correctness": "off"
@@ -64,6 +65,7 @@
     "anti-slop/no-unsafe-dictionary-type": "error",
     "anti-slop/no-widen-then-assert": "error",
     "anti-slop/require-safety-comment-for-type-assertion": "error",
+    "arrow-body-style": "error",
     "capitalized-comments": [
       "error",
       "always",
@@ -73,6 +75,7 @@
     ],
     "import/consistent-type-specifier-style": "error",
     "import/no-anonymous-default-export": "warn",
+    "import/no-duplicates": "error",
     "jsx-a11y/alt-text": [
       "warn",
       {
@@ -135,7 +138,10 @@
     "react/react-in-jsx-scope": "off",
     "react/require-render-return": "error",
     "react/rules-of-hooks": "error",
+    "typescript/array-type": "error",
     "typescript/ban-ts-comment": "error",
+    "typescript/consistent-indexed-object-style": "error",
+    "typescript/consistent-type-definitions": "error",
     "typescript/no-duplicate-enum-values": "error",
     "typescript/no-empty-object-type": "error",
     "typescript/no-explicit-any": "error",
@@ -151,7 +157,8 @@
     "typescript/no-wrapper-object-types": "error",
     "typescript/prefer-as-const": "error",
     "typescript/prefer-namespace-keyword": "error",
-    "typescript/triple-slash-reference": "error"
+    "typescript/triple-slash-reference": "error",
+    "vue/component-definition-name-casing": "error"
   },
   "overrides": [
     {
