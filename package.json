@@ -2,7 +2,6 @@
   "name": "westchase-gi",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "scripts": {
     "dev": "next dev",
     "dev:mission": "mkdir -p .logs; lsof -ti tcp:3100 | xargs -r kill -9; exec next dev -p 3100",
