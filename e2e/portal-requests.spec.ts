@@ -1,11 +1,38 @@
 import { createHash, randomUUID } from "node:crypto";
+import { test, expect } from "@playwright/test";
+import type { Page, APIRequestContext } from "@playwright/test";
+import { z } from "zod";
 import {
-  test,
-  expect,
-  type Page,
-  type APIRequestContext,
-} from "@playwright/test";
+  asJsonObject,
+  asJsonString,
+  jsonSchema,
+} from "../src/lib/json";
+import { intakeResponseSchema } from "../src/lib/portal/contracts";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+
+const noteMetaSchema = z.object({
+  text: z.string().optional(),
+  author_email: z.string().optional(),
+});
+const callOutcomeDetailSchema = z.looseObject({
+  outcome: z.string(),
+  note_attached: z.boolean().optional(),
+});
+
+interface QueueInsert {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  location: string;
+  preferred_time: string;
+  message: string;
+  locale: string;
+  source_path: string;
+  status: string;
+  created_at: string;
+  follow_up_at?: string;
+}
 
 // VAL-ADMIN-003: the queue leads with the oldest unworked requests first.
 // VAL-ADMIN-004: status filtering matches SQL counts exactly.
@@ -47,8 +74,9 @@ async function stageRequest(
     headers: { "X-Forwarded-For": testIp(label) },
   });
   expect(response.status()).toBe(201);
-  const body = (await response.json()) as { ok: boolean; id: string };
+  const body = intakeResponseSchema.parse(await response.json());
   expect(body.ok).toBe(true);
+  if (!body.ok) throw new Error("Expected an accepted intake response");
   return body.id;
 }
 
@@ -91,7 +119,7 @@ test.describe("portal requests operation", () => {
     await page.goto("/admin/requests");
 
     // Attention-first: between two unworked New requests, the older one —
-    // the one that has waited longer — comes before the newer one.
+    // The one that has waited longer — comes before the newer one.
     const names = await page.getByTestId("request-name").allTextContents();
     const newerIndex = names.findIndex((name) => name.includes("newer"));
     const olderIndex = names.findIndex((name) => name.includes("older"));
@@ -241,9 +269,10 @@ test.describe("portal requests operation", () => {
       .eq("entity_id", id)
       .eq("action", "request.call_outcome");
     expect(outcomeAuditError).toBeNull();
-    const outcomes = (outcomeAudits ?? []).map(
-      (row) => (row.detail as { outcome?: string }).outcome,
-    );
+    const outcomes = (outcomeAudits ?? []).map((row) => {
+      const detail = asJsonObject(jsonSchema.parse(row.detail ?? null));
+      return detail ? asJsonString(detail.outcome) : null;
+    });
     expect(outcomes.sort()).toEqual(
       ["booked", "no_answer", "reached_follow_up", "wont_schedule"].sort(),
     );
@@ -297,9 +326,9 @@ test.describe("portal requests operation", () => {
     await signIn(page);
 
     // Parallel spec files stage and delete requests while this test runs,
-    // so a single page-render + SQL-read pair can legitimately disagree.
+    // So a single page-render + SQL-read pair can legitimately disagree.
     // The assertion samples until one snapshot is INTERNALLY consistent —
-    // chip count, visible rows, and SQL agree exactly at the same instant.
+    // Chip count, visible rows, and SQL agree exactly at the same instant.
     // Exactness is preserved; transient churn just retries the sample.
     for (const status of ["new", "contacted", "scheduled", "closed"]) {
       await expect
@@ -323,8 +352,8 @@ test.describe("portal requests operation", () => {
 
             const badgesOk = badges.every((badge) => badge === status);
             // One page holds at most REQUEST_PAGE_SIZE (50) rows; the SQL
-            // count may exceed it, so the honest expectation is a full or
-            // partial first page matching the count at the same instant.
+            // Count may exceed it, so the honest expectation is a full or
+            // Partial first page matching the count at the same instant.
             const consistent =
               chip === sql && shown === Math.min(sql, 50) && badgesOk;
             return consistent
@@ -380,7 +409,7 @@ test.describe("portal requests operation", () => {
     for (const row of stagedRows) {
       const id = randomUUID();
       idsByKey.set(row.suffix, id);
-      const { error } = await db.from("requests").insert({
+      const insert: QueueInsert = {
         id,
         name: `TEST Queue ${runId} ${row.suffix}`,
         phone: "8135550166",
@@ -392,8 +421,11 @@ test.describe("portal requests operation", () => {
         source_path: "/e2e/p2queue",
         status: row.status,
         created_at: row.created_at,
-        ...(row.follow_up_at ? { follow_up_at: row.follow_up_at } : {}),
-      });
+      };
+      if (row.follow_up_at) {
+        insert.follow_up_at = row.follow_up_at;
+      }
+      const { error } = await db.from("requests").insert(insert);
       expect(error).toBeNull();
     }
 
@@ -600,7 +632,7 @@ test.describe("portal requests operation", () => {
     await expect(page.getByTestId("note-list")).toContainText(noteText);
 
     // Appointment request notes have one consistent entry point, independent
-    // from the status workflow.
+    // From the status workflow.
     await notesSection
       .getByRole("button", { name: "Add note", exact: true })
       .click();
@@ -617,7 +649,7 @@ test.describe("portal requests operation", () => {
     expect(unchangedStatus?.status).toBe("contacted");
 
     // Re-enter through the staff's Contacted queue, not a direct test URL:
-    // the note must still be the obvious patient handoff when the row opens.
+    // The note must still be the obvious patient handoff when the row opens.
     await page.goto(
       `/admin/requests?status=contacted&q=${encodeURIComponent(payload("notes").name)}`,
     );
@@ -644,7 +676,7 @@ test.describe("portal requests operation", () => {
     );
 
     // Print keeps the complete patient handoff and removes portal controls
-    // and delivery diagnostics. The request root must be allowed to paginate.
+    // And delivery diagnostics. The request root must be allowed to paginate.
     await page.emulateMedia({ media: "print" });
     await expect(page.getByTestId("request-detail-name")).toBeVisible();
     await expect(page.getByText(staged.message)).toBeVisible();
@@ -674,13 +706,12 @@ test.describe("portal requests operation", () => {
     expect(error).toBeNull();
     expect(events).toHaveLength(2);
     for (const expectedText of [noteText, handoffText]) {
-      const event = events?.find(
-        (candidate) =>
-          (candidate.meta as Record<string, unknown> | null)?.text ===
-          expectedText,
-      );
+      const event = events?.find((candidate) => {
+        const meta = noteMetaSchema.safeParse(candidate.meta);
+        return meta.success && meta.data.text === expectedText;
+      });
       expect(event).toBeTruthy();
-      const meta = (event?.meta ?? {}) as Record<string, unknown>;
+      const meta = noteMetaSchema.parse(event?.meta ?? {});
       expect(String(meta.author_email).toLowerCase()).toBe(
         SEED_EMAIL.toLowerCase(),
       );
@@ -693,7 +724,7 @@ test.describe("portal requests operation", () => {
       .eq("action", "request.call_outcome");
     expect(outcomeAuditError).toBeNull();
     expect(outcomeAudits).toHaveLength(1);
-    const detail = outcomeAudits![0].detail as Record<string, unknown>;
+    const detail = callOutcomeDetailSchema.parse(outcomeAudits![0].detail);
     expect(detail.outcome).toBe("voicemail");
     expect(detail.note_attached).toBe(false);
     expect(detail).not.toHaveProperty("note_length");

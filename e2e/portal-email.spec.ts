@@ -1,9 +1,6 @@
 import { expect, test } from "@playwright/test";
-import {
-  createEmailSender,
-  type PortalEmailMessage,
-  type PortalEmailTransport,
-} from "../src/lib/portal/email";
+import { createEmailSender } from "../src/lib/portal/email";
+import type { PortalEmailMessage, PortalEmailTransport } from "../src/lib/portal/email";
 import { createAppointmentNotificationEvents } from "../src/lib/portal/intake-notification";
 import {
   sendRecipientConfirmation,

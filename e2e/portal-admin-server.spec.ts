@@ -1,12 +1,16 @@
 import { randomUUID } from "node:crypto";
-import {
-  expect,
-  test,
-  type BrowserContext,
-  type Page,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
+import { asJsonString, jsonObjectSchema } from "../src/lib/json";
+import type { JsonObject } from "../src/lib/json";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+
+const inviteDetailSchema = z.looseObject({
+  resend: z.boolean().optional(),
+  link_type: z.string().optional(),
+});
 
 loadLocalEnv();
 
@@ -52,22 +56,22 @@ let recipientId: string | null = null;
 const requestIds = new Set<string>();
 const auditEntityIds = new Set<string>();
 
-type MutationResponse = {
+interface MutationResponse {
   status: number;
-  body: Record<string, unknown>;
-};
+  body: JsonObject;
+}
 
-type RestResult = {
+interface RestResult {
   error: { code?: string } | null;
   status: number;
-};
+}
 
-type CsvFetch = {
+interface CsvFetch {
   status: number;
   contentType: string;
   contentDisposition: string;
   text: string;
-};
+}
 
 async function signIn(page: Page, email: string, password: string) {
   await page.goto("/admin/login");
@@ -80,23 +84,17 @@ async function signIn(page: Page, email: string, password: string) {
 async function mutate(
   page: Page,
   operation: string,
-  input: Record<string, unknown>,
+  input: JsonObject,
 ): Promise<MutationResponse> {
-  return page.evaluate(
-    async ({ operation: selectedOperation, input: selectedInput }) => {
-      const response = await fetch("/admin/settings/mutations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          operation: selectedOperation,
-          input: selectedInput,
-        }),
-      });
-      const body = (await response.json()) as Record<string, unknown>;
-      return { status: response.status, body };
-    },
-    { operation, input },
-  );
+  const raw = await page.evaluate(async (body) => {
+    const response = await fetch("/admin/settings/mutations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+    return { status: response.status, body: await response.json() };
+  }, JSON.stringify({ operation, input }));
+  return { status: raw.status, body: jsonObjectSchema.parse(raw.body) };
 }
 
 function fallbackSetupUrl(
@@ -111,8 +109,11 @@ function fallbackSetupUrl(
     Object.prototype.hasOwnProperty.call(response.body, "tempPassword"),
   ).toBe(false);
   const setupUrl = response.body.fallbackSetupUrl;
-  expect(typeof setupUrl).toBe("string");
-  const setupUrlString = setupUrl as string;
+  expect(z.string().safeParse(setupUrl).success).toBe(true);
+  const setupUrlString = asJsonString(setupUrl);
+  if (setupUrlString === null) {
+    throw new Error("expected fallbackSetupUrl string");
+  }
   expect(URL.canParse(setupUrlString)).toBe(true);
   const parsed = new URL(setupUrlString);
   const fragment = new URLSearchParams(parsed.hash.slice(1));
@@ -338,8 +339,8 @@ test.describe("portal management server boundaries", () => {
     expect(stillPendingTarget?.onboarded_at).toBeNull();
 
     // Simulate an invite link that verified the address but was abandoned
-    // before password setup. Reissuing must use recovery while preserving the
-    // pending profile and its assigned role.
+    // Before password setup. Reissuing must use recovery while preserving the
+    // Pending profile and its assigned role.
     const confirmedTarget = await db.auth.admin.updateUserById(
       targetProfile.user_id,
       { email_confirm: true },
@@ -367,7 +368,7 @@ test.describe("portal management server boundaries", () => {
     expect(recoveryPendingTarget?.onboarded_at).toBeNull();
 
     // This suite exercises network roles rather than the setup UI. Give both
-    // throwaway accounts known passwords and mark them onboarded directly;
+    // Throwaway accounts known passwords and mark them onboarded directly;
     // VAL-ADMIN-008 covers the one-time browser setup flow.
     const staffPassword = `Wgi!${runId}Staff7`;
     const targetPassword = `Wgi!${runId}Target7`;
@@ -696,21 +697,16 @@ test.describe("portal management server boundaries", () => {
     const resendAudits = rows?.filter((candidate) => {
       if (
         candidate.action !== "staff.invite" ||
-        candidate.entity_id !== targetProfileId ||
-        typeof candidate.detail !== "object" ||
-        candidate.detail === null ||
-        Array.isArray(candidate.detail)
+        candidate.entity_id !== targetProfileId
       ) {
         return false;
       }
-      return (candidate.detail as Record<string, unknown>).resend === true;
+      const detail = inviteDetailSchema.safeParse(candidate.detail);
+      return detail.success && detail.data.resend === true;
     });
     expect(resendAudits).toHaveLength(2);
     const resendLinkTypes = (resendAudits ?? [])
-      .map(
-        (row) =>
-          (row.detail as Record<string, unknown> | undefined)?.link_type,
-      )
+      .map((row) => inviteDetailSchema.safeParse(row.detail).data?.link_type)
       .sort();
     expect(resendLinkTypes).toEqual(["invite", "recovery"]);
     assertAudit("staff.role", targetProfileId, SEED_ADMIN_EMAIL);
@@ -874,7 +870,7 @@ test.describe("portal management server boundaries", () => {
     }
 
     // The export boundary is audited: exactly one metadata-only row for the
-    // successful read above, nothing for the rejected calls below.
+    // Successful read above, nothing for the rejected calls below.
     const { data: exportAudits, error: exportAuditError } = await db
       .from("audit_log")
       .select("id, actor_email, entity, entity_id, detail")

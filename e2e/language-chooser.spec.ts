@@ -1,4 +1,5 @@
-import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import type { Page, TestInfo } from "@playwright/test";
 
 const languageNames = ["English", "Español", "Tiếng Việt", "한국어", "العربية"];
 
@@ -15,10 +16,10 @@ function cookieValue(cookies: { name: string; value: string }[], name: string) {
 }
 
 // The chooser auto-opens only on positive evidence of a mismatch (I4): the
-// browser's top supported language (navigator.languages, mirrored server-side
-// by the proxy's Accept-Language negotiation) differs from the served locale,
-// and no remembered choice exists. When the site already guessed right,
-// nothing interrupts.
+// Browser's top supported language (navigator.languages, mirrored server-side
+// By the proxy's Accept-Language negotiation) differs from the served locale,
+// And no remembered choice exists. When the site already guessed right,
+// Nothing interrupts.
 test.describe("evidence-gated language chooser", () => {
   test.beforeEach(async ({}, testInfo) => skipWithoutJavaScript(testInfo));
 
@@ -200,7 +201,7 @@ test.describe("evidence-gated language chooser", () => {
     expect(cookieValue(await context.cookies(), "wgi-locale")).toBeUndefined();
 
     // Session memory suppresses reopening while the mismatch persists; a
-    // future browser session gets one more chance because nothing is stored.
+    // Future browser session gets one more chance because nothing is stored.
     await page.goto("/en/contact");
     await expectNoOpenChooser(page);
     await page.goto("/en/procedure-prep");
@@ -222,7 +223,7 @@ test.describe("evidence-gated language chooser", () => {
     await expectNoOpenChooser(page);
 
     // The remembered locale also beats the browser's language evidence: the
-    // proxy negotiates / from the cookie, and the dialog never re-considers.
+    // Proxy negotiates / from the cookie, and the dialog never re-considers.
     await page.goto("/vi/contact");
     await expectNoOpenChooser(page);
     await context.close();
@@ -282,10 +283,10 @@ test.describe("evidence-gated language chooser", () => {
     });
 
     // The mismatch evidence is real (es), but with no way to remember a
-    // choice, reopening every page would recreate the old site's per-page
-    // modal. Session module memory still prevents the loop — proven with
-    // client-side navigation, since a full reload resets module state when
-    // both persistent stores are blocked.
+    // Choice, reopening every page would recreate the old site's per-page
+    // Modal. Session module memory still prevents the loop — proven with
+    // Client-side navigation, since a full reload resets module state when
+    // Both persistent stores are blocked.
     await page.goto("/en/contact");
     await expect(page.getByRole("dialog", { name: "Choose your language" })).toBeVisible();
     await page.keyboard.press("Escape");

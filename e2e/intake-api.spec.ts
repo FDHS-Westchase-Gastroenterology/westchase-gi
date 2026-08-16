@@ -1,12 +1,16 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
+import { en } from "../src/lib/dictionaries/en";
 import {
   INTAKE_RATE_LIMIT,
   REQUEST_FIELD_LIMITS,
-  type IntakeResponse,
+  intakeResponseSchema,
 } from "../src/lib/portal/contracts";
-import { en } from "../src/lib/dictionaries/en";
 import { requiredEnv, serviceDb } from "./support";
+
+type IntakeFixture = Partial<ReturnType<typeof validPayload>> & {
+  company?: string;
+};
 
 const db = serviceDb();
 
@@ -112,7 +116,7 @@ test.describe("intake API contract", () => {
     });
 
     expect([200, 201]).toContain(response.status());
-    const body = (await response.json()) as IntakeResponse;
+    const body = intakeResponseSchema.parse(await response.json());
     expect(body.ok).toBe(true);
     if (!body.ok) throw new Error("Expected an accepted intake response");
 
@@ -149,7 +153,7 @@ test.describe("intake API contract", () => {
     });
 
     expect([200, 201]).toContain(response.status());
-    const body = (await response.json()) as IntakeResponse;
+    const body = intakeResponseSchema.parse(await response.json());
     expect(body.ok).toBe(true);
     if (!body.ok) throw new Error("Expected an accepted intake response");
 
@@ -208,12 +212,12 @@ test.describe("intake API contract", () => {
   }) => {
     const invalidCases: Array<{
       field: "name" | "phone" | "email" | "message";
-      makePayload: (sourcePath: string) => Record<string, unknown>;
+      makePayload: (sourcePath: string) => IntakeFixture;
     }> = [
       {
         field: "name",
         makePayload(sourcePath) {
-          const payload: Record<string, unknown> = validPayload(sourcePath);
+          const payload: IntakeFixture = validPayload(sourcePath);
           delete payload.name;
           return payload;
         },
@@ -221,7 +225,7 @@ test.describe("intake API contract", () => {
       {
         field: "phone",
         makePayload(sourcePath) {
-          const payload: Record<string, unknown> = validPayload(sourcePath);
+          const payload: IntakeFixture = validPayload(sourcePath);
           delete payload.phone;
           return payload;
         },
@@ -288,7 +292,7 @@ test.describe("intake API contract", () => {
       });
 
       expect(response.status()).toBe(400);
-      const body = (await response.json()) as IntakeResponse;
+      const body = intakeResponseSchema.parse(await response.json());
       expect(body.ok).toBe(false);
       if (body.ok) throw new Error("Expected a validation failure");
       expect(body.code).toBe("validation");
@@ -317,7 +321,7 @@ test.describe("intake API contract", () => {
     });
 
     expect([200, 201]).toContain(response.status());
-    const body = (await response.json()) as IntakeResponse;
+    const body = intakeResponseSchema.parse(await response.json());
     expect(body.ok).toBe(true);
     if (!body.ok) throw new Error("Expected a success-shaped honeypot response");
 
@@ -454,7 +458,7 @@ test.describe("intake API contract", () => {
         data: validPayload(`${sourcePrefix}/rate/${index}`),
         headers: { "X-Forwarded-For": pinnedIp },
       });
-      const body = (await response.json()) as IntakeResponse;
+      const body = intakeResponseSchema.parse(await response.json());
 
       if (index < INTAKE_RATE_LIMIT.limit) {
         expect([200, 201]).toContain(response.status());

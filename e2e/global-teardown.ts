@@ -1,6 +1,14 @@
 import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import { resolve } from "node:path";
+import { z } from "zod";
 import { serviceDb } from "./support";
+
+const recipientSnapshotSchema = z.array(
+  z.object({
+    id: z.string(),
+    active: z.boolean(),
+  }),
+);
 
 const SNAPSHOT_PATH = resolve(process.cwd(), ".logs/recipients-snapshot.json");
 
@@ -8,10 +16,9 @@ const SNAPSHOT_PATH = resolve(process.cwd(), ".logs/recipients-snapshot.json");
 export default async function globalTeardown(): Promise<void> {
   if (!existsSync(SNAPSHOT_PATH)) return;
 
-  const snapshot = JSON.parse(readFileSync(SNAPSHOT_PATH, "utf8")) as Array<{
-    id: string;
-    active: boolean;
-  }>;
+  const snapshot = recipientSnapshotSchema.parse(
+    JSON.parse(readFileSync(SNAPSHOT_PATH, "utf8")),
+  );
   const db = serviceDb();
 
   for (const recipient of snapshot) {

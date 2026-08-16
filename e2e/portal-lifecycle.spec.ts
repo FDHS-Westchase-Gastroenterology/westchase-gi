@@ -1,6 +1,20 @@
 import { createHash, randomUUID } from "node:crypto";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { jsonObjectSchema } from "../src/lib/json";
+import type { JsonObject } from "../src/lib/json";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+
+interface LifecycleFixture {
+  status?: string;
+  closure_disposition?: string;
+  closed_at?: string;
+  record_handoff_at?: string;
+  retention_hold_at?: string;
+  retention_hold_by?: string;
+  retention_hold_reason?: string;
+  created_at?: string;
+}
 
 loadLocalEnv();
 
@@ -28,11 +42,11 @@ function shifted(date: Date, milliseconds: number): string {
   return new Date(date.getTime() + milliseconds).toISOString();
 }
 
-function count(result: unknown, key: string): number {
-  if (typeof result !== "object" || result === null || !(key in result)) {
+function count(result: JsonObject, key: string): number {
+  if (!(key in result)) {
     throw new Error(`Lifecycle result is missing ${key}`);
   }
-  return Number((result as Record<string, unknown>)[key]);
+  return Number(result[key]);
 }
 
 async function signIn(page: Page): Promise<void> {
@@ -45,7 +59,7 @@ async function signIn(page: Page): Promise<void> {
 
 async function stageRequest(
   suffix: string,
-  lifecycle: Record<string, unknown> = {},
+  lifecycle: LifecycleFixture = {},
 ): Promise<string> {
   const id = randomUUID();
   requestIds.add(id);
@@ -215,7 +229,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
       p_now: CLOCK.toISOString(),
     });
     expect(run.error).toBeNull();
-    expect(count(run.data, "requests_removed")).toBe(0);
+    expect(count(jsonObjectSchema.parse(run.data), "requests_removed")).toBe(0);
 
     const survivor = await db.from("requests").select("id").eq("id", id);
     expect(survivor.data).toEqual([{ id }]);
@@ -243,7 +257,8 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     expect(runs.every(({ error }) => error === null)).toBe(true);
     expect(
       runs.reduce(
-        (total, { data }) => total + count(data, "requests_removed"),
+        (total, { data }) =>
+          total + count(jsonObjectSchema.parse(data), "requests_removed"),
         0,
       ),
     ).toBe(1);
@@ -358,15 +373,16 @@ test.describe("disposable-local appointment-request lifecycle", () => {
       p_now: CLOCK.toISOString(),
     });
     expect(preview.error).toBeNull();
-    expect(count(preview.data, "unconverted_requests")).toBe(1);
-    expect(count(preview.data, "converted_requests")).toBe(1);
-    expect(count(preview.data, "held_requests")).toBeGreaterThanOrEqual(1);
+    const previewCounts = jsonObjectSchema.parse(preview.data);
+    expect(count(previewCounts, "unconverted_requests")).toBe(1);
+    expect(count(previewCounts, "converted_requests")).toBe(1);
+    expect(count(previewCounts, "held_requests")).toBeGreaterThanOrEqual(1);
     expect(
-      count(preview.data, "legacy_unclassified_requests"),
+      count(previewCounts, "legacy_unclassified_requests"),
     ).toBeGreaterThanOrEqual(1);
-    expect(count(preview.data, "receipt_secrets")).toBe(1);
-    expect(count(preview.data, "rate_limits")).toBeGreaterThanOrEqual(1);
-    expect(count(preview.data, "audits")).toBe(1);
+    expect(count(previewCounts, "receipt_secrets")).toBe(1);
+    expect(count(previewCounts, "rate_limits")).toBeGreaterThanOrEqual(1);
+    expect(count(previewCounts, "audits")).toBe(1);
 
     const unsafeClock = await db.rpc("portal_run_data_lifecycle", {
       p_actor_email: lifecycleActor,
@@ -379,12 +395,13 @@ test.describe("disposable-local appointment-request lifecycle", () => {
       p_now: CLOCK.toISOString(),
     });
     expect(firstRun.error).toBeNull();
-    expect(count(firstRun.data, "requests_removed")).toBe(2);
-    expect(count(firstRun.data, "receipt_secrets_removed")).toBe(1);
-    expect(count(firstRun.data, "rate_limits_removed")).toBeGreaterThanOrEqual(
+    const firstRunCounts = jsonObjectSchema.parse(firstRun.data);
+    expect(count(firstRunCounts, "requests_removed")).toBe(2);
+    expect(count(firstRunCounts, "receipt_secrets_removed")).toBe(1);
+    expect(count(firstRunCounts, "rate_limits_removed")).toBeGreaterThanOrEqual(
       1,
     );
-    expect(count(firstRun.data, "audits_removed")).toBe(1);
+    expect(count(firstRunCounts, "audits_removed")).toBe(1);
 
     const survivors = await db
       .from("requests")
@@ -459,10 +476,11 @@ test.describe("disposable-local appointment-request lifecycle", () => {
       p_now: CLOCK.toISOString(),
     });
     expect(secondRun.error).toBeNull();
-    expect(count(secondRun.data, "requests_removed")).toBe(0);
-    expect(count(secondRun.data, "receipt_secrets_removed")).toBe(0);
-    expect(count(secondRun.data, "rate_limits_removed")).toBe(0);
-    expect(count(secondRun.data, "audits_removed")).toBe(0);
+    const secondRunCounts = jsonObjectSchema.parse(secondRun.data);
+    expect(count(secondRunCounts, "requests_removed")).toBe(0);
+    expect(count(secondRunCounts, "receipt_secrets_removed")).toBe(0);
+    expect(count(secondRunCounts, "rate_limits_removed")).toBe(0);
+    expect(count(secondRunCounts, "audits_removed")).toBe(0);
 
     const release = await db.rpc("portal_set_request_legal_hold", {
       p_actor_email: lifecycleActor,
@@ -476,7 +494,9 @@ test.describe("disposable-local appointment-request lifecycle", () => {
       p_now: CLOCK.toISOString(),
     });
     expect(afterRelease.error).toBeNull();
-    expect(count(afterRelease.data, "requests_removed")).toBe(1);
+    expect(count(jsonObjectSchema.parse(afterRelease.data), "requests_removed")).toBe(
+      1,
+    );
   });
 
   test("exceptional deletion is authorized, hold-aware, and replayable after restore", async () => {
@@ -557,14 +577,16 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     const preview = await db.rpc("portal_preview_data_lifecycle", {
       p_now: CLOCK.toISOString(),
     });
-    expect(count(preview.data, "unconverted_requests")).toBe(1);
+    expect(count(jsonObjectSchema.parse(preview.data), "unconverted_requests")).toBe(
+      1,
+    );
 
     const replay = await db.rpc("portal_run_data_lifecycle", {
       p_actor_email: lifecycleActor,
       p_now: CLOCK.toISOString(),
     });
     expect(replay.error).toBeNull();
-    expect(count(replay.data, "requests_removed")).toBe(1);
+    expect(count(jsonObjectSchema.parse(replay.data), "requests_removed")).toBe(1);
 
     const restoredRequest = await db
       .from("requests")

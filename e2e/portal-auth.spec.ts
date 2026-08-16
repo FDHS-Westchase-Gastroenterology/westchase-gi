@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
 import {
   loadLocalEnv,
   requiredEnv,
@@ -23,11 +24,11 @@ const GENERIC_LOGIN_ERROR =
 const RESET_REQUEST_MESSAGE =
   "If an active staff account exists for that email, you’ll receive a password reset link.";
 
-type RestResult = {
+interface RestResult {
   data: unknown;
   error: { code?: string } | null;
   status: number;
-};
+}
 
 function digest(value: string): string {
   return createHash("sha256").update(value).digest("hex");
@@ -153,7 +154,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
     await expect(page).toHaveURL(/\/admin\/login\/?$/);
 
     // Deactivation lockout is proven on a THROWAWAY account: toggling the
-    // shared seed admin raced parallel spec files signed in as that user.
+    // Shared seed admin raced parallel spec files signed in as that user.
     const db = serviceDb();
     const lockoutEmail = `lockout-${randomUUID().slice(0, 8)}@example.test`;
     const lockoutPassword = `Lk-${randomUUID()}`;
@@ -257,8 +258,8 @@ test.describe("portal authentication and direct REST boundaries", () => {
       const outcomes: string[] = [];
 
       // The sign-in card owns the normal entry point: preserve a previously
-      // entered address, move focus, and do not navigate or send on mode
-      // change alone.
+      // Entered address, move focus, and do not navigate or send on mode
+      // Change alone.
       await page.goto("/admin/login");
       await page.getByLabel("Email").fill(accounts[0].email);
       const togglePosts: string[] = [];
@@ -422,8 +423,8 @@ test.describe("portal authentication and direct REST boundaries", () => {
       await continueButton.click();
       await expect(page).toHaveURL(/\/admin\/set-password\/?$/);
 
-      // verifyOtp has established an Auth session, but pending database state
-      // remains authoritative until the password-and-audit RPC completes.
+      // VerifyOtp has established an Auth session, but pending database state
+      // Remains authoritative until the password-and-audit RPC completes.
       await page.goto("/admin");
       await expect(page).toHaveURL(/\/admin\/login\/?$/);
       await page.goto("/admin/set-password");
@@ -446,7 +447,9 @@ test.describe("portal authentication and direct REST boundaries", () => {
       expect(completedProfile.error).toBeNull();
       expect(completedProfile.data?.role).toBe("staff");
       expect(completedProfile.data?.active).toBe(true);
-      expect(typeof completedProfile.data?.onboarded_at).toBe("string");
+      expect(z.string().safeParse(completedProfile.data?.onboarded_at).success).toBe(
+        true,
+      );
 
       const audit = await db
         .from("audit_log")
@@ -557,7 +560,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       ).toBeVisible();
 
       // Reopening the email link is still valid because page load and refresh
-      // did not verify the bearer.
+      // Did not verify the bearer.
       await page.goto(confirmPath);
       const newPasswordInput = page.getByLabel("New password");
       const confirmationInput = page.getByLabel("Confirm password");
@@ -583,7 +586,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       ).toBeGreaterThan(0);
 
       // Server-known mismatch also returns before verifyOtp. Enter-key
-      // submission is part of the keyboard contract.
+      // Submission is part of the keyboard contract.
       await newPasswordInput.fill(validPassword);
       await confirmationInput.fill(`${validPassword}-different`);
       await confirmationInput.press("Enter");
@@ -599,8 +602,8 @@ test.describe("portal authentication and direct REST boundaries", () => {
       expect(beforeSuccessAudit.data).toHaveLength(0);
 
       // GoTrue rejects reusing the current password after verifyOtp. The
-      // signed retry marker must keep this bounded verified flow usable
-      // without a second email or a second audit event.
+      // Signed retry marker must keep this bounded verified flow usable
+      // Without a second email or a second audit event.
       await newPasswordInput.fill(originalPassword);
       await confirmationInput.fill(originalPassword);
       await page
@@ -691,7 +694,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       );
 
       // Generated-link seam stands in for opening hosted SMTP while keeping
-      // bearer values out of retained artifacts and test output.
+      // Bearer values out of retained artifacts and test output.
       const generated = await db.auth.admin.generateLink({
         type: "recovery",
         email,
@@ -818,7 +821,9 @@ test.describe("portal authentication and direct REST boundaries", () => {
           .eq("user_id", deactivatedId)
           .single();
         expect(deniedProfile.data?.active).toBe(false);
-        expect(typeof deniedProfile.data?.onboarded_at).toBe("string");
+        expect(z.string().safeParse(deniedProfile.data?.onboarded_at).success).toBe(
+          true,
+        );
       } finally {
         await db
           .from("staff_profiles")
@@ -887,8 +892,8 @@ test.describe("portal authentication and direct REST boundaries", () => {
         if (!tokenHash) throw new Error("Ineligible recovery link failed");
 
         // Force a fresh document so the two identity fixtures cannot share
-        // mounted server-action or fragment state. Same-tab replacement is
-        // exercised separately by VAL-ADMIN-020.
+        // Mounted server-action or fragment state. Same-tab replacement is
+        // Exercised separately by VAL-ADMIN-020.
         await page.goto("about:blank");
         await page.goto(
           "/admin/auth/confirm#token_hash=" +

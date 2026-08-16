@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 // Harness smoke: proves the QA stack can drive the app at all.
 // VAL-ENV-007 — /en renders the home hero; /admin redirects
-// unauthenticated visitors toward the login surface.
+// Unauthenticated visitors toward the login surface.
 
 test("home page renders the hero on /en", async ({ page }) => {
   await page.goto("/en");
@@ -37,7 +37,7 @@ test("appointment submission cannot re-enter while its request is pending", asyn
 
   await page.goto("/en/appointment");
   // No chooser dismissal: the default en-US evidence matches /en, so the
-  // evidence-gated dialog never opens (P0-2).
+  // Evidence-gated dialog never opens (P0-2).
   const form = page.locator('form[action="/api/requests/form"]');
   await expect(form).toHaveAttribute("data-hydrated", "true");
   await page.fill("#name", "TEST Re-entry Guard");
@@ -54,9 +54,11 @@ test("appointment submission cannot re-enter while its request is pending", asyn
   });
 
   await form.evaluate((element) => {
-    const appointmentForm = element as HTMLFormElement;
-    appointmentForm.requestSubmit();
-    appointmentForm.requestSubmit();
+    if (!(element instanceof HTMLFormElement)) {
+      throw new Error("expected form");
+    }
+    element.requestSubmit();
+    element.requestSubmit();
   });
 
   try {

@@ -1,13 +1,49 @@
 import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
-import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+import { z } from "zod";
+import { asJsonObject, jsonObjectSchema, jsonSchema } from "../src/lib/json";
+import type { Json, JsonObject } from "../src/lib/json";
 import {
   INTAKE_RATE_LIMIT,
   REQUEST_FIELD_LIMITS,
+  intakeResponseSchema,
 } from "../src/lib/portal/contracts";
+import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+
+const lifecycleRowSchema = z.object({
+  status: z.string(),
+  follow_up_at: z.string().nullable(),
+  closure_disposition: z.string().nullable(),
+  closed_at: z.string().nullable(),
+  record_handoff_at: z.string().nullable(),
+});
+const releaseProfileSchema = z.looseObject({
+  display_name: jsonSchema,
+  email: jsonSchema,
+  active: jsonSchema,
+});
+
+interface CallOutcomeAuditDetail {
+  outcome: string;
+  to: string;
+  note_attached: boolean;
+  note_length?: number;
+}
+
+interface RequestInsert {
+  id: string;
+  name: string;
+  source_path?: string;
+  status?: string;
+  follow_up_at?: string | null;
+  closure_disposition?: string | null;
+  closed_at?: string | null;
+  record_handoff_at?: string | null;
+}
 
 loadLocalEnv();
 
@@ -57,11 +93,11 @@ function expectPermissionDenied(result: {
   expect([401, 403]).toContain(result.status);
 }
 
-function expectUuid(value: unknown): void {
+function expectUuid(value: string): void {
   expect(value).toMatch(UUID_RE);
 }
 
-function expectNoPatientLeak(blob: unknown, note?: string | null): void {
+function expectNoPatientLeak(blob: Json, note?: string | null): void {
   const text = JSON.stringify(blob);
   expect(text).not.toContain(note ?? "TEST patient value that is never present");
   expect(text).not.toContain(PATIENT_PHONE);
@@ -70,25 +106,23 @@ function expectNoPatientLeak(blob: unknown, note?: string | null): void {
 async function mutateSettings(
   page: Page,
   operation: string,
-  input: Record<string, unknown>,
-): Promise<{ status: number; body: Record<string, unknown> }> {
-  return page.evaluate(
-    async ({ operation: selectedOperation, input: selectedInput }) => {
-      const response = await fetch("/admin/settings/mutations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          operation: selectedOperation,
-          input: selectedInput,
-        }),
-      });
-      return {
-        status: response.status,
-        body: (await response.json()) as Record<string, unknown>,
-      };
-    },
-    { operation, input },
-  );
+  input: JsonObject,
+): Promise<{ status: number; body: JsonObject }> {
+  const raw = await page.evaluate(async (body) => {
+    const response = await fetch("/admin/settings/mutations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+    return {
+      status: response.status,
+      body: await response.json(),
+    };
+  }, JSON.stringify({ operation, input }));
+  return {
+    status: raw.status,
+    body: jsonObjectSchema.parse(raw.body),
+  };
 }
 
 function runDisposableDatabaseQuery(queryArgs: string[]): void {
@@ -115,7 +149,7 @@ function recipientRpcMigrationStatements(): string[] {
 
   // Each PL/pgSQL body contains ordinary semicolons inside its dollar quotes.
   // Extract the three function definitions at their real top-level boundary,
-  // then split the remaining revoke/grant statements normally.
+  // Then split the remaining revoke/grant statements normally.
   for (let index = 0; index < 3; index += 1) {
     const boundary = remaining.indexOf("$$;");
     if (boundary < 0) {
@@ -154,7 +188,7 @@ function restoreRecipientRpcs(): void {
 
 async function insertRequest(
   db: ReturnType<typeof serviceDb>,
-  row: Record<string, unknown> & { id: string; name: string },
+  row: RequestInsert,
 ) {
   const inserted = await db.from("requests").insert({
     phone: PATIENT_PHONE,
@@ -339,7 +373,7 @@ test.describe("Supabase dependency contract", () => {
   test("keeps portal release engagement per staff with atomic counters and audits", async () => {
     const db = serviceDb();
     const releaseId = `dependency-${randomUUID()}`;
-    const legacyShapeReleaseId = `legacy-shape-${randomUUID()}`;
+    const legacyReleaseId = `legacy-release-${randomUUID()}`;
     const secondEmail = `release-second-${randomUUID()}@example.test`;
     const pendingEmail = `release-pending-${randomUUID()}@example.test`;
     const inactiveEmail = `release-inactive-${randomUUID()}@example.test`;
@@ -614,7 +648,7 @@ test.describe("Supabase dependency contract", () => {
           source: "staff",
           detail: { release_id: releaseId },
         });
-        expectUuid(audit.correlation_id);
+        expectUuid(z.string().parse(audit.correlation_id));
         expect(Object.keys(audit.detail ?? {})).toEqual(["release_id"]);
       }
 
@@ -663,12 +697,7 @@ test.describe("Supabase dependency contract", () => {
       expect(reportRows.data).toHaveLength(2);
       expect(
         reportRows.data?.every(
-          ({ profile }) =>
-            profile !== null &&
-            typeof profile === "object" &&
-            "display_name" in profile &&
-            "email" in profile &&
-            "active" in profile,
+          ({ profile }) => releaseProfileSchema.safeParse(profile).success,
         ),
       ).toBe(true);
 
@@ -712,32 +741,32 @@ test.describe("Supabase dependency contract", () => {
         }
       }
 
-      const legacyShapeInsert = await db
+      const legacyReleaseInsert = await db
         .from("portal_release_states")
         .insert({
           staff_user_id: second.userId,
-          release_id: legacyShapeReleaseId,
+          release_id: legacyReleaseId,
         })
         .select("first_opened_at, last_viewed_at, view_count")
         .single();
-      expect(legacyShapeInsert.error).toBeNull();
-      expect(legacyShapeInsert.data).toMatchObject({
+      expect(legacyReleaseInsert.error).toBeNull();
+      expect(legacyReleaseInsert.data).toMatchObject({
         first_opened_at: expect.any(String),
         last_viewed_at: expect.any(String),
         view_count: 1,
       });
-      expect(legacyShapeInsert.data?.last_viewed_at).toBe(
-        legacyShapeInsert.data?.first_opened_at,
+      expect(legacyReleaseInsert.data?.last_viewed_at).toBe(
+        legacyReleaseInsert.data?.first_opened_at,
       );
       await db
         .from("portal_release_states")
         .delete()
-        .eq("release_id", legacyShapeReleaseId);
+        .eq("release_id", legacyReleaseId);
     } finally {
       await db
         .from("portal_release_states")
         .delete()
-        .in("release_id", [releaseId, legacyShapeReleaseId]);
+        .in("release_id", [releaseId, legacyReleaseId]);
       await db
         .from("audit_log")
         .delete()
@@ -770,9 +799,9 @@ test.describe("Supabase dependency contract", () => {
       headers: { "X-Forwarded-For": `2001:db8:${token.slice(0, 4)}::9` },
     });
     expect(response.status()).toBe(201);
-    const body = (await response.json()) as { ok: boolean; id?: string };
+    const body = intakeResponseSchema.parse(await response.json());
     expect(body.ok).toBe(true);
-    if (!body.id) throw new Error("Intake API did not return a request id");
+    if (!body.ok) throw new Error("Intake API did not return a request id");
 
     const db = serviceDb();
     try {
@@ -859,7 +888,7 @@ test.describe("Supabase dependency contract", () => {
         p_active: true,
       });
       expect(added.error).toBeNull();
-      expectUuid(added.data);
+      expectUuid(z.string().parse(added.data));
       recipientId = String(added.data);
 
       const inserted = await db
@@ -980,7 +1009,9 @@ test.describe("Supabase dependency contract", () => {
         (audits.data ?? []).map((row) => row.correlation_id),
       );
       expect(correlationIds.size).toBe(3);
-      for (const correlationId of correlationIds) expectUuid(correlationId);
+      for (const correlationId of correlationIds) {
+        expectUuid(z.string().parse(correlationId));
+      }
 
       for (const mutation of [
         db.rpc("portal_toggle_notification_recipient", {
@@ -1155,7 +1186,7 @@ test.describe("Supabase dependency contract", () => {
       expect(inserted.data).toHaveLength(1);
       expect(inserted.data?.[0].active).toBe(true);
       recipientId = String(inserted.data?.[0].id);
-      expectUuid(recipientId);
+      expectUuid(z.string().parse(recipientId));
 
       const duplicate = await mutateSettings(page, "recipient.add", {
         email: recipientEmail.toUpperCase(),
@@ -1251,7 +1282,7 @@ test.describe("Supabase dependency contract", () => {
         ]),
       );
       for (const audit of audits.data ?? []) {
-        expectUuid(audit.correlation_id);
+        expectUuid(z.string().parse(audit.correlation_id));
       }
     } finally {
       try {
@@ -1342,7 +1373,7 @@ test.describe("Supabase dependency contract", () => {
         source: "staff",
         detail: { from: "Before", to: "After" },
       });
-      expectUuid(firstAudits.data?.[0].correlation_id);
+      expectUuid(z.string().parse(firstAudits.data?.[0].correlation_id));
 
       for (const invalidLabel of ["   ", "L".repeat(121)]) {
         const rejected = await db.rpc("portal_update_recipient_label", {
@@ -1483,7 +1514,7 @@ test.describe("Supabase dependency contract", () => {
           p_follow_up_at: item.followUpAt,
         });
         expect(result.error).toBeNull();
-        expectUuid(result.data);
+        expectUuid(z.string().parse(result.data));
         const eventId = String(result.data);
 
         const row = await db
@@ -1541,9 +1572,13 @@ test.describe("Supabase dependency contract", () => {
           },
         });
         expect(outcomeEvents[0].meta?.lifecycle?.sequence).toBe(1);
+        const outcomeMeta = asJsonObject(
+          jsonSchema.parse(outcomeEvents[0].meta ?? null),
+        );
+        const outcomeFollowUp = z.string().safeParse(outcomeMeta?.follow_up_at);
         expect(
-          typeof outcomeEvents[0].meta?.follow_up_at === "string"
-            ? new Date(outcomeEvents[0].meta.follow_up_at).toISOString()
+          outcomeFollowUp.success
+            ? new Date(outcomeFollowUp.data).toISOString()
             : null,
         ).toBe(item.followUpAt);
         expect(noteEvents).toHaveLength(item.note ? 1 : 0);
@@ -1560,24 +1595,37 @@ test.describe("Supabase dependency contract", () => {
           .eq("entity_id", requestId);
         expect(audits.error).toBeNull();
         expect(audits.data).toHaveLength(1);
+        const callOutcomeDetail: CallOutcomeAuditDetail = {
+          outcome: item.outcome,
+          to: item.status,
+          note_attached: Boolean(item.note),
+        };
+        if (item.note) {
+          callOutcomeDetail.note_length = item.note.length;
+        }
         expect(audits.data?.[0]).toMatchObject({
           action: "request.call_outcome",
           source: "staff",
-          detail: {
-            outcome: item.outcome,
-            to: item.status,
-            note_attached: Boolean(item.note),
-            ...(item.note ? { note_length: item.note.length } : {}),
-          },
+          detail: callOutcomeDetail,
         });
-        expectUuid(audits.data?.[0].correlation_id);
+        expectUuid(z.string().parse(audits.data?.[0].correlation_id));
+        const auditDetail = asJsonObject(
+          jsonSchema.parse(audits.data?.[0].detail ?? null),
+        );
+        const auditFollowUp = z.string().safeParse(auditDetail?.follow_up_at);
         expect(
-          typeof audits.data?.[0].detail?.follow_up_at === "string"
-            ? new Date(audits.data[0].detail.follow_up_at).toISOString()
+          auditFollowUp.success
+            ? new Date(auditFollowUp.data).toISOString()
             : null,
         ).toBe(item.followUpAt);
-        expectNoPatientLeak(audits.data?.[0].detail, item.note);
-        expectNoPatientLeak(outcomeEvents[0].meta, item.note);
+        expectNoPatientLeak(
+          jsonSchema.parse(audits.data?.[0].detail ?? null),
+          item.note,
+        );
+        expectNoPatientLeak(
+          jsonSchema.parse(outcomeEvents[0].meta ?? null),
+          item.note,
+        );
 
         const undone = await db.rpc("portal_undo_call_outcome", {
           p_actor_email: actor,
@@ -1654,8 +1702,11 @@ test.describe("Supabase dependency contract", () => {
             },
           },
         });
-        expectUuid(undoAudits.data?.[0].correlation_id);
-        expectNoPatientLeak(undoAudits.data?.[0].detail, item.note);
+        expectUuid(z.string().parse(undoAudits.data?.[0].correlation_id));
+        expectNoPatientLeak(
+          jsonSchema.parse(undoAudits.data?.[0].detail ?? null),
+          item.note,
+        );
 
         const duplicateUndo = await db.rpc("portal_undo_call_outcome", {
           p_actor_email: actor,
@@ -1873,9 +1924,7 @@ test.describe("Supabase dependency contract", () => {
           .single();
         expect(restored.error).toBeNull();
         expect(
-          normalizeLifecycle(
-            restored.data as Parameters<typeof normalizeLifecycle>[0],
-          ),
+          normalizeLifecycle(lifecycleRowSchema.parse(restored.data)),
         ).toEqual(item.before);
 
         if (item.name === "closed converted") {

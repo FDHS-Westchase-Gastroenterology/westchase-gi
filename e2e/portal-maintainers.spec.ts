@@ -1,4 +1,7 @@
 import { test, expect } from "@playwright/test";
+import { z } from "zod";
+import { jsonObjectSchema } from "../src/lib/json";
+import type { JsonObject } from "../src/lib/json";
 import {
   GitHubApiError,
   readGitHubResponse,
@@ -30,16 +33,36 @@ test("GitHub responses preserve status and accept empty success bodies", async (
 
   const malformed = await readGitHubResponse(
     new Response("not-json", { status: 200 }),
-  ).catch((error: unknown) => error);
+  ).then(
+    () => {
+      throw new Error("expected GitHubApiError");
+    },
+    (error: Error) => {
+      const parsed = z.instanceof(GitHubApiError).safeParse(error);
+      expect(parsed.success).toBe(true);
+      if (!parsed.success) throw new Error("expected GitHubApiError");
+      return parsed.data;
+    },
+  );
   expect(malformed).toBeInstanceOf(GitHubApiError);
-  expect((malformed as GitHubApiError).kind).toBe("invalid_response");
+  expect(malformed.kind).toBe("invalid_response");
 
   for (const status of [403, 422, 500]) {
     const failure = await readGitHubResponse(
       new Response(JSON.stringify({ ignored: "provider detail" }), { status }),
-    ).catch((error: unknown) => error);
+    ).then(
+      () => {
+        throw new Error("expected GitHubApiError");
+      },
+      (error: Error) => {
+        const parsed = z.instanceof(GitHubApiError).safeParse(error);
+        expect(parsed.success).toBe(true);
+        if (!parsed.success) throw new Error("expected GitHubApiError");
+        return parsed.data;
+      },
+    );
     expect(failure).toBeInstanceOf(GitHubApiError);
-    expect((failure as GitHubApiError).status).toBe(status);
+    expect(failure.status).toBe(status);
   }
 });
 
@@ -80,7 +103,7 @@ test("external maintainer operations fail closed around audit and reconciliation
   expect(succeeded).toEqual({ ok: true });
   expect(finalOutcome).toBe("succeeded");
 
-  let finalDetail: Record<string, unknown> = {};
+  let finalDetail: JsonObject = {};
   const limited = await runMaintainerOperation({
     begin: async () => "audit-id",
     perform: async () => {
@@ -90,7 +113,7 @@ test("external maintainer operations fail closed around audit and reconciliation
     desired: ({ present }) => present,
     finish: async (_audit, outcome, detail) => {
       finalOutcome = outcome;
-      finalDetail = detail;
+      finalDetail = jsonObjectSchema.parse(detail);
     },
     failureCode: () => "limit",
     providerStatus: (error) =>

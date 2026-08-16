@@ -3,18 +3,33 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { test, expect } from "@playwright/test";
+import { z } from "zod";
+import { jsonObjectSchema, jsonSchema } from "../src/lib/json";
+import type { Json } from "../src/lib/json";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
+const rollupSchema = z.object({
+  event: z.string(),
+  route_template: z.string(),
+  count: z.number(),
+});
+interface TelemetryProbe {
+  event: string;
+  routeTemplate: string;
+  locale: string;
+  deviceClass: string;
+}
+
 // Telemetry e2e: proves the aggregate counters land, stay off the staff
-// surface, and never carry patient fields. Reads private.analytics_daily
-// through the CLI pooler because the private schema is deliberately not
-// exposed to PostgREST (the API only publishes `public`).
+// Surface, and never carry patient fields. Reads private.analytics_daily
+// Through the CLI pooler because the private schema is deliberately not
+// Exposed to PostgREST (the API only publishes `public`).
 
 loadLocalEnv();
 const db = serviceDb();
 const runId = randomUUID().slice(0, 8);
 
-function analyticsQuery(sql: string): unknown[] {
+function analyticsQuery(sql: string): readonly Json[] {
   const poolerUrl = readFileSync(
     resolve(process.cwd(), "supabase/.temp/pooler-url"),
     "utf8",
@@ -29,17 +44,15 @@ function analyticsQuery(sql: string): unknown[] {
       stdio: ["ignore", "pipe", "pipe"],
     },
   );
-  const parsed = JSON.parse(output);
+  const parsed = jsonSchema.parse(JSON.parse(output));
   return Array.isArray(parsed) ? parsed : [];
 }
-
-type Rollup = { event: string; route_template: string; count: number };
 
 function rollupCount(event: string, routeTemplate: string): number {
   const rows = analyticsQuery(
     `select event, route_template, count from private.analytics_daily` +
       ` where day = current_date and event = '${event}' and route_template = '${routeTemplate}'`,
-  ) as Rollup[];
+  ).map((row) => rollupSchema.parse(row));
   return rows.reduce((total, row) => total + row.count, 0);
 }
 
@@ -135,7 +148,7 @@ test("beacon payloads never carry patient fields", async ({ page }) => {
   await expect.poll(() => bodies.length, { timeout: 20_000 }).toBeGreaterThan(0);
 
   for (const body of bodies) {
-    const parsed = JSON.parse(body) as Record<string, unknown>;
+    const parsed = jsonObjectSchema.parse(JSON.parse(body));
     expect(Object.keys(parsed).sort()).toEqual([
       "deviceClass",
       "event",
@@ -156,7 +169,7 @@ test("the route rejects bad events, raw URLs, and staff templates", async ({
     locale: "en",
     deviceClass: "desktop",
   };
-  const cases: Array<Record<string, unknown>> = [
+  const cases: TelemetryProbe[] = [
     { ...base, event: "page_click" },
     { ...base, event: "page_view", routeTemplate: "/appointment?ref=1" },
     { ...base, event: "page_view", routeTemplate: "/admin/requests" },

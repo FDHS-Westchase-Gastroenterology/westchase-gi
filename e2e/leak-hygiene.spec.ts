@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 // VAL-INTAKE-012: map embeds send no referrer.
 // VAL-INTAKE-013: legacy patient-bearing URLs are scrubbed before the
-// document (and any third-party resource) loads with those values.
+// Document (and any third-party resource) loads with those values.
 
 test("VAL-INTAKE-012: every map iframe carries no-referrer in the DOM", async ({
   page,
@@ -46,7 +46,7 @@ test("VAL-INTAKE-013: patient-bearing legacy URLs redirect clean before third-pa
   }
 
   // Then the browser flow: no third-party request in the whole exchange
-  // may carry the patient values.
+  // May carry the patient values.
   const offSiteRequests: string[] = [];
   page.on("request", (request) => {
     const url = new URL(request.url());
