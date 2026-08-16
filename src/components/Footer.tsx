@@ -1,10 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
-import { site, localePath, directionsUrl, formatOfficeHours, type Locale } from "@/lib/site";
+import { site, localePath, directionsUrl, formatOfficeHours } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import type { Dictionary } from "@/lib/i18n";
 import { ArrowRight, ExternalLink, Facebook, Mail, MapPin, MessageSquare, Phone, Printer, Star } from "./icons";
 
-type FooterProps = { locale: Locale; dict: Dictionary };
+interface FooterProps { locale: Locale; dict: Dictionary }
 
 export function Footer({ locale, dict }: FooterProps) {
   const c = dict.common;

@@ -4,15 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { site, localePath, locales, localeNames, pathInLocale, type Locale } from "@/lib/site";
+import { site, localePath, locales, localeNames, pathInLocale } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import type { Dictionary } from "@/lib/i18n";
 import { LANGUAGE_TRIGGER_ID, rememberLocale } from "@/lib/locale-preference";
 import { Check, ChevronDown, ExternalLink, Globe, Menu, MessageSquare, Phone, X } from "./icons";
 
-type HeaderProps = { locale: Locale; dict: Dictionary };
+interface HeaderProps { locale: Locale; dict: Dictionary }
 
-type NavChild = { label: string; href: string; external?: boolean };
-type NavGroup = { label: string; href?: string; children?: NavChild[] };
+interface NavChild { label: string; href: string; external?: boolean }
+interface NavGroup { label: string; href?: string; children?: NavChild[] }
 
 function buildNav(locale: Locale, dict: Dictionary): NavGroup[] {
   const n = dict.common.nav;
@@ -24,7 +25,7 @@ function buildNav(locale: Locale, dict: Dictionary): NavGroup[] {
         { label: n.aboutUs, href: p("/about") },
         { label: n.gallery, href: p("/office-gallery") },
         // The blog lives here like the old site's "More" menu — the header
-        // can't take a seventh top-level item without crowding the lockup.
+        // Can't take a seventh top-level item without crowding the lockup.
         { label: n.blog, href: p("/blog") },
       ],
     },
@@ -57,7 +58,10 @@ function LanguageMenu({ locale, label }: { locale: Locale; label: string }) {
   useEffect(() => {
     if (!open) return;
     function onClick(e: MouseEvent) {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target;
+      if (!(target instanceof Node) || !wrapRef.current?.contains(target)) {
+        setOpen(false);
+      }
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
@@ -129,7 +133,10 @@ export function Header({ locale, dict }: HeaderProps) {
   // Close dropdowns on outside click / Escape.
   useEffect(() => {
     function onClick(e: MouseEvent) {
-      if (!barRef.current?.contains(e.target as Node)) setOpen(null);
+      const target = e.target;
+      if (!(target instanceof Node) || !barRef.current?.contains(target)) {
+        setOpen(null);
+      }
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {

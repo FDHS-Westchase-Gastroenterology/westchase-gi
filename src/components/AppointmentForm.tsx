@@ -1,27 +1,27 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { FormEvent } from "react";
 import { usePathname } from "next/navigation";
-import { site, type Locale } from "@/lib/site";
+import { site } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import type { Dictionary } from "@/lib/i18n";
-import {
-  HONEYPOT_FIELD,
-  INTAKE_API,
-  INTAKE_NOJS_ACTION,
-  isMailbox,
-  REQUEST_FIELD_LIMITS,
-  type IntakeResponse,
-} from "@/lib/portal/contracts";
+import { HONEYPOT_FIELD, INTAKE_API, INTAKE_NOJS_ACTION, intakeResponseSchema, isMailbox, REQUEST_FIELD_LIMITS } from "@/lib/portal/contracts";
+import type { IntakeResponse } from "@/lib/portal/contracts";
 import { trackFormEvent, useFormViewTelemetry } from "@/lib/telemetry-client";
 import { Check, MessageSquare, Phone } from "./icons";
 
-type AppointmentFormProps = { locale: Locale; dict: Dictionary };
+interface AppointmentFormProps { locale: Locale; dict: Dictionary }
 
-type Errors = Partial<Record<"name" | "phone" | "email", string>>;
+interface FieldErrors {
+  name?: string;
+  phone?: string;
+  email?: string;
+}
 
-// idle: form ready · submitting: POST in flight · success: durable acceptance
-// confirmed by the server · failure: the server refused or could not save ·
-// unknown: no readable response came back, so the truth is unknowable here.
+// Idle: form ready · submitting: POST in flight · success: durable acceptance
+// Confirmed by the server · failure: the server refused or could not save ·
+// Unknown: no readable response came back, so the truth is unknowable here.
 type Status = "idle" | "submitting" | "success" | "failure" | "unknown";
 
 const FETCH_TIMEOUT_MS = 20_000;
@@ -81,11 +81,11 @@ function SuccessCard({
   );
 }
 
-type ProblemAlertProps = {
+interface ProblemAlertProps {
   dict: Dictionary;
   status: "failure" | "unknown";
   alertRef: React.RefObject<HTMLDivElement | null>;
-};
+}
 
 function ProblemAlert({ dict, status, alertRef }: ProblemAlertProps) {
   const f = dict.appointment.form;
@@ -109,8 +109,11 @@ function ProblemAlert({ dict, status, alertRef }: ProblemAlertProps) {
   );
 }
 
-function localFieldErrors(f: Dictionary["appointment"]["form"], data: FormData): Errors {
-  const next: Errors = {};
+function localFieldErrors(
+  f: Dictionary["appointment"]["form"],
+  data: FormData,
+): FieldErrors {
+  const next: FieldErrors = {};
   const name = String(data.get("name") || "").trim();
   const phone = String(data.get("phone") || "").trim();
   const email = String(data.get("email") || "").trim();
@@ -118,7 +121,7 @@ function localFieldErrors(f: Dictionary["appointment"]["form"], data: FormData):
   if (!name) next.name = f.errName;
   if (!phone || phone.replace(/\D/g, "").length < 10) next.phone = f.errPhone;
   // Email is optional — many patients have none; phone is the callback
-  // channel. Validate the format only when something was entered.
+  // Channel. Validate the format only when something was entered.
   if (email && !isMailbox(email)) next.email = f.errEmail;
   return next;
 }
@@ -126,8 +129,8 @@ function localFieldErrors(f: Dictionary["appointment"]["form"], data: FormData):
 function serverFieldErrors(
   f: Dictionary["appointment"]["form"],
   fieldErrors: Record<string, string>,
-): Errors {
-  const next: Errors = {};
+): FieldErrors {
+  const next: FieldErrors = {};
   if ("name" in fieldErrors) next.name = f.errName;
   if ("phone" in fieldErrors) next.phone = f.errPhone;
   if ("email" in fieldErrors) next.email = f.errEmail;
@@ -137,7 +140,7 @@ function serverFieldErrors(
 export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
   const f = dict.appointment.form;
   const pathname = usePathname();
-  const [errors, setErrors] = useState<Errors>({});
+  const [errors, setErrors] = useState<FieldErrors>({});
   const [status, setStatus] = useState<Status>("idle");
   const alertRef = useRef<HTMLDivElement>(null);
   const successRef = useRef<HTMLDivElement>(null);
@@ -153,7 +156,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
 
   useFormViewTelemetry(formRef, locale);
   // Outcome focus lands after the committing render, never in a rAF race:
-  // success, failure, and unknown all move focus to their announcement (F5,
+  // Success, failure, and unknown all move focus to their announcement (F5,
   // S7). Effects run post-commit, so the target exists by focus time.
   useEffect(() => {
     if (status === "failure" || status === "unknown") {
@@ -199,8 +202,8 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
       [HONEYPOT_FIELD]: String(data.get(HONEYPOT_FIELD) || ""),
     };
 
-    let body: IntakeResponse;
     let wasThrottled = false;
+    let body: IntakeResponse;
     try {
       const res = await fetch(INTAKE_API, {
         method: "POST",
@@ -210,7 +213,13 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
       });
       wasThrottled = res.status === 429;
       requireKnownIntakeStatus(res);
-      body = (await res.json()) as IntakeResponse;
+      const parsed = intakeResponseSchema.safeParse(await res.json());
+      if (!parsed.success) {
+        trackFormEvent("form_unknown", pathname, locale);
+        showProblem("unknown");
+        return;
+      }
+      body = parsed.data;
       if (res.ok !== body.ok) {
         trackFormEvent("form_unknown", pathname, locale);
         showProblem("unknown");
@@ -218,7 +227,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
       }
     } catch {
       // Timed out or no readable response: the request may or may not have
-      // landed. Only the honest "please confirm with us" state is truthful.
+      // Landed. Only the honest "please confirm with us" state is truthful.
       trackFormEvent("form_unknown", pathname, locale);
       showProblem("unknown");
       return;
@@ -227,7 +236,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     if (body.ok) {
       trackFormEvent("form_success", pathname, locale);
       // Focus moves to the success card via the status effect, matching the
-      // failure/unknown behavior (F5).
+      // Failure/unknown behavior (F5).
       setStatus("success");
       return;
     }
@@ -244,7 +253,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     }
 
     // A throttle stays unnamed to the patient (no abuse intelligence), but
-    // it is a distinct count from a queue failure.
+    // It is a distinct count from a queue failure.
     trackFormEvent(wasThrottled ? "form_throttled" : "form_failure", pathname, locale);
     showProblem("failure");
   }

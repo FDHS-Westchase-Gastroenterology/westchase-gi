@@ -10,16 +10,12 @@ import {
   LANGUAGE_TRIGGER_ID,
   rememberLocale,
 } from "@/lib/locale-preference";
-import {
-  localeNames,
-  locales,
-  pathInLocale,
-  type Locale,
-} from "@/lib/site";
+import { localeNames, locales, pathInLocale } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import { routeTemplateFor, track } from "@/lib/telemetry-client";
 import { Check, Globe, X } from "./icons";
 
-type LanguageChooserProps = { locale: Locale; dict: Dictionary };
+interface LanguageChooserProps { locale: Locale; dict: Dictionary }
 
 function returnFocus() {
   document.getElementById(LANGUAGE_TRIGGER_ID)?.focus();
@@ -59,8 +55,8 @@ export function LanguageChooser({ locale, dict }: LanguageChooserProps) {
     const option = dialog.querySelector<HTMLElement>(`button[lang="${candidate}"]`);
     if (!option) return;
     // The badge and focus belong to the browser's language — the dialog's
-    // whole reason to open is the mismatch. The effect synchronizes the DOM
-    // directly so no extra render stands between evidence and interruption.
+    // Whole reason to open is the mismatch. The effect synchronizes the DOM
+    // Directly so no extra render stands between evidence and interruption.
     hintRef.current = candidate;
     option.querySelector<HTMLElement>("[data-suggested]")?.removeAttribute("hidden");
     if (!dialog.open) {

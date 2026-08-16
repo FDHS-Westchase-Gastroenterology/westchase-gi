@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 
-type PageHeroProps = {
+interface PageHeroProps {
   title: string;
   lead?: string;
   children?: ReactNode;
-};
+}
 
 /** Internal-page opener: mint band, display heading, optional lead. */
 export function PageHero({ title, lead, children }: PageHeroProps) {

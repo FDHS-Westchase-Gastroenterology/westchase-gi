@@ -2,18 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
-import {
-  TransformComponent,
-  TransformWrapper,
-  useControls,
-  useTransformComponent,
-  type ReactZoomPanPinchRef,
-} from "react-zoom-pan-pinch";
+import { TransformComponent, TransformWrapper, useControls, useTransformComponent } from "react-zoom-pan-pinch";
+import type { ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
 import { Download, Maximize, X, ZoomIn, ZoomOut } from "./icons";
 
-type CardImage = { src: string; width: number; height: number };
+interface CardImage { src: string; width: number; height: number }
 
-type CardStrings = {
+interface CardStrings {
   label: string;
   hint: string;
   zoomIn: string;
@@ -24,15 +19,15 @@ type CardStrings = {
   hintTouch: string;
   hintPointer: string;
   close: string;
-};
+}
 
-type ProfileCardViewerProps = {
+interface ProfileCardViewerProps {
   image: CardImage;
   /** Whose card this is (localized), e.g. "Dr. John Chang". */
   subject: string;
   t: CardStrings;
   className?: string;
-};
+}
 
 function useMedia(query: string) {
   const subscribe = useCallback(
@@ -96,7 +91,7 @@ function ZoomToolbar({ t }: { t: CardStrings }) {
 export function ProfileCardViewer({ image, subject, t, className = "" }: ProfileCardViewerProps) {
   const mounted = useHydrated();
   const [open, setOpen] = useState(false);
-  const [warm, setWarm] = useState(false); // start fetching the full-size image
+  const [warm, setWarm] = useState(false); // Start fetching the full-size image
   const [loaded, setLoaded] = useState(false);
   const [hintHidden, setHintHidden] = useState(false);
   const dialogRef = useRef<HTMLDialogElement | null>(null);
@@ -131,7 +126,8 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Profile
 
   function openViewer() {
     // Browsers too old for <dialog> (iOS < 15.4) still get the graphic.
-    if (typeof dialogRef.current?.showModal !== "function") {
+    const dialog = dialogRef.current;
+    if (!(dialog instanceof HTMLDialogElement) || !("showModal" in dialog)) {
       window.open(image.src, "_blank", "noopener");
       return;
     }
@@ -187,7 +183,7 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Profile
         </button>
       ) : (
         // Pre-hydration fallback: a real link to the original graphic, so a
-        // tap is never a dead end while the page is still booting.
+        // Tap is never a dead end while the page is still booting.
         <a
           href={image.src}
           target="_blank"
@@ -228,13 +224,13 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Profile
                 centerOnInit
                 centerZoomedOut
                 // On touch devices the browser synthesizes a mousedown right
-                // after a double-tap's touchend; the library's mouse-pan
-                // handler would cancel the just-started zoom animation.
+                // After a double-tap's touchend; the library's mouse-pan
+                // Handler would cancel the just-started zoom animation.
                 // Touch panning has its own path, so left-click pan is only
-                // needed for fine pointers.
+                // Needed for fine pointers.
                 panning={{ allowLeftClickPan: !coarse }}
-                // step is an exponent (scale × e^step): 0.95 ≈ 2.6× — right
-                // at card-text reading size; the same step toggles back to 1.
+                // Step is an exponent (scale × e^step): 0.95 ≈ 2.6× — right
+                // At card-text reading size; the same step toggles back to 1.
                 doubleClick={{ mode: "toggle", step: 0.95, animationTime: reduced ? 0 : 220 }}
                 zoomAnimation={{ animationTime: reduced ? 0 : 220 }}
                 velocityAnimation={{ disabled: reduced }}

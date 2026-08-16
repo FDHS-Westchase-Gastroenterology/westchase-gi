@@ -1,20 +1,16 @@
 "use client";
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ElementType,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ElementType, ReactNode } from "react";
+import type { RevealDelay } from "./reveal-delay";
 
-type RevealProps = {
+interface RevealProps {
   children: ReactNode;
   as?: ElementType;
   className?: string;
-  delay?: 0 | 1 | 2 | 3 | 4;
+  delay?: RevealDelay;
   variant?: "up" | "fade" | "right";
-};
+}
 
 /**
  * Reveal-on-scroll wrapper. Content is fully visible by default; the entrance
@@ -35,7 +31,7 @@ export function Reveal({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    if (typeof IntersectionObserver === "undefined") {
+    if (!("IntersectionObserver" in globalThis)) {
       const raf = requestAnimationFrame(() => setShown(true));
       return () => cancelAnimationFrame(raf);
     }

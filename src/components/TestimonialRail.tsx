@@ -4,11 +4,11 @@ import { useRef } from "react";
 import { testimonials } from "@/lib/testimonials";
 import { ChevronLeft, ChevronRight, Star } from "./icons";
 
-type TestimonialRailProps = {
+interface TestimonialRailProps {
   label: string;
   prevLabel: string;
   nextLabel: string;
-};
+}
 
 /**
  * The 11 published patient testimonials, verbatim, on a scroll-snap rail.
@@ -20,8 +20,8 @@ export function TestimonialRail({ label, prevLabel, nextLabel }: TestimonialRail
   function scroll(dir: 1 | -1) {
     const rail = railRef.current;
     if (!rail) return;
-    const card = rail.firstElementChild as HTMLElement | null;
-    const step = card ? card.offsetWidth + 16 : 360;
+    const card = rail.firstElementChild;
+    const step = card instanceof HTMLElement ? card.offsetWidth + 16 : 360;
     // In RTL the rail flows right-to-left: "next" content sits to the left.
     const sign = getComputedStyle(rail).direction === "rtl" ? -dir : dir;
     rail.scrollBy({ left: sign * step, behavior: "smooth" });

@@ -1,4 +1,4 @@
-import type { PrepBlock, PrepSection } from "@/lib/content/preps";
+import type { PrepBlock, PrepListStyle, PrepSection } from "@/lib/content/preps";
 
 /* Inline syntax from the prep transcriptions: **bold** for the handout's
    load-bearing emphasis, runs of 3+ underscores for fill-in blanks. */
@@ -35,7 +35,7 @@ function Inline({ text }: { text: string }) {
         }
         if (/^_{3,}$/.test(part)) {
           // Decorative on screen readers: the surrounding sentence carries
-          // the meaning, and the page explains how blanks get filled in.
+          // The meaning, and the page explains how blanks get filled in.
           return <span key={key} className="fill-blank" aria-hidden="true" />;
         }
         return <span key={key}>{part}</span>;
@@ -44,12 +44,12 @@ function Inline({ text }: { text: string }) {
   );
 }
 
-const LIST_CLASS: Record<string, string> = {
+const LIST_CLASS = {
   bullet: "list-plain",
   steps: "list-steps",
   check: "list-check",
   avoid: "list-avoid",
-};
+} as const satisfies Record<PrepListStyle, string>;
 
 function Block({ block }: { block: PrepBlock }) {
   switch (block.kind) {

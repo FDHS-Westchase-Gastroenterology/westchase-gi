@@ -1,16 +1,18 @@
 import Link from "next/link";
-import { documentsByCategory, type DocCategory } from "@/lib/documents";
+import { documentsByCategory } from "@/lib/documents";
+import type { DocCategory } from "@/lib/documents";
 import { topicForDocument } from "@/lib/content/education";
 import { prepForDocument } from "@/lib/content/preps";
-import { site, localePath, type Locale } from "@/lib/site";
+import { site, localePath } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import type { Dictionary } from "@/lib/i18n";
 import { ArrowRight, Download, FileText, MessageSquare } from "./icons";
 
-type DocumentListProps = {
+interface DocumentListProps {
   category: DocCategory;
   locale: Locale;
   dict: Dictionary;
-};
+}
 
 /**
  * Slot-aware document list. Replaces the old site's 33 dead PDF links:

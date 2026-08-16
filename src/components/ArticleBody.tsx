@@ -1,10 +1,10 @@
 import type { ContentSection } from "@/lib/content/types";
 import type { Locale } from "@/lib/site";
 
-type ArticleBodyProps = {
+interface ArticleBodyProps {
   sections: ContentSection[];
   locale: Locale;
-};
+}
 
 /** Shared long-form renderer for blog posts and education topics. */
 export function ArticleBody({ sections, locale }: ArticleBodyProps) {

@@ -3,20 +3,21 @@
 import { useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BANNER_KEY, type Locale } from "@/lib/site";
+import { BANNER_KEY } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import { routeTemplateFor, track } from "@/lib/telemetry-client";
 import { X } from "./icons";
 
 const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
 
-type NoticeBannerProps = {
+interface NoticeBannerProps {
   locale: Locale;
   headline: string;
   body: string;
   cta: string;
   ctaHref: string;
   dismissLabel: string;
-};
+}
 
 /**
  * The practice's "accepting new patients" notice, rebuilt to show once per
