@@ -1,14 +1,13 @@
+import { z } from "zod";
+
 import type { ESTree } from "@oxlint/plugins";
 
 type VisitorKeys = Readonly<Record<string, readonly string[]>>;
 
+const nodeSchema = z.looseObject({ type: z.string() });
+
 function isNode(value: unknown): value is ESTree.Node {
-	return (
-		typeof value === "object" &&
-		value !== null &&
-		"type" in value &&
-		typeof value.type === "string"
-	);
+	return nodeSchema.safeParse(value).success;
 }
 
 function collectInferTypeParameterNames(
