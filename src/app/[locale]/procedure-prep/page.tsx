@@ -1,19 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getDictionary, isLocale } from "@/lib/i18n";
-import { pageMetadata } from "@/lib/metadata";
-import { site, localePath } from "@/lib/site";
-import type { Locale } from "@/lib/site";
-import { prepGroups } from "@/lib/content/preps";
-import type { PrepDoc, PrepGroup } from "@/lib/content/preps";
+
+import { ArrowRight, MessageSquare } from "@/components/icons";
 import { PageHero } from "@/components/PageHero";
 import { Reveal } from "@/components/Reveal";
 import { revealDelay } from "@/components/reveal-delay";
 import type { RevealDelay } from "@/components/reveal-delay";
 import { TextBand } from "@/components/TextBand";
-import { ArrowRight, MessageSquare } from "@/components/icons";
+import { prepGroups } from "@/lib/content/preps";
+import type { PrepDoc, PrepGroup } from "@/lib/content/preps";
+import { getDictionary, isLocale } from "@/lib/i18n";
+import { pageMetadata } from "@/lib/metadata";
+import { site, localePath } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 
-interface PageProps { params: Promise<{ locale: string }> }
+interface PageProps {
+  params: Promise<{ locale: string }>;
+}
 
 export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
@@ -23,7 +26,7 @@ export async function generateMetadata({ params }: Readonly<PageProps>): Promise
     locale,
     "/procedure-prep",
     dict.meta.procedurePrep.title,
-    dict.meta.procedurePrep.description
+    dict.meta.procedurePrep.description,
   );
 }
 
@@ -38,7 +41,7 @@ function PrepList({ docs, locale }: Readonly<{ docs: PrepDoc[]; locale: Locale }
             className="group flex items-baseline justify-between gap-6 py-4"
           >
             <span className="min-w-0">
-              <span className="block font-[var(--font-display)] text-[1.12rem] leading-snug text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
+              <span className="block text-[1.12rem] leading-snug font-[var(--font-display)] text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
                 {doc.title[locale]}
               </span>
               <span className="measure mt-1 block text-[0.93rem] text-[var(--color-body)]">
@@ -87,7 +90,7 @@ export default async function ProcedurePrepPage({ params }: Readonly<PageProps>)
         {/* The one question that matters before anything else on this page. */}
         <div className="card mt-8 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 p-5 sm:p-6">
           <div className="min-w-0">
-            <h2 className="font-[var(--font-body)] text-base font-extrabold text-[var(--color-ink)]">
+            <h2 className="text-base font-[var(--font-body)] font-extrabold text-[var(--color-ink)]">
               {t.unsure}
             </h2>
             <p className="measure mt-1 text-[0.95rem] text-[var(--color-body)]">{t.unsureBody}</p>

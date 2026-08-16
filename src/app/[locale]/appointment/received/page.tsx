@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+
 import { Check, MessageSquare, Phone } from "@/components/icons";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { consumeRequestReceipt } from "@/lib/portal/intake";
@@ -17,10 +18,7 @@ interface PageProps {
 
 async function receiptState({ params, searchParams }: Readonly<PageProps>) {
   await connection();
-  const [{ locale: rawLocale }, query] = await Promise.all([
-    params,
-    searchParams,
-  ]);
+  const [{ locale: rawLocale }, query] = await Promise.all([params, searchParams]);
   const locale = isLocale(rawLocale) ? rawLocale : "en";
   const receipt = query.receipt;
   const receiptAccepted =
@@ -39,9 +37,7 @@ async function receiptState({ params, searchParams }: Readonly<PageProps>) {
   };
 }
 
-export async function generateMetadata(
-  { params }: Readonly<PageProps>,
-): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: rawLocale } = await params;
   const locale = isLocale(rawLocale) ? rawLocale : "en";
   const dict = getDictionary(locale);
@@ -85,15 +81,9 @@ export default async function RequestReceiptPage(props: Readonly<PageProps>) {
           >
             <StatusIcon className="h-8 w-8" />
           </span>
-          <h1 className="h1 heading-tick heading-tick--center mt-7">
-            {heading}
-          </h1>
-          <p className="lead measure-sm mt-4 text-[var(--color-body)]">
-            {body}
-          </p>
-          <p className="mt-7 font-bold text-[var(--color-ink)]">
-            {receipt.contactLine}
-          </p>
+          <h1 className="h1 heading-tick heading-tick--center mt-7">{heading}</h1>
+          <p className="lead measure-sm mt-4 text-[var(--color-body)]">{body}</p>
+          <p className="mt-7 font-bold text-[var(--color-ink)]">{receipt.contactLine}</p>
           <div className="mt-4 flex flex-wrap justify-center gap-3">
             <a href={site.phone.href} className="btn btn-navy">
               <Phone className="h-4 w-4" />

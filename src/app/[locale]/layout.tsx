@@ -1,18 +1,20 @@
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import type { Metadata, Viewport } from "next";
 import { notFound } from "next/navigation";
-import "../globals.css";
+
+import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { JsonLd } from "@/components/JsonLd";
-import { Footer } from "@/components/Footer";
 import { LanguageChooser } from "@/components/LanguageChooser";
 import { NoticeBanner } from "@/components/NoticeBanner";
-import { getDictionary, isLocale } from "@/lib/i18n";
 import { fontVariables } from "@/lib/fonts";
+import { getDictionary, isLocale } from "@/lib/i18n";
 import { site, localePath, localeDir, locales, BANNER_KEY } from "@/lib/site";
 import type { Locale } from "@/lib/site";
 import { TelemetryReporter } from "@/lib/telemetry-client";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
+
+import "@/app/globals.css";
 
 export const dynamicParams = false;
 

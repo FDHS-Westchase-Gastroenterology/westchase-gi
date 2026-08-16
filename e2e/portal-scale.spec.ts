@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
+
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
+
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 loadLocalEnv();
@@ -30,10 +32,7 @@ test.describe("disposable-local portal scale boundaries", () => {
   test.describe.configure({ mode: "serial" });
   test.skip(!disposableLocal, "bulk boundary coverage is disposable-local only");
   test.beforeEach(({}, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "chromium",
-      "portal scale coverage requires JavaScript",
-    );
+    test.skip(testInfo.project.name !== "chromium", "portal scale coverage requires JavaScript");
   });
 
   const db = serviceDb();
@@ -41,8 +40,7 @@ test.describe("disposable-local portal scale boundaries", () => {
   test.beforeAll(async () => {
     const requests = Array.from({ length: 1001 }, (_, index) => ({
       id: randomUUID(),
-      name:
-        index === 0 ? punctuationName : `TEST Scale ${searchToken} ${index}`,
+      name: index === 0 ? punctuationName : `TEST Scale ${searchToken} ${index}`,
       phone: `813555${index.toString().padStart(4, "0")}`,
       email: `${searchToken}-${index}@example.test`,
       location: "tampa",
@@ -56,9 +54,7 @@ test.describe("disposable-local portal scale boundaries", () => {
     requestIds = requests.map((request) => request.id);
 
     for (let from = 0; from < requests.length; from += 250) {
-      const { error } = await db
-        .from("requests")
-        .insert(requests.slice(from, from + 250));
+      const { error } = await db.from("requests").insert(requests.slice(from, from + 250));
       expect(error).toBeNull();
     }
 
@@ -83,64 +79,41 @@ test.describe("disposable-local portal scale boundaries", () => {
     expect(auditCleanup.error).toBeNull();
   });
 
-  test("paginates and literally searches request identity fields", async ({
-    page,
-  }) => {
+  test("paginates and literally searches request identity fields", async ({ page }) => {
     await signIn(page);
-    await page.goto(
-      `/admin/requests?status=contacted&q=${encodeURIComponent(searchToken)}`,
-    );
+    await page.goto(`/admin/requests?status=contacted&q=${encodeURIComponent(searchToken)}`);
 
     await expect(page.getByTestId("request-row")).toHaveCount(50);
-    await expect(page.getByTestId("request-page-summary")).toHaveText(
-      "Showing 1–50 of 1001",
-    );
+    await expect(page.getByTestId("request-page-summary")).toHaveText("Showing 1–50 of 1001");
     const next = page.getByRole("link", { name: "Next" });
-    const nextUrl = new URL(
-      (await next.getAttribute("href")) ?? "",
-      "http://localhost:3100",
-    );
+    const nextUrl = new URL((await next.getAttribute("href")) ?? "", "http://localhost:3100");
     expect(nextUrl.searchParams.get("status")).toBe("contacted");
     expect(nextUrl.searchParams.get("q")).toBe(searchToken);
     expect(nextUrl.searchParams.get("page")).toBe("2");
 
     await next.click();
-    await expect(page.getByTestId("request-page-summary")).toHaveText(
-      "Showing 51–100 of 1001",
-    );
+    await expect(page.getByTestId("request-page-summary")).toHaveText("Showing 51–100 of 1001");
 
-    await page.goto(
-      `/admin/requests?status=contacted&q=${encodeURIComponent(punctuationName)}`,
-    );
+    await page.goto(`/admin/requests?status=contacted&q=${encodeURIComponent(punctuationName)}`);
     await expect(page.getByTestId("request-row")).toHaveCount(1);
     await expect(page.getByTestId("request-name")).toHaveText(punctuationName);
 
     await page.goto("/admin/requests?status=contacted&q=8135550137");
     await expect(page.getByTestId("request-row")).toHaveCount(1);
-    await expect(page.getByTestId("request-name")).toHaveText(
-      `TEST Scale ${searchToken} 137`,
-    );
+    await expect(page.getByTestId("request-name")).toHaveText(`TEST Scale ${searchToken} 137`);
 
     await page.goto(
-      `/admin/requests?status=contacted&q=${encodeURIComponent(
-        `${searchToken}-338@example.test`,
-      )}`,
+      `/admin/requests?status=contacted&q=${encodeURIComponent(`${searchToken}-338@example.test`)}`,
     );
     await expect(page.getByTestId("request-row")).toHaveCount(1);
-    await expect(page.getByTestId("request-name")).toHaveText(
-      `TEST Scale ${searchToken} 338`,
-    );
+    await expect(page.getByTestId("request-name")).toHaveText(`TEST Scale ${searchToken} 338`);
 
-    await page.goto(
-      `/admin/requests?status=contacted&q=${encodeURIComponent("%_*")}`,
-    );
+    await page.goto(`/admin/requests?status=contacted&q=${encodeURIComponent("%_*")}`);
     await expect(page.getByTestId("request-row")).toHaveCount(1);
     await expect(page.getByTestId("request-name")).toHaveText(punctuationName);
   });
 
-  test("exports every request beyond the Data API row ceiling", async ({
-    page,
-  }) => {
+  test("exports every request beyond the Data API row ceiling", async ({ page }) => {
     await signIn(page);
     const response = await page.request.get(
       `/admin/requests/export?status=contacted&q=${encodeURIComponent(searchToken)}`,
@@ -149,9 +122,7 @@ test.describe("disposable-local portal scale boundaries", () => {
 
     const lines = (await response.text()).trimEnd().split("\r\n");
     expect(lines).toHaveLength(requestIds.length + 1);
-    const exportedIds = lines
-      .slice(1)
-      .map((line) => line.slice(0, line.indexOf(",")));
+    const exportedIds = lines.slice(1).map((line) => line.slice(0, line.indexOf(",")));
     expect([...exportedIds].sort()).toEqual([...requestIds].sort());
     expect(exportedIds[0]).toBe(requestIds.at(-1));
     expect(exportedIds.at(-1)).toBe(requestIds[0]);

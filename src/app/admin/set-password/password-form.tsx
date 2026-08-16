@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useLayoutEffect } from "react";
+
 import { recoverPasswordAction, setPasswordAction } from "@/app/admin/actions";
 import type { SetPasswordActionState } from "@/app/admin/actions";
 
@@ -19,8 +20,7 @@ export function PasswordForm({
   mode: "invite" | "recovery";
   recoveryTokenHash?: string;
 }>) {
-  const hasRecoveryToken =
-    recoveryTokenHash !== undefined && recoveryTokenHash !== "";
+  const hasRecoveryToken = recoveryTokenHash !== undefined && recoveryTokenHash !== "";
   const [state, formAction, pending] = useActionState(
     hasRecoveryToken ? recoverPasswordAction : setPasswordAction,
     INITIAL_STATE,
@@ -38,18 +38,12 @@ export function PasswordForm({
 
   return (
     <form action={formAction} className="mt-7 space-y-5">
-      {hasRecoveryToken ? (
-        <input type="hidden" name="tokenHash" value={recoveryTokenHash} />
-      ) : null}
+      {hasRecoveryToken ? <input type="hidden" name="tokenHash" value={recoveryTokenHash} /> : null}
       <p id="password-policy" className="text-sm text-[var(--color-muted)]">
-        Use at least 12 characters. Password managers and pasted passwords are
-        supported.
+        Use at least 12 characters. Password managers and pasted passwords are supported.
       </p>
       <div>
-        <label
-          htmlFor="new-password"
-          className="block text-sm font-bold text-[var(--color-ink)]"
-        >
+        <label htmlFor="new-password" className="block text-sm font-bold text-[var(--color-ink)]">
           New password
         </label>
         <input
@@ -62,9 +56,7 @@ export function PasswordForm({
           required
           disabled={pending}
           aria-invalid={hasError ? true : undefined}
-          aria-describedby={
-            hasError ? "password-policy password-error" : "password-policy"
-          }
+          aria-describedby={hasError ? "password-policy password-error" : "password-policy"}
           className={inputClassName}
         />
       </div>
@@ -85,9 +77,7 @@ export function PasswordForm({
           required
           disabled={pending}
           aria-invalid={hasError ? true : undefined}
-          aria-describedby={
-            hasError ? "password-policy password-error" : "password-policy"
-          }
+          aria-describedby={hasError ? "password-policy password-error" : "password-policy"}
           className={inputClassName}
         />
       </div>
@@ -118,11 +108,7 @@ export function PasswordForm({
           disabled={pending}
           className="btn btn-navy min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
         >
-          {pending
-            ? "Saving…"
-            : mode === "recovery"
-              ? "Set password and continue"
-              : "Set password"}
+          {pending ? "Saving…" : mode === "recovery" ? "Set password and continue" : "Set password"}
         </button>
       ) : null}
     </form>

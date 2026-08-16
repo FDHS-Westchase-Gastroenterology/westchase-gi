@@ -17,9 +17,7 @@ function first(value: Readonly<SearchParam>): string {
 
 export function parsePage(value: Readonly<SearchParam>): number {
   const parsed = Number(first(value));
-  return Number.isSafeInteger(parsed) && parsed > 0
-    ? Math.min(parsed, MAX_PAGE)
-    : 1;
+  return Number.isSafeInteger(parsed) && parsed > 0 ? Math.min(parsed, MAX_PAGE) : 1;
 }
 
 export function parseRequestSearch(value: Readonly<SearchParam>): string {
@@ -32,15 +30,10 @@ export function parseRequestSearch(value: Readonly<SearchParam>): string {
 
 export function requestSearchFilter(search: string): string {
   const literalRegex = search.replace(/[\\^$.*+?()[\]{}|]/g, "\\$&");
-  const quoted = `".*${literalRegex
-    .replaceAll("\\", "\\\\")
-    .replaceAll('"', '\\"')}.*"`;
+  const quoted = `".*${literalRegex.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}.*"`;
   return `name.imatch.${quoted},phone.imatch.${quoted},email.imatch.${quoted}`;
 }
 
-export function availableQueueCount(
-  count: number | null,
-  failed: boolean,
-): number | null {
+export function availableQueueCount(count: number | null, failed: boolean): number | null {
   return failed ? null : (count ?? 0);
 }

@@ -71,11 +71,13 @@ test.describe("evidence-gated language chooser", () => {
     await expect(dialog).toContainText(
       "Choose the language you would like to use on this website.",
     );
-    await expect(
-      dialog.locator(".language-dialog__option > span:first-child"),
-    ).toHaveText(languageNames);
+    await expect(dialog.locator(".language-dialog__option > span:first-child")).toHaveText(
+      languageNames,
+    );
     await expect(dialog.locator('button[lang="es"] .language-dialog__suggested')).toBeVisible();
-    await expect(dialog.locator('button[lang="es"] .language-dialog__suggested')).toContainText("Suggested");
+    await expect(dialog.locator('button[lang="es"] .language-dialog__suggested')).toContainText(
+      "Suggested",
+    );
     await expect(dialog.locator('button[lang="en"] .language-dialog__suggested')).toBeHidden();
 
     const accessibility = await dialog.evaluate((element) => {
@@ -114,9 +116,9 @@ test.describe("evidence-gated language chooser", () => {
       "Close language chooser and continue in English",
     );
 
-    const sizes = await dialog.locator(".language-dialog__option").evaluateAll(
-      (options) => options.map((option) => option.getBoundingClientRect().height),
-    );
+    const sizes = await dialog
+      .locator(".language-dialog__option")
+      .evaluateAll((options) => options.map((option) => option.getBoundingClientRect().height));
     expect(sizes.every((height) => height >= 44)).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       1440,
@@ -174,9 +176,7 @@ test.describe("evidence-gated language chooser", () => {
     const dialog = page.getByRole("dialog", { name: "Choose your language" });
     await expect(dialog).toBeVisible();
 
-    await dialog
-      .getByRole("button", { name: "Continue in English", exact: true })
-      .click();
+    await dialog.getByRole("button", { name: "Continue in English", exact: true }).click();
     await expectNoOpenChooser(page);
     await expect(page).toHaveURL(/\/en\/?$/);
     await expect(page.locator(".notice-banner")).toBeVisible();
@@ -216,13 +216,9 @@ test.describe("evidence-gated language chooser", () => {
     await context.close();
   });
 
-  test("a remembered locale suppresses the chooser on every route", async ({
-    browser,
-  }) => {
+  test("a remembered locale suppresses the chooser on every route", async ({ browser }) => {
     const context = await browser.newContext({ locale: "en-US" });
-    await context.addCookies([
-      { name: "wgi-locale", value: "vi", domain: "localhost", path: "/" },
-    ]);
+    await context.addCookies([{ name: "wgi-locale", value: "vi", domain: "localhost", path: "/" }]);
     const page = await context.newPage();
 
     await page.goto("/");
@@ -240,9 +236,7 @@ test.describe("evidence-gated language chooser", () => {
     page,
     context,
   }) => {
-    await context.addCookies([
-      { name: "wgi-locale", value: "en", domain: "localhost", path: "/" },
-    ]);
+    await context.addCookies([{ name: "wgi-locale", value: "en", domain: "localhost", path: "/" }]);
     await page.goto("/en/contact");
     await expectNoOpenChooser(page);
 
@@ -254,9 +248,7 @@ test.describe("evidence-gated language chooser", () => {
     await expectNoOpenChooser(page);
   });
 
-  test("the chooser stays off the review utility and English-only admin", async ({
-    browser,
-  }) => {
+  test("the chooser stays off the review utility and English-only admin", async ({ browser }) => {
     const context = await browser.newContext({ locale: "es-MX" });
     const page = await context.newPage();
     await page.goto("/review");
@@ -266,9 +258,7 @@ test.describe("evidence-gated language chooser", () => {
     await context.close();
   });
 
-  test("blocked cookies and storage simply never open the dialog", async ({
-    browser,
-  }) => {
+  test("blocked cookies and storage simply never open the dialog", async ({ browser }) => {
     const context = await browser.newContext({ locale: "es-MX" });
     const page = await context.newPage();
     await page.addInitScript(() => {
@@ -342,9 +332,9 @@ test.describe("evidence-gated language chooser", () => {
     expect(box!.y).toBeGreaterThanOrEqual(0);
     expect(box!.x + box!.width).toBeLessThanOrEqual(390);
     expect(box!.y + box!.height).toBeLessThanOrEqual(844);
-    const sizes = await dialog.locator(".language-dialog__option").evaluateAll(
-      (options) => options.map((option) => option.getBoundingClientRect().height),
-    );
+    const sizes = await dialog
+      .locator(".language-dialog__option")
+      .evaluateAll((options) => options.map((option) => option.getBoundingClientRect().height));
     expect(sizes.every((height) => height >= 44)).toBe(true);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       390,
@@ -352,9 +342,7 @@ test.describe("evidence-gated language chooser", () => {
     await context.close();
   });
 
-  test("an Arabic page with a Spanish browser renders the dialog RTL", async ({
-    browser,
-  }) => {
+  test("an Arabic page with a Spanish browser renders the dialog RTL", async ({ browser }) => {
     const context = await browser.newContext({ locale: "es-MX" });
     const page = await context.newPage();
     await page.goto("/ar");
@@ -365,7 +353,9 @@ test.describe("evidence-gated language chooser", () => {
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     expect(await dialog.evaluate((element) => getComputedStyle(element).direction)).toBe("rtl");
     await expect(dialog.locator('button[lang="es"] .language-dialog__suggested')).toBeVisible();
-    await expect(dialog.locator('button[lang="es"] .language-dialog__suggested')).toContainText("مقترحة");
+    await expect(dialog.locator('button[lang="es"] .language-dialog__suggested')).toContainText(
+      "مقترحة",
+    );
     await context.close();
   });
 });

@@ -2,11 +2,11 @@
 // Grouped by practice-local day. Storage codes stay in the technical table.
 // Patient names are deliberately not resolved here; the request is the link.
 
+import { OUTCOME_HISTORY_LABELS, followUpShortLabel } from "@/app/admin/(portal)/requests/format";
 import { asJsonBoolean, asJsonNumber, asJsonObject, asJsonString } from "@/lib/json";
 import type { Json, JsonObject } from "@/lib/json";
 import { isCallOutcomeId } from "@/lib/portal/call-outcomes";
 import type { RequestStatus } from "@/lib/portal/contracts";
-import { OUTCOME_HISTORY_LABELS, followUpShortLabel } from "../requests/format";
 import { isPortalReleaseAuditAction } from "@/lib/portal/release-state";
 
 // The human lens over the durable audit record: plain-language, grouped by
@@ -63,9 +63,7 @@ const NY_MONTH_DAY = new Intl.DateTimeFormat("en-US", {
 });
 
 function nyDayNumber(date: Date): number {
-  return Math.round(
-    Date.parse(`${NY_DAY.format(date)}T00:00:00Z`) / 86_400_000,
-  );
+  return Math.round(Date.parse(`${NY_DAY.format(date)}T00:00:00Z`) / 86_400_000);
 }
 
 export function dayGroupLabel(iso: string, now: Date): string {
@@ -80,26 +78,17 @@ function detailObject(detail: Json): JsonObject {
   return asJsonObject(detail) ?? {};
 }
 
-function nameOrEmail(
-  namesByEmail: ReadonlyMap<string, string>,
-  email: string,
-): string {
+function nameOrEmail(namesByEmail: ReadonlyMap<string, string>, email: string): string {
   const name = namesByEmail.get(email.trim().toLowerCase());
   return name !== undefined && name !== "" ? name : email;
 }
 
-function recipientLabel(
-  recipientsById: ReadonlyMap<string, string>,
-  id: string | null,
-): string {
+function recipientLabel(recipientsById: ReadonlyMap<string, string>, id: string | null): string {
   if (id === null || id === "") return "a notification recipient";
   return recipientsById.get(id) ?? "a notification recipient";
 }
 
-function profileLabel(
-  namesByProfileId: ReadonlyMap<string, string>,
-  id: string | null,
-): string {
+function profileLabel(namesByProfileId: ReadonlyMap<string, string>, id: string | null): string {
   if (id === null || id === "") return "a colleague";
   return namesByProfileId.get(id) ?? "a colleague";
 }
@@ -130,10 +119,7 @@ function describeAction(
       }
       return {
         sentence: `marked a request ${
-          to === "new" ||
-          to === "contacted" ||
-          to === "scheduled" ||
-          to === "closed"
+          to === "new" || to === "contacted" || to === "scheduled" || to === "closed"
             ? STATUS_WORDS[to]
             : to
         }`,
@@ -143,9 +129,7 @@ function describeAction(
     case "request.close": {
       return {
         sentence: `closed a request — ${
-          detail.disposition === "converted"
-            ? "appointment booked"
-            : "no appointment booked"
+          detail.disposition === "converted" ? "appointment booked" : "no appointment booked"
         }`,
         technical: false,
       };
@@ -191,9 +175,7 @@ function describeAction(
       }
       return {
         sentence: `recorded an outcome on a request${
-          isCallOutcomeId(outcome)
-            ? ` — ${OUTCOME_HISTORY_LABELS[outcome]}`
-            : ""
+          isCallOutcomeId(outcome) ? ` — ${OUTCOME_HISTORY_LABELS[outcome]}` : ""
         }`,
         technical: false,
       };
@@ -213,9 +195,7 @@ function describeAction(
       const count = asJsonNumber(detail.row_count);
       return {
         sentence: `exported the request list${
-          count !== null
-            ? ` (${count} ${count === 1 ? "request" : "requests"})`
-            : ""
+          count !== null ? ` (${count} ${count === 1 ? "request" : "requests"})` : ""
         }`,
         technical: false,
       };

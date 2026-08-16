@@ -33,11 +33,15 @@ export default defineConfig({
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
     },
-    ...(!publicSmoke ? [{
-      // Pre-hydration / no-JS behavior: the native form POST fallback.
-      name: "no-js",
-      use: { ...devices["Desktop Chrome"], javaScriptEnabled: false },
-    }] : []),
+    ...(!publicSmoke
+      ? [
+          {
+            // Pre-hydration / no-JS behavior: the native form POST fallback.
+            name: "no-js",
+            use: { ...devices["Desktop Chrome"], javaScriptEnabled: false },
+          },
+        ]
+      : []),
   ],
   webServer: {
     command: "npm run dev:mission",

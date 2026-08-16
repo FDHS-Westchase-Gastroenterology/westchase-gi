@@ -3,9 +3,9 @@
 // Bodies are faithful translations (no Spanish originals exist for these).
 // VI/KO/AR bodies are machine translations of the EN passages (2026-07-08), pending native-speaker verification by clinic staff.
 
-import type { PrepDoc, PrepSection } from "./types";
-import { EN, ES_T, VI, KO, AR } from "./common";
 import { standardFront, avoidAndLiquids } from "./builders";
+import { EN, ES_T, VI, KO, AR } from "./common";
+import type { PrepDoc, PrepSection } from "./types";
 
 /* ------------------------------------------------------------------ *
    Clenpiq split-dose (scan pp. 4–5)
@@ -237,31 +237,15 @@ const clenpiqSplit: PrepDoc = {
   sourcePages: "4–5",
   sourceLangs: ["en"],
   sections: {
-    en: [
-      ...standardFront(EN, { fiber: true }),
-      ...clenpiqSplitDayBeforeEn,
-      ...avoidAndLiquids(EN),
-    ],
+    en: [...standardFront(EN, { fiber: true }), ...clenpiqSplitDayBeforeEn, ...avoidAndLiquids(EN)],
     es: [
       ...standardFront(ES_T, { fiber: true }),
       ...clenpiqSplitDayBeforeEs,
       ...avoidAndLiquids(ES_T),
     ],
-    vi: [
-      ...standardFront(VI, { fiber: true }),
-      ...clenpiqSplitDayBeforeVi,
-      ...avoidAndLiquids(VI),
-    ],
-    ko: [
-      ...standardFront(KO, { fiber: true }),
-      ...clenpiqSplitDayBeforeKo,
-      ...avoidAndLiquids(KO),
-    ],
-    ar: [
-      ...standardFront(AR, { fiber: true }),
-      ...clenpiqSplitDayBeforeAr,
-      ...avoidAndLiquids(AR),
-    ],
+    vi: [...standardFront(VI, { fiber: true }), ...clenpiqSplitDayBeforeVi, ...avoidAndLiquids(VI)],
+    ko: [...standardFront(KO, { fiber: true }), ...clenpiqSplitDayBeforeKo, ...avoidAndLiquids(KO)],
+    ar: [...standardFront(AR, { fiber: true }), ...clenpiqSplitDayBeforeAr, ...avoidAndLiquids(AR)],
   },
 };
 
@@ -408,10 +392,7 @@ const clenpiqDayBeforeKo: PrepSection[] = [
           },
           {
             title: "두 번째 복용 일정 — 10 PM에 복용하십시오",
-            items: [
-              "B. A 단계를 반복하십시오.",
-              "취침 전에 맑은 액체 8온스 세 (3) 잔을 드십시오.",
-            ],
+            items: ["B. A 단계를 반복하십시오.", "취침 전에 맑은 액체 8온스 세 (3) 잔을 드십시오."],
           },
         ],
         footer: "각 복용 일정 사이에는 반드시 **여섯 (6) 시간 간격**이 있어야 합니다.",
@@ -492,31 +473,11 @@ const clenpiq: PrepDoc = {
   sourcePages: "6–7",
   sourceLangs: ["en"],
   sections: {
-    en: [
-      ...standardFront(EN, { fiber: true }),
-      ...clenpiqDayBeforeEn,
-      ...avoidAndLiquids(EN),
-    ],
-    es: [
-      ...standardFront(ES_T, { fiber: true }),
-      ...clenpiqDayBeforeEs,
-      ...avoidAndLiquids(ES_T),
-    ],
-    vi: [
-      ...standardFront(VI, { fiber: true }),
-      ...clenpiqDayBeforeVi,
-      ...avoidAndLiquids(VI),
-    ],
-    ko: [
-      ...standardFront(KO, { fiber: true }),
-      ...clenpiqDayBeforeKo,
-      ...avoidAndLiquids(KO),
-    ],
-    ar: [
-      ...standardFront(AR, { fiber: true }),
-      ...clenpiqDayBeforeAr,
-      ...avoidAndLiquids(AR),
-    ],
+    en: [...standardFront(EN, { fiber: true }), ...clenpiqDayBeforeEn, ...avoidAndLiquids(EN)],
+    es: [...standardFront(ES_T, { fiber: true }), ...clenpiqDayBeforeEs, ...avoidAndLiquids(ES_T)],
+    vi: [...standardFront(VI, { fiber: true }), ...clenpiqDayBeforeVi, ...avoidAndLiquids(VI)],
+    ko: [...standardFront(KO, { fiber: true }), ...clenpiqDayBeforeKo, ...avoidAndLiquids(KO)],
+    ar: [...standardFront(AR, { fiber: true }), ...clenpiqDayBeforeAr, ...avoidAndLiquids(AR)],
   },
 };
 
@@ -735,31 +696,11 @@ const sutab: PrepDoc = {
   sourcePages: "8–9",
   sourceLangs: ["en"],
   sections: {
-    en: [
-      ...standardFront(EN, { fiber: true }),
-      ...sutabDayBeforeEn,
-      ...avoidAndLiquids(EN),
-    ],
-    es: [
-      ...standardFront(ES_T, { fiber: true }),
-      ...sutabDayBeforeEs,
-      ...avoidAndLiquids(ES_T),
-    ],
-    vi: [
-      ...standardFront(VI, { fiber: true }),
-      ...sutabDayBeforeVi,
-      ...avoidAndLiquids(VI),
-    ],
-    ko: [
-      ...standardFront(KO, { fiber: true }),
-      ...sutabDayBeforeKo,
-      ...avoidAndLiquids(KO),
-    ],
-    ar: [
-      ...standardFront(AR, { fiber: true }),
-      ...sutabDayBeforeAr,
-      ...avoidAndLiquids(AR),
-    ],
+    en: [...standardFront(EN, { fiber: true }), ...sutabDayBeforeEn, ...avoidAndLiquids(EN)],
+    es: [...standardFront(ES_T, { fiber: true }), ...sutabDayBeforeEs, ...avoidAndLiquids(ES_T)],
+    vi: [...standardFront(VI, { fiber: true }), ...sutabDayBeforeVi, ...avoidAndLiquids(VI)],
+    ko: [...standardFront(KO, { fiber: true }), ...sutabDayBeforeKo, ...avoidAndLiquids(KO)],
+    ar: [...standardFront(AR, { fiber: true }), ...sutabDayBeforeAr, ...avoidAndLiquids(AR)],
   },
 };
 

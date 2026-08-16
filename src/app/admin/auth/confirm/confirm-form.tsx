@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
+
 import { confirmAuthLinkAction } from "@/app/admin/actions";
 import type { ConfirmAuthActionState } from "@/app/admin/actions";
 import { PasswordForm } from "@/app/admin/set-password/password-form";
@@ -16,10 +17,7 @@ const INITIAL_STATE: ConfirmAuthActionState = { error: null };
 export function ConfirmAuthForm() {
   const [link, setLink] = useState<AuthLink | "invalid" | null>(null);
   const parsedOnce = useRef(false);
-  const [state, formAction, pending] = useActionState(
-    confirmAuthLinkAction,
-    INITIAL_STATE,
-  );
+  const [state, formAction, pending] = useActionState(confirmAuthLinkAction, INITIAL_STATE);
 
   useEffect(() => {
     function parseFragment() {
@@ -59,11 +57,7 @@ export function ConfirmAuthForm() {
   }, []);
 
   if (link === null) {
-    return (
-      <p className="mt-6 text-sm text-[var(--color-muted)]">
-        Preparing your secure link…
-      </p>
-    );
+    return <p className="mt-6 text-sm text-[var(--color-muted)]">Preparing your secure link…</p>;
   }
 
   if (link === "invalid") {
@@ -73,13 +67,9 @@ export function ConfirmAuthForm() {
           role="alert"
           className="rounded-[var(--radius)] bg-[var(--color-amber-soft)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
         >
-          This link is incomplete or no longer valid. Request a new link to
-          continue.
+          This link is incomplete or no longer valid. Request a new link to continue.
         </p>
-        <Link
-          href="/admin/forgot-password"
-          className="btn btn-navy mt-4 min-h-11 w-full"
-        >
+        <Link href="/admin/forgot-password" className="btn btn-navy mt-4 min-h-11 w-full">
           Request a new link
         </Link>
       </div>

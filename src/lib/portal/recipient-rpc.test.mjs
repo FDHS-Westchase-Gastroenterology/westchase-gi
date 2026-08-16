@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import {
   isRecipientRpcMissing,
   recipientRpcFailureCode,
@@ -77,10 +78,7 @@ test("maps unknown toggle and remove targets to not found", () => {
 test("maps every other database failure to unavailable", () => {
   for (const operation of ["add", "toggle", "remove"]) {
     for (const postgresCode of ["23514", "42501", "PGRST202", undefined]) {
-      assert.equal(
-        recipientRpcFailureCode(operation, postgresCode),
-        "unavailable",
-      );
+      assert.equal(recipientRpcFailureCode(operation, postgresCode), "unavailable");
     }
   }
 });

@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
+
 import { intakeResponseSchema } from "../src/lib/portal/contracts";
 import { loadLocalEnv, requiredEnv } from "./support";
 
@@ -34,9 +35,7 @@ test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "JS portal UI");
 });
 
-test("VAL-REG-005: no assistant placeholder ships before the assistant works", async ({
-  page,
-}) => {
+test("VAL-REG-005: no assistant placeholder ships before the assistant works", async ({ page }) => {
   test.setTimeout(120_000);
   await signIn(page);
 

@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+
 import { REQUEST_STATUSES } from "@/lib/portal/contracts";
 import type { RequestStatus } from "@/lib/portal/contracts";
 import { orderQueueRows } from "@/lib/portal/queue-attention";
@@ -89,20 +90,15 @@ export async function fetchAttentiveOpenRows(
   // ~18KB of UUIDs), so the activity map is fetched in parallel chunks.
   const ACTIVITY_ID_CHUNK = 100;
   const activityChunks = await Promise.all(
-    Array.from(
-      { length: Math.ceil(ids.length / ACTIVITY_ID_CHUNK) },
-      (_, chunkIndex) =>
-        db
-          .from("audit_log")
-          .select("entity_id, at")
-          .eq("entity", "requests")
-          .in(
-            "entity_id",
-            ids.slice(
-              chunkIndex * ACTIVITY_ID_CHUNK,
-              (chunkIndex + 1) * ACTIVITY_ID_CHUNK,
-            ),
-          ),
+    Array.from({ length: Math.ceil(ids.length / ACTIVITY_ID_CHUNK) }, (_, chunkIndex) =>
+      db
+        .from("audit_log")
+        .select("entity_id, at")
+        .eq("entity", "requests")
+        .in(
+          "entity_id",
+          ids.slice(chunkIndex * ACTIVITY_ID_CHUNK, (chunkIndex + 1) * ACTIVITY_ID_CHUNK),
+        ),
     ),
   );
   for (const chunk of activityChunks) {

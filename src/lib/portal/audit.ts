@@ -1,8 +1,10 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
+
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+
 import type { JsonObject } from "@/lib/json";
 import type { AuditAction } from "@/lib/portal/contracts";
 
@@ -72,18 +74,10 @@ export async function beginExternalAudit(
     source: "staff",
     correlation_id: randomUUID(),
   };
-  let result = await client
-    .from("audit_log")
-    .insert(auditRow)
-    .select("id")
-    .single();
+  let result = await client.from("audit_log").insert(auditRow).select("id").single();
 
   if (isPreProvenanceSchema(result.error)) {
-    result = await client
-      .from("audit_log")
-      .insert(legacyAuditRow)
-      .select("id")
-      .single();
+    result = await client.from("audit_log").insert(legacyAuditRow).select("id").single();
   }
 
   const parsed = z.object({ id: z.string() }).safeParse(result.data);

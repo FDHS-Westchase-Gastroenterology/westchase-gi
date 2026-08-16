@@ -138,10 +138,7 @@ test("exposes no human-routing automation state", () => {
 });
 
 test("package manifests do not request a human code owner", () => {
-  const codeowners = fs.readFileSync(
-    path.join(__dirname, "..", "CODEOWNERS"),
-    "utf8",
-  );
+  const codeowners = fs.readFileSync(path.join(__dirname, "..", "CODEOWNERS"), "utf8");
   assert.match(codeowners, /^\/package\.json\s*$/m);
   assert.match(codeowners, /^\/package-lock\.json\s*$/m);
 });
@@ -160,18 +157,12 @@ test("does not expose an unverified or source-changing PR to Codex", () => {
   });
   assert.equal(sourceChange.safeToReview, false);
   assert.equal(sourceChange.retryable, false);
-  assert.equal(
-    classifyDependabot({ ...eligible, maintainerChanges: true }).safeToReview,
-    false,
-  );
+  assert.equal(classifyDependabot({ ...eligible, maintainerChanges: true }).safeToReview, false);
 });
 
 test("package-file guard is exact", () => {
   assert.equal(filesArePackageOnly(["package-lock.json"]), true);
-  assert.equal(
-    filesArePackageOnly(["package.json", "package-lock.json"]),
-    true,
-  );
+  assert.equal(filesArePackageOnly(["package.json", "package-lock.json"]), true);
   assert.equal(filesArePackageOnly([]), false);
   assert.equal(filesArePackageOnly([".github/workflows/ci.yml"]), false);
 });
@@ -192,24 +183,12 @@ test("Codex outcomes are autonomous and unavailable review cannot stall CI", () 
     );
   }
   assert.equal(parseCodexResult("not-json").decision, "approve");
+  assert.equal(parseCodexResult(JSON.stringify({ decision: "approve" })).decision, "approve");
+  assert.equal(parseCodexResult(JSON.stringify({ decision: "needs_human" })).decision, "approve");
+  assert.equal(resolveReview(classifyDependabot(eligible), "failure", "").decision, "approve");
   assert.equal(
-    parseCodexResult(JSON.stringify({ decision: "approve" })).decision,
-    "approve",
-  );
-  assert.equal(
-    parseCodexResult(JSON.stringify({ decision: "needs_human" })).decision,
-    "approve",
-  );
-  assert.equal(
-    resolveReview(classifyDependabot(eligible), "failure", "").decision,
-    "approve",
-  );
-  assert.equal(
-    resolveReview(
-      classifyDependabot({ ...eligible, metadataVerified: false }),
-      "skipped",
-      "",
-    ).decision,
+    resolveReview(classifyDependabot({ ...eligible, metadataVerified: false }), "skipped", "")
+      .decision,
     "retry",
   );
 });
@@ -245,10 +224,7 @@ test("recovery updates a behind Dependabot branch without comment commands", asy
   const github = {
     paginate: async (method) => {
       if (method === listFiles) {
-        return [
-          { filename: "package.json" },
-          { filename: "package-lock.json" },
-        ];
+        return [{ filename: "package.json" }, { filename: "package-lock.json" }];
       }
       if (method === listCommits) {
         return [
@@ -271,8 +247,7 @@ test("recovery updates a behind Dependabot branch without comment commands", asy
     },
     rest: {
       actions: {
-        createWorkflowDispatch: async (input) =>
-          calls.dispatches.push(input),
+        createWorkflowDispatch: async (input) => calls.dispatches.push(input),
       },
       issues: {
         addLabels: async () => {},
@@ -298,14 +273,10 @@ test("recovery updates a behind Dependabot branch without comment commands", asy
   };
 
   assert.equal(
-    await recoverOneDependabotReview(
-      github,
-      "owner",
-      "repo",
-      [pull],
-      "current-main",
-      { notice: () => {}, warning: () => {} },
-    ),
+    await recoverOneDependabotReview(github, "owner", "repo", [pull], "current-main", {
+      notice: () => {},
+      warning: () => {},
+    }),
     true,
   );
   assert.deepEqual(calls.branches, [
@@ -364,10 +335,7 @@ test("refreshed history requires verified automation signatures", () => {
     commit: { verification: { verified: true } },
   };
 
-  assert.equal(
-    commitsAreAutomationSigned([dependabot, branchUpdate]),
-    true,
-  );
+  assert.equal(commitsAreAutomationSigned([dependabot, branchUpdate]), true);
   assert.equal(
     commitsAreAutomationSigned([
       dependabot,
@@ -376,10 +344,7 @@ test("refreshed history requires verified automation signatures", () => {
     false,
   );
   assert.equal(
-    commitsAreAutomationSigned([
-      dependabot,
-      { ...branchUpdate, author: { login: "maintainer" } },
-    ]),
+    commitsAreAutomationSigned([dependabot, { ...branchUpdate, author: { login: "maintainer" } }]),
     false,
   );
 });
@@ -414,18 +379,13 @@ test("merge gates require deterministic checks and statuses", () => {
   assert.equal(
     evaluateGate(
       checks,
-      statuses.filter(
-        (status) => status.context !== "Dependabot Auto-Merge",
-      ),
+      statuses.filter((status) => status.context !== "Dependabot Auto-Merge"),
     ).passed,
     false,
   );
   assert.equal(
     evaluateGate(
-      [
-        ...checks,
-        { name: "production", status: "completed", conclusion: "success" },
-      ],
+      [...checks, { name: "production", status: "completed", conclusion: "success" }],
       statuses,
       { production: true },
     ).passed,
@@ -504,10 +464,7 @@ test("queue skips a failing older PR and merges the next green sibling", async (
     paginate: async (method, args) => {
       if (method === listPulls) return pulls;
       if (method === listFiles) {
-        return [
-          { filename: "package.json" },
-          { filename: "package-lock.json" },
-        ];
+        return [{ filename: "package.json" }, { filename: "package-lock.json" }];
       }
       if (method === listLabelsForRepo) {
         return Object.values(LABELS).map(({ name }) => ({ name }));
@@ -536,9 +493,7 @@ test("queue skips a failing older PR and merges the next green sibling", async (
                   ]
                 : ref === "failing"
                   ? successfulChecks.map((check) =>
-                      check.name === "quality"
-                        ? { ...check, conclusion: "failure" }
-                        : check,
+                      check.name === "quality" ? { ...check, conclusion: "failure" } : check,
                     )
                   : successfulChecks,
           },
@@ -558,12 +513,11 @@ test("queue skips a failing older PR and merges the next green sibling", async (
           pullReads.set(pullNumber, reads + 1);
           return {
             data: {
-            ...pulls.find(({ number }) => number === pullNumber),
-            draft: false,
-            state: "open",
-            mergeable: true,
-              mergeable_state:
-                pullNumber === 104 && reads === 0 ? "blocked" : "unstable",
+              ...pulls.find(({ number }) => number === pullNumber),
+              draft: false,
+              state: "open",
+              mergeable: true,
+              mergeable_state: pullNumber === 104 && reads === 0 ? "blocked" : "unstable",
             },
           };
         },
@@ -586,9 +540,7 @@ test("queue skips a failing older PR and merges the next green sibling", async (
             statuses:
               ref === "failing"
                 ? successfulStatuses.map((status) =>
-                    status.context === "Vercel"
-                      ? { ...status, state: "failure" }
-                      : status,
+                    status.context === "Vercel" ? { ...status, state: "failure" } : status,
                   )
                 : successfulStatuses,
           },
@@ -603,11 +555,7 @@ test("queue skips a failing older PR and merges the next green sibling", async (
     core: { notice: (message) => notices.push(message), warning: () => {} },
   });
 
-  assert.equal(
-    merged.join(","),
-    "104",
-    notices.join("\n"),
-  );
+  assert.equal(merged.join(","), "104", notices.join("\n"));
   assert.deepEqual(
     attestations.map(({ sha, state, context: statusContext }) => ({
       sha,

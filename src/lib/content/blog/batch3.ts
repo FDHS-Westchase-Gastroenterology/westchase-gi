@@ -3,13 +3,12 @@
 // Baseline (Spanish mirrors English in the "usted" register), with VI/KO/AR
 // Machine translations still awaiting native-speaker review.
 
-import type { BlogPost } from "../types";
+import type { BlogPost } from "@/lib/content/types";
 
 export const batch3: BlogPost[] = [
   {
     slug: "when-digestive-symptoms-should-be-checked-by-a-specialist",
-    legacyPath:
-      "/blog/1414872-when-digestive-symptoms-should-be-checked-by-a-specialist",
+    legacyPath: "/blog/1414872-when-digestive-symptoms-should-be-checked-by-a-specialist",
     title: {
       en: "When Digestive Symptoms Should Be Checked by a Specialist",
       es: "Cuándo los síntomas digestivos deben ser evaluados por un especialista",

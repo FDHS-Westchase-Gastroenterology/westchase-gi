@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import {
   availableQueueCount,
   parsePage,
@@ -25,10 +26,7 @@ test("parses a bounded positive page", () => {
 
 test("normalizes and bounds request search", () => {
   assert.equal(parseRequestSearch(["  Jane \n Doe  ", "ignored"]), "Jane Doe");
-  assert.equal(
-    parseRequestSearch("\0Jane\u001f\tDoe\u007f\u0085Smith"),
-    "Jane Doe Smith",
-  );
+  assert.equal(parseRequestSearch("\0Jane\u001f\tDoe\u007f\u0085Smith"), "Jane Doe Smith");
   assert.equal(
     parseRequestSearch("x".repeat(REQUEST_SEARCH_MAX_LENGTH + 1)).length,
     REQUEST_SEARCH_MAX_LENGTH,
@@ -39,8 +37,6 @@ test("quotes PostgREST-reserved search syntax", () => {
   const pattern = String.raw`".*Doe, Jane\\. \\(test\\): \"quoted\" \\\\ path %_\\*.*"`;
   assert.equal(
     requestSearchFilter('Doe, Jane. (test): "quoted" \\ path %_*'),
-    ["name", "phone", "email"]
-      .map((column) => `${column}.imatch.${pattern}`)
-      .join(","),
+    ["name", "phone", "email"].map((column) => `${column}.imatch.${pattern}`).join(","),
   );
 });

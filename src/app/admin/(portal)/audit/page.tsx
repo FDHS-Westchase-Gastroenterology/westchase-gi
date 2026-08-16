@@ -1,18 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+
+import { formatReceived } from "@/app/admin/(portal)/requests/format";
 import { asJsonObject, asJsonString, jsonSchema } from "@/lib/json";
 import type { Json } from "@/lib/json";
 import { requireRole } from "@/lib/portal/auth";
-import { getPortalReleaseEngagement } from "@/lib/portal/release-engagement";
 import { PORTAL_RELEASE_BRIEFING } from "@/lib/portal/release-briefing-content";
+import { getPortalReleaseEngagement } from "@/lib/portal/release-engagement";
 import { parsePage } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
-import {
-  displayNameOrEmail,
-  fetchStaffNameMap,
-} from "@/lib/portal/staff-identity";
-import { formatReceived } from "../requests/format";
+import { displayNameOrEmail, fetchStaffNameMap } from "@/lib/portal/staff-identity";
+
 import { RecentWorkSection } from "./recent-work";
 import { toRecentWorkItems } from "./recent-work-model";
 import type { AuditEntry } from "./recent-work-model";
@@ -52,9 +51,7 @@ function externalAuditSummary(detail: Json): ExternalAuditSummary | null {
   if (target === null) return null;
   const outcomeValue = asJsonString(value.outcome);
   const outcome =
-    outcomeValue === "succeeded" || outcomeValue === "failed"
-      ? outcomeValue
-      : "unconfirmed";
+    outcomeValue === "succeeded" || outcomeValue === "failed" ? outcomeValue : "unconfirmed";
   return { target, outcome };
 }
 
@@ -69,13 +66,8 @@ export default async function AdminAuditPage({
   const now = new Date();
 
   const db = serviceClient();
-  const [
-    { data: rows, error, count },
-    nameMap,
-    profileRows,
-    recipientRows,
-    releaseEngagement,
-  ] = await Promise.all([
+  const [{ data: rows, error, count }, nameMap, profileRows, recipientRows, releaseEngagement] =
+    await Promise.all([
       db
         .from("audit_log")
         .select("id, actor_email, action, entity, entity_id, detail, at", {
@@ -143,29 +135,22 @@ export default async function AdminAuditPage({
         <span className="text-[var(--color-muted)]">Activity log</span>
       </nav>
 
-      <h1
-        id="audit-heading"
-        className="portal-title mt-4"
-      >
+      <h1 id="audit-heading" className="portal-title mt-4">
         Activity log
       </h1>
       <p className="mt-1.5 max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
-        Who did what, in plain language — with the exact technical record
-        beneath for administrators.
+        Who did what, in plain language — with the exact technical record beneath for
+        administrators.
       </p>
 
-      {releaseEngagement ? (
-        <ReleaseEngagementSection engagement={releaseEngagement} />
-      ) : null}
+      {releaseEngagement ? <ReleaseEngagementSection engagement={releaseEngagement} /> : null}
 
       {entries.length === 0 ? (
         <div className="mt-10 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-8 text-center sm:p-12">
-          <h2 className="text-[1.1rem] font-black text-[var(--color-ink)]">
-            Nothing recorded yet
-          </h2>
+          <h2 className="text-[1.1rem] font-black text-[var(--color-ink)]">Nothing recorded yet</h2>
           <p className="mx-auto mt-2 max-w-[52ch] text-[0.95rem] text-[var(--color-body)]">
-            The first status change, note, recipient edit, or staff change
-            will appear here automatically.
+            The first status change, note, recipient edit, or staff change will appear here
+            automatically.
           </p>
         </div>
       ) : (
@@ -185,7 +170,7 @@ export default async function AdminAuditPage({
             <div className="mt-4 overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white">
               <table data-testid="audit-table" className="w-full min-w-[640px] text-left">
                 <thead>
-                  <tr className="border-b border-[var(--color-line)] text-[0.8rem] uppercase tracking-[0.06em] text-[var(--color-muted)]">
+                  <tr className="border-b border-[var(--color-line)] text-[0.8rem] tracking-[0.06em] text-[var(--color-muted)] uppercase">
                     <th scope="col" className="px-5 py-3.5 font-bold">
                       When
                     </th>
@@ -205,7 +190,7 @@ export default async function AdminAuditPage({
                     const external = externalAuditSummary(entry.detail);
                     return (
                       <tr key={entry.id} className="text-[0.9rem]">
-                        <td className="whitespace-nowrap px-5 py-3 text-[var(--color-muted)]">
+                        <td className="px-5 py-3 whitespace-nowrap text-[var(--color-muted)]">
                           {formatReceived(entry.at, true)}
                         </td>
                         <td className="px-5 py-3 font-bold text-[var(--color-ink)]">
@@ -241,17 +226,11 @@ export default async function AdminAuditPage({
 
       {total > 0 ? (
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <p
-            data-testid="audit-page-summary"
-            className="text-[0.9rem] text-[var(--color-muted)]"
-          >
+          <p data-testid="audit-page-summary" className="text-[0.9rem] text-[var(--color-muted)]">
             Showing {firstShown}–{lastShown} of {total}
           </p>
           {totalPages > 1 ? (
-            <nav
-              aria-label="Activity log pages"
-              className="flex items-center gap-3"
-            >
+            <nav aria-label="Activity log pages" className="flex items-center gap-3">
               {page > 1 ? (
                 <Link
                   href={`/admin/audit${page > 2 ? `?page=${page - 1}` : ""}`}
@@ -265,11 +244,7 @@ export default async function AdminAuditPage({
                 Page {page} of {totalPages}
               </span>
               {page < totalPages ? (
-                <Link
-                  href={`/admin/audit?page=${page + 1}`}
-                  rel="next"
-                  className="btn btn-outline"
-                >
+                <Link href={`/admin/audit?page=${page + 1}`} rel="next" className="btn btn-outline">
                   Next
                 </Link>
               ) : null}

@@ -1,5 +1,7 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
+
 import { test, expect } from "@playwright/test";
+
 import { en } from "../src/lib/dictionaries/en";
 import {
   INTAKE_RATE_LIMIT,
@@ -18,9 +20,7 @@ const runId = randomUUID().replaceAll("-", "");
 const sourcePrefix = `/e2e/intake-api/${runId}`;
 
 function testIp(label: string): string {
-  const hex = createHash("sha256")
-    .update(`${runId}:${label}`)
-    .digest("hex");
+  const hex = createHash("sha256").update(`${runId}:${label}`).digest("hex");
   return `2001:db8:${hex.slice(0, 4)}:${hex.slice(4, 8)}::1`;
 }
 
@@ -58,9 +58,7 @@ test.describe("intake API contract", () => {
     enabled = workerInfo.project.name === "chromium";
     if (!enabled) return;
 
-    const { data, error } = await db
-      .from("notification_recipients")
-      .select("id, active");
+    const { data, error } = await db.from("notification_recipients").select("id, active");
     expect(error).toBeNull();
     recipientState = data ?? [];
 
@@ -86,10 +84,7 @@ test.describe("intake API contract", () => {
   test.afterAll(async () => {
     if (!enabled) return;
 
-    const cleanup = await db
-      .from("requests")
-      .delete()
-      .like("source_path", `${sourcePrefix}%`);
+    const cleanup = await db.from("requests").delete().like("source_path", `${sourcePrefix}%`);
 
     const restoreResults = await Promise.all(
       recipientState.map((recipient) =>
@@ -106,9 +101,7 @@ test.describe("intake API contract", () => {
     }
   });
 
-  test("VAL-INTAKE-001: valid POST persists durably", async ({
-    request,
-  }) => {
+  test("VAL-INTAKE-001: valid POST persists durably", async ({ request }) => {
     const payload = validPayload(`${sourcePrefix}/valid`);
     const response = await request.post("/api/requests", {
       data: payload,
@@ -143,9 +136,7 @@ test.describe("intake API contract", () => {
     });
   });
 
-  test("VAL-INTAKE-001b: email is optional — empty email persists as null", async ({
-    request,
-  }) => {
+  test("VAL-INTAKE-001b: email is optional — empty email persists as null", async ({ request }) => {
     const payload = { ...validPayload(`${sourcePrefix}/no-email`), email: "" };
     const response = await request.post("/api/requests", {
       data: payload,
@@ -167,9 +158,7 @@ test.describe("intake API contract", () => {
     expect(row).toEqual({ id: body.id, email: null });
   });
 
-  test("stores a keyed client bucket instead of a plain address digest", async ({
-    request,
-  }) => {
+  test("stores a keyed client bucket instead of a plain address digest", async ({ request }) => {
     const clientIp = testIp("hmac-storage");
     const payload = validPayload(`${sourcePrefix}/hmac-storage`);
     const response = await request.post("/api/requests", {
@@ -178,16 +167,11 @@ test.describe("intake API contract", () => {
     });
     expect(response.status()).toBe(201);
 
-    const expectedHash = createHmac(
-      "sha256",
-      requiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
-    )
+    const expectedHash = createHmac("sha256", requiredEnv("SUPABASE_SERVICE_ROLE_KEY"))
       .update("wgi:intake-rate-limit:client:v1\0")
       .update(clientIp.toLowerCase())
       .digest("hex");
-    const plainHash = createHash("sha256")
-      .update(clientIp.toLowerCase())
-      .digest("hex");
+    const plainHash = createHash("sha256").update(clientIp.toLowerCase()).digest("hex");
     expect(expectedHash).not.toBe(plainHash);
 
     const expectedProbe = await db.rpc("portal_check_intake_rate_limit", {
@@ -207,9 +191,7 @@ test.describe("intake API contract", () => {
     expect(plainProbe.data).toBe(true);
   });
 
-  test("VAL-INTAKE-003: server validation rejects bad input", async ({
-    request,
-  }) => {
+  test("VAL-INTAKE-003: server validation rejects bad input", async ({ request }) => {
     const invalidCases: {
       field: "name" | "phone" | "email" | "message";
       makePayload: (sourcePath: string) => IntakeFixture;
@@ -300,17 +282,11 @@ test.describe("intake API contract", () => {
     }
 
     await expect(
-      countRows(
-        "requests",
-        "source_path",
-        `${sourcePrefix}/validation/%`,
-      ),
+      countRows("requests", "source_path", `${sourcePrefix}/validation/%`),
     ).resolves.toBe(0);
   });
 
-  test("VAL-INTAKE-004: honeypot silently drops bots", async ({
-    request,
-  }) => {
+  test("VAL-INTAKE-004: honeypot silently drops bots", async ({ request }) => {
     const payload = {
       ...validPayload(`${sourcePrefix}/honeypot`),
       company: "Example Company",
@@ -325,21 +301,11 @@ test.describe("intake API contract", () => {
     expect(body.ok).toBe(true);
     if (!body.ok) throw new Error("Expected a success-shaped honeypot response");
 
-    await expect(
-      countRows(
-        "requests",
-        "source_path",
-        `${sourcePrefix}/honeypot`,
-      ),
-    ).resolves.toBe(0);
-    await expect(
-      countRows("request_events", "request_id", body.id),
-    ).resolves.toBe(0);
+    await expect(countRows("requests", "source_path", `${sourcePrefix}/honeypot`)).resolves.toBe(0);
+    await expect(countRows("request_events", "request_id", body.id)).resolves.toBe(0);
   });
 
-  test("no-JS success requires one patient-free, one-time receipt", async ({
-    request,
-  }) => {
+  test("no-JS success requires one patient-free, one-time receipt", async ({ request }) => {
     const payload = validPayload(`${sourcePrefix}/no-js`);
     const response = await request.post("/api/requests/form", {
       form: payload,
@@ -354,40 +320,26 @@ test.describe("intake API contract", () => {
     const receiptToken = receiptUrl.searchParams.get("receipt");
     expect(receiptUrl.pathname).toBe("/en/appointment/received");
     expect(receiptUrl.searchParams.get("status")).toBeNull();
-    expect(receiptToken).toMatch(
-      /^[0-9a-f-]{36}\.[A-Za-z0-9_-]{43}$/,
-    );
+    expect(receiptToken).toMatch(/^[0-9a-f-]{36}\.[A-Za-z0-9_-]{43}$/);
     expect(location).not.toContain(payload.name);
     expect(location).not.toContain(payload.phone);
     expect(location).not.toContain(payload.email);
     expect(location).not.toContain(payload.message);
 
-    await expect(
-      countRows("requests", "source_path", payload.sourcePath),
-    ).resolves.toBe(1);
+    await expect(countRows("requests", "source_path", payload.sourcePath)).resolves.toBe(1);
 
-    const claims = await Promise.all([
-      request.get(location),
-      request.get(location),
-    ]);
-    const bodies = await Promise.all(
-      claims.map(async (claim) => claim.text()),
-    );
+    const claims = await Promise.all([request.get(location), request.get(location)]);
+    const bodies = await Promise.all(claims.map(async (claim) => claim.text()));
     expect(
-      bodies.every((body) =>
-        body.includes('<meta name="referrer" content="no-referrer"/>'),
-      ),
+      bodies.every((body) => body.includes('<meta name="referrer" content="no-referrer"/>')),
     ).toBe(true);
     const renderedHeading = (body: string) =>
-      (/<h1[^>]*>([^<]+)<\/h1>/.exec(body))?.[1]
-        ?.replaceAll("&#x27;", "'");
+      /<h1[^>]*>([^<]+)<\/h1>/.exec(body)?.[1]?.replaceAll("&#x27;", "'");
     expect(
-      bodies
-        .map(renderedHeading)
-        .sort((left, right) => (left ?? "").localeCompare(right ?? "")),
+      bodies.map(renderedHeading).sort((left, right) => (left ?? "").localeCompare(right ?? "")),
     ).toEqual(
-      [en.appointment.form.unknownHeading, en.requestReceipt.successHeading].sort(
-        (left, right) => left.localeCompare(right),
+      [en.appointment.form.unknownHeading, en.requestReceipt.successHeading].sort((left, right) =>
+        left.localeCompare(right),
       ),
     );
     expect(renderedHeading(await (await request.get(location)).text())).toBe(
@@ -424,9 +376,9 @@ test.describe("intake API contract", () => {
     const failedUrl = new URL(failed.headers().location);
     expect(failedUrl.searchParams.get("receipt")).toBeNull();
     expect(failedUrl.searchParams.get("failure")).toBe("1");
-    expect(
-      renderedHeading(await (await request.get(failedUrl.toString())).text()),
-    ).toBe(en.requestReceipt.failureHeading);
+    expect(renderedHeading(await (await request.get(failedUrl.toString())).text())).toBe(
+      en.requestReceipt.failureHeading,
+    );
 
     const honeypotPayload = {
       ...validPayload(`${sourcePrefix}/no-js-honeypot`),
@@ -438,23 +390,15 @@ test.describe("intake API contract", () => {
       maxRedirects: 0,
     });
     const honeypotUrl = new URL(honeypot.headers().location);
-    expect(honeypotUrl.searchParams.get("receipt")).toMatch(
-      /^[0-9a-f-]{36}\.[A-Za-z0-9_-]{43}$/,
+    expect(honeypotUrl.searchParams.get("receipt")).toMatch(/^[0-9a-f-]{36}\.[A-Za-z0-9_-]{43}$/);
+    expect(renderedHeading(await (await request.get(honeypotUrl.toString())).text())).toBe(
+      en.appointment.form.unknownHeading,
     );
-    expect(
-      renderedHeading(
-        await (await request.get(honeypotUrl.toString())).text(),
-      ),
-    ).toBe(en.appointment.form.unknownHeading);
 
-    await expect(
-      countRows("requests", "source_path", `${sourcePrefix}/no-js-%`),
-    ).resolves.toBe(0);
+    await expect(countRows("requests", "source_path", `${sourcePrefix}/no-js-%`)).resolves.toBe(0);
   });
 
-  test("VAL-INTAKE-005: rate limiting stops rows at the cap", async ({
-    request,
-  }) => {
+  test("VAL-INTAKE-005: rate limiting stops rows at the cap", async ({ request }) => {
     const pinnedIp = testIp("rate-limit");
 
     for (let index = 0; index <= INTAKE_RATE_LIMIT.limit; index += 1) {
@@ -473,8 +417,8 @@ test.describe("intake API contract", () => {
       }
     }
 
-    await expect(
-      countRows("requests", "source_path", `${sourcePrefix}/rate/%`),
-    ).resolves.toBe(INTAKE_RATE_LIMIT.limit);
+    await expect(countRows("requests", "source_path", `${sourcePrefix}/rate/%`)).resolves.toBe(
+      INTAKE_RATE_LIMIT.limit,
+    );
   });
 });

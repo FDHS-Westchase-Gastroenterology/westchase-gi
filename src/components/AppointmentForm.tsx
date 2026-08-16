@@ -1,16 +1,28 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+
+import type { Dictionary } from "@/lib/i18n";
+import {
+  HONEYPOT_FIELD,
+  INTAKE_API,
+  INTAKE_NOJS_ACTION,
+  intakeResponseSchema,
+  isMailbox,
+  REQUEST_FIELD_LIMITS,
+} from "@/lib/portal/contracts";
+import type { IntakeResponse } from "@/lib/portal/contracts";
 import { site } from "@/lib/site";
 import type { Locale } from "@/lib/site";
-import type { Dictionary } from "@/lib/i18n";
-import { HONEYPOT_FIELD, INTAKE_API, INTAKE_NOJS_ACTION, intakeResponseSchema, isMailbox, REQUEST_FIELD_LIMITS } from "@/lib/portal/contracts";
-import type { IntakeResponse } from "@/lib/portal/contracts";
 import { trackFormEvent, useFormViewTelemetry } from "@/lib/telemetry-client";
+
 import { Check, MessageSquare, Phone } from "./icons";
 
-interface AppointmentFormProps { locale: Locale; dict: Dictionary }
+interface AppointmentFormProps {
+  locale: Locale;
+  dict: Dictionary;
+}
 
 interface FieldErrors {
   name?: string;
@@ -142,6 +154,136 @@ function serverFieldErrors(
   return next;
 }
 
+function AppointmentFields({
+  f,
+  locale,
+  errors,
+}: Readonly<{
+  f: Dictionary["appointment"]["form"];
+  locale: Locale;
+  errors: Readonly<FieldErrors>;
+}>) {
+  return (
+    <div className="grid gap-5 sm:grid-cols-2">
+      <div className="sm:col-span-2">
+        <label htmlFor="name" className="field-label">
+          {f.name}{" "}
+          <span aria-hidden="true" className="text-[var(--color-amber-deep)]">
+            *
+          </span>
+        </label>
+        <input
+          id="name"
+          name="name"
+          type="text"
+          autoComplete="name"
+          required
+          maxLength={REQUEST_FIELD_LIMITS.name}
+          aria-invalid={errors.name !== undefined && errors.name !== "" ? "true" : undefined}
+          aria-describedby={
+            errors.name !== undefined && errors.name !== "" ? "err-name" : undefined
+          }
+          className="field-input"
+        />
+        {errors.name !== undefined && errors.name !== "" && (
+          <p id="err-name" className="field-error">
+            {errors.name}
+          </p>
+        )}
+      </div>
+      <div>
+        <label htmlFor="phone" className="field-label">
+          {f.phone}{" "}
+          <span aria-hidden="true" className="text-[var(--color-amber-deep)]">
+            *
+          </span>
+        </label>
+        <input
+          id="phone"
+          name="phone"
+          type="tel"
+          inputMode="tel"
+          autoComplete="tel"
+          required
+          maxLength={REQUEST_FIELD_LIMITS.phone}
+          aria-invalid={errors.phone !== undefined && errors.phone !== "" ? "true" : undefined}
+          aria-describedby={
+            errors.phone !== undefined && errors.phone !== "" ? "err-phone" : undefined
+          }
+          className="field-input"
+        />
+        {errors.phone !== undefined && errors.phone !== "" && (
+          <p id="err-phone" className="field-error">
+            {errors.phone}
+          </p>
+        )}
+      </div>
+      <div>
+        <label htmlFor="email" className="field-label">
+          {f.email}{" "}
+          <span className="font-semibold text-[var(--color-muted)]">{f.emailOptional}</span>
+        </label>
+        <input
+          id="email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          maxLength={REQUEST_FIELD_LIMITS.email}
+          aria-invalid={errors.email !== undefined && errors.email !== "" ? "true" : undefined}
+          aria-describedby={
+            errors.email !== undefined && errors.email !== "" ? "err-email" : undefined
+          }
+          className="field-input"
+        />
+        {errors.email !== undefined && errors.email !== "" && (
+          <p id="err-email" className="field-error">
+            {errors.email}
+          </p>
+        )}
+      </div>
+      <div>
+        <label htmlFor="location" className="field-label">
+          {f.location}
+        </label>
+        <select id="location" name="location" className="field-input" defaultValue="any">
+          <option value="any">{f.locationAny}</option>
+          {site.locations.map((loc) => (
+            <option key={loc.id} value={loc.id}>
+              {loc.name[locale]}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label htmlFor="time" className="field-label">
+          {f.time}
+        </label>
+        <select id="time" name="time" className="field-input" defaultValue="any">
+          <option value="any">{f.timeAny}</option>
+          <option value="morning">{f.timeMorning}</option>
+          <option value="afternoon">{f.timeAfternoon}</option>
+        </select>
+      </div>
+      <div className="sm:col-span-2">
+        <label htmlFor="message" className="field-label">
+          {f.message}
+        </label>
+        <textarea
+          id="message"
+          name="message"
+          rows={4}
+          maxLength={REQUEST_FIELD_LIMITS.message}
+          className="field-input"
+          aria-describedby="hint-message"
+        />
+        <p id="hint-message" className="field-hint">
+          {f.messageHint}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function AppointmentForm({ locale, dict }: Readonly<AppointmentFormProps>) {
   const f = dict.appointment.form;
   const pathname = usePathname();
@@ -177,10 +319,7 @@ export function AppointmentForm({ locale, dict }: Readonly<AppointmentFormProps>
   }
 
   // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React submit events expose a mutable currentTarget
-  async function handleSubmit(e: {
-    preventDefault(): void;
-    currentTarget: HTMLFormElement;
-  }) {
+  async function handleSubmit(e: { preventDefault(): void; currentTarget: HTMLFormElement }) {
     e.preventDefault();
     if (submittingRef.current) return;
 
@@ -320,113 +459,7 @@ export function AppointmentForm({ locale, dict }: Readonly<AppointmentFormProps>
           was sent when only the earlier one was (F11d). `contents` keeps the
           fieldset layout-transparent. */}
       <fieldset className="contents" disabled={status === "submitting"}>
-        <div className="grid gap-5 sm:grid-cols-2">
-        <div className="sm:col-span-2">
-          <label htmlFor="name" className="field-label">
-            {f.name} <span aria-hidden="true" className="text-[var(--color-amber-deep)]">*</span>
-          </label>
-          <input
-            id="name"
-            name="name"
-            type="text"
-            autoComplete="name"
-            required
-            maxLength={REQUEST_FIELD_LIMITS.name}
-            aria-invalid={errors.name !== undefined && errors.name !== "" ? "true" : undefined}
-            aria-describedby={errors.name !== undefined && errors.name !== "" ? "err-name" : undefined}
-            className="field-input"
-          />
-          {errors.name !== undefined && errors.name !== "" && (
-            <p id="err-name" className="field-error">
-              {errors.name}
-            </p>
-          )}
-        </div>
-        <div>
-          <label htmlFor="phone" className="field-label">
-            {f.phone} <span aria-hidden="true" className="text-[var(--color-amber-deep)]">*</span>
-          </label>
-          <input
-            id="phone"
-            name="phone"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            required
-            maxLength={REQUEST_FIELD_LIMITS.phone}
-            aria-invalid={errors.phone !== undefined && errors.phone !== "" ? "true" : undefined}
-            aria-describedby={errors.phone !== undefined && errors.phone !== "" ? "err-phone" : undefined}
-            className="field-input"
-          />
-          {errors.phone !== undefined && errors.phone !== "" && (
-            <p id="err-phone" className="field-error">
-              {errors.phone}
-            </p>
-          )}
-        </div>
-        <div>
-          <label htmlFor="email" className="field-label">
-            {f.email}{" "}
-            <span className="font-semibold text-[var(--color-muted)]">
-              {f.emailOptional}
-            </span>
-          </label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            maxLength={REQUEST_FIELD_LIMITS.email}
-            aria-invalid={errors.email !== undefined && errors.email !== "" ? "true" : undefined}
-            aria-describedby={errors.email !== undefined && errors.email !== "" ? "err-email" : undefined}
-            className="field-input"
-          />
-          {errors.email !== undefined && errors.email !== "" && (
-            <p id="err-email" className="field-error">
-              {errors.email}
-            </p>
-          )}
-        </div>
-        <div>
-          <label htmlFor="location" className="field-label">
-            {f.location}
-          </label>
-          <select id="location" name="location" className="field-input" defaultValue="any">
-            <option value="any">{f.locationAny}</option>
-            {site.locations.map((loc) => (
-              <option key={loc.id} value={loc.id}>
-                {loc.name[locale]}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label htmlFor="time" className="field-label">
-            {f.time}
-          </label>
-          <select id="time" name="time" className="field-input" defaultValue="any">
-            <option value="any">{f.timeAny}</option>
-            <option value="morning">{f.timeMorning}</option>
-            <option value="afternoon">{f.timeAfternoon}</option>
-          </select>
-        </div>
-        <div className="sm:col-span-2">
-          <label htmlFor="message" className="field-label">
-            {f.message}
-          </label>
-          <textarea
-            id="message"
-            name="message"
-            rows={4}
-            maxLength={REQUEST_FIELD_LIMITS.message}
-            className="field-input"
-            aria-describedby="hint-message"
-          />
-          <p id="hint-message" className="field-hint">
-            {f.messageHint}
-          </p>
-        </div>
-        </div>
+        <AppointmentFields f={f} locale={locale} errors={errors} />
       </fieldset>
       <button
         type="submit"

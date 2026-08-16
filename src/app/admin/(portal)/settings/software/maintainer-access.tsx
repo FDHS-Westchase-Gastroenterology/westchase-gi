@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
+
 import { getMaintainerViewState } from "@/lib/portal/maintainer-view";
 
 // The staff-facing surface for "who can change the website". This component
@@ -62,9 +63,11 @@ export type MaintainerActionResult =
 // Commands, no permission selector, numeric IDs from rendered records).
 export interface MaintainerActions {
   inviteMaintainer: (input: Readonly<{ username: string }>) => Promise<MaintainerActionResult>;
-  cancelMaintainerInvite: (input: Readonly<{
-    invitationId: number;
-  }>) => Promise<MaintainerActionResult>;
+  cancelMaintainerInvite: (
+    input: Readonly<{
+      invitationId: number;
+    }>,
+  ) => Promise<MaintainerActionResult>;
   revokeMaintainer: (input: Readonly<{ userId: number }>) => Promise<MaintainerActionResult>;
 }
 
@@ -79,25 +82,20 @@ const FAILURE_COPY = {
   conflict: "That person already has access or a pending invitation.",
   forbidden:
     "That change isn't allowed right now. Try again later, or ask your website maintainer to check the connection.",
-  limit:
-    "Invitations are temporarily limited. Wait a day before sending more.",
+  limit: "Invitations are temporarily limited. Wait a day before sending more.",
   unconfirmed:
     "We couldn't confirm whether that change went through. The list below is the latest confirmed state — check it before trying again.",
   unavailable: "Something went wrong making the change. Try again.",
 } as const satisfies Record<MaintainerFailureCopyCode, string>;
 
-function isMaintainerFailureCopyCode(
-  value: string,
-): value is MaintainerFailureCopyCode {
+function isMaintainerFailureCopyCode(value: string): value is MaintainerFailureCopyCode {
   return value in FAILURE_COPY;
 }
 
 function failureMessage(result: Readonly<MaintainerActionResult>): string {
   if (result.ok) return "";
   const code = result.code ?? "unavailable";
-  return isMaintainerFailureCopyCode(code)
-    ? FAILURE_COPY[code]
-    : FAILURE_COPY.unavailable;
+  return isMaintainerFailureCopyCode(code) ? FAILURE_COPY[code] : FAILURE_COPY.unavailable;
 }
 
 const STATUS_LABEL = {
@@ -110,7 +108,7 @@ function StatusPill({ state }: Readonly<{ state: MaintainerAccessModel["state"] 
   return (
     <span
       data-testid="integration-status"
-      className="rounded-full bg-[var(--color-line)] px-2.5 py-1 text-[0.72rem] font-bold uppercase tracking-[0.05em] text-[var(--color-muted)]"
+      className="rounded-full bg-[var(--color-line)] px-2.5 py-1 text-[0.72rem] font-bold tracking-[0.05em] text-[var(--color-muted)] uppercase"
     >
       {STATUS_LABEL[state]}
     </span>
@@ -155,9 +153,8 @@ function SetupNotice({ management }: Readonly<{ management: MaintainerManagement
     >
       <p className="text-sm font-bold text-[var(--color-ink)]">{headline}</p>
       <p className="mt-1.5 max-w-[70ch] text-[0.85rem] leading-relaxed text-[var(--color-body)]">
-        Until then, nothing here can be changed — only viewed. The step is a
-        one-time action for the practice owner (your website maintainer can
-        walk through it with you): {ownerStep}
+        Until then, nothing here can be changed — only viewed. The step is a one-time action for the
+        practice owner (your website maintainer can walk through it with you): {ownerStep}
       </p>
     </div>
   );
@@ -201,7 +198,7 @@ export function MaintainerAccess({
   return (
     <div data-testid="maintainer-access">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-[0.82rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
+        <h3 className="text-[0.82rem] font-bold tracking-[0.06em] text-[var(--color-muted)] uppercase">
           Who can change the website
         </h3>
         <StatusPill state={model.state} />
@@ -209,28 +206,25 @@ export function MaintainerAccess({
 
       {model.state === "not_configured" && (
         <p className="mt-3 max-w-[70ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-          The website itself is unaffected — this page just hasn&rsquo;t been
-          connected to the account that manages it yet. Once your website
-          maintainer completes the connection, everyone with permission to
-          change the website is listed here.
+          The website itself is unaffected — this page just hasn&rsquo;t been connected to the
+          account that manages it yet. Once your website maintainer completes the connection,
+          everyone with permission to change the website is listed here.
         </p>
       )}
 
       {model.state === "unavailable" && (
         <p className="mt-3 max-w-[70ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-          We can&rsquo;t reach the website&rsquo;s account service right now,
-          so the access list can&rsquo;t be shown and changes are paused
-          rather than risk acting on out-of-date information. The website
-          itself is unaffected. Try again in a few minutes.
+          We can&rsquo;t reach the website&rsquo;s account service right now, so the access list
+          can&rsquo;t be shown and changes are paused rather than risk acting on out-of-date
+          information. The website itself is unaffected. Try again in a few minutes.
         </p>
       )}
 
       {model.state === "connected" && (
         <>
           <p className="mt-2 max-w-[70ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
-            Everyone listed here can edit and publish the practice&rsquo;s
-            website. Administrators can add a maintainer or remove one — for
-            example, when the practice changes maintainers.
+            Everyone listed here can edit and publish the practice&rsquo;s website. Administrators
+            can add a maintainer or remove one — for example, when the practice changes maintainers.
           </p>
 
           {error !== null && error !== "" && (
@@ -250,15 +244,10 @@ export function MaintainerAccess({
             </p>
           )}
 
-          <ul
-            data-testid="maintainer-list"
-            className="mt-4 divide-y divide-[var(--color-line)]"
-          >
+          <ul data-testid="maintainer-list" className="mt-4 divide-y divide-[var(--color-line)]">
             <li className="flex flex-wrap items-center justify-between gap-3 py-3.5">
               <div className="min-w-0">
-                <p className="truncate font-bold text-[var(--color-ink)]">
-                  Westchase GI
-                </p>
+                <p className="truncate font-bold text-[var(--color-ink)]">Westchase GI</p>
                 <p className="truncate text-[0.85rem] text-[var(--color-muted)]">
                   {`${model.ownerLogin} — the practice\u2019s own account`}
                 </p>
@@ -274,9 +263,7 @@ export function MaintainerAccess({
               >
                 <div className="min-w-0">
                   <p className="truncate font-bold text-[var(--color-ink)]">
-                    {maintainer.login === "ASTXRTYS"
-                      ? "Jason M."
-                      : maintainer.login}
+                    {maintainer.login === "ASTXRTYS" ? "Jason M." : maintainer.login}
                   </p>
                   <p className="truncate text-[0.85rem] text-[var(--color-muted)]">
                     Can edit and publish the website — Write access
@@ -320,9 +307,7 @@ export function MaintainerAccess({
                 className="flex flex-wrap items-center justify-between gap-3 py-3.5"
               >
                 <div className="min-w-0">
-                  <p className="truncate font-bold text-[var(--color-ink)]">
-                    {invitation.login}
-                  </p>
+                  <p className="truncate font-bold text-[var(--color-ink)]">{invitation.login}</p>
                   <p className="truncate text-[0.85rem] text-[var(--color-muted)]">
                     Invited — no access until they accept
                   </p>
@@ -361,26 +346,22 @@ export function MaintainerAccess({
 
           {model.maintainers === null && (
             <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
-              The full list of maintainers appears here once setup is
-              complete.
+              The full list of maintainers appears here once setup is complete.
             </p>
           )}
           {view.showInvitationDisclosure && (
             <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
-              Pending invitations appear here once the practice owner approves
-              repository administration access.
+              Pending invitations appear here once the practice owner approves repository
+              administration access.
             </p>
           )}
           {view.showEmptyState && (
-              <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
-                No one besides the practice&rsquo;s own account can change the
-                website right now.
-              </p>
-            )}
-
-          {view.showSetup && (
-            <SetupNotice management={model.management} />
+            <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
+              No one besides the practice&rsquo;s own account can change the website right now.
+            </p>
           )}
+
+          {view.showSetup && <SetupNotice management={model.management} />}
 
           {canManage && actions && (
             <form
@@ -388,9 +369,7 @@ export function MaintainerAccess({
               action={(formData: FormData) => {
                 const rawUsername = formData.get("username");
                 const username =
-                  rawUsername === null || rawUsername instanceof File
-                    ? ""
-                    : rawUsername.trim();
+                  rawUsername === null || rawUsername instanceof File ? "" : rawUsername.trim();
                 if (username === "") return;
                 run(
                   async () => actions.inviteMaintainer({ username }),
@@ -398,14 +377,11 @@ export function MaintainerAccess({
                 );
               }}
             >
-              <h4 className="text-sm font-bold text-[var(--color-ink)]">
-                Add a maintainer
-              </h4>
+              <h4 className="text-sm font-bold text-[var(--color-ink)]">Add a maintainer</h4>
               <p className="mt-1 max-w-[65ch] text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
-                Ask the person for their exact GitHub username — it&rsquo;s
-                the one account detail this needs. Once they accept, Write
-                access lets them change code and merge changes that publish
-                the website.
+                Ask the person for their exact GitHub username — it&rsquo;s the one account detail
+                this needs. Once they accept, Write access lets them change code and merge changes
+                that publish the website.
               </p>
               <div className="mt-3 flex flex-wrap gap-3">
                 <div className="min-w-0 flex-1 basis-64">
@@ -422,7 +398,7 @@ export function MaintainerAccess({
                     spellCheck={false}
                     placeholder="GitHub username"
                     disabled={pending}
-                    className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)]"
+                    className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
                   />
                 </div>
                 <button

@@ -1,7 +1,4 @@
-import type {
-  PortalEmailOutcome,
-  SendPortalEmail,
-} from "@/lib/portal/email";
+import type { PortalEmailOutcome, SendPortalEmail } from "@/lib/portal/email";
 
 export type NotificationRecipient = Readonly<{
   id: string;
@@ -34,8 +31,7 @@ function eventFromOutcome(
     request_id: requestId,
     type: "notification",
     recipient: recipient.email,
-    provider_message_id:
-      outcome.status === "accepted" ? outcome.providerMessageId : null,
+    provider_message_id: outcome.status === "accepted" ? outcome.providerMessageId : null,
     status: outcome.status,
     meta:
       outcome.status === "accepted"

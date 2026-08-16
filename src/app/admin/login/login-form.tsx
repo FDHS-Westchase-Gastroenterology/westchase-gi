@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+
 import { loginAction } from "@/app/admin/actions";
 import type { LoginActionState } from "@/app/admin/actions";
 import { ResetRequestForm } from "@/app/admin/forgot-password/reset-request-form";
@@ -17,10 +18,7 @@ export function LoginForm({
 }>) {
   const [mode, setMode] = useState<"sign-in" | "recovery">("sign-in");
   const [email, setEmail] = useState("");
-  const [state, formAction, pending] = useActionState(
-    loginAction,
-    INITIAL_STATE,
-  );
+  const [state, formAction, pending] = useActionState(loginAction, INITIAL_STATE);
   const hasError = state.error !== null && state.error !== "";
 
   if (mode === "recovery") {
@@ -39,10 +37,7 @@ export function LoginForm({
   return (
     <form action={formAction} className="mt-7 space-y-5">
       <div>
-        <label
-          htmlFor="email"
-          className="block text-sm font-bold text-[var(--color-ink)]"
-        >
+        <label htmlFor="email" className="block text-sm font-bold text-[var(--color-ink)]">
           Email
         </label>
         <input
@@ -68,10 +63,7 @@ export function LoginForm({
 
       <div>
         <div className="flex items-center justify-between gap-4">
-          <label
-            htmlFor="password"
-            className="block text-sm font-bold text-[var(--color-ink)]"
-          >
+          <label htmlFor="password" className="block text-sm font-bold text-[var(--color-ink)]">
             Password
           </label>
           <button

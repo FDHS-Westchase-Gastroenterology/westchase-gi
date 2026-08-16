@@ -1,7 +1,9 @@
 "use client";
 
 import { useRef, useState } from "react";
+
 import { X } from "@/components/icons";
+
 import { dismissPortalTourAction, finishPortalTourAction } from "./tour-actions";
 
 const STEPS = [
@@ -41,20 +43,13 @@ export function PortalTour() {
         className="mt-6 flex flex-col gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-mint)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between"
       >
         <div>
-          <p className="font-black text-[var(--color-ink)]">
-            New to the portal?
-          </p>
+          <p className="font-black text-[var(--color-ink)]">New to the portal?</p>
           <p className="mt-1 max-w-[58ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-            Take a short, optional look around. You can reopen it from Help
-            any time.
+            Take a short, optional look around. You can reopen it from Help any time.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={openTour}
-            className="btn btn-navy btn-sm min-h-11"
-          >
+          <button type="button" onClick={openTour} className="btn btn-navy btn-sm min-h-11">
             Take a quick tour
           </button>
           <form action={dismissPortalTourAction}>
@@ -79,7 +74,7 @@ export function PortalTour() {
         className="tour-dialog m-auto max-h-[90dvh] w-[90vw] max-w-xl overflow-y-auto rounded-[var(--radius-lg)] border-0 bg-white p-0 shadow-[var(--shadow-card)] backdrop:bg-[rgba(20,32,45,0.48)]"
       >
         <div className="flex items-center justify-between gap-4 bg-[var(--color-navy)] px-5 py-4 text-[var(--color-on-dark)] sm:px-6">
-          <p className="text-[0.8rem] font-extrabold uppercase tracking-[0.08em] text-[var(--color-on-dark-muted)]">
+          <p className="text-[0.8rem] font-extrabold tracking-[0.08em] text-[var(--color-on-dark-muted)] uppercase">
             Portal tour
           </p>
           <button
@@ -94,7 +89,7 @@ export function PortalTour() {
 
         <div className="px-5 py-6 sm:px-8 sm:py-8">
           <div aria-live="polite">
-            <p className="text-[0.8rem] font-extrabold uppercase tracking-[0.08em] text-[var(--color-teal-ink)]">
+            <p className="text-[0.8rem] font-extrabold tracking-[0.08em] text-[var(--color-teal-ink)] uppercase">
               Step {step + 1} of {STEPS.length}
             </p>
             <h2
@@ -140,10 +135,7 @@ export function PortalTour() {
                   totalSteps: STEPS.length,
                 })}
               >
-                <button
-                  type="submit"
-                  className="btn btn-amber btn-sm min-h-11"
-                >
+                <button type="submit" className="btn btn-amber btn-sm min-h-11">
                   Finish tour
                 </button>
               </form>

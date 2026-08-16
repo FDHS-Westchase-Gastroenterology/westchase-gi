@@ -1,8 +1,10 @@
 import "server-only";
 
 import { createHmac } from "node:crypto";
+
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+
 import type { Json } from "@/lib/json";
 import { serviceClient, serviceRoleKey } from "@/lib/portal/server";
 import {
@@ -23,8 +25,7 @@ function logOperationalFailure(
 }
 
 function clientHash(headers: Headers): string {
-  const forwardedFor =
-    headers.get("x-vercel-forwarded-for") ?? headers.get("x-forwarded-for");
+  const forwardedFor = headers.get("x-vercel-forwarded-for") ?? headers.get("x-forwarded-for");
   const hop = forwardedFor?.split(",", 1)[0]?.trim();
   const firstHop = hop !== undefined && hop !== "" ? hop : "missing";
 
@@ -39,10 +40,7 @@ function clientHash(headers: Headers): string {
     .digest("hex");
 }
 
-async function rateLimitAllows(
-  client: SupabaseClient,
-  headers: Headers,
-): Promise<boolean | null> {
+async function rateLimitAllows(client: SupabaseClient, headers: Headers): Promise<boolean | null> {
   const result = await client.rpc("portal_check_intake_rate_limit", {
     p_client_hash: clientHash(headers),
     p_limit: TELEMETRY_RATE_LIMIT.limit,

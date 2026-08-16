@@ -12,20 +12,15 @@
 // (2 variants) — plus EGD/Bravo/Halo/Endocapsule/Sigmoidoscopy and the
 // Anti-reflux diet sheet.
 
-import type { Bi } from "../types";
-import type { PrepDoc, PrepGroupId } from "./types";
+import type { Bi } from "@/lib/content/types";
+
 import { clenpiqSutabPreps } from "./colonoscopy-clenpiq-sutab";
 import { miralaxGolytelyPreps } from "./colonoscopy-miralax-golytely";
-import { upperPreps } from "./upper";
 import { otherPreps } from "./other";
+import type { PrepDoc, PrepGroupId } from "./types";
+import { upperPreps } from "./upper";
 
-export type {
-  PrepDoc,
-  PrepGroupId,
-  PrepListStyle,
-  PrepSection,
-  PrepBlock,
-} from "./types";
+export type { PrepDoc, PrepGroupId, PrepListStyle, PrepSection, PrepBlock } from "./types";
 
 export const prepDocs: PrepDoc[] = [
   ...clenpiqSutabPreps,
@@ -44,7 +39,13 @@ export interface PrepGroup {
 const groupMeta: { id: PrepGroupId; title: Bi; blurb: Bi }[] = [
   {
     id: "colonoscopy",
-    title: { en: "Colonoscopy preps", es: "Preparaciones para colonoscopia", vi: "Chuẩn bị nội soi đại tràng", ko: "대장 내시경 준비법", ar: "تحضيرات تنظير القولون" },
+    title: {
+      en: "Colonoscopy preps",
+      es: "Preparaciones para colonoscopia",
+      vi: "Chuẩn bị nội soi đại tràng",
+      ko: "대장 내시경 준비법",
+      ar: "تحضيرات تنظير القولون",
+    },
     blurb: {
       en: "Your care team prescribes ONE of these — the prep on your prescription or in your packet matches one sheet below.",
       es: "Su equipo de atención le receta UNA de estas — la preparación en su receta o en su paquete corresponde a una de las hojas siguientes.",
@@ -72,7 +73,13 @@ const groupMeta: { id: PrepGroupId; title: Bi; blurb: Bi }[] = [
   },
   {
     id: "capsule",
-    title: { en: "Capsule endoscopy", es: "Cápsula endoscópica", vi: "Nội soi viên nang", ko: "캡슐 내시경", ar: "التنظير بالكبسولة" },
+    title: {
+      en: "Capsule endoscopy",
+      es: "Cápsula endoscópica",
+      vi: "Nội soi viên nang",
+      ko: "캡슐 내시경",
+      ar: "التنظير بالكبسولة",
+    },
     blurb: {
       en: "The swallowed-camera small bowel study.",
       es: "El estudio del intestino delgado con cámara ingerible.",
@@ -83,7 +90,13 @@ const groupMeta: { id: PrepGroupId; title: Bi; blurb: Bi }[] = [
   },
   {
     id: "sigmoidoscopy",
-    title: { en: "Sigmoidoscopy", es: "Sigmoidoscopia", vi: "Nội soi đại tràng sigma", ko: "에스결장 내시경", ar: "تنظير القولون السيني" },
+    title: {
+      en: "Sigmoidoscopy",
+      es: "Sigmoidoscopia",
+      vi: "Nội soi đại tràng sigma",
+      ko: "에스결장 내시경",
+      ar: "تنظير القولون السيني",
+    },
     blurb: {
       en: "A shorter lower exam with a simpler prep.",
       es: "Un examen inferior más corto con una preparación más sencilla.",
@@ -94,7 +107,13 @@ const groupMeta: { id: PrepGroupId; title: Bi; blurb: Bi }[] = [
   },
   {
     id: "diet",
-    title: { en: "Diet guidelines", es: "Guías de dieta", vi: "Hướng dẫn chế độ ăn", ko: "식이 지침", ar: "إرشادات النظام الغذائي" },
+    title: {
+      en: "Diet guidelines",
+      es: "Guías de dieta",
+      vi: "Hướng dẫn chế độ ăn",
+      ko: "식이 지침",
+      ar: "إرشادات النظام الغذائي",
+    },
     blurb: {
       en: "Handouts your physician may give you alongside a procedure.",
       es: "Hojas que su médico puede entregarle junto con un procedimiento.",

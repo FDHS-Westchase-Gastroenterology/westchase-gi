@@ -9,13 +9,13 @@ implementation and verification.
 
 ### Document control
 
-| Field | Value |
-|---|---|
-| **Original workflow decision date** | 2026-08-04 |
-| **Staff-portal experience expansion date** | 2026-08-05 |
-| **Scope** | The authenticated staff-portal experience, including its Home, Appointments, Settings, and Help destinations, plus appointment-request intake, staff resolution, history, concurrency, notifications, and migration |
-| **Primary audience and implementation lead** | Lead of Product Experience & Principal Design Engineer |
-| **Status** | Active build authorization: implementation and iteration may proceed on an isolated branch until the staff portal satisfies both the standards and taste of the Lead of Product Experience & Principal Design Engineer and the practical judgment of the human developer who serves as the direct channel to clinic staff. Merge, migration, deployment, and Production activation require separate authorization. |
+| Field                                        | Value                                                                                                                                                                                                                                                                                                                                                                                                              |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Original workflow decision date**          | 2026-08-04                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **Staff-portal experience expansion date**   | 2026-08-05                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **Scope**                                    | The authenticated staff-portal experience, including its Home, Appointments, Settings, and Help destinations, plus appointment-request intake, staff resolution, history, concurrency, notifications, and migration                                                                                                                                                                                                |
+| **Primary audience and implementation lead** | Lead of Product Experience & Principal Design Engineer                                                                                                                                                                                                                                                                                                                                                             |
+| **Status**                                   | Active build authorization: implementation and iteration may proceed on an isolated branch until the staff portal satisfies both the standards and taste of the Lead of Product Experience & Principal Design Engineer and the practical judgment of the human developer who serves as the direct channel to clinic staff. Merge, migration, deployment, and Production activation require separate authorization. |
 
 ### Authority and production status
 
@@ -44,15 +44,15 @@ Before changing implementation files, create or switch to a new isolated branch 
 this build. Do not develop this work on `main`. Once on that branch, begin with this local packet;
 no GitHub context-gathering is required:
 
-| Local reference | What it supplies |
-|---|---|
-| **This specification** | The decided product constraints and complete workflow contract. The [decision register](#current-decision-register) is the fast index; Parts II–V contain the local as-is evidence, to-be state machine, runtime rules, architecture baseline, migration, and repair contract. |
-| [`PRODUCT.md`](../PRODUCT.md#staff-portal-admin) | The staff portal's users, purpose, north star, capabilities, constraints, principles, and anti-references. |
-| [`DESIGN.md`](../DESIGN.md#staff-portal-guardrails-product-register) | The experience-quality floor and staff-portal design guardrails. |
-| [`ui-reference/README.md`](../ui-reference/README.md) | The current visual and familiarity baseline plus the required visual-QA workflow. It is evidence and orientation, not a finished redesign to copy. |
-| [Lead of Product Experience & Principal Design Engineer](roles/lead-of-product-experience.md) | The implementation lead's product, frontend, delegation, and experience-acceptance mandate. |
-| [`ARCHITECTURE.md`](../ARCHITECTURE.md#architectural-invariants) | The privacy, security, trust, lifecycle, and external-system boundaries the experience and implementation may not weaken. |
-| [`CONTRIBUTING.md`](../CONTRIBUTING.md#verification) | The verification, visual-QA, review, merge, and release process used after work begins. |
+| Local reference                                                                               | What it supplies                                                                                                                                                                                                                                                               |
+| --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **This specification**                                                                        | The decided product constraints and complete workflow contract. The [decision register](#current-decision-register) is the fast index; Parts II–V contain the local as-is evidence, to-be state machine, runtime rules, architecture baseline, migration, and repair contract. |
+| [`PRODUCT.md`](../PRODUCT.md#staff-portal-admin)                                              | The staff portal's users, purpose, north star, capabilities, constraints, principles, and anti-references.                                                                                                                                                                     |
+| [`DESIGN.md`](../DESIGN.md#staff-portal-guardrails-product-register)                          | The experience-quality floor and staff-portal design guardrails.                                                                                                                                                                                                               |
+| [`ui-reference/README.md`](../ui-reference/README.md)                                         | The current visual and familiarity baseline plus the required visual-QA workflow. It is evidence and orientation, not a finished redesign to copy.                                                                                                                             |
+| [Lead of Product Experience & Principal Design Engineer](roles/lead-of-product-experience.md) | The implementation lead's product, frontend, delegation, and experience-acceptance mandate.                                                                                                                                                                                    |
+| [`ARCHITECTURE.md`](../ARCHITECTURE.md#architectural-invariants)                              | The privacy, security, trust, lifecycle, and external-system boundaries the experience and implementation may not weaken.                                                                                                                                                      |
+| [`CONTRIBUTING.md`](../CONTRIBUTING.md#verification)                                          | The verification, visual-QA, review, merge, and release process used after work begins.                                                                                                                                                                                        |
 
 The earlier research and decision work is already compiled here: Part II is the as-is evidence,
 Part III is the normative to-be machine, and Part V contains the architecture, migration, and
@@ -112,14 +112,14 @@ above.
 
 ### Document map
 
-| Part | Purpose |
-|---|---|
+| Part                                                     | Purpose                                                                                                                                 |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | **I. Authority, scope, language, and portal experience** | Establishes the product boundary, non-goals, entities, required staff/domain vocabulary, portal invariants, and delegated design remit. |
-| **II. Current system evidence** | Records the as-is machine, existing enforcement, and failure windows that form the repair boundary. |
-| **III. Normative workflow** | Defines the to-be states, commands, evidence, guards, invariants, and exhaustive transition matrix. |
-| **IV. Runtime correctness** | Defines transaction order, notification behavior, concurrency, idempotency, and scoped correctness obligations. |
-| **V. Build, migration, and repair** | Defines the architecture baseline, implementation rules, migration sequence, rollback posture, and defect-to-repair map. |
-| **VI. Verification and handoff** | Defines the build-era verification contract and exit criteria. |
+| **II. Current system evidence**                          | Records the as-is machine, existing enforcement, and failure windows that form the repair boundary.                                     |
+| **III. Normative workflow**                              | Defines the to-be states, commands, evidence, guards, invariants, and exhaustive transition matrix.                                     |
+| **IV. Runtime correctness**                              | Defines transaction order, notification behavior, concurrency, idempotency, and scoped correctness obligations.                         |
+| **V. Build, migration, and repair**                      | Defines the architecture baseline, implementation rules, migration sequence, rollback posture, and defect-to-repair map.                |
+| **VI. Verification and handoff**                         | Defines the build-era verification contract and exit criteria.                                                                          |
 
 ## Current decision register
 
@@ -129,64 +129,64 @@ must be read with the linked detailed section when implementing or accepting the
 
 ### Product boundary and language
 
-| ID | Existing decision | Detailed contract |
-|---|---|---|
-| `DEC-01` | The portal owns an **appointment request** from durable intake through a verified booking handoff or an unbooked closure. | [§1](#1-scope-and-non-goals), [§2.1](#21-entities-and-records) |
-| `DEC-02` | The portal does not create or own an Appointment entity, calendar, or post-booking appointment lifecycle. The real Appointment remains in the practice scheduling system. | [§1](#1-scope-and-non-goals), [§2.1](#21-entities-and-records) |
-| `DEC-03` | **Appointments** is the staff-surface/workbench label; **appointment request** is the unit staff work; **Appointment** means the real booked visit. | [§2.2](#22-staff-language-and-domain-language) |
-| `DEC-04` | **Scheduled** is the staff-facing label for the booking-confirmation action and the resulting status in filters, badges, summaries, and Request history. Its command is `ConfirmBookingHandoff`; its durable request state is `BOOKED`; `SCHEDULED` is not a to-be state. | [§2.2](#22-staff-language-and-domain-language), [§5.2](#52-confirmbookinghandoff) |
-| `DEC-05` | Staff-facing history remains **Request history** and keeps notes, contact attempts, transitions, relevant delivery outcomes, and Undo evidence distinct. | [§2.2](#22-staff-language-and-domain-language), [§13](#13-build-era-implementation-rules) |
-| `DEC-06` | Staff assignment and ownership are not part of this workflow model. | [§1](#1-scope-and-non-goals), [§4.2](#42-orthogonal-state) |
+| ID       | Existing decision                                                                                                                                                                                                                                                         | Detailed contract                                                                         |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `DEC-01` | The portal owns an **appointment request** from durable intake through a verified booking handoff or an unbooked closure.                                                                                                                                                 | [§1](#1-scope-and-non-goals), [§2.1](#21-entities-and-records)                            |
+| `DEC-02` | The portal does not create or own an Appointment entity, calendar, or post-booking appointment lifecycle. The real Appointment remains in the practice scheduling system.                                                                                                 | [§1](#1-scope-and-non-goals), [§2.1](#21-entities-and-records)                            |
+| `DEC-03` | **Appointments** is the staff-surface/workbench label; **appointment request** is the unit staff work; **Appointment** means the real booked visit.                                                                                                                       | [§2.2](#22-staff-language-and-domain-language)                                            |
+| `DEC-04` | **Scheduled** is the staff-facing label for the booking-confirmation action and the resulting status in filters, badges, summaries, and Request history. Its command is `ConfirmBookingHandoff`; its durable request state is `BOOKED`; `SCHEDULED` is not a to-be state. | [§2.2](#22-staff-language-and-domain-language), [§5.2](#52-confirmbookinghandoff)         |
+| `DEC-05` | Staff-facing history remains **Request history** and keeps notes, contact attempts, transitions, relevant delivery outcomes, and Undo evidence distinct.                                                                                                                  | [§2.2](#22-staff-language-and-domain-language), [§13](#13-build-era-implementation-rules) |
+| `DEC-06` | Staff assignment and ownership are not part of this workflow model.                                                                                                                                                                                                       | [§1](#1-scope-and-non-goals), [§4.2](#42-orthogonal-state)                                |
 
 ### Staff portal experience
 
-| ID | Existing decision | Detailed contract |
-|---|---|---|
-| `DEC-UX-01` | The Lead of Product Experience & Principal Design Engineer receives and implements this specification as a portal-wide experience remit, not an Appointments-only screen assignment. | [Staff portal experience and design remit](#staff-portal-experience-and-design-remit) |
-| `DEC-UX-02` | The four top-level staff destinations remain, in order: **Home**, **Appointments**, **Settings**, and **Help**. Home remains the post-sign-in landing surface; only **Appointment requests** is renamed. | [Staff-familiarity invariants](#staff-familiarity-invariants) |
-| `DEC-UX-03` | Appointment-request handling is the portal's primary line-of-business workflow. Home and Appointments are the principal experience surfaces; Settings and Help remain required supporting destinations. | [Experience priorities](#experience-priorities) |
-| `DEC-UX-04` | The Appointments workbench retains recognizable **All**, **New**, **Contacted**, **Scheduled**, and **Closed** views. Their presentation may change, but the views and labels remain available. | [Staff-familiarity invariants](#staff-familiarity-invariants) |
-| `DEC-UX-05` | The familiarity invariants preserve recognizable landmarks and language, not the current interface. Typography, layout, component form, information structure, interaction design, and visual hierarchy may change, but the fixed navigation, familiar work views, and staff-facing Scheduled vocabulary may not be designed away. | [Staff-familiarity invariants](#staff-familiarity-invariants), [Delegated experience authority](#delegated-experience-authority) |
+| ID          | Existing decision                                                                                                                                                                                                                                                                                                                                                          | Detailed contract                                                                                                                                      |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `DEC-UX-01` | The Lead of Product Experience & Principal Design Engineer receives and implements this specification as a portal-wide experience remit, not an Appointments-only screen assignment.                                                                                                                                                                                       | [Staff portal experience and design remit](#staff-portal-experience-and-design-remit)                                                                  |
+| `DEC-UX-02` | The four top-level staff destinations remain, in order: **Home**, **Appointments**, **Settings**, and **Help**. Home remains the post-sign-in landing surface; only **Appointment requests** is renamed.                                                                                                                                                                   | [Staff-familiarity invariants](#staff-familiarity-invariants)                                                                                          |
+| `DEC-UX-03` | Appointment-request handling is the portal's primary line-of-business workflow. Home and Appointments are the principal experience surfaces; Settings and Help remain required supporting destinations.                                                                                                                                                                    | [Experience priorities](#experience-priorities)                                                                                                        |
+| `DEC-UX-04` | The Appointments workbench retains recognizable **All**, **New**, **Contacted**, **Scheduled**, and **Closed** views. Their presentation may change, but the views and labels remain available.                                                                                                                                                                            | [Staff-familiarity invariants](#staff-familiarity-invariants)                                                                                          |
+| `DEC-UX-05` | The familiarity invariants preserve recognizable landmarks and language, not the current interface. Typography, layout, component form, information structure, interaction design, and visual hierarchy may change, but the fixed navigation, familiar work views, and staff-facing Scheduled vocabulary may not be designed away.                                         | [Staff-familiarity invariants](#staff-familiarity-invariants), [Delegated experience authority](#delegated-experience-authority)                       |
 | `DEC-UX-06` | Within the fixed product, workflow, and familiarity boundaries, the Lead has broad creative authority and owns the overall experience concept, information hierarchy, page composition, staff journeys, interaction patterns, visual language, responsive behavior, complete state and recovery experiences, portal-wide coherence, and any adopted bounded opportunities. | [Product-experience work that begins now](#product-experience-work-that-begins-now), [Delegated experience authority](#delegated-experience-authority) |
 
 ### Workflow behavior
 
-| ID | Existing decision | Detailed contract |
-|---|---|---|
-| `DEC-07` | The normal request states are exactly `NEW`, `CONTACTED`, `BOOKED`, and `CLOSED`. | [§4](#4-the-to-be-state-machine), [§8](#8-transition-matrix) |
-| `DEC-08` | Staff may record repeated contact attempts from `CONTACTED`; each attempt appends evidence, and only `CONTACTED` may carry current call-again attention data. | [§5.1](#51-recordcontactattempt), [§7.2](#72-state-shape-invariants) |
-| `DEC-09` | Confirming a booking from `NEW` or `CONTACTED` resolves the request as `BOOKED`, clears current call-again data, and records booking-handoff evidence without creating an Appointment. | [§5.2](#52-confirmbookinghandoff) |
-| `DEC-10` | Closing resolves a request without booking. `CONTACTED` permits `not_actionable` or `wont_schedule`; `NEW` permits only the non-contact reason `not_actionable`. | [§5.3](#53-closerequest), [§8](#8-transition-matrix) |
-| `DEC-11` | `BOOKED` and `CLOSED` are terminal for ordinary work commands. Explicit reopen returns either state to `CONTACTED`, clears current terminal fields, and preserves prior evidence. | [§4.1](#41-states), [§5.4](#54-reopenrequest) |
-| `DEC-12` | Undo is a guarded compensation of the latest eligible human lifecycle transition. It is accepted through 15 minutes after durable occurrence, advances version, and appends rather than rewrites history. | [§5.5](#55-undolatesttransition), [§10.3](#103-undo-under-concurrency) |
-| `DEC-13` | Migrated unclassified closures use the dedicated, versioned, idempotent `ClassifyLegacyClosure` repair path and remain review-required until classified. | [§5.6](#56-classifylegacyclosure-migration-only-repair-path), [§14.1](#141-state-mapping) |
-| `DEC-14` | Adding an appointment request note does not move request state, advance lifecycle version, or stale an otherwise eligible Undo. | [§5.7](#57-operations-outside-the-transition-function) |
+| ID       | Existing decision                                                                                                                                                                                         | Detailed contract                                                                         |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `DEC-07` | The normal request states are exactly `NEW`, `CONTACTED`, `BOOKED`, and `CLOSED`.                                                                                                                         | [§4](#4-the-to-be-state-machine), [§8](#8-transition-matrix)                              |
+| `DEC-08` | Staff may record repeated contact attempts from `CONTACTED`; each attempt appends evidence, and only `CONTACTED` may carry current call-again attention data.                                             | [§5.1](#51-recordcontactattempt), [§7.2](#72-state-shape-invariants)                      |
+| `DEC-09` | Confirming a booking from `NEW` or `CONTACTED` resolves the request as `BOOKED`, clears current call-again data, and records booking-handoff evidence without creating an Appointment.                    | [§5.2](#52-confirmbookinghandoff)                                                         |
+| `DEC-10` | Closing resolves a request without booking. `CONTACTED` permits `not_actionable` or `wont_schedule`; `NEW` permits only the non-contact reason `not_actionable`.                                          | [§5.3](#53-closerequest), [§8](#8-transition-matrix)                                      |
+| `DEC-11` | `BOOKED` and `CLOSED` are terminal for ordinary work commands. Explicit reopen returns either state to `CONTACTED`, clears current terminal fields, and preserves prior evidence.                         | [§4.1](#41-states), [§5.4](#54-reopenrequest)                                             |
+| `DEC-12` | Undo is a guarded compensation of the latest eligible human lifecycle transition. It is accepted through 15 minutes after durable occurrence, advances version, and appends rather than rewrites history. | [§5.5](#55-undolatesttransition), [§10.3](#103-undo-under-concurrency)                    |
+| `DEC-13` | Migrated unclassified closures use the dedicated, versioned, idempotent `ClassifyLegacyClosure` repair path and remain review-required until classified.                                                  | [§5.6](#56-classifylegacyclosure-migration-only-repair-path), [§14.1](#141-state-mapping) |
+| `DEC-14` | Adding an appointment request note does not move request state, advance lifecycle version, or stale an otherwise eligible Undo.                                                                           | [§5.7](#57-operations-outside-the-transition-function)                                    |
 
 ### Integrity, privacy, and external effects
 
-| ID | Existing decision | Detailed contract |
-|---|---|---|
-| `DEC-15` | All lifecycle mutations use semantic commands through one domain authority. Generic status setters and ordinary direct database mutation paths are retired. | [§7.3](#73-enforcement-layers), [§13](#13-build-era-implementation-rules) |
-| `DEC-16` | Every staff lifecycle command is authorized server-side, and actor identity comes from authenticated application context rather than caller-supplied data. | [§5](#5-commands), [§7.1](#71-common-command-guards) |
-| `DEC-17` | Every accepted staff lifecycle command uses optimistic versioning. A stale command fails without partial writes rather than silently overwriting another staff action. | [§9.2](#92-command-transaction), [§10.1](#101-optimistic-versioning) |
-| `DEC-18` | Accepted lifecycle commands are durably idempotent per request and command key. A matching retry returns the original result; conflicting key reuse fails without writes. | [§7.1](#71-common-command-guards), [§10.2](#102-idempotency) |
-| `DEC-19` | Current state, command-specific evidence, exactly one transition envelope, one metadata-only technical audit entry, any caused outbox work, and the idempotent result commit atomically for an accepted lifecycle command. | [§6](#6-domain-events-and-durable-evidence), [§9.2](#92-command-transaction) |
-| `DEC-20` | Current state is read from the request row. Transition history is append-only evidence, not an event store, and Undo appends a compensating fact. | [§6](#6-domain-events-and-durable-evidence), [§7.2](#72-state-shape-invariants) |
-| `DEC-21` | Intake creation, initial evidence, and required PHI-free notification outbox work commit together before patient-visible success. Delivery is not part of the success condition. | [§5.7](#57-operations-outside-the-transition-function), [§9.3](#93-intake-transaction) |
-| `DEC-22` | Notification delivery has an independent outbox lifecycle. Dispatch begins only after the request transaction commits, uses a stable provider idempotency key, and cannot alter committed request state. | [§9.4](#94-outbox-processing), [§11.4](#114-temporal-ordering) |
-| `DEC-23` | Patient-supplied values stay out of notifications, transition metadata, audit details, idempotency records, URLs, logs, telemetry, and provider diagnostics. | [§1](#1-scope-and-non-goals), [§6](#6-domain-events-and-durable-evidence) |
+| ID       | Existing decision                                                                                                                                                                                                                                                | Detailed contract                                                                                 |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `DEC-15` | All lifecycle mutations use semantic commands through one domain authority. Generic status setters and ordinary direct database mutation paths are retired.                                                                                                      | [§7.3](#73-enforcement-layers), [§13](#13-build-era-implementation-rules)                         |
+| `DEC-16` | Every staff lifecycle command is authorized server-side, and actor identity comes from authenticated application context rather than caller-supplied data.                                                                                                       | [§5](#5-commands), [§7.1](#71-common-command-guards)                                              |
+| `DEC-17` | Every accepted staff lifecycle command uses optimistic versioning. A stale command fails without partial writes rather than silently overwriting another staff action.                                                                                           | [§9.2](#92-command-transaction), [§10.1](#101-optimistic-versioning)                              |
+| `DEC-18` | Accepted lifecycle commands are durably idempotent per request and command key. A matching retry returns the original result; conflicting key reuse fails without writes.                                                                                        | [§7.1](#71-common-command-guards), [§10.2](#102-idempotency)                                      |
+| `DEC-19` | Current state, command-specific evidence, exactly one transition envelope, one metadata-only technical audit entry, any caused outbox work, and the idempotent result commit atomically for an accepted lifecycle command.                                       | [§6](#6-domain-events-and-durable-evidence), [§9.2](#92-command-transaction)                      |
+| `DEC-20` | Current state is read from the request row. Transition history is append-only evidence, not an event store, and Undo appends a compensating fact.                                                                                                                | [§6](#6-domain-events-and-durable-evidence), [§7.2](#72-state-shape-invariants)                   |
+| `DEC-21` | Intake creation, initial evidence, and required PHI-free notification outbox work commit together before patient-visible success. Delivery is not part of the success condition.                                                                                 | [§5.7](#57-operations-outside-the-transition-function), [§9.3](#93-intake-transaction)            |
+| `DEC-22` | Notification delivery has an independent outbox lifecycle. Dispatch begins only after the request transaction commits, uses a stable provider idempotency key, and cannot alter committed request state.                                                         | [§9.4](#94-outbox-processing), [§11.4](#114-temporal-ordering)                                    |
+| `DEC-23` | Patient-supplied values stay out of notifications, transition metadata, audit details, idempotency records, URLs, logs, telemetry, and provider diagnostics.                                                                                                     | [§1](#1-scope-and-non-goals), [§6](#6-domain-events-and-durable-evidence)                         |
 | `DEC-24` | Unresolved `NEW` and due or silent `CONTACTED` remain queryable as attention work; pending, failed, retrying, and exhausted outbox work is observable to authorized operators; legacy-review work stays visible; and a read failure never presents as zero work. | [§11.3](#113-liveness-as-operational-visibility), [§16.5](#165-application-and-operational-tests) |
 
 ### Migration, operations, and acceptance
 
-| ID | Existing decision | Detailed contract |
-|---|---|---|
-| `DEC-25` | Existing `new`, `contacted`, `scheduled`, converted-closed, unconverted-closed, and unclassified-closed rows use the explicit migration mapping; migration never invents an Appointment, visit time, contact fact, or historic event time. | [§14.1](#141-state-mapping) |
-| `DEC-26` | Unclassified legacy closures remain visible, review-required, and ineligible for automatic deletion until classification; their retention clock begins no earlier than review. | [§5.6](#56-classifylegacyclosure-migration-only-repair-path), [§14.1](#141-state-mapping) |
-| `DEC-27` | Migration is forward-only, staged for old/new application overlap, rehearsed before contract, and paired with a rollback sibling that preserves transition, audit, idempotency, and outbox evidence. | [§14.2](#142-delivery-sequence), [§14.3](#143-rollback-posture) |
-| `DEC-28` | Development verification, application merge, hosted migration, Production promotion, and scheduler activation are separate decisions. No earlier step authorizes a later one. | [§13](#13-build-era-implementation-rules), [§14.2](#142-delivery-sequence) |
-| `DEC-29` | The small state space is verified exhaustively across domain behavior, persistence, concurrency, outbox behavior, migration, and application operation. | [§16](#16-verification-contract-for-the-build-era) |
-| `DEC-30` | Retention is not operational until its scheduled motor is provisioned, authorized, monitored, and verified. | [§11.3](#113-liveness-as-operational-visibility), [§15](#15-repair-list-as-is--to-be) |
+| ID       | Existing decision                                                                                                                                                                                                                          | Detailed contract                                                                         |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| `DEC-25` | Existing `new`, `contacted`, `scheduled`, converted-closed, unconverted-closed, and unclassified-closed rows use the explicit migration mapping; migration never invents an Appointment, visit time, contact fact, or historic event time. | [§14.1](#141-state-mapping)                                                               |
+| `DEC-26` | Unclassified legacy closures remain visible, review-required, and ineligible for automatic deletion until classification; their retention clock begins no earlier than review.                                                             | [§5.6](#56-classifylegacyclosure-migration-only-repair-path), [§14.1](#141-state-mapping) |
+| `DEC-27` | Migration is forward-only, staged for old/new application overlap, rehearsed before contract, and paired with a rollback sibling that preserves transition, audit, idempotency, and outbox evidence.                                       | [§14.2](#142-delivery-sequence), [§14.3](#143-rollback-posture)                           |
+| `DEC-28` | Development verification, application merge, hosted migration, Production promotion, and scheduler activation are separate decisions. No earlier step authorizes a later one.                                                              | [§13](#13-build-era-implementation-rules), [§14.2](#142-delivery-sequence)                |
+| `DEC-29` | The small state space is verified exhaustively across domain behavior, persistence, concurrency, outbox behavior, migration, and application operation.                                                                                    | [§16](#16-verification-contract-for-the-build-era)                                        |
+| `DEC-30` | Retention is not operational until its scheduled motor is provisioned, authorized, monitored, and verified.                                                                                                                                | [§11.3](#113-liveness-as-operational-visibility), [§15](#15-repair-list-as-is--to-be)     |
 
 ## Context, open decisions, and bounded implementation authority
 
@@ -199,11 +199,11 @@ never weakens the fixed workflow, navigation, familiarity, privacy, or operation
 Context entries will explain facts an implementer needs in order to apply a fixed decision
 correctly. Context may explain a decision, but it will not silently change one.
 
-| ID | Context | Implementation consequence | Authority or evidence source |
-|---|---|---|---|
-| `CTX-UX-01` | Appointment-request handling is the portal's only current line-of-business workflow and therefore its center of gravity. | Treat Home and Appointments as the primary experience surfaces rather than presenting the workflow as one miscellaneous portal shortcut among peers. | 2026-08-05 executive product direction recorded in this specification |
-| `CTX-UX-02` | The portal is being substantially overhauled, but existing staff familiarity is valuable. | Preserve the top-level destinations and recognizable work-view vocabulary while improving the surrounding information structure and interaction design. | 2026-08-05 executive product direction recorded in this specification |
-| `CTX-UX-03` | Settings and Help remain necessary, but they are supporting destinations rather than the portal's principal daily-work surfaces. | Keep them coherent and usable without allowing them to dilute the hierarchy of Home and Appointments. | 2026-08-05 executive product direction recorded in this specification |
+| ID          | Context                                                                                                                                | Implementation consequence                                                                                                                                           | Authority or evidence source                                          |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `CTX-UX-01` | Appointment-request handling is the portal's only current line-of-business workflow and therefore its center of gravity.               | Treat Home and Appointments as the primary experience surfaces rather than presenting the workflow as one miscellaneous portal shortcut among peers.                 | 2026-08-05 executive product direction recorded in this specification |
+| `CTX-UX-02` | The portal is being substantially overhauled, but existing staff familiarity is valuable.                                              | Preserve the top-level destinations and recognizable work-view vocabulary while improving the surrounding information structure and interaction design.              | 2026-08-05 executive product direction recorded in this specification |
+| `CTX-UX-03` | Settings and Help remain necessary, but they are supporting destinations rather than the portal's principal daily-work surfaces.       | Keep them coherent and usable without allowing them to dilute the hierarchy of Home and Appointments.                                                                | 2026-08-05 executive product direction recorded in this specification |
 | `CTX-UX-04` | Printing all new appointment requests not yet worked by staff is an example of the kind of direct Home action that may feel intuitive. | Treat bulk print as a design opportunity requiring an explicit privacy-safe interaction and acceptance boundary, not as a mandatory feature or an implicit mutation. | 2026-08-05 executive product direction recorded in this specification |
 
 ### Open decision register
@@ -211,8 +211,8 @@ correctly. Context may explain a decision, but it will not silently change one.
 Open entries will identify product or operational questions that still require an authorized
 decision. An open entry is not permission for the implementing engineer to choose an answer.
 
-| ID | Undecided question | Current fixed constraints | Decision owner | Implementation impact |
-|---|---|---|---|---|
+| ID  | Undecided question | Current fixed constraints | Decision owner | Implementation impact |
+| --- | ------------------ | ------------------------- | -------------- | --------------------- |
 
 No portal-experience question identified in the 2026-08-05 direction is implicitly open. The
 choices intentionally left to the lead are recorded as delegated authority below. Any later
@@ -230,12 +230,12 @@ to exercise judgment. Each entry will state:
 5. what remains forbidden or requires a new product decision; and
 6. the observable acceptance boundary for the delegated choice.
 
-| ID | Topic and context | Fixed by this specification | Deliberately delegated judgment | Forbidden or separately decided | Acceptance boundary |
-|---|---|---|---|---|---|
-| `AUTH-UX-01` | Holistic staff-portal redesign | Four top-level destinations, Home landing, familiar work views, staff/domain vocabulary, and every workflow/privacy invariant | Overall experience concept; information hierarchy and page composition beneath the fixed destinations; staff journeys through the workflow; control and interaction patterns; visual language, typography, density, and component form; responsive behavior; loading, empty, failure, stale-data, conflict, success, and recovery experiences; portal-wide coherence; and truthful navigation-badge/count treatment | Removing or renaming fixed destinations/views; changing workflow semantics; creating new line-of-business behavior without a new decision; allowing a load failure to appear as a zero count | The result feels like one coherent staff product, preserves familiar orientation, and passes the fixed workflow and experience checks |
-| `AUTH-HOME-01` | Home as the post-sign-in operational surface | Home remains the landing destination; appointment work is the center of gravity; attention and failures must be represented truthfully; work is shared rather than assigned | Exact composition, summaries, prioritization, useful direct paths, truthful badge/count semantics, and optional quick actions such as privacy-safe bulk print | Invented assignment or SLA; false zero/caught-up states; workflow mutation caused by viewing or printing; unsafe patient-data handling | Staff can understand and enter relevant work directly, error and empty states remain distinct, and every action respects authorization and workflow boundaries |
-| `AUTH-APPT-01` | Appointments workbench redesign | Appointments name; All/New/Contacted/Scheduled/Closed views and mappings; Scheduled staff vocabulary; semantic command and history contracts | View control form and placement, search and filtering composition, information density, card/table/list structure, action presentation, responsive behavior, and visual hierarchy | Removing or relabeling fixed views; rendering `BOOKED` as Booked; persisting `SCHEDULED`; exposing a generic status editor | Staff retain familiar orientation while the redesigned workbench exposes only legal actions and makes attention, state, history, stale data, errors, and success understandable |
-| `AUTH-SUPPORT-01` | Settings and Help within the redesign | Both destinations continue to exist and obey existing authorization and privacy boundaries | Their internal organization, visual polish, relationship to Home, and presentation as supporting portal capabilities | Removing either destination or elevating unsupported settings/help behavior into a new line-of-business workflow | Both remain easy to find, coherent with the portal, and appropriately secondary to Home and Appointments |
+| ID                | Topic and context                            | Fixed by this specification                                                                                                                                                 | Deliberately delegated judgment                                                                                                                                                                                                                                                                                                                                                                                     | Forbidden or separately decided                                                                                                                                                              | Acceptance boundary                                                                                                                                                             |
+| ----------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AUTH-UX-01`      | Holistic staff-portal redesign               | Four top-level destinations, Home landing, familiar work views, staff/domain vocabulary, and every workflow/privacy invariant                                               | Overall experience concept; information hierarchy and page composition beneath the fixed destinations; staff journeys through the workflow; control and interaction patterns; visual language, typography, density, and component form; responsive behavior; loading, empty, failure, stale-data, conflict, success, and recovery experiences; portal-wide coherence; and truthful navigation-badge/count treatment | Removing or renaming fixed destinations/views; changing workflow semantics; creating new line-of-business behavior without a new decision; allowing a load failure to appear as a zero count | The result feels like one coherent staff product, preserves familiar orientation, and passes the fixed workflow and experience checks                                           |
+| `AUTH-HOME-01`    | Home as the post-sign-in operational surface | Home remains the landing destination; appointment work is the center of gravity; attention and failures must be represented truthfully; work is shared rather than assigned | Exact composition, summaries, prioritization, useful direct paths, truthful badge/count semantics, and optional quick actions such as privacy-safe bulk print                                                                                                                                                                                                                                                       | Invented assignment or SLA; false zero/caught-up states; workflow mutation caused by viewing or printing; unsafe patient-data handling                                                       | Staff can understand and enter relevant work directly, error and empty states remain distinct, and every action respects authorization and workflow boundaries                  |
+| `AUTH-APPT-01`    | Appointments workbench redesign              | Appointments name; All/New/Contacted/Scheduled/Closed views and mappings; Scheduled staff vocabulary; semantic command and history contracts                                | View control form and placement, search and filtering composition, information density, card/table/list structure, action presentation, responsive behavior, and visual hierarchy                                                                                                                                                                                                                                   | Removing or relabeling fixed views; rendering `BOOKED` as Booked; persisting `SCHEDULED`; exposing a generic status editor                                                                   | Staff retain familiar orientation while the redesigned workbench exposes only legal actions and makes attention, state, history, stale data, errors, and success understandable |
+| `AUTH-SUPPORT-01` | Settings and Help within the redesign        | Both destinations continue to exist and obey existing authorization and privacy boundaries                                                                                  | Their internal organization, visual polish, relationship to Home, and presentation as supporting portal capabilities                                                                                                                                                                                                                                                                                                | Removing either destination or elevating unsupported settings/help behavior into a new line-of-business workflow                                                                             | Both remain easy to find, coherent with the portal, and appropriately secondary to Home and Appointments                                                                        |
 
 Within the delegated categories above, the absence of a prescribed interface solution is
 intentional authority for the Lead to decide and implement one. Outside those categories,
@@ -275,16 +275,16 @@ telemetry payload, or provider diagnostic.
 
 #### 2.1 Entities and records
 
-| Concept | Ownership and lifecycle |
-|---|---|
-| **Appointment request** | The primary state machine and the portal's unit of work. It begins at intake and resolves as `BOOKED` or `CLOSED`. |
-| **Appointment** | The real booked visit in the practice scheduling system. The portal neither creates a local Appointment entity nor owns its post-booking lifecycle. |
-| **Booking handoff** | Evidence that staff confirmed the booking in the practice scheduling system. It resolves the request as `BOOKED`; it is not an Appointment record. |
-| **Contact attempt** | Append-only evidence of one staff attempt to reach the patient. Repeated attempts do not overwrite prior attempts. |
-| **Appointment request note** | Staff-authored request context. Notes remain distinct from contact attempts and state transitions and continue to appear in Request history. |
-| **Request transition** | Immutable metadata describing one accepted lifecycle command: prior state, resulting state, command, actor, version, and time. It supports accountability but is not the source used to reconstruct current state. |
-| **Notification delivery** | An independent asynchronous outbox lifecycle. Delivery failure does not roll back or change appointment-request state. |
-| **Audit entry** | The metadata-only technical record of a staff or system operation. It remains distinct from staff-facing Request history. |
+| Concept                      | Ownership and lifecycle                                                                                                                                                                                            |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Appointment request**      | The primary state machine and the portal's unit of work. It begins at intake and resolves as `BOOKED` or `CLOSED`.                                                                                                 |
+| **Appointment**              | The real booked visit in the practice scheduling system. The portal neither creates a local Appointment entity nor owns its post-booking lifecycle.                                                                |
+| **Booking handoff**          | Evidence that staff confirmed the booking in the practice scheduling system. It resolves the request as `BOOKED`; it is not an Appointment record.                                                                 |
+| **Contact attempt**          | Append-only evidence of one staff attempt to reach the patient. Repeated attempts do not overwrite prior attempts.                                                                                                 |
+| **Appointment request note** | Staff-authored request context. Notes remain distinct from contact attempts and state transitions and continue to appear in Request history.                                                                       |
+| **Request transition**       | Immutable metadata describing one accepted lifecycle command: prior state, resulting state, command, actor, version, and time. It supports accountability but is not the source used to reconstruct current state. |
+| **Notification delivery**    | An independent asynchronous outbox lifecycle. Delivery failure does not roll back or change appointment-request state.                                                                                             |
+| **Audit entry**              | The metadata-only technical record of a staff or system operation. It remains distinct from staff-facing Request history.                                                                                          |
 
 #### 2.2 Staff language and domain language
 
@@ -427,16 +427,16 @@ every current `scheduled` row is undated.
 
 #### 3.2 Current mutation paths
 
-| Path | Current behavior | Atomicity and side effects |
-|---|---|---|
-| Intake | Validated anonymous intake inserts `requests.status = 'new'`. | The request insert commits before in-band notification fan-out. Notification events are written later. |
-| Call-outcome save | Seven outcomes derive `contacted`, `scheduled`, or `closed` without reading the origin state. | Request fields, outcome event, optional note, and audit row commit in one RPC transaction. |
-| Undo | Restores the snapshot on the latest still-current call-outcome event. | Request, event status, Undo evidence, and audit commit together. The RPC has no time bound; the UI exposes Undo only in the current browser session. |
-| Add note | Appends a note without changing status. | Note and audit commit together. |
-| Generic status set | `portal_update_request_status` accepts every status from every status, clears closure fields, can produce unclassified closures, and writes no request event. | Request and technical audit commit together; the RPC has no application UI caller but remains callable by the service role. |
-| Semantic close | `portal_close_request` closes from any state with a converted/unconverted disposition. | Request and technical audit commit together; it leaves a pre-existing call-again timestamp intact. |
-| Legal hold / deletion / retention | Privileged RPCs manage holds, exceptional deletion, and retention deletion. | Each operation and audit effect is atomic. The retention RPC exists, but nothing in the repository schedules it. |
-| Direct service-role write | Any CHECK-valid request shape can be inserted, updated, or deleted directly. | It bypasses transition and audit policy. |
+| Path                              | Current behavior                                                                                                                                              | Atomicity and side effects                                                                                                                           |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Intake                            | Validated anonymous intake inserts `requests.status = 'new'`.                                                                                                 | The request insert commits before in-band notification fan-out. Notification events are written later.                                               |
+| Call-outcome save                 | Seven outcomes derive `contacted`, `scheduled`, or `closed` without reading the origin state.                                                                 | Request fields, outcome event, optional note, and audit row commit in one RPC transaction.                                                           |
+| Undo                              | Restores the snapshot on the latest still-current call-outcome event.                                                                                         | Request, event status, Undo evidence, and audit commit together. The RPC has no time bound; the UI exposes Undo only in the current browser session. |
+| Add note                          | Appends a note without changing status.                                                                                                                       | Note and audit commit together.                                                                                                                      |
+| Generic status set                | `portal_update_request_status` accepts every status from every status, clears closure fields, can produce unclassified closures, and writes no request event. | Request and technical audit commit together; the RPC has no application UI caller but remains callable by the service role.                          |
+| Semantic close                    | `portal_close_request` closes from any state with a converted/unconverted disposition.                                                                        | Request and technical audit commit together; it leaves a pre-existing call-again timestamp intact.                                                   |
+| Legal hold / deletion / retention | Privileged RPCs manage holds, exceptional deletion, and retention deletion.                                                                                   | Each operation and audit effect is atomic. The retention RPC exists, but nothing in the repository schedules it.                                     |
+| Direct service-role write         | Any CHECK-valid request shape can be inserted, updated, or deleted directly.                                                                                  | It bypasses transition and audit policy.                                                                                                             |
 
 #### 3.3 Current call-outcome transition matrix
 
@@ -444,12 +444,12 @@ The current database RPC accepts all 28 origin-state × outcome combinations. Th
 composer exposes a smaller, inconsistent subset because it excludes the current status as a
 destination.
 
-| Origin | Contact-implying outcome → `contacted` | `booked` → `scheduled` | Closing outcome → `closed` |
-|---|---|---|---|
-| `new` | UI and database allow | UI and database allow | UI and database allow |
-| `contacted` | UI rejects the self-transition; database allows | UI and database allow | UI and database allow |
-| `scheduled` | UI rejects; database allows reopening | UI rejects; database allows another event | UI and database allow |
-| `closed` | UI and database allow reopening | UI and database allow reopening | UI rejects; database allows re-closing |
+| Origin      | Contact-implying outcome → `contacted`          | `booked` → `scheduled`                    | Closing outcome → `closed`             |
+| ----------- | ----------------------------------------------- | ----------------------------------------- | -------------------------------------- |
+| `new`       | UI and database allow                           | UI and database allow                     | UI and database allow                  |
+| `contacted` | UI rejects the self-transition; database allows | UI and database allow                     | UI and database allow                  |
+| `scheduled` | UI rejects; database allows reopening           | UI rejects; database allows another event | UI and database allow                  |
+| `closed`    | UI and database allow reopening                 | UI and database allow reopening           | UI rejects; database allows re-closing |
 
 The generic setter separately permits all ordered status pairs. Consequently, there is no
 server-side legal-transition machine today.
@@ -513,12 +513,12 @@ are rejected without mutation.
 
 #### 4.1 States
 
-| State | Meaning | Terminal for ordinary commands? |
-|---|---|---|
-| `NEW` | Patient-created and not yet worked by staff. Staff owes the next action. | No |
-| `CONTACTED` | Staff-worked and unresolved. The name does not claim the patient was reached. Staff may record another attempt or resolve the request. | No |
-| `BOOKED` | Staff confirmed booking handoff in the practice scheduling system. The request is successfully resolved. | Yes |
-| `CLOSED` | The request was resolved without booking. | Yes |
+| State       | Meaning                                                                                                                                | Terminal for ordinary commands? |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `NEW`       | Patient-created and not yet worked by staff. Staff owes the next action.                                                               | No                              |
+| `CONTACTED` | Staff-worked and unresolved. The name does not claim the patient was reached. Staff may record another attempt or resolve the request. | No                              |
+| `BOOKED`    | Staff confirmed booking handoff in the practice scheduling system. The request is successfully resolved.                               | Yes                             |
+| `CLOSED`    | The request was resolved without booking.                                                                                              | Yes                             |
 
 The graph is:
 
@@ -726,15 +726,15 @@ Until classification, the row remains visible for review and ineligible for auto
 The pure transition decision returns domain facts. The imperative shell persists those facts in
 the appropriate append-only record within the same transaction as current state.
 
-| Accepted command/operation | Required fact |
-|---|---|
-| Intake creation | `AppointmentRequestCreated` |
-| `RecordContactAttempt` | `ContactAttemptRecorded` |
-| `ConfirmBookingHandoff` | `BookingHandoffConfirmed` |
-| `CloseRequest` | `AppointmentRequestClosed` |
-| `ReopenRequest` | `AppointmentRequestReopened` |
-| `UndoLatestTransition` | `AppointmentRequestTransitionUndone` referencing the compensated transition |
-| `ClassifyLegacyClosure` | `LegacyClosureClassified` |
+| Accepted command/operation | Required fact                                                               |
+| -------------------------- | --------------------------------------------------------------------------- |
+| Intake creation            | `AppointmentRequestCreated`                                                 |
+| `RecordContactAttempt`     | `ContactAttemptRecorded`                                                    |
+| `ConfirmBookingHandoff`    | `BookingHandoffConfirmed`                                                   |
+| `CloseRequest`             | `AppointmentRequestClosed`                                                  |
+| `ReopenRequest`            | `AppointmentRequestReopened`                                                |
+| `UndoLatestTransition`     | `AppointmentRequestTransitionUndone` referencing the compensated transition |
+| `ClassifyLegacyClosure`    | `LegacyClosureClassified`                                                   |
 
 Each accepted lifecycle command also appends exactly one request-transition envelope containing:
 
@@ -799,18 +799,18 @@ command writes current state, transition history, audit evidence, or outbox work
 
 #### 7.3 Enforcement layers
 
-| Invariant type | Required enforcement |
-|---|---|
-| Legal state × command transition | Pure domain transition function, called by every mutation adapter |
-| Role and active-staff policy | Server application policy before the command; database interface unavailable to public roles |
-| State vocabulary and coherent terminal/attention shape | Postgres CHECK constraints |
-| One accepted command key and one resulting version | Postgres UNIQUE constraints |
-| Atomic current state + transition + audit + outbox | One short Postgres transaction / atomic RPC |
-| Stale staff view | Conditional optimistic version update |
-| Actor attribution | Authenticated server context passed through the sole command authority |
-| Immutable history | No UPDATE/DELETE capability for ordinary application roles; corrective facts append |
-| Commit before notify | Transactional outbox; workers can claim only committed rows |
-| PHI-free external effects | Application payload construction plus database caps/allowlists where representable |
+| Invariant type                                         | Required enforcement                                                                         |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| Legal state × command transition                       | Pure domain transition function, called by every mutation adapter                            |
+| Role and active-staff policy                           | Server application policy before the command; database interface unavailable to public roles |
+| State vocabulary and coherent terminal/attention shape | Postgres CHECK constraints                                                                   |
+| One accepted command key and one resulting version     | Postgres UNIQUE constraints                                                                  |
+| Atomic current state + transition + audit + outbox     | One short Postgres transaction / atomic RPC                                                  |
+| Stale staff view                                       | Conditional optimistic version update                                                        |
+| Actor attribution                                      | Authenticated server context passed through the sole command authority                       |
+| Immutable history                                      | No UPDATE/DELETE capability for ordinary application roles; corrective facts append          |
+| Commit before notify                                   | Transactional outbox; workers can claim only committed rows                                  |
+| PHI-free external effects                              | Application payload construction plus database caps/allowlists where representable           |
 
 RLS remains enabled on application tables in exposed schemas. Public, anonymous, and ordinary
 authenticated roles receive no direct mutation path. Atomic functions remain narrowly granted
@@ -822,13 +822,13 @@ and `SECURITY INVOKER` unless a separately reviewed privilege boundary proves ot
 `illegal_transition` with no writes. `guarded` means the command is exceptional and must satisfy
 its dedicated guards.
 
-| Current state | Record contact attempt | Scheduled / confirm booking handoff | Close: not actionable | Close: will not schedule | Reopen | Undo latest | Classify legacy closure |
-|---|---|---|---|---|---|---|---|
-| `NEW` | ✓ → `CONTACTED` | ✓ → `BOOKED` | ✓ → `CLOSED` | — | — | guarded | — |
-| `CONTACTED` | ✓ → `CONTACTED` | ✓ → `BOOKED` | ✓ → `CLOSED` | ✓ → `CLOSED` | — | guarded | — |
-| `BOOKED` | — | — | — | — | ✓ → `CONTACTED` | guarded | — |
-| `CLOSED` | — | — | — | — | ✓ → `CONTACTED` | guarded | — |
-| `CLOSED` + legacy review | — | — | — | — | — | — | guarded → `BOOKED` or normal `CLOSED` |
+| Current state            | Record contact attempt | Scheduled / confirm booking handoff | Close: not actionable | Close: will not schedule | Reopen          | Undo latest | Classify legacy closure               |
+| ------------------------ | ---------------------- | ----------------------------------- | --------------------- | ------------------------ | --------------- | ----------- | ------------------------------------- |
+| `NEW`                    | ✓ → `CONTACTED`        | ✓ → `BOOKED`                        | ✓ → `CLOSED`          | —                        | —               | guarded     | —                                     |
+| `CONTACTED`              | ✓ → `CONTACTED`        | ✓ → `BOOKED`                        | ✓ → `CLOSED`          | ✓ → `CLOSED`             | —               | guarded     | —                                     |
+| `BOOKED`                 | —                      | —                                   | —                     | —                        | ✓ → `CONTACTED` | guarded     | —                                     |
+| `CLOSED`                 | —                      | —                                   | —                     | —                        | ✓ → `CONTACTED` | guarded     | —                                     |
+| `CLOSED` + legacy review | —                      | —                                   | —                     | —                        | —               | —           | guarded → `BOOKED` or normal `CLOSED` |
 
 The initial creation edge is `∅ → NEW`. Deletion is a data-lifecycle operation, not a request
 state. Legal hold does not add a state or alter this matrix.
@@ -1027,20 +1027,20 @@ The inverse order—notify before commit—is forbidden.
 
 The build uses complementary, deliberately conservative patterns:
 
-| Concern | Required baseline |
-|---|---|
-| Domain behavior | Explicit finite state machine |
-| Domain implementation | Functional core |
-| Application orchestration | Imperative shell |
-| Boundaries | Lightweight hexagonal ports and adapters |
-| Current reads | Ordinary relational queries |
-| Persistence | Postgres current-state request row |
-| History | Append-only request-transition log plus existing typed evidence |
-| Concurrency | Optimistic versioning, backed by atomic database writes |
-| Atomicity | Short Postgres transaction / atomic RPC |
-| Retries | Durable per-request command idempotency |
-| External effects | Transactional outbox |
-| Authorization | Server application policy plus closed database privileges and constraints |
+| Concern                   | Required baseline                                                         |
+| ------------------------- | ------------------------------------------------------------------------- |
+| Domain behavior           | Explicit finite state machine                                             |
+| Domain implementation     | Functional core                                                           |
+| Application orchestration | Imperative shell                                                          |
+| Boundaries                | Lightweight hexagonal ports and adapters                                  |
+| Current reads             | Ordinary relational queries                                               |
+| Persistence               | Postgres current-state request row                                        |
+| History                   | Append-only request-transition log plus existing typed evidence           |
+| Concurrency               | Optimistic versioning, backed by atomic database writes                   |
+| Atomicity                 | Short Postgres transaction / atomic RPC                                   |
+| Retries                   | Durable per-request command idempotency                                   |
+| External effects          | Transactional outbox                                                      |
+| Authorization             | Server application policy plus closed database privileges and constraints |
 
 #### 12.1 Ports and adapters
 
@@ -1107,14 +1107,14 @@ facts.
 
 #### 14.1 State mapping
 
-| Existing row | To-be row | Migration treatment |
-|---|---|---|
-| `new` | `NEW` | Preserve request and creation time; clear impossible terminal/attention combinations under reviewed repair rules. |
-| `contacted` | `CONTACTED` | Preserve valid current call-again data and append-only historic outcomes. |
-| `scheduled` | `BOOKED` | Treat existing status as known booking resolution. Do not invent a visit date/time or historical booking-handoff timestamp. Append booking-handoff evidence marked as migration provenance at migration time; that evidence satisfies the BOOKED shape invariant while making no claim about when the historic booking occurred. Start the conservative retention clock no earlier than migration. |
-| `closed` + converted | `BOOKED` | Preserve known record-handoff evidence as booking-handoff/retention evidence; preserve historic closure facts as migration provenance, not current closure state. |
-| `closed` + unconverted | `CLOSED` | Preserve closure time and typed unbooked evidence. |
-| `closed` + no classification | `CLOSED` + legacy review | Preserve the row, add an explicit review warning/flag, and exclude it from automatic deletion until `ClassifyLegacyClosure` succeeds. |
+| Existing row                 | To-be row                | Migration treatment                                                                                                                                                                                                                                                                                                                                                                                |
+| ---------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `new`                        | `NEW`                    | Preserve request and creation time; clear impossible terminal/attention combinations under reviewed repair rules.                                                                                                                                                                                                                                                                                  |
+| `contacted`                  | `CONTACTED`              | Preserve valid current call-again data and append-only historic outcomes.                                                                                                                                                                                                                                                                                                                          |
+| `scheduled`                  | `BOOKED`                 | Treat existing status as known booking resolution. Do not invent a visit date/time or historical booking-handoff timestamp. Append booking-handoff evidence marked as migration provenance at migration time; that evidence satisfies the BOOKED shape invariant while making no claim about when the historic booking occurred. Start the conservative retention clock no earlier than migration. |
+| `closed` + converted         | `BOOKED`                 | Preserve known record-handoff evidence as booking-handoff/retention evidence; preserve historic closure facts as migration provenance, not current closure state.                                                                                                                                                                                                                                  |
+| `closed` + unconverted       | `CLOSED`                 | Preserve closure time and typed unbooked evidence.                                                                                                                                                                                                                                                                                                                                                 |
+| `closed` + no classification | `CLOSED` + legacy review | Preserve the row, add an explicit review warning/flag, and exclude it from automatic deletion until `ClassifyLegacyClosure` succeeds.                                                                                                                                                                                                                                                              |
 
 All non-`CONTACTED` rows finish migration without live call-again data. Existing request notes,
 contact outcomes, receipts, notification evidence, legal holds, and technical audits remain
@@ -1159,24 +1159,24 @@ Rollback never deletes audit or transition evidence to recreate a pre-migration 
 
 ### 15. Repair list: as-is → to-be
 
-| As-is defect | Required repair |
-|---|---|
-| Transition policy exists only in the client composer | Put the partial transition function in one server-invoked domain core and cover every matrix cell. |
-| All outcome × origin combinations are accepted by the RPC | Reject illegal origin/command pairs before persistence and back them with coherent database shapes. |
-| `CONTACTED → CONTACTED` is hidden in the UI | Make repeated contact attempts a first-class legal command with append-only evidence. |
-| `SCHEDULED` claims a request state but no Appointment exists | Map it to internal `BOOKED`; keep Scheduled as the familiar staff-facing action and status label; create no portal Appointment. |
+| As-is defect                                                       | Required repair                                                                                                                                       |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Transition policy exists only in the client composer               | Put the partial transition function in one server-invoked domain core and cover every matrix cell.                                                    |
+| All outcome × origin combinations are accepted by the RPC          | Reject illegal origin/command pairs before persistence and back them with coherent database shapes.                                                   |
+| `CONTACTED → CONTACTED` is hidden in the UI                        | Make repeated contact attempts a first-class legal command with append-only evidence.                                                                 |
+| `SCHEDULED` claims a request state but no Appointment exists       | Map it to internal `BOOKED`; keep Scheduled as the familiar staff-facing action and status label; create no portal Appointment.                       |
 | `scheduled_transferred` closes a request despite proving a booking | Retire the outcome as a closure path; compile both current booking outcomes into `ConfirmBookingHandoff → BOOKED` while preserving historic evidence. |
-| Generic status RPC can create unclassified closures | Retire it; expose only semantic commands and a dedicated legacy review path. |
-| Terminal rows may retain call-again data | Enforce the CONTACTED-only invariant in domain policy and database constraints; clear it during migration. |
-| Concurrent saves are last-writer-wins | Require expected version and fail the stale command without partial effects. |
-| Repeated commands duplicate events | Store durable idempotent command results under a database uniqueness constraint. |
-| RPC actor is caller-attested email | Bind actor ID from authenticated server context at the sole mutation boundary. |
-| Undo is session-local and temporally unbounded | Make latest-transition eligibility durable and enforce the decided Undo bound; append compensation rather than rewriting history. |
-| Intake notifications have a crash window | Insert PHI-free outbox intent in the same transaction as request creation and send only after commit. |
-| Delivery evidence can disappear after provider acceptance | Use stable provider idempotency and a durable outbox result/retry lifecycle. |
-| Legacy unclassified closures never age and lack a safe resolution | Migrate as visible review-required CLOSED rows; classify through one versioned, idempotent command. |
-| Retention RPC has no motor | Provision, authorize, monitor, and verify scheduled execution before calling retention operational. |
-| Direct service-role writes bypass history | Restrict ordinary tools to semantic interfaces; reserve tightly reviewed migration/repair paths that append provenance. |
+| Generic status RPC can create unclassified closures                | Retire it; expose only semantic commands and a dedicated legacy review path.                                                                          |
+| Terminal rows may retain call-again data                           | Enforce the CONTACTED-only invariant in domain policy and database constraints; clear it during migration.                                            |
+| Concurrent saves are last-writer-wins                              | Require expected version and fail the stale command without partial effects.                                                                          |
+| Repeated commands duplicate events                                 | Store durable idempotent command results under a database uniqueness constraint.                                                                      |
+| RPC actor is caller-attested email                                 | Bind actor ID from authenticated server context at the sole mutation boundary.                                                                        |
+| Undo is session-local and temporally unbounded                     | Make latest-transition eligibility durable and enforce the decided Undo bound; append compensation rather than rewriting history.                     |
+| Intake notifications have a crash window                           | Insert PHI-free outbox intent in the same transaction as request creation and send only after commit.                                                 |
+| Delivery evidence can disappear after provider acceptance          | Use stable provider idempotency and a durable outbox result/retry lifecycle.                                                                          |
+| Legacy unclassified closures never age and lack a safe resolution  | Migrate as visible review-required CLOSED rows; classify through one versioned, idempotent command.                                                   |
+| Retention RPC has no motor                                         | Provision, authorize, monitor, and verify scheduled execution before calling retention operational.                                                   |
+| Direct service-role writes bypass history                          | Restrict ordinary tools to semantic interfaces; reserve tightly reviewed migration/repair paths that append provenance.                               |
 
 ---
 

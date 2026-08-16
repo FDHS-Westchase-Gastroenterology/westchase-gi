@@ -4,9 +4,7 @@ export const PORTAL_RELEASE_BRIEFING = {
   guideHref: "/admin/help#appointment-workflow-guide",
 } as const;
 
-export type {
-  PortalReleaseState as PortalReleaseViewState,
-} from "./release-state";
+export type { PortalReleaseState as PortalReleaseViewState } from "./release-state";
 
 export function isPortalReleaseEligible(onboardedAt: string): boolean {
   const onboarded = Date.parse(onboardedAt);

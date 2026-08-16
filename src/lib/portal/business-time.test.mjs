@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+
 import {
   arrivedOutsideOfficeHours,
   previousBusinessMorningBoundary,
@@ -78,17 +79,17 @@ test("resolveFollowUpAt uses EST offsets in January", () => {
 
 test("resolveFollowUpAt friday-on-friday jumps one week", () => {
   const friday = new Date("2026-07-24T14:00:00Z"); // Fri 10:00 AM EDT
-  assert.equal(
-    resolveFollowUpAt({ kind: "friday" }, friday),
-    "2026-07-31T13:00:00.000Z",
-  );
+  assert.equal(resolveFollowUpAt({ kind: "friday" }, friday), "2026-07-31T13:00:00.000Z");
 });
 
 test("resolveFollowUpAt rejects past, far-future, and malformed days", () => {
   const now = new Date("2026-07-28T15:00:00Z");
   assert.equal(resolveFollowUpAt({ kind: "day", date: "2026-07-27" }, now), null);
   assert.equal(resolveFollowUpAt({ kind: "day", date: "2026-10-27" }, now), null); // 91 days
-  assert.equal(resolveFollowUpAt({ kind: "day", date: "2026-10-26" }, now), "2026-10-26T13:00:00.000Z"); // 90 days
+  assert.equal(
+    resolveFollowUpAt({ kind: "day", date: "2026-10-26" }, now),
+    "2026-10-26T13:00:00.000Z",
+  ); // 90 days
   assert.equal(resolveFollowUpAt({ kind: "day", date: "2026-02-30" }, now), null);
   assert.equal(resolveFollowUpAt({ kind: "day", date: "07/29/2026" }, now), null);
   assert.equal(resolveFollowUpAt({ kind: "day", date: "not-a-date" }, now), null);

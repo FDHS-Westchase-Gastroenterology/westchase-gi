@@ -1,17 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+
+import { ArrowRight } from "@/components/icons";
+import { PageHero } from "@/components/PageHero";
+import { Reveal } from "@/components/Reveal";
+import { TextBand } from "@/components/TextBand";
+import { educationByGroup } from "@/lib/content/education";
+import type { EducationTopic } from "@/lib/content/types";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
 import { localePath } from "@/lib/site";
 import type { Locale } from "@/lib/site";
-import { educationByGroup } from "@/lib/content/education";
-import type { EducationTopic } from "@/lib/content/types";
-import { PageHero } from "@/components/PageHero";
-import { Reveal } from "@/components/Reveal";
-import { TextBand } from "@/components/TextBand";
-import { ArrowRight } from "@/components/icons";
 
-interface PageProps { params: Promise<{ locale: string }> }
+interface PageProps {
+  params: Promise<{ locale: string }>;
+}
 
 export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
@@ -21,7 +24,7 @@ export async function generateMetadata({ params }: Readonly<PageProps>): Promise
     locale,
     "/patient-education",
     dict.meta.patientEducation.title,
-    dict.meta.patientEducation.description
+    dict.meta.patientEducation.description,
   );
 }
 
@@ -36,7 +39,7 @@ function TopicList({ topics, locale }: Readonly<{ topics: EducationTopic[]; loca
             className="group flex items-baseline justify-between gap-6 py-4.5"
           >
             <span className="min-w-0">
-              <span className="block font-[var(--font-display)] text-[1.15rem] leading-snug text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
+              <span className="block text-[1.15rem] leading-snug font-[var(--font-display)] text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
                 {topic.title[locale]}
               </span>
               <span className="measure mt-1 block text-[0.95rem] text-[var(--color-body)]">

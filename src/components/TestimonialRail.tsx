@@ -1,7 +1,9 @@
 "use client";
 
 import { useRef } from "react";
+
 import { testimonials } from "@/lib/testimonials";
+
 import { ChevronLeft, ChevronRight, Star } from "./icons";
 
 interface TestimonialRailProps {
@@ -53,7 +55,9 @@ export function TestimonialRail({ label, prevLabel, nextLabel }: Readonly<Testim
       <div className="container-x mt-5 flex gap-2">
         <button
           type="button"
-          onClick={() => { scroll(-1); }}
+          onClick={() => {
+            scroll(-1);
+          }}
           aria-label={prevLabel}
           className="rounded-full border-[1.5px] border-[var(--color-line-2)] p-2.5 transition-colors hover:border-[var(--color-navy)] hover:bg-white"
         >
@@ -61,7 +65,9 @@ export function TestimonialRail({ label, prevLabel, nextLabel }: Readonly<Testim
         </button>
         <button
           type="button"
-          onClick={() => { scroll(1); }}
+          onClick={() => {
+            scroll(1);
+          }}
           aria-label={nextLabel}
           className="rounded-full border-[1.5px] border-[var(--color-line-2)] p-2.5 transition-colors hover:border-[var(--color-navy)] hover:bg-white"
         >

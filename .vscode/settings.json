@@ -2,5 +2,16 @@
   "eslint.enable": false,
   "oxc.configPath": ".oxlintrc.json",
   "oxc.disableNestedConfig": true,
-  "oxc.enable.oxlint": true
+  "oxc.enable.oxlint": true,
+  "oxc.enable.oxfmt": true,
+  "oxc.fmt.disableNestedConfig": true,
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "editor.formatOnSave": true,
+  "editor.formatOnSaveMode": "file",
+  "[markdown]": {
+    "editor.formatOnSave": false
+  },
+  "[sql]": {
+    "editor.formatOnSave": false
+  }
 }

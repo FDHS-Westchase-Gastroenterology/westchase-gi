@@ -1,19 +1,32 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { site, localePath, locales, localeNames, pathInLocale } from "@/lib/site";
-import type { Locale } from "@/lib/site";
+import { useEffect, useRef, useState } from "react";
+
 import type { Dictionary } from "@/lib/i18n";
 import { LANGUAGE_TRIGGER_ID, rememberLocale } from "@/lib/locale-preference";
+import { site, localePath, locales, localeNames, pathInLocale } from "@/lib/site";
+import type { Locale } from "@/lib/site";
+
 import { Check, ChevronDown, ExternalLink, Globe, Menu, MessageSquare, Phone, X } from "./icons";
 
-interface HeaderProps { locale: Locale; dict: Dictionary }
+interface HeaderProps {
+  locale: Locale;
+  dict: Dictionary;
+}
 
-interface NavChild { label: string; href: string; external?: boolean }
-interface NavGroup { label: string; href?: string; children?: NavChild[] }
+interface NavChild {
+  label: string;
+  href: string;
+  external?: boolean;
+}
+interface NavGroup {
+  label: string;
+  href?: string;
+  children?: NavChild[];
+}
 
 function buildNav(locale: Locale, dict: Readonly<Dictionary>): NavGroup[] {
   const n = dict.common.nav;
@@ -86,13 +99,19 @@ function LanguageMenu({ locale, label }: Readonly<{ locale: Locale; label: strin
         aria-expanded={open}
         aria-haspopup="true"
         aria-label={label}
-        onClick={() => { setOpen(!open); }}
-        className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[color-mix(in_oklch,white_38%,transparent)] bg-[color-mix(in_oklch,white_12%,transparent)] px-3 py-1 transition-colors hover:border-[color-mix(in_oklch,white_60%,transparent)] hover:bg-[color-mix(in_oklch,white_22%,transparent)]"
+        onClick={() => {
+          setOpen(!open);
+        }}
+        className="flex items-center gap-1.5 rounded-full border border-[color-mix(in_oklch,white_38%,transparent)] bg-[color-mix(in_oklch,white_12%,transparent)] px-3 py-1 whitespace-nowrap transition-colors hover:border-[color-mix(in_oklch,white_60%,transparent)] hover:bg-[color-mix(in_oklch,white_22%,transparent)]"
       >
         <Globe className="h-3.5 w-3.5 flex-none text-[var(--color-amber)]" />
-        <span className="hidden font-normal text-[var(--color-on-dark-muted)] md:inline">{label}:</span>
+        <span className="hidden font-normal text-[var(--color-on-dark-muted)] md:inline">
+          {label}:
+        </span>
         {localeNames[locale]}
-        <ChevronDown className={`h-3.5 w-3.5 flex-none transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        <ChevronDown
+          className={`h-3.5 w-3.5 flex-none transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+        />
       </button>
       {open && (
         <div className="absolute end-0 top-full z-[var(--z-dropdown)] mt-2 w-48 rounded-[var(--radius-md)] bg-white p-1.5 shadow-[var(--shadow-card)]">
@@ -100,7 +119,9 @@ function LanguageMenu({ locale, label }: Readonly<{ locale: Locale; label: strin
             <Link
               key={l}
               href={pathInLocale(pathname, l)}
-              onClick={() => { rememberLocale(l); }}
+              onClick={() => {
+                rememberLocale(l);
+              }}
               lang={l}
               aria-current={l === locale ? "true" : undefined}
               className={`flex items-center justify-between gap-2 rounded-md px-3 py-2 font-semibold transition-colors hover:bg-[var(--color-mint)] ${
@@ -176,11 +197,17 @@ export function Header({ locale, dict }: Readonly<HeaderProps>) {
       <div className="bg-[var(--color-navy-2)] text-[var(--color-on-dark)]">
         <div className="container-x flex h-10 items-center justify-between gap-3 text-[0.88rem] font-semibold">
           <div className="flex min-w-0 items-center gap-4">
-            <a href={site.phone.href} className="flex items-center gap-1.5 transition-opacity hover:opacity-80">
+            <a
+              href={site.phone.href}
+              className="flex items-center gap-1.5 transition-opacity hover:opacity-80"
+            >
               <Phone className="h-3.5 w-3.5 text-[var(--color-amber)]" />
               <span className="bidi-ltr whitespace-nowrap">{site.phone.display}</span>
             </a>
-            <a href={site.textLine.href} className="flex min-w-0 items-center gap-1.5 transition-opacity hover:opacity-80">
+            <a
+              href={site.textLine.href}
+              className="flex min-w-0 items-center gap-1.5 transition-opacity hover:opacity-80"
+            >
               <MessageSquare className="h-3.5 w-3.5 flex-none text-[var(--color-amber)]" />
               <span className="truncate">
                 <span className="hidden sm:inline">{c.textLine}: </span>
@@ -212,7 +239,11 @@ export function Header({ locale, dict }: Readonly<HeaderProps>) {
           the new height. */}
       <div className="border-b border-[var(--color-line)] bg-white/95 backdrop-blur-sm">
         <div className="container-x flex h-[5.5rem] items-center justify-between gap-3 lg:h-24">
-          <Link href={localePath(locale, "/")} className="flex min-w-0 items-center gap-3.5" aria-label={site.headerName}>
+          <Link
+            href={localePath(locale, "/")}
+            className="flex min-w-0 items-center gap-3.5"
+            aria-label={site.headerName}
+          >
             {/* The FDHS header logo, byte-exact from the practice (keep-list). */}
             <Image
               src="/images/brand/header-logo-fdhs.webp"
@@ -223,7 +254,7 @@ export function Header({ locale, dict }: Readonly<HeaderProps>) {
               className="h-14 w-auto flex-none sm:h-[4.25rem]"
             />
             <span className="min-w-0 leading-tight">
-              <span className="bidi-ltr block truncate font-[var(--font-display)] text-[1.05rem] text-[var(--color-navy)] sm:text-[1.2rem]">
+              <span className="bidi-ltr block truncate text-[1.05rem] font-[var(--font-display)] text-[var(--color-navy)] sm:text-[1.2rem]">
                 Westchase Gastroenterology
               </span>
               <span className="bidi-ltr block truncate text-[0.72rem] font-bold tracking-[0.01em] text-[var(--color-teal-ink)] sm:text-[0.8rem]">
@@ -239,8 +270,10 @@ export function Header({ locale, dict }: Readonly<HeaderProps>) {
                   <button
                     type="button"
                     aria-expanded={open === i}
-                    onClick={() => { setOpen(open === i ? null : i); }}
-                    className={`flex items-center gap-1 whitespace-nowrap rounded-md px-2.5 py-2 font-bold text-[0.98rem] transition-colors hover:bg-[var(--color-mint)] ${
+                    onClick={() => {
+                      setOpen(open === i ? null : i);
+                    }}
+                    className={`flex items-center gap-1 rounded-md px-2.5 py-2 text-[0.98rem] font-bold whitespace-nowrap transition-colors hover:bg-[var(--color-mint)] ${
                       open === i ? "bg-[var(--color-mint)]" : ""
                     }`}
                   >
@@ -273,7 +306,7 @@ export function Header({ locale, dict }: Readonly<HeaderProps>) {
                           >
                             {child.label}
                           </Link>
-                        )
+                        ),
                       )}
                     </div>
                   )}
@@ -282,13 +315,13 @@ export function Header({ locale, dict }: Readonly<HeaderProps>) {
                 <Link
                   key={item.label}
                   href={item.href!}
-                  className={`whitespace-nowrap rounded-md px-2.5 py-2 font-bold text-[0.98rem] transition-colors hover:bg-[var(--color-mint)] ${
+                  className={`rounded-md px-2.5 py-2 text-[0.98rem] font-bold whitespace-nowrap transition-colors hover:bg-[var(--color-mint)] ${
                     pathname === item.href ? "text-[var(--color-teal-ink)]" : ""
                   }`}
                 >
                   {item.label}
                 </Link>
-              )
+              ),
             )}
             <Link href={localePath(locale, "/appointment")} className="btn btn-amber btn-sm ms-2">
               {c.requestAppointment}
@@ -300,7 +333,9 @@ export function Header({ locale, dict }: Readonly<HeaderProps>) {
             className="rounded-md p-2 transition-colors hover:bg-[var(--color-mint)] xl:hidden"
             aria-expanded={drawer}
             aria-label={drawer ? c.close : c.menu}
-            onClick={() => { setDrawer(!drawer); }}
+            onClick={() => {
+              setDrawer(!drawer);
+            }}
           >
             {drawer ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
@@ -309,7 +344,7 @@ export function Header({ locale, dict }: Readonly<HeaderProps>) {
 
       {/* Mobile drawer (offset = utility bar 2.5rem + main bar 5.5rem) */}
       {drawer && (
-        <div className="fixed inset-x-0 bottom-0 top-[8rem] z-[var(--z-drawer)] overflow-y-auto bg-white xl:hidden">
+        <div className="fixed inset-x-0 top-[8rem] bottom-0 z-[var(--z-drawer)] overflow-y-auto bg-white xl:hidden">
           <nav className="container-x flex flex-col gap-1 py-5" aria-label={c.menu}>
             <Link
               href={localePath(locale, "/")}
@@ -320,7 +355,7 @@ export function Header({ locale, dict }: Readonly<HeaderProps>) {
             {nav.map((item) =>
               item.children ? (
                 <div key={item.label} className="mt-1">
-                  <p className="px-3 pb-1 pt-3 text-[0.8rem] font-extrabold uppercase tracking-wide text-[var(--color-muted)]">
+                  <p className="px-3 pt-3 pb-1 text-[0.8rem] font-extrabold tracking-wide text-[var(--color-muted)] uppercase">
                     {item.label}
                   </p>
                   {item.children.map((child) =>
@@ -343,7 +378,7 @@ export function Header({ locale, dict }: Readonly<HeaderProps>) {
                       >
                         {child.label}
                       </Link>
-                    )
+                    ),
                   )}
                 </div>
               ) : (
@@ -354,7 +389,7 @@ export function Header({ locale, dict }: Readonly<HeaderProps>) {
                 >
                   {item.label}
                 </Link>
-              )
+              ),
             )}
             <a
               href={site.links.portal}

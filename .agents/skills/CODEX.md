@@ -8,14 +8,14 @@ outside the repository does not exist for a cloud task.
 Discovery is progressive. An agent sees each skill's name and description first and reads the full
 `SKILL.md` only when it decides the skill applies, so the cost of keeping several here is small.
 
-| Skill | Origin | Declared version | License |
-|---|---|---|---|
-| `install-anti-slop` | [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop) | Not declared | MIT |
-| `react-doctor` | [react.doctor](https://www.react.doctor), already in this repository | 1.2.0 | Not declared |
-| `supabase` | [supabase/agent-skills](https://github.com/supabase/agent-skills) | 0.1.2 | Vendor-published |
-| `supabase-postgres-best-practices` | [supabase/agent-skills](https://github.com/supabase/agent-skills) | 1.1.1 | MIT |
-| `vercel-react-best-practices` | Vercel Engineering | 1.0.0 | MIT |
-| `writing-quality` | [vercel-labs/eve-software-factory-template](https://github.com/vercel-labs/eve-software-factory-template/tree/main/agent/skills/writing-quality) | Not declared (`4cb890e`) | MIT |
+| Skill                              | Origin                                                                                                                                           | Declared version         | License          |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------ | ---------------- |
+| `install-anti-slop`                | [dmmulroy/anti-slop](https://github.com/dmmulroy/anti-slop)                                                                                      | Not declared             | MIT              |
+| `react-doctor`                     | [react.doctor](https://www.react.doctor), already in this repository                                                                             | 1.2.0                    | Not declared     |
+| `supabase`                         | [supabase/agent-skills](https://github.com/supabase/agent-skills)                                                                                | 0.1.2                    | Vendor-published |
+| `supabase-postgres-best-practices` | [supabase/agent-skills](https://github.com/supabase/agent-skills)                                                                                | 1.1.1                    | MIT              |
+| `vercel-react-best-practices`      | Vercel Engineering                                                                                                                               | 1.0.0                    | MIT              |
+| `writing-quality`                  | [vercel-labs/eve-software-factory-template](https://github.com/vercel-labs/eve-software-factory-template/tree/main/agent/skills/writing-quality) | Not declared (`4cb890e`) | MIT              |
 
 ## Precedence
 

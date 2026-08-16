@@ -1,8 +1,11 @@
+import type { Dictionary } from "@/lib/i18n";
 import { formatOfficeHours, site } from "@/lib/site";
 import type { Locale } from "@/lib/site";
-import type { Dictionary } from "@/lib/i18n";
 
-interface HoursTableProps { locale: Locale; dict: Dictionary }
+interface HoursTableProps {
+  locale: Locale;
+  dict: Dictionary;
+}
 
 /** Full weekly schedule, with the confirmed hours for each office. */
 export function HoursTable({ locale, dict }: Readonly<HoursTableProps>) {
@@ -10,12 +13,10 @@ export function HoursTable({ locale, dict }: Readonly<HoursTableProps>) {
   return (
     <div className="card-lined overflow-hidden">
       <div className="border-b border-[var(--color-line)] bg-[var(--color-mint)] px-6 py-4">
-        <h3 className="font-[var(--font-body)] text-base font-extrabold text-[var(--color-ink)]">
+        <h3 className="text-base font-[var(--font-body)] font-extrabold text-[var(--color-ink)]">
           {c.hours.heading}
         </h3>
-        <p className="text-[0.9rem] text-[var(--color-muted)]">
-          {c.hours.subheading}
-        </p>
+        <p className="text-[0.9rem] text-[var(--color-muted)]">{c.hours.subheading}</p>
       </div>
       <div className="grid divide-y divide-[var(--color-line)] md:grid-cols-2 md:divide-x md:divide-y-0">
         {site.locations.map((loc) => (

@@ -1,5 +1,7 @@
 import Link from "next/link";
+
 import { AuthCard } from "@/app/admin/auth-card";
+
 import { ConfirmAuthForm } from "./confirm-form";
 
 export default function ConfirmAuthPage() {

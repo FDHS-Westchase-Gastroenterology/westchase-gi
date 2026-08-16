@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ElementType, ReactNode } from "react";
+
 import type { RevealDelay } from "./reveal-delay";
 
 interface RevealProps {
@@ -33,8 +34,12 @@ export function Reveal({
     const el = ref.current;
     if (!el) return undefined;
     if (!("IntersectionObserver" in globalThis)) {
-      const raf = requestAnimationFrame(() => { setShown(true); });
-      return () => { cancelAnimationFrame(raf); };
+      const raf = requestAnimationFrame(() => {
+        setShown(true);
+      });
+      return () => {
+        cancelAnimationFrame(raf);
+      };
     }
     const io = new IntersectionObserver(
       (entries) => {
@@ -45,10 +50,12 @@ export function Reveal({
           }
         }
       },
-      { threshold: 0.12, rootMargin: "0px 0px -6% 0px" }
+      { threshold: 0.12, rootMargin: "0px 0px -6% 0px" },
     );
     io.observe(el);
-    const failsafe = window.setTimeout(() => { setShown(true); }, 1500);
+    const failsafe = window.setTimeout(() => {
+      setShown(true);
+    }, 1500);
     return () => {
       io.disconnect();
       window.clearTimeout(failsafe);

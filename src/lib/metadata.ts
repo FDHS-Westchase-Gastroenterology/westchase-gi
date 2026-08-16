@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+
 import { site, locales, localePath } from "./site";
 import type { Locale } from "./site";
 
@@ -17,7 +18,7 @@ export function pageMetadata(
   locale: Locale,
   path: string,
   title: string,
-  description: string
+  description: string,
 ): Metadata {
   const canonical = localePath(locale, path);
   return {

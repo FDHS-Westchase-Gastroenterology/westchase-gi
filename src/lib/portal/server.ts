@@ -18,10 +18,7 @@ function supabaseUrl(): string {
 }
 
 function publishableKey(): string {
-  return requiredEnv([
-    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-  ]);
+  return requiredEnv(["NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "NEXT_PUBLIC_SUPABASE_ANON_KEY"]);
 }
 
 /**
@@ -37,12 +34,7 @@ export function serviceRoleKey(): string {
  * target. HTTP remains valid for local Playwright; production supplies HTTPS. */
 export function portalUrl(path: string): string | null {
   const base = process.env.PORTAL_BASE_URL?.trim();
-  if (
-    base === undefined ||
-    base === "" ||
-    !path.startsWith("/") ||
-    path.startsWith("//")
-  ) {
+  if (base === undefined || base === "" || !path.startsWith("/") || path.startsWith("//")) {
     return null;
   }
 

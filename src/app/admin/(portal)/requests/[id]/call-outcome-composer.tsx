@@ -1,18 +1,20 @@
 "use client";
 
-import { useEffect, useReducer, useRef, useState, useTransition } from "react";
-import type { RefObject } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type {
-  RequestClosureOutcome,
-  RequestStatus,
-} from "@/lib/portal/contracts";
-import { allowsCallAgainDay, outcomesImplying, requiresCallAgainDay } from "@/lib/portal/call-outcomes";
-import type { CallOutcomeId } from "@/lib/portal/call-outcomes";
+import { useEffect, useReducer, useRef, useState, useTransition } from "react";
+import type { RefObject } from "react";
+
+import { logCallOutcome, undoCallOutcome } from "@/app/admin/(portal)/requests/actions";
+import { followUpWhenLabel } from "@/app/admin/(portal)/requests/format";
 import { Check } from "@/components/icons";
-import { logCallOutcome, undoCallOutcome } from "../actions";
-import { followUpWhenLabel } from "../format";
+import {
+  allowsCallAgainDay,
+  outcomesImplying,
+  requiresCallAgainDay,
+} from "@/lib/portal/call-outcomes";
+import type { CallOutcomeId } from "@/lib/portal/call-outcomes";
+import type { RequestClosureOutcome, RequestStatus } from "@/lib/portal/contracts";
 
 // The daily work loop uses the same appointment-request-lifecycle vocabulary as the queue.
 // Staff choose the request's next status first, then only the details that
@@ -40,8 +42,7 @@ const OUTCOME_COPY = {
   booked: { label: "Appointment booked" },
   scheduled_transferred: {
     label: "Appointment booked — request complete",
-    helper:
-      "The booking is on the practice schedule and no more follow-up is needed.",
+    helper: "The booking is on the practice schedule and no more follow-up is needed.",
   },
   wont_schedule: {
     label: "Patient won't schedule",
@@ -59,8 +60,7 @@ function optionsImplying(status: "contacted" | "closed"): OutcomeOption[] {
 
 const CONTACTED_OUTCOMES = optionsImplying("contacted");
 const CLOSED_OUTCOMES = optionsImplying("closed");
-const BOOKED_OUTCOME: CallOutcomeId | null =
-  outcomesImplying("scheduled")[0] ?? null;
+const BOOKED_OUTCOME: CallOutcomeId | null = outcomesImplying("scheduled")[0] ?? null;
 
 type LifecycleDestination = Exclude<RequestStatus, "new">;
 
@@ -114,8 +114,7 @@ const NY_DAY_INPUT = new Intl.DateTimeFormat("en-CA", {
 // Success copy per outcome; the server resolves a call-again day only for
 // Outcomes whose policy allows one, so the resurface sentence appends itself.
 const CONFIRMATION_COPY = {
-  booked:
-    "Saved — appointment booked. It stays on the Scheduled list if you need it.",
+  booked: "Saved — appointment booked. It stays on the Scheduled list if you need it.",
   reached_follow_up: "Saved — marked Contacted.",
   voicemail: "Saved — marked Contacted.",
   no_answer: "Saved — marked Contacted.",
@@ -124,10 +123,7 @@ const CONFIRMATION_COPY = {
   not_actionable: "Saved — the request is closed.",
 } as const satisfies Record<CallOutcomeId, string>;
 
-function confirmationFor(
-  outcome: CallOutcomeId,
-  followUpAt: string | null,
-): string {
+function confirmationFor(outcome: CallOutcomeId, followUpAt: string | null): string {
   const saved = CONFIRMATION_COPY[outcome];
   return followUpAt !== null && followUpAt !== ""
     ? `${saved} It will resurface ${followUpWhenLabel(followUpAt)}.`
@@ -139,8 +135,7 @@ const ERROR_COPY = {
     "Choose when to call again — that's how the queue knows when to bring this request back.",
   not_found:
     "This request no longer exists — it may have been removed. Open the queue to see the current list.",
-  invalid:
-    "Something about that didn't check out. Nothing was recorded — review and try again.",
+  invalid: "Something about that didn't check out. Nothing was recorded — review and try again.",
   unavailable:
     "Something went wrong saving that. Nothing may have been recorded — try again, and check the request before repeating anything.",
 } as const;
@@ -150,9 +145,7 @@ const ERROR_COPY = {
 // Guide the picker.
 function practiceLocalDay(offsetDays: number): string {
   const todayEt = NY_DAY_INPUT.format(new Date());
-  const shifted = new Date(
-    Date.parse(`${todayEt}T00:00:00Z`) + offsetDays * 86_400_000,
-  );
+  const shifted = new Date(Date.parse(`${todayEt}T00:00:00Z`) + offsetDays * 86_400_000);
   return shifted.toISOString().slice(0, 10);
 }
 
@@ -259,7 +252,7 @@ function DestinationRow({
 }>) {
   const copy = DESTINATION_COPY[destination];
   return (
-    <label className="group block cursor-pointer rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-4 py-3 transition-[border-color,background-color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] has-[:checked]:border-[var(--color-navy)] has-[:checked]:bg-[var(--color-mint)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-teal-ink)] has-[:disabled]:cursor-default has-[:disabled]:opacity-60 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100">
+    <label className="group block cursor-pointer rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-4 py-3 transition-[border-color,background-color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.98] has-[:checked]:border-[var(--color-navy)] has-[:checked]:bg-[var(--color-mint)] has-[:disabled]:cursor-default has-[:disabled]:opacity-60 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-teal-ink)] motion-reduce:transition-none motion-reduce:active:scale-100">
       <input
         type="radio"
         name="request-status"
@@ -274,7 +267,7 @@ function DestinationRow({
       />
       <span className="flex items-start justify-between gap-3">
         <span>
-          <span className="block text-[0.95rem] font-black leading-snug text-[var(--color-ink)]">
+          <span className="block text-[0.95rem] leading-snug font-black text-[var(--color-ink)]">
             {copy.label}
           </span>
           <span className="mt-1 block text-[0.82rem] leading-snug text-[var(--color-muted)]">
@@ -305,7 +298,7 @@ function OutcomeRow({
   onSelect: (id: CallOutcomeId) => void;
 }>) {
   return (
-    <label className="group block cursor-pointer rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-4 py-3 transition-colors has-[:checked]:border-[var(--color-navy)] has-[:checked]:bg-[var(--color-mint)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-teal-ink)] has-[:disabled]:cursor-default has-[:disabled]:opacity-60 hover:border-[var(--color-navy)]">
+    <label className="group block cursor-pointer rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-4 py-3 transition-colors hover:border-[var(--color-navy)] has-[:checked]:border-[var(--color-navy)] has-[:checked]:bg-[var(--color-mint)] has-[:disabled]:cursor-default has-[:disabled]:opacity-60 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-teal-ink)]">
       <input
         type="radio"
         name="call-outcome"
@@ -318,7 +311,7 @@ function OutcomeRow({
         className="sr-only"
       />
       <span className="flex items-center justify-between gap-3">
-        <span className="text-[0.95rem] font-bold leading-snug text-[var(--color-ink)]">
+        <span className="text-[0.95rem] leading-snug font-bold text-[var(--color-ink)]">
           {option.label}
         </span>
         <span
@@ -352,8 +345,7 @@ function FollowUpFieldset({
   pending: boolean;
   dispatch: React.Dispatch<ComposerAction>;
 }>) {
-  const followUpMissing =
-    attempted && requiresCallAgainDay(outcome) && !followUpKind;
+  const followUpMissing = attempted && requiresCallAgainDay(outcome) && !followUpKind;
   const dayMissing = attempted && followUpKind === "day" && !followUpDay;
 
   return (
@@ -369,7 +361,7 @@ function FollowUpFieldset({
         {FOLLOW_UP_KINDS.map((chip) => (
           <label
             key={chip.kind}
-            className="flex min-h-11 cursor-pointer items-center rounded-full border border-[var(--color-line-2)] bg-white px-4 text-[0.9rem] font-bold text-[var(--color-body)] transition-colors has-[:checked]:border-[var(--color-navy)] has-[:checked]:bg-[var(--color-navy)] has-[:checked]:text-[var(--color-on-dark)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-teal-ink)] hover:border-[var(--color-navy)]"
+            className="flex min-h-11 cursor-pointer items-center rounded-full border border-[var(--color-line-2)] bg-white px-4 text-[0.9rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-navy)] has-[:checked]:border-[var(--color-navy)] has-[:checked]:bg-[var(--color-navy)] has-[:checked]:text-[var(--color-on-dark)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-teal-ink)]"
           >
             <input
               type="radio"
@@ -396,7 +388,7 @@ function FollowUpFieldset({
             onChange={(event) => {
               dispatch({ type: "set_day", day: event.target.value });
             }}
-            className="min-h-11 rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.9rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)] disabled:opacity-60"
+            className="min-h-11 rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.9rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)] disabled:opacity-60"
           />
         ) : null}
       </div>
@@ -439,10 +431,8 @@ function ComposerFeedback({
       tabIndex={-1}
       role={feedback.tone === "success" ? "status" : "alert"}
       data-testid="composer-feedback"
-      className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-[0.92rem] font-bold leading-relaxed text-[var(--color-ink)] outline-none ${
-        feedback.tone === "success"
-          ? "bg-[var(--color-mint)]"
-          : "bg-[var(--color-amber-soft)]"
+      className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-[0.92rem] leading-relaxed font-bold text-[var(--color-ink)] outline-none ${
+        feedback.tone === "success" ? "bg-[var(--color-mint)]" : "bg-[var(--color-amber-soft)]"
       }`}
     >
       {feedback.text}{" "}
@@ -489,10 +479,8 @@ function StatusActions({
   onSave: (animateConfirmation: boolean) => void;
   onUndo: (animateConfirmation: boolean) => void;
 }>) {
-  const saveLabel =
-    operation === "save" ? "Saving…" : saveConfirmed ? "Saved" : "Save";
-  const undoLabel =
-    operation === "undo" ? "Undoing…" : undoConfirmed ? "Undone" : "Undo";
+  const saveLabel = operation === "save" ? "Saving…" : saveConfirmed ? "Saved" : "Save";
+  const undoLabel = operation === "undo" ? "Undoing…" : undoConfirmed ? "Undone" : "Undo";
 
   return (
     <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -570,14 +558,7 @@ export function CallOutcomeComposer({
   const [saveConfirmed, setSaveConfirmed] = useState(false);
   const [undoConfirmed, setUndoConfirmed] = useState(false);
   const [confirmationMotion, setConfirmationMotion] = useState(true);
-  const {
-    destination,
-    selected,
-    followUpKind,
-    followUpDay,
-    attempted,
-    feedback,
-  } = state;
+  const { destination, selected, followUpKind, followUpDay, attempted, feedback } = state;
   const feedbackRef = useRef<HTMLParagraphElement>(null);
   const availableDestinations = destinationsFrom(status);
 
@@ -708,8 +689,7 @@ export function CallOutcomeComposer({
         Update appointment request status
       </h2>
       <p className="mt-1.5 max-w-[68ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
-        Choose where this request belongs next. The outcome and callback
-        timing are saved together.
+        Choose where this request belongs next. The outcome and callback timing are saved together.
       </p>
       <p
         id="current-request-status"
@@ -720,49 +700,31 @@ export function CallOutcomeComposer({
 
       {status === "closed" ? (
         <p
-          data-testid={
-            closureOutcome
-              ? "composer-closed-note"
-              : "legacy-lifecycle-warning"
-          }
+          data-testid={closureOutcome ? "composer-closed-note" : "legacy-lifecycle-warning"}
           className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-[0.9rem] leading-relaxed text-[var(--color-ink)] ${
-            closureOutcome
-              ? "bg-[var(--color-mint)]"
-              : "bg-[var(--color-amber-soft)] font-bold"
+            closureOutcome ? "bg-[var(--color-mint)]" : "bg-[var(--color-amber-soft)] font-bold"
           }`}
         >
           {closureOutcome
             ? `This request is closed${
-                closedAtLabel !== null && closedAtLabel !== ""
-                  ? ` (${closedAtLabel})`
-                  : ""
+                closedAtLabel !== null && closedAtLabel !== "" ? ` (${closedAtLabel})` : ""
               } — ${
-                closureOutcome === "converted"
-                  ? "appointment booked"
-                  : "no appointment booked"
+                closureOutcome === "converted" ? "appointment booked" : "no appointment booked"
               }. Choose Contacted or Scheduled to reopen it.`
             : "Closed before outcomes were recorded. Choose Contacted or Scheduled to reopen it."}
         </p>
       ) : null}
 
-      <ComposerFeedback
-        feedback={feedback}
-        nextHref={nextHref}
-        feedbackRef={feedbackRef}
-      />
+      <ComposerFeedback feedback={feedback} nextHref={nextHref} feedbackRef={feedbackRef} />
 
       <fieldset className="mt-5" disabled={pending}>
         <legend className="text-sm font-bold text-[var(--color-ink)]">
           Where should this request go next?
         </legend>
         <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
-          The current status is left out, so every choice moves the request
-          forward or reopens it.
+          The current status is left out, so every choice moves the request forward or reopens it.
         </p>
-        <div
-          data-testid="lifecycle-destinations"
-          className="mt-3 grid gap-2.5 sm:grid-cols-3"
-        >
+        <div data-testid="lifecycle-destinations" className="mt-3 grid gap-2.5 sm:grid-cols-3">
           {availableDestinations.map((nextStatus) => (
             <DestinationRow
               key={nextStatus}
@@ -777,9 +739,7 @@ export function CallOutcomeComposer({
 
       {destination === "contacted" ? (
         <fieldset className="mt-5" disabled={pending}>
-          <legend className="text-sm font-bold text-[var(--color-ink)]">
-            How did contact go?
-          </legend>
+          <legend className="text-sm font-bold text-[var(--color-ink)]">How did contact go?</legend>
           <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
             {CONTACTED_OUTCOMES.map((option) => (
               <OutcomeRow key={option.id} {...outcomeRowProps(option)} />
@@ -793,9 +753,7 @@ export function CallOutcomeComposer({
           data-testid="scheduled-explanation"
           className="mt-5 rounded-[var(--radius)] bg-[var(--color-mint)] px-4 py-3"
         >
-          <p className="text-[0.95rem] font-bold text-[var(--color-ink)]">
-            Appointment is booked
-          </p>
+          <p className="text-[0.95rem] font-bold text-[var(--color-ink)]">Appointment is booked</p>
           <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
             This request will stay on the Scheduled list in case staff need it.
           </p>

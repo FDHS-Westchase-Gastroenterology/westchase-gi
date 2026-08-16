@@ -1,14 +1,15 @@
 import { randomUUID } from "node:crypto";
+
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
+
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 loadLocalEnv();
 
 const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
-const REPOSITORY_URL =
-  "https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi";
+const REPOSITORY_URL = "https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi";
 const GITHUB_CONFIGURATION_COUNT = [
   "PORTAL_GITHUB_APP_ID",
   "PORTAL_GITHUB_APP_INSTALLATION_ID",
@@ -81,14 +82,13 @@ test.describe("website custody", () => {
     await signIn(page, SEED_EMAIL, SEED_PASSWORD);
     await page.goto("/admin/settings/software");
 
-    await expect(
-      page.getByRole("link", { name: "Website", exact: true }),
-    ).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("link", { name: "Website", exact: true })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
     const product = page.getByTestId("managed-product");
     await expect(product).toHaveCount(1);
-    await expect(
-      page.getByRole("heading", { name: "Westchase GI", exact: true }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Westchase GI", exact: true })).toBeVisible();
     await expect(
       page.getByRole("link", {
         name: "Open the website files in GitHub",
@@ -104,16 +104,8 @@ test.describe("website custody", () => {
       await expect(product).toContainText(capability);
     }
 
-    for (const removedControl of [
-      "Add asset",
-      "Edit",
-      "Archive",
-      "Add access",
-      "End access",
-    ]) {
-      await expect(
-        page.getByRole("button", { name: removedControl, exact: true }),
-      ).toHaveCount(0);
+    for (const removedControl of ["Add asset", "Edit", "Archive", "Add access", "End access"]) {
+      await expect(page.getByRole("button", { name: removedControl, exact: true })).toHaveCount(0);
     }
     await expect(page.getByTestId("integration-vercel")).toHaveCount(0);
     await expect(page.getByText("Once connected, it will manage")).toHaveCount(0);
@@ -121,9 +113,7 @@ test.describe("website custody", () => {
       ["Staff", "admin", "portal"].join(" "),
       ["Review", "QR", "print", "tool"].join(" "),
     ]) {
-      await expect(
-        page.getByText(retiredAssetName, { exact: true }),
-      ).toHaveCount(0);
+      await expect(page.getByText(retiredAssetName, { exact: true })).toHaveCount(0);
     }
 
     const access = page.getByTestId("maintainer-access");
@@ -134,27 +124,19 @@ test.describe("website custody", () => {
         : GITHUB_CONFIGURATION_COUNT === 0
           ? "Not configured"
           : "Connection unavailable";
-    await expect(access.getByTestId("integration-status")).toHaveText(
-      expectedStatus,
-    );
+    await expect(access.getByTestId("integration-status")).toHaveText(expectedStatus);
     await expect(access).toContainText("Who can change the website");
     if (expectedStatus === "Connected") {
-      await expect(access.getByTestId("maintainer-list")).toContainText(
-        "Owner",
-      );
+      await expect(access.getByTestId("maintainer-list")).toContainText("Owner");
       await expect(access).toContainText(
         "FDHS-Westchase-Gastroenterology — the practice’s own account",
       );
       const setupNotice = access.getByTestId("maintainer-setup-notice");
       if ((await setupNotice.count()) === 1) {
         await expect(setupNotice).toBeVisible();
-        await expect(
-          access.getByRole("button", { name: "Send invitation" }),
-        ).toHaveCount(0);
+        await expect(access.getByRole("button", { name: "Send invitation" })).toHaveCount(0);
       } else {
-        await expect(
-          access.getByRole("button", { name: "Send invitation" }),
-        ).toBeVisible();
+        await expect(access.getByRole("button", { name: "Send invitation" })).toBeVisible();
       }
     } else {
       await expect(access.getByTestId("maintainer-list")).toHaveCount(0);
@@ -166,9 +148,7 @@ test.describe("website custody", () => {
     const flyerTask = product.getByRole("link", { name: "Print review flyers" });
     await expect(flyerTask).toHaveAttribute("href", "/admin/review-flyers");
     await flyerTask.click();
-    await expect(
-      page.getByRole("heading", { name: "Print review flyers" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Print review flyers" })).toBeVisible();
 
     await page.goto("/admin/registry");
     await expect(page).toHaveURL(/\/admin\/settings\/software\/?$/);
@@ -188,13 +168,12 @@ test.describe("website custody", () => {
       }),
     ).toHaveAttribute("href", REPOSITORY_URL);
     // Flyer printing is open to every active staff member (2026-07-26).
-    await expect(
-      page.getByRole("link", { name: "Print review flyers" }),
-    ).toHaveAttribute("href", "/admin/review-flyers");
+    await expect(page.getByRole("link", { name: "Print review flyers" })).toHaveAttribute(
+      "href",
+      "/admin/review-flyers",
+    );
     const access = page.getByTestId("maintainer-access");
-    await expect(
-      access.getByRole("button", { name: "Send invitation" }),
-    ).toHaveCount(0);
+    await expect(access.getByRole("button", { name: "Send invitation" })).toHaveCount(0);
     await expect(access.locator('[data-action="revoke-maintainer"]')).toHaveCount(0);
     await expect(access.locator('[data-action="cancel-invitation"]')).toHaveCount(0);
   });

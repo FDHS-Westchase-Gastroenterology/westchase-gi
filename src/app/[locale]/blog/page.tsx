@@ -1,16 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+
+import { ArrowRight, MessageSquare } from "@/components/icons";
+import { PageHero } from "@/components/PageHero";
+import { Reveal } from "@/components/Reveal";
+import { TextBand } from "@/components/TextBand";
+import { blogPosts, formatPosted } from "@/lib/content/blog";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
 import { localePath, site } from "@/lib/site";
 import type { Locale } from "@/lib/site";
-import { blogPosts, formatPosted } from "@/lib/content/blog";
-import { PageHero } from "@/components/PageHero";
-import { Reveal } from "@/components/Reveal";
-import { TextBand } from "@/components/TextBand";
-import { ArrowRight, MessageSquare } from "@/components/icons";
 
-interface PageProps { params: Promise<{ locale: string }> }
+interface PageProps {
+  params: Promise<{ locale: string }>;
+}
 
 export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
@@ -67,7 +70,7 @@ export default async function BlogPage({ params }: Readonly<PageProps>) {
                     {formatPosted(post.posted, locale)}
                   </p>
                   <div>
-                    <h2 className="font-[var(--font-display)] text-[1.35rem] leading-snug text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
+                    <h2 className="text-[1.35rem] leading-snug font-[var(--font-display)] text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
                       {post.title[locale]}
                     </h2>
                     <p className="measure mt-1.5 text-[0.98rem] text-[var(--color-body)]">

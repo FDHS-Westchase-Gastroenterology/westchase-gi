@@ -100,32 +100,32 @@ secret-bearing dependency run.
 
 ### Decision points
 
-| Step | Decision | Inputs needed | Failure mode if wrong |
-|---|---|---|---|
-| 1 | Is the PR safe to expose to Codex? | Author, verified commits, base, changed files | Prompt injection or secret exposure |
-| 3 | Is automatic review permitted? | Provenance, target, ecosystem, directory, changed files | Untrusted code reaches a secret-bearing job |
-| 4 | Did Codex find a concrete compatibility issue? | Exact diff and repository usages | Semantic regression despite green mechanical checks |
-| 6 | Is the decision current? | Reviewed SHA and current head SHA | Different code merges than was reviewed |
-| 7 | May this PR merge now? | CI, React Doctor, Vercel, automation status, mergeability | Protection bypass or concurrent production changes |
-| 8 | Is production healthy? | Exact main SHA, Vercel deployment/status, live response | Cascading dependency merges after a bad deployment |
+| Step | Decision                                       | Inputs needed                                             | Failure mode if wrong                               |
+| ---- | ---------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------- |
+| 1    | Is the PR safe to expose to Codex?             | Author, verified commits, base, changed files             | Prompt injection or secret exposure                 |
+| 3    | Is automatic review permitted?                 | Provenance, target, ecosystem, directory, changed files   | Untrusted code reaches a secret-bearing job         |
+| 4    | Did Codex find a concrete compatibility issue? | Exact diff and repository usages                          | Semantic regression despite green mechanical checks |
+| 6    | Is the decision current?                       | Reviewed SHA and current head SHA                         | Different code merges than was reviewed             |
+| 7    | May this PR merge now?                         | CI, React Doctor, Vercel, automation status, mergeability | Protection bypass or concurrent production changes  |
+| 8    | Is production healthy?                         | Exact main SHA, Vercel deployment/status, live response   | Cascading dependency merges after a bad deployment  |
 
 ## Example tasks
 
-| # | Input / starting state | Expected outcome | Success criterion |
-|---|---|---|---|
-| 1 | `@types/react` direct-development patch; manifest-only diff; all checks green | Approve and merge exact SHA | One merge, followed by successful production verification |
-| 2 | Direct-development minor update | Eligible | Version size alone does not block automation |
-| 3 | `@supabase/supabase-js` production patch; disposable integration green | Eligible | Runtime patch merges only after Auth/data contract success |
-| 4 | Other runtime update (`next`, React, Resend, or Zod) | Eligible | Exact-head deterministic gates pass; an available Codex review finds no blocker |
-| 5 | TypeScript, Playwright, or React Doctor update | Eligible | The updated gate proves itself before merge |
-| 6 | Grouped React + React DOM update | Eligible | Coupled peers are tested and merged together |
-| 7 | PR changes a workflow, source file, or any non-manifest path | Reject and close | No OpenAI call and no merge authority |
-| 8 | Maintainer commit appears on the Dependabot branch | Commit verification fails closed | Existing reviewed SHA cannot authorize new head |
-| 9 | Codex identifies a concrete incompatibility not fixed by regeneration | Reject and close | Failed exact-head status and blocked label |
-| 10 | Codex times out, exceeds quota, or returns malformed JSON | Continue through deterministic gates | Model availability cannot create a human gate |
-| 11 | Dependabot refreshes the branch after approval | Verify bot signatures and explicitly dispatch gates on the new SHA | Controller rejects the stale status |
-| 12 | First merge deploys unsuccessfully or live smoke fails | Queue pauses | No second dependency PR merges |
-| 13 | Oldest PR fails install but a compatible sibling is green | Skip failure and merge green sibling | Rebased older PR gets a fresh exact-head run |
+| #   | Input / starting state                                                        | Expected outcome                                                   | Success criterion                                                               |
+| --- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| 1   | `@types/react` direct-development patch; manifest-only diff; all checks green | Approve and merge exact SHA                                        | One merge, followed by successful production verification                       |
+| 2   | Direct-development minor update                                               | Eligible                                                           | Version size alone does not block automation                                    |
+| 3   | `@supabase/supabase-js` production patch; disposable integration green        | Eligible                                                           | Runtime patch merges only after Auth/data contract success                      |
+| 4   | Other runtime update (`next`, React, Resend, or Zod)                          | Eligible                                                           | Exact-head deterministic gates pass; an available Codex review finds no blocker |
+| 5   | TypeScript, Playwright, or React Doctor update                                | Eligible                                                           | The updated gate proves itself before merge                                     |
+| 6   | Grouped React + React DOM update                                              | Eligible                                                           | Coupled peers are tested and merged together                                    |
+| 7   | PR changes a workflow, source file, or any non-manifest path                  | Reject and close                                                   | No OpenAI call and no merge authority                                           |
+| 8   | Maintainer commit appears on the Dependabot branch                            | Commit verification fails closed                                   | Existing reviewed SHA cannot authorize new head                                 |
+| 9   | Codex identifies a concrete incompatibility not fixed by regeneration         | Reject and close                                                   | Failed exact-head status and blocked label                                      |
+| 10  | Codex times out, exceeds quota, or returns malformed JSON                     | Continue through deterministic gates                               | Model availability cannot create a human gate                                   |
+| 11  | Dependabot refreshes the branch after approval                                | Verify bot signatures and explicitly dispatch gates on the new SHA | Controller rejects the stale status                                             |
+| 12  | First merge deploys unsuccessfully or live smoke fails                        | Queue pauses                                                       | No second dependency PR merges                                                  |
+| 13  | Oldest PR fails install but a compatible sibling is green                     | Skip failure and merge green sibling                               | Rebased older PR gets a fresh exact-head run                                    |
 
 ## Readiness evidence — 2026-07-24
 
@@ -145,14 +145,14 @@ day. That package/version allowlist was removed on 2026-07-26: the executable
 regression now proves every trusted manifest-only update is eligible, including
 all seven PRs from the 2026-07-26 batch.
 
-| PR | Dependency | Result |
-|---|---|---|
+| PR  | Dependency                    | Result                                              |
+| --- | ----------------------------- | --------------------------------------------------- |
 | #45 | `@supabase/supabase-js` patch | Eligible through the isolated Supabase runtime lane |
-| #46 | TypeScript major | Eligible; compiler/build checks are authoritative |
-| #47 | `tailwindcss` patch | Eligible direct-development patch |
-| #48 | `@tailwindcss/postcss` patch | Eligible direct-development patch |
-| #49 | React Doctor minor | Eligible; exact-head React Doctor must pass |
-| #50 | ESLint patch | Eligible direct-development patch |
+| #46 | TypeScript major              | Eligible; compiler/build checks are authoritative   |
+| #47 | `tailwindcss` patch           | Eligible direct-development patch                   |
+| #48 | `@tailwindcss/postcss` patch  | Eligible direct-development patch                   |
+| #49 | React Doctor minor            | Eligible; exact-head React Doctor must pass         |
+| #50 | ESLint patch                  | Eligible direct-development patch                   |
 
 Run `node --test .github/scripts/dependency-automation.test.cjs` after any
 policy edit. A documentation claim never expands eligibility; only a reviewed

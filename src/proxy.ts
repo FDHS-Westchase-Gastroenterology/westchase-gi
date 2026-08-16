@@ -3,6 +3,7 @@ import type { CookieOptions } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
+
 import { LOCALE_COOKIE, localeSet } from "@/lib/site";
 import type { Locale } from "@/lib/site";
 
@@ -13,17 +14,9 @@ import type { Locale } from "@/lib/site";
 // BEFORE the document — and therefore any third-party resource it
 // References — can load with those values in the URL.
 
-const PATIENT_PARAMS = [
-  "name",
-  "phone",
-  "email",
-  "message",
-  "location",
-  "time",
-] as const;
+const PATIENT_PARAMS = ["name", "phone", "email", "message", "location", "time"] as const;
 
-const LEGACY_FORM_PATH =
-  /^\/(?:en|es|vi|ko|ar)\/(?:contact|appointment)\/?$/;
+const LEGACY_FORM_PATH = /^\/(?:en|es|vi|ko|ar)\/(?:contact|appointment)\/?$/;
 
 interface PendingCookie {
   readonly name: string;
@@ -35,13 +28,10 @@ function portalSupabaseConfig(): { url: string; key: string } | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const publishable = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const keySource =
-    publishable !== undefined && publishable !== "" ? publishable : anon;
+  const keySource = publishable !== undefined && publishable !== "" ? publishable : anon;
   const key = keySource?.trim();
 
-  return url !== undefined && url !== "" && key !== undefined && key !== ""
-    ? { url, key }
-    : null;
+  return url !== undefined && url !== "" && key !== undefined && key !== "" ? { url, key } : null;
 }
 
 function isLocaleValue(value: string | undefined): value is Locale {
@@ -57,10 +47,7 @@ function negotiateLocale(header: string | null): Locale {
     .map((part) => {
       const [tag, ...params] = part.trim().split(";");
       const qParam = params.find((param) => param.trim().startsWith("q="));
-      const q =
-        qParam !== undefined && qParam !== ""
-          ? Number.parseFloat(qParam.split("=")[1])
-          : 1;
+      const q = qParam !== undefined && qParam !== "" ? Number.parseFloat(qParam.split("=")[1]) : 1;
       const primary = tag.trim().toLowerCase().split("-")[0];
       return { primary, q: Number.isNaN(q) ? 0 : q };
     })
@@ -97,9 +84,7 @@ function scrubLegacyPatientQuery(request: NextRequest): NextResponse | null {
   const { nextUrl } = request;
   if (!LEGACY_FORM_PATH.test(nextUrl.pathname)) return null;
 
-  const carriesPatientData = PATIENT_PARAMS.some((param) =>
-    nextUrl.searchParams.has(param),
-  );
+  const carriesPatientData = PATIENT_PARAMS.some((param) => nextUrl.searchParams.has(param));
   if (!carriesPatientData) return null;
 
   const clean = nextUrl.clone();
@@ -120,10 +105,7 @@ function applySessionUpdates(
   for (const [name, value] of Object.entries(headers)) {
     response.headers.set(name, value);
   }
-  response.headers.set(
-    "Cache-Control",
-    "private, no-cache, no-store, must-revalidate, max-age=0",
-  );
+  response.headers.set("Cache-Control", "private, no-cache, no-store, must-revalidate, max-age=0");
   response.headers.set("Referrer-Policy", "no-referrer");
   return response;
 }
@@ -178,8 +160,7 @@ async function protectAdminRequest(request: NextRequest): Promise<NextResponse> 
   let authenticated = false;
   try {
     const { data, error } = await supabase.auth.getClaims();
-    authenticated =
-      error === null && z.string().safeParse(data?.claims.sub).success;
+    authenticated = error === null && z.string().safeParse(data?.claims.sub).success;
   } catch {
     // Provider failures fail closed for protected portal routes.
   }

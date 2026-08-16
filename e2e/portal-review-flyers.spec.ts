@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
+
 import { expect, test } from "@playwright/test";
 import type { BrowserContext, Page } from "@playwright/test";
 import { PDFDocument } from "pdf-lib";
+
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 loadLocalEnv();
@@ -107,9 +109,9 @@ test("review flyers stay closed to visitors and open to every staff member", asy
     maxRedirects: 0,
   });
   expect(signedOut.status()).toBe(307);
-  expect(
-    new URL(signedOut.headers().location, "http://localhost:3100").pathname,
-  ).toBe("/admin/login");
+  expect(new URL(signedOut.headers().location, "http://localhost:3100").pathname).toBe(
+    "/admin/login",
+  );
 
   const signedOutAsset = await request.get(
     "/admin/review-flyers/assets/WGI-Practice-Review-QR.png",
@@ -149,23 +151,17 @@ test("review flyers stay closed to visitors and open to every staff member", asy
     // Handing flyers to patients is a front-desk job: printing is open to
     // Every active staff member (product decision 2026-07-26), while
     // Anonymous access stays closed.
-    await expect(
-      staffPage.getByRole("link", { name: "Print review flyers" }),
-    ).toBeVisible();
+    await expect(staffPage.getByRole("link", { name: "Print review flyers" })).toBeVisible();
 
     await staffPage.goto("/admin/review-flyers");
-    await expect(
-      staffPage.getByRole("heading", { name: "Print review flyers" }),
-    ).toBeVisible();
+    await expect(staffPage.getByRole("heading", { name: "Print review flyers" })).toBeVisible();
     await expect(staffPage.locator("[data-review-target]")).toHaveCount(6);
 
     for (const asset of ASSETS) {
       const response = await staffContext.request.get(
         `/admin/review-flyers/assets/${encodeURIComponent(asset.filename)}`,
       );
-      expect(response.status(), `staff asset access: ${asset.filename}`).toBe(
-        200,
-      );
+      expect(response.status(), `staff asset access: ${asset.filename}`).toBe(200);
     }
   } finally {
     await staffContext?.close().catch(() => undefined);
@@ -174,9 +170,7 @@ test("review flyers stay closed to visitors and open to every staff member", asy
   }
 
   await signIn(page, SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD);
-  await expect(
-    page.getByRole("link", { name: "Print review flyers" }),
-  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Print review flyers" })).toBeVisible();
   await page.goto("/admin/review-flyers");
 
   const cards = page.locator("[data-review-target]");
@@ -201,26 +195,20 @@ test("review flyers stay closed to visitors and open to every staff member", asy
       title: target.title,
       credentials: target.credentials,
     });
-    await expect(
-      card.getByRole("button", { name: "Print flyer" }),
-    ).toBeVisible();
+    await expect(card.getByRole("button", { name: "Print flyer" })).toBeVisible();
     for (const name of ["Flyer PDF", "SVG", "PNG"]) {
       await expect(card.getByRole("link", { name })).toBeVisible();
     }
   }
 
   for (const asset of ASSETS) {
-    const path =
-      `/admin/review-flyers/assets/${encodeURIComponent(asset.filename)}`;
+    const path = `/admin/review-flyers/assets/${encodeURIComponent(asset.filename)}`;
     for (const [query, disposition] of [
       ["", "inline"],
       ["?download=1", "attachment"],
     ] as const) {
       const response = await page.request.get(`${path}${query}`);
-      expect(
-        response.status(),
-        `${disposition} asset response: ${asset.filename}`,
-      ).toBe(200);
+      expect(response.status(), `${disposition} asset response: ${asset.filename}`).toBe(200);
       expect(response.headers()["content-type"]).toBe(asset.contentType);
       const cacheControl = response.headers()["cache-control"];
       expect(cacheControl).toContain("private");
@@ -234,28 +222,16 @@ test("review flyers stay closed to visitors and open to every staff member", asy
     }
   }
 
-  const unknown = await page.request.get(
-    "/admin/review-flyers/assets/not-in-the-manifest.pdf",
-  );
+  const unknown = await page.request.get("/admin/review-flyers/assets/not-in-the-manifest.pdf");
   expect(unknown.status()).toBe(404);
 
-  for (const traversal of [
-    "%2e%2e%2fpackage.json",
-    "..%2F..%2Fpackage.json",
-  ]) {
-    const response = await page.request.get(
-      `/admin/review-flyers/assets/${traversal}`,
-    );
-    expect(
-      response.status(),
-      `path traversal must miss the allowlist: ${traversal}`,
-    ).not.toBe(200);
+  for (const traversal of ["%2e%2e%2fpackage.json", "..%2F..%2Fpackage.json"]) {
+    const response = await page.request.get(`/admin/review-flyers/assets/${traversal}`);
+    expect(response.status(), `path traversal must miss the allowlist: ${traversal}`).not.toBe(200);
   }
 });
 
-test("review flyer printing is letter-sized, responsive, and self-contained", async ({
-  page,
-}) => {
+test("review flyer printing is letter-sized, responsive, and self-contained", async ({ page }) => {
   test.setTimeout(120_000);
 
   const browserRequests: string[] = [];
@@ -263,9 +239,7 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
   await page.addInitScript(() => {
     window.print = () => {
       const root = document.documentElement;
-      root.dataset.testPrintCalls = String(
-        Number(root.dataset.testPrintCalls ?? "0") + 1,
-      );
+      root.dataset.testPrintCalls = String(Number(root.dataset.testPrintCalls ?? "0") + 1);
     };
   });
 
@@ -284,18 +258,11 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
   ]) {
     await page.setViewportSize(viewport);
     await page.goto("/admin/review-flyers");
-    await expect(
-      page.getByRole("heading", { name: "Print review flyers" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Print review flyers" })).toBeVisible();
     const overflow = await page.evaluate(
-      () =>
-        document.documentElement.scrollWidth -
-        document.documentElement.clientWidth,
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
-    expect(
-      overflow,
-      `horizontal overflow at ${viewport.width}px`,
-    ).toBeLessThanOrEqual(0);
+    expect(overflow, `horizontal overflow at ${viewport.width}px`).toBeLessThanOrEqual(0);
 
     const actionSizes = await page
       .locator(".review-flyer-screen :is(button, a)")
@@ -321,28 +288,21 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
     .locator('[data-review-target="awad"]')
     .getByRole("button", { name: "Print flyer" })
     .click();
-  await expect(page.locator("body")).toHaveAttribute(
-    "data-review-flyer-print",
-    "awad",
-  );
-  await expect(page.locator("html")).toHaveAttribute(
-    "data-test-print-calls",
-    "1",
-  );
+  await expect(page.locator("body")).toHaveAttribute("data-review-flyer-print", "awad");
+  await expect(page.locator("html")).toHaveAttribute("data-test-print-calls", "1");
 
   await page.emulateMedia({ media: "print" });
-  const individualPrint = await page.locator("[data-review-flyer]").evaluateAll(
-    (flyers) =>
-      flyers.map((flyer) => {
-        if (!(flyer instanceof HTMLElement)) {
-          throw new Error("expected HTMLElement");
-        }
-        return {
-          key: flyer.dataset.reviewFlyer,
-          display: getComputedStyle(flyer).display,
-          height: flyer.getBoundingClientRect().height,
-        };
-      }),
+  const individualPrint = await page.locator("[data-review-flyer]").evaluateAll((flyers) =>
+    flyers.map((flyer) => {
+      if (!(flyer instanceof HTMLElement)) {
+        throw new Error("expected HTMLElement");
+      }
+      return {
+        key: flyer.dataset.reviewFlyer,
+        display: getComputedStyle(flyer).display,
+        height: flyer.getBoundingClientRect().height,
+      };
+    }),
   );
   expect(individualPrint.filter((flyer) => flyer.display !== "none")).toEqual([
     { key: "awad", display: "flex", height: 960 },
@@ -365,32 +325,23 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
         if (rule instanceof CSSPageRule) cssTexts.push(rule.cssText);
       }
     }
-    return (
-      cssTexts.find((text) => /@page\s+review-flyer\b/i.test(text)) ?? null
-    );
+    return cssTexts.find((text) => /@page\s+review-flyer\b/i.test(text)) ?? null;
   });
   expect(pageRule).toMatch(/size:\s*letter/i);
   expect(pageRule).toMatch(/margin:\s*0\.45in/i);
 
   await page.emulateMedia({ media: "screen" });
   await page.getByRole("button", { name: "Print all six flyers" }).click();
-  await expect(page.locator("body")).toHaveAttribute(
-    "data-review-flyer-print",
-    "all",
-  );
-  await expect(page.locator("html")).toHaveAttribute(
-    "data-test-print-calls",
-    "2",
-  );
+  await expect(page.locator("body")).toHaveAttribute("data-review-flyer-print", "all");
+  await expect(page.locator("html")).toHaveAttribute("data-test-print-calls", "2");
 
   await page.emulateMedia({ media: "print" });
-  const allPrint = await page.locator("[data-review-flyer]").evaluateAll(
-    (flyers) =>
-      flyers.map((flyer) => ({
-        display: getComputedStyle(flyer).display,
-        height: flyer.getBoundingClientRect().height,
-        breakAfter: getComputedStyle(flyer).breakAfter,
-      })),
+  const allPrint = await page.locator("[data-review-flyer]").evaluateAll((flyers) =>
+    flyers.map((flyer) => ({
+      display: getComputedStyle(flyer).display,
+      height: flyer.getBoundingClientRect().height,
+      breakAfter: getComputedStyle(flyer).breakAfter,
+    })),
   );
   expect(allPrint).toHaveLength(6);
   for (const [index, flyer] of allPrint.entries()) {
@@ -405,36 +356,24 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
 
   await page.emulateMedia({ media: "screen" });
   await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
-  await expect(page.locator("body")).not.toHaveAttribute(
-    "data-review-flyer-print",
-  );
+  await expect(page.locator("body")).not.toHaveAttribute("data-review-flyer-print");
   await page.evaluate(() => window.dispatchEvent(new Event("beforeprint")));
-  await expect(page.locator("body")).toHaveAttribute(
-    "data-review-flyer-print",
-    "practice",
-  );
+  await expect(page.locator("body")).toHaveAttribute("data-review-flyer-print", "practice");
   await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
-  await expect(page.locator("body")).not.toHaveAttribute(
-    "data-review-flyer-print",
-  );
+  await expect(page.locator("body")).not.toHaveAttribute("data-review-flyer-print");
 
   const forbiddenRequests = browserRequests.filter((rawUrl) => {
     const url = new URL(rawUrl);
-    return (
-      url.hostname === "wgi-review-qr.vercel.app" ||
-      url.pathname.startsWith("/storage/v1/")
-    );
+    return url.hostname === "wgi-review-qr.vercel.app" || url.pathname.startsWith("/storage/v1/");
   });
   expect(forbiddenRequests).toEqual([]);
 
   for (const action of viewportActionSizes) {
-    expect(
-      action.width,
-      `${action.label} width at ${action.viewport}px`,
-    ).toBeGreaterThanOrEqual(44);
-    expect(
-      action.height,
-      `${action.label} height at ${action.viewport}px`,
-    ).toBeGreaterThanOrEqual(44);
+    expect(action.width, `${action.label} width at ${action.viewport}px`).toBeGreaterThanOrEqual(
+      44,
+    );
+    expect(action.height, `${action.label} height at ${action.viewport}px`).toBeGreaterThanOrEqual(
+      44,
+    );
   }
 });

@@ -1,8 +1,9 @@
 import type { MetadataRoute } from "next";
-import { site, localePath, locales } from "@/lib/site";
+
 import { blogPosts } from "@/lib/content/blog";
 import { educationTopics } from "@/lib/content/education";
 import { prepDocs } from "@/lib/content/preps";
+import { site, localePath, locales } from "@/lib/site";
 
 const paths = [
   "/",
@@ -31,11 +32,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly" as const,
       priority: path === "/" ? 1 : 0.7,
       alternates: {
-        languages: Object.fromEntries(
-          locales.map((l) => [l, `${site.url}${localePath(l, path)}`])
-        ),
+        languages: Object.fromEntries(locales.map((l) => [l, `${site.url}${localePath(l, path)}`])),
       },
-    }))
+    })),
   );
   return [
     ...localized,

@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+
+import { AuthCard } from "@/app/admin/auth-card";
 import { getSessionUser } from "@/lib/portal/auth";
-import { AuthCard } from "../auth-card";
+
 import { LoginForm } from "./login-form";
 
 // Credentialed, quiet, unmistakably the practice: a single navy-anchored
@@ -12,10 +14,7 @@ export default async function AdminLoginPage({
 }: Readonly<{
   searchParams: Promise<{ password?: string; auth?: string }>;
 }>) {
-  const [query, session] = await Promise.all([
-    searchParams,
-    getSessionUser(),
-  ]);
+  const [query, session] = await Promise.all([searchParams, getSessionUser()]);
   if (session) redirect("/admin");
 
   return (
@@ -37,8 +36,8 @@ export default async function AdminLoginPage({
           role="alert"
           className="mt-5 rounded-[var(--radius)] bg-[var(--color-amber-soft)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
         >
-          That setup or reset link is no longer valid. Request another
-          reset or ask your portal administrator for a new invitation.
+          That setup or reset link is no longer valid. Request another reset or ask your portal
+          administrator for a new invitation.
         </p>
       ) : null}
       <LoginForm allowPreviewAlias={process.env.VERCEL_ENV === "preview"} />

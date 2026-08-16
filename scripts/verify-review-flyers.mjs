@@ -9,14 +9,7 @@ import { PDFDocument } from "pdf-lib";
 import { PNG } from "pngjs";
 import { z } from "zod";
 
-const TARGET_KEYS = [
-  "master",
-  "practice",
-  "awad",
-  "chang",
-  "mendoza",
-  "taylor",
-];
+const TARGET_KEYS = ["master", "practice", "awad", "chang", "mendoza", "taylor"];
 const ASSET_KINDS = ["png", "svg", "pdf"];
 const PROVIDER_IDS = {
   awad: "amir-awad",
@@ -24,12 +17,8 @@ const PROVIDER_IDS = {
   mendoza: "alfredo-mendoza",
   taylor: "taylor-emmerman",
 };
-const manifestPath = fileURLToPath(
-  new URL("../src/lib/review-targets.json", import.meta.url),
-);
-const assetDirectory = fileURLToPath(
-  new URL("../private/review-flyers/", import.meta.url),
-);
+const manifestPath = fileURLToPath(new URL("../src/lib/review-targets.json", import.meta.url));
+const assetDirectory = fileURLToPath(new URL("../private/review-flyers/", import.meta.url));
 
 const flyerAssetSchema = z.object({
   filename: z.string(),
@@ -45,9 +34,7 @@ const flyerTargetSchema = z.object({
   providerId: z.string().optional(),
 });
 const manifestSchema = z.record(z.string(), flyerTargetSchema);
-const manifest = manifestSchema.parse(
-  JSON.parse(await readFile(manifestPath, "utf8")),
-);
+const manifest = manifestSchema.parse(JSON.parse(await readFile(manifestPath, "utf8")));
 assert.deepEqual(Object.keys(manifest), TARGET_KEYS, "manifest target keys");
 
 const assets = [];

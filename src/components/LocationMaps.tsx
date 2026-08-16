@@ -1,9 +1,13 @@
+import type { Dictionary } from "@/lib/i18n";
 import { site, directionsUrl, mapEmbedUrl } from "@/lib/site";
 import type { Locale } from "@/lib/site";
-import type { Dictionary } from "@/lib/i18n";
+
 import { MapPin } from "./icons";
 
-interface LocationMapsProps { locale: Locale; dict: Dictionary }
+interface LocationMapsProps {
+  locale: Locale;
+  dict: Dictionary;
+}
 
 /**
  * Live maps for both offices (the old site's new-patients page embedded a

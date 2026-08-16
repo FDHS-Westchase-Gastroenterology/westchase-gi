@@ -1,19 +1,29 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { getDictionary, isLocale } from "@/lib/i18n";
-import { pageMetadata } from "@/lib/metadata";
-import { site, localePath } from "@/lib/site";
-import type { Locale } from "@/lib/site";
-import { physicians, nursePractitioners, infusionNurse } from "@/lib/providers";
+
+import {
+  ArrowRight,
+  ClipboardCheck,
+  ExternalLink,
+  Heart,
+  MessageSquare,
+  Phone,
+} from "@/components/icons";
+import { LocationCards } from "@/components/LocationCards";
 import { Reveal } from "@/components/Reveal";
 import { revealDelay } from "@/components/reveal-delay";
 import { TestimonialRail } from "@/components/TestimonialRail";
-import { LocationCards } from "@/components/LocationCards";
 import { TextBand } from "@/components/TextBand";
-import { ArrowRight, ClipboardCheck, ExternalLink, Heart, MessageSquare, Phone } from "@/components/icons";
+import { getDictionary, isLocale } from "@/lib/i18n";
+import { pageMetadata } from "@/lib/metadata";
+import { physicians, nursePractitioners, infusionNurse } from "@/lib/providers";
+import { site, localePath } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 
-interface PageProps { params: Promise<{ locale: string }> }
+interface PageProps {
+  params: Promise<{ locale: string }>;
+}
 
 export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
@@ -38,9 +48,27 @@ export default async function HomePage({ params }: Readonly<PageProps>) {
   // Site's own icon set at the same visual weight.
   const tiles = [
     { ...t.tiles.prep, href: p("/procedure-prep"), icon: ClipboardCheck },
-    { ...t.tiles.forms, href: p("/new-patients"), img: "/images/tiles/patient-forms.webp", w: 200, h: 200 },
-    { ...t.tiles.physicians, href: p("/physicians"), img: "/images/tiles/physicians.webp", w: 150, h: 100 },
-    { ...t.tiles.directions, href: p("/contact"), img: "/images/tiles/directions.webp", w: 100, h: 80 },
+    {
+      ...t.tiles.forms,
+      href: p("/new-patients"),
+      img: "/images/tiles/patient-forms.webp",
+      w: 200,
+      h: 200,
+    },
+    {
+      ...t.tiles.physicians,
+      href: p("/physicians"),
+      img: "/images/tiles/physicians.webp",
+      w: 150,
+      h: 100,
+    },
+    {
+      ...t.tiles.directions,
+      href: p("/contact"),
+      img: "/images/tiles/directions.webp",
+      w: 100,
+      h: 80,
+    },
   ] as const;
 
   return (
@@ -79,7 +107,8 @@ export default async function HomePage({ params }: Readonly<PageProps>) {
               <MessageSquare className="mt-1 h-4 w-4 flex-none text-[var(--color-amber)]" />
               <span>
                 <span className="whitespace-nowrap">
-                  {dict.common.textLine}: <span className="bidi-ltr">{site.textLine.display}</span> ·
+                  {dict.common.textLine}: <span className="bidi-ltr">{site.textLine.display}</span>{" "}
+                  ·
                 </span>{" "}
                 {dict.common.textLineHuman}
               </span>
@@ -112,9 +141,18 @@ export default async function HomePage({ params }: Readonly<PageProps>) {
                 >
                   <span className="flex h-16 w-16 flex-none items-center justify-center overflow-hidden rounded-full bg-[var(--color-mint)]">
                     {"icon" in tile ? (
-                      <tile.icon className="h-9 w-9 text-[var(--color-teal-ink)]" strokeWidth={1.75} />
+                      <tile.icon
+                        className="h-9 w-9 text-[var(--color-teal-ink)]"
+                        strokeWidth={1.75}
+                      />
                     ) : (
-                      <Image src={tile.img} alt="" width={tile.w} height={tile.h} className="h-11 w-11 object-contain" />
+                      <Image
+                        src={tile.img}
+                        alt=""
+                        width={tile.w}
+                        height={tile.h}
+                        className="h-11 w-11 object-contain"
+                      />
                     )}
                   </span>
                   <span className="min-w-0">
@@ -185,8 +223,8 @@ export default async function HomePage({ params }: Readonly<PageProps>) {
                       sizes="(min-width: 1024px) 24rem, (min-width: 640px) 50vw, 100vw"
                       className="aspect-[7/8] w-full object-cover object-top"
                     />
-                    <span className="block px-6 pb-5 pt-5">
-                      <span className="block font-[var(--font-display)] text-xl text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
+                    <span className="block px-6 pt-5 pb-5">
+                      <span className="block text-xl font-[var(--font-display)] text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
                         {doc.name}, {doc.credentials}
                       </span>
                       <span className="mt-1 block text-[0.95rem] font-semibold text-[var(--color-teal-ink)]">

@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
+
 import { AuthCard } from "@/app/admin/auth-card";
 import { getSessionUser } from "@/lib/portal/auth";
+
 import { ResetRequestForm } from "./reset-request-form";
 
 export default async function ForgotPasswordPage() {

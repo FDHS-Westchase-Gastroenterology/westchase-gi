@@ -1,11 +1,9 @@
 import { test, expect } from "@playwright/test";
 import { z } from "zod";
+
 import { jsonObjectSchema } from "../src/lib/json";
 import type { JsonObject } from "../src/lib/json";
-import {
-  GitHubApiError,
-  readGitHubResponse,
-} from "../src/lib/portal/github-response";
+import { GitHubApiError, readGitHubResponse } from "../src/lib/portal/github-response";
 import {
   getMaintainerManagementState,
   invitationIsCancelled,
@@ -117,8 +115,7 @@ test("external maintainer operations fail closed around audit and reconciliation
       finalDetail = jsonObjectSchema.parse(detail);
     },
     failureCode: () => "limit",
-    providerStatus: (error) =>
-      error instanceof GitHubApiError ? error.status : null,
+    providerStatus: (error) => (error instanceof GitHubApiError ? error.status : null),
     afterAttempt: () => undefined,
   });
   expect(limited).toEqual({ ok: false, code: "limit" });
@@ -139,8 +136,7 @@ test("external maintainer operations fail closed around audit and reconciliation
       finalOutcome = outcome;
     },
     failureCode: () => "unavailable",
-    providerStatus: (error) =>
-      error instanceof GitHubApiError ? error.status : null,
+    providerStatus: (error) => (error instanceof GitHubApiError ? error.status : null),
     afterAttempt: () => undefined,
   });
   expect(unconfirmed).toEqual({ ok: false, code: "unconfirmed" });
@@ -208,11 +204,7 @@ test("maintainer view states keep blocked and staff controls fail closed", () =>
   };
 
   expect(
-    getMaintainerViewState(
-      { ...base, management: "restrict_installation" },
-      true,
-      true,
-    ),
+    getMaintainerViewState({ ...base, management: "restrict_installation" }, true, true),
   ).toMatchObject({ canManage: false, showSetup: true });
   expect(
     getMaintainerViewState(
@@ -229,20 +221,19 @@ test("maintainer view states keep blocked and staff controls fail closed", () =>
     showSetup: true,
     showInvitationDisclosure: true,
   });
-  expect(
-    getMaintainerViewState({ ...base, management: "ready" }, true, true),
-  ).toMatchObject({ canManage: true, showSetup: false, showEmptyState: true });
-  expect(
-    getMaintainerViewState({ ...base, management: "ready" }, false, false),
-  ).toMatchObject({ canManage: false, showSetup: false });
+  expect(getMaintainerViewState({ ...base, management: "ready" }, true, true)).toMatchObject({
+    canManage: true,
+    showSetup: false,
+    showEmptyState: true,
+  });
+  expect(getMaintainerViewState({ ...base, management: "ready" }, false, false)).toMatchObject({
+    canManage: false,
+    showSetup: false,
+  });
 });
 
 test("Administration write makes maintainer controls ready", () => {
   expect(getMaintainerManagementState("write")).toBe("ready");
-  expect(getMaintainerManagementState("read")).toBe(
-    "permission_upgrade_required",
-  );
-  expect(getMaintainerManagementState("none")).toBe(
-    "permission_upgrade_required",
-  );
+  expect(getMaintainerManagementState("read")).toBe("permission_upgrade_required");
+  expect(getMaintainerManagementState("none")).toBe("permission_upgrade_required");
 });

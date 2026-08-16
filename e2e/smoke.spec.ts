@@ -46,9 +46,7 @@ test("appointment submission cannot re-enter while its request is pending", asyn
     const originalFetch = window.fetch.bind(window);
     window.fetch = async (...args) => {
       const root = document.documentElement;
-      root.dataset.intakeFetchCount = String(
-        Number(root.dataset.intakeFetchCount ?? "0") + 1,
-      );
+      root.dataset.intakeFetchCount = String(Number(root.dataset.intakeFetchCount ?? "0") + 1);
       return originalFetch(...args);
     };
   });
@@ -62,13 +60,8 @@ test("appointment submission cannot re-enter while its request is pending", asyn
   });
 
   try {
-    await expect(page.locator("html")).toHaveAttribute(
-      "data-intake-fetch-count",
-      "1",
-    );
-    await expect
-      .poll(() => requestCount, { timeout: 5_000 })
-      .toBe(1);
+    await expect(page.locator("html")).toHaveAttribute("data-intake-fetch-count", "1");
+    await expect.poll(() => requestCount, { timeout: 5_000 }).toBe(1);
     await expect(form.getByRole("button", { name: "Sending…" })).toBeDisabled();
   } finally {
     releaseRequest();
@@ -82,14 +75,8 @@ test("public metadata uses the apex canonical origin", async ({ page, request })
   const redirectingOrigin = "https://www.westchasegi.com";
 
   await page.goto("/en");
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
-    "href",
-    `${origin}/en`,
-  );
-  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute(
-    "content",
-    `${origin}/en`,
-  );
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", `${origin}/en`);
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute("content", `${origin}/en`);
 
   const alternates = await page
     .locator('link[rel="alternate"][hreflang]')
@@ -103,9 +90,7 @@ test("public metadata uses the apex canonical origin", async ({ page, request })
     `${origin}/en`,
   ]);
 
-  const jsonLd = await page
-    .locator('script[type="application/ld+json"]')
-    .allTextContents();
+  const jsonLd = await page.locator('script[type="application/ld+json"]').allTextContents();
   expect(jsonLd.join("")).toContain(origin);
   expect(jsonLd.join("")).not.toContain(redirectingOrigin);
 
@@ -123,10 +108,7 @@ test("public metadata uses the apex canonical origin", async ({ page, request })
   expect(robotsText).not.toContain(redirectingOrigin);
 
   await page.goto("/review");
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
-    "href",
-    `${origin}/review`,
-  );
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", `${origin}/review`);
 });
 
 test("/ negotiates the locale from Accept-Language and the locale cookie", async ({
@@ -161,29 +143,17 @@ test("/ negotiates the locale from Accept-Language and the locale cookie", async
       headers,
     });
     expect(response.status()).toBe(307);
-    expect(
-      new URL(response.headers().location, "http://localhost").pathname,
-    ).toBe(expected);
+    expect(new URL(response.headers().location, "http://localhost").pathname).toBe(expected);
     await context.dispose();
   }
 });
 
-test("/admin returns a real unauthenticated redirect to login", async ({
-  page,
-  request,
-}) => {
+test("/admin returns a real unauthenticated redirect to login", async ({ page, request }) => {
   const rawResponse = await request.get("/admin", { maxRedirects: 0 });
   expect(rawResponse.status()).toBe(307);
-  expect(
-    new URL(
-      rawResponse.headers().location,
-      "http://localhost",
-    ).pathname,
-  ).toBe("/admin/login");
+  expect(new URL(rawResponse.headers().location, "http://localhost").pathname).toBe("/admin/login");
 
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/admin\/login\/?$/);
-  await expect(
-    page.getByRole("heading", { name: "Staff sign in" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Staff sign in" })).toBeVisible();
 });
