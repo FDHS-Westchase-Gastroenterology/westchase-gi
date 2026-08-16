@@ -1,10 +1,8 @@
 import "server-only";
 
 import { serviceClient } from "@/lib/portal/server";
-import {
-  parsePortalReleaseEngagementRows,
-  type PortalReleaseEngagementResult,
-} from "./release-engagement-model";
+import { parsePortalReleaseEngagementRows } from "./release-engagement-model";
+import type { PortalReleaseEngagementResult } from "./release-engagement-model";
 import { parsePortalReleaseId } from "./release-state";
 
 export type {
@@ -16,10 +14,10 @@ export async function getPortalReleaseEngagement(
   releaseId: string,
 ): Promise<PortalReleaseEngagementResult> {
   const parsedReleaseId = parsePortalReleaseId(releaseId);
-  if (!parsedReleaseId) return { status: "unavailable" };
+  if (parsedReleaseId === null) return { status: "unavailable" };
 
   try {
-    const { data, error } = await serviceClient()
+    const result = await serviceClient()
       .from("portal_release_states")
       .select(
         `
@@ -45,8 +43,8 @@ export async function getPortalReleaseEngagement(
       .order("first_opened_at", { ascending: false })
       .order("staff_user_id", { ascending: true });
 
-    if (error) return { status: "unavailable" };
-    return parsePortalReleaseEngagementRows(data);
+    if (result.error !== null) return { status: "unavailable" };
+    return parsePortalReleaseEngagementRows(result.data);
   } catch {
     return { status: "unavailable" };
   }

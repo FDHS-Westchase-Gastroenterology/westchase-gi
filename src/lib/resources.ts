@@ -1,19 +1,19 @@
 // Patient resource links. Every URL verified live 2026-07-04 (recon link
-// audit or manual fetch). Changes from the old Links page:
+// Audit or manual fetch). Changes from the old Links page:
 // - ccfa.org (unreachable; the foundation renamed) -> crohnscolitisfoundation.org
 // - the 17-topic ASGE library the old vendor hosted -> ASGE's own patient hub
-// liverfoundation.org and crohnscolitisfoundation.org block automated
-// requests (HTTP 403) but load normally in a browser; both are the
-// organizations' canonical domains.
+// Liverfoundation.org and crohnscolitisfoundation.org block automated
+// Requests (HTTP 403) but load normally in a browser; both are the
+// Organizations' canonical domains.
 
 import type { Bi } from "./content/types";
 
-export type ResourceLink = {
+export interface ResourceLink {
   topic: Bi;
   org: string;
   url: string;
   description: Bi;
-};
+}
 
 export const patientResources: ResourceLink[] = [
   {

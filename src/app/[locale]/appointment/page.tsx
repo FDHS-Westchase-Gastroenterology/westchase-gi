@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
-import { site, type Locale } from "@/lib/site";
+import { site } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import { PageHero } from "@/components/PageHero";
 import { AppointmentForm } from "@/components/AppointmentForm";
 import { HoursTable } from "@/components/HoursTable";
 import { MessageSquare, Phone } from "@/components/icons";
 
-type PageProps = { params: Promise<{ locale: string }> };
+interface PageProps { params: Promise<{ locale: string }> }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   );
 }
 
-export default async function AppointmentPage({ params }: PageProps) {
+export default async function AppointmentPage({ params }: Readonly<PageProps>) {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);

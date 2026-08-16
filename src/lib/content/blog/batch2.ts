@@ -1,6 +1,6 @@
 // Blog port, batch 2 (legacy posts 7–11). Titles and dates match the old site
-// exactly; article bodies are original EN/ES prose written for the rebuild,
-// with VI/KO/AR machine translations still awaiting native-speaker review.
+// Exactly; article bodies are original EN/ES prose written for the rebuild,
+// With VI/KO/AR machine translations still awaiting native-speaker review.
 
 import type { BlogPost } from "../types";
 

@@ -1,14 +1,15 @@
 // Colonoscopy preps: MiraLAX (full and split-dose) and Golytely (full and
-// split-dose). Two of these have a Spanish original in the practice's scan:
-// the split-dose MiraLAX sheet (pp. 13–14) and the full Golytely sheet
+// Split-dose). Two of these have a Spanish original in the practice's scan:
+// The split-dose MiraLAX sheet (pp. 13–14) and the full Golytely sheet
 // (pp. 17–18) — each locale renders its own original there, INCLUDING their
-// genuine divergences (the Spanish split-dose sheet runs 1/3/5 pm where the
+// Genuine divergences (the Spanish split-dose sheet runs 1/3/5 pm where the
 // English runs 2/4/6 pm; both verified against the scan, flagged for the
-// practice as a wording question, never silently aligned).
+// Practice as a wording question, never silently aligned).
 
 import type { PrepDoc, PrepSection } from "./types";
 import { EN, ES_T, ES_O, VI, KO, AR } from "./common";
-import { standardFront, avoidAndLiquids, type Flavor } from "./builders";
+import { standardFront, avoidAndLiquids } from "./builders";
+import type { Flavor } from "./builders";
 
 const purchaseEn =
   "**You will need to purchase one 10-ounce bottle of Magnesium Citrate, one 238-gram bottle of MiraLAX powder, and 4 tablets of Dulcolax 5 mg (Bisacodyl)** at your local pharmacy, in the laxative aisle.";
@@ -244,7 +245,7 @@ const miralaxSplitDayBeforeEn: PrepSection[] = [
 ];
 
 // The practice's own Spanish sheet (pp. 13–14). Its schedule genuinely
-// differs from the English sheet's (1/3/5 pm vs 2/4/6 pm) — reproduced as-is.
+// Differs from the English sheet's (1/3/5 pm vs 2/4/6 pm) — reproduced as-is.
 const miralaxSplitDayBeforeEs: PrepSection[] = [
   {
     heading: ES_O.dayBeforeHeading,
@@ -416,7 +417,7 @@ const EN_G: Flavor = {
   dietPills:
     "**Stop Phentermine (weight-loss medication) 14 days before.**",
   // The Spanish sheet lists the same medications with no day count —
-  // reproduced as-is (flagged for the practice).
+  // Reproduced as-is (flagged for the practice).
   glp1: "**Stop semaglutide (Wegovy, Ozempic, Rybelsus), dulaglutide (Trulicity), lixisenatide (Adlyxin), exenatide (Bydureon, Byetta), liraglutide (Victoza, Saxenda) and Mounjaro (tirzepatide).**",
   fiber:
     "**Reduce fiber intake 3 days before.** For example, do not eat nuts, seeds, or popcorn.",
@@ -568,7 +569,7 @@ const golytelyDayBeforeEn: PrepSection[] = [
         items: [
           "On the morning of the day before, add water to the Golytely container up to the indicated line.",
           // The Spanish original's dual start time is genuine (verified
-          // against the scan) — reproduced as-is.
+          // Against the scan) — reproduced as-is.
           "At **3:00 pm or 6:00 pm**, start drinking 8 ounces of Golytely every 15 minutes until all of the contents are finished.",
           "One hour after finishing the Golytely solution, take 2 tablets of Dulcolax 5 mg (Bisacodyl) — available without a prescription.",
         ],
@@ -742,7 +743,7 @@ const golytelySplitStepsEn = [
   "At 10:00 am, fill the Golytely laxative powder container with water. Shake well until the powder is dissolved; chill in the refrigerator.",
   "Starting at **4:00 pm**, drink one 8-ounce glass every fifteen (15) minutes until **half** is taken. Try to drink one full glass at a time instead of sipping.",
   // Source wording (verified against the scan 2026-07-07): step 3 refers
-  // forward to "step 4" — reproduced as-is.
+  // Forward to "step 4" — reproduced as-is.
   "**One hour** after completing **step 4**, take two (2) tablets of Dulcolax (Bisacodyl) 5 mg by mouth.",
   "At ___ on ___, **finish the second half** of your Golytely prep.",
 ];

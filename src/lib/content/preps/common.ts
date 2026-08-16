@@ -1,27 +1,27 @@
 // Shared passages that repeat verbatim across the practice's prep handouts.
 //
 // Six flavors. EN / ES_T / ES_O are chosen per document by which
-// original(s) exist; VI / KO / AR are faithful translations of EN for
-// locales with no original sheets (added 2026-07-08, pending native-speaker
-// verification by clinic staff — drug, brand and product names stay in
+// Original(s) exist; VI / KO / AR are faithful translations of EN for
+// Locales with no original sheets (added 2026-07-08, pending native-speaker
+// Verification by clinic staff — drug, brand and product names stay in
 // Latin script exactly as printed on US packaging):
 //   EN    — the English originals' wording (shared across the EN sheets).
 //   ES_T  — faithful Spanish translations of those EN passages, used on
-//           documents whose only original is English. Terminology follows
-//           the practice's own Spanish sheets.
+//           Documents whose only original is English. Terminology follows
+//           The practice's own Spanish sheets.
 //   ES_O  — the practice's own Spanish sheets' wording, used on documents
-//           that have a Spanish original.
+//           That have a Spanish original.
 //   VI    — Vietnamese; addresses the patient as "quý vị".
 //   KO    — Korean; polite-formal 합니다체 with -하십시오 imperatives.
 //   AR    — Modern Standard Arabic; Western digits (0-9) only.
 //
 // Transcription policy (matches the cleared markdown set): every clinical
-// fact — drug names/lists, doses, times, sequences — is verbatim from the
-// scan. Only orthography is normalized (accents, "NSAID's"→"NSAIDs",
+// Fact — drug names/lists, doses, times, sequences — is verbatim from the
+// Scan. Only orthography is normalized (accents, "NSAID's"→"NSAIDs",
 // "Semiglutide"→"semaglutide", ES typos like "conducer"/"Anticuagulantes"),
-// and print-era ALL CAPS is set in sentence case; emphasis is carried by
-// the design instead. The known source quirks (PROJECT-LOG 2026-07-07
-// safety gate) are reproduced as-is, never silently "fixed".
+// And print-era ALL CAPS is set in sentence case; emphasis is carried by
+// The design instead. The known source quirks (PROJECT-LOG 2026-07-07
+// Safety gate) are reproduced as-is, never silently "fixed".
 
 /* ------------------------------------------------------------------ *
    English originals
@@ -185,7 +185,7 @@ export const ES_O = {
   dietPills:
     "**14 días antes debe suspender: Phentermine** (medicamento para bajar de peso).",
   // The practice's Spanish sheets list the same medications but no day
-  // count — reproduced as-is (source quirk; flagged for the practice).
+  // Count — reproduced as-is (source quirk; flagged for the practice).
   glp1: "**Debe suspender semaglutide (Wegovy, Ozempic, Rybelsus), dulaglutide (Trulicity), lixisenatide (Adlyxin), exenatide (Bydureon, Byetta), liraglutide (Victoza, Saxenda) y Mounjaro (tirzepatide).**",
   fiber:
     "**Disminuya el consumo de fibra 3 días antes.** Por ejemplo, no coma nueces, semillas, palomitas de maíz (popcorn).",

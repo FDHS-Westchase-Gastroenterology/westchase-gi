@@ -4,11 +4,12 @@ type E2ETargetEnvironment = Readonly<Record<string, string | undefined>>;
  * @param {E2ETargetEnvironment} env
  * @param {string[]} names
  */
-function first(env: E2ETargetEnvironment, ...names: string[]) {
+function first(env: E2ETargetEnvironment, ...names: readonly string[]) {
   for (const name of names) {
     const value = env[name]?.trim();
-    if (value) return value;
+    if (value !== undefined && value !== "") return value;
   }
+  return undefined;
 }
 
 /**
@@ -16,9 +17,9 @@ function first(env: E2ETargetEnvironment, ...names: string[]) {
  * @param {string} label
  * @param {string[]} names
  */
-function required(env: E2ETargetEnvironment, label: string, ...names: string[]) {
+function required(env: E2ETargetEnvironment, label: string, ...names: readonly string[]) {
   const value = first(env, ...names);
-  if (value) return value;
+  if (value !== undefined && value !== "") return value;
   throw new Error(`E2E safety check failed: missing ${label}`);
 }
 
@@ -74,7 +75,7 @@ export function assertSafeE2ETarget(env: E2ETargetEnvironment) {
         "SUPABASE_PROJECT_REF_PROD",
       )
     : first(env, "SUPABASE_PROD_PROJECT_REF", "SUPABASE_PROJECT_REF_PROD");
-  if (productionRef && projectRef === productionRef) {
+  if (productionRef !== undefined && productionRef !== "" && projectRef === productionRef) {
     throw new Error("E2E safety check failed: Production project rejected");
   }
 
@@ -87,7 +88,8 @@ export function assertSafeE2ETarget(env: E2ETargetEnvironment) {
       )
     : first(env, "SUPABASE_PROD_URL", "SUPABASE_URL_PROD");
   if (
-    productionUrlValue &&
+    productionUrlValue !== undefined &&
+    productionUrlValue !== "" &&
     targetUrl.origin === safeUrl(productionUrlValue, "Production URL").origin
   ) {
     throw new Error("E2E safety check failed: Production URL rejected");

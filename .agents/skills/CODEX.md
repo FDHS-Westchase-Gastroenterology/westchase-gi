@@ -15,6 +15,7 @@ Discovery is progressive. An agent sees each skill's name and description first 
 | `supabase` | [supabase/agent-skills](https://github.com/supabase/agent-skills) | 0.1.2 | Vendor-published |
 | `supabase-postgres-best-practices` | [supabase/agent-skills](https://github.com/supabase/agent-skills) | 1.1.1 | MIT |
 | `vercel-react-best-practices` | Vercel Engineering | 1.0.0 | MIT |
+| `writing-quality` | [vercel-labs/eve-software-factory-template](https://github.com/vercel-labs/eve-software-factory-template/tree/main/agent/skills/writing-quality) | Not declared (`4cb890e`) | MIT |
 
 ## Precedence
 

@@ -1,4 +1,5 @@
-import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import type { Page, TestInfo } from "@playwright/test";
 
 const languageNames = ["English", "Español", "Tiếng Việt", "한국어", "العربية"];
 
@@ -10,17 +11,20 @@ async function expectNoOpenChooser(page: Page) {
   await expect(page.locator("dialog.language-dialog[open]")).toHaveCount(0);
 }
 
-function cookieValue(cookies: { name: string; value: string }[], name: string) {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function cookieValue(cookies: readonly { name: string; value: string }[], name: string) {
   return cookies.find((cookie) => cookie.name === name)?.value;
 }
 
 // The chooser auto-opens only on positive evidence of a mismatch (I4): the
-// browser's top supported language (navigator.languages, mirrored server-side
-// by the proxy's Accept-Language negotiation) differs from the served locale,
-// and no remembered choice exists. When the site already guessed right,
-// nothing interrupts.
+// Browser's top supported language (navigator.languages, mirrored server-side
+// By the proxy's Accept-Language negotiation) differs from the served locale,
+// And no remembered choice exists. When the site already guessed right,
+// Nothing interrupts.
 test.describe("evidence-gated language chooser", () => {
-  test.beforeEach(async ({}, testInfo) => skipWithoutJavaScript(testInfo));
+  test.beforeEach(({}, testInfo) => {
+    skipWithoutJavaScript(testInfo);
+  });
 
   test("matching browser language never opens the dialog", async ({ page }) => {
     // Default context: navigator.languages = ["en-US"].
@@ -79,10 +83,14 @@ test.describe("evidence-gated language chooser", () => {
       const describedBy = element.getAttribute("aria-describedby");
       return {
         modal: element.matches(":modal"),
-        label: labelledBy ? document.getElementById(labelledBy)?.textContent : null,
-        description: describedBy
-          ? document.getElementById(describedBy)?.textContent
-          : null,
+        label:
+          labelledBy !== null && labelledBy !== ""
+            ? document.getElementById(labelledBy)?.textContent
+            : null,
+        description:
+          describedBy !== null && describedBy !== ""
+            ? document.getElementById(describedBy)?.textContent
+            : null,
         activeLanguage: document.activeElement?.getAttribute("lang"),
       };
     });
@@ -200,7 +208,7 @@ test.describe("evidence-gated language chooser", () => {
     expect(cookieValue(await context.cookies(), "wgi-locale")).toBeUndefined();
 
     // Session memory suppresses reopening while the mismatch persists; a
-    // future browser session gets one more chance because nothing is stored.
+    // Future browser session gets one more chance because nothing is stored.
     await page.goto("/en/contact");
     await expectNoOpenChooser(page);
     await page.goto("/en/procedure-prep");
@@ -222,7 +230,7 @@ test.describe("evidence-gated language chooser", () => {
     await expectNoOpenChooser(page);
 
     // The remembered locale also beats the browser's language evidence: the
-    // proxy negotiates / from the cookie, and the dialog never re-considers.
+    // Proxy negotiates / from the cookie, and the dialog never re-considers.
     await page.goto("/vi/contact");
     await expectNoOpenChooser(page);
     await context.close();
@@ -269,23 +277,37 @@ test.describe("evidence-gated language chooser", () => {
         get: () => "",
         set: () => undefined,
       });
-      const getItem = Storage.prototype.getItem;
-      const setItem = Storage.prototype.setItem;
-      Storage.prototype.getItem = function (key) {
-        if (this === window.sessionStorage) throw new Error("blocked");
-        return getItem.call(this, key);
+      const blockedStorage = {
+        getItem() {
+          throw new Error("blocked");
+        },
+        setItem() {
+          throw new Error("blocked");
+        },
+        removeItem() {
+          throw new Error("blocked");
+        },
+        clear() {
+          throw new Error("blocked");
+        },
+        key() {
+          return null;
+        },
+        get length() {
+          return 0;
+        },
       };
-      Storage.prototype.setItem = function (key, value) {
-        if (this === window.sessionStorage) throw new Error("blocked");
-        return setItem.call(this, key, value);
-      };
+      Object.defineProperty(window, "sessionStorage", {
+        configurable: true,
+        value: blockedStorage,
+      });
     });
 
     // The mismatch evidence is real (es), but with no way to remember a
-    // choice, reopening every page would recreate the old site's per-page
-    // modal. Session module memory still prevents the loop — proven with
-    // client-side navigation, since a full reload resets module state when
-    // both persistent stores are blocked.
+    // Choice, reopening every page would recreate the old site's per-page
+    // Modal. Session module memory still prevents the loop — proven with
+    // Client-side navigation, since a full reload resets module state when
+    // Both persistent stores are blocked.
     await page.goto("/en/contact");
     await expect(page.getByRole("dialog", { name: "Choose your language" })).toBeVisible();
     await page.keyboard.press("Escape");

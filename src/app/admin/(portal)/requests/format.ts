@@ -3,13 +3,15 @@ import type {
   RequestStatus,
   RequestTime,
 } from "@/lib/portal/contracts";
+import type { CallOutcomeId } from "@/lib/portal/call-outcomes";
+import type { Locale } from "@/lib/site";
 
-export const STATUS_LABELS: Record<RequestStatus, string> = {
+export const STATUS_LABELS = {
   new: "New",
   contacted: "Contacted",
   scheduled: "Scheduled",
   closed: "Closed",
-};
+} as const satisfies Record<RequestStatus, string>;
 
 // Practice-local time: front desk staff read these in Tampa.
 const dateTime = new Intl.DateTimeFormat("en-US", {
@@ -36,29 +38,29 @@ export function formatReceived(iso: string, withYear = false): string {
   return (withYear ? dateTimeWithYear : dateTime).format(date);
 }
 
-export const LOCATION_LABELS: Record<RequestLocation, string> = {
+export const LOCATION_LABELS = {
   any: "Either office",
   tampa: "Tampa",
   lutz: "Lutz",
-};
+} as const satisfies Record<RequestLocation, string>;
 
-export const TIME_LABELS: Record<RequestTime, string> = {
+export const TIME_LABELS = {
   any: "Any time",
   morning: "Morning",
   afternoon: "Afternoon",
-};
+} as const satisfies Record<RequestTime, string>;
 
-export const LOCALE_LABELS: Record<string, string> = {
+export const LOCALE_LABELS = {
   en: "English",
   es: "Spanish",
   vi: "Vietnamese",
   ko: "Korean",
   ar: "Arabic",
-};
+} as const satisfies Record<Locale, string>;
 
 // Call-outcome vocabulary in front-desk language. Past-tense lines for
 // Request activity, keyed by the RPC outcome ids.
-export const OUTCOME_HISTORY_LABELS: Record<string, string> = {
+export const OUTCOME_HISTORY_LABELS = {
   booked: "Appointment booked",
   reached_follow_up: "Reached the patient — follow-up needed",
   voicemail: "Left a voicemail",
@@ -66,7 +68,7 @@ export const OUTCOME_HISTORY_LABELS: Record<string, string> = {
   wont_schedule: "Patient won't schedule",
   not_actionable: "Duplicate or not actionable",
   scheduled_transferred: "Finished — appointment booked",
-};
+} as const satisfies Record<CallOutcomeId, string>;
 
 // A callback date in the front desk's practice-local phrasing:
 // "Friday, August 1 morning" (9:00 ET) / "Friday, August 1 afternoon" (1:00 ET).

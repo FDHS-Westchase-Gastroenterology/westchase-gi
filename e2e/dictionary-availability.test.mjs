@@ -3,18 +3,26 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
 
+import { z } from "zod";
+
 import { ar } from "../src/lib/dictionaries/ar.ts";
 import { en } from "../src/lib/dictionaries/en.ts";
 import { es } from "../src/lib/dictionaries/es.ts";
 import { ko } from "../src/lib/dictionaries/ko.ts";
 import { vi } from "../src/lib/dictionaries/vi.ts";
+import {
+  asJsonArray,
+  asJsonObject,
+  asJsonString,
+  jsonSchema,
+} from "../src/lib/json.ts";
 
 // I5 availability guard: no patient-facing dictionary string may name a
-// language set smaller than the site's actual five-locale set unless the key
-// carries a dated waiver comment in the dictionary source. Waivers document
-// the settled exceptions (the genuinely EN/ES-only external Hushforms packet,
+// Language set smaller than the site's actual five-locale set unless the key
+// Carries a dated waiver comment in the dictionary source. Waivers document
+// The settled exceptions (the genuinely EN/ES-only external Hushforms packet,
 // English-only testimonials and ASGE guides, and per-locale action labels
-// like "Continue in English" that name the current locale, not a claim).
+// Like "Continue in English" that name the current locale, not a claim).
 
 const DICTIONARIES = { en, es, vi, ko, ar };
 
@@ -35,16 +43,26 @@ function namedLanguages(value) {
 }
 
 function collectStrings(node, path = [], out = []) {
-  if (typeof node === "string") {
-    out.push({ path: path.join("."), value: node });
+  const parsed = jsonSchema.safeParse(node);
+  if (!parsed.success) return out;
+
+  const text = asJsonString(parsed.data);
+  if (text !== null) {
+    out.push({ path: path.join("."), value: text });
     return out;
   }
-  if (Array.isArray(node)) {
-    node.forEach((item, index) => collectStrings(item, [...path, String(index)], out));
+
+  const items = asJsonArray(parsed.data);
+  if (items !== null) {
+    items.forEach((item, index) =>
+      collectStrings(item, [...path, String(index)], out),
+    );
     return out;
   }
-  if (node && typeof node === "object") {
-    for (const [key, child] of Object.entries(node)) {
+
+  const record = asJsonObject(parsed.data);
+  if (record !== null) {
+    for (const [key, child] of Object.entries(record)) {
       collectStrings(child, [...path, key], out);
     }
   }
@@ -96,12 +114,12 @@ for (const [locale, dictionary] of Object.entries(DICTIONARIES)) {
       /i5-waiver\s+\d{4}-\d{2}-\d{2}\s+([a-zA-Z0-9.]+)(?=[:\s])/g,
     )) {
       const keyPath = match[1];
-      const value = strings.get(keyPath);
-      if (typeof value !== "string") {
+      const value = z.string().safeParse(strings.get(keyPath));
+      if (!value.success) {
         stale.push(`${keyPath} (key does not exist)`);
         continue;
       }
-      const named = namedLanguages(value);
+      const named = namedLanguages(value.data);
       if (named.length === 0 || named.length === SITE_LANGUAGE_COUNT) {
         stale.push(`${keyPath} (no longer names a smaller language set)`);
       }

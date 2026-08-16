@@ -1,12 +1,13 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
 
 const LIST_USERS_PER_PAGE = 200;
 const LIST_USERS_MAX_PAGES = 20;
 
 /**
- * email → display name for every staff profile ever recorded (active or not,
+ * Email → display name for every staff profile ever recorded (active or not,
  * so historical note/outcome attribution still resolves).
  */
 export async function fetchStaffNameMap(
@@ -17,16 +18,26 @@ export async function fetchStaffNameMap(
       .from("staff_profiles")
       .select("email, display_name");
 
-    if (error || !data) return new Map();
+    if (error !== null) return new Map();
+    const rows = z
+      .array(
+        z.object({
+          email: z.unknown(),
+          display_name: z.unknown(),
+        }),
+      )
+      .safeParse(data);
+    if (!rows.success) return new Map();
 
     const map = new Map<string, string>();
-    for (const row of data) {
-      const email =
-        typeof row.email === "string" ? row.email.trim().toLowerCase() : "";
-      const displayName =
-        typeof row.display_name === "string" ? row.display_name.trim() : "";
-      if (!email || !displayName) continue;
-      map.set(email, displayName);
+    for (const row of rows.data) {
+      const email = z.string().safeParse(row.email);
+      const displayName = z.string().safeParse(row.display_name);
+      if (!email.success || !displayName.success) continue;
+      const normalizedEmail = email.data.trim().toLowerCase();
+      const normalizedName = displayName.data.trim();
+      if (normalizedEmail === "" || normalizedName === "") continue;
+      map.set(normalizedEmail, normalizedName);
     }
     return map;
   } catch {
@@ -35,7 +46,7 @@ export async function fetchStaffNameMap(
 }
 
 /**
- * user_id → last_sign_in_at (ISO string) for the given staff user ids,
+ * User_id → last_sign_in_at (ISO string) for the given staff user ids,
  * from existing Auth admin state. Missing users and users who never signed
  * in map to null. `readFailed` distinguishes a failed Auth read from a
  * truthful set of empty results — "no sign-ins yet" and "could not check"
@@ -64,9 +75,9 @@ export async function fetchLastSignInMap(
         perPage: LIST_USERS_PER_PAGE,
       });
 
-      if (error) return { map: nullMap(), readFailed: true };
+      if (error !== null) return { map: nullMap(), readFailed: true };
 
-      const users = data?.users ?? [];
+      const users = data.users;
       for (const user of users) {
         if (!wanted.has(user.id)) continue;
         map.set(user.id, user.last_sign_in_at ?? null);
@@ -94,5 +105,5 @@ export function displayNameOrEmail(
 ): string {
   const key = email.trim().toLowerCase();
   const name = nameMap.get(key);
-  return name && name.length > 0 ? name : email;
+  return name !== undefined && name !== "" ? name : email;
 }

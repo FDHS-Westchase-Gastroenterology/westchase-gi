@@ -2,8 +2,8 @@
 // "disease information sheets" were dead PDFs on the previous site. These are
 // ORIGINAL plain-language articles written from standard medical knowledge
 // (no captured source bodies existed). Each topic pairs with its printable
-// sheet slot in lib/documents.ts via relatedDocId. Spanish is a faithful
-// translation of the English in a neutral "usted" register; Spanish and the
+// Sheet slot in lib/documents.ts via relatedDocId. Spanish is a faithful
+// Translation of the English in a neutral "usted" register; Spanish and the
 // VI/KO/AR machine translations still await native-speaker review.
 
 import type { EducationTopic } from "../types";

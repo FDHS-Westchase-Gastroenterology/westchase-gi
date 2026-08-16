@@ -1,26 +1,37 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { authorizationStatus, requireRole } from "@/lib/portal/auth";
+import { z } from "zod";
+import {
+  PortalAuthorizationError,
+  requireRole,
+} from "@/lib/portal/auth";
 import { reviewFlyerAssetByFilename } from "@/lib/review-flyers";
+
+const filenameParamsSchema = z.object({
+  filename: z.string().min(1),
+});
 
 export const runtime = "nodejs";
 
 export async function GET(
   request: Request,
-  context: { params: Promise<{ filename: string }> },
+  context: Readonly<{ params: Promise<{ filename: string }> }>,
 ): Promise<Response> {
   try {
     await requireRole("staff", { unauthenticated: "throw" });
   } catch (error) {
-    const status = authorizationStatus(error) ?? 401;
+    const status =
+      error instanceof PortalAuthorizationError ? error.status : 401;
     return new Response(status === 401 ? "Unauthenticated" : "Forbidden", {
       status,
     });
   }
 
-  const { filename } = await context.params;
+  const parsedParams = filenameParamsSchema.safeParse(await context.params);
+  if (!parsedParams.success) return new Response("Not found", { status: 404 });
+  const filename = parsedParams.data.filename;
   const asset = reviewFlyerAssetByFilename.get(filename);
-  if (!asset) return new Response("Not found", { status: 404 });
+  if (asset === undefined) return new Response("Not found", { status: 404 });
 
   let bytes: Buffer;
   try {

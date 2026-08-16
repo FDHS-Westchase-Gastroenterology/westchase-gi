@@ -1,8 +1,9 @@
 import "server-only";
 
+import { z } from "zod";
 import { recordAudit } from "@/lib/portal/audit";
 import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
-import { serviceClient } from "@/lib/portal/server";
+import type { serviceClient } from "@/lib/portal/server";
 
 type ServiceClient = ReturnType<typeof serviceClient>;
 
@@ -14,11 +15,26 @@ export type ChangeRecipientCompatibilityResult =
   | { ok: true }
   | { ok: false; code: "not_found" | "unavailable" };
 
+const recipientIdSchema = z.object({ id: z.string() });
+const recipientIdActiveSchema = z.object({
+  id: z.string(),
+  active: z.boolean(),
+});
+const recipientRowSchema = z.object({
+  id: z.string(),
+  email: z.string(),
+  label: z.string().nullable(),
+  active: z.boolean(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
 async function operationFailed(
   operation: () => PromiseLike<{ error: unknown }>,
 ): Promise<boolean> {
   try {
-    return Boolean((await operation()).error);
+    const result = await operation();
+    return result.error !== null && result.error !== undefined;
   } catch {
     return true;
   }
@@ -32,14 +48,14 @@ async function operationFailed(
  */
 export async function addRecipientWithCompatibility(
   db: ServiceClient,
-  input: {
+  input: Readonly<{
     actorEmail: string;
     email: string;
     label: string | null;
     active: boolean;
-  },
+  }>,
 ): Promise<AddRecipientCompatibilityResult> {
-  const { data: recipient, error: insertError } = await db
+  const inserted = await db
     .from("notification_recipients")
     .insert({
       email: input.email,
@@ -48,11 +64,12 @@ export async function addRecipientWithCompatibility(
     })
     .select("id, active")
     .single();
+  const recipient = recipientIdActiveSchema.safeParse(inserted.data);
 
-  if (insertError || !recipient) {
+  if (inserted.error !== null || !recipient.success) {
     return {
       ok: false,
-      code: insertError?.code === "23505" ? "conflict" : "unavailable",
+      code: inserted.error?.code === "23505" ? "conflict" : "unavailable",
     };
   }
 
@@ -61,33 +78,33 @@ export async function addRecipientWithCompatibility(
       actorEmail: input.actorEmail,
       action: AUDIT_ACTIONS.RECIPIENTS_ADD,
       entity: "notification_recipients",
-      entityId: recipient.id,
+      entityId: recipient.data.id,
       detail: {
-        active: recipient.active,
-        has_label: Boolean(input.label),
+        active: recipient.data.active,
+        has_label: input.label !== null && input.label !== "",
       },
     });
   } catch {
     const initialDeleteFailed = await operationFailed(() =>
-      db.from("notification_recipients").delete().eq("id", recipient.id),
+      db.from("notification_recipients").delete().eq("id", recipient.data.id),
     );
     if (initialDeleteFailed) {
       // Disable first so intake cannot use an unaudited destination while a
-      // second compensating delete is attempted.
+      // Second compensating delete is attempted.
       const disableFailed = await operationFailed(() =>
         db
           .from("notification_recipients")
           .update({ active: false })
-          .eq("id", recipient.id),
+          .eq("id", recipient.data.id),
       );
       const finalDeleteFailed = await operationFailed(() =>
-        db.from("notification_recipients").delete().eq("id", recipient.id),
+        db.from("notification_recipients").delete().eq("id", recipient.data.id),
       );
       if (finalDeleteFailed) {
         console.error(
           "[recipient-compatibility] add rollback incomplete",
           {
-            recipientId: recipient.id,
+            recipientId: recipient.data.id,
             disableFailed,
             finalDeleteFailed,
           },
@@ -97,54 +114,56 @@ export async function addRecipientWithCompatibility(
     return { ok: false, code: "unavailable" };
   }
 
-  return { ok: true, recipientId: recipient.id };
+  return { ok: true, recipientId: recipient.data.id };
 }
 
 export async function toggleRecipientWithCompatibility(
   db: ServiceClient,
-  input: {
+  input: Readonly<{
     actorEmail: string;
     recipientId: string;
     active: boolean;
-  },
+  }>,
 ): Promise<ChangeRecipientCompatibilityResult> {
-  const { data: current, error: readError } = await db
+  const read = await db
     .from("notification_recipients")
     .select("id, active")
     .eq("id", input.recipientId)
     .maybeSingle();
-  if (readError) return { ok: false, code: "unavailable" };
-  if (!current) return { ok: false, code: "not_found" };
-  if (current.active === input.active) return { ok: true };
+  if (read.error !== null) return { ok: false, code: "unavailable" };
+  const current = recipientIdActiveSchema.safeParse(read.data);
+  if (!current.success) return { ok: false, code: "not_found" };
+  if (current.data.active === input.active) return { ok: true };
 
-  const { data: updated, error: updateError } = await db
+  const updated = await db
     .from("notification_recipients")
     .update({ active: input.active })
-    .eq("id", current.id)
+    .eq("id", current.data.id)
     .select("id")
     .maybeSingle();
-  if (updateError) return { ok: false, code: "unavailable" };
-  if (!updated) return { ok: false, code: "not_found" };
+  if (updated.error !== null) return { ok: false, code: "unavailable" };
+  const updatedRow = recipientIdSchema.safeParse(updated.data);
+  if (!updatedRow.success) return { ok: false, code: "not_found" };
 
   try {
     await recordAudit(db, {
       actorEmail: input.actorEmail,
       action: AUDIT_ACTIONS.RECIPIENTS_TOGGLE,
       entity: "notification_recipients",
-      entityId: current.id,
-      detail: { from: current.active, to: input.active },
+      entityId: current.data.id,
+      detail: { from: current.data.active, to: input.active },
     });
   } catch {
     const rollbackFailed = await operationFailed(() =>
       db
         .from("notification_recipients")
-        .update({ active: current.active })
-        .eq("id", current.id),
+        .update({ active: current.data.active })
+        .eq("id", current.data.id),
     );
     if (rollbackFailed) {
       console.error(
         "[recipient-compatibility] toggle rollback incomplete",
-        { recipientId: current.id, rollbackFailed },
+        { recipientId: current.data.id, rollbackFailed },
       );
     }
     return { ok: false, code: "unavailable" };
@@ -155,41 +174,43 @@ export async function toggleRecipientWithCompatibility(
 
 export async function removeRecipientWithCompatibility(
   db: ServiceClient,
-  input: { actorEmail: string; recipientId: string },
+  input: Readonly<{ actorEmail: string; recipientId: string }>,
 ): Promise<ChangeRecipientCompatibilityResult> {
-  const { data: current, error: readError } = await db
+  const read = await db
     .from("notification_recipients")
     .select("id, email, label, active, created_at, updated_at")
     .eq("id", input.recipientId)
     .maybeSingle();
-  if (readError) return { ok: false, code: "unavailable" };
-  if (!current) return { ok: false, code: "not_found" };
+  if (read.error !== null) return { ok: false, code: "unavailable" };
+  const current = recipientRowSchema.safeParse(read.data);
+  if (!current.success) return { ok: false, code: "not_found" };
 
-  const { data: removed, error: deleteError } = await db
+  const removed = await db
     .from("notification_recipients")
     .delete()
-    .eq("id", current.id)
+    .eq("id", current.data.id)
     .select("id")
     .maybeSingle();
-  if (deleteError) return { ok: false, code: "unavailable" };
-  if (!removed) return { ok: false, code: "not_found" };
+  if (removed.error !== null) return { ok: false, code: "unavailable" };
+  const removedRow = recipientIdSchema.safeParse(removed.data);
+  if (!removedRow.success) return { ok: false, code: "not_found" };
 
   try {
     await recordAudit(db, {
       actorEmail: input.actorEmail,
       action: AUDIT_ACTIONS.RECIPIENTS_REMOVE,
       entity: "notification_recipients",
-      entityId: current.id,
-      detail: { active: current.active },
+      entityId: current.data.id,
+      detail: { active: current.data.active },
     });
   } catch {
     const rollbackFailed = await operationFailed(() =>
-      db.from("notification_recipients").insert(current),
+      db.from("notification_recipients").insert(current.data),
     );
     if (rollbackFailed) {
       console.error(
         "[recipient-compatibility] remove rollback incomplete",
-        { recipientId: current.id, rollbackFailed },
+        { recipientId: current.data.id, rollbackFailed },
       );
     }
     return { ok: false, code: "unavailable" };

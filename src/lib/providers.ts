@@ -1,31 +1,31 @@
 // Provider roster + profile content with VERBATIM credentials (practice
-// directive: titles are specific and must not be changed). Sources: the
-// practice's own door sign, its published provider card graphics (whose text
-// is transcribed below, faithfully), the nurse-practitioner brochure, and the
-// practice's 2026-07-06 correction: Awad is MD only (never FACG); Chang is
+// Directive: titles are specific and must not be changed). Sources: the
+// Practice's own door sign, its published provider card graphics (whose text
+// Is transcribed below, faithfully), the nurse-practitioner brochure, and the
+// Practice's 2026-07-06 correction: Awad is MD only (never FACG); Chang is
 // MD, FACG; Mendoza is MD, MS (never FACG). Credential LINES follow the door
-// sign + correction even where a card graphic differs (Chang's card adds
+// Sign + correction even where a card graphic differs (Chang's card adds
 // FACP; Mendoza's card says MHSc) — bio prose keeps the practice's own
-// claims as published.
+// Claims as published.
 //
 // All display text is real, localizable type (client requirement 2026-07-07:
-// graphic-borne text must follow the site language). The original card
-// graphics stay in /images/staff/ byte-exact and open in a same-page
-// lightbox from each profile (ProfileCardViewer); the clean headshots are
-// derived from the practice's own photo set (originals preserved in the
-// project's assets archive).
+// Graphic-borne text must follow the site language). The original card
+// Graphics stay in /images/staff/ byte-exact and open in a same-page
+// Lightbox from each profile (ProfileCardViewer); the clean headshots are
+// Derived from the practice's own photo set (originals preserved in the
+// Project's assets archive).
 
 import type { Bi } from "./content/types";
 import reviewTargets from "./review-targets.json";
 
-type Img = { src: string; width: number; height: number };
+interface Img { src: string; width: number; height: number }
 
 export type ProfileSection =
-  | { kind: "timeline"; heading: Bi; entries: Array<{ title: Bi; detail: Bi }> }
-  | { kind: "list"; heading: Bi; lead?: Bi; items: Bi[] }
-  | { kind: "paragraphs"; heading: Bi; text: Bi[] };
+  | { readonly kind: "timeline"; readonly heading: Bi; readonly entries: readonly { readonly title: Bi; readonly detail: Bi }[] }
+  | { readonly kind: "list"; readonly heading: Bi; readonly lead?: Bi; readonly items: readonly Bi[] }
+  | { readonly kind: "paragraphs"; readonly heading: Bi; readonly text: readonly Bi[] };
 
-export type Physician = {
+export interface Physician {
   id: string;
   name: string;
   /** Verbatim, identical in every language (practice directive). */
@@ -44,7 +44,7 @@ export type Physician = {
   /** The practice's own published card graphic, byte-exact, shown in the in-page viewer. */
   card: Img;
   alt: Bi;
-};
+}
 
 export const physicians: Physician[] = [
   {
@@ -719,7 +719,7 @@ export const physicians: Physician[] = [
   },
 ];
 
-export type NursePractitioner = {
+export interface NursePractitioner {
   id: string;
   name: string;
   credentials: string;
@@ -728,16 +728,18 @@ export type NursePractitioner = {
   tagline: Bi;
   headshot: Img;
   alt: Bi;
-};
+}
 
-/** The practice's NP brochure/card content, per provider, as real text. */
-export const nursePractitioners: {
+export interface NursePractitionerGroup {
   individuals: NursePractitioner[];
   /** The card's closing band — the joint framing for the shared material. */
   sharedTagline: { heading: Bi; sub: Bi };
   sharedFocus: { heading: Bi; items: Bi[] };
   card: Img;
-} = {
+}
+
+/** The practice's NP brochure/card content, per provider, as real text. */
+export const nursePractitioners: NursePractitionerGroup = {
   individuals: [
     {
       id: "yanessa-ricardo",
@@ -926,7 +928,7 @@ export const nursePractitioners: {
   card: { src: "/images/staff/nurse-practitioners.png", width: 1022, height: 1533 },
 };
 
-export type Biologic = { brand: string; generic: string; indication: Bi };
+export interface Biologic { brand: string; generic: string; indication: Bi }
 
 /** Juliet's own card content (RN, BSN per her card; practice-manager credit
  * added at the practice's request 2026-07-06 — she runs the office in
@@ -948,7 +950,7 @@ export const infusionNurse = {
     vi: "Thoải mái. Chăm sóc. Tận tâm.",
     ko: "편안함. 보살핌. 따뜻한 마음.",
     ar: "راحة. رعاية. رحمة.",
-  } as Bi,
+  } satisfies Bi,
   languagesSpoken: {
     en: "English & Spanish",
     es: "Inglés y español",

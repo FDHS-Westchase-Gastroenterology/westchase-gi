@@ -8,7 +8,7 @@ function countLabel(count: number, singular: string): string {
   return `${count} ${singular}${count === 1 ? "" : "s"}`;
 }
 
-function SummaryValue({ row }: { row: PortalReleaseEngagementRow }) {
+function SummaryValue({ row }: Readonly<{ row: PortalReleaseEngagementRow }>) {
   return (
     <>
       <strong className="block text-[var(--color-ink)]">
@@ -21,7 +21,7 @@ function SummaryValue({ row }: { row: PortalReleaseEngagementRow }) {
   );
 }
 
-function GuideValue({ row }: { row: PortalReleaseEngagementRow }) {
+function GuideValue({ row }: Readonly<{ row: PortalReleaseEngagementRow }>) {
   if (row.guideOpenCount === 0 || row.lastGuideOpenedAt === null) {
     return <span className="text-[var(--color-muted)]">Not opened</span>;
   }
@@ -37,7 +37,7 @@ function GuideValue({ row }: { row: PortalReleaseEngagementRow }) {
   );
 }
 
-function DismissalValue({ row }: { row: PortalReleaseEngagementRow }) {
+function DismissalValue({ row }: Readonly<{ row: PortalReleaseEngagementRow }>) {
   if (row.dismissCount === 0 || row.lastDismissedAt === null) {
     return <span className="text-[var(--color-muted)]">None</span>;
   }
@@ -53,8 +53,8 @@ function DismissalValue({ row }: { row: PortalReleaseEngagementRow }) {
   );
 }
 
-function ResponseValue({ row }: { row: PortalReleaseEngagementRow }) {
-  if (row.hiddenAt) {
+function ResponseValue({ row }: Readonly<{ row: PortalReleaseEngagementRow }>) {
+  if (row.hiddenAt !== null && row.hiddenAt !== "") {
     return (
       <>
         <strong className="block text-[var(--color-ink)]">Hidden early</strong>
@@ -64,7 +64,7 @@ function ResponseValue({ row }: { row: PortalReleaseEngagementRow }) {
       </>
     );
   }
-  if (row.acknowledgedAt) {
+  if (row.acknowledgedAt !== null && row.acknowledgedAt !== "") {
     return (
       <>
         <strong className="block text-[var(--color-ink)]">Got it</strong>
@@ -74,7 +74,11 @@ function ResponseValue({ row }: { row: PortalReleaseEngagementRow }) {
       </>
     );
   }
-  if (row.dismissCount > 0 && row.lastDismissedAt) {
+  if (
+    row.dismissCount > 0 &&
+    row.lastDismissedAt !== null &&
+    row.lastDismissedAt !== ""
+  ) {
     return (
       <>
         <strong className="block text-[var(--color-ink)]">Dismissed</strong>
@@ -87,11 +91,12 @@ function ResponseValue({ row }: { row: PortalReleaseEngagementRow }) {
   return <span className="text-[var(--color-muted)]">No response yet</span>;
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 export function ReleaseEngagementSection({
   engagement,
-}: {
+}: Readonly<{
   engagement: PortalReleaseEngagementResult;
-}) {
+}>) {
   return (
     <section
       aria-labelledby="release-engagement-heading"

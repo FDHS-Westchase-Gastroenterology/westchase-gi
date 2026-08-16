@@ -1,11 +1,14 @@
 import { createHash, randomUUID } from "node:crypto";
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { z } from "zod";
+import { intakeResponseSchema } from "../src/lib/portal/contracts";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // The portal home page: staff land on a greeting and their tasks, not on
-// software. The queue overview count is real data, the task list is
-// role-gated (the flyer printer is an admin task, not a tab), and the
-// primary action leads to the queue at /admin/requests.
+// Software. The queue overview count is real data, the task list is
+// Role-gated (the flyer printer is an admin task, not a tab), and the
+// Primary action leads to the queue at /admin/requests.
 
 loadLocalEnv();
 
@@ -102,8 +105,8 @@ test.describe("portal home", () => {
     );
 
     // Age context renders exactly when the oldest new request predates the
-    // current practice-local calendar day (label logic is unit-tested in
-    // src/lib/portal/business-time.test.mjs; this pins the wiring).
+    // Current practice-local calendar day (label logic is unit-tested in
+    // Src/lib/portal/business-time.test.mjs; this pins the wiring).
     const { data: oldestNew, error: oldestError } = await db
       .from("requests")
       .select("created_at")
@@ -115,9 +118,10 @@ test.describe("portal home", () => {
       new Date(value).toLocaleDateString("en-CA", {
         timeZone: "America/New_York",
       });
+    const oldestCreatedAt = z.string().safeParse(oldestNew?.[0]?.created_at);
     const oldestIsPastDay =
-      oldestNew?.[0] != null &&
-      nyDay(oldestNew[0].created_at) < nyDay(new Date());
+      oldestCreatedAt.success &&
+      nyDay(oldestCreatedAt.data) < nyDay(new Date());
     const oldestLine = page.getByTestId("queue-overview-oldest");
     await expect(oldestLine).toHaveCount(oldestIsPastDay ? 1 : 0);
     if (oldestIsPastDay) {
@@ -127,7 +131,7 @@ test.describe("portal home", () => {
     }
 
     // The zero-recipients safety net appears exactly when no active
-    // notification recipient exists.
+    // Notification recipient exists.
     const { count: activeRecipients, error: recipientsError } = await db
       .from("notification_recipients")
       .select("id", { count: "exact", head: true })
@@ -137,14 +141,14 @@ test.describe("portal home", () => {
       (activeRecipients ?? 0) === 0 ? 1 : 0,
     );
     // The staged request (the newest) appears in the preview list and its
-    // row links to the detail page.
+    // Row links to the detail page.
     const preview = page.getByTestId("queue-overview-preview");
     await expect(
       preview.getByRole("link", { name: new RegExp(`TEST Home ${runId}`) }),
     ).toHaveAttribute("href", /^\/admin\/requests\/[0-9a-f-]+$/);
 
     // Primary nav is task-first: Home / queue / Settings / Help — the flyer
-    // printer holds no tab, and Home carries the current-page marker.
+    // Printer holds no tab, and Home carries the current-page marker.
     const nav = page.locator('nav[aria-label="Portal sections"]');
     await expect(nav.locator("a")).toHaveCount(4);
     await expect(nav.locator('a[aria-current="page"]')).toHaveText("Home");
@@ -154,7 +158,7 @@ test.describe("portal home", () => {
 
     // Task list: five rows for every role — flyer printing is staff-wide
     // (product decision 2026-07-26) — each a working link. Scoped to the
-    // tasks section: the zero-recipients warning may repeat a task's name.
+    // Tasks section: the zero-recipients warning may repeat a task's name.
     const tasks = page.locator('section[aria-labelledby="tasks-heading"]');
     for (const [label, href] of [
       ["Print review flyers", "/admin/review-flyers"],
@@ -176,8 +180,8 @@ test.describe("portal home", () => {
       page.getByRole("heading", { name: "Appointment requests", exact: true }),
     ).toBeVisible();
     // The queue tab renders a compact "Requests" label below `sm`; assert
-    // the visible desktop text rather than the concatenated textContent. The
-    // waiting-count badge may append a count inside the same link.
+    // The visible desktop text rather than the concatenated textContent. The
+    // Waiting-count badge may append a count inside the same link.
     await expect(
       page.locator('nav[aria-label="Portal sections"] a[aria-current="page"]'),
     ).toHaveText(/^Appointment requests/, { useInnerText: true });
@@ -199,7 +203,9 @@ test.describe("portal home", () => {
       headers: { "X-Forwarded-For": testIp("delivery") },
     });
     expect(staged.status()).toBe(201);
-    const { id } = (await staged.json()) as { id: string };
+    const stagedBody = intakeResponseSchema.parse(await staged.json());
+    if (!stagedBody.ok) throw new Error("Expected an accepted intake response");
+    const { id } = stagedBody;
     const { error: eventError } = await db.from("request_events").insert({
       request_id: id,
       type: "notification",
@@ -235,7 +241,7 @@ test.describe("portal home", () => {
     );
 
     // Removing the staged failure restores the honest quiet state: the
-    // warning shows only while a real recent failure exists.
+    // Warning shows only while a real recent failure exists.
     await db
       .from("request_events")
       .delete()
@@ -260,7 +266,9 @@ test.describe("portal home", () => {
       .eq("email", email)
       .single();
     expect(profileError).toBeNull();
-    expect(typeof originalProfile?.portal_tour_dismissed_at).toBe("string");
+    expect(
+      z.string().safeParse(originalProfile?.portal_tour_dismissed_at).success,
+    ).toBe(true);
     const { data: priorTourAudits, error: priorAuditError } = await db
       .from("audit_log")
       .select("id")
@@ -269,7 +277,10 @@ test.describe("portal home", () => {
       .in("action", ["staff.tour_dismiss", "staff.tour_restart"]);
     expect(priorAuditError).toBeNull();
     const priorAuditIds = new Set(
-      (priorTourAudits ?? []).map((row) => row.id),
+      z
+        .array(z.object({ id: z.string() }))
+        .parse(priorTourAudits ?? [])
+        .map((row) => row.id),
     );
 
     try {
@@ -326,7 +337,9 @@ test.describe("portal home", () => {
         .select("portal_tour_dismissed_at")
         .eq("id", originalProfile!.id)
         .single();
-      expect(typeof dismissed?.portal_tour_dismissed_at).toBe("string");
+      expect(z.string().safeParse(dismissed?.portal_tour_dismissed_at).success).toBe(
+        true,
+      );
 
       await page.goto("/admin/help");
       const systems = page.locator("details", {
@@ -370,7 +383,9 @@ test.describe("portal home", () => {
         .select("portal_tour_dismissed_at")
         .eq("id", originalProfile!.id)
         .single();
-      expect(typeof completed?.portal_tour_dismissed_at).toBe("string");
+      expect(z.string().safeParse(completed?.portal_tour_dismissed_at).success).toBe(
+        true,
+      );
 
       const { data: audits, error: auditError } = await db
         .from("audit_log")
@@ -380,7 +395,9 @@ test.describe("portal home", () => {
         .in("action", ["staff.tour_dismiss", "staff.tour_restart"]);
       expect(auditError).toBeNull();
       expect(
-        (audits ?? [])
+        z
+          .array(z.object({ id: z.string(), action: z.string() }))
+          .parse(audits ?? [])
           .filter((row) => !priorAuditIds.has(row.id))
           .map((row) => row.action),
       ).toEqual(
@@ -391,7 +408,7 @@ test.describe("portal home", () => {
       );
 
       // Finishing the tour is now distinguishable from dismissing it: one
-      // completion row with the step reached, written app-side.
+      // Completion row with the step reached, written app-side.
       const { data: completes, error: completeError } = await db
         .from("audit_log")
         .select("id, detail")
@@ -418,7 +435,9 @@ test.describe("portal home", () => {
         .eq("actor_email", email)
         .eq("entity_id", originalProfile!.id)
         .in("action", ["staff.tour_dismiss", "staff.tour_restart"]);
-      const auditIds = (tourAudits ?? [])
+      const auditIds = z
+        .array(z.object({ id: z.string() }))
+        .parse(tourAudits ?? [])
         .map((row) => row.id)
         .filter((id) => !priorAuditIds.has(id));
       if (auditIds.length > 0) {

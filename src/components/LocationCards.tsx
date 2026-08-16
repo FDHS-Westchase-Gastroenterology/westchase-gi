@@ -1,11 +1,12 @@
-import { site, directionsUrl, formatOfficeHours, type Locale } from "@/lib/site";
+import { site, directionsUrl, formatOfficeHours } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import type { Dictionary } from "@/lib/i18n";
 import { Clock, Mail, MapPin, MessageSquare, Phone, Printer } from "./icons";
 
-type LocationCardsProps = { locale: Locale; dict: Dictionary };
+interface LocationCardsProps { locale: Locale; dict: Dictionary }
 
 /** Both offices with full NAP each (keep-list requirement). */
-export function LocationCards({ locale, dict }: LocationCardsProps) {
+export function LocationCards({ locale, dict }: Readonly<LocationCardsProps>) {
   const c = dict.common;
   return (
     <div className="grid gap-6 md:grid-cols-2">

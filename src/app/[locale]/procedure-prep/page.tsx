@@ -2,16 +2,20 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
-import { site, localePath, type Locale } from "@/lib/site";
-import { prepGroups, type PrepDoc, type PrepGroup } from "@/lib/content/preps";
+import { site, localePath } from "@/lib/site";
+import type { Locale } from "@/lib/site";
+import { prepGroups } from "@/lib/content/preps";
+import type { PrepDoc, PrepGroup } from "@/lib/content/preps";
 import { PageHero } from "@/components/PageHero";
 import { Reveal } from "@/components/Reveal";
+import { revealDelay } from "@/components/reveal-delay";
+import type { RevealDelay } from "@/components/reveal-delay";
 import { TextBand } from "@/components/TextBand";
 import { ArrowRight, MessageSquare } from "@/components/icons";
 
-type PageProps = { params: Promise<{ locale: string }> };
+interface PageProps { params: Promise<{ locale: string }> }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
@@ -23,7 +27,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   );
 }
 
-function PrepList({ docs, locale }: { docs: PrepDoc[]; locale: Locale }) {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function PrepList({ docs, locale }: Readonly<{ docs: PrepDoc[]; locale: Locale }>) {
   return (
     <ul className="mt-6 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
       {docs.map((doc) => (
@@ -48,15 +53,16 @@ function PrepList({ docs, locale }: { docs: PrepDoc[]; locale: Locale }) {
   );
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function GroupBlock({
   group,
   locale,
   delay = 0,
-}: {
+}: Readonly<{
   group: PrepGroup;
   locale: Locale;
-  delay?: 0 | 1 | 2 | 3 | 4;
-}) {
+  delay?: RevealDelay;
+}>) {
   return (
     <Reveal delay={delay}>
       <h2 className="h2 heading-tick">{group.title[locale]}</h2>
@@ -66,7 +72,7 @@ function GroupBlock({
   );
 }
 
-export default async function ProcedurePrepPage({ params }: PageProps) {
+export default async function ProcedurePrepPage({ params }: Readonly<PageProps>) {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
@@ -101,7 +107,7 @@ export default async function ProcedurePrepPage({ params }: PageProps) {
                 key={group.id}
                 group={group}
                 locale={locale}
-                delay={Math.min(i + 1, 4) as 1 | 2 | 3 | 4}
+                delay={revealDelay(Math.min(i + 1, 4))}
               />
             ))}
           </div>

@@ -1,5 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { z } from "zod";
+import { jsonSchema } from "../src/lib/json";
 import { serviceDb } from "./support";
 
 const SNAPSHOT_PATH = resolve(process.cwd(), ".logs/recipients-snapshot.json");
@@ -33,10 +35,12 @@ export default async function globalSetup(): Promise<void> {
       throw new Error(`Recipient snapshot failed: ${error.code}`);
     }
     mkdirSync(resolve(process.cwd(), ".logs"), { recursive: true });
-    writeFileSync(SNAPSHOT_PATH, JSON.stringify(data ?? []), "utf8");
+    writeFileSync(SNAPSHOT_PATH, JSON.stringify(data), "utf8");
   } else {
     // Reuse the crashed run's snapshot; log count only.
-    const prior = JSON.parse(readFileSync(SNAPSHOT_PATH, "utf8")) as unknown[];
+    const prior = z.array(jsonSchema).parse(
+      JSON.parse(readFileSync(SNAPSHOT_PATH, "utf8")),
+    );
     console.log(
       `[e2e] reusing existing recipient snapshot (${prior.length} rows)`,
     );

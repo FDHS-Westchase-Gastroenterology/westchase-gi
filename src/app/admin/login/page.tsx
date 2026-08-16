@@ -4,14 +4,14 @@ import { AuthCard } from "../auth-card";
 import { LoginForm } from "./login-form";
 
 // Credentialed, quiet, unmistakably the practice: a single navy-anchored
-// card on the mint canvas. No patient chrome, no marketing. Signed-in
-// staff skip straight to the portal home.
+// Card on the mint canvas. No patient chrome, no marketing. Signed-in
+// Staff skip straight to the portal home.
 
 export default async function AdminLoginPage({
   searchParams,
-}: {
+}: Readonly<{
   searchParams: Promise<{ password?: string; auth?: string }>;
-}) {
+}>) {
   const [query, session] = await Promise.all([
     searchParams,
     getSessionUser(),

@@ -50,7 +50,7 @@ const secretPatterns = [
   {
     label: "Base64 private-key PEM marker",
     // Build the signatures at runtime so this scanner does not match its own
-    // source while still detecting every supported encoded PEM header.
+    // Source while still detecting every supported encoded PEM header.
     regex: new RegExp(base64PrivateKeyPemMarkers.join("|")),
   },
 ]

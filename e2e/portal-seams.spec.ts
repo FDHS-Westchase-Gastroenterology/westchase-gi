@@ -1,12 +1,14 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { intakeResponseSchema } from "../src/lib/portal/contracts";
 import { loadLocalEnv, requiredEnv } from "./support";
 
 // VAL-REG-005 (revised 2026-07-26): the portal ships no assistant
-// placeholder. The docked "coming soon" launcher was removed because a
-// floating control that completes no job obstructs real work — it
-// returns only when an assistant can finish something. The seam itself
-// is unchanged: when it lands it will be a docked widget, with no
-// dedicated page and no nav entry.
+// Placeholder. The docked "coming soon" launcher was removed because a
+// Floating control that completes no job obstructs real work — it
+// Returns only when an assistant can finish something. The seam itself
+// Is unchanged: when it lands it will be a docked widget, with no
+// Dedicated page and no nav entry.
 
 loadLocalEnv();
 
@@ -52,7 +54,9 @@ test("VAL-REG-005: no assistant placeholder ships before the assistant works", a
     headers: { "X-Forwarded-For": "2001:db8:5ea3:1::5" },
   });
   expect(response.status()).toBe(201);
-  const { id } = (await response.json()) as { id: string };
+  const body = intakeResponseSchema.parse(await response.json());
+  if (!body.ok) throw new Error("Expected an accepted intake response");
+  const { id } = body;
 
   // No floating placeholder covers content on any portal page.
   const everyPage = [...PORTAL_PAGES, `/admin/requests/${id}`];

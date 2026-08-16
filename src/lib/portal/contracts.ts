@@ -1,12 +1,13 @@
 // Pinned mission contracts — the bridge between the intake pipeline, the
-// staff portal, and the E2E suite. Both the patient form and the server
-// route validate against THIS schema; the portal and audit trail consume
+// Staff portal, and the E2E suite. Both the patient form and the server
+// Route validate against THIS schema; the portal and audit trail consume
 // THESE types and constants. Field names are the wire format (camelCase);
-// the database layer maps time -> preferred_time and sourcePath ->
-// source_path at the insert boundary.
+// The database layer maps time -> preferred_time and sourcePath ->
+// Source_path at the insert boundary.
 
 import { z } from "zod";
-import { locales, type Locale } from "@/lib/site";
+import { locales } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import { RELEASE_AUDIT_ACTIONS } from "./release-state";
 
 const mailboxSchema = z.email().max(254);
@@ -45,9 +46,8 @@ export type StaffRole = "admin" | "staff";
 export const RESET_REQUEST_MESSAGE =
   "If an active staff account exists for that email, you’ll receive a password reset link.";
 
-// These mirror the intended hosted Auth settings and the committed local
-// configuration. Development and Production are still verified separately.
-export const PASSWORD_RESET_LINK_EXPIRY_MINUTES = 60;
+// This mirrors the intended hosted Auth setting and the committed local
+// Configuration. Development and Production are still verified separately.
 export const PASSWORD_RESET_RESEND_COOLDOWN_SECONDS = 60;
 
 /**
@@ -83,7 +83,7 @@ export const requestInputSchema = z.object({
     .trim()
     .max(REQUEST_FIELD_LIMITS.message, "message_too_long")
     .optional(),
-  locale: z.enum(locales as [Locale, ...Locale[]]),
+  locale: z.enum(locales),
   sourcePath: z.string().trim().min(1).max(300).startsWith("/"),
 });
 
@@ -92,18 +92,19 @@ export type RequestInput = z.infer<typeof requestInputSchema>;
 export type IntakeFailureCode = "validation" | "rate_limited" | "unavailable";
 
 /** The only response shapes POST /api/requests may produce. */
-export type IntakeResponse =
-  | { ok: true; id: string }
-  | {
-      ok: false;
-      code: IntakeFailureCode;
-      fieldErrors?: Record<string, string>;
-    };
+export const intakeResponseSchema = z.union([
+  z.object({ ok: z.literal(true), id: z.string() }),
+  z.object({
+    ok: z.literal(false),
+    code: z.enum(["validation", "rate_limited", "unavailable"]),
+    fieldErrors: z.record(z.string(), z.string()).optional(),
+  }),
+]);
+
+export type IntakeResponse = z.infer<typeof intakeResponseSchema>;
 
 /** Flatten a zod failure into the IntakeResponse fieldErrors shape. */
-export function zodFieldErrors(
-  error: z.ZodError<unknown>,
-): Record<string, string> {
+export function zodFieldErrors(error: z.ZodError) {
   const fieldErrors: Record<string, string> = {};
   for (const issue of error.issues) {
     const key = issue.path.length > 0 ? String(issue.path[0]) : "_";

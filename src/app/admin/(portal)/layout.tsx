@@ -16,15 +16,15 @@ import {
 } from "./portal-release-briefing";
 
 // Authenticated portal chrome: a navy work-desk header carrying the
-// practice identity (wordmark, amber active tick) over a calm paper
-// canvas. Deliberately NOT the patient site's marketing chrome and NOT
-// a generic SaaS sidebar shell. Login lives outside this group.
+// Practice identity (wordmark, amber active tick) over a calm paper
+// Canvas. Deliberately NOT the patient site's marketing chrome and NOT
+// A generic SaaS sidebar shell. Login lives outside this group.
 
 export default async function PortalLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   const session = await getSessionUser();
   if (!session) redirect("/admin/login");
 
@@ -43,7 +43,7 @@ export default async function PortalLayout({
       : Promise.resolve({ status: "hidden" } as const),
   ]);
   const { count, error } = queueResult;
-  const waitingCount = availableQueueCount(count, error);
+  const waitingCount = availableQueueCount(count, Boolean(error));
 
   return (
     <PortalReleaseProvider

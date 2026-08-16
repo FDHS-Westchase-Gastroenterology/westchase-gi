@@ -1,4 +1,7 @@
 import { test, expect } from "@playwright/test";
+import { z } from "zod";
+import { jsonObjectSchema } from "../src/lib/json";
+import type { JsonObject } from "../src/lib/json";
 import {
   GitHubApiError,
   readGitHubResponse,
@@ -28,49 +31,69 @@ test("GitHub responses preserve status and accept empty success bodies", async (
     data: null,
   });
 
-  const malformed = await readGitHubResponse(
-    new Response("not-json", { status: 200 }),
-  ).catch((error: unknown) => error);
+  let malformed: GitHubApiError;
+  try {
+    await readGitHubResponse(new Response("not-json", { status: 200 }));
+    throw new Error("expected GitHubApiError");
+  } catch (error: unknown) {
+    const parsed = z.instanceof(GitHubApiError).safeParse(error);
+    expect(parsed.success).toBe(true);
+    if (!parsed.success) throw new Error("expected GitHubApiError");
+    malformed = parsed.data;
+  }
   expect(malformed).toBeInstanceOf(GitHubApiError);
-  expect((malformed as GitHubApiError).kind).toBe("invalid_response");
+  expect(malformed.kind).toBe("invalid_response");
 
   for (const status of [403, 422, 500]) {
-    const failure = await readGitHubResponse(
-      new Response(JSON.stringify({ ignored: "provider detail" }), { status }),
-    ).catch((error: unknown) => error);
+    let failure: GitHubApiError;
+    try {
+      await readGitHubResponse(
+        new Response(JSON.stringify({ ignored: "provider detail" }), { status }),
+      );
+      throw new Error("expected GitHubApiError");
+    } catch (error: unknown) {
+      const parsed = z.instanceof(GitHubApiError).safeParse(error);
+      expect(parsed.success).toBe(true);
+      if (!parsed.success) throw new Error("expected GitHubApiError");
+      failure = parsed.data;
+    }
     expect(failure).toBeInstanceOf(GitHubApiError);
-    expect((failure as GitHubApiError).status).toBe(status);
+    expect(failure.status).toBe(status);
   }
 });
 
 test("external maintainer operations fail closed around audit and reconciliation", async () => {
   const calls: string[] = [];
   const blocked = await runMaintainerOperation({
-    begin: async () => {
+    begin: () => {
       calls.push("begin");
       throw new Error("audit unavailable");
     },
     perform: async () => {
+      await Promise.resolve();
       calls.push("perform");
       return 204;
     },
-    refresh: async () => ({ present: true }),
+    refresh: async () => Promise.resolve({ present: true }),
     desired: ({ present }) => present,
-    finish: async () => undefined,
+    finish: async () => Promise.resolve(undefined),
     failureCode: () => "unavailable",
     providerStatus: () => null,
-    afterAttempt: () => calls.push("after"),
+    afterAttempt: () => {
+      calls.push("after");
+    },
   });
   expect(blocked).toEqual({ ok: false, code: "unavailable" });
   expect(calls).toEqual(["begin"]);
 
   let finalOutcome = "";
   const succeeded = await runMaintainerOperation({
-    begin: async () => "audit-id",
-    perform: async () => 204,
-    refresh: async () => ({ present: true }),
+    begin: async () => Promise.resolve("audit-id"),
+    perform: async () => Promise.resolve(204),
+    refresh: async () => Promise.resolve({ present: true }),
     desired: ({ present }) => present,
     finish: async (_audit, outcome) => {
+      await Promise.resolve();
       finalOutcome = outcome;
     },
     failureCode: () => "unavailable",
@@ -80,17 +103,18 @@ test("external maintainer operations fail closed around audit and reconciliation
   expect(succeeded).toEqual({ ok: true });
   expect(finalOutcome).toBe("succeeded");
 
-  let finalDetail: Record<string, unknown> = {};
+  let finalDetail: JsonObject = {};
   const limited = await runMaintainerOperation({
-    begin: async () => "audit-id",
-    perform: async () => {
+    begin: async () => Promise.resolve("audit-id"),
+    perform: () => {
       throw new GitHubApiError(422);
     },
-    refresh: async () => ({ present: false }),
+    refresh: async () => Promise.resolve({ present: false }),
     desired: ({ present }) => present,
     finish: async (_audit, outcome, detail) => {
+      await Promise.resolve();
       finalOutcome = outcome;
-      finalDetail = detail;
+      finalDetail = jsonObjectSchema.parse(detail);
     },
     failureCode: () => "limit",
     providerStatus: (error) =>
@@ -102,15 +126,16 @@ test("external maintainer operations fail closed around audit and reconciliation
   expect(finalDetail).toEqual({ provider_status: 422 });
 
   const unconfirmed = await runMaintainerOperation({
-    begin: async () => "audit-id",
-    perform: async () => {
+    begin: async () => Promise.resolve("audit-id"),
+    perform: () => {
       throw new GitHubApiError(null);
     },
-    refresh: async () => {
+    refresh: () => {
       throw new Error("read unavailable");
     },
     desired: () => false,
     finish: async (_audit, outcome) => {
+      await Promise.resolve();
       finalOutcome = outcome;
     },
     failureCode: () => "unavailable",
@@ -122,11 +147,11 @@ test("external maintainer operations fail closed around audit and reconciliation
   expect(finalOutcome).toBe("unconfirmed");
 
   const pending = await runMaintainerOperation({
-    begin: async () => "audit-id",
-    perform: async () => 204,
-    refresh: async () => ({ present: true }),
+    begin: async () => Promise.resolve("audit-id"),
+    perform: async () => Promise.resolve(204),
+    refresh: async () => Promise.resolve({ present: true }),
     desired: ({ present }) => present,
-    finish: async () => {
+    finish: () => {
       throw new Error("audit finish unavailable");
     },
     failureCode: () => "unavailable",
@@ -159,14 +184,15 @@ test("cancelling an invitation does not claim success after concurrent acceptanc
   ).toBe(true);
 
   const conflict = await runMaintainerOperation({
-    begin: async () => "audit-id",
-    perform: async () => 204,
-    refresh: async () => ({
-      invitations: [],
-      maintainers: [{ userId: 42 }],
-    }),
+    begin: async () => Promise.resolve("audit-id"),
+    perform: async () => Promise.resolve(204),
+    refresh: async () =>
+      Promise.resolve({
+        invitations: [],
+        maintainers: [{ userId: 42 }],
+      }),
     desired: (snapshot) => invitationIsCancelled(snapshot, 42, 99),
-    finish: async () => undefined,
+    finish: async () => Promise.resolve(undefined),
     failureCode: () => "conflict",
     providerStatus: () => null,
     afterAttempt: () => undefined,

@@ -1,20 +1,16 @@
 "use client";
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ElementType,
-  type ReactNode,
-} from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ElementType, ReactNode } from "react";
+import type { RevealDelay } from "./reveal-delay";
 
-type RevealProps = {
+interface RevealProps {
   children: ReactNode;
   as?: ElementType;
   className?: string;
-  delay?: 0 | 1 | 2 | 3 | 4;
+  delay?: RevealDelay;
   variant?: "up" | "fade" | "right";
-};
+}
 
 /**
  * Reveal-on-scroll wrapper. Content is fully visible by default; the entrance
@@ -22,22 +18,23 @@ type RevealProps = {
  * (see globals.css `html.js .reveal`). A failsafe timeout guarantees content
  * is never left hidden on headless renders or missing IntersectionObserver.
  */
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 export function Reveal({
   children,
   as: Tag = "div",
   className = "",
   delay = 0,
   variant = "up",
-}: RevealProps) {
+}: Readonly<RevealProps>) {
   const ref = useRef<HTMLElement | null>(null);
   const [shown, setShown] = useState(false);
 
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
-    if (typeof IntersectionObserver === "undefined") {
-      const raf = requestAnimationFrame(() => setShown(true));
-      return () => cancelAnimationFrame(raf);
+    if (!el) return undefined;
+    if (!("IntersectionObserver" in globalThis)) {
+      const raf = requestAnimationFrame(() => { setShown(true); });
+      return () => { cancelAnimationFrame(raf); };
     }
     const io = new IntersectionObserver(
       (entries) => {
@@ -51,7 +48,7 @@ export function Reveal({
       { threshold: 0.12, rootMargin: "0px 0px -6% 0px" }
     );
     io.observe(el);
-    const failsafe = window.setTimeout(() => setShown(true), 1500);
+    const failsafe = window.setTimeout(() => { setShown(true); }, 1500);
     return () => {
       io.disconnect();
       window.clearTimeout(failsafe);

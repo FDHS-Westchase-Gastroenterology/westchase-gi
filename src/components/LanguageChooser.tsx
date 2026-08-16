@@ -10,16 +10,12 @@ import {
   LANGUAGE_TRIGGER_ID,
   rememberLocale,
 } from "@/lib/locale-preference";
-import {
-  localeNames,
-  locales,
-  pathInLocale,
-  type Locale,
-} from "@/lib/site";
+import { localeNames, locales, pathInLocale } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import { routeTemplateFor, track } from "@/lib/telemetry-client";
 import { Check, Globe, X } from "./icons";
 
-type LanguageChooserProps = { locale: Locale; dict: Dictionary };
+interface LanguageChooserProps { locale: Locale; dict: Dictionary }
 
 function returnFocus() {
   document.getElementById(LANGUAGE_TRIGGER_ID)?.focus();
@@ -34,7 +30,7 @@ function returnFocus() {
  * switch. The evidence is computed client-side (navigator.languages) so it
  * never depends on a response-cache-friendly transport.
  */
-export function LanguageChooser({ locale, dict }: LanguageChooserProps) {
+export function LanguageChooser({ locale, dict }: Readonly<LanguageChooserProps>) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const pathname = usePathname() || `/${locale}`;
   const router = useRouter();
@@ -48,7 +44,7 @@ export function LanguageChooser({ locale, dict }: LanguageChooserProps) {
     event: "chooser_shown" | "chooser_accepted_hint" | "chooser_switched" | "chooser_kept_current" | "chooser_dismissed",
   ) {
     const template = routeTemplateFor(pathname);
-    if (template) track(event, template, locale);
+    if (template !== null && template !== "") track(event, template, locale);
   }
 
   useEffect(() => {
@@ -59,8 +55,8 @@ export function LanguageChooser({ locale, dict }: LanguageChooserProps) {
     const option = dialog.querySelector<HTMLElement>(`button[lang="${candidate}"]`);
     if (!option) return;
     // The badge and focus belong to the browser's language — the dialog's
-    // whole reason to open is the mismatch. The effect synchronizes the DOM
-    // directly so no extra render stands between evidence and interruption.
+    // Whole reason to open is the mismatch. The effect synchronizes the DOM
+    // Directly so no extra render stands between evidence and interruption.
     hintRef.current = candidate;
     option.querySelector<HTMLElement>("[data-suggested]")?.removeAttribute("hidden");
     if (!dialog.open) {
@@ -117,7 +113,7 @@ export function LanguageChooser({ locale, dict }: LanguageChooserProps) {
               key={target}
               type="button"
               lang={target}
-              onClick={() => finish(target)}
+              onClick={() => { finish(target); }}
               className="language-dialog__option"
             >
               <span>{localeNames[target]}</span>
@@ -130,7 +126,7 @@ export function LanguageChooser({ locale, dict }: LanguageChooserProps) {
         </div>
         <button
           type="button"
-          onClick={() => finish(locale)}
+          onClick={() => { finish(locale); }}
           className="language-dialog__continue"
         >
           {copy.continue}

@@ -3,20 +3,21 @@
 import { useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BANNER_KEY, type Locale } from "@/lib/site";
+import { BANNER_KEY } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import { routeTemplateFor, track } from "@/lib/telemetry-client";
 import { X } from "./icons";
 
 const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
 
-type NoticeBannerProps = {
+interface NoticeBannerProps {
   locale: Locale;
   headline: string;
   body: string;
   cta: string;
   ctaHref: string;
   dismissLabel: string;
-};
+}
 
 /**
  * The practice's "accepting new patients" notice, rebuilt to show once per
@@ -26,7 +27,7 @@ type NoticeBannerProps = {
  * A pre-paint inline script in the layout sets `html.banner-dismissed` so
  * returning visitors never see a flash (see globals.css).
  */
-export function NoticeBanner({ locale, headline, body, cta, ctaHref, dismissLabel }: NoticeBannerProps) {
+export function NoticeBanner({ locale, headline, body, cta, ctaHref, dismissLabel }: Readonly<NoticeBannerProps>) {
   const pathname = usePathname();
   const dismiss = useCallback(() => {
     document.documentElement.classList.add("banner-dismissed");
@@ -35,8 +36,10 @@ export function NoticeBanner({ locale, headline, body, cta, ctaHref, dismissLabe
     } catch {
       // Private mode: the banner simply returns next visit.
     }
-    const template = pathname ? routeTemplateFor(pathname) : null;
-    if (template) track("banner_dismissed", template, locale);
+    const template = pathname !== "" ? routeTemplateFor(pathname) : null;
+    if (template !== null && template !== "") {
+      track("banner_dismissed", template, locale);
+    }
   }, [locale, pathname]);
 
   return (

@@ -2,37 +2,29 @@
 
 import { timingSafeEqual } from "node:crypto";
 import { redirect } from "next/navigation";
-import {
-  clearPasswordAuthFlow,
-  establishPasswordAuthFlow,
-  getSessionUser,
-  getVerifiedStaffAuthState,
-  readPasswordAuthFlow,
-  requireRole,
-  resolveStaffAuthState,
-  type PasswordAuthFlow,
-  type PortalStaffAuthState,
-} from "@/lib/portal/auth";
+import { z } from "zod";
+import { clearPasswordAuthFlow, establishPasswordAuthFlow, getSessionUser, getVerifiedStaffAuthState, readPasswordAuthFlow, requireRole, resolveStaffAuthState } from "@/lib/portal/auth";
+import type { PasswordAuthFlow, PortalStaffAuthState } from "@/lib/portal/auth";
 import { portalUrl, serverClient, serviceClient } from "@/lib/portal/server";
 
-export type LoginActionState = {
+export interface LoginActionState {
   error: string | null;
-};
+}
 
-export type ResetRequestActionState = {
+export interface ResetRequestActionState {
   submitted: boolean;
   email: string;
   requestKey: number;
-};
+}
 
-export type ConfirmAuthActionState = {
+export interface ConfirmAuthActionState {
   error: string | null;
-};
+}
 
-export type SetPasswordActionState = {
+export interface SetPasswordActionState {
   error: string | null;
   changeCommitted: boolean;
-};
+}
 
 const GENERIC_LOGIN_ERROR =
   "Unable to sign in. Check your credentials and try again.";
@@ -71,7 +63,18 @@ function previewLoginCredentials(
   const password = process.env.PORTAL_PREVIEW_PASSWORD;
   const email = process.env.PORTAL_SEED_ADMIN_EMAIL?.trim();
   const seedPassword = process.env.PORTAL_SEED_ADMIN_PASSWORD;
-  if (!username || !password || !email || !seedPassword) return null;
+  if (
+    username === undefined ||
+    username === "" ||
+    password === undefined ||
+    password === "" ||
+    email === undefined ||
+    email === "" ||
+    seedPassword === undefined ||
+    seedPassword === ""
+  ) {
+    return null;
+  }
 
   const usernameMatches = safeCredentialMatch(submittedEmail, username);
   const passwordMatches = safeCredentialMatch(submittedPassword, password);
@@ -86,7 +89,7 @@ function credential(
   trim = true,
 ): string {
   const value = formData.get(name);
-  if (typeof value !== "string") return "";
+  if (value instanceof File || value === null) return "";
   return trim ? value.trim() : value;
 }
 
@@ -137,48 +140,53 @@ function validateNewPassword(
 }
 
 async function completePasswordChange(
-  supabase: Awaited<ReturnType<typeof serverClient>>,
-  staff: PortalStaffAuthState,
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+  supabase: Readonly<Awaited<ReturnType<typeof serverClient>>>,
+  staff: Readonly<PortalStaffAuthState>,
   flow: PasswordAuthFlow,
   password: string,
 ): Promise<SetPasswordActionState | null> {
   let passwordUpdated = false;
   let recoveryRecorded = false;
   try {
-    const { data, error } = await supabase.auth.updateUser({ password });
-    if (error || !data.user) {
+    const updated = await supabase.auth.updateUser({ password });
+    if (updated.data.user === null) {
       return { error: SET_PASSWORD_ERROR, changeCommitted: false };
     }
     passwordUpdated = true;
 
-    const currentStaff = await resolveStaffAuthState(data.user);
-    if (!currentStaff?.active) {
-      return passwordUpdatedIncomplete(flow);
+    const currentStaff = await resolveStaffAuthState(updated.data.user);
+    if (currentStaff === null || !currentStaff.active) {
+      return await passwordUpdatedIncomplete(flow);
     }
 
     if (flow === "invite") {
-      if (currentStaff.onboardedAt) {
-        return passwordUpdatedIncomplete(flow);
+      if (currentStaff.onboardedAt !== null && currentStaff.onboardedAt !== "") {
+        return await passwordUpdatedIncomplete(flow);
       }
 
-      const { data: completed, error: completionError } =
-        await serviceClient().rpc("portal_complete_staff_onboarding", {
+      const completion = await serviceClient().rpc(
+        "portal_complete_staff_onboarding",
+        {
           p_user_id: currentStaff.id,
-        });
-      if (completionError || completed !== true) {
-        return passwordUpdatedIncomplete(flow);
+        },
+      );
+      const completed = z.boolean().safeParse(completion.data);
+      if (completion.error !== null || completed.data !== true) {
+        return await passwordUpdatedIncomplete(flow);
       }
     } else {
-      if (!currentStaff.onboardedAt) {
-        return passwordUpdatedIncomplete(flow);
+      if (currentStaff.onboardedAt === null || currentStaff.onboardedAt === "") {
+        return await passwordUpdatedIncomplete(flow);
       }
 
-      const { data: recorded, error: auditError } = await serviceClient().rpc(
+      const audit = await serviceClient().rpc(
         "portal_record_staff_password_reset",
         { p_user_id: currentStaff.id },
       );
-      if (auditError || recorded !== true) {
-        return passwordUpdatedIncomplete(flow);
+      const recorded = z.boolean().safeParse(audit.data);
+      if (audit.error !== null || recorded.data !== true) {
+        return await passwordUpdatedIncomplete(flow);
       }
       recoveryRecorded = true;
     }
@@ -187,20 +195,24 @@ async function completePasswordChange(
 
     if (flow === "recovery") {
       await supabase.auth.signOut({ scope: "local" });
-      const { data: signedIn, error: signInError } =
-        await supabase.auth.signInWithPassword({
-          email: staff.email,
-          password,
-        });
-      if (signInError || !signedIn.user) {
-        return passwordUpdatedIncomplete(flow, true);
+      const signedIn = await supabase.auth.signInWithPassword({
+        email: staff.email,
+        password,
+      });
+      if (signedIn.data.user === null) {
+        return await passwordUpdatedIncomplete(flow, true);
       }
 
       // A new Auth session is not enough on its own. Re-read the
-      // authoritative profile before allowing the portal redirect.
-      const freshStaff = await resolveStaffAuthState(signedIn.user);
-      if (!freshStaff?.active || !freshStaff.onboardedAt) {
-        return passwordUpdatedIncomplete(flow, true);
+      // Authoritative profile before allowing the portal redirect.
+      const freshStaff = await resolveStaffAuthState(signedIn.data.user);
+      if (
+        freshStaff === null ||
+        !freshStaff.active ||
+        freshStaff.onboardedAt === null ||
+        freshStaff.onboardedAt === ""
+      ) {
+        return await passwordUpdatedIncomplete(flow, true);
       }
     }
   } catch {
@@ -217,13 +229,13 @@ async function completePasswordChange(
  * session. Every action available after sign-in must call requireRole().
  */
 export async function loginAction(
-  _state: LoginActionState,
+  _state: Readonly<LoginActionState>,
   formData: FormData,
 ): Promise<LoginActionState> {
   const email = credential(formData, "email");
   const password = credential(formData, "password", false);
 
-  if (!email || email.length > 254 || !password || password.length > 1024) {
+  if (email === "" || email.length > 254 || password === "" || password.length > 1024) {
     return loginError();
   }
 
@@ -235,11 +247,11 @@ export async function loginAction(
       password: previewCredentials?.password ?? password,
     });
 
-    if (error) return loginError();
+    if (error !== null) return loginError();
 
     // A valid Auth account is not enough: staff_profiles is authoritative.
     const sessionUser = await getSessionUser();
-    if (!sessionUser) {
+    if (sessionUser === null) {
       await supabase.auth.signOut({ scope: "local" });
       return loginError();
     }
@@ -247,7 +259,7 @@ export async function loginAction(
     return loginError();
   }
 
-  redirect("/admin");
+  return redirect("/admin");
 }
 
 export async function logoutAction(): Promise<void> {
@@ -265,13 +277,13 @@ export async function logoutAction(): Promise<void> {
  */
 // react-doctor-disable-next-line react-doctor/server-auth-actions
 export async function requestPasswordResetAction(
-  _state: ResetRequestActionState,
+  _state: Readonly<ResetRequestActionState>,
   formData: FormData,
 ): Promise<ResetRequestActionState> {
   const email = credential(formData, "email").toLowerCase();
   const redirectTo = portalUrl("/admin/auth/confirm");
 
-  if (redirectTo && email.length <= 254 && EMAIL_RE.test(email)) {
+  if (redirectTo !== null && email.length <= 254 && EMAIL_RE.test(email)) {
     try {
       const supabase = await serverClient();
       await supabase.auth.resetPasswordForEmail(email, { redirectTo });
@@ -283,7 +295,7 @@ export async function requestPasswordResetAction(
   return {
     submitted: true,
     // This is only an echo of the caller's own valid-looking input. It says
-    // nothing about account existence, staff status, or provider delivery.
+    // Nothing about account existence, staff status, or provider delivery.
     email: email.length <= 254 && EMAIL_RE.test(email) ? email : "",
     requestKey: Date.now(),
   };
@@ -295,7 +307,7 @@ export async function requestPasswordResetAction(
  */
 // react-doctor-disable-next-line react-doctor/server-auth-actions
 export async function confirmAuthLinkAction(
-  _state: ConfirmAuthActionState,
+  _state: Readonly<ConfirmAuthActionState>,
   formData: FormData,
 ): Promise<ConfirmAuthActionState> {
   const tokenHash = credential(formData, "tokenHash");
@@ -316,20 +328,29 @@ export async function confirmAuthLinkAction(
       type,
     });
 
-    if (error || !data.user) {
+    if (error !== null || data.user === null) {
       await supabase.auth.signOut({ scope: "local" });
       return { error: INVALID_AUTH_LINK_ERROR };
     }
 
     const staff = await resolveStaffAuthState(data.user);
-    if (!staff?.active || (type === "invite" && !!staff.onboardedAt)) {
+    if (
+      staff === null ||
+      !staff.active ||
+      (type === "invite" &&
+        staff.onboardedAt !== null &&
+        staff.onboardedAt !== "")
+    ) {
       await supabase.auth.signOut({ scope: "local" });
       return { error: INVALID_AUTH_LINK_ERROR };
     }
 
     // A recovery token can rescue a consumed-but-unfinished invitation.
     // The database onboarding state, never the token type, decides purpose.
-    const flow = staff.onboardedAt ? "recovery" : "invite";
+    const flow =
+      staff.onboardedAt !== null && staff.onboardedAt !== ""
+        ? "recovery"
+        : "invite";
     await establishPasswordAuthFlow(flow, staff.id);
   } catch {
     try {
@@ -346,29 +367,32 @@ export async function confirmAuthLinkAction(
     return { error: INVALID_AUTH_LINK_ERROR };
   }
 
-  redirect("/admin/set-password");
+  return redirect("/admin/set-password");
 }
 
 // Mutation requires both an authenticated active staff identity and the
-// recent, signed, user-bound invite/recovery flow cookie established above.
+// Recent, signed, user-bound invite/recovery flow cookie established above.
 // react-doctor-disable-next-line react-doctor/server-auth-actions
 export async function setPasswordAction(
-  _state: SetPasswordActionState,
+  _state: Readonly<SetPasswordActionState>,
   formData: FormData,
 ): Promise<SetPasswordActionState> {
   const password = credential(formData, "password", false);
   const confirmation = credential(formData, "passwordConfirmation", false);
   const validationError = validateNewPassword(password, confirmation);
-  if (validationError) return validationError;
+  if (validationError !== null) return validationError;
 
   const [supabase, staff] = await Promise.all([
     serverClient(),
     getVerifiedStaffAuthState(),
   ]);
-  const flow = staff ? await readPasswordAuthFlow(staff.id) : null;
-  const expectedFlow = staff?.onboardedAt ? "recovery" : "invite";
+  const flow = staff !== null ? await readPasswordAuthFlow(staff.id) : null;
+  const expectedFlow =
+    staff !== null && staff.onboardedAt !== null && staff.onboardedAt !== ""
+      ? "recovery"
+      : "invite";
 
-  if (!staff?.active || !flow || flow !== expectedFlow) {
+  if (staff === null || !staff.active || flow === null || flow !== expectedFlow) {
     await clearPasswordAuthFlow();
     await supabase.auth.signOut({ scope: "local" });
     return { error: INVALID_AUTH_LINK_ERROR, changeCommitted: false };
@@ -380,8 +404,8 @@ export async function setPasswordAction(
     flow,
     password,
   );
-  if (completionError) return completionError;
-  redirect("/admin");
+  if (completionError !== null) return completionError;
+  return redirect("/admin");
 }
 
 /**
@@ -392,13 +416,13 @@ export async function setPasswordAction(
  */
 // react-doctor-disable-next-line react-doctor/server-auth-actions
 export async function recoverPasswordAction(
-  _state: SetPasswordActionState,
+  _state: Readonly<SetPasswordActionState>,
   formData: FormData,
 ): Promise<SetPasswordActionState> {
   const password = credential(formData, "password", false);
   const confirmation = credential(formData, "passwordConfirmation", false);
   const validationError = validateNewPassword(password, confirmation);
-  if (validationError) return validationError;
+  if (validationError !== null) return validationError;
 
   const tokenHash = credential(formData, "tokenHash");
   const supabase = await serverClient();
@@ -409,14 +433,14 @@ export async function recoverPasswordAction(
     const {
       data: { user: sessionUser },
     } = await supabase.auth.getUser();
-    if (sessionUser) {
+    if (sessionUser !== null) {
       const candidate = await resolveStaffAuthState(sessionUser);
-      const candidateFlow = candidate
-        ? await readPasswordAuthFlow(candidate.id)
-        : null;
+      const candidateFlow =
+        candidate !== null ? await readPasswordAuthFlow(candidate.id) : null;
       if (
-        candidate?.active &&
-        candidate.onboardedAt &&
+        candidate?.active === true &&
+        candidate.onboardedAt !== null &&
+        candidate.onboardedAt !== "" &&
         candidateFlow === "recovery"
       ) {
         staff = candidate;
@@ -424,24 +448,29 @@ export async function recoverPasswordAction(
       }
     }
 
-    if (!staff || !flow) {
+    if (staff === null || flow === null) {
       if (tokenHash.length < 20 || tokenHash.length > 2048) {
         return { error: INVALID_AUTH_LINK_ERROR, changeCommitted: false };
       }
 
       await clearPasswordAuthFlow();
       await supabase.auth.signOut({ scope: "local" });
-      const { data, error } = await supabase.auth.verifyOtp({
+      const verified = await supabase.auth.verifyOtp({
         token_hash: tokenHash,
         type: "recovery",
       });
-      if (error || !data.user) {
+      if (verified.error !== null || verified.data.user === null) {
         await supabase.auth.signOut({ scope: "local" });
         return { error: INVALID_AUTH_LINK_ERROR, changeCommitted: false };
       }
 
-      const verifiedStaff = await resolveStaffAuthState(data.user);
-      if (!verifiedStaff?.active || !verifiedStaff.onboardedAt) {
+      const verifiedStaff = await resolveStaffAuthState(verified.data.user);
+      if (
+        verifiedStaff === null ||
+        !verifiedStaff.active ||
+        verifiedStaff.onboardedAt === null ||
+        verifiedStaff.onboardedAt === ""
+      ) {
         await supabase.auth.signOut({ scope: "local" });
         return { error: INVALID_AUTH_LINK_ERROR, changeCommitted: false };
       }
@@ -466,6 +495,6 @@ export async function recoverPasswordAction(
     flow,
     password,
   );
-  if (completionError) return completionError;
-  redirect("/admin");
+  if (completionError !== null) return completionError;
+  return redirect("/admin");
 }

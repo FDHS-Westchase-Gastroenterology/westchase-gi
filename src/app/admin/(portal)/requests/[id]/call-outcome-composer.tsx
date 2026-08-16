@@ -1,45 +1,35 @@
 "use client";
 
-import {
-  useEffect,
-  useReducer,
-  useRef,
-  useState,
-  useTransition,
-  type RefObject,
-} from "react";
+import { useEffect, useReducer, useRef, useState, useTransition } from "react";
+import type { RefObject } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type {
   RequestClosureOutcome,
   RequestStatus,
 } from "@/lib/portal/contracts";
-import {
-  allowsCallAgainDay,
-  outcomesImplying,
-  requiresCallAgainDay,
-  type CallOutcomeId,
-} from "@/lib/portal/call-outcomes";
+import { allowsCallAgainDay, outcomesImplying, requiresCallAgainDay } from "@/lib/portal/call-outcomes";
+import type { CallOutcomeId } from "@/lib/portal/call-outcomes";
 import { Check } from "@/components/icons";
 import { logCallOutcome, undoCallOutcome } from "../actions";
 import { followUpWhenLabel } from "../format";
 
 // The daily work loop uses the same appointment-request-lifecycle vocabulary as the queue.
 // Staff choose the request's next status first, then only the details that
-// status needs. Appointment request notes stay in their own single,
-// consistent surface instead of appearing as a second input here.
+// Status needs. Appointment request notes stay in their own single,
+// Consistent surface instead of appearing as a second input here.
 
-type OutcomeOption = {
+interface OutcomeOption {
   id: CallOutcomeId;
   label: string;
   helper?: string;
-};
+}
 
 // Staff-facing wording only — which outcomes exist, what each one implies,
-// and its call-again rule all come from the shared call-outcome policy.
+// And its call-again rule all come from the shared call-outcome policy.
 // The exhaustive Record means an outcome added there without copy here
-// fails to typecheck.
-const OUTCOME_COPY: Record<CallOutcomeId, Omit<OutcomeOption, "id">> = {
+// Fails to typecheck.
+const OUTCOME_COPY = {
   reached_follow_up: {
     label: "Reached the patient — follow-up needed",
     helper: "Talked it through; call again to finish.",
@@ -61,7 +51,7 @@ const OUTCOME_COPY: Record<CallOutcomeId, Omit<OutcomeOption, "id">> = {
     label: "Duplicate or not actionable",
     helper: "Done — no appointment. Leaves the active queue.",
   },
-};
+} as const satisfies Record<CallOutcomeId, Omit<OutcomeOption, "id">>;
 
 function optionsImplying(status: "contacted" | "closed"): OutcomeOption[] {
   return outcomesImplying(status).map((id) => ({ id, ...OUTCOME_COPY[id] }));
@@ -74,17 +64,14 @@ const BOOKED_OUTCOME: CallOutcomeId | null =
 
 type LifecycleDestination = Exclude<RequestStatus, "new">;
 
-const STATUS_LABEL: Record<RequestStatus, string> = {
+const STATUS_LABEL = {
   new: "New",
   contacted: "Contacted",
   scheduled: "Scheduled",
   closed: "Closed",
-};
+} as const satisfies Record<RequestStatus, string>;
 
-const DESTINATION_COPY: Record<
-  LifecycleDestination,
-  { label: string; helper: string }
-> = {
+const DESTINATION_COPY = {
   contacted: {
     label: "Contacted",
     helper: "The patient was reached or needs another call.",
@@ -97,24 +84,22 @@ const DESTINATION_COPY: Record<
     label: "Closed",
     helper: "No more work remains on this request.",
   },
-};
+} as const satisfies Record<LifecycleDestination, { label: string; helper: string }>;
+
+const DESTINATIONS_BY_STATUS = {
+  new: ["contacted", "scheduled", "closed"],
+  contacted: ["scheduled", "closed"],
+  scheduled: ["closed"],
+  closed: ["contacted", "scheduled"],
+} as const satisfies Record<RequestStatus, readonly LifecycleDestination[]>;
 
 function destinationsFrom(status: RequestStatus): LifecycleDestination[] {
-  switch (status) {
-    case "new":
-      return ["contacted", "scheduled", "closed"];
-    case "contacted":
-      return ["scheduled", "closed"];
-    case "scheduled":
-      return ["closed"];
-    case "closed":
-      return ["contacted", "scheduled"];
-  }
+  return [...DESTINATIONS_BY_STATUS[status]];
 }
 
 type FollowUpKind = "this_afternoon" | "tomorrow_morning" | "friday" | "day";
 
-const FOLLOW_UP_KINDS: Array<{ kind: FollowUpKind; label: string }> = [
+const FOLLOW_UP_KINDS: { kind: FollowUpKind; label: string }[] = [
   { kind: "this_afternoon", label: "This afternoon" },
   { kind: "tomorrow_morning", label: "Tomorrow morning" },
   { kind: "friday", label: "Friday" },
@@ -127,8 +112,8 @@ const NY_DAY_INPUT = new Intl.DateTimeFormat("en-CA", {
 });
 
 // Success copy per outcome; the server resolves a call-again day only for
-// outcomes whose policy allows one, so the resurface sentence appends itself.
-const CONFIRMATION_COPY: Record<CallOutcomeId, string> = {
+// Outcomes whose policy allows one, so the resurface sentence appends itself.
+const CONFIRMATION_COPY = {
   booked:
     "Saved — appointment booked. It stays on the Scheduled list if you need it.",
   reached_follow_up: "Saved — marked Contacted.",
@@ -137,14 +122,14 @@ const CONFIRMATION_COPY: Record<CallOutcomeId, string> = {
   scheduled_transferred: "Saved — closed as finished, appointment booked.",
   wont_schedule: "Saved — the request is closed.",
   not_actionable: "Saved — the request is closed.",
-};
+} as const satisfies Record<CallOutcomeId, string>;
 
 function confirmationFor(
   outcome: CallOutcomeId,
   followUpAt: string | null,
 ): string {
   const saved = CONFIRMATION_COPY[outcome];
-  return followUpAt
+  return followUpAt !== null && followUpAt !== ""
     ? `${saved} It will resurface ${followUpWhenLabel(followUpAt)}.`
     : saved;
 }
@@ -162,7 +147,7 @@ const ERROR_COPY = {
 
 // Practice-local "today" for the date input's min/max bounds, rendered as
 // YYYY-MM-DD. The server re-validates the resolved day; these bounds only
-// guide the picker.
+// Guide the picker.
 function practiceLocalDay(offsetDays: number): string {
   const todayEt = NY_DAY_INPUT.format(new Date());
   const shifted = new Date(
@@ -180,14 +165,14 @@ type Feedback =
     }
   | { tone: "error"; text: string };
 
-type ComposerState = {
-  destination: LifecycleDestination | null;
-  selected: CallOutcomeId | null;
-  followUpKind: FollowUpKind | null;
-  followUpDay: string;
-  attempted: boolean;
-  feedback: Feedback | null;
-};
+interface ComposerState {
+  readonly destination: LifecycleDestination | null;
+  readonly selected: CallOutcomeId | null;
+  readonly followUpKind: FollowUpKind | null;
+  readonly followUpDay: string;
+  readonly attempted: boolean;
+  readonly feedback: Feedback | null;
+}
 
 type ComposerAction =
   | { type: "select_destination"; destination: LifecycleDestination }
@@ -213,8 +198,9 @@ const INITIAL_STATE: ComposerState = {
 };
 
 function composerReducer(
-  state: ComposerState,
-  action: ComposerAction,
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+  state: Readonly<ComposerState>,
+  action: Readonly<ComposerAction>,
 ): ComposerState {
   switch (action.type) {
     case "select_destination":
@@ -227,16 +213,16 @@ function composerReducer(
         attempted: false,
         feedback: null,
       };
-    case "select_outcome":
-      return {
+    case "select_outcome": {
+      const next = {
         ...state,
         selected: action.outcome,
         attempted: false,
         feedback: null,
-        ...(allowsCallAgainDay(action.outcome)
-          ? {}
-          : { followUpKind: null, followUpDay: "" }),
       };
+      if (allowsCallAgainDay(action.outcome)) return next;
+      return { ...next, followUpKind: null, followUpDay: "" };
+    }
     case "select_follow_up":
       return { ...state, followUpKind: action.kind, feedback: null };
     case "set_day":
@@ -255,6 +241,8 @@ function composerReducer(
       };
     case "failed":
       return { ...state, feedback: { tone: "error", text: action.text } };
+    default:
+      return state;
   }
 }
 
@@ -263,12 +251,12 @@ function DestinationRow({
   checked,
   disabled,
   onSelect,
-}: {
+}: Readonly<{
   destination: LifecycleDestination;
   checked: boolean;
   disabled: boolean;
   onSelect: (destination: LifecycleDestination) => void;
-}) {
+}>) {
   const copy = DESTINATION_COPY[destination];
   return (
     <label className="group block cursor-pointer rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-4 py-3 transition-[border-color,background-color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] has-[:checked]:border-[var(--color-navy)] has-[:checked]:bg-[var(--color-mint)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-teal-ink)] has-[:disabled]:cursor-default has-[:disabled]:opacity-60 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100">
@@ -279,7 +267,9 @@ function DestinationRow({
         checked={checked}
         disabled={disabled}
         aria-describedby="current-request-status"
-        onChange={() => onSelect(destination)}
+        onChange={() => {
+          onSelect(destination);
+        }}
         className="sr-only"
       />
       <span className="flex items-start justify-between gap-3">
@@ -302,17 +292,18 @@ function DestinationRow({
   );
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function OutcomeRow({
   option,
   checked,
   disabled,
   onSelect,
-}: {
+}: Readonly<{
   option: OutcomeOption;
   checked: boolean;
   disabled: boolean;
   onSelect: (id: CallOutcomeId) => void;
-}) {
+}>) {
   return (
     <label className="group block cursor-pointer rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-4 py-3 transition-colors has-[:checked]:border-[var(--color-navy)] has-[:checked]:bg-[var(--color-mint)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-teal-ink)] has-[:disabled]:cursor-default has-[:disabled]:opacity-60 hover:border-[var(--color-navy)]">
       <input
@@ -321,7 +312,9 @@ function OutcomeRow({
         value={option.id}
         checked={checked}
         disabled={disabled}
-        onChange={() => onSelect(option.id)}
+        onChange={() => {
+          onSelect(option.id);
+        }}
         className="sr-only"
       />
       <span className="flex items-center justify-between gap-3">
@@ -335,7 +328,7 @@ function OutcomeRow({
           <Check className="h-3 w-3 opacity-0 transition-opacity group-has-[:checked]:opacity-100" />
         </span>
       </span>
-      {option.helper ? (
+      {option.helper !== undefined && option.helper !== "" ? (
         <span className="mt-1 block text-[0.82rem] leading-snug text-[var(--color-muted)]">
           {option.helper}
         </span>
@@ -351,14 +344,14 @@ function FollowUpFieldset({
   attempted,
   pending,
   dispatch,
-}: {
+}: Readonly<{
   outcome: CallOutcomeId;
   followUpKind: FollowUpKind | null;
   followUpDay: string;
   attempted: boolean;
   pending: boolean;
   dispatch: React.Dispatch<ComposerAction>;
-}) {
+}>) {
   const followUpMissing =
     attempted && requiresCallAgainDay(outcome) && !followUpKind;
   const dayMissing = attempted && followUpKind === "day" && !followUpDay;
@@ -383,9 +376,9 @@ function FollowUpFieldset({
               name="follow-up"
               value={chip.kind}
               checked={followUpKind === chip.kind}
-              onChange={() =>
-                dispatch({ type: "select_follow_up", kind: chip.kind })
-              }
+              onChange={() => {
+                dispatch({ type: "select_follow_up", kind: chip.kind });
+              }}
               disabled={pending}
               className="sr-only"
             />
@@ -400,9 +393,9 @@ function FollowUpFieldset({
             min={practiceLocalDay(0)}
             max={practiceLocalDay(90)}
             disabled={pending}
-            onChange={(event) =>
-              dispatch({ type: "set_day", day: event.target.value })
-            }
+            onChange={(event) => {
+              dispatch({ type: "set_day", day: event.target.value });
+            }}
             className="min-h-11 rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.9rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)] disabled:opacity-60"
           />
         ) : null}
@@ -428,15 +421,16 @@ function FollowUpFieldset({
   );
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function ComposerFeedback({
   feedback,
   nextHref,
   feedbackRef,
-}: {
+}: Readonly<{
   feedback: Feedback | null;
   nextHref?: string | null;
   feedbackRef: RefObject<HTMLParagraphElement | null>;
-}) {
+}>) {
   if (!feedback) return null;
 
   return (
@@ -453,7 +447,7 @@ function ComposerFeedback({
     >
       {feedback.text}{" "}
       {feedback.tone === "success" ? (
-        feedback.offerNext && nextHref ? (
+        feedback.offerNext && nextHref !== undefined && nextHref !== null && nextHref !== "" ? (
           <Link
             href={nextHref}
             data-testid="open-next-request"
@@ -484,7 +478,7 @@ function StatusActions({
   confirmationMotion,
   onSave,
   onUndo,
-}: {
+}: Readonly<{
   pending: boolean;
   saveDisabled: boolean;
   operation: "save" | "undo" | null;
@@ -494,7 +488,7 @@ function StatusActions({
   confirmationMotion: boolean;
   onSave: (animateConfirmation: boolean) => void;
   onUndo: (animateConfirmation: boolean) => void;
-}) {
+}>) {
   const saveLabel =
     operation === "save" ? "Saving…" : saveConfirmed ? "Saved" : "Save";
   const undoLabel =
@@ -506,7 +500,9 @@ function StatusActions({
         type="button"
         data-testid="save-outcome"
         disabled={saveDisabled}
-        onClick={(event) => onSave(event.detail !== 0)}
+        onClick={(event) => {
+          onSave(event.detail !== 0);
+        }}
         className="btn btn-navy min-h-11 disabled:opacity-60"
       >
         <span
@@ -526,7 +522,9 @@ function StatusActions({
           type="button"
           data-testid="undo-outcome"
           disabled={pending || undoConfirmed}
-          onClick={(event) => onUndo(event.detail !== 0)}
+          onClick={(event) => {
+            onUndo(event.detail !== 0);
+          }}
           className="btn btn-outline min-h-11 disabled:opacity-60"
         >
           <span
@@ -557,13 +555,13 @@ export function CallOutcomeComposer({
   closureOutcome,
   closedAtLabel,
   nextHref = null,
-}: {
+}: Readonly<{
   requestId: string;
   status: RequestStatus;
   closureOutcome: RequestClosureOutcome | null;
   closedAtLabel: string | null;
   nextHref?: string | null;
-}) {
+}>) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [state, dispatch] = useReducer(composerReducer, INITIAL_STATE);
@@ -588,17 +586,22 @@ export function CallOutcomeComposer({
   }, [feedback]);
 
   useEffect(() => {
-    if (!undoConfirmed) return;
-    const timeout = window.setTimeout(() => setUndoConfirmed(false), 1200);
-    return () => window.clearTimeout(timeout);
+    if (!undoConfirmed) return undefined;
+    const timeout = window.setTimeout(() => {
+      setUndoConfirmed(false);
+    }, 1200);
+    return () => {
+      window.clearTimeout(timeout);
+    };
   }, [undoConfirmed]);
 
-  const outcomeRowProps = (option: OutcomeOption) => ({
+  const outcomeRowProps = (option: Readonly<OutcomeOption>) => ({
     option,
     checked: selected === option.id,
     disabled: pending,
-    onSelect: (id: CallOutcomeId) =>
-      dispatch({ type: "select_outcome", outcome: id }),
+    onSelect: (id: CallOutcomeId) => {
+      dispatch({ type: "select_outcome", outcome: id });
+    },
   });
 
   function submit(animateConfirmation: boolean) {
@@ -644,7 +647,7 @@ export function CallOutcomeComposer({
   }
 
   function undo(animateConfirmation: boolean) {
-    if (!undoEventId || pending) return;
+    if (undoEventId === null || undoEventId === "" || pending) return;
     setOperation("undo");
     startTransition(async () => {
       try {
@@ -730,7 +733,9 @@ export function CallOutcomeComposer({
         >
           {closureOutcome
             ? `This request is closed${
-                closedAtLabel ? ` (${closedAtLabel})` : ""
+                closedAtLabel !== null && closedAtLabel !== ""
+                  ? ` (${closedAtLabel})`
+                  : ""
               } — ${
                 closureOutcome === "converted"
                   ? "appointment booked"

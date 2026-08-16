@@ -3,23 +3,23 @@ import { defineConfig, devices } from "@playwright/test";
 const publicSmoke = process.env.PLAYWRIGHT_PUBLIC_SMOKE === "1";
 
 // E2E harness for the intake pipeline + staff portal. The stack runs on
-// port 3100 (3000 is off-limits in this environment); webServer boots the
-// same foreground command the humans use (`npm run dev:mission`), which
-// first clears any zombie holding the port so tests never hit stale code.
+// Port 3100 (3000 is off-limits in this environment); webServer boots the
+// Same foreground command the humans use (`npm run dev:mission`), which
+// First clears any zombie holding the port so tests never hit stale code.
 // Credential-bearing runs retain no browser artifacts.
 
 export default defineConfig({
   testDir: "./e2e",
   // CI's public smoke has no credentials and must never touch the shared
-  // development Supabase project. The normal/full suite is unchanged.
+  // Development Supabase project. The normal/full suite is unchanged.
   globalSetup: publicSmoke ? undefined : "./e2e/global-setup.ts",
   globalTeardown: publicSmoke ? undefined : "./e2e/global-teardown.ts",
   // The hosted development Auth project rate-limits concurrent sign-ins and
-  // email OTP requests. Keep the shared-project contract deterministic across
-  // files instead of relying on every caller to remember `--workers=1`.
+  // Email OTP requests. Keep the shared-project contract deterministic across
+  // Files instead of relying on every caller to remember `--workers=1`.
   fullyParallel: false,
   workers: 1,
-  forbidOnly: !!process.env.CI,
+  forbidOnly: process.env.CI !== undefined && process.env.CI !== "",
   retries: 0,
   reporter: "list",
   use: {

@@ -1,8 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
-import { execSync, spawn, type ChildProcess } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
+import type { ChildProcess } from "node:child_process";
 import { mkdirSync, openSync } from "node:fs";
 import { resolve } from "node:path";
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { en } from "../src/lib/dictionaries/en";
 import { es } from "../src/lib/dictionaries/es";
 import { vi } from "../src/lib/dictionaries/vi";
@@ -13,7 +15,10 @@ import type { Locale } from "../src/lib/site";
 import { serviceDb } from "./support";
 
 const db = serviceDb();
-const dicts: Record<Locale, Dictionary> = { en, es, vi, ko, ar };
+const dicts = { en, es, vi, ko, ar } as const satisfies Record<
+  Locale,
+  Dictionary
+>;
 const runId = randomUUID().slice(0, 8);
 
 test.use({
@@ -67,7 +72,7 @@ async function awaitHydration(page: Page) {
 
 test.afterAll(async () => {
   // Scoped to THIS worker's runId: workers finish at different times, and a
-  // broad form-e2e-% sweep would race other workers' pending DB assertions.
+  // Broad form-e2e-% sweep would race other workers' pending DB assertions.
   await db.from("requests").delete().like("email", `form-e2e-${runId}-%`);
 });
 
@@ -94,8 +99,8 @@ test("VAL-INTAKE-002: success renders only after durable acceptance", async ({
   await submitButton(page).click();
 
   // While the response is held open the UI must show only the pending
-  // affordance — never the confirmation. The fields lock too (F11d), so an
-  // edit mid-flight cannot masquerade as part of what was sent.
+  // Affordance — never the confirmation. The fields lock too (F11d), so an
+  // Edit mid-flight cannot masquerade as part of what was sent.
   await expect(submitButton(page)).toBeDisabled();
   await expect(submitButton(page)).toHaveText(en.appointment.form.submitting);
   await expect(page.locator("#name")).toBeDisabled();
@@ -129,7 +134,7 @@ test.describe("VAL-INTAKE-006: truthful failure when the queue is down", () => {
     test.setTimeout(240_000);
 
     // Restrict cleanup to the listener. An unqualified port query can also
-    // return this worker's pooled fetch connection and kill the test runner.
+    // Return this worker's pooled fetch connection and kill the test runner.
     execSync("lsof -tiTCP:3101 -sTCP:LISTEN | xargs -r kill -9 || true", {
       shell: "/bin/bash",
     });
@@ -161,13 +166,15 @@ test.describe("VAL-INTAKE-006: truthful failure when the queue is down", () => {
       if (Date.now() > deadline) {
         throw new Error("Broken-DB instance on :3101 failed to boot");
       }
-      await new Promise((r) => setTimeout(r, 2_000));
+      await new Promise((r) => {
+        setTimeout(r, 2_000);
+      });
     }
   });
 
-  test.afterAll(async ({}, testInfo) => {
+  test.afterAll(({}, testInfo) => {
     if (testInfo.project.name !== "chromium") return;
-    if (broken?.pid) {
+    if (broken !== null && broken.pid !== undefined && broken.pid !== 0) {
       try {
         process.kill(-broken.pid, "SIGKILL");
       } catch {
@@ -185,9 +192,9 @@ test.describe("VAL-INTAKE-006: truthful failure when the queue is down", () => {
     test.skip(testInfo.project.name !== "chromium", "JS submission path");
     test.setTimeout(120_000);
 
-    // localhost (not 127.0.0.1): Next 16 blocks dev hydration assets for
-    // non-allowlisted hostnames, and an unhydrated form would take the
-    // native fallback instead of the JS state machine under test.
+    // Localhost (not 127.0.0.1): Next 16 blocks dev hydration assets for
+    // Non-allowlisted hostnames, and an unhydrated form would take the
+    // Native fallback instead of the JS state machine under test.
     await page.setExtraHTTPHeaders({ "X-Forwarded-For": testIp("broken") });
     await page.goto("http://localhost:3101/en/appointment");
     await awaitHydration(page);
@@ -216,7 +223,7 @@ test("VAL-INTAKE-015: the unknown state is distinct, honest, and takes focus", a
   test.skip(testInfo.project.name !== "chromium", "JS submission path");
 
   await page.setExtraHTTPHeaders({ "X-Forwarded-For": testIp("unknown") });
-  await page.route("**/api/requests", (route) => route.abort());
+  await page.route("**/api/requests", async (route) => route.abort());
 
   await page.goto("/en/appointment");
   await awaitHydration(page);
@@ -248,7 +255,7 @@ test("VAL-INTAKE-007: no-JS native POST leaks nothing and lands on a receipt", a
   await page.goto("/en/appointment");
   await fillForm(page, email, name);
   // Keyboard-submit the native form: implicit submission works without JS
-  // and sidesteps bounding-box stability churn on cold dev compiles.
+  // And sidesteps bounding-box stability churn on cold dev compiles.
   await page.press("#email", "Enter");
 
   await page.waitForURL(
@@ -354,7 +361,7 @@ test("VAL-INTAKE-014: PHI warning renders verbatim on all ten surfaces", async (
   test.setTimeout(120_000);
 
   // The English warning is the canonical string the practice signed off on;
-  // it must never drift.
+  // It must never drift.
   expect(en.appointment.phiWarning).toBe(
     "Please do not submit any Protected Health Information (PHI).",
   );

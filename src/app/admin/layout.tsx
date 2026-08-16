@@ -3,8 +3,8 @@ import "../globals.css";
 import { fontVariables } from "@/lib/fonts";
 
 // The staff portal is a sibling segment to [locale] with its own root
-// layout: English-only, no patient Header/Footer/NoticeBanner, never
-// indexed. m2 packets build the real shell on top of this.
+// Layout: English-only, no patient Header/Footer/NoticeBanner, never
+// Indexed. m2 packets build the real shell on top of this.
 
 export const metadata: Metadata = {
   title: "Staff portal | Westchase Gastroenterology",
@@ -16,7 +16,7 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={fontVariables}>
       <body className="portal-scope min-h-dvh bg-[var(--color-paper)] text-[var(--color-body)]">

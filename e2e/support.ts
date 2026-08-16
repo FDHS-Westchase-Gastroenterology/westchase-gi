@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { assertSafeE2ETarget } from "./target-guard";
 
 /**
@@ -26,14 +27,14 @@ export function loadLocalEnv(): void {
       value = value.slice(1, -1);
     }
 
-    if (process.env[key] === undefined) process.env[key] = value;
+    process.env[key] ??= value;
   }
 }
 
-export function requiredEnv(...names: string[]): string {
+export function requiredEnv(...names: readonly string[]): string {
   for (const name of names) {
     const value = process.env[name]?.trim();
-    if (value) return value;
+    if (value !== undefined && value !== "") return value;
   }
 
   throw new Error(`Missing test environment: ${names.join(" or ")}`);
@@ -43,7 +44,16 @@ export function requiredEnv(...names: string[]): string {
 export function serviceDb(): SupabaseClient {
   loadLocalEnv();
   assertSafeE2ETarget(process.env);
-  return createClient(
+  return createClient<
+    {
+      public: {
+        Tables: Record<string, never>;
+        Views: Record<string, never>;
+        Functions: Record<string, never>;
+      };
+    },
+    "public"
+  >(
     requiredEnv("NEXT_PUBLIC_SUPABASE_URL"),
     requiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
     {

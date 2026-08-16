@@ -1,7 +1,7 @@
 // Conditions and procedures as published by the practice. Polish applied:
-// the misspelled duplicate "Barret Esophagus" entry became a single corrected
+// The misspelled duplicate "Barret Esophagus" entry became a single corrected
 // "Barrett's Esophagus" item (removed from the GERD parenthetical to avoid
-// listing it twice). Spanish is a first-class translation of the same lists.
+// Listing it twice). Spanish is a first-class translation of the same lists.
 
 import type { Bi } from "./content/types";
 
@@ -34,7 +34,7 @@ export const procedures: Bilingual[] = [
   { en: "Esophagogastroduodenoscopy (EGD)", es: "Esofagogastroduodenoscopia (EGD)", vi: "Nội soi thực quản - dạ dày - tá tràng (EGD)", ko: "식도위십이지장 내시경 검사(EGD)", ar: "تنظير المريء والمعدة والاثني عشر (EGD)" },
   { en: "Halo Study (Barrett's Esophagus ablation)", es: "Estudio Halo (ablación del esófago de Barrett)", vi: "Nghiên cứu Halo (đốt hủy thực quản Barrett)", ko: "Halo 검사(바렛 식도 소작술)", ar: "دراسة Halo (كيّ مريء باريت)" },
   // Added at the practice's request 2026-07-06. Conservative phrasing; the
-  // practice already lists "Liver Ultrasound & Elastography" on its About page.
+  // Practice already lists "Liver Ultrasound & Elastography" on its About page.
   { en: "Liver Elastography (non-invasive liver stiffness assessment)", es: "Elastografía hepática (evaluación no invasiva de la rigidez del hígado)", vi: "Đo đàn hồi gan (đánh giá độ cứng của gan không xâm lấn)", ko: "간 탄성도 검사(비침습적 간 경직도 평가)", ar: "تصوير مرونة الكبد (تقييم غير باضع لتيبّس الكبد)" },
   { en: "Motility Study", es: "Estudio de motilidad", vi: "Nghiên cứu nhu động", ko: "위장관 운동 검사", ar: "دراسة حركية الجهاز الهضمي" },
   { en: "Hemorrhoid Banding (non-invasive treatment of internal hemorrhoids)", es: "Ligadura de hemorroides (tratamiento no invasivo de las hemorroides internas)", vi: "Thắt búi trĩ bằng vòng cao su (điều trị trĩ nội không xâm lấn)", ko: "치핵 결찰술(내치핵의 비침습적 치료)", ar: "ربط البواسير (علاج غير باضع للبواسير الداخلية)" },

@@ -1,9 +1,12 @@
 import { createHash, randomUUID } from "node:crypto";
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { z } from "zod";
+import { intakeResponseSchema } from "../src/lib/portal/contracts";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // VAL-ADMIN-007: recipients are manageable from the UI and a staged
-// appointment request attempts notification for exactly the active set.
+// Appointment request attempts notification for exactly the active set.
 // VAL-ADMIN-008: invite -> one-time setup link -> own password -> deactivate
 // -> login refused, across two browser contexts.
 // VAL-ADMIN-012: the help page is substantive plain English (>=400 words).
@@ -17,7 +20,7 @@ const db = serviceDb();
 const runId = randomUUID().slice(0, 8);
 
 // Invite/recovery URLs contain one-time bearer fragments. Never preserve them
-// in a retained-on-failure trace artifact.
+// In a retained-on-failure trace artifact.
 test.use({ trace: "off" });
 
 function testIp(label: string): string {
@@ -63,7 +66,7 @@ function recipientItem(page: Page, email: string) {
 test.describe("portal management UI", () => {
   test.describe.configure({ mode: "serial" });
 
-  test.beforeEach(async ({}, testInfo) => {
+  test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== "chromium", "JS portal UI");
   });
 
@@ -77,7 +80,10 @@ test.describe("portal management UI", () => {
       .from("staff_profiles")
       .select("user_id")
       .like("email", `ux-${runId}-%`);
-    for (const row of leftovers ?? []) {
+    const leftoverRows = z
+      .array(z.object({ user_id: z.string() }))
+      .parse(leftovers ?? []);
+    for (const row of leftoverRows) {
       await db.from("staff_profiles").delete().eq("user_id", row.user_id);
       await db.auth.admin.deleteUser(row.user_id);
     }
@@ -113,8 +119,8 @@ test.describe("portal management UI", () => {
     }
 
     // Database failures keep their stable Server Action mappings: duplicate
-    // normalized mailboxes conflict, while a row removed by another actor is
-    // reported as not found rather than generic success.
+    // Normalized mailboxes conflict, while a row removed by another actor is
+    // Reported as not found rather than generic success.
     await page.locator("#recipient-email").fill(emailA.toUpperCase());
     await page.getByRole("button", { name: "Add", exact: true }).click();
     await expect(page.getByRole("alert")).toHaveText(
@@ -136,7 +142,7 @@ test.describe("portal management UI", () => {
     await expect(recipientItem(page, emailD)).toHaveCount(0);
 
     // Toggle B to paused; it persists — and the undo offer restores it
-    // without a re-toggle.
+    // Without a re-toggle.
     await recipientItem(page, emailB).locator('[data-action="toggle"]').click();
     await expect(
       recipientItem(page, emailB).locator('[data-action="toggle"]'),
@@ -201,8 +207,8 @@ test.describe("portal management UI", () => {
 
     // A staged appointment request attempts notification for EXACTLY the active set.
     // Global setup paused every pre-existing recipient, so the active set
-    // right now is {A}. A rejected provider outcome still counts as an
-    // attempt — that is the assertion, not deliverability.
+    // Right now is {A}. A rejected provider outcome still counts as an
+    // Attempt — that is the assertion, not deliverability.
     const staged = {
       name: `TEST UX ${runId}`,
       phone: "8135550161",
@@ -217,8 +223,9 @@ test.describe("portal management UI", () => {
       headers: { "X-Forwarded-For": testIp("notify-set") },
     });
     expect(response.status()).toBe(201);
-    const body = (await response.json()) as { ok: boolean; id: string };
+    const body = intakeResponseSchema.parse(await response.json());
     expect(body.ok).toBe(true);
+    if (!body.ok) throw new Error("Expected an accepted intake response");
 
     await expect
       .poll(
@@ -228,7 +235,11 @@ test.describe("portal management UI", () => {
             .select("recipient, status")
             .eq("request_id", body.id)
             .eq("type", "notification");
-          return (data ?? []).map((row) => row.recipient).sort();
+          return z
+            .array(z.object({ recipient: z.string() }))
+            .parse(data ?? [])
+            .map((row) => row.recipient)
+            .sort((left, right) => left.localeCompare(right));
         },
         { timeout: 20_000 },
       )
@@ -300,7 +311,7 @@ test.describe("portal management UI", () => {
     await expect(invitedRow).toContainText("Pending setup");
 
     // An administrator can replace an expired/lost pending link. Reissuing
-    // invalidates the earlier token without changing the stored role.
+    // Invalidates the earlier token without changing the stored role.
     await invitedRow.locator('[data-action="resend-invite"]').click();
     await expect
       .poll(async () => {
@@ -323,15 +334,15 @@ test.describe("portal management UI", () => {
 
     // Reissuing the invitation must supersede the original bearer link. Its
     // Continue action stays on the confirmation screen with the generic
-    // expired-link outcome rather than establishing a password session.
+    // Expired-link outcome rather than establishing a password session.
     const supersededContext = await browser.newContext();
     const supersededPage = await supersededContext.newPage();
     await expectSetupLinkRejected(supersededPage, originalSetupUrl);
     await supersededContext.close();
 
     // A never-onboarded invitation is also revoked when an administrator
-    // deactivates it. The row disappears from the default list immediately,
-    // and its previously issued bearer link cannot reach password setup.
+    // Deactivates it. The row disappears from the default list immediately,
+    // And its previously issued bearer link cannot reach password setup.
     const pendingEmail = `ux-${runId}-pending@example.test`;
     await page.locator("#invite-email").fill(pendingEmail);
     await page.locator("#invite-name").fill("TEST Pending Invite");
@@ -356,7 +367,7 @@ test.describe("portal management UI", () => {
     await deactivatedInviteContext.close();
 
     // Second context: the invited staffer deliberately consumes the one-time
-    // link, chooses their own password, and lands in the portal.
+    // Link, chooses their own password, and lands in the portal.
     const staffContext = await browser.newContext();
     const staffPage = await staffContext.newPage();
     await staffPage.goto(setupUrl);
@@ -400,7 +411,7 @@ test.describe("portal management UI", () => {
     await page.goto("/admin/settings");
 
     // The seed admin just signed in, so their row reads as a real sign-in
-    // timestamp — never "No sign-ins yet" and never a crashed page.
+    // Timestamp — never "No sign-ins yet" and never a crashed page.
     const ownRow = page
       .getByTestId("staff-list")
       .locator("li")

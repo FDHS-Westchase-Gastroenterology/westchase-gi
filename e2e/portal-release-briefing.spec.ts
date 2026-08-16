@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
-import { test, expect, type BrowserContext, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
+import { z } from "zod";
 import { loadLocalEnv, serviceDb } from "./support";
 
 loadLocalEnv();
@@ -76,7 +78,7 @@ test.describe("portal release briefing", () => {
     await expect(page.getByTestId("portal-release-utility")).toHaveCount(0);
 
     // Keyboard activation stays immediate: the rare list-to-check transition
-    // is reserved for direct pointer opening, per the portal motion standard.
+    // Is reserved for direct pointer opening, per the portal motion standard.
     await openButton.focus();
     await page.keyboard.press("Enter");
     const homeSummary = page.locator("#portal-release-home-summary");
@@ -116,7 +118,7 @@ test.describe("portal release briefing", () => {
       });
 
     // Reset only this disposable fixture to exercise the pointer-authored
-    // first opening independently from the keyboard path above.
+    // First opening independently from the keyboard path above.
     await db
       .from("portal_release_states")
       .delete()
@@ -190,15 +192,17 @@ test.describe("portal release briefing", () => {
       .eq("release_id", releaseId)
       .single();
     expect(finalStateError).toBeNull();
-    expect(typeof finalState?.first_opened_at).toBe("string");
-    expect(typeof finalState?.last_viewed_at).toBe("string");
+    expect(z.string().safeParse(finalState?.first_opened_at).success).toBe(true);
+    expect(z.string().safeParse(finalState?.last_viewed_at).success).toBe(true);
     expect(finalState?.view_count).toBe(4);
-    expect(typeof finalState?.acknowledged_at).toBe("string");
-    expect(typeof finalState?.hidden_at).toBe("string");
-    expect(typeof finalState?.guide_opened_at).toBe("string");
-    expect(typeof finalState?.last_guide_opened_at).toBe("string");
+    expect(z.string().safeParse(finalState?.acknowledged_at).success).toBe(true);
+    expect(z.string().safeParse(finalState?.hidden_at).success).toBe(true);
+    expect(z.string().safeParse(finalState?.guide_opened_at).success).toBe(true);
+    expect(z.string().safeParse(finalState?.last_guide_opened_at).success).toBe(
+      true,
+    );
     expect(finalState?.guide_open_count).toBe(1);
-    expect(typeof finalState?.last_dismissed_at).toBe("string");
+    expect(z.string().safeParse(finalState?.last_dismissed_at).success).toBe(true);
     expect(finalState?.dismiss_count).toBe(1);
 
     await page.goto("/admin/audit");

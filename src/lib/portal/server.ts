@@ -7,7 +7,7 @@ import { cookies } from "next/headers";
 function requiredEnv(names: readonly string[]): string {
   for (const name of names) {
     const value = process.env[name]?.trim();
-    if (value) return value;
+    if (value !== undefined && value !== "") return value;
   }
 
   throw new Error(`Missing required server environment: ${names.join(" or ")}`);
@@ -37,7 +37,14 @@ export function serviceRoleKey(): string {
  * target. HTTP remains valid for local Playwright; production supplies HTTPS. */
 export function portalUrl(path: string): string | null {
   const base = process.env.PORTAL_BASE_URL?.trim();
-  if (!base || !path.startsWith("/") || path.startsWith("//")) return null;
+  if (
+    base === undefined ||
+    base === "" ||
+    !path.startsWith("/") ||
+    path.startsWith("//")
+  ) {
+    return null;
+  }
 
   try {
     const baseUrl = new URL(base);
@@ -76,7 +83,7 @@ export async function serverClient() {
           }
         } catch {
           // Server Components cannot write cookies. The portal proxy added by
-          // the auth packet owns refresh-cookie writes for those requests.
+          // The auth packet owns refresh-cookie writes for those requests.
         }
       },
     },

@@ -1,16 +1,16 @@
 import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
+import { REQUEST_STATUSES } from "@/lib/portal/contracts";
 import type { RequestStatus } from "@/lib/portal/contracts";
-import {
-  orderQueueRows,
-  type AttentiveRow,
-} from "@/lib/portal/queue-attention";
+import { orderQueueRows } from "@/lib/portal/queue-attention";
+import type { AttentiveRow } from "@/lib/portal/queue-attention";
 
 // Shared queue reads for the requests list and the detail page's
-// previous/next continuity: one attention derivation, one fetch shape.
+// Previous/next continuity: one attention derivation, one fetch shape.
 
-export type QueueRow = {
+export interface QueueRow {
   id: string;
   name: string;
   phone: string;
@@ -20,7 +20,7 @@ export type QueueRow = {
   status: RequestStatus;
   created_at: string;
   follow_up_at: string | null;
-};
+}
 
 export type AttentiveQueueRow = AttentiveRow<QueueRow>;
 
@@ -28,13 +28,30 @@ const COLUMNS =
   "id, name, phone, location, preferred_time, locale, status, created_at, follow_up_at";
 
 // Open-queue candidates are bounded well past any realistic front-desk
-// backlog; beyond this the attention ordering would need a database view.
+// Backlog; beyond this the attention ordering would need a database view.
 // ponytail: if open rows ever approach the cap, revisit with a computed
-// ordering column instead of widening it.
+// Ordering column instead of widening it.
 export const OPEN_CANDIDATE_LIMIT = 500;
 
 export const OPEN_STATUSES = ["new", "contacted", "scheduled"] as const;
 export type OpenStatus = (typeof OPEN_STATUSES)[number];
+
+const queueRowSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  phone: z.string(),
+  location: z.enum(["any", "tampa", "lutz"]),
+  preferred_time: z.enum(["any", "morning", "afternoon"]),
+  locale: z.string(),
+  status: z.enum(REQUEST_STATUSES),
+  created_at: z.string(),
+  follow_up_at: z.string().nullable(),
+}) satisfies z.ZodType<QueueRow>;
+
+const activityRowSchema = z.object({
+  entity_id: z.string().nullable(),
+  at: z.string(),
+});
 
 /**
  * The attention-ordered open set: open statuses (or one scoped status),
@@ -47,11 +64,11 @@ export async function fetchAttentiveOpenRows(
     statuses = [...OPEN_STATUSES],
     searchFilter = "",
     now = new Date(),
-  }: {
+  }: Readonly<{
     statuses?: readonly OpenStatus[];
     searchFilter?: string;
     now?: Date;
-  } = {},
+  }> = {},
 ): Promise<AttentiveQueueRow[]> {
   let query = db
     .from("requests")
@@ -62,17 +79,16 @@ export async function fetchAttentiveOpenRows(
   if (searchFilter) query = query.or(searchFilter);
   const { data, error } = await query;
   if (error) throw new Error(`Queue read failed: ${error.code}`);
-  const rows = (data ?? []) as QueueRow[];
+  const parsedRows = z.array(queueRowSchema).safeParse(data);
+  if (!parsedRows.success) throw new Error("Queue read failed: invalid");
+  const rows = parsedRows.data;
 
   const activityById = new Map<string, string>();
   const ids = rows.map((row) => row.id);
   // PostgREST URL limits reject long `in` lists (a 500-row candidate set is
   // ~18KB of UUIDs), so the activity map is fetched in parallel chunks.
   const ACTIVITY_ID_CHUNK = 100;
-  const activityChunks: Array<{
-    data: Array<Record<string, unknown>> | null;
-    error: { code?: string } | null;
-  }> = await Promise.all(
+  const activityChunks = await Promise.all(
     Array.from(
       { length: Math.ceil(ids.length / ACTIVITY_ID_CHUNK) },
       (_, chunkIndex) =>
@@ -93,16 +109,19 @@ export async function fetchAttentiveOpenRows(
     if (chunk.error) {
       throw new Error(`Queue read failed: ${chunk.error.code}`);
     }
-    for (const row of chunk.data ?? []) {
-      const id = row.entity_id as string | null;
-      const at = row.at as string | null;
-      if (!id || !at) continue;
+    for (const row of chunk.data) {
+      const parsed = activityRowSchema.safeParse(row);
+      if (!parsed.success) continue;
+      const { entity_id: id, at } = parsed.data;
+      if (id === null || id === "") continue;
       const current = activityById.get(id);
-      if (!current || at > current) activityById.set(id, at);
+      if (current === undefined || current === "" || at > current) {
+        activityById.set(id, at);
+      }
     }
   }
 
-  return orderQueueRows(rows, activityById, now) as AttentiveQueueRow[];
+  return orderQueueRows(rows, activityById, now);
 }
 
 /**
@@ -115,11 +134,11 @@ export async function fetchClosedRows(
     from,
     limit,
     searchFilter = "",
-  }: {
+  }: Readonly<{
     from: number;
     limit: number;
     searchFilter?: string;
-  },
+  }>,
 ): Promise<QueueRow[]> {
   let query = db
     .from("requests")
@@ -130,5 +149,7 @@ export async function fetchClosedRows(
   if (searchFilter) query = query.or(searchFilter);
   const { data, error } = await query;
   if (error) throw new Error(`Queue read failed: ${error.code}`);
-  return (data ?? []) as QueueRow[];
+  const parsed = z.array(queueRowSchema).safeParse(data);
+  if (!parsed.success) throw new Error("Queue read failed: invalid");
+  return parsed.data;
 }

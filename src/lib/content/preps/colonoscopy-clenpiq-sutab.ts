@@ -1,6 +1,6 @@
 // Colonoscopy preps: Clenpiq split-dose, Clenpiq, and Sutab.
 // English bodies are the practice's originals (scan pp. 4–9); Spanish
-// bodies are faithful translations (no Spanish originals exist for these).
+// Bodies are faithful translations (no Spanish originals exist for these).
 // VI/KO/AR bodies are machine translations of the EN passages (2026-07-08), pending native-speaker verification by clinic staff.
 
 import type { PrepDoc, PrepSection } from "./types";
@@ -36,7 +36,7 @@ const clenpiqSplitDayBeforeEn: PrepSection[] = [
             items: [
               "**Second regimen — take at ___ AM.** B. Repeat step A.",
               // Source wording (verified against the scan 2026-07-07):
-              // the morning-of column says "before bedtime".
+              // The morning-of column says "before bedtime".
               "Drink three (3) 8-ounce glasses of clear liquids before bedtime.",
             ],
           },

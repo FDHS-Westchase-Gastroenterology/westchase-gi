@@ -1,5 +1,5 @@
 // Arabic UI dictionary — machine-translated 2026-07-08, pending
-// native-speaker verification by clinic staff (post-launch gate).
+// Native-speaker verification by clinic staff (post-launch gate).
 // RTL rendering is handled by dir="rtl" at the layout level.
 import type { Dictionary } from "./en";
 
@@ -87,10 +87,10 @@ export const ar: Dictionary = {
         "اختر اللغة التي تود استخدامها في هذا الموقع. يمكنك تغييرها في أي وقت من قائمة اللغة.",
       suggested: "مقترحة",
       // i5-waiver 2026-07-28 common.languageChooser.continue: action label naming
-      // the current locale, not an availability claim.
+      // The current locale, not an availability claim.
       continue: "المتابعة بالعربية",
       // i5-waiver 2026-07-28 common.languageChooser.close: action label naming
-      // the current locale, not an availability claim.
+      // The current locale, not an availability claim.
       close: "إغلاق اختيار اللغة والمتابعة بالعربية",
     },
     getDirections: "الحصول على الاتجاهات",
@@ -116,10 +116,10 @@ export const ar: Dictionary = {
       contact: "اتصلوا بنا",
       appointment: "طلب موعد",
       // i5-waiver 2026-07-28 common.nav.formsEn: the external Hushforms packet
-      // really is English-only; the label says so honestly.
+      // Really is English-only; the label says so honestly.
       formsEn: "استمارات المرضى الجدد عبر الإنترنت (بالإنجليزية)",
       // i5-waiver 2026-07-28 common.nav.formsEs: the external Hushforms packet
-      // really is Spanish-only; the label says so honestly.
+      // Really is Spanish-only; the label says so honestly.
       formsEs: "استمارات المرضى الجدد عبر الإنترنت (بالإسبانية)",
       printableForms: "استمارات قابلة للطباعة",
     },
@@ -211,7 +211,7 @@ export const ar: Dictionary = {
     physiciansCta: "تعرّفوا على الفريق بأكمله",
     testimonialsHeading: "ماذا يقول مرضانا",
     // i5-waiver 2026-07-28 home.testimonialsNote: settled decision — testimonials
-    // stay English-only in every locale, with this explicit qualifier.
+    // Stay English-only in every locale, with this explicit qualifier.
     testimonialsNote: "تقييمات شاركها مرضانا بكلماتهم الخاصة (بالإنجليزية).",
     railLabel: "آراء المرضى",
     railPrev: "الآراء السابقة",
@@ -327,14 +327,14 @@ export const ar: Dictionary = {
     ],
     formsHeading: "استمارات المرضى",
     // i5-waiver 2026-07-28 newPatients.formsIntro: the EN/ES clause binds to
-    // the external Hushforms packet only — no claim about the site's languages.
+    // The external Hushforms packet only — no claim about the site's languages.
     formsIntro:
       "الخيار الأسرع هو حزمة الاستمارات الآمنة عبر الإنترنت — الحزمة نفسها متوفرة بالإنجليزية والإسبانية. أكملوها من أي جهاز قبل زيارتكم الأولى:",
     // i5-waiver 2026-07-28 newPatients.formsOnlineEn: the external Hushforms
-    // packet really is English-only; the label says so honestly.
+    // Packet really is English-only; the label says so honestly.
     formsOnlineEn: "استمارات المرضى الجدد عبر الإنترنت (بالإنجليزية)",
     // i5-waiver 2026-07-28 newPatients.formsOnlineEs: the external Hushforms
-    // packet really is Spanish-only; the label says so honestly.
+    // Packet really is Spanish-only; the label says so honestly.
     formsOnlineEs: "استمارات المرضى الجدد عبر الإنترنت (بالإسبانية)",
     formsPrintableIntro:
       "تفضلون الورق؟ هذه الاستمارات القابلة للطباعة قيد التحديث؛ راسلونا نصيًا وسنرسل لكم النسخ الحالية، أو أكملوها في مكتب الاستقبال عند وصولكم.",
@@ -377,7 +377,7 @@ export const ar: Dictionary = {
     educationCta: "تصفح صفحات تثقيف المرضى",
     asgeHeading: "المزيد من ASGE",
     // i5-waiver 2026-07-28 resources.asgeBody: the external ASGE guides really
-    // are English-only; the qualifier is the truth.
+    // Are English-only; the qualifier is the truth.
     asgeBody:
       "تنشر الجمعية الأمريكية لتنظير الجهاز الهضمي (ASGE) أيضًا أدلة للمرضى حول أمراض الجهاز الهضمي وإجراءاته (بالإنجليزية).",
     educationCtaConditions: "أدلة ASGE: الحالات المرضية",

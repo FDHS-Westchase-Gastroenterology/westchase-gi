@@ -3,20 +3,21 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
-import { localePath, locales, site, type Locale } from "@/lib/site";
+import { localePath, locales, site } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import { getPrep, prepDocs } from "@/lib/content/preps";
 import { PrepBody } from "@/components/PrepBody";
 import { PrintButton } from "@/components/PrintButton";
 import { TextBand } from "@/components/TextBand";
 import { MessageSquare, Phone } from "@/components/icons";
 
-type PageProps = { params: Promise<{ locale: string; slug: string }> };
+interface PageProps { params: Promise<{ locale: string; slug: string }> }
 
 export function generateStaticParams() {
   return locales.flatMap((locale) => prepDocs.map((d) => ({ locale, slug: d.slug })));
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw, slug } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const doc = getPrep(slug);
@@ -31,13 +32,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 /** Print-only letterhead so the printed page reads as a practice handout,
  *  not a webpage. Practice name + both offices + the numbers patients need. */
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function PrintLetterhead({
   locale,
   t,
-}: {
+}: Readonly<{
   locale: Locale;
   t: { printPhoneLabel: string; printTextLabel: string };
-}) {
+}>) {
   return (
     <div className="hidden text-center print:block">
       <p className="font-[var(--font-display)] text-[16pt] font-bold">{site.name}</p>
@@ -58,7 +60,7 @@ function PrintLetterhead({
   );
 }
 
-export default async function PrepDetailPage({ params }: PageProps) {
+export default async function PrepDetailPage({ params }: Readonly<PageProps>) {
   const { locale: raw, slug } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);

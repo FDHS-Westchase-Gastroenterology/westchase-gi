@@ -1,23 +1,23 @@
 // Practice-local business context for appointment-request timestamps.
 // The staff shell reads time the way the front desk does — "since
-// yesterday", "since Friday", "after hours" — not as raw durations.
+// Yesterday", "since Friday", "after hours" — not as raw durations.
 
 // Office-hours envelope: Mon–Fri 8:00 AM – 5:00 PM America/New_York, the
-// wider of the two offices (Tampa closes 5:00 PM, Lutz 4:30 PM), so a
+// Wider of the two offices (Tampa closes 5:00 PM, Lutz 4:30 PM), so a
 // 4:45 PM submission is never labeled after-hours while an office is open.
 const OPEN_MINUTES = 8 * 60;
 const CLOSE_MINUTES = 17 * 60;
 const PRACTICE_TZ = "America/New_York";
 const YMD_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
-const WEEKDAY_INDEX: Record<string, number> = {
-  Sun: 0,
-  Mon: 1,
-  Tue: 2,
-  Wed: 3,
-  Thu: 4,
-  Fri: 5,
-  Sat: 6,
-};
+const WEEKDAY_INDEX = new Map<string, number>([
+  ["Sun", 0],
+  ["Mon", 1],
+  ["Tue", 2],
+  ["Wed", 3],
+  ["Thu", 4],
+  ["Fri", 5],
+  ["Sat", 6],
+]);
 
 const NY_CLOCK = new Intl.DateTimeFormat("en-US", {
   weekday: "short",
@@ -27,7 +27,7 @@ const NY_CLOCK = new Intl.DateTimeFormat("en-US", {
   timeZone: PRACTICE_TZ,
 });
 
-// en-CA renders YYYY-MM-DD, which parses cleanly back into a UTC day number.
+// En-CA renders YYYY-MM-DD, which parses cleanly back into a UTC day number.
 const NY_DAY = new Intl.DateTimeFormat("en-CA", {
   dateStyle: "short",
   timeZone: PRACTICE_TZ,
@@ -61,7 +61,12 @@ export type FollowUpChoice =
   | { kind: "friday" }
   | { kind: "day"; date: string }; // "YYYY-MM-DD", practice-local calendar day
 
-function nyClock(date: Date): { weekday: string; minutes: number } {
+interface PracticeClock {
+  weekday: string;
+  minutes: number;
+}
+
+function nyClock(date: Date): PracticeClock {
   const parts: Partial<Record<Intl.DateTimeFormatPartTypes, string>> = {};
   for (const part of NY_CLOCK.formatToParts(date)) parts[part.type] = part.value;
   return {
@@ -101,11 +106,13 @@ function isValidCalendarYmd(value: string): boolean {
   );
 }
 
-function nyWallParts(date: Date): {
+interface PracticeWall {
   ymd: string;
   hour: number;
   minute: number;
-} {
+}
+
+function nyWallParts(date: Date): PracticeWall {
   const parts: Partial<Record<Intl.DateTimeFormatPartTypes, string>> = {};
   for (const part of NY_WALL.formatToParts(date)) parts[part.type] = part.value;
   return {
@@ -128,7 +135,7 @@ function atPracticeLocal(
   if (Number.isNaN(utcGuess)) return null;
 
   // Derive the ET offset for the target day (DST-safe): treat the wall time
-  // as UTC, see what NY shows, then shift by the difference.
+  // As UTC, see what NY shows, then shift by the difference.
   const shown = nyWallParts(new Date(utcGuess));
   const desiredDay = ymdToDayNumber(ymd);
   const shownDay = ymdToDayNumber(shown.ymd);
@@ -139,7 +146,7 @@ function atPracticeLocal(
 }
 
 function daysUntilComingFriday(now: Date): number {
-  const index = WEEKDAY_INDEX[nyClock(now).weekday];
+  const index = WEEKDAY_INDEX.get(nyClock(now).weekday);
   if (index === undefined) return 7;
   const delta = (5 - index + 7) % 7;
   return delta === 0 ? 7 : delta;
@@ -150,7 +157,7 @@ function daysUntilComingFriday(now: Date): number {
  * Returns null for unknown kinds, malformed dates, past days, or >90 days out.
  */
 export function resolveFollowUpAt(
-  choice: FollowUpChoice,
+  choice: Readonly<FollowUpChoice>,
   now: Date = new Date(),
 ): string | null {
   const todayYmd = NY_DAY.format(now);
@@ -188,22 +195,22 @@ export function arrivedOutsideOfficeHours(iso: string): boolean {
 }
 
 // The instant a silent touched row becomes attention again: the most recent
-// business-day 08:00 ET strictly before `now`. (Before today's 08:00 on a
-// weekday, the boundary is the previous business day's 08:00; on weekends it
-// is Friday 08:00.)
+// Business-day 08:00 ET strictly before `now`. (Before today's 08:00 on a
+// Weekday, the boundary is the previous business day's 08:00; on weekends it
+// Is Friday 08:00.)
 export function previousBusinessMorningBoundary(now: Date = new Date()): Date {
   let day = nyDayNumber(now) - 1;
   for (;;) {
     const ymd = dayNumberToYmd(day);
     const probeIso = atPracticeLocal(ymd, 12, 0);
-    if (!probeIso) {
+    if (probeIso === null || probeIso === "") {
       day -= 1;
       continue;
     }
     const { weekday } = nyClock(new Date(probeIso));
     if (weekday !== "Sat" && weekday !== "Sun") {
       const morningIso = atPracticeLocal(ymd, OPEN_MINUTES / 60, 0);
-      if (!morningIso) {
+      if (morningIso === null || morningIso === "") {
         day -= 1;
         continue;
       }

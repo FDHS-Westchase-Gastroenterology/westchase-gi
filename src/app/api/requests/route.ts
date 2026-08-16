@@ -1,12 +1,15 @@
+import { jsonSchema } from "@/lib/json";
+import type { Json } from "@/lib/json";
 import { processIntake } from "@/lib/portal/intake";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  let input: unknown = null;
+  let input: Json | null = null;
 
   try {
-    input = await request.json();
+    const parsed = jsonSchema.safeParse(await request.json());
+    input = parsed.success ? parsed.data : null;
   } catch {
     // Malformed or missing JSON is handled by the pinned Zod contract.
   }

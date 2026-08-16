@@ -1,10 +1,10 @@
 import "server-only";
 
-import {
-  createPrivateKey,
-  sign as signBytes,
-  type KeyObject,
-} from "node:crypto";
+import { createPrivateKey, sign as signBytes } from "node:crypto";
+import type { KeyObject } from "node:crypto";
+import { z } from "zod";
+import { asJsonArray, asJsonNumber, asJsonObject, asJsonString } from "@/lib/json";
+import type { Json } from "@/lib/json";
 import {
   GitHubApiError,
   readGitHubResponse,
@@ -20,45 +20,51 @@ export const GITHUB_REPOSITORY_ID = 1289668601;
 export const CANONICAL_REPOSITORY =
   `${GITHUB_ACCOUNT}/${GITHUB_REPOSITORY_NAME}`;
 
-export type GitHubMaintainer = { userId: number; login: string };
-export type GitHubMaintainerInvitation = {
+export interface GitHubMaintainer { userId: number; login: string }
+export interface GitHubMaintainerInvitation {
   invitationId: number;
   userId: number;
   login: string;
-};
-export type GitHubMaintainerSnapshot = {
-  ownerLogin: string;
-  management:
+}
+export interface GitHubMaintainerSnapshot {
+  readonly ownerLogin: string;
+  readonly management:
     | "restrict_installation"
     | "permission_upgrade_required"
     | "ready";
-  maintainers: GitHubMaintainer[];
-  invitations: GitHubMaintainerInvitation[] | null;
-};
+  readonly maintainers: readonly GitHubMaintainer[];
+  readonly invitations: readonly GitHubMaintainerInvitation[] | null;
+}
 
 export type GitHubMaintainerRead =
   | { state: "not_configured" | "unavailable" }
   | ({ state: "connected" } & GitHubMaintainerSnapshot);
 
-export type GitHubMaintainerSession = {
-  initial: GitHubMaintainerSnapshot & {
-    invitations: GitHubMaintainerInvitation[];
+export interface GitHubMaintainerSession {
+  readonly initial: GitHubMaintainerSnapshot & {
+    invitations: readonly GitHubMaintainerInvitation[];
   };
   resolveUser(username: string): Promise<GitHubMaintainer>;
   invite(username: string): Promise<number>;
   cancelInvitation(invitationId: number): Promise<number>;
   revoke(username: string): Promise<number>;
   refresh(): Promise<
-    GitHubMaintainerSnapshot & { invitations: GitHubMaintainerInvitation[] }
+    GitHubMaintainerSnapshot & { invitations: readonly GitHubMaintainerInvitation[] }
   >;
-};
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isPositiveInteger(value: unknown): value is number {
-  return Number.isSafeInteger(value) && Number(value) > 0;
+interface GitHubInstallation {
+  administration: "none" | "read" | "write";
+}
+
+interface GitHubResponse {
+  status: number;
+  data: Json;
+}
+
+function asPositiveInteger(value: Json | undefined): number | null {
+  const parsed = z.number().int().positive().safeParse(value);
+  return parsed.success ? parsed.data : null;
 }
 
 function readGithubConfiguration(): {
@@ -92,7 +98,7 @@ function readGithubConfiguration(): {
   return { appId, installationId, privateKey };
 }
 
-function encodeJwtPart(value: unknown): string {
+function encodeJwtPart(value: Json): string {
   return Buffer.from(JSON.stringify(value)).toString("base64url");
 }
 
@@ -114,22 +120,26 @@ function createAppJwt(appId: string, privateKey: KeyObject): string {
 async function githubRequest(
   path: string,
   token: string,
-  options: {
+  options: Readonly<{
     method?: "GET" | "POST" | "PUT" | "DELETE";
     body?: string;
-  } = {},
-): Promise<{ status: number; data: unknown }> {
+  }> = {},
+): Promise<GitHubResponse> {
   let response: Response;
   try {
+    const headers = {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "User-Agent": "westchase-gi-portal",
+      "X-GitHub-Api-Version": GITHUB_API_VERSION,
+    };
+    const requestHeaders =
+      options.body !== undefined && options.body !== ""
+        ? { ...headers, "Content-Type": "application/json" }
+        : headers;
     response = await fetch(`${GITHUB_API}${path}`, {
       method: options.method ?? "GET",
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "User-Agent": "westchase-gi-portal",
-        "X-GitHub-Api-Version": GITHUB_API_VERSION,
-        ...(options.body ? { "Content-Type": "application/json" } : {}),
-      },
+      headers: requestHeaders,
       body: options.body,
       cache: "no-store",
       signal: AbortSignal.timeout(8_000),
@@ -140,105 +150,120 @@ async function githubRequest(
   return readGitHubResponse(response);
 }
 
-function parseInstallation(data: unknown): {
-  administration: "none" | "read" | "write";
-} {
+function parseInstallation(data: Json): GitHubInstallation {
+  const record = asJsonObject(data);
+  const account = record === null ? null : asJsonObject(record.account);
+  const permissions = record === null ? null : asJsonObject(record.permissions);
   if (
-    !isRecord(data) ||
-    !isRecord(data.account) ||
-    data.account.login !== GITHUB_ACCOUNT ||
-    data.account.id !== GITHUB_OWNER_ID ||
-    data.account.type !== "User" ||
-    data.target_type !== "User" ||
-    (data.repository_selection !== "all" &&
-      data.repository_selection !== "selected") ||
-    data.suspended_at !== null ||
-    !isRecord(data.permissions)
+    record === null ||
+    account === null ||
+    asJsonString(account.login) !== GITHUB_ACCOUNT ||
+    asJsonNumber(account.id) !== GITHUB_OWNER_ID ||
+    asJsonString(account.type) !== "User" ||
+    asJsonString(record.target_type) !== "User" ||
+    (record.repository_selection !== "all" &&
+      record.repository_selection !== "selected") ||
+    record.suspended_at !== null ||
+    permissions === null
   ) {
     throw new GitHubApiError(null, "invalid_response");
   }
 
+  const administration = asJsonString(permissions.administration);
   return {
     administration:
-      data.permissions.administration === "write"
+      administration === "write"
         ? "write"
-        : data.permissions.administration === "read"
+        : administration === "read"
           ? "read"
           : "none",
   };
 }
 
-function parseToken(data: unknown): string {
-  if (!isRecord(data) || typeof data.token !== "string" || !data.token) {
+function parseToken(data: Json): string {
+  const record = asJsonObject(data);
+  const token = record === null ? null : asJsonString(record.token);
+  if (token === null || token === "") {
     throw new GitHubApiError(null, "invalid_response");
   }
-  return data.token;
+  return token;
 }
 
-function verifyRepository(data: unknown): void {
+function verifyRepository(data: Json): void {
+  const record = asJsonObject(data);
+  const owner = record === null ? null : asJsonObject(record.owner);
   if (
-    !isRecord(data) ||
-    data.id !== GITHUB_REPOSITORY_ID ||
-    data.full_name !== CANONICAL_REPOSITORY ||
-    !isRecord(data.owner) ||
-    data.owner.id !== GITHUB_OWNER_ID ||
-    data.owner.login !== GITHUB_ACCOUNT
+    record === null ||
+    asJsonNumber(record.id) !== GITHUB_REPOSITORY_ID ||
+    asJsonString(record.full_name) !== CANONICAL_REPOSITORY ||
+    owner === null ||
+    asJsonNumber(owner.id) !== GITHUB_OWNER_ID ||
+    asJsonString(owner.login) !== GITHUB_ACCOUNT
   ) {
     throw new GitHubApiError(null, "invalid_response");
   }
 }
 
-async function githubPages(path: string, token: string): Promise<unknown[]> {
-  const rows: unknown[] = [];
+async function githubPages(path: string, token: string): Promise<Json[]> {
+  const rows: Json[] = [];
   for (let page = 1; ; page += 1) {
     const separator = path.includes("?") ? "&" : "?";
     const { data } = await githubRequest(
       `${path}${separator}per_page=100&page=${page}`,
       token,
     );
-    if (!Array.isArray(data)) {
+    const pageRows = asJsonArray(data);
+    if (pageRows === null) {
       throw new GitHubApiError(null, "invalid_response");
     }
-    rows.push(...data);
-    if (data.length < 100) return rows;
+    rows.push(...pageRows);
+    if (pageRows.length < 100) return rows;
   }
 }
 
-function parseMaintainers(rows: unknown[]): GitHubMaintainer[] {
+function parseMaintainers(rows: readonly Json[]): GitHubMaintainer[] {
   const maintainers: GitHubMaintainer[] = [];
   for (const row of rows) {
+    const record = asJsonObject(row);
+    const id = record === null ? null : asPositiveInteger(record.id);
+    const login = record === null ? null : asJsonString(record.login);
     if (
-      !isRecord(row) ||
-      !isPositiveInteger(row.id) ||
-      typeof row.login !== "string" ||
-      !row.login ||
-      (row.id !== GITHUB_OWNER_ID && row.role_name !== "write")
+      record === null ||
+      id === null ||
+      login === null ||
+      login === "" ||
+      (id !== GITHUB_OWNER_ID && record.role_name !== "write")
     ) {
       throw new GitHubApiError(null, "invalid_response");
     }
-    if (row.id !== GITHUB_OWNER_ID) {
-      maintainers.push({ userId: row.id, login: row.login });
+    if (id !== GITHUB_OWNER_ID) {
+      maintainers.push({ userId: id, login });
     }
   }
   return maintainers;
 }
 
-function parseInvitations(rows: unknown[]): GitHubMaintainerInvitation[] {
+function parseInvitations(rows: readonly Json[]): GitHubMaintainerInvitation[] {
   return rows.map((row) => {
+    const record = asJsonObject(row);
+    const invitee = record === null ? null : asJsonObject(record.invitee);
+    const invitationId = record === null ? null : asPositiveInteger(record.id);
+    const userId = invitee === null ? null : asPositiveInteger(invitee.id);
+    const login = invitee === null ? null : asJsonString(invitee.login);
     if (
-      !isRecord(row) ||
-      !isPositiveInteger(row.id) ||
-      !isRecord(row.invitee) ||
-      !isPositiveInteger(row.invitee.id) ||
-      typeof row.invitee.login !== "string" ||
-      !row.invitee.login
+      record === null ||
+      invitationId === null ||
+      invitee === null ||
+      userId === null ||
+      login === null ||
+      login === ""
     ) {
       throw new GitHubApiError(null, "invalid_response");
     }
     return {
-      invitationId: row.id,
-      userId: row.invitee.id,
-      login: row.invitee.login,
+      invitationId,
+      userId,
+      login,
     };
   });
 }
@@ -288,11 +313,11 @@ async function openConnection(mode: "read" | "write") {
   }
 
   // ponytail: this staff-only workflow mints on demand; cache the one-hour
-  // token only if measured GitHub traffic makes the extra request material.
-  const permissions: Record<string, "read" | "write"> = { metadata: "read" };
-  if (installation.administration !== "none") {
-    permissions.administration = mode;
-  }
+  // Token only if measured GitHub traffic makes the extra request material.
+  const permissions =
+    installation.administration === "none"
+      ? { metadata: "read" as const }
+      : { metadata: "read" as const, administration: mode };
   const token = parseToken(
     (
       await githubRequest(
@@ -324,7 +349,7 @@ async function openConnection(mode: "read" | "write") {
   };
 }
 
-export function gitHubProviderStatus(error: unknown): number | null {
+export function gitHubProviderStatus(error: Readonly<Error | undefined>): number | null {
   return error instanceof GitHubApiError ? error.status : null;
 }
 
@@ -370,16 +395,19 @@ export async function openGitHubMaintainerSession(): Promise<GitHubMaintainerSes
         `/users/${encodeURIComponent(username)}`,
         connection.token,
       );
+      const record = asJsonObject(data);
+      const id = record === null ? null : asPositiveInteger(record.id);
+      const login = record === null ? null : asJsonString(record.login);
       if (
-        !isRecord(data) ||
-        !isPositiveInteger(data.id) ||
-        typeof data.login !== "string" ||
-        !data.login ||
-        data.type !== "User"
+        record === null ||
+        id === null ||
+        login === null ||
+        login === "" ||
+        record.type !== "User"
       ) {
         throw new GitHubApiError(null, "invalid_response");
       }
-      return { userId: data.id, login: data.login };
+      return { userId: id, login };
     },
     async invite(username) {
       return (

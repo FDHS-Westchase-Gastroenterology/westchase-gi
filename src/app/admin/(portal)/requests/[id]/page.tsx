@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { z } from "zod";
 import { PrintButton } from "@/components/PrintButton";
-import {
-  isMailbox,
-  REQUEST_STATUSES,
-  type RequestClosureOutcome,
-  type RequestStatus,
-} from "@/lib/portal/contracts";
+import { asJsonBoolean, asJsonObject, asJsonString, jsonSchema } from "@/lib/json";
+import type { Json, JsonObject } from "@/lib/json";
+import { isMailbox, REQUEST_STATUSES } from "@/lib/portal/contracts";
+import type { RequestClosureOutcome, RequestStatus } from "@/lib/portal/contracts";
+import { isCallOutcomeId } from "@/lib/portal/call-outcomes";
 import { requireRole } from "@/lib/portal/auth";
+import { isLocale } from "@/lib/i18n";
 import {
   parseRequestSearch,
   requestSearchFilter,
@@ -33,12 +34,10 @@ import {
   TIME_LABELS,
 } from "../format";
 import { CallOutcomeComposer } from "./call-outcome-composer";
-import {
-  RequestNotes,
-  type RequestNoteView,
-} from "./request-notes";
+import { RequestNotes } from "./request-notes";
+import type { RequestNoteView } from "./request-notes";
 
-type RequestRow = {
+interface RequestRow {
   id: string;
   name: string;
   phone: string;
@@ -53,30 +52,66 @@ type RequestRow = {
   closed_at: string | null;
   record_handoff_at: string | null;
   created_at: string;
-};
+}
 
-type EventRow = {
-  id: string;
-  type: string;
-  recipient: string | null;
-  status: string;
-  meta: Record<string, unknown> | null;
-  created_at: string;
-};
+interface EventRow {
+  readonly id: string;
+  readonly type: string;
+  readonly recipient: string | null;
+  readonly status: string;
+  readonly meta: Json | null;
+  readonly created_at: string;
+}
 
-type AuditRow = {
-  id: string;
-  actor_email: string | null;
-  action: string;
-  detail: Record<string, unknown> | null;
-  at: string;
-};
+interface AuditRow {
+  readonly id: string;
+  readonly actor_email: string | null;
+  readonly action: string;
+  readonly detail: Json | null;
+  readonly at: string;
+}
+
+const requestStatusSchema = z.enum(REQUEST_STATUSES);
+
+const requestRowSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  phone: z.string(),
+  email: z.string().nullable(),
+  location: z.enum(["any", "tampa", "lutz"]),
+  preferred_time: z.enum(["any", "morning", "afternoon"]),
+  message: z.string().nullable(),
+  locale: z.string(),
+  source_path: z.string(),
+  status: z.enum(REQUEST_STATUSES),
+  closure_disposition: z.enum(["unconverted", "converted"]).nullable(),
+  closed_at: z.string().nullable(),
+  record_handoff_at: z.string().nullable(),
+  created_at: z.string(),
+}) satisfies z.ZodType<RequestRow>;
+
+const eventRowSchema = z.object({
+  id: z.string(),
+  type: z.string(),
+  recipient: z.string().nullable(),
+  status: z.string(),
+  meta: jsonSchema.nullable(),
+  created_at: z.string(),
+}) satisfies z.ZodType<EventRow>;
+
+const requestAuditRowSchema = z.object({
+  id: z.string(),
+  actor_email: z.string().nullable(),
+  action: z.string(),
+  detail: jsonSchema.nullable(),
+  at: z.string(),
+}) satisfies z.ZodType<AuditRow>;
 
 // Call outcomes from the request event stream, plus status moves and closes
-// from the audit record. Appointment request notes remain a separate,
-// first-class staff abstraction; corresponding call-outcome and
-// appointment-request-note audit rows are excluded here so each human action
-// renders exactly once.
+// From the audit record. Appointment request notes remain a separate,
+// First-class staff abstraction; corresponding call-outcome and
+// Appointment-request-note audit rows are excluded here so each human action
+// Renders exactly once.
 type ActivityEntry =
   | {
       kind: "outcome";
@@ -111,18 +146,27 @@ type ActivityEntry =
       at: string;
     };
 
-function metaText(meta: Record<string, unknown> | null, key: string): string {
-  const value = meta?.[key];
-  return typeof value === "string" ? value : "";
+function metaText(meta: Json | null, key: string): string {
+  const object = meta === null ? null : asJsonObject(meta);
+  return object ? (asJsonString(object[key]) ?? "") : "";
 }
 
-function firstParam(value: string | string[] | undefined): string | null {
-  return Array.isArray(value) ? (value[0] ?? null) : (value ?? null);
+function auditDetail(detail: Json | null): JsonObject {
+  return detail === null ? {} : (asJsonObject(detail) ?? {});
+}
+
+function isStringArray(value: string | readonly string[]): value is readonly string[] {
+  return Array.isArray(value);
+}
+
+function firstParam(value: string | readonly string[] | undefined): string | null {
+  if (value === undefined) return null;
+  return isStringArray(value) ? (value[0] ?? null) : value;
 }
 
 function activityEntries(
-  events: EventRow[],
-  audits: AuditRow[],
+  events: readonly EventRow[],
+  audits: readonly AuditRow[],
 ): ActivityEntry[] {
   const entries: ActivityEntry[] = [];
   for (const event of events) {
@@ -148,15 +192,15 @@ function activityEntries(
     }
   }
   for (const audit of audits) {
-    const detail = audit.detail ?? {};
+    const detail = auditDetail(audit.detail);
     if (audit.action === "request.status_change") {
-      const to = typeof detail.to === "string" ? detail.to : "";
+      const to = asJsonString(detail.to) ?? "";
       entries.push({
         kind: "status",
         id: `audit-${audit.id}`,
         to,
         legacyClose:
-          to === "closed" && detail.legacy_unclassified_close === true,
+          to === "closed" && asJsonBoolean(detail.legacy_unclassified_close) === true,
         author: audit.actor_email ?? "",
         at: audit.at,
       });
@@ -164,8 +208,7 @@ function activityEntries(
       entries.push({
         kind: "close",
         id: `audit-${audit.id}`,
-        disposition:
-          typeof detail.disposition === "string" ? detail.disposition : "",
+        disposition: asJsonString(detail.disposition) ?? "",
         author: audit.actor_email ?? "",
         at: audit.at,
       });
@@ -174,27 +217,32 @@ function activityEntries(
   return entries.sort((a, b) => b.at.localeCompare(a.at));
 }
 
-const STATUS_LINE_LABELS: Record<string, string> = {
+const STATUS_LINE_LABELS = {
   new: "New",
   contacted: "Contacted",
   scheduled: "Scheduled",
   closed: "Closed",
-};
+} as const satisfies Record<RequestStatus, string>;
+
+function statusLineLabel(status: string): string {
+  const parsed = requestStatusSchema.safeParse(status);
+  return parsed.success ? STATUS_LINE_LABELS[parsed.data] : status;
+}
 
 // One protected fetch feeds one cohesive request workflow; splitting its JSX
-// would add patient-data prop surfaces without isolating reusable behavior.
+// Would add patient-data prop surfaces without isolating reusable behavior.
 // react-doctor-disable-next-line react-doctor/no-giant-component
 export default async function RequestDetailPage({
   params,
   searchParams,
-}: {
+}: Readonly<{
   params: Promise<{ id: string }>;
   searchParams: Promise<{
     status?: string | string[];
     q?: string | string[];
     page?: string | string[];
   }>;
-}) {
+}>) {
   await requireRole("staff");
   const { id } = await params;
   const continuity = await searchParams;
@@ -203,14 +251,20 @@ export default async function RequestDetailPage({
   const searchFilter = search ? requestSearchFilter(search) : "";
 
   const queueParams = new URLSearchParams();
-  if (statusParam) queueParams.set("status", statusParam);
+  if (statusParam !== null && statusParam !== "") {
+    queueParams.set("status", statusParam);
+  }
   if (search) queueParams.set("q", search);
   const pageParam = firstParam(continuity.page);
-  if (pageParam) queueParams.set("page", pageParam);
+  if (pageParam !== null && pageParam !== "") {
+    queueParams.set("page", pageParam);
+  }
   const queueQuery = queueParams.toString();
   const queueHref = `/admin/requests${queueQuery ? `?${queueQuery}` : ""}`;
   const continuityParams = new URLSearchParams();
-  if (statusParam) continuityParams.set("status", statusParam);
+  if (statusParam !== null && statusParam !== "") {
+    continuityParams.set("status", statusParam);
+  }
   if (search) continuityParams.set("q", search);
   const continuityQuery = continuityParams.toString();
   const continuityHref = (requestId: string): string =>
@@ -255,18 +309,20 @@ export default async function RequestDetailPage({
   }
 
   // Previous/next within the viewer's queue scope: the same attention
-  // ordering the list renders, so staff can keep working without
-  // returning to the list each time. A request outside the current scope
+  // Ordering the list renders, so staff can keep working without
+  // Returning to the list each time. A request outside the current scope
   // (e.g. an old closed row beyond the tail window) simply shows no chain.
+  const scopedParsed = requestStatusSchema.safeParse(statusParam);
   const scoped =
-    statusParam &&
+    statusParam !== null &&
+    statusParam !== "" &&
     statusParam !== "all" &&
-    (REQUEST_STATUSES as readonly string[]).includes(statusParam)
-      ? (statusParam as RequestStatus)
+    scopedParsed.success
+      ? scopedParsed.data
       : null;
   const neighborIds: string[] = [];
   if (scoped !== "closed") {
-    const openStatuses = scoped ? [scoped] : [...OPEN_STATUSES];
+    const openStatuses = scoped !== null ? [scoped] : [...OPEN_STATUSES];
     const openRows = await fetchAttentiveOpenRows(db, {
       statuses: openStatuses,
       searchFilter,
@@ -282,16 +338,28 @@ export default async function RequestDetailPage({
     neighborIds.push(...closedRows.map((row) => row.id));
   }
   const selfIndex = neighborIds.indexOf(id);
-  const prevId = selfIndex > 0 ? neighborIds[selfIndex - 1] : null;
+  const prevId = selfIndex > 0 ? (neighborIds.at(selfIndex - 1) ?? null) : null;
   const nextId =
     selfIndex >= 0 && selfIndex < neighborIds.length - 1
-      ? neighborIds[selfIndex + 1]
+      ? (neighborIds.at(selfIndex + 1) ?? null)
       : null;
 
-  const row = request as RequestRow;
+  const parsedRequest = requestRowSchema.safeParse(request);
+  if (!parsedRequest.success) {
+    throw new Error("Request read failed: invalid");
+  }
+  const row = parsedRequest.data;
+  const message = row.message?.trim();
   const mailbox = row.email?.trim();
-  const safeMailbox = mailbox && isMailbox(mailbox) ? mailbox : null;
-  const allEvents = (events ?? []) as EventRow[];
+  const safeMailbox =
+    mailbox !== undefined && mailbox !== "" && isMailbox(mailbox)
+      ? mailbox
+      : null;
+  const parsedEvents = z.array(eventRowSchema).safeParse(events);
+  if (!parsedEvents.success) {
+    throw new Error("Event read failed: invalid");
+  }
+  const allEvents = parsedEvents.data;
   const notes = allEvents
     .filter((event) => event.type === "note")
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -303,15 +371,16 @@ export default async function RequestDetailPage({
       metaText(note.meta, "author_email"),
     )} · ${formatReceived(note.created_at, true)}`,
   }));
-  const entries = activityEntries(
-    allEvents,
-    (auditRows ?? []) as AuditRow[],
-  );
+  const parsedAudits = z.array(requestAuditRowSchema).safeParse(auditRows);
+  if (!parsedAudits.success) {
+    throw new Error("Request activity read failed: invalid");
+  }
+  const entries = activityEntries(allEvents, parsedAudits.data);
   const notifications = allEvents.filter(
     (event) => event.type === "notification",
   );
 
-  const fields: Array<{ label: string; value: React.ReactNode }> = [
+  const fields: { label: string; value: React.ReactNode }[] = [
     {
       label: "Phone",
       value: (
@@ -325,7 +394,7 @@ export default async function RequestDetailPage({
     },
     {
       label: "Email",
-      value: safeMailbox ? (
+      value: safeMailbox !== null && safeMailbox !== "" ? (
         <a
           href={`mailto:${safeMailbox}`}
           className="break-all font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
@@ -342,7 +411,7 @@ export default async function RequestDetailPage({
     { label: "Preferred time", value: TIME_LABELS[row.preferred_time] },
     {
       label: "Submitted in",
-      value: LOCALE_LABELS[row.locale] ?? row.locale,
+      value: isLocale(row.locale) ? LOCALE_LABELS[row.locale] : row.locale,
     },
     { label: "From page", value: row.source_path },
     { label: "Received", value: formatReceived(row.created_at, true) },
@@ -374,9 +443,9 @@ export default async function RequestDetailPage({
           /
         </span>
         <span className="truncate text-[var(--color-muted)]">{row.name}</span>
-        {prevId || nextId ? (
+        {(prevId !== null && prevId !== "") || (nextId !== null && nextId !== "") ? (
           <span className="ml-auto flex items-center gap-3">
-            {prevId ? (
+            {prevId !== null && prevId !== "" ? (
               <Link
                 href={continuityHref(prevId)}
                 rel="prev"
@@ -386,7 +455,7 @@ export default async function RequestDetailPage({
                 ← Previous
               </Link>
             ) : null}
-            {nextId ? (
+            {nextId !== null && nextId !== "" ? (
               <Link
                 href={continuityHref(nextId)}
                 rel="next"
@@ -413,7 +482,9 @@ export default async function RequestDetailPage({
           <PrintButton label="Print patient page" />
         </div>
       </div>
-      {row.status === "closed" && row.closed_at ? (
+      {row.status === "closed" &&
+      row.closed_at !== null &&
+      row.closed_at !== "" ? (
         <p
           data-testid="request-lifecycle-summary"
           className="mt-1.5 text-[0.9rem] text-[var(--color-muted)]"
@@ -454,7 +525,9 @@ export default async function RequestDetailPage({
             data-testid="request-message"
             className="mt-2 whitespace-pre-wrap text-[0.95rem] leading-relaxed text-[var(--color-body)]"
           >
-            {row.message?.trim() || "— none provided —"}
+            {message !== undefined && message !== ""
+              ? message
+              : "— none provided —"}
           </p>
         </div>
       </div>
@@ -466,8 +539,14 @@ export default async function RequestDetailPage({
           requestId={row.id}
           status={row.status}
           closureOutcome={row.closure_disposition}
-          closedAtLabel={row.closed_at ? formatReceived(row.closed_at) : null}
-          nextHref={nextId ? continuityHref(nextId) : null}
+          closedAtLabel={
+            row.closed_at !== null && row.closed_at !== ""
+              ? formatReceived(row.closed_at)
+              : null
+          }
+          nextHref={
+            nextId !== null && nextId !== "" ? continuityHref(nextId) : null
+          }
         />
       </div>
 
@@ -492,8 +571,8 @@ export default async function RequestDetailPage({
                 {entries.map((entry) => {
                   const line =
                     entry.kind === "outcome"
-                      ? `${OUTCOME_HISTORY_LABELS[entry.outcome] ?? entry.outcome}${
-                          entry.followUpAt
+                      ? `${isCallOutcomeId(entry.outcome) ? OUTCOME_HISTORY_LABELS[entry.outcome] : entry.outcome}${
+                          entry.followUpAt !== null && entry.followUpAt !== ""
                             ? ` — call again ${followUpWhenLabel(entry.followUpAt)}`
                             : ""
                         }${
@@ -502,14 +581,11 @@ export default async function RequestDetailPage({
                             : ""
                         }`
                       : entry.kind === "undo"
-                        ? `Undo — appointment request status restored to ${
-                            STATUS_LINE_LABELS[entry.restoredStatus] ??
-                            entry.restoredStatus
-                          }`
+                        ? `Undo — appointment request status restored to ${statusLineLabel(entry.restoredStatus)}`
                       : entry.kind === "status"
                         ? entry.legacyClose
                           ? "Closed without an outcome"
-                          : `Marked ${STATUS_LINE_LABELS[entry.to] ?? entry.to}`
+                          : `Marked ${statusLineLabel(entry.to)}`
                         : `Closed — ${
                             entry.disposition === "converted"
                               ? "appointment booked"

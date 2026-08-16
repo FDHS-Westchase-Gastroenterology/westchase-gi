@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import jsQR from "jsqr";
 import { PDFDocument } from "pdf-lib";
 import { PNG } from "pngjs";
+import { z } from "zod";
 
 const TARGET_KEYS = [
   "master",
@@ -30,13 +31,28 @@ const assetDirectory = fileURLToPath(
   new URL("../private/review-flyers/", import.meta.url),
 );
 
-const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
+const flyerAssetSchema = z.object({
+  filename: z.string(),
+  sha256: z.string(),
+});
+const flyerTargetSchema = z.object({
+  destination: z.string(),
+  assets: z.object({
+    png: flyerAssetSchema,
+    svg: flyerAssetSchema,
+    pdf: flyerAssetSchema,
+  }),
+  providerId: z.string().optional(),
+});
+const manifestSchema = z.record(z.string(), flyerTargetSchema);
+const manifest = manifestSchema.parse(
+  JSON.parse(await readFile(manifestPath, "utf8")),
+);
 assert.deepEqual(Object.keys(manifest), TARGET_KEYS, "manifest target keys");
 
 const assets = [];
 for (const key of TARGET_KEYS) {
   const target = manifest[key];
-  assert.equal(typeof target.destination, "string", `${key} destination`);
   assert.deepEqual(Object.keys(target.assets), ASSET_KINDS, `${key} asset kinds`);
   if (key in PROVIDER_IDS) {
     assert.equal(target.providerId, PROVIDER_IDS[key], `${key} provider ID`);

@@ -2,15 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
-import { site, type Locale } from "@/lib/site";
-import {
-  physicians,
-  nursePractitioners,
-  infusionNurse,
-  team,
-  type Physician,
-  type ProfileSection,
-} from "@/lib/providers";
+import { site } from "@/lib/site";
+import type { Locale } from "@/lib/site";
+import { physicians, nursePractitioners, infusionNurse, team } from "@/lib/providers";
+import type { Physician, ProfileSection } from "@/lib/providers";
 import type { Dictionary } from "@/lib/dictionaries/en";
 import { JsonLd } from "@/components/JsonLd";
 import { PageHero } from "@/components/PageHero";
@@ -18,9 +13,9 @@ import { ProfileCardViewer } from "@/components/ProfileCardViewer";
 import { Reveal } from "@/components/Reveal";
 import { TextBand } from "@/components/TextBand";
 
-type PageProps = { params: Promise<{ locale: string }> };
+interface PageProps { params: Promise<{ locale: string }> }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
@@ -28,11 +23,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 /** BCP-47 tags for each physician's published "fluent in" line. */
-const physicianLanguages: Record<string, string[]> = {
+const physicianLanguages = {
   "john-chang": ["en", "ko"],
   "amir-awad": ["en", "ar"],
   "alfredo-mendoza": ["en", "es"],
-};
+} as const;
+
+function knowsLanguage(id: string): readonly string[] | undefined {
+  switch (id) {
+    case "john-chang":
+    case "amir-awad":
+    case "alfredo-mendoza":
+      return physicianLanguages[id];
+    default:
+      return undefined;
+  }
+}
 
 /** Physician entities for search (the old site had none). Names, credentials,
  * and languages verbatim from the practice's own materials. */
@@ -44,14 +50,15 @@ function PhysicianSchema() {
       name: `${doc.name}, ${doc.credentials}`,
       image: `${site.url}${doc.headshot.src}`,
       medicalSpecialty: "Gastroenterologic",
-      knowsLanguage: physicianLanguages[doc.id],
+      knowsLanguage: knowsLanguage(doc.id),
       worksFor: { "@type": "MedicalClinic", name: site.name, url: site.url },
     })),
   };
   return <JsonLd data={json} />;
 }
 
-function Section({ section, locale }: { section: ProfileSection; locale: Locale }) {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function Section({ section, locale }: Readonly<{ section: ProfileSection; locale: Locale }>) {
   return (
     <section className="mt-9">
       <h3 className="text-[1.12rem] font-extrabold text-[var(--color-ink)]">
@@ -86,7 +93,7 @@ function Section({ section, locale }: { section: ProfileSection; locale: Locale 
   );
 }
 
-function Quote({ text }: { text: string }) {
+function Quote({ text }: Readonly<{ text: string }>) {
   return (
     <blockquote className="mt-10 border-t-2 border-[var(--color-amber)] pt-5">
       <p className="max-w-[38rem] font-[var(--font-display)] text-[1.28rem] leading-normal text-[var(--color-navy)]">
@@ -97,23 +104,24 @@ function Quote({ text }: { text: string }) {
 }
 
 /** Localized strings for the card viewer (close lives in common). */
-function cardStrings(dict: Dictionary) {
+function cardStrings(dict: Readonly<Dictionary>) {
   return { ...dict.physicians.card, close: dict.common.close };
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function PhysicianProfile({
   doc,
   locale,
   dict,
   flip,
   mint,
-}: {
+}: Readonly<{
   doc: Physician;
   locale: Locale;
   dict: Dictionary;
   flip: boolean;
   mint: boolean;
-}) {
+}>) {
   const t = dict.physicians;
   return (
     <section
@@ -187,7 +195,7 @@ function PhysicianProfile({
   );
 }
 
-export default async function PhysiciansPage({ params }: PageProps) {
+export default async function PhysiciansPage({ params }: Readonly<PageProps>) {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);

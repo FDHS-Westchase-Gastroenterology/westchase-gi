@@ -1,10 +1,6 @@
 import { randomUUID } from "node:crypto";
-import {
-  expect,
-  test,
-  type BrowserContext,
-  type Page,
-} from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 import { PDFDocument } from "pdf-lib";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
@@ -76,11 +72,10 @@ const TARGETS = [
   },
 ] as const;
 
+const FILE_KINDS = ["png", "svg", "pdf"] as const;
 const ASSETS = TARGETS.flatMap((target) =>
-  (Object.entries(target.files) as Array<
-    ["png" | "svg" | "pdf", string]
-  >).map(([kind, filename]) => ({
-    filename,
+  FILE_KINDS.map((kind) => ({
+    filename: target.files[kind],
     contentType: {
       png: "image/png",
       svg: "image/svg+xml",
@@ -132,7 +127,9 @@ test("review flyers stay closed to visitors and open to every staff member", asy
   });
   expect(created.error).toBeNull();
   const staffUserId = created.data.user?.id;
-  if (!staffUserId) throw new Error("Review-flyer staff fixture failed");
+  if (staffUserId === undefined || staffUserId === "") {
+    throw new Error("Review-flyer staff fixture failed");
+  }
 
   let staffContext: BrowserContext | null = null;
   try {
@@ -150,8 +147,8 @@ test("review flyers stay closed to visitors and open to every staff member", asy
     const staffPage = await staffContext.newPage();
     await signIn(staffPage, staffEmail, staffPassword);
     // Handing flyers to patients is a front-desk job: printing is open to
-    // every active staff member (product decision 2026-07-26), while
-    // anonymous access stays closed.
+    // Every active staff member (product decision 2026-07-26), while
+    // Anonymous access stays closed.
     await expect(
       staffPage.getByRole("link", { name: "Print review flyers" }),
     ).toBeVisible();
@@ -187,13 +184,16 @@ test("review flyers stay closed to visitors and open to every staff member", asy
   for (const [index, target] of TARGETS.entries()) {
     const card = cards.nth(index);
     const copy = await card.evaluate((node) => {
+      if (!(node instanceof HTMLElement)) {
+        throw new Error("expected HTMLElement");
+      }
       const credential = [...node.querySelectorAll("p")].find((paragraph) =>
         paragraph.classList.contains("font-bold"),
       );
       return {
-        key: (node as HTMLElement).dataset.reviewTarget,
-        title: node.querySelector("h2")?.textContent?.trim() ?? null,
-        credentials: credential?.textContent?.trim() ?? null,
+        key: node.dataset.reviewTarget,
+        title: node.querySelector("h2")?.textContent.trim() ?? null,
+        credentials: credential?.textContent.trim() ?? null,
       };
     });
     expect(copy).toEqual({
@@ -272,12 +272,12 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
   await signIn(page, SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD);
   await page.goto("/admin/review-flyers");
 
-  const viewportActionSizes: Array<{
+  const viewportActionSizes: {
     viewport: number;
     label?: string;
     width: number;
     height: number;
-  }> = [];
+  }[] = [];
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 1440, height: 900 },
@@ -303,14 +303,14 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
         actions.map((action) => {
           const box = action.getBoundingClientRect();
           return {
-            label: action.textContent?.trim(),
+            label: action.textContent.trim(),
             width: box.width,
             height: box.height,
           };
         }),
       );
     // 24 flyer actions + the "Print all six flyers" button + the Home
-    // breadcrumb link (44px touch target like every other action).
+    // Breadcrumb link (44px touch target like every other action).
     expect(actionSizes).toHaveLength(26);
     for (const action of actionSizes) {
       viewportActionSizes.push({ viewport: viewport.width, ...action });
@@ -333,11 +333,16 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
   await page.emulateMedia({ media: "print" });
   const individualPrint = await page.locator("[data-review-flyer]").evaluateAll(
     (flyers) =>
-      flyers.map((flyer) => ({
-        key: (flyer as HTMLElement).dataset.reviewFlyer,
-        display: getComputedStyle(flyer).display,
-        height: flyer.getBoundingClientRect().height,
-      })),
+      flyers.map((flyer) => {
+        if (!(flyer instanceof HTMLElement)) {
+          throw new Error("expected HTMLElement");
+        }
+        return {
+          key: flyer.dataset.reviewFlyer,
+          display: getComputedStyle(flyer).display,
+          height: flyer.getBoundingClientRect().height,
+        };
+      }),
   );
   expect(individualPrint.filter((flyer) => flyer.display !== "none")).toEqual([
     { key: "awad", display: "flex", height: 960 },

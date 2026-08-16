@@ -1,16 +1,16 @@
 // The procedure-preparation library: the practice's CURRENT 13 handouts,
-// transcribed from the scan Juliet emailed 2026-07-07 ("Preps Website.pdf",
+// Transcribed from the scan Juliet emailed 2026-07-07 ("Preps Website.pdf",
 // 26 pages) and confirmed by the practice as the current set. Dose timings
-// were human-verified against the scan the same day (PROJECT-LOG safety
-// gate). 16 source files → 13 documents: three sheets (anti-reflux diet,
-// split-dose MiraLAX colonoscopy, EGD) exist in both English and Spanish.
+// Were human-verified against the scan the same day (PROJECT-LOG safety
+// Gate). 16 source files → 13 documents: three sheets (anti-reflux diet,
+// Split-dose MiraLAX colonoscopy, EGD) exist in both English and Spanish.
 //
 // NOTE: this set REPLACES the previous site's prep list. The old site
-// offered MoviPrep, OsmoPrep, Prepopik (2 doses), Suprep, and a standalone
+// Offered MoviPrep, OsmoPrep, Prepopik (2 doses), Suprep, and a standalone
 // Magnesium Citrate prep; the practice's current handouts instead use
 // Clenpiq (2 variants), Sutab, MiraLAX (2 variants), and Golytely
 // (2 variants) — plus EGD/Bravo/Halo/Endocapsule/Sigmoidoscopy and the
-// anti-reflux diet sheet.
+// Anti-reflux diet sheet.
 
 import type { Bi } from "../types";
 import type { PrepDoc, PrepGroupId } from "./types";
@@ -19,7 +19,13 @@ import { miralaxGolytelyPreps } from "./colonoscopy-miralax-golytely";
 import { upperPreps } from "./upper";
 import { otherPreps } from "./other";
 
-export type { PrepDoc, PrepGroupId, PrepSection, PrepBlock } from "./types";
+export type {
+  PrepDoc,
+  PrepGroupId,
+  PrepListStyle,
+  PrepSection,
+  PrepBlock,
+} from "./types";
 
 export const prepDocs: PrepDoc[] = [
   ...clenpiqSutabPreps,
@@ -28,14 +34,14 @@ export const prepDocs: PrepDoc[] = [
   ...otherPreps,
 ];
 
-export type PrepGroup = {
+export interface PrepGroup {
   id: PrepGroupId;
   title: Bi;
   blurb: Bi;
   docs: PrepDoc[];
-};
+}
 
-const groupMeta: Array<{ id: PrepGroupId; title: Bi; blurb: Bi }> = [
+const groupMeta: { id: PrepGroupId; title: Bi; blurb: Bi }[] = [
   {
     id: "colonoscopy",
     title: { en: "Colonoscopy preps", es: "Preparaciones para colonoscopia", vi: "Chuẩn bị nội soi đại tràng", ko: "대장 내시경 준비법", ar: "تحضيرات تنظير القولون" },

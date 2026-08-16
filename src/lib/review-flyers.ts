@@ -13,34 +13,65 @@ const REVIEW_TARGET_KEYS = [
 export type ReviewTargetKey = (typeof REVIEW_TARGET_KEYS)[number];
 export type ReviewAssetKind = "png" | "svg" | "pdf";
 
-export type ReviewFlyerAsset = {
+export interface ReviewFlyerAsset {
   filename: string;
   sha256: string;
   kind: ReviewAssetKind;
   contentType: string;
-};
+}
 
-export type ReviewFlyer = {
-  key: ReviewTargetKey;
-  destination: string;
-  title: string;
-  credentials: string | null;
-  description: string;
-  askEn: string;
-  askEs: string;
-  scanEn: string;
-  scanEs: string;
-  roleEn: string | null;
-  roleEs: string | null;
-  showLanguages: boolean;
-  assets: Record<ReviewAssetKind, ReviewFlyerAsset>;
-};
+export interface ReviewFlyer {
+  readonly key: ReviewTargetKey;
+  readonly destination: string;
+  readonly title: string;
+  readonly credentials: string | null;
+  readonly description: string;
+  readonly askEn: string;
+  readonly askEs: string;
+  readonly scanEn: string;
+  readonly scanEs: string;
+  readonly roleEn: string | null;
+  readonly roleEs: string | null;
+  readonly showLanguages: boolean;
+  readonly assets: ReviewFlyerAssets;
+}
 
-const CONTENT_TYPES: Record<ReviewAssetKind, string> = {
+export interface ReviewFlyerAssets {
+  png: ReviewFlyerAsset;
+  svg: ReviewFlyerAsset;
+  pdf: ReviewFlyerAsset;
+}
+
+const CONTENT_TYPES = {
   png: "image/png",
   svg: "image/svg+xml",
   pdf: "application/pdf",
-};
+} as const satisfies Record<ReviewAssetKind, string>;
+
+function flyerAsset(
+  kind: ReviewAssetKind,
+  asset: Readonly<{ filename: string; sha256: string }>,
+): ReviewFlyerAsset {
+  return {
+    filename: asset.filename,
+    sha256: asset.sha256,
+    kind,
+    contentType: CONTENT_TYPES[kind],
+  };
+}
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function flyerAssets(assets: Readonly<{
+  png: { filename: string; sha256: string };
+  svg: { filename: string; sha256: string };
+  pdf: { filename: string; sha256: string };
+}>): ReviewFlyerAssets {
+  return {
+    png: flyerAsset("png", assets.png),
+    svg: flyerAsset("svg", assets.svg),
+    pdf: flyerAsset("pdf", assets.pdf),
+  };
+}
 
 const physicianById = new Map(physicians.map((provider) => [provider.id, provider]));
 const nurseById = new Map(
@@ -81,7 +112,9 @@ function providerCopy(key: ReviewTargetKey, providerId: string) {
 }
 
 function targetCopy(key: ReviewTargetKey, providerId: string | null) {
-  if (providerId) return providerCopy(key, providerId);
+  if (providerId !== null && providerId !== "") {
+    return providerCopy(key, providerId);
+  }
   if (key === "master") {
     return {
       title: "Master code — review hub",
@@ -115,26 +148,19 @@ export const reviewFlyers: ReviewFlyer[] = REVIEW_TARGET_KEYS.map((key) => {
   const target = reviewTargets[key];
   const providerId = "providerId" in target ? target.providerId : null;
   const copy = targetCopy(key, providerId);
-  const assets = Object.fromEntries(
-    (Object.entries(target.assets) as Array<
-      [ReviewAssetKind, { filename: string; sha256: string }]
-    >).map(([kind, asset]) => [
-      kind,
-      { ...asset, kind, contentType: CONTENT_TYPES[kind] },
-    ]),
-  ) as Record<ReviewAssetKind, ReviewFlyerAsset>;
 
   return {
     key,
     destination: target.destination,
     ...copy,
     showLanguages: key === "master",
-    assets,
+    assets: flyerAssets(target.assets),
   };
 });
 
 export const reviewFlyerAssetByFilename = new Map(
-  reviewFlyers.flatMap((flyer) =>
-    Object.values(flyer.assets).map((asset) => [asset.filename, asset] as const),
-  ),
+  reviewFlyers.flatMap((flyer) => {
+    const assets = [flyer.assets.png, flyer.assets.svg, flyer.assets.pdf];
+    return assets.map((asset) => [asset.filename, asset] as const);
+  }),
 );

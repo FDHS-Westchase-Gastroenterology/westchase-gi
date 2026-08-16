@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 // Secondary navigation inside Settings: quiet underline tabs on the
-// paper background, deliberately subordinate to the navy primary nav.
+// Paper background, deliberately subordinate to the navy primary nav.
 
 const TABS = [
   { href: "/admin/settings", label: "Notifications & staff" },

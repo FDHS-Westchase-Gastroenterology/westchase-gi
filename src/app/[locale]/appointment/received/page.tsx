@@ -3,28 +3,30 @@ import { connection } from "next/server";
 import { Check, MessageSquare, Phone } from "@/components/icons";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { consumeRequestReceipt } from "@/lib/portal/intake";
-import { site, type Locale } from "@/lib/site";
+import { site } from "@/lib/site";
 
 export const runtime = "nodejs";
 
-type PageProps = {
+interface PageProps {
   params: Promise<{ locale: string }>;
   searchParams: Promise<{
     failure?: string | string[];
     receipt?: string | string[];
   }>;
-};
+}
 
-async function receiptState({ params, searchParams }: PageProps) {
+async function receiptState({ params, searchParams }: Readonly<PageProps>) {
   await connection();
   const [{ locale: rawLocale }, query] = await Promise.all([
     params,
     searchParams,
   ]);
-  const locale: Locale = isLocale(rawLocale) ? rawLocale : "en";
+  const locale = isLocale(rawLocale) ? rawLocale : "en";
+  const receipt = query.receipt;
   const receiptAccepted =
-    typeof query.receipt === "string" &&
-    (await consumeRequestReceipt(query.receipt, locale));
+    receipt !== undefined &&
+    !Array.isArray(receipt) &&
+    (await consumeRequestReceipt(receipt, locale));
   const state = receiptAccepted
     ? "success"
     : query.receipt === undefined && query.failure === "1"
@@ -38,10 +40,10 @@ async function receiptState({ params, searchParams }: PageProps) {
 }
 
 export async function generateMetadata(
-  { params }: PageProps,
+  { params }: Readonly<PageProps>,
 ): Promise<Metadata> {
   const { locale: rawLocale } = await params;
-  const locale: Locale = isLocale(rawLocale) ? rawLocale : "en";
+  const locale = isLocale(rawLocale) ? rawLocale : "en";
   const dict = getDictionary(locale);
 
   return {
@@ -51,7 +53,7 @@ export async function generateMetadata(
   };
 }
 
-export default async function RequestReceiptPage(props: PageProps) {
+export default async function RequestReceiptPage(props: Readonly<PageProps>) {
   const { dict, state } = await receiptState(props);
   const receipt = dict.requestReceipt;
   const successful = state === "success";

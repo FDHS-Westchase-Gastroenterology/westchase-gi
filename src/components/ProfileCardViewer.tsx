@@ -2,44 +2,39 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
-import {
-  TransformComponent,
-  TransformWrapper,
-  useControls,
-  useTransformComponent,
-  type ReactZoomPanPinchRef,
-} from "react-zoom-pan-pinch";
+import { TransformComponent, TransformWrapper, useControls, useTransformComponent } from "react-zoom-pan-pinch";
+import type { ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
 import { Download, Maximize, X, ZoomIn, ZoomOut } from "./icons";
 
-type CardImage = { src: string; width: number; height: number };
+interface CardImage { src: string; width: number; height: number }
 
-type CardStrings = {
-  label: string;
-  hint: string;
-  zoomIn: string;
-  zoomOut: string;
-  zoomReset: string;
-  download: string;
-  loading: string;
-  hintTouch: string;
-  hintPointer: string;
-  close: string;
-};
+interface CardStrings {
+  readonly label: string;
+  readonly hint: string;
+  readonly zoomIn: string;
+  readonly zoomOut: string;
+  readonly zoomReset: string;
+  readonly download: string;
+  readonly loading: string;
+  readonly hintTouch: string;
+  readonly hintPointer: string;
+  readonly close: string;
+}
 
-type ProfileCardViewerProps = {
+interface ProfileCardViewerProps {
   image: CardImage;
   /** Whose card this is (localized), e.g. "Dr. John Chang". */
   subject: string;
   t: CardStrings;
   className?: string;
-};
+}
 
 function useMedia(query: string) {
   const subscribe = useCallback(
     (onChange: () => void) => {
       const mq = window.matchMedia(query);
       mq.addEventListener("change", onChange);
-      return () => mq.removeEventListener("change", onChange);
+      return () => { mq.removeEventListener("change", onChange); };
     },
     [query]
   );
@@ -55,26 +50,26 @@ function useHydrated() {
 
 /** Zoom cluster: −, live percentage (tap to reset), +. Must live inside
  * the TransformWrapper context. */
-function ZoomToolbar({ t }: { t: CardStrings }) {
+function ZoomToolbar({ t }: Readonly<{ t: CardStrings }>) {
   const { zoomIn, zoomOut, resetTransform } = useControls();
   const readout = useTransformComponent(({ state }) => (
     <span className="min-w-12 text-center tabular-nums">{Math.round(state.scale * 100)}%</span>
   ));
   return (
     <div className="pc-toolbar">
-      <button type="button" aria-label={t.zoomOut} onClick={() => zoomOut()} className="pc-tool">
+      <button type="button" aria-label={t.zoomOut} onClick={() => { zoomOut(); }} className="pc-tool">
         <ZoomOut className="h-4.5 w-4.5" />
       </button>
       <button
         type="button"
         aria-label={t.zoomReset}
         title={t.zoomReset}
-        onClick={() => resetTransform()}
+        onClick={() => { resetTransform(); }}
         className="pc-tool px-2 text-[0.88rem] font-bold"
       >
         {readout}
       </button>
-      <button type="button" aria-label={t.zoomIn} onClick={() => zoomIn()} className="pc-tool">
+      <button type="button" aria-label={t.zoomIn} onClick={() => { zoomIn(); }} className="pc-tool">
         <ZoomIn className="h-4.5 w-4.5" />
       </button>
     </div>
@@ -93,10 +88,11 @@ function ZoomToolbar({ t }: { t: CardStrings }) {
  * The full-size image starts loading on hover/focus intent, and the
  * viewer shows an explicit loading state while it streams.
  */
-export function ProfileCardViewer({ image, subject, t, className = "" }: ProfileCardViewerProps) {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+export function ProfileCardViewer({ image, subject, t, className = "" }: Readonly<ProfileCardViewerProps>) {
   const mounted = useHydrated();
   const [open, setOpen] = useState(false);
-  const [warm, setWarm] = useState(false); // start fetching the full-size image
+  const [warm, setWarm] = useState(false); // Start fetching the full-size image
   const [loaded, setLoaded] = useState(false);
   const [hintHidden, setHintHidden] = useState(false);
   const dialogRef = useRef<HTMLDialogElement | null>(null);
@@ -109,7 +105,7 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Profile
 
   useEffect(() => {
     const dialog = dialogRef.current;
-    if (!dialog) return;
+    if (!dialog) return undefined;
     if (open && !dialog.open) {
       dialog.showModal();
       document.documentElement.style.overflow = "hidden";
@@ -124,14 +120,15 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Profile
 
   // The gesture hint retires itself once the reader zooms, or after a beat.
   useEffect(() => {
-    if (!open || !loaded || hintHidden) return;
-    const timer = window.setTimeout(() => setHintHidden(true), 6000);
-    return () => window.clearTimeout(timer);
+    if (!open || !loaded || hintHidden) return undefined;
+    const timer = window.setTimeout(() => { setHintHidden(true); }, 6000);
+    return () => { window.clearTimeout(timer); };
   }, [open, loaded, hintHidden]);
 
   function openViewer() {
     // Browsers too old for <dialog> (iOS < 15.4) still get the graphic.
-    if (typeof dialogRef.current?.showModal !== "function") {
+    const dialog = dialogRef.current;
+    if (!(dialog instanceof HTMLDialogElement) || !("showModal" in dialog)) {
       window.open(image.src, "_blank", "noopener");
       return;
     }
@@ -179,15 +176,15 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Profile
         <button
           type="button"
           onClick={openViewer}
-          onPointerEnter={() => setWarm(true)}
-          onFocus={() => setWarm(true)}
+          onPointerEnter={() => { setWarm(true); }}
+          onFocus={() => { setWarm(true); }}
           className={tileClass}
         >
           {tileInner}
         </button>
       ) : (
         // Pre-hydration fallback: a real link to the original graphic, so a
-        // tap is never a dead end while the page is still booting.
+        // Tap is never a dead end while the page is still booting.
         <a
           href={image.src}
           target="_blank"
@@ -228,13 +225,13 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Profile
                 centerOnInit
                 centerZoomedOut
                 // On touch devices the browser synthesizes a mousedown right
-                // after a double-tap's touchend; the library's mouse-pan
-                // handler would cancel the just-started zoom animation.
+                // After a double-tap's touchend; the library's mouse-pan
+                // Handler would cancel the just-started zoom animation.
                 // Touch panning has its own path, so left-click pan is only
-                // needed for fine pointers.
+                // Needed for fine pointers.
                 panning={{ allowLeftClickPan: !coarse }}
-                // step is an exponent (scale × e^step): 0.95 ≈ 2.6× — right
-                // at card-text reading size; the same step toggles back to 1.
+                // Step is an exponent (scale × e^step): 0.95 ≈ 2.6× — right
+                // At card-text reading size; the same step toggles back to 1.
                 doubleClick={{ mode: "toggle", step: 0.95, animationTime: reduced ? 0 : 220 }}
                 zoomAnimation={{ animationTime: reduced ? 0 : 220 }}
                 velocityAnimation={{ disabled: reduced }}
@@ -251,7 +248,7 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Profile
                       height={image.height}
                       sizes="64rem"
                       draggable={false}
-                      onLoad={() => setLoaded(true)}
+                      onLoad={() => { setLoaded(true); }}
                       className={`h-full w-full object-contain transition-opacity duration-300 ${
                         loaded ? "opacity-100" : "opacity-0"
                       }`}

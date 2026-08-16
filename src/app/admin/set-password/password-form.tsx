@@ -2,11 +2,8 @@
 
 import Link from "next/link";
 import { useActionState, useLayoutEffect } from "react";
-import {
-  recoverPasswordAction,
-  setPasswordAction,
-  type SetPasswordActionState,
-} from "@/app/admin/actions";
+import { recoverPasswordAction, setPasswordAction } from "@/app/admin/actions";
+import type { SetPasswordActionState } from "@/app/admin/actions";
 
 const INITIAL_STATE: SetPasswordActionState = {
   error: null,
@@ -18,27 +15,30 @@ const inputClassName =
 export function PasswordForm({
   mode,
   recoveryTokenHash,
-}: {
+}: Readonly<{
   mode: "invite" | "recovery";
   recoveryTokenHash?: string;
-}) {
+}>) {
+  const hasRecoveryToken =
+    recoveryTokenHash !== undefined && recoveryTokenHash !== "";
   const [state, formAction, pending] = useActionState(
-    recoveryTokenHash ? recoverPasswordAction : setPasswordAction,
+    hasRecoveryToken ? recoverPasswordAction : setPasswordAction,
     INITIAL_STATE,
   );
+  const hasError = state.error !== null && state.error !== "";
 
   useLayoutEffect(() => {
     // A server-action error render can restore the document's original URL,
-    // including its fragment. Keep the recovery bearer out of the address bar
-    // while preserving the hidden value needed for a bounded retry.
-    if (recoveryTokenHash && window.location.hash) {
+    // Including its fragment. Keep the recovery bearer out of the address bar
+    // While preserving the hidden value needed for a bounded retry.
+    if (hasRecoveryToken && window.location.hash !== "") {
       window.history.replaceState(null, "", window.location.pathname);
     }
-  }, [recoveryTokenHash, state]);
+  }, [hasRecoveryToken, recoveryTokenHash, state]);
 
   return (
     <form action={formAction} className="mt-7 space-y-5">
-      {recoveryTokenHash ? (
+      {hasRecoveryToken ? (
         <input type="hidden" name="tokenHash" value={recoveryTokenHash} />
       ) : null}
       <p id="password-policy" className="text-sm text-[var(--color-muted)]">
@@ -61,9 +61,9 @@ export function PasswordForm({
           maxLength={1024}
           required
           disabled={pending}
-          aria-invalid={state.error ? true : undefined}
+          aria-invalid={hasError ? true : undefined}
           aria-describedby={
-            state.error ? "password-policy password-error" : "password-policy"
+            hasError ? "password-policy password-error" : "password-policy"
           }
           className={inputClassName}
         />
@@ -84,14 +84,14 @@ export function PasswordForm({
           maxLength={1024}
           required
           disabled={pending}
-          aria-invalid={state.error ? true : undefined}
+          aria-invalid={hasError ? true : undefined}
           aria-describedby={
-            state.error ? "password-policy password-error" : "password-policy"
+            hasError ? "password-policy password-error" : "password-policy"
           }
           className={inputClassName}
         />
       </div>
-      {state.error ? (
+      {hasError ? (
         <p
           id="password-error"
           role="alert"

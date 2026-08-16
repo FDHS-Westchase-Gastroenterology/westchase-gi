@@ -1,36 +1,36 @@
 // Patient document registry. The practice's previous site linked 33 PDFs that
-// all returned 404 from the old vendor's CDN; this registry replaces them.
+// All returned 404 from the old vendor's CDN; this registry replaces them.
 // Rule: a document renders as a download link ONLY when `file` points to a
-// real PDF in /public/documents. Until the practice supplies the current
-// version, `file` stays null and the UI offers the staffed text line and
-// front desk instead of a dead link. Never fake a file path.
+// Real PDF in /public/documents. Until the practice supplies the current
+// Version, `file` stays null and the UI offers the staffed text line and
+// Front desk instead of a dead link. Never fake a file path.
 
 import type { Bi } from "./content/types";
 
 export type DocCategory = "new-patient" | "procedure-prep" | "disease-info";
 
-export type PracticeDocument = {
+export interface PracticeDocument {
   id: string;
   category: DocCategory;
   label: Bi;
   /** Path under /public, e.g. "/documents/new-patient-registration.pdf". */
   file: string | null;
-};
+}
 
 export const documents: PracticeDocument[] = [
   // New-patient forms (printable). The online hushforms packet is live and is
-  // the primary path; these mirror the old printable set. Registration and
-  // privacy notices are covered by the online packet — only record-release
-  // forms remain as printable slots until PDFs are supplied.
+  // The primary path; these mirror the old printable set. Registration and
+  // Privacy notices are covered by the online packet — only record-release
+  // Forms remain as printable slots until PDFs are supplied.
   { id: "record-release-to-wcgi", category: "new-patient", label: { en: "Medical Record Release to WCGI", es: "Autorización para enviar expedientes médicos a WCGI", vi: "Ủy quyền gửi hồ sơ bệnh án đến WCGI", ko: "WCGI로의 의무 기록 제공 동의서", ar: "تفويض إرسال السجلات الطبية إلى WCGI" }, file: null },
   { id: "record-release-from-wcgi", category: "new-patient", label: { en: "Medical Record Release from WCGI", es: "Autorización para solicitar expedientes médicos de WCGI", vi: "Ủy quyền yêu cầu hồ sơ bệnh án từ WCGI", ko: "WCGI로부터의 의무 기록 발급 동의서", ar: "تفويض طلب السجلات الطبية من WCGI" }, file: null },
 
   // Procedure preparation instructions — the practice's CURRENT handout set
   // (Juliet's 2026-07-07 email, confirmed current; replaces the old site's
-  // stale list of MoviPrep/OsmoPrep/Prepopik/Suprep/Magnesium Citrate).
+  // Stale list of MoviPrep/OsmoPrep/Prepopik/Suprep/Magnesium Citrate).
   // Every one of these is readable on-site at /procedure-prep/<slug>
   // (see lib/content/preps); `file` remains the slot for a clean per-doc
-  // printable PDF if the practice supplies one.
+  // Printable PDF if the practice supplies one.
   { id: "prep-clenpiq-split-dose", category: "procedure-prep", label: { en: "Clenpiq Split-Dose Prep", es: "Preparación Clenpiq en dosis dividida", vi: "Chuẩn bị Clenpiq liều chia đôi", ko: "Clenpiq 분할 복용 준비법", ar: "تحضير Clenpiq بجرعة مقسمة" }, file: null },
   { id: "prep-clenpiq", category: "procedure-prep", label: { en: "Clenpiq Prep", es: "Preparación Clenpiq", vi: "Chuẩn bị Clenpiq", ko: "Clenpiq 준비법", ar: "تحضير Clenpiq" }, file: null },
   { id: "prep-sutab", category: "procedure-prep", label: { en: "Sutab Prep", es: "Preparación Sutab", vi: "Chuẩn bị Sutab", ko: "Sutab 준비법", ar: "تحضير Sutab" }, file: null },

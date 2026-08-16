@@ -8,27 +8,27 @@ export type NotificationRecipient = Readonly<{
   email: string;
 }>;
 
-export type NotificationEvent = {
-  request_id: string;
-  type: "notification";
-  recipient: string;
-  provider_message_id: string | null;
-  status: "accepted" | "failed";
-  meta:
-    | { provider: string }
+export interface NotificationEvent {
+  readonly request_id: string;
+  readonly type: "notification";
+  readonly recipient: string;
+  readonly provider_message_id: string | null;
+  readonly status: "accepted" | "failed";
+  readonly meta:
+    | { readonly provider: string }
     | {
-        provider: string;
-        reason: Extract<PortalEmailOutcome, { status: "failed" }>["reason"];
-        provider_status_code: number | null;
+        readonly provider: string;
+        readonly reason: Extract<PortalEmailOutcome, { status: "failed" }>["reason"];
+        readonly provider_status_code: number | null;
       };
-};
+}
 
 const SUBJECT = "New appointment request — Westchase GI portal";
 
 function eventFromOutcome(
   requestId: string,
   recipient: NotificationRecipient,
-  outcome: PortalEmailOutcome,
+  outcome: Readonly<PortalEmailOutcome>,
 ): NotificationEvent {
   return {
     request_id: requestId,
@@ -54,7 +54,7 @@ export async function createAppointmentNotificationEvents(
   recipients: readonly NotificationRecipient[],
   portalUrl: string | null,
 ): Promise<NotificationEvent[]> {
-  if (!portalUrl) {
+  if (portalUrl === null || portalUrl === "") {
     return recipients.map((recipient) =>
       eventFromOutcome(requestId, recipient, {
         status: "failed",

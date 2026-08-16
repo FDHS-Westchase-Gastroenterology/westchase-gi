@@ -1,16 +1,18 @@
 import Link from "next/link";
-import { documentsByCategory, type DocCategory } from "@/lib/documents";
+import { documentsByCategory } from "@/lib/documents";
+import type { DocCategory } from "@/lib/documents";
 import { topicForDocument } from "@/lib/content/education";
 import { prepForDocument } from "@/lib/content/preps";
-import { site, localePath, type Locale } from "@/lib/site";
+import { site, localePath } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import type { Dictionary } from "@/lib/i18n";
 import { ArrowRight, Download, FileText, MessageSquare } from "./icons";
 
-type DocumentListProps = {
+interface DocumentListProps {
   category: DocCategory;
   locale: Locale;
   dict: Dictionary;
-};
+}
 
 /**
  * Slot-aware document list. Replaces the old site's 33 dead PDF links:
@@ -19,7 +21,7 @@ type DocumentListProps = {
  * instructions link to their on-site (printable) instruction page, and
  * anything not yet readable on-site offers the staffed text line instead.
  */
-export function DocumentList({ category, locale, dict }: DocumentListProps) {
+export function DocumentList({ category, locale, dict }: Readonly<DocumentListProps>) {
   const docs = documentsByCategory(category);
   const d = dict.common.docs;
   return (
@@ -49,7 +51,7 @@ export function DocumentList({ category, locale, dict }: DocumentListProps) {
                 {d.viewInstructions} <ArrowRight className="h-4 w-4" />
               </Link>
             ) : null}
-            {doc.file ? (
+            {doc.file !== null && doc.file !== "" ? (
               <a
                 href={doc.file}
                 className="link-line text-[0.92rem]"

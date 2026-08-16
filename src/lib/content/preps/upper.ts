@@ -1,7 +1,7 @@
 // Upper-endoscopy preps: EGD, Bravo pH study, and Halo ablation.
 // The EGD sheet exists in both languages in the practice's scan (EN p. 25,
 // ES p. 24) — each locale renders its own original, including the Spanish
-// sheet's extra fiber reminder (genuine divergence, reproduced as-is).
+// Sheet's extra fiber reminder (genuine divergence, reproduced as-is).
 // Bravo and Halo exist in English only; Spanish bodies are translations.
 // VI/KO/AR bodies mirror the EN tree and are machine translations
 // (2026-07-08) pending native-speaker verification by clinic staff.

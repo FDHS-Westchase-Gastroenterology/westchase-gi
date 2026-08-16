@@ -205,7 +205,7 @@ function parseCodexResult(raw) {
     const parsed = JSON.parse(String(raw || "").trim());
     if (
       !["approve", "retry", "repair", "reject"].includes(parsed.decision) ||
-      typeof parsed.summary !== "string" ||
+      Object.prototype.toString.call(parsed.summary) !== "[object String]" ||
       !parsed.summary.trim() ||
       !Array.isArray(parsed.risk_reasons) ||
       !Array.isArray(parsed.evidence) ||
@@ -343,7 +343,7 @@ async function listAllCheckRuns(github, owner, repo, sha) {
     const pageRuns = response.data.check_runs || [];
     checkRuns.push(...pageRuns);
     // Automerge itself posts many merge-next runs onto main; a single page can
-    // hide the quality/react-doctor/production gates that pause the queue.
+    // Hide the quality/react-doctor/production gates that pause the queue.
     if (pageRuns.length < 100) break;
   }
   return checkRuns;

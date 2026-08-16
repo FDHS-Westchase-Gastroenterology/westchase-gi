@@ -8,7 +8,8 @@ import { LanguageChooser } from "@/components/LanguageChooser";
 import { NoticeBanner } from "@/components/NoticeBanner";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { fontVariables } from "@/lib/fonts";
-import { site, localePath, localeDir, locales, BANNER_KEY, type Locale } from "@/lib/site";
+import { site, localePath, localeDir, locales, BANNER_KEY } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import { TelemetryReporter } from "@/lib/telemetry-client";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -21,9 +22,9 @@ export function generateStaticParams() {
 
 export async function generateMetadata({
   params,
-}: {
+}: Readonly<{
   params: Promise<{ locale: string }>;
-}): Promise<Metadata> {
+}>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
@@ -35,7 +36,7 @@ export async function generateMetadata({
     },
     description: dict.meta.home.description,
     // FDHS's own published favicon set (the teal Florida network mark),
-    // matching the Florida inside the header logo.
+    // Matching the Florida inside the header logo.
     icons: {
       icon: [
         { url: "/images/brand/favicon-fdhs-32.png", sizes: "32x32", type: "image/png" },
@@ -108,7 +109,7 @@ function ClinicSchema() {
 export default async function LocaleLayout({
   children,
   params,
-}: Readonly<{ children: React.ReactNode; params: Promise<{ locale: string }> }>) {
+}: Readonly<Readonly<{ children: React.ReactNode; params: Promise<{ locale: string }> }>>) {
   const { locale: raw } = await params;
   if (!isLocale(raw)) notFound();
   const locale: Locale = raw;
@@ -122,7 +123,6 @@ export default async function LocaleLayout({
             Deliberately a native <script>: it must run before first paint,
             and next/script can't do that for inline code (beforeInteractive
             only supports external src; verified against Next.js docs 2026-07-07). */}
-        {/* oxlint-disable-next-line react-doctor/nextjs-no-native-script */}
         <script
           dangerouslySetInnerHTML={{
             __html: `document.documentElement.classList.add('js');try{var v=+localStorage.getItem('${BANNER_KEY}');if(v&&Date.now()<v)document.documentElement.classList.add('banner-dismissed')}catch(e){}`,

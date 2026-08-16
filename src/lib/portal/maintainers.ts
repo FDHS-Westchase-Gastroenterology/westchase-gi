@@ -2,29 +2,18 @@ import "server-only";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import type { Json } from "@/lib/json";
 import {
   beginExternalAudit,
   finishExternalAudit,
 } from "@/lib/portal/audit";
 import { requireRole } from "@/lib/portal/auth";
-import { AUDIT_ACTIONS, type AuditAction } from "@/lib/portal/contracts";
-import {
-  GITHUB_OWNER_ID,
-  GITHUB_REPOSITORY_ID,
-  getGitHubMaintainerRead,
-  gitHubProviderStatus,
-  openGitHubMaintainerSession,
-  type GitHubMaintainerSession,
-  type GitHubMaintainerSnapshot,
-} from "@/lib/portal/integrations";
-import {
-  invitationIsActive,
-  invitationIsCancelled,
-  maintainerIsRevoked,
-  runMaintainerOperation,
-  type MaintainerFailureCode,
-  type MaintainerMutationResult,
-} from "@/lib/portal/maintainer-operation";
+import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
+import type { AuditAction } from "@/lib/portal/contracts";
+import { GITHUB_OWNER_ID, GITHUB_REPOSITORY_ID, getGitHubMaintainerRead, gitHubProviderStatus, openGitHubMaintainerSession } from "@/lib/portal/integrations";
+import type { GitHubMaintainerSession, GitHubMaintainerSnapshot } from "@/lib/portal/integrations";
+import { invitationIsActive, invitationIsCancelled, maintainerIsRevoked, runMaintainerOperation } from "@/lib/portal/maintainer-operation";
+import type { MaintainerFailureCode, MaintainerMutationResult } from "@/lib/portal/maintainer-operation";
 import { serviceClient } from "@/lib/portal/server";
 import type { MaintainerAccessModel } from "@/app/admin/(portal)/settings/software/maintainer-access";
 
@@ -35,10 +24,10 @@ const usernameSchema = z.strictObject({
     .regex(/^(?!-)(?!.*--)[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/),
 });
 const invitationSchema = z.strictObject({
-  invitationId: z.number().int().positive().safe(),
+  invitationId: z.number().int().positive(),
 });
 const maintainerSchema = z.strictObject({
-  userId: z.number().int().positive().safe(),
+  userId: z.number().int().positive(),
 });
 
 function failure(code: MaintainerFailureCode): MaintainerMutationResult {
@@ -46,7 +35,7 @@ function failure(code: MaintainerFailureCode): MaintainerMutationResult {
 }
 
 function providerFailureCode(
-  error: unknown,
+  error: Readonly<Error | undefined>,
   operation: "invite" | "cancel_invitation" | "revoke",
 ): MaintainerFailureCode {
   const status = gitHubProviderStatus(error);
@@ -87,16 +76,22 @@ async function openSession(): Promise<
   try {
     return await openGitHubMaintainerSession();
   } catch (error) {
-    return failure(gitHubProviderStatus(error) === 403 ? "forbidden" : "unavailable");
+    return failure(
+      error instanceof Error && gitHubProviderStatus(error) === 403
+        ? "forbidden"
+        : "unavailable",
+    );
   }
 }
 
 function isFailure(
-  value: GitHubMaintainerSession | MaintainerMutationResult,
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+  value: Readonly<GitHubMaintainerSession | MaintainerMutationResult>,
 ): value is MaintainerMutationResult {
   return "ok" in value;
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 async function execute({
   actorEmail,
   action,
@@ -106,7 +101,7 @@ async function execute({
   session,
   perform,
   desired,
-}: {
+}: Readonly<{
   actorEmail: string;
   action: AuditAction;
   operation: "invite" | "cancel_invitation" | "revoke";
@@ -114,33 +109,36 @@ async function execute({
   invitationId?: number;
   session: GitHubMaintainerSession;
   perform(): Promise<number>;
-  desired(snapshot: GitHubMaintainerSnapshot & {
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+  desired(snapshot: Readonly<GitHubMaintainerSnapshot & {
     invitations: NonNullable<GitHubMaintainerSnapshot["invitations"]>;
-  }): boolean;
-}): Promise<MaintainerMutationResult> {
+  }>): boolean;
+}>): Promise<MaintainerMutationResult> {
   const db = serviceClient();
+  const detail = {
+    provider: "github",
+    repository_id: GITHUB_REPOSITORY_ID,
+    operation,
+    target_login: target.login,
+    target_id: target.userId,
+  };
+  const auditDetail =
+    invitationId === undefined
+      ? detail
+      : { ...detail, invitation_id: invitationId };
   return runMaintainerOperation({
-    begin: () =>
+    begin: async () =>
       beginExternalAudit(db, {
         actorEmail,
         action,
         entity: "repository_maintainers",
         entityId: null,
-        detail: {
-          provider: "github",
-          repository_id: GITHUB_REPOSITORY_ID,
-          operation,
-          target_login: target.login,
-          target_id: target.userId,
-          ...(invitationId === undefined
-            ? {}
-            : { invitation_id: invitationId }),
-        },
+        detail: auditDetail,
       }),
     perform,
-    refresh: session.refresh,
+    refresh: async () => session.refresh(),
     desired,
-    finish: (audit, outcome, detail) =>
+    finish: async (audit, outcome, detail) =>
       finishExternalAudit(db, audit, outcome, detail),
     failureCode: (error, snapshot) => {
       if (
@@ -163,7 +161,7 @@ async function execute({
 }
 
 export async function inviteMaintainerMutation(
-  input: unknown,
+  input: Json,
 ): Promise<MaintainerMutationResult> {
   const portalSession = await requireRole("admin");
   const parsed = usernameSchema.safeParse(input);
@@ -176,7 +174,9 @@ export async function inviteMaintainerMutation(
   try {
     target = await github.resolveUser(parsed.data.username);
   } catch (error) {
-    return failure(providerFailureCode(error, "invite"));
+    return failure(
+      providerFailureCode(error instanceof Error ? error : undefined, "invite"),
+    );
   }
   if (target.userId === GITHUB_OWNER_ID) return failure("conflict");
   if (
@@ -192,13 +192,13 @@ export async function inviteMaintainerMutation(
     operation: "invite",
     target,
     session: github,
-    perform: () => github.invite(target.login),
+    perform: async () => github.invite(target.login),
     desired: (snapshot) => invitationIsActive(snapshot, target.userId),
   });
 }
 
 export async function cancelMaintainerInviteMutation(
-  input: unknown,
+  input: Json,
 ): Promise<MaintainerMutationResult> {
   const portalSession = await requireRole("admin");
   const parsed = invitationSchema.safeParse(input);
@@ -219,7 +219,7 @@ export async function cancelMaintainerInviteMutation(
     target: invitation,
     invitationId: invitation.invitationId,
     session: github,
-    perform: () => github.cancelInvitation(invitation.invitationId),
+    perform: async () => github.cancelInvitation(invitation.invitationId),
     desired: (snapshot) =>
       invitationIsCancelled(
         snapshot,
@@ -230,7 +230,7 @@ export async function cancelMaintainerInviteMutation(
 }
 
 export async function revokeMaintainerMutation(
-  input: unknown,
+  input: Json,
 ): Promise<MaintainerMutationResult> {
   const portalSession = await requireRole("admin");
   const parsed = maintainerSchema.safeParse(input);
@@ -251,7 +251,7 @@ export async function revokeMaintainerMutation(
     operation: "revoke",
     target,
     session: github,
-    perform: () => github.revoke(target.login),
+    perform: async () => github.revoke(target.login),
     desired: (snapshot) => maintainerIsRevoked(snapshot, target.userId),
   });
 }

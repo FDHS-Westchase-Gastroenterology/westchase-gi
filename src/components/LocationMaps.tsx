@@ -1,15 +1,16 @@
-import { site, directionsUrl, mapEmbedUrl, type Locale } from "@/lib/site";
+import { site, directionsUrl, mapEmbedUrl } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import type { Dictionary } from "@/lib/i18n";
 import { MapPin } from "./icons";
 
-type LocationMapsProps = { locale: Locale; dict: Dictionary };
+interface LocationMapsProps { locale: Locale; dict: Dictionary }
 
 /**
  * Live maps for both offices (the old site's new-patients page embedded a
  * map, so the ported "map and directions" copy must stay backed by one).
  * Keyless Google embed, localized via `hl`, lazy-loaded below the fold.
  */
-export function LocationMaps({ locale, dict }: LocationMapsProps) {
+export function LocationMaps({ locale, dict }: Readonly<LocationMapsProps>) {
   const c = dict.common;
   return (
     <div className="grid gap-6 md:grid-cols-2">

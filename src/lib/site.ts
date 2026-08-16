@@ -2,14 +2,15 @@ import reviewTargets from "@/lib/review-targets.json";
 
 // Central site configuration for FDHS Westchase Gastroenterology.
 // Facts carry dated provenance comments where useful; unresolved practice
-// confirmations are listed in README so a present value is never mistaken
-// for confirmed merely because it is centralized here.
+// Confirmations are listed in README so a present value is never mistaken
+// For confirmed merely because it is centralized here.
 
-export type Locale = "en" | "es" | "vi" | "ko" | "ar";
-export const locales: Locale[] = ["en", "es", "vi", "ko", "ar"];
-export type OfficeHours = { opens: string; closes: string };
+export const locales = ["en", "es", "vi", "ko", "ar"] as const;
+export type Locale = (typeof locales)[number];
+export const localeSet: ReadonlySet<string> = new Set(locales);
+export interface OfficeHours { opens: string; closes: string }
 
-const officeTimeFormatters: Record<Locale, Intl.DateTimeFormat> = {
+const officeTimeFormatters = {
   en: new Intl.DateTimeFormat("en", {
     hour: "numeric",
     minute: "2-digit",
@@ -40,31 +41,31 @@ const officeTimeFormatters: Record<Locale, Intl.DateTimeFormat> = {
     hour12: true,
     timeZone: "UTC",
   }),
-};
+} as const satisfies Record<Locale, Intl.DateTimeFormat>;
 
 function officeTime(value: string, locale: Locale): string {
   const [hour, minute] = value.split(":").map(Number);
   return officeTimeFormatters[locale].format(new Date(Date.UTC(2026, 0, 1, hour, minute)));
 }
 
-export function formatOfficeHours(locale: Locale, hours: OfficeHours): string {
+export function formatOfficeHours(locale: Locale, hours: Readonly<OfficeHours>): string {
   return `${officeTime(hours.opens, locale)} – ${officeTime(hours.closes, locale)}`;
 }
 
 /** Native-language labels for the language menu. */
-export const localeNames: Record<Locale, string> = {
+export const localeNames = {
   en: "English",
   es: "Español",
   vi: "Tiếng Việt",
   ko: "한국어",
   ar: "العربية",
-};
+} as const satisfies Record<Locale, string>;
 
 export function localeDir(locale: Locale): "ltr" | "rtl" {
   return locale === "ar" ? "rtl" : "ltr";
 }
 
-/** localStorage key for the once-per-visitor notice banner (30-day stamp).
+/** LocalStorage key for the once-per-visitor notice banner (30-day stamp).
  * Shared by the layout's pre-paint script and the banner's dismiss button. */
 export const BANNER_KEY = "wgi-banner-dismissed";
 
@@ -82,14 +83,14 @@ export const site = {
   // Staffed by a human, answered within 24 hours; keep prominent (practice directive).
   textLine: { display: "(813) 564-0315", href: "sms:+18135640315" },
   // Confirmed by the practice 2026-07-08: 920-8883 is the correct fax (the old
-  // contact page's 920-5800 was wrong; office-gallery page had it right).
+  // Contact page's 920-5800 was wrong; office-gallery page had it right).
   fax: { display: "(813) 920-8883" },
   // 2026-07-10 debrief: use the contact-page address as the canonical public address.
   // Staff do not reliably monitor it, so appointment requests must not depend on this
-  // inbox; the shipped intake system uses the durable database/admin queue instead.
+  // Inbox; the shipped intake system uses the durable database/admin queue instead.
   email: "fdhswestchase@fdhs.com",
   // Confirmed by the practice 2026-07-05: these are the ONLY current procedure
-  // locations (the four facilities on the old site are outdated).
+  // Locations (the four facilities on the old site are outdated).
   affiliations:
     "AdventHealth Surgery Center Wellswood & AdventHealth Carrollwood",
   locations: [
@@ -138,10 +139,10 @@ export const site = {
     googleReview: reviewTargets.practice.destination,
     googleMapsListing: "https://maps.app.goo.gl/a2TfakxY1pG2d6tm8",
     // The practice's live Facebook page (verified 2026-07-08: renders logged-out;
-    // page ID carries the old vanity slug's business_id — see REVIEW-LINKS.md).
+    // Page ID carries the old vanity slug's business_id — see REVIEW-LINKS.md).
     facebookPage: "https://www.facebook.com/profile.php?id=100064038010410",
     // Reviews tab verified publicly reachable logged-out 2026-07-08 (shows the
-    // existing recommendation; the "Do you recommend?" prompt appears on login).
+    // Existing recommendation; the "Do you recommend?" prompt appears on login).
     facebookReviews: "https://www.facebook.com/profile.php?id=100064038010410&sk=reviews",
     healthgradesTampa:
       "https://www.healthgrades.com/group-directory/fl-florida/tampa/westchase-gastroenterology-pa-oy57dpj",

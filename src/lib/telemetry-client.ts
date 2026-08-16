@@ -2,21 +2,20 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import {
-  TELEMETRY_ROUTE_TEMPLATES,
-  type AnalyticsEvent,
-  type DeviceClass,
-} from "@/lib/telemetry";
+import { z } from "zod";
+import { ANALYTICS_EVENTS, TELEMETRY_ROUTE_TEMPLATES } from "@/lib/telemetry";
+import type { AnalyticsEvent, DeviceClass } from "@/lib/telemetry";
 import { postBeacon } from "@/lib/telemetry-transport";
 import { site } from "@/lib/site";
 import type { Locale } from "@/lib/site";
 import reviewTargets from "@/lib/review-targets.json";
 
 // Aggregate, PHI-free beacon per the 2026-07-28 assessment (I6): four short
-// enum/allowlist strings, no cookies, no free text, no journeys. Never
-// blocking, fails silently — telemetry must never cost a patient anything.
+// Enum/allowlist strings, no cookies, no free text, no journeys. Never
+// Blocking, fails silently — telemetry must never cost a patient anything.
 
 const routeTemplateSet = new Set<string>(TELEMETRY_ROUTE_TEMPLATES);
+const analyticsEventSchema = z.enum(ANALYTICS_EVENTS);
 
 const REVIEW_DESTINATIONS = new Set<string>([
   ...Object.values(reviewTargets).map((target) => target.destination),
@@ -75,7 +74,7 @@ function ctaEventFor(anchor: HTMLAnchorElement): AnalyticsEvent | null {
   return null;
 }
 
-/** form_view telemetry for the intake form: fires once, when the form first
+/** Form_view telemetry for the intake form: fires once, when the form first
  * genuinely enters the viewport (the honest funnel denominator). */
 export function useFormViewTelemetry(
   formRef: React.RefObject<HTMLElement | null>,
@@ -84,12 +83,15 @@ export function useFormViewTelemetry(
   const pathname = usePathname();
   useEffect(() => {
     const form = formRef.current;
-    const template = pathname ? routeTemplateFor(pathname) : null;
-    if (!template) return;
-    const fire = () => track("form_view", template, locale);
-    if (!form || typeof IntersectionObserver === "undefined") {
+    const template =
+      pathname !== "" ? routeTemplateFor(pathname) : null;
+    if (template === null || template === "") return undefined;
+    const fire = () => {
+      track("form_view", template, locale);
+    };
+    if (form === null || !("IntersectionObserver" in globalThis)) {
       fire();
-      return;
+      return undefined;
     }
     const observer = new IntersectionObserver(
       (entries) => {
@@ -101,7 +103,9 @@ export function useFormViewTelemetry(
       { threshold: 0.35 },
     );
     observer.observe(form);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+    };
   }, [formRef, locale, pathname]);
 }
 
@@ -116,8 +120,11 @@ export function trackFormEvent(
   pathname: string | null,
   locale: Locale,
 ) {
-  const template = pathname ? routeTemplateFor(pathname) : null;
-  if (template) track(event, template, locale);
+  const template =
+    pathname !== null && pathname !== ""
+      ? routeTemplateFor(pathname)
+      : null;
+  if (template !== null && template !== "") track(event, template, locale);
 }
 
 /**
@@ -126,36 +133,51 @@ export function trackFormEvent(
  * `data-telemetry-event`/`data-telemetry-route` attributes into events.
  * Mounted only under src/app/[locale] — /admin and /review never report.
  */
-export function TelemetryReporter({ locale }: { locale: Locale }) {
-  const pathname = usePathname() || `/${locale}`;
+export function TelemetryReporter({ locale }: Readonly<{ locale: Locale }>) {
+  const pathnameFromRouter = usePathname();
+  const pathname =
+    pathnameFromRouter !== "" ? pathnameFromRouter : `/${locale}`;
 
   useEffect(() => {
     const template = routeTemplateFor(pathname);
-    if (template) track("page_view", template, locale);
+    if (template !== null && template !== "") {
+      track("page_view", template, locale);
+    }
   }, [pathname, locale]);
 
   useEffect(() => {
     function onClick(event: MouseEvent) {
       if (event.defaultPrevented || event.button !== 0) return;
-      const anchor = (event.target as Element | null)?.closest?.("a");
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const anchor = target.closest("a");
       if (!(anchor instanceof HTMLAnchorElement)) return;
 
-      const customEvent = anchor.dataset.telemetryEvent as
-        | AnalyticsEvent
-        | undefined;
+      const customEvent = analyticsEventSchema.safeParse(
+        anchor.dataset.telemetryEvent,
+      );
       const customRoute = anchor.dataset.telemetryRoute;
-      if (customEvent && customRoute && routeTemplateSet.has(customRoute)) {
-        track(customEvent, customRoute, locale);
+      if (
+        customEvent.success &&
+        customRoute !== undefined &&
+        customRoute !== "" &&
+        routeTemplateSet.has(customRoute)
+      ) {
+        track(customEvent.data, customRoute, locale);
         return;
       }
 
       const ctaEvent = ctaEventFor(anchor);
       const template = routeTemplateFor(window.location.pathname);
-      if (ctaEvent && template) track(ctaEvent, template, locale);
+      if (ctaEvent !== null && template !== null && template !== "") {
+        track(ctaEvent, template, locale);
+      }
     }
 
     document.addEventListener("click", onClick, { capture: true });
-    return () => document.removeEventListener("click", onClick, { capture: true });
+    return () => {
+      document.removeEventListener("click", onClick, { capture: true });
+    };
   }, [locale]);
 
   return null;

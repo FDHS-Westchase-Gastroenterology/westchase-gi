@@ -1,18 +1,23 @@
-import { en, type Dictionary } from "./dictionaries/en";
+import { en } from "./dictionaries/en";
+import type { Dictionary } from "./dictionaries/en";
 import { es } from "./dictionaries/es";
 import { vi } from "./dictionaries/vi";
 import { ko } from "./dictionaries/ko";
 import { ar } from "./dictionaries/ar";
-import { locales, type Locale } from "./site";
+import { localeSet } from "./site";
+import type { Locale } from "./site";
 
-const dictionaries: Record<Locale, Dictionary> = { en, es, vi, ko, ar };
+const dictionaries = { en, es, vi, ko, ar } as const satisfies Record<
+  Locale,
+  Dictionary
+>;
 
 export function getDictionary(locale: Locale): Dictionary {
-  return dictionaries[locale] ?? dictionaries.en;
+  return dictionaries[locale];
 }
 
 export function isLocale(value: string): value is Locale {
-  return (locales as string[]).includes(value);
+  return localeSet.has(value);
 }
 
 export type { Dictionary };

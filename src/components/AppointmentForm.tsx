@@ -1,27 +1,26 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { site, type Locale } from "@/lib/site";
+import { site } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import type { Dictionary } from "@/lib/i18n";
-import {
-  HONEYPOT_FIELD,
-  INTAKE_API,
-  INTAKE_NOJS_ACTION,
-  isMailbox,
-  REQUEST_FIELD_LIMITS,
-  type IntakeResponse,
-} from "@/lib/portal/contracts";
+import { HONEYPOT_FIELD, INTAKE_API, INTAKE_NOJS_ACTION, intakeResponseSchema, isMailbox, REQUEST_FIELD_LIMITS } from "@/lib/portal/contracts";
+import type { IntakeResponse } from "@/lib/portal/contracts";
 import { trackFormEvent, useFormViewTelemetry } from "@/lib/telemetry-client";
 import { Check, MessageSquare, Phone } from "./icons";
 
-type AppointmentFormProps = { locale: Locale; dict: Dictionary };
+interface AppointmentFormProps { locale: Locale; dict: Dictionary }
 
-type Errors = Partial<Record<"name" | "phone" | "email", string>>;
+interface FieldErrors {
+  name?: string;
+  phone?: string;
+  email?: string;
+}
 
-// idle: form ready · submitting: POST in flight · success: durable acceptance
-// confirmed by the server · failure: the server refused or could not save ·
-// unknown: no readable response came back, so the truth is unknowable here.
+// Idle: form ready · submitting: POST in flight · success: durable acceptance
+// Confirmed by the server · failure: the server refused or could not save ·
+// Unknown: no readable response came back, so the truth is unknowable here.
 type Status = "idle" | "submitting" | "success" | "failure" | "unknown";
 
 const FETCH_TIMEOUT_MS = 20_000;
@@ -40,7 +39,7 @@ function requireKnownIntakeStatus(response: Response) {
 }
 
 /** Call/text recovery pair used by both the success card and problem alert. */
-function ContactActions({ dict }: { dict: Dictionary }) {
+function ContactActions({ dict }: Readonly<{ dict: Dictionary }>) {
   return (
     <>
       <a href={site.phone.href} className="btn btn-navy">
@@ -56,10 +55,10 @@ function ContactActions({ dict }: { dict: Dictionary }) {
 function SuccessCard({
   dict,
   cardRef,
-}: {
+}: Readonly<{
   dict: Dictionary;
   cardRef: React.RefObject<HTMLDivElement | null>;
-}) {
+}>) {
   const f = dict.appointment.form;
   return (
     <div
@@ -81,13 +80,13 @@ function SuccessCard({
   );
 }
 
-type ProblemAlertProps = {
+interface ProblemAlertProps {
   dict: Dictionary;
   status: "failure" | "unknown";
   alertRef: React.RefObject<HTMLDivElement | null>;
-};
+}
 
-function ProblemAlert({ dict, status, alertRef }: ProblemAlertProps) {
+function ProblemAlert({ dict, status, alertRef }: Readonly<ProblemAlertProps>) {
   const f = dict.appointment.form;
   return (
     <div
@@ -109,35 +108,44 @@ function ProblemAlert({ dict, status, alertRef }: ProblemAlertProps) {
   );
 }
 
-function localFieldErrors(f: Dictionary["appointment"]["form"], data: FormData): Errors {
-  const next: Errors = {};
-  const name = String(data.get("name") || "").trim();
-  const phone = String(data.get("phone") || "").trim();
-  const email = String(data.get("email") || "").trim();
+function formText(data: FormData, name: string): string {
+  const value = data.get(name);
+  if (value instanceof File || value === null) return "";
+  return value;
+}
 
-  if (!name) next.name = f.errName;
-  if (!phone || phone.replace(/\D/g, "").length < 10) next.phone = f.errPhone;
+function localFieldErrors(
+  f: Readonly<Dictionary["appointment"]["form"]>,
+  data: FormData,
+): FieldErrors {
+  const next: FieldErrors = {};
+  const name = formText(data, "name").trim();
+  const phone = formText(data, "phone").trim();
+  const email = formText(data, "email").trim();
+
+  if (name === "") next.name = f.errName;
+  if (phone === "" || phone.replace(/\D/g, "").length < 10) next.phone = f.errPhone;
   // Email is optional — many patients have none; phone is the callback
-  // channel. Validate the format only when something was entered.
-  if (email && !isMailbox(email)) next.email = f.errEmail;
+  // Channel. Validate the format only when something was entered.
+  if (email !== "" && !isMailbox(email)) next.email = f.errEmail;
   return next;
 }
 
 function serverFieldErrors(
-  f: Dictionary["appointment"]["form"],
-  fieldErrors: Record<string, string>,
-): Errors {
-  const next: Errors = {};
+  f: Readonly<Dictionary["appointment"]["form"]>,
+  fieldErrors: Readonly<Record<string, string>>,
+): FieldErrors {
+  const next: FieldErrors = {};
   if ("name" in fieldErrors) next.name = f.errName;
   if ("phone" in fieldErrors) next.phone = f.errPhone;
   if ("email" in fieldErrors) next.email = f.errEmail;
   return next;
 }
 
-export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
+export function AppointmentForm({ locale, dict }: Readonly<AppointmentFormProps>) {
   const f = dict.appointment.form;
   const pathname = usePathname();
-  const [errors, setErrors] = useState<Errors>({});
+  const [errors, setErrors] = useState<FieldErrors>({});
   const [status, setStatus] = useState<Status>("idle");
   const alertRef = useRef<HTMLDivElement>(null);
   const successRef = useRef<HTMLDivElement>(null);
@@ -153,7 +161,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
 
   useFormViewTelemetry(formRef, locale);
   // Outcome focus lands after the committing render, never in a rAF race:
-  // success, failure, and unknown all move focus to their announcement (F5,
+  // Success, failure, and unknown all move focus to their announcement (F5,
   // S7). Effects run post-commit, so the target exists by focus time.
   useEffect(() => {
     if (status === "failure" || status === "unknown") {
@@ -168,7 +176,11 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     setStatus(state);
   }
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React submit events expose a mutable currentTarget
+  async function handleSubmit(e: {
+    preventDefault(): void;
+    currentTarget: HTMLFormElement;
+  }) {
     e.preventDefault();
     if (submittingRef.current) return;
 
@@ -187,20 +199,23 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     setStatus("submitting");
     trackFormEvent("form_submit", pathname, locale);
 
+    const message = formText(data, "message").trim();
+    const location = formText(data, "location");
+    const time = formText(data, "time");
     const payload = {
-      name: String(data.get("name") || "").trim(),
-      phone: String(data.get("phone") || "").trim(),
-      email: String(data.get("email") || "").trim(),
-      location: String(data.get("location") || "any"),
-      time: String(data.get("time") || "any"),
-      message: String(data.get("message") || "").trim() || undefined,
+      name: formText(data, "name").trim(),
+      phone: formText(data, "phone").trim(),
+      email: formText(data, "email").trim(),
+      location: location !== "" ? location : "any",
+      time: time !== "" ? time : "any",
+      message: message !== "" ? message : undefined,
       locale,
-      sourcePath: pathname || `/${locale}/appointment`,
-      [HONEYPOT_FIELD]: String(data.get(HONEYPOT_FIELD) || ""),
+      sourcePath: pathname !== "" ? pathname : `/${locale}/appointment`,
+      [HONEYPOT_FIELD]: formText(data, HONEYPOT_FIELD),
     };
 
-    let body: IntakeResponse;
     let wasThrottled = false;
+    let body: IntakeResponse;
     try {
       const res = await fetch(INTAKE_API, {
         method: "POST",
@@ -210,7 +225,13 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
       });
       wasThrottled = res.status === 429;
       requireKnownIntakeStatus(res);
-      body = (await res.json()) as IntakeResponse;
+      const parsed = intakeResponseSchema.safeParse(await res.json());
+      if (!parsed.success) {
+        trackFormEvent("form_unknown", pathname, locale);
+        showProblem("unknown");
+        return;
+      }
+      body = parsed.data;
       if (res.ok !== body.ok) {
         trackFormEvent("form_unknown", pathname, locale);
         showProblem("unknown");
@@ -218,7 +239,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
       }
     } catch {
       // Timed out or no readable response: the request may or may not have
-      // landed. Only the honest "please confirm with us" state is truthful.
+      // Landed. Only the honest "please confirm with us" state is truthful.
       trackFormEvent("form_unknown", pathname, locale);
       showProblem("unknown");
       return;
@@ -227,7 +248,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     if (body.ok) {
       trackFormEvent("form_success", pathname, locale);
       // Focus moves to the success card via the status effect, matching the
-      // failure/unknown behavior (F5).
+      // Failure/unknown behavior (F5).
       setStatus("success");
       return;
     }
@@ -244,7 +265,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     }
 
     // A throttle stays unnamed to the patient (no abuse intelligence), but
-    // it is a distinct count from a queue failure.
+    // It is a distinct count from a queue failure.
     trackFormEvent(wasThrottled ? "form_throttled" : "form_failure", pathname, locale);
     showProblem("failure");
   }
@@ -257,7 +278,9 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     <form
       method="post"
       action={INTAKE_NOJS_ACTION}
-      onSubmit={handleSubmit}
+      onSubmit={(event) => {
+        void handleSubmit(event);
+      }}
       noValidate
       ref={formRef}
       className="card relative p-6 sm:p-9"
@@ -274,7 +297,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
       <input
         type="hidden"
         name="sourcePath"
-        value={pathname || `/${locale}/appointment`}
+        value={pathname !== "" ? pathname : `/${locale}/appointment`}
       />
       {/* Honeypot: humans never see or fill this; bots that do are dropped
           server-side with a success-shaped reply. Not display:none — some
@@ -309,11 +332,11 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
             autoComplete="name"
             required
             maxLength={REQUEST_FIELD_LIMITS.name}
-            aria-invalid={errors.name ? "true" : undefined}
-            aria-describedby={errors.name ? "err-name" : undefined}
+            aria-invalid={errors.name !== undefined && errors.name !== "" ? "true" : undefined}
+            aria-describedby={errors.name !== undefined && errors.name !== "" ? "err-name" : undefined}
             className="field-input"
           />
-          {errors.name && (
+          {errors.name !== undefined && errors.name !== "" && (
             <p id="err-name" className="field-error">
               {errors.name}
             </p>
@@ -331,11 +354,11 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
             autoComplete="tel"
             required
             maxLength={REQUEST_FIELD_LIMITS.phone}
-            aria-invalid={errors.phone ? "true" : undefined}
-            aria-describedby={errors.phone ? "err-phone" : undefined}
+            aria-invalid={errors.phone !== undefined && errors.phone !== "" ? "true" : undefined}
+            aria-describedby={errors.phone !== undefined && errors.phone !== "" ? "err-phone" : undefined}
             className="field-input"
           />
-          {errors.phone && (
+          {errors.phone !== undefined && errors.phone !== "" && (
             <p id="err-phone" className="field-error">
               {errors.phone}
             </p>
@@ -354,11 +377,11 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
             type="email"
             autoComplete="email"
             maxLength={REQUEST_FIELD_LIMITS.email}
-            aria-invalid={errors.email ? "true" : undefined}
-            aria-describedby={errors.email ? "err-email" : undefined}
+            aria-invalid={errors.email !== undefined && errors.email !== "" ? "true" : undefined}
+            aria-describedby={errors.email !== undefined && errors.email !== "" ? "err-email" : undefined}
             className="field-input"
           />
-          {errors.email && (
+          {errors.email !== undefined && errors.email !== "" && (
             <p id="err-email" className="field-error">
               {errors.email}
             </p>

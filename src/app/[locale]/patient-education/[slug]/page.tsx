@@ -3,20 +3,21 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
-import { localePath, locales, site, type Locale } from "@/lib/site";
+import { localePath, locales, site } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import { educationTopics, getTopic } from "@/lib/content/education";
 import { documents } from "@/lib/documents";
 import { ArticleBody } from "@/components/ArticleBody";
 import { TextBand } from "@/components/TextBand";
 import { ArrowRight, Download, FileText, MessageSquare } from "@/components/icons";
 
-type PageProps = { params: Promise<{ locale: string; slug: string }> };
+interface PageProps { params: Promise<{ locale: string; slug: string }> }
 
 export function generateStaticParams() {
   return locales.flatMap((locale) => educationTopics.map((t) => ({ locale, slug: t.slug })));
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw, slug } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const topic = getTopic(slug);
@@ -29,7 +30,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   );
 }
 
-export default async function EducationTopicPage({ params }: PageProps) {
+export default async function EducationTopicPage({ params }: Readonly<PageProps>) {
   const { locale: raw, slug } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
@@ -37,9 +38,10 @@ export default async function EducationTopicPage({ params }: PageProps) {
   const topic = getTopic(slug);
   if (!topic) notFound();
 
-  const sheet = topic.relatedDocId
-    ? documents.find((d) => d.id === topic.relatedDocId)
-    : undefined;
+  const sheet =
+    topic.relatedDocId !== undefined && topic.relatedDocId !== ""
+      ? documents.find((d) => d.id === topic.relatedDocId)
+      : undefined;
   const isProcedure = topic.group === "procedures";
 
   return (
@@ -69,11 +71,13 @@ export default async function EducationTopicPage({ params }: PageProps) {
                     {t.sheetHeading}
                   </h2>
                   <p className="measure-sm mt-1 text-[0.95rem] text-[var(--color-body)]">
-                    {sheet.file ? t.sheetBodyAvailable : t.sheetBodyPending}
+                    {sheet.file !== null && sheet.file !== ""
+                      ? t.sheetBodyAvailable
+                      : t.sheetBodyPending}
                   </p>
                 </div>
               </div>
-              {sheet.file ? (
+              {sheet.file !== null && sheet.file !== "" ? (
                 <a href={sheet.file} download className="btn btn-navy">
                   <Download className="h-4 w-4" /> {dict.common.docs.download}
                 </a>

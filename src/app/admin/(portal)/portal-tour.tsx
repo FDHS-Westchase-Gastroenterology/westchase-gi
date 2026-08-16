@@ -73,7 +73,9 @@ export function PortalTour() {
         aria-labelledby="portal-tour-heading"
         aria-describedby="portal-tour-description"
         data-testid="portal-tour-dialog"
-        onClose={() => setStep(0)}
+        onClose={() => {
+          setStep(0);
+        }}
         className="tour-dialog m-auto max-h-[90dvh] w-[90vw] max-w-xl overflow-y-auto rounded-[var(--radius-lg)] border-0 bg-white p-0 shadow-[var(--shadow-card)] backdrop:bg-[rgba(20,32,45,0.48)]"
       >
         <div className="flex items-center justify-between gap-4 bg-[var(--color-navy)] px-5 py-4 text-[var(--color-on-dark)] sm:px-6">
@@ -112,7 +114,9 @@ export function PortalTour() {
           <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] pt-5">
             <button
               type="button"
-              onClick={() => setStep((value) => Math.max(0, value - 1))}
+              onClick={() => {
+                setStep((value) => Math.max(0, value - 1));
+              }}
               disabled={step === 0}
               className="min-h-11 rounded-[var(--radius-sm)] px-3 text-[0.9rem] font-bold text-[var(--color-teal-ink)] disabled:invisible"
             >
@@ -122,9 +126,9 @@ export function PortalTour() {
             {step < STEPS.length - 1 ? (
               <button
                 type="button"
-                onClick={() =>
-                  setStep((value) => Math.min(STEPS.length - 1, value + 1))
-                }
+                onClick={() => {
+                  setStep((value) => Math.min(STEPS.length - 1, value + 1));
+                }}
                 className="btn btn-navy btn-sm min-h-11"
               >
                 Next

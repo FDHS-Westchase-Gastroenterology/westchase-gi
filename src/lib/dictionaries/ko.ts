@@ -1,5 +1,5 @@
 // Korean UI dictionary — machine-translated 2026-07-08, pending
-// native-speaker verification by clinic staff (post-launch gate).
+// Native-speaker verification by clinic staff (post-launch gate).
 import type { Dictionary } from "./en";
 
 export const ko: Dictionary = {
@@ -86,10 +86,10 @@ export const ko: Dictionary = {
         "이 웹사이트에서 사용할 언어를 선택하세요. 언어 메뉴에서 언제든지 변경할 수 있습니다.",
       suggested: "권장",
       // i5-waiver 2026-07-28 common.languageChooser.continue: action label naming
-      // the current locale, not an availability claim.
+      // The current locale, not an availability claim.
       continue: "한국어로 계속",
       // i5-waiver 2026-07-28 common.languageChooser.close: action label naming
-      // the current locale, not an availability claim.
+      // The current locale, not an availability claim.
       close: "언어 선택 창을 닫고 한국어로 계속",
     },
     getDirections: "길찾기",
@@ -115,10 +115,10 @@ export const ko: Dictionary = {
       contact: "문의하기",
       appointment: "진료 예약 신청",
       // i5-waiver 2026-07-28 common.nav.formsEn: the external Hushforms packet
-      // really is English-only; the label says so honestly.
+      // Really is English-only; the label says so honestly.
       formsEn: "온라인 신규 환자 서류 (영어)",
       // i5-waiver 2026-07-28 common.nav.formsEs: the external Hushforms packet
-      // really is Spanish-only; the label says so honestly.
+      // Really is Spanish-only; the label says so honestly.
       formsEs: "온라인 신규 환자 서류 (스페인어)",
       printableForms: "인쇄용 서류",
     },
@@ -210,7 +210,7 @@ export const ko: Dictionary = {
     physiciansCta: "전체 의료진 보기",
     testimonialsHeading: "환자분들의 이야기",
     // i5-waiver 2026-07-28 home.testimonialsNote: settled decision — testimonials
-    // stay English-only in every locale, with this explicit qualifier.
+    // Stay English-only in every locale, with this explicit qualifier.
     testimonialsNote: "환자분들이 직접 남겨 주신 후기를 그대로 전합니다(영어 원문).",
     railLabel: "환자 후기",
     railPrev: "이전 후기",
@@ -326,14 +326,14 @@ export const ko: Dictionary = {
     ],
     formsHeading: "환자 서류",
     // i5-waiver 2026-07-28 newPatients.formsIntro: the EN/ES clause binds to
-    // the external Hushforms packet only — no claim about the site's languages.
+    // The external Hushforms packet only — no claim about the site's languages.
     formsIntro:
       "가장 빠른 방법은 보안 온라인 서류 패킷이며, 패킷 자체는 영어와 스페인어로 제공됩니다. 첫 방문 전에 어느 기기에서든 작성하실 수 있습니다:",
     // i5-waiver 2026-07-28 newPatients.formsOnlineEn: the external Hushforms
-    // packet really is English-only; the label says so honestly.
+    // Packet really is English-only; the label says so honestly.
     formsOnlineEn: "온라인 신규 환자 서류 (영어)",
     // i5-waiver 2026-07-28 newPatients.formsOnlineEs: the external Hushforms
-    // packet really is Spanish-only; the label says so honestly.
+    // Packet really is Spanish-only; the label says so honestly.
     formsOnlineEs: "온라인 신규 환자 서류 (스페인어)",
     formsPrintableIntro:
       "종이 서류를 선호하십니까? 인쇄용 서류는 현재 업데이트 중입니다. 문자를 보내 주시면 최신 버전을 보내 드리며, 도착하셔서 접수처에서 작성하셔도 됩니다.",
@@ -376,7 +376,7 @@ export const ko: Dictionary = {
     educationCta: "환자 교육 자료 둘러보기",
     asgeHeading: "ASGE의 추가 자료",
     // i5-waiver 2026-07-28 resources.asgeBody: the external ASGE guides really
-    // are English-only; the qualifier is the truth.
+    // Are English-only; the qualifier is the truth.
     asgeBody:
       "미국소화기내시경학회(ASGE)에서도 소화기 질환과 시술에 대한 환자용 안내서를 발간하고 있습니다(영어).",
     educationCtaConditions: "ASGE 안내서: 질환",

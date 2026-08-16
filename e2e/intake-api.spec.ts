@@ -1,12 +1,16 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
+import { en } from "../src/lib/dictionaries/en";
 import {
   INTAKE_RATE_LIMIT,
   REQUEST_FIELD_LIMITS,
-  type IntakeResponse,
+  intakeResponseSchema,
 } from "../src/lib/portal/contracts";
-import { en } from "../src/lib/dictionaries/en";
 import { requiredEnv, serviceDb } from "./support";
+
+type IntakeFixture = Partial<ReturnType<typeof validPayload>> & {
+  company?: string;
+};
 
 const db = serviceDb();
 
@@ -48,7 +52,7 @@ test.describe("intake API contract", () => {
   test.describe.configure({ mode: "serial" });
 
   let enabled = false;
-  let recipientState: Array<{ id: string; active: boolean }> = [];
+  let recipientState: { id: string; active: boolean }[] = [];
 
   test.beforeAll(async ({}, workerInfo) => {
     enabled = workerInfo.project.name === "chromium";
@@ -72,7 +76,7 @@ test.describe("intake API contract", () => {
     }
   });
 
-  test.beforeEach(async ({}, testInfo) => {
+  test.beforeEach(({}, testInfo) => {
     test.skip(
       testInfo.project.name !== "chromium",
       "The API contract is browser-independent and runs once.",
@@ -112,7 +116,7 @@ test.describe("intake API contract", () => {
     });
 
     expect([200, 201]).toContain(response.status());
-    const body = (await response.json()) as IntakeResponse;
+    const body = intakeResponseSchema.parse(await response.json());
     expect(body.ok).toBe(true);
     if (!body.ok) throw new Error("Expected an accepted intake response");
 
@@ -149,7 +153,7 @@ test.describe("intake API contract", () => {
     });
 
     expect([200, 201]).toContain(response.status());
-    const body = (await response.json()) as IntakeResponse;
+    const body = intakeResponseSchema.parse(await response.json());
     expect(body.ok).toBe(true);
     if (!body.ok) throw new Error("Expected an accepted intake response");
 
@@ -206,14 +210,14 @@ test.describe("intake API contract", () => {
   test("VAL-INTAKE-003: server validation rejects bad input", async ({
     request,
   }) => {
-    const invalidCases: Array<{
+    const invalidCases: {
       field: "name" | "phone" | "email" | "message";
-      makePayload: (sourcePath: string) => Record<string, unknown>;
-    }> = [
+      makePayload: (sourcePath: string) => IntakeFixture;
+    }[] = [
       {
         field: "name",
         makePayload(sourcePath) {
-          const payload: Record<string, unknown> = validPayload(sourcePath);
+          const payload: IntakeFixture = validPayload(sourcePath);
           delete payload.name;
           return payload;
         },
@@ -221,7 +225,7 @@ test.describe("intake API contract", () => {
       {
         field: "phone",
         makePayload(sourcePath) {
-          const payload: Record<string, unknown> = validPayload(sourcePath);
+          const payload: IntakeFixture = validPayload(sourcePath);
           delete payload.phone;
           return payload;
         },
@@ -288,7 +292,7 @@ test.describe("intake API contract", () => {
       });
 
       expect(response.status()).toBe(400);
-      const body = (await response.json()) as IntakeResponse;
+      const body = intakeResponseSchema.parse(await response.json());
       expect(body.ok).toBe(false);
       if (body.ok) throw new Error("Expected a validation failure");
       expect(body.code).toBe("validation");
@@ -317,7 +321,7 @@ test.describe("intake API contract", () => {
     });
 
     expect([200, 201]).toContain(response.status());
-    const body = (await response.json()) as IntakeResponse;
+    const body = intakeResponseSchema.parse(await response.json());
     expect(body.ok).toBe(true);
     if (!body.ok) throw new Error("Expected a success-shaped honeypot response");
 
@@ -366,21 +370,25 @@ test.describe("intake API contract", () => {
       request.get(location),
       request.get(location),
     ]);
-    const bodies = await Promise.all(claims.map((claim) => claim.text()));
+    const bodies = await Promise.all(
+      claims.map(async (claim) => claim.text()),
+    );
     expect(
       bodies.every((body) =>
         body.includes('<meta name="referrer" content="no-referrer"/>'),
       ),
     ).toBe(true);
     const renderedHeading = (body: string) =>
-      body
-        .match(/<h1[^>]*>([^<]+)<\/h1>/)?.[1]
+      (/<h1[^>]*>([^<]+)<\/h1>/.exec(body))?.[1]
         ?.replaceAll("&#x27;", "'");
-    expect(bodies.map(renderedHeading).sort()).toEqual(
-      [
-        en.appointment.form.unknownHeading,
-        en.requestReceipt.successHeading,
-      ].sort(),
+    expect(
+      bodies
+        .map(renderedHeading)
+        .sort((left, right) => (left ?? "").localeCompare(right ?? "")),
+    ).toEqual(
+      [en.appointment.form.unknownHeading, en.requestReceipt.successHeading].sort(
+        (left, right) => left.localeCompare(right),
+      ),
     );
     expect(renderedHeading(await (await request.get(location)).text())).toBe(
       en.appointment.form.unknownHeading,
@@ -454,7 +462,7 @@ test.describe("intake API contract", () => {
         data: validPayload(`${sourcePrefix}/rate/${index}`),
         headers: { "X-Forwarded-For": pinnedIp },
       });
-      const body = (await response.json()) as IntakeResponse;
+      const body = intakeResponseSchema.parse(await response.json());
 
       if (index < INTAKE_RATE_LIMIT.limit) {
         expect([200, 201]).toContain(response.status());

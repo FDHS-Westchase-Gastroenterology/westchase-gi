@@ -4,17 +4,18 @@ import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { site, localePath, locales, localeNames, pathInLocale, type Locale } from "@/lib/site";
+import { site, localePath, locales, localeNames, pathInLocale } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import type { Dictionary } from "@/lib/i18n";
 import { LANGUAGE_TRIGGER_ID, rememberLocale } from "@/lib/locale-preference";
 import { Check, ChevronDown, ExternalLink, Globe, Menu, MessageSquare, Phone, X } from "./icons";
 
-type HeaderProps = { locale: Locale; dict: Dictionary };
+interface HeaderProps { locale: Locale; dict: Dictionary }
 
-type NavChild = { label: string; href: string; external?: boolean };
-type NavGroup = { label: string; href?: string; children?: NavChild[] };
+interface NavChild { label: string; href: string; external?: boolean }
+interface NavGroup { label: string; href?: string; children?: NavChild[] }
 
-function buildNav(locale: Locale, dict: Dictionary): NavGroup[] {
+function buildNav(locale: Locale, dict: Readonly<Dictionary>): NavGroup[] {
   const n = dict.common.nav;
   const p = (path: string) => localePath(locale, path);
   return [
@@ -24,7 +25,7 @@ function buildNav(locale: Locale, dict: Dictionary): NavGroup[] {
         { label: n.aboutUs, href: p("/about") },
         { label: n.gallery, href: p("/office-gallery") },
         // The blog lives here like the old site's "More" menu — the header
-        // can't take a seventh top-level item without crowding the lockup.
+        // Can't take a seventh top-level item without crowding the lockup.
         { label: n.blog, href: p("/blog") },
       ],
     },
@@ -49,15 +50,22 @@ function buildNav(locale: Locale, dict: Dictionary): NavGroup[] {
 }
 
 /** The five-language menu that replaced the EN<->ES toggle (2026-07-08). */
-function LanguageMenu({ locale, label }: { locale: Locale; label: string }) {
+function LanguageMenu({ locale, label }: Readonly<{ locale: Locale; label: string }>) {
   const pathname = usePathname() || `/${locale}`;
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) return undefined;
     function onClick(e: MouseEvent) {
-      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+      const target = e.target;
+      if (
+        !(target instanceof Node) ||
+        wrapRef.current === null ||
+        !wrapRef.current.contains(target)
+      ) {
+        setOpen(false);
+      }
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
@@ -78,7 +86,7 @@ function LanguageMenu({ locale, label }: { locale: Locale; label: string }) {
         aria-expanded={open}
         aria-haspopup="true"
         aria-label={label}
-        onClick={() => setOpen(!open)}
+        onClick={() => { setOpen(!open); }}
         className="flex items-center gap-1.5 whitespace-nowrap rounded-full border border-[color-mix(in_oklch,white_38%,transparent)] bg-[color-mix(in_oklch,white_12%,transparent)] px-3 py-1 transition-colors hover:border-[color-mix(in_oklch,white_60%,transparent)] hover:bg-[color-mix(in_oklch,white_22%,transparent)]"
       >
         <Globe className="h-3.5 w-3.5 flex-none text-[var(--color-amber)]" />
@@ -92,7 +100,7 @@ function LanguageMenu({ locale, label }: { locale: Locale; label: string }) {
             <Link
               key={l}
               href={pathInLocale(pathname, l)}
-              onClick={() => rememberLocale(l)}
+              onClick={() => { rememberLocale(l); }}
               lang={l}
               aria-current={l === locale ? "true" : undefined}
               className={`flex items-center justify-between gap-2 rounded-md px-3 py-2 font-semibold transition-colors hover:bg-[var(--color-mint)] ${
@@ -111,7 +119,7 @@ function LanguageMenu({ locale, label }: { locale: Locale; label: string }) {
   );
 }
 
-export function Header({ locale, dict }: HeaderProps) {
+export function Header({ locale, dict }: Readonly<HeaderProps>) {
   const pathname = usePathname() || `/${locale}`;
   const nav = buildNav(locale, dict);
   const [open, setOpen] = useState<number | null>(null);
@@ -129,7 +137,14 @@ export function Header({ locale, dict }: HeaderProps) {
   // Close dropdowns on outside click / Escape.
   useEffect(() => {
     function onClick(e: MouseEvent) {
-      if (!barRef.current?.contains(e.target as Node)) setOpen(null);
+      const target = e.target;
+      if (
+        !(target instanceof Node) ||
+        barRef.current === null ||
+        !barRef.current.contains(target)
+      ) {
+        setOpen(null);
+      }
     }
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
@@ -224,7 +239,7 @@ export function Header({ locale, dict }: HeaderProps) {
                   <button
                     type="button"
                     aria-expanded={open === i}
-                    onClick={() => setOpen(open === i ? null : i)}
+                    onClick={() => { setOpen(open === i ? null : i); }}
                     className={`flex items-center gap-1 whitespace-nowrap rounded-md px-2.5 py-2 font-bold text-[0.98rem] transition-colors hover:bg-[var(--color-mint)] ${
                       open === i ? "bg-[var(--color-mint)]" : ""
                     }`}
@@ -239,7 +254,7 @@ export function Header({ locale, dict }: HeaderProps) {
                   {open === i && (
                     <div className="absolute start-0 top-full z-[var(--z-dropdown)] mt-2 w-72 rounded-[var(--radius-lg)] bg-white p-2 shadow-[var(--shadow-card)]">
                       {item.children.map((child) =>
-                        child.external ? (
+                        child.external === true ? (
                           <a
                             key={child.label}
                             href={child.href}
@@ -285,7 +300,7 @@ export function Header({ locale, dict }: HeaderProps) {
             className="rounded-md p-2 transition-colors hover:bg-[var(--color-mint)] xl:hidden"
             aria-expanded={drawer}
             aria-label={drawer ? c.close : c.menu}
-            onClick={() => setDrawer(!drawer)}
+            onClick={() => { setDrawer(!drawer); }}
           >
             {drawer ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
@@ -309,7 +324,7 @@ export function Header({ locale, dict }: HeaderProps) {
                     {item.label}
                   </p>
                   {item.children.map((child) =>
-                    child.external ? (
+                    child.external === true ? (
                       <a
                         key={child.label}
                         href={child.href}

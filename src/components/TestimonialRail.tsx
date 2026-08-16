@@ -4,24 +4,24 @@ import { useRef } from "react";
 import { testimonials } from "@/lib/testimonials";
 import { ChevronLeft, ChevronRight, Star } from "./icons";
 
-type TestimonialRailProps = {
+interface TestimonialRailProps {
   label: string;
   prevLabel: string;
   nextLabel: string;
-};
+}
 
 /**
  * The 11 published patient testimonials, verbatim, on a scroll-snap rail.
  * Native touch scrolling; buttons assist pointer users.
  */
-export function TestimonialRail({ label, prevLabel, nextLabel }: TestimonialRailProps) {
+export function TestimonialRail({ label, prevLabel, nextLabel }: Readonly<TestimonialRailProps>) {
   const railRef = useRef<HTMLUListElement | null>(null);
 
   function scroll(dir: 1 | -1) {
     const rail = railRef.current;
     if (!rail) return;
-    const card = rail.firstElementChild as HTMLElement | null;
-    const step = card ? card.offsetWidth + 16 : 360;
+    const card = rail.firstElementChild;
+    const step = card instanceof HTMLElement ? card.offsetWidth + 16 : 360;
     // In RTL the rail flows right-to-left: "next" content sits to the left.
     const sign = getComputedStyle(rail).direction === "rtl" ? -dir : dir;
     rail.scrollBy({ left: sign * step, behavior: "smooth" });
@@ -53,7 +53,7 @@ export function TestimonialRail({ label, prevLabel, nextLabel }: TestimonialRail
       <div className="container-x mt-5 flex gap-2">
         <button
           type="button"
-          onClick={() => scroll(-1)}
+          onClick={() => { scroll(-1); }}
           aria-label={prevLabel}
           className="rounded-full border-[1.5px] border-[var(--color-line-2)] p-2.5 transition-colors hover:border-[var(--color-navy)] hover:bg-white"
         >
@@ -61,7 +61,7 @@ export function TestimonialRail({ label, prevLabel, nextLabel }: TestimonialRail
         </button>
         <button
           type="button"
-          onClick={() => scroll(1)}
+          onClick={() => { scroll(1); }}
           aria-label={nextLabel}
           className="rounded-full border-[1.5px] border-[var(--color-line-2)] p-2.5 transition-colors hover:border-[var(--color-navy)] hover:bg-white"
         >

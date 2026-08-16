@@ -3,21 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireRole } from "@/lib/portal/auth";
-import {
-  resolveFollowUpAt,
-  type FollowUpChoice,
-} from "@/lib/portal/business-time";
-import {
-  CALL_OUTCOME_POLICY,
-  allowsCallAgainDay,
-  isCallOutcomeId,
-  requiresCallAgainDay,
-  type CallOutcomeId,
-} from "@/lib/portal/call-outcomes";
+import { resolveFollowUpAt } from "@/lib/portal/business-time";
+import type { FollowUpChoice } from "@/lib/portal/business-time";
+import { CALL_OUTCOME_POLICY, allowsCallAgainDay, isCallOutcomeId, requiresCallAgainDay } from "@/lib/portal/call-outcomes";
+import type { CallOutcomeId } from "@/lib/portal/call-outcomes";
 import { serviceClient } from "@/lib/portal/server";
 
 function revalidateRequestViews(requestId: string) {
-  revalidatePath("/admin"); // home overview counts
+  revalidatePath("/admin"); // Home overview counts
   revalidatePath("/admin/requests");
   revalidatePath(`/admin/requests/${requestId}`);
 }
@@ -31,14 +24,14 @@ const NOTE_WRITE_ERROR =
   "We couldn’t confirm this note was saved. Your note is still here. Check the notes before trying again.";
 
 export async function addRequestNote(
-  _state: AddRequestNoteState,
+  _state: Readonly<AddRequestNoteState>,
   formData: FormData,
 ): Promise<AddRequestNoteState> {
   const session = await requireRole("staff");
 
   const requestId = formData.get("requestId");
   const rawNote = formData.get("note");
-  if (typeof rawNote !== "string") {
+  if (rawNote instanceof File || rawNote === null) {
     return { status: "error", message: NOTE_WRITE_ERROR };
   }
 
@@ -47,7 +40,11 @@ export async function addRequestNote(
     return { status: "error", message: NOTE_WRITE_ERROR };
   }
 
-  if (typeof requestId !== "string" || requestId.trim().length === 0) {
+  if (
+    requestId instanceof File ||
+    requestId === null ||
+    requestId.trim().length === 0
+  ) {
     return { status: "error", message: NOTE_WRITE_ERROR };
   }
 
@@ -69,12 +66,12 @@ export async function addRequestNote(
 // The outcome vocabulary, call-again-day rules, and implied statuses live in
 // @/lib/portal/call-outcomes; this action only validates against that policy.
 
-export type CallOutcomeInput = {
-  requestId: string;
-  outcome: CallOutcomeId;
-  note?: string;
-  followUp?: FollowUpChoice;
-};
+export interface CallOutcomeInput {
+  readonly requestId: string;
+  readonly outcome: CallOutcomeId;
+  readonly note?: string;
+  readonly followUp?: FollowUpChoice;
+}
 
 export type CallOutcomeResult =
   | {
@@ -113,7 +110,8 @@ function mapCallOutcomeRpcError(code: string | undefined): CallOutcomeResult {
 }
 
 export async function logCallOutcome(
-  input: CallOutcomeInput,
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+  input: Readonly<CallOutcomeInput>,
 ): Promise<CallOutcomeResult> {
   const session = await requireRole("staff", { unauthenticated: "throw" });
 
@@ -123,8 +121,9 @@ export async function logCallOutcome(
   const outcome = input.outcome;
 
   let note: string | null = null;
-  if (typeof input.note === "string") {
-    const trimmed = input.note.trim();
+  const parsedNote = z.string().safeParse(input.note);
+  if (parsedNote.success) {
+    const trimmed = parsedNote.data.trim();
     if (trimmed.length > 0) {
       if (trimmed.length > 2000) {
         return { ok: false, code: "invalid" };
@@ -159,18 +158,18 @@ export async function logCallOutcome(
   const requestId = requestIdResult.data;
 
   const db = serviceClient();
-  const { data, error } = await db.rpc("portal_log_call_outcome", {
+  const logged = await db.rpc("portal_log_call_outcome", {
     p_actor_email: session.email,
     p_request_id: requestId,
     p_outcome: outcome,
     p_note: note,
     p_follow_up_at: followUpAt,
   });
-  if (error) {
-    return mapCallOutcomeRpcError(error.code);
+  if (logged.error !== null) {
+    return mapCallOutcomeRpcError(logged.error.code);
   }
 
-  const eventId = uuidSchema.safeParse(data);
+  const eventId = uuidSchema.safeParse(logged.data);
   if (!eventId.success) {
     return { ok: false, code: "unavailable" };
   }
@@ -184,10 +183,10 @@ export async function logCallOutcome(
   };
 }
 
-export async function undoCallOutcome(input: {
+export async function undoCallOutcome(input: Readonly<{
   requestId: string;
   eventId: string;
-}): Promise<
+}>): Promise<
   | { ok: true; status: "new" | "contacted" | "scheduled" | "closed" }
   | {
       ok: false;
@@ -202,29 +201,26 @@ export async function undoCallOutcome(input: {
   }
 
   const { requestId, eventId } = parsedInput.data;
-  const { data, error } = await serviceClient().rpc(
-    "portal_undo_call_outcome",
-    {
-      p_actor_email: session.email,
-      p_request_id: requestId,
-      p_event_id: eventId,
-    },
-  );
+  const undone = await serviceClient().rpc("portal_undo_call_outcome", {
+    p_actor_email: session.email,
+    p_request_id: requestId,
+    p_event_id: eventId,
+  });
 
-  if (error) {
-    if (error.code === "P0002" || error.code === "22P02") {
+  if (undone.error !== null) {
+    if (undone.error.code === "P0002" || undone.error.code === "22P02") {
       return { ok: false, code: "not_found" };
     }
-    if (error.code === "22023") {
+    if (undone.error.code === "22023") {
       return { ok: false, code: "invalid" };
     }
-    if (error.code === "55000") {
+    if (undone.error.code === "55000") {
       return { ok: false, code: "stale" };
     }
     return { ok: false, code: "unavailable" };
   }
 
-  const result = undoCallOutcomeResultSchema.safeParse(data);
+  const result = undoCallOutcomeResultSchema.safeParse(undone.data);
   if (!result.success) {
     return { ok: false, code: "unavailable" };
   }

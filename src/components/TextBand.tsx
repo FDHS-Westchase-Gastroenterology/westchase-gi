@@ -1,14 +1,15 @@
-import { site, type Locale } from "@/lib/site";
+import { site } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import type { Dictionary } from "@/lib/i18n";
 import { MessageSquare, Phone } from "./icons";
 
-type TextBandProps = { locale: Locale; dict: Dictionary };
+interface TextBandProps { locale: Locale; dict: Dictionary }
 
 /**
  * The staffed text line, given a stage of its own (practice directive:
  * human attention is the differentiator; keep it prominent, never bot-like).
  */
-export function TextBand({ dict }: TextBandProps) {
+export function TextBand({ dict }: Readonly<TextBandProps>) {
   const t = dict.common.textBand;
   return (
     <section className="print-hide bg-[var(--color-navy)] text-[var(--color-on-dark)]">

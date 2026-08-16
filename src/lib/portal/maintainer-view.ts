@@ -1,17 +1,17 @@
 type MaintainerViewModel =
-  | { state: "not_configured" | "unavailable" }
+  | { readonly state: "not_configured" | "unavailable" }
   | {
-      state: "connected";
-      management:
+      readonly state: "connected";
+      readonly management:
         | "restrict_installation"
         | "permission_upgrade_required"
         | "ready";
-      maintainers: unknown[] | null;
-      invitations: unknown[] | null;
+      readonly maintainers: readonly unknown[] | null;
+      readonly invitations: readonly unknown[] | null;
     };
 
 export function getMaintainerViewState(
-  model: MaintainerViewModel,
+  model: Readonly<MaintainerViewModel>,
   isAdmin: boolean,
   hasActions: boolean,
 ) {

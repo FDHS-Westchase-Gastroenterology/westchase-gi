@@ -1,6 +1,40 @@
 import { execFileSync } from "node:child_process"
 import { readFileSync } from "node:fs"
 
+import { z } from "zod"
+
+import { asJsonObject, asJsonString, jsonSchema } from "../src/lib/json.ts"
+
+function providerErrorObject(payload) {
+  const parsed = jsonSchema.safeParse(payload)
+  if (!parsed.success) return null
+  return asJsonObject(parsed.data)
+}
+
+function providerErrorMessage(payload) {
+  const object = providerErrorObject(payload)
+  if (!object) return null
+  return (
+    asJsonString(object.message) ??
+    asJsonString(object.msg) ??
+    asJsonString(object.error_description) ??
+    asJsonString(object.error)
+  )
+}
+
+function providerErrorCode(payload) {
+  const object = providerErrorObject(payload)
+  return object ? asJsonString(object.code) : null
+}
+
+const staffProfileRowSchema = z.object({
+  user_id: z.string(),
+  role: z.string(),
+  active: z.boolean(),
+  onboarded_at: z.string(),
+  portal_tour_dismissed_at: z.string(),
+})
+
 const TABLES = [
   "audit_log",
   "notification_recipients",
@@ -290,10 +324,7 @@ async function readResponse(response, operation) {
   const payload = await parseResponse(response)
 
   if (!response.ok) {
-    const message =
-      payload && typeof payload === "object"
-        ? payload.message ?? payload.msg ?? payload.error_description ?? payload.error
-        : null
+    const message = providerErrorMessage(payload)
     throw new Error(`${operation} failed (${response.status})${message ? `: ${message}` : ""}`)
   }
 
@@ -399,7 +430,7 @@ async function assertSelectDeniedAsUser({
   const payload = await parseResponse(response)
 
   assert(!response.ok, `Authenticated read of ${table} unexpectedly succeeded`)
-  const code = payload && typeof payload === "object" ? payload.code : null
+  const code = providerErrorCode(payload)
   assert(
     code === "42501",
     `Authenticated read of ${table} failed unexpectedly (${response.status}${code ? `/${code}` : ""})`,
@@ -450,7 +481,7 @@ async function assertAtomicAuditRollback({ target, url, serviceKey }) {
       },
     )
     const payload = await parseResponse(response)
-    const code = payload && typeof payload === "object" ? payload.code : null
+    const code = providerErrorCode(payload)
     assert(
       !response.ok && code === "23514",
       `Forced audit failure was unexpected (${response.status}${code ? `/${code}` : ""})`,
@@ -1428,13 +1459,13 @@ async function main() {
     }),
   ])
 
+  const staffRow = staffProfileRowSchema.safeParse(staffRows[0])
   assert(
     staffRows.length === 1 &&
-      staffRows[0].user_id === user.id &&
-      staffRows[0].role === "admin" &&
-      staffRows[0].active === true &&
-      typeof staffRows[0].onboarded_at === "string" &&
-      typeof staffRows[0].portal_tour_dismissed_at === "string",
+      staffRow.success &&
+      staffRow.data.user_id === user.id &&
+      staffRow.data.role === "admin" &&
+      staffRow.data.active === true,
     "Seed admin staff profile is missing or incorrect",
   )
   assert(

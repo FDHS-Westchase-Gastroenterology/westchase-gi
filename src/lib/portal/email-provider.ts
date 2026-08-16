@@ -1,10 +1,8 @@
 import "server-only";
 
 import { Resend } from "resend";
-import {
-  createEmailSender,
-  type PortalEmailTransport,
-} from "@/lib/portal/email";
+import { createEmailSender } from "@/lib/portal/email";
+import type { PortalEmailTransport } from "@/lib/portal/email";
 
 const FALLBACK_SENDER = "onboarding@resend.dev";
 
@@ -12,16 +10,17 @@ const resendTransport: PortalEmailTransport = {
   provider: "resend",
   async send(message) {
     const apiKey = process.env.RESEND_API_KEY?.trim();
-    if (!apiKey) {
+    if (apiKey === undefined || apiKey === "") {
       return {
         reason: "unconfigured",
         providerStatusCode: null,
       };
     }
 
-    const { data, error } = await new Resend(apiKey).emails.send(
+    const from = process.env.RESEND_FROM?.trim();
+    const result = await new Resend(apiKey).emails.send(
       {
-        from: process.env.RESEND_FROM?.trim() || FALLBACK_SENDER,
+        from: from !== undefined && from !== "" ? from : FALLBACK_SENDER,
         to: message.to,
         subject: message.subject,
         text: message.text,
@@ -29,8 +28,8 @@ const resendTransport: PortalEmailTransport = {
       { idempotencyKey: message.idempotencyKey },
     );
 
-    if (error) {
-      const providerStatusCode = error.statusCode ?? null;
+    if (result.error !== null) {
+      const providerStatusCode = result.error.statusCode ?? null;
       return {
         reason:
           providerStatusCode === 429
@@ -42,8 +41,8 @@ const resendTransport: PortalEmailTransport = {
       };
     }
 
-    return data?.id
-      ? { providerMessageId: data.id }
+    return result.data.id !== ""
+      ? { providerMessageId: result.data.id }
       : { reason: "transport_failure", providerStatusCode: null };
   },
 };

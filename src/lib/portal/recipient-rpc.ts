@@ -7,10 +7,10 @@ export type RecipientRpcFailureCode =
 
 type RecipientRpcError = { code?: string } | null;
 
-type RecipientRpcResponse<Data> = {
+interface RecipientRpcResponse<Data> {
   data: Data | null;
   error: RecipientRpcError;
-};
+}
 
 export type RecipientMutationTransportResult<Data, CompatibilityResult> =
   | {
@@ -28,7 +28,7 @@ export type RecipientMutationTransportResult<Data, CompatibilityResult> =
  * path: permissions, validation, and infrastructure errors must fail closed.
  */
 export function isRecipientRpcMissing(
-  error: RecipientRpcError | undefined,
+  error: Readonly<RecipientRpcError | undefined>,
 ): boolean {
   return error?.code === "PGRST202";
 }

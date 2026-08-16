@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { SVGProps } from "react";
+import { z } from "zod";
 import { requireRole } from "@/lib/portal/auth";
 import {
   arrivedOutsideOfficeHours,
@@ -22,9 +23,9 @@ import { PortalTour } from "./portal-tour";
 import { PortalReleaseHomeAnnouncement } from "./portal-release-briefing";
 
 // The portal's front door. Staff land on their day, not on software:
-// a greeting, the one thing that may need attention (new appointment
-// requests), and the rest of the portal phrased as plain-language
-// tasks. Occasional tasks live here instead of holding permanent tabs.
+// A greeting, the one thing that may need attention (new appointment
+// Requests), and the rest of the portal phrased as plain-language
+// Tasks. Occasional tasks live here instead of holding permanent tabs.
 
 const NY_TIME = new Intl.DateTimeFormat("en-US", {
   hour: "2-digit",
@@ -50,12 +51,22 @@ function greetingFor(minutes: number): string {
   return "Good evening";
 }
 
-type Task = {
+interface Task {
   href: string;
   label: string;
   description: string;
-  icon: (props: SVGProps<SVGSVGElement>) => React.ReactNode;
-};
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+  icon: (props: Readonly<SVGProps<SVGSVGElement>>) => React.ReactNode;
+}
+
+const newestPreviewSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  created_at: z.string(),
+});
+const oldestPreviewSchema = z.object({
+  created_at: z.string(),
+});
 
 const TASKS: Task[] = [
   {
@@ -111,8 +122,8 @@ export default async function AdminHomePage() {
 
   const db = serviceClient();
   // A failed read must never present as an empty queue: "No new requests"
-  // and "the count could not load" are different truths, and conflating
-  // them recreates the silent-queue failure this portal exists to end.
+  // And "the count could not load" are different truths, and conflating
+  // Them recreates the silent-queue failure this portal exists to end.
   const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
   const [
     { data: newestRows, count: newCount, error: queueReadError },
@@ -143,21 +154,33 @@ export default async function AdminHomePage() {
       .eq("status", "failed")
       .gte("created_at", oneDayAgo),
   ]);
-  const newest = (newestRows ?? []) as Array<{
-    id: string;
-    name: string;
-    created_at: string;
-  }>;
-  const availableNewCount = availableQueueCount(newCount, queueReadError);
-  const oldest = (oldestRows ?? []) as Array<{ created_at: string }>;
+  const newestParsed = z.array(newestPreviewSchema).safeParse(newestRows ?? []);
+  if (!newestParsed.success) {
+    throw new Error("Queue preview read failed: invalid");
+  }
+  const newest = newestParsed.data;
+  const availableNewCount = availableQueueCount(
+    newCount,
+    Boolean(queueReadError),
+  );
+  const oldestParsed = z.array(oldestPreviewSchema).safeParse(oldestRows ?? []);
+  if (!oldestParsed.success) {
+    throw new Error("Queue preview read failed: invalid");
+  }
+  const oldest = oldestParsed.data;
+  const oldestPreview = oldest.at(0);
   const oldestWaiting =
-    availableNewCount && oldest[0] ? waitingSince(oldest[0].created_at, now) : null;
+    availableNewCount !== null &&
+    availableNewCount !== 0 &&
+    oldestPreview !== undefined
+      ? waitingSince(oldestPreview.created_at, now)
+      : null;
   // Zero recipients is a real, legal state worth flagging; a failed
-  // recipients read is not evidence of it, so the warning stays silent then.
+  // Recipients read is not evidence of it, so the warning stays silent then.
   const noActiveRecipients = !recipientsReadError && recipientCount === 0;
   // Delivery health is the other silent failure mode: the provider can start
-  // failing while every request still lands in the queue. Same discipline —
-  // a failed events read is not evidence of an outage, so it stays silent.
+  // Failing while every request still lands in the queue. Same discipline —
+  // A failed events read is not evidence of an outage, so it stays silent.
   const deliveryFailureCount =
     !notificationsReadError && (failedNotificationCount ?? 0) > 0
       ? failedNotificationCount
@@ -219,7 +242,7 @@ export default async function AdminHomePage() {
                 {headlineFor(availableNewCount)}
               </p>
 
-              {oldestWaiting ? (
+              {oldestWaiting !== null && oldestWaiting !== "" ? (
                 <p
                   data-testid="queue-overview-oldest"
                   className="mt-2 text-[0.92rem] text-[var(--color-body)]"
@@ -282,7 +305,7 @@ export default async function AdminHomePage() {
             </p>
           ) : null}
 
-          {deliveryFailureCount ? (
+          {deliveryFailureCount !== null && deliveryFailureCount !== 0 ? (
             <p
               data-testid="delivery-failure-warning"
               className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.92rem] leading-relaxed text-[var(--color-ink)]"

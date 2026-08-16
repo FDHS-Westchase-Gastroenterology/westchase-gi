@@ -1,13 +1,11 @@
 import Link from "next/link";
-import {
-  groupByPracticeDay,
-  type RecentWorkItem,
-} from "./recent-work-model";
+import { groupByPracticeDay } from "./recent-work-model";
+import type { RecentWorkItem } from "./recent-work-model";
 
 // The human lens over the durable audit record: plain-language, grouped by
-// practice-local day, linked to the work — never an action code. The model
+// Practice-local day, linked to the work — never an action code. The model
 // (vocabulary, grouping) lives in recent-work-model.ts so this file exports
-// components only.
+// Components only.
 
 const timeOnly = new Intl.DateTimeFormat("en-US", {
   hour: "numeric",
@@ -16,13 +14,14 @@ const timeOnly = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
 });
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 export function RecentWorkSection({
   items,
   now,
-}: {
+}: Readonly<{
   items: RecentWorkItem[];
   now: Date;
-}) {
+}>) {
   const groups = groupByPracticeDay(items, now);
   return (
     <section aria-labelledby="recent-work-heading" className="mt-8">
@@ -65,7 +64,7 @@ export function RecentWorkSection({
                       {item.actor}
                     </strong>{" "}
                     {item.sentence}
-                    {item.requestId ? (
+                    {item.requestId !== null && item.requestId !== "" ? (
                       <>
                         {" "}
                         <Link

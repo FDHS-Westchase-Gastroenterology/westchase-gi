@@ -1,10 +1,11 @@
-import { formatOfficeHours, site, type Locale } from "@/lib/site";
+import { formatOfficeHours, site } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import type { Dictionary } from "@/lib/i18n";
 
-type HoursTableProps = { locale: Locale; dict: Dictionary };
+interface HoursTableProps { locale: Locale; dict: Dictionary }
 
 /** Full weekly schedule, with the confirmed hours for each office. */
-export function HoursTable({ locale, dict }: HoursTableProps) {
+export function HoursTable({ locale, dict }: Readonly<HoursTableProps>) {
   const c = dict.common;
   return (
     <div className="card-lined overflow-hidden">

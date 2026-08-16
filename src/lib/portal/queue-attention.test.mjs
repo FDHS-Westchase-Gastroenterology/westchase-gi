@@ -3,7 +3,7 @@ import { register } from "node:module";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
 
-// queue-attention is server-only and uses extensionless relative imports.
+// Queue-attention is server-only and uses extensionless relative imports.
 // Node's test runner needs a resolve hook; Next's bundler supplies both at build time.
 register(
   `data:text/javascript,${encodeURIComponent(`
@@ -52,13 +52,13 @@ test("assigns each of the six attention buckets", () => {
       id: "new-1",
       status: "new",
       created_at: "2026-07-28T10:00:00.000Z",
-      follow_up_at: "2026-07-20T12:00:00.000Z", // ignored on non-contacted
+      follow_up_at: "2026-07-20T12:00:00.000Z", // Ignored on non-contacted
     }),
     row({
       id: "fu-1",
       status: "contacted",
       created_at: "2026-07-20T10:00:00.000Z",
-      follow_up_at: "2026-07-28T13:00:00.000Z", // due today
+      follow_up_at: "2026-07-28T13:00:00.000Z", // Due today
     }),
     row({
       id: "stale-1",
@@ -70,7 +70,7 @@ test("assigns each of the six attention buckets", () => {
       id: "up-1",
       status: "contacted",
       created_at: "2026-07-21T10:00:00.000Z",
-      follow_up_at: "2026-07-29T13:00:00.000Z", // tomorrow
+      follow_up_at: "2026-07-29T13:00:00.000Z", // Tomorrow
     }),
     row({
       id: "sched-1",
@@ -85,7 +85,7 @@ test("assigns each of the six attention buckets", () => {
   ];
   const activity = new Map([
     ["stale-1", "2026-07-24T15:00:00.000Z"], // Fri — before boundary
-    ["up-1", "2026-07-28T12:30:00.000Z"], // worked this morning
+    ["up-1", "2026-07-28T12:30:00.000Z"], // Worked this morning
   ]);
 
   const ordered = orderQueueRows(rows, activity, NOW);
@@ -237,7 +237,7 @@ test("orders a mixed list by bucket then within-bucket rules", () => {
       "stale-newer",
       "up-future-early",
       "up-future-late",
-      "up-silent-fresh", // null follow-up last among upcoming
+      "up-silent-fresh", // Null follow-up last among upcoming
       "sched-new",
       "sched-old",
       "closed-new",

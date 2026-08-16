@@ -1,8 +1,8 @@
 // The 11 patient testimonials published on the practice's homepage, verbatim
 // (including original wording); quotes are not translated or edited. The
-// practice may later choose light curation; until then, authenticity wins.
+// Practice may later choose light curation; until then, authenticity wins.
 
-export type Testimonial = { quote: string; name: string };
+export interface Testimonial { quote: string; name: string }
 
 export const testimonials: Testimonial[] = [
   {

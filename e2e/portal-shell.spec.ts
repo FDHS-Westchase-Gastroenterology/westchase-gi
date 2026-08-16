@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // VAL-ADMIN-002: the seed admin can log in and out through the UI.
 // VAL-ADMIN-014 (shell scope): no horizontal overflow at 390/1440, nav
-// and utility targets >= 44px, and the chrome uses the repo's design tokens
+// And utility targets >= 44px, and the chrome uses the repo's design tokens
 // (not ad-hoc hex).
 
 loadLocalEnv();
@@ -93,9 +94,9 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
       ).toBeLessThanOrEqual(0);
 
       // Every primary destination is a real 44px target AND fully on
-      // screen — reachability must never depend on unmarked horizontal
-      // scrolling (a destination that starts offscreen does not exist
-      // for staff who don't know to swipe a nav bar).
+      // Screen — reachability must never depend on unmarked horizontal
+      // Scrolling (a destination that starts offscreen does not exist
+      // For staff who don't know to swipe a nav bar).
       const navBoxes = await page
         .locator('nav[aria-label="Portal sections"] a')
         .evaluateAll((links) =>
@@ -128,7 +129,7 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
 
       const utilityCollision = await page.evaluate(() => {
         const website = Array.from(document.querySelectorAll("a")).find(
-          (link) => link.textContent?.trim() === "View website",
+          (link) => link.textContent.trim() === "View website",
         )?.getBoundingClientRect();
         const signOut = document
           .querySelector('button[type="submit"]')
@@ -136,7 +137,7 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
         const identity = document
           .querySelector('[data-testid="session-user"]')
           ?.parentElement?.getBoundingClientRect();
-        const overlaps = (a: DOMRect, b: DOMRect) =>
+        const overlaps = (a: Readonly<DOMRect>, b: Readonly<DOMRect>) =>
           a.left < b.right &&
           a.right > b.left &&
           a.top < b.bottom &&
@@ -166,7 +167,7 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
     }
 
     // Token discipline: the header carries the navy token, the active nav
-    // item the amber token — resolved from the stylesheet, not ad-hoc hex.
+    // Item the amber token — resolved from the stylesheet, not ad-hoc hex.
     await page.goto("/admin");
     const tokenCheck = await page.evaluate(() => {
       const probe = document.createElement("div");
@@ -272,8 +273,8 @@ test("VAL-ADMIN-016: the waiting count rides on the Requests nav item", async ({
     await page.goto("/admin/settings");
 
     // Parallel specs and the shared development project can add or remove
-    // new requests mid-run; accept the badge once it matches the SQL count
-    // at the same instant (and is gone only when that count is zero).
+    // New requests mid-run; accept the badge once it matches the SQL count
+    // At the same instant (and is gone only when that count is zero).
     await expect
       .poll(
         async () => {

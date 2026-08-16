@@ -8,11 +8,14 @@ import { PasswordForm } from "./password-form";
 
 export default async function SetPasswordPage() {
   const staff = await getVerifiedStaffAuthState();
-  if (!staff?.active) redirect("/admin/login?auth=invalid");
+  if (staff === null || !staff.active) redirect("/admin/login?auth=invalid");
 
   const flow = await readPasswordAuthFlow(staff.id);
-  const expectedFlow = staff.onboardedAt ? "recovery" : "invite";
-  if (!flow || flow !== expectedFlow) {
+  const expectedFlow =
+    staff.onboardedAt !== null && staff.onboardedAt !== ""
+      ? "recovery"
+      : "invite";
+  if (flow === null || flow !== expectedFlow) {
     redirect("/admin/login?auth=invalid");
   }
 

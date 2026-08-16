@@ -5,6 +5,7 @@ import type { User } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
+import { z } from "zod";
 import type { StaffRole } from "@/lib/portal/contracts";
 import {
   serverClient,
@@ -12,14 +13,14 @@ import {
   serviceRoleKey,
 } from "@/lib/portal/server";
 
-export type PortalSessionUser = {
+export interface PortalSessionUser {
   id: string;
   email: string;
   displayName: string;
   role: StaffRole;
   onboardedAt: string;
   portalTourDismissedAt: string | null;
-};
+}
 
 export type PortalStaffAuthState = Omit<PortalSessionUser, "onboardedAt"> & {
   active: boolean;
@@ -28,11 +29,11 @@ export type PortalStaffAuthState = Omit<PortalSessionUser, "onboardedAt"> & {
 
 export type PasswordAuthFlow = "invite" | "recovery";
 
-export type RequireRoleOptions = {
+export interface RequireRoleOptions {
   unauthenticated?: "redirect" | "throw";
-};
+}
 
-class PortalAuthorizationError extends Error {
+export class PortalAuthorizationError extends Error {
   readonly status: 401 | 403;
 
   constructor(status: 401 | 403) {
@@ -42,17 +43,7 @@ class PortalAuthorizationError extends Error {
   }
 }
 
-export function authorizationStatus(error: unknown): 401 | 403 | null {
-  if (typeof error !== "object" || error === null || !("status" in error)) {
-    return null;
-  }
-  const status = error.status;
-  return status === 401 || status === 403 ? status : null;
-}
-
-function isStaffRole(value: unknown): value is StaffRole {
-  return value === "admin" || value === "staff";
-}
+const staffRoleSchema = z.enum(["admin", "staff"]);
 
 const PASSWORD_FLOW_COOKIE = "wgi-portal-password-flow";
 const PASSWORD_FLOW_TTL_SECONDS = 10 * 60;
@@ -91,32 +82,38 @@ export async function resolveStaffAuthState(
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (profileError || !profile || !isStaffRole(profile.role)) return null;
+  if (profileError !== null || profile === null) return null;
+  const role = staffRoleSchema.safeParse(profile.role);
+  if (!role.success) return null;
 
+  const emailFromProfile = z.string().safeParse(profile.email);
+  const displayName = z.string().safeParse(profile.display_name);
+  const onboardedAt = z.string().safeParse(profile.onboarded_at);
+  const portalTourDismissedAt = z
+    .string()
+    .safeParse(profile.portal_tour_dismissed_at);
+
+  const userEmail = user.email?.trim();
   const email =
-    user.email?.trim() ||
-    (typeof profile.email === "string" ? profile.email.trim() : "");
-  const displayName =
-    typeof profile.display_name === "string"
-      ? profile.display_name.trim()
-      : "";
-  const onboardedAt =
-    typeof profile.onboarded_at === "string" ? profile.onboarded_at : null;
-  const portalTourDismissedAt =
-    typeof profile.portal_tour_dismissed_at === "string"
-      ? profile.portal_tour_dismissed_at
-      : null;
-
-  if (!email || !displayName) return null;
+    userEmail !== undefined && userEmail !== ""
+      ? userEmail
+      : emailFromProfile.success
+        ? emailFromProfile.data.trim()
+        : "";
+  if (email === "" || !displayName.success || displayName.data.trim().length === 0) {
+    return null;
+  }
 
   return {
     id: user.id,
     email,
-    displayName,
-    role: profile.role,
+    displayName: displayName.data.trim(),
+    role: role.data,
     active: profile.active === true,
-    onboardedAt,
-    portalTourDismissedAt,
+    onboardedAt: onboardedAt.success ? onboardedAt.data : null,
+    portalTourDismissedAt: portalTourDismissedAt.success
+      ? portalTourDismissedAt.data
+      : null,
   };
 }
 
@@ -128,7 +125,7 @@ export async function getVerifiedStaffAuthState(): Promise<PortalStaffAuthState 
       data: { user },
       error,
     } = await authClient.auth.getUser();
-    if (error || !user) return null;
+    if (error !== null || user === null) return null;
     return await resolveStaffAuthState(user);
   } catch {
     return null;
@@ -161,7 +158,7 @@ export async function readPasswordAuthFlow(
 ): Promise<PasswordAuthFlow | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(PASSWORD_FLOW_COOKIE)?.value;
-  if (!token) return null;
+  if (token === undefined || token === "") return null;
 
   const [version, flow, tokenUserId, expires, signature, ...extra] =
     token.split(".");
@@ -170,8 +167,8 @@ export async function readPasswordAuthFlow(
     version !== "v1" ||
     (flow !== "invite" && flow !== "recovery") ||
     tokenUserId !== userId ||
-    !expires ||
-    !signature
+    expires === "" ||
+    signature === ""
   ) {
     return null;
   }
@@ -204,7 +201,9 @@ export async function clearPasswordAuthFlow(): Promise<void> {
 export const getSessionUser = cache(
   async (): Promise<PortalSessionUser | null> => {
     const state = await getVerifiedStaffAuthState();
-    if (!state?.active || !state.onboardedAt) return null;
+    if (state === null) return null;
+    if (!state.active) return null;
+    if (state.onboardedAt === null || state.onboardedAt === "") return null;
 
     return {
       id: state.id,
@@ -223,11 +222,11 @@ export const getSessionUser = cache(
  */
 export async function requireRole(
   requiredRole: StaffRole,
-  options: RequireRoleOptions = {},
+  options: Readonly<RequireRoleOptions> = {},
 ): Promise<PortalSessionUser> {
   const sessionUser = await getSessionUser();
 
-  if (!sessionUser) {
+  if (sessionUser === null) {
     if (options.unauthenticated === "throw") {
       throw new PortalAuthorizationError(401);
     }

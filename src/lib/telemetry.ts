@@ -1,13 +1,13 @@
 // Aggregate, PHI-free patient-site event counters per the 2026-07-28
-// patient-site experience assessment (I6). Counts are directional, not
-// forensic — throttle drops and coarse device class mean totals are
-// approximate product signal, never a visitor journey or identity store.
+// Patient-site experience assessment (I6). Counts are directional, not
+// Forensic — throttle drops and coarse device class mean totals are
+// Approximate product signal, never a visitor journey or identity store.
 //
 // Client-importable contract only: no server-only imports, no secrets.
 // Route templates are explicit path strings derived from the static patient
-// routes, content-index slugs (preps / education / blog), and documents.ts
-// ids — listed here rather than imported so this module stays lean for the
-// client beacon and importable under node:test.
+// Routes, content-index slugs (preps / education / blog), and documents.ts
+// Ids — listed here rather than imported so this module stays lean for the
+// Client beacon and importable under node:test.
 
 import { z } from "zod";
 

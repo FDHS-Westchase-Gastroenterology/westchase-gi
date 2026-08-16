@@ -1,13 +1,10 @@
 import "server-only";
 
+import { z } from "zod";
 import type { PortalSessionUser } from "@/lib/portal/auth";
 import { serviceClient } from "@/lib/portal/server";
-import {
-  derivePortalReleaseState,
-  parsePortalReleaseId,
-  type PortalReleaseState,
-  type PortalReleaseStateRow,
-} from "./release-state";
+import { derivePortalReleaseState, parsePortalReleaseId, portalReleaseStateRowSchema } from "./release-state";
+import type { PortalReleaseState } from "./release-state";
 
 export type { PortalReleaseState };
 
@@ -19,44 +16,45 @@ type PortalReleaseMutation =
   | "portal_record_staff_release_dismiss";
 
 export async function getPortalReleaseState(
-  session: PortalSessionUser,
+  session: Readonly<PortalSessionUser>,
   releaseId: string,
   now: Date = new Date(),
 ): Promise<PortalReleaseState> {
   const parsedReleaseId = parsePortalReleaseId(releaseId);
-  if (!parsedReleaseId) return { status: "unavailable" };
+  if (parsedReleaseId === null) return { status: "unavailable" };
 
   try {
-    const { data, error } = await serviceClient()
+    const result = await serviceClient()
       .from("portal_release_states")
       .select("first_opened_at, acknowledged_at, hidden_at")
       .eq("staff_user_id", session.id)
       .eq("release_id", parsedReleaseId)
       .maybeSingle();
 
-    if (error) return { status: "unavailable" };
-    return derivePortalReleaseState(
-      (data as PortalReleaseStateRow | null) ?? null,
-      now,
-    );
+    if (result.error !== null) return { status: "unavailable" };
+    if (result.data === null) return derivePortalReleaseState(null, now);
+    const parsed = portalReleaseStateRowSchema.safeParse(result.data);
+    if (!parsed.success) return { status: "unavailable" };
+    return derivePortalReleaseState(parsed.data, now);
   } catch {
     return { status: "unavailable" };
   }
 }
 
 export async function mutatePortalReleaseState(
-  session: PortalSessionUser,
+  session: Readonly<PortalSessionUser>,
   mutation: PortalReleaseMutation,
   releaseId: string,
 ): Promise<boolean> {
-  const { data, error } = await serviceClient().rpc(mutation, {
+  const result = await serviceClient().rpc(mutation, {
     p_user_id: session.id,
     p_release_id: releaseId,
   });
-  if (error || typeof data !== "boolean") {
+  const accepted = z.boolean().safeParse(result.data);
+  if (result.error !== null || !accepted.success) {
     throw new Error(
-      `Portal release state mutation failed: ${error?.code ?? "invalid_result"}`,
+      `Portal release state mutation failed: ${result.error !== null ? result.error.code : "invalid_result"}`,
     );
   }
-  return data;
+  return accepted.data;
 }
