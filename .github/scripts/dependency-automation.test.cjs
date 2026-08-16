@@ -522,29 +522,27 @@ test("queue skips a failing older PR and merges the next green sibling", async (
         createWorkflowDispatch: async () => {},
       },
       checks: {
-        listForRef: async ({ ref }) => {
-          return {
-            data: {
-              check_runs:
-                ref === "main"
-                  ? [
-                      ...successfulChecks,
-                      {
-                        name: "production",
-                        status: "completed",
-                        conclusion: "success",
-                      },
-                    ]
-                  : ref === "failing"
-                    ? successfulChecks.map((check) =>
-                        check.name === "quality"
-                          ? { ...check, conclusion: "failure" }
-                          : check,
-                      )
-                    : successfulChecks,
-            },
-          };
-        },
+        listForRef: async ({ ref }) => ({
+          data: {
+            check_runs:
+              ref === "main"
+                ? [
+                    ...successfulChecks,
+                    {
+                      name: "production",
+                      status: "completed",
+                      conclusion: "success",
+                    },
+                  ]
+                : ref === "failing"
+                  ? successfulChecks.map((check) =>
+                      check.name === "quality"
+                        ? { ...check, conclusion: "failure" }
+                        : check,
+                    )
+                  : successfulChecks,
+          },
+        }),
       },
       issues: {
         addLabels: async () => {},
@@ -583,20 +581,18 @@ test("queue skips a failing older PR and merges the next green sibling", async (
         }),
         createCommitStatus: async (input) => attestations.push(input),
         getBranch: async () => ({ data: { commit: { sha: "main" } } }),
-        getCombinedStatusForRef: async ({ ref }) => {
-          return {
-            data: {
-              statuses:
-                ref === "failing"
-                  ? successfulStatuses.map((status) =>
-                      status.context === "Vercel"
-                        ? { ...status, state: "failure" }
-                        : status,
-                    )
-                  : successfulStatuses,
-            },
-          };
-        },
+        getCombinedStatusForRef: async ({ ref }) => ({
+          data: {
+            statuses:
+              ref === "failing"
+                ? successfulStatuses.map((status) =>
+                    status.context === "Vercel"
+                      ? { ...status, state: "failure" }
+                      : status,
+                  )
+                : successfulStatuses,
+          },
+        }),
       },
     },
   };

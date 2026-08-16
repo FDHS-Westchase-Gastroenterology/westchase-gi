@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 // Legacy URL map: now that the real domain is cut over, every indexed path from
-// the practice's previous site gets a permanent redirect (including the old
-// trailing-hyphen /about-us- URL and the hollow bio/template slugs).
+// The practice's previous site gets a permanent redirect (including the old
+// Trailing-hyphen /about-us- URL and the hollow bio/template slugs).
 const legacy: Array<[string, string]> = [
   ["/about-us-", "/en/about"],
   ["/about-us", "/en/about"],
@@ -11,7 +11,7 @@ const legacy: Array<[string, string]> = [
   ["/office-gallery", "/en/office-gallery"],
   ["/new-patients", "/en/new-patients"],
   // The old "Existing Patients" page (a "Coming Soon!" stub) has no successor:
-  // the portal lives in the site chrome and preps have their own section
+  // The portal lives in the site chrome and preps have their own section
   // (practice decision 2026-07-08). Old links land on procedure prep.
   ["/existing-patients", "/en/procedure-prep"],
   ["/procedure-preparation-instruction", "/en/procedure-prep"],
@@ -72,8 +72,8 @@ const legacyEducation: Array<[string, string]> = [
 
 const nextConfig: NextConfig = {
   // E2E build-dir isolation: a second dev server (broken-DB failure tests)
-  // boots with NEXT_DIST_DIR=.next-e2e so concurrent instances never share
-  // a Turbopack build directory.
+  // Boots with NEXT_DIST_DIR=.next-e2e so concurrent instances never share
+  // A Turbopack build directory.
   distDir: process.env.NEXT_DIST_DIR || ".next",
   outputFileTracingIncludes: {
     "/admin/review-flyers/assets/*": ["./private/review-flyers/**/*"],
@@ -85,7 +85,7 @@ const nextConfig: NextConfig = {
       // Accept-Language/cookie negotiation).
       ...legacy.map(([source, destination]) => ({ source, destination, permanent: true })),
       // The retired V1 existing-patients page (was live + in the sitemap
-      // until 2026-07-08); each locale lands on its own prep index.
+      // Until 2026-07-08); each locale lands on its own prep index.
       {
         source: "/:locale(en|es|vi|ko|ar)/existing-patients",
         destination: "/:locale/procedure-prep",

@@ -64,6 +64,14 @@
     "anti-slop/no-unsafe-dictionary-type": "error",
     "anti-slop/no-widen-then-assert": "error",
     "anti-slop/require-safety-comment-for-type-assertion": "error",
+    "capitalized-comments": [
+      "error",
+      "always",
+      {
+        "ignorePattern": "^(react-doctor-disable|oxlint-disable|eslint-disable|i5-waiver|ponytail:)"
+      }
+    ],
+    "import/consistent-type-specifier-style": "error",
     "import/no-anonymous-default-export": "warn",
     "jsx-a11y/alt-text": [
       "warn",
@@ -106,6 +114,7 @@
     "no-unused-expressions": "warn",
     "no-unused-vars": "warn",
     "react/display-name": "error",
+    "react/function-component-definition": "error",
     "react/exhaustive-deps": "warn",
     "react/jsx-key": "error",
     "react/jsx-no-comment-textnodes": "error",
