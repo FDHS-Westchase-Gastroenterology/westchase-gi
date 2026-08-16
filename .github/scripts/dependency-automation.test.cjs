@@ -1,6 +1,6 @@
 "use strict";
 
-/* eslint-disable @typescript-eslint/no-require-imports -- node:test and the CommonJS workflow module intentionally use require(). */
+/* oxlint-disable typescript/no-require-imports -- node:test and the CommonJS workflow module intentionally use require(). */
 
 const test = require("node:test");
 const assert = require("node:assert/strict");

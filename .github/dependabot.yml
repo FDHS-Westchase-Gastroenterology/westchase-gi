@@ -13,4 +13,7 @@ updates:
       next-tooling:
         patterns:
           - next
-          - eslint-config-next
+      oxlint-tooling:
+        patterns:
+          - oxlint
+          - "@oxlint/*"

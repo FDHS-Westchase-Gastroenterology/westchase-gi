@@ -13,7 +13,7 @@ These need no credentials and mirror the required CI checks. Run all of them:
 
 - [ ] `npm run test:unit`
 - [ ] `npm run test:e2e-guard`
-- [ ] `npm run lint`
+- [ ] `npx oxlint`
 - [ ] `npm run build`
 - [ ] `npm run doctor` — local React Doctor standard is 100; inspect the report, not just the status
 - [ ] `PLAYWRIGHT_PUBLIC_SMOKE=1 npx playwright test e2e/smoke.spec.ts --project=chromium`

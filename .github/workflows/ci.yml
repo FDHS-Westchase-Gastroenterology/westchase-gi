@@ -42,7 +42,7 @@ jobs:
         run: npm run test:unit
 
       - name: Lint
-        run: npm run lint
+        run: npx oxlint
 
       - name: Build
         env:
