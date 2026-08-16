@@ -1,4 +1,19 @@
+import { asJsonObject, asJsonString, jsonSchema } from "../src/lib/json.ts"
+
 const TARGETS = new Set(["local", "dev", "prod"])
+
+function providerErrorMessage(payload) {
+  const parsed = jsonSchema.safeParse(payload)
+  if (!parsed.success) return null
+  const object = asJsonObject(parsed.data)
+  if (!object) return null
+  return (
+    asJsonString(object.message) ??
+    asJsonString(object.msg) ??
+    asJsonString(object.error_description) ??
+    asJsonString(object.error)
+  )
+}
 
 function parseTarget(args) {
   const inline = args.find((arg) => arg.startsWith("--target="))
@@ -28,7 +43,7 @@ function requireEnv(...names) {
 function projectConfig(target) {
   if (target === "local") {
     // The disposable-stack target: refuses anything but a loopback Supabase,
-    // so it can never point at a hosted Development or Production project.
+    // So it can never point at a hosted Development or Production project.
     const url = requireEnv("NEXT_PUBLIC_SUPABASE_URL")
     if (!/^https?:\/\/(127\.0\.0\.1|localhost)([:/]|$)/.test(url)) {
       throw new Error(
@@ -82,10 +97,7 @@ async function readResponse(response, operation) {
   }
 
   if (!response.ok) {
-    const message =
-      payload && typeof payload === "object"
-        ? payload.message ?? payload.msg ?? payload.error_description ?? payload.error
-        : null
+    const message = providerErrorMessage(payload)
     throw new Error(`${operation} failed (${response.status})${message ? `: ${message}` : ""}`)
   }
 
@@ -138,15 +150,18 @@ async function ensureAdminUser({ url, serviceKey, email, password }) {
   const endpoint = existing
     ? `${url}/auth/v1/admin/users/${encodeURIComponent(existing.id)}`
     : `${url}/auth/v1/admin/users`
+  const body = {
+    password,
+    email_confirm: true,
+    app_metadata: appMetadata,
+  }
+  if (!existing) {
+    body.email = normalizedEmail
+  }
   const response = await fetch(endpoint, {
     method: existing ? "PUT" : "POST",
     headers: authHeaders(serviceKey),
-    body: JSON.stringify({
-      ...(!existing ? { email: normalizedEmail } : {}),
-      password,
-      email_confirm: true,
-      app_metadata: appMetadata,
-    }),
+    body: JSON.stringify(body),
   })
   const payload = await readResponse(
     response,
