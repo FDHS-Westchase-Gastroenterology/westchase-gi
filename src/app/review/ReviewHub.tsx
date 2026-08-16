@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
 import Image from "next/image";
-import { site, localeSet } from "@/lib/site";
+import { useState, useSyncExternalStore } from "react";
+
 import { ExternalLink, Facebook, Globe, MessageSquare, Phone, Star } from "@/components/icons";
+import { site, localeSet } from "@/lib/site";
 
 // The hub speaks every language the practice serves, on one URL, without a
 // Page reload. Printed master QRs stay valid while this encoded hub URL is
@@ -145,7 +146,7 @@ export function ReviewHub() {
     <main
       lang={lang}
       dir={lang === "ar" ? "rtl" : "ltr"}
-      className="review-rise mx-auto flex min-h-svh w-full max-w-[27rem] flex-col px-5 pb-10 pt-9"
+      className="review-rise mx-auto flex min-h-svh w-full max-w-[27rem] flex-col px-5 pt-9 pb-10"
     >
       {/* Identity: the FDHS lockup, then the practice name in its own type. */}
       <header className="flex flex-col items-center text-center">
@@ -157,7 +158,7 @@ export function ReviewHub() {
           priority
           className="h-16 w-auto"
         />
-        <p className="mt-3 font-[var(--font-display)] text-[1.35rem] leading-tight text-[var(--color-navy)]">
+        <p className="mt-3 text-[1.35rem] leading-tight font-[var(--font-display)] text-[var(--color-navy)]">
           Westchase Gastroenterology
         </p>
       </header>
@@ -224,7 +225,7 @@ export function ReviewHub() {
         </div>
       </div>
 
-      <p className="mt-9 text-center text-[0.82rem] font-extrabold uppercase tracking-[0.08em] text-[var(--color-muted)]">
+      <p className="mt-9 text-center text-[0.82rem] font-extrabold tracking-[0.08em] text-[var(--color-muted)] uppercase">
         {t.moreHeading}
       </p>
 
@@ -237,14 +238,14 @@ export function ReviewHub() {
         <a href={site.phone.href} className="btn btn-outline w-full bg-white">
           <Phone className="h-4.5 w-4.5 text-[var(--color-teal-ink)]" />
           {t.call}
-          <span dir="ltr" className="whitespace-nowrap font-normal text-[var(--color-muted)]">
+          <span dir="ltr" className="font-normal whitespace-nowrap text-[var(--color-muted)]">
             {site.phone.display}
           </span>
         </a>
         <a href={site.textLine.href} className="btn btn-outline w-full bg-white">
           <MessageSquare className="h-4.5 w-4.5 text-[var(--color-teal-ink)]" />
           {t.text}
-          <span dir="ltr" className="whitespace-nowrap font-normal text-[var(--color-muted)]">
+          <span dir="ltr" className="font-normal whitespace-nowrap text-[var(--color-muted)]">
             {site.textLine.display}
           </span>
         </a>

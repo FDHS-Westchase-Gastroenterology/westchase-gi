@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useCallback } from "react";
+
 import { BANNER_KEY } from "@/lib/site";
 import type { Locale } from "@/lib/site";
 import { routeTemplateFor, track } from "@/lib/telemetry-client";
+
 import { X } from "./icons";
 
 const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
@@ -27,7 +29,14 @@ interface NoticeBannerProps {
  * A pre-paint inline script in the layout sets `html.banner-dismissed` so
  * returning visitors never see a flash (see globals.css).
  */
-export function NoticeBanner({ locale, headline, body, cta, ctaHref, dismissLabel }: Readonly<NoticeBannerProps>) {
+export function NoticeBanner({
+  locale,
+  headline,
+  body,
+  cta,
+  ctaHref,
+  dismissLabel,
+}: Readonly<NoticeBannerProps>) {
   const pathname = usePathname();
   const dismiss = useCallback(() => {
     document.documentElement.classList.add("banner-dismissed");

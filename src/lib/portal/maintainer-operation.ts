@@ -9,16 +9,12 @@ export type MaintainerFailureCode =
   | "unconfirmed"
   | "unavailable";
 
-export type MaintainerMutationResult =
-  | { ok: true }
-  | { ok: false; code: MaintainerFailureCode };
+export type MaintainerMutationResult = { ok: true } | { ok: false; code: MaintainerFailureCode };
 
 export function getMaintainerManagementState(
   administration: "none" | "read" | "write",
 ): "permission_upgrade_required" | "ready" {
-  return administration === "write"
-    ? "ready"
-    : "permission_upgrade_required";
+  return administration === "write" ? "ready" : "permission_upgrade_required";
 }
 
 interface MaintainerState {
@@ -26,10 +22,7 @@ interface MaintainerState {
   readonly invitations: readonly { readonly userId: number; readonly invitationId: number }[];
 }
 
-export function invitationIsActive(
-  state: Readonly<MaintainerState>,
-  userId: number,
-): boolean {
+export function invitationIsActive(state: Readonly<MaintainerState>, userId: number): boolean {
   return (
     state.maintainers.some((maintainer) => maintainer.userId === userId) ||
     state.invitations.some((invitation) => invitation.userId === userId)
@@ -42,17 +35,12 @@ export function invitationIsCancelled(
   invitationId: number,
 ): boolean {
   return (
-    !state.invitations.some(
-      (invitation) => invitation.invitationId === invitationId,
-    ) &&
+    !state.invitations.some((invitation) => invitation.invitationId === invitationId) &&
     !state.maintainers.some((maintainer) => maintainer.userId === userId)
   );
 }
 
-export function maintainerIsRevoked(
-  state: Readonly<MaintainerState>,
-  userId: number,
-): boolean {
+export function maintainerIsRevoked(state: Readonly<MaintainerState>, userId: number): boolean {
   return !invitationIsActive(state, userId);
 }
 
@@ -100,11 +88,7 @@ export async function runMaintainerOperation<Audit, Snapshot>(options: {
   }
 
   try {
-    await options.finish(
-      audit,
-      outcome,
-      status === null ? {} : { provider_status: status },
-    );
+    await options.finish(audit, outcome, status === null ? {} : { provider_status: status });
   } catch {
     outcome = "unconfirmed";
   } finally {
@@ -117,9 +101,6 @@ export async function runMaintainerOperation<Audit, Snapshot>(options: {
   }
   return {
     ok: false,
-    code:
-      snapshot !== undefined
-        ? options.failureCode(providerError, snapshot)
-        : "unavailable",
+    code: snapshot !== undefined ? options.failureCode(providerError, snapshot) : "unavailable",
   };
 }

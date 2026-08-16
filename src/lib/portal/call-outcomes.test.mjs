@@ -89,11 +89,7 @@ test("the call-again-day helpers agree with the policy for every id", () => {
 });
 
 test("outcomesImplying partitions every id by implied status, in order", () => {
-  assert.deepEqual(outcomesImplying("contacted"), [
-    "reached_follow_up",
-    "voicemail",
-    "no_answer",
-  ]);
+  assert.deepEqual(outcomesImplying("contacted"), ["reached_follow_up", "voicemail", "no_answer"]);
   assert.deepEqual(outcomesImplying("scheduled"), ["booked"]);
   assert.deepEqual(outcomesImplying("closed"), [
     "scheduled_transferred",

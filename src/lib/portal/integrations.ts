@@ -2,13 +2,12 @@ import "server-only";
 
 import { createPrivateKey, sign as signBytes } from "node:crypto";
 import type { KeyObject } from "node:crypto";
+
 import { z } from "zod";
+
 import { asJsonArray, asJsonNumber, asJsonObject, asJsonString } from "@/lib/json";
 import type { Json } from "@/lib/json";
-import {
-  GitHubApiError,
-  readGitHubResponse,
-} from "@/lib/portal/github-response";
+import { GitHubApiError, readGitHubResponse } from "@/lib/portal/github-response";
 import { getMaintainerManagementState } from "@/lib/portal/maintainer-operation";
 
 const GITHUB_API = "https://api.github.com";
@@ -17,10 +16,12 @@ const GITHUB_ACCOUNT = "FDHS-Westchase-Gastroenterology";
 export const GITHUB_OWNER_ID = 305283597;
 const GITHUB_REPOSITORY_NAME = "westchase-gi";
 export const GITHUB_REPOSITORY_ID = 1289668601;
-export const CANONICAL_REPOSITORY =
-  `${GITHUB_ACCOUNT}/${GITHUB_REPOSITORY_NAME}`;
+export const CANONICAL_REPOSITORY = `${GITHUB_ACCOUNT}/${GITHUB_REPOSITORY_NAME}`;
 
-export interface GitHubMaintainer { userId: number; login: string }
+export interface GitHubMaintainer {
+  userId: number;
+  login: string;
+}
 export interface GitHubMaintainerInvitation {
   invitationId: number;
   userId: number;
@@ -28,10 +29,7 @@ export interface GitHubMaintainerInvitation {
 }
 export interface GitHubMaintainerSnapshot {
   readonly ownerLogin: string;
-  readonly management:
-    | "restrict_installation"
-    | "permission_upgrade_required"
-    | "ready";
+  readonly management: "restrict_installation" | "permission_upgrade_required" | "ready";
   readonly maintainers: readonly GitHubMaintainer[];
   readonly invitations: readonly GitHubMaintainerInvitation[] | null;
 }
@@ -73,10 +71,8 @@ function readGithubConfiguration(): {
   privateKey: KeyObject;
 } | null {
   const appId = process.env.PORTAL_GITHUB_APP_ID?.trim() ?? "";
-  const installationId =
-    process.env.PORTAL_GITHUB_APP_INSTALLATION_ID?.trim() ?? "";
-  const rawPrivateKey =
-    process.env.PORTAL_GITHUB_APP_PRIVATE_KEY?.trim() ?? "";
+  const installationId = process.env.PORTAL_GITHUB_APP_INSTALLATION_ID?.trim() ?? "";
+  const rawPrivateKey = process.env.PORTAL_GITHUB_APP_PRIVATE_KEY?.trim() ?? "";
   const values = [appId, installationId, rawPrivateKey];
 
   if (values.every((value) => value === "")) return null;
@@ -109,11 +105,9 @@ function createAppJwt(appId: string, privateKey: KeyObject): string {
     exp: now + 9 * 60,
     iss: appId,
   })}`;
-  const signature = signBytes(
-    "RSA-SHA256",
-    Buffer.from(unsigned),
-    privateKey,
-  ).toString("base64url");
+  const signature = signBytes("RSA-SHA256", Buffer.from(unsigned), privateKey).toString(
+    "base64url",
+  );
   return `${unsigned}.${signature}`;
 }
 
@@ -161,8 +155,7 @@ function parseInstallation(data: Json): GitHubInstallation {
     asJsonNumber(account.id) !== GITHUB_OWNER_ID ||
     asJsonString(account.type) !== "User" ||
     asJsonString(record.target_type) !== "User" ||
-    (record.repository_selection !== "all" &&
-      record.repository_selection !== "selected") ||
+    (record.repository_selection !== "all" && record.repository_selection !== "selected") ||
     record.suspended_at !== null ||
     permissions === null
   ) {
@@ -172,11 +165,7 @@ function parseInstallation(data: Json): GitHubInstallation {
   const administration = asJsonString(permissions.administration);
   return {
     administration:
-      administration === "write"
-        ? "write"
-        : administration === "read"
-          ? "read"
-          : "none",
+      administration === "write" ? "write" : administration === "read" ? "read" : "none",
   };
 }
 
@@ -208,10 +197,7 @@ async function githubPages(path: string, token: string): Promise<Json[]> {
   const rows: Json[] = [];
   for (let page = 1; ; page += 1) {
     const separator = path.includes("?") ? "&" : "?";
-    const { data } = await githubRequest(
-      `${path}${separator}per_page=100&page=${page}`,
-      token,
-    );
+    const { data } = await githubRequest(`${path}${separator}per_page=100&page=${page}`, token);
     const pageRows = asJsonArray(data);
     if (pageRows === null) {
       throw new GitHubApiError(null, "invalid_response");
@@ -279,10 +265,7 @@ async function readSnapshot(
       token,
     ),
     canReadInvitations
-      ? githubPages(
-          `/repos/${GITHUB_ACCOUNT}/${GITHUB_REPOSITORY_NAME}/invitations`,
-          token,
-        )
+      ? githubPages(`/repos/${GITHUB_ACCOUNT}/${GITHUB_REPOSITORY_NAME}/invitations`, token)
       : null,
   ]);
   return {
@@ -299,15 +282,11 @@ async function openConnection(mode: "read" | "write") {
 
   const appJwt = createAppJwt(configuration.appId, configuration.privateKey);
   const installation = parseInstallation(
-    (
-      await githubRequest(
-        `/app/installations/${configuration.installationId}`,
-        appJwt,
-      )
-    ).data,
+    (await githubRequest(`/app/installations/${configuration.installationId}`, appJwt)).data,
   );
-  const management: GitHubMaintainerSnapshot["management"] =
-    getMaintainerManagementState(installation.administration);
+  const management: GitHubMaintainerSnapshot["management"] = getMaintainerManagementState(
+    installation.administration,
+  );
   if (mode === "write" && management !== "ready") {
     throw new GitHubApiError(403);
   }
@@ -334,12 +313,7 @@ async function openConnection(mode: "read" | "write") {
     ).data,
   );
   verifyRepository(
-    (
-      await githubRequest(
-        `/repos/${GITHUB_ACCOUNT}/${GITHUB_REPOSITORY_NAME}`,
-        token,
-      )
-    ).data,
+    (await githubRequest(`/repos/${GITHUB_ACCOUNT}/${GITHUB_REPOSITORY_NAME}`, token)).data,
   );
 
   return {

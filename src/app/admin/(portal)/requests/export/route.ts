@@ -1,16 +1,11 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
+
 import { recordAudit } from "@/lib/portal/audit";
+import { PortalAuthorizationError, requireRole } from "@/lib/portal/auth";
 import { AUDIT_ACTIONS, REQUEST_STATUSES } from "@/lib/portal/contracts";
 import type { RequestStatus } from "@/lib/portal/contracts";
-import {
-  PortalAuthorizationError,
-  requireRole,
-} from "@/lib/portal/auth";
-import {
-  parseRequestSearch,
-  requestSearchFilter,
-} from "@/lib/portal/request-query";
+import { parseRequestSearch, requestSearchFilter } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
 
 const EXPORT_CHUNK_SIZE = 1000;
@@ -65,17 +60,13 @@ function isRequestStatus(value: string | null): value is RequestStatus {
 function csvField(raw: CsvRow[CsvColumn]): string {
   const value = raw ?? "";
   const safeValue = /^[=+\-@\t\r\n]/.test(value) ? `'${value}` : value;
-  return /[",\r\n]/.test(safeValue)
-    ? `"${safeValue.replaceAll('"', '""')}"`
-    : safeValue;
+  return /[",\r\n]/.test(safeValue) ? `"${safeValue.replaceAll('"', '""')}"` : safeValue;
 }
 
 function csvDocument(rows: readonly CsvRow[]): string {
   const lines = [
     CSV_HEADERS.join(","),
-    ...rows.map((row) =>
-      CSV_HEADERS.map((header) => csvField(row[header])).join(","),
-    ),
+    ...rows.map((row) => CSV_HEADERS.map((header) => csvField(row[header])).join(",")),
   ];
   return `${lines.join("\r\n")}\r\n`;
 }
@@ -85,12 +76,8 @@ export async function GET(request: NextRequest): Promise<Response> {
   try {
     session = await requireRole("staff", { unauthenticated: "throw" });
   } catch (error) {
-    const status =
-      error instanceof PortalAuthorizationError ? error.status : 401;
-    return new Response(
-      status === 401 ? "Unauthenticated" : "Forbidden",
-      { status },
-    );
+    const status = error instanceof PortalAuthorizationError ? error.status : 401;
+    return new Response(status === 401 ? "Unauthenticated" : "Forbidden", { status });
   }
 
   const hasStatus = request.nextUrl.searchParams.has("status");
@@ -100,15 +87,11 @@ export async function GET(request: NextRequest): Promise<Response> {
     // Set of patient contact rows than the user requested.
     return new Response("Invalid status filter", { status: 400 });
   }
-  const search = parseRequestSearch(
-    request.nextUrl.searchParams.get("q") ?? undefined,
-  );
+  const search = parseRequestSearch(request.nextUrl.searchParams.get("q") ?? undefined);
   const searchFilter = search ? requestSearchFilter(search) : "";
 
   const db = serviceClient();
-  let countQuery = db
-    .from("requests")
-    .select("id", { count: "exact", head: true });
+  let countQuery = db.from("requests").select("id", { count: "exact", head: true });
   if (isRequestStatus(requestedStatus)) {
     countQuery = countQuery.eq("status", requestedStatus);
   }
@@ -134,10 +117,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     if (searchFilter) query = query.or(searchFilter);
 
     const { data, error } = await query;
-    const expectedChunkSize = Math.min(
-      EXPORT_CHUNK_SIZE,
-      expectedCount - from,
-    );
+    const expectedChunkSize = Math.min(EXPORT_CHUNK_SIZE, expectedCount - from);
     if (error || data.length !== expectedChunkSize) {
       return new Response("Export unavailable", { status: 503 });
     }
@@ -148,9 +128,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     rows.push(...parsedRows.data);
   }
 
-  let finalCountQuery = db
-    .from("requests")
-    .select("id", { count: "exact", head: true });
+  let finalCountQuery = db.from("requests").select("id", { count: "exact", head: true });
   if (isRequestStatus(requestedStatus)) {
     finalCountQuery = finalCountQuery.eq("status", requestedStatus);
   }
@@ -175,9 +153,7 @@ export async function GET(request: NextRequest): Promise<Response> {
       entityId: null,
       detail: {
         row_count: rows.length,
-        status_filter: isRequestStatus(requestedStatus)
-          ? requestedStatus
-          : "all",
+        status_filter: isRequestStatus(requestedStatus) ? requestedStatus : "all",
         has_search: Boolean(search),
       },
     });

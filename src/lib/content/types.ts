@@ -4,7 +4,13 @@
 // Shipped machine-translated and still await post-launch verification by the
 // Clinic's native speakers).
 
-export interface Bi { en: string; es: string; vi: string; ko: string; ar: string }
+export interface Bi {
+  en: string;
+  es: string;
+  vi: string;
+  ko: string;
+  ar: string;
+}
 
 export interface ContentSection {
   /** Optional section heading; omit for a leading paragraph block. */

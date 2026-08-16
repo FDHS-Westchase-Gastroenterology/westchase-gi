@@ -163,7 +163,8 @@ export const ko: Dictionary = {
       copyright: "Westchase Gastroenterology. 모든 권리 보유.",
       networkLine: "Florida Digestive Health Specialists의 일원입니다.",
       reviewHeading: "진료는 어떠셨나요?",
-      reviewBody: "1분이면 충분한 후기가 다른 분들이 믿을 수 있는 소화기 진료를 찾는 데 도움이 됩니다.",
+      reviewBody:
+        "1분이면 충분한 후기가 다른 분들이 믿을 수 있는 소화기 진료를 찾는 데 도움이 됩니다.",
       reviewGoogle: "Google에 후기 남기기",
       reviewFacebook: "Facebook에 후기 남기기",
       reviewMore: "모든 후기 옵션 보기",
@@ -396,8 +397,7 @@ export const ko: Dictionary = {
     readPost: "글 읽기",
     backToBlog: "전체 글 보기",
     moreHeading: "이어서 읽기",
-    archiveNote:
-      "이전 글을 찾고 계십니까? 오피스로 문자나 전화를 주시면 기꺼이 도와드리겠습니다.",
+    archiveNote: "이전 글을 찾고 계십니까? 오피스로 문자나 전화를 주시면 기꺼이 도와드리겠습니다.",
   },
 
   education: {
@@ -422,7 +422,8 @@ export const ko: Dictionary = {
 
   contact: {
     title: "문의하기",
-    intro: "두 곳의 오피스, 하나의 팀. 전화나 문자를 주시거나 예약 신청을 보내 주시면, 그다음은 저희가 맡겠습니다.",
+    intro:
+      "두 곳의 오피스, 하나의 팀. 전화나 문자를 주시거나 예약 신청을 보내 주시면, 그다음은 저희가 맡겠습니다.",
     formHeading: "예약 신청 보내기",
     locationsHeading: "저희 오피스",
   },
@@ -444,7 +445,8 @@ export const ko: Dictionary = {
       timeAfternoon: "오후",
       timeAny: "언제든 가능",
       message: "이번 진료 예약을 요청하시는 이유 (간단히)",
-      messageHint: "선택 사항입니다. 의료 관련 세부 내용은 적지 마시기 바랍니다. 해당 내용은 전화로 여쭙겠습니다.",
+      messageHint:
+        "선택 사항입니다. 의료 관련 세부 내용은 적지 마시기 바랍니다. 해당 내용은 전화로 여쭙겠습니다.",
       submit: "요청 보내기",
       submitting: "전송 중…",
       errName: "성함을 알려 주십시오.",
@@ -457,15 +459,13 @@ export const ko: Dictionary = {
       failBody:
         "요청이 저장되지 않았습니다. 오피스로 전화하시거나 문자를 보내 주시면 직접 도와드리겠습니다.",
       unknownHeading: "요청이 전송되었는지 확실하지 않습니다",
-      unknownBody:
-        "다시 제출하시기 전에 전화나 문자로 확인해 주시기 바랍니다.",
+      unknownBody: "다시 제출하시기 전에 전화나 문자로 확인해 주시기 바랍니다.",
     },
   },
 
   requestReceipt: {
     successHeading: "요청이 접수되었습니다",
-    successBody:
-      "감사합니다. 예약 담당자가 연락드려 가능한 예약 시간을 확인해 드리겠습니다.",
+    successBody: "감사합니다. 예약 담당자가 연락드려 가능한 예약 시간을 확인해 드리겠습니다.",
     failureHeading: "요청을 보내지 못했습니다",
     failureBody:
       "요청이 저장되지 않았습니다. 도움을 받으시려면 오피스로 전화하거나 문자를 보내 주십시오.",

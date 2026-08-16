@@ -1,11 +1,9 @@
 import { expect, test } from "@playwright/test";
+
 import { createEmailSender } from "../src/lib/portal/email";
 import type { PortalEmailMessage, PortalEmailTransport } from "../src/lib/portal/email";
 import { createAppointmentNotificationEvents } from "../src/lib/portal/intake-notification";
-import {
-  sendRecipientConfirmation,
-  sendStaffSetupLink,
-} from "../src/lib/portal/management-email";
+import { sendRecipientConfirmation, sendStaffSetupLink } from "../src/lib/portal/management-email";
 
 const MESSAGE: PortalEmailMessage = {
   purpose: "recipient_confirmation",
@@ -15,9 +13,7 @@ const MESSAGE: PortalEmailMessage = {
   idempotencyKey: "private-idempotency-key",
 };
 
-function fakeTransport(
-  send: PortalEmailTransport["send"],
-): PortalEmailTransport {
+function fakeTransport(send: PortalEmailTransport["send"]): PortalEmailTransport {
   return { provider: "recording-fake", send };
 }
 
@@ -30,7 +26,7 @@ test.beforeEach(({}, testInfo) => {
 
 test("normalizes provider acceptance, rejection, rate limits, and missing configuration", async () => {
   const accepted = await createEmailSender(
-      fakeTransport(async () => Promise.resolve({ providerMessageId: "message-123" })),
+    fakeTransport(async () => Promise.resolve({ providerMessageId: "message-123" })),
   )(MESSAGE);
   expect(accepted).toEqual({
     status: "accepted",
@@ -227,10 +223,6 @@ test("preserves management success and fallback behavior behind the same sender"
   const fallback = await sendStaffSetupLink(failedSender, setup);
   expect(fallback).toMatchObject({ ok: true, delivery: "failed" });
   if (fallback.delivery !== "failed") throw new Error("Expected fallback link");
-  expect(fallback.fallbackSetupUrl).toContain(
-    "#token_hash=one-time-token-hash&type=invite",
-  );
-  expect(messages[1]?.idempotencyKey).toMatch(
-    /^staff-setup\/invite\/user-1\/[a-f0-9]{32}$/,
-  );
+  expect(fallback.fallbackSetupUrl).toContain("#token_hash=one-time-token-hash&type=invite");
+  expect(messages[1]?.idempotencyKey).toMatch(/^staff-setup\/invite\/user-1\/[a-f0-9]{32}$/);
 });

@@ -22,16 +22,17 @@ Read in this order, as the task requires:
 
 Commits on a worktree are allowed. Use them while you work.
 
-The standing lint gates are:
+The standing gates are:
 
 - `npx oxlint` reports zero warnings and zero errors under the repository's configured rules. Do not skip rules or narrow the scan to make the gate pass.
+- `npx oxfmt --check` reports that every matched file already matches `.oxfmtrc.json`. Do not skip files or narrow the scan to make the gate pass. If it fails, run `npx oxfmt` and check again.
 - `npx react-doctor@latest --verbose` reports a score of 100.
 
-An extra linter you are asked to run, including a single oxlint rule, is added to the loop. It does not replace the standing gates. Example: you are given a rule, you fix its findings, and that rule goes quiet. You still run full `npx oxlint` and React Doctor. Passing the extra check is not a pass of the loop.
+An extra linter you are asked to run, including a single oxlint rule, is added to the loop. It does not replace the standing gates. Example: you are given a rule, you fix its findings, and that rule goes quiet. You still run full `npx oxlint`, `npx oxfmt --check`, and React Doctor. Passing the extra check is not a pass of the loop.
 
-Order: run the extra check, fix what it finds, then run both standing gates. If a standing gate fails, fix those findings and rerun every check that already passed, including the extra one. A later fix can reopen an earlier lint.
+Order: run the extra check, fix what it finds, then run the standing gates. If a standing gate fails, fix those findings and rerun every check that already passed, including the extra one. A later fix can reopen an earlier lint or undo formatting.
 
-Do not finish the turn until every check in the loop is clean: the extra linters you were given, plus `npx oxlint` with zero warnings and zero errors, plus React Doctor at 100. The same bar applies before you open a pull request or merge a worktree into a branch. A warning, an error, or a score below 100 is a failed gate.
+Do not finish the turn until every check in the loop is clean: the extra linters you were given, plus `npx oxlint` with zero warnings and zero errors, plus `npx oxfmt --check` with no drift, plus React Doctor at 100. The same bar applies before you open a pull request or merge a worktree into a branch. Formatting drift, a warning, an error, or a score below 100 is a failed gate.
 
 Local React Doctor trap: a local score is not comparable to CI. Local scans also read untracked build output (`.next/`, `.next-e2e/`). Third-party sourcemaps trip the artifact-secret rule. Hits under build directories or `node_modules` are noise. Never "fix" them by editing generated files. The 100 that counts is a clean checkout of the work you are about to share.
 
@@ -79,7 +80,7 @@ Distinguish code merged, code deployed, and operational. Before you finish, name
 
 Commands, credential split, honesty rules, and the change-type → checks map live in [`CONTRIBUTING.md`](CONTRIBUTING.md#verification). [`ARCHITECTURE.md`](ARCHITECTURE.md#where-logic-lives) owns the change-type → files map.
 
-Lint gates for pull requests and worktree merges live in [Contribution loop](#contribution-loop).
+Lint and format gates for pull requests and worktree merges live in [Contribution loop](#contribution-loop).
 
 ## Agent skills
 

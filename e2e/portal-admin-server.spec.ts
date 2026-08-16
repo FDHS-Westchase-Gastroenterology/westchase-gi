@@ -1,8 +1,10 @@
 import { randomUUID } from "node:crypto";
+
 import { expect, test } from "@playwright/test";
 import type { BrowserContext, Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+
 import { asJsonString, jsonObjectSchema } from "../src/lib/json";
 import type { JsonObject } from "../src/lib/json";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
@@ -48,8 +50,7 @@ const SUPABASE_KEY = requiredEnv(
 );
 const SEED_ADMIN_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_ADMIN_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
-const GENERIC_LOGIN_ERROR =
-  "Unable to sign in. Check your credentials and try again.";
+const GENERIC_LOGIN_ERROR = "Unable to sign in. Check your credentials and try again.";
 const CSV_HEADER = [
   "id",
   "created_at",
@@ -118,11 +119,7 @@ function requireDecoded<T>(parsed: SafeParseResult<T>, message: string): T {
   return parsed.data;
 }
 
-async function mutate(
-  page: Page,
-  operation: string,
-  input: JsonObject,
-): Promise<MutationResponse> {
+async function mutate(page: Page, operation: string, input: JsonObject): Promise<MutationResponse> {
   const raw = await page.evaluate(async (body) => {
     const response = await fetch("/admin/settings/mutations", {
       method: "POST",
@@ -148,9 +145,7 @@ function fallbackSetupUrl(
   expect(response.status).toBe(expectedStatus);
   expect(response.body.ok).toBe(true);
   expect(response.body.delivery).toBe("failed");
-  expect(
-    Object.prototype.hasOwnProperty.call(response.body, "tempPassword"),
-  ).toBe(false);
+  expect(Object.prototype.hasOwnProperty.call(response.body, "tempPassword")).toBe(false);
   const setupUrl = response.body.fallbackSetupUrl;
   expect(z.string().safeParse(setupUrl).success).toBe(true);
   const setupUrlString = asJsonString(setupUrl);
@@ -168,11 +163,9 @@ function fallbackSetupUrl(
 
 function expectDenied(result: Readonly<RestResult>): void {
   expect(result.error).not.toBeNull();
-  expect(
-    result.error?.code === "42501" ||
-      result.status === 401 ||
-      result.status === 403,
-  ).toBe(true);
+  expect(result.error?.code === "42501" || result.status === 401 || result.status === 403).toBe(
+    true,
+  );
 }
 
 function parseCsv(document: string): string[][] {
@@ -248,10 +241,7 @@ test.describe("portal management server boundaries", () => {
   test.describe.configure({ mode: "serial" });
 
   test.beforeEach(({}, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "chromium",
-      "Credential and role checks run once.",
-    );
+    test.skip(testInfo.project.name !== "chromium", "Credential and role checks run once.");
   });
 
   test.afterAll(async () => {
@@ -261,10 +251,7 @@ test.describe("portal management server boundaries", () => {
     ]);
 
     const [profiles, recipients] = await Promise.all([
-      db
-        .from("staff_profiles")
-        .select("id, user_id")
-        .in("email", [staffEmail, targetEmail]),
+      db.from("staff_profiles").select("id, user_id").in("email", [staffEmail, targetEmail]),
       db
         .from("notification_recipients")
         .select("id")
@@ -315,14 +302,9 @@ test.describe("portal management server boundaries", () => {
         .in("entity_id", [...auditEntityIds]);
     }
 
-    await db
-      .from("staff_profiles")
-      .delete()
-      .in("email", [staffEmail, targetEmail]);
+    await db.from("staff_profiles").delete().in("email", [staffEmail, targetEmail]);
     for (const userId of new Set(
-      [staffUserId, targetUserId].filter(
-        (value): value is string => value !== null,
-      ),
+      [staffUserId, targetUserId].filter((value): value is string => value !== null),
     )) {
       await db.auth.admin.deleteUser(userId);
     }
@@ -363,12 +345,8 @@ test.describe("portal management server boundaries", () => {
     );
     expect(profileRows).toHaveLength(2);
 
-    const staffProfile = profileRows.find(
-      (profile) => profile.email === staffEmail,
-    );
-    const targetProfile = profileRows.find(
-      (profile) => profile.email === targetEmail,
-    );
+    const staffProfile = profileRows.find((profile) => profile.email === staffEmail);
+    const targetProfile = profileRows.find((profile) => profile.email === targetEmail);
     if (staffProfile === undefined || targetProfile === undefined) {
       throw new Error("Throwaway staff profiles were not created");
     }
@@ -382,11 +360,9 @@ test.describe("portal management server boundaries", () => {
     expect(staffProfile.onboarded_at).toBeNull();
     expect(targetProfile.onboarded_at).toBeNull();
 
-    const renewedTargetInvite = await mutate(
-      adminPage,
-      "staff.invite.resend",
-      { id: targetProfile.user_id },
-    );
+    const renewedTargetInvite = await mutate(adminPage, "staff.invite.resend", {
+      id: targetProfile.user_id,
+    });
     const renewedTargetSetupUrl = fallbackSetupUrl(renewedTargetInvite, 200);
     expect(renewedTargetSetupUrl !== targetSetupUrl).toBe(true);
     const { data: stillPendingTarget, error: pendingTargetError } = await db
@@ -401,28 +377,20 @@ test.describe("portal management server boundaries", () => {
     // Simulate an invite link that verified the address but was abandoned
     // Before password setup. Reissuing must use recovery while preserving the
     // Pending profile and its assigned role.
-    const confirmedTarget = await db.auth.admin.updateUserById(
-      targetProfile.user_id,
-      { email_confirm: true },
-    );
+    const confirmedTarget = await db.auth.admin.updateUserById(targetProfile.user_id, {
+      email_confirm: true,
+    });
     expect(confirmedTarget.error).toBeNull();
-    const recoveredTargetInvite = await mutate(
-      adminPage,
-      "staff.invite.resend",
-      { id: targetProfile.user_id },
-    );
-    const recoverySetupUrl = fallbackSetupUrl(
-      recoveredTargetInvite,
-      200,
-      "recovery",
-    );
+    const recoveredTargetInvite = await mutate(adminPage, "staff.invite.resend", {
+      id: targetProfile.user_id,
+    });
+    const recoverySetupUrl = fallbackSetupUrl(recoveredTargetInvite, 200, "recovery");
     expect(recoverySetupUrl !== renewedTargetSetupUrl).toBe(true);
-    const { data: recoveryPendingTarget, error: recoveryPendingError } =
-      await db
-        .from("staff_profiles")
-        .select("role, onboarded_at")
-        .eq("user_id", targetProfile.user_id)
-        .single();
+    const { data: recoveryPendingTarget, error: recoveryPendingError } = await db
+      .from("staff_profiles")
+      .select("role, onboarded_at")
+      .eq("user_id", targetProfile.user_id)
+      .single();
     expect(recoveryPendingError).toBeNull();
     expect(recoveryPendingTarget?.role).toBe("staff");
     expect(recoveryPendingTarget?.onboarded_at).toBeNull();
@@ -433,12 +401,8 @@ test.describe("portal management server boundaries", () => {
     const staffPassword = `Wgi!${runId}Staff7`;
     const targetPassword = `Wgi!${runId}Target7`;
     const onboardedAt = new Date().toISOString();
-    const [
-      staffAuthUpdate,
-      targetAuthUpdate,
-      staffProfileUpdate,
-      targetProfileUpdate,
-    ] = await Promise.all([
+    const [staffAuthUpdate, targetAuthUpdate, staffProfileUpdate, targetProfileUpdate] =
+      await Promise.all([
         db.auth.admin.updateUserById(staffProfile.user_id, {
           password: staffPassword,
           email_confirm: true,
@@ -455,14 +419,15 @@ test.describe("portal management server boundaries", () => {
           .from("staff_profiles")
           .update({ onboarded_at: onboardedAt })
           .eq("user_id", targetProfile.user_id),
-    ]);
+      ]);
     expect(staffAuthUpdate.error).toBeNull();
     expect(targetAuthUpdate.error).toBeNull();
     expect(staffProfileUpdate.error).toBeNull();
     expect(targetProfileUpdate.error).toBeNull();
 
-    const { data: targetAuth, error: targetAuthError } =
-      await db.auth.admin.getUserById(targetProfile.user_id);
+    const { data: targetAuth, error: targetAuthError } = await db.auth.admin.getUserById(
+      targetProfile.user_id,
+    );
     expect(targetAuthError).toBeNull();
     expect(targetAuth.user?.app_metadata.role).toBe("staff");
 
@@ -493,11 +458,10 @@ test.describe("portal management server boundaries", () => {
     });
     expect(deniedResend.status).toBe(403);
 
-    const { count: maintainerAuditsBefore, error: maintainerAuditReadError } =
-      await db
-        .from("audit_log")
-        .select("id", { count: "exact", head: true })
-        .like("action", "maintainers.%");
+    const { count: maintainerAuditsBefore, error: maintainerAuditReadError } = await db
+      .from("audit_log")
+      .select("id", { count: "exact", head: true })
+      .like("action", "maintainers.%");
     expect(maintainerAuditReadError).toBeNull();
 
     for (const [operation, input] of [
@@ -538,11 +502,10 @@ test.describe("portal management server boundaries", () => {
     });
     expect(ownerRevoke.status).toBe(400);
 
-    const { count: maintainerAuditsAfter, error: maintainerAuditAfterError } =
-      await db
-        .from("audit_log")
-        .select("id", { count: "exact", head: true })
-        .like("action", "maintainers.%");
+    const { count: maintainerAuditsAfter, error: maintainerAuditAfterError } = await db
+      .from("audit_log")
+      .select("id", { count: "exact", head: true })
+      .like("action", "maintainers.%");
     expect(maintainerAuditAfterError).toBeNull();
     expect(maintainerAuditsAfter).toBe(maintainerAuditsBefore);
 
@@ -646,11 +609,7 @@ test.describe("portal management server boundaries", () => {
     expect(promoted.body.ok).toBe(true);
 
     const [promotedProfile, promotedAuth] = await Promise.all([
-      db
-        .from("staff_profiles")
-        .select("role")
-        .eq("user_id", targetProfile.user_id)
-        .single(),
+      db.from("staff_profiles").select("role").eq("user_id", targetProfile.user_id).single(),
       db.auth.admin.getUserById(targetProfile.user_id),
     ]);
     expect(promotedProfile.error).toBeNull();
@@ -672,11 +631,7 @@ test.describe("portal management server boundaries", () => {
     expect(deactivated.body.ok).toBe(true);
 
     const [deactivatedProfile, deactivatedAuth] = await Promise.all([
-      db
-        .from("staff_profiles")
-        .select("active")
-        .eq("user_id", targetProfile.user_id)
-        .single(),
+      db.from("staff_profiles").select("active").eq("user_id", targetProfile.user_id).single(),
       db.auth.admin.getUserById(targetProfile.user_id),
     ]);
     expect(deactivatedProfile.error).toBeNull();
@@ -692,9 +647,7 @@ test.describe("portal management server boundaries", () => {
       await lockedPage.getByLabel("Password").fill(targetPassword);
       await lockedPage.getByRole("button", { name: "Sign in" }).click();
       await expect(lockedPage).toHaveURL(/\/admin\/login\/?$/);
-      await expect(lockedPage.locator("#login-error")).toHaveText(
-        GENERIC_LOGIN_ERROR,
-      );
+      await expect(lockedPage.locator("#login-error")).toHaveText(GENERIC_LOGIN_ERROR);
     } finally {
       await lockedContext.close();
     }
@@ -728,9 +681,7 @@ test.describe("portal management server boundaries", () => {
 
     const { data: rows, error } = await db
       .from("audit_log")
-      .select(
-        "actor_email, action, entity, entity_id, source, correlation_id, at, detail",
-      )
+      .select("actor_email, action, entity, entity_id, source, correlation_id, at, detail")
       .in("entity_id", [staffProfileId, targetProfileId, recipientId]);
     expect(error).toBeNull();
     const auditRows = requireDecoded(
@@ -738,11 +689,7 @@ test.describe("portal management server boundaries", () => {
       "Management audit rows could not be decoded",
     );
 
-    function assertAudit(
-      action: string,
-      entityId: string,
-      actorEmail: string,
-    ): void {
+    function assertAudit(action: string, entityId: string, actorEmail: string): void {
       const row = auditRows.find(
         (candidate) =>
           candidate.action === action &&
@@ -751,9 +698,7 @@ test.describe("portal management server boundaries", () => {
       );
       expect(row).toBeTruthy();
       expect(row?.entity).toBe(
-        action.startsWith("staff.")
-          ? "staff_profiles"
-          : "notification_recipients",
+        action.startsWith("staff.") ? "staff_profiles" : "notification_recipients",
       );
       expect(Number.isNaN(Date.parse(row?.at ?? ""))).toBe(false);
       expect(row?.source).toBe("staff");
@@ -765,10 +710,7 @@ test.describe("portal management server boundaries", () => {
     assertAudit("staff.invite", staffProfileId, SEED_ADMIN_EMAIL);
     assertAudit("staff.invite", targetProfileId, SEED_ADMIN_EMAIL);
     const resendAudits = auditRows.filter((candidate) => {
-      if (
-        candidate.action !== "staff.invite" ||
-        candidate.entity_id !== targetProfileId
-      ) {
+      if (candidate.action !== "staff.invite" || candidate.entity_id !== targetProfileId) {
         return false;
       }
       const detail = inviteDetailSchema.safeParse(candidate.detail);
@@ -887,11 +829,7 @@ test.describe("portal management server boundaries", () => {
       const candidate = await fetchCsv(staffPage, "contacted");
       const after = await sqlCount("contacted");
       const candidateRows = parseCsv(candidate.text);
-      if (
-        before === after &&
-        candidate.status === 200 &&
-        candidateRows.length - 1 === after
-      ) {
+      if (before === after && candidate.status === 200 && candidateRows.length - 1 === after) {
         csv = candidate;
         parsed = candidateRows;
         expectedCount = after;
@@ -927,9 +865,7 @@ test.describe("portal management server boundaries", () => {
       expect(plainRow?.[column]).toBe(value);
     }
     for (const [index, formulaRow] of formulaRows.entries()) {
-      const exported = parsed.find(
-        (row) => row[0] === insertedRows[index + 2]?.id,
-      );
+      const exported = parsed.find((row) => row[0] === insertedRows[index + 2]?.id);
       for (const [column, value] of [
         [3, formulaRow.name],
         [4, formulaRow.phone],
@@ -964,25 +900,19 @@ test.describe("portal management server boundaries", () => {
       status_filter: "contacted",
       has_search: false,
     });
-    expect(JSON.stringify(exportAudits?.[0].detail)).not.toContain(
-      "portal-export-",
-    );
+    expect(JSON.stringify(exportAudits?.[0].detail)).not.toContain("portal-export-");
 
     const invalidFilter = await fetchCsv(staffPage, "not-a-status");
     expect(invalidFilter.status).toBe(400);
 
-    const anonymous = await request.get(
-      "/admin/requests/export?status=contacted",
-      { maxRedirects: 0 },
-    );
+    const anonymous = await request.get("/admin/requests/export?status=contacted", {
+      maxRedirects: 0,
+    });
     expect([307, 401]).toContain(anonymous.status());
     if (anonymous.status() === 307) {
-      expect(
-        new URL(
-          anonymous.headers().location,
-          "http://localhost:3100",
-        ).pathname,
-      ).toBe("/admin/login");
+      expect(new URL(anonymous.headers().location, "http://localhost:3100").pathname).toBe(
+        "/admin/login",
+      );
     }
 
     const { count: exportAuditTotal, error: exportAuditCountError } = await db
@@ -1067,12 +997,11 @@ test.describe("portal management server boundaries", () => {
       // Storage vocabulary never reaches the human view.
       await expect(recent).not.toContainText("request.status_change");
       await expect(recent).not.toContainText("requests.export");
-      const statusEntry = recent
-        .locator("li", { hasText: "marked a request Scheduled" })
-        .first();
-      await expect(
-        statusEntry.getByRole("link", { name: "open request" }),
-      ).toHaveAttribute("href", `/admin/requests/${requestId}`);
+      const statusEntry = recent.locator("li", { hasText: "marked a request Scheduled" }).first();
+      await expect(statusEntry.getByRole("link", { name: "open request" })).toHaveAttribute(
+        "href",
+        `/admin/requests/${requestId}`,
+      );
 
       // The exact technical record stays beneath for administrators.
       const technical = adminPage.getByTestId("audit-table");

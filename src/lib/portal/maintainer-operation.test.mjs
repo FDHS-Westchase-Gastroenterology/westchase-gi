@@ -80,14 +80,8 @@ function operationHarness({
 
 test("Administration write is the only permission level ready to manage", () => {
   assert.equal(getMaintainerManagementState("write"), "ready");
-  assert.equal(
-    getMaintainerManagementState("read"),
-    "permission_upgrade_required",
-  );
-  assert.equal(
-    getMaintainerManagementState("none"),
-    "permission_upgrade_required",
-  );
+  assert.equal(getMaintainerManagementState("read"), "permission_upgrade_required");
+  assert.equal(getMaintainerManagementState("none"), "permission_upgrade_required");
 });
 
 test("desired-state helpers reconcile invitations and maintainers by user", () => {
@@ -103,17 +97,9 @@ test("desired-state helpers reconcile invitations and maintainers by user", () =
   assert.equal(invitationIsActive(pending, 20), true, "pending invitation");
   assert.equal(invitationIsActive(pending, 40), false, "absent user");
 
+  assert.equal(invitationIsCancelled(pending, 20, 200), false, "target invitation remains");
   assert.equal(
-    invitationIsCancelled(pending, 20, 200),
-    false,
-    "target invitation remains",
-  );
-  assert.equal(
-    invitationIsCancelled(
-      { maintainers: [{ userId: 20 }], invitations: [] },
-      20,
-      200,
-    ),
+    invitationIsCancelled({ maintainers: [{ userId: 20 }], invitations: [] }, 20, 200),
     false,
     "the invite was accepted concurrently",
   );
@@ -235,9 +221,7 @@ test("provider failure evidence reaches the snapshot-derived failure code", asyn
 
   assert.deepEqual(await harness.run(), { ok: false, code: "forbidden" });
   assert.deepEqual(harness.providerErrors, [performError]);
-  assert.deepEqual(harness.failureChecks, [
-    { error: performError, snapshot },
-  ]);
+  assert.deepEqual(harness.failureChecks, [{ error: performError, snapshot }]);
   assert.deepEqual(harness.finishes, [
     {
       audit: harness.audit,
@@ -263,13 +247,7 @@ test("a failed refresh records and returns an unconfirmed outcome", async () => 
     },
   ]);
   assert.deepEqual(harness.failureChecks, []);
-  assert.deepEqual(harness.calls, [
-    "begin",
-    "perform",
-    "refresh",
-    "finish",
-    "afterAttempt",
-  ]);
+  assert.deepEqual(harness.calls, ["begin", "perform", "refresh", "finish", "afterAttempt"]);
   assert.equal(harness.afterAttemptCount, 1);
 });
 

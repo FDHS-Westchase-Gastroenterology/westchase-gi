@@ -27,11 +27,7 @@ function required(env: E2ETargetEnvironment, label: string, ...names: readonly s
 function safeUrl(value: string, label: string) {
   try {
     const url = new URL(value);
-    if (
-      (url.protocol !== "http:" && url.protocol !== "https:") ||
-      url.username ||
-      url.password
-    ) {
+    if ((url.protocol !== "http:" && url.protocol !== "https:") || url.username || url.password) {
       throw new Error();
     }
     return url;
@@ -80,12 +76,7 @@ export function assertSafeE2ETarget(env: E2ETargetEnvironment) {
   }
 
   const productionUrlValue = hosted
-    ? required(
-        env,
-        "Production URL",
-        "SUPABASE_PROD_URL",
-        "SUPABASE_URL_PROD",
-      )
+    ? required(env, "Production URL", "SUPABASE_PROD_URL", "SUPABASE_URL_PROD")
     : first(env, "SUPABASE_PROD_URL", "SUPABASE_URL_PROD");
   if (
     productionUrlValue !== undefined &&
@@ -96,19 +87,12 @@ export function assertSafeE2ETarget(env: E2ETargetEnvironment) {
   }
 
   if (projectRef !== allowedRef) {
-    throw new Error(
-      "E2E safety check failed: target is not the explicitly allowlisted project",
-    );
+    throw new Error("E2E safety check failed: target is not the explicitly allowlisted project");
   }
 
   if (hosted) {
-    if (
-      targetUrl.protocol !== "https:" ||
-      targetUrl.hostname !== `${projectRef}.supabase.co`
-    ) {
-      throw new Error(
-        "E2E safety check failed: hosted URL does not match the project reference",
-      );
+    if (targetUrl.protocol !== "https:" || targetUrl.hostname !== `${projectRef}.supabase.co`) {
+      throw new Error("E2E safety check failed: hosted URL does not match the project reference");
     }
     return;
   }

@@ -1,9 +1,13 @@
+import type { Dictionary } from "@/lib/i18n";
 import { site } from "@/lib/site";
 import type { Locale } from "@/lib/site";
-import type { Dictionary } from "@/lib/i18n";
+
 import { MessageSquare, Phone } from "./icons";
 
-interface TextBandProps { locale: Locale; dict: Dictionary }
+interface TextBandProps {
+  locale: Locale;
+  dict: Dictionary;
+}
 
 /**
  * The staffed text line, given a stage of its own (practice directive:

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
+
 import { requestPasswordResetAction } from "@/app/admin/actions";
 import type { ResetRequestActionState } from "@/app/admin/actions";
 import {
@@ -28,9 +29,7 @@ function ResendControl({
   email: string;
   pending: boolean;
 }>) {
-  const [secondsRemaining, setSecondsRemaining] = useState(
-    PASSWORD_RESET_RESEND_COOLDOWN_SECONDS,
-  );
+  const [secondsRemaining, setSecondsRemaining] = useState(PASSWORD_RESET_RESEND_COOLDOWN_SECONDS);
 
   useEffect(() => {
     if (secondsRemaining <= 0) return undefined;
@@ -71,10 +70,7 @@ export function ResetRequestForm({
   onBack?: () => void;
   onEmailChange?: (email: string) => void;
 }>) {
-  const [state, formAction, pending] = useActionState(
-    requestPasswordResetAction,
-    INITIAL_STATE,
-  );
+  const [state, formAction, pending] = useActionState(requestPasswordResetAction, INITIAL_STATE);
   const [email, setEmail] = useState(initialEmail);
   const [editing, setEditing] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
@@ -103,10 +99,7 @@ export function ResetRequestForm({
   if (state.submitted && !editing) {
     return (
       <section className="mt-6" aria-labelledby="reset-result-title">
-        <h2
-          id="reset-result-title"
-          className="text-xl text-[var(--color-ink)]"
-        >
+        <h2 id="reset-result-title" className="text-xl text-[var(--color-ink)]">
           Check your email
         </h2>
         <p
@@ -118,30 +111,21 @@ export function ResetRequestForm({
           {RESET_REQUEST_MESSAGE}
         </p>
         {state.email ? (
-          <p className="mt-4 break-words text-sm text-[var(--color-ink)]">
-            Request entered for{" "}
-            <strong data-testid="reset-request-email">{state.email}</strong>.
-            This only repeats what you entered; it does not confirm an account
-            or inbox delivery.
+          <p className="mt-4 text-sm break-words text-[var(--color-ink)]">
+            Request entered for <strong data-testid="reset-request-email">{state.email}</strong>.
+            This only repeats what you entered; it does not confirm an account or inbox delivery.
           </p>
         ) : null}
         <div className="mt-4 space-y-2 text-sm text-[var(--color-muted)]">
+          <p>Delivery can take a few minutes. Check your Inbox and Spam or Junk folders.</p>
           <p>
-            Delivery can take a few minutes. Check your Inbox and Spam or Junk
-            folders.
-          </p>
-          <p>
-            The one-time link expires in one hour. Use the newest message if
-            you requested more than one.
+            The one-time link expires in one hour. Use the newest message if you requested more than
+            one.
           </p>
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={changeEmail}
-            className="btn btn-outline min-h-11 w-full"
-          >
+          <button type="button" onClick={changeEmail} className="btn btn-outline min-h-11 w-full">
             Change email
           </button>
           <ResendControl
@@ -153,17 +137,12 @@ export function ResetRequestForm({
         </div>
 
         <p className="mt-5 text-sm text-[var(--color-muted)]">
-          Still no message? Ask your portal administrator to confirm your
-          expected staff email and active status. They should never ask for
-          your password or reset link.
+          Still no message? Ask your portal administrator to confirm your expected staff email and
+          active status. They should never ask for your password or reset link.
         </p>
         <div className="mt-3 text-center">
           {onBack ? (
-            <button
-              type="button"
-              onClick={backToSignIn}
-              className={textActionClassName}
-            >
+            <button type="button" onClick={backToSignIn} className={textActionClassName}>
               Back to sign in
             </button>
           ) : (
@@ -180,12 +159,9 @@ export function ResetRequestForm({
     <div className={inline ? "mt-6" : undefined}>
       {inline ? (
         <div className="mb-5">
-          <h2 className="text-xl text-[var(--color-ink)]">
-            Reset your password
-          </h2>
+          <h2 className="text-xl text-[var(--color-ink)]">Reset your password</h2>
           <p className="mt-1.5 text-sm text-[var(--color-muted)]">
-            Enter your staff email and we’ll send a secure reset link if the
-            account is eligible.
+            Enter your staff email and we’ll send a secure reset link if the account is eligible.
           </p>
         </div>
       ) : null}
@@ -197,10 +173,7 @@ export function ResetRequestForm({
         }}
       >
         <div>
-          <label
-            htmlFor="reset-email"
-            className="block text-sm font-bold text-[var(--color-ink)]"
-          >
+          <label htmlFor="reset-email" className="block text-sm font-bold text-[var(--color-ink)]">
             Email
           </label>
           <input
@@ -232,11 +205,7 @@ export function ResetRequestForm({
       </form>
       <div className="mt-3 text-center">
         {onBack ? (
-          <button
-            type="button"
-            onClick={backToSignIn}
-            className={textActionClassName}
-          >
+          <button type="button" onClick={backToSignIn} className={textActionClassName}>
             Back to sign in
           </button>
         ) : (

@@ -1,16 +1,13 @@
-import { createHash, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
+import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
+
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import {
-  asJsonNumber,
-  asJsonObject,
-  jsonObjectSchema,
-  jsonSchema,
-} from "../src/lib/json";
+
+import { asJsonNumber, asJsonObject, jsonObjectSchema, jsonSchema } from "../src/lib/json";
 import type { Json, JsonObject } from "../src/lib/json";
 import {
   INTAKE_RATE_LIMIT,
@@ -79,10 +76,7 @@ function requireDecoded<T>(parsed: SafeParseResult<T>, message: string): T {
   return parsed.data;
 }
 
-function requireText(
-  value: string | null | undefined,
-  message: string,
-): string {
+function requireText(value: string | null | undefined, message: string): string {
   if (value === null || value === undefined || value === "") {
     throw new Error(message);
   }
@@ -91,9 +85,7 @@ function requireText(
 
 function disposableWorkdirArgs(): string[] {
   const workdir = process.env.SUPABASE_DISPOSABLE_WORKDIR;
-  return workdir !== undefined && workdir !== ""
-    ? ["--workdir", workdir]
-    : [];
+  return workdir !== undefined && workdir !== "" ? ["--workdir", workdir] : [];
 }
 
 interface CallOutcomeAuditDetail {
@@ -124,8 +116,7 @@ const SUPABASE_KEY = requiredEnv(
 const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PATIENT_PHONE = "8135550199";
 const RECIPIENT_RPC_MIGRATION =
   "supabase/migrations/20260802005123_atomic_notification_recipient_mutations.sql";
@@ -154,11 +145,13 @@ function publicClient() {
   });
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-function expectPermissionDenied(result: Readonly<{
-  error: { code?: string } | null;
-  status: number;
-}>): void {
+function expectPermissionDenied(
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+  result: Readonly<{
+    error: { code?: string } | null;
+    status: number;
+  }>,
+): void {
   expect(result.error?.code).toBe("42501");
   expect([401, 403]).toContain(result.status);
 }
@@ -203,11 +196,10 @@ function runDisposableDatabaseQuery(queryArgs: readonly string[]): void {
     throw new Error("Disposable database query refused outside the local stack");
   }
   const workdirArgs = disposableWorkdirArgs();
-  execFileSync(
-    "supabase",
-    ["db", "query", ...queryArgs, "--local", ...workdirArgs, "--agent=no"],
-    { cwd: process.cwd(), stdio: "pipe" },
-  );
+  execFileSync("supabase", ["db", "query", ...queryArgs, "--local", ...workdirArgs, "--agent=no"], {
+    cwd: process.cwd(),
+    stdio: "pipe",
+  });
 }
 
 function queryDisposableDatabase(sql: string): void {
@@ -348,15 +340,10 @@ test.describe("Supabase dependency contract", () => {
   test.describe.configure({ mode: "serial" });
 
   test.beforeEach(({}, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "chromium",
-      "The dependency contract runs once.",
-    );
+    test.skip(testInfo.project.name !== "chromium", "The dependency contract runs once.");
   });
 
-  test("preserves direct Auth refresh and the portal's SSR cookie session", async ({
-    page,
-  }) => {
+  test("preserves direct Auth refresh and the portal's SSR cookie session", async ({ page }) => {
     const client = publicClient();
     const signIn = await client.auth.signInWithPassword({
       email: SEED_EMAIL,
@@ -559,13 +546,10 @@ test.describe("Supabase dependency contract", () => {
       expect(repeatedOpen.error).toBeNull();
       expect(repeatedOpen.data).toBe(false);
 
-      const firstGuideOpen = await db.rpc(
-        "portal_record_staff_release_guide_open",
-        {
-          p_user_id: seed.user_id,
-          p_release_id: releaseId,
-        },
-      );
+      const firstGuideOpen = await db.rpc("portal_record_staff_release_guide_open", {
+        p_user_id: seed.user_id,
+        p_release_id: releaseId,
+      });
       expect(firstGuideOpen.error).toBeNull();
       expect(firstGuideOpen.data).toBe(true);
 
@@ -584,9 +568,7 @@ test.describe("Supabase dependency contract", () => {
         .single();
       expect(beforeConcurrentEvents.error).toBeNull();
       const firstGuideOpenedAt = requireDecoded(
-        z
-          .object({ guide_opened_at: z.string() })
-          .safeParse(beforeConcurrentEvents.data),
+        z.object({ guide_opened_at: z.string() }).safeParse(beforeConcurrentEvents.data),
         "Guide-open timestamp could not be decoded",
       ).guide_opened_at;
 
@@ -637,16 +619,12 @@ test.describe("Supabase dependency contract", () => {
         last_dismissed_at: expect.any(String),
         dismiss_count: 3,
       });
-      expect(Date.parse(counted.last_viewed_at)).toBeGreaterThanOrEqual(
-        Date.parse(firstOpenedAt),
-      );
+      expect(Date.parse(counted.last_viewed_at)).toBeGreaterThanOrEqual(Date.parse(firstOpenedAt));
       const lastGuideOpenedAt = requireText(
         counted.last_guide_opened_at,
         "Last guide-open timestamp is missing",
       );
-      expect(Date.parse(lastGuideOpenedAt)).toBeGreaterThanOrEqual(
-        Date.parse(firstGuideOpenedAt),
-      );
+      expect(Date.parse(lastGuideOpenedAt)).toBeGreaterThanOrEqual(Date.parse(firstGuideOpenedAt));
 
       const acknowledged = await db.rpc("portal_acknowledge_staff_release", {
         p_user_id: seed.user_id,
@@ -654,13 +632,10 @@ test.describe("Supabase dependency contract", () => {
       });
       expect(acknowledged.error).toBeNull();
       expect(acknowledged.data).toBe(true);
-      const repeatedAcknowledgement = await db.rpc(
-        "portal_acknowledge_staff_release",
-        {
-          p_user_id: seed.user_id,
-          p_release_id: releaseId,
-        },
-      );
+      const repeatedAcknowledgement = await db.rpc("portal_acknowledge_staff_release", {
+        p_user_id: seed.user_id,
+        p_release_id: releaseId,
+      });
       expect(repeatedAcknowledgement.error).toBeNull();
       expect(repeatedAcknowledgement.data).toBe(false);
 
@@ -756,9 +731,7 @@ test.describe("Supabase dependency contract", () => {
         });
         expectUuid(audit.correlation_id);
         const auditDetail = asJsonObject(audit.detail);
-        expect(auditDetail !== null ? Object.keys(auditDetail) : []).toEqual([
-          "release_id",
-        ]);
+        expect(auditDetail !== null ? Object.keys(auditDetail) : []).toEqual(["release_id"]);
       }
 
       for (const mutation of [
@@ -796,9 +769,7 @@ test.describe("Supabase dependency contract", () => {
         "Isolated release states could not be decoded",
       ).map(({ staff_user_id }) => staff_user_id);
       expect(isolatedUserIds).toEqual(
-        [seed.user_id, second.userId].sort((left, right) =>
-          left.localeCompare(right),
-        ),
+        [seed.user_id, second.userId].sort((left, right) => left.localeCompare(right)),
       );
 
       const reportRows = await db
@@ -811,16 +782,10 @@ test.describe("Supabase dependency contract", () => {
       expect(reportRows.error).toBeNull();
       expect(reportRows.data).toHaveLength(2);
       expect(
-        reportRows.data?.every(
-          ({ profile }) => releaseProfileSchema.safeParse(profile).success,
-        ),
+        reportRows.data?.every(({ profile }) => releaseProfileSchema.safeParse(profile).success),
       ).toBe(true);
 
-      for (const rejectedUserId of [
-        pending.userId,
-        inactive.userId,
-        randomUUID(),
-      ]) {
+      for (const rejectedUserId of [pending.userId, inactive.userId, randomUUID()]) {
         for (const mutation of [
           "portal_open_staff_release",
           "portal_record_staff_release_guide_open",
@@ -834,12 +799,8 @@ test.describe("Supabase dependency contract", () => {
         }
       }
       expect(
-        (
-          await db
-            .from("portal_release_states")
-            .select("staff_user_id")
-            .eq("release_id", releaseId)
-        ).data,
+        (await db.from("portal_release_states").select("staff_user_id").eq("release_id", releaseId))
+          .data,
       ).toHaveLength(2);
 
       for (const invalidReleaseId of ["", " has-spaces", "x".repeat(81)]) {
@@ -873,19 +834,13 @@ test.describe("Supabase dependency contract", () => {
       expect(legacyReleaseInsert.data?.last_viewed_at).toBe(
         legacyReleaseInsert.data?.first_opened_at,
       );
-      await db
-        .from("portal_release_states")
-        .delete()
-        .eq("release_id", legacyReleaseId);
+      await db.from("portal_release_states").delete().eq("release_id", legacyReleaseId);
     } finally {
       await db
         .from("portal_release_states")
         .delete()
         .in("release_id", [releaseId, legacyReleaseId]);
-      await db
-        .from("audit_log")
-        .delete()
-        .contains("detail", { release_id: releaseId });
+      await db.from("audit_log").delete().contains("detail", { release_id: releaseId });
       if (profileIds.length > 0) {
         await db.from("staff_profiles").delete().in("id", profileIds);
       }
@@ -895,9 +850,7 @@ test.describe("Supabase dependency contract", () => {
     }
   });
 
-  test("persists an intake row and resolves its PostgREST relationship", async ({
-    request,
-  }) => {
+  test("persists an intake row and resolves its PostgREST relationship", async ({ request }) => {
     const token = randomUUID().slice(0, 8);
     const sourcePath = `/e2e/supabase-dependency/${token}`;
     const response = await request.post("/api/requests", {
@@ -950,11 +903,7 @@ test.describe("Supabase dependency contract", () => {
   });
 
   test("shares one atomic intake limit across fresh service clients and expiry", async () => {
-    const claim = async (
-      hash: string,
-      limit: number,
-      windowSeconds: number,
-    ): Promise<boolean> => {
+    const claim = async (hash: string, limit: number, windowSeconds: number): Promise<boolean> => {
       const result = await serviceDb().rpc("portal_check_intake_rate_limit", {
         p_client_hash: hash,
         p_limit: limit,
@@ -978,11 +927,7 @@ test.describe("Supabase dependency contract", () => {
     const concurrentHash = hash("concurrent");
     const claims = await Promise.all(
       Array.from({ length: INTAKE_RATE_LIMIT.limit + 3 }, async () =>
-        claim(
-          concurrentHash,
-          INTAKE_RATE_LIMIT.limit,
-          INTAKE_RATE_LIMIT.windowSeconds,
-        ),
+        claim(concurrentHash, INTAKE_RATE_LIMIT.limit, INTAKE_RATE_LIMIT.windowSeconds),
       ),
     );
     expect(claims.filter(Boolean)).toHaveLength(INTAKE_RATE_LIMIT.limit);
@@ -1036,23 +981,15 @@ test.describe("Supabase dependency contract", () => {
       expect(noOp.error).toBeNull();
       expect(noOp.data).toBe(false);
 
-      const failedToggle = await db.rpc(
-        "portal_toggle_notification_recipient",
-        {
-          p_actor_email: "",
-          p_recipient_id: recipientId,
-          p_active: false,
-        },
-      );
+      const failedToggle = await db.rpc("portal_toggle_notification_recipient", {
+        p_actor_email: "",
+        p_recipient_id: recipientId,
+        p_active: false,
+      });
       expect(failedToggle.error?.code).toBe("23514");
       expect(
-        (
-          await db
-            .from("notification_recipients")
-            .select("active")
-            .eq("id", recipientId)
-            .single()
-        ).data?.active,
+        (await db.from("notification_recipients").select("active").eq("id", recipientId).single())
+          .data?.active,
       ).toBe(true);
 
       const toggled = await db.rpc("portal_toggle_notification_recipient", {
@@ -1063,22 +1000,14 @@ test.describe("Supabase dependency contract", () => {
       expect(toggled.error).toBeNull();
       expect(toggled.data).toBe(true);
 
-      const failedRemove = await db.rpc(
-        "portal_remove_notification_recipient",
-        {
-          p_actor_email: "",
-          p_recipient_id: recipientId,
-        },
-      );
+      const failedRemove = await db.rpc("portal_remove_notification_recipient", {
+        p_actor_email: "",
+        p_recipient_id: recipientId,
+      });
       expect(failedRemove.error?.code).toBe("23514");
       expect(
-        (
-          await db
-            .from("notification_recipients")
-            .select("active")
-            .eq("id", recipientId)
-            .single()
-        ).data?.active,
+        (await db.from("notification_recipients").select("active").eq("id", recipientId).single())
+          .data?.active,
       ).toBe(false);
 
       const removed = await db.rpc("portal_remove_notification_recipient", {
@@ -1088,13 +1017,8 @@ test.describe("Supabase dependency contract", () => {
       expect(removed.error).toBeNull();
       expect(removed.data).toBe(true);
       expect(
-        (
-          await db
-            .from("notification_recipients")
-            .select("id")
-            .eq("id", recipientId)
-            .maybeSingle()
-        ).data,
+        (await db.from("notification_recipients").select("id").eq("id", recipientId).maybeSingle())
+          .data,
       ).toBeNull();
 
       const audits = await db
@@ -1155,22 +1079,14 @@ test.describe("Supabase dependency contract", () => {
       });
       expect(failedAdd.error?.code).toBe("23514");
       expect(
-        (
-          await db
-            .from("notification_recipients")
-            .select("id")
-            .eq("email", failedAddEmail)
-        ).data,
+        (await db.from("notification_recipients").select("id").eq("email", failedAddEmail)).data,
       ).toHaveLength(0);
     } finally {
       if (recipientId !== null && recipientId !== "") {
         await db.from("audit_log").delete().eq("entity_id", recipientId);
         await db.from("notification_recipients").delete().eq("id", recipientId);
       }
-      await db
-        .from("notification_recipients")
-        .delete()
-        .in("email", [email, failedAddEmail]);
+      await db.from("notification_recipients").delete().in("email", [email, failedAddEmail]);
     }
   });
 
@@ -1220,15 +1136,12 @@ test.describe("Supabase dependency contract", () => {
         ) from service_role;
       `);
       try {
-        const permissionProbe = await db.rpc(
-          "portal_add_notification_recipient",
-          {
-            p_actor_email: SEED_EMAIL,
-            p_email: permissionEmail,
-            p_label: null,
-            p_active: true,
-          },
-        );
+        const permissionProbe = await db.rpc("portal_add_notification_recipient", {
+          p_actor_email: SEED_EMAIL,
+          p_email: permissionEmail,
+          p_label: null,
+          p_active: true,
+        });
         expect(permissionProbe.error?.code).toBe("42501");
 
         const denied = await mutateSettings(page, "recipient.add", {
@@ -1427,10 +1340,7 @@ test.describe("Supabase dependency contract", () => {
         } finally {
           if (recipientId !== null && recipientId !== "") {
             await db.from("audit_log").delete().eq("entity_id", recipientId);
-            await db
-              .from("notification_recipients")
-              .delete()
-              .eq("id", recipientId);
+            await db.from("notification_recipients").delete().eq("id", recipientId);
           }
           await db
             .from("notification_recipients")
@@ -1515,17 +1425,11 @@ test.describe("Supabase dependency contract", () => {
         expect(rejected.error?.code).toBe("22023");
       }
       expect(
-        (
-          await db
-            .from("notification_recipients")
-            .select("label")
-            .eq("id", recipientId)
-            .single()
-        ).data?.label,
+        (await db.from("notification_recipients").select("label").eq("id", recipientId).single())
+          .data?.label,
       ).toBe("After");
       expect(
-        (await db.from("audit_log").select("id").eq("entity_id", recipientId))
-          .data,
+        (await db.from("audit_log").select("id").eq("entity_id", recipientId)).data,
       ).toHaveLength(1);
 
       const cleared = await db.rpc("portal_update_recipient_label", {
@@ -1536,13 +1440,8 @@ test.describe("Supabase dependency contract", () => {
       expect(cleared.error).toBeNull();
       expect(cleared.data).toBe(true);
       expect(
-        (
-          await db
-            .from("notification_recipients")
-            .select("label")
-            .eq("id", recipientId)
-            .single()
-        ).data?.label,
+        (await db.from("notification_recipients").select("label").eq("id", recipientId).single())
+          .data?.label,
       ).toBeNull();
       const finalAudits = await db
         .from("audit_log")
@@ -1554,9 +1453,7 @@ test.describe("Supabase dependency contract", () => {
         source: "staff",
         detail: { from: "After", to: null },
       });
-      expect(finalAudits.data?.[1].correlation_id).not.toBe(
-        finalAudits.data?.[0].correlation_id,
-      );
+      expect(finalAudits.data?.[1].correlation_id).not.toBe(finalAudits.data?.[0].correlation_id);
     } finally {
       await db.from("audit_log").delete().eq("entity_id", recipientId);
       await db.from("notification_recipients").delete().eq("id", recipientId);
@@ -1650,9 +1547,7 @@ test.describe("Supabase dependency contract", () => {
 
         const row = await db
           .from("requests")
-          .select(
-            "status, follow_up_at, closure_disposition, closed_at, record_handoff_at",
-          )
+          .select("status, follow_up_at, closure_disposition, closed_at, record_handoff_at")
           .eq("id", requestId)
           .single();
         expect(row.error).toBeNull();
@@ -1672,10 +1567,9 @@ test.describe("Supabase dependency contract", () => {
         expect(lifecycle.closed_at !== null && lifecycle.closed_at !== "").toBe(
           item.status === "closed",
         );
-        expect(
-          lifecycle.record_handoff_at !== null &&
-            lifecycle.record_handoff_at !== "",
-        ).toBe(item.handedOff);
+        expect(lifecycle.record_handoff_at !== null && lifecycle.record_handoff_at !== "").toBe(
+          item.handedOff,
+        );
 
         const events = await db
           .from("request_events")
@@ -1686,9 +1580,7 @@ test.describe("Supabase dependency contract", () => {
           z.array(requestEventSchema).safeParse(events.data ?? []),
           "Call-outcome events could not be decoded",
         );
-        const outcomeEvents = eventRows.filter(
-          ({ type }) => type === "call_outcome",
-        );
+        const outcomeEvents = eventRows.filter(({ type }) => type === "call_outcome");
         const noteEvents = eventRows.filter(({ type }) => type === "note");
         expect(outcomeEvents).toHaveLength(1);
         expect(outcomeEvents[0]).toMatchObject({
@@ -1714,15 +1606,12 @@ test.describe("Supabase dependency contract", () => {
           },
         });
         const outcomeMeta = asJsonObject(outcomeEvents[0].meta);
-        const outcomeLifecycle =
-          outcomeMeta !== null ? asJsonObject(outcomeMeta.lifecycle) : null;
+        const outcomeLifecycle = outcomeMeta !== null ? asJsonObject(outcomeMeta.lifecycle) : null;
         expect(asJsonNumber(outcomeLifecycle?.sequence)).toBe(1);
         const outcomeFollowUp = z.string().safeParse(outcomeMeta?.follow_up_at);
-        expect(
-          outcomeFollowUp.success
-            ? new Date(outcomeFollowUp.data).toISOString()
-            : null,
-        ).toBe(item.followUpAt);
+        expect(outcomeFollowUp.success ? new Date(outcomeFollowUp.data).toISOString() : null).toBe(
+          item.followUpAt,
+        );
         expect(noteEvents).toHaveLength(item.note !== null ? 1 : 0);
         if (item.note !== null) {
           expect(noteEvents[0]).toMatchObject({
@@ -1751,23 +1640,13 @@ test.describe("Supabase dependency contract", () => {
           detail: callOutcomeDetail,
         });
         expectUuid(z.string().parse(audits.data?.[0].correlation_id));
-        const auditDetail = asJsonObject(
-          jsonSchema.parse(audits.data?.[0].detail ?? null),
-        );
+        const auditDetail = asJsonObject(jsonSchema.parse(audits.data?.[0].detail ?? null));
         const auditFollowUp = z.string().safeParse(auditDetail?.follow_up_at);
-        expect(
-          auditFollowUp.success
-            ? new Date(auditFollowUp.data).toISOString()
-            : null,
-        ).toBe(item.followUpAt);
-        expectNoPatientLeak(
-          jsonSchema.parse(audits.data?.[0].detail ?? null),
-          item.note,
+        expect(auditFollowUp.success ? new Date(auditFollowUp.data).toISOString() : null).toBe(
+          item.followUpAt,
         );
-        expectNoPatientLeak(
-          jsonSchema.parse(outcomeEvents[0].meta ?? null),
-          item.note,
-        );
+        expectNoPatientLeak(jsonSchema.parse(audits.data?.[0].detail ?? null), item.note);
+        expectNoPatientLeak(jsonSchema.parse(outcomeEvents[0].meta ?? null), item.note);
 
         const undone = await db.rpc("portal_undo_call_outcome", {
           p_actor_email: actor,
@@ -1779,9 +1658,7 @@ test.describe("Supabase dependency contract", () => {
 
         const restored = await db
           .from("requests")
-          .select(
-            "status, follow_up_at, closure_disposition, closed_at, record_handoff_at",
-          )
+          .select("status, follow_up_at, closure_disposition, closed_at, record_handoff_at")
           .eq("id", requestId)
           .single();
         expect(restored.data).toEqual({
@@ -1816,9 +1693,9 @@ test.describe("Supabase dependency contract", () => {
             restored_status: "new",
           },
         });
-        expect(
-          (finalEvents.data ?? []).filter(({ type }) => type === "note"),
-        ).toHaveLength(item.note ? 1 : 0);
+        expect((finalEvents.data ?? []).filter(({ type }) => type === "note")).toHaveLength(
+          item.note ? 1 : 0,
+        );
 
         const undoAudits = await db
           .from("audit_log")
@@ -1845,10 +1722,7 @@ test.describe("Supabase dependency contract", () => {
           },
         });
         expectUuid(z.string().parse(undoAudits.data?.[0].correlation_id));
-        expectNoPatientLeak(
-          jsonSchema.parse(undoAudits.data?.[0].detail ?? null),
-          item.note,
-        );
+        expectNoPatientLeak(jsonSchema.parse(undoAudits.data?.[0].detail ?? null), item.note);
 
         const duplicateUndo = await db.rpc("portal_undo_call_outcome", {
           p_actor_email: actor,
@@ -1910,9 +1784,7 @@ test.describe("Supabase dependency contract", () => {
 
       const unchanged = await db
         .from("requests")
-        .select(
-          "status, follow_up_at, closure_disposition, closed_at, record_handoff_at",
-        )
+        .select("status, follow_up_at, closure_disposition, closed_at, record_handoff_at")
         .eq("id", rollbackId)
         .single();
       expect(unchanged.data).toEqual({
@@ -1923,16 +1795,10 @@ test.describe("Supabase dependency contract", () => {
         record_handoff_at: null,
       });
       expect(
-        (
-          await db
-            .from("request_events")
-            .select("id")
-            .eq("request_id", rollbackId)
-        ).data,
+        (await db.from("request_events").select("id").eq("request_id", rollbackId)).data,
       ).toHaveLength(0);
       expect(
-        (await db.from("audit_log").select("id").eq("entity_id", rollbackId))
-          .data,
+        (await db.from("audit_log").select("id").eq("entity_id", rollbackId)).data,
       ).toHaveLength(0);
     } finally {
       if (requestIds.length > 0) {
@@ -2008,13 +1874,15 @@ test.describe("Supabase dependency contract", () => {
       },
     ] as const;
 
-    const normalizeLifecycle = (row: Readonly<{
-      status: string;
-      follow_up_at: string | null;
-      closure_disposition: string | null;
-      closed_at: string | null;
-      record_handoff_at: string | null;
-    }>) => ({
+    const normalizeLifecycle = (
+      row: Readonly<{
+        status: string;
+        follow_up_at: string | null;
+        closure_disposition: string | null;
+        closed_at: string | null;
+        record_handoff_at: string | null;
+      }>,
+    ) => ({
       status: row.status,
       follow_up_at:
         row.follow_up_at !== null && row.follow_up_at !== ""
@@ -2047,9 +1915,7 @@ test.describe("Supabase dependency contract", () => {
           p_request_id: requestId,
           p_outcome: item.outcome,
           p_note:
-            item.name === "closed converted"
-              ? "TEST note remains after lifecycle undo."
-              : null,
+            item.name === "closed converted" ? "TEST note remains after lifecycle undo." : null,
           p_follow_up_at: null,
         });
         expect(saved.error).toBeNull();
@@ -2065,15 +1931,11 @@ test.describe("Supabase dependency contract", () => {
 
         const restored = await db
           .from("requests")
-          .select(
-            "status, follow_up_at, closure_disposition, closed_at, record_handoff_at",
-          )
+          .select("status, follow_up_at, closure_disposition, closed_at, record_handoff_at")
           .eq("id", requestId)
           .single();
         expect(restored.error).toBeNull();
-        expect(
-          normalizeLifecycle(lifecycleRowSchema.parse(restored.data)),
-        ).toEqual(item.before);
+        expect(normalizeLifecycle(lifecycleRowSchema.parse(restored.data))).toEqual(item.before);
 
         if (item.name === "closed converted") {
           const notes = await db
@@ -2170,9 +2032,7 @@ test.describe("Supabase dependency contract", () => {
       expect(stale.error?.code).toBe("55000");
       const laterState = await db
         .from("requests")
-        .select(
-          "status, follow_up_at, closure_disposition, closed_at, record_handoff_at",
-        )
+        .select("status, follow_up_at, closure_disposition, closed_at, record_handoff_at")
         .eq("id", firstRequestId)
         .single();
       expect(laterState.data).toEqual({
@@ -2223,22 +2083,11 @@ test.describe("Supabase dependency contract", () => {
       });
       expect(malformed.error?.code).toBe("22023");
       expect(
-        (
-          await db
-            .from("requests")
-            .select("status")
-            .eq("id", secondRequestId)
-            .single()
-        ).data,
+        (await db.from("requests").select("status").eq("id", secondRequestId).single()).data,
       ).toEqual({ status: "contacted" });
       expect(
-        (
-          await db
-            .from("request_events")
-            .select("status")
-            .eq("id", malformedSaveEventId)
-            .single()
-        ).data,
+        (await db.from("request_events").select("status").eq("id", malformedSaveEventId).single())
+          .data,
       ).toEqual({ status: "recorded" });
     } finally {
       await db.from("requests").delete().in("id", requestIds);
@@ -2297,9 +2146,7 @@ test.describe("Supabase dependency contract", () => {
         (
           await db
             .from("requests")
-            .select(
-              "status, follow_up_at, closure_disposition, closed_at, record_handoff_at",
-            )
+            .select("status, follow_up_at, closure_disposition, closed_at, record_handoff_at")
             .eq("id", requestId)
             .single()
         ).data,
@@ -2311,13 +2158,7 @@ test.describe("Supabase dependency contract", () => {
         record_handoff_at: null,
       });
       expect(
-        (
-          await db
-            .from("request_events")
-            .select("status")
-            .eq("id", savedEventId)
-            .single()
-        ).data,
+        (await db.from("request_events").select("status").eq("id", savedEventId).single()).data,
       ).toEqual({ status: "recorded" });
       expect(
         (

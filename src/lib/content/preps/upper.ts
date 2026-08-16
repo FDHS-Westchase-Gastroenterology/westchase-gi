@@ -6,13 +6,9 @@
 // VI/KO/AR bodies mirror the EN tree and are machine translations
 // (2026-07-08) pending native-speaker verification by clinic staff.
 
-import type { PrepDoc, PrepSection } from "./types";
+import { bringSection, remindersSection, followUpSection } from "./builders";
 import { EN, ES_T, ES_O, VI, KO, AR } from "./common";
-import {
-  bringSection,
-  remindersSection,
-  followUpSection,
-} from "./builders";
+import type { PrepDoc, PrepSection } from "./types";
 
 /* ------------------------------------------------------------------ *
    EGD — esophagogastroduodenoscopy (EN p. 25; ES p. 24)

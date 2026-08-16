@@ -8,14 +8,15 @@
 // Exist only as teasers in the recon capture and are catalogued in the
 // Faithfulness matrix at the repo root, not ported.
 
+import type { BlogPost } from "@/lib/content/types";
 import type { Locale } from "@/lib/site";
-import type { BlogPost } from "../types";
+
 import { batch1 } from "./batch1";
 import { batch2 } from "./batch2";
 import { batch3 } from "./batch3";
 
-export const blogPosts: BlogPost[] = [...batch1, ...batch2, ...batch3].sort(
-  (a, b) => (a.posted < b.posted ? 1 : -1)
+export const blogPosts: BlogPost[] = [...batch1, ...batch2, ...batch3].sort((a, b) =>
+  a.posted < b.posted ? 1 : -1,
 );
 
 export function getPost(slug: string): BlogPost | undefined {

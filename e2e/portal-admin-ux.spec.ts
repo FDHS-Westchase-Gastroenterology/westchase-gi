@@ -1,7 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
+
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { z } from "zod";
+
 import { intakeResponseSchema } from "../src/lib/portal/contracts";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
@@ -37,11 +39,7 @@ async function signIn(page: Page, email: string, password: string) {
 
 /** Successful sign-ins must settle on /admin BEFORE further navigation —
  * a goto that races the login action loses the session cookie write. */
-async function signInExpectingPortal(
-  page: Page,
-  email: string,
-  password: string,
-) {
+async function signInExpectingPortal(page: Page, email: string, password: string) {
   await signIn(page, email, password);
   await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
 }
@@ -53,9 +51,7 @@ async function expectSetupLinkRejected(page: Page, setupUrl: string) {
     timeout: 15_000,
   });
   await expect(
-    page
-      .getByRole("alert")
-      .filter({ hasText: "This link is invalid or expired." }),
+    page.getByRole("alert").filter({ hasText: "This link is invalid or expired." }),
   ).toBeVisible();
 }
 
@@ -71,27 +67,20 @@ test.describe("portal management UI", () => {
   });
 
   test.afterAll(async () => {
-    await db
-      .from("notification_recipients")
-      .delete()
-      .like("email", `ux-${runId}-%`);
+    await db.from("notification_recipients").delete().like("email", `ux-${runId}-%`);
     await db.from("requests").delete().like("email", `ux-${runId}-%`);
     const { data: leftovers } = await db
       .from("staff_profiles")
       .select("user_id")
       .like("email", `ux-${runId}-%`);
-    const leftoverRows = z
-      .array(z.object({ user_id: z.string() }))
-      .parse(leftovers ?? []);
+    const leftoverRows = z.array(z.object({ user_id: z.string() })).parse(leftovers ?? []);
     for (const row of leftoverRows) {
       await db.from("staff_profiles").delete().eq("user_id", row.user_id);
       await db.auth.admin.deleteUser(row.user_id);
     }
   });
 
-  test("VAL-ADMIN-007: recipient management drives the notification set", async ({
-    page,
-  }) => {
+  test("VAL-ADMIN-007: recipient management drives the notification set", async ({ page }) => {
     test.setTimeout(120_000);
     page.on("dialog", (dialog) => void dialog.accept());
 
@@ -123,9 +112,7 @@ test.describe("portal management UI", () => {
     // Reported as not found rather than generic success.
     await page.locator("#recipient-email").fill(emailA.toUpperCase());
     await page.getByRole("button", { name: "Add", exact: true }).click();
-    await expect(page.getByRole("alert")).toHaveText(
-      "That address is already on the list.",
-    );
+    await expect(page.getByRole("alert")).toHaveText("That address is already on the list.");
 
     const { data: staleRecipient } = await db
       .from("notification_recipients")
@@ -144,9 +131,10 @@ test.describe("portal management UI", () => {
     // Toggle B to paused; it persists — and the undo offer restores it
     // Without a re-toggle.
     await recipientItem(page, emailB).locator('[data-action="toggle"]').click();
-    await expect(
-      recipientItem(page, emailB).locator('[data-action="toggle"]'),
-    ).toHaveText("Paused", { timeout: 15_000 });
+    await expect(recipientItem(page, emailB).locator('[data-action="toggle"]')).toHaveText(
+      "Paused",
+      { timeout: 15_000 },
+    );
     const { data: bRow } = await db
       .from("notification_recipients")
       .select("id, active")
@@ -154,12 +142,16 @@ test.describe("portal management UI", () => {
       .single();
     expect(bRow?.active).toBe(false);
 
-    await page.getByTestId("recipient-undo").getByRole("button", {
-      name: "Undo",
-    }).click();
-    await expect(
-      recipientItem(page, emailB).locator('[data-action="toggle"]'),
-    ).toHaveText("Active", { timeout: 15_000 });
+    await page
+      .getByTestId("recipient-undo")
+      .getByRole("button", {
+        name: "Undo",
+      })
+      .click();
+    await expect(recipientItem(page, emailB).locator('[data-action="toggle"]')).toHaveText(
+      "Active",
+      { timeout: 15_000 },
+    );
     const { data: bRestored } = await db
       .from("notification_recipients")
       .select("active")
@@ -168,19 +160,12 @@ test.describe("portal management UI", () => {
     expect(bRestored?.active).toBe(true);
 
     // The label edits in place (no remove-and-re-add), audited by the RPC.
-    await recipientItem(page, emailB)
-      .getByRole("button", { name: "Add a label" })
-      .click();
-    await recipientItem(page, emailB)
-      .locator(`#label-${bRow!.id}`)
-      .fill("Front desk mornings");
-    await recipientItem(page, emailB)
-      .locator('[data-action="save-label"]')
-      .click();
-    await expect(page.getByTestId("recipient-label-status")).toContainText(
-      "Label updated",
-      { timeout: 15_000 },
-    );
+    await recipientItem(page, emailB).getByRole("button", { name: "Add a label" }).click();
+    await recipientItem(page, emailB).locator(`#label-${bRow!.id}`).fill("Front desk mornings");
+    await recipientItem(page, emailB).locator('[data-action="save-label"]').click();
+    await expect(page.getByTestId("recipient-label-status")).toContainText("Label updated", {
+      timeout: 15_000,
+    });
     const { data: labelAudits } = await db
       .from("audit_log")
       .select("id")
@@ -190,9 +175,10 @@ test.describe("portal management UI", () => {
 
     // Pause B again so the active notification set is exactly {A}.
     await recipientItem(page, emailB).locator('[data-action="toggle"]').click();
-    await expect(
-      recipientItem(page, emailB).locator('[data-action="toggle"]'),
-    ).toHaveText("Paused", { timeout: 15_000 });
+    await expect(recipientItem(page, emailB).locator('[data-action="toggle"]')).toHaveText(
+      "Paused",
+      { timeout: 15_000 },
+    );
 
     // Remove C (native confirm accepted above); it disappears and is gone.
     await recipientItem(page, emailC).locator('[data-action="remove"]').click();
@@ -255,12 +241,8 @@ test.describe("portal management UI", () => {
 
     // The mutations above are on the audit record, visible in the view.
     await page.goto("/admin/audit");
-    await expect(page.getByTestId("audit-table")).toContainText(
-      "recipients.add",
-    );
-    await expect(page.getByTestId("audit-table")).toContainText(
-      "recipients.remove",
-    );
+    await expect(page.getByTestId("audit-table")).toContainText("recipients.add");
+    await expect(page.getByTestId("audit-table")).toContainText("recipients.remove");
 
     // Tidy the two survivors through the UI (also re-proves remove).
     await page.goto("/admin/settings");
@@ -293,9 +275,7 @@ test.describe("portal management UI", () => {
 
     const panel = page.getByTestId("invite-fallback-panel");
     await expect(panel).toBeVisible({ timeout: 15_000 });
-    await expect(panel.locator("p").first()).toHaveText(
-      `Invitation created for ${inviteEmail}`,
-    );
+    await expect(panel.locator("p").first()).toHaveText(`Invitation created for ${inviteEmail}`);
     expect(await panel.getByText("One-time password").count()).toBe(0);
     const originalSetupUrl = (
       (await page.getByTestId("fallback-setup-url").textContent()) ?? ""
@@ -315,19 +295,14 @@ test.describe("portal management UI", () => {
     await invitedRow.locator('[data-action="resend-invite"]').click();
     await expect
       .poll(async () => {
-        const renewed =
-          (await page.getByTestId("fallback-setup-url").textContent()) ?? "";
+        const renewed = (await page.getByTestId("fallback-setup-url").textContent()) ?? "";
         return renewed.trim().length > 0 && renewed.trim() !== originalSetupUrl;
       })
       .toBe(true);
-    const setupUrl = (
-      (await page.getByTestId("fallback-setup-url").textContent()) ?? ""
-    ).trim();
+    const setupUrl = ((await page.getByTestId("fallback-setup-url").textContent()) ?? "").trim();
     expect(URL.canParse(setupUrl)).toBe(true);
     const renewedSetupUrl = new URL(setupUrl);
-    const renewedFragment = new URLSearchParams(
-      renewedSetupUrl.hash.slice(1),
-    );
+    const renewedFragment = new URLSearchParams(renewedSetupUrl.hash.slice(1));
     expect(renewedSetupUrl.pathname).toBe("/admin/auth/confirm");
     expect(renewedFragment.get("type")).toBe("invite");
     expect(Boolean(renewedFragment.get("token_hash"))).toBe(true);
@@ -347,10 +322,9 @@ test.describe("portal management UI", () => {
     await page.locator("#invite-email").fill(pendingEmail);
     await page.locator("#invite-name").fill("TEST Pending Invite");
     await page.getByRole("button", { name: "Invite", exact: true }).click();
-    await expect(panel.locator("p").first()).toHaveText(
-      `Invitation created for ${pendingEmail}`,
-      { timeout: 15_000 },
-    );
+    await expect(panel.locator("p").first()).toHaveText(`Invitation created for ${pendingEmail}`, {
+      timeout: 15_000,
+    });
     const pendingSetupUrl = (
       (await page.getByTestId("fallback-setup-url").textContent()) ?? ""
     ).trim();
@@ -376,14 +350,10 @@ test.describe("portal management UI", () => {
 
     const chosenPassword = `Wgi!${runId}OwnPassword7`;
     await staffPage.getByLabel("New password", { exact: true }).fill(chosenPassword);
-    await staffPage
-      .getByLabel("Confirm password", { exact: true })
-      .fill(chosenPassword);
+    await staffPage.getByLabel("Confirm password", { exact: true }).fill(chosenPassword);
     await staffPage.getByRole("button", { name: "Set password" }).click();
     await expect(staffPage).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
-    await expect(staffPage.getByTestId("session-user")).toHaveText(
-      "TEST Invite",
-    );
+    await expect(staffPage.getByTestId("session-user")).toHaveText("TEST Invite");
 
     await page.reload();
     await expect(invitedRow).not.toContainText("Pending setup");
@@ -404,9 +374,7 @@ test.describe("portal management UI", () => {
     await staffContext.close();
   });
 
-  test("VAL-ADMIN-018: Settings shows last sign-in from existing Auth state", async ({
-    page,
-  }) => {
+  test("VAL-ADMIN-018: Settings shows last sign-in from existing Auth state", async ({ page }) => {
     await signInExpectingPortal(page, SEED_EMAIL, SEED_PASSWORD);
     await page.goto("/admin/settings");
 
@@ -416,19 +384,13 @@ test.describe("portal management UI", () => {
       .getByTestId("staff-list")
       .locator("li")
       .filter({ hasText: SEED_EMAIL.toLowerCase() });
-    await expect(ownRow.getByTestId("staff-last-sign-in")).toContainText(
-      "Last sign in",
-    );
+    await expect(ownRow.getByTestId("staff-last-sign-in")).toContainText("Last sign in");
   });
 
-  test("VAL-ADMIN-012: help page is substantive plain English", async ({
-    page,
-  }) => {
+  test("VAL-ADMIN-012: help page is substantive plain English", async ({ page }) => {
     await signInExpectingPortal(page, SEED_EMAIL, SEED_PASSWORD);
     await page.goto("/admin/help");
-    await expect(
-      page.getByRole("heading", { name: "Help", exact: true }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Help", exact: true })).toBeVisible();
 
     const text = (await page.locator("main").innerText()).trim();
     const words = text.split(/\s+/).filter(Boolean);
@@ -440,9 +402,7 @@ test.describe("portal management UI", () => {
       "Staff access",
       "Getting website changes made",
     ]) {
-      await expect(
-        page.getByRole("heading", { name: heading }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: heading })).toBeVisible();
     }
   });
 });

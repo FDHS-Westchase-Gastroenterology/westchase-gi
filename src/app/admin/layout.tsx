@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import "../globals.css";
+
 import { fontVariables } from "@/lib/fonts";
+
+import "@/app/globals.css";
 
 // The staff portal is a sibling segment to [locale] with its own root
 // Layout: English-only, no patient Header/Footer/NoticeBanner, never

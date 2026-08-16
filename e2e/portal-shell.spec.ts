@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
+
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
+
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // VAL-ADMIN-002: the seed admin can log in and out through the UI.
@@ -25,9 +27,7 @@ test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "JS portal UI");
 });
 
-test("VAL-ADMIN-002: seed admin logs in and out through the UI", async ({
-  page,
-}) => {
+test("VAL-ADMIN-002: seed admin logs in and out through the UI", async ({ page }) => {
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/admin\/login\/?$/);
 
@@ -37,9 +37,7 @@ test("VAL-ADMIN-002: seed admin logs in and out through the UI", async ({
     .select("display_name")
     .eq("email", SEED_EMAIL.toLowerCase())
     .single();
-  await expect(page.getByTestId("session-user")).toHaveText(
-    String(profile?.display_name ?? ""),
-  );
+  await expect(page.getByTestId("session-user")).toHaveText(String(profile?.display_name ?? ""));
 
   await page.reload();
   await expect(page).toHaveURL(/\/admin\/?$/);
@@ -67,9 +65,7 @@ const PORTAL_PAGES = [
   { name: "help", path: "/admin/help" },
 ] as const;
 
-test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", async ({
-  page,
-}) => {
+test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", async ({ page }) => {
   test.setTimeout(120_000);
   await signIn(page);
 
@@ -109,47 +105,37 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
       for (const box of navBoxes) {
         expect(box.height, "nav target height").toBeGreaterThanOrEqual(44);
         expect(box.left, "nav item starts on screen").toBeGreaterThanOrEqual(0);
-        expect(
-          box.right,
-          `nav item fully visible at ${viewport.name}`,
-        ).toBeLessThanOrEqual(viewport.width);
+        expect(box.right, `nav item fully visible at ${viewport.name}`).toBeLessThanOrEqual(
+          viewport.width,
+        );
       }
 
       const websiteLink = page.getByRole("link", { name: "View website" });
       await expect(websiteLink).toBeVisible();
       await expect(websiteLink).toHaveAttribute("href", "/");
-      expect((await websiteLink.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(
-        44,
-      );
+      expect((await websiteLink.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
 
-      const signOutBox = await page
-        .getByRole("button", { name: "Sign out" })
-        .boundingBox();
+      const signOutBox = await page.getByRole("button", { name: "Sign out" }).boundingBox();
       expect(signOutBox?.height ?? 0).toBeGreaterThanOrEqual(44);
 
       const utilityCollision = await page.evaluate(() => {
-        const website = Array.from(document.querySelectorAll("a")).find(
-          (link) => link.textContent.trim() === "View website",
-        )?.getBoundingClientRect();
-        const signOut = document
-          .querySelector('button[type="submit"]')
+        const website = Array.from(document.querySelectorAll("a"))
+          .find((link) => link.textContent.trim() === "View website")
           ?.getBoundingClientRect();
+        const signOut = document.querySelector('button[type="submit"]')?.getBoundingClientRect();
         const identity = document
           .querySelector('[data-testid="session-user"]')
           ?.parentElement?.getBoundingClientRect();
         const overlaps = (a: Readonly<DOMRect>, b: Readonly<DOMRect>) =>
-          a.left < b.right &&
-          a.right > b.left &&
-          a.top < b.bottom &&
-          a.bottom > b.top;
+          a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
         return {
           signOut: Boolean(website && signOut && overlaps(website, signOut)),
           identity: Boolean(
             website &&
-              identity &&
-              identity.width > 0 &&
-              identity.height > 0 &&
-              overlaps(website, identity),
+            identity &&
+            identity.width > 0 &&
+            identity.height > 0 &&
+            overlaps(website, identity),
           ),
         };
       });
@@ -158,12 +144,9 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
       // Settings is active on both of its sub-pages.
       if (portalPage.path.startsWith("/admin/settings")) {
         await expect(
-          page.locator(
-            'nav[aria-label="Portal sections"] a[aria-current="page"]',
-          ),
+          page.locator('nav[aria-label="Portal sections"] a[aria-current="page"]'),
         ).toHaveText("Settings");
       }
-
     }
 
     // Token discipline: the header carries the navy token, the active nav
@@ -187,9 +170,7 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
         expectedNavy,
         expectedAmber,
         headerBg: header ? getComputedStyle(header).backgroundColor : null,
-        activeBorder: active
-          ? getComputedStyle(active).borderBottomColor
-          : null,
+        activeBorder: active ? getComputedStyle(active).borderBottomColor : null,
       };
     });
     expect(tokenCheck.headerBg).toBe(tokenCheck.expectedNavy);
@@ -209,42 +190,29 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
       const el = document.documentElement;
       return el.scrollWidth - el.clientWidth;
     });
-    expect(overflow, `login overflow at ${viewport.name}`).toBeLessThanOrEqual(
-      0,
-    );
+    expect(overflow, `login overflow at ${viewport.name}`).toBeLessThanOrEqual(0);
 
     await page.getByLabel("Email").fill("recovery-layout@example.test");
     const forgotButton = page.getByRole("button", {
       name: "Forgot password?",
     });
-    expect((await forgotButton.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(
-      44,
-    );
+    expect((await forgotButton.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
     await forgotButton.click();
     await expect(page.getByLabel("Email")).toBeFocused();
-    await expect(page.getByLabel("Email")).toHaveValue(
-      "recovery-layout@example.test",
-    );
+    await expect(page.getByLabel("Email")).toHaveValue("recovery-layout@example.test");
     const recoveryOverflow = await page.evaluate(() => {
       const el = document.documentElement;
       return el.scrollWidth - el.clientWidth;
     });
-    expect(
-      recoveryOverflow,
-      `recovery overflow at ${viewport.name}`,
-    ).toBeLessThanOrEqual(0);
+    expect(recoveryOverflow, `recovery overflow at ${viewport.name}`).toBeLessThanOrEqual(0);
     for (const control of [
       page.getByRole("button", { name: "Send reset link" }),
       page.getByRole("button", { name: "Back to sign in" }),
     ]) {
-      expect((await control.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(
-        44,
-      );
+      expect((await control.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
     }
     await page.getByRole("button", { name: "Back to sign in" }).click();
-    await expect(page.getByLabel("Email")).toHaveValue(
-      "recovery-layout@example.test",
-    );
+    await expect(page.getByLabel("Email")).toHaveValue("recovery-layout@example.test");
   }
 });
 
@@ -281,9 +249,7 @@ test("VAL-ADMIN-016: the waiting count rides on the Requests nav item", async ({
           await page.reload();
           const badge = page.getByTestId("nav-waiting-badge");
           const shown = (await badge.count()) > 0;
-          const text = shown
-            ? Number((await badge.textContent())?.replace(/\D+/g, ""))
-            : null;
+          const text = shown ? Number((await badge.textContent())?.replace(/\D+/g, "")) : null;
           const { count, error } = await db
             .from("requests")
             .select("id", { count: "exact", head: true })

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+
 import type { SendPortalEmail } from "@/lib/portal/email";
 
 export type ManagementEmailDelivery =
@@ -7,11 +8,7 @@ export type ManagementEmailDelivery =
 
 export type StaffSetupType = "invite" | "recovery";
 
-function staffSetupUrl(
-  confirmationUrl: string,
-  tokenHash: string,
-  type: StaffSetupType,
-): string {
+function staffSetupUrl(confirmationUrl: string, tokenHash: string, type: StaffSetupType): string {
   const setupUrl = new URL(confirmationUrl);
   setupUrl.hash = new URLSearchParams({
     token_hash: tokenHash,
@@ -56,10 +53,7 @@ export async function sendStaffSetupLink(
   }>,
 ): Promise<ManagementEmailDelivery> {
   const setupUrl = staffSetupUrl(confirmationUrl, tokenHash, type);
-  const tokenDigest = createHash("sha256")
-    .update(tokenHash)
-    .digest("hex")
-    .slice(0, 32);
+  const tokenDigest = createHash("sha256").update(tokenHash).digest("hex").slice(0, 32);
   const outcome = await sendEmail({
     purpose: "staff_invite",
     to: email,

@@ -13,15 +13,10 @@
 //   ___       — a fill-in blank the office completes at scheduling
 //               (3+ underscores; rendered as a writing line)
 
-import type { Bi } from "../types";
+import type { Bi } from "@/lib/content/types";
 import type { Locale } from "@/lib/site";
 
-export type PrepGroupId =
-  | "colonoscopy"
-  | "upper"
-  | "capsule"
-  | "sigmoidoscopy"
-  | "diet";
+export type PrepGroupId = "colonoscopy" | "upper" | "capsule" | "sigmoidoscopy" | "diet";
 
 export type PrepListStyle = "bullet" | "steps" | "check" | "avoid";
 
@@ -37,7 +32,11 @@ export type PrepBlock =
       readonly footer?: string;
     }
   /** Generic table (clear-liquid food groups, anti-reflux foods). */
-  | { readonly kind: "table"; readonly head: readonly string[]; readonly rows: readonly string[][] };
+  | {
+      readonly kind: "table";
+      readonly head: readonly string[];
+      readonly rows: readonly string[][];
+    };
 
 export interface PrepSection {
   readonly heading?: string;

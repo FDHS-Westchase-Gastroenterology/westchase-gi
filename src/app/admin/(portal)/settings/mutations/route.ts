@@ -1,18 +1,24 @@
 import type { NextRequest } from "next/server";
+
 import { asJsonString, jsonObjectSchema } from "@/lib/json";
 import type { Json } from "@/lib/json";
-import {
-  PortalAuthorizationError,
-  requireRole,
-} from "@/lib/portal/auth";
-import { addNotificationRecipientMutation, changeStaffRoleMutation, deactivateStaffMutation, inviteStaffMutation, removeNotificationRecipientMutation, resendStaffInviteMutation, toggleNotificationRecipientMutation } from "@/lib/portal/management";
-import type { ManagementFailure } from "@/lib/portal/management";
+import { PortalAuthorizationError, requireRole } from "@/lib/portal/auth";
+import type { MaintainerMutationResult } from "@/lib/portal/maintainer-operation";
 import {
   cancelMaintainerInviteMutation,
   inviteMaintainerMutation,
   revokeMaintainerMutation,
 } from "@/lib/portal/maintainers";
-import type { MaintainerMutationResult } from "@/lib/portal/maintainer-operation";
+import {
+  addNotificationRecipientMutation,
+  changeStaffRoleMutation,
+  deactivateStaffMutation,
+  inviteStaffMutation,
+  removeNotificationRecipientMutation,
+  resendStaffInviteMutation,
+  toggleNotificationRecipientMutation,
+} from "@/lib/portal/management";
+import type { ManagementFailure } from "@/lib/portal/management";
 
 const JSON_HEADERS = {
   "Cache-Control": "private, no-store, max-age=0",
@@ -36,17 +42,16 @@ const FAILURE_STATUSES = {
   number
 >;
 
-function failureStatus(failure: Readonly<ManagementFailure | Exclude<MaintainerMutationResult, { ok: true }>>): number {
+function failureStatus(
+  failure: Readonly<ManagementFailure | Exclude<MaintainerMutationResult, { ok: true }>>,
+): number {
   return FAILURE_STATUSES[failure.code];
 }
 
 function isSameOrigin(request: NextRequest): boolean {
   const origin = request.headers.get("origin");
   const fetchSite = request.headers.get("sec-fetch-site");
-  return (
-    fetchSite !== "cross-site" &&
-    (origin === null || origin === request.nextUrl.origin)
-  );
+  return fetchSite !== "cross-site" && (origin === null || origin === request.nextUrl.origin);
 }
 
 /**
@@ -125,13 +130,9 @@ export async function POST(request: NextRequest): Promise<Response> {
 
     return json(result, result.ok ? successStatus : failureStatus(result));
   } catch (error) {
-    const status =
-      error instanceof PortalAuthorizationError ? error.status : null;
+    const status = error instanceof PortalAuthorizationError ? error.status : null;
     if (status !== null) {
-      return json(
-        { ok: false, error: status === 401 ? "Unauthenticated" : "Forbidden" },
-        status,
-      );
+      return json({ ok: false, error: status === 401 ? "Unauthenticated" : "Forbidden" }, status);
     }
     return json({ ok: false, error: "Operation failed" }, 500);
   }

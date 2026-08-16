@@ -1,4 +1,5 @@
 import { z } from "zod";
+
 import { asJsonString, asJsonTimestamp } from "@/lib/json";
 import type { Json } from "@/lib/json";
 
@@ -42,9 +43,7 @@ export interface PortalReleaseStateRow {
 
 const RELEASE_ID_PATTERN = /^[a-z0-9][a-z0-9._-]*$/;
 
-const PORTAL_RELEASE_AUDIT_ACTIONS = new Set<string>(
-  Object.values(RELEASE_AUDIT_ACTIONS),
-);
+const PORTAL_RELEASE_AUDIT_ACTIONS = new Set<string>(Object.values(RELEASE_AUDIT_ACTIONS));
 
 export function parsePortalReleaseId(value: Json): string | null {
   const text = asJsonString(value);
@@ -69,9 +68,7 @@ export function parseSupportedPortalReleaseId(
   return releaseId === supportedReleaseId ? releaseId : null;
 }
 
-export function isPortalReleaseAuditAction(
-  action: string,
-): action is PortalReleaseAuditAction {
+export function isPortalReleaseAuditAction(action: string): action is PortalReleaseAuditAction {
   return PORTAL_RELEASE_AUDIT_ACTIONS.has(action);
 }
 
@@ -81,12 +78,8 @@ export function derivePortalReleaseState(
 ): PortalReleaseState {
   if (row === null) return { status: "unseen" };
   const firstOpenedAt = asJsonTimestamp(row.first_opened_at);
-  const acknowledgedAt =
-    row.acknowledged_at === null
-      ? null
-      : asJsonTimestamp(row.acknowledged_at);
-  const hiddenAt =
-    row.hidden_at === null ? null : asJsonTimestamp(row.hidden_at);
+  const acknowledgedAt = row.acknowledged_at === null ? null : asJsonTimestamp(row.acknowledged_at);
+  const hiddenAt = row.hidden_at === null ? null : asJsonTimestamp(row.hidden_at);
   if (
     firstOpenedAt === null ||
     (acknowledgedAt === null && row.acknowledged_at !== null) ||
@@ -96,10 +89,7 @@ export function derivePortalReleaseState(
     return { status: "unavailable" };
   }
   if (hiddenAt !== null) return { status: "hidden" };
-  if (
-    Date.parse(firstOpenedAt) + PORTAL_RELEASE_WINDOW_MS <=
-    now.getTime()
-  ) {
+  if (Date.parse(firstOpenedAt) + PORTAL_RELEASE_WINDOW_MS <= now.getTime()) {
     return { status: "expired" };
   }
   return {

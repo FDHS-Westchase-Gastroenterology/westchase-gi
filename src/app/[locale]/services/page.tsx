@@ -1,23 +1,31 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { getDictionary, isLocale } from "@/lib/i18n";
-import { pageMetadata } from "@/lib/metadata";
-import { localePath } from "@/lib/site";
-import type { Locale } from "@/lib/site";
-import { conditions, procedures } from "@/lib/services";
+
+import { ArrowRight } from "@/components/icons";
 import { PageHero } from "@/components/PageHero";
 import { Reveal } from "@/components/Reveal";
 import { TextBand } from "@/components/TextBand";
-import { ArrowRight } from "@/components/icons";
+import { getDictionary, isLocale } from "@/lib/i18n";
+import { pageMetadata } from "@/lib/metadata";
+import { conditions, procedures } from "@/lib/services";
+import { localePath } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 
-interface PageProps { params: Promise<{ locale: string }> }
+interface PageProps {
+  params: Promise<{ locale: string }>;
+}
 
 export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
-  return pageMetadata(locale, "/services", dict.meta.services.title, dict.meta.services.description);
+  return pageMetadata(
+    locale,
+    "/services",
+    dict.meta.services.title,
+    dict.meta.services.description,
+  );
 }
 
 export default async function ServicesPage({ params }: Readonly<PageProps>) {
@@ -65,12 +73,15 @@ export default async function ServicesPage({ params }: Readonly<PageProps>) {
             </ul>
             <div className="card-lined mt-10 flex flex-wrap items-center justify-between gap-4 bg-[var(--color-mint)] p-6">
               <div>
-                <h3 className="font-[var(--font-body)] text-base font-extrabold text-[var(--color-ink)]">
+                <h3 className="text-base font-[var(--font-body)] font-extrabold text-[var(--color-ink)]">
                   {t.prepNote}
                 </h3>
                 <p className="mt-1 text-[0.95rem] text-[var(--color-body)]">{t.prepNoteBody}</p>
               </div>
-              <Link href={localePath(locale, "/procedure-prep")} className="link-line whitespace-nowrap">
+              <Link
+                href={localePath(locale, "/procedure-prep")}
+                className="link-line whitespace-nowrap"
+              >
                 {t.prepNoteCta} <ArrowRight className="h-4 w-4" />
               </Link>
             </div>

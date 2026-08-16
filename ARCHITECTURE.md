@@ -19,12 +19,12 @@ deployment:
 - **Staff portal** (`/admin/**`): authenticated, English-only operations for the durable
   appointment-request queue and practice administration.
 
-| System | Role |
-|---|---|
-| Supabase | Hosted Postgres queue and Auth. Development and Production are separate projects. Application tables are RLS-protected; privileged data access stays in server-only code. |
-| Email capability | Provider-neutral, text-only application interface with a Resend adapter. Supabase Auth recovery uses a separate hosted SMTP path. |
-| GitHub App (`wgi-portal`) | Server-only adapter for reading repository custody and inviting, cancelling, or revoking maintainers. |
-| Vercel + DNS | Vercel runs the application; `https://westchasegi.com` is canonical. The portal does not call or manage Vercel or DNS. |
+| System                    | Role                                                                                                                                                                      |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Supabase                  | Hosted Postgres queue and Auth. Development and Production are separate projects. Application tables are RLS-protected; privileged data access stays in server-only code. |
+| Email capability          | Provider-neutral, text-only application interface with a Resend adapter. Supabase Auth recovery uses a separate hosted SMTP path.                                         |
+| GitHub App (`wgi-portal`) | Server-only adapter for reading repository custody and inviting, cancelling, or revoking maintainers.                                                                     |
+| Vercel + DNS              | Vercel runs the application; `https://westchasegi.com` is canonical. The portal does not call or manage Vercel or DNS.                                                    |
 
 ```text
 patient browser ──► Vercel: Next.js application
@@ -94,16 +94,16 @@ not browser configuration. [`.env.example`](.env.example) is the exact variable 
 
 ### Stored data
 
-| Relation | Role |
-|---|---|
-| `public.requests` | Appointment-request system of record. Owns lifecycle, closure outcome, receipt-token hash state, and legal-hold state. |
-| `public.request_events` | Child event stream for notification outcomes, attributed appointment-request notes, call outcomes, and Undo evidence. Call outcomes carry versioned lifecycle snapshots; events cascade with the request. |
-| `public.notification_recipients` | Active/paused destinations for new-request pings. |
-| `public.staff_profiles` | Authorization source of truth linked to `auth.users`. |
-| `public.portal_release_states` | PHI-free, bounded per-staff engagement with application-owned release briefings. |
-| `public.audit_log` | Metadata-only record of staff-visible operations and external-operation outcomes. |
-| `private.intake_rate_limits` | Expiring HMAC throttle buckets; no raw or reversibly hashed client address. |
-| `private.analytics_daily` | PHI-free daily counts by allowlisted event, route template, locale, and device class. |
+| Relation                         | Role                                                                                                                                                                                                      |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `public.requests`                | Appointment-request system of record. Owns lifecycle, closure outcome, receipt-token hash state, and legal-hold state.                                                                                    |
+| `public.request_events`          | Child event stream for notification outcomes, attributed appointment-request notes, call outcomes, and Undo evidence. Call outcomes carry versioned lifecycle snapshots; events cascade with the request. |
+| `public.notification_recipients` | Active/paused destinations for new-request pings.                                                                                                                                                         |
+| `public.staff_profiles`          | Authorization source of truth linked to `auth.users`.                                                                                                                                                     |
+| `public.portal_release_states`   | PHI-free, bounded per-staff engagement with application-owned release briefings.                                                                                                                          |
+| `public.audit_log`               | Metadata-only record of staff-visible operations and external-operation outcomes.                                                                                                                         |
+| `private.intake_rate_limits`     | Expiring HMAC throttle buckets; no raw or reversibly hashed client address.                                                                                                                               |
+| `private.analytics_daily`        | PHI-free daily counts by allowlisted event, route template, locale, and device class.                                                                                                                     |
 
 ### Atomic operations
 
@@ -211,15 +211,15 @@ The portal is a temporary intake and operations system, not FDHS's authoritative
 record. Names, contact details, patient-supplied reasons, and staff notes are handled as
 sensitive even though the form asks patients not to submit medical details.
 
-| Data | Retention rule |
-|---|---|
-| Legitimately open request | No automatic deletion |
-| Closed without an appointment (`unconverted`) | 180 days after classified closure |
-| Closed after booking (`converted`) | 12 months after record handoff and classified closure |
-| Request notes and notification/receipt events | Follow the parent request |
-| Receipt-token hash | One hour; the receipt itself is valid for 15 minutes |
-| Expired throttle buckets | Next hourly lifecycle run |
-| Audit rows | Six years unless a legal hold protects the related request |
+| Data                                          | Retention rule                                             |
+| --------------------------------------------- | ---------------------------------------------------------- |
+| Legitimately open request                     | No automatic deletion                                      |
+| Closed without an appointment (`unconverted`) | 180 days after classified closure                          |
+| Closed after booking (`converted`)            | 12 months after record handoff and classified closure      |
+| Request notes and notification/receipt events | Follow the parent request                                  |
+| Receipt-token hash                            | One hour; the receipt itself is valid for 15 minutes       |
+| Expired throttle buckets                      | Next hourly lifecycle run                                  |
+| Audit rows                                    | Six years unless a legal hold protects the related request |
 
 - Closing requires an explicit front-desk closure outcome. Reopening clears the outcome
   and its clock. Pre-policy closed rows remain unclassified and ineligible for automatic
@@ -322,3 +322,5 @@ This is the change-type → files map. The matching change-type → checks map i
 - **CI and dependency automation:** `.github/workflows/` and
   `.github/scripts/dependency-automation.cjs`; executable policy and its regression test
   change together.
+- **Lint and format:** `.oxlintrc.json` and `.oxfmtrc.json`. The Oxc editor extension
+  reads both; `npm run lint` and `npm run fmt` / `npm run fmt:check` are the commands.

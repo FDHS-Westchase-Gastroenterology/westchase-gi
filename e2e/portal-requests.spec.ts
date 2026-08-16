@@ -1,12 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
+
 import { test, expect } from "@playwright/test";
 import type { Page, APIRequestContext } from "@playwright/test";
 import { z } from "zod";
-import {
-  asJsonObject,
-  asJsonString,
-  jsonSchema,
-} from "../src/lib/json";
+
+import { asJsonObject, asJsonString, jsonSchema } from "../src/lib/json";
 import { intakeResponseSchema } from "../src/lib/portal/contracts";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
@@ -65,10 +63,7 @@ function payload(label: string) {
   };
 }
 
-async function stageRequest(
-  request: APIRequestContext,
-  label: string,
-): Promise<string> {
+async function stageRequest(request: APIRequestContext, label: string): Promise<string> {
   const response = await request.post("/api/requests", {
     data: payload(label),
     headers: { "X-Forwarded-For": testIp(label) },
@@ -156,47 +151,38 @@ test.describe("portal requests operation", () => {
     const id = await stageRequest(request, "lifecycle");
     const staged = payload("lifecycle");
     const visibleRecipient = `queue-${runId}-recipient@example.test`;
-    const { error: notificationError } = await db
-      .from("request_events")
-      .insert([
-        {
-          request_id: id,
-          type: "notification",
-          recipient: "jason.gitdev@gmail.com",
-          status: "accepted",
-        },
-        {
-          request_id: id,
-          type: "notification",
-          recipient: visibleRecipient,
-          status: "accepted",
-        },
-      ]);
+    const { error: notificationError } = await db.from("request_events").insert([
+      {
+        request_id: id,
+        type: "notification",
+        recipient: "jason.gitdev@gmail.com",
+        status: "accepted",
+      },
+      {
+        request_id: id,
+        type: "notification",
+        recipient: visibleRecipient,
+        status: "accepted",
+      },
+    ]);
     expect(notificationError).toBeNull();
 
     await signIn(page);
     await page.goto(`/admin/requests/${id}`);
 
-    await expect(page.getByTestId("request-detail-name")).toHaveText(
-      staged.name,
-    );
+    await expect(page.getByTestId("request-detail-name")).toHaveText(staged.name);
     // The breadcrumb's current page is the request's name, not "Detail".
-    await expect(
-      page.getByRole("navigation", { name: "Breadcrumb" }),
-    ).toContainText(staged.name);
+    await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toContainText(staged.name);
     await expect(page.getByText(staged.phone).first()).toBeVisible();
-    await expect(
-      page.getByRole("link", { name: staged.email }),
-    ).toHaveAttribute("href", `mailto:${staged.email}`);
+    await expect(page.getByRole("link", { name: staged.email })).toHaveAttribute(
+      "href",
+      `mailto:${staged.email}`,
+    );
     await expect(page.getByText("Tampa", { exact: true })).toBeVisible();
     await expect(page.getByText("Morning", { exact: true })).toBeVisible();
-    await expect(page.getByTestId("request-message")).toContainText(
-      staged.message,
-    );
+    await expect(page.getByTestId("request-message")).toContainText(staged.message);
     await expect(page.getByText("/en/appointment").first()).toBeVisible();
-    const notifications = page
-      .getByRole("heading", { name: "Notifications" })
-      .locator("..");
+    const notifications = page.getByRole("heading", { name: "Notifications" }).locator("..");
     // Every recorded delivery attempt renders — no address is hidden.
     await expect(notifications).toContainText(visibleRecipient);
     await expect(notifications).toContainText("jason.gitdev@gmail.com");
@@ -229,25 +215,19 @@ test.describe("portal requests operation", () => {
     await expect(page.getByTestId("save-outcome")).toBeDisabled();
     await composer.getByText("Tomorrow morning", { exact: true }).click();
     await page.getByTestId("save-outcome").click();
-    await expect(page.getByTestId("composer-feedback")).toContainText(
-      "resurface",
-    );
+    await expect(page.getByTestId("composer-feedback")).toContainText("resurface");
     const afterNoAnswer = await statusOf();
     expect(afterNoAnswer?.status).toBe("contacted");
     expect(afterNoAnswer?.follow_up_at).toBeTruthy();
     await expect(
-      page
-        .getByTestId("lifecycle-destinations")
-        .getByText("Contacted", { exact: true }),
+      page.getByTestId("lifecycle-destinations").getByText("Contacted", { exact: true }),
     ).toHaveCount(0);
 
     // The daily success path: Scheduled means booked and stays open.
     await saveLifecycle("Scheduled");
     expect((await statusOf())?.status).toBe("scheduled");
     await expect(
-      page
-        .getByTestId("lifecycle-destinations")
-        .getByText("Scheduled", { exact: true }),
+      page.getByTestId("lifecycle-destinations").getByText("Scheduled", { exact: true }),
     ).toHaveCount(0);
 
     // Closed then asks for the closure outcome the database needs.
@@ -273,11 +253,9 @@ test.describe("portal requests operation", () => {
       const detail = asJsonObject(jsonSchema.parse(row.detail ?? null));
       return detail ? asJsonString(detail.outcome) : null;
     });
-    expect(
-      outcomes.sort((left, right) => (left ?? "").localeCompare(right ?? "")),
-    ).toEqual(
-      ["booked", "no_answer", "reached_follow_up", "wont_schedule"].sort(
-        (left, right) => left.localeCompare(right),
+    expect(outcomes.sort((left, right) => (left ?? "").localeCompare(right ?? ""))).toEqual(
+      ["booked", "no_answer", "reached_follow_up", "wont_schedule"].sort((left, right) =>
+        left.localeCompare(right),
       ),
     );
 
@@ -290,9 +268,7 @@ test.describe("portal requests operation", () => {
     expect(statusAudits).toHaveLength(0);
   });
 
-  test("VAL-ADMIN-005b: unsafe legacy email uses the phone fallback", async ({
-    page,
-  }) => {
+  test("VAL-ADMIN-005b: unsafe legacy email uses the phone fallback", async ({ page }) => {
     const unsafeEmail = `queue-${runId}-unsafe@example.test?subject=Injected`;
     const { data, error } = await db
       .from("requests")
@@ -314,18 +290,12 @@ test.describe("portal requests operation", () => {
     await signIn(page);
     await page.goto(`/admin/requests/${data.id}`);
 
-    const fallback = page.getByText(
-      "Not provided — call the phone number above",
-    );
+    const fallback = page.getByText("Not provided — call the phone number above");
     await expect(fallback).toBeVisible();
-    await expect(
-      fallback.locator("..").locator('a[href^="mailto:"]'),
-    ).toHaveCount(0);
+    await expect(fallback.locator("..").locator('a[href^="mailto:"]')).toHaveCount(0);
   });
 
-  test("VAL-ADMIN-004: status filters match SQL counts exactly", async ({
-    page,
-  }) => {
+  test("VAL-ADMIN-004: status filters match SQL counts exactly", async ({ page }) => {
     test.setTimeout(120_000);
     await signIn(page);
 
@@ -340,26 +310,19 @@ test.describe("portal requests operation", () => {
           async () => {
             await page.goto(`/admin/requests?status=${status}`);
             const chip = Number(
-              await page
-                .locator(`[data-filter-count="${status}"]`)
-                .textContent(),
+              await page.locator(`[data-filter-count="${status}"]`).textContent(),
             );
-            const shown = await page
-              .locator('[data-testid="request-row"]')
-              .count();
+            const shown = await page.locator('[data-testid="request-row"]').count();
             const badges = await page
               .locator('[data-testid="request-row"] [data-status]')
-              .evaluateAll((nodes) =>
-                nodes.map((node) => node.getAttribute("data-status")),
-              );
+              .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-status")));
             const sql = await sqlCount(status);
 
             const badgesOk = badges.every((badge) => badge === status);
             // One page holds at most REQUEST_PAGE_SIZE (50) rows; the SQL
             // Count may exceed it, so the honest expectation is a full or
             // Partial first page matching the count at the same instant.
-            const consistent =
-              chip === sql && shown === Math.min(sql, 50) && badgesOk;
+            const consistent = chip === sql && shown === Math.min(sql, 50) && badgesOk;
             return consistent
               ? "consistent"
               : `chip=${chip} shown=${shown} sql=${sql} badgesOk=${badgesOk}`;
@@ -438,28 +401,14 @@ test.describe("portal requests operation", () => {
       await page.goto(`/admin/requests?q=${token}`);
 
       const names = await page.getByTestId("request-name").allTextContents();
-      const orderOf = (suffix: string) =>
-        names.findIndex((name) => name.includes(` ${suffix}`));
-      const positions = [
-        "older",
-        "newer",
-        "due",
-        "stale",
-        "scheduled",
-        "closed",
-      ].map(orderOf);
+      const orderOf = (suffix: string) => names.findIndex((name) => name.includes(` ${suffix}`));
+      const positions = ["older", "newer", "due", "stale", "scheduled", "closed"].map(orderOf);
       expect(positions.every((position) => position >= 0)).toBe(true);
       expect([...positions].sort((a, b) => a - b)).toEqual(positions);
 
-      await expect(
-        page.getByTestId("request-next-action").first(),
-      ).toBeVisible();
-      const hints = await page
-        .getByTestId("request-next-action")
-        .allTextContents();
-      expect(hints.some((hint) => hint.startsWith("Call again — due"))).toBe(
-        true,
-      );
+      await expect(page.getByTestId("request-next-action").first()).toBeVisible();
+      const hints = await page.getByTestId("request-next-action").allTextContents();
+      expect(hints.some((hint) => hint.startsWith("Call again — due"))).toBe(true);
       expect(hints.some((hint) => hint.startsWith("Silent"))).toBe(true);
       expect(hints.some((hint) => hint === "On the schedule")).toBe(true);
 
@@ -467,26 +416,16 @@ test.describe("portal requests operation", () => {
       await page.goto(`/admin/requests/${idsByKey.get("due")}?q=${token}`);
       const prevLink = page.getByTestId("prev-request");
       const nextLink = page.getByTestId("next-request");
-      await expect(prevLink).toHaveAttribute(
-        "href",
-        new RegExp(idsByKey.get("newer")!),
-      );
-      await expect(nextLink).toHaveAttribute(
-        "href",
-        new RegExp(idsByKey.get("stale")!),
-      );
+      await expect(prevLink).toHaveAttribute("href", new RegExp(idsByKey.get("newer")!));
+      await expect(nextLink).toHaveAttribute("href", new RegExp(idsByKey.get("stale")!));
 
       // The due row is already Contacted, so that current state is not offered.
       // One save moves it to Scheduled; continuation appears only after success.
       const composer = page.getByTestId("call-outcome-composer");
       await expect(
-        composer
-          .getByTestId("lifecycle-destinations")
-          .getByText("Contacted", { exact: true }),
+        composer.getByTestId("lifecycle-destinations").getByText("Contacted", { exact: true }),
       ).toHaveCount(0);
-      await expect(page.getByTestId("save-outcome")).toHaveText(
-        "Save",
-      );
+      await expect(page.getByTestId("save-outcome")).toHaveText("Save");
       await expect(page.getByTestId("save-outcome")).toBeDisabled();
       await expect(page.getByTestId("save-outcome-next")).toHaveCount(0);
       await composer.getByText("Scheduled", { exact: true }).click();
@@ -521,9 +460,7 @@ test.describe("portal requests operation", () => {
       await page.getByTestId("save-outcome").click();
       await expect(page.getByTestId("composer-feedback")).toBeVisible();
       await page.getByTestId("open-next-request").click();
-      await expect(page).toHaveURL(
-        new RegExp(`/admin/requests/${idsByKey.get("stale")}`),
-      );
+      await expect(page).toHaveURL(new RegExp(`/admin/requests/${idsByKey.get("stale")}`));
 
       const { data: savedRow, error: savedRowError } = await db
         .from("requests")
@@ -586,19 +523,13 @@ test.describe("portal requests operation", () => {
       }),
     ).toBeVisible();
     await expect(notesSection.getByLabel("Note", { exact: true })).toBeHidden();
-    await notesSection
-      .getByRole("button", { name: "Add note", exact: true })
-      .click();
+    await notesSection.getByRole("button", { name: "Add note", exact: true }).click();
     const noteField = notesSection.getByLabel("Note", { exact: true });
     await expect(noteField).toBeFocused();
-    await expect(
-      notesSection.getByRole("button", { name: "Save note" }),
-    ).toBeDisabled();
+    await expect(notesSection.getByRole("button", { name: "Save note" })).toBeDisabled();
     await noteField.fill(noteText);
     await notesSection.getByRole("button", { name: "Save note" }).click();
-    await expect(
-      notesSection.getByTestId("request-note-feedback"),
-    ).toContainText("Note added.");
+    await expect(notesSection.getByTestId("request-note-feedback")).toContainText("Note added.");
 
     const notes = page.getByTestId("note-list");
     await expect(notes).toContainText(noteText);
@@ -613,9 +544,7 @@ test.describe("portal requests operation", () => {
     const composer = page.getByTestId("call-outcome-composer");
     await expect(composer.getByLabel("Note", { exact: true })).toHaveCount(0);
     await composer.getByText("Contacted", { exact: true }).click();
-    await composer
-      .getByText("Left a voicemail — call again", { exact: true })
-      .click();
+    await composer.getByText("Left a voicemail — call again", { exact: true }).click();
     await composer.getByText("Tomorrow morning", { exact: true }).click();
     await page.getByTestId("save-outcome").click();
     await expect(page.getByTestId("composer-feedback")).toBeVisible();
@@ -625,21 +554,15 @@ test.describe("portal requests operation", () => {
       .select("display_name")
       .eq("email", SEED_EMAIL.toLowerCase())
       .single();
-    await expect(notes).toContainText(
-      String(authorProfile?.display_name ?? ""),
-    );
-    await expect(page.getByTestId("request-activity")).toContainText(
-      "Left a voicemail",
-    );
+    await expect(notes).toContainText(String(authorProfile?.display_name ?? ""));
+    await expect(page.getByTestId("request-activity")).toContainText("Left a voicemail");
 
     await page.reload();
     await expect(page.getByTestId("note-list")).toContainText(noteText);
 
     // Appointment request notes have one consistent entry point, independent
     // From the status workflow.
-    await notesSection
-      .getByRole("button", { name: "Add note", exact: true })
-      .click();
+    await notesSection.getByRole("button", { name: "Add note", exact: true }).click();
     await notesSection.getByLabel("Note", { exact: true }).fill(handoffText);
     await notesSection.getByRole("button", { name: "Save note" }).click();
     await expect(page.getByTestId("note-list")).toContainText(handoffText);
@@ -674,10 +597,7 @@ test.describe("portal requests operation", () => {
       };
     });
     await page.getByRole("button", { name: "Print patient page" }).click();
-    await expect(page.locator("html")).toHaveAttribute(
-      "data-test-request-print",
-      "called",
-    );
+    await expect(page.locator("html")).toHaveAttribute("data-test-request-print", "called");
 
     // Print keeps the complete patient handoff and removes portal controls
     // And delivery diagnostics. The request root must be allowed to paginate.
@@ -685,16 +605,10 @@ test.describe("portal requests operation", () => {
     await expect(page.getByTestId("request-detail-name")).toBeVisible();
     await expect(page.getByText(staged.message)).toBeVisible();
     await expect(page.getByTestId("note-list")).toContainText(handoffText);
-    await expect(page.getByTestId("request-activity")).toContainText(
-      "Left a voicemail",
-    );
+    await expect(page.getByTestId("request-activity")).toContainText("Left a voicemail");
     await expect(page.getByTestId("call-outcome-composer")).toBeHidden();
-    await expect(
-      page.getByRole("heading", { name: "Notifications" }),
-    ).toBeHidden();
-    await expect(
-      page.getByRole("navigation", { name: "Breadcrumb" }),
-    ).toBeHidden();
+    await expect(page.getByRole("heading", { name: "Notifications" })).toBeHidden();
+    await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toBeHidden();
     expect(
       await page
         .locator(".request-detail-print")
@@ -716,9 +630,7 @@ test.describe("portal requests operation", () => {
       });
       expect(event).toBeTruthy();
       const meta = noteMetaSchema.parse(event?.meta ?? {});
-      expect(String(meta.author_email).toLowerCase()).toBe(
-        SEED_EMAIL.toLowerCase(),
-      );
+      expect(String(meta.author_email).toLowerCase()).toBe(SEED_EMAIL.toLowerCase());
     }
 
     const { data: outcomeAudits, error: outcomeAuditError } = await db

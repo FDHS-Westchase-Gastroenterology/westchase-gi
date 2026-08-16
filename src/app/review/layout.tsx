@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import "../globals.css";
+
 import { fontVariables } from "@/lib/fonts";
 import { site } from "@/lib/site";
+
+import "@/app/globals.css";
 
 // The master-QR landing page is deliberately outside the [locale] tree:
 // One stable URL for the printed QR, no site chrome, language switching

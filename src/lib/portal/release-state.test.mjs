@@ -41,9 +41,7 @@ const {
   parseSupportedPortalReleaseId,
   PORTAL_RELEASE_WINDOW_MS,
 } = await import("./release-state.ts");
-const { parsePortalReleaseEngagementRows } = await import(
-  "./release-engagement-model.ts"
-);
+const { parsePortalReleaseEngagementRows } = await import("./release-engagement-model.ts");
 
 const FIRST_OPENED_AT = "2026-07-29T13:00:00.000Z";
 const ACKNOWLEDGED_AT = "2026-07-29T13:05:00.000Z";
@@ -58,10 +56,7 @@ function row(partial = {}) {
 }
 
 test("derives unseen, available, acknowledged, hidden, and expired states", () => {
-  assert.deepEqual(
-    derivePortalReleaseState(null, new Date(FIRST_OPENED_AT)),
-    { status: "unseen" },
-  );
+  assert.deepEqual(derivePortalReleaseState(null, new Date(FIRST_OPENED_AT)), { status: "unseen" });
   assert.deepEqual(
     derivePortalReleaseState(
       row(),
@@ -74,10 +69,7 @@ test("derives unseen, available, acknowledged, hidden, and expired states", () =
     },
   );
   assert.deepEqual(
-    derivePortalReleaseState(
-      row({ acknowledged_at: ACKNOWLEDGED_AT }),
-      new Date(ACKNOWLEDGED_AT),
-    ),
+    derivePortalReleaseState(row({ acknowledged_at: ACKNOWLEDGED_AT }), new Date(ACKNOWLEDGED_AT)),
     {
       status: "available",
       firstOpenedAt: FIRST_OPENED_AT,
@@ -101,22 +93,16 @@ test("derives unseen, available, acknowledged, hidden, and expired states", () =
 });
 
 test("treats malformed timestamps and invalid clocks as unavailable", () => {
-  assert.deepEqual(
-    derivePortalReleaseState(row({ first_opened_at: "not-a-date" })),
-    { status: "unavailable" },
-  );
-  assert.deepEqual(
-    derivePortalReleaseState(row({ acknowledged_at: "not-a-date" })),
-    { status: "unavailable" },
-  );
-  assert.deepEqual(
-    derivePortalReleaseState(row({ hidden_at: 123 })),
-    { status: "unavailable" },
-  );
-  assert.deepEqual(
-    derivePortalReleaseState(row(), new Date(Number.NaN)),
-    { status: "unavailable" },
-  );
+  assert.deepEqual(derivePortalReleaseState(row({ first_opened_at: "not-a-date" })), {
+    status: "unavailable",
+  });
+  assert.deepEqual(derivePortalReleaseState(row({ acknowledged_at: "not-a-date" })), {
+    status: "unavailable",
+  });
+  assert.deepEqual(derivePortalReleaseState(row({ hidden_at: 123 })), { status: "unavailable" });
+  assert.deepEqual(derivePortalReleaseState(row(), new Date(Number.NaN)), {
+    status: "unavailable",
+  });
 });
 
 test("accepts only bounded technical release identifiers", () => {
@@ -131,14 +117,8 @@ test("accepts only bounded technical release identifiers", () => {
 
 test("binds public release actions to the configured release identifier", () => {
   const supported = "2026-07-29-request-workflow";
-  assert.equal(
-    parseSupportedPortalReleaseId(supported, supported),
-    supported,
-  );
-  assert.equal(
-    parseSupportedPortalReleaseId("syntactically-valid-but-unknown", supported),
-    null,
-  );
+  assert.equal(parseSupportedPortalReleaseId(supported, supported), supported);
+  assert.equal(parseSupportedPortalReleaseId("syntactically-valid-but-unknown", supported), null);
   assert.equal(parseSupportedPortalReleaseId(" invalid", supported), null);
 });
 
@@ -228,18 +208,12 @@ test("fails release engagement reporting closed on malformed data", () => {
   assert.deepEqual(parsePortalReleaseEngagementRows(null), {
     status: "unavailable",
   });
-  assert.deepEqual(
-    parsePortalReleaseEngagementRows([
-      { ...baseline, profile: null },
-    ]),
-    { status: "unavailable" },
-  );
-  assert.deepEqual(
-    parsePortalReleaseEngagementRows([
-      { ...baseline, view_count: -1 },
-    ]),
-    { status: "unavailable" },
-  );
+  assert.deepEqual(parsePortalReleaseEngagementRows([{ ...baseline, profile: null }]), {
+    status: "unavailable",
+  });
+  assert.deepEqual(parsePortalReleaseEngagementRows([{ ...baseline, view_count: -1 }]), {
+    status: "unavailable",
+  });
   assert.deepEqual(
     parsePortalReleaseEngagementRows([
       {

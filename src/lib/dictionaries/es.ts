@@ -131,7 +131,8 @@ export const es: Dictionary = {
       weekdays: "Lunes – Viernes",
       weekend: "Sábado – Domingo",
       closed: "Cerrado",
-      confirmNote: "Por favor llame a nuestro teléfono principal, (813) 920-8882, para confirmar disponibilidad.",
+      confirmNote:
+        "Por favor llame a nuestro teléfono principal, (813) 920-8882, para confirmar disponibilidad.",
     },
     days: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
     contactCard: {
@@ -161,12 +162,14 @@ export const es: Dictionary = {
       patientsHeading: "Para Pacientes",
       phoneNote:
         "Debido al alto volumen de llamadas, es posible que no siempre podamos contestar de inmediato. Para su conveniencia, también puede comunicarse con nuestra oficina a través de la línea de texto al (813) 564-0315. Agradecemos su paciencia y esperamos poder ayudarle.",
-      emailNote: "Si no logra comunicarse con nuestra oficina por teléfono, puede enviar su solicitud a nuestro correo",
+      emailNote:
+        "Si no logra comunicarse con nuestra oficina por teléfono, puede enviar su solicitud a nuestro correo",
       sisterClinic: "Nuestro socio de bienestar:",
       copyright: "Westchase Gastroenterology. Todos los derechos reservados.",
       networkLine: "Parte de Florida Digestive Health Specialists.",
       reviewHeading: "¿Cómo fue su visita?",
-      reviewBody: "Una reseña de un minuto ayuda a otros pacientes a encontrar atención digestiva de confianza.",
+      reviewBody:
+        "Una reseña de un minuto ayuda a otros pacientes a encontrar atención digestiva de confianza.",
       reviewGoogle: "Escriba una reseña en Google",
       reviewFacebook: "Escriba una reseña en Facebook",
       reviewMore: "Todas las opciones de reseña",
@@ -194,8 +197,14 @@ export const es: Dictionary = {
     heroPhoto: "El equipo de Westchase Gastroenterology en nuestra oficina de Tampa",
     tiles: {
       heading: "¿Cómo podemos ayudarle hoy?",
-      prep: { title: "Preparación para Procedimientos", sub: "Instrucciones paso a paso antes de su procedimiento" },
-      forms: { title: "Formularios para Pacientes Nuevos", sub: "Complete su paquete en línea antes de su visita" },
+      prep: {
+        title: "Preparación para Procedimientos",
+        sub: "Instrucciones paso a paso antes de su procedimiento",
+      },
+      forms: {
+        title: "Formularios para Pacientes Nuevos",
+        sub: "Complete su paquete en línea antes de su visita",
+      },
       physicians: { title: "Conozca a Nuestros Médicos", sub: "Gastroenterólogos certificados" },
       directions: { title: "Mapas y Direcciones", sub: "Dos oficinas: Tampa y Lutz" },
     },
@@ -215,7 +224,8 @@ export const es: Dictionary = {
     testimonialsHeading: "Lo que dicen nuestros pacientes",
     // i5-waiver 2026-07-28 home.testimonialsNote: settled decision — testimonials
     // Stay English-only in every locale, with this explicit qualifier.
-    testimonialsNote: "Reseñas compartidas por nuestros pacientes, en sus propias palabras (en inglés).",
+    testimonialsNote:
+      "Reseñas compartidas por nuestros pacientes, en sus propias palabras (en inglés).",
     railLabel: "Testimonios de pacientes",
     railPrev: "Testimonios anteriores",
     railNext: "Siguientes testimonios",
@@ -303,7 +313,8 @@ export const es: Dictionary = {
       storefront: "La entrada de nuestra oficina de Tampa en Sheldon Road",
       lobby: "La recepción y sala de espera de nuestra oficina",
       lobby2: "El área de recepción de nuestra oficina",
-      decoratedLobby: "La recepción de nuestra oficina decorada con banderas internacionales de fútbol",
+      decoratedLobby:
+        "La recepción de nuestra oficina decorada con banderas internacionales de fútbol",
     },
     reviewsHeading: "Nuestras reseñas",
     reviewsBody:
@@ -409,12 +420,14 @@ export const es: Dictionary = {
     intro:
       "Explicaciones en lenguaje sencillo de los procedimientos que realizamos y las condiciones que tratamos. Cada página está disponible en inglés, español, vietnamita, coreano y árabe.",
     proceduresHeading: "Procedimientos y estudios",
-    proceduresIntro: "Qué esperar antes, durante y después de los procedimientos digestivos más comunes.",
+    proceduresIntro:
+      "Qué esperar antes, durante y después de los procedimientos digestivos más comunes.",
     conditionsHeading: "Condiciones",
     conditionsIntro: "Síntomas, diagnóstico y manejo de las condiciones digestivas más comunes.",
     backToLibrary: "Todos los temas educativos",
     sheetHeading: "Hoja informativa para llevar",
-    sheetBodyAvailable: "Descargue la versión para imprimir de este tema para conservarla o compartirla.",
+    sheetBodyAvailable:
+      "Descargue la versión para imprimir de este tema para conservarla o compartirla.",
     sheetBodyPending:
       "La versión para imprimir de nuestra oficina está en camino. Mientras tanto, esta página contiene la misma información — o pregunte en la recepción.",
     relatedHeading: "Relacionado",
@@ -426,7 +439,8 @@ export const es: Dictionary = {
 
   contact: {
     title: "Contáctenos",
-    intro: "Dos oficinas, un solo equipo. Llame, envíe un texto o mande una solicitud de cita; nosotros nos encargamos del resto.",
+    intro:
+      "Dos oficinas, un solo equipo. Llame, envíe un texto o mande una solicitud de cita; nosotros nos encargamos del resto.",
     formHeading: "Mande una solicitud de cita",
     locationsHeading: "Nuestras oficinas",
   },

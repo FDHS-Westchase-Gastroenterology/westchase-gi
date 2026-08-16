@@ -1,25 +1,33 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { getDictionary, isLocale } from "@/lib/i18n";
-import { pageMetadata } from "@/lib/metadata";
-import { site } from "@/lib/site";
-import type { Locale } from "@/lib/site";
-import { physicians, nursePractitioners, infusionNurse, team } from "@/lib/providers";
-import type { Physician, ProfileSection } from "@/lib/providers";
-import type { Dictionary } from "@/lib/dictionaries/en";
+
 import { JsonLd } from "@/components/JsonLd";
 import { PageHero } from "@/components/PageHero";
 import { ProfileCardViewer } from "@/components/ProfileCardViewer";
 import { Reveal } from "@/components/Reveal";
 import { TextBand } from "@/components/TextBand";
+import type { Dictionary } from "@/lib/dictionaries/en";
+import { getDictionary, isLocale } from "@/lib/i18n";
+import { pageMetadata } from "@/lib/metadata";
+import { physicians, nursePractitioners, infusionNurse, team } from "@/lib/providers";
+import type { Physician, ProfileSection } from "@/lib/providers";
+import { site } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 
-interface PageProps { params: Promise<{ locale: string }> }
+interface PageProps {
+  params: Promise<{ locale: string }>;
+}
 
 export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
-  return pageMetadata(locale, "/physicians", dict.meta.physicians.title, dict.meta.physicians.description);
+  return pageMetadata(
+    locale,
+    "/physicians",
+    dict.meta.physicians.title,
+    dict.meta.physicians.description,
+  );
 }
 
 /** BCP-47 tags for each physician's published "fluent in" line. */
@@ -68,14 +76,20 @@ function Section({ section, locale }: Readonly<{ section: ProfileSection; locale
         <ol className="profile-timeline mt-5">
           {section.entries.map((entry) => (
             <li key={entry.title.en}>
-              <p className="font-bold leading-snug text-[var(--color-ink)]">{entry.title[locale]}</p>
-              <p className="mt-0.5 text-[0.95rem] text-[var(--color-body)]">{entry.detail[locale]}</p>
+              <p className="leading-snug font-bold text-[var(--color-ink)]">
+                {entry.title[locale]}
+              </p>
+              <p className="mt-0.5 text-[0.95rem] text-[var(--color-body)]">
+                {entry.detail[locale]}
+              </p>
             </li>
           ))}
         </ol>
       ) : section.kind === "list" ? (
         <>
-          {section.lead ? <p className="mt-3 text-[var(--color-body)]">{section.lead[locale]}</p> : null}
+          {section.lead ? (
+            <p className="mt-3 text-[var(--color-body)]">{section.lead[locale]}</p>
+          ) : null}
           <ul className="list-plain mt-5 gap-x-8 sm:grid-cols-2">
             {section.items.map((item) => (
               <li key={item.en}>{item[locale]}</li>
@@ -96,7 +110,7 @@ function Section({ section, locale }: Readonly<{ section: ProfileSection; locale
 function Quote({ text }: Readonly<{ text: string }>) {
   return (
     <blockquote className="mt-10 border-t-2 border-[var(--color-amber)] pt-5">
-      <p className="max-w-[38rem] font-[var(--font-display)] text-[1.28rem] leading-normal text-[var(--color-navy)]">
+      <p className="max-w-[38rem] text-[1.28rem] leading-normal font-[var(--font-display)] text-[var(--color-navy)]">
         &ldquo;{text}&rdquo;
       </p>
     </blockquote>
@@ -130,9 +144,7 @@ function PhysicianProfile({
     >
       <div
         className={`container-x section grid items-start gap-x-14 gap-y-10 ${
-          flip
-            ? "lg:grid-cols-[1fr_minmax(0,21rem)]"
-            : "lg:grid-cols-[minmax(0,21rem)_1fr]"
+          flip ? "lg:grid-cols-[1fr_minmax(0,21rem)]" : "lg:grid-cols-[minmax(0,21rem)_1fr]"
         }`}
       >
         {/* Portrait + facts: sticky so the facts stay in view through the bio. */}
@@ -172,7 +184,7 @@ function PhysicianProfile({
         </Reveal>
 
         <Reveal delay={1} className={flip ? "lg:order-1" : ""}>
-          <h2 className="font-[var(--font-display)] text-[clamp(1.7rem,3.2vw,2.2rem)] leading-tight text-[var(--color-ink)]">
+          <h2 className="text-[clamp(1.7rem,3.2vw,2.2rem)] leading-tight font-[var(--font-display)] text-[var(--color-ink)]">
             {doc.name}, {doc.credentials}
           </h2>
           <p className="mt-2 font-bold text-[var(--color-teal-ink)]">
@@ -180,7 +192,10 @@ function PhysicianProfile({
           </p>
           <div className="mt-6 space-y-4">
             {doc.intro.map((para, i) => (
-              <p key={para.en.slice(0, 40)} className={i === 0 ? "lead text-[var(--color-body)]" : "text-[var(--color-body)]"}>
+              <p
+                key={para.en.slice(0, 40)}
+                className={i === 0 ? "lead text-[var(--color-body)]" : "text-[var(--color-body)]"}
+              >
                 {para[locale]}
               </p>
             ))}
@@ -242,9 +257,7 @@ export default async function PhysiciansPage({ params }: Readonly<PageProps>) {
                 key={np.id}
                 id={np.id}
                 className={`mt-12 grid scroll-mt-28 items-center gap-x-14 gap-y-8 lg:mt-16 ${
-                  flip
-                    ? "lg:grid-cols-[1fr_minmax(0,19rem)]"
-                    : "lg:grid-cols-[minmax(0,19rem)_1fr]"
+                  flip ? "lg:grid-cols-[1fr_minmax(0,19rem)]" : "lg:grid-cols-[minmax(0,19rem)_1fr]"
                 }`}
               >
                 <Reveal className={flip ? "lg:order-2" : ""}>
@@ -258,7 +271,7 @@ export default async function PhysiciansPage({ params }: Readonly<PageProps>) {
                   />
                 </Reveal>
                 <Reveal delay={1} className={flip ? "lg:order-1" : ""}>
-                  <h3 className="font-[var(--font-display)] text-[clamp(1.55rem,3vw,2rem)] leading-tight text-[var(--color-ink)]">
+                  <h3 className="text-[clamp(1.55rem,3vw,2rem)] leading-tight font-[var(--font-display)] text-[var(--color-ink)]">
                     {np.name}, {np.credentials}
                   </h3>
                   <p className="mt-2 font-bold text-[var(--color-teal-ink)]">{np.role[locale]}</p>
@@ -267,7 +280,7 @@ export default async function PhysiciansPage({ params }: Readonly<PageProps>) {
                       <li key={f.en}>{f[locale]}</li>
                     ))}
                   </ul>
-                  <p className="mt-7 max-w-[34rem] border-t-2 border-[var(--color-amber)] pt-4 font-[var(--font-display)] text-[1.15rem] leading-normal text-[var(--color-navy)]">
+                  <p className="mt-7 max-w-[34rem] border-t-2 border-[var(--color-amber)] pt-4 text-[1.15rem] leading-normal font-[var(--font-display)] text-[var(--color-navy)]">
                     {np.tagline[locale]}
                   </p>
                 </Reveal>
@@ -279,7 +292,7 @@ export default async function PhysiciansPage({ params }: Readonly<PageProps>) {
           <Reveal className="mt-12 lg:mt-16">
             <div className="grid items-center gap-x-12 gap-y-9 rounded-[var(--radius-lg)] bg-[var(--color-navy)] p-7 text-[var(--color-on-dark)] shadow-[var(--shadow-card)] sm:p-10 lg:grid-cols-[1.2fr_minmax(0,21rem)] lg:p-12">
               <div>
-                <h3 className="font-[var(--font-display)] text-[clamp(1.45rem,2.6vw,1.85rem)] leading-tight text-[var(--color-on-dark)]">
+                <h3 className="text-[clamp(1.45rem,2.6vw,1.85rem)] leading-tight font-[var(--font-display)] text-[var(--color-on-dark)]">
                   {nps.sharedTagline.heading[locale]}
                 </h3>
                 <p className="mt-2 font-bold text-[var(--color-amber)]">
@@ -339,7 +352,7 @@ export default async function PhysiciansPage({ params }: Readonly<PageProps>) {
 
           <Reveal delay={1} className="min-w-0">
             <p className="font-bold text-[var(--color-teal-ink)]">{t.infusionHeading}</p>
-            <h2 className="mt-1 font-[var(--font-display)] text-[clamp(1.7rem,3.2vw,2.2rem)] leading-tight text-[var(--color-ink)]">
+            <h2 className="mt-1 text-[clamp(1.7rem,3.2vw,2.2rem)] leading-tight font-[var(--font-display)] text-[var(--color-ink)]">
               {inf.name}, {inf.credentials}
             </h2>
             <p className="mt-2 font-bold text-[var(--color-teal-ink)]">

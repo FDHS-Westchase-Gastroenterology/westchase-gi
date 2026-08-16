@@ -1,7 +1,9 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+
 import { createClient } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
+
 import { assertSafeE2ETarget } from "./target-guard";
 
 /**
@@ -20,7 +22,10 @@ export function loadLocalEnv(): void {
     const separator = line.indexOf("=");
     if (separator < 1) continue;
 
-    const key = line.slice(0, separator).replace(/^export\s+/, "").trim();
+    const key = line
+      .slice(0, separator)
+      .replace(/^export\s+/, "")
+      .trim();
     let value = line.slice(separator + 1).trim();
     const quote = value[0];
     if ((quote === `"` || quote === `'`) && value.endsWith(quote)) {
@@ -53,15 +58,11 @@ export function serviceDb(): SupabaseClient {
       };
     },
     "public"
-  >(
-    requiredEnv("NEXT_PUBLIC_SUPABASE_URL"),
-    requiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
-    {
-      auth: {
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-        persistSession: false,
-      },
+  >(requiredEnv("NEXT_PUBLIC_SUPABASE_URL"), requiredEnv("SUPABASE_SERVICE_ROLE_KEY"), {
+    auth: {
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      persistSession: false,
     },
-  );
+  });
 }

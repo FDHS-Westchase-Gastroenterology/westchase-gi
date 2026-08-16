@@ -1,11 +1,26 @@
 import Image from "next/image";
 import Link from "next/link";
+
+import type { Dictionary } from "@/lib/i18n";
 import { site, localePath, directionsUrl, formatOfficeHours } from "@/lib/site";
 import type { Locale } from "@/lib/site";
-import type { Dictionary } from "@/lib/i18n";
-import { ArrowRight, ExternalLink, Facebook, Mail, MapPin, MessageSquare, Phone, Printer, Star } from "./icons";
 
-interface FooterProps { locale: Locale; dict: Dictionary }
+import {
+  ArrowRight,
+  ExternalLink,
+  Facebook,
+  Mail,
+  MapPin,
+  MessageSquare,
+  Phone,
+  Printer,
+  Star,
+} from "./icons";
+
+interface FooterProps {
+  locale: Locale;
+  dict: Dictionary;
+}
 
 export function Footer({ locale, dict }: Readonly<FooterProps>) {
   const c = dict.common;
@@ -42,14 +57,17 @@ export function Footer({ locale, dict }: Readonly<FooterProps>) {
               height={50}
               className="h-11 w-11 rounded-full bg-white/95 p-1.5"
             />
-            <p className="font-[var(--font-display)] text-xl leading-tight text-[var(--color-on-dark)]">
+            <p className="text-xl leading-tight font-[var(--font-display)] text-[var(--color-on-dark)]">
               {site.headerName}
             </p>
           </div>
           <p className="mt-4 max-w-sm text-[0.95rem] leading-relaxed">{c.footer.phoneNote}</p>
           <p className="mt-3 max-w-sm text-[0.95rem] leading-relaxed">
             {c.footer.emailNote}{" "}
-            <a href={`mailto:${site.email}`} className="font-bold text-[var(--color-on-dark)] underline decoration-[var(--color-line-dark)] underline-offset-4 hover:decoration-[var(--color-amber)]">
+            <a
+              href={`mailto:${site.email}`}
+              className="font-bold text-[var(--color-on-dark)] underline decoration-[var(--color-line-dark)] underline-offset-4 hover:decoration-[var(--color-amber)]"
+            >
               {site.email}
             </a>
             .
@@ -58,7 +76,7 @@ export function Footer({ locale, dict }: Readonly<FooterProps>) {
 
         {/* Explore */}
         <nav aria-label={c.footer.exploreHeading}>
-          <h2 className="font-[var(--font-body)] text-[0.85rem] font-extrabold uppercase tracking-wide text-[var(--color-amber)]">
+          <h2 className="text-[0.85rem] font-[var(--font-body)] font-extrabold tracking-wide text-[var(--color-amber)] uppercase">
             {c.footer.exploreHeading}
           </h2>
           <ul className="mt-4 grid gap-2.5 font-semibold">
@@ -74,7 +92,7 @@ export function Footer({ locale, dict }: Readonly<FooterProps>) {
 
         {/* For patients */}
         <nav aria-label={c.footer.patientsHeading}>
-          <h2 className="font-[var(--font-body)] text-[0.85rem] font-extrabold uppercase tracking-wide text-[var(--color-amber)]">
+          <h2 className="text-[0.85rem] font-[var(--font-body)] font-extrabold tracking-wide text-[var(--color-amber)] uppercase">
             {c.footer.patientsHeading}
           </h2>
           <ul className="mt-4 grid gap-2.5 font-semibold">
@@ -101,7 +119,7 @@ export function Footer({ locale, dict }: Readonly<FooterProps>) {
 
         {/* Locations + contact */}
         <div>
-          <h2 className="font-[var(--font-body)] text-[0.85rem] font-extrabold uppercase tracking-wide text-[var(--color-amber)]">
+          <h2 className="text-[0.85rem] font-[var(--font-body)] font-extrabold tracking-wide text-[var(--color-amber)] uppercase">
             {c.footer.locationsHeading}
           </h2>
           <ul className="mt-4 grid gap-5">
@@ -109,9 +127,7 @@ export function Footer({ locale, dict }: Readonly<FooterProps>) {
               <li key={loc.id} className="flex items-start gap-2.5">
                 <MapPin className="mt-1 h-4 w-4 flex-none text-[var(--color-amber)]" />
                 <div>
-                  <p className="font-bold text-[var(--color-on-dark)]">
-                    {loc.name[locale]}
-                  </p>
+                  <p className="font-bold text-[var(--color-on-dark)]">{loc.name[locale]}</p>
                   <a
                     href={directionsUrl(loc.mapsQuery)}
                     target="_blank"
@@ -126,13 +142,19 @@ export function Footer({ locale, dict }: Readonly<FooterProps>) {
           </ul>
           <ul className="mt-5 grid gap-2 text-[0.95rem] font-semibold">
             <li>
-              <a href={site.phone.href} className="inline-flex items-center gap-2 transition-colors hover:text-[var(--color-on-dark)]">
+              <a
+                href={site.phone.href}
+                className="inline-flex items-center gap-2 transition-colors hover:text-[var(--color-on-dark)]"
+              >
                 <Phone className="h-4 w-4 flex-none text-[var(--color-amber)]" />{" "}
                 <span className="bidi-ltr">{site.phone.display}</span>
               </a>
             </li>
             <li>
-              <a href={site.textLine.href} className="inline-flex items-center gap-2 transition-colors hover:text-[var(--color-on-dark)]">
+              <a
+                href={site.textLine.href}
+                className="inline-flex items-center gap-2 transition-colors hover:text-[var(--color-on-dark)]"
+              >
                 <MessageSquare className="h-4 w-4 flex-none text-[var(--color-amber)]" />
                 <span className="whitespace-nowrap">
                   {c.textLine}: <span className="bidi-ltr">{site.textLine.display}</span>
@@ -140,13 +162,16 @@ export function Footer({ locale, dict }: Readonly<FooterProps>) {
               </a>
             </li>
             <li className="inline-flex items-center gap-2">
-                <Printer className="h-4 w-4 flex-none text-[var(--color-amber)]" />
-                <span className="whitespace-nowrap">
-                  {c.contactCard.fax}: <span className="bidi-ltr">{site.fax.display}</span>
-                </span>
+              <Printer className="h-4 w-4 flex-none text-[var(--color-amber)]" />
+              <span className="whitespace-nowrap">
+                {c.contactCard.fax}: <span className="bidi-ltr">{site.fax.display}</span>
+              </span>
             </li>
             <li>
-              <a href={`mailto:${site.email}`} className="inline-flex items-center gap-2 transition-colors hover:text-[var(--color-on-dark)]">
+              <a
+                href={`mailto:${site.email}`}
+                className="inline-flex items-center gap-2 transition-colors hover:text-[var(--color-on-dark)]"
+              >
                 <Mail className="h-4 w-4 flex-none text-[var(--color-amber)]" /> {site.email}
               </a>
             </li>
@@ -168,7 +193,7 @@ export function Footer({ locale, dict }: Readonly<FooterProps>) {
       <div className="border-t border-[var(--color-line-dark)]">
         <div className="container-x flex flex-col gap-6 py-9 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-md">
-            <p className="font-[var(--font-display)] text-xl leading-tight text-[var(--color-on-dark)]">
+            <p className="text-xl leading-tight font-[var(--font-display)] text-[var(--color-on-dark)]">
               {c.footer.reviewHeading}
             </p>
             <p className="mt-2 text-[0.95rem] leading-relaxed">{c.footer.reviewBody}</p>
@@ -204,7 +229,8 @@ export function Footer({ locale, dict }: Readonly<FooterProps>) {
       <div className="border-t border-[var(--color-line-dark)]">
         <div className="container-x flex flex-wrap items-center justify-between gap-x-6 gap-y-3 py-5 text-[0.9rem]">
           <p>
-            © {year} {c.footer.copyright} <span className="whitespace-nowrap">{c.footer.networkLine}</span>
+            © {year} {c.footer.copyright}{" "}
+            <span className="whitespace-nowrap">{c.footer.networkLine}</span>
           </p>
           <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
             {/* Staff entry point (issue #18). English-only by the portal's scope

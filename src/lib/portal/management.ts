@@ -2,6 +2,7 @@ import "server-only";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+
 import { jsonObjectSchema } from "@/lib/json";
 import type { Json } from "@/lib/json";
 import { recordAudit } from "@/lib/portal/audit";
@@ -15,12 +16,9 @@ import {
   removeRecipientWithCompatibility,
   toggleRecipientWithCompatibility,
 } from "@/lib/portal/recipient-compatibility";
-import {
-  recipientRpcFailureCode,
-  runRecipientMutationTransport,
-} from "@/lib/portal/recipient-rpc";
-import { portalUrl, serviceClient } from "@/lib/portal/server";
+import { recipientRpcFailureCode, runRecipientMutationTransport } from "@/lib/portal/recipient-rpc";
 import type { StaffProfileRow } from "@/lib/portal/rows";
+import { portalUrl, serviceClient } from "@/lib/portal/server";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STAFF_BAN_DURATION = "876000h";
@@ -48,11 +46,16 @@ const entityIdSchema = z.strictObject({
 const inviteStaffSchema = z.strictObject({
   email: z.string().trim().min(1).max(254).regex(EMAIL_RE),
   displayName: z.string().trim().min(1).max(120),
+  // Admin-chosen staff role, written only after requireRole("admin") through
+  // The server-only service client. Browser clients have no write grant.
+  // react-doctor-disable-next-line react-doctor/supabase-client-owned-authz-field
   role: z.enum(["admin", "staff"]),
 });
 
 const staffRoleSchema = z.strictObject({
   userId: z.uuid(),
+  // Same admin-owned role assignment as inviteStaffSchema; not a client write.
+  // react-doctor-disable-next-line react-doctor/supabase-client-owned-authz-field
   role: z.enum(["admin", "staff"]),
 });
 
@@ -60,11 +63,7 @@ export type UpdateRecipientLabelResult =
   | { ok: true }
   | { ok: false; code: "invalid" | "not_found" | "unavailable" };
 
-export type ManagementFailureCode =
-  | "invalid"
-  | "not_found"
-  | "conflict"
-  | "unavailable";
+export type ManagementFailureCode = "invalid" | "not_found" | "conflict" | "unavailable";
 
 export interface ManagementFailure {
   ok: false;
@@ -74,9 +73,7 @@ export interface ManagementFailure {
 
 export type MutationResult = { ok: true } | ManagementFailure;
 
-export type AddRecipientResult =
-  | { ok: true; delivery: "accepted" | "failed" }
-  | ManagementFailure;
+export type AddRecipientResult = { ok: true; delivery: "accepted" | "failed" } | ManagementFailure;
 
 export type InviteStaffResult =
   | { ok: true; delivery: "accepted" }
@@ -85,10 +82,7 @@ export type InviteStaffResult =
 
 type ServiceClient = ReturnType<typeof serviceClient>;
 
-function failure(
-  code: ManagementFailureCode,
-  error: string,
-): ManagementFailure {
+function failure(code: ManagementFailureCode, error: string): ManagementFailure {
   return { ok: false, code, error };
 }
 
@@ -130,9 +124,7 @@ function authCreateFailure(code: string): ManagementFailure {
   return failure("unavailable", "The staff account could not be created.");
 }
 
-async function operationFailed(
-  operation: () => PromiseLike<{ error: unknown }>,
-): Promise<boolean> {
+async function operationFailed(operation: () => PromiseLike<{ error: unknown }>): Promise<boolean> {
   try {
     const result = await operation();
     return result.error !== null && result.error !== undefined;
@@ -141,10 +133,7 @@ async function operationFailed(
   }
 }
 
-async function deleteProvisionedUser(
-  db: ServiceClient,
-  userId: string,
-): Promise<boolean> {
+async function deleteProvisionedUser(db: ServiceClient, userId: string): Promise<boolean> {
   // Ban first so a generated invite cannot be consumed if Auth deletion is
   // Temporarily unavailable. Supabase APIs resolve with `{ error }`, so each
   // Result must be inspected rather than relying on Promise rejection.
@@ -158,9 +147,7 @@ async function deleteProvisionedUser(
   const initialProfileDeleteFailed = await operationFailed(() =>
     db.from("staff_profiles").delete().eq("user_id", userId),
   );
-  const authDeleteFailed = await operationFailed(async () =>
-    db.auth.admin.deleteUser(userId),
-  );
+  const authDeleteFailed = await operationFailed(async () => db.auth.admin.deleteUser(userId));
   // react-doctor-disable-next-line react-doctor/server-sequential-independent-await
   const finalProfileDeleteFailed = await operationFailed(() =>
     db.from("staff_profiles").delete().eq("user_id", userId),
@@ -193,9 +180,7 @@ async function rollbackInvite(
   return failure(code, message);
 }
 
-export async function addNotificationRecipientMutation(
-  input: Json,
-): Promise<AddRecipientResult> {
+export async function addNotificationRecipientMutation(input: Json): Promise<AddRecipientResult> {
   const session = await requireRole("admin");
   const parsed = addRecipientSchema.safeParse(input);
   if (!parsed.success) {
@@ -206,9 +191,7 @@ export async function addNotificationRecipientMutation(
   const email = normalizeEmail(parsed.data.email);
   const active = parsed.data.active ?? true;
   const label =
-    parsed.data.label === undefined || parsed.data.label === ""
-      ? null
-      : parsed.data.label;
+    parsed.data.label === undefined || parsed.data.label === "" ? null : parsed.data.label;
   const mutation = await runRecipientMutationTransport(
     () =>
       db
@@ -231,15 +214,9 @@ export async function addNotificationRecipientMutation(
   if (mutation.transport === "compatibility") {
     if (!mutation.response.ok) {
       if (mutation.response.code === "conflict") {
-        return failure(
-          "conflict",
-          "That notification recipient already exists.",
-        );
+        return failure("conflict", "That notification recipient already exists.");
       }
-      return failure(
-        "unavailable",
-        "The notification recipient could not be added.",
-      );
+      return failure("unavailable", "The notification recipient could not be added.");
     }
     recipientId = mutation.response.recipientId;
   } else {
@@ -247,20 +224,12 @@ export async function addNotificationRecipientMutation(
     const parsedId = z.string().safeParse(rpc.data);
     if (rpc.error !== null || !parsedId.success) {
       if (
-        recipientRpcFailureCode(
-          "add",
-          rpc.error !== null ? rpc.error.code : undefined,
-        ) === "conflict"
+        recipientRpcFailureCode("add", rpc.error !== null ? rpc.error.code : undefined) ===
+        "conflict"
       ) {
-        return failure(
-          "conflict",
-          "That notification recipient already exists.",
-        );
+        return failure("conflict", "That notification recipient already exists.");
       }
-      return failure(
-        "unavailable",
-        "The notification recipient could not be added.",
-      );
+      return failure("unavailable", "The notification recipient could not be added.");
     }
     recipientId = parsedId.data;
   }
@@ -288,8 +257,7 @@ export async function updateRecipientLabelMutation(
     return { ok: false, code: "invalid" };
   }
 
-  const trimmed =
-    parsed.data.label === null ? null : parsed.data.label.trim();
+  const trimmed = parsed.data.label === null ? null : parsed.data.label.trim();
   const label = trimmed === null || trimmed === "" ? null : trimmed;
   if (label !== null && (label.length < 1 || label.length > 120)) {
     return { ok: false, code: "invalid" };
@@ -324,9 +292,7 @@ export async function updateRecipientLabelMutation(
  * because that is an operational queue task. Adding and removing destinations
  * remains admin-only; staff otherwise have read-only recipient access.
  */
-export async function toggleNotificationRecipientMutation(
-  input: Json,
-): Promise<MutationResult> {
+export async function toggleNotificationRecipientMutation(input: Json): Promise<MutationResult> {
   const session = await requireRole("staff");
   const parsed = recipientStateSchema.safeParse(input);
   if (!parsed.success) {
@@ -356,31 +322,20 @@ export async function toggleNotificationRecipientMutation(
       if (mutation.response.code === "not_found") {
         return failure("not_found", "Notification recipient not found.");
       }
-      return failure(
-        "unavailable",
-        "The notification recipient could not be updated.",
-      );
+      return failure("unavailable", "The notification recipient could not be updated.");
     }
   } else if (mutation.response.error !== null) {
-    if (
-      recipientRpcFailureCode("toggle", mutation.response.error.code) ===
-      "not_found"
-    ) {
+    if (recipientRpcFailureCode("toggle", mutation.response.error.code) === "not_found") {
       return failure("not_found", "Notification recipient not found.");
     }
-    return failure(
-      "unavailable",
-      "The notification recipient could not be updated.",
-    );
+    return failure("unavailable", "The notification recipient could not be updated.");
   }
 
   revalidateManagementViews();
   return { ok: true };
 }
 
-export async function removeNotificationRecipientMutation(
-  input: Json,
-): Promise<MutationResult> {
+export async function removeNotificationRecipientMutation(input: Json): Promise<MutationResult> {
   const session = await requireRole("admin");
   const parsed = entityIdSchema.safeParse(input);
   if (!parsed.success) {
@@ -408,31 +363,20 @@ export async function removeNotificationRecipientMutation(
       if (mutation.response.code === "not_found") {
         return failure("not_found", "Notification recipient not found.");
       }
-      return failure(
-        "unavailable",
-        "The notification recipient could not be removed.",
-      );
+      return failure("unavailable", "The notification recipient could not be removed.");
     }
   } else if (mutation.response.error !== null) {
-    if (
-      recipientRpcFailureCode("remove", mutation.response.error.code) ===
-      "not_found"
-    ) {
+    if (recipientRpcFailureCode("remove", mutation.response.error.code) === "not_found") {
       return failure("not_found", "Notification recipient not found.");
     }
-    return failure(
-      "unavailable",
-      "The notification recipient could not be removed.",
-    );
+    return failure("unavailable", "The notification recipient could not be removed.");
   }
 
   revalidateManagementViews();
   return { ok: true };
 }
 
-export async function inviteStaffMutation(
-  input: Json,
-): Promise<InviteStaffResult> {
+export async function inviteStaffMutation(input: Json): Promise<InviteStaffResult> {
   const session = await requireRole("admin");
   const parsed = inviteStaffSchema.safeParse(input);
   if (!parsed.success) {
@@ -446,34 +390,25 @@ export async function inviteStaffMutation(
     return failure("unavailable", "The staff invitation could not be created.");
   }
 
-  const { data: created, error: createError } =
-    await db.auth.admin.createUser({
-      email,
-      email_confirm: false,
-      app_metadata: { role: parsed.data.role },
-    });
+  const { data: created, error: createError } = await db.auth.admin.createUser({
+    email,
+    email_confirm: false,
+    app_metadata: { role: parsed.data.role },
+  });
   const user = created.user;
   if (createError || !user) {
     const parsedCreateError = z.object({ code: z.string() }).safeParse(createError);
-    return authCreateFailure(
-      parsedCreateError.success ? parsedCreateError.data.code : "",
-    );
+    return authCreateFailure(parsedCreateError.success ? parsedCreateError.data.code : "");
   }
 
-  const { data: generated, error: linkError } =
-    await db.auth.admin.generateLink({
-      type: "invite",
-      email,
-      options: { redirectTo: confirmationUrl },
-    });
+  const { data: generated, error: linkError } = await db.auth.admin.generateLink({
+    type: "invite",
+    email,
+    options: { redirectTo: confirmationUrl },
+  });
   const tokenHash = generated.properties?.hashed_token ?? null;
   if (linkError !== null || tokenHash === null || generated.user.id !== user.id) {
-    return rollbackInvite(
-      db,
-      user.id,
-      "unavailable",
-      "The staff invitation could not be created.",
-    );
+    return rollbackInvite(db, user.id, "unavailable", "The staff invitation could not be created.");
   }
   const { data: profile, error: profileError } = await db
     .from("staff_profiles")
@@ -491,18 +426,8 @@ export async function inviteStaffMutation(
     .overrideTypes<Pick<StaffProfileRow, "id">, { merge: false }>();
   if (profileError) {
     return profileError.code === "23505"
-      ? rollbackInvite(
-          db,
-          user.id,
-          "conflict",
-          "A staff account already uses that email.",
-        )
-      : rollbackInvite(
-          db,
-          user.id,
-          "unavailable",
-          "The staff account could not be created.",
-        );
+      ? rollbackInvite(db, user.id, "conflict", "A staff account already uses that email.")
+      : rollbackInvite(db, user.id, "unavailable", "The staff account could not be created.");
   }
 
   try {
@@ -514,12 +439,7 @@ export async function inviteStaffMutation(
       detail: { role: parsed.data.role, active: true, onboarded: false },
     });
   } catch {
-    return rollbackInvite(
-      db,
-      user.id,
-      "unavailable",
-      "The staff account could not be created.",
-    );
+    return rollbackInvite(db, user.id, "unavailable", "The staff account could not be created.");
   }
 
   revalidateManagementViews();
@@ -532,9 +452,7 @@ export async function inviteStaffMutation(
   });
 }
 
-export async function resendStaffInviteMutation(
-  input: Json,
-): Promise<InviteStaffResult> {
+export async function resendStaffInviteMutation(input: Json): Promise<InviteStaffResult> {
   const session = await requireRole("admin");
   const parsed = entityIdSchema.safeParse(input);
   if (!parsed.success) {
@@ -548,10 +466,7 @@ export async function resendStaffInviteMutation(
     .eq("user_id", parsed.data.id)
     .maybeSingle()
     .overrideTypes<
-      Pick<
-        StaffProfileRow,
-        "id" | "user_id" | "email" | "role" | "active" | "onboarded_at"
-      >,
+      Pick<StaffProfileRow, "id" | "user_id" | "email" | "role" | "active" | "onboarded_at">,
       { merge: false }
     >();
   if (profileError) {
@@ -564,8 +479,7 @@ export async function resendStaffInviteMutation(
     return failure("invalid", "That staff member has already completed setup.");
   }
 
-  const { data: authData, error: authError } =
-    await db.auth.admin.getUserById(profile.user_id);
+  const { data: authData, error: authError } = await db.auth.admin.getUserById(profile.user_id);
   const authUser = authData.user;
   if (authUser === null) {
     return failure("unavailable", "The staff invitation could not be renewed.");
@@ -594,12 +508,11 @@ export async function resendStaffInviteMutation(
     return failure("unavailable", "The staff invitation could not be renewed.");
   }
 
-  const { data: generated, error: linkError } =
-    await db.auth.admin.generateLink({
-      type,
-      email: profile.email,
-      options: { redirectTo: confirmationUrl },
-    });
+  const { data: generated, error: linkError } = await db.auth.admin.generateLink({
+    type,
+    email: profile.email,
+    options: { redirectTo: confirmationUrl },
+  });
   const tokenHash = generated.properties?.hashed_token ?? null;
   if (linkError !== null || tokenHash === null || generated.user.id !== profile.user_id) {
     return failure("unavailable", "The staff invitation could not be renewed.");
@@ -632,9 +545,7 @@ export async function resendStaffInviteMutation(
   });
 }
 
-export async function deactivateStaffMutation(
-  input: Json,
-): Promise<MutationResult> {
+export async function deactivateStaffMutation(input: Json): Promise<MutationResult> {
   const session = await requireRole("admin");
   const parsed = entityIdSchema.safeParse(input);
   if (!parsed.success) {
@@ -650,9 +561,12 @@ export async function deactivateStaffMutation(
     .select("id, user_id, active")
     .eq("user_id", parsed.data.id)
     .maybeSingle()
-    .overrideTypes<Pick<StaffProfileRow, "id" | "user_id" | "active">, {
-      merge: false,
-    }>();
+    .overrideTypes<
+      Pick<StaffProfileRow, "id" | "user_id" | "active">,
+      {
+        merge: false;
+      }
+    >();
   if (readError) {
     return failure("unavailable", "The staff account could not be read.");
   }
@@ -675,15 +589,11 @@ export async function deactivateStaffMutation(
   // Target user's JWT rather than a user id. We do not hold target JWTs.
   // The profile flag is the immediate app-layer lockout; a long-lived Auth
   // Ban is the available admin-API backstop for future sign-ins/refreshes.
-  const { error: banError } = await db.auth.admin.updateUserById(
-    current.user_id,
-    { ban_duration: STAFF_BAN_DURATION },
-  );
+  const { error: banError } = await db.auth.admin.updateUserById(current.user_id, {
+    ban_duration: STAFF_BAN_DURATION,
+  });
   if (banError) {
-    await db
-      .from("staff_profiles")
-      .update({ active: true })
-      .eq("user_id", current.user_id);
+    await db.from("staff_profiles").update({ active: true }).eq("user_id", current.user_id);
     return failure("unavailable", "The staff account could not be deactivated.");
   }
 
@@ -700,10 +610,7 @@ export async function deactivateStaffMutation(
       db.auth.admin.updateUserById(current.user_id, {
         ban_duration: "none",
       }),
-      db
-        .from("staff_profiles")
-        .update({ active: true })
-        .eq("user_id", current.user_id),
+      db.from("staff_profiles").update({ active: true }).eq("user_id", current.user_id),
     ]);
     return failure("unavailable", "The staff account could not be deactivated.");
   }
@@ -712,9 +619,7 @@ export async function deactivateStaffMutation(
   return { ok: true };
 }
 
-export async function changeStaffRoleMutation(
-  input: Json,
-): Promise<MutationResult> {
+export async function changeStaffRoleMutation(input: Json): Promise<MutationResult> {
   const session = await requireRole("admin");
   const parsed = staffRoleSchema.safeParse(input);
   if (!parsed.success) {
@@ -730,9 +635,12 @@ export async function changeStaffRoleMutation(
     .select("id, user_id, role")
     .eq("user_id", parsed.data.userId)
     .maybeSingle()
-    .overrideTypes<Pick<StaffProfileRow, "id" | "user_id" | "role">, {
-      merge: false,
-    }>();
+    .overrideTypes<
+      Pick<StaffProfileRow, "id" | "user_id" | "role">,
+      {
+        merge: false;
+      }
+    >();
   if (readError) {
     return failure("unavailable", "The staff account could not be read.");
   }
@@ -744,8 +652,7 @@ export async function changeStaffRoleMutation(
   }
 
   const previousRole = current.role;
-  const { data: authData, error: authReadError } =
-    await db.auth.admin.getUserById(current.user_id);
+  const { data: authData, error: authReadError } = await db.auth.admin.getUserById(current.user_id);
   const authUser = authData.user;
   if (authReadError || !authUser) {
     return failure("unavailable", "The staff role could not be changed.");
@@ -753,15 +660,12 @@ export async function changeStaffRoleMutation(
 
   const parsedMetadata = jsonObjectSchema.safeParse(authUser.app_metadata);
   const previousMetadata = parsedMetadata.success ? parsedMetadata.data : {};
-  const { error: metadataError } = await db.auth.admin.updateUserById(
-    current.user_id,
-    {
-      app_metadata: {
-        ...previousMetadata,
-        role: parsed.data.role,
-      },
+  const { error: metadataError } = await db.auth.admin.updateUserById(current.user_id, {
+    app_metadata: {
+      ...previousMetadata,
+      role: parsed.data.role,
     },
-  );
+  });
   if (metadataError) {
     return failure("unavailable", "The staff role could not be changed.");
   }
@@ -787,10 +691,7 @@ export async function changeStaffRoleMutation(
     });
   } catch {
     await Promise.allSettled([
-      db
-        .from("staff_profiles")
-        .update({ role: previousRole })
-        .eq("user_id", current.user_id),
+      db.from("staff_profiles").update({ role: previousRole }).eq("user_id", current.user_id),
       db.auth.admin.updateUserById(current.user_id, {
         app_metadata: previousMetadata,
       }),

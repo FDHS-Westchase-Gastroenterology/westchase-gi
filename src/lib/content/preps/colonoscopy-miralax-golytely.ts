@@ -6,10 +6,10 @@
 // English runs 2/4/6 pm; both verified against the scan, flagged for the
 // Practice as a wording question, never silently aligned).
 
-import type { PrepDoc, PrepSection } from "./types";
-import { EN, ES_T, ES_O, VI, KO, AR } from "./common";
 import { standardFront, avoidAndLiquids } from "./builders";
 import type { Flavor } from "./builders";
+import { EN, ES_T, ES_O, VI, KO, AR } from "./common";
+import type { PrepDoc, PrepSection } from "./types";
 
 const purchaseEn =
   "**You will need to purchase one 10-ounce bottle of Magnesium Citrate, one 238-gram bottle of MiraLAX powder, and 4 tablets of Dulcolax 5 mg (Bisacodyl)** at your local pharmacy, in the laxative aisle.";
@@ -187,31 +187,11 @@ const miralax: PrepDoc = {
   sourcePages: "11–12",
   sourceLangs: ["en"],
   sections: {
-    en: [
-      ...standardFront(EN, { fiber: true }),
-      ...miralaxDayBeforeEn,
-      ...avoidAndLiquids(EN),
-    ],
-    es: [
-      ...standardFront(ES_T, { fiber: true }),
-      ...miralaxDayBeforeEs,
-      ...avoidAndLiquids(ES_T),
-    ],
-    vi: [
-      ...standardFront(VI, { fiber: true }),
-      ...miralaxDayBeforeVi,
-      ...avoidAndLiquids(VI),
-    ],
-    ko: [
-      ...standardFront(KO, { fiber: true }),
-      ...miralaxDayBeforeKo,
-      ...avoidAndLiquids(KO),
-    ],
-    ar: [
-      ...standardFront(AR, { fiber: true }),
-      ...miralaxDayBeforeAr,
-      ...avoidAndLiquids(AR),
-    ],
+    en: [...standardFront(EN, { fiber: true }), ...miralaxDayBeforeEn, ...avoidAndLiquids(EN)],
+    es: [...standardFront(ES_T, { fiber: true }), ...miralaxDayBeforeEs, ...avoidAndLiquids(ES_T)],
+    vi: [...standardFront(VI, { fiber: true }), ...miralaxDayBeforeVi, ...avoidAndLiquids(VI)],
+    ko: [...standardFront(KO, { fiber: true }), ...miralaxDayBeforeKo, ...avoidAndLiquids(KO)],
+    ar: [...standardFront(AR, { fiber: true }), ...miralaxDayBeforeAr, ...avoidAndLiquids(AR)],
   },
 };
 
@@ -373,31 +353,15 @@ const miralaxSplit: PrepDoc = {
   sourcePages: "13–16",
   sourceLangs: ["en", "es"],
   sections: {
-    en: [
-      ...standardFront(EN, { fiber: true }),
-      ...miralaxSplitDayBeforeEn,
-      ...avoidAndLiquids(EN),
-    ],
+    en: [...standardFront(EN, { fiber: true }), ...miralaxSplitDayBeforeEn, ...avoidAndLiquids(EN)],
     es: [
       ...standardFront(ES_O, { fiber: true }),
       ...miralaxSplitDayBeforeEs,
       ...avoidAndLiquids(ES_O),
     ],
-    vi: [
-      ...standardFront(VI, { fiber: true }),
-      ...miralaxSplitDayBeforeVi,
-      ...avoidAndLiquids(VI),
-    ],
-    ko: [
-      ...standardFront(KO, { fiber: true }),
-      ...miralaxSplitDayBeforeKo,
-      ...avoidAndLiquids(KO),
-    ],
-    ar: [
-      ...standardFront(AR, { fiber: true }),
-      ...miralaxSplitDayBeforeAr,
-      ...avoidAndLiquids(AR),
-    ],
+    vi: [...standardFront(VI, { fiber: true }), ...miralaxSplitDayBeforeVi, ...avoidAndLiquids(VI)],
+    ko: [...standardFront(KO, { fiber: true }), ...miralaxSplitDayBeforeKo, ...avoidAndLiquids(KO)],
+    ar: [...standardFront(AR, { fiber: true }), ...miralaxSplitDayBeforeAr, ...avoidAndLiquids(AR)],
   },
 };
 
@@ -414,13 +378,11 @@ const EN_G: Flavor = {
     "**If you take anticoagulants or anti-platelet medications (Coumadin, Warfarin, Plavix, Clopidogrel, Effient, Xarelto, Eliquis, Brilinta, etc.), please contact the physician who prescribes them for clearance and additional instructions.**",
   nsaids:
     "**Seven (7) days before, stop:** ibuprofen, Celebrex, Naproxen, Mobic, meloxicam, Omega 3, fish liver oil, Vitamin E, and garlic tablets.",
-  dietPills:
-    "**Stop Phentermine (weight-loss medication) 14 days before.**",
+  dietPills: "**Stop Phentermine (weight-loss medication) 14 days before.**",
   // The Spanish sheet lists the same medications with no day count —
   // Reproduced as-is (flagged for the practice).
   glp1: "**Stop semaglutide (Wegovy, Ozempic, Rybelsus), dulaglutide (Trulicity), lixisenatide (Adlyxin), exenatide (Bydureon, Byetta), liraglutide (Victoza, Saxenda) and Mounjaro (tirzepatide).**",
-  fiber:
-    "**Reduce fiber intake 3 days before.** For example, do not eat nuts, seeds, or popcorn.",
+  fiber: "**Reduce fiber intake 3 days before.** For example, do not eat nuts, seeds, or popcorn.",
   followUp:
     "**Note:** if you do not have a follow-up appointment after your procedure, call our office. Remember that results are not given over the phone. **No exceptions.**",
   hydrate: (prep: string) =>
@@ -438,10 +400,8 @@ const VI_G: Flavor = {
     "**Nếu quý vị dùng thuốc chống đông hoặc thuốc kháng kết tập tiểu cầu (Coumadin, Warfarin, Plavix, Clopidogrel, Effient, Xarelto, Eliquis, Brilinta, v.v.), xin liên hệ bác sĩ kê thuốc cho quý vị để được chấp thuận và hướng dẫn thêm.**",
   nsaids:
     "**Bảy (7) ngày trước, ngừng:** ibuprofen, Celebrex, Naproxen, Mobic, meloxicam, Omega 3, dầu gan cá, Vitamin E và viên tỏi.",
-  dietPills:
-    "**Ngừng Phentermine (thuốc giảm cân) 14 ngày trước.**",
-  glp1:
-    "**Ngừng semaglutide (Wegovy, Ozempic, Rybelsus), dulaglutide (Trulicity), lixisenatide (Adlyxin), exenatide (Bydureon, Byetta), liraglutide (Victoza, Saxenda) và Mounjaro (tirzepatide).**",
+  dietPills: "**Ngừng Phentermine (thuốc giảm cân) 14 ngày trước.**",
+  glp1: "**Ngừng semaglutide (Wegovy, Ozempic, Rybelsus), dulaglutide (Trulicity), lixisenatide (Adlyxin), exenatide (Bydureon, Byetta), liraglutide (Victoza, Saxenda) và Mounjaro (tirzepatide).**",
   fiber:
     "**Giảm ăn chất xơ 3 ngày trước.** Ví dụ: không ăn các loại quả hạch, các loại hạt hoặc bắp rang.",
   followUp:
@@ -461,10 +421,8 @@ const KO_G: Flavor = {
     "**항응고제 또는 항혈소판제(Coumadin, Warfarin, Plavix, Clopidogrel, Effient, Xarelto, Eliquis, Brilinta 등)를 복용하시는 경우, 해당 약을 처방한 의사에게 연락하여 승인 및 추가 지침을 받으십시오.**",
   nsaids:
     "**시술 7일 전부터 다음 약을 중단하십시오:** ibuprofen, Celebrex, Naproxen, Mobic, meloxicam, Omega 3, 생선 간유, Vitamin E, 마늘 정제.",
-  dietPills:
-    "**Phentermine(체중 감량 약)은 14일 전에 중단하십시오.**",
-  glp1:
-    "**semaglutide (Wegovy, Ozempic, Rybelsus), dulaglutide (Trulicity), lixisenatide (Adlyxin), exenatide (Bydureon, Byetta), liraglutide (Victoza, Saxenda) 및 Mounjaro (tirzepatide)는 중단하십시오.**",
+  dietPills: "**Phentermine(체중 감량 약)은 14일 전에 중단하십시오.**",
+  glp1: "**semaglutide (Wegovy, Ozempic, Rybelsus), dulaglutide (Trulicity), lixisenatide (Adlyxin), exenatide (Bydureon, Byetta), liraglutide (Victoza, Saxenda) 및 Mounjaro (tirzepatide)는 중단하십시오.**",
   fiber:
     "**시술 3일 전부터 섬유질 섭취를 줄이십시오.** 예: 견과류, 씨앗류, 팝콘은 드시지 마십시오.",
   followUp:
@@ -484,12 +442,9 @@ const AR_G: Flavor = {
     "**إذا كنت تتناول مضادات التخثر أو الأدوية المضادة للصفائح (Coumadin, Warfarin, Plavix, Clopidogrel, Effient, Xarelto, Eliquis, Brilinta, إلخ)، يُرجى التواصل مع الطبيب الذي وصفها لك للحصول على الموافقة والتعليمات الإضافية.**",
   nsaids:
     "**قبل 7 أيام، توقف عن تناول:** ibuprofen وCelebrex وNaproxen وMobic وmeloxicam وOmega 3 وزيت كبد السمك وVitamin E وأقراص الثوم.",
-  dietPills:
-    "**توقف عن Phentermine (دواء إنقاص الوزن) قبل 14 يومًا.**",
-  glp1:
-    "**توقف عن semaglutide (Wegovy, Ozempic, Rybelsus) وdulaglutide (Trulicity) وlixisenatide (Adlyxin) وexenatide (Bydureon, Byetta) وliraglutide (Victoza, Saxenda) وMounjaro (tirzepatide).**",
-  fiber:
-    "**قلّل تناول الألياف قبل 3 أيام.** على سبيل المثال: لا تتناول المكسرات أو البذور أو الفشار.",
+  dietPills: "**توقف عن Phentermine (دواء إنقاص الوزن) قبل 14 يومًا.**",
+  glp1: "**توقف عن semaglutide (Wegovy, Ozempic, Rybelsus) وdulaglutide (Trulicity) وlixisenatide (Adlyxin) وexenatide (Bydureon, Byetta) وliraglutide (Victoza, Saxenda) وMounjaro (tirzepatide).**",
+  fiber: "**قلّل تناول الألياف قبل 3 أيام.** على سبيل المثال: لا تتناول المكسرات أو البذور أو الفشار.",
   followUp:
     "**ملاحظة:** إذا لم يكن لديك موعد متابعة بعد الإجراء، فاتصل بمكتبنا. تذكّر أن النتائج لا تُعطى عبر الهاتف. **لا استثناءات.**",
   hydrate: (prep: string) =>
@@ -873,9 +828,4 @@ const golytelySplit: PrepDoc = {
   },
 };
 
-export const miralaxGolytelyPreps: PrepDoc[] = [
-  miralax,
-  miralaxSplit,
-  golytely,
-  golytelySplit,
-];
+export const miralaxGolytelyPreps: PrepDoc[] = [miralax, miralaxSplit, golytely, golytelySplit];

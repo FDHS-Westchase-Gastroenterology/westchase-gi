@@ -1,6 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
+
 import { z } from "zod";
+
 import { jsonSchema } from "../src/lib/json";
 import { serviceDb } from "./support";
 
@@ -22,15 +24,11 @@ export default async function globalSetup(): Promise<void> {
     perPage: 1,
   });
   if (authAdminError) {
-    throw new Error(
-      `Auth Admin preflight failed: ${authAdminError.code ?? authAdminError.status}`,
-    );
+    throw new Error(`Auth Admin preflight failed: ${authAdminError.code ?? authAdminError.status}`);
   }
 
   if (!existsSync(SNAPSHOT_PATH)) {
-    const { data, error } = await db
-      .from("notification_recipients")
-      .select("id, active");
+    const { data, error } = await db.from("notification_recipients").select("id, active");
     if (error) {
       throw new Error(`Recipient snapshot failed: ${error.code}`);
     }
@@ -38,12 +36,8 @@ export default async function globalSetup(): Promise<void> {
     writeFileSync(SNAPSHOT_PATH, JSON.stringify(data), "utf8");
   } else {
     // Reuse the crashed run's snapshot; log count only.
-    const prior = z.array(jsonSchema).parse(
-      JSON.parse(readFileSync(SNAPSHOT_PATH, "utf8")),
-    );
-    console.log(
-      `[e2e] reusing existing recipient snapshot (${prior.length} rows)`,
-    );
+    const prior = z.array(jsonSchema).parse(JSON.parse(readFileSync(SNAPSHOT_PATH, "utf8")));
+    console.log(`[e2e] reusing existing recipient snapshot (${prior.length} rows)`);
   }
 
   const { error: disableError } = await db

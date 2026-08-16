@@ -21,10 +21,7 @@ async function runPortalReleaseAction(
   releaseId: string,
 ): Promise<PortalReleaseActionResult> {
   const session = await requireRole("staff", { unauthenticated: "throw" });
-  const parsedReleaseId = parseSupportedPortalReleaseId(
-    releaseId,
-    PORTAL_RELEASE_BRIEFING.id,
-  );
+  const parsedReleaseId = parseSupportedPortalReleaseId(releaseId, PORTAL_RELEASE_BRIEFING.id);
   if (parsedReleaseId === null || parsedReleaseId === "") {
     return { ok: false, code: "invalid" };
   }
@@ -58,17 +55,11 @@ export async function hidePortalReleaseAction(
 export async function recordPortalReleaseGuideOpenAction(
   releaseId: string,
 ): Promise<PortalReleaseActionResult> {
-  return runPortalReleaseAction(
-    "portal_record_staff_release_guide_open",
-    releaseId,
-  );
+  return runPortalReleaseAction("portal_record_staff_release_guide_open", releaseId);
 }
 
 export async function recordPortalReleaseDismissAction(
   releaseId: string,
 ): Promise<PortalReleaseActionResult> {
-  return runPortalReleaseAction(
-    "portal_record_staff_release_dismiss",
-    releaseId,
-  );
+  return runPortalReleaseAction("portal_record_staff_release_dismiss", releaseId);
 }

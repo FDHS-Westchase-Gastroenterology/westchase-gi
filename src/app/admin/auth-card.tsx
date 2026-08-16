@@ -14,27 +14,21 @@ export function AuthCard({
       <div className="w-full max-w-md">
         <div className="overflow-hidden rounded-[var(--radius-lg)] bg-white shadow-[var(--shadow-card)]">
           <div className="bg-[var(--color-navy)] px-8 py-6 text-[var(--color-on-dark)]">
-            <p className="font-[var(--font-display)] text-[1.15rem] leading-snug">
+            <p className="text-[1.15rem] leading-snug font-[var(--font-display)]">
               Westchase Gastroenterology
             </p>
-            <p className="mt-1 text-[0.8rem] font-bold uppercase tracking-[0.1em] text-[var(--color-on-dark-muted)]">
+            <p className="mt-1 text-[0.8rem] font-bold tracking-[0.1em] text-[var(--color-on-dark-muted)] uppercase">
               Staff portal
             </p>
           </div>
-          <div className="px-8 pb-8 pt-7">
-            <h1 className="text-[1.45rem] leading-tight text-[var(--color-ink)]">
-              {title}
-            </h1>
-            <p className="mt-1.5 text-[0.9rem] text-[var(--color-muted)]">
-              {description}
-            </p>
+          <div className="px-8 pt-7 pb-8">
+            <h1 className="text-[1.45rem] leading-tight text-[var(--color-ink)]">{title}</h1>
+            <p className="mt-1.5 text-[0.9rem] text-[var(--color-muted)]">{description}</p>
             {children}
           </div>
         </div>
         {footer !== undefined && footer !== null && footer !== false && footer !== "" ? (
-          <div className="mt-5 text-center text-[0.85rem] text-[var(--color-muted)]">
-            {footer}
-          </div>
+          <div className="mt-5 text-center text-[0.85rem] text-[var(--color-muted)]">{footer}</div>
         ) : null}
       </div>
     </main>

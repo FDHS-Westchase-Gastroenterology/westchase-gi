@@ -1,30 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
-import { PrintButton } from "@/components/PrintButton";
-import { asJsonBoolean, asJsonObject, asJsonString, jsonSchema } from "@/lib/json";
-import type { Json, JsonObject } from "@/lib/json";
-import { isMailbox, REQUEST_STATUSES } from "@/lib/portal/contracts";
-import type { RequestClosureOutcome, RequestStatus } from "@/lib/portal/contracts";
-import { isCallOutcomeId } from "@/lib/portal/call-outcomes";
-import { requireRole } from "@/lib/portal/auth";
-import { isLocale } from "@/lib/i18n";
-import {
-  parseRequestSearch,
-  requestSearchFilter,
-} from "@/lib/portal/request-query";
-import { serviceClient } from "@/lib/portal/server";
-import {
-  displayNameOrEmail,
-  fetchStaffNameMap,
-} from "@/lib/portal/staff-identity";
-import {
-  fetchAttentiveOpenRows,
-  fetchClosedRows,
-  OPEN_CANDIDATE_LIMIT,
-  OPEN_STATUSES,
-} from "../queue";
-import { StatusBadge } from "../status-badge";
+
 import {
   formatReceived,
   followUpWhenLabel,
@@ -32,7 +9,26 @@ import {
   LOCATION_LABELS,
   OUTCOME_HISTORY_LABELS,
   TIME_LABELS,
-} from "../format";
+} from "@/app/admin/(portal)/requests/format";
+import {
+  fetchAttentiveOpenRows,
+  fetchClosedRows,
+  OPEN_CANDIDATE_LIMIT,
+  OPEN_STATUSES,
+} from "@/app/admin/(portal)/requests/queue";
+import { StatusBadge } from "@/app/admin/(portal)/requests/status-badge";
+import { PrintButton } from "@/components/PrintButton";
+import { isLocale } from "@/lib/i18n";
+import { asJsonBoolean, asJsonObject, asJsonString, jsonSchema } from "@/lib/json";
+import type { Json, JsonObject } from "@/lib/json";
+import { requireRole } from "@/lib/portal/auth";
+import { isCallOutcomeId } from "@/lib/portal/call-outcomes";
+import { isMailbox, REQUEST_STATUSES } from "@/lib/portal/contracts";
+import type { RequestClosureOutcome, RequestStatus } from "@/lib/portal/contracts";
+import { parseRequestSearch, requestSearchFilter } from "@/lib/portal/request-query";
+import { serviceClient } from "@/lib/portal/server";
+import { displayNameOrEmail, fetchStaffNameMap } from "@/lib/portal/staff-identity";
+
 import { CallOutcomeComposer } from "./call-outcome-composer";
 import { RequestNotes } from "./request-notes";
 import type { RequestNoteView } from "./request-notes";
@@ -199,8 +195,7 @@ function activityEntries(
         kind: "status",
         id: `audit-${audit.id}`,
         to,
-        legacyClose:
-          to === "closed" && asJsonBoolean(detail.legacy_unclassified_close) === true,
+        legacyClose: to === "closed" && asJsonBoolean(detail.legacy_unclassified_close) === true,
         author: audit.actor_email ?? "",
         at: audit.at,
       });
@@ -314,10 +309,7 @@ export default async function RequestDetailPage({
   // (e.g. an old closed row beyond the tail window) simply shows no chain.
   const scopedParsed = requestStatusSchema.safeParse(statusParam);
   const scoped =
-    statusParam !== null &&
-    statusParam !== "" &&
-    statusParam !== "all" &&
-    scopedParsed.success
+    statusParam !== null && statusParam !== "" && statusParam !== "all" && scopedParsed.success
       ? scopedParsed.data
       : null;
   const neighborIds: string[] = [];
@@ -352,9 +344,7 @@ export default async function RequestDetailPage({
   const message = row.message?.trim();
   const mailbox = row.email?.trim();
   const safeMailbox =
-    mailbox !== undefined && mailbox !== "" && isMailbox(mailbox)
-      ? mailbox
-      : null;
+    mailbox !== undefined && mailbox !== "" && isMailbox(mailbox) ? mailbox : null;
   const parsedEvents = z.array(eventRowSchema).safeParse(events);
   if (!parsedEvents.success) {
     throw new Error("Event read failed: invalid");
@@ -376,9 +366,7 @@ export default async function RequestDetailPage({
     throw new Error("Request activity read failed: invalid");
   }
   const entries = activityEntries(allEvents, parsedAudits.data);
-  const notifications = allEvents.filter(
-    (event) => event.type === "notification",
-  );
+  const notifications = allEvents.filter((event) => event.type === "notification");
 
   const fields: { label: string; value: React.ReactNode }[] = [
     {
@@ -394,18 +382,19 @@ export default async function RequestDetailPage({
     },
     {
       label: "Email",
-      value: safeMailbox !== null && safeMailbox !== "" ? (
-        <a
-          href={`mailto:${safeMailbox}`}
-          className="break-all font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-        >
-          {safeMailbox}
-        </a>
-      ) : (
-        <span className="text-[var(--color-muted)]">
-          Not provided — call the phone number above
-        </span>
-      ),
+      value:
+        safeMailbox !== null && safeMailbox !== "" ? (
+          <a
+            href={`mailto:${safeMailbox}`}
+            className="font-bold break-all text-[var(--color-teal-ink)] underline underline-offset-2"
+          >
+            {safeMailbox}
+          </a>
+        ) : (
+          <span className="text-[var(--color-muted)]">
+            Not provided — call the phone number above
+          </span>
+        ),
     },
     { label: "Preferred office", value: LOCATION_LABELS[row.location] },
     { label: "Preferred time", value: TIME_LABELS[row.preferred_time] },
@@ -418,21 +407,13 @@ export default async function RequestDetailPage({
   ];
 
   return (
-    <section
-      aria-labelledby="request-heading"
-      className="request-detail-print"
-    >
+    <section aria-labelledby="request-heading" className="request-detail-print">
       <div className="hidden border-b-2 border-black pb-3 print:block">
         <p className="text-[15pt] font-bold">Westchase Gastroenterology</p>
-        <p className="mt-1 text-[9pt] font-bold uppercase tracking-[0.08em]">
-          Appointment request
-        </p>
+        <p className="mt-1 text-[9pt] font-bold tracking-[0.08em] uppercase">Appointment request</p>
       </div>
 
-      <nav
-        aria-label="Breadcrumb"
-        className="print-hide flex items-center text-[0.9rem]"
-      >
+      <nav aria-label="Breadcrumb" className="print-hide flex items-center text-[0.9rem]">
         <Link
           href={queueHref}
           className="inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
@@ -470,11 +451,7 @@ export default async function RequestDetailPage({
       </nav>
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
-        <h1
-          id="request-heading"
-          data-testid="request-detail-name"
-          className="portal-title"
-        >
+        <h1 id="request-heading" data-testid="request-detail-name" className="portal-title">
           {row.name}
         </h1>
         <div className="flex flex-wrap items-center gap-3">
@@ -482,9 +459,7 @@ export default async function RequestDetailPage({
           <PrintButton label="Print patient page" />
         </div>
       </div>
-      {row.status === "closed" &&
-      row.closed_at !== null &&
-      row.closed_at !== "" ? (
+      {row.status === "closed" && row.closed_at !== null && row.closed_at !== "" ? (
         <p
           data-testid="request-lifecycle-summary"
           className="mt-1.5 text-[0.9rem] text-[var(--color-muted)]"
@@ -508,26 +483,22 @@ export default async function RequestDetailPage({
         <dl className="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-2">
           {fields.map((field) => (
             <div key={field.label}>
-              <dt className="text-[0.8rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
+              <dt className="text-[0.8rem] font-bold tracking-[0.06em] text-[var(--color-muted)] uppercase">
                 {field.label}
               </dt>
-              <dd className="mt-1 text-[0.95rem] text-[var(--color-ink)]">
-                {field.value}
-              </dd>
+              <dd className="mt-1 text-[0.95rem] text-[var(--color-ink)]">{field.value}</dd>
             </div>
           ))}
         </dl>
         <div className="mt-5 border-t border-[var(--color-line)] pt-5">
-          <h3 className="text-[0.8rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
+          <h3 className="text-[0.8rem] font-bold tracking-[0.06em] text-[var(--color-muted)] uppercase">
             Reason for requesting this appointment
           </h3>
           <p
             data-testid="request-message"
-            className="mt-2 whitespace-pre-wrap text-[0.95rem] leading-relaxed text-[var(--color-body)]"
+            className="mt-2 text-[0.95rem] leading-relaxed whitespace-pre-wrap text-[var(--color-body)]"
           >
-            {message !== undefined && message !== ""
-              ? message
-              : "— none provided —"}
+            {message !== undefined && message !== "" ? message : "— none provided —"}
           </p>
         </div>
       </div>
@@ -540,22 +511,16 @@ export default async function RequestDetailPage({
           status={row.status}
           closureOutcome={row.closure_disposition}
           closedAtLabel={
-            row.closed_at !== null && row.closed_at !== ""
-              ? formatReceived(row.closed_at)
-              : null
+            row.closed_at !== null && row.closed_at !== "" ? formatReceived(row.closed_at) : null
           }
-          nextHref={
-            nextId !== null && nextId !== "" ? continuityHref(nextId) : null
-          }
+          nextHref={nextId !== null && nextId !== "" ? continuityHref(nextId) : null}
         />
       </div>
 
       <div className="request-detail-secondary mt-6 grid items-start gap-6 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-6">
           <div className="request-print-card rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
-            <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
-              Request activity
-            </h2>
+            <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">Request activity</h2>
             <p className="mt-1.5 text-[0.88rem] leading-relaxed text-[var(--color-muted)]">
               Call outcomes and status changes, newest first.
             </p>
@@ -575,30 +540,21 @@ export default async function RequestDetailPage({
                           entry.followUpAt !== null && entry.followUpAt !== ""
                             ? ` — call again ${followUpWhenLabel(entry.followUpAt)}`
                             : ""
-                        }${
-                          entry.undone
-                            ? " — appointment request status change undone"
-                            : ""
-                        }`
+                        }${entry.undone ? " — appointment request status change undone" : ""}`
                       : entry.kind === "undo"
                         ? `Undo — appointment request status restored to ${statusLineLabel(entry.restoredStatus)}`
-                      : entry.kind === "status"
-                        ? entry.legacyClose
-                          ? "Closed without an outcome"
-                          : `Marked ${statusLineLabel(entry.to)}`
-                        : `Closed — ${
-                            entry.disposition === "converted"
-                              ? "appointment booked"
-                              : "no appointment booked"
-                          }`;
+                        : entry.kind === "status"
+                          ? entry.legacyClose
+                            ? "Closed without an outcome"
+                            : `Marked ${statusLineLabel(entry.to)}`
+                          : `Closed — ${
+                              entry.disposition === "converted"
+                                ? "appointment booked"
+                                : "no appointment booked"
+                            }`;
                   return (
-                    <li
-                      key={entry.id}
-                      className="request-activity-item py-4"
-                    >
-                      <p className="text-[0.95rem] font-bold text-[var(--color-ink)]">
-                        {line}
-                      </p>
+                    <li key={entry.id} className="request-activity-item py-4">
+                      <p className="text-[0.95rem] font-bold text-[var(--color-ink)]">{line}</p>
                       <p className="mt-1.5 text-[0.8rem] font-bold text-[var(--color-teal-ink)]">
                         {displayNameOrEmail(nameMap, entry.author)} ·{" "}
                         {formatReceived(entry.at, true)}
@@ -613,9 +569,7 @@ export default async function RequestDetailPage({
 
         <div className="space-y-6">
           <div className="request-notifications print-hide rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
-            <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
-              Notifications
-            </h2>
+            <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">Notifications</h2>
             {notifications.length === 0 ? (
               <p className="mt-3 text-[0.9rem] text-[var(--color-muted)]">
                 No notification attempts recorded for this request.

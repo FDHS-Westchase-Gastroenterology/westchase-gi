@@ -3,6 +3,11 @@
 import type { Json } from "@/lib/json";
 import { requireRole } from "@/lib/portal/auth";
 import {
+  cancelMaintainerInviteMutation,
+  inviteMaintainerMutation,
+  revokeMaintainerMutation,
+} from "@/lib/portal/maintainers";
+import {
   addNotificationRecipientMutation,
   changeStaffRoleMutation,
   deactivateStaffMutation,
@@ -12,11 +17,6 @@ import {
   toggleNotificationRecipientMutation,
   updateRecipientLabelMutation,
 } from "@/lib/portal/management";
-import {
-  cancelMaintainerInviteMutation,
-  inviteMaintainerMutation,
-  revokeMaintainerMutation,
-} from "@/lib/portal/maintainers";
 
 // Server actions are public POST endpoints: each one authenticates as its
 // FIRST statement. The management mutations re-check the same role

@@ -1,13 +1,7 @@
 import Link from "next/link";
 import type { SVGProps } from "react";
 import { z } from "zod";
-import { requireRole } from "@/lib/portal/auth";
-import {
-  arrivedOutsideOfficeHours,
-  waitingSince,
-} from "@/lib/portal/business-time";
-import { availableQueueCount } from "@/lib/portal/request-query";
-import { serviceClient } from "@/lib/portal/server";
+
 import {
   ArrowRight,
   ChevronRight,
@@ -18,9 +12,14 @@ import {
   Printer,
   Users,
 } from "@/components/icons";
-import { formatReceived } from "./requests/format";
-import { PortalTour } from "./portal-tour";
+import { requireRole } from "@/lib/portal/auth";
+import { arrivedOutsideOfficeHours, waitingSince } from "@/lib/portal/business-time";
+import { availableQueueCount } from "@/lib/portal/request-query";
+import { serviceClient } from "@/lib/portal/server";
+
 import { PortalReleaseHomeAnnouncement } from "./portal-release-briefing";
+import { PortalTour } from "./portal-tour";
+import { formatReceived } from "./requests/format";
 
 // The portal's front door. Staff land on their day, not on software:
 // A greeting, the one thing that may need attention (new appointment
@@ -105,10 +104,8 @@ function headlineFor(newCount: number): React.ReactNode {
   if (newCount === 0) return "No new appointment requests are waiting.";
   return (
     <>
-      <strong className="font-black text-[var(--color-amber-deep)]">
-        {newCount}
-      </strong>{" "}
-      new appointment {newCount === 1 ? "request is" : "requests are"} waiting.
+      <strong className="font-black text-[var(--color-amber-deep)]">{newCount}</strong> new
+      appointment {newCount === 1 ? "request is" : "requests are"} waiting.
     </>
   );
 }
@@ -159,10 +156,7 @@ export default async function AdminHomePage() {
     throw new Error("Queue preview read failed: invalid");
   }
   const newest = newestParsed.data;
-  const availableNewCount = availableQueueCount(
-    newCount,
-    Boolean(queueReadError),
-  );
+  const availableNewCount = availableQueueCount(newCount, Boolean(queueReadError));
   const oldestParsed = z.array(oldestPreviewSchema).safeParse(oldestRows ?? []);
   if (!oldestParsed.success) {
     throw new Error("Queue preview read failed: invalid");
@@ -170,9 +164,7 @@ export default async function AdminHomePage() {
   const oldest = oldestParsed.data;
   const oldestPreview = oldest.at(0);
   const oldestWaiting =
-    availableNewCount !== null &&
-    availableNewCount !== 0 &&
-    oldestPreview !== undefined
+    availableNewCount !== null && availableNewCount !== 0 && oldestPreview !== undefined
       ? waitingSince(oldestPreview.created_at, now)
       : null;
   // Zero recipients is a real, legal state worth flagging; a failed
@@ -182,9 +174,7 @@ export default async function AdminHomePage() {
   // Failing while every request still lands in the queue. Same discipline —
   // A failed events read is not evidence of an outage, so it stays silent.
   const deliveryFailureCount =
-    !notificationsReadError && (failedNotificationCount ?? 0) > 0
-      ? failedNotificationCount
-      : null;
+    !notificationsReadError && (failedNotificationCount ?? 0) > 0 ? failedNotificationCount : null;
 
   return (
     <section aria-labelledby="home-heading">
@@ -223,21 +213,20 @@ export default async function AdminHomePage() {
             <div data-testid="queue-overview-unavailable">
               <p
                 data-testid="queue-overview-headline"
-                className="mt-3 max-w-[26ch] text-[1.4rem] font-bold leading-snug text-[var(--color-ink)]"
+                className="mt-3 max-w-[26ch] text-[1.4rem] leading-snug font-bold text-[var(--color-ink)]"
               >
                 The request count is unavailable right now.
               </p>
               <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.92rem] leading-relaxed text-[var(--color-ink)]">
-                This does not mean the queue is empty — this page could not
-                check it. Refresh in a moment, or open the queue below to
-                see every request.
+                This does not mean the queue is empty — this page could not check it. Refresh in a
+                moment, or open the queue below to see every request.
               </p>
             </div>
           ) : (
             <>
               <p
                 data-testid="queue-overview-headline"
-                className="mt-3 max-w-[26ch] text-[1.4rem] font-bold leading-snug text-[var(--color-ink)]"
+                className="mt-3 max-w-[26ch] text-[1.4rem] leading-snug font-bold text-[var(--color-ink)]"
               >
                 {headlineFor(availableNewCount)}
               </p>
@@ -273,9 +262,7 @@ export default async function AdminHomePage() {
                         </span>
                         <span className="flex-none text-[0.88rem] text-[var(--color-muted)]">
                           {formatReceived(request.created_at)}
-                          {arrivedOutsideOfficeHours(request.created_at)
-                            ? " · after hours"
-                            : ""}
+                          {arrivedOutsideOfficeHours(request.created_at) ? " · after hours" : ""}
                         </span>
                       </Link>
                     </li>
@@ -294,8 +281,8 @@ export default async function AdminHomePage() {
               data-testid="no-recipients-warning"
               className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.92rem] leading-relaxed text-[var(--color-ink)]"
             >
-              No one is getting notification emails right now. New requests still
-              land here, but no email goes out when one arrives.{" "}
+              No one is getting notification emails right now. New requests still land here, but no
+              email goes out when one arrives.{" "}
               <Link
                 href="/admin/settings#notifications"
                 className="font-bold underline underline-offset-2"
@@ -313,8 +300,8 @@ export default async function AdminHomePage() {
               {deliveryFailureCount === 1
                 ? "A notification email failed to send in the last 24 hours."
                 : `${deliveryFailureCount} notification emails failed to send in the last 24 hours.`}{" "}
-              Requests still land here — the queue is always the system of
-              record — but notification emails may not be reaching anyone.{" "}
+              Requests still land here — the queue is always the system of record — but notification
+              emails may not be reaching anyone.{" "}
               <Link
                 href="/admin/help#something-wrong"
                 className="font-bold underline underline-offset-2"
@@ -332,14 +319,8 @@ export default async function AdminHomePage() {
           </div>
         </section>
 
-        <section
-          aria-labelledby="tasks-heading"
-          className="card-lined p-4 sm:p-5"
-        >
-          <h2
-            id="tasks-heading"
-            className="pt-1 text-[1.02rem] font-black text-[var(--color-ink)]"
-          >
+        <section aria-labelledby="tasks-heading" className="card-lined p-4 sm:p-5">
+          <h2 id="tasks-heading" className="pt-1 text-[1.02rem] font-black text-[var(--color-ink)]">
             Around the portal
           </h2>
           <ul className="mt-2.5">
@@ -359,7 +340,7 @@ export default async function AdminHomePage() {
                     <span className="min-w-0 flex-1">
                       <span
                         id={`task-${slug}-label`}
-                        className="block text-[0.95rem] font-bold leading-snug text-[var(--color-ink)]"
+                        className="block text-[0.95rem] leading-snug font-bold text-[var(--color-ink)]"
                       >
                         {task.label}
                       </span>

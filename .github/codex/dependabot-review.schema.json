@@ -2,13 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "decision",
-    "summary",
-    "risk_reasons",
-    "evidence",
-    "recommended_actions"
-  ],
+  "required": ["decision", "summary", "risk_reasons", "evidence", "recommended_actions"],
   "properties": {
     "decision": {
       "type": "string",

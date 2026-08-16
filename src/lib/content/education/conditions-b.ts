@@ -6,7 +6,7 @@
 // Translation of the English in a neutral "usted" register; Spanish and the
 // VI/KO/AR machine translations still await native-speaker review.
 
-import type { EducationTopic } from "../types";
+import type { EducationTopic } from "@/lib/content/types";
 
 export const conditionsB: EducationTopic[] = [
   {

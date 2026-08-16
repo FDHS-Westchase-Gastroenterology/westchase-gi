@@ -1,23 +1,31 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+
+import { ExternalLink, Star } from "@/components/icons";
+import { LocationCards } from "@/components/LocationCards";
+import { PageHero } from "@/components/PageHero";
+import { Reveal } from "@/components/Reveal";
+import { revealDelay } from "@/components/reveal-delay";
+import { TextBand } from "@/components/TextBand";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
 import { site } from "@/lib/site";
 import type { Locale } from "@/lib/site";
-import { PageHero } from "@/components/PageHero";
-import { Reveal } from "@/components/Reveal";
-import { revealDelay } from "@/components/reveal-delay";
-import { LocationCards } from "@/components/LocationCards";
-import { TextBand } from "@/components/TextBand";
-import { ExternalLink, Star } from "@/components/icons";
 
-interface PageProps { params: Promise<{ locale: string }> }
+interface PageProps {
+  params: Promise<{ locale: string }>;
+}
 
 export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
-  return pageMetadata(locale, "/office-gallery", dict.meta.gallery.title, dict.meta.gallery.description);
+  return pageMetadata(
+    locale,
+    "/office-gallery",
+    dict.meta.gallery.title,
+    dict.meta.gallery.description,
+  );
 }
 
 export default async function GalleryPage({ params }: Readonly<PageProps>) {
@@ -30,9 +38,27 @@ export default async function GalleryPage({ params }: Readonly<PageProps>) {
   // Photos of the renovated lobby. The decorated lobby photo was restored at
   // The practice's request on 2026-07-09.
   const photos = [
-    { src: "/images/facility/storefront-tampa.webp", w: 1067, h: 436, alt: t.photos.storefront, layout: "wide" },
-    { src: "/images/facility/lobby.jpeg", w: 2362, h: 1330, alt: t.photos.lobby, layout: "standard" },
-    { src: "/images/facility/lobby-2.jpeg", w: 2362, h: 1330, alt: t.photos.lobby2, layout: "standard" },
+    {
+      src: "/images/facility/storefront-tampa.webp",
+      w: 1067,
+      h: 436,
+      alt: t.photos.storefront,
+      layout: "wide",
+    },
+    {
+      src: "/images/facility/lobby.jpeg",
+      w: 2362,
+      h: 1330,
+      alt: t.photos.lobby,
+      layout: "standard",
+    },
+    {
+      src: "/images/facility/lobby-2.jpeg",
+      w: 2362,
+      h: 1330,
+      alt: t.photos.lobby2,
+      layout: "standard",
+    },
     {
       src: "/images/facility/lobby-world-cup.jpeg",
       w: 768,
@@ -88,9 +114,7 @@ export default async function GalleryPage({ params }: Readonly<PageProps>) {
       <section className="border-y border-[var(--color-line)] bg-[var(--color-mint)]">
         <div className="container-x section-sm">
           <Reveal>
-            <h2 className="h2 heading-tick flex-wrap">
-              {t.reviewsHeading}
-            </h2>
+            <h2 className="h2 heading-tick flex-wrap">{t.reviewsHeading}</h2>
             <p className="measure mt-3 text-[var(--color-body)]">{t.reviewsBody}</p>
           </Reveal>
           <div className="mt-7 flex flex-wrap gap-3">

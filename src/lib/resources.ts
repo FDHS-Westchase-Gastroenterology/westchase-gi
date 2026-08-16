@@ -17,7 +17,13 @@ export interface ResourceLink {
 
 export const patientResources: ResourceLink[] = [
   {
-    topic: { en: "Irritable Bowel Syndrome", es: "Síndrome del intestino irritable", vi: "Hội chứng ruột kích thích", ko: "과민성 대장 증후군", ar: "متلازمة القولون العصبي" },
+    topic: {
+      en: "Irritable Bowel Syndrome",
+      es: "Síndrome del intestino irritable",
+      vi: "Hội chứng ruột kích thích",
+      ko: "과민성 대장 증후군",
+      ar: "متلازمة القولون العصبي",
+    },
     org: "International Foundation for Gastrointestinal Disorders",
     url: "https://www.iffgd.org",
     description: {
@@ -29,7 +35,13 @@ export const patientResources: ResourceLink[] = [
     },
   },
   {
-    topic: { en: "Inflammatory Bowel Disease", es: "Enfermedad inflamatoria intestinal", vi: "Bệnh viêm ruột", ko: "염증성 장 질환", ar: "داء الأمعاء الالتهابي" },
+    topic: {
+      en: "Inflammatory Bowel Disease",
+      es: "Enfermedad inflamatoria intestinal",
+      vi: "Bệnh viêm ruột",
+      ko: "염증성 장 질환",
+      ar: "داء الأمعاء الالتهابي",
+    },
     org: "Crohn's & Colitis Foundation",
     url: "https://www.crohnscolitisfoundation.org",
     description: {
@@ -41,7 +53,13 @@ export const patientResources: ResourceLink[] = [
     },
   },
   {
-    topic: { en: "Liver Disease", es: "Enfermedad hepática", vi: "Bệnh gan", ko: "간 질환", ar: "أمراض الكبد" },
+    topic: {
+      en: "Liver Disease",
+      es: "Enfermedad hepática",
+      vi: "Bệnh gan",
+      ko: "간 질환",
+      ar: "أمراض الكبد",
+    },
     org: "American Liver Foundation",
     url: "https://www.liverfoundation.org",
     description: {
@@ -53,7 +71,13 @@ export const patientResources: ResourceLink[] = [
     },
   },
   {
-    topic: { en: "Hemochromatosis", es: "Hemocromatosis", vi: "Bệnh nhiễm sắc tố sắt mô (hemochromatosis)", ko: "혈색소증", ar: "داء ترسب الأصبغة الدموية" },
+    topic: {
+      en: "Hemochromatosis",
+      es: "Hemocromatosis",
+      vi: "Bệnh nhiễm sắc tố sắt mô (hemochromatosis)",
+      ko: "혈색소증",
+      ar: "داء ترسب الأصبغة الدموية",
+    },
     org: "Iron Overload Disease Association",
     url: "https://www.ironoverload.org",
     description: {
@@ -65,7 +89,13 @@ export const patientResources: ResourceLink[] = [
     },
   },
   {
-    topic: { en: "Celiac Disease", es: "Enfermedad celíaca", vi: "Bệnh Celiac", ko: "셀리악병", ar: "الداء البطني (السيلياك)" },
+    topic: {
+      en: "Celiac Disease",
+      es: "Enfermedad celíaca",
+      vi: "Bệnh Celiac",
+      ko: "셀리악병",
+      ar: "الداء البطني (السيلياك)",
+    },
     org: "Celiac.com",
     url: "https://www.celiac.com",
     description: {
@@ -77,7 +107,13 @@ export const patientResources: ResourceLink[] = [
     },
   },
   {
-    topic: { en: "Ostomy", es: "Ostomía", vi: "Lỗ mở thông (ostomy)", ko: "장루·요루", ar: "الفغرة" },
+    topic: {
+      en: "Ostomy",
+      es: "Ostomía",
+      vi: "Lỗ mở thông (ostomy)",
+      ko: "장루·요루",
+      ar: "الفغرة",
+    },
     org: "United Ostomy Associations",
     url: "https://www.uoa.org",
     description: {

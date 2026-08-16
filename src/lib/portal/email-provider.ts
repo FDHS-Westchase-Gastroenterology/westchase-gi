@@ -1,6 +1,7 @@
 import "server-only";
 
 import { Resend } from "resend";
+
 import { createEmailSender } from "@/lib/portal/email";
 import type { PortalEmailTransport } from "@/lib/portal/email";
 

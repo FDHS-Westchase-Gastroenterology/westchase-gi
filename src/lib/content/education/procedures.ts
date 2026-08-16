@@ -4,15 +4,27 @@
 // Article text was not reused. Spanish follows the site's neutral Latin-American
 // "usted" register; VI/KO/AR are machine translations awaiting native review.
 
-import type { EducationTopic } from "../types";
+import type { EducationTopic } from "@/lib/content/types";
 
 export const procedures: EducationTopic[] = [
   {
     slug: "colorectal-cancer-screening",
     legacyId: "48148",
     group: "procedures",
-    title: { en: "Understanding Colorectal Cancer Screening", es: "Entienda las pruebas de detección del cáncer colorrectal", vi: "Tìm hiểu về tầm soát ung thư đại trực tràng", ko: "대장암 검진의 이해", ar: "فهم فحوصات الكشف المبكر عن سرطان القولون والمستقيم" },
-    summary: { en: "Screening finds polyps and early cancer before symptoms appear, and removing polyps can often keep colorectal cancer from developing at all. Learn when to start and which test options exist.", es: "Las pruebas de detección encuentran pólipos y cánceres en etapa temprana antes de que aparezcan síntomas, y extirpar los pólipos a menudo puede evitar que el cáncer colorrectal llegue a desarrollarse. Conozca cuándo comenzar y qué opciones existen.", vi: "Tầm soát giúp phát hiện polyp và ung thư giai đoạn sớm trước khi có triệu chứng, và việc cắt bỏ polyp thường có thể ngăn ung thư đại trực tràng hình thành ngay từ đầu. Hãy tìm hiểu khi nào nên bắt đầu và có những lựa chọn xét nghiệm nào.", ko: "검진은 증상이 나타나기 전에 용종과 초기 암을 발견하며, 용종을 제거하면 대장암이 아예 생기지 않도록 막을 수 있는 경우가 많습니다. 언제 검진을 시작해야 하는지, 어떤 검사 방법이 있는지 알아보십시오.", ar: "تكشف فحوصات الكشف المبكر عن السلائل والسرطان في مراحله المبكرة قبل ظهور الأعراض، وكثيرًا ما يحول استئصال السلائل دون نشوء سرطان القولون والمستقيم من الأساس. تعرف على موعد البدء وخيارات الفحص المتاحة." },
+    title: {
+      en: "Understanding Colorectal Cancer Screening",
+      es: "Entienda las pruebas de detección del cáncer colorrectal",
+      vi: "Tìm hiểu về tầm soát ung thư đại trực tràng",
+      ko: "대장암 검진의 이해",
+      ar: "فهم فحوصات الكشف المبكر عن سرطان القولون والمستقيم",
+    },
+    summary: {
+      en: "Screening finds polyps and early cancer before symptoms appear, and removing polyps can often keep colorectal cancer from developing at all. Learn when to start and which test options exist.",
+      es: "Las pruebas de detección encuentran pólipos y cánceres en etapa temprana antes de que aparezcan síntomas, y extirpar los pólipos a menudo puede evitar que el cáncer colorrectal llegue a desarrollarse. Conozca cuándo comenzar y qué opciones existen.",
+      vi: "Tầm soát giúp phát hiện polyp và ung thư giai đoạn sớm trước khi có triệu chứng, và việc cắt bỏ polyp thường có thể ngăn ung thư đại trực tràng hình thành ngay từ đầu. Hãy tìm hiểu khi nào nên bắt đầu và có những lựa chọn xét nghiệm nào.",
+      ko: "검진은 증상이 나타나기 전에 용종과 초기 암을 발견하며, 용종을 제거하면 대장암이 아예 생기지 않도록 막을 수 있는 경우가 많습니다. 언제 검진을 시작해야 하는지, 어떤 검사 방법이 있는지 알아보십시오.",
+      ar: "تكشف فحوصات الكشف المبكر عن السلائل والسرطان في مراحله المبكرة قبل ظهور الأعراض، وكثيرًا ما يحول استئصال السلائل دون نشوء سرطان القولون والمستقيم من الأساس. تعرف على موعد البدء وخيارات الفحص المتاحة.",
+    },
     sections: [
       {
         paragraphs: [
@@ -33,7 +45,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Why screening matters", es: "Por qué es importante la detección", vi: "Vì sao tầm soát lại quan trọng", ko: "검진이 중요한 이유", ar: "أهمية الفحص المبكر" },
+        heading: {
+          en: "Why screening matters",
+          es: "Por qué es importante la detección",
+          vi: "Vì sao tầm soát lại quan trọng",
+          ko: "검진이 중요한 이유",
+          ar: "أهمية الفحص المبكر",
+        },
         paragraphs: [
           {
             en: "Polyps rarely cause symptoms while they are small, so waiting for warning signs is not a reliable plan. When screening finds a polyp, it can usually be removed during the same colonoscopy. When screening finds a cancer early, treatment tends to be simpler and more effective. Your doctor will discuss how your personal and family history affects your timing and choice of test.",
@@ -45,7 +63,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Your screening options", es: "Sus opciones de detección", vi: "Các lựa chọn tầm soát của quý vị", ko: "검진 방법의 선택지", ar: "خيارات الفحص المتاحة لك" },
+        heading: {
+          en: "Your screening options",
+          es: "Sus opciones de detección",
+          vi: "Các lựa chọn tầm soát của quý vị",
+          ko: "검진 방법의 선택지",
+          ar: "خيارات الفحص المتاحة لك",
+        },
         paragraphs: [
           {
             en: "Colonoscopy is the most complete option. It examines the entire colon, and any polyps found can be removed right away, which is why many patients choose it as their first screening test. When the exam is normal, it usually does not need to be repeated for several years.",
@@ -64,7 +88,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "How to prepare", es: "Cómo prepararse", vi: "Cách chuẩn bị", ko: "준비 방법", ar: "كيف تستعد" },
+        heading: {
+          en: "How to prepare",
+          es: "Cómo prepararse",
+          vi: "Cách chuẩn bị",
+          ko: "준비 방법",
+          ar: "كيف تستعد",
+        },
         paragraphs: [
           {
             en: "Stool tests require little preparation beyond following the kit instructions. Colonoscopy requires a bowel preparation: a day of clear liquids and a prescribed laxative solution that empties the colon so your doctor can see clearly. Your care team will give you step-by-step instructions and adjust your regular medicines if needed.",
@@ -76,7 +106,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "What to expect", es: "Qué esperar", vi: "Những gì sẽ diễn ra", ko: "예상되는 과정", ar: "ما يمكن توقعه" },
+        heading: {
+          en: "What to expect",
+          es: "Qué esperar",
+          vi: "Những gì sẽ diễn ra",
+          ko: "예상되는 과정",
+          ar: "ما يمكن توقعه",
+        },
         paragraphs: [
           {
             en: "If you have a colonoscopy, you will receive sedation, and most patients sleep comfortably through the exam. You will need someone to drive you home, and most people return to normal activities the next day.",
@@ -101,8 +137,20 @@ export const procedures: EducationTopic[] = [
     slug: "upper-endoscopy",
     legacyId: "48150",
     group: "procedures",
-    title: { en: "Understanding Upper Endoscopy", es: "Entienda la endoscopia superior", vi: "Tìm hiểu về nội soi tiêu hóa trên", ko: "상부내시경 검사의 이해", ar: "فهم التنظير العلوي" },
-    summary: { en: "A short, sedated exam that lets your gastroenterologist see the esophagus, stomach, and duodenum, and take samples or treat certain problems during the same visit.", es: "Un examen breve, con sedación, que permite a su gastroenterólogo ver el esófago, el estómago y el duodeno, y tomar muestras o tratar ciertos problemas en la misma visita.", vi: "Một cuộc kiểm tra ngắn, có dùng thuốc an thần, cho phép bác sĩ chuyên khoa tiêu hóa quan sát thực quản, dạ dày và tá tràng, đồng thời lấy mẫu hoặc điều trị một số vấn đề ngay trong cùng buổi khám.", ko: "진정 상태에서 짧게 진행되는 검사로, 소화기내과 전문의가 식도, 위, 십이지장을 관찰하고 같은 방문에서 검체를 채취하거나 특정 문제를 치료할 수 있습니다.", ar: "فحص قصير تحت التهدئة يتيح لطبيب الجهاز الهضمي رؤية المريء والمعدة والاثني عشر، وأخذ عينات أو علاج بعض المشكلات خلال الزيارة نفسها." },
+    title: {
+      en: "Understanding Upper Endoscopy",
+      es: "Entienda la endoscopia superior",
+      vi: "Tìm hiểu về nội soi tiêu hóa trên",
+      ko: "상부내시경 검사의 이해",
+      ar: "فهم التنظير العلوي",
+    },
+    summary: {
+      en: "A short, sedated exam that lets your gastroenterologist see the esophagus, stomach, and duodenum, and take samples or treat certain problems during the same visit.",
+      es: "Un examen breve, con sedación, que permite a su gastroenterólogo ver el esófago, el estómago y el duodeno, y tomar muestras o tratar ciertos problemas en la misma visita.",
+      vi: "Một cuộc kiểm tra ngắn, có dùng thuốc an thần, cho phép bác sĩ chuyên khoa tiêu hóa quan sát thực quản, dạ dày và tá tràng, đồng thời lấy mẫu hoặc điều trị một số vấn đề ngay trong cùng buổi khám.",
+      ko: "진정 상태에서 짧게 진행되는 검사로, 소화기내과 전문의가 식도, 위, 십이지장을 관찰하고 같은 방문에서 검체를 채취하거나 특정 문제를 치료할 수 있습니다.",
+      ar: "فحص قصير تحت التهدئة يتيح لطبيب الجهاز الهضمي رؤية المريء والمعدة والاثني عشر، وأخذ عينات أو علاج بعض المشكلات خلال الزيارة نفسها.",
+    },
     sections: [
       {
         paragraphs: [
@@ -123,7 +171,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Why your gastroenterologist may recommend it", es: "Por qué su gastroenterólogo puede recomendarla", vi: "Vì sao bác sĩ chuyên khoa tiêu hóa có thể đề nghị thực hiện", ko: "소화기내과 전문의가 권하는 이유", ar: "لماذا قد يوصي به طبيب الجهاز الهضمي" },
+        heading: {
+          en: "Why your gastroenterologist may recommend it",
+          es: "Por qué su gastroenterólogo puede recomendarla",
+          vi: "Vì sao bác sĩ chuyên khoa tiêu hóa có thể đề nghị thực hiện",
+          ko: "소화기내과 전문의가 권하는 이유",
+          ar: "لماذا قد يوصي به طبيب الجهاز الهضمي",
+        },
         paragraphs: [
           {
             en: "Upper endoscopy helps explain symptoms such as persistent heartburn, difficulty or pain when swallowing, ongoing nausea or vomiting, upper abdominal pain, or unexplained weight loss or anemia. It is also used to keep watch on known conditions, such as ulcers or Barrett's esophagus.",
@@ -142,7 +196,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "How to prepare", es: "Cómo prepararse", vi: "Cách chuẩn bị", ko: "준비 방법", ar: "كيف تستعد" },
+        heading: {
+          en: "How to prepare",
+          es: "Cómo prepararse",
+          vi: "Cách chuẩn bị",
+          ko: "준비 방법",
+          ar: "كيف تستعد",
+        },
         paragraphs: [
           {
             en: "Your stomach needs to be empty, so you will be asked not to eat or drink for several hours beforehand; your instructions will list the exact times. Tell your care team about all the medicines you take, especially blood thinners and diabetes medicines, and arrange for someone to drive you home, since you will receive sedation.",
@@ -154,7 +214,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "During the procedure", es: "Durante el procedimiento", vi: "Trong khi làm thủ thuật", ko: "시술 중", ar: "أثناء الإجراء" },
+        heading: {
+          en: "During the procedure",
+          es: "Durante el procedimiento",
+          vi: "Trong khi làm thủ thuật",
+          ko: "시술 중",
+          ar: "أثناء الإجراء",
+        },
         paragraphs: [
           {
             en: "Medicine given through a small IV keeps you relaxed and drowsy, and many patients sleep through the exam entirely. A plastic mouthguard protects your teeth, and the tube does not interfere with your breathing.",
@@ -173,7 +239,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Afterward", es: "Después del procedimiento", vi: "Sau thủ thuật", ko: "시술 후", ar: "بعد الإجراء" },
+        heading: {
+          en: "Afterward",
+          es: "Después del procedimiento",
+          vi: "Sau thủ thuật",
+          ko: "시술 후",
+          ar: "بعد الإجراء",
+        },
         paragraphs: [
           {
             en: "You will rest in a recovery area until the sedation wears off. A mildly sore throat or a bloated feeling is common and fades quickly. Plan to take the rest of the day off from driving, work, and important decisions.",
@@ -197,8 +269,20 @@ export const procedures: EducationTopic[] = [
     slug: "endoscopic-ultrasonography",
     legacyId: "48151",
     group: "procedures",
-    title: { en: "Understanding Endoscopic Ultrasonography", es: "Entienda el ultrasonido endoscópico", vi: "Tìm hiểu về siêu âm nội soi", ko: "내시경초음파 검사의 이해", ar: "فهم التصوير بالموجات فوق الصوتية بالمنظار" },
-    summary: { en: "EUS combines an endoscope with a tiny ultrasound probe to see beneath the lining of the digestive tract and into nearby organs such as the pancreas, and to guide precise tissue sampling.", es: "El EUS combina un endoscopio con una pequeña sonda de ultrasonido para ver debajo del revestimiento del tracto digestivo y hacia órganos cercanos como el páncreas, y para guiar una toma de muestras precisa.", vi: "EUS kết hợp ống nội soi với một đầu dò siêu âm nhỏ để quan sát bên dưới lớp niêm mạc của đường tiêu hóa và các cơ quan lân cận như tụy, đồng thời hướng dẫn lấy mẫu mô một cách chính xác.", ko: "EUS는 내시경에 소형 초음파 탐촉자를 결합하여 소화관 점막 아래와 췌장 같은 인접 장기를 관찰하고, 정밀한 조직 채취를 유도하는 검사입니다.", ar: "يجمع فحص EUS بين المنظار ومسبار صغير للموجات فوق الصوتية لرؤية ما تحت بطانة الجهاز الهضمي وداخل الأعضاء المجاورة مثل البنكرياس، ولتوجيه أخذ عينات نسيجية بدقة." },
+    title: {
+      en: "Understanding Endoscopic Ultrasonography",
+      es: "Entienda el ultrasonido endoscópico",
+      vi: "Tìm hiểu về siêu âm nội soi",
+      ko: "내시경초음파 검사의 이해",
+      ar: "فهم التصوير بالموجات فوق الصوتية بالمنظار",
+    },
+    summary: {
+      en: "EUS combines an endoscope with a tiny ultrasound probe to see beneath the lining of the digestive tract and into nearby organs such as the pancreas, and to guide precise tissue sampling.",
+      es: "El EUS combina un endoscopio con una pequeña sonda de ultrasonido para ver debajo del revestimiento del tracto digestivo y hacia órganos cercanos como el páncreas, y para guiar una toma de muestras precisa.",
+      vi: "EUS kết hợp ống nội soi với một đầu dò siêu âm nhỏ để quan sát bên dưới lớp niêm mạc của đường tiêu hóa và các cơ quan lân cận như tụy, đồng thời hướng dẫn lấy mẫu mô một cách chính xác.",
+      ko: "EUS는 내시경에 소형 초음파 탐촉자를 결합하여 소화관 점막 아래와 췌장 같은 인접 장기를 관찰하고, 정밀한 조직 채취를 유도하는 검사입니다.",
+      ar: "يجمع فحص EUS بين المنظار ومسبار صغير للموجات فوق الصوتية لرؤية ما تحت بطانة الجهاز الهضمي وداخل الأعضاء المجاورة مثل البنكرياس، ولتوجيه أخذ عينات نسيجية بدقة.",
+    },
     sections: [
       {
         paragraphs: [
@@ -219,7 +303,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Why it is recommended", es: "Por qué se recomienda", vi: "Vì sao được đề nghị thực hiện", ko: "권장되는 이유", ar: "لماذا يوصى به" },
+        heading: {
+          en: "Why it is recommended",
+          es: "Por qué se recomienda",
+          vi: "Vì sao được đề nghị thực hiện",
+          ko: "권장되는 이유",
+          ar: "لماذا يوصى به",
+        },
         paragraphs: [
           {
             en: "Your gastroenterologist may suggest EUS to take a closer look at something found on a CT scan or other imaging, to evaluate cysts or masses in the pancreas, to search for stones in the bile duct, or to examine a lump beneath the lining of the esophagus, stomach, or rectum.",
@@ -238,7 +328,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "How to prepare", es: "Cómo prepararse", vi: "Cách chuẩn bị", ko: "준비 방법", ar: "كيف تستعد" },
+        heading: {
+          en: "How to prepare",
+          es: "Cómo prepararse",
+          vi: "Cách chuẩn bị",
+          ko: "준비 방법",
+          ar: "كيف تستعد",
+        },
         paragraphs: [
           {
             en: "For an upper EUS your stomach must be empty, so you will not eat or drink for several hours beforehand. If the rectum is the area being examined, you may be asked to use an enema or a light prep. Review your medicines with your care team, especially blood thinners, since a needle sample may be taken, and arrange a ride home.",
@@ -250,7 +346,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "During the procedure", es: "Durante el procedimiento", vi: "Trong khi làm thủ thuật", ko: "시술 중", ar: "أثناء الإجراء" },
+        heading: {
+          en: "During the procedure",
+          es: "Durante el procedimiento",
+          vi: "Trong khi làm thủ thuật",
+          ko: "시술 중",
+          ar: "أثناء الإجراء",
+        },
         paragraphs: [
           {
             en: "You will receive sedation through an IV, and most patients remember little or nothing of the exam. The endoscope is passed gently through the mouth, or the rectum, depending on the area being studied, while your doctor watches the ultrasound images. Any needle sampling happens while you are sedated, so you will not feel it. Most exams are finished within an hour.",
@@ -262,7 +364,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Afterward", es: "Después del procedimiento", vi: "Sau thủ thuật", ko: "시술 후", ar: "بعد الإجراء" },
+        heading: {
+          en: "Afterward",
+          es: "Después del procedimiento",
+          vi: "Sau thủ thuật",
+          ko: "시술 후",
+          ar: "بعد الإجراء",
+        },
         paragraphs: [
           {
             en: "After a short recovery you can usually go home the same day, perhaps with a mild sore throat or some bloating that settles on its own. Do not drive for the rest of the day.",
@@ -286,8 +394,20 @@ export const procedures: EducationTopic[] = [
     slug: "colonoscopy",
     legacyId: "48155",
     group: "procedures",
-    title: { en: "Understanding Colonoscopy", es: "Entienda la colonoscopia", vi: "Tìm hiểu về nội soi đại tràng", ko: "대장내시경 검사의 이해", ar: "فهم تنظير القولون" },
-    summary: { en: "The exam that lets your gastroenterologist inspect the entire colon and remove polyps in the same visit — the most complete way to screen for colorectal cancer.", es: "El examen que permite a su gastroenterólogo revisar todo el colon y extirpar pólipos en la misma visita: la forma más completa de detectar el cáncer colorrectal.", vi: "Cuộc kiểm tra cho phép bác sĩ chuyên khoa tiêu hóa quan sát toàn bộ đại tràng và cắt polyp ngay trong cùng buổi khám — cách tầm soát ung thư đại trực tràng toàn diện nhất.", ko: "소화기내과 전문의가 대장 전체를 살펴보고 같은 방문에서 용종을 제거할 수 있는 검사로, 대장암을 검진하는 가장 완전한 방법입니다.", ar: "الفحص الذي يتيح لطبيب الجهاز الهضمي معاينة القولون بأكمله واستئصال السلائل في الزيارة نفسها — وهو الطريقة الأكثر شمولًا للكشف المبكر عن سرطان القولون والمستقيم." },
+    title: {
+      en: "Understanding Colonoscopy",
+      es: "Entienda la colonoscopia",
+      vi: "Tìm hiểu về nội soi đại tràng",
+      ko: "대장내시경 검사의 이해",
+      ar: "فهم تنظير القولون",
+    },
+    summary: {
+      en: "The exam that lets your gastroenterologist inspect the entire colon and remove polyps in the same visit — the most complete way to screen for colorectal cancer.",
+      es: "El examen que permite a su gastroenterólogo revisar todo el colon y extirpar pólipos en la misma visita: la forma más completa de detectar el cáncer colorrectal.",
+      vi: "Cuộc kiểm tra cho phép bác sĩ chuyên khoa tiêu hóa quan sát toàn bộ đại tràng và cắt polyp ngay trong cùng buổi khám — cách tầm soát ung thư đại trực tràng toàn diện nhất.",
+      ko: "소화기내과 전문의가 대장 전체를 살펴보고 같은 방문에서 용종을 제거할 수 있는 검사로, 대장암을 검진하는 가장 완전한 방법입니다.",
+      ar: "الفحص الذي يتيح لطبيب الجهاز الهضمي معاينة القولون بأكمله واستئصال السلائل في الزيارة نفسها — وهو الطريقة الأكثر شمولًا للكشف المبكر عن سرطان القولون والمستقيم.",
+    },
     sections: [
       {
         paragraphs: [
@@ -308,7 +428,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Why your gastroenterologist recommends it", es: "Por qué la recomienda su gastroenterólogo", vi: "Vì sao bác sĩ chuyên khoa tiêu hóa đề nghị thực hiện", ko: "소화기내과 전문의가 권하는 이유", ar: "لماذا يوصي به طبيب الجهاز الهضمي" },
+        heading: {
+          en: "Why your gastroenterologist recommends it",
+          es: "Por qué la recomienda su gastroenterólogo",
+          vi: "Vì sao bác sĩ chuyên khoa tiêu hóa đề nghị thực hiện",
+          ko: "소화기내과 전문의가 권하는 이유",
+          ar: "لماذا يوصي به طبيب الجهاز الهضمي",
+        },
         paragraphs: [
           {
             en: "The most common reason is colorectal cancer screening. Most colorectal cancers begin as polyps, and removing polyps early is the best protection available.",
@@ -327,7 +453,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Preparing for the exam", es: "La preparación para el examen", vi: "Chuẩn bị cho cuộc kiểm tra", ko: "검사 준비", ar: "الاستعداد للفحص" },
+        heading: {
+          en: "Preparing for the exam",
+          es: "La preparación para el examen",
+          vi: "Chuẩn bị cho cuộc kiểm tra",
+          ko: "검사 준비",
+          ar: "الاستعداد للفحص",
+        },
         paragraphs: [
           {
             en: "The colon must be completely clean for your doctor to see small polyps. Starting a few days before, you may be asked to avoid certain high-fiber foods; the day before, you will switch to clear liquids and take your prescribed prep, usually split into an evening dose and an early-morning dose.",
@@ -346,7 +478,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "During the procedure", es: "Durante el procedimiento", vi: "Trong khi làm thủ thuật", ko: "시술 중", ar: "أثناء الإجراء" },
+        heading: {
+          en: "During the procedure",
+          es: "Durante el procedimiento",
+          vi: "Trong khi làm thủ thuật",
+          ko: "시술 중",
+          ar: "أثناء الإجراء",
+        },
         paragraphs: [
           {
             en: "Sedation is given through a small IV, and most patients sleep comfortably and feel little or nothing. While you rest on your side, the doctor guides the colonoscope through the colon and examines the lining carefully.",
@@ -365,7 +503,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Afterward and your results", es: "Después del examen y sus resultados", vi: "Sau cuộc kiểm tra và kết quả của quý vị", ko: "검사 후와 검사 결과", ar: "بعد الفحص ونتائجك" },
+        heading: {
+          en: "Afterward and your results",
+          es: "Después del examen y sus resultados",
+          vi: "Sau cuộc kiểm tra và kết quả của quý vị",
+          ko: "검사 후와 검사 결과",
+          ar: "بعد الفحص ونتائجك",
+        },
         paragraphs: [
           {
             en: "You will wake in a recovery area and may feel gassy or bloated for a short while as the air used during the exam passes. Most people eat normally later the same day and return to their usual activities the next morning.",
@@ -389,8 +533,20 @@ export const procedures: EducationTopic[] = [
     slug: "capsule-endoscopy",
     legacyId: "48156",
     group: "procedures",
-    title: { en: "Understanding Capsule Endoscopy", es: "Entienda la endoscopia por cápsula", vi: "Tìm hiểu về nội soi bằng viên nang", ko: "캡슐내시경 검사의 이해", ar: "فهم التنظير بالكبسولة" },
-    summary: { en: "A pill-sized camera you swallow photographs the small intestine — the part of the digestive tract other scopes cannot easily reach — with no sedation needed.", es: "Una cámara del tamaño de una píldora que usted traga fotografía el intestino delgado, la parte del tubo digestivo que otros endoscopios no alcanzan con facilidad, sin necesidad de sedación.", vi: "Một camera cỡ viên thuốc mà quý vị nuốt vào sẽ chụp ảnh ruột non — phần của đường tiêu hóa mà các ống nội soi khác khó tiếp cận — và không cần dùng thuốc an thần.", ko: "삼키는 알약 크기의 카메라가 다른 내시경으로는 접근하기 어려운 소화관 부위인 소장을 촬영하며, 진정제가 필요 없습니다.", ar: "كاميرا بحجم حبة الدواء تبتلعها فتلتقط صورًا للأمعاء الدقيقة — الجزء من الجهاز الهضمي الذي يصعب على المناظير الأخرى الوصول إليه — دون الحاجة إلى تهدئة." },
+    title: {
+      en: "Understanding Capsule Endoscopy",
+      es: "Entienda la endoscopia por cápsula",
+      vi: "Tìm hiểu về nội soi bằng viên nang",
+      ko: "캡슐내시경 검사의 이해",
+      ar: "فهم التنظير بالكبسولة",
+    },
+    summary: {
+      en: "A pill-sized camera you swallow photographs the small intestine — the part of the digestive tract other scopes cannot easily reach — with no sedation needed.",
+      es: "Una cámara del tamaño de una píldora que usted traga fotografía el intestino delgado, la parte del tubo digestivo que otros endoscopios no alcanzan con facilidad, sin necesidad de sedación.",
+      vi: "Một camera cỡ viên thuốc mà quý vị nuốt vào sẽ chụp ảnh ruột non — phần của đường tiêu hóa mà các ống nội soi khác khó tiếp cận — và không cần dùng thuốc an thần.",
+      ko: "삼키는 알약 크기의 카메라가 다른 내시경으로는 접근하기 어려운 소화관 부위인 소장을 촬영하며, 진정제가 필요 없습니다.",
+      ar: "كاميرا بحجم حبة الدواء تبتلعها فتلتقط صورًا للأمعاء الدقيقة — الجزء من الجهاز الهضمي الذي يصعب على المناظير الأخرى الوصول إليه — دون الحاجة إلى تهدئة.",
+    },
     sections: [
       {
         paragraphs: [
@@ -411,7 +567,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Why it is recommended", es: "Por qué se recomienda", vi: "Vì sao được đề nghị thực hiện", ko: "권장되는 이유", ar: "لماذا يوصى به" },
+        heading: {
+          en: "Why it is recommended",
+          es: "Por qué se recomienda",
+          vi: "Vì sao được đề nghị thực hiện",
+          ko: "권장되는 이유",
+          ar: "لماذا يوصى به",
+        },
         paragraphs: [
           {
             en: "Your gastroenterologist may recommend capsule endoscopy when the source of a problem seems to lie in the small intestine — for example, unexplained bleeding or iron-deficiency anemia after a normal upper endoscopy and colonoscopy, suspected Crohn's disease of the small bowel, or the need to check for small-intestine polyps or tumors.",
@@ -423,7 +585,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "How to prepare", es: "Cómo prepararse", vi: "Cách chuẩn bị", ko: "준비 방법", ar: "كيف تستعد" },
+        heading: {
+          en: "How to prepare",
+          es: "Cómo prepararse",
+          vi: "Cách chuẩn bị",
+          ko: "준비 방법",
+          ar: "كيف تستعد",
+        },
         paragraphs: [
           {
             en: "You will typically stop eating the evening before the test, and your doctor may prescribe a light prep so the images are clear. Ask which of your medicines you should take that morning.",
@@ -442,7 +610,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "On the day of the test", es: "El día de la prueba", vi: "Vào ngày làm xét nghiệm", ko: "검사 당일", ar: "في يوم الفحص" },
+        heading: {
+          en: "On the day of the test",
+          es: "El día de la prueba",
+          vi: "Vào ngày làm xét nghiệm",
+          ko: "검사 당일",
+          ar: "في يوم الفحص",
+        },
         paragraphs: [
           {
             en: "At the office you will swallow the capsule with a sip of water and be fitted with the small recorder, worn on a belt or over the shoulder. You can then leave and go about a quiet, normal day.",
@@ -461,7 +635,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Afterward and results", es: "Después de la prueba y resultados", vi: "Sau xét nghiệm và kết quả", ko: "검사 후와 결과", ar: "بعد الفحص والنتائج" },
+        heading: {
+          en: "Afterward and results",
+          es: "Después de la prueba y resultados",
+          vi: "Sau xét nghiệm và kết quả",
+          ko: "검사 후와 결과",
+          ar: "بعد الفحص والنتائج",
+        },
         paragraphs: [
           {
             en: "You will return the recorder at the end of the day, usually after about eight hours. There is no sedation and no recovery time, so most people work or run errands as usual while wearing it.",
@@ -485,8 +665,20 @@ export const procedures: EducationTopic[] = [
     slug: "peg-feeding-tube",
     legacyId: "48157",
     group: "procedures",
-    title: { en: "Understanding Percutaneous Endoscopic Gastrostomy (PEG)", es: "Entienda la gastrostomía endoscópica percutánea (PEG)", vi: "Tìm hiểu về mở dạ dày ra da qua nội soi (PEG)", ko: "경피적 내시경 위루술(PEG)의 이해", ar: "فهم فغر المعدة بالمنظار عبر الجلد (PEG)" },
-    summary: { en: "A PEG places a soft feeding tube through the skin into the stomach, so patients who cannot swallow safely can still receive nutrition, fluids, and medicines.", es: "La PEG coloca una sonda de alimentación suave a través de la piel hasta el estómago, para que los pacientes que no pueden tragar con seguridad reciban nutrición, líquidos y medicamentos.", vi: "PEG đặt một ống nuôi ăn mềm xuyên qua da vào dạ dày, để những bệnh nhân không thể nuốt an toàn vẫn nhận được dinh dưỡng, nước và thuốc.", ko: "PEG는 피부를 통해 위로 부드러운 영양공급관을 삽입하는 시술로, 안전하게 삼킬 수 없는 환자도 영양, 수분, 약물을 공급받을 수 있게 합니다.", ar: "يضع إجراء PEG أنبوب تغذية لينًا عبر الجلد إلى داخل المعدة، حتى يتمكن المرضى الذين لا يستطيعون البلع بأمان من تلقي التغذية والسوائل والأدوية." },
+    title: {
+      en: "Understanding Percutaneous Endoscopic Gastrostomy (PEG)",
+      es: "Entienda la gastrostomía endoscópica percutánea (PEG)",
+      vi: "Tìm hiểu về mở dạ dày ra da qua nội soi (PEG)",
+      ko: "경피적 내시경 위루술(PEG)의 이해",
+      ar: "فهم فغر المعدة بالمنظار عبر الجلد (PEG)",
+    },
+    summary: {
+      en: "A PEG places a soft feeding tube through the skin into the stomach, so patients who cannot swallow safely can still receive nutrition, fluids, and medicines.",
+      es: "La PEG coloca una sonda de alimentación suave a través de la piel hasta el estómago, para que los pacientes que no pueden tragar con seguridad reciban nutrición, líquidos y medicamentos.",
+      vi: "PEG đặt một ống nuôi ăn mềm xuyên qua da vào dạ dày, để những bệnh nhân không thể nuốt an toàn vẫn nhận được dinh dưỡng, nước và thuốc.",
+      ko: "PEG는 피부를 통해 위로 부드러운 영양공급관을 삽입하는 시술로, 안전하게 삼킬 수 없는 환자도 영양, 수분, 약물을 공급받을 수 있게 합니다.",
+      ar: "يضع إجراء PEG أنبوب تغذية لينًا عبر الجلد إلى داخل المعدة، حتى يتمكن المرضى الذين لا يستطيعون البلع بأمان من تلقي التغذية والسوائل والأدوية.",
+    },
     sections: [
       {
         paragraphs: [
@@ -507,7 +699,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Why it may be recommended", es: "Por qué puede recomendarse", vi: "Vì sao có thể được đề nghị thực hiện", ko: "권장될 수 있는 이유", ar: "لماذا قد يوصى به" },
+        heading: {
+          en: "Why it may be recommended",
+          es: "Por qué puede recomendarse",
+          vi: "Vì sao có thể được đề nghị thực hiện",
+          ko: "권장될 수 있는 이유",
+          ar: "لماذا قد يوصى به",
+        },
         paragraphs: [
           {
             en: "A PEG is considered when someone cannot swallow safely, or cannot take in enough food by mouth for a prolonged period, but the stomach and intestines still work. Common examples include swallowing problems after a stroke or with certain neurologic conditions, and treatments of the head and neck that make eating difficult. The aim is simple: dependable nutrition while protecting the lungs from food going down the wrong way.",
@@ -519,7 +717,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "How to prepare", es: "Cómo prepararse", vi: "Cách chuẩn bị", ko: "준비 방법", ar: "كيف تستعد" },
+        heading: {
+          en: "How to prepare",
+          es: "Cómo prepararse",
+          vi: "Cách chuẩn bị",
+          ko: "준비 방법",
+          ar: "كيف تستعد",
+        },
         paragraphs: [
           {
             en: "You will fast for several hours beforehand. Your care team will review your medicines, blood thinners in particular, and usually gives a dose of antibiotics before the procedure to lower the chance of infection. Because sedation is used, plan for someone to accompany you and take you home.",
@@ -531,7 +735,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "How the tube is placed", es: "Cómo se coloca la sonda", vi: "Cách đặt ống", ko: "관을 넣는 방법", ar: "كيفية وضع الأنبوب" },
+        heading: {
+          en: "How the tube is placed",
+          es: "Cómo se coloca la sonda",
+          vi: "Cách đặt ống",
+          ko: "관을 넣는 방법",
+          ar: "كيفية وضع الأنبوب",
+        },
         paragraphs: [
           {
             en: "With you sedated and comfortable, the doctor passes an endoscope through the mouth into the stomach and uses its light to choose a safe spot on the skin. That small area is numbed, a small opening is made, and the tube is guided into position.",
@@ -550,7 +760,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Caring for a PEG tube", es: "El cuidado de la sonda PEG", vi: "Chăm sóc ống PEG", ko: "PEG 관 관리", ar: "العناية بأنبوب PEG" },
+        heading: {
+          en: "Caring for a PEG tube",
+          es: "El cuidado de la sonda PEG",
+          vi: "Chăm sóc ống PEG",
+          ko: "PEG 관 관리",
+          ar: "العناية بأنبوب PEG",
+        },
         paragraphs: [
           {
             en: "Mild soreness at the site is normal for a few days and is managed with simple measures. Before you go home, your care team will show you, and anyone helping you, how to keep the skin clean, flush the tube, and give feedings and medicines through it.",
@@ -574,8 +790,20 @@ export const procedures: EducationTopic[] = [
     slug: "esophageal-manometry-ph-impedance",
     legacyId: "48160",
     group: "procedures",
-    title: { en: "Understanding Esophageal Manometry & 24-Hour pH and Impedance Tests", es: "Entienda la manometría esofágica y las pruebas de pH e impedancia de 24 horas", vi: "Tìm hiểu về đo áp lực thực quản và các xét nghiệm pH – trở kháng 24 giờ", ko: "식도내압검사와 24시간 pH·임피던스 검사의 이해", ar: "فهم قياس ضغط المريء واختبارات درجة الحموضة والمعاوقة على مدار 24 ساعة" },
-    summary: { en: "Two companion tests: manometry measures how well the esophagus moves, and the 24-hour pH and impedance study measures reflux during an ordinary day.", es: "Dos pruebas complementarias: la manometría mide qué tan bien se mueve el esófago, y el estudio de pH e impedancia de 24 horas mide el reflujo durante un día normal.", vi: "Hai xét nghiệm song hành: đo áp lực thực quản đánh giá thực quản co bóp tốt đến mức nào, còn xét nghiệm pH và trở kháng 24 giờ đo mức độ trào ngược trong một ngày sinh hoạt bình thường.", ko: "서로 보완하는 두 가지 검사입니다. 식도내압검사는 식도가 얼마나 잘 움직이는지 측정하고, 24시간 pH·임피던스 검사는 평범한 하루 동안의 역류를 측정합니다.", ar: "اختباران متكاملان: يقيس اختبار قياس الضغط مدى جودة حركة المريء، بينما تقيس دراسة درجة الحموضة والمعاوقة على مدار 24 ساعة الارتجاع خلال يوم عادي." },
+    title: {
+      en: "Understanding Esophageal Manometry & 24-Hour pH and Impedance Tests",
+      es: "Entienda la manometría esofágica y las pruebas de pH e impedancia de 24 horas",
+      vi: "Tìm hiểu về đo áp lực thực quản và các xét nghiệm pH – trở kháng 24 giờ",
+      ko: "식도내압검사와 24시간 pH·임피던스 검사의 이해",
+      ar: "فهم قياس ضغط المريء واختبارات درجة الحموضة والمعاوقة على مدار 24 ساعة",
+    },
+    summary: {
+      en: "Two companion tests: manometry measures how well the esophagus moves, and the 24-hour pH and impedance study measures reflux during an ordinary day.",
+      es: "Dos pruebas complementarias: la manometría mide qué tan bien se mueve el esófago, y el estudio de pH e impedancia de 24 horas mide el reflujo durante un día normal.",
+      vi: "Hai xét nghiệm song hành: đo áp lực thực quản đánh giá thực quản co bóp tốt đến mức nào, còn xét nghiệm pH và trở kháng 24 giờ đo mức độ trào ngược trong một ngày sinh hoạt bình thường.",
+      ko: "서로 보완하는 두 가지 검사입니다. 식도내압검사는 식도가 얼마나 잘 움직이는지 측정하고, 24시간 pH·임피던스 검사는 평범한 하루 동안의 역류를 측정합니다.",
+      ar: "اختباران متكاملان: يقيس اختبار قياس الضغط مدى جودة حركة المريء، بينما تقيس دراسة درجة الحموضة والمعاوقة على مدار 24 ساعة الارتجاع خلال يوم عادي.",
+    },
     sections: [
       {
         paragraphs: [
@@ -596,7 +824,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Why your gastroenterologist may recommend them", es: "Por qué su gastroenterólogo puede recomendarlas", vi: "Vì sao bác sĩ chuyên khoa tiêu hóa có thể đề nghị thực hiện các xét nghiệm này", ko: "소화기내과 전문의가 이 검사들을 권하는 이유", ar: "لماذا قد يوصي بهما طبيب الجهاز الهضمي" },
+        heading: {
+          en: "Why your gastroenterologist may recommend them",
+          es: "Por qué su gastroenterólogo puede recomendarlas",
+          vi: "Vì sao bác sĩ chuyên khoa tiêu hóa có thể đề nghị thực hiện các xét nghiệm này",
+          ko: "소화기내과 전문의가 이 검사들을 권하는 이유",
+          ar: "لماذا قد يوصي بهما طبيب الجهاز الهضمي",
+        },
         paragraphs: [
           {
             en: "These tests help evaluate difficulty swallowing, the feeling of food sticking, chest pain once the heart has been ruled out, and heartburn or regurgitation that persists despite treatment. They are also a standard step before certain anti-reflux operations, because the results help confirm that surgery is the right choice.",
@@ -608,7 +842,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "How to prepare", es: "Cómo prepararse", vi: "Cách chuẩn bị", ko: "준비 방법", ar: "كيف تستعد" },
+        heading: {
+          en: "How to prepare",
+          es: "Cómo prepararse",
+          vi: "Cách chuẩn bị",
+          ko: "준비 방법",
+          ar: "كيف تستعد",
+        },
         paragraphs: [
           {
             en: "You will be asked not to eat or drink for several hours before the catheter is placed. Some acid-reducing and motility medicines change the results, so your care team will tell you exactly which ones to pause and when; do not stop anything on your own. Sedation is generally not used, because the tests depend on your normal swallowing.",
@@ -620,7 +860,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "During the tests", es: "Durante las pruebas", vi: "Trong khi làm các xét nghiệm", ko: "검사 중", ar: "أثناء الاختبارات" },
+        heading: {
+          en: "During the tests",
+          es: "Durante las pruebas",
+          vi: "Trong khi làm các xét nghiệm",
+          ko: "검사 중",
+          ar: "أثناء الاختبارات",
+        },
         paragraphs: [
           {
             en: "For manometry, a thin, soft catheter is passed through a numbed nostril down into the esophagus. You will sit or lie comfortably and swallow small sips of water on cue while sensors record the pressures. It is common to gag briefly as the tube goes in; that feeling settles quickly, and the study takes roughly half an hour.",
@@ -639,7 +885,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Afterward and results", es: "Después de las pruebas y resultados", vi: "Sau các xét nghiệm và kết quả", ko: "검사 후와 결과", ar: "بعد الاختبارات والنتائج" },
+        heading: {
+          en: "Afterward and results",
+          es: "Después de las pruebas y resultados",
+          vi: "Sau các xét nghiệm và kết quả",
+          ko: "검사 후와 결과",
+          ar: "بعد الاختبارات والنتائج",
+        },
         paragraphs: [
           {
             en: "Removing the catheter takes only a moment, and your nose and throat may feel mildly irritated for a short while.",
@@ -663,8 +915,20 @@ export const procedures: EducationTopic[] = [
     slug: "ercp",
     legacyId: "48162",
     group: "procedures",
-    title: { en: "Understanding ERCP", es: "Entienda la CPRE", vi: "Tìm hiểu về ERCP", ko: "ERCP 시술의 이해", ar: "فهم تنظير القنوات الصفراوية والبنكرياسية بالطريق الراجع (ERCP)" },
-    summary: { en: "ERCP pairs endoscopy with X-ray imaging to find blockages in the bile and pancreatic ducts — and treat many of them during the same procedure.", es: "La CPRE combina la endoscopia con imágenes de rayos X para encontrar obstrucciones en las vías biliares y el conducto pancreático, y tratar muchas de ellas durante el mismo procedimiento.", vi: "ERCP kết hợp nội soi với chụp X-quang để tìm chỗ tắc nghẽn trong đường mật và ống tụy — và điều trị nhiều tắc nghẽn ngay trong cùng thủ thuật.", ko: "ERCP는 내시경과 X선 영상을 결합하여 담관과 췌관의 막힘을 찾아내고, 그중 많은 문제를 같은 시술에서 바로 치료합니다.", ar: "يجمع إجراء ERCP بين التنظير والتصوير بالأشعة السينية للعثور على الانسدادات في القنوات الصفراوية وقناة البنكرياس — وعلاج كثير منها خلال الإجراء نفسه." },
+    title: {
+      en: "Understanding ERCP",
+      es: "Entienda la CPRE",
+      vi: "Tìm hiểu về ERCP",
+      ko: "ERCP 시술의 이해",
+      ar: "فهم تنظير القنوات الصفراوية والبنكرياسية بالطريق الراجع (ERCP)",
+    },
+    summary: {
+      en: "ERCP pairs endoscopy with X-ray imaging to find blockages in the bile and pancreatic ducts — and treat many of them during the same procedure.",
+      es: "La CPRE combina la endoscopia con imágenes de rayos X para encontrar obstrucciones en las vías biliares y el conducto pancreático, y tratar muchas de ellas durante el mismo procedimiento.",
+      vi: "ERCP kết hợp nội soi với chụp X-quang để tìm chỗ tắc nghẽn trong đường mật và ống tụy — và điều trị nhiều tắc nghẽn ngay trong cùng thủ thuật.",
+      ko: "ERCP는 내시경과 X선 영상을 결합하여 담관과 췌관의 막힘을 찾아내고, 그중 많은 문제를 같은 시술에서 바로 치료합니다.",
+      ar: "يجمع إجراء ERCP بين التنظير والتصوير بالأشعة السينية للعثور على الانسدادات في القنوات الصفراوية وقناة البنكرياس — وعلاج كثير منها خلال الإجراء نفسه.",
+    },
     sections: [
       {
         paragraphs: [
@@ -685,7 +949,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Why it is recommended", es: "Por qué se recomienda", vi: "Vì sao được đề nghị thực hiện", ko: "권장되는 이유", ar: "لماذا يوصى به" },
+        heading: {
+          en: "Why it is recommended",
+          es: "Por qué se recomienda",
+          vi: "Vì sao được đề nghị thực hiện",
+          ko: "권장되는 이유",
+          ar: "لماذا يوصى به",
+        },
         paragraphs: [
           {
             en: "ERCP is used most often when a duct is blocked or narrowed. Common reasons include gallstones that have moved into the bile duct, jaundice (a yellowing of the skin or eyes), bile leaks after gallbladder surgery, narrowing caused by inflammation or a tumor, and certain problems of the pancreas.",
@@ -704,7 +974,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "How to prepare", es: "Cómo prepararse", vi: "Cách chuẩn bị", ko: "준비 방법", ar: "كيف تستعد" },
+        heading: {
+          en: "How to prepare",
+          es: "Cómo prepararse",
+          vi: "Cách chuẩn bị",
+          ko: "준비 방법",
+          ar: "كيف تستعد",
+        },
         paragraphs: [
           {
             en: "You will fast for several hours beforehand. Tell your care team about all of your medicines, especially blood thinners, and about any allergies, including past reactions to contrast dye. Because X-rays are used, let the team know if there is any chance you are pregnant, and arrange for someone to take you home.",
@@ -716,7 +992,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "During the procedure", es: "Durante el procedimiento", vi: "Trong khi làm thủ thuật", ko: "시술 중", ar: "أثناء الإجراء" },
+        heading: {
+          en: "During the procedure",
+          es: "Durante el procedimiento",
+          vi: "Trong khi làm thủ thuật",
+          ko: "시술 중",
+          ar: "أثناء الإجراء",
+        },
         paragraphs: [
           {
             en: "ERCP is done with deep sedation or anesthesia, so you rest comfortably throughout. While you lie on your side or stomach, the endoscope is passed through your mouth to the point where the ducts empty into the intestine. A slender catheter is guided into the duct, contrast dye is injected, and X-ray pictures reveal any blockage; treatment follows in the same session as needed. Depending on what is done, the procedure may take from about half an hour to well over an hour.",
@@ -728,7 +1010,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Afterward", es: "Después del procedimiento", vi: "Sau thủ thuật", ko: "시술 후", ar: "بعد الإجراء" },
+        heading: {
+          en: "Afterward",
+          es: "Después del procedimiento",
+          vi: "Sau thủ thuật",
+          ko: "시술 후",
+          ar: "بعد الإجراء",
+        },
         paragraphs: [
           {
             en: "You will be observed while the sedation wears off. Recovery is a little longer than after a routine endoscopy, and some patients stay overnight for observation. A sore throat and some bloating are common and pass.",
@@ -752,8 +1040,20 @@ export const procedures: EducationTopic[] = [
     slug: "bowel-preparation",
     legacyId: "48163",
     group: "procedures",
-    title: { en: "Understanding Bowel Preparation", es: "Entienda la preparación intestinal", vi: "Tìm hiểu về chuẩn bị ruột", ko: "장 정결의 이해", ar: "فهم تحضير الأمعاء" },
-    summary: { en: "A clean colon is what makes a colonoscopy accurate. Learn how the prep works, what to eat and drink, and how to finish it successfully.", es: "Un colon limpio es lo que hace precisa una colonoscopia. Conozca cómo funciona la preparación, qué comer y beber, y cómo completarla con éxito.", vi: "Đại tràng sạch là điều làm cho nội soi đại tràng chính xác. Hãy tìm hiểu cách thuốc chuẩn bị ruột hoạt động, nên ăn uống gì, và cách hoàn thành việc chuẩn bị một cách thành công.", ko: "대장이 깨끗해야 대장내시경 검사가 정확해집니다. 정결제가 어떻게 작용하는지, 무엇을 먹고 마셔야 하는지, 어떻게 하면 성공적으로 마칠 수 있는지 알아보십시오.", ar: "القولون النظيف هو ما يجعل تنظير القولون دقيقًا. تعرف على كيفية عمل التحضير، وما تأكله وتشربه، وكيف تكمله بنجاح." },
+    title: {
+      en: "Understanding Bowel Preparation",
+      es: "Entienda la preparación intestinal",
+      vi: "Tìm hiểu về chuẩn bị ruột",
+      ko: "장 정결의 이해",
+      ar: "فهم تحضير الأمعاء",
+    },
+    summary: {
+      en: "A clean colon is what makes a colonoscopy accurate. Learn how the prep works, what to eat and drink, and how to finish it successfully.",
+      es: "Un colon limpio es lo que hace precisa una colonoscopia. Conozca cómo funciona la preparación, qué comer y beber, y cómo completarla con éxito.",
+      vi: "Đại tràng sạch là điều làm cho nội soi đại tràng chính xác. Hãy tìm hiểu cách thuốc chuẩn bị ruột hoạt động, nên ăn uống gì, và cách hoàn thành việc chuẩn bị một cách thành công.",
+      ko: "대장이 깨끗해야 대장내시경 검사가 정확해집니다. 정결제가 어떻게 작용하는지, 무엇을 먹고 마셔야 하는지, 어떻게 하면 성공적으로 마칠 수 있는지 알아보십시오.",
+      ar: "القولون النظيف هو ما يجعل تنظير القولون دقيقًا. تعرف على كيفية عمل التحضير، وما تأكله وتشربه، وكيف تكمله بنجاح.",
+    },
     sections: [
       {
         paragraphs: [
@@ -774,7 +1074,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Changing what you eat", es: "Los cambios en la alimentación", vi: "Thay đổi chế độ ăn", ko: "식단 조절", ar: "تغيير ما تأكله" },
+        heading: {
+          en: "Changing what you eat",
+          es: "Los cambios en la alimentación",
+          vi: "Thay đổi chế độ ăn",
+          ko: "식단 조절",
+          ar: "تغيير ما تأكله",
+        },
         paragraphs: [
           {
             en: "A few days before the exam, your instructions may ask you to avoid high-fiber foods such as seeds, nuts, corn, and raw vegetables.",
@@ -793,7 +1099,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Taking your prep", es: "Cómo tomar su preparación", vi: "Cách uống thuốc chuẩn bị ruột", ko: "정결제 복용", ar: "تناول محلول التحضير" },
+        heading: {
+          en: "Taking your prep",
+          es: "Cómo tomar su preparación",
+          vi: "Cách uống thuốc chuẩn bị ruột",
+          ko: "정결제 복용",
+          ar: "تناول محلول التحضير",
+        },
         paragraphs: [
           {
             en: "Your prescribed prep is usually taken in two parts: the first dose the evening before, and the second dose several hours before your procedure. This split schedule cleans the colon best, even though it can mean an early alarm; set one, and take the second dose on time.",
@@ -819,7 +1131,13 @@ export const procedures: EducationTopic[] = [
         ],
       },
       {
-        heading: { en: "Common questions", es: "Preguntas frecuentes", vi: "Các câu hỏi thường gặp", ko: "자주 묻는 질문", ar: "أسئلة شائعة" },
+        heading: {
+          en: "Common questions",
+          es: "Preguntas frecuentes",
+          vi: "Các câu hỏi thường gặp",
+          ko: "자주 묻는 질문",
+          ar: "أسئلة شائعة",
+        },
         paragraphs: [
           {
             en: "How do you know it worked? By the end, your bowel movements should look like clear or pale yellow liquid. If they are still brown or cloudy, finish the remaining prep and mention it when you arrive.",

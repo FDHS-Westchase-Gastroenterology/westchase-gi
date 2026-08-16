@@ -1,14 +1,7 @@
-import reviewTargets from "./review-targets.json";
 import { nursePractitioners, physicians } from "./providers";
+import reviewTargets from "./review-targets.json";
 
-const REVIEW_TARGET_KEYS = [
-  "master",
-  "practice",
-  "awad",
-  "chang",
-  "mendoza",
-  "taylor",
-] as const;
+const REVIEW_TARGET_KEYS = ["master", "practice", "awad", "chang", "mendoza", "taylor"] as const;
 
 export type ReviewTargetKey = (typeof REVIEW_TARGET_KEYS)[number];
 export type ReviewAssetKind = "png" | "svg" | "pdf";
@@ -60,12 +53,14 @@ function flyerAsset(
   };
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-function flyerAssets(assets: Readonly<{
-  png: { filename: string; sha256: string };
-  svg: { filename: string; sha256: string };
-  pdf: { filename: string; sha256: string };
-}>): ReviewFlyerAssets {
+function flyerAssets(
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+  assets: Readonly<{
+    png: { filename: string; sha256: string };
+    svg: { filename: string; sha256: string };
+    pdf: { filename: string; sha256: string };
+  }>,
+): ReviewFlyerAssets {
   return {
     png: flyerAsset("png", assets.png),
     svg: flyerAsset("svg", assets.svg),
@@ -85,12 +80,8 @@ function providerCopy(key: ReviewTargetKey, providerId: string) {
   if (!provider) throw new Error(`Unknown review provider: ${providerId}`);
 
   const displayName = physician ? `Dr. ${provider.name}` : provider.name;
-  const shortName = physician
-    ? `Dr. ${provider.name.split(" ").at(-1)}`
-    : provider.name;
-  const shortNameEs = physician
-    ? `el Dr. ${provider.name.split(" ").at(-1)}`
-    : provider.name;
+  const shortName = physician ? `Dr. ${provider.name.split(" ").at(-1)}` : provider.name;
+  const shortNameEs = physician ? `el Dr. ${provider.name.split(" ").at(-1)}` : provider.name;
   const reviewNameEs = physician
     ? `al Dr. ${provider.name.split(" ").at(-1)}`
     : `a ${provider.name}`;
@@ -137,8 +128,7 @@ function targetCopy(key: ReviewTargetKey, providerId: string | null) {
     askEn: "How was your visit?",
     askEs: "¿Cómo fue su visita?",
     scanEn: "Scan with your phone camera to leave us a Google review",
-    scanEs:
-      "Escanee con la cámara de su teléfono para dejarnos una reseña en Google",
+    scanEs: "Escanee con la cámara de su teléfono para dejarnos una reseña en Google",
     roleEn: null,
     roleEs: null,
   };

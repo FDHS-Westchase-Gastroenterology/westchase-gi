@@ -2,7 +2,10 @@
 // (including original wording); quotes are not translated or edited. The
 // Practice may later choose light curation; until then, authenticity wins.
 
-export interface Testimonial { quote: string; name: string }
+export interface Testimonial {
+  quote: string;
+  name: string;
+}
 
 export const testimonials: Testimonial[] = [
   {

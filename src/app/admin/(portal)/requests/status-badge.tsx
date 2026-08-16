@@ -1,4 +1,5 @@
 import type { RequestStatus } from "@/lib/portal/contracts";
+
 import { STATUS_LABELS } from "./format";
 
 // One visual vocabulary for request status across queue and detail:
@@ -16,7 +17,7 @@ export function StatusBadge({ status }: Readonly<{ status: RequestStatus }>) {
   return (
     <span
       data-status={status}
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[0.75rem] font-bold uppercase tracking-[0.05em] ${BADGE_STYLES[status]}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[0.75rem] font-bold tracking-[0.05em] uppercase ${BADGE_STYLES[status]}`}
     >
       {STATUS_LABELS[status]}
     </span>

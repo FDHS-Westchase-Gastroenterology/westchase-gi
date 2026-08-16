@@ -39,13 +39,11 @@ const LABELS = {
     description: "Automation rejected a concrete dependency-update defect",
   },
 };
-const AUTOMATION_LABEL_NAMES = new Set(
-  [
-    ...Object.values(LABELS).map(({ name }) => name),
-    "dependencies:codex-approved",
-    "dependencies:human-review",
-  ],
-);
+const AUTOMATION_LABEL_NAMES = new Set([
+  ...Object.values(LABELS).map(({ name }) => name),
+  "dependencies:codex-approved",
+  "dependencies:human-review",
+]);
 
 function asBoolean(value) {
   return value === true || String(value).toLowerCase() === "true";
@@ -53,7 +51,10 @@ function asBoolean(value) {
 
 function dependencyNames(value) {
   if (Array.isArray(value)) {
-    return value.map(String).map((name) => name.trim()).filter(Boolean);
+    return value
+      .map(String)
+      .map((name) => name.trim())
+      .filter(Boolean);
   }
   return String(value || "")
     .split(",")
@@ -72,10 +73,7 @@ function changedFiles(value) {
 }
 
 function filesArePackageOnly(files) {
-  return (
-    files.length > 0 &&
-    files.every((filename) => ALLOWED_CHANGED_FILES.has(filename))
-  );
+  return files.length > 0 && files.every((filename) => ALLOWED_CHANGED_FILES.has(filename));
 }
 
 function commitsAreAutomationSigned(commits) {
@@ -84,9 +82,8 @@ function commitsAreAutomationSigned(commits) {
     commits[0].author?.login === "dependabot[bot]" &&
     commits.every(
       (commit) =>
-        ["dependabot[bot]", "github-actions[bot]"].includes(
-          commit.author?.login,
-        ) && commit.commit.verification?.verified === true,
+        ["dependabot[bot]", "github-actions[bot]"].includes(commit.author?.login) &&
+        commit.commit.verification?.verified === true,
     )
   );
 }
@@ -190,9 +187,7 @@ function sanitizeText(value, maxLength = 1200) {
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .trim();
-  return clean.length <= maxLength
-    ? clean
-    : `${clean.slice(0, maxLength - 1)}…`;
+  return clean.length <= maxLength ? clean : `${clean.slice(0, maxLength - 1)}…`;
 }
 
 function sanitizeList(value, maxItems = 6) {
@@ -227,9 +222,7 @@ function parseCodexResult(raw) {
         "Codex did not return a valid structured review; trusted deterministic gates remain authoritative.",
       riskReasons: ["Codex output was malformed or missing"],
       evidence: [],
-      recommendedActions: [
-        "Proceed only after every exact-head deterministic gate passes",
-      ],
+      recommendedActions: ["Proceed only after every exact-head deterministic gate passes"],
     };
   }
 }
@@ -239,8 +232,7 @@ function resolveReview(policy, codexJobResult, codexResult) {
     return policy.retryable
       ? {
           decision: "retry",
-          summary:
-            "Dependabot metadata verification did not complete; automation will retry it.",
+          summary: "Dependabot metadata verification did not complete; automation will retry it.",
           riskReasons: policy.trustReasons || ["Incomplete trusted metadata"],
           evidence: [],
           recommendedActions: ["Retry metadata and exact-head verification"],
@@ -258,13 +250,9 @@ function resolveReview(policy, codexJobResult, codexResult) {
       decision: "approve",
       summary:
         "Codex semantic review was unavailable; trusted deterministic gates remain authoritative.",
-      riskReasons: [
-        `Codex job result: ${sanitizeText(codexJobResult, 100)}`,
-      ],
+      riskReasons: [`Codex job result: ${sanitizeText(codexJobResult, 100)}`],
       evidence: ["Verified Dependabot manifest-only update"],
-      recommendedActions: [
-        "Proceed only after every exact-head deterministic gate passes",
-      ],
+      recommendedActions: ["Proceed only after every exact-head deterministic gate passes"],
     };
   }
   return parseCodexResult(codexResult);
@@ -274,9 +262,7 @@ function latestStatus(statuses, contextName) {
   return statuses
     .filter((status) => status.context === contextName)
     .sort(
-      (a, b) =>
-        new Date(b.created_at || 0).getTime() -
-        new Date(a.created_at || 0).getTime(),
+      (a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime(),
     )[0];
 }
 
@@ -392,17 +378,13 @@ async function ensureLabels(github, owner, repo) {
   }
 }
 
-async function replaceAutomationLabels(
-  github,
-  owner,
-  repo,
-  issueNumber,
-  desiredNames,
-) {
-  const current = await github.paginate(
-    github.rest.issues.listLabelsOnIssue,
-    { owner, repo, issue_number: issueNumber, per_page: 100 },
-  );
+async function replaceAutomationLabels(github, owner, repo, issueNumber, desiredNames) {
+  const current = await github.paginate(github.rest.issues.listLabelsOnIssue, {
+    owner,
+    repo,
+    issue_number: issueNumber,
+    per_page: 100,
+  });
   const currentNames = new Set(current.map((label) => label.name));
   const desired = new Set(desiredNames);
 
@@ -436,8 +418,7 @@ async function upsertReviewComment(github, owner, repo, issueNumber, body) {
   });
   const prior = comments.find(
     (comment) =>
-      comment.user?.login === "github-actions[bot]" &&
-      comment.body?.includes(REVIEW_MARKER),
+      comment.user?.login === "github-actions[bot]" && comment.body?.includes(REVIEW_MARKER),
   );
 
   if (prior) {
@@ -478,11 +459,7 @@ async function reportDependabotReview({ github, context, core }) {
     repo,
     pull_number: pullNumber,
   });
-  if (
-    pull.state !== "open" ||
-    pull.user?.login !== "dependabot[bot]" ||
-    pull.base.ref !== "main"
-  ) {
+  if (pull.state !== "open" || pull.user?.login !== "dependabot[bot]" || pull.base.ref !== "main") {
     core.notice("PR is no longer an open Dependabot update to main.");
     return;
   }
@@ -491,18 +468,11 @@ async function reportDependabotReview({ github, context, core }) {
     return;
   }
 
-  const review = resolveReview(
-    policy,
-    codexJobResult,
-    process.env.CODEX_RESULT,
-  );
+  const review = resolveReview(policy, codexJobResult, process.env.CODEX_RESULT);
 
-  const eligible =
-    policy.autoMergeEligible === true && review.decision === "approve";
+  const eligible = policy.autoMergeEligible === true && review.decision === "approve";
   const desiredLabels = {
-    approve: eligible
-      ? [LABELS.approved.name, LABELS.ready.name]
-      : [LABELS.blocked.name],
+    approve: eligible ? [LABELS.approved.name, LABELS.ready.name] : [LABELS.blocked.name],
     retry: [LABELS.retry.name],
     repair: [LABELS.repair.name],
     reject: [LABELS.blocked.name],
@@ -513,22 +483,14 @@ async function reportDependabotReview({ github, context, core }) {
       ? "pending"
       : "failure";
   const queueResult = {
-    approve: eligible
-      ? "ready for guarded auto-merge"
-      : "rejected by deterministic trust policy",
+    approve: eligible ? "ready for guarded auto-merge" : "rejected by deterministic trust policy",
     retry: "automatic retry requested",
     repair: "automatic dependency refresh requested",
     reject: "automatically rejected",
   }[review.decision];
 
   await ensureLabels(github, owner, repo);
-  await replaceAutomationLabels(
-    github,
-    owner,
-    repo,
-    pullNumber,
-    desiredLabels,
-  );
+  await replaceAutomationLabels(github, owner, repo, pullNumber, desiredLabels);
 
   const workflowUrl = `https://github.com/${owner}/${repo}/actions/runs/${context.runId}`;
   await github.rest.repos.createCommitStatus({
@@ -547,9 +509,7 @@ async function reportDependabotReview({ github, context, core }) {
     target_url: workflowUrl,
   });
 
-  const packages = (policy.dependencyNames || []).map((name) =>
-    sanitizeText(name, 120),
-  );
+  const packages = (policy.dependencyNames || []).map((name) => sanitizeText(name, 120));
   const versions = [policy.previousVersion, policy.newVersion]
     .map((version) => sanitizeText(version, 80))
     .filter(Boolean)
@@ -614,13 +574,7 @@ async function dispatchWithRetry(github, request, attempts = 3) {
   throw lastError;
 }
 
-async function startRefreshedDependabotChecks(
-  github,
-  owner,
-  repo,
-  pull,
-  core,
-) {
+async function startRefreshedDependabotChecks(github, owner, repo, pull, core) {
   const [files, commits] = await Promise.all([
     allPullFiles(github, owner, repo, pull.number),
     github.paginate(github.rest.pulls.listCommits, {
@@ -642,9 +596,7 @@ async function startRefreshedDependabotChecks(
 
   await ensureLabels(github, owner, repo);
   if (!trusted) {
-    await replaceAutomationLabels(github, owner, repo, pull.number, [
-      LABELS.blocked.name,
-    ]);
+    await replaceAutomationLabels(github, owner, repo, pull.number, [LABELS.blocked.name]);
     await github.rest.repos.createCommitStatus({
       owner,
       repo,
@@ -665,9 +617,7 @@ async function startRefreshedDependabotChecks(
     return;
   }
 
-  await replaceAutomationLabels(github, owner, repo, pull.number, [
-    LABELS.retry.name,
-  ]);
+  await replaceAutomationLabels(github, owner, repo, pull.number, [LABELS.retry.name]);
   await github.rest.repos.createCommitStatus({
     owner,
     repo,
@@ -678,14 +628,13 @@ async function startRefreshedDependabotChecks(
   });
 
   const dispatches = await Promise.allSettled(
-    ["ci.yml", "react-doctor.yml", "supabase-dependency-integration.yml"].map(
-      (workflowId) =>
-        dispatchWithRetry(github, {
-          owner,
-          repo,
-          workflow_id: workflowId,
-          ref: pull.head.ref,
-        }),
+    ["ci.yml", "react-doctor.yml", "supabase-dependency-integration.yml"].map((workflowId) =>
+      dispatchWithRetry(github, {
+        owner,
+        repo,
+        workflow_id: workflowId,
+        ref: pull.head.ref,
+      }),
     ),
   );
   if (dispatches.some(({ status }) => status === "rejected")) {
@@ -707,9 +656,7 @@ async function startRefreshedDependabotChecks(
     context: REVIEW_STATUS,
     description: "Trusted refreshed head admitted to deterministic gates",
   });
-  core.notice(
-    `Dispatched exact-head checks for refreshed Dependabot PR #${pull.number}.`,
-  );
+  core.notice(`Dispatched exact-head checks for refreshed Dependabot PR #${pull.number}.`);
 }
 
 async function refreshDependabotBranch(github, owner, repo, pull, core) {
@@ -728,13 +675,7 @@ async function refreshDependabotBranch(github, owner, repo, pull, core) {
       pull_number: pull.number,
     });
     if (refreshed.head.sha !== pull.head.sha) {
-      await startRefreshedDependabotChecks(
-        github,
-        owner,
-        repo,
-        refreshed,
-        core,
-      );
+      await startRefreshedDependabotChecks(github, owner, repo, refreshed, core);
       return;
     }
     if (attempt < 19) {
@@ -753,19 +694,10 @@ async function refreshDependabotBranch(github, owner, repo, pull, core) {
   );
 }
 
-async function recoverOneDependabotReview(
-  github,
-  owner,
-  repo,
-  pulls,
-  mainSha,
-  core,
-) {
+async function recoverOneDependabotReview(github, owner, repo, pulls, mainSha, core) {
   for (const pull of pulls) {
     if (
-      !pull.labels.some((label) =>
-        [LABELS.retry.name, LABELS.repair.name].includes(label.name),
-      )
+      !pull.labels.some((label) => [LABELS.retry.name, LABELS.repair.name].includes(label.name))
     ) {
       continue;
     }
@@ -789,9 +721,7 @@ async function recoverOneDependabotReview(
         await refreshDependabotBranch(github, owner, repo, current, core);
       } catch (error) {
         if (error.status !== 422) throw error;
-        await replaceAutomationLabels(github, owner, repo, pull.number, [
-          LABELS.blocked.name,
-        ]);
+        await replaceAutomationLabels(github, owner, repo, pull.number, [LABELS.blocked.name]);
         await github.rest.pulls.update({
           owner,
           repo,
@@ -806,9 +736,7 @@ async function recoverOneDependabotReview(
     }
 
     if (current.mergeable_state === "dirty") {
-      await replaceAutomationLabels(github, owner, repo, pull.number, [
-        LABELS.blocked.name,
-      ]);
+      await replaceAutomationLabels(github, owner, repo, pull.number, [LABELS.blocked.name]);
       await github.rest.pulls.update({
         owner,
         repo,
@@ -833,13 +761,7 @@ async function recoverOneDependabotReview(
       10,
     );
     if (!review || (review.state === "pending" && !Number.isInteger(runId))) {
-      await startRefreshedDependabotChecks(
-        github,
-        owner,
-        repo,
-        current,
-        core,
-      );
+      await startRefreshedDependabotChecks(github, owner, repo, current, core);
       return true;
     }
     if (review.state === "success") {
@@ -859,9 +781,7 @@ async function recoverOneDependabotReview(
     });
     if (run.data.status !== "completed") continue;
     if (run.data.run_attempt >= 3) {
-      await replaceAutomationLabels(github, owner, repo, pull.number, [
-        LABELS.blocked.name,
-      ]);
+      await replaceAutomationLabels(github, owner, repo, pull.number, [LABELS.blocked.name]);
       await github.rest.repos.createCommitStatus({
         owner,
         repo,
@@ -883,9 +803,7 @@ async function recoverOneDependabotReview(
         pull_number: pull.number,
         state: "closed",
       });
-      core.warning(
-        `Closed Dependabot PR #${pull.number} after three automatic review attempts.`,
-      );
+      core.warning(`Closed Dependabot PR #${pull.number} after three automatic review attempts.`);
       return true;
     }
 
@@ -927,8 +845,7 @@ async function mergeNextDependabot({ github, context, core }) {
   });
   const dependabotPulls = pulls.filter(
     (pull) =>
-      pull.user?.login === "dependabot[bot]" &&
-      pull.head.repo?.full_name === `${owner}/${repo}`,
+      pull.user?.login === "dependabot[bot]" && pull.head.repo?.full_name === `${owner}/${repo}`,
   );
   const pending = dependabotPulls.filter((pull) =>
     pull.labels.some((label) => label.name === LABELS.pending.name),
@@ -941,16 +858,7 @@ async function mergeNextDependabot({ github, context, core }) {
   );
   const candidates = pending.length ? pending : ready;
   if (!candidates.length) {
-    if (
-      await recoverOneDependabotReview(
-        github,
-        owner,
-        repo,
-        dependabotPulls,
-        mainSha,
-        core,
-      )
-    ) {
+    if (await recoverOneDependabotReview(github, owner, repo, dependabotPulls, mainSha, core)) {
       return;
     }
     core.notice("No exact-head approved Dependabot PR is ready.");
@@ -974,17 +882,13 @@ async function mergeNextDependabot({ github, context, core }) {
       current.base.ref !== "main" ||
       current.head.repo?.full_name !== `${owner}/${repo}`
     ) {
-      core.warning(
-        `PR #${current.number} no longer meets Dependabot trust bounds.`,
-      );
+      core.warning(`PR #${current.number} no longer meets Dependabot trust bounds.`);
       continue;
     }
 
     const files = await allPullFiles(github, owner, repo, current.number);
     if (!filesArePackageOnly(files)) {
-      await replaceAutomationLabels(github, owner, repo, current.number, [
-        LABELS.blocked.name,
-      ]);
+      await replaceAutomationLabels(github, owner, repo, current.number, [LABELS.blocked.name]);
       await github.rest.pulls.update({
         owner,
         repo,
@@ -1014,25 +918,19 @@ async function mergeNextDependabot({ github, context, core }) {
       basehead: `${currentHead}...${mainSha}`,
     });
     if (comparison.data.ahead_by > 0) {
-      await replaceAutomationLabels(github, owner, repo, current.number, [
-        LABELS.retry.name,
-      ]);
+      await replaceAutomationLabels(github, owner, repo, current.number, [LABELS.retry.name]);
       await refreshDependabotBranch(github, owner, repo, current, core);
       return;
     }
     if (current.mergeable_state === "dirty") {
-      await replaceAutomationLabels(github, owner, repo, current.number, [
-        LABELS.blocked.name,
-      ]);
+      await replaceAutomationLabels(github, owner, repo, current.number, [LABELS.blocked.name]);
       await github.rest.pulls.update({
         owner,
         repo,
         pull_number: current.number,
         state: "closed",
       });
-      core.warning(
-        `Closed Dependabot PR #${current.number}; its branch conflicts with main.`,
-      );
+      core.warning(`Closed Dependabot PR #${current.number}; its branch conflicts with main.`);
       continue;
     }
     if (current.mergeable_state === "blocked") {
@@ -1057,9 +955,7 @@ async function mergeNextDependabot({ github, context, core }) {
       if (current.head.sha !== currentHead) continue;
     }
     if (current.mergeable !== true) {
-      core.notice(
-        `PR #${current.number} is not mergeable yet (${current.mergeable_state}).`,
-      );
+      core.notice(`PR #${current.number} is not mergeable yet (${current.mergeable_state}).`);
       if (pending.length) return;
       continue;
     }
@@ -1070,14 +966,7 @@ async function mergeNextDependabot({ github, context, core }) {
   }
 
   if (!pull || !headSha) {
-    await recoverOneDependabotReview(
-      github,
-      owner,
-      repo,
-      dependabotPulls,
-      mainSha,
-      core,
-    );
+    await recoverOneDependabotReview(github, owner, repo, dependabotPulls, mainSha, core);
     return;
   }
 
@@ -1123,9 +1012,7 @@ async function mergeNextDependabot({ github, context, core }) {
     try {
       await dispatchWithRetry(github, { owner, repo, ...dispatch });
     } catch (error) {
-      dispatchErrors.push(
-        `${dispatch.workflow_id}: ${sanitizeText(error.message, 200)}`,
-      );
+      dispatchErrors.push(`${dispatch.workflow_id}: ${sanitizeText(error.message, 200)}`);
     }
   }
 
@@ -1136,9 +1023,7 @@ async function mergeNextDependabot({ github, context, core }) {
     body: [
       `Merged exact reviewed commit \`${headSha.slice(0, 12)}\` as \`${mergedSha.slice(0, 12)}\`.`,
       "The dependency queue is paused until post-merge CI, React Doctor, Vercel Production, and the live-site smoke all succeed.",
-      dispatchErrors.length
-        ? `Post-merge dispatch warning: ${dispatchErrors.join("; ")}`
-        : "",
+      dispatchErrors.length ? `Post-merge dispatch warning: ${dispatchErrors.join("; ")}` : "",
     ]
       .filter(Boolean)
       .join("\n\n"),
@@ -1190,12 +1075,7 @@ async function verifyProduction({ github, context, core }) {
   const attempts = 20;
   let lastState = "pending";
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    const deployment = await productionDeploymentState(
-      github,
-      owner,
-      repo,
-      expectedSha,
-    );
+    const deployment = await productionDeploymentState(github, owner, repo, expectedSha);
     lastState = deployment.state;
     if (["error", "failure"].includes(deployment.state)) {
       throw new Error(`Vercel Production deployment ended in ${deployment.state}`);
@@ -1242,9 +1122,7 @@ async function verifyProduction({ github, context, core }) {
     }
   }
 
-  throw new Error(
-    `Production did not become verifiably healthy for ${expectedSha} (${lastState})`,
-  );
+  throw new Error(`Production did not become verifiably healthy for ${expectedSha} (${lastState})`);
 }
 
 if (require.main === module) {

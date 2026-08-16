@@ -1,9 +1,19 @@
 "use server";
 
 import { timingSafeEqual } from "node:crypto";
+
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { clearPasswordAuthFlow, establishPasswordAuthFlow, getSessionUser, getVerifiedStaffAuthState, readPasswordAuthFlow, requireRole, resolveStaffAuthState } from "@/lib/portal/auth";
+
+import {
+  clearPasswordAuthFlow,
+  establishPasswordAuthFlow,
+  getSessionUser,
+  getVerifiedStaffAuthState,
+  readPasswordAuthFlow,
+  requireRole,
+  resolveStaffAuthState,
+} from "@/lib/portal/auth";
 import type { PasswordAuthFlow, PortalStaffAuthState } from "@/lib/portal/auth";
 import { portalUrl, serverClient, serviceClient } from "@/lib/portal/server";
 
@@ -26,8 +36,7 @@ export interface SetPasswordActionState {
   changeCommitted: boolean;
 }
 
-const GENERIC_LOGIN_ERROR =
-  "Unable to sign in. Check your credentials and try again.";
+const GENERIC_LOGIN_ERROR = "Unable to sign in. Check your credentials and try again.";
 const INVALID_AUTH_LINK_ERROR =
   "This link is invalid or expired. Request another reset or ask your portal administrator for a new invitation.";
 const SET_PASSWORD_ERROR =
@@ -48,8 +57,7 @@ function safeCredentialMatch(actual: string, expected: string): boolean {
   const actualBuffer = Buffer.from(actual);
   const expectedBuffer = Buffer.from(expected);
   return (
-    actualBuffer.length === expectedBuffer.length &&
-    timingSafeEqual(actualBuffer, expectedBuffer)
+    actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer)
   );
 }
 
@@ -78,16 +86,10 @@ function previewLoginCredentials(
 
   const usernameMatches = safeCredentialMatch(submittedEmail, username);
   const passwordMatches = safeCredentialMatch(submittedPassword, password);
-  return usernameMatches && passwordMatches
-    ? { email, password: seedPassword }
-    : null;
+  return usernameMatches && passwordMatches ? { email, password: seedPassword } : null;
 }
 
-function credential(
-  formData: FormData,
-  name: string,
-  trim = true,
-): string {
+function credential(formData: FormData, name: string, trim = true): string {
   const value = formData.get(name);
   if (value instanceof File || value === null) return "";
   return trim ? value.trim() : value;
@@ -165,12 +167,9 @@ async function completePasswordChange(
         return await passwordUpdatedIncomplete(flow);
       }
 
-      const completion = await serviceClient().rpc(
-        "portal_complete_staff_onboarding",
-        {
-          p_user_id: currentStaff.id,
-        },
-      );
+      const completion = await serviceClient().rpc("portal_complete_staff_onboarding", {
+        p_user_id: currentStaff.id,
+      });
       const completed = z.boolean().safeParse(completion.data);
       if (completion.error !== null || completed.data !== true) {
         return await passwordUpdatedIncomplete(flow);
@@ -180,10 +179,9 @@ async function completePasswordChange(
         return await passwordUpdatedIncomplete(flow);
       }
 
-      const audit = await serviceClient().rpc(
-        "portal_record_staff_password_reset",
-        { p_user_id: currentStaff.id },
-      );
+      const audit = await serviceClient().rpc("portal_record_staff_password_reset", {
+        p_user_id: currentStaff.id,
+      });
       const recorded = z.boolean().safeParse(audit.data);
       if (audit.error !== null || recorded.data !== true) {
         return await passwordUpdatedIncomplete(flow);
@@ -337,9 +335,7 @@ export async function confirmAuthLinkAction(
     if (
       staff === null ||
       !staff.active ||
-      (type === "invite" &&
-        staff.onboardedAt !== null &&
-        staff.onboardedAt !== "")
+      (type === "invite" && staff.onboardedAt !== null && staff.onboardedAt !== "")
     ) {
       await supabase.auth.signOut({ scope: "local" });
       return { error: INVALID_AUTH_LINK_ERROR };
@@ -347,10 +343,7 @@ export async function confirmAuthLinkAction(
 
     // A recovery token can rescue a consumed-but-unfinished invitation.
     // The database onboarding state, never the token type, decides purpose.
-    const flow =
-      staff.onboardedAt !== null && staff.onboardedAt !== ""
-        ? "recovery"
-        : "invite";
+    const flow = staff.onboardedAt !== null && staff.onboardedAt !== "" ? "recovery" : "invite";
     await establishPasswordAuthFlow(flow, staff.id);
   } catch {
     try {
@@ -382,10 +375,7 @@ export async function setPasswordAction(
   const validationError = validateNewPassword(password, confirmation);
   if (validationError !== null) return validationError;
 
-  const [supabase, staff] = await Promise.all([
-    serverClient(),
-    getVerifiedStaffAuthState(),
-  ]);
+  const [supabase, staff] = await Promise.all([serverClient(), getVerifiedStaffAuthState()]);
   const flow = staff !== null ? await readPasswordAuthFlow(staff.id) : null;
   const expectedFlow =
     staff !== null && staff.onboardedAt !== null && staff.onboardedAt !== ""
@@ -398,12 +388,7 @@ export async function setPasswordAction(
     return { error: INVALID_AUTH_LINK_ERROR, changeCommitted: false };
   }
 
-  const completionError = await completePasswordChange(
-    supabase,
-    staff,
-    flow,
-    password,
-  );
+  const completionError = await completePasswordChange(supabase, staff, flow, password);
   if (completionError !== null) return completionError;
   return redirect("/admin");
 }
@@ -435,8 +420,7 @@ export async function recoverPasswordAction(
     } = await supabase.auth.getUser();
     if (sessionUser !== null) {
       const candidate = await resolveStaffAuthState(sessionUser);
-      const candidateFlow =
-        candidate !== null ? await readPasswordAuthFlow(candidate.id) : null;
+      const candidateFlow = candidate !== null ? await readPasswordAuthFlow(candidate.id) : null;
       if (
         candidate?.active === true &&
         candidate.onboardedAt !== null &&
@@ -489,12 +473,7 @@ export async function recoverPasswordAction(
     return { error: INVALID_AUTH_LINK_ERROR, changeCommitted: false };
   }
 
-  const completionError = await completePasswordChange(
-    supabase,
-    staff,
-    flow,
-    password,
-  );
+  const completionError = await completePasswordChange(supabase, staff, flow, password);
   if (completionError !== null) return completionError;
   return redirect("/admin");
 }

@@ -3,8 +3,8 @@
 // The builders keep each document's section tree consistent while letting
 // Every locale carry its own source wording.
 
-import type { PrepSection } from "./types";
 import type { EN } from "./common";
+import type { PrepSection } from "./types";
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 type DeepReadonly<T> = T extends (...args: never[]) => void
@@ -32,7 +32,7 @@ export function bringSection(f: Readonly<Flavor>): PrepSection {
 /** Companion, rest, diabetic, and medication reminders. */
 export function remindersSection(
   f: Readonly<Flavor>,
-  opts: Readonly<{ fiber: boolean; companion?: string }>
+  opts: Readonly<{ fiber: boolean; companion?: string }>,
 ): PrepSection {
   return {
     heading: f.remindersHeading,
@@ -66,7 +66,7 @@ export function followUpSection(f: Readonly<Flavor>): PrepSection {
  *  and the follow-up note — the shared front page of the endoscopy sheets. */
 export function standardFront(
   f: Readonly<Flavor>,
-  opts: Readonly<{ fiber: boolean }> = { fiber: true }
+  opts: Readonly<{ fiber: boolean }> = { fiber: true },
 ): PrepSection[] {
   return [
     {
