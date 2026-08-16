@@ -2,7 +2,7 @@
 // Exactly; article bodies are original EN/ES prose written for the rebuild,
 // With VI/KO/AR machine translations still awaiting native-speaker review.
 
-import type { BlogPost } from "../types";
+import type { BlogPost } from "@/lib/content/types";
 
 export const batch1: BlogPost[] = [
   {
@@ -264,8 +264,7 @@ export const batch1: BlogPost[] = [
   },
   {
     slug: "celiac-disease-vs-gluten-sensitivity-understanding-the-difference",
-    legacyPath:
-      "/blog/1461310-celiac-disease-vs-gluten-sensitivity-understanding-the-difference",
+    legacyPath: "/blog/1461310-celiac-disease-vs-gluten-sensitivity-understanding-the-difference",
     title: {
       en: "Celiac Disease vs. Gluten Sensitivity: Understanding the Difference",
       es: "Enfermedad celíaca frente a sensibilidad al gluten: entienda la diferencia",

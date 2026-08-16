@@ -76,9 +76,7 @@ function nyClock(date: Date): PracticeClock {
 }
 
 function nyDayNumber(date: Date): number {
-  return Math.round(
-    Date.parse(`${NY_DAY.format(date)}T00:00:00Z`) / 86_400_000,
-  );
+  return Math.round(Date.parse(`${NY_DAY.format(date)}T00:00:00Z`) / 86_400_000);
 }
 
 function ymdToDayNumber(ymd: string): number | null {
@@ -123,11 +121,7 @@ function nyWallParts(date: Date): PracticeWall {
 }
 
 /** Absolute ISO instant for a practice-local wall time on a calendar day. */
-function atPracticeLocal(
-  ymd: string,
-  hour: number,
-  minute: number,
-): string | null {
+function atPracticeLocal(ymd: string, hour: number, minute: number): string | null {
   if (!isValidCalendarYmd(ymd)) return null;
   const hh = String(hour).padStart(2, "0");
   const mm = String(minute).padStart(2, "0");
@@ -170,11 +164,7 @@ export function resolveFollowUpAt(
     case "tomorrow_morning":
       return atPracticeLocal(dayNumberToYmd(todayNumber + 1), 9, 0);
     case "friday":
-      return atPracticeLocal(
-        dayNumberToYmd(todayNumber + daysUntilComingFriday(now)),
-        9,
-        0,
-      );
+      return atPracticeLocal(dayNumberToYmd(todayNumber + daysUntilComingFriday(now)), 9, 0);
     case "day": {
       if (!isValidCalendarYmd(choice.date)) return null;
       const targetNumber = ymdToDayNumber(choice.date);
@@ -222,10 +212,7 @@ export function previousBusinessMorningBoundary(now: Date = new Date()): Date {
 
 // "yesterday", a weekday name within the past week, or "July 18" beyond it.
 // Null while the request arrived on the current practice-local calendar day.
-export function waitingSince(
-  iso: string,
-  now: Date = new Date(),
-): string | null {
+export function waitingSince(iso: string, now: Date = new Date()): string | null {
   const created = new Date(iso);
   const dayDiff = nyDayNumber(now) - nyDayNumber(created);
   if (dayDiff <= 0) return null;

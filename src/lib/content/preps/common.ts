@@ -28,15 +28,11 @@
  * ------------------------------------------------------------------ */
 export const EN = {
   readCarefully: "Please read over these instructions carefully.",
-  appointmentLine:
-    "**Day of your procedure:** ___ **Be at the Outpatient Endoscopy Unit at:** ___",
+  appointmentLine: "**Day of your procedure:** ___ **Be at the Outpatient Endoscopy Unit at:** ___",
   dayOfNpo:
     "**On the day of your procedure, do not eat or drink.** Exception: if you take blood pressure, heart, seizure and/or thyroid medications in the morning, take them with a small sip of water at least two (2) hours before your procedure time.",
   bringHeading: "Please bring the following items with you",
-  bringItems: [
-    "Your insurance cards and driver's license",
-    "Eye glasses if needed for reading",
-  ],
+  bringItems: ["Your insurance cards and driver's license", "Eye glasses if needed for reading"],
   jewelryClothes:
     "Please leave jewelry and valuables at home; wedding band(s) may be worn. Please wear comfortable clothes — you will be changing into a gown.",
   remindersHeading: "Important reminders",
@@ -52,8 +48,7 @@ export const EN = {
     "**For anti-coagulant / blood thinner / anti-platelet medications** (Plavix, Coumadin, Effient, Xarelto, Pradaxa, Brilinta, Eliquis, etc.): **please contact the physician who prescribed them in advance for clearance and/or instructions.**",
   nsaids:
     "**Please stop NSAIDs (ibuprofen, Advil, Aleve, etc.),** iron, multi-vitamins with iron, Vitamin E, St. John's Wort, ginkgo biloba, ginger, fish oil, and garlic pills **7 days before.** If you need to take a pain reliever, you can take Tylenol (acetaminophen).",
-  aspirin:
-    "**Don't stop Aspirin 81 mg for cardiac protection** before or after the procedure.",
+  aspirin: "**Don't stop Aspirin 81 mg for cardiac protection** before or after the procedure.",
   dietPills: "**Stop diet pills (Phentermine) 14 days before.**",
   glp1: "**Stop semaglutide (Wegovy, Ozempic, Rybelsus), dulaglutide (Trulicity), lixisenatide (Adlyxin), exenatide (Bydureon, Byetta), liraglutide (Victoza, Saxenda) and Mounjaro (tirzepatide) 7 days before.**",
   fiber:
@@ -117,15 +112,13 @@ export const ES_T = {
     "**Suspenda los AINE (ibuprofeno, Advil, Aleve, etc.),** el hierro, las multivitaminas con hierro, la vitamina E, la hierba de San Juan, el ginkgo biloba, el jengibre, el aceite de pescado y las tabletas de ajo **7 días antes.** Si necesita un analgésico, puede tomar Tylenol (acetaminofén).",
   aspirin:
     "**No suspenda la Aspirina 81 mg si la toma para protección cardíaca,** ni antes ni después del procedimiento.",
-  dietPills:
-    "**Suspenda las pastillas para bajar de peso (Phentermine) 14 días antes.**",
+  dietPills: "**Suspenda las pastillas para bajar de peso (Phentermine) 14 días antes.**",
   glp1: "**Suspenda semaglutide (Wegovy, Ozempic, Rybelsus), dulaglutide (Trulicity), lixisenatide (Adlyxin), exenatide (Bydureon, Byetta), liraglutide (Victoza, Saxenda) y Mounjaro (tirzepatide) 7 días antes.**",
   fiber:
     "**Disminuya el consumo de fibra 3 días antes de su procedimiento.** Por ejemplo, no coma nueces, semillas, palomitas de maíz (popcorn), maíz, etc. No use suplementos de fibra como Metamucil, Citrucel, Fiberall, etc.",
   followUp:
     "**Nota: debe programar una cita de seguimiento 2 semanas después de su procedimiento. Los resultados del procedimiento no se discuten en el centro ambulatorio ni por teléfono.**",
-  dayBeforeHeading:
-    "El día anterior a su procedimiento: dieta líquida clara todo el día",
+  dayBeforeHeading: "El día anterior a su procedimiento: dieta líquida clara todo el día",
   noSolids:
     "Por favor **no desayune ni coma ningún alimento sólido** el día antes ni la mañana de su procedimiento. Por ejemplo, si su procedimiento es un lunes, no desayune ni coma alimentos sólidos durante todo el domingo y el lunes por la mañana. Podrá volver a su dieta normal, según la tolere, después del procedimiento.",
   drinkHourly: (prep: string) =>
@@ -156,8 +149,7 @@ export const ES_T = {
  * ------------------------------------------------------------------ */
 export const ES_O = {
   readCarefully: "Por favor lea las instrucciones detalladamente.",
-  appointmentLine:
-    "**Día del procedimiento:** ___ **Estar en el Centro de Endoscopia a las:** ___",
+  appointmentLine: "**Día del procedimiento:** ___ **Estar en el Centro de Endoscopia a las:** ___",
   dayOfNpo:
     "**El día del procedimiento no puede comer ni beber líquidos.** A excepción de un pequeño sorbo de agua con los medicamentos autorizados para el día del procedimiento (para la presión arterial, corazón, tiroides o anticonvulsivantes), dos horas antes.",
   bringHeading: "Traiga lo siguiente",
@@ -180,10 +172,8 @@ export const ES_O = {
     "**Si toma anticoagulantes o antiplaquetarios (Coumadin, Warfarin, Plavix, Clopidogrel, Effient, Xarelto, Eliquis, Brilinta, etc.), por favor contacte al médico que le receta estos medicamentos para autorización e instrucciones adicionales.**",
   nsaids:
     "**Siete (7) días antes debe suspender:** ibuprofeno, Celebrex, Naproxen, Mobic, meloxicam, Omega 3, aceite de hígado de pescado, vitamina E y tabletas de ajo.",
-  aspirin:
-    "**No debe suspender la Aspirina 81 mg si la toma para protección cardíaca.**",
-  dietPills:
-    "**14 días antes debe suspender: Phentermine** (medicamento para bajar de peso).",
+  aspirin: "**No debe suspender la Aspirina 81 mg si la toma para protección cardíaca.**",
+  dietPills: "**14 días antes debe suspender: Phentermine** (medicamento para bajar de peso).",
   // The practice's Spanish sheets list the same medications but no day
   // Count — reproduced as-is (source quirk; flagged for the practice).
   glp1: "**Debe suspender semaglutide (Wegovy, Ozempic, Rybelsus), dulaglutide (Trulicity), lixisenatide (Adlyxin), exenatide (Bydureon, Byetta), liraglutide (Victoza, Saxenda) y Mounjaro (tirzepatide).**",
@@ -191,8 +181,7 @@ export const ES_O = {
     "**Disminuya el consumo de fibra 3 días antes.** Por ejemplo, no coma nueces, semillas, palomitas de maíz (popcorn).",
   followUp:
     "**Nota:** si no tiene cita de seguimiento después del procedimiento, llame a nuestra oficina. Recuerde que no se dan resultados por teléfono. **Sin excepciones.**",
-  dayBeforeHeading:
-    "¡Dieta líquida clara todo el día anterior a su procedimiento!",
+  dayBeforeHeading: "¡Dieta líquida clara todo el día anterior a su procedimiento!",
   noSolids:
     "Por favor no coma ninguna comida sólida el día antes ni en la mañana de su procedimiento. Por ejemplo, si su procedimiento es un lunes, no puede desayunar ni comer alimentos durante el domingo y el lunes por la mañana. Podrá volver a comer su dieta normal después del procedimiento.",
   drinkHourly: (prep: string) =>
@@ -227,10 +216,7 @@ export const VI = {
   dayOfNpo:
     "**Vào ngày làm thủ thuật, quý vị không được ăn hoặc uống bất cứ thứ gì.** Ngoại lệ: nếu quý vị uống thuốc huyết áp, thuốc tim, thuốc chống co giật và/hoặc thuốc tuyến giáp vào buổi sáng, hãy uống các thuốc đó với một ngụm nước nhỏ ít nhất hai (2) giờ trước giờ làm thủ thuật.",
   bringHeading: "Xin quý vị mang theo những vật dụng sau",
-  bringItems: [
-    "Thẻ bảo hiểm y tế và bằng lái xe của quý vị",
-    "Kính mắt nếu quý vị cần để đọc",
-  ],
+  bringItems: ["Thẻ bảo hiểm y tế và bằng lái xe của quý vị", "Kính mắt nếu quý vị cần để đọc"],
   jewelryClothes:
     "Xin để trang sức và đồ vật có giá trị ở nhà; quý vị có thể đeo nhẫn cưới. Xin mặc quần áo thoải mái — quý vị sẽ thay sang áo choàng y tế.",
   remindersHeading: "Những lời nhắc quan trọng",
@@ -246,24 +232,21 @@ export const VI = {
     "**Đối với các thuốc chống đông máu / làm loãng máu / chống kết tập tiểu cầu** (Plavix, Coumadin, Effient, Xarelto, Pradaxa, Brilinta, Eliquis, v.v.): **xin liên hệ trước với bác sĩ đã kê các thuốc này để được chấp thuận và/hoặc hướng dẫn.**",
   nsaids:
     "**Xin ngừng các thuốc NSAID (ibuprofen, Advil, Aleve, v.v.),** sắt, vitamin tổng hợp có chứa sắt, vitamin E, St. John's Wort, ginkgo biloba, gừng, dầu cá và viên tỏi **7 ngày trước.** Nếu quý vị cần thuốc giảm đau, quý vị có thể dùng Tylenol (acetaminophen).",
-  aspirin:
-    "**Không ngừng Aspirin 81 mg dùng để bảo vệ tim mạch,** cả trước lẫn sau thủ thuật.",
+  aspirin: "**Không ngừng Aspirin 81 mg dùng để bảo vệ tim mạch,** cả trước lẫn sau thủ thuật.",
   dietPills: "**Ngừng thuốc giảm cân (Phentermine) 14 ngày trước.**",
   glp1: "**Ngừng semaglutide (Wegovy, Ozempic, Rybelsus), dulaglutide (Trulicity), lixisenatide (Adlyxin), exenatide (Bydureon, Byetta), liraglutide (Victoza, Saxenda) và Mounjaro (tirzepatide) 7 ngày trước.**",
   fiber:
     "**Giảm ăn chất xơ 3 ngày trước thủ thuật.** Ví dụ: không ăn các loại quả hạch, các loại hạt, bắp rang (popcorn), bắp, v.v. Không dùng các sản phẩm bổ sung chất xơ như Metamucil, Citrucel, Fiberall, v.v.",
   followUp:
     "**Lưu ý: quý vị cần đặt lịch hẹn tái khám 2 tuần sau thủ thuật. Kết quả thủ thuật sẽ không được thảo luận tại cơ sở ngoại trú hoặc qua điện thoại.**",
-  dayBeforeHeading:
-    "Ngày trước thủ thuật của quý vị: cả ngày chỉ dùng chất lỏng trong",
+  dayBeforeHeading: "Ngày trước thủ thuật của quý vị: cả ngày chỉ dùng chất lỏng trong",
   noSolids:
     "Xin quý vị **không ăn sáng và không ăn bất kỳ thức ăn đặc nào** vào ngày hôm trước và buổi sáng ngày làm thủ thuật. Ví dụ: nếu thủ thuật của quý vị vào thứ Hai, không ăn sáng hoặc bất kỳ thức ăn đặc nào trong suốt ngày Chủ Nhật và sáng thứ Hai. Sau thủ thuật, quý vị có thể ăn uống trở lại như bình thường tùy theo khả năng dung nạp.",
   drinkHourly: (prep: string) =>
     `**Mỗi giờ hãy uống ít nhất 8 ounce chất lỏng trong, cho đến khi quý vị bắt đầu dùng thuốc chuẩn bị ruột ${prep}.**`,
   hydrate: (prep: string) =>
     `**Xin quý vị giữ cho cơ thể đủ nước trước, trong và sau khi** hoàn tất thuốc chuẩn bị ruột ${prep}. **Tuy nhiên, quý vị phải ngừng uống tất cả chất lỏng bốn (4) giờ trước giờ làm thủ thuật — kể cả cà phê.** (Ví dụ: nếu giờ làm thủ thuật của quý vị là 10 giờ sáng, quý vị không được uống gì sau 6 giờ sáng.)`,
-  avoidHeading:
-    "Lời nhắc quan trọng — không ăn hoặc uống bất kỳ loại nào sau đây:",
+  avoidHeading: "Lời nhắc quan trọng — không ăn hoặc uống bất kỳ loại nào sau đây:",
   avoidItems: [
     "**Sữa, các sản phẩm từ sữa hoặc sản phẩm thay thế sữa**",
     "**Chất lỏng có màu đỏ, tím hoặc xanh dương**",
@@ -288,15 +271,11 @@ export const VI = {
  * ------------------------------------------------------------------ */
 export const KO = {
   readCarefully: "이 안내문을 주의 깊게 읽어 주십시오.",
-  appointmentLine:
-    "**시술 날짜:** ___ **외래 내시경실 도착 시간:** ___",
+  appointmentLine: "**시술 날짜:** ___ **외래 내시경실 도착 시간:** ___",
   dayOfNpo:
     "**시술 당일에는 아무것도 먹거나 마시지 마십시오.** 예외: 아침에 혈압약, 심장약, 경련(발작) 치료제 및/또는 갑상선약을 복용하시는 경우, 시술 예정 시간 최소 두 (2) 시간 전에 소량의 물 한 모금과 함께 복용하십시오.",
   bringHeading: "다음 물품을 지참해 주십시오",
-  bringItems: [
-    "보험 카드와 운전면허증",
-    "필요한 경우 독서용 안경",
-  ],
+  bringItems: ["보험 카드와 운전면허증", "필요한 경우 독서용 안경"],
   jewelryClothes:
     "장신구와 귀중품은 집에 두고 오십시오. 결혼반지는 착용하셔도 됩니다. 편안한 옷을 입고 오십시오 — 검사용 가운으로 갈아입으시게 됩니다.",
   remindersHeading: "중요 안내 사항",
@@ -353,8 +332,7 @@ export const KO = {
  * ------------------------------------------------------------------ */
 export const AR = {
   readCarefully: "يُرجى قراءة هذه التعليمات بعناية.",
-  appointmentLine:
-    "**يوم الإجراء:** ___ **موعد الحضور إلى وحدة التنظير للمرضى الخارجيين:** ___",
+  appointmentLine: "**يوم الإجراء:** ___ **موعد الحضور إلى وحدة التنظير للمرضى الخارجيين:** ___",
   dayOfNpo:
     "**في يوم الإجراء، لا تأكل ولا تشرب شيئًا.** استثناء: إذا كنت تتناول في الصباح أدوية ضغط الدم أو القلب أو النوبات (الصرع) و/أو الغدة الدرقية، فتناولها مع رشفة صغيرة من الماء قبل موعد الإجراء بساعتين (2) على الأقل.",
   bringHeading: "يُرجى إحضار الأغراض التالية معك",
@@ -377,16 +355,14 @@ export const AR = {
     "**بالنسبة لأدوية منع تخثر الدم / مميعات الدم / مضادات الصفائح الدموية** (Plavix، Coumadin، Effient، Xarelto، Pradaxa، Brilinta، Eliquis، إلخ): **يُرجى التواصل مسبقًا مع الطبيب الذي وصفها لك للحصول على الموافقة و/أو التعليمات.**",
   nsaids:
     "**يُرجى التوقف عن تناول مضادات الالتهاب اللاستيرويدية NSAIDs (ibuprofen، Advil، Aleve، إلخ)،** والحديد، والفيتامينات المتعددة المحتوية على الحديد، وفيتامين E، وSt. John's Wort، وginkgo biloba، والزنجبيل، وزيت السمك، وأقراص الثوم **قبل 7 أيام.** إذا احتجت إلى مسكّن للألم، يمكنك تناول Tylenol (acetaminophen).",
-  aspirin:
-    "**لا توقف تناول Aspirin 81 mg الذي تتناوله لحماية القلب** سواء قبل الإجراء أو بعده.",
+  aspirin: "**لا توقف تناول Aspirin 81 mg الذي تتناوله لحماية القلب** سواء قبل الإجراء أو بعده.",
   dietPills: "**توقف عن تناول حبوب إنقاص الوزن (Phentermine) قبل 14 يومًا.**",
   glp1: "**توقف عن تناول semaglutide (Wegovy، Ozempic، Rybelsus) وdulaglutide (Trulicity) وlixisenatide (Adlyxin) وexenatide (Bydureon، Byetta) وliraglutide (Victoza، Saxenda) وMounjaro (tirzepatide) قبل 7 أيام.**",
   fiber:
     "**قلّل تناول الألياف قبل 3 أيام من الإجراء.** على سبيل المثال، لا تأكل المكسرات أو البذور أو الفشار أو الذرة، إلخ. ولا تستخدم مكملات الألياف مثل Metamucil وCitrucel وFiberall، إلخ.",
   followUp:
     "**ملاحظة: يجب تحديد موعد للمتابعة بعد أسبوعين (2) من الإجراء. لن تتم مناقشة نتائج الإجراء في مركز العيادات الخارجية ولا عبر الهاتف.**",
-  dayBeforeHeading:
-    "اليوم السابق للإجراء: نظام غذائي من السوائل الصافية طوال اليوم",
+  dayBeforeHeading: "اليوم السابق للإجراء: نظام غذائي من السوائل الصافية طوال اليوم",
   noSolids:
     "يُرجى **عدم تناول وجبة الإفطار أو أي طعام صلب** في اليوم السابق للإجراء وفي صباح يومه. على سبيل المثال، إذا كان إجراؤك يوم الاثنين، فلا تتناول الإفطار أو أي طعام صلب طوال يوم الأحد وصباح يوم الاثنين. يمكنك استئناف نظامك الغذائي المعتاد بعد الإجراء حسب ما تتحمّله.",
   drinkHourly: (prep: string) =>

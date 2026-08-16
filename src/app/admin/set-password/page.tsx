@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
+
 import { AuthCard } from "@/app/admin/auth-card";
-import {
-  getVerifiedStaffAuthState,
-  readPasswordAuthFlow,
-} from "@/lib/portal/auth";
+import { getVerifiedStaffAuthState, readPasswordAuthFlow } from "@/lib/portal/auth";
+
 import { PasswordForm } from "./password-form";
 
 export default async function SetPasswordPage() {
@@ -12,18 +11,14 @@ export default async function SetPasswordPage() {
 
   const flow = await readPasswordAuthFlow(staff.id);
   const expectedFlow =
-    staff.onboardedAt !== null && staff.onboardedAt !== ""
-      ? "recovery"
-      : "invite";
+    staff.onboardedAt !== null && staff.onboardedAt !== "" ? "recovery" : "invite";
   if (flow === null || flow !== expectedFlow) {
     redirect("/admin/login?auth=invalid");
   }
 
   return (
     <AuthCard
-      title={
-        flow === "invite" ? "Create your password" : "Choose a new password"
-      }
+      title={flow === "invite" ? "Create your password" : "Choose a new password"}
       description="Use at least 12 characters. This one-time setup expires shortly."
     >
       <PasswordForm mode={flow} />

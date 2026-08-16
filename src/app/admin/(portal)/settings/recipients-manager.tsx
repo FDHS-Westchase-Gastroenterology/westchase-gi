@@ -1,7 +1,8 @@
 "use client";
 
-import { useReducer, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useReducer, useTransition } from "react";
+
 import {
   addNotificationRecipient,
   removeNotificationRecipient,
@@ -37,9 +38,7 @@ function isRecipientFailureCode(value: string): value is RecipientFailureCode {
 
 function failureMessage(result: Readonly<MutationOutcome>): string {
   const code = result.code ?? "unavailable";
-  return isRecipientFailureCode(code)
-    ? FAILURE_COPY[code]
-    : FAILURE_COPY.unavailable;
+  return isRecipientFailureCode(code) ? FAILURE_COPY[code] : FAILURE_COPY.unavailable;
 }
 
 // Every mutation reports per row, not per panel: only the affected control
@@ -50,7 +49,11 @@ interface RecipientsState {
   readonly pendingKey: string | null;
   readonly error: string | null;
   readonly deliveryNotice: { readonly tone: "success" | "warning"; readonly text: string } | null;
-  readonly undo: { readonly recipientId: string; readonly email: string; readonly restoredActive: boolean } | null;
+  readonly undo: {
+    readonly recipientId: string;
+    readonly email: string;
+    readonly restoredActive: boolean;
+  } | null;
   readonly labelDraft: { readonly recipientId: string; readonly value: string } | null;
   readonly labelNotice: string | null;
 }
@@ -148,9 +151,7 @@ function RecipientRowItem({
       className="flex flex-wrap items-center justify-between gap-3 py-3.5"
     >
       <div className="min-w-0">
-        <p className="truncate font-bold text-[var(--color-ink)]">
-          {recipient.email}
-        </p>
+        <p className="truncate font-bold text-[var(--color-ink)]">{recipient.email}</p>
         {labelDraft !== null && labelDraft.recipientId === recipient.id ? (
           <span className="mt-1.5 flex flex-wrap items-center gap-2">
             <label htmlFor={`label-${recipient.id}`} className="sr-only">
@@ -172,7 +173,7 @@ function RecipientRowItem({
                 }
                 if (event.key === "Escape") onCancelLabel();
               }}
-              className="min-h-10 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-3 text-[0.85rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)] disabled:opacity-60"
+              className="min-h-10 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-3 text-[0.85rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)] disabled:opacity-60"
             />
             <button
               type="button"
@@ -286,8 +287,7 @@ function RecipientAlerts({
           className="mt-4 flex flex-wrap items-center gap-3 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-4 py-3 text-sm text-[var(--color-ink)]"
         >
           <span className="font-bold">
-            Notifications {undo.restoredActive ? "paused" : "resumed"} for{" "}
-            {undo.email}.
+            Notifications {undo.restoredActive ? "paused" : "resumed"} for {undo.email}.
           </span>
           <button
             type="button"
@@ -329,13 +329,8 @@ function AddRecipientForm({
   onAdd: (formData: FormData) => void;
 }>) {
   return (
-    <form
-      className="mt-5 border-t border-[var(--color-line)] pt-5"
-      action={onAdd}
-    >
-      <h3 className="text-sm font-bold text-[var(--color-ink)]">
-        Add a recipient
-      </h3>
+    <form className="mt-5 border-t border-[var(--color-line)] pt-5" action={onAdd}>
+      <h3 className="text-sm font-bold text-[var(--color-ink)]">Add a recipient</h3>
       <div className="mt-3 grid gap-3 sm:grid-cols-[1.4fr_1fr_auto]">
         <div>
           <label htmlFor="recipient-email" className="sr-only">
@@ -348,7 +343,7 @@ function AddRecipientForm({
             required
             placeholder="frontdesk@example.com"
             disabled={pending}
-            className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)]"
+            className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
           />
         </div>
         <div>
@@ -361,7 +356,7 @@ function AddRecipientForm({
             type="text"
             placeholder="Label (optional)"
             disabled={pending}
-            className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)]"
+            className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
           />
         </div>
         <button
@@ -387,8 +382,7 @@ export function RecipientsManager({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [state, dispatch] = useReducer(recipientsReducer, INITIAL_STATE);
-  const { pendingKey, error, deliveryNotice, undo, labelDraft, labelNotice } =
-    state;
+  const { pendingKey, error, deliveryNotice, undo, labelDraft, labelNotice } = state;
 
   function run(
     key: string,
@@ -459,15 +453,12 @@ export function RecipientsManager({
   function addFromForm(formData: FormData) {
     const rawEmail = formData.get("email");
     const rawLabel = formData.get("label");
-    const email =
-      rawEmail === null || rawEmail instanceof File ? "" : rawEmail.trim();
-    const label =
-      rawLabel === null || rawLabel instanceof File ? "" : rawLabel.trim();
+    const email = rawEmail === null || rawEmail instanceof File ? "" : rawEmail.trim();
+    const label = rawLabel === null || rawLabel instanceof File ? "" : rawLabel.trim();
     if (!email) return;
     run(
       "add",
-      async () =>
-        addNotificationRecipient(label ? { email, label } : { email }),
+      async () => addNotificationRecipient(label ? { email, label } : { email }),
       (result) => {
         dispatch({
           type: "delivery",
@@ -491,14 +482,11 @@ export function RecipientsManager({
       data-testid="recipients-manager"
       className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7"
     >
-      <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
-        Notification recipients
-      </h2>
+      <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">Notification recipients</h2>
       <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
-        Everyone on this list gets an email whenever a patient requests an
-        appointment. The emails are just a heads-up — every request is
-        always saved here in the portal, so nothing gets missed even if an
-        email does.
+        Everyone on this list gets an email whenever a patient requests an appointment. The emails
+        are just a heads-up — every request is always saved here in the portal, so nothing gets
+        missed even if an email does.
       </p>
 
       <RecipientAlerts
@@ -510,13 +498,11 @@ export function RecipientsManager({
         onUndo={() => {
           if (undo === null) return;
           const target = undo;
-          run(
-            `toggle:${target.recipientId}`,
-            async () =>
-              toggleNotificationRecipient({
-                recipientId: target.recipientId,
-                active: target.restoredActive,
-              }),
+          run(`toggle:${target.recipientId}`, async () =>
+            toggleNotificationRecipient({
+              recipientId: target.recipientId,
+              active: target.restoredActive,
+            }),
           );
         }}
         onDismissUndo={() => {
@@ -527,8 +513,8 @@ export function RecipientsManager({
       <ul data-testid="recipient-list" className="mt-5 divide-y divide-[var(--color-line)]">
         {recipients.length === 0 && (
           <li className="py-4 text-[0.95rem] text-[var(--color-muted)]">
-            No recipients yet — new-appointment-request emails are
-            currently going to no one. The queue still records everything.
+            No recipients yet — new-appointment-request emails are currently going to no one. The
+            queue still records everything.
           </li>
         )}
         {recipients.map((recipient) => (
@@ -581,8 +567,8 @@ export function RecipientsManager({
         <AddRecipientForm pending={pendingKey === "add"} onAdd={addFromForm} />
       ) : (
         <p className="mt-5 border-t border-[var(--color-line)] pt-5 text-[0.9rem] text-[var(--color-muted)]">
-          Adding or removing recipients needs an administrator — you can
-          pause or resume any address above.
+          Adding or removing recipients needs an administrator — you can pause or resume any address
+          above.
         </p>
       )}
     </div>

@@ -12,9 +12,7 @@ export function ArticleBody({ sections, locale }: Readonly<ArticleBodyProps>) {
   return (
     <div className="grid gap-7">
       {sections.map((section) => (
-        <section
-          key={section.heading?.en ?? section.paragraphs.at(0)?.en ?? "lead"}
-        >
+        <section key={section.heading?.en ?? section.paragraphs.at(0)?.en ?? "lead"}>
           {section.heading ? (
             <h2 className="h3 font-[var(--font-display)]">{section.heading[locale]}</h2>
           ) : null}

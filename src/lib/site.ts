@@ -8,7 +8,10 @@ import reviewTargets from "@/lib/review-targets.json";
 export const locales = ["en", "es", "vi", "ko", "ar"] as const;
 export type Locale = (typeof locales)[number];
 export const localeSet: ReadonlySet<string> = new Set(locales);
-export interface OfficeHours { opens: string; closes: string }
+export interface OfficeHours {
+  opens: string;
+  closes: string;
+}
 
 const officeTimeFormatters = {
   en: new Intl.DateTimeFormat("en", {
@@ -91,8 +94,7 @@ export const site = {
   email: "fdhswestchase@fdhs.com",
   // Confirmed by the practice 2026-07-05: these are the ONLY current procedure
   // Locations (the four facilities on the old site are outdated).
-  affiliations:
-    "AdventHealth Surgery Center Wellswood & AdventHealth Carrollwood",
+  affiliations: "AdventHealth Surgery Center Wellswood & AdventHealth Carrollwood",
   locations: [
     {
       id: "tampa",
@@ -171,9 +173,6 @@ export function localePath(locale: Locale, path: string): string {
 
 /** Re-point a localized path at another locale without changing its page. */
 export function pathInLocale(pathname: string, target: Locale): string {
-  const rest = pathname.replace(
-    new RegExp(`^/(${locales.join("|")})(?=/|$)`),
-    "",
-  );
+  const rest = pathname.replace(new RegExp(`^/(${locales.join("|")})(?=/|$)`), "");
   return `/${target}${rest}`;
 }

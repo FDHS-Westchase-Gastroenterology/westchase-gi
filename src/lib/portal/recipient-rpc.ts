@@ -1,9 +1,6 @@
 export type RecipientRpcOperation = "add" | "toggle" | "remove";
 
-export type RecipientRpcFailureCode =
-  | "conflict"
-  | "not_found"
-  | "unavailable";
+export type RecipientRpcFailureCode = "conflict" | "not_found" | "unavailable";
 
 type RecipientRpcError = { code?: string } | null;
 
@@ -27,9 +24,7 @@ export type RecipientMutationTransportResult<Data, CompatibilityResult> =
  * it cannot find. No other failure may reopen the non-atomic compatibility
  * path: permissions, validation, and infrastructure errors must fail closed.
  */
-export function isRecipientRpcMissing(
-  error: Readonly<RecipientRpcError | undefined>,
-): boolean {
+export function isRecipientRpcMissing(error: Readonly<RecipientRpcError | undefined>): boolean {
   return error?.code === "PGRST202";
 }
 
@@ -38,10 +33,7 @@ export function isRecipientRpcMissing(
  * effect without an application restart. The compatibility operation runs
  * only while PostgREST explicitly lacks that RPC signature.
  */
-export async function runRecipientMutationTransport<
-  Data,
-  CompatibilityResult,
->(
+export async function runRecipientMutationTransport<Data, CompatibilityResult>(
   atomicOperation: () => PromiseLike<RecipientRpcResponse<Data>>,
   compatibilityOperation: () => PromiseLike<CompatibilityResult>,
 ): Promise<RecipientMutationTransportResult<Data, CompatibilityResult>> {
@@ -65,10 +57,7 @@ export function recipientRpcFailureCode(
   if (operation === "add" && postgresCode === "23505") {
     return "conflict";
   }
-  if (
-    operation !== "add" &&
-    (postgresCode === "P0002" || postgresCode === "22P02")
-  ) {
+  if (operation !== "add" && (postgresCode === "P0002" || postgresCode === "22P02")) {
     return "not_found";
   }
   return "unavailable";

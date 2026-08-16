@@ -1,9 +1,10 @@
-import { createHmac } from "node:crypto";
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
+
 import {
   ANALYTICS_EVENTS,
   TELEMETRY_CLIENT_HASH_DOMAIN,
@@ -147,17 +148,11 @@ test("allowlist integrity", () => {
 
   const blogSlugs = slugFieldsIn("lib/content/blog");
   for (const slug of blogSlugs) {
-    assert.ok(
-      TELEMETRY_ROUTE_TEMPLATES.includes(`/blog/${slug}`),
-      `missing blog slug: ${slug}`,
-    );
+    assert.ok(TELEMETRY_ROUTE_TEMPLATES.includes(`/blog/${slug}`), `missing blog slug: ${slug}`);
   }
 
   for (const id of documentIds()) {
-    assert.ok(
-      TELEMETRY_ROUTE_TEMPLATES.includes(`documents:${id}`),
-      `missing document id: ${id}`,
-    );
+    assert.ok(TELEMETRY_ROUTE_TEMPLATES.includes(`documents:${id}`), `missing document id: ${id}`);
   }
 });
 
@@ -168,10 +163,7 @@ test("event enum matches the frozen 20-value list exactly", () => {
 
 test("telemetry HMAC domain differs from intake and yields 64-hex", () => {
   assert.notEqual(TELEMETRY_CLIENT_HASH_DOMAIN, INTAKE_CLIENT_HASH_DOMAIN);
-  assert.equal(
-    TELEMETRY_CLIENT_HASH_DOMAIN,
-    "wgi:telemetry-rate-limit:client:v1\0",
-  );
+  assert.equal(TELEMETRY_CLIENT_HASH_DOMAIN, "wgi:telemetry-rate-limit:client:v1\0");
   const hash = createHmac("sha256", "unit-test-key")
     .update(TELEMETRY_CLIENT_HASH_DOMAIN)
     .update("missing")

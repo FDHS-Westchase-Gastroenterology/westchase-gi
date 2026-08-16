@@ -1,7 +1,14 @@
 import "server-only";
 
 import { z } from "zod";
-import { asJsonArray, asJsonBoolean, asJsonObject, asJsonString, asJsonTimestamp } from "@/lib/json";
+
+import {
+  asJsonArray,
+  asJsonBoolean,
+  asJsonObject,
+  asJsonString,
+  asJsonTimestamp,
+} from "@/lib/json";
 import type { Json } from "@/lib/json";
 
 export interface PortalReleaseEngagementRow {
@@ -30,16 +37,10 @@ type ReleaseEngagementProfile = Pick<
   "displayName" | "email" | "active"
 >;
 
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function asCount(value: Json | undefined, minimum: number): number | null {
-  const parsed = z
-    .number()
-    .int()
-    .min(minimum)
-    .max(2147483647)
-    .safeParse(value);
+  const parsed = z.number().int().min(minimum).max(2147483647).safeParse(value);
   return parsed.success ? parsed.data : null;
 }
 
@@ -95,14 +96,10 @@ function parseRow(value: Json): PortalReleaseEngagementRow | null {
 
   const firstOpenedAtMs = Date.parse(firstOpenedAt);
   const lastViewedAtMs = Date.parse(lastViewedAt);
-  const guideOpenedAtMs =
-    guideOpenedAt === null ? null : Date.parse(guideOpenedAt);
-  const lastGuideOpenedAtMs =
-    lastGuideOpenedAt === null ? null : Date.parse(lastGuideOpenedAt);
+  const guideOpenedAtMs = guideOpenedAt === null ? null : Date.parse(guideOpenedAt);
+  const lastGuideOpenedAtMs = lastGuideOpenedAt === null ? null : Date.parse(lastGuideOpenedAt);
   const guideIsConsistent =
-    (guideOpenCount === 0 &&
-      guideOpenedAtMs === null &&
-      lastGuideOpenedAtMs === null) ||
+    (guideOpenCount === 0 && guideOpenedAtMs === null && lastGuideOpenedAtMs === null) ||
     (guideOpenCount > 0 &&
       guideOpenedAtMs !== null &&
       lastGuideOpenedAtMs !== null &&
@@ -111,11 +108,7 @@ function parseRow(value: Json): PortalReleaseEngagementRow | null {
     (dismissCount === 0 && lastDismissedAt === null) ||
     (dismissCount > 0 && lastDismissedAt !== null);
 
-  if (
-    lastViewedAtMs < firstOpenedAtMs ||
-    !guideIsConsistent ||
-    !dismissIsConsistent
-  ) {
+  if (lastViewedAtMs < firstOpenedAtMs || !guideIsConsistent || !dismissIsConsistent) {
     return null;
   }
 
@@ -135,9 +128,7 @@ function parseRow(value: Json): PortalReleaseEngagementRow | null {
   };
 }
 
-export function parsePortalReleaseEngagementRows(
-  value: Json,
-): PortalReleaseEngagementResult {
+export function parsePortalReleaseEngagementRows(value: Json): PortalReleaseEngagementResult {
   const candidates = asJsonArray(value);
   if (candidates === null) return { status: "unavailable" };
 

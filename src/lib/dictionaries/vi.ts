@@ -75,7 +75,8 @@ export const vi: Dictionary = {
     callUs: "Gọi (813) 920-8882",
     textUs: "Nhắn tin (813) 564-0315",
     textLine: "Đường dây nhắn tin",
-    textLineHuman: "Một thành viên trong đội ngũ của chúng tôi sẽ trả lời tin nhắn trong vòng 24 giờ.",
+    textLineHuman:
+      "Một thành viên trong đội ngũ của chúng tôi sẽ trả lời tin nhắn trong vòng 24 giờ.",
     requestAppointment: "Yêu cầu đặt hẹn",
     patientPortal: "Cổng thông tin bệnh nhân",
     languageLabel: "Ngôn ngữ",
@@ -128,7 +129,8 @@ export const vi: Dictionary = {
       weekdays: "Thứ Hai – Thứ Sáu",
       weekend: "Thứ Bảy – Chủ Nhật",
       closed: "Đóng cửa",
-      confirmNote: "Vui lòng gọi số điện thoại chính của chúng tôi, (813) 920-8882, để xác nhận giờ làm việc.",
+      confirmNote:
+        "Vui lòng gọi số điện thoại chính của chúng tôi, (813) 920-8882, để xác nhận giờ làm việc.",
     },
     days: ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"],
     contactCard: {
@@ -158,12 +160,14 @@ export const vi: Dictionary = {
       patientsHeading: "Dành cho bệnh nhân",
       phoneNote:
         "Do lượng cuộc gọi lớn, có thể chúng tôi không phải lúc nào cũng trả lời được cuộc gọi của quý vị ngay lập tức. Để thuận tiện, quý vị cũng có thể liên hệ với phòng khám qua đường dây nhắn tin theo số (813) 564-0315. Chúng tôi cảm ơn sự kiên nhẫn của quý vị và mong được hỗ trợ quý vị.",
-      emailNote: "Nếu quý vị không thể liên hệ với phòng khám qua điện thoại, quý vị có thể gửi yêu cầu đến email của chúng tôi",
+      emailNote:
+        "Nếu quý vị không thể liên hệ với phòng khám qua điện thoại, quý vị có thể gửi yêu cầu đến email của chúng tôi",
       sisterClinic: "Đối tác chăm sóc sức khỏe của chúng tôi:",
       copyright: "Westchase Gastroenterology. Mọi quyền được bảo lưu.",
       networkLine: "Thành viên của Florida Digestive Health Specialists.",
       reviewHeading: "Buổi khám của quý vị thế nào?",
-      reviewBody: "Một phút để lại đánh giá của quý vị giúp mọi người tìm được dịch vụ chăm sóc tiêu hóa đáng tin cậy.",
+      reviewBody:
+        "Một phút để lại đánh giá của quý vị giúp mọi người tìm được dịch vụ chăm sóc tiêu hóa đáng tin cậy.",
       reviewGoogle: "Đánh giá chúng tôi trên Google",
       reviewFacebook: "Đánh giá chúng tôi trên Facebook",
       reviewMore: "Tất cả các cách để lại đánh giá",
@@ -192,8 +196,14 @@ export const vi: Dictionary = {
     tiles: {
       heading: "Hôm nay chúng tôi có thể giúp gì cho quý vị?",
       prep: { title: "Chuẩn bị thủ thuật", sub: "Hướng dẫn từng bước trước thủ thuật của quý vị" },
-      forms: { title: "Mẫu đơn cho bệnh nhân mới", sub: "Hoàn tất hồ sơ trực tuyến trước buổi thăm khám của quý vị" },
-      physicians: { title: "Gặp gỡ đội ngũ bác sĩ", sub: "Bác sĩ chuyên khoa tiêu hóa được hội đồng y khoa chứng nhận" },
+      forms: {
+        title: "Mẫu đơn cho bệnh nhân mới",
+        sub: "Hoàn tất hồ sơ trực tuyến trước buổi thăm khám của quý vị",
+      },
+      physicians: {
+        title: "Gặp gỡ đội ngũ bác sĩ",
+        sub: "Bác sĩ chuyên khoa tiêu hóa được hội đồng y khoa chứng nhận",
+      },
       directions: { title: "Bản đồ & Chỉ đường", sub: "Hai phòng khám: Tampa và Lutz" },
     },
     welcomeHeading: "Chào mừng quý vị đến với Westchase Gastroenterology",
@@ -211,7 +221,8 @@ export const vi: Dictionary = {
     testimonialsHeading: "Bệnh nhân nói gì về chúng tôi",
     // i5-waiver 2026-07-28 home.testimonialsNote: settled decision — testimonials
     // Stay English-only in every locale, with this explicit qualifier.
-    testimonialsNote: "Những đánh giá do bệnh nhân của chúng tôi chia sẻ, bằng chính lời của họ (bằng tiếng Anh).",
+    testimonialsNote:
+      "Những đánh giá do bệnh nhân của chúng tôi chia sẻ, bằng chính lời của họ (bằng tiếng Anh).",
     railLabel: "Cảm nhận của bệnh nhân",
     railPrev: "Các cảm nhận trước",
     railNext: "Các cảm nhận tiếp theo",
@@ -422,7 +433,8 @@ export const vi: Dictionary = {
 
   contact: {
     title: "Liên hệ với chúng tôi",
-    intro: "Hai phòng khám, một đội ngũ. Hãy gọi điện, nhắn tin hoặc gửi yêu cầu đặt hẹn; chúng tôi sẽ lo phần còn lại.",
+    intro:
+      "Hai phòng khám, một đội ngũ. Hãy gọi điện, nhắn tin hoặc gửi yêu cầu đặt hẹn; chúng tôi sẽ lo phần còn lại.",
     formHeading: "Gửi yêu cầu đặt hẹn",
     locationsHeading: "Các phòng khám của chúng tôi",
   },
@@ -444,7 +456,8 @@ export const vi: Dictionary = {
       timeAfternoon: "Buổi chiều",
       timeAny: "Giờ nào cũng được",
       message: "Lý do yêu cầu cuộc hẹn này (ngắn gọn)",
-      messageHint: "Không bắt buộc. Vui lòng tránh nêu chi tiết y khoa; chúng tôi sẽ trao đổi những nội dung đó qua điện thoại.",
+      messageHint:
+        "Không bắt buộc. Vui lòng tránh nêu chi tiết y khoa; chúng tôi sẽ trao đổi những nội dung đó qua điện thoại.",
       submit: "Gửi yêu cầu",
       submitting: "Đang gửi…",
       errName: "Vui lòng cho chúng tôi biết tên của quý vị.",
@@ -457,8 +470,7 @@ export const vi: Dictionary = {
       failBody:
         "Yêu cầu của quý vị chưa được lưu. Vui lòng gọi điện hoặc nhắn tin cho phòng khám — chúng tôi sẵn lòng hỗ trợ trực tiếp.",
       unknownHeading: "Chúng tôi chưa chắc yêu cầu của quý vị đã được gửi",
-      unknownBody:
-        "Vui lòng gọi điện hoặc nhắn tin cho chúng tôi để xác nhận trước khi gửi lại.",
+      unknownBody: "Vui lòng gọi điện hoặc nhắn tin cho chúng tôi để xác nhận trước khi gửi lại.",
     },
   },
 

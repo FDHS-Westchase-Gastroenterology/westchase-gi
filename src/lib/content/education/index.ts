@@ -5,16 +5,13 @@
 // Content that does not transfer), expanded into VI/KO/AR by machine
 // Translation; all translated copy awaits native-speaker review.
 
-import type { EducationTopic } from "../types";
-import { procedures } from "./procedures";
+import type { EducationTopic } from "@/lib/content/types";
+
 import { conditionsA } from "./conditions-a";
 import { conditionsB } from "./conditions-b";
+import { procedures } from "./procedures";
 
-export const educationTopics: EducationTopic[] = [
-  ...procedures,
-  ...conditionsA,
-  ...conditionsB,
-];
+export const educationTopics: EducationTopic[] = [...procedures, ...conditionsA, ...conditionsB];
 
 export const educationByGroup = {
   procedures: educationTopics

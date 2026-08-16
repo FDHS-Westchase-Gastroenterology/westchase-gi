@@ -2,10 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+
 import { requireRole } from "@/lib/portal/auth";
 import { resolveFollowUpAt } from "@/lib/portal/business-time";
 import type { FollowUpChoice } from "@/lib/portal/business-time";
-import { CALL_OUTCOME_POLICY, allowsCallAgainDay, isCallOutcomeId, requiresCallAgainDay } from "@/lib/portal/call-outcomes";
+import {
+  CALL_OUTCOME_POLICY,
+  allowsCallAgainDay,
+  isCallOutcomeId,
+  requiresCallAgainDay,
+} from "@/lib/portal/call-outcomes";
 import type { CallOutcomeId } from "@/lib/portal/call-outcomes";
 import { serviceClient } from "@/lib/portal/server";
 
@@ -40,11 +46,7 @@ export async function addRequestNote(
     return { status: "error", message: NOTE_WRITE_ERROR };
   }
 
-  if (
-    requestId instanceof File ||
-    requestId === null ||
-    requestId.trim().length === 0
-  ) {
+  if (requestId instanceof File || requestId === null || requestId.trim().length === 0) {
     return { status: "error", message: NOTE_WRITE_ERROR };
   }
 
@@ -82,11 +84,7 @@ export type CallOutcomeResult =
     }
   | {
       ok: false;
-      code:
-        | "invalid"
-        | "not_found"
-        | "follow_up_required"
-        | "unavailable";
+      code: "invalid" | "not_found" | "follow_up_required" | "unavailable";
     };
 
 const uuidSchema = z.uuid();
@@ -183,10 +181,12 @@ export async function logCallOutcome(
   };
 }
 
-export async function undoCallOutcome(input: Readonly<{
-  requestId: string;
-  eventId: string;
-}>): Promise<
+export async function undoCallOutcome(
+  input: Readonly<{
+    requestId: string;
+    eventId: string;
+  }>,
+): Promise<
   | { ok: true; status: "new" | "contacted" | "scheduled" | "closed" }
   | {
       ok: false;

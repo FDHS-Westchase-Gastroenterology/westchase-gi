@@ -16,10 +16,10 @@ test("VAL-INTAKE-012: every map iframe carries no-referrer in the DOM", async ({
     expect(count, `${path} should render map embeds`).toBeGreaterThan(0);
 
     for (let i = 0; i < count; i += 1) {
-      await expect(
-        iframes.nth(i),
-        `iframe ${i} on ${path}`,
-      ).toHaveAttribute("referrerpolicy", "no-referrer");
+      await expect(iframes.nth(i), `iframe ${i} on ${path}`).toHaveAttribute(
+        "referrerpolicy",
+        "no-referrer",
+      );
     }
   }
 });
@@ -61,9 +61,7 @@ test("VAL-INTAKE-013: patient-bearing legacy URLs redirect clean before third-pa
 
   for (const url of offSiteRequests) {
     for (const value of [phone, "Jane", "j%40x.com", "j@x.com"]) {
-      expect(url, `third-party request leaked a value: ${url}`).not.toContain(
-        value,
-      );
+      expect(url, `third-party request leaked a value: ${url}`).not.toContain(value);
     }
   }
 });

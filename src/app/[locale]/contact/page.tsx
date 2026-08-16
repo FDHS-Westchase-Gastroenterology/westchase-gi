@@ -1,16 +1,19 @@
 import type { Metadata } from "next";
+
+import { AppointmentForm } from "@/components/AppointmentForm";
+import { HoursTable } from "@/components/HoursTable";
+import { LocationCards } from "@/components/LocationCards";
+import { LocationMaps } from "@/components/LocationMaps";
+import { PageHero } from "@/components/PageHero";
+import { Reveal } from "@/components/Reveal";
+import { TextBand } from "@/components/TextBand";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
 import type { Locale } from "@/lib/site";
-import { PageHero } from "@/components/PageHero";
-import { LocationCards } from "@/components/LocationCards";
-import { LocationMaps } from "@/components/LocationMaps";
-import { HoursTable } from "@/components/HoursTable";
-import { AppointmentForm } from "@/components/AppointmentForm";
-import { TextBand } from "@/components/TextBand";
-import { Reveal } from "@/components/Reveal";
 
-interface PageProps { params: Promise<{ locale: string }> }
+interface PageProps {
+  params: Promise<{ locale: string }>;
+}
 
 export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;

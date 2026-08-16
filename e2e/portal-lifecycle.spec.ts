@@ -1,7 +1,9 @@
 import { createHash, randomUUID } from "node:crypto";
+
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { z } from "zod";
+
 import { jsonObjectSchema } from "../src/lib/json";
 import type { JsonObject } from "../src/lib/json";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
@@ -31,9 +33,7 @@ const lifecycleActor = `lifecycle-${runId}@example.test`;
 const requestIds = new Set<string>();
 
 const CLOCK = new Date(Date.now() + 2 * 60 * 1000);
-const UNCONVERTED_CUTOFF = new Date(
-  CLOCK.getTime() - 180 * 24 * 60 * 60 * 1000,
-);
+const UNCONVERTED_CUTOFF = new Date(CLOCK.getTime() - 180 * 24 * 60 * 60 * 1000);
 const CONVERTED_CUTOFF = new Date(CLOCK);
 CONVERTED_CUTOFF.setUTCFullYear(CONVERTED_CUTOFF.getUTCFullYear() - 1);
 const AUDIT_CUTOFF = new Date(CLOCK);
@@ -84,15 +84,9 @@ async function stageRequest(
 
 test.describe("disposable-local appointment-request lifecycle", () => {
   test.describe.configure({ mode: "serial" });
-  test.skip(
-    !disposableLocal,
-    "destructive lifecycle coverage is disposable-local only",
-  );
+  test.skip(!disposableLocal, "destructive lifecycle coverage is disposable-local only");
   test.beforeEach(({}, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "chromium",
-      "lifecycle coverage requires JavaScript",
-    );
+    test.skip(testInfo.project.name !== "chromium", "lifecycle coverage requires JavaScript");
   });
 
   const db = serviceDb();
@@ -111,9 +105,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     await db.from("audit_log").delete().eq("actor_email", lifecycleActor);
   });
 
-  test("staff classifies closure from the request detail page", async ({
-    page,
-  }) => {
+  test("staff classifies closure from the request detail page", async ({ page }) => {
     const id = await stageRequest("workflow");
     await signIn(page);
     await page.goto(`/admin/requests/${id}`);
@@ -138,9 +130,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
 
     let row = await db
       .from("requests")
-      .select(
-        "status, closure_disposition, closed_at, record_handoff_at, retention_hold_at",
-      )
+      .select("status, closure_disposition, closed_at, record_handoff_at, retention_hold_at")
       .eq("id", id)
       .single();
     expect(row.error).toBeNull();
@@ -156,9 +146,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     await expect(page.getByTestId("request-lifecycle-summary")).toHaveCount(0);
     row = await db
       .from("requests")
-      .select(
-        "status, closure_disposition, closed_at, record_handoff_at, retention_hold_at",
-      )
+      .select("status, closure_disposition, closed_at, record_handoff_at, retention_hold_at")
       .eq("id", id)
       .single();
     expect(row.data).toMatchObject({
@@ -176,9 +164,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
 
     row = await db
       .from("requests")
-      .select(
-        "status, closure_disposition, closed_at, record_handoff_at, retention_hold_at",
-      )
+      .select("status, closure_disposition, closed_at, record_handoff_at, retention_hold_at")
       .eq("id", id)
       .single();
     expect(row.data?.closure_disposition).toBe("converted");
@@ -196,11 +182,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
         .array(z.object({ action: z.string() }))
         .parse(audits.data ?? [])
         .map(({ action }) => action),
-    ).toEqual([
-      "request.call_outcome",
-      "request.call_outcome",
-      "request.call_outcome",
-    ]);
+    ).toEqual(["request.call_outcome", "request.call_outcome", "request.call_outcome"]);
 
     await db.from("requests").delete().eq("id", id);
     await db.from("audit_log").delete().eq("entity_id", id);
@@ -263,8 +245,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     expect(runs.every(({ error }) => error === null)).toBe(true);
     expect(
       runs.reduce(
-        (total, { data }) =>
-          total + count(jsonObjectSchema.parse(data), "requests_removed"),
+        (total, { data }) => total + count(jsonObjectSchema.parse(data), "requests_removed"),
         0,
       ),
     ).toBe(1);
@@ -365,9 +346,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     ]);
     expect(auditError).toBeNull();
 
-    const rateHash = createHash("sha256")
-      .update(`lifecycle-${runId}`)
-      .digest("hex");
+    const rateHash = createHash("sha256").update(`lifecycle-${runId}`).digest("hex");
     const rateClaim = await db.rpc("portal_check_intake_rate_limit", {
       p_client_hash: rateHash,
       p_limit: 5,
@@ -383,9 +362,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     expect(count(previewCounts, "unconverted_requests")).toBe(1);
     expect(count(previewCounts, "converted_requests")).toBe(1);
     expect(count(previewCounts, "held_requests")).toBeGreaterThanOrEqual(1);
-    expect(
-      count(previewCounts, "legacy_unclassified_requests"),
-    ).toBeGreaterThanOrEqual(1);
+    expect(count(previewCounts, "legacy_unclassified_requests")).toBeGreaterThanOrEqual(1);
     expect(count(previewCounts, "receipt_secrets")).toBe(1);
     expect(count(previewCounts, "rate_limits")).toBeGreaterThanOrEqual(1);
     expect(count(previewCounts, "audits")).toBe(1);
@@ -404,9 +381,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     const firstRunCounts = jsonObjectSchema.parse(firstRun.data);
     expect(count(firstRunCounts, "requests_removed")).toBe(2);
     expect(count(firstRunCounts, "receipt_secrets_removed")).toBe(1);
-    expect(count(firstRunCounts, "rate_limits_removed")).toBeGreaterThanOrEqual(
-      1,
-    );
+    expect(count(firstRunCounts, "rate_limits_removed")).toBeGreaterThanOrEqual(1);
     expect(count(firstRunCounts, "audits_removed")).toBe(1);
 
     const survivors = await db
@@ -429,13 +404,9 @@ test.describe("disposable-local appointment-request lifecycle", () => {
         .map(({ id }) => id)
         .sort((left, right) => left.localeCompare(right)),
     ).toEqual(
-      [
-        unconvertedBefore,
-        convertedBefore,
-        heldExpired,
-        legacyClosed,
-        openOld,
-      ].sort((left, right) => left.localeCompare(right)),
+      [unconvertedBefore, convertedBefore, heldExpired, legacyClosed, openOld].sort((left, right) =>
+        left.localeCompare(right),
+      ),
     );
 
     const cascadedEvent = await db
@@ -453,9 +424,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     const expiredReceipt = receipts.data?.find(
       ({ request_id }) => request_id === unconvertedBefore,
     );
-    const liveReceipt = receipts.data?.find(
-      ({ request_id }) => request_id === convertedBefore,
-    );
+    const liveReceipt = receipts.data?.find(({ request_id }) => request_id === convertedBefore);
     expect(expiredReceipt?.status).toBe("expired");
     expect(expiredReceipt?.meta).not.toHaveProperty("token_hash");
     expect(liveReceipt?.status).toBe("issued");
@@ -482,9 +451,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     expect(auditActions).not.toContain("test.audit.exact");
     expect(auditActions).toContain("test.audit.before");
     expect(auditActions).toContain("test.audit.held");
-    expect(
-      auditActions.filter((action) => action === "request.retention_delete"),
-    ).toHaveLength(2);
+    expect(auditActions.filter((action) => action === "request.retention_delete")).toHaveLength(2);
 
     const secondRun = await db.rpc("portal_run_data_lifecycle", {
       p_actor_email: lifecycleActor,
@@ -509,9 +476,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
       p_now: CLOCK.toISOString(),
     });
     expect(afterRelease.error).toBeNull();
-    expect(count(jsonObjectSchema.parse(afterRelease.data), "requests_removed")).toBe(
-      1,
-    );
+    expect(count(jsonObjectSchema.parse(afterRelease.data), "requests_removed")).toBe(1);
   });
 
   test("exceptional deletion is authorized, hold-aware, and replayable after restore", async () => {
@@ -562,14 +527,8 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     expect(deleted.error).toBeNull();
     expect(deleted.data).toBe(true);
 
-    const deletedRequest = await db
-      .from("requests")
-      .select("id")
-      .eq("id", earlyId);
-    const deletedEvents = await db
-      .from("request_events")
-      .select("id")
-      .eq("request_id", earlyId);
+    const deletedRequest = await db.from("requests").select("id").eq("id", earlyId);
+    const deletedEvents = await db.from("request_events").select("id").eq("request_id", earlyId);
     expect(deletedRequest.data).toHaveLength(0);
     expect(deletedEvents.data).toHaveLength(0);
 
@@ -592,9 +551,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     const preview = await db.rpc("portal_preview_data_lifecycle", {
       p_now: CLOCK.toISOString(),
     });
-    expect(count(jsonObjectSchema.parse(preview.data), "unconverted_requests")).toBe(
-      1,
-    );
+    expect(count(jsonObjectSchema.parse(preview.data), "unconverted_requests")).toBe(1);
 
     const replay = await db.rpc("portal_run_data_lifecycle", {
       p_actor_email: lifecycleActor,
@@ -603,10 +560,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     expect(replay.error).toBeNull();
     expect(count(jsonObjectSchema.parse(replay.data), "requests_removed")).toBe(1);
 
-    const restoredRequest = await db
-      .from("requests")
-      .select("id")
-      .eq("id", restoredId);
+    const restoredRequest = await db.from("requests").select("id").eq("id", restoredId);
     expect(restoredRequest.data).toHaveLength(0);
   });
 });

@@ -3,7 +3,7 @@
 // 1:1; the bodies use original plain-language EN/ES writing, with VI/KO/AR
 // Machine translations still awaiting native-speaker review.
 
-import type { EducationTopic } from "../types";
+import type { EducationTopic } from "@/lib/content/types";
 
 export const conditionsA: EducationTopic[] = [
   {

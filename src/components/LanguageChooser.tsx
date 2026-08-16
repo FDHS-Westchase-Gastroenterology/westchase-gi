@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useId, useRef } from "react";
+
 import type { Dictionary } from "@/lib/i18n";
 import {
   browserLocale,
@@ -13,9 +14,13 @@ import {
 import { localeNames, locales, pathInLocale } from "@/lib/site";
 import type { Locale } from "@/lib/site";
 import { routeTemplateFor, track } from "@/lib/telemetry-client";
+
 import { Check, Globe, X } from "./icons";
 
-interface LanguageChooserProps { locale: Locale; dict: Dictionary }
+interface LanguageChooserProps {
+  locale: Locale;
+  dict: Dictionary;
+}
 
 function returnFocus() {
   document.getElementById(LANGUAGE_TRIGGER_ID)?.focus();
@@ -41,7 +46,12 @@ export function LanguageChooser({ locale, dict }: Readonly<LanguageChooserProps>
   const hintRef = useRef<Locale | null>(null);
 
   function trackChooser(
-    event: "chooser_shown" | "chooser_accepted_hint" | "chooser_switched" | "chooser_kept_current" | "chooser_dismissed",
+    event:
+      | "chooser_shown"
+      | "chooser_accepted_hint"
+      | "chooser_switched"
+      | "chooser_kept_current"
+      | "chooser_dismissed",
   ) {
     const template = routeTemplateFor(pathname);
     if (template !== null && template !== "") track(event, template, locale);
@@ -113,7 +123,9 @@ export function LanguageChooser({ locale, dict }: Readonly<LanguageChooserProps>
               key={target}
               type="button"
               lang={target}
-              onClick={() => { finish(target); }}
+              onClick={() => {
+                finish(target);
+              }}
               className="language-dialog__option"
             >
               <span>{localeNames[target]}</span>
@@ -126,7 +138,9 @@ export function LanguageChooser({ locale, dict }: Readonly<LanguageChooserProps>
         </div>
         <button
           type="button"
-          onClick={() => { finish(locale); }}
+          onClick={() => {
+            finish(locale);
+          }}
           className="language-dialog__continue"
         >
           {copy.continue}

@@ -1,17 +1,15 @@
 import "server-only";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
+
 import type { User } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { z } from "zod";
+
 import type { StaffRole } from "@/lib/portal/contracts";
-import {
-  serverClient,
-  serviceClient,
-  serviceRoleKey,
-} from "@/lib/portal/server";
+import { serverClient, serviceClient, serviceRoleKey } from "@/lib/portal/server";
 
 export interface PortalSessionUser {
   id: string;
@@ -53,17 +51,14 @@ function passwordFlowSecret(): string {
 }
 
 function passwordFlowSignature(payload: string): string {
-  return createHmac("sha256", passwordFlowSecret())
-    .update(payload)
-    .digest("base64url");
+  return createHmac("sha256", passwordFlowSecret()).update(payload).digest("base64url");
 }
 
 function safeSignatureMatch(actual: string, expected: string): boolean {
   const actualBuffer = Buffer.from(actual);
   const expectedBuffer = Buffer.from(expected);
   return (
-    actualBuffer.length === expectedBuffer.length &&
-    timingSafeEqual(actualBuffer, expectedBuffer)
+    actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer)
   );
 }
 
@@ -76,9 +71,7 @@ export async function resolveStaffAuthState(
 ): Promise<PortalStaffAuthState | null> {
   const { data: profile, error: profileError } = await serviceClient()
     .from("staff_profiles")
-    .select(
-      "email, display_name, role, active, onboarded_at, portal_tour_dismissed_at",
-    )
+    .select("email, display_name, role, active, onboarded_at, portal_tour_dismissed_at")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -89,9 +82,7 @@ export async function resolveStaffAuthState(
   const emailFromProfile = z.string().safeParse(profile.email);
   const displayName = z.string().safeParse(profile.display_name);
   const onboardedAt = z.string().safeParse(profile.onboarded_at);
-  const portalTourDismissedAt = z
-    .string()
-    .safeParse(profile.portal_tour_dismissed_at);
+  const portalTourDismissedAt = z.string().safeParse(profile.portal_tour_dismissed_at);
 
   const userEmail = user.email?.trim();
   const email =
@@ -111,9 +102,7 @@ export async function resolveStaffAuthState(
     role: role.data,
     active: profile.active === true,
     onboardedAt: onboardedAt.success ? onboardedAt.data : null,
-    portalTourDismissedAt: portalTourDismissedAt.success
-      ? portalTourDismissedAt.data
-      : null,
+    portalTourDismissedAt: portalTourDismissedAt.success ? portalTourDismissedAt.data : null,
   };
 }
 
@@ -153,15 +142,12 @@ export async function establishPasswordAuthFlow(
   });
 }
 
-export async function readPasswordAuthFlow(
-  userId: string,
-): Promise<PasswordAuthFlow | null> {
+export async function readPasswordAuthFlow(userId: string): Promise<PasswordAuthFlow | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(PASSWORD_FLOW_COOKIE)?.value;
   if (token === undefined || token === "") return null;
 
-  const [version, flow, tokenUserId, expires, signature, ...extra] =
-    token.split(".");
+  const [version, flow, tokenUserId, expires, signature, ...extra] = token.split(".");
   if (
     extra.length > 0 ||
     version !== "v1" ||
@@ -180,9 +166,7 @@ export async function readPasswordAuthFlow(
 
   const payload = `${version}.${flow}.${tokenUserId}.${expires}`;
   try {
-    return safeSignatureMatch(signature, passwordFlowSignature(payload))
-      ? flow
-      : null;
+    return safeSignatureMatch(signature, passwordFlowSignature(payload)) ? flow : null;
   } catch {
     return null;
   }
@@ -198,23 +182,21 @@ export async function clearPasswordAuthFlow(): Promise<void> {
  * current authorization state from staff_profiles using the server-only
  * service client. User-editable metadata is never consulted.
  */
-export const getSessionUser = cache(
-  async (): Promise<PortalSessionUser | null> => {
-    const state = await getVerifiedStaffAuthState();
-    if (state === null) return null;
-    if (!state.active) return null;
-    if (state.onboardedAt === null || state.onboardedAt === "") return null;
+export const getSessionUser = cache(async (): Promise<PortalSessionUser | null> => {
+  const state = await getVerifiedStaffAuthState();
+  if (state === null) return null;
+  if (!state.active) return null;
+  if (state.onboardedAt === null || state.onboardedAt === "") return null;
 
-    return {
-      id: state.id,
-      email: state.email,
-      displayName: state.displayName,
-      role: state.role,
-      onboardedAt: state.onboardedAt,
-      portalTourDismissedAt: state.portalTourDismissedAt,
-    };
-  },
-);
+  return {
+    id: state.id,
+    email: state.email,
+    displayName: state.displayName,
+    role: state.role,
+    onboardedAt: state.onboardedAt,
+    portalTourDismissedAt: state.portalTourDismissedAt,
+  };
+});
 
 /**
  * Enforces the portal role hierarchy close to the protected operation:

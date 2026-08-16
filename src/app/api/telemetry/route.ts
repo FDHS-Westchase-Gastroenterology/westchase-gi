@@ -26,11 +26,7 @@ export async function POST(request: Request) {
   }
 
   const code =
-    result.status === 400
-      ? "validation"
-      : result.status === 429
-        ? "rate_limited"
-        : "unavailable";
+    result.status === 400 ? "validation" : result.status === 429 ? "rate_limited" : "unavailable";
 
   return Response.json(
     { ok: false, code },

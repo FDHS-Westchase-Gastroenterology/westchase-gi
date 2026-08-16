@@ -1,12 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
-import { TransformComponent, TransformWrapper, useControls, useTransformComponent } from "react-zoom-pan-pinch";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import {
+  TransformComponent,
+  TransformWrapper,
+  useControls,
+  useTransformComponent,
+} from "react-zoom-pan-pinch";
 import type { ReactZoomPanPinchRef } from "react-zoom-pan-pinch";
+
 import { Download, Maximize, X, ZoomIn, ZoomOut } from "./icons";
 
-interface CardImage { src: string; width: number; height: number }
+interface CardImage {
+  src: string;
+  width: number;
+  height: number;
+}
 
 interface CardStrings {
   readonly label: string;
@@ -34,18 +44,28 @@ function useMedia(query: string) {
     (onChange: () => void) => {
       const mq = window.matchMedia(query);
       mq.addEventListener("change", onChange);
-      return () => { mq.removeEventListener("change", onChange); };
+      return () => {
+        mq.removeEventListener("change", onChange);
+      };
     },
-    [query]
+    [query],
   );
-  return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches, () => false);
+  return useSyncExternalStore(
+    subscribe,
+    () => window.matchMedia(query).matches,
+    () => false,
+  );
 }
 
 const emptySubscribe = () => () => {};
 
 /** False during SSR and hydration's first client render, true after. */
 function useHydrated() {
-  return useSyncExternalStore(emptySubscribe, () => true, () => false);
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
 }
 
 /** Zoom cluster: −, live percentage (tap to reset), +. Must live inside
@@ -57,19 +77,35 @@ function ZoomToolbar({ t }: Readonly<{ t: CardStrings }>) {
   ));
   return (
     <div className="pc-toolbar">
-      <button type="button" aria-label={t.zoomOut} onClick={() => { zoomOut(); }} className="pc-tool">
+      <button
+        type="button"
+        aria-label={t.zoomOut}
+        onClick={() => {
+          zoomOut();
+        }}
+        className="pc-tool"
+      >
         <ZoomOut className="h-4.5 w-4.5" />
       </button>
       <button
         type="button"
         aria-label={t.zoomReset}
         title={t.zoomReset}
-        onClick={() => { resetTransform(); }}
+        onClick={() => {
+          resetTransform();
+        }}
         className="pc-tool px-2 text-[0.88rem] font-bold"
       >
         {readout}
       </button>
-      <button type="button" aria-label={t.zoomIn} onClick={() => { zoomIn(); }} className="pc-tool">
+      <button
+        type="button"
+        aria-label={t.zoomIn}
+        onClick={() => {
+          zoomIn();
+        }}
+        className="pc-tool"
+      >
         <ZoomIn className="h-4.5 w-4.5" />
       </button>
     </div>
@@ -89,7 +125,12 @@ function ZoomToolbar({ t }: Readonly<{ t: CardStrings }>) {
  * viewer shows an explicit loading state while it streams.
  */
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-export function ProfileCardViewer({ image, subject, t, className = "" }: Readonly<ProfileCardViewerProps>) {
+export function ProfileCardViewer({
+  image,
+  subject,
+  t,
+  className = "",
+}: Readonly<ProfileCardViewerProps>) {
   const mounted = useHydrated();
   const [open, setOpen] = useState(false);
   const [warm, setWarm] = useState(false); // Start fetching the full-size image
@@ -121,8 +162,12 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Readonl
   // The gesture hint retires itself once the reader zooms, or after a beat.
   useEffect(() => {
     if (!open || !loaded || hintHidden) return undefined;
-    const timer = window.setTimeout(() => { setHintHidden(true); }, 6000);
-    return () => { window.clearTimeout(timer); };
+    const timer = window.setTimeout(() => {
+      setHintHidden(true);
+    }, 6000);
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [open, loaded, hintHidden]);
 
   function openViewer() {
@@ -159,7 +204,7 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Readonl
         />
       </span>
       <span className="min-w-0">
-        <span className="block text-[0.92rem] font-extrabold leading-snug text-[var(--color-ink)]">
+        <span className="block text-[0.92rem] leading-snug font-extrabold text-[var(--color-ink)]">
           {t.label}
         </span>
         <span className="mt-1 flex items-center gap-1.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)]">
@@ -176,8 +221,12 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Readonl
         <button
           type="button"
           onClick={openViewer}
-          onPointerEnter={() => { setWarm(true); }}
-          onFocus={() => { setWarm(true); }}
+          onPointerEnter={() => {
+            setWarm(true);
+          }}
+          onFocus={() => {
+            setWarm(true);
+          }}
           className={tileClass}
         >
           {tileInner}
@@ -202,11 +251,19 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Readonl
       <dialog ref={dialogRef} aria-label={alt} onClose={close} className="pc-dialog">
         {/* Click-to-dismiss is a real (pointer-only) button, not a bare
             handler; keyboard users have Escape + the labeled close button. */}
-        <button type="button" aria-label={t.close} tabIndex={-1} onClick={close} className="pc-scrim" />
+        <button
+          type="button"
+          aria-label={t.close}
+          tabIndex={-1}
+          onClick={close}
+          className="pc-scrim"
+        />
         {warm || open ? (
           <div className="pc-shell">
             <header className="pc-top">
-              <p className="min-w-0 flex-1 truncate text-[0.95rem] font-bold text-white">{subject}</p>
+              <p className="min-w-0 flex-1 truncate text-[0.95rem] font-bold text-white">
+                {subject}
+              </p>
               <a href={image.src} download className="pc-top-btn" title={t.download}>
                 <Download className="h-4.5 w-4.5 flex-none" />
                 <span className="hidden sm:inline">{t.download}</span>
@@ -248,7 +305,9 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Readonl
                       height={image.height}
                       sizes="64rem"
                       draggable={false}
-                      onLoad={() => { setLoaded(true); }}
+                      onLoad={() => {
+                        setLoaded(true);
+                      }}
                       className={`h-full w-full object-contain transition-opacity duration-300 ${
                         loaded ? "opacity-100" : "opacity-0"
                       }`}

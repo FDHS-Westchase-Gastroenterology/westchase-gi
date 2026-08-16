@@ -1,12 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
+
 import { test, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import {
-  loadLocalEnv,
-  requiredEnv,
-  serviceDb,
-} from "./support";
+
+import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 loadLocalEnv();
 
@@ -19,8 +17,7 @@ const SEED_ADMIN_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_ADMIN_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
 const PREVIEW_USERNAME = process.env.PORTAL_PREVIEW_USERNAME ?? "";
 const PREVIEW_PASSWORD = process.env.PORTAL_PREVIEW_PASSWORD ?? "";
-const GENERIC_LOGIN_ERROR =
-  "Unable to sign in. Check your credentials and try again.";
+const GENERIC_LOGIN_ERROR = "Unable to sign in. Check your credentials and try again.";
 const RESET_REQUEST_MESSAGE =
   "If an active staff account exists for that email, you’ll receive a password reset link.";
 
@@ -43,10 +40,7 @@ function digest(value: string): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function requireText(
-  value: string | null | undefined,
-  message: string,
-): string {
+function requireText(value: string | null | undefined, message: string): string {
   if (value === null || value === undefined || value === "") {
     throw new Error(message);
   }
@@ -85,11 +79,9 @@ function expectAnonymousReadClosed(result: Readonly<RestResult>): void {
   expect(rows).toHaveLength(0);
 
   if (result.error) {
-    expect(
-      result.error.code === "42501" ||
-        result.status === 401 ||
-        result.status === 403,
-    ).toBe(true);
+    expect(result.error.code === "42501" || result.status === 401 || result.status === 403).toBe(
+      true,
+    );
   }
 }
 
@@ -99,19 +91,12 @@ test.describe("portal authentication and direct REST boundaries", () => {
   test.describe.configure({ mode: "serial" });
 
   test.beforeEach(({}, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "chromium",
-      "Credential and RLS checks run once.",
-    );
+    test.skip(testInfo.project.name !== "chromium", "Credential and RLS checks run once.");
   });
 
-  test("VAL-ADMIN-019: Preview alias creates a real seeded admin session", async ({
-    page,
-  }) => {
+  test("VAL-ADMIN-019: Preview alias creates a real seeded admin session", async ({ page }) => {
     test.skip(
-      process.env.VERCEL_ENV !== "preview" ||
-        !PREVIEW_USERNAME ||
-        !PREVIEW_PASSWORD,
+      process.env.VERCEL_ENV !== "preview" || !PREVIEW_USERNAME || !PREVIEW_PASSWORD,
       "Preview alias is exercised only by the explicit Preview auth run.",
     );
 
@@ -122,18 +107,14 @@ test.describe("portal authentication and direct REST boundaries", () => {
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL(/\/admin\/?$/);
 
-    const renderedIdentity = (
-      (await page.getByTestId("session-user").textContent()) ?? ""
-    ).trim();
+    const renderedIdentity = ((await page.getByTestId("session-user").textContent()) ?? "").trim();
     expect(renderedIdentity).not.toBe("");
     const { data: sessionProfile } = await serviceDb()
       .from("staff_profiles")
       .select("display_name")
       .eq("email", SEED_ADMIN_EMAIL.toLowerCase())
       .single();
-    expect(digest(renderedIdentity)).toBe(
-      digest(String(sessionProfile?.display_name ?? "")),
-    );
+    expect(digest(renderedIdentity)).toBe(digest(String(sessionProfile?.display_name ?? "")));
 
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/admin\/login\/?$/);
@@ -145,12 +126,9 @@ test.describe("portal authentication and direct REST boundaries", () => {
   }) => {
     const rawResponse = await request.get("/admin", { maxRedirects: 0 });
     expect(rawResponse.status()).toBe(307);
-    expect(
-      new URL(
-        rawResponse.headers().location,
-        "http://localhost:3100",
-      ).pathname,
-    ).toBe("/admin/login");
+    expect(new URL(rawResponse.headers().location, "http://localhost:3100").pathname).toBe(
+      "/admin/login",
+    );
 
     await page.goto("/admin/login");
     if (process.env.VERCEL_ENV !== "preview") {
@@ -159,27 +137,21 @@ test.describe("portal authentication and direct REST boundaries", () => {
     await page.getByLabel("Email").fill("nobody@example.test");
     await page.getByLabel("Password").fill("not-the-password");
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(page.locator("#login-error")).toHaveText(
-      GENERIC_LOGIN_ERROR,
-    );
+    await expect(page.locator("#login-error")).toHaveText(GENERIC_LOGIN_ERROR);
 
     await page.getByLabel("Email").fill(SEED_ADMIN_EMAIL);
     await page.getByLabel("Password").fill(SEED_ADMIN_PASSWORD);
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL(/\/admin\/?$/);
 
-    const renderedIdentity = (
-      (await page.getByTestId("session-user").textContent()) ?? ""
-    ).trim();
+    const renderedIdentity = ((await page.getByTestId("session-user").textContent()) ?? "").trim();
     expect(renderedIdentity).not.toBe("");
     const { data: sessionProfile } = await serviceDb()
       .from("staff_profiles")
       .select("display_name")
       .eq("email", SEED_ADMIN_EMAIL.toLowerCase())
       .single();
-    expect(digest(renderedIdentity)).toBe(
-      digest(String(sessionProfile?.display_name ?? "")),
-    );
+    expect(digest(renderedIdentity)).toBe(digest(String(sessionProfile?.display_name ?? "")));
 
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page).toHaveURL(/\/admin\/login\/?$/);
@@ -189,29 +161,23 @@ test.describe("portal authentication and direct REST boundaries", () => {
     const db = serviceDb();
     const lockoutEmail = `lockout-${randomUUID().slice(0, 8)}@example.test`;
     const lockoutPassword = `Lk-${randomUUID()}`;
-    const { data: created, error: createError } =
-      await db.auth.admin.createUser({
-        email: lockoutEmail,
-        password: lockoutPassword,
-        email_confirm: true,
-      });
+    const { data: created, error: createError } = await db.auth.admin.createUser({
+      email: lockoutEmail,
+      password: lockoutPassword,
+      email_confirm: true,
+    });
     expect(createError).toBeNull();
-    const lockoutUserId = requireText(
-      created.user?.id,
-      "Lockout user creation failed",
-    );
+    const lockoutUserId = requireText(created.user?.id, "Lockout user creation failed");
 
     try {
-      const { error: profileInsertError } = await db
-        .from("staff_profiles")
-        .insert({
-          user_id: lockoutUserId,
-          email: lockoutEmail,
-          display_name: "TEST Lockout",
-          role: "staff",
-          active: true,
-          onboarded_at: new Date().toISOString(),
-        });
+      const { error: profileInsertError } = await db.from("staff_profiles").insert({
+        user_id: lockoutUserId,
+        email: lockoutEmail,
+        display_name: "TEST Lockout",
+        role: "staff",
+        active: true,
+        onboarded_at: new Date().toISOString(),
+      });
       expect(profileInsertError).toBeNull();
 
       // Active: the account signs in.
@@ -233,9 +199,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       await page.getByLabel("Password").fill(lockoutPassword);
       await page.getByRole("button", { name: "Sign in" }).click();
       await expect(page).toHaveURL(/\/admin\/login\/?$/);
-      await expect(page.locator("#login-error")).toHaveText(
-        GENERIC_LOGIN_ERROR,
-      );
+      await expect(page.locator("#login-error")).toHaveText(GENERIC_LOGIN_ERROR);
     } finally {
       await db.from("staff_profiles").delete().eq("user_id", lockoutUserId);
       await db.auth.admin.deleteUser(lockoutUserId);
@@ -250,12 +214,9 @@ test.describe("portal authentication and direct REST boundaries", () => {
       maxRedirects: 0,
     });
     expect(protectedResponse.status()).toBe(307);
-    expect(
-      new URL(
-        protectedResponse.headers().location,
-        "http://localhost:3100",
-      ).pathname,
-    ).toBe("/admin/login");
+    expect(new URL(protectedResponse.headers().location, "http://localhost:3100").pathname).toBe(
+      "/admin/login",
+    );
 
     const db = serviceDb();
     const accounts: { id: string; email: string }[] = [];
@@ -278,9 +239,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
         const profile = await db.from("staff_profiles").insert({
           user_id: data.user.id,
           email,
-          display_name: active
-            ? "TEST Active Reset"
-            : "TEST Inactive Reset",
+          display_name: active ? "TEST Active Reset" : "TEST Inactive Reset",
           role: "staff",
           active,
           onboarded_at: new Date().toISOString(),
@@ -312,14 +271,10 @@ test.describe("portal authentication and direct REST boundaries", () => {
       const activeResult = page.getByTestId("reset-request-result");
       await expect(activeResult).toHaveText(RESET_REQUEST_MESSAGE);
       outcomes.push((await activeResult.textContent())?.trim() ?? "");
-      await expect(page.getByTestId("reset-request-email")).toHaveText(
-        accounts[0].email,
-      );
+      await expect(page.getByTestId("reset-request-email")).toHaveText(accounts[0].email);
       await expect(page.getByText(/Inbox and Spam or Junk/)).toBeVisible();
       await expect(page.getByText(/expires in one hour/)).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: /Resend in 60s/ }),
-      ).toBeDisabled();
+      await expect(page.getByRole("button", { name: /Resend in 60s/ })).toBeDisabled();
 
       await page.getByRole("button", { name: "Change email" }).click();
       await expect(page.getByLabel("Email")).toBeFocused();
@@ -351,8 +306,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
   test("VAL-ADMIN-017: Auth denies public signup and enforces the portal password minimum", async () => {
     const db = serviceDb();
     const signupClient = browserDb();
-    const squatEmail =
-      "signup-denied-" + randomUUID().slice(0, 8) + "@example.test";
+    const squatEmail = "signup-denied-" + randomUUID().slice(0, 8) + "@example.test";
     let unexpectedSignupId: string | null = null;
 
     try {
@@ -370,8 +324,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       }
     }
 
-    const email =
-      "password-policy-" + randomUUID().slice(0, 8) + "@example.test";
+    const email = "password-policy-" + randomUUID().slice(0, 8) + "@example.test";
     const originalPassword = "Original-" + randomUUID() + "-aA1!";
     const created = await db.auth.admin.createUser({
       email,
@@ -379,10 +332,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       email_confirm: true,
     });
     expect(created.error).toBeNull();
-    const userId = requireText(
-      created.data.user?.id,
-      "Password-policy fixture failed",
-    );
+    const userId = requireText(created.data.user?.id, "Password-policy fixture failed");
 
     const authenticated = browserDb();
     try {
@@ -413,18 +363,14 @@ test.describe("portal authentication and direct REST boundaries", () => {
     page,
   }) => {
     const db = serviceDb();
-    const email =
-      "invite-auth-" + randomUUID().slice(0, 8) + "@example.test";
+    const email = "invite-auth-" + randomUUID().slice(0, 8) + "@example.test";
     const password = "Invited-" + randomUUID() + "-aA1!";
     const generated = await db.auth.admin.generateLink({
       type: "invite",
       email,
     });
     expect(generated.error).toBeNull();
-    const userId = requireText(
-      generated.data.user?.id,
-      "Invite link generation failed",
-    );
+    const userId = requireText(generated.data.user?.id, "Invite link generation failed");
     const tokenHash = requireText(
       generated.data.properties?.hashed_token,
       "Invite link generation failed",
@@ -451,15 +397,11 @@ test.describe("portal authentication and direct REST boundaries", () => {
       ).id;
 
       const confirmPath =
-        "/admin/auth/confirm#token_hash=" +
-        encodeURIComponent(tokenHash) +
-        "&type=invite";
+        "/admin/auth/confirm#token_hash=" + encodeURIComponent(tokenHash) + "&type=invite";
       await page.goto(confirmPath);
       const continueButton = page.getByRole("button", { name: "Continue" });
       await expect(continueButton).toBeVisible();
-      await expect
-        .poll(async () => page.evaluate(() => window.location.hash))
-        .toBe("");
+      await expect.poll(async () => page.evaluate(() => window.location.hash)).toBe("");
       await continueButton.click();
       await expect(page).toHaveURL(/\/admin\/set-password\/?$/);
 
@@ -474,9 +416,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       await page.getByLabel("Confirm password").fill(password);
       await page.getByRole("button", { name: "Set password" }).click();
       await expect(page).toHaveURL(/\/admin\/?$/);
-      await expect(page.getByTestId("session-user")).toContainText(
-        "TEST Invited Staff",
-      );
+      await expect(page.getByTestId("session-user")).toContainText("TEST Invited Staff");
       await expect(page.getByText("staff", { exact: true })).toBeVisible();
 
       const completedProfile = await db
@@ -487,9 +427,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       expect(completedProfile.error).toBeNull();
       expect(completedProfile.data?.role).toBe("staff");
       expect(completedProfile.data?.active).toBe(true);
-      expect(z.string().safeParse(completedProfile.data?.onboarded_at).success).toBe(
-        true,
-      );
+      expect(z.string().safeParse(completedProfile.data?.onboarded_at).success).toBe(true);
 
       const audit = await db
         .from("audit_log")
@@ -502,9 +440,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       await page.getByRole("button", { name: "Sign out" }).click();
       await page.goto(confirmPath);
       await page.getByRole("button", { name: "Continue" }).click();
-      await expect(
-        page.getByRole("alert").filter({ hasText: "invalid or expired" }),
-      ).toBeVisible();
+      await expect(page.getByRole("alert").filter({ hasText: "invalid or expired" })).toBeVisible();
     } finally {
       if (profileId !== null && profileId !== "") {
         await db.from("audit_log").delete().eq("entity_id", profileId);
@@ -518,8 +454,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
     page,
   }) => {
     const db = serviceDb();
-    const email =
-      "recovery-validation-" + randomUUID().slice(0, 8) + "@example.test";
+    const email = "recovery-validation-" + randomUUID().slice(0, 8) + "@example.test";
     const originalPassword = `Original-${randomUUID()}-aA1!`;
     const validPassword = `Replacement-${randomUUID()}-aA1!`;
     const created = await db.auth.admin.createUser({
@@ -528,10 +463,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       email_confirm: true,
     });
     expect(created.error).toBeNull();
-    const userId = requireText(
-      created.data.user?.id,
-      "Recovery validation fixture failed",
-    );
+    const userId = requireText(created.data.user?.id, "Recovery validation fixture failed");
 
     let profileId: string | null = null;
     try {
@@ -573,9 +505,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
         "Recovery validation link failed",
       );
       const confirmPath =
-        "/admin/auth/confirm#token_hash=" +
-        encodeURIComponent(tokenHash) +
-        "&type=recovery";
+        "/admin/auth/confirm#token_hash=" + encodeURIComponent(tokenHash) + "&type=recovery";
 
       await page.goto(
         "/admin/auth/confirm#token_hash=" +
@@ -584,47 +514,29 @@ test.describe("portal authentication and direct REST boundaries", () => {
       );
       await page.getByLabel("New password").fill(validPassword);
       await page.getByLabel("Confirm password").fill(validPassword);
-      await page
-        .getByRole("button", { name: "Set password and continue" })
-        .click();
-      await expect(
-        page.getByRole("alert").filter({ hasText: "invalid or expired" }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole("link", { name: "Request a new link" }).first(),
-      ).toBeVisible();
+      await page.getByRole("button", { name: "Set password and continue" }).click();
+      await expect(page.getByRole("alert").filter({ hasText: "invalid or expired" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Request a new link" }).first()).toBeVisible();
 
       await page.goto(confirmPath);
       await expect(page.getByLabel("New password")).toBeVisible();
-      await expect
-        .poll(async () => page.evaluate(() => window.location.hash))
-        .toBe("");
+      await expect.poll(async () => page.evaluate(() => window.location.hash)).toBe("");
       await page.reload();
       await expect(page).toHaveURL(/\/admin\/auth\/confirm\/?$/);
-      await expect(
-        page.getByRole("link", { name: "Request a new link" }).first(),
-      ).toBeVisible();
+      await expect(page.getByRole("link", { name: "Request a new link" }).first()).toBeVisible();
 
       // Reopening the email link is still valid because page load and refresh
       // Did not verify the bearer.
       await page.goto(confirmPath);
       const newPasswordInput = page.getByLabel("New password");
       const confirmationInput = page.getByLabel("Confirm password");
-      await expect(newPasswordInput).toHaveAttribute(
-        "autocomplete",
-        "new-password",
-      );
-      await expect(confirmationInput).toHaveAttribute(
-        "autocomplete",
-        "new-password",
-      );
+      await expect(newPasswordInput).toHaveAttribute("autocomplete", "new-password");
+      await expect(confirmationInput).toHaveAttribute("autocomplete", "new-password");
 
       // Browser-known minimum failure does not dispatch the action.
       await newPasswordInput.fill("12345678901");
       await confirmationInput.fill("12345678901");
-      await page
-        .getByRole("button", { name: "Set password and continue" })
-        .click();
+      await page.getByRole("button", { name: "Set password and continue" }).click();
       expect(
         await newPasswordInput.evaluate(
           (input: HTMLInputElement) => input.validationMessage.length,
@@ -636,9 +548,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       await newPasswordInput.fill(validPassword);
       await confirmationInput.fill(`${validPassword}-different`);
       await confirmationInput.press("Enter");
-      await expect(page.locator("#password-error")).toHaveText(
-        "The passwords do not match.",
-      );
+      await expect(page.locator("#password-error")).toHaveText("The passwords do not match.");
       const beforeSuccessAudit = await db
         .from("audit_log")
         .select("action")
@@ -652,12 +562,8 @@ test.describe("portal authentication and direct REST boundaries", () => {
       // Without a second email or a second audit event.
       await newPasswordInput.fill(originalPassword);
       await confirmationInput.fill(originalPassword);
-      await page
-        .getByRole("button", { name: "Set password and continue" })
-        .click();
-      await expect(page.locator("#password-error")).toContainText(
-        "We couldn’t use that password.",
-      );
+      await page.getByRole("button", { name: "Set password and continue" }).click();
+      await expect(page.locator("#password-error")).toContainText("We couldn’t use that password.");
       const afterProviderRejectionAudit = await db
         .from("audit_log")
         .select("action")
@@ -668,9 +574,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
 
       await newPasswordInput.fill(validPassword);
       await confirmationInput.fill(validPassword);
-      await page
-        .getByRole("button", { name: "Set password and continue" })
-        .click();
+      await page.getByRole("button", { name: "Set password and continue" }).click();
       await expect(page).toHaveURL(/\/admin\/?$/);
       const afterSuccessAudit = await db
         .from("audit_log")
@@ -692,8 +596,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
     page,
   }) => {
     const db = serviceDb();
-    const email =
-      "recovery-auth-" + randomUUID().slice(0, 8) + "@example.test";
+    const email = "recovery-auth-" + randomUUID().slice(0, 8) + "@example.test";
     const oldPassword = "Before-" + randomUUID() + "-aA1!";
     const newPassword = "After-" + randomUUID() + "-aA1!";
     const created = await db.auth.admin.createUser({
@@ -703,10 +606,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       app_metadata: { role: "staff" },
     });
     expect(created.error).toBeNull();
-    const userId = requireText(
-      created.data.user?.id,
-      "Recovery user creation failed",
-    );
+    const userId = requireText(created.data.user?.id, "Recovery user creation failed");
 
     let profileId: string | null = null;
     try {
@@ -739,9 +639,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
 
       await page.getByRole("button", { name: "Send reset link" }).click();
       deliberateActivations += 1;
-      await expect(page.getByTestId("reset-request-result")).toHaveText(
-        RESET_REQUEST_MESSAGE,
-      );
+      await expect(page.getByTestId("reset-request-result")).toHaveText(RESET_REQUEST_MESSAGE);
 
       // Generated-link seam stands in for opening hosted SMTP while keeping
       // Bearer values out of retained artifacts and test output.
@@ -755,36 +653,24 @@ test.describe("portal authentication and direct REST boundaries", () => {
         "Recovery link generation failed",
       );
       const confirmPath =
-        "/admin/auth/confirm#token_hash=" +
-        encodeURIComponent(tokenHash) +
-        "&type=recovery";
+        "/admin/auth/confirm#token_hash=" + encodeURIComponent(tokenHash) + "&type=recovery";
 
       await page.goto(confirmPath);
       deliberateActivations += 1;
-      await expect
-        .poll(async () => page.evaluate(() => window.location.hash))
-        .toBe("");
+      await expect.poll(async () => page.evaluate(() => window.location.hash)).toBe("");
       await expect(page.getByLabel("New password")).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: "Continue", exact: true }),
-      ).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Continue", exact: true })).toHaveCount(0);
       await page.getByLabel("New password").fill(newPassword);
       await page.getByLabel("Confirm password").fill(newPassword);
-      await page
-        .getByRole("button", { name: "Set password and continue" })
-        .click();
+      await page.getByRole("button", { name: "Set password and continue" }).click();
       deliberateActivations += 1;
       expect(deliberateActivations).toBe(4);
       await expect(page).toHaveURL(/\/admin\/?$/);
-      await expect(page.getByTestId("session-user")).toContainText(
-        "TEST Recovery Staff",
-      );
+      await expect(page.getByTestId("session-user")).toContainText("TEST Recovery Staff");
       await expect(page.getByLabel("Password")).toHaveCount(0);
       await page.reload();
       await expect(page).toHaveURL(/\/admin\/?$/);
-      await expect(page.getByTestId("session-user")).toContainText(
-        "TEST Recovery Staff",
-      );
+      await expect(page.getByTestId("session-user")).toContainText("TEST Recovery Staff");
 
       const audit = await db
         .from("audit_log")
@@ -799,40 +685,28 @@ test.describe("portal authentication and direct REST boundaries", () => {
       await page.goto(confirmPath);
       await page.getByLabel("New password").fill(newPassword);
       await page.getByLabel("Confirm password").fill(newPassword);
-      await page
-        .getByRole("button", { name: "Set password and continue" })
-        .click();
-      await expect(
-        page.getByRole("alert").filter({ hasText: "invalid or expired" }),
-      ).toBeVisible();
+      await page.getByRole("button", { name: "Set password and continue" }).click();
+      await expect(page.getByRole("alert").filter({ hasText: "invalid or expired" })).toBeVisible();
 
       await page.goto("/admin/login");
       await page.getByLabel("Email").fill(email);
       await page.getByLabel("Password").fill(oldPassword);
       await page.getByRole("button", { name: "Sign in" }).click();
-      await expect(page.locator("#login-error")).toHaveText(
-        GENERIC_LOGIN_ERROR,
-      );
+      await expect(page.locator("#login-error")).toHaveText(GENERIC_LOGIN_ERROR);
       await page.getByLabel("Email").fill(email);
       await page.getByLabel("Password").fill(newPassword);
       await page.getByRole("button", { name: "Sign in" }).click();
       await expect(page).toHaveURL(/\/admin\/?$/);
       await page.getByRole("button", { name: "Sign out" }).click();
 
-      const deactivatedEmail =
-        "recovery-deactivated-" +
-        randomUUID().slice(0, 8) +
-        "@example.test";
+      const deactivatedEmail = "recovery-deactivated-" + randomUUID().slice(0, 8) + "@example.test";
       const deactivated = await db.auth.admin.createUser({
         email: deactivatedEmail,
         password: "Inactive-" + randomUUID() + "-aA1!",
         email_confirm: true,
       });
       expect(deactivated.error).toBeNull();
-      const deactivatedId = requireText(
-        deactivated.data.user?.id,
-        "Deactivated fixture failed",
-      );
+      const deactivatedId = requireText(deactivated.data.user?.id, "Deactivated fixture failed");
 
       try {
         const deactivatedProfile = await db.from("staff_profiles").insert({
@@ -862,9 +736,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
         );
         await page.getByLabel("New password").fill(newPassword);
         await page.getByLabel("Confirm password").fill(newPassword);
-        await page
-          .getByRole("button", { name: "Set password and continue" })
-          .click();
+        await page.getByRole("button", { name: "Set password and continue" }).click();
         await expect(
           page.getByRole("alert").filter({ hasText: "invalid or expired" }),
         ).toBeVisible();
@@ -874,14 +746,9 @@ test.describe("portal authentication and direct REST boundaries", () => {
           .eq("user_id", deactivatedId)
           .single();
         expect(deniedProfile.data?.active).toBe(false);
-        expect(z.string().safeParse(deniedProfile.data?.onboarded_at).success).toBe(
-          true,
-        );
+        expect(z.string().safeParse(deniedProfile.data?.onboarded_at).success).toBe(true);
       } finally {
-        await db
-          .from("staff_profiles")
-          .delete()
-          .eq("user_id", deactivatedId);
+        await db.from("staff_profiles").delete().eq("user_id", deactivatedId);
         await db.auth.admin.deleteUser(deactivatedId);
       }
     } finally {
@@ -899,10 +766,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
     const db = serviceDb();
 
     for (const eligibility of ["missing", "non-onboarded"] as const) {
-      const email =
-        `recovery-${eligibility}-` +
-        randomUUID().slice(0, 8) +
-        "@example.test";
+      const email = `recovery-${eligibility}-` + randomUUID().slice(0, 8) + "@example.test";
       const originalPassword = `Original-${randomUUID()}-aA1!`;
       const attemptedPassword = `Attempted-${randomUUID()}-aA1!`;
       const created = await db.auth.admin.createUser({
@@ -911,10 +775,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
         email_confirm: true,
       });
       expect(created.error).toBeNull();
-      const userId = requireText(
-        created.data.user?.id,
-        "Ineligible recovery fixture failed",
-      );
+      const userId = requireText(created.data.user?.id, "Ineligible recovery fixture failed");
 
       let profileId: string | null = null;
       try {
@@ -953,18 +814,12 @@ test.describe("portal authentication and direct REST boundaries", () => {
         // Exercised separately by VAL-ADMIN-020.
         await page.goto("about:blank");
         await page.goto(
-          "/admin/auth/confirm#token_hash=" +
-            encodeURIComponent(tokenHash) +
-            "&type=recovery",
+          "/admin/auth/confirm#token_hash=" + encodeURIComponent(tokenHash) + "&type=recovery",
         );
-        await expect
-          .poll(async () => page.evaluate(() => window.location.hash))
-          .toBe("");
+        await expect.poll(async () => page.evaluate(() => window.location.hash)).toBe("");
         await page.getByLabel("New password").fill(attemptedPassword);
         await page.getByLabel("Confirm password").fill(attemptedPassword);
-        await page
-          .getByRole("button", { name: "Set password and continue" })
-          .click();
+        await page.getByRole("button", { name: "Set password and continue" }).click();
         await expect(
           page.getByRole("alert").filter({ hasText: "invalid or expired" }),
         ).toBeVisible();
@@ -998,9 +853,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
     }
   });
 
-  test("VAL-ADMIN-013: direct table and RPC access remain closed", async ({
-    page,
-  }) => {
+  test("VAL-ADMIN-013: direct table and RPC access remain closed", async ({ page }) => {
     test.setTimeout(120_000);
     const anon = browserDb();
     const db = serviceDb();
@@ -1094,31 +947,25 @@ test.describe("portal authentication and direct REST boundaries", () => {
 
     const staleEmail = `stale-${randomUUID().slice(0, 8)}@example.test`;
     const stalePassword = `St-${randomUUID()}-aA1!`;
-    const { data: staleUser, error: staleCreateError } =
-      await db.auth.admin.createUser({
-        email: staleEmail,
-        password: stalePassword,
-        email_confirm: true,
-        app_metadata: { role: "staff" },
-      });
+    const { data: staleUser, error: staleCreateError } = await db.auth.admin.createUser({
+      email: staleEmail,
+      password: stalePassword,
+      email_confirm: true,
+      app_metadata: { role: "staff" },
+    });
     expect(staleCreateError).toBeNull();
-    const staleUserId = requireText(
-      staleUser.user?.id,
-      "Stale-token user creation failed",
-    );
+    const staleUserId = requireText(staleUser.user?.id, "Stale-token user creation failed");
 
     const staleClient = browserDb();
     try {
-      const { error: staleProfileError } = await db
-        .from("staff_profiles")
-        .insert({
-          user_id: staleUserId,
-          email: staleEmail,
-          display_name: "TEST Stale Token",
-          role: "staff",
-          active: true,
-          onboarded_at: new Date().toISOString(),
-        });
+      const { error: staleProfileError } = await db.from("staff_profiles").insert({
+        user_id: staleUserId,
+        email: staleEmail,
+        display_name: "TEST Stale Token",
+        role: "staff",
+        active: true,
+        onboarded_at: new Date().toISOString(),
+      });
       expect(staleProfileError).toBeNull();
 
       await page.goto("/admin/login");
@@ -1126,24 +973,16 @@ test.describe("portal authentication and direct REST boundaries", () => {
       await page.getByLabel("Password").fill(stalePassword);
       await page.getByRole("button", { name: "Sign in" }).click();
       await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
-      for (const path of [
-        "/admin",
-        "/admin/settings",
-        "/admin/settings/software",
-      ]) {
+      for (const path of ["/admin", "/admin/settings", "/admin/settings/software"]) {
         await page.goto(path);
         await expect(page).toHaveURL(new RegExp(`${path}/?$`));
-        await expect(page.getByTestId("session-user")).toContainText(
-          "TEST Stale Token",
-        );
+        await expect(page.getByTestId("session-user")).toContainText("TEST Stale Token");
         if (path === "/admin") {
           await expect(page.getByTestId("home-greeting")).toBeVisible();
         } else if (path === "/admin/settings") {
           await expect(page.getByTestId("recipients-manager")).toBeVisible();
         } else {
-          await expect(
-            page.getByTestId("managed-product"),
-          ).toBeVisible();
+          await expect(page.getByTestId("managed-product")).toBeVisible();
         }
       }
 
@@ -1217,9 +1056,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       if (!checkedName.success) {
         throw new Error("Seeded staff profile name is missing");
       }
-      expect(digest(checkedName.data.display_name)).toBe(
-        digest(seededProfile.data.display_name),
-      );
+      expect(digest(checkedName.data.display_name)).toBe(digest(seededProfile.data.display_name));
     } finally {
       const currentProfile = await db
         .from("staff_profiles")

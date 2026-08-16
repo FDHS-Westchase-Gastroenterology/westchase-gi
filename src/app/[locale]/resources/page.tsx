@@ -1,23 +1,31 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getDictionary, isLocale } from "@/lib/i18n";
-import { pageMetadata } from "@/lib/metadata";
-import { localePath } from "@/lib/site";
-import type { Locale } from "@/lib/site";
-import { patientResources, professionalOrgs, patientEducation } from "@/lib/resources";
+
+import { DocumentList } from "@/components/DocumentList";
+import { ArrowRight, ExternalLink } from "@/components/icons";
 import { PageHero } from "@/components/PageHero";
 import { Reveal } from "@/components/Reveal";
-import { DocumentList } from "@/components/DocumentList";
 import { TextBand } from "@/components/TextBand";
-import { ArrowRight, ExternalLink } from "@/components/icons";
+import { getDictionary, isLocale } from "@/lib/i18n";
+import { pageMetadata } from "@/lib/metadata";
+import { patientResources, professionalOrgs, patientEducation } from "@/lib/resources";
+import { localePath } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 
-interface PageProps { params: Promise<{ locale: string }> }
+interface PageProps {
+  params: Promise<{ locale: string }>;
+}
 
 export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
-  return pageMetadata(locale, "/resources", dict.meta.resources.title, dict.meta.resources.description);
+  return pageMetadata(
+    locale,
+    "/resources",
+    dict.meta.resources.title,
+    dict.meta.resources.description,
+  );
 }
 
 export default async function ResourcesPage({ params }: Readonly<PageProps>) {
@@ -88,7 +96,9 @@ export default async function ResourcesPage({ params }: Readonly<PageProps>) {
                   >
                     {r.org} <ExternalLink className="h-3.5 w-3.5 flex-none" />
                   </a>
-                  <p className="mt-1.5 text-[0.95rem] text-[var(--color-body)]">{r.description[locale]}</p>
+                  <p className="mt-1.5 text-[0.95rem] text-[var(--color-body)]">
+                    {r.description[locale]}
+                  </p>
                 </dd>
               </div>
             ))}

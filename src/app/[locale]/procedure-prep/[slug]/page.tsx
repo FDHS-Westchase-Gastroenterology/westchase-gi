@@ -1,17 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+
+import { MessageSquare, Phone } from "@/components/icons";
+import { PrepBody } from "@/components/PrepBody";
+import { PrintButton } from "@/components/PrintButton";
+import { TextBand } from "@/components/TextBand";
+import { getPrep, prepDocs } from "@/lib/content/preps";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
 import { localePath, locales, site } from "@/lib/site";
 import type { Locale } from "@/lib/site";
-import { getPrep, prepDocs } from "@/lib/content/preps";
-import { PrepBody } from "@/components/PrepBody";
-import { PrintButton } from "@/components/PrintButton";
-import { TextBand } from "@/components/TextBand";
-import { MessageSquare, Phone } from "@/components/icons";
 
-interface PageProps { params: Promise<{ locale: string; slug: string }> }
+interface PageProps {
+  params: Promise<{ locale: string; slug: string }>;
+}
 
 export function generateStaticParams() {
   return locales.flatMap((locale) => prepDocs.map((d) => ({ locale, slug: d.slug })));
@@ -26,7 +29,7 @@ export async function generateMetadata({ params }: Readonly<PageProps>): Promise
     locale,
     `/procedure-prep/${doc.slug}`,
     doc.title[locale],
-    doc.summary[locale]
+    doc.summary[locale],
   );
 }
 
@@ -42,7 +45,7 @@ function PrintLetterhead({
 }>) {
   return (
     <div className="hidden text-center print:block">
-      <p className="font-[var(--font-display)] text-[16pt] font-bold">{site.name}</p>
+      <p className="text-[16pt] font-[var(--font-display)] font-bold">{site.name}</p>
       <p className="mt-1 text-[9pt]">
         {site.locations
           .map((l) => `${l.name[locale]}: ${l.street}, ${l.city}, ${l.region} ${l.postal}`)
@@ -77,7 +80,10 @@ export default async function PrepDetailPage({ params }: Readonly<PageProps>) {
             href={localePath(locale, "/procedure-prep")}
             className="link-line print-hide text-[0.95rem]"
           >
-            <span aria-hidden className="inline-block rtl:-scale-x-100">←</span> {t.backToAll}
+            <span aria-hidden className="inline-block rtl:-scale-x-100">
+              ←
+            </span>{" "}
+            {t.backToAll}
           </Link>
           <h1 className="h1 heading-tick mt-6 print:mt-0">{doc.title[locale]}</h1>
           <p className="lead measure mt-4 text-[var(--color-body)]">{doc.regimen[locale]}</p>
@@ -95,7 +101,7 @@ export default async function PrepDetailPage({ params }: Readonly<PageProps>) {
           {/* The human channel, on-page — patients mid-prep should never dig
               for a number. Hidden in print; the letterhead carries it there. */}
           <div className="print-hide mt-12 border-t border-[var(--color-line)] pt-7">
-            <h2 className="font-[var(--font-body)] text-base font-extrabold text-[var(--color-ink)]">
+            <h2 className="text-base font-[var(--font-body)] font-extrabold text-[var(--color-ink)]">
               {t.questionsHeading}
             </h2>
             <p className="measure mt-2 text-[0.98rem] text-[var(--color-body)]">
@@ -112,7 +118,10 @@ export default async function PrepDetailPage({ params }: Readonly<PageProps>) {
             <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
               <PrintButton label={t.print} />
               <Link href={localePath(locale, "/procedure-prep")} className="link-line">
-                <span aria-hidden className="inline-block rtl:-scale-x-100">←</span> {t.backToAll}
+                <span aria-hidden className="inline-block rtl:-scale-x-100">
+                  ←
+                </span>{" "}
+                {t.backToAll}
               </Link>
             </div>
           </div>

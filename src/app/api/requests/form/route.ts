@@ -1,10 +1,7 @@
-import type { Json } from "@/lib/json";
-import {
-  HONEYPOT_FIELD,
-  receiptPath,
-} from "@/lib/portal/contracts";
-import { processIntake } from "@/lib/portal/intake";
 import { isLocale } from "@/lib/i18n";
+import type { Json } from "@/lib/json";
+import { HONEYPOT_FIELD, receiptPath } from "@/lib/portal/contracts";
+import { processIntake } from "@/lib/portal/intake";
 import type { Locale } from "@/lib/site";
 
 export const runtime = "nodejs";
@@ -26,10 +23,7 @@ function refererPath(request: Request): string | undefined {
   }
 }
 
-function receiptLocale(
-  formLocale: string | undefined,
-  sourcePath: string | undefined,
-): Locale {
+function receiptLocale(formLocale: string | undefined, sourcePath: string | undefined): Locale {
   if (formLocale !== undefined && formLocale !== "" && isLocale(formLocale)) {
     return formLocale;
   }
@@ -38,11 +32,7 @@ function receiptLocale(
     sourcePath === undefined || sourcePath === ""
       ? undefined
       : sourcePath.split("/").find((segment) => segment !== "");
-  return pathLocale !== undefined &&
-    pathLocale !== "" &&
-    isLocale(pathLocale)
-    ? pathLocale
-    : "en";
+  return pathLocale !== undefined && pathLocale !== "" && isLocale(pathLocale) ? pathLocale : "en";
 }
 
 export async function POST(request: Request) {

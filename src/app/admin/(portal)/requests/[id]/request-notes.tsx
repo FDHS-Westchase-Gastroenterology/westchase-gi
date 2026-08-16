@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState, useCallback, useRef, useState } from "react";
-import { addRequestNote } from "../actions";
-import type { AddRequestNoteState } from "../actions";
+
+import { addRequestNote } from "@/app/admin/(portal)/requests/actions";
+import type { AddRequestNoteState } from "@/app/admin/(portal)/requests/actions";
 
 export interface RequestNoteView {
   id: string;
@@ -26,17 +27,13 @@ export function RequestNotes({
   const [showAll, setShowAll] = useState(false);
   const [draft, setDraft] = useState("");
   const [feedbackDismissed, setFeedbackDismissed] = useState(false);
-  const [feedback, formAction, pending] = useActionState(
-    addRequestNote,
-    INITIAL_ACTION_STATE,
-  );
+  const [feedback, formAction, pending] = useActionState(addRequestNote, INITIAL_ACTION_STATE);
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const submitWithMotionRef = useRef(false);
   const canSave = draft.trim().length > 0;
   const hiddenCount = Math.max(notes.length - INITIAL_VISIBLE_NOTES, 0);
-  const saved =
-    feedback.status === "success" && !feedbackDismissed && !pending;
+  const saved = feedback.status === "success" && !feedbackDismissed && !pending;
   const composerVisible = composerOpen && !saved;
   const focusAddButtonOnSave = useCallback(
     // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
@@ -65,10 +62,7 @@ export function RequestNotes({
   }
 
   return (
-    <section
-      data-testid="request-notes"
-      aria-labelledby="request-notes-heading"
-    >
+    <section data-testid="request-notes" aria-labelledby="request-notes-heading">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
         <h2
           id="request-notes-heading"
@@ -97,17 +91,14 @@ export function RequestNotes({
           ref={focusAddButtonOnSave}
           role="status"
           data-testid="request-note-feedback"
-          className="print-hide mt-4 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-4 py-3 text-[0.9rem] font-bold leading-relaxed text-[var(--color-ink)]"
+          className="print-hide mt-4 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-4 py-3 text-[0.9rem] leading-relaxed font-bold text-[var(--color-ink)]"
         >
           {feedback.message}
         </p>
       ) : null}
 
       {notes.length === 0 ? (
-        <p
-          data-testid="notes-empty"
-          className="mt-4 text-[0.95rem] text-[var(--color-muted)]"
-        >
+        <p data-testid="notes-empty" className="mt-4 text-[0.95rem] text-[var(--color-muted)]">
           No notes yet.
         </p>
       ) : (
@@ -121,12 +112,10 @@ export function RequestNotes({
               <li
                 key={note.id}
                 className={`request-note-item py-4 ${
-                  index >= INITIAL_VISIBLE_NOTES && !showAll
-                    ? "hidden print:list-item"
-                    : ""
+                  index >= INITIAL_VISIBLE_NOTES && !showAll ? "hidden print:list-item" : ""
                 }`}
               >
-                <p className="whitespace-pre-wrap text-[0.95rem] leading-relaxed text-[var(--color-ink)]">
+                <p className="text-[0.95rem] leading-relaxed whitespace-pre-wrap text-[var(--color-ink)]">
                   {note.text}
                 </p>
                 <p className="mt-2 text-[0.8rem] font-bold text-[var(--color-teal-ink)]">
@@ -140,14 +129,14 @@ export function RequestNotes({
               type="button"
               aria-controls="request-note-list"
               aria-expanded={showAll}
-              onClick={() => { setShowAll((visible) => !visible); }}
+              onClick={() => {
+                setShowAll((visible) => !visible);
+              }}
               className="print-hide mt-3 min-h-11 py-2 text-[0.9rem] font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
             >
               {showAll
                 ? "Show fewer notes"
-                : `Show ${hiddenCount} earlier ${
-                    hiddenCount === 1 ? "note" : "notes"
-                  }`}
+                : `Show ${hiddenCount} earlier ${hiddenCount === 1 ? "note" : "notes"}`}
             </button>
           ) : null}
         </>
@@ -196,7 +185,7 @@ export function RequestNotes({
                 if (feedback.status === "error") setFeedbackDismissed(true);
               }}
               placeholder="What should the next staff member know?"
-              className="mt-2 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 py-3 text-[0.95rem] text-[var(--color-ink)] outline-none transition-[border-color,box-shadow] focus:border-[var(--color-teal-ink)] focus:ring-2 focus:ring-[var(--color-teal-ink)] focus:ring-offset-2 disabled:opacity-60"
+              className="mt-2 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 py-3 text-[0.95rem] text-[var(--color-ink)] transition-[border-color,box-shadow] outline-none focus:border-[var(--color-teal-ink)] focus:ring-2 focus:ring-[var(--color-teal-ink)] focus:ring-offset-2 disabled:opacity-60"
             />
             <p
               id="request-note-guidance"
@@ -204,14 +193,12 @@ export function RequestNotes({
             >
               Keep medical details in the clinical record.
             </p>
-            {feedback.status === "error" &&
-            !feedbackDismissed &&
-            !pending ? (
+            {feedback.status === "error" && !feedbackDismissed && !pending ? (
               <p
                 id="request-note-error"
                 role="alert"
                 data-testid="request-note-feedback"
-                className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.9rem] font-bold leading-relaxed text-[var(--color-ink)]"
+                className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.9rem] leading-relaxed font-bold text-[var(--color-ink)]"
               >
                 {feedback.message}
               </p>

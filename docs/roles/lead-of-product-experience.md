@@ -32,7 +32,7 @@ The mandate operates under the repository's standing law — the hard rules in
 This repository serves two audiences that forgive nothing. Patients — mostly 45 and
 older, often anxious, usually on phones, in five languages — meet the practice through
 the patient site; front-desk staff who are not software people run their web-adjacent
-jobs through the portal. For both, experience quality *is* trust: a broken link, a
+jobs through the portal. For both, experience quality _is_ trust: a broken link, a
 dishonest state, or a confusing flow costs a phone call, a booking, or a patient's
 confidence in a medical practice. The seat exists so that quality has a single
 accountable owner instead of being everyone's part-time concern, and so product

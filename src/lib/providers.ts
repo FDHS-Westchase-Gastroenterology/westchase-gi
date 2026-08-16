@@ -18,11 +18,24 @@
 import type { Bi } from "./content/types";
 import reviewTargets from "./review-targets.json";
 
-interface Img { src: string; width: number; height: number }
+interface Img {
+  src: string;
+  width: number;
+  height: number;
+}
 
 export type ProfileSection =
-  | { readonly kind: "timeline"; readonly heading: Bi; readonly entries: readonly { readonly title: Bi; readonly detail: Bi }[] }
-  | { readonly kind: "list"; readonly heading: Bi; readonly lead?: Bi; readonly items: readonly Bi[] }
+  | {
+      readonly kind: "timeline";
+      readonly heading: Bi;
+      readonly entries: readonly { readonly title: Bi; readonly detail: Bi }[];
+    }
+  | {
+      readonly kind: "list";
+      readonly heading: Bi;
+      readonly lead?: Bi;
+      readonly items: readonly Bi[];
+    }
   | { readonly kind: "paragraphs"; readonly heading: Bi; readonly text: readonly Bi[] };
 
 export interface Physician {
@@ -928,7 +941,11 @@ export const nursePractitioners: NursePractitionerGroup = {
   card: { src: "/images/staff/nurse-practitioners.png", width: 1022, height: 1533 },
 };
 
-export interface Biologic { brand: string; generic: string; indication: Bi }
+export interface Biologic {
+  brand: string;
+  generic: string;
+  indication: Bi;
+}
 
 /** Juliet's own card content (RN, BSN per her card; practice-manager credit
  * added at the practice's request 2026-07-06 — she runs the office in

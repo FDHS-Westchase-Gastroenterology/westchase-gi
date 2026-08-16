@@ -1,0 +1,55 @@
+{
+  "$schema": "./node_modules/oxfmt/configuration_schema.json",
+  "printWidth": 100,
+  "semi": true,
+  "singleQuote": false,
+  "jsxSingleQuote": false,
+  "trailingComma": "all",
+  "arrowParens": "always",
+  "bracketSameLine": false,
+  "objectWrap": "preserve",
+  "proseWrap": "preserve",
+  "sortImports": {
+    "groups": [
+      "side_effect",
+      "builtin",
+      "external",
+      ["internal", "subpath"],
+      ["parent", "sibling", "index"],
+      ["side_effect_style", "style"],
+      "unknown"
+    ],
+    "internalPattern": ["@/"],
+    "newlinesBetween": true,
+    "partitionByNewline": false,
+    "sortSideEffects": false
+  },
+  "sortPackageJson": {
+    "sortScripts": false
+  },
+  "sortTailwindcss": {
+    "stylesheet": "./src/app/globals.css"
+  },
+  "ignorePatterns": [
+    ".agent/**",
+    ".agents/**",
+    ".claude/**",
+    ".codex/**",
+    ".continue/**",
+    ".cursor/**",
+    ".gemini/**",
+    ".next/**",
+    ".next-e2e/**",
+    ".next-verify/**",
+    ".opencode/**",
+    ".pi/**",
+    ".roo/**",
+    ".windsurf/**",
+    "*.md",
+    "build/**",
+    "next-env.d.ts",
+    "out/**",
+    "private/tmp/**",
+    "ui-reference/**"
+  ]
+}

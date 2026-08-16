@@ -1,6 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
+
 import { recordAudit } from "@/lib/portal/audit";
 import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
 import type { serviceClient } from "@/lib/portal/server";
@@ -29,9 +30,7 @@ const recipientRowSchema = z.object({
   updated_at: z.string(),
 });
 
-async function operationFailed(
-  operation: () => PromiseLike<{ error: unknown }>,
-): Promise<boolean> {
+async function operationFailed(operation: () => PromiseLike<{ error: unknown }>): Promise<boolean> {
   try {
     const result = await operation();
     return result.error !== null && result.error !== undefined;
@@ -92,23 +91,17 @@ export async function addRecipientWithCompatibility(
       // Disable first so intake cannot use an unaudited destination while a
       // Second compensating delete is attempted.
       const disableFailed = await operationFailed(() =>
-        db
-          .from("notification_recipients")
-          .update({ active: false })
-          .eq("id", recipient.data.id),
+        db.from("notification_recipients").update({ active: false }).eq("id", recipient.data.id),
       );
       const finalDeleteFailed = await operationFailed(() =>
         db.from("notification_recipients").delete().eq("id", recipient.data.id),
       );
       if (finalDeleteFailed) {
-        console.error(
-          "[recipient-compatibility] add rollback incomplete",
-          {
-            recipientId: recipient.data.id,
-            disableFailed,
-            finalDeleteFailed,
-          },
-        );
+        console.error("[recipient-compatibility] add rollback incomplete", {
+          recipientId: recipient.data.id,
+          disableFailed,
+          finalDeleteFailed,
+        });
       }
     }
     return { ok: false, code: "unavailable" };
@@ -161,10 +154,10 @@ export async function toggleRecipientWithCompatibility(
         .eq("id", current.data.id),
     );
     if (rollbackFailed) {
-      console.error(
-        "[recipient-compatibility] toggle rollback incomplete",
-        { recipientId: current.data.id, rollbackFailed },
-      );
+      console.error("[recipient-compatibility] toggle rollback incomplete", {
+        recipientId: current.data.id,
+        rollbackFailed,
+      });
     }
     return { ok: false, code: "unavailable" };
   }
@@ -208,10 +201,10 @@ export async function removeRecipientWithCompatibility(
       db.from("notification_recipients").insert(current.data),
     );
     if (rollbackFailed) {
-      console.error(
-        "[recipient-compatibility] remove rollback incomplete",
-        { recipientId: current.data.id, rollbackFailed },
-      );
+      console.error("[recipient-compatibility] remove rollback incomplete", {
+        recipientId: current.data.id,
+        rollbackFailed,
+      });
     }
     return { ok: false, code: "unavailable" };
   }

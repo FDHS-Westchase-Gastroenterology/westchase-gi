@@ -6,8 +6,10 @@
 // Source_path at the insert boundary.
 
 import { z } from "zod";
+
 import { locales } from "@/lib/site";
 import type { Locale } from "@/lib/site";
+
 import { RELEASE_AUDIT_ACTIONS } from "./release-state";
 
 const mailboxSchema = z.email().max(254);
@@ -29,12 +31,7 @@ export type RequestLocation = (typeof REQUEST_LOCATIONS)[number];
 const REQUEST_TIMES = ["any", "morning", "afternoon"] as const;
 export type RequestTime = (typeof REQUEST_TIMES)[number];
 
-export const REQUEST_STATUSES = [
-  "new",
-  "contacted",
-  "scheduled",
-  "closed",
-] as const;
+export const REQUEST_STATUSES = ["new", "contacted", "scheduled", "closed"] as const;
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
 // The closure outcomes the database's close paths validate
@@ -60,11 +57,7 @@ export const PASSWORD_RESET_RESEND_COOLDOWN_SECONDS = 60;
  * the route inspects and discards it before validation.
  */
 export const requestInputSchema = z.object({
-  name: z
-    .string()
-    .trim()
-    .min(1, "name_required")
-    .max(REQUEST_FIELD_LIMITS.name, "name_too_long"),
+  name: z.string().trim().min(1, "name_required").max(REQUEST_FIELD_LIMITS.name, "name_too_long"),
   phone: z
     .string()
     .trim()
@@ -78,11 +71,7 @@ export const requestInputSchema = z.object({
     .default(""),
   location: z.enum(REQUEST_LOCATIONS),
   time: z.enum(REQUEST_TIMES),
-  message: z
-    .string()
-    .trim()
-    .max(REQUEST_FIELD_LIMITS.message, "message_too_long")
-    .optional(),
+  message: z.string().trim().max(REQUEST_FIELD_LIMITS.message, "message_too_long").optional(),
   locale: z.enum(locales),
   sourcePath: z.string().trim().min(1).max(300).startsWith("/"),
 });

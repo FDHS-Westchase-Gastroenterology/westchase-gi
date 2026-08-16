@@ -84,9 +84,7 @@ export function requestPageWindow({
   const closedCapacity = REQUEST_PAGE_SIZE - (openTo - openFrom);
   const readsClosed = closedCapacity > 0 && closedFrom < closedTotal;
   const closedLimit = readsClosed ? closedCapacity : 0;
-  const closedShown = readsClosed
-    ? Math.min(closedCapacity, closedTotal - closedFrom)
-    : 0;
+  const closedShown = readsClosed ? Math.min(closedCapacity, closedTotal - closedFrom) : 0;
 
   return {
     filteredTotal,

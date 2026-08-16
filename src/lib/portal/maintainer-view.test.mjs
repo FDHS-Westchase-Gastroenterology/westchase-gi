@@ -25,11 +25,7 @@ test("disconnected states hide every maintainer control and disclosure", () => {
 });
 
 test("connected management controls follow the role, actions, and setup matrix", () => {
-  for (const management of [
-    "restrict_installation",
-    "permission_upgrade_required",
-    "ready",
-  ]) {
+  for (const management of ["restrict_installation", "permission_upgrade_required", "ready"]) {
     for (const isAdmin of [false, true]) {
       for (const hasActions of [false, true]) {
         assert.deepEqual(

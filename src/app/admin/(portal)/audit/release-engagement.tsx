@@ -1,8 +1,8 @@
+import { formatReceived } from "@/app/admin/(portal)/requests/format";
 import type {
   PortalReleaseEngagementResult,
   PortalReleaseEngagementRow,
 } from "@/lib/portal/release-engagement";
-import { formatReceived } from "../requests/format";
 
 function countLabel(count: number, singular: string): string {
   return `${count} ${singular}${count === 1 ? "" : "s"}`;
@@ -11,9 +11,7 @@ function countLabel(count: number, singular: string): string {
 function SummaryValue({ row }: Readonly<{ row: PortalReleaseEngagementRow }>) {
   return (
     <>
-      <strong className="block text-[var(--color-ink)]">
-        {countLabel(row.viewCount, "view")}
-      </strong>
+      <strong className="block text-[var(--color-ink)]">{countLabel(row.viewCount, "view")}</strong>
       <span className="mt-0.5 block text-[0.8rem] text-[var(--color-muted)]">
         Last {formatReceived(row.lastViewedAt, true)}
       </span>
@@ -43,9 +41,7 @@ function DismissalValue({ row }: Readonly<{ row: PortalReleaseEngagementRow }>) 
   }
   return (
     <>
-      <strong className="block text-[var(--color-ink)]">
-        {row.dismissCount}
-      </strong>
+      <strong className="block text-[var(--color-ink)]">{row.dismissCount}</strong>
       <span className="mt-0.5 block text-[0.8rem] text-[var(--color-muted)]">
         Last {formatReceived(row.lastDismissedAt, true)}
       </span>
@@ -74,11 +70,7 @@ function ResponseValue({ row }: Readonly<{ row: PortalReleaseEngagementRow }>) {
       </>
     );
   }
-  if (
-    row.dismissCount > 0 &&
-    row.lastDismissedAt !== null &&
-    row.lastDismissedAt !== ""
-  ) {
+  if (row.dismissCount > 0 && row.lastDismissedAt !== null && row.lastDismissedAt !== "") {
     return (
       <>
         <strong className="block text-[var(--color-ink)]">Dismissed</strong>
@@ -112,28 +104,23 @@ export function ReleaseEngagementSection({
             Release update engagement
           </h2>
           <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
-            Who opened the July 29 update, selected the guide, or dismissed
-            it. This records release interactions only—never patient
-            information.
+            Who opened the July 29 update, selected the guide, or dismissed it. This records release
+            interactions only—never patient information.
           </p>
         </div>
       </div>
 
       {engagement.status === "unavailable" ? (
         <div className="mt-4 rounded-[var(--radius)] border border-[var(--color-line)] bg-white px-5 py-4">
-          <p className="font-black text-[var(--color-ink)]">
-            Engagement is unavailable
-          </p>
+          <p className="font-black text-[var(--color-ink)]">Engagement is unavailable</p>
           <p className="mt-1 text-[0.88rem] leading-relaxed text-[var(--color-muted)]">
-            The portal could not verify the release activity right now. The
-            technical activity record below is still available.
+            The portal could not verify the release activity right now. The technical activity
+            record below is still available.
           </p>
         </div>
       ) : engagement.rows.length === 0 ? (
         <div className="mt-4 rounded-[var(--radius)] border border-[var(--color-line)] bg-white px-5 py-4">
-          <p className="font-black text-[var(--color-ink)]">
-            No one has opened this update yet
-          </p>
+          <p className="font-black text-[var(--color-ink)]">No one has opened this update yet</p>
           <p className="mt-1 text-[0.88rem] text-[var(--color-muted)]">
             Staff will appear here after they deliberately open the summary.
           </p>
@@ -145,7 +132,7 @@ export function ReleaseEngagementSection({
             className="hidden w-full text-left md:table"
           >
             <thead>
-              <tr className="border-b border-[var(--color-line)] text-[0.78rem] uppercase tracking-[0.055em] text-[var(--color-muted)]">
+              <tr className="border-b border-[var(--color-line)] text-[0.78rem] tracking-[0.055em] text-[var(--color-muted)] uppercase">
                 <th scope="col" className="px-5 py-3.5 font-bold">
                   Staff member
                 </th>
@@ -165,14 +152,9 @@ export function ReleaseEngagementSection({
             </thead>
             <tbody className="divide-y divide-[var(--color-line)]">
               {engagement.rows.map((row) => (
-                <tr
-                  key={row.staffUserId}
-                  className="align-top text-[0.88rem]"
-                >
+                <tr key={row.staffUserId} className="align-top text-[0.88rem]">
                   <td className="px-5 py-4">
-                    <strong className="block text-[var(--color-ink)]">
-                      {row.displayName}
-                    </strong>
+                    <strong className="block text-[var(--color-ink)]">{row.displayName}</strong>
                     <span className="mt-0.5 block text-[0.8rem] text-[var(--color-muted)]">
                       {row.email}
                       {!row.active ? " · Inactive" : ""}
@@ -209,7 +191,7 @@ export function ReleaseEngagementSection({
                 </span>
                 <dl className="mt-5 grid grid-cols-2 gap-x-5 gap-y-5 text-[0.88rem] text-[var(--color-body)]">
                   <div>
-                    <dt className="mb-1.5 text-[0.72rem] font-bold uppercase tracking-[0.055em] text-[var(--color-muted)]">
+                    <dt className="mb-1.5 text-[0.72rem] font-bold tracking-[0.055em] text-[var(--color-muted)] uppercase">
                       Summary
                     </dt>
                     <dd>
@@ -217,7 +199,7 @@ export function ReleaseEngagementSection({
                     </dd>
                   </div>
                   <div>
-                    <dt className="mb-1.5 text-[0.72rem] font-bold uppercase tracking-[0.055em] text-[var(--color-muted)]">
+                    <dt className="mb-1.5 text-[0.72rem] font-bold tracking-[0.055em] text-[var(--color-muted)] uppercase">
                       Guide
                     </dt>
                     <dd>
@@ -225,7 +207,7 @@ export function ReleaseEngagementSection({
                     </dd>
                   </div>
                   <div>
-                    <dt className="mb-1.5 text-[0.72rem] font-bold uppercase tracking-[0.055em] text-[var(--color-muted)]">
+                    <dt className="mb-1.5 text-[0.72rem] font-bold tracking-[0.055em] text-[var(--color-muted)] uppercase">
                       Dismissals
                     </dt>
                     <dd>
@@ -233,7 +215,7 @@ export function ReleaseEngagementSection({
                     </dd>
                   </div>
                   <div>
-                    <dt className="mb-1.5 text-[0.72rem] font-bold uppercase tracking-[0.055em] text-[var(--color-muted)]">
+                    <dt className="mb-1.5 text-[0.72rem] font-bold tracking-[0.055em] text-[var(--color-muted)] uppercase">
                       Response
                     </dt>
                     <dd>

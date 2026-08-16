@@ -3,10 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+
 import type { Json } from "@/lib/json";
+import { recordAudit } from "@/lib/portal/audit";
 import type { PortalSessionUser } from "@/lib/portal/auth";
 import { requireRole } from "@/lib/portal/auth";
-import { recordAudit } from "@/lib/portal/audit";
 import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
 import { serviceClient } from "@/lib/portal/server";
 
@@ -14,13 +15,10 @@ async function setTourDismissedRpc(
   session: Readonly<PortalSessionUser>,
   dismissed: boolean,
 ): Promise<void> {
-  const { error } = await serviceClient().rpc(
-    "portal_set_staff_tour_dismissed",
-    {
-      p_user_id: session.id,
-      p_dismissed: dismissed,
-    },
-  );
+  const { error } = await serviceClient().rpc("portal_set_staff_tour_dismissed", {
+    p_user_id: session.id,
+    p_dismissed: dismissed,
+  });
 
   if (error) {
     throw new Error(`Portal tour update failed: ${error.code}`);
@@ -71,9 +69,7 @@ export async function restartPortalTourAction(): Promise<never> {
   return setTourDismissed(session, false);
 }
 
-export async function finishPortalTourAction(
-  input: Readonly<TourProgressInput>,
-): Promise<never> {
+export async function finishPortalTourAction(input: Readonly<TourProgressInput>): Promise<never> {
   const session = await requireRole("staff", { unauthenticated: "throw" });
   const progress = parseTourProgress(input);
 

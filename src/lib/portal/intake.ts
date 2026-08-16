@@ -1,11 +1,18 @@
 import "server-only";
 
 import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
+
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
+
 import { asJsonObject, asJsonString } from "@/lib/json";
 import type { Json } from "@/lib/json";
-import { HONEYPOT_FIELD, INTAKE_RATE_LIMIT, requestInputSchema, zodFieldErrors } from "@/lib/portal/contracts";
+import {
+  HONEYPOT_FIELD,
+  INTAKE_RATE_LIMIT,
+  requestInputSchema,
+  zodFieldErrors,
+} from "@/lib/portal/contracts";
 import type { IntakeResponse } from "@/lib/portal/contracts";
 import { sendPortalEmail } from "@/lib/portal/email-provider";
 import { createAppointmentNotificationEvents } from "@/lib/portal/intake-notification";
@@ -95,10 +102,7 @@ async function issueRequestReceipt(
   }
 }
 
-export async function consumeRequestReceipt(
-  token: string,
-  locale: Locale,
-): Promise<boolean> {
+export async function consumeRequestReceipt(token: string, locale: Locale): Promise<boolean> {
   const match = RECEIPT_TOKEN_RE.exec(token);
   if (!match) return false;
 
@@ -143,8 +147,7 @@ export async function consumeRequestReceipt(
 }
 
 function clientHash(headers: Headers): string {
-  const forwardedFor =
-    headers.get("x-vercel-forwarded-for") ?? headers.get("x-forwarded-for");
+  const forwardedFor = headers.get("x-vercel-forwarded-for") ?? headers.get("x-forwarded-for");
   const hop = forwardedFor?.split(",", 1)[0]?.trim();
   const firstHop = hop !== undefined && hop !== "" ? hop : "missing";
 
@@ -157,10 +160,7 @@ function clientHash(headers: Headers): string {
     .digest("hex");
 }
 
-async function rateLimitAllows(
-  client: SupabaseClient,
-  headers: Headers,
-): Promise<boolean | null> {
+async function rateLimitAllows(client: SupabaseClient, headers: Headers): Promise<boolean | null> {
   const result = await client.rpc("portal_check_intake_rate_limit", {
     p_client_hash: clientHash(headers),
     p_limit: INTAKE_RATE_LIMIT.limit,
@@ -195,10 +195,7 @@ async function recordNotificationEvents(
   }
 }
 
-async function notifyActiveRecipients(
-  client: SupabaseClient,
-  requestId: string,
-) {
+async function notifyActiveRecipients(client: SupabaseClient, requestId: string) {
   const { data, error } = await client
     .from("notification_recipients")
     .select("id, email")
@@ -212,9 +209,7 @@ async function notifyActiveRecipients(
     return;
   }
 
-  const recipients = z
-    .array(z.object({ id: z.string(), email: z.string() }))
-    .safeParse(data);
+  const recipients = z.array(z.object({ id: z.string(), email: z.string() })).safeParse(data);
   if (!recipients.success || recipients.data.length === 0) return;
 
   const adminUrl = portalUrl("/admin");
@@ -291,10 +286,7 @@ export async function processIntake(
       email: input.email !== "" ? input.email : null,
       location: input.location,
       preferred_time: input.time,
-      message:
-        input.message !== undefined && input.message !== ""
-          ? input.message
-          : null,
+      message: input.message !== undefined && input.message !== "" ? input.message : null,
       locale: input.locale,
       source_path: input.sourcePath,
     })

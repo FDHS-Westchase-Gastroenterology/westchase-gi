@@ -22,10 +22,7 @@ export const jsonSchema: z.ZodType<Json> = z.lazy(() =>
   ]),
 );
 
-export const jsonObjectSchema: z.ZodType<JsonObject> = z.record(
-  z.string(),
-  jsonSchema,
-);
+export const jsonObjectSchema: z.ZodType<JsonObject> = z.record(z.string(), jsonSchema);
 
 export function asJsonObject(value: Json): JsonObject | null {
   if (value === null || Array.isArray(value)) return null;

@@ -1,22 +1,30 @@
 import type { Metadata } from "next";
+
+import { DocumentList } from "@/components/DocumentList";
+import { ExternalLink, FileText } from "@/components/icons";
+import { LocationMaps } from "@/components/LocationMaps";
+import { PageHero } from "@/components/PageHero";
+import { Reveal } from "@/components/Reveal";
+import { TextBand } from "@/components/TextBand";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
 import { site } from "@/lib/site";
 import type { Locale } from "@/lib/site";
-import { PageHero } from "@/components/PageHero";
-import { Reveal } from "@/components/Reveal";
-import { DocumentList } from "@/components/DocumentList";
-import { LocationMaps } from "@/components/LocationMaps";
-import { TextBand } from "@/components/TextBand";
-import { ExternalLink, FileText } from "@/components/icons";
 
-interface PageProps { params: Promise<{ locale: string }> }
+interface PageProps {
+  params: Promise<{ locale: string }>;
+}
 
 export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
-  return pageMetadata(locale, "/new-patients", dict.meta.newPatients.title, dict.meta.newPatients.description);
+  return pageMetadata(
+    locale,
+    "/new-patients",
+    dict.meta.newPatients.title,
+    dict.meta.newPatients.description,
+  );
 }
 
 export default async function NewPatientsPage({ params }: Readonly<PageProps>) {
@@ -62,10 +70,12 @@ export default async function NewPatientsPage({ params }: Readonly<PageProps>) {
                 <ExternalLink className="h-4 w-4" />
               </a>
             </div>
-            <h3 className="mt-10 font-[var(--font-body)] text-base font-extrabold text-[var(--color-ink)]">
+            <h3 className="mt-10 text-base font-[var(--font-body)] font-extrabold text-[var(--color-ink)]">
               {dict.common.docs.newPatientHeading}
             </h3>
-            <p className="measure-sm mt-2 text-[0.95rem] text-[var(--color-body)]">{t.formsPrintableIntro}</p>
+            <p className="measure-sm mt-2 text-[0.95rem] text-[var(--color-body)]">
+              {t.formsPrintableIntro}
+            </p>
             <div className="mt-4">
               <DocumentList category="new-patient" locale={locale} dict={dict} />
             </div>

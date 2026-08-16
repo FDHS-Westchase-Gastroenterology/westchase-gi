@@ -1,18 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+
+import { ArticleBody } from "@/components/ArticleBody";
+import { ArrowRight } from "@/components/icons";
+import { JsonLd } from "@/components/JsonLd";
+import { Reveal } from "@/components/Reveal";
+import { TextBand } from "@/components/TextBand";
+import { blogPosts, formatPosted, getPost } from "@/lib/content/blog";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
 import { localePath, locales, site } from "@/lib/site";
 import type { Locale } from "@/lib/site";
-import { blogPosts, formatPosted, getPost } from "@/lib/content/blog";
-import { ArticleBody } from "@/components/ArticleBody";
-import { JsonLd } from "@/components/JsonLd";
-import { Reveal } from "@/components/Reveal";
-import { TextBand } from "@/components/TextBand";
-import { ArrowRight } from "@/components/icons";
 
-interface PageProps { params: Promise<{ locale: string; slug: string }> }
+interface PageProps {
+  params: Promise<{ locale: string; slug: string }>;
+}
 
 export function generateStaticParams() {
   return locales.flatMap((locale) => blogPosts.map((post) => ({ locale, slug: post.slug })));
@@ -60,7 +63,10 @@ export default async function BlogPostPage({ params }: Readonly<PageProps>) {
       <section className="border-b border-[var(--color-line)] bg-[var(--color-mint)]">
         <div className="container-tight section-sm">
           <Link href={localePath(locale, "/blog")} className="link-line text-[0.95rem]">
-            <span aria-hidden className="inline-block rtl:-scale-x-100">←</span> {t.backToBlog}
+            <span aria-hidden className="inline-block rtl:-scale-x-100">
+              ←
+            </span>{" "}
+            {t.backToBlog}
           </Link>
           <h1 className="h1 heading-tick mt-6">{post.title[locale]}</h1>
           <p className="mt-4 text-[0.95rem] font-bold text-[var(--color-muted)]">
@@ -88,7 +94,7 @@ export default async function BlogPostPage({ params }: Readonly<PageProps>) {
                   <p className="text-[0.88rem] font-bold text-[var(--color-muted)]">
                     {formatPosted(p.posted, locale)}
                   </p>
-                  <h3 className="mt-1 font-[var(--font-display)] text-[1.15rem] leading-snug text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
+                  <h3 className="mt-1 text-[1.15rem] leading-snug font-[var(--font-display)] text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
                     {p.title[locale]}
                   </h3>
                   <span className="link-line mt-2 inline-flex text-[0.92rem]">

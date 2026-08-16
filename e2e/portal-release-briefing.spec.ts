@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
+
 import { test, expect } from "@playwright/test";
 import type { BrowserContext, Page } from "@playwright/test";
 import { z } from "zod";
+
 import { loadLocalEnv, serviceDb } from "./support";
 
 loadLocalEnv();
@@ -51,10 +53,7 @@ test.describe("portal release briefing", () => {
   test.afterAll(async () => {
     await secondContext?.close().catch(() => undefined);
     if (!staffUserId) return;
-    await db
-      .from("portal_release_states")
-      .delete()
-      .eq("staff_user_id", staffUserId);
+    await db.from("portal_release_states").delete().eq("staff_user_id", staffUserId);
     await db.from("audit_log").delete().eq("actor_email", staffEmail);
     await db.from("staff_profiles").delete().eq("user_id", staffUserId);
     await db.auth.admin.deleteUser(staffUserId);
@@ -129,13 +128,9 @@ test.describe("portal release briefing", () => {
     await openButton.click();
     await expect(homeSummary).toBeVisible();
     await expect(homeSummary).toHaveAttribute("data-animate", "true");
-    await expect(
-      announcement.locator(".release-signal[data-resolved='true']"),
-    ).toBeVisible();
+    await expect(announcement.locator(".release-signal[data-resolved='true']")).toBeVisible();
 
-    await homeSummary
-      .getByRole("button", { name: "Close what’s new" })
-      .click();
+    await homeSummary.getByRole("button", { name: "Close what’s new" }).click();
     await expect(announcement).toHaveCount(0);
 
     const utility = page.getByTestId("portal-release-utility");
@@ -155,21 +150,13 @@ test.describe("portal release briefing", () => {
     secondContext = await browser.newContext();
     const secondPage = await secondContext.newPage();
     await signIn(secondPage);
-    await expect(
-      secondPage.getByTestId("portal-release-announcement"),
-    ).toHaveCount(0);
+    await expect(secondPage.getByTestId("portal-release-announcement")).toHaveCount(0);
     await expect(secondPage.getByTestId("portal-release-utility")).toBeVisible();
 
     await utility.getByRole("button", { name: /What’s new/ }).click();
-    await quickSummary
-      .getByRole("button", { name: "See the 2-minute guide" })
-      .click();
-    await expect(page).toHaveURL(
-      /\/admin\/help#appointment-workflow-guide$/,
-    );
-    await expect(
-      page.getByRole("heading", { name: "Work an appointment request" }),
-    ).toBeVisible();
+    await quickSummary.getByRole("button", { name: "See the 2-minute guide" }).click();
+    await expect(page).toHaveURL(/\/admin\/help#appointment-workflow-guide$/);
+    await expect(page.getByRole("heading", { name: "Work an appointment request" })).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Which status should I choose?" }),
     ).toBeVisible();
@@ -198,9 +185,7 @@ test.describe("portal release briefing", () => {
     expect(z.string().safeParse(finalState?.acknowledged_at).success).toBe(true);
     expect(z.string().safeParse(finalState?.hidden_at).success).toBe(true);
     expect(z.string().safeParse(finalState?.guide_opened_at).success).toBe(true);
-    expect(z.string().safeParse(finalState?.last_guide_opened_at).success).toBe(
-      true,
-    );
+    expect(z.string().safeParse(finalState?.last_guide_opened_at).success).toBe(true);
     expect(finalState?.guide_open_count).toBe(1);
     expect(z.string().safeParse(finalState?.last_dismissed_at).success).toBe(true);
     expect(finalState?.dismiss_count).toBe(1);

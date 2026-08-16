@@ -41,9 +41,7 @@ export function PortalNav({ waitingCount }: Readonly<{ waitingCount: number | nu
         {NAV_ITEMS.map((item) => {
           const active = isActive(pathname, item.href);
           const showBadge =
-            item.href === "/admin/requests" &&
-            waitingCount !== null &&
-            waitingCount > 0;
+            item.href === "/admin/requests" && waitingCount !== null && waitingCount > 0;
           return (
             <li key={item.href} className="flex">
               <Link
@@ -66,7 +64,7 @@ export function PortalNav({ waitingCount }: Readonly<{ waitingCount: number | nu
                 {showBadge ? (
                   <span
                     data-testid="nav-waiting-badge"
-                    className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--color-amber)] px-1.5 py-0.5 text-center text-[0.72rem] font-extrabold tabular-nums text-[var(--color-navy-2)]"
+                    className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--color-amber)] px-1.5 py-0.5 text-center text-[0.72rem] font-extrabold text-[var(--color-navy-2)] tabular-nums"
                   >
                     {waitingCount}
                     <span className="sr-only"> waiting</span>

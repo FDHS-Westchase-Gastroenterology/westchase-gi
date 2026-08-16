@@ -2,8 +2,10 @@ import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+
 import { test, expect } from "@playwright/test";
 import { z } from "zod";
+
 import { asJsonArray, jsonObjectSchema, jsonSchema } from "../src/lib/json";
 import type { Json } from "../src/lib/json";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
@@ -56,11 +58,7 @@ function rollupCount(event: string, routeTemplate: string): number {
   return rows.reduce((total, row) => total + row.count, 0);
 }
 
-async function expectIncrement(
-  event: string,
-  routeTemplate: string,
-  before: number,
-) {
+async function expectIncrement(event: string, routeTemplate: string, before: number) {
   await expect
     .poll(() => rollupCount(event, routeTemplate), { timeout: 20_000 })
     .toBeGreaterThan(before);
@@ -149,21 +147,19 @@ test("beacon payloads never carry patient fields", async ({ page }) => {
 
   for (const body of bodies) {
     const parsed = jsonObjectSchema.parse(JSON.parse(body));
-    expect(Object.keys(parsed).sort()).toEqual([
-      "deviceClass",
-      "event",
-      "locale",
-      "routeTemplate",
-    ]);
-    for (const forbidden of ["TEST Payload Hygiene", "8135550142", "telemetry-e2e", "note that must never"]) {
+    expect(Object.keys(parsed).sort()).toEqual(["deviceClass", "event", "locale", "routeTemplate"]);
+    for (const forbidden of [
+      "TEST Payload Hygiene",
+      "8135550142",
+      "telemetry-e2e",
+      "note that must never",
+    ]) {
       expect(body).not.toContain(forbidden);
     }
   }
 });
 
-test("the route rejects bad events, raw URLs, and staff templates", async ({
-  request,
-}) => {
+test("the route rejects bad events, raw URLs, and staff templates", async ({ request }) => {
   const base = {
     routeTemplate: "/",
     locale: "en",
@@ -199,9 +195,7 @@ test("chooser and banner outcomes count", async ({ browser, page }) => {
   const context = await browser.newContext({ locale: "es-MX" });
   const mismatch = await context.newPage();
   await mismatch.goto("/en");
-  await expect(
-    mismatch.getByRole("dialog", { name: "Choose your language" }),
-  ).toBeVisible();
+  await expect(mismatch.getByRole("dialog", { name: "Choose your language" })).toBeVisible();
   await expectIncrement("chooser_shown", "/", beforeShown);
   await mismatch.keyboard.press("Escape");
   await expectIncrement("chooser_dismissed", "/", beforeDismissed);

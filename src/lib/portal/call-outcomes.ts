@@ -15,6 +15,7 @@
 // Choices in the composer.
 
 import { z } from "zod";
+
 import type { RequestStatus } from "./contracts";
 
 /** Whether an outcome requires, allows, or forbids a call-again day. */
@@ -70,10 +71,6 @@ export function allowsCallAgainDay(outcome: CallOutcomeId): boolean {
 }
 
 /** The outcomes implying a status, in staff-facing declaration order. */
-export function outcomesImplying(
-  status: CallOutcomeStatus,
-): readonly CallOutcomeId[] {
-  return CALL_OUTCOME_IDS.filter(
-    (id) => CALL_OUTCOME_POLICY[id].impliedStatus === status,
-  );
+export function outcomesImplying(status: CallOutcomeStatus): readonly CallOutcomeId[] {
+  return CALL_OUTCOME_IDS.filter((id) => CALL_OUTCOME_POLICY[id].impliedStatus === status);
 }

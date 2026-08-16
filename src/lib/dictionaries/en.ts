@@ -158,7 +158,8 @@ export const en = {
       patientsHeading: "For Patients",
       phoneNote:
         "Due to a high volume of calls, we may not always be able to answer your call immediately. For your convenience, you may also contact our office through our text line at (813) 564-0315. We appreciate your patience and look forward to assisting you.",
-      emailNote: "If you are unable to reach our office by phone, feel free to send a request to our email",
+      emailNote:
+        "If you are unable to reach our office by phone, feel free to send a request to our email",
       sisterClinic: "Our wellness partner:",
       copyright: "Westchase Gastroenterology. All rights reserved.",
       networkLine: "Part of Florida Digestive Health Specialists.",
@@ -392,8 +393,7 @@ export const en = {
     readPost: "Read article",
     backToBlog: "All articles",
     moreHeading: "Keep reading",
-    archiveNote:
-      "Looking for an older article? Text or call the office and we'll be glad to help.",
+    archiveNote: "Looking for an older article? Text or call the office and we'll be glad to help.",
   },
 
   education: {
@@ -418,7 +418,8 @@ export const en = {
 
   contact: {
     title: "Contact Us",
-    intro: "Two offices, one team. Call, text, or send an appointment request; we'll take it from there.",
+    intro:
+      "Two offices, one team. Call, text, or send an appointment request; we'll take it from there.",
     formHeading: "Send an appointment request",
     locationsHeading: "Our offices",
   },
@@ -453,8 +454,7 @@ export const en = {
       failBody:
         "Your request was not saved. Please call or text our office instead — we're happy to help directly.",
       unknownHeading: "We're not sure your request went through",
-      unknownBody:
-        "Please call or text us to confirm before submitting again.",
+      unknownBody: "Please call or text us to confirm before submitting again.",
     },
   },
 
@@ -463,8 +463,7 @@ export const en = {
     successBody:
       "Thank you. A scheduling coordinator will contact you to confirm appointment availability.",
     failureHeading: "We could not send your request",
-    failureBody:
-      "Your request was not saved. Please call or text our office so we can help.",
+    failureBody: "Your request was not saved. Please call or text our office so we can help.",
     contactLine: "Call or text us:",
   },
 

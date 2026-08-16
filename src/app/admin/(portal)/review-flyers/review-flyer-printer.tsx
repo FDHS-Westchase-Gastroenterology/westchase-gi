@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect } from "react";
+
 import type { ReviewFlyer, ReviewTargetKey } from "@/lib/review-flyers";
 
 const DOWNLOAD_ACTIONS = [
@@ -29,11 +30,7 @@ function Flyer({ flyer }: Readonly<{ flyer: ReviewFlyer }>) {
       : null;
 
   return (
-    <section
-      className="review-flyer"
-      data-review-flyer={flyer.key}
-      aria-hidden="true"
-    >
+    <section className="review-flyer" data-review-flyer={flyer.key} aria-hidden="true">
       <div className="review-flyer-band">
         <div className="review-flyer-brand">
           <Image
@@ -69,9 +66,7 @@ function Flyer({ flyer }: Readonly<{ flyer: ReviewFlyer }>) {
         <em lang="es">{flyer.scanEs}</em>
       </p>
       {flyer.showLanguages ? (
-        <p className="review-flyer-langs">
-          English · Español · Tiếng Việt · 한국어 · العربية
-        </p>
+        <p className="review-flyer-langs">English · Español · Tiếng Việt · 한국어 · العربية</p>
       ) : null}
       {providerLine !== null && providerLine !== "" ? (
         <p className="review-flyer-provider">
@@ -134,9 +129,8 @@ export function ReviewFlyerPrinter({ flyers }: Readonly<{ flyers: ReviewFlyer[] 
           <div className="max-w-[46rem]">
             <h1 className="portal-title">Print review flyers</h1>
             <p className="mt-2 max-w-[62ch] text-[0.95rem] text-[var(--color-muted)]">
-              Choose one ready-to-print bilingual flyer, or print the full set.
-              The PDF option is best for a print shop or when another device
-              needs a guaranteed one-page file.
+              Choose one ready-to-print bilingual flyer, or print the full set. The PDF option is
+              best for a print shop or when another device needs a guaranteed one-page file.
             </p>
           </div>
           <button
@@ -179,9 +173,7 @@ export function ReviewFlyerPrinter({ flyers }: Readonly<{ flyers: ReviewFlyer[] 
                     </span>
                   </div>
                   {flyer.credentials !== null && flyer.credentials !== "" ? (
-                    <p className="mt-1 font-bold text-[var(--color-ink)]">
-                      {flyer.credentials}
-                    </p>
+                    <p className="mt-1 font-bold text-[var(--color-ink)]">{flyer.credentials}</p>
                   ) : null}
                   <p className="mt-2 max-w-[56ch] text-[0.95rem] text-[var(--color-muted)]">
                     {flyer.description}
@@ -215,9 +207,9 @@ export function ReviewFlyerPrinter({ flyers }: Readonly<{ flyers: ReviewFlyer[] 
 
         <aside className="mt-8 max-w-[68ch] border-t border-[var(--color-line)] pt-6 text-[0.9rem] text-[var(--color-muted)]">
           <p>
-            <strong className="text-[var(--color-ink)]">Printing tip:</strong>{" "}
-            use bright-white cardstock and color ink. Keep the white area around
-            each QR code clear so phone cameras can scan it reliably.
+            <strong className="text-[var(--color-ink)]">Printing tip:</strong> use bright-white
+            cardstock and color ink. Keep the white area around each QR code clear so phone cameras
+            can scan it reliably.
           </p>
         </aside>
       </div>

@@ -73,7 +73,6 @@ The practice controls its own infrastructure:
   handoff item, tracked with the remaining acceptance work in issue
   [#24](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/24).
 
-
 ## Run it on your computer
 
 Requires [Node.js](https://nodejs.org) and npm:
@@ -89,11 +88,11 @@ covered in `CONTRIBUTING.md`.
 
 ## Where things live
 
-| Document | For whom | What it covers |
-|---|---|---|
-| `README.md` | Everyone | This page: what the project is, who owns what, open practice questions |
-| `ARCHITECTURE.md` | Developers | System design, module interfaces, external systems, where logic lives |
-| `CONTRIBUTING.md` | Developers | Setup, verification, commit/PR/merge rules, shipping to production, operations |
-| `AGENTS.md` | AI coding agents | Hard rules and fast ramp-up for autonomous work |
-| `PRODUCT.md` / `DESIGN.md` | Product + design | Product definitions (patient site + staff portal) and the design system |
-| `ui-reference/` | Developers | Checked-in screenshots: the visual baseline for UI work |
+| Document                   | For whom         | What it covers                                                                 |
+| -------------------------- | ---------------- | ------------------------------------------------------------------------------ |
+| `README.md`                | Everyone         | This page: what the project is, who owns what, open practice questions         |
+| `ARCHITECTURE.md`          | Developers       | System design, module interfaces, external systems, where logic lives          |
+| `CONTRIBUTING.md`          | Developers       | Setup, verification, commit/PR/merge rules, shipping to production, operations |
+| `AGENTS.md`                | AI coding agents | Hard rules and fast ramp-up for autonomous work                                |
+| `PRODUCT.md` / `DESIGN.md` | Product + design | Product definitions (patient site + staff portal) and the design system        |
+| `ui-reference/`            | Developers       | Checked-in screenshots: the visual baseline for UI work                        |

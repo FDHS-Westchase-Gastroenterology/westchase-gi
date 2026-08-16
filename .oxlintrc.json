@@ -1,15 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "import",
-    "jsx-a11y",
-    "nextjs",
-    "oxc",
-    "react",
-    "typescript",
-    "unicorn",
-    "vue"
-  ],
+  "plugins": ["import", "jsx-a11y", "nextjs", "oxc", "react", "typescript", "unicorn", "vue"],
   "categories": {
     "correctness": "off"
   },
@@ -75,17 +66,54 @@
       }
     ],
     "import/consistent-type-specifier-style": "error",
+    "import/default": "error",
+    "import/export": "error",
+    "import/exports-last": "off",
+    "import/extensions": "off",
+    "import/first": "error",
+    "import/group-exports": "off",
+    "import/max-dependencies": [
+      "error",
+      {
+        "ignoreTypeImports": true,
+        "max": 20
+      }
+    ],
+    "import/named": "error",
+    "import/namespace": "error",
+    "import/newline-after-import": "error",
+    "import/no-absolute-path": "error",
+    "import/no-amd": "error",
     "import/no-anonymous-default-export": "warn",
+    "import/no-commonjs": "error",
+    "import/no-cycle": "error",
+    "import/no-default-export": "off",
     "import/no-duplicates": "error",
+    "import/no-dynamic-require": "error",
+    "import/no-empty-named-blocks": "error",
+    "import/no-mutable-exports": "error",
+    "import/no-named-as-default": "error",
+    "import/no-named-as-default-member": "error",
+    "import/no-named-default": "error",
+    "import/no-named-export": "off",
+    "import/no-namespace": "error",
+    "import/no-nodejs-modules": "off",
+    "import/no-relative-parent-imports": "off",
+    "import/no-self-import": "error",
+    "import/no-unassigned-import": [
+      "error",
+      {
+        "allow": ["**/*.css", "client-only", "server-only"]
+      }
+    ],
+    "import/no-webpack-loader-syntax": "error",
+    "import/prefer-default-export": "off",
+    "import/unambiguous": "error",
     "jsx-a11y/alt-text": [
       "warn",
       {
-        "elements": [
-          "img"
-        ],
-        "img": [
-          "Image"
-        ]
+        "elements": ["img"],
+        "img": ["Image"]
       }
     ],
     "jsx-a11y/aria-props": "warn",
@@ -269,11 +297,7 @@
   },
   "overrides": [
     {
-      "files": [
-        "**/*.js",
-        "**/*.cjs",
-        "**/*.mjs"
-      ],
+      "files": ["**/*.js", "**/*.cjs", "**/*.mjs"],
       "rules": {
         "typescript/await-thenable": "off",
         "typescript/consistent-return": "off",
@@ -338,12 +362,7 @@
       }
     },
     {
-      "files": [
-        "**/*.ts",
-        "**/*.tsx",
-        "**/*.mts",
-        "**/*.cts"
-      ],
+      "files": ["**/*.ts", "**/*.tsx", "**/*.mts", "**/*.cts"],
       "rules": {
         "constructor-super": "off",
         "getter-return": "off",
@@ -366,6 +385,64 @@
         "prefer-const": "error",
         "prefer-rest-params": "error",
         "prefer-spread": "error"
+      }
+    },
+    {
+      "files": ["**/*.cjs"],
+      "rules": {
+        "import/no-commonjs": "off",
+        "import/unambiguous": "off"
+      }
+    },
+    {
+      "files": ["src/**/*.ts", "src/**/*.tsx"],
+      "rules": {
+        "import/extensions": [
+          "error",
+          "never",
+          {
+            "ignorePackages": true,
+            "pattern": {
+              "css": "always",
+              "json": "always"
+            }
+          }
+        ],
+        "import/no-relative-parent-imports": "error"
+      }
+    },
+    {
+      "files": ["src/app/[locale]/**", "src/app/review/**", "src/components/**"],
+      "rules": {
+        "import/no-nodejs-modules": "error"
+      }
+    },
+    {
+      "files": [
+        "src/app/admin/**/*.ts",
+        "src/app/review/ReviewHub.tsx",
+        "src/components/**",
+        "src/lib/**",
+        "src/proxy.ts"
+      ],
+      "rules": {
+        "import/no-default-export": "error"
+      }
+    },
+    {
+      "files": [
+        "**/default.tsx",
+        "**/error.tsx",
+        "**/layout.tsx",
+        "**/loading.tsx",
+        "**/not-found.tsx",
+        "**/page.tsx",
+        "**/template.tsx",
+        "src/app/robots.ts",
+        "src/app/sitemap.ts"
+      ],
+      "rules": {
+        "import/prefer-default-export": "error"
       }
     }
   ]

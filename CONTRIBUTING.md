@@ -61,6 +61,12 @@ accessibility, import, and TypeScript rules plus the vendored anti-slop rules. D
 generated output, agent assets, and the plugin's own source are excluded. The Oxc editor
 extension uses the same `.oxlintrc.json` for the whole workspace.
 
+`npm run fmt` (`oxfmt`) is the repository formatter; `npm run fmt:check` reports drift
+without writing. House rules live in `.oxfmtrc.json`: 100 columns, double quotes, semicolons,
+trailing commas, preserved object wrapping, grouped imports, and Tailwind class order from
+`src/app/globals.css`. Markdown and generated trees are left alone. Like oxlint, format
+check is local-only until a dedicated findings PR lands.
+
 `npm run doctor` and `node scripts/verify-no-secrets.mjs` also run with no credentials.
 
 `npm run doctor` caveat: it scans the working tree, including untracked build output like
@@ -92,15 +98,15 @@ smoke test.
 
 ### By change type
 
-| Change | Required checks |
-|---|---|
-| Patient copy / locale content | `test:unit`, `lint`, `build`, public smoke; E2E intake-form + language-chooser when behavior shifts |
-| Intake form / API / persistence | Above + `npx playwright test` (intake specs) |
-| Portal page, route, or action | Above + `npx playwright test` (portal specs) |
-| Migration, RLS, RPC, or seed | Above + `verify-schema.mjs --target dev`; disposable-contract job runs in CI on the exact head |
-| Email paths | `npx playwright test e2e/portal-email.spec.ts` |
-| UI-visible change | Refresh covered `ui-reference/` images; before/after screenshots in the PR |
-| CI / dependency automation | `node --test .github/scripts/dependency-automation.test.cjs` — policy and test change together |
+| Change                          | Required checks                                                                                     |
+| ------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Patient copy / locale content   | `test:unit`, `lint`, `build`, public smoke; E2E intake-form + language-chooser when behavior shifts |
+| Intake form / API / persistence | Above + `npx playwright test` (intake specs)                                                        |
+| Portal page, route, or action   | Above + `npx playwright test` (portal specs)                                                        |
+| Migration, RLS, RPC, or seed    | Above + `verify-schema.mjs --target dev`; disposable-contract job runs in CI on the exact head      |
+| Email paths                     | `npx playwright test e2e/portal-email.spec.ts`                                                      |
+| UI-visible change               | Refresh covered `ui-reference/` images; before/after screenshots in the PR                          |
+| CI / dependency automation      | `node --test .github/scripts/dependency-automation.test.cjs` — policy and test change together      |
 
 Every PR reports the `supabase-integration` gate. When the workflow's diff detector finds a
 database-adjacent change—including a package change—it runs
@@ -179,10 +185,11 @@ Dependabot PRs travel a guarded automatic lane with three independent boundaries
 Every verified, manifest-only root npm update may enter the queue regardless of package
 name/type, SemVer class, grouping, or tool ownership. Maintainer-modified, source-changing,
 migration-changing, or otherwise untrusted PRs are rejected before review. Executable policy
-+ regression tests: `.github/scripts/dependency-automation.cjs` and
-`.github/scripts/dependency-automation.test.cjs` (they change together). SOP:
-`.github/codex/dependabot-sop-and-examples.md`. `OPENAI_API_KEY` is a repository Actions
-secret; never copy it into source, logs, PR text, Dependabot secrets, or an agent workspace.
+
+- regression tests: `.github/scripts/dependency-automation.cjs` and
+  `.github/scripts/dependency-automation.test.cjs` (they change together). SOP:
+  `.github/codex/dependabot-sop-and-examples.md`. `OPENAI_API_KEY` is a repository Actions
+  secret; never copy it into source, logs, PR text, Dependabot secrets, or an agent workspace.
 
 ## Shipping to production
 

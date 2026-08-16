@@ -13,8 +13,8 @@ describe work; add a file here only when a seat is actually created.
 
 ## Register
 
-| Role | Mandate in one line | Definition |
-| --- | --- | --- |
+| Role                                                   | Mandate in one line                                                                                                              | Definition                                                       |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | Lead of Product Experience & Principal Design Engineer | Owns the product experience end to end: product direction, design, the frontend, UI-facing contracts, and experience acceptance. | [`lead-of-product-experience.md`](lead-of-product-experience.md) |
 
 ## Routing rules

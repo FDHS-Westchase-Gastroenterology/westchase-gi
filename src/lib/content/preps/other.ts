@@ -5,13 +5,9 @@
 // VI/KO/AR bodies mirror the EN tree and are machine translations
 // (2026-07-08) pending native-speaker verification by clinic staff.
 
-import type { PrepDoc, PrepSection } from "./types";
+import { bringSection, remindersSection, followUpSection } from "./builders";
 import { EN, ES_T, VI, KO, AR } from "./common";
-import {
-  bringSection,
-  remindersSection,
-  followUpSection,
-} from "./builders";
+import type { PrepDoc, PrepSection } from "./types";
 
 /* ------------------------------------------------------------------ *
    Sigmoidoscopy (scan p. 10, EN)
@@ -88,9 +84,7 @@ const sigmoidoscopy: PrepDoc = {
           { kind: "p", text: "**El día antes de su procedimiento:** ___" },
           {
             kind: "note",
-            text: [
-              "**No coma ni beba ningún líquido después de la medianoche (12 AM).**",
-            ],
+            text: ["**No coma ni beba ningún líquido después de la medianoche (12 AM).**"],
           },
           { kind: "p", text: ES_T.appointmentLine },
           {
@@ -113,9 +107,7 @@ const sigmoidoscopy: PrepDoc = {
           { kind: "p", text: "**Ngày trước ngày làm thủ thuật của quý vị:** ___" },
           {
             kind: "note",
-            text: [
-              "**Không ăn hoặc uống bất kỳ chất lỏng nào sau nửa đêm (12 giờ đêm).**",
-            ],
+            text: ["**Không ăn hoặc uống bất kỳ chất lỏng nào sau nửa đêm (12 giờ đêm).**"],
           },
           { kind: "p", text: VI.appointmentLine },
           {
@@ -138,9 +130,7 @@ const sigmoidoscopy: PrepDoc = {
           { kind: "p", text: "**시술 전날:** ___" },
           {
             kind: "note",
-            text: [
-              "**자정(밤 12시) 이후에는 먹거나 어떤 액체도 마시지 마십시오.**",
-            ],
+            text: ["**자정(밤 12시) 이후에는 먹거나 어떤 액체도 마시지 마십시오.**"],
           },
           { kind: "p", text: KO.appointmentLine },
           {
@@ -163,9 +153,7 @@ const sigmoidoscopy: PrepDoc = {
           { kind: "p", text: "**اليوم السابق لإجرائك:** ___" },
           {
             kind: "note",
-            text: [
-              "**لا تأكل أو تشرب أي سوائل بعد منتصف الليل (الساعة 12 صباحًا).**",
-            ],
+            text: ["**لا تأكل أو تشرب أي سوائل بعد منتصف الليل (الساعة 12 صباحًا).**"],
           },
           { kind: "p", text: AR.appointmentLine },
           {
@@ -274,11 +262,7 @@ const endocapsuleEn: PrepSection[] = [
         rows: [
           ["Milk & milk products", "None", "All"],
           ["Vegetables", "None", "All"],
-          [
-            "Fruits",
-            "Fruit juices without pulp",
-            "Nectars; all fresh, canned, and frozen fruits",
-          ],
+          ["Fruits", "Fruit juices without pulp", "Nectars; all fresh, canned, and frozen fruits"],
           ["Breads & grains", "None", "All"],
           ["Meat or meat substitutes", "None", "All"],
           ["Fats & oils", "None", "All"],
@@ -722,11 +706,7 @@ const endocapsuleAr: PrepSection[] = [
         rows: [
           ["الحليب ومنتجات الألبان", "لا شيء", "الكل"],
           ["الخضروات", "لا شيء", "الكل"],
-          [
-            "الفواكه",
-            "عصائر الفاكهة بدون لُب",
-            "النكتار؛ وجميع الفواكه الطازجة والمعلبة والمجمدة",
-          ],
+          ["الفواكه", "عصائر الفاكهة بدون لُب", "النكتار؛ وجميع الفواكه الطازجة والمعلبة والمجمدة"],
           ["الخبز والحبوب", "لا شيء", "الكل"],
           ["اللحوم أو بدائل اللحوم", "لا شيء", "الكل"],
           ["الدهون والزيوت", "لا شيء", "الكل"],
@@ -964,19 +944,13 @@ const antiRefluxEs: PrepSection[] = [
             "Pescados y mariscos",
             "Lenguado, halibut (fletán), rape, atún, lubina, pescado ahumado, salmón, platija, eglefino, langosta, caballa, perca, lucio, sábalo, vieiras, camarón, trucha",
           ],
-          [
-            "Papas",
-            "Todas: rojas, blancas, dulces y ñame (no papas enlatadas)",
-          ],
+          ["Papas", "Todas: rojas, blancas, dulces y ñame (no papas enlatadas)"],
           ["Arroz", "Todo: blanco, integral y variedades gourmet"],
           [
             "Sopas",
             "Todas las que no sean de tomate, con moderación (las sopas cremosas pueden causar exceso de mucosidad y/o molestias de reflujo)",
           ],
-          [
-            "Pasta",
-            "Salsa pesto o de ajo y aceite; solo salsa blanca de almejas",
-          ],
+          ["Pasta", "Salsa pesto o de ajo y aceite; solo salsa blanca de almejas"],
           [
             "Verduras y almidones",
             "Remolachas, berenjena (a la parrilla o salteada solamente), frijoles, habas, judías verdes, frijoles de cera, espinaca, alcachofas, espárragos, coles de Bruselas, coliflor, brócoli, brocoflor, chirivías, zanahorias, calabaza buttercup, calabaza bellota, calabaza moscada, calabaza delicata, calabacín (amarillo y verde), calabazas gourmet, peras secadas al sol",
@@ -1054,8 +1028,7 @@ const antiRefluxVi: PrepSection[] = [
     ],
   },
   {
-    heading:
-      "Thực phẩm chấp nhận được cho người trào ngược (nếu nấu với thảo mộc dịu nhẹ)",
+    heading: "Thực phẩm chấp nhận được cho người trào ngược (nếu nấu với thảo mộc dịu nhẹ)",
     blocks: [
       {
         kind: "table",
@@ -1078,10 +1051,7 @@ const antiRefluxVi: PrepSection[] = [
             "Súp",
             "Tất cả các loại súp không có cà chua, dùng có chừng mực (súp kem có thể gây tăng tiết đờm nhớt và/hoặc làm khó chịu do trào ngược)",
           ],
-          [
-            "Mì Ý (pasta)",
-            "Sốt pesto hoặc sốt tỏi và dầu; chỉ sốt nghêu trắng (white clam sauce)",
-          ],
+          ["Mì Ý (pasta)", "Sốt pesto hoặc sốt tỏi và dầu; chỉ sốt nghêu trắng (white clam sauce)"],
           [
             "Rau củ và tinh bột",
             "Củ dền, cà tím (chỉ nướng hoặc áp chảo), các loại đậu, đậu lima, đậu que, đậu sáp (wax beans), rau bina (cải bó xôi), atisô, măng tây, cải Brussels, súp lơ trắng, bông cải xanh, broccoflower (súp lơ lai), củ cải vàng (parsnip), cà rốt, bí buttercup, bí acorn, bí butternut, bí delicata, bí ngòi zucchini (cả vàng và xanh), các loại bí đặc sản (gourmet), lê sấy khô",
@@ -1173,10 +1143,7 @@ const antiRefluxKo: PrepSection[] = [
             "생선 및 조개류",
             "서대(sole), 넙치(halibut), 아귀(monkfish), 참치, 배스(bass), 훈제 생선, 연어, 가자미(flounder), 해덕(haddock), 랍스터(바닷가재), 고등어, 퍼치(perch), 파이크(pike), 전어류(shad), 가리비, 새우, 송어",
           ],
-          [
-            "감자",
-            "모두 가능: 빨간 감자, 흰 감자, 고구마, 얌(참마) (통조림 감자는 제외)",
-          ],
+          ["감자", "모두 가능: 빨간 감자, 흰 감자, 고구마, 얌(참마) (통조림 감자는 제외)"],
           ["쌀", "모두 가능: 백미, 현미, 고급(gourmet) 품종"],
           [
             "수프",
@@ -1274,10 +1241,7 @@ const antiRefluxAr: PrepSection[] = [
             "الأسماك والمحار",
             "سمك موسى (sole)، والهلبوت (halibut)، وسمك الراهب (monkfish)، والتونة، والقاروص (bass)، والسمك المدخن، والسلمون، والسمك المفلطح (flounder)، والحدوق (haddock)، وجراد البحر (اللوبستر)، والماكريل (الإسقمري)، والفرخ (perch)، والكراكي (pike)، والشابل (shad)، والإسكالوب، والروبيان (الجمبري)، والتروتة (trout)",
           ],
-          [
-            "البطاطس",
-            "الكل: البطاطس الحمراء والبيضاء والبطاطا الحلوة واليام (بدون بطاطس معلبة)",
-          ],
+          ["البطاطس", "الكل: البطاطس الحمراء والبيضاء والبطاطا الحلوة واليام (بدون بطاطس معلبة)"],
           ["الأرز", "الكل: الأرز الأبيض والبني والأصناف الفاخرة"],
           [
             "الشوربات",

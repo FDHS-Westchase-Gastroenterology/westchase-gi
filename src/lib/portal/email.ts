@@ -20,31 +20,18 @@ export type PortalEmailOutcome =
   | {
       status: "failed";
       provider: string;
-      reason:
-        | "unconfigured"
-        | "rejected"
-        | "rate_limited"
-        | "timed_out"
-        | "transport_failure";
+      reason: "unconfigured" | "rejected" | "rate_limited" | "timed_out" | "transport_failure";
       providerStatusCode: number | null;
     };
 
-export type SendPortalEmail = (
-  message: PortalEmailMessage,
-) => Promise<PortalEmailOutcome>;
+export type SendPortalEmail = (message: PortalEmailMessage) => Promise<PortalEmailOutcome>;
 
 export type PortalEmailTransport = Readonly<{
   provider: string;
-  send: (
-    message: PortalEmailMessage,
-  ) => Promise<
+  send: (message: PortalEmailMessage) => Promise<
     | { providerMessageId: string }
     | {
-        reason:
-          | "unconfigured"
-          | "rejected"
-          | "rate_limited"
-          | "transport_failure";
+        reason: "unconfigured" | "rejected" | "rate_limited" | "transport_failure";
         providerStatusCode: number | null;
       }
   >;
@@ -76,7 +63,9 @@ export function createEmailSender(
       const result = await Promise.race([
         transport.send(message),
         new Promise<"timed_out">((resolve) => {
-          timer = setTimeout(() => { resolve("timed_out"); }, deadlineMs);
+          timer = setTimeout(() => {
+            resolve("timed_out");
+          }, deadlineMs);
         }),
       ]);
 
@@ -98,12 +87,7 @@ export function createEmailSender(
         };
       }
 
-      logFailure(
-        "send failed",
-        message,
-        transport.provider,
-        result.providerStatusCode,
-      );
+      logFailure("send failed", message, transport.provider, result.providerStatusCode);
       return { status: "failed", provider: transport.provider, ...result };
     } catch {
       logFailure("transport threw", message, transport.provider);

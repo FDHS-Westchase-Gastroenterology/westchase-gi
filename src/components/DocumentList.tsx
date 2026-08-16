@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { documentsByCategory } from "@/lib/documents";
-import type { DocCategory } from "@/lib/documents";
+
 import { topicForDocument } from "@/lib/content/education";
 import { prepForDocument } from "@/lib/content/preps";
+import { documentsByCategory } from "@/lib/documents";
+import type { DocCategory } from "@/lib/documents";
+import type { Dictionary } from "@/lib/i18n";
 import { site, localePath } from "@/lib/site";
 import type { Locale } from "@/lib/site";
-import type { Dictionary } from "@/lib/i18n";
+
 import { ArrowRight, Download, FileText, MessageSquare } from "./icons";
 
 interface DocumentListProps {

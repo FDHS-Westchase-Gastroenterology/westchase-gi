@@ -1,24 +1,23 @@
-import { createHash, randomUUID } from "node:crypto";
 import { execSync, spawn } from "node:child_process";
 import type { ChildProcess } from "node:child_process";
+import { createHash, randomUUID } from "node:crypto";
 import { mkdirSync, openSync } from "node:fs";
 import { resolve } from "node:path";
+
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
+
+import { ar } from "../src/lib/dictionaries/ar";
 import { en } from "../src/lib/dictionaries/en";
 import { es } from "../src/lib/dictionaries/es";
-import { vi } from "../src/lib/dictionaries/vi";
 import { ko } from "../src/lib/dictionaries/ko";
-import { ar } from "../src/lib/dictionaries/ar";
+import { vi } from "../src/lib/dictionaries/vi";
 import type { Dictionary } from "../src/lib/i18n";
 import type { Locale } from "../src/lib/site";
 import { serviceDb } from "./support";
 
 const db = serviceDb();
-const dicts = { en, es, vi, ko, ar } as const satisfies Record<
-  Locale,
-  Dictionary
->;
+const dicts = { en, es, vi, ko, ar } as const satisfies Record<Locale, Dictionary>;
 const runId = randomUUID().slice(0, 8);
 
 test.use({
@@ -54,10 +53,7 @@ async function fillForm(page: Page, email: string, name: string) {
   await page.fill("#name", name);
   await page.fill("#phone", "8135550142");
   await page.fill("#email", email);
-  await page.fill(
-    "#message",
-    "TEST submission from the E2E suite - no medical details.",
-  );
+  await page.fill("#message", "TEST submission from the E2E suite - no medical details.");
 }
 
 const submitButton = (page: Page) =>
@@ -65,9 +61,11 @@ const submitButton = (page: Page) =>
 
 /** JS paths must not click before hydration or the native fallback fires. */
 async function awaitHydration(page: Page) {
-  await expect(
-    page.locator('form[action="/api/requests/form"]'),
-  ).toHaveAttribute("data-hydrated", "true", { timeout: 30_000 });
+  await expect(page.locator('form[action="/api/requests/form"]')).toHaveAttribute(
+    "data-hydrated",
+    "true",
+    { timeout: 30_000 },
+  );
 }
 
 test.afterAll(async () => {
@@ -115,10 +113,7 @@ test("VAL-INTAKE-002: success renders only after durable acceptance", async ({
   // F5: the success card takes focus, like the problem alerts do.
   await expect(page.locator('main [role="status"]')).toBeFocused();
 
-  const { data, error } = await db
-    .from("requests")
-    .select("id, status")
-    .eq("email", email);
+  const { data, error } = await db.from("requests").select("id, status").eq("email", email);
   expect(error).toBeNull();
   expect(data).toHaveLength(1);
   expect(data![0].status).toBe("new");
@@ -186,9 +181,7 @@ test.describe("VAL-INTAKE-006: truthful failure when the queue is down", () => {
     });
   });
 
-  test("browser submit shows the failure state, never success", async ({
-    page,
-  }, testInfo) => {
+  test("browser submit shows the failure state, never success", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== "chromium", "JS submission path");
     test.setTimeout(120_000);
 
@@ -202,18 +195,14 @@ test.describe("VAL-INTAKE-006: truthful failure when the queue is down", () => {
     await submitButton(page).click();
 
     // Scoped inside the form: Next's route announcer is also role=alert.
-    const alert = page.locator(
-      'form[action="/api/requests/form"] [role="alert"]',
-    );
+    const alert = page.locator('form[action="/api/requests/form"] [role="alert"]');
     await expect(alert).toBeVisible({ timeout: 45_000 });
     await expect(alert).toBeFocused();
     await expect(alert).toContainText(en.appointment.form.failHeading);
     // The patient must see how to reach the office: phone + text line.
     await expect(alert).toContainText("(813) 920-8882");
     await expect(alert).toContainText("(813) 564-0315");
-    await expect(page.getByText(en.appointment.form.doneHeading)).toHaveCount(
-      0,
-    );
+    await expect(page.getByText(en.appointment.form.doneHeading)).toHaveCount(0);
   });
 });
 
@@ -258,15 +247,10 @@ test("VAL-INTAKE-007: no-JS native POST leaks nothing and lands on a receipt", a
   // And sidesteps bounding-box stability churn on cold dev compiles.
   await page.press("#email", "Enter");
 
-  await page.waitForURL(
-    /\/en\/appointment\/received\?receipt=[0-9a-f-]{36}\.[A-Za-z0-9_-]{43}$/,
-    {
-      timeout: 60_000,
-    },
-  );
-  await expect(
-    page.getByRole("heading", { name: en.requestReceipt.successHeading }),
-  ).toBeVisible();
+  await page.waitForURL(/\/en\/appointment\/received\?receipt=[0-9a-f-]{36}\.[A-Za-z0-9_-]{43}$/, {
+    timeout: 60_000,
+  });
+  await expect(page.getByRole("heading", { name: en.requestReceipt.successHeading })).toBeVisible();
 
   for (const url of requestUrls) {
     for (const fragment of [
@@ -312,20 +296,16 @@ for (const locale of ["en", "es", "vi", "ko", "ar"] as const) {
         );
       }
 
-      await expect(page.locator('label[for="name"]')).toContainText(
-        d.appointment.form.name,
-      );
-      await expect(page.locator('label[for="message"]')).toContainText(
-        d.appointment.form.message,
-      );
+      await expect(page.locator('label[for="name"]')).toContainText(d.appointment.form.name);
+      await expect(page.locator('label[for="message"]')).toContainText(d.appointment.form.message);
 
       const email = emailFor(`${locale}-${route}`);
       await fillForm(page, email, `TEST Locale ${locale} ${route}`);
       await submitButton(page).click();
 
-      await expect(
-        page.getByText(d.appointment.form.doneHeading).first(),
-      ).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByText(d.appointment.form.doneHeading).first()).toBeVisible({
+        timeout: 20_000,
+      });
 
       const { data, error } = await db
         .from("requests")
@@ -339,19 +319,13 @@ for (const locale of ["en", "es", "vi", "ko", "ar"] as const) {
   }
 }
 
-test("VAL-INTAKE-009: Arabic renders RTL with Arabic form labels", async ({
-  page,
-}, testInfo) => {
+test("VAL-INTAKE-009: Arabic renders RTL with Arabic form labels", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "rendering check");
 
   await page.goto("/ar/appointment");
   await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
-  await expect(page.locator('label[for="name"]')).toContainText(
-    ar.appointment.form.name,
-  );
-  await expect(page.locator('label[for="phone"]')).toContainText(
-    ar.appointment.form.phone,
-  );
+  await expect(page.locator('label[for="name"]')).toContainText(ar.appointment.form.name);
+  await expect(page.locator('label[for="phone"]')).toContainText(ar.appointment.form.phone);
 });
 
 test("VAL-INTAKE-014: PHI warning renders verbatim on all ten surfaces", async ({

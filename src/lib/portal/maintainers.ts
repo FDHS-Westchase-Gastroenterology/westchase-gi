@@ -2,20 +2,32 @@ import "server-only";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+
+import type { MaintainerAccessModel } from "@/app/admin/(portal)/settings/software/maintainer-access";
 import type { Json } from "@/lib/json";
-import {
-  beginExternalAudit,
-  finishExternalAudit,
-} from "@/lib/portal/audit";
+import { beginExternalAudit, finishExternalAudit } from "@/lib/portal/audit";
 import { requireRole } from "@/lib/portal/auth";
 import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
 import type { AuditAction } from "@/lib/portal/contracts";
-import { GITHUB_OWNER_ID, GITHUB_REPOSITORY_ID, getGitHubMaintainerRead, gitHubProviderStatus, openGitHubMaintainerSession } from "@/lib/portal/integrations";
+import {
+  GITHUB_OWNER_ID,
+  GITHUB_REPOSITORY_ID,
+  getGitHubMaintainerRead,
+  gitHubProviderStatus,
+  openGitHubMaintainerSession,
+} from "@/lib/portal/integrations";
 import type { GitHubMaintainerSession, GitHubMaintainerSnapshot } from "@/lib/portal/integrations";
-import { invitationIsActive, invitationIsCancelled, maintainerIsRevoked, runMaintainerOperation } from "@/lib/portal/maintainer-operation";
-import type { MaintainerFailureCode, MaintainerMutationResult } from "@/lib/portal/maintainer-operation";
+import {
+  invitationIsActive,
+  invitationIsCancelled,
+  maintainerIsRevoked,
+  runMaintainerOperation,
+} from "@/lib/portal/maintainer-operation";
+import type {
+  MaintainerFailureCode,
+  MaintainerMutationResult,
+} from "@/lib/portal/maintainer-operation";
 import { serviceClient } from "@/lib/portal/server";
-import type { MaintainerAccessModel } from "@/app/admin/(portal)/settings/software/maintainer-access";
 
 const usernameSchema = z.strictObject({
   username: z
@@ -70,16 +82,12 @@ export async function getMaintainerAccessModel(): Promise<MaintainerAccessModel>
   };
 }
 
-async function openSession(): Promise<
-  GitHubMaintainerSession | MaintainerMutationResult
-> {
+async function openSession(): Promise<GitHubMaintainerSession | MaintainerMutationResult> {
   try {
     return await openGitHubMaintainerSession();
   } catch (error) {
     return failure(
-      error instanceof Error && gitHubProviderStatus(error) === 403
-        ? "forbidden"
-        : "unavailable",
+      error instanceof Error && gitHubProviderStatus(error) === 403 ? "forbidden" : "unavailable",
     );
   }
 }
@@ -109,10 +117,14 @@ async function execute({
   invitationId?: number;
   session: GitHubMaintainerSession;
   perform(): Promise<number>;
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-  desired(snapshot: Readonly<GitHubMaintainerSnapshot & {
-    invitations: NonNullable<GitHubMaintainerSnapshot["invitations"]>;
-  }>): boolean;
+  desired(
+    // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+    snapshot: Readonly<
+      GitHubMaintainerSnapshot & {
+        invitations: NonNullable<GitHubMaintainerSnapshot["invitations"]>;
+      }
+    >,
+  ): boolean;
 }>): Promise<MaintainerMutationResult> {
   const db = serviceClient();
   const detail = {
@@ -123,9 +135,7 @@ async function execute({
     target_id: target.userId,
   };
   const auditDetail =
-    invitationId === undefined
-      ? detail
-      : { ...detail, invitation_id: invitationId };
+    invitationId === undefined ? detail : { ...detail, invitation_id: invitationId };
   return runMaintainerOperation({
     begin: async () =>
       beginExternalAudit(db, {
@@ -138,8 +148,7 @@ async function execute({
     perform,
     refresh: async () => session.refresh(),
     desired,
-    finish: async (audit, outcome, detail) =>
-      finishExternalAudit(db, audit, outcome, detail),
+    finish: async (audit, outcome, detail) => finishExternalAudit(db, audit, outcome, detail),
     failureCode: (error, snapshot) => {
       if (
         operation === "cancel_invitation" &&
@@ -160,9 +169,7 @@ async function execute({
   });
 }
 
-export async function inviteMaintainerMutation(
-  input: Json,
-): Promise<MaintainerMutationResult> {
+export async function inviteMaintainerMutation(input: Json): Promise<MaintainerMutationResult> {
   const portalSession = await requireRole("admin");
   const parsed = usernameSchema.safeParse(input);
   if (!parsed.success) return failure("invalid");
@@ -174,9 +181,7 @@ export async function inviteMaintainerMutation(
   try {
     target = await github.resolveUser(parsed.data.username);
   } catch (error) {
-    return failure(
-      providerFailureCode(error instanceof Error ? error : undefined, "invite"),
-    );
+    return failure(providerFailureCode(error instanceof Error ? error : undefined, "invite"));
   }
   if (target.userId === GITHUB_OWNER_ID) return failure("conflict");
   if (
@@ -221,17 +226,11 @@ export async function cancelMaintainerInviteMutation(
     session: github,
     perform: async () => github.cancelInvitation(invitation.invitationId),
     desired: (snapshot) =>
-      invitationIsCancelled(
-        snapshot,
-        invitation.userId,
-        invitation.invitationId,
-      ),
+      invitationIsCancelled(snapshot, invitation.userId, invitation.invitationId),
   });
 }
 
-export async function revokeMaintainerMutation(
-  input: Json,
-): Promise<MaintainerMutationResult> {
+export async function revokeMaintainerMutation(input: Json): Promise<MaintainerMutationResult> {
   const portalSession = await requireRole("admin");
   const parsed = maintainerSchema.safeParse(input);
   if (!parsed.success || parsed.data.userId === GITHUB_OWNER_ID) {
@@ -240,9 +239,7 @@ export async function revokeMaintainerMutation(
 
   const github = await openSession();
   if (isFailure(github)) return github;
-  const target = github.initial.maintainers.find(
-    ({ userId }) => userId === parsed.data.userId,
-  );
+  const target = github.initial.maintainers.find(({ userId }) => userId === parsed.data.userId);
   if (!target) return failure("not_found");
 
   return execute({

@@ -10,12 +10,7 @@ import { en } from "../src/lib/dictionaries/en.ts";
 import { es } from "../src/lib/dictionaries/es.ts";
 import { ko } from "../src/lib/dictionaries/ko.ts";
 import { vi } from "../src/lib/dictionaries/vi.ts";
-import {
-  asJsonArray,
-  asJsonObject,
-  asJsonString,
-  jsonSchema,
-} from "../src/lib/json.ts";
+import { asJsonArray, asJsonObject, asJsonString, jsonSchema } from "../src/lib/json.ts";
 
 // I5 availability guard: no patient-facing dictionary string may name a
 // Language set smaller than the site's actual five-locale set unless the key
@@ -54,9 +49,7 @@ function collectStrings(node, path = [], out = []) {
 
   const items = asJsonArray(parsed.data);
   if (items !== null) {
-    items.forEach((item, index) =>
-      collectStrings(item, [...path, String(index)], out),
-    );
+    items.forEach((item, index) => collectStrings(item, [...path, String(index)], out));
     return out;
   }
 
@@ -74,16 +67,11 @@ function escapeRegExp(text) {
 }
 
 function sourceFor(locale) {
-  return readFileSync(
-    resolve(process.cwd(), "src", "lib", "dictionaries", `${locale}.ts`),
-    "utf8",
-  );
+  return readFileSync(resolve(process.cwd(), "src", "lib", "dictionaries", `${locale}.ts`), "utf8");
 }
 
 function waiverPattern(keyPath) {
-  return new RegExp(
-    `i5-waiver\\s+\\d{4}-\\d{2}-\\d{2}\\s+${escapeRegExp(keyPath)}(?=[:\\s])`,
-  );
+  return new RegExp(`i5-waiver\\s+\\d{4}-\\d{2}-\\d{2}\\s+${escapeRegExp(keyPath)}(?=[:\\s])`);
 }
 
 for (const [locale, dictionary] of Object.entries(DICTIONARIES)) {
@@ -106,9 +94,7 @@ for (const [locale, dictionary] of Object.entries(DICTIONARIES)) {
 
   test(`${locale}: no stale i5-waiver comments`, () => {
     const source = sourceFor(locale);
-    const strings = new Map(
-      collectStrings(dictionary).map(({ path, value }) => [path, value]),
-    );
+    const strings = new Map(collectStrings(dictionary).map(({ path, value }) => [path, value]));
     const stale = [];
     for (const match of source.matchAll(
       /i5-waiver\s+\d{4}-\d{2}-\d{2}\s+([a-zA-Z0-9.]+)(?=[:\s])/g,
@@ -124,10 +110,6 @@ for (const [locale, dictionary] of Object.entries(DICTIONARIES)) {
         stale.push(`${keyPath} (no longer names a smaller language set)`);
       }
     }
-    assert.deepEqual(
-      stale,
-      [],
-      `stale i5-waiver comments to remove: ${stale.join("; ")}`,
-    );
+    assert.deepEqual(stale, [], `stale i5-waiver comments to remove: ${stale.join("; ")}`);
   });
 }

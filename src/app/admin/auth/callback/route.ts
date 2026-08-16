@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+
 import {
   clearPasswordAuthFlow,
   establishPasswordAuthFlow,
@@ -41,9 +42,7 @@ export async function GET(request: NextRequest) {
     }
 
     await establishPasswordAuthFlow(
-      staff.onboardedAt !== null && staff.onboardedAt !== ""
-        ? "recovery"
-        : "invite",
+      staff.onboardedAt !== null && staff.onboardedAt !== "" ? "recovery" : "invite",
       staff.id,
     );
     return trustedRedirect("/admin/set-password");

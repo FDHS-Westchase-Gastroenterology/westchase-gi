@@ -1,16 +1,13 @@
+import { ar } from "./dictionaries/ar";
 import { en } from "./dictionaries/en";
 import type { Dictionary } from "./dictionaries/en";
 import { es } from "./dictionaries/es";
-import { vi } from "./dictionaries/vi";
 import { ko } from "./dictionaries/ko";
-import { ar } from "./dictionaries/ar";
+import { vi } from "./dictionaries/vi";
 import { localeSet } from "./site";
 import type { Locale } from "./site";
 
-const dictionaries = { en, es, vi, ko, ar } as const satisfies Record<
-  Locale,
-  Dictionary
->;
+const dictionaries = { en, es, vi, ko, ar } as const satisfies Record<Locale, Dictionary>;
 
 export function getDictionary(locale: Locale): Dictionary {
   return dictionaries[locale];

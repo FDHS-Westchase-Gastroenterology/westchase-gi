@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { REQUEST_STATUSES } from "@/lib/portal/contracts";
-import type { RequestStatus } from "@/lib/portal/contracts";
+
 import { requireRole } from "@/lib/portal/auth";
 import { waitingSince } from "@/lib/portal/business-time";
+import { REQUEST_STATUSES } from "@/lib/portal/contracts";
+import type { RequestStatus } from "@/lib/portal/contracts";
 import type { AttentionBucket } from "@/lib/portal/queue-attention";
 import {
   parsePage,
@@ -14,9 +15,7 @@ import {
 } from "@/lib/portal/request-query";
 import { requestPageWindow } from "@/lib/portal/request-window";
 import { serviceClient } from "@/lib/portal/server";
-import { fetchAttentiveOpenRows, fetchClosedRows, OPEN_STATUSES } from "./queue";
-import type { QueueRow } from "./queue";
-import { StatusBadge } from "./status-badge";
+
 import {
   followUpShortLabel,
   formatReceived,
@@ -24,6 +23,9 @@ import {
   STATUS_LABELS,
   TIME_LABELS,
 } from "./format";
+import { fetchAttentiveOpenRows, fetchClosedRows, OPEN_STATUSES } from "./queue";
+import type { QueueRow } from "./queue";
+import { StatusBadge } from "./status-badge";
 
 type SearchParams = Promise<{
   page?: string | string[];
@@ -122,7 +124,11 @@ function nextActionHint({
   return null;
 }
 
-interface FilterItem { key: RequestStatus | "all"; label: string; count: number }
+interface FilterItem {
+  key: RequestStatus | "all";
+  label: string;
+  count: number;
+}
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function FilterChips({
@@ -204,8 +210,7 @@ function QueueRowLink({
     createdAt: request.created_at,
     now,
   });
-  const waiting =
-    request.status === "new" ? waitingSince(request.created_at, now) : null;
+  const waiting = request.status === "new" ? waitingSince(request.created_at, now) : null;
   return (
     <li>
       <Link
@@ -231,8 +236,7 @@ function QueueRowLink({
         </span>
         <span className="text-[0.9rem] text-[var(--color-body)]">
           <span className="block">
-            {LOCATION_LABELS[request.location]} ·{" "}
-            {TIME_LABELS[request.preferred_time]}
+            {LOCATION_LABELS[request.location]} · {TIME_LABELS[request.preferred_time]}
           </span>
           <span className="mt-0.5 block text-[var(--color-muted)]">
             Received {formatReceived(request.created_at)}
@@ -293,8 +297,7 @@ export default async function AdminRequestsPage({
   });
 
   const wantsClosed = filter === "all" || filter === "closed";
-  const openStatuses =
-    filter === "all" ? OPEN_STATUSES : filter === "closed" ? [] : [filter];
+  const openStatuses = filter === "all" ? OPEN_STATUSES : filter === "closed" ? [] : [filter];
   const [orderedOpen, closedCountProbe, ...countResults] = await Promise.all([
     openStatuses.length > 0
       ? fetchAttentiveOpenRows(db, { statuses: openStatuses, searchFilter, now })
@@ -307,8 +310,7 @@ export default async function AdminRequestsPage({
     ...countQueries,
   ]);
 
-  const countError =
-    countResults.find((result) => result.error)?.error ?? closedCountProbe.error;
+  const countError = countResults.find((result) => result.error)?.error ?? closedCountProbe.error;
   if (countError) {
     throw new Error(`Queue read failed: ${countError.code}`);
   }
@@ -318,10 +320,7 @@ export default async function AdminRequestsPage({
     scheduled: countResults[2].count ?? 0,
     closed: countResults[3].count ?? 0,
   } as const satisfies Record<RequestStatus, number>;
-  const total = REQUEST_STATUSES.reduce(
-    (sum, status) => sum + counts[status],
-    0,
-  );
+  const total = REQUEST_STATUSES.reduce((sum, status) => sum + counts[status], 0);
 
   // The page window — open slice, closed-tail range, display totals, and the
   // Past-the-end redirect — is pure math, unit-tested in request-window.
@@ -333,9 +332,7 @@ export default async function AdminRequestsPage({
     closedCount: closedCountProbe.count ?? 0,
   });
   if (pageWindow.redirectPage !== null) {
-    redirect(
-      requestsHref({ page: pageWindow.redirectPage, search, status: filter }),
-    );
+    redirect(requestsHref({ page: pageWindow.redirectPage, search, status: filter }));
   }
   const { filteredTotal, totalPages, firstShown, lastShown } = pageWindow;
 
@@ -367,10 +364,7 @@ export default async function AdminRequestsPage({
     <section aria-labelledby="requests-heading">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1
-            id="requests-heading"
-            className="portal-title"
-          >
+          <h1 id="requests-heading" className="portal-title">
             Appointment requests
           </h1>
           <p className="mt-1.5 max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
@@ -396,9 +390,7 @@ export default async function AdminRequestsPage({
         role="search"
         className="mt-6 flex max-w-2xl flex-wrap items-end gap-3"
       >
-        {filter !== "all" ? (
-          <input type="hidden" name="status" value={filter} />
-        ) : null}
+        {filter !== "all" ? <input type="hidden" name="status" value={filter} /> : null}
         <label
           htmlFor="request-search"
           className="min-w-64 flex-1 text-sm font-bold text-[var(--color-ink)]"
@@ -411,17 +403,14 @@ export default async function AdminRequestsPage({
             defaultValue={search}
             maxLength={REQUEST_SEARCH_MAX_LENGTH}
             placeholder="Name, phone, or email"
-            className="mt-2 min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] font-normal outline-none transition-colors focus:border-[var(--color-teal-ink)]"
+            className="mt-2 min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] font-normal transition-colors outline-none focus:border-[var(--color-teal-ink)]"
           />
         </label>
         <button type="submit" className="btn btn-navy">
           Search
         </button>
         {search ? (
-          <Link
-            href={requestsHref({ search: "", status: filter })}
-            className="btn btn-outline"
-          >
+          <Link href={requestsHref({ search: "", status: filter })} className="btn btn-outline">
             Clear
           </Link>
         ) : null}
@@ -468,17 +457,11 @@ export default async function AdminRequestsPage({
 
       {filteredTotal > 0 ? (
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <p
-            data-testid="request-page-summary"
-            className="text-[0.9rem] text-[var(--color-muted)]"
-          >
+          <p data-testid="request-page-summary" className="text-[0.9rem] text-[var(--color-muted)]">
             Showing {firstShown}–{lastShown} of {filteredTotal}
           </p>
           {totalPages > 1 ? (
-            <nav
-              aria-label="Appointment request pages"
-              className="flex items-center gap-3"
-            >
+            <nav aria-label="Appointment request pages" className="flex items-center gap-3">
               {page > 1 ? (
                 <Link
                   href={requestsHref({

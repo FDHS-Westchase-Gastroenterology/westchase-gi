@@ -10,13 +10,9 @@ const LIST_USERS_MAX_PAGES = 20;
  * Email → display name for every staff profile ever recorded (active or not,
  * so historical note/outcome attribution still resolves).
  */
-export async function fetchStaffNameMap(
-  db: SupabaseClient,
-): Promise<ReadonlyMap<string, string>> {
+export async function fetchStaffNameMap(db: SupabaseClient): Promise<ReadonlyMap<string, string>> {
   try {
-    const { data, error } = await db
-      .from("staff_profiles")
-      .select("email, display_name");
+    const { data, error } = await db.from("staff_profiles").select("email, display_name");
 
     if (error !== null) return new Map();
     const rows = z
@@ -99,10 +95,7 @@ export async function fetchLastSignInMap(
  * the raw email otherwise (external/maintenance actors are not in
  * staff_profiles, and showing their email remains honest).
  */
-export function displayNameOrEmail(
-  nameMap: ReadonlyMap<string, string>,
-  email: string,
-): string {
+export function displayNameOrEmail(nameMap: ReadonlyMap<string, string>, email: string): string {
   const key = email.trim().toLowerCase();
   const name = nameMap.get(key);
   return name !== undefined && name !== "" ? name : email;

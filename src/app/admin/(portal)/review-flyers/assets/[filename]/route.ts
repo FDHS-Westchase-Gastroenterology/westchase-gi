@@ -1,10 +1,9 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+
 import { z } from "zod";
-import {
-  PortalAuthorizationError,
-  requireRole,
-} from "@/lib/portal/auth";
+
+import { PortalAuthorizationError, requireRole } from "@/lib/portal/auth";
 import { reviewFlyerAssetByFilename } from "@/lib/review-flyers";
 
 const filenameParamsSchema = z.object({
@@ -20,8 +19,7 @@ export async function GET(
   try {
     await requireRole("staff", { unauthenticated: "throw" });
   } catch (error) {
-    const status =
-      error instanceof PortalAuthorizationError ? error.status : 401;
+    const status = error instanceof PortalAuthorizationError ? error.status : 401;
     return new Response(status === 401 ? "Unauthenticated" : "Forbidden", {
       status,
     });
@@ -35,9 +33,7 @@ export async function GET(
 
   let bytes: Buffer;
   try {
-    bytes = await readFile(
-      join(process.cwd(), "private", "review-flyers", asset.filename),
-    );
+    bytes = await readFile(join(process.cwd(), "private", "review-flyers", asset.filename));
   } catch {
     return new Response("Asset unavailable", { status: 503 });
   }

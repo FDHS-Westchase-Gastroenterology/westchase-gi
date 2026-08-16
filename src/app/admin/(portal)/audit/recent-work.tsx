@@ -1,4 +1,5 @@
 import Link from "next/link";
+
 import { groupByPracticeDay } from "./recent-work-model";
 import type { RecentWorkItem } from "./recent-work-model";
 
@@ -25,20 +26,16 @@ export function RecentWorkSection({
   const groups = groupByPracticeDay(items, now);
   return (
     <section aria-labelledby="recent-work-heading" className="mt-8">
-      <h2
-        id="recent-work-heading"
-        className="text-[1.05rem] font-black text-[var(--color-ink)]"
-      >
+      <h2 id="recent-work-heading" className="text-[1.05rem] font-black text-[var(--color-ink)]">
         Recent work
       </h2>
       <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
-        Who did what, in plain language. The exact technical record stays
-        below for administrators.
+        Who did what, in plain language. The exact technical record stays below for administrators.
       </p>
       <div className="mt-4 space-y-6">
         {groups.map((group) => (
           <div key={group.label}>
-            <h3 className="text-[0.8rem] font-bold uppercase tracking-[0.06em] text-[var(--color-muted)]">
+            <h3 className="text-[0.8rem] font-bold tracking-[0.06em] text-[var(--color-muted)] uppercase">
               {group.label}
             </h3>
             <ul
@@ -50,19 +47,15 @@ export function RecentWorkSection({
                   key={item.id}
                   className="flex flex-wrap items-baseline gap-x-2 px-5 py-3 text-[0.95rem]"
                 >
-                  <span className="whitespace-nowrap text-[0.82rem] font-bold tabular-nums text-[var(--color-muted)]">
+                  <span className="text-[0.82rem] font-bold whitespace-nowrap text-[var(--color-muted)] tabular-nums">
                     {timeOnly.format(new Date(item.at))}
                   </span>
                   <span
                     className={
-                      item.technical
-                        ? "text-[var(--color-muted)]"
-                        : "text-[var(--color-body)]"
+                      item.technical ? "text-[var(--color-muted)]" : "text-[var(--color-body)]"
                     }
                   >
-                    <strong className="font-bold text-[var(--color-ink)]">
-                      {item.actor}
-                    </strong>{" "}
+                    <strong className="font-bold text-[var(--color-ink)]">{item.actor}</strong>{" "}
                     {item.sentence}
                     {item.requestId !== null && item.requestId !== "" ? (
                       <>

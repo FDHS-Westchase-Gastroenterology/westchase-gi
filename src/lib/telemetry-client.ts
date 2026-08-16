@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import { z } from "zod";
+
+import reviewTargets from "@/lib/review-targets.json";
+import { site } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import { ANALYTICS_EVENTS, TELEMETRY_ROUTE_TEMPLATES } from "@/lib/telemetry";
 import type { AnalyticsEvent, DeviceClass } from "@/lib/telemetry";
 import { postBeacon } from "@/lib/telemetry-transport";
-import { site } from "@/lib/site";
-import type { Locale } from "@/lib/site";
-import reviewTargets from "@/lib/review-targets.json";
 
 // Aggregate, PHI-free beacon per the 2026-07-28 assessment (I6): four short
 // Enum/allowlist strings, no cookies, no free text, no journeys. Never
@@ -44,14 +45,8 @@ export function routeTemplateFor(pathname: string): string | null {
   return routeTemplateSet.has(withoutLocale) ? withoutLocale : null;
 }
 
-export function track(
-  event: AnalyticsEvent,
-  routeTemplate: string,
-  locale: Locale,
-) {
-  postBeacon(
-    JSON.stringify({ event, routeTemplate, locale, deviceClass: deviceClass() }),
-  );
+export function track(event: AnalyticsEvent, routeTemplate: string, locale: Locale) {
+  postBeacon(JSON.stringify({ event, routeTemplate, locale, deviceClass: deviceClass() }));
 }
 
 /** Channel taps, classified by destination so no chrome markup changes:
@@ -76,15 +71,11 @@ function ctaEventFor(anchor: HTMLAnchorElement): AnalyticsEvent | null {
 
 /** Form_view telemetry for the intake form: fires once, when the form first
  * genuinely enters the viewport (the honest funnel denominator). */
-export function useFormViewTelemetry(
-  formRef: React.RefObject<HTMLElement | null>,
-  locale: Locale,
-) {
+export function useFormViewTelemetry(formRef: React.RefObject<HTMLElement | null>, locale: Locale) {
   const pathname = usePathname();
   useEffect(() => {
     const form = formRef.current;
-    const template =
-      pathname !== "" ? routeTemplateFor(pathname) : null;
+    const template = pathname !== "" ? routeTemplateFor(pathname) : null;
     if (template === null || template === "") return undefined;
     const fire = () => {
       track("form_view", template, locale);
@@ -111,19 +102,11 @@ export function useFormViewTelemetry(
 
 /** The intake funnel's state-machine events, from the form's own flow. */
 export function trackFormEvent(
-  event:
-    | "form_submit"
-    | "form_success"
-    | "form_failure"
-    | "form_unknown"
-    | "form_throttled",
+  event: "form_submit" | "form_success" | "form_failure" | "form_unknown" | "form_throttled",
   pathname: string | null,
   locale: Locale,
 ) {
-  const template =
-    pathname !== null && pathname !== ""
-      ? routeTemplateFor(pathname)
-      : null;
+  const template = pathname !== null && pathname !== "" ? routeTemplateFor(pathname) : null;
   if (template !== null && template !== "") track(event, template, locale);
 }
 
@@ -135,8 +118,7 @@ export function trackFormEvent(
  */
 export function TelemetryReporter({ locale }: Readonly<{ locale: Locale }>) {
   const pathnameFromRouter = usePathname();
-  const pathname =
-    pathnameFromRouter !== "" ? pathnameFromRouter : `/${locale}`;
+  const pathname = pathnameFromRouter !== "" ? pathnameFromRouter : `/${locale}`;
 
   useEffect(() => {
     const template = routeTemplateFor(pathname);
@@ -153,9 +135,7 @@ export function TelemetryReporter({ locale }: Readonly<{ locale: Locale }>) {
       const anchor = target.closest("a");
       if (!(anchor instanceof HTMLAnchorElement)) return;
 
-      const customEvent = analyticsEventSchema.safeParse(
-        anchor.dataset.telemetryEvent,
-      );
+      const customEvent = analyticsEventSchema.safeParse(anchor.dataset.telemetryEvent);
       const customRoute = anchor.dataset.telemetryRoute;
       if (
         customEvent.success &&

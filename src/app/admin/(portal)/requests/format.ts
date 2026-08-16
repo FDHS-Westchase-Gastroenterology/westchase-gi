@@ -1,9 +1,5 @@
-import type {
-  RequestLocation,
-  RequestStatus,
-  RequestTime,
-} from "@/lib/portal/contracts";
 import type { CallOutcomeId } from "@/lib/portal/call-outcomes";
+import type { RequestLocation, RequestStatus, RequestTime } from "@/lib/portal/contracts";
 import type { Locale } from "@/lib/site";
 
 export const STATUS_LABELS = {
@@ -111,9 +107,7 @@ const nyDay = new Intl.DateTimeFormat("en-CA", {
 });
 
 function nyDayNumber(date: Date): number {
-  return Math.round(
-    Date.parse(`${nyDay.format(date)}T00:00:00Z`) / 86_400_000,
-  );
+  return Math.round(Date.parse(`${nyDay.format(date)}T00:00:00Z`) / 86_400_000);
 }
 
 export function followUpShortLabel(iso: string, now: Date = new Date()): string {
