@@ -53,11 +53,11 @@ export default async function AdminSettingsPage() {
   // New tracking: a read of existing Auth state, honest when it fails.
   const parsedRecipients = z
     .array(recipientRowSchema)
-    .safeParse(recipientsResult.data ?? []);
+    .safeParse(recipientsResult.data);
   if (!parsedRecipients.success) {
     throw new Error("Recipient read failed: invalid");
   }
-  const parsedStaff = z.array(staffRowSchema).safeParse(staffResult.data ?? []);
+  const parsedStaff = z.array(staffRowSchema).safeParse(staffResult.data);
   if (!parsedStaff.success) {
     throw new Error("Staff read failed: invalid");
   }

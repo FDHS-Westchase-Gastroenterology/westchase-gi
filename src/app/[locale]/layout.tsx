@@ -22,9 +22,9 @@ export function generateStaticParams() {
 
 export async function generateMetadata({
   params,
-}: {
+}: Readonly<{
   params: Promise<{ locale: string }>;
-}): Promise<Metadata> {
+}>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
@@ -109,7 +109,7 @@ function ClinicSchema() {
 export default async function LocaleLayout({
   children,
   params,
-}: Readonly<{ children: React.ReactNode; params: Promise<{ locale: string }> }>) {
+}: Readonly<Readonly<{ children: React.ReactNode; params: Promise<{ locale: string }> }>>) {
   const { locale: raw } = await params;
   if (!isLocale(raw)) notFound();
   const locale: Locale = raw;

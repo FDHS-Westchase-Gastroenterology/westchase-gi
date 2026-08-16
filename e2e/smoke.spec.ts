@@ -44,7 +44,7 @@ test("appointment submission cannot re-enter while its request is pending", asyn
   await page.fill("#phone", "8135550142");
   await page.evaluate(() => {
     const originalFetch = window.fetch.bind(window);
-    window.fetch = (...args) => {
+    window.fetch = async (...args) => {
       const root = document.documentElement;
       root.dataset.intakeFetchCount = String(
         Number(root.dataset.intakeFetchCount ?? "0") + 1,

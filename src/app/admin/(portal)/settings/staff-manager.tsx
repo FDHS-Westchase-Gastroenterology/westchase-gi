@@ -40,7 +40,7 @@ function isStaffFailureCode(value: string): value is StaffFailureCode {
   return value in FAILURE_COPY;
 }
 
-function failureMessage(result: MutationOutcome): string {
+function failureMessage(result: Readonly<MutationOutcome>): string {
   const code = result.code ?? "unavailable";
   return isStaffFailureCode(code) ? FAILURE_COPY[code] : FAILURE_COPY.unavailable;
 }
@@ -49,6 +49,7 @@ function parseStaffRole(value: string): "admin" | "staff" | null {
   return value === "admin" || value === "staff" ? value : null;
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function StaffList({
   staff,
   isAdmin,
@@ -59,7 +60,7 @@ function StaffList({
   onRoleDraft,
   run,
   resendFromRow,
-}: {
+}: Readonly<{
   staff: StaffRow[];
   isAdmin: boolean;
   selfUserId: string;
@@ -68,8 +69,8 @@ function StaffList({
   roleDrafts: Record<string, "admin" | "staff">;
   onRoleDraft: (userId: string, role: "admin" | "staff") => void;
   run: (key: string, action: () => Promise<MutationOutcome>) => void;
-  resendFromRow: (person: StaffRow) => void;
-}) {
+  resendFromRow: (person: Readonly<StaffRow>) => void;
+}>) {
   return (
     <ul data-testid="staff-list" className="mt-5 divide-y divide-[var(--color-line)]">
       {staff.map((person) => {
@@ -104,7 +105,9 @@ function StaffList({
               >
                 {signInReadFailed
                   ? "Sign-in info unavailable"
-                  : person.lastSignInAt
+                  : person.lastSignInAt !== undefined &&
+                      person.lastSignInAt !== null &&
+                      person.lastSignInAt !== ""
                     ? `Last sign in ${formatReceived(person.lastSignInAt)}`
                     : "No sign-ins yet"}
               </p>
@@ -147,7 +150,7 @@ function StaffList({
                               `Cancel the pending invitation for ${person.display_name}? Their setup link will stop working.`,
                             )
                           ) {
-                            run(`deactivate:${person.user_id}`, () =>
+                            run(`deactivate:${person.user_id}`, async () =>
                               deactivateStaff({ id: person.user_id }),
                             );
                           }
@@ -182,14 +185,14 @@ function StaffList({
                       type="button"
                       data-action="apply-role"
                       disabled={rowPending}
-                      onClick={() =>
-                        run(`role:${person.user_id}`, () =>
+                      onClick={() => {
+                        run(`role:${person.user_id}`, async () =>
                           changeStaffRole({
                             userId: person.user_id,
                             role: draft,
                           }),
-                        )
-                      }
+                        );
+                      }}
                       className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
                     >
                       Apply
@@ -205,7 +208,7 @@ function StaffList({
                           `Deactivate ${person.display_name}? They are locked out immediately and this can only be undone by an engineer.`,
                         )
                       ) {
-                        run(`deactivate:${person.user_id}`, () =>
+                        run(`deactivate:${person.user_id}`, async () =>
                           deactivateStaff({ id: person.user_id }),
                         );
                       }
@@ -228,17 +231,18 @@ function StaffList({
   );
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 export function StaffManager({
   staff,
   isAdmin,
   selfUserId,
   signInReadFailed = false,
-}: {
+}: Readonly<{
   staff: StaffRow[];
   isAdmin: boolean;
   selfUserId: string;
   signInReadFailed?: boolean;
-}) {
+}>) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [pendingKey, setPendingKey] = useState<string | null>(null);
@@ -268,14 +272,16 @@ export function StaffManager({
     });
   }
 
-  function showInviteResult(email: string, result: MutationOutcome): boolean {
+  function showInviteResult(email: string, result: Readonly<MutationOutcome>): boolean {
     if (!result.ok) {
       setError(failureMessage(result));
       return false;
     }
     if (
       (result.delivery !== "accepted" && result.delivery !== "failed") ||
-      (result.delivery === "failed" && !result.fallbackSetupUrl)
+      (result.delivery === "failed" &&
+        (result.fallbackSetupUrl === undefined ||
+          result.fallbackSetupUrl === ""))
     ) {
       setError(FAILURE_COPY.unavailable);
       return false;
@@ -291,10 +297,18 @@ export function StaffManager({
   }
 
   function inviteFromForm(formData: FormData) {
-    const email = String(formData.get("email") ?? "").trim();
-    const displayName = String(formData.get("displayName") ?? "").trim();
-    const role =
-      String(formData.get("role") ?? "staff") === "admin" ? "admin" : "staff";
+    const rawEmail = formData.get("email");
+    const rawDisplayName = formData.get("displayName");
+    const rawRole = formData.get("role");
+    const email =
+      rawEmail === null || rawEmail instanceof File ? "" : rawEmail.trim();
+    const displayName =
+      rawDisplayName === null || rawDisplayName instanceof File
+        ? ""
+        : rawDisplayName.trim();
+    const roleValue =
+      rawRole === null || rawRole instanceof File ? "staff" : rawRole;
+    const role = roleValue === "admin" ? "admin" : "staff";
     if (!email || !displayName) return;
 
     setError(null);
@@ -307,7 +321,7 @@ export function StaffManager({
     });
   }
 
-  function resendFromRow(person: StaffRow) {
+  function resendFromRow(person: Readonly<StaffRow>) {
     setError(null);
     setIssued(null);
     setPendingKey(`resend:${person.user_id}`);
@@ -332,7 +346,7 @@ export function StaffManager({
         are locked out immediately.
       </p>
 
-      {error && (
+      {error !== null && error !== "" && (
         <p
           role="alert"
           className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
@@ -362,7 +376,9 @@ export function StaffManager({
                 : "Email delivery could not be confirmed. Share this one-time setup link securely if they do not receive the message; it is shown only this once."}
             </p>
           </div>
-          {issued.delivery === "failed" && issued.fallbackSetupUrl && (
+          {issued.delivery === "failed" &&
+            issued.fallbackSetupUrl !== undefined &&
+            issued.fallbackSetupUrl !== "" && (
             <code
               data-testid="fallback-setup-url"
               className="mt-3 block break-all rounded-[var(--radius-sm)] bg-white px-3 py-2 font-mono text-[0.8rem] leading-relaxed text-[var(--color-ink)]"
@@ -371,17 +387,21 @@ export function StaffManager({
             </code>
           )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {issued.delivery === "failed" && issued.fallbackSetupUrl && (
+            {issued.delivery === "failed" &&
+              issued.fallbackSetupUrl !== undefined &&
+              issued.fallbackSetupUrl !== "" && (
               <button
                 type="button"
                 onClick={() => {
                   void navigator.clipboard
                     .writeText(issued.fallbackSetupUrl ?? "")
-                    .then(() =>
+                    .then(() => {
                       setIssued((current) =>
-                        current ? { ...current, copied: true } : current,
-                      ),
-                    )
+                        current !== null
+                          ? { ...current, copied: true }
+                          : current,
+                      );
+                    })
                     .catch(() => {
                       setError(
                         "Could not copy the setup link. Select and copy it manually.",
@@ -395,7 +415,9 @@ export function StaffManager({
             )}
             <button
               type="button"
-              onClick={() => setIssued(null)}
+              onClick={() => {
+                setIssued(null);
+              }}
               className="flex min-h-10 items-center rounded-[var(--radius-sm)] px-3.5 text-[0.85rem] font-bold text-[var(--color-muted)]"
             >
               Dismiss
@@ -411,9 +433,9 @@ export function StaffManager({
         signInReadFailed={signInReadFailed}
         pendingKey={pendingKey}
         roleDrafts={roleDrafts}
-        onRoleDraft={(userId, role) =>
-          setRoleDrafts((current) => ({ ...current, [userId]: role }))
-        }
+        onRoleDraft={(userId, role) => {
+          setRoleDrafts((current) => ({ ...current, [userId]: role }));
+        }}
         run={run}
         resendFromRow={resendFromRow}
       />

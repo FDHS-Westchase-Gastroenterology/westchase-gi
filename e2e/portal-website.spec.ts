@@ -32,7 +32,7 @@ async function signIn(page: Page, email: string, password: string) {
 test.describe("website custody", () => {
   test.describe.configure({ mode: "serial" });
 
-  test.beforeEach(async ({}, testInfo) => {
+  test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== "chromium", "JS portal UI");
   });
 
@@ -44,7 +44,9 @@ test.describe("website custody", () => {
     });
     expect(created.error).toBeNull();
     staffUserId = created.data.user?.id ?? null;
-    if (!staffUserId) throw new Error("Staff fixture creation failed");
+    if (staffUserId === null || staffUserId === "") {
+      throw new Error("Staff fixture creation failed");
+    }
 
     const profile = await db.from("staff_profiles").insert({
       user_id: staffUserId,
@@ -58,7 +60,9 @@ test.describe("website custody", () => {
   });
 
   test.afterAll(async () => {
-    if (!staffUserId) return;
+    if (staffUserId === null || staffUserId === "") {
+      return;
+    }
     await db.from("staff_profiles").delete().eq("user_id", staffUserId);
     await db.auth.admin.deleteUser(staffUserId);
   });

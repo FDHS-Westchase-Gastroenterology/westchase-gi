@@ -15,7 +15,7 @@ import { ArrowRight, MessageSquare } from "@/components/icons";
 
 interface PageProps { params: Promise<{ locale: string }> }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
@@ -27,7 +27,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   );
 }
 
-function PrepList({ docs, locale }: { docs: PrepDoc[]; locale: Locale }) {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function PrepList({ docs, locale }: Readonly<{ docs: PrepDoc[]; locale: Locale }>) {
   return (
     <ul className="mt-6 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
       {docs.map((doc) => (
@@ -52,15 +53,16 @@ function PrepList({ docs, locale }: { docs: PrepDoc[]; locale: Locale }) {
   );
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function GroupBlock({
   group,
   locale,
   delay = 0,
-}: {
+}: Readonly<{
   group: PrepGroup;
   locale: Locale;
   delay?: RevealDelay;
-}) {
+}>) {
   return (
     <Reveal delay={delay}>
       <h2 className="h2 heading-tick">{group.title[locale]}</h2>
@@ -70,7 +72,7 @@ function GroupBlock({
   );
 }
 
-export default async function ProcedurePrepPage({ params }: PageProps) {
+export default async function ProcedurePrepPage({ params }: Readonly<PageProps>) {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);

@@ -21,7 +21,7 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
-export default function ReviewLayout({ children }: { children: React.ReactNode }) {
+export default function ReviewLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={fontVariables}>
       <body>{children}</body>

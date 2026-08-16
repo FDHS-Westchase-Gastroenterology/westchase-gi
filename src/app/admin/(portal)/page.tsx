@@ -55,7 +55,8 @@ interface Task {
   href: string;
   label: string;
   description: string;
-  icon: (props: SVGProps<SVGSVGElement>) => React.ReactNode;
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+  icon: (props: Readonly<SVGProps<SVGSVGElement>>) => React.ReactNode;
 }
 
 const newestPreviewSchema = z.object({
@@ -167,8 +168,13 @@ export default async function AdminHomePage() {
     throw new Error("Queue preview read failed: invalid");
   }
   const oldest = oldestParsed.data;
+  const oldestPreview = oldest.at(0);
   const oldestWaiting =
-    availableNewCount && oldest[0] ? waitingSince(oldest[0].created_at, now) : null;
+    availableNewCount !== null &&
+    availableNewCount !== 0 &&
+    oldestPreview !== undefined
+      ? waitingSince(oldestPreview.created_at, now)
+      : null;
   // Zero recipients is a real, legal state worth flagging; a failed
   // Recipients read is not evidence of it, so the warning stays silent then.
   const noActiveRecipients = !recipientsReadError && recipientCount === 0;
@@ -236,7 +242,7 @@ export default async function AdminHomePage() {
                 {headlineFor(availableNewCount)}
               </p>
 
-              {oldestWaiting ? (
+              {oldestWaiting !== null && oldestWaiting !== "" ? (
                 <p
                   data-testid="queue-overview-oldest"
                   className="mt-2 text-[0.92rem] text-[var(--color-body)]"
@@ -299,7 +305,7 @@ export default async function AdminHomePage() {
             </p>
           ) : null}
 
-          {deliveryFailureCount ? (
+          {deliveryFailureCount !== null && deliveryFailureCount !== 0 ? (
             <p
               data-testid="delivery-failure-warning"
               className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.92rem] leading-relaxed text-[var(--color-ink)]"

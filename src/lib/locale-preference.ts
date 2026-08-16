@@ -34,7 +34,7 @@ function hasRememberedLocale(): boolean {
  * the chooser's gating evidence must survive response caches (I4). */
 export function browserLocale(): Locale {
   try {
-    for (const tag of navigator.languages ?? [navigator.language]) {
+    for (const tag of navigator.languages) {
       const primary = tag.toLowerCase().split("-")[0];
       if (isLocale(primary)) return primary;
     }

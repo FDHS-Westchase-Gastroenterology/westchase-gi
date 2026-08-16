@@ -15,7 +15,7 @@ import { ArrowRight, ClipboardCheck, ExternalLink, Heart, MessageSquare, Phone }
 
 interface PageProps { params: Promise<{ locale: string }> }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return { ...meta, title: { absolute: dict.meta.home.title } };
 }
 
-export default async function HomePage({ params }: PageProps) {
+export default async function HomePage({ params }: Readonly<PageProps>) {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);

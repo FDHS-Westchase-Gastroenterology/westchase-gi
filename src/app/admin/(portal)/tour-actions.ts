@@ -11,7 +11,7 @@ import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
 import { serviceClient } from "@/lib/portal/server";
 
 async function setTourDismissedRpc(
-  session: PortalSessionUser,
+  session: Readonly<PortalSessionUser>,
   dismissed: boolean,
 ): Promise<void> {
   const { error } = await serviceClient().rpc(
@@ -28,7 +28,7 @@ async function setTourDismissedRpc(
 }
 
 async function setTourDismissed(
-  session: PortalSessionUser,
+  session: Readonly<PortalSessionUser>,
   dismissed: boolean,
 ): Promise<never> {
   await setTourDismissedRpc(session, dismissed);
@@ -53,7 +53,7 @@ const tourProgressSchema = z
   })
   .refine((value) => value.stepReached <= value.totalSteps);
 
-function parseTourProgress(input: TourProgressInput): TourProgress {
+function parseTourProgress(input: Readonly<TourProgressInput>): TourProgress {
   const parsed = tourProgressSchema.safeParse(input);
   if (!parsed.success) {
     throw new Error("Invalid tour progress");
@@ -72,7 +72,7 @@ export async function restartPortalTourAction(): Promise<never> {
 }
 
 export async function finishPortalTourAction(
-  input: TourProgressInput,
+  input: Readonly<TourProgressInput>,
 ): Promise<never> {
   const session = await requireRole("staff", { unauthenticated: "throw" });
   const progress = parseTourProgress(input);

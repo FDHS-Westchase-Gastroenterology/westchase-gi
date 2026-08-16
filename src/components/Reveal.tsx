@@ -18,22 +18,23 @@ interface RevealProps {
  * (see globals.css `html.js .reveal`). A failsafe timeout guarantees content
  * is never left hidden on headless renders or missing IntersectionObserver.
  */
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 export function Reveal({
   children,
   as: Tag = "div",
   className = "",
   delay = 0,
   variant = "up",
-}: RevealProps) {
+}: Readonly<RevealProps>) {
   const ref = useRef<HTMLElement | null>(null);
   const [shown, setShown] = useState(false);
 
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el) return undefined;
     if (!("IntersectionObserver" in globalThis)) {
-      const raf = requestAnimationFrame(() => setShown(true));
-      return () => cancelAnimationFrame(raf);
+      const raf = requestAnimationFrame(() => { setShown(true); });
+      return () => { cancelAnimationFrame(raf); };
     }
     const io = new IntersectionObserver(
       (entries) => {
@@ -47,7 +48,7 @@ export function Reveal({
       { threshold: 0.12, rootMargin: "0px 0px -6% 0px" }
     );
     io.observe(el);
-    const failsafe = window.setTimeout(() => setShown(true), 1500);
+    const failsafe = window.setTimeout(() => { setShown(true); }, 1500);
     return () => {
       io.disconnect();
       window.clearTimeout(failsafe);

@@ -22,12 +22,12 @@ export function getMaintainerManagementState(
 }
 
 interface MaintainerState {
-  maintainers: { userId: number }[];
-  invitations: { userId: number; invitationId: number }[];
+  readonly maintainers: readonly { readonly userId: number }[];
+  readonly invitations: readonly { readonly userId: number; readonly invitationId: number }[];
 }
 
 export function invitationIsActive(
-  state: MaintainerState,
+  state: Readonly<MaintainerState>,
   userId: number,
 ): boolean {
   return (
@@ -37,7 +37,7 @@ export function invitationIsActive(
 }
 
 export function invitationIsCancelled(
-  state: MaintainerState,
+  state: Readonly<MaintainerState>,
   userId: number,
   invitationId: number,
 ): boolean {
@@ -50,22 +50,13 @@ export function invitationIsCancelled(
 }
 
 export function maintainerIsRevoked(
-  state: MaintainerState,
+  state: Readonly<MaintainerState>,
   userId: number,
 ): boolean {
   return !invitationIsActive(state, userId);
 }
 
-export async function runMaintainerOperation<Audit, Snapshot>({
-  begin,
-  perform,
-  refresh,
-  desired,
-  finish,
-  failureCode,
-  providerStatus,
-  afterAttempt,
-}: {
+export async function runMaintainerOperation<Audit, Snapshot>(options: {
   begin(): Promise<Audit>;
   perform(): Promise<number>;
   refresh(): Promise<Snapshot>;
@@ -75,13 +66,13 @@ export async function runMaintainerOperation<Audit, Snapshot>({
     outcome: "succeeded" | "failed" | "unconfirmed",
     detail: JsonObject,
   ): Promise<void>;
-  failureCode(error: Error | undefined, snapshot: Snapshot): MaintainerFailureCode;
-  providerStatus(error: Error): number | null;
+  failureCode(error: Readonly<Error | undefined>, snapshot: Snapshot): MaintainerFailureCode;
+  providerStatus(error: Readonly<Error>): number | null;
   afterAttempt(): void;
 }): Promise<MaintainerMutationResult> {
   let audit: Audit;
   try {
-    audit = await begin();
+    audit = await options.begin();
   } catch {
     return { ok: false, code: "unavailable" };
   }
@@ -89,11 +80,11 @@ export async function runMaintainerOperation<Audit, Snapshot>({
   let providerError: Error | undefined;
   let status: number | null = null;
   try {
-    status = await perform();
+    status = await options.perform();
   } catch (error) {
     if (error instanceof Error) {
       providerError = error;
-      status = providerStatus(error);
+      status = options.providerStatus(error);
     } else {
       status = null;
     }
@@ -102,14 +93,14 @@ export async function runMaintainerOperation<Audit, Snapshot>({
   let outcome: "succeeded" | "failed" | "unconfirmed";
   let snapshot: Snapshot | undefined;
   try {
-    snapshot = await refresh();
-    outcome = desired(snapshot) ? "succeeded" : "failed";
+    snapshot = await options.refresh();
+    outcome = options.desired(snapshot) ? "succeeded" : "failed";
   } catch {
     outcome = "unconfirmed";
   }
 
   try {
-    await finish(
+    await options.finish(
       audit,
       outcome,
       status === null ? {} : { provider_status: status },
@@ -117,7 +108,7 @@ export async function runMaintainerOperation<Audit, Snapshot>({
   } catch {
     outcome = "unconfirmed";
   } finally {
-    afterAttempt();
+    options.afterAttempt();
   }
 
   if (outcome === "succeeded") return { ok: true };
@@ -126,6 +117,9 @@ export async function runMaintainerOperation<Audit, Snapshot>({
   }
   return {
     ok: false,
-    code: snapshot ? failureCode(providerError, snapshot) : "unavailable",
+    code:
+      snapshot !== undefined
+        ? options.failureCode(providerError, snapshot)
+        : "unavailable",
   };
 }

@@ -12,14 +12,14 @@ import { Reveal } from "@/components/Reveal";
 
 interface PageProps { params: Promise<{ locale: string }> }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
   return pageMetadata(locale, "/contact", dict.meta.contact.title, dict.meta.contact.description);
 }
 
-export default async function ContactPage({ params }: PageProps) {
+export default async function ContactPage({ params }: Readonly<PageProps>) {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);

@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
+import { z } from "zod";
 import { intakeResponseSchema } from "../src/lib/portal/contracts";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
@@ -65,7 +66,7 @@ function recipientItem(page: Page, email: string) {
 test.describe("portal management UI", () => {
   test.describe.configure({ mode: "serial" });
 
-  test.beforeEach(async ({}, testInfo) => {
+  test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== "chromium", "JS portal UI");
   });
 
@@ -79,7 +80,10 @@ test.describe("portal management UI", () => {
       .from("staff_profiles")
       .select("user_id")
       .like("email", `ux-${runId}-%`);
-    for (const row of leftovers ?? []) {
+    const leftoverRows = z
+      .array(z.object({ user_id: z.string() }))
+      .parse(leftovers ?? []);
+    for (const row of leftoverRows) {
       await db.from("staff_profiles").delete().eq("user_id", row.user_id);
       await db.auth.admin.deleteUser(row.user_id);
     }
@@ -231,7 +235,11 @@ test.describe("portal management UI", () => {
             .select("recipient, status")
             .eq("request_id", body.id)
             .eq("type", "notification");
-          return (data ?? []).map((row) => row.recipient).sort();
+          return z
+            .array(z.object({ recipient: z.string() }))
+            .parse(data ?? [])
+            .map((row) => row.recipient)
+            .sort((left, right) => left.localeCompare(right));
         },
         { timeout: 20_000 },
       )

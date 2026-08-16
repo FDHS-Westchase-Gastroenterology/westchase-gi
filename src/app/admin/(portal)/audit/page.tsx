@@ -60,9 +60,9 @@ function externalAuditSummary(detail: Json): ExternalAuditSummary | null {
 
 export default async function AdminAuditPage({
   searchParams,
-}: {
+}: Readonly<{
   searchParams: Promise<{ page?: string | string[] }>;
-}) {
+}>) {
   const session = await requireRole("staff");
   const page = parsePage((await searchParams).page);
   const from = (page - 1) * PAGE_SIZE;
@@ -95,7 +95,7 @@ export default async function AdminAuditPage({
     throw new Error(`Audit read failed: ${error.code}`);
   }
 
-  const parsedEntries = z.array(auditEntrySchema).safeParse(rows ?? []);
+  const parsedEntries = z.array(auditEntrySchema).safeParse(rows);
   if (!parsedEntries.success) {
     throw new Error("Audit read failed: invalid");
   }
@@ -218,7 +218,7 @@ export default async function AdminAuditPage({
                         </td>
                         <td className="px-5 py-3 text-[var(--color-body)]">
                           {entry.entity}
-                          {entry.entity_id ? (
+                          {entry.entity_id !== null && entry.entity_id !== "" ? (
                             <span className="ml-1.5 text-[0.8rem] text-[var(--color-muted)]">
                               {entry.entity_id.slice(0, 8)}…
                             </span>

@@ -6,10 +6,20 @@
 import type { PrepSection } from "./types";
 import type { EN } from "./common";
 
-export type Flavor = typeof EN;
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+type DeepReadonly<T> = T extends (...args: never[]) => void
+  ? T
+  : T extends (infer E)[]
+    ? readonly DeepReadonly<E>[]
+    : T extends object
+      ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
+      : T;
+
+/** Flavor is an immutable bilingual copy table (English is the source of truth). */
+export type Flavor = DeepReadonly<typeof EN>;
 
 /** "Please bring the following items with you" + jewelry/clothing note. */
-export function bringSection(f: Flavor): PrepSection {
+export function bringSection(f: Readonly<Flavor>): PrepSection {
   return {
     heading: f.bringHeading,
     blocks: [
@@ -21,8 +31,8 @@ export function bringSection(f: Flavor): PrepSection {
 
 /** Companion, rest, diabetic, and medication reminders. */
 export function remindersSection(
-  f: Flavor,
-  opts: { fiber: boolean; companion?: string }
+  f: Readonly<Flavor>,
+  opts: Readonly<{ fiber: boolean; companion?: string }>
 ): PrepSection {
   return {
     heading: f.remindersHeading,
@@ -48,15 +58,15 @@ export function remindersSection(
 }
 
 /** The boxed follow-up-appointment note. */
-export function followUpSection(f: Flavor): PrepSection {
+export function followUpSection(f: Readonly<Flavor>): PrepSection {
   return { blocks: [{ kind: "note", text: [f.followUp] }] };
 }
 
 /** Appointment line, day-of rules, what to bring, standard reminders,
  *  and the follow-up note — the shared front page of the endoscopy sheets. */
 export function standardFront(
-  f: Flavor,
-  opts: { fiber: boolean } = { fiber: true }
+  f: Readonly<Flavor>,
+  opts: Readonly<{ fiber: boolean }> = { fiber: true }
 ): PrepSection[] {
   return [
     {
@@ -73,7 +83,7 @@ export function standardFront(
 }
 
 /** The closing "do not eat/drink" + "recommended liquids" pair. */
-export function avoidAndLiquids(f: Flavor): PrepSection[] {
+export function avoidAndLiquids(f: Readonly<Flavor>): PrepSection[] {
   return [
     {
       heading: f.avoidHeading,

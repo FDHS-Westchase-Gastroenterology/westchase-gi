@@ -27,7 +27,7 @@ const INTAKE_CLIENT_HASH_DOMAIN = "wgi:intake-rate-limit:client:v1\0";
 
 function logOperationalFailure(
   event: string,
-  context: Record<string, number | string | null> = {},
+  context: Readonly<Record<string, number | string | null>> = {},
 ) {
   // Never pass request payloads or provider error messages here: they can
   // Contain patient fields. IDs, counts, status codes, and stable codes only.
@@ -62,7 +62,7 @@ async function issueRequestReceipt(
   const secret = randomReceiptSecret();
 
   try {
-    const { data, error } = await client
+    const result = await client
       .from("request_events")
       .insert({
         request_id: requestId,
@@ -75,16 +75,17 @@ async function issueRequestReceipt(
       })
       .select("id")
       .single();
+    const parsed = z.object({ id: z.string() }).safeParse(result.data);
 
-    if (error || !data) {
+    if (result.error !== null || !parsed.success) {
       logOperationalFailure("receipt issue failed", {
         requestId,
-        code: error?.code ?? "missing_row",
+        code: result.error !== null ? result.error.code : "missing_row",
       });
       return undefined;
     }
 
-    return `${data.id}.${secret}`;
+    return `${parsed.data.id}.${secret}`;
   } catch {
     logOperationalFailure("receipt issue failed", {
       requestId,
@@ -125,7 +126,7 @@ export async function consumeRequestReceipt(
       .select("id")
       .maybeSingle();
 
-    if (error) {
+    if (error !== null) {
       logOperationalFailure("receipt consume failed", {
         code: error.code,
       });
@@ -144,7 +145,8 @@ export async function consumeRequestReceipt(
 function clientHash(headers: Headers): string {
   const forwardedFor =
     headers.get("x-vercel-forwarded-for") ?? headers.get("x-forwarded-for");
-  const firstHop = forwardedFor?.split(",", 1)[0]?.trim() || "missing";
+  const hop = forwardedFor?.split(",", 1)[0]?.trim();
+  const firstHop = hop !== undefined && hop !== "" ? hop : "missing";
 
   // Vercel overwrites X-Vercel-Forwarded-For at its edge. Local callers fall
   // Back to X-Forwarded-For; callers without either header share the
@@ -159,31 +161,32 @@ async function rateLimitAllows(
   client: SupabaseClient,
   headers: Headers,
 ): Promise<boolean | null> {
-  const { data, error } = await client.rpc("portal_check_intake_rate_limit", {
+  const result = await client.rpc("portal_check_intake_rate_limit", {
     p_client_hash: clientHash(headers),
     p_limit: INTAKE_RATE_LIMIT.limit,
     p_window_seconds: INTAKE_RATE_LIMIT.windowSeconds,
   });
+  const parsed = z.boolean().safeParse(result.data);
 
-  if (error || !z.boolean().safeParse(data).success) {
+  if (result.error !== null || !parsed.success) {
     logOperationalFailure("rate-limit claim failed", {
-      code: error?.code ?? "invalid_result",
+      code: result.error !== null ? result.error.code : "invalid_result",
     });
     return null;
   }
 
-  return data;
+  return parsed.data;
 }
 
 async function recordNotificationEvents(
   client: SupabaseClient,
   requestId: string,
-  events: NotificationEvent[],
+  events: readonly NotificationEvent[],
 ) {
   if (events.length === 0) return;
 
   const { error } = await client.from("request_events").insert(events);
-  if (error) {
+  if (error !== null) {
     logOperationalFailure("notification event write failed", {
       requestId,
       eventCount: events.length,
@@ -201,7 +204,7 @@ async function notifyActiveRecipients(
     .select("id, email")
     .eq("active", true);
 
-  if (error) {
+  if (error !== null) {
     logOperationalFailure("recipient lookup failed", {
       requestId,
       code: error.code,
@@ -211,11 +214,11 @@ async function notifyActiveRecipients(
 
   const recipients = z
     .array(z.object({ id: z.string(), email: z.string() }))
-    .safeParse(data ?? []);
+    .safeParse(data);
   if (!recipients.success || recipients.data.length === 0) return;
 
   const adminUrl = portalUrl("/admin");
-  if (!adminUrl) {
+  if (adminUrl === null || adminUrl === "") {
     logOperationalFailure("portal URL unavailable", { requestId });
   }
 
@@ -280,24 +283,28 @@ export async function processIntake(
   }
 
   const input = parsed.data;
-  const { data, error } = await client
+  const result = await client
     .from("requests")
     .insert({
       name: input.name,
       phone: input.phone,
-      email: input.email || null,
+      email: input.email !== "" ? input.email : null,
       location: input.location,
       preferred_time: input.time,
-      message: input.message || null,
+      message:
+        input.message !== undefined && input.message !== ""
+          ? input.message
+          : null,
       locale: input.locale,
       source_path: input.sourcePath,
     })
     .select("id")
     .single();
+  const inserted = z.object({ id: z.string() }).safeParse(result.data);
 
-  if (error || !data) {
+  if (result.error !== null || !inserted.success) {
     logOperationalFailure("request insert failed", {
-      code: error?.code ?? "missing_row",
+      code: result.error !== null ? result.error.code : "missing_row",
     });
     return {
       response: { ok: false, code: "unavailable" },
@@ -306,21 +313,21 @@ export async function processIntake(
   }
 
   const receiptToken = issueReceipt
-    ? await issueRequestReceipt(client, data.id, input.locale)
+    ? await issueRequestReceipt(client, inserted.data.id, input.locale)
     : undefined;
 
   try {
-    await notifyActiveRecipients(client, data.id);
+    await notifyActiveRecipients(client, inserted.data.id);
   } catch {
     // The durable request is authoritative; notification failures never
     // Downgrade the accepted response.
     logOperationalFailure("notification fan-out failed", {
-      requestId: data.id,
+      requestId: inserted.data.id,
     });
   }
 
   return {
-    response: { ok: true, id: data.id },
+    response: { ok: true, id: inserted.data.id },
     status: 201,
     receiptToken,
   };

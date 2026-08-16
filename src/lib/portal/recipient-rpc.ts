@@ -28,7 +28,7 @@ export type RecipientMutationTransportResult<Data, CompatibilityResult> =
  * path: permissions, validation, and infrastructure errors must fail closed.
  */
 export function isRecipientRpcMissing(
-  error: RecipientRpcError | undefined,
+  error: Readonly<RecipientRpcError | undefined>,
 ): boolean {
   return error?.code === "PGRST202";
 }

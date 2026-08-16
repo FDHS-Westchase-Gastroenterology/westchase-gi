@@ -7,7 +7,7 @@ import { ArrowRight, ExternalLink, Facebook, Mail, MapPin, MessageSquare, Phone,
 
 interface FooterProps { locale: Locale; dict: Dictionary }
 
-export function Footer({ locale, dict }: FooterProps) {
+export function Footer({ locale, dict }: Readonly<FooterProps>) {
   const c = dict.common;
   const p = (path: string) => localePath(locale, path);
   const year = new Date().getFullYear();

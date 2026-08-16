@@ -12,7 +12,7 @@ const BADGE_STYLES = {
   closed: "bg-[var(--color-line)] text-[var(--color-muted)]",
 } as const satisfies Record<RequestStatus, string>;
 
-export function StatusBadge({ status }: { status: RequestStatus }) {
+export function StatusBadge({ status }: Readonly<{ status: RequestStatus }>) {
   return (
     <span
       data-status={status}

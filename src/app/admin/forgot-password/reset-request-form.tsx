@@ -5,7 +5,6 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { requestPasswordResetAction } from "@/app/admin/actions";
 import type { ResetRequestActionState } from "@/app/admin/actions";
 import {
-  PASSWORD_RESET_LINK_EXPIRY_MINUTES,
   PASSWORD_RESET_RESEND_COOLDOWN_SECONDS,
   RESET_REQUEST_MESSAGE,
 } from "@/lib/portal/contracts";
@@ -24,21 +23,23 @@ function ResendControl({
   action,
   email,
   pending,
-}: {
+}: Readonly<{
   action: (payload: FormData) => void;
   email: string;
   pending: boolean;
-}) {
+}>) {
   const [secondsRemaining, setSecondsRemaining] = useState(
     PASSWORD_RESET_RESEND_COOLDOWN_SECONDS,
   );
 
   useEffect(() => {
-    if (secondsRemaining <= 0) return;
+    if (secondsRemaining <= 0) return undefined;
     const timer = window.setTimeout(() => {
       setSecondsRemaining((current) => Math.max(0, current - 1));
     }, 1000);
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [secondsRemaining]);
 
   return (
@@ -64,12 +65,12 @@ export function ResetRequestForm({
   inline = false,
   onBack,
   onEmailChange,
-}: {
+}: Readonly<{
   initialEmail?: string;
   inline?: boolean;
   onBack?: () => void;
   onEmailChange?: (email: string) => void;
-}) {
+}>) {
   const [state, formAction, pending] = useActionState(
     requestPasswordResetAction,
     INITIAL_STATE,
@@ -130,11 +131,8 @@ export function ResetRequestForm({
             folders.
           </p>
           <p>
-            The one-time link expires in{" "}
-            {PASSWORD_RESET_LINK_EXPIRY_MINUTES === 60
-              ? "one hour"
-              : `${PASSWORD_RESET_LINK_EXPIRY_MINUTES} minutes`}
-            . Use the newest message if you requested more than one.
+            The one-time link expires in one hour. Use the newest message if
+            you requested more than one.
           </p>
         </div>
 
@@ -194,7 +192,9 @@ export function ResetRequestForm({
       <form
         action={formAction}
         className={inline ? "space-y-5" : "mt-7 space-y-5"}
-        onSubmit={() => setEditing(false)}
+        onSubmit={() => {
+          setEditing(false);
+        }}
       >
         <div>
           <label
@@ -216,7 +216,9 @@ export function ResetRequestForm({
             maxLength={254}
             disabled={pending}
             value={email}
-            onChange={(event) => updateEmail(event.target.value)}
+            onChange={(event) => {
+              updateEmail(event.target.value);
+            }}
             className={inputClassName}
           />
         </div>

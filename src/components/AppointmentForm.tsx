@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { FormEvent } from "react";
 import { usePathname } from "next/navigation";
 import { site } from "@/lib/site";
 import type { Locale } from "@/lib/site";
@@ -40,7 +39,7 @@ function requireKnownIntakeStatus(response: Response) {
 }
 
 /** Call/text recovery pair used by both the success card and problem alert. */
-function ContactActions({ dict }: { dict: Dictionary }) {
+function ContactActions({ dict }: Readonly<{ dict: Dictionary }>) {
   return (
     <>
       <a href={site.phone.href} className="btn btn-navy">
@@ -56,10 +55,10 @@ function ContactActions({ dict }: { dict: Dictionary }) {
 function SuccessCard({
   dict,
   cardRef,
-}: {
+}: Readonly<{
   dict: Dictionary;
   cardRef: React.RefObject<HTMLDivElement | null>;
-}) {
+}>) {
   const f = dict.appointment.form;
   return (
     <div
@@ -87,7 +86,7 @@ interface ProblemAlertProps {
   alertRef: React.RefObject<HTMLDivElement | null>;
 }
 
-function ProblemAlert({ dict, status, alertRef }: ProblemAlertProps) {
+function ProblemAlert({ dict, status, alertRef }: Readonly<ProblemAlertProps>) {
   const f = dict.appointment.form;
   return (
     <div
@@ -109,26 +108,32 @@ function ProblemAlert({ dict, status, alertRef }: ProblemAlertProps) {
   );
 }
 
+function formText(data: FormData, name: string): string {
+  const value = data.get(name);
+  if (value instanceof File || value === null) return "";
+  return value;
+}
+
 function localFieldErrors(
-  f: Dictionary["appointment"]["form"],
+  f: Readonly<Dictionary["appointment"]["form"]>,
   data: FormData,
 ): FieldErrors {
   const next: FieldErrors = {};
-  const name = String(data.get("name") || "").trim();
-  const phone = String(data.get("phone") || "").trim();
-  const email = String(data.get("email") || "").trim();
+  const name = formText(data, "name").trim();
+  const phone = formText(data, "phone").trim();
+  const email = formText(data, "email").trim();
 
-  if (!name) next.name = f.errName;
-  if (!phone || phone.replace(/\D/g, "").length < 10) next.phone = f.errPhone;
+  if (name === "") next.name = f.errName;
+  if (phone === "" || phone.replace(/\D/g, "").length < 10) next.phone = f.errPhone;
   // Email is optional — many patients have none; phone is the callback
   // Channel. Validate the format only when something was entered.
-  if (email && !isMailbox(email)) next.email = f.errEmail;
+  if (email !== "" && !isMailbox(email)) next.email = f.errEmail;
   return next;
 }
 
 function serverFieldErrors(
-  f: Dictionary["appointment"]["form"],
-  fieldErrors: Record<string, string>,
+  f: Readonly<Dictionary["appointment"]["form"]>,
+  fieldErrors: Readonly<Record<string, string>>,
 ): FieldErrors {
   const next: FieldErrors = {};
   if ("name" in fieldErrors) next.name = f.errName;
@@ -137,7 +142,7 @@ function serverFieldErrors(
   return next;
 }
 
-export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
+export function AppointmentForm({ locale, dict }: Readonly<AppointmentFormProps>) {
   const f = dict.appointment.form;
   const pathname = usePathname();
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -171,7 +176,11 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     setStatus(state);
   }
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React submit events expose a mutable currentTarget
+  async function handleSubmit(e: {
+    preventDefault(): void;
+    currentTarget: HTMLFormElement;
+  }) {
     e.preventDefault();
     if (submittingRef.current) return;
 
@@ -190,16 +199,19 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     setStatus("submitting");
     trackFormEvent("form_submit", pathname, locale);
 
+    const message = formText(data, "message").trim();
+    const location = formText(data, "location");
+    const time = formText(data, "time");
     const payload = {
-      name: String(data.get("name") || "").trim(),
-      phone: String(data.get("phone") || "").trim(),
-      email: String(data.get("email") || "").trim(),
-      location: String(data.get("location") || "any"),
-      time: String(data.get("time") || "any"),
-      message: String(data.get("message") || "").trim() || undefined,
+      name: formText(data, "name").trim(),
+      phone: formText(data, "phone").trim(),
+      email: formText(data, "email").trim(),
+      location: location !== "" ? location : "any",
+      time: time !== "" ? time : "any",
+      message: message !== "" ? message : undefined,
       locale,
-      sourcePath: pathname || `/${locale}/appointment`,
-      [HONEYPOT_FIELD]: String(data.get(HONEYPOT_FIELD) || ""),
+      sourcePath: pathname !== "" ? pathname : `/${locale}/appointment`,
+      [HONEYPOT_FIELD]: formText(data, HONEYPOT_FIELD),
     };
 
     let wasThrottled = false;
@@ -266,7 +278,9 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
     <form
       method="post"
       action={INTAKE_NOJS_ACTION}
-      onSubmit={handleSubmit}
+      onSubmit={(event) => {
+        void handleSubmit(event);
+      }}
       noValidate
       ref={formRef}
       className="card relative p-6 sm:p-9"
@@ -283,7 +297,7 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
       <input
         type="hidden"
         name="sourcePath"
-        value={pathname || `/${locale}/appointment`}
+        value={pathname !== "" ? pathname : `/${locale}/appointment`}
       />
       {/* Honeypot: humans never see or fill this; bots that do are dropped
           server-side with a success-shaped reply. Not display:none — some
@@ -318,11 +332,11 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
             autoComplete="name"
             required
             maxLength={REQUEST_FIELD_LIMITS.name}
-            aria-invalid={errors.name ? "true" : undefined}
-            aria-describedby={errors.name ? "err-name" : undefined}
+            aria-invalid={errors.name !== undefined && errors.name !== "" ? "true" : undefined}
+            aria-describedby={errors.name !== undefined && errors.name !== "" ? "err-name" : undefined}
             className="field-input"
           />
-          {errors.name && (
+          {errors.name !== undefined && errors.name !== "" && (
             <p id="err-name" className="field-error">
               {errors.name}
             </p>
@@ -340,11 +354,11 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
             autoComplete="tel"
             required
             maxLength={REQUEST_FIELD_LIMITS.phone}
-            aria-invalid={errors.phone ? "true" : undefined}
-            aria-describedby={errors.phone ? "err-phone" : undefined}
+            aria-invalid={errors.phone !== undefined && errors.phone !== "" ? "true" : undefined}
+            aria-describedby={errors.phone !== undefined && errors.phone !== "" ? "err-phone" : undefined}
             className="field-input"
           />
-          {errors.phone && (
+          {errors.phone !== undefined && errors.phone !== "" && (
             <p id="err-phone" className="field-error">
               {errors.phone}
             </p>
@@ -363,11 +377,11 @@ export function AppointmentForm({ locale, dict }: AppointmentFormProps) {
             type="email"
             autoComplete="email"
             maxLength={REQUEST_FIELD_LIMITS.email}
-            aria-invalid={errors.email ? "true" : undefined}
-            aria-describedby={errors.email ? "err-email" : undefined}
+            aria-invalid={errors.email !== undefined && errors.email !== "" ? "true" : undefined}
+            aria-describedby={errors.email !== undefined && errors.email !== "" ? "err-email" : undefined}
             className="field-input"
           />
-          {errors.email && (
+          {errors.email !== undefined && errors.email !== "" && (
             <p id="err-email" className="field-error">
               {errors.email}
             </p>

@@ -17,7 +17,7 @@ function stringValue(formData: FormData, name: string): string | undefined {
 
 function refererPath(request: Request): string | undefined {
   const referer = request.headers.get("referer");
-  if (!referer) return undefined;
+  if (referer === null || referer === "") return undefined;
 
   try {
     return new URL(referer).pathname;
@@ -30,10 +30,19 @@ function receiptLocale(
   formLocale: string | undefined,
   sourcePath: string | undefined,
 ): Locale {
-  if (formLocale && isLocale(formLocale)) return formLocale;
+  if (formLocale !== undefined && formLocale !== "" && isLocale(formLocale)) {
+    return formLocale;
+  }
 
-  const pathLocale = sourcePath?.split("/").filter(Boolean)[0];
-  return pathLocale && isLocale(pathLocale) ? pathLocale : "en";
+  const pathLocale =
+    sourcePath === undefined || sourcePath === ""
+      ? undefined
+      : sourcePath.split("/").find((segment) => segment !== "");
+  return pathLocale !== undefined &&
+    pathLocale !== "" &&
+    isLocale(pathLocale)
+    ? pathLocale
+    : "en";
 }
 
 export async function POST(request: Request) {
@@ -44,8 +53,13 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const formLocale = stringValue(formData, "locale");
+    const formSourcePath = stringValue(formData, "sourcePath");
     const sourcePath =
-      stringValue(formData, "sourcePath") || fallbackSourcePath || "/";
+      formSourcePath !== undefined && formSourcePath !== ""
+        ? formSourcePath
+        : fallbackSourcePath !== undefined && fallbackSourcePath !== ""
+          ? fallbackSourcePath
+          : "/";
     locale = receiptLocale(formLocale, sourcePath);
     rawInput = {
       name: stringValue(formData, "name") ?? null,
@@ -64,7 +78,7 @@ export async function POST(request: Request) {
 
   const result = await processIntake(rawInput, request.headers, true);
   const destination = new URL(receiptPath(locale), request.url);
-  if (result.receiptToken) {
+  if (result.receiptToken !== undefined && result.receiptToken !== "") {
     destination.searchParams.set("receipt", result.receiptToken);
   } else if (!result.response.ok) {
     destination.searchParams.set("failure", "1");

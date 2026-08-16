@@ -9,9 +9,9 @@ import { LoginForm } from "./login-form";
 
 export default async function AdminLoginPage({
   searchParams,
-}: {
+}: Readonly<{
   searchParams: Promise<{ password?: string; auth?: string }>;
-}) {
+}>) {
   const [query, session] = await Promise.all([
     searchParams,
     getSessionUser(),

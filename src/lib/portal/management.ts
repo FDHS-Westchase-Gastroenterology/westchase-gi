@@ -20,6 +20,7 @@ import {
   runRecipientMutationTransport,
 } from "@/lib/portal/recipient-rpc";
 import { portalUrl, serviceClient } from "@/lib/portal/server";
+import type { StaffProfileRow } from "@/lib/portal/rows";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STAFF_BAN_DURATION = "876000h";
@@ -106,13 +107,13 @@ async function deliverStaffSetupLink({
   tokenHash,
   type,
   userId,
-}: {
+}: Readonly<{
   email: string;
   confirmationUrl: string;
   tokenHash: string;
   type: StaffSetupType;
   userId: string;
-}): Promise<Exclude<InviteStaffResult, ManagementFailure>> {
+}>): Promise<Exclude<InviteStaffResult, ManagementFailure>> {
   return sendStaffSetupLink(sendPortalEmail, {
     email,
     confirmationUrl,
@@ -133,7 +134,8 @@ async function operationFailed(
   operation: () => PromiseLike<{ error: unknown }>,
 ): Promise<boolean> {
   try {
-    return Boolean((await operation()).error);
+    const result = await operation();
+    return result.error !== null && result.error !== undefined;
   } catch {
     return true;
   }
@@ -147,7 +149,7 @@ async function deleteProvisionedUser(
   // Temporarily unavailable. Supabase APIs resolve with `{ error }`, so each
   // Result must be inspected rather than relying on Promise rejection.
   // react-doctor-disable-next-line react-doctor/async-parallel
-  const banFailed = await operationFailed(() =>
+  const banFailed = await operationFailed(async () =>
     db.auth.admin.updateUserById(userId, {
       ban_duration: STAFF_BAN_DURATION,
     }),
@@ -156,7 +158,7 @@ async function deleteProvisionedUser(
   const initialProfileDeleteFailed = await operationFailed(() =>
     db.from("staff_profiles").delete().eq("user_id", userId),
   );
-  const authDeleteFailed = await operationFailed(() =>
+  const authDeleteFailed = await operationFailed(async () =>
     db.auth.admin.deleteUser(userId),
   );
   // react-doctor-disable-next-line react-doctor/server-sequential-independent-await
@@ -203,16 +205,21 @@ export async function addNotificationRecipientMutation(
   const db = serviceClient();
   const email = normalizeEmail(parsed.data.email);
   const active = parsed.data.active ?? true;
-  const label = parsed.data.label || null;
+  const label =
+    parsed.data.label === undefined || parsed.data.label === ""
+      ? null
+      : parsed.data.label;
   const mutation = await runRecipientMutationTransport(
     () =>
-      db.rpc("portal_add_notification_recipient", {
-        p_actor_email: session.email,
-        p_email: email,
-        p_label: label,
-        p_active: active,
-      }),
-    () =>
+      db
+        .rpc("portal_add_notification_recipient", {
+          p_actor_email: session.email,
+          p_email: email,
+          p_label: label,
+          p_active: active,
+        })
+        .overrideTypes<string, { merge: false }>(),
+    async () =>
       addRecipientWithCompatibility(db, {
         actorEmail: session.email,
         email,
@@ -220,7 +227,6 @@ export async function addNotificationRecipientMutation(
         active,
       }),
   );
-
   let recipientId: string;
   if (mutation.transport === "compatibility") {
     if (!mutation.response.ok) {
@@ -237,10 +243,15 @@ export async function addNotificationRecipientMutation(
     }
     recipientId = mutation.response.recipientId;
   } else {
-    const { data, error } = mutation.response;
-    const parsedId = z.string().safeParse(data);
-    if (error || !parsedId.success) {
-      if (recipientRpcFailureCode("add", error?.code) === "conflict") {
+    const rpc = mutation.response;
+    const parsedId = z.string().safeParse(rpc.data);
+    if (rpc.error !== null || !parsedId.success) {
+      if (
+        recipientRpcFailureCode(
+          "add",
+          rpc.error !== null ? rpc.error.code : undefined,
+        ) === "conflict"
+      ) {
         return failure(
           "conflict",
           "That notification recipient already exists.",
@@ -284,14 +295,13 @@ export async function updateRecipientLabelMutation(
     return { ok: false, code: "invalid" };
   }
 
-  const { data, error } = await serviceClient().rpc(
-    "portal_update_recipient_label",
-    {
+  const { data, error } = await serviceClient()
+    .rpc("portal_update_recipient_label", {
       p_actor_email: actorEmail,
       p_recipient_id: parsed.data.recipientId,
       p_label: label,
-    },
-  );
+    })
+    .overrideTypes<boolean, { merge: false }>();
 
   if (error) {
     if (error.code === "P0002" || error.code === "22P02") {
@@ -326,12 +336,14 @@ export async function toggleNotificationRecipientMutation(
   const db = serviceClient();
   const mutation = await runRecipientMutationTransport(
     () =>
-      db.rpc("portal_toggle_notification_recipient", {
-        p_actor_email: session.email,
-        p_recipient_id: parsed.data.recipientId,
-        p_active: parsed.data.active,
-      }),
-    () =>
+      db
+        .rpc("portal_toggle_notification_recipient", {
+          p_actor_email: session.email,
+          p_recipient_id: parsed.data.recipientId,
+          p_active: parsed.data.active,
+        })
+        .overrideTypes<boolean, { merge: false }>(),
+    async () =>
       toggleRecipientWithCompatibility(db, {
         actorEmail: session.email,
         recipientId: parsed.data.recipientId,
@@ -349,7 +361,7 @@ export async function toggleNotificationRecipientMutation(
         "The notification recipient could not be updated.",
       );
     }
-  } else if (mutation.response.error) {
+  } else if (mutation.response.error !== null) {
     if (
       recipientRpcFailureCode("toggle", mutation.response.error.code) ===
       "not_found"
@@ -378,11 +390,13 @@ export async function removeNotificationRecipientMutation(
   const db = serviceClient();
   const mutation = await runRecipientMutationTransport(
     () =>
-      db.rpc("portal_remove_notification_recipient", {
-        p_actor_email: session.email,
-        p_recipient_id: parsed.data.id,
-      }),
-    () =>
+      db
+        .rpc("portal_remove_notification_recipient", {
+          p_actor_email: session.email,
+          p_recipient_id: parsed.data.id,
+        })
+        .overrideTypes<boolean, { merge: false }>(),
+    async () =>
       removeRecipientWithCompatibility(db, {
         actorEmail: session.email,
         recipientId: parsed.data.id,
@@ -399,7 +413,7 @@ export async function removeNotificationRecipientMutation(
         "The notification recipient could not be removed.",
       );
     }
-  } else if (mutation.response.error) {
+  } else if (mutation.response.error !== null) {
     if (
       recipientRpcFailureCode("remove", mutation.response.error.code) ===
       "not_found"
@@ -428,7 +442,7 @@ export async function inviteStaffMutation(
   const db = serviceClient();
   const email = normalizeEmail(parsed.data.email);
   const confirmationUrl = portalUrl("/admin/auth/confirm");
-  if (!confirmationUrl) {
+  if (confirmationUrl === null) {
     return failure("unavailable", "The staff invitation could not be created.");
   }
 
@@ -452,8 +466,8 @@ export async function inviteStaffMutation(
       email,
       options: { redirectTo: confirmationUrl },
     });
-  const tokenHash = generated?.properties?.hashed_token;
-  if (linkError || !tokenHash || generated.user.id !== user.id) {
+  const tokenHash = generated.properties?.hashed_token ?? null;
+  if (linkError !== null || tokenHash === null || generated.user.id !== user.id) {
     return rollbackInvite(
       db,
       user.id,
@@ -473,9 +487,10 @@ export async function inviteStaffMutation(
       portal_tour_dismissed_at: null,
     })
     .select("id")
-    .single();
-  if (profileError || !profile) {
-    return profileError?.code === "23505"
+    .single()
+    .overrideTypes<Pick<StaffProfileRow, "id">, { merge: false }>();
+  if (profileError) {
+    return profileError.code === "23505"
       ? rollbackInvite(
           db,
           user.id,
@@ -531,31 +546,40 @@ export async function resendStaffInviteMutation(
     .from("staff_profiles")
     .select("id, user_id, email, role, active, onboarded_at")
     .eq("user_id", parsed.data.id)
-    .maybeSingle();
+    .maybeSingle()
+    .overrideTypes<
+      Pick<
+        StaffProfileRow,
+        "id" | "user_id" | "email" | "role" | "active" | "onboarded_at"
+      >,
+      { merge: false }
+    >();
   if (profileError) {
     return failure("unavailable", "The staff invitation could not be read.");
   }
-  if (!profile || !profile.active) {
+  if (profile === null || !profile.active) {
     return failure("not_found", "Pending staff invitation not found.");
   }
-  if (profile.onboarded_at) {
+  if (profile.onboarded_at !== null) {
     return failure("invalid", "That staff member has already completed setup.");
   }
 
   const { data: authData, error: authError } =
     await db.auth.admin.getUserById(profile.user_id);
   const authUser = authData.user;
+  if (authUser === null) {
+    return failure("unavailable", "The staff invitation could not be renewed.");
+  }
+  const authEmail = authUser.email ?? "";
   if (
-    authError ||
-    !authUser?.email ||
-    normalizeEmail(authUser.email) !== normalizeEmail(profile.email)
+    authError !== null ||
+    authEmail === "" ||
+    normalizeEmail(authEmail) !== normalizeEmail(profile.email)
   ) {
     return failure("unavailable", "The staff invitation could not be renewed.");
   }
-  if (
-    authUser.banned_until &&
-    Date.parse(authUser.banned_until) > Date.now()
-  ) {
+  const bannedUntil = authUser.banned_until ?? null;
+  if (bannedUntil !== null && Date.parse(bannedUntil) > Date.now()) {
     return failure("unavailable", "The staff invitation could not be renewed.");
   }
 
@@ -563,11 +587,10 @@ export async function resendStaffInviteMutation(
   // Confirmed. A recovery token is then the supported way to restore the
   // Interrupted password-setup session; the app still treats the active,
   // Not-onboarded profile as an invite and never accepts a role from input.
-  const type: StaffSetupType = authUser.email_confirmed_at
-    ? "recovery"
-    : "invite";
+  const type: StaffSetupType =
+    (authUser.email_confirmed_at ?? null) !== null ? "recovery" : "invite";
   const confirmationUrl = portalUrl("/admin/auth/confirm");
-  if (!confirmationUrl) {
+  if (confirmationUrl === null) {
     return failure("unavailable", "The staff invitation could not be renewed.");
   }
 
@@ -577,8 +600,8 @@ export async function resendStaffInviteMutation(
       email: profile.email,
       options: { redirectTo: confirmationUrl },
     });
-  const tokenHash = generated?.properties?.hashed_token;
-  if (linkError || !tokenHash || generated.user.id !== profile.user_id) {
+  const tokenHash = generated.properties?.hashed_token ?? null;
+  if (linkError !== null || tokenHash === null || generated.user.id !== profile.user_id) {
     return failure("unavailable", "The staff invitation could not be renewed.");
   }
   try {
@@ -626,7 +649,10 @@ export async function deactivateStaffMutation(
     .from("staff_profiles")
     .select("id, user_id, active")
     .eq("user_id", parsed.data.id)
-    .maybeSingle();
+    .maybeSingle()
+    .overrideTypes<Pick<StaffProfileRow, "id" | "user_id" | "active">, {
+      merge: false,
+    }>();
   if (readError) {
     return failure("unavailable", "The staff account could not be read.");
   }
@@ -703,7 +729,10 @@ export async function changeStaffRoleMutation(
     .from("staff_profiles")
     .select("id, user_id, role")
     .eq("user_id", parsed.data.userId)
-    .maybeSingle();
+    .maybeSingle()
+    .overrideTypes<Pick<StaffProfileRow, "id" | "user_id" | "role">, {
+      merge: false,
+    }>();
   if (readError) {
     return failure("unavailable", "The staff account could not be read.");
   }

@@ -13,7 +13,7 @@ import { ArrowRight } from "@/components/icons";
 
 interface PageProps { params: Promise<{ locale: string }> }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
@@ -25,7 +25,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   );
 }
 
-function TopicList({ topics, locale }: { topics: EducationTopic[]; locale: Locale }) {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function TopicList({ topics, locale }: Readonly<{ topics: EducationTopic[]; locale: Locale }>) {
   return (
     <ul className="mt-7 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
       {topics.map((topic) => (
@@ -50,7 +51,7 @@ function TopicList({ topics, locale }: { topics: EducationTopic[]; locale: Local
   );
 }
 
-export default async function PatientEducationPage({ params }: PageProps) {
+export default async function PatientEducationPage({ params }: Readonly<PageProps>) {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);

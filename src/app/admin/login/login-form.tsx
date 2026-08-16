@@ -12,15 +12,16 @@ const inputClassName =
 
 export function LoginForm({
   allowPreviewAlias,
-}: {
+}: Readonly<{
   allowPreviewAlias: boolean;
-}) {
+}>) {
   const [mode, setMode] = useState<"sign-in" | "recovery">("sign-in");
   const [email, setEmail] = useState("");
   const [state, formAction, pending] = useActionState(
     loginAction,
     INITIAL_STATE,
   );
+  const hasError = state.error !== null && state.error !== "";
 
   if (mode === "recovery") {
     return (
@@ -28,7 +29,9 @@ export function LoginForm({
         inline
         initialEmail={email}
         onEmailChange={setEmail}
-        onBack={() => setMode("sign-in")}
+        onBack={() => {
+          setMode("sign-in");
+        }}
       />
     );
   }
@@ -54,9 +57,11 @@ export function LoginForm({
           maxLength={254}
           disabled={pending}
           value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          aria-invalid={state.error ? true : undefined}
-          aria-describedby={state.error ? "login-error" : undefined}
+          onChange={(event) => {
+            setEmail(event.target.value);
+          }}
+          aria-invalid={hasError ? true : undefined}
+          aria-describedby={hasError ? "login-error" : undefined}
           className={inputClassName}
         />
       </div>
@@ -71,7 +76,9 @@ export function LoginForm({
           </label>
           <button
             type="button"
-            onClick={() => setMode("recovery")}
+            onClick={() => {
+              setMode("recovery");
+            }}
             className="inline-flex min-h-11 items-center justify-center py-2 text-sm font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
           >
             Forgot password?
@@ -84,13 +91,13 @@ export function LoginForm({
           autoComplete="current-password"
           required
           disabled={pending}
-          aria-invalid={state.error ? true : undefined}
-          aria-describedby={state.error ? "login-error" : undefined}
+          aria-invalid={hasError ? true : undefined}
+          aria-describedby={hasError ? "login-error" : undefined}
           className={inputClassName}
         />
       </div>
 
-      {state.error ? (
+      {hasError ? (
         <p
           id="login-error"
           role="alert"

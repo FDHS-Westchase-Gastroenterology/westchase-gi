@@ -14,13 +14,14 @@ const timeOnly = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
 });
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 export function RecentWorkSection({
   items,
   now,
-}: {
+}: Readonly<{
   items: RecentWorkItem[];
   now: Date;
-}) {
+}>) {
   const groups = groupByPracticeDay(items, now);
   return (
     <section aria-labelledby="recent-work-heading" className="mt-8">
@@ -63,7 +64,7 @@ export function RecentWorkSection({
                       {item.actor}
                     </strong>{" "}
                     {item.sentence}
-                    {item.requestId ? (
+                    {item.requestId !== null && item.requestId !== "" ? (
                       <>
                         {" "}
                         <Link

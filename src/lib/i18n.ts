@@ -13,7 +13,7 @@ const dictionaries = { en, es, vi, ko, ar } as const satisfies Record<
 >;
 
 export function getDictionary(locale: Locale): Dictionary {
-  return dictionaries[locale] ?? dictionaries.en;
+  return dictionaries[locale];
 }
 
 export function isLocale(value: string): value is Locale {

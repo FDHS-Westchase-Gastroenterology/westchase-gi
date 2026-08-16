@@ -16,24 +16,24 @@ type PortalReleaseMutation =
   | "portal_record_staff_release_dismiss";
 
 export async function getPortalReleaseState(
-  session: PortalSessionUser,
+  session: Readonly<PortalSessionUser>,
   releaseId: string,
   now: Date = new Date(),
 ): Promise<PortalReleaseState> {
   const parsedReleaseId = parsePortalReleaseId(releaseId);
-  if (!parsedReleaseId) return { status: "unavailable" };
+  if (parsedReleaseId === null) return { status: "unavailable" };
 
   try {
-    const { data, error } = await serviceClient()
+    const result = await serviceClient()
       .from("portal_release_states")
       .select("first_opened_at, acknowledged_at, hidden_at")
       .eq("staff_user_id", session.id)
       .eq("release_id", parsedReleaseId)
       .maybeSingle();
 
-    if (error) return { status: "unavailable" };
-    if (data === null) return derivePortalReleaseState(null, now);
-    const parsed = portalReleaseStateRowSchema.safeParse(data);
+    if (result.error !== null) return { status: "unavailable" };
+    if (result.data === null) return derivePortalReleaseState(null, now);
+    const parsed = portalReleaseStateRowSchema.safeParse(result.data);
     if (!parsed.success) return { status: "unavailable" };
     return derivePortalReleaseState(parsed.data, now);
   } catch {
@@ -42,18 +42,18 @@ export async function getPortalReleaseState(
 }
 
 export async function mutatePortalReleaseState(
-  session: PortalSessionUser,
+  session: Readonly<PortalSessionUser>,
   mutation: PortalReleaseMutation,
   releaseId: string,
 ): Promise<boolean> {
-  const { data, error } = await serviceClient().rpc(mutation, {
+  const result = await serviceClient().rpc(mutation, {
     p_user_id: session.id,
     p_release_id: releaseId,
   });
-  const accepted = z.boolean().safeParse(data);
-  if (error || !accepted.success) {
+  const accepted = z.boolean().safeParse(result.data);
+  if (result.error !== null || !accepted.success) {
     throw new Error(
-      `Portal release state mutation failed: ${error?.code ?? "invalid_result"}`,
+      `Portal release state mutation failed: ${result.error !== null ? result.error.code : "invalid_result"}`,
     );
   }
   return accepted.data;

@@ -30,8 +30,37 @@ interface RestResult {
   status: number;
 }
 
+const idRowSchema = z.object({ id: z.string() });
+const staffIdentitySchema = z.object({
+  user_id: z.string(),
+  display_name: z.string(),
+});
+const displayNameRowSchema = z.object({
+  display_name: z.string(),
+});
+
 function digest(value: string): string {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function requireText(
+  value: string | null | undefined,
+  message: string,
+): string {
+  if (value === null || value === undefined || value === "") {
+    throw new Error(message);
+  }
+  return value;
+}
+
+type SafeParseResult<T> =
+  | { readonly success: true; readonly data: T }
+  | { readonly success: false; readonly error: unknown };
+
+function requireDecoded<T>(parsed: SafeParseResult<T>, message: string): T {
+  expect(parsed.success).toBe(true);
+  if (!parsed.success) throw new Error(message);
+  return parsed.data;
 }
 
 function browserDb() {
@@ -44,12 +73,14 @@ function browserDb() {
   });
 }
 
-function expectDenied(result: RestResult): void {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function expectDenied(result: Readonly<RestResult>): void {
   expect(result.error?.code).toBe("42501");
   expect([401, 403]).toContain(result.status);
 }
 
-function expectAnonymousReadClosed(result: RestResult): void {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function expectAnonymousReadClosed(result: Readonly<RestResult>): void {
   const rows = Array.isArray(result.data) ? result.data : [];
   expect(rows).toHaveLength(0);
 
@@ -67,7 +98,7 @@ test.use({ trace: "off" });
 test.describe("portal authentication and direct REST boundaries", () => {
   test.describe.configure({ mode: "serial" });
 
-  test.beforeEach(async ({}, testInfo) => {
+  test.beforeEach(({}, testInfo) => {
     test.skip(
       testInfo.project.name !== "chromium",
       "Credential and RLS checks run once.",
@@ -165,8 +196,10 @@ test.describe("portal authentication and direct REST boundaries", () => {
         email_confirm: true,
       });
     expect(createError).toBeNull();
-    const lockoutUserId = created?.user?.id;
-    if (!lockoutUserId) throw new Error("Lockout user creation failed");
+    const lockoutUserId = requireText(
+      created.user?.id,
+      "Lockout user creation failed",
+    );
 
     try {
       const { error: profileInsertError } = await db
@@ -332,7 +365,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       expect(signup.data.user).toBeNull();
     } finally {
       await signupClient.auth.signOut();
-      if (unexpectedSignupId) {
+      if (unexpectedSignupId !== null && unexpectedSignupId !== "") {
         await db.auth.admin.deleteUser(unexpectedSignupId);
       }
     }
@@ -346,8 +379,10 @@ test.describe("portal authentication and direct REST boundaries", () => {
       email_confirm: true,
     });
     expect(created.error).toBeNull();
-    const userId = created.data.user?.id;
-    if (!userId) throw new Error("Password-policy fixture failed");
+    const userId = requireText(
+      created.data.user?.id,
+      "Password-policy fixture failed",
+    );
 
     const authenticated = browserDb();
     try {
@@ -386,11 +421,14 @@ test.describe("portal authentication and direct REST boundaries", () => {
       email,
     });
     expect(generated.error).toBeNull();
-    const userId = generated.data.user?.id;
-    const tokenHash = generated.data.properties?.hashed_token;
-    if (!userId || !tokenHash) {
-      throw new Error("Invite link generation failed");
-    }
+    const userId = requireText(
+      generated.data.user?.id,
+      "Invite link generation failed",
+    );
+    const tokenHash = requireText(
+      generated.data.properties?.hashed_token,
+      "Invite link generation failed",
+    );
 
     let profileId: string | null = null;
     try {
@@ -407,8 +445,10 @@ test.describe("portal authentication and direct REST boundaries", () => {
         .select("id")
         .single();
       expect(profile.error).toBeNull();
-      profileId = profile.data?.id ?? null;
-      if (!profileId) throw new Error("Invite profile creation failed");
+      profileId = requireDecoded(
+        idRowSchema.safeParse(profile.data),
+        "Invite profile creation failed",
+      ).id;
 
       const confirmPath =
         "/admin/auth/confirm#token_hash=" +
@@ -418,7 +458,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       const continueButton = page.getByRole("button", { name: "Continue" });
       await expect(continueButton).toBeVisible();
       await expect
-        .poll(() => page.evaluate(() => window.location.hash))
+        .poll(async () => page.evaluate(() => window.location.hash))
         .toBe("");
       await continueButton.click();
       await expect(page).toHaveURL(/\/admin\/set-password\/?$/);
@@ -466,7 +506,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
         page.getByRole("alert").filter({ hasText: "invalid or expired" }),
       ).toBeVisible();
     } finally {
-      if (profileId) {
+      if (profileId !== null && profileId !== "") {
         await db.from("audit_log").delete().eq("entity_id", profileId);
       }
       await db.from("staff_profiles").delete().eq("user_id", userId);
@@ -488,8 +528,10 @@ test.describe("portal authentication and direct REST boundaries", () => {
       email_confirm: true,
     });
     expect(created.error).toBeNull();
-    const userId = created.data.user?.id;
-    if (!userId) throw new Error("Recovery validation fixture failed");
+    const userId = requireText(
+      created.data.user?.id,
+      "Recovery validation fixture failed",
+    );
 
     let profileId: string | null = null;
     try {
@@ -506,26 +548,30 @@ test.describe("portal authentication and direct REST boundaries", () => {
         .select("id")
         .single();
       expect(profile.error).toBeNull();
-      profileId = profile.data?.id ?? null;
-      if (!profileId) throw new Error("Recovery validation profile failed");
+      profileId = requireDecoded(
+        idRowSchema.safeParse(profile.data),
+        "Recovery validation profile failed",
+      ).id;
 
       const generated = await db.auth.admin.generateLink({
         type: "recovery",
         email,
       });
       expect(generated.error).toBeNull();
-      const supersededTokenHash = generated.data.properties?.hashed_token;
-      if (!supersededTokenHash) {
-        throw new Error("Superseded recovery link failed");
-      }
+      const supersededTokenHash = requireText(
+        generated.data.properties?.hashed_token,
+        "Superseded recovery link failed",
+      );
 
       const latestGenerated = await db.auth.admin.generateLink({
         type: "recovery",
         email,
       });
       expect(latestGenerated.error).toBeNull();
-      const tokenHash = latestGenerated.data.properties?.hashed_token;
-      if (!tokenHash) throw new Error("Recovery validation link failed");
+      const tokenHash = requireText(
+        latestGenerated.data.properties?.hashed_token,
+        "Recovery validation link failed",
+      );
       const confirmPath =
         "/admin/auth/confirm#token_hash=" +
         encodeURIComponent(tokenHash) +
@@ -551,7 +597,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       await page.goto(confirmPath);
       await expect(page.getByLabel("New password")).toBeVisible();
       await expect
-        .poll(() => page.evaluate(() => window.location.hash))
+        .poll(async () => page.evaluate(() => window.location.hash))
         .toBe("");
       await page.reload();
       await expect(page).toHaveURL(/\/admin\/auth\/confirm\/?$/);
@@ -634,7 +680,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       expect(afterSuccessAudit.error).toBeNull();
       expect(afterSuccessAudit.data).toHaveLength(1);
     } finally {
-      if (profileId) {
+      if (profileId !== null && profileId !== "") {
         await db.from("audit_log").delete().eq("entity_id", profileId);
       }
       await db.from("staff_profiles").delete().eq("user_id", userId);
@@ -657,8 +703,10 @@ test.describe("portal authentication and direct REST boundaries", () => {
       app_metadata: { role: "staff" },
     });
     expect(created.error).toBeNull();
-    const userId = created.data.user?.id;
-    if (!userId) throw new Error("Recovery user creation failed");
+    const userId = requireText(
+      created.data.user?.id,
+      "Recovery user creation failed",
+    );
 
     let profileId: string | null = null;
     try {
@@ -675,8 +723,10 @@ test.describe("portal authentication and direct REST boundaries", () => {
         .select("id")
         .single();
       expect(profile.error).toBeNull();
-      profileId = profile.data?.id ?? null;
-      if (!profileId) throw new Error("Recovery profile creation failed");
+      profileId = requireDecoded(
+        idRowSchema.safeParse(profile.data),
+        "Recovery profile creation failed",
+      ).id;
 
       let deliberateActivations = 0;
       await page.goto("/admin/login");
@@ -700,8 +750,10 @@ test.describe("portal authentication and direct REST boundaries", () => {
         email,
       });
       expect(generated.error).toBeNull();
-      const tokenHash = generated.data.properties?.hashed_token;
-      if (!tokenHash) throw new Error("Recovery link generation failed");
+      const tokenHash = requireText(
+        generated.data.properties?.hashed_token,
+        "Recovery link generation failed",
+      );
       const confirmPath =
         "/admin/auth/confirm#token_hash=" +
         encodeURIComponent(tokenHash) +
@@ -710,7 +762,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       await page.goto(confirmPath);
       deliberateActivations += 1;
       await expect
-        .poll(() => page.evaluate(() => window.location.hash))
+        .poll(async () => page.evaluate(() => window.location.hash))
         .toBe("");
       await expect(page.getByLabel("New password")).toBeVisible();
       await expect(
@@ -777,8 +829,10 @@ test.describe("portal authentication and direct REST boundaries", () => {
         email_confirm: true,
       });
       expect(deactivated.error).toBeNull();
-      const deactivatedId = deactivated.data.user?.id;
-      if (!deactivatedId) throw new Error("Deactivated fixture failed");
+      const deactivatedId = requireText(
+        deactivated.data.user?.id,
+        "Deactivated fixture failed",
+      );
 
       try {
         const deactivatedProfile = await db.from("staff_profiles").insert({
@@ -796,11 +850,10 @@ test.describe("portal authentication and direct REST boundaries", () => {
           email: deactivatedEmail,
         });
         expect(deactivatedLink.error).toBeNull();
-        const deactivatedToken =
-          deactivatedLink.data.properties?.hashed_token;
-        if (!deactivatedToken) {
-          throw new Error("Deactivated recovery link generation failed");
-        }
+        const deactivatedToken = requireText(
+          deactivatedLink.data.properties?.hashed_token,
+          "Deactivated recovery link generation failed",
+        );
 
         await page.goto(
           "/admin/auth/confirm#token_hash=" +
@@ -832,7 +885,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
         await db.auth.admin.deleteUser(deactivatedId);
       }
     } finally {
-      if (profileId) {
+      if (profileId !== null && profileId !== "") {
         await db.from("audit_log").delete().eq("entity_id", profileId);
       }
       await db.from("staff_profiles").delete().eq("user_id", userId);
@@ -858,8 +911,10 @@ test.describe("portal authentication and direct REST boundaries", () => {
         email_confirm: true,
       });
       expect(created.error).toBeNull();
-      const userId = created.data.user?.id;
-      if (!userId) throw new Error("Ineligible recovery fixture failed");
+      const userId = requireText(
+        created.data.user?.id,
+        "Ineligible recovery fixture failed",
+      );
 
       let profileId: string | null = null;
       try {
@@ -877,10 +932,10 @@ test.describe("portal authentication and direct REST boundaries", () => {
             .select("id")
             .single();
           expect(profile.error).toBeNull();
-          profileId = profile.data?.id ?? null;
-          if (!profileId) {
-            throw new Error("Non-onboarded recovery profile failed");
-          }
+          profileId = requireDecoded(
+            idRowSchema.safeParse(profile.data),
+            "Non-onboarded recovery profile failed",
+          ).id;
         }
 
         const generated = await db.auth.admin.generateLink({
@@ -888,8 +943,10 @@ test.describe("portal authentication and direct REST boundaries", () => {
           email,
         });
         expect(generated.error).toBeNull();
-        const tokenHash = generated.data.properties?.hashed_token;
-        if (!tokenHash) throw new Error("Ineligible recovery link failed");
+        const tokenHash = requireText(
+          generated.data.properties?.hashed_token,
+          "Ineligible recovery link failed",
+        );
 
         // Force a fresh document so the two identity fixtures cannot share
         // Mounted server-action or fragment state. Same-tab replacement is
@@ -901,7 +958,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
             "&type=recovery",
         );
         await expect
-          .poll(() => page.evaluate(() => window.location.hash))
+          .poll(async () => page.evaluate(() => window.location.hash))
           .toBe("");
         await page.getByLabel("New password").fill(attemptedPassword);
         await page.getByLabel("Confirm password").fill(attemptedPassword);
@@ -913,7 +970,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
         ).toBeVisible();
         await expect(page).toHaveURL(/\/admin\/auth\/confirm\/?$/);
 
-        if (profileId) {
+        if (profileId !== null && profileId !== "") {
           const audit = await db
             .from("audit_log")
             .select("action")
@@ -932,7 +989,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
         expect(oldPasswordStillWorks.data.user?.id).toBe(userId);
         await loginProbe.auth.signOut();
       } finally {
-        if (profileId) {
+        if (profileId !== null && profileId !== "") {
           await db.from("audit_log").delete().eq("entity_id", profileId);
         }
         await db.from("staff_profiles").delete().eq("user_id", userId);
@@ -1045,8 +1102,10 @@ test.describe("portal authentication and direct REST boundaries", () => {
         app_metadata: { role: "staff" },
       });
     expect(staleCreateError).toBeNull();
-    const staleUserId = staleUser.user?.id;
-    if (!staleUserId) throw new Error("Stale-token user creation failed");
+    const staleUserId = requireText(
+      staleUser.user?.id,
+      "Stale-token user creation failed",
+    );
 
     const staleClient = browserDb();
     try {
@@ -1121,7 +1180,9 @@ test.describe("portal authentication and direct REST boundaries", () => {
     expect(signIn.error).toBeNull();
     expect(Boolean(signIn.data.session?.access_token)).toBe(true);
     expect(signIn.data.user?.id).toBeTruthy();
-    if (!signIn.data.user) throw new Error("Seeded Auth user is missing");
+    if (signIn.data.user === null) {
+      throw new Error("Seeded Auth user is missing");
+    }
 
     const { data: profile, error: profileError } = await db
       .from("staff_profiles")
@@ -1129,7 +1190,11 @@ test.describe("portal authentication and direct REST boundaries", () => {
       .eq("user_id", signIn.data.user.id)
       .single();
     expect(profileError).toBeNull();
-    if (!profile) throw new Error("Seeded staff profile is missing");
+    const seededProfile = staffIdentitySchema.safeParse(profile);
+    expect(seededProfile.success).toBe(true);
+    if (!seededProfile.success) {
+      throw new Error("Seeded staff profile is missing");
+    }
 
     const attemptedDisplayName = `TEST denied ${randomUUID()}`;
 
@@ -1137,33 +1202,40 @@ test.describe("portal authentication and direct REST boundaries", () => {
       const profileWrite = await authenticated
         .from("staff_profiles")
         .update({ display_name: attemptedDisplayName })
-        .eq("user_id", profile.user_id)
+        .eq("user_id", seededProfile.data.user_id)
         .select("id");
       expectDenied(profileWrite);
 
       const profileCheck = await db
         .from("staff_profiles")
         .select("display_name")
-        .eq("user_id", profile.user_id)
+        .eq("user_id", seededProfile.data.user_id)
         .single();
       expect(profileCheck.error).toBeNull();
-      expect(
-        digest(profileCheck.data?.display_name ?? ""),
-      ).toBe(digest(profile.display_name));
+      const checkedName = displayNameRowSchema.safeParse(profileCheck.data);
+      expect(checkedName.success).toBe(true);
+      if (!checkedName.success) {
+        throw new Error("Seeded staff profile name is missing");
+      }
+      expect(digest(checkedName.data.display_name)).toBe(
+        digest(seededProfile.data.display_name),
+      );
     } finally {
       const currentProfile = await db
         .from("staff_profiles")
         .select("display_name")
-        .eq("user_id", profile.user_id)
+        .eq("user_id", seededProfile.data.user_id)
         .single();
+      const currentName = displayNameRowSchema.safeParse(currentProfile.data);
       if (
-        !currentProfile.error &&
-        currentProfile.data?.display_name !== profile.display_name
+        currentProfile.error === null &&
+        currentName.success &&
+        currentName.data.display_name !== seededProfile.data.display_name
       ) {
         await db
           .from("staff_profiles")
-          .update({ display_name: profile.display_name })
-          .eq("user_id", profile.user_id);
+          .update({ display_name: seededProfile.data.display_name })
+          .eq("user_id", seededProfile.data.user_id);
       }
 
       await authenticated.auth.signOut({ scope: "local" });

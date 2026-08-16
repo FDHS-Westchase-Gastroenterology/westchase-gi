@@ -76,7 +76,7 @@ export function createEmailSender(
       const result = await Promise.race([
         transport.send(message),
         new Promise<"timed_out">((resolve) => {
-          timer = setTimeout(() => resolve("timed_out"), deadlineMs);
+          timer = setTimeout(() => { resolve("timed_out"); }, deadlineMs);
         }),
       ]);
 

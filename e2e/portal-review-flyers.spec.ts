@@ -127,7 +127,9 @@ test("review flyers stay closed to visitors and open to every staff member", asy
   });
   expect(created.error).toBeNull();
   const staffUserId = created.data.user?.id;
-  if (!staffUserId) throw new Error("Review-flyer staff fixture failed");
+  if (staffUserId === undefined || staffUserId === "") {
+    throw new Error("Review-flyer staff fixture failed");
+  }
 
   let staffContext: BrowserContext | null = null;
   try {
@@ -190,8 +192,8 @@ test("review flyers stay closed to visitors and open to every staff member", asy
       );
       return {
         key: node.dataset.reviewTarget,
-        title: node.querySelector("h2")?.textContent?.trim() ?? null,
-        credentials: credential?.textContent?.trim() ?? null,
+        title: node.querySelector("h2")?.textContent.trim() ?? null,
+        credentials: credential?.textContent.trim() ?? null,
       };
     });
     expect(copy).toEqual({
@@ -301,7 +303,7 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
         actions.map((action) => {
           const box = action.getBoundingClientRect();
           return {
-            label: action.textContent?.trim(),
+            label: action.textContent.trim(),
             width: box.width,
             height: box.height,
           };

@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { test, expect } from "@playwright/test";
 import { z } from "zod";
-import { jsonObjectSchema, jsonSchema } from "../src/lib/json";
+import { asJsonArray, jsonObjectSchema, jsonSchema } from "../src/lib/json";
 import type { Json } from "../src/lib/json";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
@@ -44,8 +44,8 @@ function analyticsQuery(sql: string): readonly Json[] {
       stdio: ["ignore", "pipe", "pipe"],
     },
   );
-  const parsed = jsonSchema.parse(JSON.parse(output));
-  return Array.isArray(parsed) ? parsed : [];
+  const parsed = asJsonArray(jsonSchema.parse(JSON.parse(output)));
+  return parsed ?? [];
 }
 
 function rollupCount(event: string, routeTemplate: string): number {
@@ -66,7 +66,7 @@ async function expectIncrement(
     .toBeGreaterThan(before);
 }
 
-test.beforeEach(async ({}, testInfo) => {
+test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name === "no-js", "Beacons require JavaScript");
 });
 

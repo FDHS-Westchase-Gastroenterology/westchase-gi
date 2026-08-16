@@ -9,7 +9,7 @@ import { portalUrl, serverClient } from "@/lib/portal/server";
 
 function trustedRedirect(path: string): NextResponse {
   const target = portalUrl(path);
-  if (!target) {
+  if (target === null || target === "") {
     return new NextResponse("Portal authentication is unavailable.", {
       status: 503,
       headers: { "Cache-Control": "no-store" },
@@ -21,7 +21,7 @@ function trustedRedirect(path: string): NextResponse {
 /** Supports Supabase's official PKCE callback in addition to token-hash links. */
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code")?.trim();
-  if (!code || code.length > 2048) {
+  if (code === undefined || code === "" || code.length > 2048) {
     return trustedRedirect("/admin/login?auth=invalid");
   }
 
@@ -29,19 +29,21 @@ export async function GET(request: NextRequest) {
     const supabase = await serverClient();
     await clearPasswordAuthFlow();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-    if (error || !data.user) {
+    if (error !== null) {
       await supabase.auth.signOut({ scope: "local" });
       return trustedRedirect("/admin/login?auth=invalid");
     }
 
     const staff = await resolveStaffAuthState(data.user);
-    if (!staff?.active) {
+    if (staff === null || !staff.active) {
       await supabase.auth.signOut({ scope: "local" });
       return trustedRedirect("/admin/login?auth=invalid");
     }
 
     await establishPasswordAuthFlow(
-      staff.onboardedAt ? "recovery" : "invite",
+      staff.onboardedAt !== null && staff.onboardedAt !== ""
+        ? "recovery"
+        : "invite",
       staff.id,
     );
     return trustedRedirect("/admin/set-password");

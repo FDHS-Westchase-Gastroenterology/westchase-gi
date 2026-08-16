@@ -76,7 +76,7 @@ test.describe("intake API contract", () => {
     }
   });
 
-  test.beforeEach(async ({}, testInfo) => {
+  test.beforeEach(({}, testInfo) => {
     test.skip(
       testInfo.project.name !== "chromium",
       "The API contract is browser-independent and runs once.",
@@ -370,21 +370,25 @@ test.describe("intake API contract", () => {
       request.get(location),
       request.get(location),
     ]);
-    const bodies = await Promise.all(claims.map((claim) => claim.text()));
+    const bodies = await Promise.all(
+      claims.map(async (claim) => claim.text()),
+    );
     expect(
       bodies.every((body) =>
         body.includes('<meta name="referrer" content="no-referrer"/>'),
       ),
     ).toBe(true);
     const renderedHeading = (body: string) =>
-      body
-        .match(/<h1[^>]*>([^<]+)<\/h1>/)?.[1]
+      (/<h1[^>]*>([^<]+)<\/h1>/.exec(body))?.[1]
         ?.replaceAll("&#x27;", "'");
-    expect(bodies.map(renderedHeading).sort()).toEqual(
-      [
-        en.appointment.form.unknownHeading,
-        en.requestReceipt.successHeading,
-      ].sort(),
+    expect(
+      bodies
+        .map(renderedHeading)
+        .sort((left, right) => (left ?? "").localeCompare(right ?? "")),
+    ).toEqual(
+      [en.appointment.form.unknownHeading, en.requestReceipt.successHeading].sort(
+        (left, right) => left.localeCompare(right),
+      ),
     );
     expect(renderedHeading(await (await request.get(location)).text())).toBe(
       en.appointment.form.unknownHeading,

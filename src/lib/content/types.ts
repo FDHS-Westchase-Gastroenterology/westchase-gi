@@ -29,14 +29,14 @@ export type EducationGroup = "procedures" | "conditions";
 
 export interface EducationTopic {
   /** Route slug, e.g. "colonoscopy". */
-  slug: string;
+  readonly slug: string;
   /** The old site's ASGE-library category id (redirect map), when it existed. */
-  legacyId?: string;
-  group: EducationGroup;
-  title: Bi;
+  readonly legacyId?: string;
+  readonly group: EducationGroup;
+  readonly title: Bi;
   /** One-or-two sentence listing summary. */
-  summary: Bi;
-  sections: ContentSection[];
+  readonly summary: Bi;
+  readonly sections: readonly ContentSection[];
   /** Matching disease-information-sheet id in lib/documents.ts, if any. */
-  relatedDocId?: string;
+  readonly relatedDocId?: string;
 }

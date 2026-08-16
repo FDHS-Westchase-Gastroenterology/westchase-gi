@@ -27,13 +27,13 @@ export interface GitHubMaintainerInvitation {
   login: string;
 }
 export interface GitHubMaintainerSnapshot {
-  ownerLogin: string;
-  management:
+  readonly ownerLogin: string;
+  readonly management:
     | "restrict_installation"
     | "permission_upgrade_required"
     | "ready";
-  maintainers: GitHubMaintainer[];
-  invitations: GitHubMaintainerInvitation[] | null;
+  readonly maintainers: readonly GitHubMaintainer[];
+  readonly invitations: readonly GitHubMaintainerInvitation[] | null;
 }
 
 export type GitHubMaintainerRead =
@@ -41,15 +41,15 @@ export type GitHubMaintainerRead =
   | ({ state: "connected" } & GitHubMaintainerSnapshot);
 
 export interface GitHubMaintainerSession {
-  initial: GitHubMaintainerSnapshot & {
-    invitations: GitHubMaintainerInvitation[];
+  readonly initial: GitHubMaintainerSnapshot & {
+    invitations: readonly GitHubMaintainerInvitation[];
   };
   resolveUser(username: string): Promise<GitHubMaintainer>;
   invite(username: string): Promise<number>;
   cancelInvitation(invitationId: number): Promise<number>;
   revoke(username: string): Promise<number>;
   refresh(): Promise<
-    GitHubMaintainerSnapshot & { invitations: GitHubMaintainerInvitation[] }
+    GitHubMaintainerSnapshot & { invitations: readonly GitHubMaintainerInvitation[] }
   >;
 }
 
@@ -63,7 +63,7 @@ interface GitHubResponse {
 }
 
 function asPositiveInteger(value: Json | undefined): number | null {
-  const parsed = z.number().int().positive().safe().safeParse(value);
+  const parsed = z.number().int().positive().safeParse(value);
   return parsed.success ? parsed.data : null;
 }
 
@@ -120,10 +120,10 @@ function createAppJwt(appId: string, privateKey: KeyObject): string {
 async function githubRequest(
   path: string,
   token: string,
-  options: {
+  options: Readonly<{
     method?: "GET" | "POST" | "PUT" | "DELETE";
     body?: string;
-  } = {},
+  }> = {},
 ): Promise<GitHubResponse> {
   let response: Response;
   try {
@@ -133,9 +133,10 @@ async function githubRequest(
       "User-Agent": "westchase-gi-portal",
       "X-GitHub-Api-Version": GITHUB_API_VERSION,
     };
-    const requestHeaders = options.body
-      ? { ...headers, "Content-Type": "application/json" }
-      : headers;
+    const requestHeaders =
+      options.body !== undefined && options.body !== ""
+        ? { ...headers, "Content-Type": "application/json" }
+        : headers;
     response = await fetch(`${GITHUB_API}${path}`, {
       method: options.method ?? "GET",
       headers: requestHeaders,
@@ -348,7 +349,7 @@ async function openConnection(mode: "read" | "write") {
   };
 }
 
-export function gitHubProviderStatus(error: Error | undefined): number | null {
+export function gitHubProviderStatus(error: Readonly<Error | undefined>): number | null {
   return error instanceof GitHubApiError ? error.status : null;
 }
 

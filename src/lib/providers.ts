@@ -21,9 +21,9 @@ import reviewTargets from "./review-targets.json";
 interface Img { src: string; width: number; height: number }
 
 export type ProfileSection =
-  | { kind: "timeline"; heading: Bi; entries: { title: Bi; detail: Bi }[] }
-  | { kind: "list"; heading: Bi; lead?: Bi; items: Bi[] }
-  | { kind: "paragraphs"; heading: Bi; text: Bi[] };
+  | { readonly kind: "timeline"; readonly heading: Bi; readonly entries: readonly { readonly title: Bi; readonly detail: Bi }[] }
+  | { readonly kind: "list"; readonly heading: Bi; readonly lead?: Bi; readonly items: readonly Bi[] }
+  | { readonly kind: "paragraphs"; readonly heading: Bi; readonly text: readonly Bi[] };
 
 export interface Physician {
   id: string;

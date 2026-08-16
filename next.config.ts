@@ -74,11 +74,15 @@ const nextConfig: NextConfig = {
   // E2E build-dir isolation: a second dev server (broken-DB failure tests)
   // Boots with NEXT_DIST_DIR=.next-e2e so concurrent instances never share
   // A Turbopack build directory.
-  distDir: process.env.NEXT_DIST_DIR || ".next",
+  distDir:
+    process.env.NEXT_DIST_DIR !== undefined &&
+    process.env.NEXT_DIST_DIR !== ""
+      ? process.env.NEXT_DIST_DIR
+      : ".next",
   outputFileTracingIncludes: {
     "/admin/review-flyers/assets/*": ["./private/review-flyers/**/*"],
   },
-  async redirects() {
+  redirects() {
     return [
       // Root locale routing lives in src/proxy.ts (config redirects run
       // BEFORE the proxy, so a `/` entry here would shadow the

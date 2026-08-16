@@ -22,7 +22,7 @@ function staffSetupUrl(
 
 export async function sendRecipientConfirmation(
   sendEmail: SendPortalEmail,
-  recipient: { id: string; email: string },
+  recipient: Readonly<{ id: string; email: string }>,
 ): Promise<"accepted" | "failed"> {
   const outcome = await sendEmail({
     purpose: "recipient_confirmation",
@@ -47,13 +47,13 @@ export async function sendStaffSetupLink(
     tokenHash,
     type,
     userId,
-  }: {
+  }: Readonly<{
     email: string;
     confirmationUrl: string;
     tokenHash: string;
     type: StaffSetupType;
     userId: string;
-  },
+  }>,
 ): Promise<ManagementEmailDelivery> {
   const setupUrl = staffSetupUrl(confirmationUrl, tokenHash, type);
   const tokenDigest = createHash("sha256")

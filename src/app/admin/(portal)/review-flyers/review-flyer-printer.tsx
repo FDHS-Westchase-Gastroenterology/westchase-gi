@@ -21,10 +21,12 @@ function printFlyer(key: ReviewTargetKey | "all") {
   window.print();
 }
 
-function Flyer({ flyer }: { flyer: ReviewFlyer }) {
-  const providerLine = flyer.credentials
-    ? `${flyer.title}, ${flyer.credentials}`
-    : null;
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function Flyer({ flyer }: Readonly<{ flyer: ReviewFlyer }>) {
+  const providerLine =
+    flyer.credentials !== null && flyer.credentials !== ""
+      ? `${flyer.title}, ${flyer.credentials}`
+      : null;
 
   return (
     <section
@@ -71,7 +73,7 @@ function Flyer({ flyer }: { flyer: ReviewFlyer }) {
           English · Español · Tiếng Việt · 한국어 · العربية
         </p>
       ) : null}
-      {providerLine ? (
+      {providerLine !== null && providerLine !== "" ? (
         <p className="review-flyer-provider">
           {providerLine}
           <small>
@@ -92,10 +94,12 @@ function Flyer({ flyer }: { flyer: ReviewFlyer }) {
   );
 }
 
-export function ReviewFlyerPrinter({ flyers }: { flyers: ReviewFlyer[] }) {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+export function ReviewFlyerPrinter({ flyers }: Readonly<{ flyers: ReviewFlyer[] }>) {
   useEffect(() => {
     const beforePrint = () => {
-      if (!document.body.dataset.reviewFlyerPrint) {
+      const currentPrint = document.body.dataset.reviewFlyerPrint;
+      if (currentPrint === undefined || currentPrint === "") {
         document.body.dataset.reviewFlyerPrint = "practice";
       }
     };
@@ -138,7 +142,9 @@ export function ReviewFlyerPrinter({ flyers }: { flyers: ReviewFlyer[] }) {
           <button
             type="button"
             className="btn btn-navy shrink-0"
-            onClick={() => printFlyer("all")}
+            onClick={() => {
+              printFlyer("all");
+            }}
           >
             Print all six flyers
           </button>
@@ -172,7 +178,7 @@ export function ReviewFlyerPrinter({ flyers }: { flyers: ReviewFlyer[] }) {
                       Verified
                     </span>
                   </div>
-                  {flyer.credentials ? (
+                  {flyer.credentials !== null && flyer.credentials !== "" ? (
                     <p className="mt-1 font-bold text-[var(--color-ink)]">
                       {flyer.credentials}
                     </p>
@@ -184,7 +190,9 @@ export function ReviewFlyerPrinter({ flyers }: { flyers: ReviewFlyer[] }) {
                     <button
                       type="button"
                       className="btn btn-amber btn-sm min-h-11"
-                      onClick={() => printFlyer(flyer.key)}
+                      onClick={() => {
+                        printFlyer(flyer.key);
+                      }}
                     >
                       Print flyer
                     </button>

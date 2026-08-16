@@ -10,7 +10,7 @@ import { MessageSquare, Phone } from "@/components/icons";
 
 interface PageProps { params: Promise<{ locale: string }> }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   );
 }
 
-export default async function AppointmentPage({ params }: PageProps) {
+export default async function AppointmentPage({ params }: Readonly<PageProps>) {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);

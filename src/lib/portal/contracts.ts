@@ -46,9 +46,8 @@ export type StaffRole = "admin" | "staff";
 export const RESET_REQUEST_MESSAGE =
   "If an active staff account exists for that email, you’ll receive a password reset link.";
 
-// These mirror the intended hosted Auth settings and the committed local
+// This mirrors the intended hosted Auth setting and the committed local
 // Configuration. Development and Production are still verified separately.
-export const PASSWORD_RESET_LINK_EXPIRY_MINUTES = 60;
 export const PASSWORD_RESET_RESEND_COOLDOWN_SECONDS = 60;
 
 /**

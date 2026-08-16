@@ -30,7 +30,7 @@ test.beforeEach(({}, testInfo) => {
 
 test("normalizes provider acceptance, rejection, rate limits, and missing configuration", async () => {
   const accepted = await createEmailSender(
-    fakeTransport(async () => ({ providerMessageId: "message-123" })),
+      fakeTransport(async () => Promise.resolve({ providerMessageId: "message-123" })),
   )(MESSAGE);
   expect(accepted).toEqual({
     status: "accepted",
@@ -44,7 +44,7 @@ test("normalizes provider acceptance, rejection, rate limits, and missing config
     ["unconfigured", null],
   ] as const) {
     const outcome = await createEmailSender(
-      fakeTransport(async () => ({ reason, providerStatusCode })),
+      fakeTransport(async () => Promise.resolve({ reason, providerStatusCode })),
     )(MESSAGE);
     expect(outcome).toEqual({
       status: "failed",
@@ -58,11 +58,13 @@ test("normalizes provider acceptance, rejection, rate limits, and missing config
 test("normalizes transport throws and deadline expiry without leaking message data", async () => {
   const logs: unknown[][] = [];
   const originalError = console.error;
-  console.error = (...args: unknown[]) => logs.push(args);
+  console.error = (...args: readonly unknown[]) => {
+    logs.push([...args]);
+  };
 
   try {
     const thrown = await createEmailSender(
-      fakeTransport(async () => {
+      fakeTransport(() => {
         throw new Error("provider-secret-error-body");
       }),
     )(MESSAGE);
@@ -72,7 +74,7 @@ test("normalizes transport throws and deadline expiry without leaking message da
     });
 
     const timedOut = await createEmailSender(
-      fakeTransport(() => new Promise(() => undefined)),
+      fakeTransport(async () => new Promise(() => undefined)),
       5,
     )(MESSAGE);
     expect(timedOut).toEqual({
@@ -102,6 +104,7 @@ test("fans out stable PHI-free new-request pings with one event per recipient", 
   const messages: PortalEmailMessage[] = [];
   const send = createEmailSender(
     fakeTransport(async (message) => {
+      await Promise.resolve();
       messages.push(message);
       return message.to.startsWith("first")
         ? { providerMessageId: "accepted-1" }
@@ -182,15 +185,18 @@ test("preserves management success and fallback behavior behind the same sender"
   const messages: PortalEmailMessage[] = [];
   const acceptedSender = createEmailSender(
     fakeTransport(async (message) => {
+      await Promise.resolve();
       messages.push(message);
       return { providerMessageId: `accepted-${messages.length}` };
     }),
   );
   const failedSender = createEmailSender(
-    fakeTransport(async () => ({
-      reason: "transport_failure",
-      providerStatusCode: null,
-    })),
+    fakeTransport(async () =>
+      Promise.resolve({
+        reason: "transport_failure",
+        providerStatusCode: null,
+      }),
+    ),
   );
 
   expect(

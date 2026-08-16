@@ -18,7 +18,7 @@ export function generateStaticParams() {
   return locales.flatMap((locale) => blogPosts.map((post) => ({ locale, slug: post.slug })));
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw, slug } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const post = getPost(slug);
@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 /** BlogPosting entity so the article carries its publication date in search. */
-function PostSchema({ slug }: { slug: string }) {
+function PostSchema({ slug }: Readonly<{ slug: string }>) {
   const post = getPost(slug);
   if (!post) return null;
   const json = {
@@ -43,7 +43,7 @@ function PostSchema({ slug }: { slug: string }) {
   return <JsonLd data={json} />;
 }
 
-export default async function BlogPostPage({ params }: PageProps) {
+export default async function BlogPostPage({ params }: Readonly<PageProps>) {
   const { locale: raw, slug } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);

@@ -13,14 +13,14 @@ import { ExternalLink, Star } from "@/components/icons";
 
 interface PageProps { params: Promise<{ locale: string }> }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
   return pageMetadata(locale, "/office-gallery", dict.meta.gallery.title, dict.meta.gallery.description);
 }
 
-export default async function GalleryPage({ params }: PageProps) {
+export default async function GalleryPage({ params }: Readonly<PageProps>) {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);

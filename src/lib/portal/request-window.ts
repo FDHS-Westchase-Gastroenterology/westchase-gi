@@ -62,7 +62,7 @@ export function requestPageWindow({
   counts,
   openRows,
   closedCount,
-}: RequestPageWindowInput): RequestPageWindow {
+}: Readonly<RequestPageWindowInput>): RequestPageWindow {
   const closedTotal = includesClosedTail(filter) ? closedCount : 0;
   // Display totals are the exact SQL counts, not the capped open fetch.
   const openSqlTotal =

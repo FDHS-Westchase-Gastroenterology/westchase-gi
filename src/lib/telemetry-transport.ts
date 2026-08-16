@@ -7,7 +7,7 @@ const TELEMETRY_ENDPOINT = "/api/telemetry";
 export function postBeacon(payload: string) {
   try {
     const blob = new Blob([payload], { type: "application/json" });
-    if (navigator.sendBeacon?.(TELEMETRY_ENDPOINT, blob)) return;
+    if (navigator.sendBeacon(TELEMETRY_ENDPOINT, blob)) return;
   } catch {
     // SendBeacon unavailable or threw — fall through to keepalive fetch.
   }

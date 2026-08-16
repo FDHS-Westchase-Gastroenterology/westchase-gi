@@ -14,7 +14,7 @@ interface TestimonialRailProps {
  * The 11 published patient testimonials, verbatim, on a scroll-snap rail.
  * Native touch scrolling; buttons assist pointer users.
  */
-export function TestimonialRail({ label, prevLabel, nextLabel }: TestimonialRailProps) {
+export function TestimonialRail({ label, prevLabel, nextLabel }: Readonly<TestimonialRailProps>) {
   const railRef = useRef<HTMLUListElement | null>(null);
 
   function scroll(dir: 1 | -1) {
@@ -53,7 +53,7 @@ export function TestimonialRail({ label, prevLabel, nextLabel }: TestimonialRail
       <div className="container-x mt-5 flex gap-2">
         <button
           type="button"
-          onClick={() => scroll(-1)}
+          onClick={() => { scroll(-1); }}
           aria-label={prevLabel}
           className="rounded-full border-[1.5px] border-[var(--color-line-2)] p-2.5 transition-colors hover:border-[var(--color-navy)] hover:bg-white"
         >
@@ -61,7 +61,7 @@ export function TestimonialRail({ label, prevLabel, nextLabel }: TestimonialRail
         </button>
         <button
           type="button"
-          onClick={() => scroll(1)}
+          onClick={() => { scroll(1); }}
           aria-label={nextLabel}
           className="rounded-full border-[1.5px] border-[var(--color-line-2)] p-2.5 transition-colors hover:border-[var(--color-navy)] hover:bg-white"
         >

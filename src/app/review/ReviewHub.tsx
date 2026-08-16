@@ -132,7 +132,7 @@ function isHubLang(value: string): value is HubLang {
 const subscribeNever = () => () => {};
 function readLangParam(): HubLang | null {
   const param = new URLSearchParams(window.location.search).get("lang");
-  return param && isHubLang(param) ? param : null;
+  return param !== null && param !== "" && isHubLang(param) ? param : null;
 }
 
 export function ReviewHub() {
@@ -170,7 +170,9 @@ export function ReviewHub() {
             type="button"
             lang={l.code}
             aria-pressed={lang === l.code}
-            onClick={() => setPicked(l.code)}
+            onClick={() => {
+              setPicked(l.code);
+            }}
             className={`rounded-full px-3.5 py-1.5 text-[0.9rem] font-bold transition-colors ${
               lang === l.code
                 ? "bg-[var(--color-navy)] text-[var(--color-on-dark)]"

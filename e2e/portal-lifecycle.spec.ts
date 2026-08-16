@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
+import { z } from "zod";
 import { jsonObjectSchema } from "../src/lib/json";
 import type { JsonObject } from "../src/lib/json";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
@@ -59,7 +60,7 @@ async function signIn(page: Page): Promise<void> {
 
 async function stageRequest(
   suffix: string,
-  lifecycle: LifecycleFixture = {},
+  lifecycle: Readonly<LifecycleFixture> = {},
 ): Promise<string> {
   const id = randomUUID();
   requestIds.add(id);
@@ -123,7 +124,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
       detail?: string,
     ) {
       await composer.getByText(destination, { exact: true }).click();
-      if (detail) {
+      if (detail !== undefined && detail !== "") {
         await composer.getByText(detail, { exact: true }).click();
       }
       await page.getByTestId("save-outcome").click();
@@ -190,7 +191,12 @@ test.describe("disposable-local appointment-request lifecycle", () => {
       .eq("entity_id", id)
       .in("action", ["request.call_outcome"]);
     expect(audits.error).toBeNull();
-    expect((audits.data ?? []).map(({ action }) => action)).toEqual([
+    expect(
+      z
+        .array(z.object({ action: z.string() }))
+        .parse(audits.data ?? [])
+        .map(({ action }) => action),
+    ).toEqual([
       "request.call_outcome",
       "request.call_outcome",
       "request.call_outcome",
@@ -416,14 +422,20 @@ test.describe("disposable-local appointment-request lifecycle", () => {
         openOld,
       ]);
     expect(survivors.error).toBeNull();
-    expect((survivors.data ?? []).map(({ id }) => id).sort()).toEqual(
+    expect(
+      z
+        .array(z.object({ id: z.string() }))
+        .parse(survivors.data ?? [])
+        .map(({ id }) => id)
+        .sort((left, right) => left.localeCompare(right)),
+    ).toEqual(
       [
         unconvertedBefore,
         convertedBefore,
         heldExpired,
         legacyClosed,
         openOld,
-      ].sort(),
+      ].sort((left, right) => left.localeCompare(right)),
     );
 
     const cascadedEvent = await db
@@ -463,7 +475,10 @@ test.describe("disposable-local appointment-request lifecycle", () => {
         openOld,
       ]);
     expect(audits.error).toBeNull();
-    const auditActions = (audits.data ?? []).map(({ action }) => action);
+    const auditActions = z
+      .array(z.object({ action: z.string() }))
+      .parse(audits.data ?? [])
+      .map(({ action }) => action);
     expect(auditActions).not.toContain("test.audit.exact");
     expect(auditActions).toContain("test.audit.before");
     expect(auditActions).toContain("test.audit.held");

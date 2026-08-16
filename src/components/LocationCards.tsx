@@ -6,7 +6,7 @@ import { Clock, Mail, MapPin, MessageSquare, Phone, Printer } from "./icons";
 interface LocationCardsProps { locale: Locale; dict: Dictionary }
 
 /** Both offices with full NAP each (keep-list requirement). */
-export function LocationCards({ locale, dict }: LocationCardsProps) {
+export function LocationCards({ locale, dict }: Readonly<LocationCardsProps>) {
   const c = dict.common;
   return (
     <div className="grid gap-6 md:grid-cols-2">

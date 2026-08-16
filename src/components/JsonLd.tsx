@@ -5,7 +5,7 @@
  * data is static site config, but every schema component routes through here
  * so the guarantee holds as content grows.
  */
-export function JsonLd({ data }: { data: object }) {
+export function JsonLd({ data }: Readonly<{ data: object }>) {
   const json = JSON.stringify(data)
     .replace(/</g, "\\u003c")
     .replace(/>/g, "\\u003e")

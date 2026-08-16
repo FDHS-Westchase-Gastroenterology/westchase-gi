@@ -42,39 +42,32 @@ function practiceDayNumber(date: Date): number {
   return Math.round(Date.parse(`${NY_DAY.format(date)}T00:00:00Z`) / 86_400_000);
 }
 
-function contactedFollowUp(row: QueueAttentionRow): string | null {
+function contactedFollowUp(row: Readonly<QueueAttentionRow>): string | null {
   return row.status === "contacted" ? row.follow_up_at : null;
 }
 
 function assignBucket(
-  row: QueueAttentionRow,
+  row: Readonly<QueueAttentionRow>,
   lastActivityAt: string | null,
   boundary: Date,
   now: Date,
 ): AttentionBucket {
-  switch (row.status) {
-    case "new":
-      return "new";
-    case "scheduled":
-      return "scheduled";
-    case "closed":
-      return "closed";
-    case "contacted": {
-      const followUp = contactedFollowUp(row);
-      if (followUp !== null) {
-        return practiceDayNumber(new Date(followUp)) <= practiceDayNumber(now)
-          ? "follow_up"
-          : "upcoming";
-      }
-      const activityMs = Date.parse(lastActivityAt ?? row.created_at);
-      return activityMs < boundary.getTime() ? "stale" : "upcoming";
-    }
+  if (row.status !== "contacted") {
+    return row.status;
   }
+  const followUp = contactedFollowUp(row);
+  if (followUp !== null) {
+    return practiceDayNumber(new Date(followUp)) <= practiceDayNumber(now)
+      ? "follow_up"
+      : "upcoming";
+  }
+  const activityMs = Date.parse(lastActivityAt ?? row.created_at);
+  return activityMs < boundary.getTime() ? "stale" : "upcoming";
 }
 
 function compareWithinBucket(
-  a: AttentiveRow<QueueAttentionRow>,
-  b: AttentiveRow<QueueAttentionRow>,
+  a: Readonly<AttentiveRow<QueueAttentionRow>>,
+  b: Readonly<AttentiveRow<QueueAttentionRow>>,
 ): number {
   switch (a.bucket) {
     case "new":

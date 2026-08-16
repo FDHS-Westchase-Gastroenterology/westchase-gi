@@ -82,7 +82,7 @@ export async function resolveStaffAuthState(
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (profileError || !profile) return null;
+  if (profileError !== null || profile === null) return null;
   const role = staffRoleSchema.safeParse(profile.role);
   if (!role.success) return null;
 
@@ -93,10 +93,14 @@ export async function resolveStaffAuthState(
     .string()
     .safeParse(profile.portal_tour_dismissed_at);
 
+  const userEmail = user.email?.trim();
   const email =
-    user.email?.trim() ||
-    (emailFromProfile.success ? emailFromProfile.data.trim() : "");
-  if (!email || !displayName.success || displayName.data.trim().length === 0) {
+    userEmail !== undefined && userEmail !== ""
+      ? userEmail
+      : emailFromProfile.success
+        ? emailFromProfile.data.trim()
+        : "";
+  if (email === "" || !displayName.success || displayName.data.trim().length === 0) {
     return null;
   }
 
@@ -121,7 +125,7 @@ export async function getVerifiedStaffAuthState(): Promise<PortalStaffAuthState 
       data: { user },
       error,
     } = await authClient.auth.getUser();
-    if (error || !user) return null;
+    if (error !== null || user === null) return null;
     return await resolveStaffAuthState(user);
   } catch {
     return null;
@@ -154,7 +158,7 @@ export async function readPasswordAuthFlow(
 ): Promise<PasswordAuthFlow | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(PASSWORD_FLOW_COOKIE)?.value;
-  if (!token) return null;
+  if (token === undefined || token === "") return null;
 
   const [version, flow, tokenUserId, expires, signature, ...extra] =
     token.split(".");
@@ -163,8 +167,8 @@ export async function readPasswordAuthFlow(
     version !== "v1" ||
     (flow !== "invite" && flow !== "recovery") ||
     tokenUserId !== userId ||
-    !expires ||
-    !signature
+    expires === "" ||
+    signature === ""
   ) {
     return null;
   }
@@ -197,7 +201,9 @@ export async function clearPasswordAuthFlow(): Promise<void> {
 export const getSessionUser = cache(
   async (): Promise<PortalSessionUser | null> => {
     const state = await getVerifiedStaffAuthState();
-    if (!state?.active || !state.onboardedAt) return null;
+    if (state === null) return null;
+    if (!state.active) return null;
+    if (state.onboardedAt === null || state.onboardedAt === "") return null;
 
     return {
       id: state.id,
@@ -216,11 +222,11 @@ export const getSessionUser = cache(
  */
 export async function requireRole(
   requiredRole: StaffRole,
-  options: RequireRoleOptions = {},
+  options: Readonly<RequireRoleOptions> = {},
 ): Promise<PortalSessionUser> {
   const sessionUser = await getSessionUser();
 
-  if (!sessionUser) {
+  if (sessionUser === null) {
     if (options.unauthenticated === "throw") {
       throw new PortalAuthorizationError(401);
     }

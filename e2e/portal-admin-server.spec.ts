@@ -11,6 +11,33 @@ const inviteDetailSchema = z.looseObject({
   resend: z.boolean().optional(),
   link_type: z.string().optional(),
 });
+const idRowSchema = z.object({ id: z.string() });
+const cleanupProfileSchema = z.object({
+  id: z.string(),
+  user_id: z.string().nullable(),
+});
+const staffProfileRowSchema = z.object({
+  id: z.string(),
+  user_id: z.string(),
+  email: z.string(),
+  role: z.string(),
+  active: z.boolean(),
+  onboarded_at: z.string().nullable(),
+});
+const recipientRowSchema = z.object({
+  id: z.string(),
+  active: z.boolean(),
+});
+const auditRowSchema = z.object({
+  actor_email: z.string(),
+  action: z.string(),
+  entity: z.string(),
+  entity_id: z.string(),
+  source: z.string(),
+  correlation_id: z.string(),
+  at: z.string(),
+  detail: z.unknown().optional(),
+});
 
 loadLocalEnv();
 
@@ -62,8 +89,8 @@ interface MutationResponse {
 }
 
 interface RestResult {
-  error: { code?: string } | null;
-  status: number;
+  readonly error: { readonly code?: string } | null;
+  readonly status: number;
 }
 
 interface CsvFetch {
@@ -81,6 +108,16 @@ async function signIn(page: Page, email: string, password: string) {
   await expect(page).toHaveURL(/\/admin\/?$/);
 }
 
+type SafeParseResult<T> =
+  | { readonly success: true; readonly data: T }
+  | { readonly success: false; readonly error: unknown };
+
+function requireDecoded<T>(parsed: SafeParseResult<T>, message: string): T {
+  expect(parsed.success).toBe(true);
+  if (!parsed.success) throw new Error(message);
+  return parsed.data;
+}
+
 async function mutate(
   page: Page,
   operation: string,
@@ -92,13 +129,19 @@ async function mutate(
       headers: { "Content-Type": "application/json" },
       body,
     });
-    return { status: response.status, body: await response.json() };
+    return { status: response.status, bodyText: await response.text() };
   }, JSON.stringify({ operation, input }));
-  return { status: raw.status, body: jsonObjectSchema.parse(raw.body) };
+  return {
+    status: raw.status,
+    body: requireDecoded(
+      jsonObjectSchema.safeParse(JSON.parse(raw.bodyText)),
+      "Settings mutation response was not a JSON object",
+    ),
+  };
 }
 
 function fallbackSetupUrl(
-  response: MutationResponse,
+  response: Readonly<MutationResponse>,
   expectedStatus = 201,
   expectedType: "invite" | "recovery" = "invite",
 ): string {
@@ -123,7 +166,7 @@ function fallbackSetupUrl(
   return setupUrlString;
 }
 
-function expectDenied(result: RestResult): void {
+function expectDenied(result: Readonly<RestResult>): void {
   expect(result.error).not.toBeNull();
   expect(
     result.error?.code === "42501" ||
@@ -204,7 +247,7 @@ test.use({ trace: "off" });
 test.describe("portal management server boundaries", () => {
   test.describe.configure({ mode: "serial" });
 
-  test.beforeEach(async ({}, testInfo) => {
+  test.beforeEach(({}, testInfo) => {
     test.skip(
       testInfo.project.name !== "chromium",
       "Credential and role checks run once.",
@@ -228,14 +271,25 @@ test.describe("portal management server boundaries", () => {
         .in("email", [recipientEmail, deniedRecipientEmail]),
     ]);
 
-    for (const profile of profiles.data ?? []) {
+    const cleanupProfiles = requireDecoded(
+      z.array(cleanupProfileSchema).safeParse(profiles.data ?? []),
+      "Cleanup staff profiles could not be decoded",
+    );
+    for (const profile of cleanupProfiles) {
       auditEntityIds.add(profile.id);
-      if (profile.user_id) {
-        if (!staffUserId) staffUserId = profile.user_id;
-        else if (profile.user_id !== staffUserId) targetUserId = profile.user_id;
+      if (profile.user_id !== null && profile.user_id !== "") {
+        if (staffUserId === null || staffUserId === "") {
+          staffUserId = profile.user_id;
+        } else if (profile.user_id !== staffUserId) {
+          targetUserId = profile.user_id;
+        }
       }
     }
-    for (const recipient of recipients.data ?? []) {
+    const cleanupRecipients = requireDecoded(
+      z.array(idRowSchema).safeParse(recipients.data ?? []),
+      "Cleanup recipients could not be decoded",
+    );
+    for (const recipient of cleanupRecipients) {
       auditEntityIds.add(recipient.id);
     }
 
@@ -303,13 +357,19 @@ test.describe("portal management server boundaries", () => {
       .select("id, user_id, email, role, active, onboarded_at")
       .in("email", [staffEmail, targetEmail]);
     expect(profileError).toBeNull();
-    expect(profiles).toHaveLength(2);
+    const profileRows = requireDecoded(
+      z.array(staffProfileRowSchema).safeParse(profiles ?? []),
+      "Throwaway staff profiles could not be decoded",
+    );
+    expect(profileRows).toHaveLength(2);
 
-    const staffProfile = profiles?.find((profile) => profile.email === staffEmail);
-    const targetProfile = profiles?.find(
+    const staffProfile = profileRows.find(
+      (profile) => profile.email === staffEmail,
+    );
+    const targetProfile = profileRows.find(
       (profile) => profile.email === targetEmail,
     );
-    if (!staffProfile || !targetProfile) {
+    if (staffProfile === undefined || targetProfile === undefined) {
       throw new Error("Throwaway staff profiles were not created");
     }
 
@@ -531,25 +591,28 @@ test.describe("portal management server boundaries", () => {
       .eq("email", recipientEmail)
       .single();
     expect(recipientError).toBeNull();
-    if (!recipient) throw new Error("Throwaway recipient was not created");
-    recipientId = recipient.id;
-    auditEntityIds.add(recipient.id);
+    const recipientRow = requireDecoded(
+      recipientRowSchema.safeParse(recipient),
+      "Throwaway recipient was not created",
+    );
+    recipientId = recipientRow.id;
+    auditEntityIds.add(recipientRow.id);
 
     const toggledRecipient = await mutate(staffPage, "recipient.toggle", {
-      recipientId: recipient.id,
+      recipientId: recipientRow.id,
       active: false,
     });
     expect(toggledRecipient.status).toBe(200);
     expect(toggledRecipient.body.ok).toBe(true);
 
     const deniedRemove = await mutate(staffPage, "recipient.remove", {
-      id: recipient.id,
+      id: recipientRow.id,
     });
     expect(deniedRemove.status).toBe(403);
     const recipientAfterDeniedRemove = await db
       .from("notification_recipients")
       .select("active")
-      .eq("id", recipient.id)
+      .eq("id", recipientRow.id)
       .single();
     expect(recipientAfterDeniedRemove.error).toBeNull();
     expect(recipientAfterDeniedRemove.data?.active).toBe(false);
@@ -637,7 +700,7 @@ test.describe("portal management server boundaries", () => {
     }
 
     const removedRecipient = await mutate(adminPage, "recipient.remove", {
-      id: recipient.id,
+      id: recipientRow.id,
     });
     expect(removedRecipient.status).toBe(200);
     expect(removedRecipient.body.ok).toBe(true);
@@ -645,7 +708,7 @@ test.describe("portal management server boundaries", () => {
     const recipientAfterRemove = await db
       .from("notification_recipients")
       .select("id")
-      .eq("id", recipient.id)
+      .eq("id", recipientRow.id)
       .maybeSingle();
     expect(recipientAfterRemove.error).toBeNull();
     expect(recipientAfterRemove.data).toBeNull();
@@ -653,9 +716,12 @@ test.describe("portal management server boundaries", () => {
 
   test("VAL-ADMIN-010: management mutations write actor, action, entity, and time", async () => {
     if (
-      !staffProfileId ||
-      !targetProfileId ||
-      !recipientId
+      staffProfileId === null ||
+      staffProfileId === "" ||
+      targetProfileId === null ||
+      targetProfileId === "" ||
+      recipientId === null ||
+      recipientId === ""
     ) {
       throw new Error("Role-enforcement setup did not complete");
     }
@@ -667,13 +733,17 @@ test.describe("portal management server boundaries", () => {
       )
       .in("entity_id", [staffProfileId, targetProfileId, recipientId]);
     expect(error).toBeNull();
+    const auditRows = requireDecoded(
+      z.array(auditRowSchema).safeParse(rows ?? []),
+      "Management audit rows could not be decoded",
+    );
 
     function assertAudit(
       action: string,
       entityId: string,
       actorEmail: string,
     ): void {
-      const row = rows?.find(
+      const row = auditRows.find(
         (candidate) =>
           candidate.action === action &&
           candidate.entity_id === entityId &&
@@ -694,7 +764,7 @@ test.describe("portal management server boundaries", () => {
 
     assertAudit("staff.invite", staffProfileId, SEED_ADMIN_EMAIL);
     assertAudit("staff.invite", targetProfileId, SEED_ADMIN_EMAIL);
-    const resendAudits = rows?.filter((candidate) => {
+    const resendAudits = auditRows.filter((candidate) => {
       if (
         candidate.action !== "staff.invite" ||
         candidate.entity_id !== targetProfileId
@@ -705,9 +775,9 @@ test.describe("portal management server boundaries", () => {
       return detail.success && detail.data.resend === true;
     });
     expect(resendAudits).toHaveLength(2);
-    const resendLinkTypes = (resendAudits ?? [])
+    const resendLinkTypes = resendAudits
       .map((row) => inviteDetailSchema.safeParse(row.detail).data?.link_type)
-      .sort();
+      .sort((left, right) => (left ?? "").localeCompare(right ?? ""));
     expect(resendLinkTypes).toEqual(["invite", "recovery"]);
     assertAudit("staff.role", targetProfileId, SEED_ADMIN_EMAIL);
     assertAudit("staff.deactivate", targetProfileId, SEED_ADMIN_EMAIL);
@@ -735,7 +805,10 @@ test.describe("portal management server boundaries", () => {
       .select("id")
       .single();
     expect(externalAuditError).toBeNull();
-    if (!externalAudit) throw new Error("External audit fixture was not created");
+    const externalAuditRow = requireDecoded(
+      idRowSchema.safeParse(externalAudit),
+      "External audit fixture was not created",
+    );
     try {
       await adminPage.goto("/admin/audit");
       const auditRow = adminPage
@@ -745,7 +818,7 @@ test.describe("portal management server boundaries", () => {
       await expect(auditRow).toContainText(targetLogin);
       await expect(auditRow).toContainText("Outcome unconfirmed");
     } finally {
-      await db.from("audit_log").delete().eq("id", externalAudit.id);
+      await db.from("audit_log").delete().eq("id", externalAuditRow.id);
     }
   });
 
@@ -796,8 +869,12 @@ test.describe("portal management server boundaries", () => {
       .insert(stagedRows)
       .select("id");
     expect(insertError).toBeNull();
-    expect(inserted).toHaveLength(stagedRows.length);
-    for (const row of inserted ?? []) requestIds.add(row.id);
+    const insertedRows = requireDecoded(
+      z.array(idRowSchema).safeParse(inserted ?? []),
+      "Export fixture rows could not be decoded",
+    );
+    expect(insertedRows).toHaveLength(stagedRows.length);
+    for (const row of insertedRows) requestIds.add(row.id);
 
     let csv: CsvFetch | null = null;
     let parsed: string[][] = [];
@@ -831,12 +908,12 @@ test.describe("portal management server boundaries", () => {
     expect(parsed[0]).toEqual([...CSV_HEADER]);
     expect(parsed.length - 1).toBe(expectedCount);
 
-    for (const insertedRow of inserted ?? []) {
+    for (const insertedRow of insertedRows) {
       expect(parsed.some((row) => row[0] === insertedRow.id)).toBe(true);
     }
-    const quotedRow = parsed.find((row) => row[0] === inserted?.[0]?.id);
+    const quotedRow = parsed.find((row) => row[0] === insertedRows[0]?.id);
     expect(quotedRow?.[10]).toBe(stagedRows[0].message);
-    const plainRow = parsed.find((row) => row[0] === inserted?.[1]?.id);
+    const plainRow = parsed.find((row) => row[0] === insertedRows[1]?.id);
     for (const [column, value] of [
       [3, stagedRows[1].name],
       [4, stagedRows[1].phone],
@@ -851,7 +928,7 @@ test.describe("portal management server boundaries", () => {
     }
     for (const [index, formulaRow] of formulaRows.entries()) {
       const exported = parsed.find(
-        (row) => row[0] === inserted?.[index + 2]?.id,
+        (row) => row[0] === insertedRows[index + 2]?.id,
       );
       for (const [column, value] of [
         [3, formulaRow.name],
@@ -936,7 +1013,10 @@ test.describe("portal management server boundaries", () => {
       .select("id")
       .single();
     expect(stageError).toBeNull();
-    const requestId = staged!.id;
+    const requestId = requireDecoded(
+      idRowSchema.safeParse(staged),
+      "Recent-work fixture was not created",
+    ).id;
 
     const { error: auditError } = await db.from("audit_log").insert([
       {

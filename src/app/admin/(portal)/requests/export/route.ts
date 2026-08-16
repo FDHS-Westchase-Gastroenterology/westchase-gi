@@ -30,17 +30,17 @@ const CSV_HEADERS = [
 
 type CsvColumn = (typeof CSV_HEADERS)[number];
 interface CsvRow {
-  id: string;
-  created_at: string;
-  status: string;
-  name: string;
-  phone: string;
-  email: string | null;
-  location: string;
-  preferred_time: string;
-  locale: string;
-  source_path: string;
-  message: string | null;
+  readonly id: string;
+  readonly created_at: string;
+  readonly status: string;
+  readonly name: string;
+  readonly phone: string;
+  readonly email: string | null;
+  readonly location: string;
+  readonly preferred_time: string;
+  readonly locale: string;
+  readonly source_path: string;
+  readonly message: string | null;
 }
 
 const requestStatusSchema = z.enum(REQUEST_STATUSES);
@@ -63,14 +63,14 @@ function isRequestStatus(value: string | null): value is RequestStatus {
 }
 
 function csvField(raw: CsvRow[CsvColumn]): string {
-  const value = raw === null ? "" : raw;
+  const value = raw ?? "";
   const safeValue = /^[=+\-@\t\r\n]/.test(value) ? `'${value}` : value;
   return /[",\r\n]/.test(safeValue)
     ? `"${safeValue.replaceAll('"', '""')}"`
     : safeValue;
 }
 
-function csvDocument(rows: CsvRow[]): string {
+function csvDocument(rows: readonly CsvRow[]): string {
   const lines = [
     CSV_HEADERS.join(","),
     ...rows.map((row) =>
@@ -138,7 +138,7 @@ export async function GET(request: NextRequest): Promise<Response> {
       EXPORT_CHUNK_SIZE,
       expectedCount - from,
     );
-    if (error || !data || data.length !== expectedChunkSize) {
+    if (error || data.length !== expectedChunkSize) {
       return new Response("Export unavailable", { status: 503 });
     }
     const parsedRows = z.array(csvRowSchema).safeParse(data);
@@ -160,7 +160,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     finalCountError ||
     finalCount !== expectedCount ||
     rows.length !== expectedCount ||
-    new Set(rows.map((row) => String(row.id))).size !== expectedCount
+    new Set(rows.map((row) => row.id)).size !== expectedCount
   ) {
     return new Response("Export unavailable", { status: 503 });
   }

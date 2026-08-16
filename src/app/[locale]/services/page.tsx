@@ -13,14 +13,14 @@ import { ArrowRight } from "@/components/icons";
 
 interface PageProps { params: Promise<{ locale: string }> }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
   return pageMetadata(locale, "/services", dict.meta.services.title, dict.meta.services.description);
 }
 
-export default async function ServicesPage({ params }: PageProps) {
+export default async function ServicesPage({ params }: Readonly<PageProps>) {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);

@@ -15,13 +15,13 @@ import { isPortalReleaseAuditAction } from "@/lib/portal/release-state";
 // Deliberately not resolved here; the request itself is the link.
 
 export interface AuditEntry {
-  id: string;
-  actor_email: string;
-  action: string;
-  entity: string;
-  entity_id: string | null;
-  detail: Json;
-  at: string;
+  readonly id: string;
+  readonly actor_email: string;
+  readonly action: string;
+  readonly entity: string;
+  readonly entity_id: string | null;
+  readonly detail: Json;
+  readonly at: string;
 }
 
 export interface RecentWorkContext {
@@ -36,14 +36,14 @@ export interface RecentWorkContext {
 }
 
 export interface RecentWorkItem {
-  id: string;
-  at: string;
-  actor: string;
-  sentence: string;
-  requestId: string | null;
+  readonly id: string;
+  readonly at: string;
+  readonly actor: string;
+  readonly sentence: string;
+  readonly requestId: string | null;
   // True when the action is unknown to the human vocabulary and the entry
   // Falls back to the technical form — an honest fallback, never silence.
-  technical: boolean;
+  readonly technical: boolean;
 }
 
 const NY_DAY = new Intl.DateTimeFormat("en-CA", {
@@ -85,14 +85,14 @@ function nameOrEmail(
   email: string,
 ): string {
   const name = namesByEmail.get(email.trim().toLowerCase());
-  return name && name.length > 0 ? name : email;
+  return name !== undefined && name !== "" ? name : email;
 }
 
 function recipientLabel(
   recipientsById: ReadonlyMap<string, string>,
   id: string | null,
 ): string {
-  if (!id) return "a notification recipient";
+  if (id === null || id === "") return "a notification recipient";
   return recipientsById.get(id) ?? "a notification recipient";
 }
 
@@ -100,7 +100,7 @@ function profileLabel(
   namesByProfileId: ReadonlyMap<string, string>,
   id: string | null,
 ): string {
-  if (!id) return "a colleague";
+  if (id === null || id === "") return "a colleague";
   return namesByProfileId.get(id) ?? "a colleague";
 }
 
@@ -117,9 +117,9 @@ interface ActionDescription {
 }
 
 function describeAction(
-  entry: AuditEntry,
+  entry: Readonly<AuditEntry>,
   detail: JsonObject,
-  ctx: RecentWorkContext,
+  ctx: Readonly<RecentWorkContext>,
 ): ActionDescription {
   const requestEntity = entry.entity === "requests";
   switch (entry.action) {
@@ -153,9 +153,10 @@ function describeAction(
     case "request.call_outcome": {
       const outcome = asJsonString(detail.outcome) ?? "";
       const followUpAt = asJsonString(detail.follow_up_at);
-      const followUp = followUpAt
-        ? ` — call again ${followUpShortLabel(followUpAt, ctx.now)}`
-        : "";
+      const followUp =
+        followUpAt !== null && followUpAt !== ""
+          ? ` — call again ${followUpShortLabel(followUpAt, ctx.now)}`
+          : "";
       switch (outcome) {
         case "reached_follow_up":
           return {
@@ -296,7 +297,7 @@ function describeAction(
 
 export function toRecentWorkItems(
   entries: readonly AuditEntry[],
-  ctx: RecentWorkContext,
+  ctx: Readonly<RecentWorkContext>,
 ): RecentWorkItem[] {
   const items: RecentWorkItem[] = [];
   for (const entry of entries) {
@@ -325,8 +326,8 @@ export function groupByPracticeDay(
   const groups: { label: string; items: RecentWorkItem[] }[] = [];
   for (const item of items) {
     const label = dayGroupLabel(item.at, now);
-    const current = groups[groups.length - 1];
-    if (current && current.label === label) {
+    const current = groups.at(-1);
+    if (current?.label === label) {
       current.items.push(item);
     } else {
       groups.push({ label, items: [item] });

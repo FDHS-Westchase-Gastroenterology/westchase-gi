@@ -33,9 +33,10 @@ type SearchParams = Promise<{
 
 const requestStatusSchema = z.enum(REQUEST_STATUSES);
 
-function activeFilter(raw: string | string[] | undefined): RequestStatus | "all" {
-  const value = Array.isArray(raw) ? raw[0] : raw;
-  const parsed = requestStatusSchema.safeParse(value);
+function activeFilter(raw: Readonly<string | string[] | undefined>): RequestStatus | "all" {
+  const parsed = Array.isArray(raw)
+    ? requestStatusSchema.safeParse(raw.at(0))
+    : requestStatusSchema.safeParse(raw);
   return parsed.success ? parsed.data : "all";
 }
 
@@ -44,12 +45,12 @@ function requestsHref({
   path = "/admin/requests",
   search,
   status,
-}: {
+}: Readonly<{
   page?: number;
   path?: string;
   search: string;
   status: RequestStatus | "all";
-}): string {
+}>): string {
   const params = new URLSearchParams();
   if (status !== "all") params.set("status", status);
   if (search) params.set("q", search);
@@ -63,12 +64,12 @@ function detailHref({
   page,
   search,
   status,
-}: {
+}: Readonly<{
   id: string;
   page: number;
   search: string;
   status: RequestStatus | "all";
-}): string {
+}>): string {
   const params = new URLSearchParams();
   if (status !== "all") params.set("status", status);
   if (search) params.set("q", search);
@@ -86,16 +87,16 @@ function nextActionHint({
   lastActivityAt,
   createdAt,
   now,
-}: {
+}: Readonly<{
   bucket: AttentionBucket;
   followUpAt: string | null;
   lastActivityAt: string | null;
   createdAt: string;
   now: Date;
-}): { text: string; attention: boolean } | null {
+}>): { text: string; attention: boolean } | null {
   switch (bucket) {
     case "follow_up":
-      return followUpAt
+      return followUpAt !== null && followUpAt !== ""
         ? {
             text: `Call again — due ${followUpShortLabel(followUpAt, now)}`,
             attention: true,
@@ -104,32 +105,35 @@ function nextActionHint({
     case "stale": {
       const since = waitingSince(lastActivityAt ?? createdAt, now);
       return {
-        text: `Silent${since ? ` since ${since}` : " since before today"} — set a call-again day`,
+        text: `Silent${since !== null && since !== "" ? ` since ${since}` : " since before today"} — set a call-again day`,
         attention: true,
       };
     }
     case "upcoming":
-      return followUpAt
+      return followUpAt !== null && followUpAt !== ""
         ? { text: `Call again ${followUpShortLabel(followUpAt, now)}`, attention: false }
         : null;
     case "scheduled":
       return { text: "On the schedule", attention: false };
-    default:
+    case "new":
+    case "closed":
       return null;
   }
+  return null;
 }
 
 interface FilterItem { key: RequestStatus | "all"; label: string; count: number }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function FilterChips({
   filters,
   active,
   search,
-}: {
+}: Readonly<{
   filters: FilterItem[];
   active: RequestStatus | "all";
   search: string;
-}) {
+}>) {
   return (
     <nav aria-label="Filter by status" className="mt-6 overflow-x-auto">
       <ul className="flex min-w-max gap-2">
@@ -175,6 +179,7 @@ function FilterChips({
   );
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function QueueRowLink({
   request,
   bucket,
@@ -183,7 +188,7 @@ function QueueRowLink({
   search,
   filter,
   now,
-}: {
+}: Readonly<{
   request: QueueRow;
   bucket: AttentionBucket;
   lastActivityAt: string | null;
@@ -191,7 +196,7 @@ function QueueRowLink({
   search: string;
   filter: RequestStatus | "all";
   now: Date;
-}) {
+}>) {
   const hint = nextActionHint({
     bucket,
     followUpAt: request.follow_up_at,
@@ -232,7 +237,7 @@ function QueueRowLink({
           <span className="mt-0.5 block text-[var(--color-muted)]">
             Received {formatReceived(request.created_at)}
           </span>
-          {waiting ? (
+          {waiting !== null && waiting !== "" ? (
             <span
               data-testid="request-waiting"
               className="mt-0.5 block text-[0.85rem] font-bold text-[var(--color-amber-deep)]"
@@ -263,9 +268,9 @@ function QueueRowLink({
 
 export default async function AdminRequestsPage({
   searchParams,
-}: {
+}: Readonly<{
   searchParams: SearchParams;
-}) {
+}>) {
   await requireRole("staff");
   const params = await searchParams;
   const filter = activeFilter(params.status);

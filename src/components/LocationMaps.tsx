@@ -10,7 +10,7 @@ interface LocationMapsProps { locale: Locale; dict: Dictionary }
  * map, so the ported "map and directions" copy must stay backed by one).
  * Keyless Google embed, localized via `hl`, lazy-loaded below the fold.
  */
-export function LocationMaps({ locale, dict }: LocationMapsProps) {
+export function LocationMaps({ locale, dict }: Readonly<LocationMapsProps>) {
   const c = dict.common;
   return (
     <div className="grid gap-6 md:grid-cols-2">

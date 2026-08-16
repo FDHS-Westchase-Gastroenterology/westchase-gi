@@ -11,7 +11,8 @@ async function expectNoOpenChooser(page: Page) {
   await expect(page.locator("dialog.language-dialog[open]")).toHaveCount(0);
 }
 
-function cookieValue(cookies: { name: string; value: string }[], name: string) {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function cookieValue(cookies: readonly { name: string; value: string }[], name: string) {
   return cookies.find((cookie) => cookie.name === name)?.value;
 }
 
@@ -21,7 +22,9 @@ function cookieValue(cookies: { name: string; value: string }[], name: string) {
 // And no remembered choice exists. When the site already guessed right,
 // Nothing interrupts.
 test.describe("evidence-gated language chooser", () => {
-  test.beforeEach(async ({}, testInfo) => skipWithoutJavaScript(testInfo));
+  test.beforeEach(({}, testInfo) => {
+    skipWithoutJavaScript(testInfo);
+  });
 
   test("matching browser language never opens the dialog", async ({ page }) => {
     // Default context: navigator.languages = ["en-US"].
@@ -80,10 +83,14 @@ test.describe("evidence-gated language chooser", () => {
       const describedBy = element.getAttribute("aria-describedby");
       return {
         modal: element.matches(":modal"),
-        label: labelledBy ? document.getElementById(labelledBy)?.textContent : null,
-        description: describedBy
-          ? document.getElementById(describedBy)?.textContent
-          : null,
+        label:
+          labelledBy !== null && labelledBy !== ""
+            ? document.getElementById(labelledBy)?.textContent
+            : null,
+        description:
+          describedBy !== null && describedBy !== ""
+            ? document.getElementById(describedBy)?.textContent
+            : null,
         activeLanguage: document.activeElement?.getAttribute("lang"),
       };
     });
@@ -270,16 +277,30 @@ test.describe("evidence-gated language chooser", () => {
         get: () => "",
         set: () => undefined,
       });
-      const getItem = Storage.prototype.getItem;
-      const setItem = Storage.prototype.setItem;
-      Storage.prototype.getItem = function (key) {
-        if (this === window.sessionStorage) throw new Error("blocked");
-        return getItem.call(this, key);
+      const blockedStorage = {
+        getItem() {
+          throw new Error("blocked");
+        },
+        setItem() {
+          throw new Error("blocked");
+        },
+        removeItem() {
+          throw new Error("blocked");
+        },
+        clear() {
+          throw new Error("blocked");
+        },
+        key() {
+          return null;
+        },
+        get length() {
+          return 0;
+        },
       };
-      Storage.prototype.setItem = function (key, value) {
-        if (this === window.sessionStorage) throw new Error("blocked");
-        return setItem.call(this, key, value);
-      };
+      Object.defineProperty(window, "sessionStorage", {
+        configurable: true,
+        value: blockedStorage,
+      });
     });
 
     // The mismatch evidence is real (es), but with no way to remember a

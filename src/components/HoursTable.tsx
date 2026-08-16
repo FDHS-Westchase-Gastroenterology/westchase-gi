@@ -5,7 +5,7 @@ import type { Dictionary } from "@/lib/i18n";
 interface HoursTableProps { locale: Locale; dict: Dictionary }
 
 /** Full weekly schedule, with the confirmed hours for each office. */
-export function HoursTable({ locale, dict }: HoursTableProps) {
+export function HoursTable({ locale, dict }: Readonly<HoursTableProps>) {
   const c = dict.common;
   return (
     <div className="card-lined overflow-hidden">

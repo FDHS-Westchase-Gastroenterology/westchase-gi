@@ -15,7 +15,7 @@ import { TextBand } from "@/components/TextBand";
 
 interface PageProps { params: Promise<{ locale: string }> }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
@@ -57,7 +57,8 @@ function PhysicianSchema() {
   return <JsonLd data={json} />;
 }
 
-function Section({ section, locale }: { section: ProfileSection; locale: Locale }) {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function Section({ section, locale }: Readonly<{ section: ProfileSection; locale: Locale }>) {
   return (
     <section className="mt-9">
       <h3 className="text-[1.12rem] font-extrabold text-[var(--color-ink)]">
@@ -92,7 +93,7 @@ function Section({ section, locale }: { section: ProfileSection; locale: Locale 
   );
 }
 
-function Quote({ text }: { text: string }) {
+function Quote({ text }: Readonly<{ text: string }>) {
   return (
     <blockquote className="mt-10 border-t-2 border-[var(--color-amber)] pt-5">
       <p className="max-w-[38rem] font-[var(--font-display)] text-[1.28rem] leading-normal text-[var(--color-navy)]">
@@ -103,23 +104,24 @@ function Quote({ text }: { text: string }) {
 }
 
 /** Localized strings for the card viewer (close lives in common). */
-function cardStrings(dict: Dictionary) {
+function cardStrings(dict: Readonly<Dictionary>) {
   return { ...dict.physicians.card, close: dict.common.close };
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function PhysicianProfile({
   doc,
   locale,
   dict,
   flip,
   mint,
-}: {
+}: Readonly<{
   doc: Physician;
   locale: Locale;
   dict: Dictionary;
   flip: boolean;
   mint: boolean;
-}) {
+}>) {
   const t = dict.physicians;
   return (
     <section
@@ -193,7 +195,7 @@ function PhysicianProfile({
   );
 }
 
-export default async function PhysiciansPage({ params }: PageProps) {
+export default async function PhysiciansPage({ params }: Readonly<PageProps>) {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);

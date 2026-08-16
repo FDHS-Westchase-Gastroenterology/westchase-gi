@@ -2,12 +2,13 @@ import type { ContentSection } from "@/lib/content/types";
 import type { Locale } from "@/lib/site";
 
 interface ArticleBodyProps {
-  sections: ContentSection[];
-  locale: Locale;
+  readonly sections: readonly ContentSection[];
+  readonly locale: Locale;
 }
 
 /** Shared long-form renderer for blog posts and education topics. */
-export function ArticleBody({ sections, locale }: ArticleBodyProps) {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+export function ArticleBody({ sections, locale }: Readonly<ArticleBodyProps>) {
   return (
     <div className="grid gap-7">
       {sections.map((section) => (

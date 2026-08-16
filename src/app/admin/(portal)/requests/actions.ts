@@ -24,7 +24,7 @@ const NOTE_WRITE_ERROR =
   "We couldn’t confirm this note was saved. Your note is still here. Check the notes before trying again.";
 
 export async function addRequestNote(
-  _state: AddRequestNoteState,
+  _state: Readonly<AddRequestNoteState>,
   formData: FormData,
 ): Promise<AddRequestNoteState> {
   const session = await requireRole("staff");
@@ -67,10 +67,10 @@ export async function addRequestNote(
 // @/lib/portal/call-outcomes; this action only validates against that policy.
 
 export interface CallOutcomeInput {
-  requestId: string;
-  outcome: CallOutcomeId;
-  note?: string;
-  followUp?: FollowUpChoice;
+  readonly requestId: string;
+  readonly outcome: CallOutcomeId;
+  readonly note?: string;
+  readonly followUp?: FollowUpChoice;
 }
 
 export type CallOutcomeResult =
@@ -110,7 +110,8 @@ function mapCallOutcomeRpcError(code: string | undefined): CallOutcomeResult {
 }
 
 export async function logCallOutcome(
-  input: CallOutcomeInput,
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+  input: Readonly<CallOutcomeInput>,
 ): Promise<CallOutcomeResult> {
   const session = await requireRole("staff", { unauthenticated: "throw" });
 
@@ -157,18 +158,18 @@ export async function logCallOutcome(
   const requestId = requestIdResult.data;
 
   const db = serviceClient();
-  const { data, error } = await db.rpc("portal_log_call_outcome", {
+  const logged = await db.rpc("portal_log_call_outcome", {
     p_actor_email: session.email,
     p_request_id: requestId,
     p_outcome: outcome,
     p_note: note,
     p_follow_up_at: followUpAt,
   });
-  if (error) {
-    return mapCallOutcomeRpcError(error.code);
+  if (logged.error !== null) {
+    return mapCallOutcomeRpcError(logged.error.code);
   }
 
-  const eventId = uuidSchema.safeParse(data);
+  const eventId = uuidSchema.safeParse(logged.data);
   if (!eventId.success) {
     return { ok: false, code: "unavailable" };
   }
@@ -182,10 +183,10 @@ export async function logCallOutcome(
   };
 }
 
-export async function undoCallOutcome(input: {
+export async function undoCallOutcome(input: Readonly<{
   requestId: string;
   eventId: string;
-}): Promise<
+}>): Promise<
   | { ok: true; status: "new" | "contacted" | "scheduled" | "closed" }
   | {
       ok: false;
@@ -200,29 +201,26 @@ export async function undoCallOutcome(input: {
   }
 
   const { requestId, eventId } = parsedInput.data;
-  const { data, error } = await serviceClient().rpc(
-    "portal_undo_call_outcome",
-    {
-      p_actor_email: session.email,
-      p_request_id: requestId,
-      p_event_id: eventId,
-    },
-  );
+  const undone = await serviceClient().rpc("portal_undo_call_outcome", {
+    p_actor_email: session.email,
+    p_request_id: requestId,
+    p_event_id: eventId,
+  });
 
-  if (error) {
-    if (error.code === "P0002" || error.code === "22P02") {
+  if (undone.error !== null) {
+    if (undone.error.code === "P0002" || undone.error.code === "22P02") {
       return { ok: false, code: "not_found" };
     }
-    if (error.code === "22023") {
+    if (undone.error.code === "22023") {
       return { ok: false, code: "invalid" };
     }
-    if (error.code === "55000") {
+    if (undone.error.code === "55000") {
       return { ok: false, code: "stale" };
     }
     return { ok: false, code: "unavailable" };
   }
 
-  const result = undoCallOutcomeResultSchema.safeParse(data);
+  const result = undoCallOutcomeResultSchema.safeParse(undone.data);
   if (!result.success) {
     return { ok: false, code: "unavailable" };
   }

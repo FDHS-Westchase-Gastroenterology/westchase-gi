@@ -66,15 +66,16 @@ function usePortalRelease(): PortalReleaseContextValue {
   return context;
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 export function PortalReleaseProvider({
   children,
   eligible,
   initialState,
-}: {
+}: Readonly<{
   children: React.ReactNode;
   eligible: boolean;
   initialState: PortalReleaseViewState;
-}) {
+}>) {
   const pathname = usePathname();
   const initiallyAvailable = initialState.status === "available";
   const [available, setAvailable] = useState(initiallyAvailable);
@@ -95,7 +96,7 @@ export function PortalReleaseProvider({
   const previousPathname = useRef(pathname);
 
   useEffect(() => {
-    if (previousPathname.current === pathname) return;
+    if (previousPathname.current === pathname) return undefined;
 
     previousPathname.current = pathname;
     const frame = requestAnimationFrame(() => {
@@ -103,7 +104,7 @@ export function PortalReleaseProvider({
       if (pathname !== "/admin") setHomeOpen(false);
     });
 
-    return () => cancelAnimationFrame(frame);
+    return () => { cancelAnimationFrame(frame); };
   }, [pathname]);
 
   const runAction = useCallback(
@@ -129,14 +130,14 @@ export function PortalReleaseProvider({
       setFirstOpenMotion(animate);
       setAvailable(true);
       setHomeOpen(true);
-      runAction(() => openPortalReleaseAction(PORTAL_RELEASE_BRIEFING.id));
+      runAction(async () => openPortalReleaseAction(PORTAL_RELEASE_BRIEFING.id));
     },
     [runAction],
   );
 
   const recordDismiss = useCallback(() => {
     runAction(
-      () => recordPortalReleaseDismissAction(PORTAL_RELEASE_BRIEFING.id),
+      async () => recordPortalReleaseDismissAction(PORTAL_RELEASE_BRIEFING.id),
       "The summary closed, but the portal could not record that dismissal.",
     );
   }, [runAction]);
@@ -210,7 +211,7 @@ export function PortalReleaseProvider({
         return;
       }
       setQuickOpen(true);
-      runAction(() => openPortalReleaseAction(PORTAL_RELEASE_BRIEFING.id));
+      runAction(async () => openPortalReleaseAction(PORTAL_RELEASE_BRIEFING.id));
     },
     [quickOpen, recordDismiss, runAction],
   );
@@ -253,13 +254,13 @@ export function PortalReleaseProvider({
   });
 
   useEffect(() => {
-    if (!quickOpen && !homeOpen) return;
+    if (!quickOpen && !homeOpen) return undefined;
     function onKeyDown(event: KeyboardEvent) {
       if (event.key !== "Escape") return;
       handleEscape();
     }
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => { window.removeEventListener("keydown", onKeyDown); };
   }, [homeOpen, quickOpen]);
 
   const value = useMemo<PortalReleaseContextValue>(
@@ -322,11 +323,11 @@ function ReleaseSignal({
   animate,
   resolved,
   compact = false,
-}: {
+}: Readonly<{
   animate: boolean;
   resolved: boolean;
   compact?: boolean;
-}) {
+}>) {
   return (
     <span
       aria-hidden="true"
@@ -361,12 +362,12 @@ function ReleaseSummary({
   id,
   open,
   onClose,
-}: {
+}: Readonly<{
   animate: boolean;
   id: string;
   open: boolean;
   onClose: () => void;
-}) {
+}>) {
   const router = useRouter();
   const {
     acknowledge,
@@ -424,10 +425,8 @@ function ReleaseSummary({
             "New requests and due callbacks rise. Scheduled requests stay visible.",
           ],
         ].map(([term, detail], index) => {
-          // SAFETY: CSS custom properties are valid style values but not in CSSProperties.
-          const releaseRowStyle = {
-            "--release-row": index,
-          } as React.CSSProperties;
+          const releaseRowStyle: React.CSSProperties = {};
+          Object.assign(releaseRowStyle, { "--release-row": String(index) });
           return (
             <div
               key={term}
@@ -448,7 +447,7 @@ function ReleaseSummary({
         when useful, and the review invitation is simpler.
       </p>
 
-      {actionError ? (
+      {actionError !== null && actionError !== "" ? (
         <p
           role="status"
           className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-3 py-2 text-[0.86rem] leading-relaxed text-[var(--color-ink)]"
@@ -467,7 +466,7 @@ function ReleaseSummary({
         </Link>
         <button
           type="button"
-          onClick={() => openGuide(router)}
+          onClick={() => { openGuide(router); }}
           disabled={guidePending}
           className="btn btn-outline btn-sm min-h-11"
         >
@@ -535,7 +534,7 @@ export function PortalReleaseHomeAnnouncement() {
           onKeyDown={() => {
             pointerActivation.current = false;
           }}
-          onClick={() => openHome(pointerActivation.current)}
+          onClick={() => { openHome(pointerActivation.current); }}
           className="release-open-button min-h-12"
         >
           <ReleaseSignal animate={firstOpenMotion} resolved={homeOpen} />
@@ -587,7 +586,7 @@ export function PortalReleaseUtility() {
           onKeyDown={() => {
             pointerActivation.current = false;
           }}
-          onClick={() => toggleQuick(pointerActivation.current)}
+          onClick={() => { toggleQuick(pointerActivation.current); }}
           className="release-quick-button"
         >
           <ReleaseSignal animate={false} resolved compact />

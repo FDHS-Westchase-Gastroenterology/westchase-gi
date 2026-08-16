@@ -100,7 +100,7 @@ async function sqlCount(status: string): Promise<number> {
 test.describe("portal requests operation", () => {
   test.describe.configure({ mode: "serial" });
 
-  test.beforeEach(async ({}, testInfo) => {
+  test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== "chromium", "JS portal UI");
   });
 
@@ -207,7 +207,7 @@ test.describe("portal requests operation", () => {
       detail?: string,
     ) {
       await composer.getByText(destination, { exact: true }).click();
-      if (detail) {
+      if (detail !== undefined && detail !== "") {
         await composer.getByText(detail, { exact: true }).click();
       }
       await page.getByTestId("save-outcome").click();
@@ -273,8 +273,12 @@ test.describe("portal requests operation", () => {
       const detail = asJsonObject(jsonSchema.parse(row.detail ?? null));
       return detail ? asJsonString(detail.outcome) : null;
     });
-    expect(outcomes.sort()).toEqual(
-      ["booked", "no_answer", "reached_follow_up", "wont_schedule"].sort(),
+    expect(
+      outcomes.sort((left, right) => (left ?? "").localeCompare(right ?? "")),
+    ).toEqual(
+      ["booked", "no_answer", "reached_follow_up", "wont_schedule"].sort(
+        (left, right) => left.localeCompare(right),
+      ),
     );
 
     const { data: statusAudits, error: statusAuditError } = await db
@@ -305,7 +309,7 @@ test.describe("portal requests operation", () => {
       .select("id")
       .single();
     expect(error).toBeNull();
-    if (!data) throw new Error("Unsafe email fixture was not created");
+    if (data === null) throw new Error("Unsafe email fixture was not created");
 
     await signIn(page);
     await page.goto(`/admin/requests/${data.id}`);
@@ -422,7 +426,7 @@ test.describe("portal requests operation", () => {
         status: row.status,
         created_at: row.created_at,
       };
-      if (row.follow_up_at) {
+      if (row.follow_up_at !== undefined && row.follow_up_at !== "") {
         insert.follow_up_at = row.follow_up_at;
       }
       const { error } = await db.from("requests").insert(insert);

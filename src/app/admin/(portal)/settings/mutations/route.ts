@@ -23,23 +23,21 @@ function json(body: Json, status: number): Response {
   return Response.json(body, { status, headers: JSON_HEADERS });
 }
 
-function failureStatus(failure: ManagementFailure | Exclude<MaintainerMutationResult, { ok: true }>): number {
-  switch (failure.code) {
-    case "invalid":
-      return 400;
-    case "not_found":
-      return 404;
-    case "conflict":
-      return 409;
-    case "forbidden":
-      return 403;
-    case "limit":
-      return 429;
-    case "unconfirmed":
-      return 503;
-    case "unavailable":
-      return 503;
-  }
+const FAILURE_STATUSES = {
+  invalid: 400,
+  not_found: 404,
+  conflict: 409,
+  forbidden: 403,
+  limit: 429,
+  unconfirmed: 503,
+  unavailable: 503,
+} as const satisfies Record<
+  ManagementFailure["code"] | Exclude<MaintainerMutationResult, { ok: true }>["code"],
+  number
+>;
+
+function failureStatus(failure: Readonly<ManagementFailure | Exclude<MaintainerMutationResult, { ok: true }>>): number {
+  return FAILURE_STATUSES[failure.code];
 }
 
 function isSameOrigin(request: NextRequest): boolean {
@@ -61,11 +59,11 @@ export async function POST(request: NextRequest): Promise<Response> {
   if (!isSameOrigin(request)) {
     return json({ ok: false, error: "Forbidden" }, 403);
   }
+  const contentType = request.headers.get("content-type");
   if (
-    !request.headers
-      .get("content-type")
-      ?.toLowerCase()
-      .startsWith("application/json")
+    contentType === null ||
+    contentType === "" ||
+    !contentType.toLowerCase().startsWith("application/json")
   ) {
     return json({ ok: false, error: "JSON body required" }, 415);
   }

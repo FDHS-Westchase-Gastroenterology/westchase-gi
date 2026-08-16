@@ -166,13 +166,15 @@ test.describe("VAL-INTAKE-006: truthful failure when the queue is down", () => {
       if (Date.now() > deadline) {
         throw new Error("Broken-DB instance on :3101 failed to boot");
       }
-      await new Promise((r) => setTimeout(r, 2_000));
+      await new Promise((r) => {
+        setTimeout(r, 2_000);
+      });
     }
   });
 
-  test.afterAll(async ({}, testInfo) => {
+  test.afterAll(({}, testInfo) => {
     if (testInfo.project.name !== "chromium") return;
-    if (broken?.pid) {
+    if (broken !== null && broken.pid !== undefined && broken.pid !== 0) {
       try {
         process.kill(-broken.pid, "SIGKILL");
       } catch {
@@ -221,7 +223,7 @@ test("VAL-INTAKE-015: the unknown state is distinct, honest, and takes focus", a
   test.skip(testInfo.project.name !== "chromium", "JS submission path");
 
   await page.setExtraHTTPHeaders({ "X-Forwarded-For": testIp("unknown") });
-  await page.route("**/api/requests", (route) => route.abort());
+  await page.route("**/api/requests", async (route) => route.abort());
 
   await page.goto("/en/appointment");
   await awaitHydration(page);

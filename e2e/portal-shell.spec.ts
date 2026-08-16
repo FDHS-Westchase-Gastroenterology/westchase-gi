@@ -129,7 +129,7 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
 
       const utilityCollision = await page.evaluate(() => {
         const website = Array.from(document.querySelectorAll("a")).find(
-          (link) => link.textContent?.trim() === "View website",
+          (link) => link.textContent.trim() === "View website",
         )?.getBoundingClientRect();
         const signOut = document
           .querySelector('button[type="submit"]')
@@ -137,7 +137,7 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
         const identity = document
           .querySelector('[data-testid="session-user"]')
           ?.parentElement?.getBoundingClientRect();
-        const overlaps = (a: DOMRect, b: DOMRect) =>
+        const overlaps = (a: Readonly<DOMRect>, b: Readonly<DOMRect>) =>
           a.left < b.right &&
           a.right > b.left &&
           a.top < b.bottom &&

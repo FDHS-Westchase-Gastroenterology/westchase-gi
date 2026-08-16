@@ -19,7 +19,7 @@ export default defineConfig({
   // Files instead of relying on every caller to remember `--workers=1`.
   fullyParallel: false,
   workers: 1,
-  forbidOnly: !!process.env.CI,
+  forbidOnly: process.env.CI !== undefined && process.env.CI !== "",
   retries: 0,
   reporter: "list",
   use: {

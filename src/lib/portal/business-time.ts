@@ -157,7 +157,7 @@ function daysUntilComingFriday(now: Date): number {
  * Returns null for unknown kinds, malformed dates, past days, or >90 days out.
  */
 export function resolveFollowUpAt(
-  choice: FollowUpChoice,
+  choice: Readonly<FollowUpChoice>,
   now: Date = new Date(),
 ): string | null {
   const todayYmd = NY_DAY.format(now);
@@ -203,14 +203,14 @@ export function previousBusinessMorningBoundary(now: Date = new Date()): Date {
   for (;;) {
     const ymd = dayNumberToYmd(day);
     const probeIso = atPracticeLocal(ymd, 12, 0);
-    if (!probeIso) {
+    if (probeIso === null || probeIso === "") {
       day -= 1;
       continue;
     }
     const { weekday } = nyClock(new Date(probeIso));
     if (weekday !== "Sat" && weekday !== "Sun") {
       const morningIso = atPracticeLocal(ymd, OPEN_MINUTES / 60, 0);
-      if (!morningIso) {
+      if (morningIso === null || morningIso === "") {
         day -= 1;
         continue;
       }

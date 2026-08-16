@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
 import type { JsonObject } from "@/lib/json";
 import type { AuditAction } from "@/lib/portal/contracts";
 
@@ -18,7 +19,7 @@ export interface ExternalAudit {
   detail: JsonObject;
 }
 
-function isPreProvenanceSchema(error: { code?: string } | null): boolean {
+function isPreProvenanceSchema(error: Readonly<{ code?: string } | null>): boolean {
   return error?.code === "PGRST204";
 }
 
@@ -29,7 +30,7 @@ function isPreProvenanceSchema(error: { code?: string } | null): boolean {
  */
 export async function recordAudit(
   client: SupabaseClient,
-  entry: AuditEntry,
+  entry: Readonly<AuditEntry>,
 ): Promise<void> {
   const legacyAuditRow = {
     actor_email: entry.actorEmail,
@@ -49,14 +50,14 @@ export async function recordAudit(
     ({ error } = await client.from("audit_log").insert(legacyAuditRow));
   }
 
-  if (error) {
+  if (error !== null) {
     throw new Error(`Audit write failed: ${error.code}`);
   }
 }
 
 export async function beginExternalAudit(
   client: SupabaseClient,
-  entry: AuditEntry,
+  entry: Readonly<AuditEntry>,
 ): Promise<ExternalAudit> {
   const detail = { ...entry.detail, outcome: "pending" };
   const legacyAuditRow = {
@@ -71,40 +72,43 @@ export async function beginExternalAudit(
     source: "staff",
     correlation_id: randomUUID(),
   };
-  let { data, error } = await client
+  let result = await client
     .from("audit_log")
     .insert(auditRow)
     .select("id")
     .single();
 
-  if (isPreProvenanceSchema(error)) {
-    ({ data, error } = await client
+  if (isPreProvenanceSchema(result.error)) {
+    result = await client
       .from("audit_log")
       .insert(legacyAuditRow)
       .select("id")
-      .single());
+      .single();
   }
 
-  if (error || !data) {
-    throw new Error(`External audit start failed: ${error?.code ?? "missing_row"}`);
+  const parsed = z.object({ id: z.string() }).safeParse(result.data);
+  if (result.error !== null || !parsed.success) {
+    throw new Error(
+      `External audit start failed: ${result.error !== null ? result.error.code : "missing_row"}`,
+    );
   }
-  return { id: data.id, detail };
+  return { id: parsed.data.id, detail };
 }
 
 export async function finishExternalAudit(
   client: SupabaseClient,
-  audit: ExternalAudit,
+  audit: Readonly<ExternalAudit>,
   outcome: "succeeded" | "failed" | "unconfirmed",
   detail: JsonObject = {},
 ): Promise<void> {
-  const { data, error } = await client
+  const result = await client
     .from("audit_log")
     .update({ detail: { ...audit.detail, ...detail, outcome } })
     .eq("id", audit.id)
     .select("id")
     .single();
 
-  if (error || !data) {
-    throw new Error(`External audit finish failed: ${error?.code ?? "missing_row"}`);
+  if (result.error !== null) {
+    throw new Error(`External audit finish failed: ${result.error.code}`);
   }
 }

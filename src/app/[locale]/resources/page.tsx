@@ -13,14 +13,14 @@ import { ArrowRight, ExternalLink } from "@/components/icons";
 
 interface PageProps { params: Promise<{ locale: string }> }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
   return pageMetadata(locale, "/resources", dict.meta.resources.title, dict.meta.resources.description);
 }
 
-export default async function ResourcesPage({ params }: PageProps) {
+export default async function ResourcesPage({ params }: Readonly<PageProps>) {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);

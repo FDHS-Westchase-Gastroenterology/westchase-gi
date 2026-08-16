@@ -12,14 +12,14 @@ import { ExternalLink, FileText } from "@/components/icons";
 
 interface PageProps { params: Promise<{ locale: string }> }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);
   return pageMetadata(locale, "/new-patients", dict.meta.newPatients.title, dict.meta.newPatients.description);
 }
 
-export default async function NewPatientsPage({ params }: PageProps) {
+export default async function NewPatientsPage({ params }: Readonly<PageProps>) {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
   const dict = getDictionary(locale);

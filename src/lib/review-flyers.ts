@@ -21,19 +21,19 @@ export interface ReviewFlyerAsset {
 }
 
 export interface ReviewFlyer {
-  key: ReviewTargetKey;
-  destination: string;
-  title: string;
-  credentials: string | null;
-  description: string;
-  askEn: string;
-  askEs: string;
-  scanEn: string;
-  scanEs: string;
-  roleEn: string | null;
-  roleEs: string | null;
-  showLanguages: boolean;
-  assets: ReviewFlyerAssets;
+  readonly key: ReviewTargetKey;
+  readonly destination: string;
+  readonly title: string;
+  readonly credentials: string | null;
+  readonly description: string;
+  readonly askEn: string;
+  readonly askEs: string;
+  readonly scanEn: string;
+  readonly scanEs: string;
+  readonly roleEn: string | null;
+  readonly roleEs: string | null;
+  readonly showLanguages: boolean;
+  readonly assets: ReviewFlyerAssets;
 }
 
 export interface ReviewFlyerAssets {
@@ -50,7 +50,7 @@ const CONTENT_TYPES = {
 
 function flyerAsset(
   kind: ReviewAssetKind,
-  asset: { filename: string; sha256: string },
+  asset: Readonly<{ filename: string; sha256: string }>,
 ): ReviewFlyerAsset {
   return {
     filename: asset.filename,
@@ -60,11 +60,12 @@ function flyerAsset(
   };
 }
 
-function flyerAssets(assets: {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function flyerAssets(assets: Readonly<{
   png: { filename: string; sha256: string };
   svg: { filename: string; sha256: string };
   pdf: { filename: string; sha256: string };
-}): ReviewFlyerAssets {
+}>): ReviewFlyerAssets {
   return {
     png: flyerAsset("png", assets.png),
     svg: flyerAsset("svg", assets.svg),
@@ -111,7 +112,9 @@ function providerCopy(key: ReviewTargetKey, providerId: string) {
 }
 
 function targetCopy(key: ReviewTargetKey, providerId: string | null) {
-  if (providerId) return providerCopy(key, providerId);
+  if (providerId !== null && providerId !== "") {
+    return providerCopy(key, providerId);
+  }
   if (key === "master") {
     return {
       title: "Master code — review hub",
@@ -156,7 +159,8 @@ export const reviewFlyers: ReviewFlyer[] = REVIEW_TARGET_KEYS.map((key) => {
 });
 
 export const reviewFlyerAssetByFilename = new Map(
-  reviewFlyers.flatMap((flyer) =>
-    Object.values(flyer.assets).map((asset) => [asset.filename, asset] as const),
-  ),
+  reviewFlyers.flatMap((flyer) => {
+    const assets = [flyer.assets.png, flyer.assets.svg, flyer.assets.pdf];
+    return assets.map((asset) => [asset.filename, asset] as const);
+  }),
 );

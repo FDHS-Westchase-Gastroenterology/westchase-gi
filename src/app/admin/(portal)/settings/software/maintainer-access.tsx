@@ -15,14 +15,14 @@ import { getMaintainerViewState } from "@/lib/portal/maintainer-view";
 
 export interface Maintainer {
   /** GitHub numeric user ID — the value revoke submits. */
-  userId: number;
-  login: string;
+  readonly userId: number;
+  readonly login: string;
 }
 
 export interface PendingInvitation {
   /** GitHub numeric invitation ID — the value cancel submits. */
-  invitationId: number;
-  login: string;
+  readonly invitationId: number;
+  readonly login: string;
 }
 
 export type MaintainerManagementState =
@@ -40,8 +40,8 @@ export type MaintainerAccessModel =
       ownerLogin: string;
       management: MaintainerManagementState;
       /** Null = this deployment cannot read the list yet (never stale data). */
-      maintainers: Maintainer[] | null;
-      invitations: PendingInvitation[] | null;
+      maintainers: readonly Maintainer[] | null;
+      invitations: readonly PendingInvitation[] | null;
     };
 
 export type MaintainerActionResult =
@@ -61,11 +61,11 @@ export type MaintainerActionResult =
 // The exact server contract the backend pass must fulfil (three narrow
 // Commands, no permission selector, numeric IDs from rendered records).
 export interface MaintainerActions {
-  inviteMaintainer: (input: { username: string }) => Promise<MaintainerActionResult>;
-  cancelMaintainerInvite: (input: {
+  inviteMaintainer: (input: Readonly<{ username: string }>) => Promise<MaintainerActionResult>;
+  cancelMaintainerInvite: (input: Readonly<{
     invitationId: number;
-  }) => Promise<MaintainerActionResult>;
-  revokeMaintainer: (input: { userId: number }) => Promise<MaintainerActionResult>;
+  }>) => Promise<MaintainerActionResult>;
+  revokeMaintainer: (input: Readonly<{ userId: number }>) => Promise<MaintainerActionResult>;
 }
 
 type MaintainerFailureCopyCode = NonNullable<
@@ -92,7 +92,7 @@ function isMaintainerFailureCopyCode(
   return value in FAILURE_COPY;
 }
 
-function failureMessage(result: MaintainerActionResult): string {
+function failureMessage(result: Readonly<MaintainerActionResult>): string {
   if (result.ok) return "";
   const code = result.code ?? "unavailable";
   return isMaintainerFailureCopyCode(code)
@@ -106,7 +106,7 @@ const STATUS_LABEL = {
   connected: "Connected",
 } as const satisfies Record<MaintainerAccessModel["state"], string>;
 
-function StatusPill({ state }: { state: MaintainerAccessModel["state"] }) {
+function StatusPill({ state }: Readonly<{ state: MaintainerAccessModel["state"] }>) {
   return (
     <span
       data-testid="integration-status"
@@ -120,10 +120,10 @@ function StatusPill({ state }: { state: MaintainerAccessModel["state"] }) {
 function RolePill({
   tone,
   children,
-}: {
+}: Readonly<{
   tone: "owner" | "maintainer" | "invited";
   children: React.ReactNode;
-}) {
+}>) {
   const toneClass =
     tone === "invited"
       ? "bg-[var(--color-amber-soft)] text-[var(--color-ink)]"
@@ -137,7 +137,7 @@ function RolePill({
   );
 }
 
-function SetupNotice({ management }: { management: MaintainerManagementState }) {
+function SetupNotice({ management }: Readonly<{ management: MaintainerManagementState }>) {
   const [headline, ownerStep] =
     management === "restrict_installation"
       ? [
@@ -163,17 +163,18 @@ function SetupNotice({ management }: { management: MaintainerManagementState }) 
   );
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 export function MaintainerAccess({
   model,
   isAdmin,
   actions,
-}: {
+}: Readonly<{
   model: MaintainerAccessModel;
   isAdmin: boolean;
   /** Wired by the server page once the mutation seam exists; controls render
    *  only when management is "ready" AND actions are provided. */
   actions?: MaintainerActions;
-}) {
+}>) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -232,7 +233,7 @@ export function MaintainerAccess({
             example, when the practice changes maintainers.
           </p>
 
-          {error && (
+          {error !== null && error !== "" && (
             <p
               role="alert"
               className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
@@ -240,7 +241,7 @@ export function MaintainerAccess({
               {error}
             </p>
           )}
-          {notice && (
+          {notice !== null && notice !== "" && (
             <p
               role="status"
               className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
@@ -295,7 +296,7 @@ export function MaintainerAccess({
                           )
                         ) {
                           run(
-                            () =>
+                            async () =>
                               actions.revokeMaintainer({
                                 userId: maintainer.userId,
                               }),
@@ -340,7 +341,7 @@ export function MaintainerAccess({
                           )
                         ) {
                           run(
-                            () =>
+                            async () =>
                               actions.cancelMaintainerInvite({
                                 invitationId: invitation.invitationId,
                               }),
@@ -385,10 +386,14 @@ export function MaintainerAccess({
             <form
               className="mt-5 border-t border-[var(--color-line)] pt-5"
               action={(formData: FormData) => {
-                const username = String(formData.get("username") ?? "").trim();
-                if (!username) return;
+                const rawUsername = formData.get("username");
+                const username =
+                  rawUsername === null || rawUsername instanceof File
+                    ? ""
+                    : rawUsername.trim();
+                if (username === "") return;
                 run(
-                  () => actions.inviteMaintainer({ username }),
+                  async () => actions.inviteMaintainer({ username }),
                   `Invitation sent to ${username}. They stay listed as invited until they accept.`,
                 );
               }}

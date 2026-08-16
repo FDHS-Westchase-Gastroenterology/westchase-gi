@@ -48,7 +48,7 @@ function officeTime(value: string, locale: Locale): string {
   return officeTimeFormatters[locale].format(new Date(Date.UTC(2026, 0, 1, hour, minute)));
 }
 
-export function formatOfficeHours(locale: Locale, hours: OfficeHours): string {
+export function formatOfficeHours(locale: Locale, hours: Readonly<OfficeHours>): string {
   return `${officeTime(hours.opens, locale)} – ${officeTime(hours.closes, locale)}`;
 }
 

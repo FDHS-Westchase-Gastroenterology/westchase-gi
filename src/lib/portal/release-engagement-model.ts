@@ -5,20 +5,20 @@ import { asJsonArray, asJsonBoolean, asJsonObject, asJsonString, asJsonTimestamp
 import type { Json } from "@/lib/json";
 
 export interface PortalReleaseEngagementRow {
-  staffUserId: string;
-  displayName: string;
-  email: string;
-  active: boolean;
-  firstOpenedAt: string;
-  lastViewedAt: string;
-  viewCount: number;
-  acknowledgedAt: string | null;
-  hiddenAt: string | null;
-  guideOpenedAt: string | null;
-  lastGuideOpenedAt: string | null;
-  guideOpenCount: number;
-  lastDismissedAt: string | null;
-  dismissCount: number;
+  readonly staffUserId: string;
+  readonly displayName: string;
+  readonly email: string;
+  readonly active: boolean;
+  readonly firstOpenedAt: string;
+  readonly lastViewedAt: string;
+  readonly viewCount: number;
+  readonly acknowledgedAt: string | null;
+  readonly hiddenAt: string | null;
+  readonly guideOpenedAt: string | null;
+  readonly lastGuideOpenedAt: string | null;
+  readonly guideOpenCount: number;
+  readonly lastDismissedAt: string | null;
+  readonly dismissCount: number;
 }
 
 export type PortalReleaseEngagementResult =
@@ -37,7 +37,6 @@ function asCount(value: Json | undefined, minimum: number): number | null {
   const parsed = z
     .number()
     .int()
-    .safe()
     .min(minimum)
     .max(2147483647)
     .safeParse(value);

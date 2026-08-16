@@ -64,11 +64,11 @@ export async function fetchAttentiveOpenRows(
     statuses = [...OPEN_STATUSES],
     searchFilter = "",
     now = new Date(),
-  }: {
+  }: Readonly<{
     statuses?: readonly OpenStatus[];
     searchFilter?: string;
     now?: Date;
-  } = {},
+  }> = {},
 ): Promise<AttentiveQueueRow[]> {
   let query = db
     .from("requests")
@@ -79,7 +79,7 @@ export async function fetchAttentiveOpenRows(
   if (searchFilter) query = query.or(searchFilter);
   const { data, error } = await query;
   if (error) throw new Error(`Queue read failed: ${error.code}`);
-  const parsedRows = z.array(queueRowSchema).safeParse(data ?? []);
+  const parsedRows = z.array(queueRowSchema).safeParse(data);
   if (!parsedRows.success) throw new Error("Queue read failed: invalid");
   const rows = parsedRows.data;
 
@@ -109,13 +109,15 @@ export async function fetchAttentiveOpenRows(
     if (chunk.error) {
       throw new Error(`Queue read failed: ${chunk.error.code}`);
     }
-    for (const row of chunk.data ?? []) {
+    for (const row of chunk.data) {
       const parsed = activityRowSchema.safeParse(row);
       if (!parsed.success) continue;
       const { entity_id: id, at } = parsed.data;
-      if (!id) continue;
+      if (id === null || id === "") continue;
       const current = activityById.get(id);
-      if (!current || at > current) activityById.set(id, at);
+      if (current === undefined || current === "" || at > current) {
+        activityById.set(id, at);
+      }
     }
   }
 
@@ -132,11 +134,11 @@ export async function fetchClosedRows(
     from,
     limit,
     searchFilter = "",
-  }: {
+  }: Readonly<{
     from: number;
     limit: number;
     searchFilter?: string;
-  },
+  }>,
 ): Promise<QueueRow[]> {
   let query = db
     .from("requests")
@@ -147,7 +149,7 @@ export async function fetchClosedRows(
   if (searchFilter) query = query.or(searchFilter);
   const { data, error } = await query;
   if (error) throw new Error(`Queue read failed: ${error.code}`);
-  const parsed = z.array(queueRowSchema).safeParse(data ?? []);
+  const parsed = z.array(queueRowSchema).safeParse(data);
   if (!parsed.success) throw new Error("Queue read failed: invalid");
   return parsed.data;
 }

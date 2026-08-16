@@ -476,4 +476,14 @@ export const en = {
   },
 };
 
-export type Dictionary = typeof en;
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+type DeepReadonly<T> = T extends (...args: never[]) => void
+  ? T
+  : T extends (infer E)[]
+    ? readonly DeepReadonly<E>[]
+    : T extends object
+      ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
+      : T;
+
+/** Dictionaries are immutable copy tables shared by every page and component. */
+export type Dictionary = DeepReadonly<typeof en>;

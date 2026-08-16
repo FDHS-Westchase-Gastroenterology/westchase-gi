@@ -7,9 +7,9 @@ import { SettingsTabs } from "./settings-tabs";
 
 export default function SettingsLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <section aria-labelledby="settings-heading">
       <h1 id="settings-heading" className="portal-title">

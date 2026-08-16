@@ -53,7 +53,9 @@ export function ConfirmAuthForm() {
     // Opening a newer email in the same tab can navigate only the fragment,
     // Leaving this Client Component mounted. Parse that new bearer too.
     window.addEventListener("hashchange", parseFragment);
-    return () => window.removeEventListener("hashchange", parseFragment);
+    return () => {
+      window.removeEventListener("hashchange", parseFragment);
+    };
   }, []);
 
   if (link === null) {
@@ -92,7 +94,7 @@ export function ConfirmAuthForm() {
     <form action={formAction} className="mt-7 space-y-5">
       <input type="hidden" name="tokenHash" value={link.tokenHash} />
       <input type="hidden" name="type" value={link.type} />
-      {state.error ? (
+      {state.error !== null && state.error !== "" ? (
         <p
           role="alert"
           className="rounded-[var(--radius)] bg-[var(--color-amber-soft)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"

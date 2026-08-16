@@ -32,7 +32,7 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function PortalNav({ waitingCount }: { waitingCount: number | null }) {
+export function PortalNav({ waitingCount }: Readonly<{ waitingCount: number | null }>) {
   const pathname = usePathname();
 
   return (
@@ -55,7 +55,7 @@ export function PortalNav({ waitingCount }: { waitingCount: number | null }) {
                     : "border-transparent text-[var(--color-on-dark-muted)] hover:text-white"
                 }`}
               >
-                {item.compactLabel ? (
+                {item.compactLabel !== undefined && item.compactLabel !== "" ? (
                   <>
                     <span className="sm:hidden">{item.compactLabel}</span>
                     <span className="hidden sm:inline">{item.label}</span>

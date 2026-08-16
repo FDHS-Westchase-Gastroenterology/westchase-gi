@@ -83,12 +83,15 @@ export function useFormViewTelemetry(
   const pathname = usePathname();
   useEffect(() => {
     const form = formRef.current;
-    const template = pathname ? routeTemplateFor(pathname) : null;
-    if (!template) return;
-    const fire = () => track("form_view", template, locale);
-    if (!form || !("IntersectionObserver" in globalThis)) {
+    const template =
+      pathname !== "" ? routeTemplateFor(pathname) : null;
+    if (template === null || template === "") return undefined;
+    const fire = () => {
+      track("form_view", template, locale);
+    };
+    if (form === null || !("IntersectionObserver" in globalThis)) {
       fire();
-      return;
+      return undefined;
     }
     const observer = new IntersectionObserver(
       (entries) => {
@@ -100,7 +103,9 @@ export function useFormViewTelemetry(
       { threshold: 0.35 },
     );
     observer.observe(form);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+    };
   }, [formRef, locale, pathname]);
 }
 
@@ -115,8 +120,11 @@ export function trackFormEvent(
   pathname: string | null,
   locale: Locale,
 ) {
-  const template = pathname ? routeTemplateFor(pathname) : null;
-  if (template) track(event, template, locale);
+  const template =
+    pathname !== null && pathname !== ""
+      ? routeTemplateFor(pathname)
+      : null;
+  if (template !== null && template !== "") track(event, template, locale);
 }
 
 /**
@@ -125,12 +133,16 @@ export function trackFormEvent(
  * `data-telemetry-event`/`data-telemetry-route` attributes into events.
  * Mounted only under src/app/[locale] — /admin and /review never report.
  */
-export function TelemetryReporter({ locale }: { locale: Locale }) {
-  const pathname = usePathname() || `/${locale}`;
+export function TelemetryReporter({ locale }: Readonly<{ locale: Locale }>) {
+  const pathnameFromRouter = usePathname();
+  const pathname =
+    pathnameFromRouter !== "" ? pathnameFromRouter : `/${locale}`;
 
   useEffect(() => {
     const template = routeTemplateFor(pathname);
-    if (template) track("page_view", template, locale);
+    if (template !== null && template !== "") {
+      track("page_view", template, locale);
+    }
   }, [pathname, locale]);
 
   useEffect(() => {
@@ -147,7 +159,8 @@ export function TelemetryReporter({ locale }: { locale: Locale }) {
       const customRoute = anchor.dataset.telemetryRoute;
       if (
         customEvent.success &&
-        customRoute &&
+        customRoute !== undefined &&
+        customRoute !== "" &&
         routeTemplateSet.has(customRoute)
       ) {
         track(customEvent.data, customRoute, locale);
@@ -156,11 +169,15 @@ export function TelemetryReporter({ locale }: { locale: Locale }) {
 
       const ctaEvent = ctaEventFor(anchor);
       const template = routeTemplateFor(window.location.pathname);
-      if (ctaEvent && template) track(ctaEvent, template, locale);
+      if (ctaEvent !== null && template !== null && template !== "") {
+        track(ctaEvent, template, locale);
+      }
     }
 
     document.addEventListener("click", onClick, { capture: true });
-    return () => document.removeEventListener("click", onClick, { capture: true });
+    return () => {
+      document.removeEventListener("click", onClick, { capture: true });
+    };
   }, [locale]);
 
   return null;

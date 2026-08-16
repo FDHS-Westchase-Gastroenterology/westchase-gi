@@ -9,7 +9,7 @@ interface TextBandProps { locale: Locale; dict: Dictionary }
  * The staffed text line, given a stage of its own (practice directive:
  * human attention is the differentiator; keep it prominent, never bot-like).
  */
-export function TextBand({ dict }: TextBandProps) {
+export function TextBand({ dict }: Readonly<TextBandProps>) {
   const t = dict.common.textBand;
   return (
     <section className="print-hide bg-[var(--color-navy)] text-[var(--color-on-dark)]">

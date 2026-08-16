@@ -16,7 +16,7 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={fontVariables}>
       <body className="portal-scope min-h-dvh bg-[var(--color-paper)] text-[var(--color-body)]">

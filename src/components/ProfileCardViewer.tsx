@@ -9,16 +9,16 @@ import { Download, Maximize, X, ZoomIn, ZoomOut } from "./icons";
 interface CardImage { src: string; width: number; height: number }
 
 interface CardStrings {
-  label: string;
-  hint: string;
-  zoomIn: string;
-  zoomOut: string;
-  zoomReset: string;
-  download: string;
-  loading: string;
-  hintTouch: string;
-  hintPointer: string;
-  close: string;
+  readonly label: string;
+  readonly hint: string;
+  readonly zoomIn: string;
+  readonly zoomOut: string;
+  readonly zoomReset: string;
+  readonly download: string;
+  readonly loading: string;
+  readonly hintTouch: string;
+  readonly hintPointer: string;
+  readonly close: string;
 }
 
 interface ProfileCardViewerProps {
@@ -34,7 +34,7 @@ function useMedia(query: string) {
     (onChange: () => void) => {
       const mq = window.matchMedia(query);
       mq.addEventListener("change", onChange);
-      return () => mq.removeEventListener("change", onChange);
+      return () => { mq.removeEventListener("change", onChange); };
     },
     [query]
   );
@@ -50,26 +50,26 @@ function useHydrated() {
 
 /** Zoom cluster: −, live percentage (tap to reset), +. Must live inside
  * the TransformWrapper context. */
-function ZoomToolbar({ t }: { t: CardStrings }) {
+function ZoomToolbar({ t }: Readonly<{ t: CardStrings }>) {
   const { zoomIn, zoomOut, resetTransform } = useControls();
   const readout = useTransformComponent(({ state }) => (
     <span className="min-w-12 text-center tabular-nums">{Math.round(state.scale * 100)}%</span>
   ));
   return (
     <div className="pc-toolbar">
-      <button type="button" aria-label={t.zoomOut} onClick={() => zoomOut()} className="pc-tool">
+      <button type="button" aria-label={t.zoomOut} onClick={() => { zoomOut(); }} className="pc-tool">
         <ZoomOut className="h-4.5 w-4.5" />
       </button>
       <button
         type="button"
         aria-label={t.zoomReset}
         title={t.zoomReset}
-        onClick={() => resetTransform()}
+        onClick={() => { resetTransform(); }}
         className="pc-tool px-2 text-[0.88rem] font-bold"
       >
         {readout}
       </button>
-      <button type="button" aria-label={t.zoomIn} onClick={() => zoomIn()} className="pc-tool">
+      <button type="button" aria-label={t.zoomIn} onClick={() => { zoomIn(); }} className="pc-tool">
         <ZoomIn className="h-4.5 w-4.5" />
       </button>
     </div>
@@ -88,7 +88,8 @@ function ZoomToolbar({ t }: { t: CardStrings }) {
  * The full-size image starts loading on hover/focus intent, and the
  * viewer shows an explicit loading state while it streams.
  */
-export function ProfileCardViewer({ image, subject, t, className = "" }: ProfileCardViewerProps) {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+export function ProfileCardViewer({ image, subject, t, className = "" }: Readonly<ProfileCardViewerProps>) {
   const mounted = useHydrated();
   const [open, setOpen] = useState(false);
   const [warm, setWarm] = useState(false); // Start fetching the full-size image
@@ -104,7 +105,7 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Profile
 
   useEffect(() => {
     const dialog = dialogRef.current;
-    if (!dialog) return;
+    if (!dialog) return undefined;
     if (open && !dialog.open) {
       dialog.showModal();
       document.documentElement.style.overflow = "hidden";
@@ -119,9 +120,9 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Profile
 
   // The gesture hint retires itself once the reader zooms, or after a beat.
   useEffect(() => {
-    if (!open || !loaded || hintHidden) return;
-    const timer = window.setTimeout(() => setHintHidden(true), 6000);
-    return () => window.clearTimeout(timer);
+    if (!open || !loaded || hintHidden) return undefined;
+    const timer = window.setTimeout(() => { setHintHidden(true); }, 6000);
+    return () => { window.clearTimeout(timer); };
   }, [open, loaded, hintHidden]);
 
   function openViewer() {
@@ -175,8 +176,8 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Profile
         <button
           type="button"
           onClick={openViewer}
-          onPointerEnter={() => setWarm(true)}
-          onFocus={() => setWarm(true)}
+          onPointerEnter={() => { setWarm(true); }}
+          onFocus={() => { setWarm(true); }}
           className={tileClass}
         >
           {tileInner}
@@ -247,7 +248,7 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Profile
                       height={image.height}
                       sizes="64rem"
                       draggable={false}
-                      onLoad={() => setLoaded(true)}
+                      onLoad={() => { setLoaded(true); }}
                       className={`h-full w-full object-contain transition-opacity duration-300 ${
                         loaded ? "opacity-100" : "opacity-0"
                       }`}

@@ -118,9 +118,10 @@ test.describe("portal home", () => {
       new Date(value).toLocaleDateString("en-CA", {
         timeZone: "America/New_York",
       });
+    const oldestCreatedAt = z.string().safeParse(oldestNew?.[0]?.created_at);
     const oldestIsPastDay =
-      oldestNew?.[0] != null &&
-      nyDay(oldestNew[0].created_at) < nyDay(new Date());
+      oldestCreatedAt.success &&
+      nyDay(oldestCreatedAt.data) < nyDay(new Date());
     const oldestLine = page.getByTestId("queue-overview-oldest");
     await expect(oldestLine).toHaveCount(oldestIsPastDay ? 1 : 0);
     if (oldestIsPastDay) {
@@ -276,7 +277,10 @@ test.describe("portal home", () => {
       .in("action", ["staff.tour_dismiss", "staff.tour_restart"]);
     expect(priorAuditError).toBeNull();
     const priorAuditIds = new Set(
-      (priorTourAudits ?? []).map((row) => row.id),
+      z
+        .array(z.object({ id: z.string() }))
+        .parse(priorTourAudits ?? [])
+        .map((row) => row.id),
     );
 
     try {
@@ -391,7 +395,9 @@ test.describe("portal home", () => {
         .in("action", ["staff.tour_dismiss", "staff.tour_restart"]);
       expect(auditError).toBeNull();
       expect(
-        (audits ?? [])
+        z
+          .array(z.object({ id: z.string(), action: z.string() }))
+          .parse(audits ?? [])
           .filter((row) => !priorAuditIds.has(row.id))
           .map((row) => row.action),
       ).toEqual(
@@ -429,7 +435,9 @@ test.describe("portal home", () => {
         .eq("actor_email", email)
         .eq("entity_id", originalProfile!.id)
         .in("action", ["staff.tour_dismiss", "staff.tour_restart"]);
-      const auditIds = (tourAudits ?? [])
+      const auditIds = z
+        .array(z.object({ id: z.string() }))
+        .parse(tourAudits ?? [])
         .map((row) => row.id)
         .filter((id) => !priorAuditIds.has(id));
       if (auditIds.length > 0) {

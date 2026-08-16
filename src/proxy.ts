@@ -26,19 +26,22 @@ const LEGACY_FORM_PATH =
   /^\/(?:en|es|vi|ko|ar)\/(?:contact|appointment)\/?$/;
 
 interface PendingCookie {
-  name: string;
-  value: string;
-  options: CookieOptions;
+  readonly name: string;
+  readonly value: string;
+  readonly options: CookieOptions;
 }
 
 function portalSupabaseConfig(): { url: string; key: string } | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const key = (
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  )?.trim();
+  const publishable = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const keySource =
+    publishable !== undefined && publishable !== "" ? publishable : anon;
+  const key = keySource?.trim();
 
-  return url && key ? { url, key } : null;
+  return url !== undefined && url !== "" && key !== undefined && key !== ""
+    ? { url, key }
+    : null;
 }
 
 function isLocaleValue(value: string | undefined): value is Locale {
@@ -47,14 +50,17 @@ function isLocaleValue(value: string | undefined): value is Locale {
 
 /** First supported language in the Accept-Language list, by q-value. */
 function negotiateLocale(header: string | null): Locale {
-  if (!header) return "en";
+  if (header === null || header === "") return "en";
 
   const candidates = header
     .split(",")
     .map((part) => {
       const [tag, ...params] = part.trim().split(";");
       const qParam = params.find((param) => param.trim().startsWith("q="));
-      const q = qParam ? Number.parseFloat(qParam.split("=")[1]) : 1;
+      const q =
+        qParam !== undefined && qParam !== ""
+          ? Number.parseFloat(qParam.split("=")[1])
+          : 1;
       const primary = tag.trim().toLowerCase().split("-")[0];
       return { primary, q: Number.isNaN(q) ? 0 : q };
     })
@@ -105,8 +111,8 @@ function scrubLegacyPatientQuery(request: NextRequest): NextResponse | null {
 
 function applySessionUpdates(
   response: NextResponse,
-  cookies: PendingCookie[],
-  headers: Record<string, string>,
+  cookies: readonly PendingCookie[],
+  headers: Readonly<Record<string, string>>,
 ): NextResponse {
   for (const { name, value, options } of cookies) {
     response.cookies.set(name, value, options);
@@ -172,7 +178,8 @@ async function protectAdminRequest(request: NextRequest): Promise<NextResponse> 
   let authenticated = false;
   try {
     const { data, error } = await supabase.auth.getClaims();
-    authenticated = !error && z.string().safeParse(data?.claims?.sub).success;
+    authenticated =
+      error === null && z.string().safeParse(data?.claims.sub).success;
   } catch {
     // Provider failures fail closed for protected portal routes.
   }

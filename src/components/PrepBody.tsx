@@ -6,7 +6,7 @@ const INLINE_TOKEN = /(\*\*[^*]+\*\*|_{3,})/g;
 
 /** Stable keys for immutable content lists: the content itself, with a
  *  collision counter for repeated strings (never the array index). */
-function contentKeys(parts: string[], take = 32): string[] {
+function contentKeys(parts: readonly string[], take = 32): string[] {
   const seen = new Map<string, number>();
   return parts.map((part) => {
     const base = part.slice(0, take);
@@ -19,7 +19,7 @@ function contentKeys(parts: string[], take = 32): string[] {
 /** Renders one transcription string, honoring bold runs and fill-in blanks
  *  (which may nest, e.g. "**take at ___ AM**"). Deterministic parse of an
  *  immutable string: content keys are stable by construction. */
-function Inline({ text }: { text: string }) {
+function Inline({ text }: Readonly<{ text: string }>) {
   const parts = text.split(INLINE_TOKEN).filter(Boolean);
   const keys = contentKeys(parts, 24);
   return (
@@ -51,7 +51,8 @@ const LIST_CLASS = {
   avoid: "list-avoid",
 } as const satisfies Record<PrepListStyle, string>;
 
-function Block({ block }: { block: PrepBlock }) {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function Block({ block }: Readonly<{ block: PrepBlock }>) {
   switch (block.kind) {
     case "p":
       return (
@@ -106,7 +107,7 @@ function Block({ block }: { block: PrepBlock }) {
               );
             })}
           </div>
-          {block.footer ? (
+          {block.footer !== undefined && block.footer !== "" ? (
             <p className="measure font-bold text-[var(--color-ink)]">
               <Inline text={block.footer} />
             </p>
@@ -138,21 +139,34 @@ function Block({ block }: { block: PrepBlock }) {
           </table>
         </div>
       );
+    default:
+      return null;
   }
 }
 
 /** Content-derived section keys: heading (or first block's text), made
  *  unique with a counter only on collision. Stable across renders because
  *  the content itself is immutable module data. */
-function sectionKeys(sections: PrepSection[]): string[] {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- Prep section trees are module data
+function sectionKeyBase(section: PrepSection): string {
+  if (section.heading !== undefined && section.heading !== "") {
+    return section.heading;
+  }
+  const first = section.blocks.at(0);
+  if (first === undefined) return "empty";
+  if (first.kind === "p") return first.text.slice(0, 48);
+  if (first.kind === "note") {
+    const line = first.text.at(0);
+    return line !== undefined && line !== "" ? line.slice(0, 48) : first.kind;
+  }
+  return first.kind;
+}
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function sectionKeys(sections: readonly PrepSection[]): string[] {
   const seen = new Map<string, number>();
-  return sections.map((s) => {
-    const first = s.blocks[0];
-    const base =
-      s.heading ??
-      (first && "text" in first
-        ? (Array.isArray(first.text) ? first.text[0] : first.text).slice(0, 48)
-        : (first?.kind ?? "empty"));
+  return sections.map((section) => {
+    const base = sectionKeyBase(section);
     const n = (seen.get(base) ?? 0) + 1;
     seen.set(base, n);
     return n > 1 ? `${base}#${n}` : base;
@@ -160,16 +174,19 @@ function sectionKeys(sections: PrepSection[]): string[] {
 }
 
 /** Renders one locale's section tree of a prep handout. */
-export function PrepBody({ sections }: { sections: PrepSection[] }) {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+export function PrepBody({ sections }: Readonly<{ sections: PrepSection[] }>) {
   const keys = sectionKeys(sections);
   return (
     <div className="grid gap-10">
       {sections.map((section, i) => (
         <section key={keys[i]}>
-          {section.heading ? (
+          {section.heading !== undefined && section.heading !== "" ? (
             <h2 className="h3 font-[var(--font-display)]">{section.heading}</h2>
           ) : null}
-          <div className={`grid gap-5 ${section.heading ? "mt-4" : ""}`}>
+          <div
+            className={`grid gap-5 ${section.heading !== undefined && section.heading !== "" ? "mt-4" : ""}`}
+          >
             {section.blocks.map((block, j) => (
               <Block key={`${block.kind}@${j}`} block={block} />
             ))}

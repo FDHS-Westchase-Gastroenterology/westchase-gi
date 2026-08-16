@@ -3,12 +3,12 @@ export function AuthCard({
   description,
   children,
   footer,
-}: {
+}: Readonly<{
   title: string;
   description: string;
   children: React.ReactNode;
   footer?: React.ReactNode;
-}) {
+}>) {
   return (
     <main className="flex min-h-dvh items-center justify-center bg-[var(--color-mint)] px-5 py-10">
       <div className="w-full max-w-md">
@@ -31,7 +31,7 @@ export function AuthCard({
             {children}
           </div>
         </div>
-        {footer ? (
+        {footer !== undefined && footer !== null && footer !== false && footer !== "" ? (
           <div className="mt-5 text-center text-[0.85rem] text-[var(--color-muted)]">
             {footer}
           </div>

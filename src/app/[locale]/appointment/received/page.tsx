@@ -15,7 +15,7 @@ interface PageProps {
   }>;
 }
 
-async function receiptState({ params, searchParams }: PageProps) {
+async function receiptState({ params, searchParams }: Readonly<PageProps>) {
   await connection();
   const [{ locale: rawLocale }, query] = await Promise.all([
     params,
@@ -40,7 +40,7 @@ async function receiptState({ params, searchParams }: PageProps) {
 }
 
 export async function generateMetadata(
-  { params }: PageProps,
+  { params }: Readonly<PageProps>,
 ): Promise<Metadata> {
   const { locale: rawLocale } = await params;
   const locale = isLocale(rawLocale) ? rawLocale : "en";
@@ -53,7 +53,7 @@ export async function generateMetadata(
   };
 }
 
-export default async function RequestReceiptPage(props: PageProps) {
+export default async function RequestReceiptPage(props: Readonly<PageProps>) {
   const { dict, state } = await receiptState(props);
   const receipt = dict.requestReceipt;
   const successful = state === "success";

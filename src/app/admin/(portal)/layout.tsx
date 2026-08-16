@@ -22,9 +22,9 @@ import {
 
 export default async function PortalLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   const session = await getSessionUser();
   if (!session) redirect("/admin/login");
 

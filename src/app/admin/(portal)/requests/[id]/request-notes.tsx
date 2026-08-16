@@ -13,13 +13,14 @@ export interface RequestNoteView {
 const INITIAL_VISIBLE_NOTES = 3;
 const INITIAL_ACTION_STATE: AddRequestNoteState = { status: "idle" };
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 export function RequestNotes({
   requestId,
   notes,
-}: {
+}: Readonly<{
   requestId: string;
   notes: RequestNoteView[];
-}) {
+}>) {
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerMotion, setComposerMotion] = useState(true);
   const [showAll, setShowAll] = useState(false);
@@ -38,7 +39,8 @@ export function RequestNotes({
     feedback.status === "success" && !feedbackDismissed && !pending;
   const composerVisible = composerOpen && !saved;
   const focusAddButtonOnSave = useCallback(
-    (feedbackElement: HTMLParagraphElement | null) => {
+    // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+    (feedbackElement: Readonly<HTMLParagraphElement | null>) => {
       if (feedbackElement) {
         requestAnimationFrame(() => addButtonRef.current?.focus());
       }
@@ -138,7 +140,7 @@ export function RequestNotes({
               type="button"
               aria-controls="request-note-list"
               aria-expanded={showAll}
-              onClick={() => setShowAll((visible) => !visible)}
+              onClick={() => { setShowAll((visible) => !visible); }}
               className="print-hide mt-3 min-h-11 py-2 text-[0.9rem] font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
             >
               {showAll

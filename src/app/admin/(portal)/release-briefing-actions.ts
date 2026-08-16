@@ -25,7 +25,9 @@ async function runPortalReleaseAction(
     releaseId,
     PORTAL_RELEASE_BRIEFING.id,
   );
-  if (!parsedReleaseId) return { ok: false, code: "invalid" };
+  if (parsedReleaseId === null || parsedReleaseId === "") {
+    return { ok: false, code: "invalid" };
+  }
 
   try {
     await mutatePortalReleaseState(session, mutation, parsedReleaseId);

@@ -26,39 +26,39 @@ export type PrepGroupId =
 export type PrepListStyle = "bullet" | "steps" | "check" | "avoid";
 
 export type PrepBlock =
-  | { kind: "p"; text: string }
-  | { kind: "list"; style: PrepListStyle; items: string[] }
+  | { readonly kind: "p"; readonly text: string }
+  | { readonly kind: "list"; readonly style: PrepListStyle; readonly items: readonly string[] }
   /** Amber emphasis panel: the handout's boxed/starred warnings. */
-  | { kind: "note"; text: string[] }
+  | { readonly kind: "note"; readonly text: readonly string[] }
   /** Two-regimen dosing table (Clenpiq/Sutab): one column per regimen. */
   | {
-      kind: "schedule";
-      columns: { title: string; items: string[] }[];
-      footer?: string;
+      readonly kind: "schedule";
+      readonly columns: readonly { readonly title: string; readonly items: readonly string[] }[];
+      readonly footer?: string;
     }
   /** Generic table (clear-liquid food groups, anti-reflux foods). */
-  | { kind: "table"; head: string[]; rows: string[][] };
+  | { readonly kind: "table"; readonly head: readonly string[]; readonly rows: readonly string[][] };
 
 export interface PrepSection {
-  heading?: string;
-  blocks: PrepBlock[];
+  readonly heading?: string;
+  readonly blocks: readonly PrepBlock[];
 }
 
 export interface PrepDoc {
   /** Route slug under /procedure-prep/. */
-  slug: string;
+  readonly slug: string;
   /** Matching entry in lib/documents.ts (printable-PDF slot). */
-  docId: string;
-  group: PrepGroupId;
+  readonly docId: string;
+  readonly group: PrepGroupId;
   /** Display title (the handout's own title, disambiguated). */
-  title: Bi;
+  readonly title: Bi;
   /** One-line regimen descriptor for listings and the page subtitle. */
-  regimen: Bi;
+  readonly regimen: Bi;
   /** Meta description / listing summary. */
-  summary: Bi;
+  readonly summary: Bi;
   /** Provenance: pages in the practice's 2026-07-07 scan ("Preps Website.pdf"). */
-  sourcePages: string;
+  readonly sourcePages: string;
   /** Which locales the practice's own original exists in. */
-  sourceLangs: Locale[];
-  sections: Record<Locale, PrepSection[]>;
+  readonly sourceLangs: readonly Locale[];
+  readonly sections: Record<Locale, PrepSection[]>;
 }

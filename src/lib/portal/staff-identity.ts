@@ -18,16 +18,25 @@ export async function fetchStaffNameMap(
       .from("staff_profiles")
       .select("email, display_name");
 
-    if (error || !data) return new Map();
+    if (error !== null) return new Map();
+    const rows = z
+      .array(
+        z.object({
+          email: z.unknown(),
+          display_name: z.unknown(),
+        }),
+      )
+      .safeParse(data);
+    if (!rows.success) return new Map();
 
     const map = new Map<string, string>();
-    for (const row of data) {
+    for (const row of rows.data) {
       const email = z.string().safeParse(row.email);
       const displayName = z.string().safeParse(row.display_name);
       if (!email.success || !displayName.success) continue;
       const normalizedEmail = email.data.trim().toLowerCase();
       const normalizedName = displayName.data.trim();
-      if (!normalizedEmail || !normalizedName) continue;
+      if (normalizedEmail === "" || normalizedName === "") continue;
       map.set(normalizedEmail, normalizedName);
     }
     return map;
@@ -66,9 +75,9 @@ export async function fetchLastSignInMap(
         perPage: LIST_USERS_PER_PAGE,
       });
 
-      if (error) return { map: nullMap(), readFailed: true };
+      if (error !== null) return { map: nullMap(), readFailed: true };
 
-      const users = data?.users ?? [];
+      const users = data.users;
       for (const user of users) {
         if (!wanted.has(user.id)) continue;
         map.set(user.id, user.last_sign_in_at ?? null);
@@ -96,5 +105,5 @@ export function displayNameOrEmail(
 ): string {
   const key = email.trim().toLowerCase();
   const name = nameMap.get(key);
-  return name && name.length > 0 ? name : email;
+  return name !== undefined && name !== "" ? name : email;
 }

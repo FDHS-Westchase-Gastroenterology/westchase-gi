@@ -76,7 +76,7 @@ export function isPortalReleaseAuditAction(
 }
 
 export function derivePortalReleaseState(
-  row: PortalReleaseStateRow | null,
+  row: Readonly<PortalReleaseStateRow | null>,
   now: Date = new Date(),
 ): PortalReleaseState {
   if (row === null) return { status: "unseen" };

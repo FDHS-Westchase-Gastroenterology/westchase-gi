@@ -24,10 +24,10 @@ const usernameSchema = z.strictObject({
     .regex(/^(?!-)(?!.*--)[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/),
 });
 const invitationSchema = z.strictObject({
-  invitationId: z.number().int().positive().safe(),
+  invitationId: z.number().int().positive(),
 });
 const maintainerSchema = z.strictObject({
-  userId: z.number().int().positive().safe(),
+  userId: z.number().int().positive(),
 });
 
 function failure(code: MaintainerFailureCode): MaintainerMutationResult {
@@ -35,7 +35,7 @@ function failure(code: MaintainerFailureCode): MaintainerMutationResult {
 }
 
 function providerFailureCode(
-  error: Error | undefined,
+  error: Readonly<Error | undefined>,
   operation: "invite" | "cancel_invitation" | "revoke",
 ): MaintainerFailureCode {
   const status = gitHubProviderStatus(error);
@@ -85,11 +85,13 @@ async function openSession(): Promise<
 }
 
 function isFailure(
-  value: GitHubMaintainerSession | MaintainerMutationResult,
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+  value: Readonly<GitHubMaintainerSession | MaintainerMutationResult>,
 ): value is MaintainerMutationResult {
   return "ok" in value;
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 async function execute({
   actorEmail,
   action,
@@ -99,7 +101,7 @@ async function execute({
   session,
   perform,
   desired,
-}: {
+}: Readonly<{
   actorEmail: string;
   action: AuditAction;
   operation: "invite" | "cancel_invitation" | "revoke";
@@ -107,10 +109,11 @@ async function execute({
   invitationId?: number;
   session: GitHubMaintainerSession;
   perform(): Promise<number>;
-  desired(snapshot: GitHubMaintainerSnapshot & {
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+  desired(snapshot: Readonly<GitHubMaintainerSnapshot & {
     invitations: NonNullable<GitHubMaintainerSnapshot["invitations"]>;
-  }): boolean;
-}): Promise<MaintainerMutationResult> {
+  }>): boolean;
+}>): Promise<MaintainerMutationResult> {
   const db = serviceClient();
   const detail = {
     provider: "github",
@@ -124,7 +127,7 @@ async function execute({
       ? detail
       : { ...detail, invitation_id: invitationId };
   return runMaintainerOperation({
-    begin: () =>
+    begin: async () =>
       beginExternalAudit(db, {
         actorEmail,
         action,
@@ -133,9 +136,9 @@ async function execute({
         detail: auditDetail,
       }),
     perform,
-    refresh: session.refresh,
+    refresh: async () => session.refresh(),
     desired,
-    finish: (audit, outcome, detail) =>
+    finish: async (audit, outcome, detail) =>
       finishExternalAudit(db, audit, outcome, detail),
     failureCode: (error, snapshot) => {
       if (
@@ -189,7 +192,7 @@ export async function inviteMaintainerMutation(
     operation: "invite",
     target,
     session: github,
-    perform: () => github.invite(target.login),
+    perform: async () => github.invite(target.login),
     desired: (snapshot) => invitationIsActive(snapshot, target.userId),
   });
 }
@@ -216,7 +219,7 @@ export async function cancelMaintainerInviteMutation(
     target: invitation,
     invitationId: invitation.invitationId,
     session: github,
-    perform: () => github.cancelInvitation(invitation.invitationId),
+    perform: async () => github.cancelInvitation(invitation.invitationId),
     desired: (snapshot) =>
       invitationIsCancelled(
         snapshot,
@@ -248,7 +251,7 @@ export async function revokeMaintainerMutation(
     operation: "revoke",
     target,
     session: github,
-    perform: () => github.revoke(target.login),
+    perform: async () => github.revoke(target.login),
     desired: (snapshot) => maintainerIsRevoked(snapshot, target.userId),
   });
 }
