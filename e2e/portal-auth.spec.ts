@@ -225,7 +225,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
     ).toBe("/admin/login");
 
     const db = serviceDb();
-    const accounts: Array<{ id: string; email: string }> = [];
+    const accounts: { id: string; email: string }[] = [];
 
     try {
       for (const active of [true, false]) {

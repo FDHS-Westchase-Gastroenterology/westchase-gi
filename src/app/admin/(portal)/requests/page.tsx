@@ -349,7 +349,7 @@ export default async function AdminRequestsPage({
   const openBuckets = new Map(openSlice.map((row) => [row.id, row]));
   const requests = [...openSlice, ...closedSlice];
 
-  const filters: Array<{ key: RequestStatus | "all"; label: string; count: number }> = [
+  const filters: { key: RequestStatus | "all"; label: string; count: number }[] = [
     { key: "all", label: "All", count: total },
     ...REQUEST_STATUSES.map((status) => ({
       key: status,

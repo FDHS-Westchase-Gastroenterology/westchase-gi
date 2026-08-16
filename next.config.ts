@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 // Legacy URL map: now that the real domain is cut over, every indexed path from
 // The practice's previous site gets a permanent redirect (including the old
 // Trailing-hyphen /about-us- URL and the hollow bio/template slugs).
-const legacy: Array<[string, string]> = [
+const legacy: [string, string][] = [
   ["/about-us-", "/en/about"],
   ["/about-us", "/en/about"],
   ["/services", "/en/services"],
@@ -29,7 +29,7 @@ const legacy: Array<[string, string]> = [
 
 // The old blog's 16 live posts (ported 1:1; see src/lib/content/blog).
 // Older archive URLs fall through to the blog index below.
-const legacyBlogPosts: Array<[string, string]> = [
+const legacyBlogPosts: [string, string][] = [
   ["1468523-what-a-colonoscopy-involves-and-why-it-matters", "what-a-colonoscopy-involves-and-why-it-matters"],
   ["1465777-understanding-gastroparesis-symptoms-and-management", "understanding-gastroparesis-symptoms-and-management"],
   ["1461310-celiac-disease-vs-gluten-sensitivity-understanding-the-difference", "celiac-disease-vs-gluten-sensitivity-understanding-the-difference"],
@@ -50,7 +50,7 @@ const legacyBlogPosts: Array<[string, string]> = [
 
 // The old ASGE-library categories -> the on-site education pages
 // (ported 1:1 by topic; see src/lib/content/education).
-const legacyEducation: Array<[string, string]> = [
+const legacyEducation: [string, string][] = [
   ["48148", "colorectal-cancer-screening"],
   ["48149", "ibs-with-diarrhea"],
   ["48150", "upper-endoscopy"],

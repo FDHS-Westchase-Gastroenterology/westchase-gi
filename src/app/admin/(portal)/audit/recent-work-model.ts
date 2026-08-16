@@ -321,8 +321,8 @@ export function toRecentWorkItems(
 export function groupByPracticeDay(
   items: readonly RecentWorkItem[],
   now: Date,
-): Array<{ label: string; items: RecentWorkItem[] }> {
-  const groups: Array<{ label: string; items: RecentWorkItem[] }> = [];
+): { label: string; items: RecentWorkItem[] }[] {
+  const groups: { label: string; items: RecentWorkItem[] }[] = [];
   for (const item of items) {
     const label = dayGroupLabel(item.at, now);
     const current = groups[groups.length - 1];

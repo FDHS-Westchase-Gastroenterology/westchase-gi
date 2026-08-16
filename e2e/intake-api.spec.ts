@@ -52,7 +52,7 @@ test.describe("intake API contract", () => {
   test.describe.configure({ mode: "serial" });
 
   let enabled = false;
-  let recipientState: Array<{ id: string; active: boolean }> = [];
+  let recipientState: { id: string; active: boolean }[] = [];
 
   test.beforeAll(async ({}, workerInfo) => {
     enabled = workerInfo.project.name === "chromium";
@@ -210,10 +210,10 @@ test.describe("intake API contract", () => {
   test("VAL-INTAKE-003: server validation rejects bad input", async ({
     request,
   }) => {
-    const invalidCases: Array<{
+    const invalidCases: {
       field: "name" | "phone" | "email" | "message";
       makePayload: (sourcePath: string) => IntakeFixture;
-    }> = [
+    }[] = [
       {
         field: "name",
         makePayload(sourcePath) {

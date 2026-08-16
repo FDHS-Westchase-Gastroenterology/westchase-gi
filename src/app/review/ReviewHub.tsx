@@ -13,7 +13,7 @@ import { ExternalLink, Facebook, Globe, MessageSquare, Phone, Star } from "@/com
 
 type HubLang = "en" | "es" | "vi" | "ko" | "ar";
 
-const LANGS: Array<{ code: HubLang; native: string }> = [
+const LANGS: { code: HubLang; native: string }[] = [
   { code: "en", native: "English" },
   { code: "es", native: "Español" },
   { code: "vi", native: "Tiếng Việt" },

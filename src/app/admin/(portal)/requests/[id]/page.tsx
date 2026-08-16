@@ -362,7 +362,7 @@ export default async function RequestDetailPage({
     (event) => event.type === "notification",
   );
 
-  const fields: Array<{ label: string; value: React.ReactNode }> = [
+  const fields: { label: string; value: React.ReactNode }[] = [
     {
       label: "Phone",
       value: (

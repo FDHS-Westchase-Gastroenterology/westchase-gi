@@ -270,12 +270,12 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
   await signIn(page, SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD);
   await page.goto("/admin/review-flyers");
 
-  const viewportActionSizes: Array<{
+  const viewportActionSizes: {
     viewport: number;
     label?: string;
     width: number;
     height: number;
-  }> = [];
+  }[] = [];
   for (const viewport of [
     { width: 390, height: 844 },
     { width: 1440, height: 900 },

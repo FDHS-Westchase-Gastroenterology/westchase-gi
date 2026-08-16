@@ -41,7 +41,7 @@ export interface PrepGroup {
   docs: PrepDoc[];
 }
 
-const groupMeta: Array<{ id: PrepGroupId; title: Bi; blurb: Bi }> = [
+const groupMeta: { id: PrepGroupId; title: Bi; blurb: Bi }[] = [
   {
     id: "colonoscopy",
     title: { en: "Colonoscopy preps", es: "Preparaciones para colonoscopia", vi: "Chuẩn bị nội soi đại tràng", ko: "대장 내시경 준비법", ar: "تحضيرات تنظير القولون" },

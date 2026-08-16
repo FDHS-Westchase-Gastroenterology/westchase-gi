@@ -21,7 +21,7 @@ import reviewTargets from "./review-targets.json";
 interface Img { src: string; width: number; height: number }
 
 export type ProfileSection =
-  | { kind: "timeline"; heading: Bi; entries: Array<{ title: Bi; detail: Bi }> }
+  | { kind: "timeline"; heading: Bi; entries: { title: Bi; detail: Bi }[] }
   | { kind: "list"; heading: Bi; lead?: Bi; items: Bi[] }
   | { kind: "paragraphs"; heading: Bi; text: Bi[] };
 

@@ -133,10 +133,10 @@ test("/ negotiates the locale from Accept-Language and the locale cookie", async
   playwright,
   baseURL,
 }) => {
-  const cases: Array<{
+  const cases: {
     headers: Record<string, string>;
     expected: string;
-  }> = [
+  }[] = [
     // No signal: English stays the default.
     { headers: {}, expected: "/en" },
     // Browser language wins for first-time visitors.

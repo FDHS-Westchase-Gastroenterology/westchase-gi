@@ -101,7 +101,7 @@ function destinationsFrom(status: RequestStatus): LifecycleDestination[] {
 
 type FollowUpKind = "this_afternoon" | "tomorrow_morning" | "friday" | "day";
 
-const FOLLOW_UP_KINDS: Array<{ kind: FollowUpKind; label: string }> = [
+const FOLLOW_UP_KINDS: { kind: FollowUpKind; label: string }[] = [
   { kind: "this_afternoon", label: "This afternoon" },
   { kind: "tomorrow_morning", label: "Tomorrow morning" },
   { kind: "friday", label: "Friday" },

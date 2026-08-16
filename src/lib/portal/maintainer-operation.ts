@@ -22,8 +22,8 @@ export function getMaintainerManagementState(
 }
 
 interface MaintainerState {
-  maintainers: Array<{ userId: number }>;
-  invitations: Array<{ userId: number; invitationId: number }>;
+  maintainers: { userId: number }[];
+  invitations: { userId: number; invitationId: number }[];
 }
 
 export function invitationIsActive(
