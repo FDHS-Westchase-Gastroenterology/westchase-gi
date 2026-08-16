@@ -2,20 +2,21 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { JsonObject } from "@/lib/json";
 import type { AuditAction } from "@/lib/portal/contracts";
 
-type AuditEntry = {
+interface AuditEntry {
   actorEmail: string;
   action: AuditAction;
   entity: string;
   entityId: string | null;
-  detail?: Record<string, unknown>;
-};
+  detail?: JsonObject;
+}
 
-export type ExternalAudit = {
+export interface ExternalAudit {
   id: string;
-  detail: Record<string, unknown>;
-};
+  detail: JsonObject;
+}
 
 function isPreProvenanceSchema(error: { code?: string } | null): boolean {
   return error?.code === "PGRST204";
@@ -94,7 +95,7 @@ export async function finishExternalAudit(
   client: SupabaseClient,
   audit: ExternalAudit,
   outcome: "succeeded" | "failed" | "unconfirmed",
-  detail: Record<string, unknown> = {},
+  detail: JsonObject = {},
 ): Promise<void> {
   const { data, error } = await client
     .from("audit_log")

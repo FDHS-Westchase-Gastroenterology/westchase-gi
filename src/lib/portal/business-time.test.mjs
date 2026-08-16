@@ -20,7 +20,7 @@ test("office hours are Mon–Fri 8:00–17:00 practice time", () => {
 
 test("waiting labels follow the practice-local calendar", () => {
   const now = new Date("2026-07-26T20:00:00Z"); // Sunday 4:00 PM EDT
-  assert.equal(waitingSince("2026-07-26T12:00:00Z", now), null); // same day
+  assert.equal(waitingSince("2026-07-26T12:00:00Z", now), null); // Same day
   assert.equal(waitingSince("2026-07-25T23:00:00Z", now), "yesterday");
   assert.equal(waitingSince("2026-07-24T12:00:00Z", now), "Friday");
   assert.equal(waitingSince("2026-07-20T12:00:00Z", now), "Monday"); // 6 days

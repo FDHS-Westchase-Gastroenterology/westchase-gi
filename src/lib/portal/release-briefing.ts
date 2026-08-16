@@ -1,13 +1,10 @@
 import "server-only";
 
+import { z } from "zod";
 import type { PortalSessionUser } from "@/lib/portal/auth";
 import { serviceClient } from "@/lib/portal/server";
-import {
-  derivePortalReleaseState,
-  parsePortalReleaseId,
-  type PortalReleaseState,
-  type PortalReleaseStateRow,
-} from "./release-state";
+import { derivePortalReleaseState, parsePortalReleaseId, portalReleaseStateRowSchema } from "./release-state";
+import type { PortalReleaseState } from "./release-state";
 
 export type { PortalReleaseState };
 
@@ -35,10 +32,10 @@ export async function getPortalReleaseState(
       .maybeSingle();
 
     if (error) return { status: "unavailable" };
-    return derivePortalReleaseState(
-      (data as PortalReleaseStateRow | null) ?? null,
-      now,
-    );
+    if (data === null) return derivePortalReleaseState(null, now);
+    const parsed = portalReleaseStateRowSchema.safeParse(data);
+    if (!parsed.success) return { status: "unavailable" };
+    return derivePortalReleaseState(parsed.data, now);
   } catch {
     return { status: "unavailable" };
   }
@@ -53,10 +50,11 @@ export async function mutatePortalReleaseState(
     p_user_id: session.id,
     p_release_id: releaseId,
   });
-  if (error || typeof data !== "boolean") {
+  const accepted = z.boolean().safeParse(data);
+  if (error || !accepted.success) {
     throw new Error(
       `Portal release state mutation failed: ${error?.code ?? "invalid_result"}`,
     );
   }
-  return data;
+  return accepted.data;
 }

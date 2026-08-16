@@ -2,6 +2,8 @@ import "server-only";
 
 import { createHmac } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
+import type { Json } from "@/lib/json";
 import { serviceClient, serviceRoleKey } from "@/lib/portal/server";
 import {
   TELEMETRY_CLIENT_HASH_DOMAIN,
@@ -16,7 +18,7 @@ function logOperationalFailure(
   context: Record<string, number | string | null> = {},
 ) {
   // Never pass telemetry payloads here: IDs, counts, status codes, and
-  // stable codes only — mirror intake logOperationalFailure discipline.
+  // Stable codes only — mirror intake logOperationalFailure discipline.
   console.error(`[telemetry] ${event}`, context);
 }
 
@@ -28,8 +30,8 @@ function clientHash(headers: Headers): string {
   // Counts are directional, not forensic. Vercel overwrites
   // X-Vercel-Forwarded-For at its edge; local callers fall back to
   // X-Forwarded-For; callers without either header share the "missing"
-  // bucket. HMAC prevents offline address guessing. Distinct domain from
-  // intake so throttle buckets never mix.
+  // Bucket. HMAC prevents offline address guessing. Distinct domain from
+  // Intake so throttle buckets never mix.
   return createHmac("sha256", serviceRoleKey())
     .update(TELEMETRY_CLIENT_HASH_DOMAIN)
     .update(firstHop.toLowerCase())
@@ -46,7 +48,7 @@ async function rateLimitAllows(
     p_window_seconds: TELEMETRY_RATE_LIMIT.windowSeconds,
   });
 
-  if (error || typeof data !== "boolean") {
+  if (error || !z.boolean().safeParse(data).success) {
     logOperationalFailure("rate-limit claim failed", {
       code: error?.code ?? "invalid_result",
     });
@@ -57,7 +59,7 @@ async function rateLimitAllows(
 }
 
 export async function processTelemetry(
-  rawInput: unknown,
+  rawInput: Json | null,
   headers: Headers,
 ): Promise<{ status: TelemetryStatus }> {
   const parsed = telemetryEventSchema.safeParse(rawInput);

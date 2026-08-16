@@ -8,7 +8,7 @@ export type NotificationRecipient = Readonly<{
   email: string;
 }>;
 
-export type NotificationEvent = {
+export interface NotificationEvent {
   request_id: string;
   type: "notification";
   recipient: string;
@@ -21,7 +21,7 @@ export type NotificationEvent = {
         reason: Extract<PortalEmailOutcome, { status: "failed" }>["reason"];
         provider_status_code: number | null;
       };
-};
+}
 
 const SUBJECT = "New appointment request — Westchase GI portal";
 

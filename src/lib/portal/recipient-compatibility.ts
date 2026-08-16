@@ -2,7 +2,7 @@ import "server-only";
 
 import { recordAudit } from "@/lib/portal/audit";
 import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
-import { serviceClient } from "@/lib/portal/server";
+import type { serviceClient } from "@/lib/portal/server";
 
 type ServiceClient = ReturnType<typeof serviceClient>;
 
@@ -73,7 +73,7 @@ export async function addRecipientWithCompatibility(
     );
     if (initialDeleteFailed) {
       // Disable first so intake cannot use an unaudited destination while a
-      // second compensating delete is attempted.
+      // Second compensating delete is attempted.
       const disableFailed = await operationFailed(() =>
         db
           .from("notification_recipients")

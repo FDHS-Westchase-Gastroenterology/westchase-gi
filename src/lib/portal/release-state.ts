@@ -1,3 +1,7 @@
+import { z } from "zod";
+import { asJsonString, asJsonTimestamp } from "@/lib/json";
+import type { Json } from "@/lib/json";
+
 export const PORTAL_RELEASE_WINDOW_MS = 48 * 60 * 60 * 1000;
 export const PORTAL_RELEASE_ID_MAX_LENGTH = 80;
 
@@ -24,19 +28,30 @@ export type PortalReleaseState =
   | { status: "expired" }
   | { status: "unavailable" };
 
-export type PortalReleaseStateRow = {
-  first_opened_at: unknown;
-  acknowledged_at: unknown;
-  hidden_at: unknown;
-};
+export const portalReleaseStateRowSchema = z.object({
+  first_opened_at: z.string().nullable(),
+  acknowledged_at: z.string().nullable(),
+  hidden_at: z.string().nullable(),
+});
+
+export interface PortalReleaseStateRow {
+  first_opened_at: Json;
+  acknowledged_at: Json;
+  hidden_at: Json;
+}
 
 const RELEASE_ID_PATTERN = /^[a-z0-9][a-z0-9._-]*$/;
 
-export function parsePortalReleaseId(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const releaseId = value.trim();
+const PORTAL_RELEASE_AUDIT_ACTIONS = new Set<string>(
+  Object.values(RELEASE_AUDIT_ACTIONS),
+);
+
+export function parsePortalReleaseId(value: Json): string | null {
+  const text = asJsonString(value);
+  if (text === null) return null;
+  const releaseId = text.trim();
   if (
-    releaseId !== value ||
+    releaseId !== text ||
     releaseId.length < 1 ||
     releaseId.length > PORTAL_RELEASE_ID_MAX_LENGTH ||
     !RELEASE_ID_PATTERN.test(releaseId)
@@ -47,7 +62,7 @@ export function parsePortalReleaseId(value: unknown): string | null {
 }
 
 export function parseSupportedPortalReleaseId(
-  value: unknown,
+  value: Json,
   supportedReleaseId: string,
 ): string | null {
   const releaseId = parsePortalReleaseId(value);
@@ -57,13 +72,7 @@ export function parseSupportedPortalReleaseId(
 export function isPortalReleaseAuditAction(
   action: string,
 ): action is PortalReleaseAuditAction {
-  return Object.values(RELEASE_AUDIT_ACTIONS).includes(
-    action as PortalReleaseAuditAction,
-  );
-}
-
-function validIsoTimestamp(value: unknown): value is string {
-  return typeof value === "string" && Number.isFinite(Date.parse(value));
+  return PORTAL_RELEASE_AUDIT_ACTIONS.has(action);
 }
 
 export function derivePortalReleaseState(
@@ -71,25 +80,31 @@ export function derivePortalReleaseState(
   now: Date = new Date(),
 ): PortalReleaseState {
   if (row === null) return { status: "unseen" };
+  const firstOpenedAt = asJsonTimestamp(row.first_opened_at);
+  const acknowledgedAt =
+    row.acknowledged_at === null
+      ? null
+      : asJsonTimestamp(row.acknowledged_at);
+  const hiddenAt =
+    row.hidden_at === null ? null : asJsonTimestamp(row.hidden_at);
   if (
-    !validIsoTimestamp(row.first_opened_at) ||
-    (row.acknowledged_at !== null &&
-      !validIsoTimestamp(row.acknowledged_at)) ||
-    (row.hidden_at !== null && !validIsoTimestamp(row.hidden_at)) ||
+    firstOpenedAt === null ||
+    (acknowledgedAt === null && row.acknowledged_at !== null) ||
+    (hiddenAt === null && row.hidden_at !== null) ||
     !Number.isFinite(now.getTime())
   ) {
     return { status: "unavailable" };
   }
-  if (row.hidden_at !== null) return { status: "hidden" };
+  if (hiddenAt !== null) return { status: "hidden" };
   if (
-    Date.parse(row.first_opened_at) + PORTAL_RELEASE_WINDOW_MS <=
+    Date.parse(firstOpenedAt) + PORTAL_RELEASE_WINDOW_MS <=
     now.getTime()
   ) {
     return { status: "expired" };
   }
   return {
     status: "available",
-    firstOpenedAt: row.first_opened_at,
-    acknowledgedAt: row.acknowledged_at,
+    firstOpenedAt,
+    acknowledgedAt,
   };
 }

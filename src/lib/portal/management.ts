@@ -2,18 +2,14 @@ import "server-only";
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { jsonObjectSchema } from "@/lib/json";
+import type { Json } from "@/lib/json";
 import { recordAudit } from "@/lib/portal/audit";
 import { requireRole } from "@/lib/portal/auth";
-import {
-  AUDIT_ACTIONS,
-  type StaffRole,
-} from "@/lib/portal/contracts";
+import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
 import { sendPortalEmail } from "@/lib/portal/email-provider";
-import {
-  sendRecipientConfirmation,
-  sendStaffSetupLink,
-  type StaffSetupType,
-} from "@/lib/portal/management-email";
+import { sendRecipientConfirmation, sendStaffSetupLink } from "@/lib/portal/management-email";
+import type { StaffSetupType } from "@/lib/portal/management-email";
 import {
   addRecipientWithCompatibility,
   removeRecipientWithCompatibility,
@@ -69,11 +65,11 @@ export type ManagementFailureCode =
   | "conflict"
   | "unavailable";
 
-export type ManagementFailure = {
+export interface ManagementFailure {
   ok: false;
   code: ManagementFailureCode;
   error: string;
-};
+}
 
 export type MutationResult = { ok: true } | ManagementFailure;
 
@@ -104,13 +100,6 @@ function revalidateManagementViews(): void {
   revalidatePath("/admin/audit");
 }
 
-function metadataRecord(value: unknown): Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
-    return {};
-  }
-  return { ...(value as Record<string, unknown>) };
-}
-
 async function deliverStaffSetupLink({
   email,
   confirmationUrl,
@@ -133,11 +122,7 @@ async function deliverStaffSetupLink({
   });
 }
 
-function authCreateFailure(error: unknown): ManagementFailure {
-  const code =
-    typeof error === "object" && error !== null && "code" in error
-      ? String(error.code)
-      : "";
+function authCreateFailure(code: string): ManagementFailure {
   if (code === "email_exists" || code === "user_already_exists") {
     return failure("conflict", "A staff account already uses that email.");
   }
@@ -159,8 +144,8 @@ async function deleteProvisionedUser(
   userId: string,
 ): Promise<boolean> {
   // Ban first so a generated invite cannot be consumed if Auth deletion is
-  // temporarily unavailable. Supabase APIs resolve with `{ error }`, so each
-  // result must be inspected rather than relying on Promise rejection.
+  // Temporarily unavailable. Supabase APIs resolve with `{ error }`, so each
+  // Result must be inspected rather than relying on Promise rejection.
   // react-doctor-disable-next-line react-doctor/async-parallel
   const banFailed = await operationFailed(() =>
     db.auth.admin.updateUserById(userId, {
@@ -182,7 +167,7 @@ async function deleteProvisionedUser(
   const safe = !authDeleteFailed && !finalProfileDeleteFailed;
   if (!safe) {
     // User IDs and boolean outcomes are operational metadata. Never include
-    // the invited email, token, setup URL, or raw Supabase error messages.
+    // The invited email, token, setup URL, or raw Supabase error messages.
     console.error("[portal-management] invite rollback incomplete", {
       userId,
       banFailed,
@@ -207,7 +192,7 @@ async function rollbackInvite(
 }
 
 export async function addNotificationRecipientMutation(
-  input: unknown,
+  input: Json,
 ): Promise<AddRecipientResult> {
   const session = await requireRole("admin");
   const parsed = addRecipientSchema.safeParse(input);
@@ -253,7 +238,8 @@ export async function addNotificationRecipientMutation(
     recipientId = mutation.response.recipientId;
   } else {
     const { data, error } = mutation.response;
-    if (error || typeof data !== "string") {
+    const parsedId = z.string().safeParse(data);
+    if (error || !parsedId.success) {
       if (recipientRpcFailureCode("add", error?.code) === "conflict") {
         return failure(
           "conflict",
@@ -265,7 +251,7 @@ export async function addNotificationRecipientMutation(
         "The notification recipient could not be added.",
       );
     }
-    recipientId = data;
+    recipientId = parsedId.data;
   }
 
   revalidateManagementViews();
@@ -283,7 +269,7 @@ export async function addNotificationRecipientMutation(
  * write and its own `recipients.label_update` audit row.
  */
 export async function updateRecipientLabelMutation(
-  input: unknown,
+  input: Json,
   actorEmail: string,
 ): Promise<UpdateRecipientLabelResult> {
   const parsed = updateRecipientLabelSchema.safeParse(input);
@@ -329,7 +315,7 @@ export async function updateRecipientLabelMutation(
  * remains admin-only; staff otherwise have read-only recipient access.
  */
 export async function toggleNotificationRecipientMutation(
-  input: unknown,
+  input: Json,
 ): Promise<MutationResult> {
   const session = await requireRole("staff");
   const parsed = recipientStateSchema.safeParse(input);
@@ -381,7 +367,7 @@ export async function toggleNotificationRecipientMutation(
 }
 
 export async function removeNotificationRecipientMutation(
-  input: unknown,
+  input: Json,
 ): Promise<MutationResult> {
   const session = await requireRole("admin");
   const parsed = entityIdSchema.safeParse(input);
@@ -431,7 +417,7 @@ export async function removeNotificationRecipientMutation(
 }
 
 export async function inviteStaffMutation(
-  input: unknown,
+  input: Json,
 ): Promise<InviteStaffResult> {
   const session = await requireRole("admin");
   const parsed = inviteStaffSchema.safeParse(input);
@@ -454,7 +440,10 @@ export async function inviteStaffMutation(
     });
   const user = created.user;
   if (createError || !user) {
-    return authCreateFailure(createError);
+    const parsedCreateError = z.object({ code: z.string() }).safeParse(createError);
+    return authCreateFailure(
+      parsedCreateError.success ? parsedCreateError.data.code : "",
+    );
   }
 
   const { data: generated, error: linkError } =
@@ -529,7 +518,7 @@ export async function inviteStaffMutation(
 }
 
 export async function resendStaffInviteMutation(
-  input: unknown,
+  input: Json,
 ): Promise<InviteStaffResult> {
   const session = await requireRole("admin");
   const parsed = entityIdSchema.safeParse(input);
@@ -571,9 +560,9 @@ export async function resendStaffInviteMutation(
   }
 
   // Once an invite OTP has been verified, Supabase considers the email
-  // confirmed. A recovery token is then the supported way to restore the
-  // interrupted password-setup session; the app still treats the active,
-  // not-onboarded profile as an invite and never accepts a role from input.
+  // Confirmed. A recovery token is then the supported way to restore the
+  // Interrupted password-setup session; the app still treats the active,
+  // Not-onboarded profile as an invite and never accepts a role from input.
   const type: StaffSetupType = authUser.email_confirmed_at
     ? "recovery"
     : "invite";
@@ -621,7 +610,7 @@ export async function resendStaffInviteMutation(
 }
 
 export async function deactivateStaffMutation(
-  input: unknown,
+  input: Json,
 ): Promise<MutationResult> {
   const session = await requireRole("admin");
   const parsed = entityIdSchema.safeParse(input);
@@ -657,9 +646,9 @@ export async function deactivateStaffMutation(
   }
 
   // In @supabase/supabase-js 2.110.2, auth.admin.signOut requires the
-  // target user's JWT rather than a user id. We do not hold target JWTs.
+  // Target user's JWT rather than a user id. We do not hold target JWTs.
   // The profile flag is the immediate app-layer lockout; a long-lived Auth
-  // ban is the available admin-API backstop for future sign-ins/refreshes.
+  // Ban is the available admin-API backstop for future sign-ins/refreshes.
   const { error: banError } = await db.auth.admin.updateUserById(
     current.user_id,
     { ban_duration: STAFF_BAN_DURATION },
@@ -698,7 +687,7 @@ export async function deactivateStaffMutation(
 }
 
 export async function changeStaffRoleMutation(
-  input: unknown,
+  input: Json,
 ): Promise<MutationResult> {
   const session = await requireRole("admin");
   const parsed = staffRoleSchema.safeParse(input);
@@ -725,7 +714,7 @@ export async function changeStaffRoleMutation(
     return { ok: true };
   }
 
-  const previousRole = current.role as StaffRole;
+  const previousRole = current.role;
   const { data: authData, error: authReadError } =
     await db.auth.admin.getUserById(current.user_id);
   const authUser = authData.user;
@@ -733,7 +722,8 @@ export async function changeStaffRoleMutation(
     return failure("unavailable", "The staff role could not be changed.");
   }
 
-  const previousMetadata = metadataRecord(authUser.app_metadata);
+  const parsedMetadata = jsonObjectSchema.safeParse(authUser.app_metadata);
+  const previousMetadata = parsedMetadata.success ? parsedMetadata.data : {};
   const { error: metadataError } = await db.auth.admin.updateUserById(
     current.user_id,
     {

@@ -1,3 +1,5 @@
+import type { JsonObject } from "@/lib/json";
+
 export type MaintainerFailureCode =
   | "invalid"
   | "not_found"
@@ -19,10 +21,10 @@ export function getMaintainerManagementState(
     : "permission_upgrade_required";
 }
 
-type MaintainerState = {
+interface MaintainerState {
   maintainers: Array<{ userId: number }>;
   invitations: Array<{ userId: number; invitationId: number }>;
-};
+}
 
 export function invitationIsActive(
   state: MaintainerState,
@@ -71,10 +73,10 @@ export async function runMaintainerOperation<Audit, Snapshot>({
   finish(
     audit: Audit,
     outcome: "succeeded" | "failed" | "unconfirmed",
-    detail: Record<string, unknown>,
+    detail: JsonObject,
   ): Promise<void>;
-  failureCode(error: unknown, snapshot: Snapshot): MaintainerFailureCode;
-  providerStatus(error: unknown): number | null;
+  failureCode(error: Error | undefined, snapshot: Snapshot): MaintainerFailureCode;
+  providerStatus(error: Error): number | null;
   afterAttempt(): void;
 }): Promise<MaintainerMutationResult> {
   let audit: Audit;
@@ -84,13 +86,17 @@ export async function runMaintainerOperation<Audit, Snapshot>({
     return { ok: false, code: "unavailable" };
   }
 
-  let providerError: unknown;
+  let providerError: Error | undefined;
   let status: number | null = null;
   try {
     status = await perform();
   } catch (error) {
-    providerError = error;
-    status = providerStatus(error);
+    if (error instanceof Error) {
+      providerError = error;
+      status = providerStatus(error);
+    } else {
+      status = null;
+    }
   }
 
   let outcome: "succeeded" | "failed" | "unconfirmed";
@@ -103,9 +109,11 @@ export async function runMaintainerOperation<Audit, Snapshot>({
   }
 
   try {
-    await finish(audit, outcome, {
-      ...(status === null ? {} : { provider_status: status }),
-    });
+    await finish(
+      audit,
+      outcome,
+      status === null ? {} : { provider_status: status },
+    );
   } catch {
     outcome = "unconfirmed";
   } finally {

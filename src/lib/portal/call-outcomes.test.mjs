@@ -3,8 +3,8 @@ import { register } from "node:module";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
 
-// call-outcomes uses extensionless relative imports (type-only, but Node's
-// test runner still needs a resolve hook for consistency with siblings).
+// Call-outcomes uses extensionless relative imports (type-only, but Node's
+// Test runner still needs a resolve hook for consistency with siblings).
 register(
   `data:text/javascript,${encodeURIComponent(`
     export async function resolve(specifier, context, nextResolve) {
@@ -34,7 +34,7 @@ const {
 } = await import("./call-outcomes.ts");
 
 // The full policy, restated. An outcome added to the module without a
-// deliberate policy decision fails here first; drift in either direction
+// Deliberate policy decision fails here first; drift in either direction
 // (a new id, a removed id, or a changed rule) is a test failure.
 const EXPECTED_POLICY = {
   reached_follow_up: { callAgainDay: "allowed", impliedStatus: "contacted" },

@@ -57,7 +57,7 @@ function logFailure(
   providerStatusCode: number | null = null,
 ): void {
   // Messages can contain patient-adjacent destinations or bearer links. Log
-  // only stable policy fields, never content, recipients, keys, or errors.
+  // Only stable policy fields, never content, recipients, keys, or errors.
   console.error(`[portal-email] ${event}`, {
     purpose: message.purpose,
     provider,

@@ -3,7 +3,7 @@ import { register } from "node:module";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
 
-// staff-identity is server-only. Node's test runner needs a resolve hook;
+// Staff-identity is server-only. Node's test runner needs a resolve hook;
 // Next's bundler supplies the real guard at build time.
 register(
   `data:text/javascript,${encodeURIComponent(`

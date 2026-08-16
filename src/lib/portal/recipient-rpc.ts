@@ -7,10 +7,10 @@ export type RecipientRpcFailureCode =
 
 type RecipientRpcError = { code?: string } | null;
 
-type RecipientRpcResponse<Data> = {
+interface RecipientRpcResponse<Data> {
   data: Data | null;
   error: RecipientRpcError;
-};
+}
 
 export type RecipientMutationTransportResult<Data, CompatibilityResult> =
   | {

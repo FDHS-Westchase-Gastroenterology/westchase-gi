@@ -1,23 +1,23 @@
 // Request page window — which slice of the attention-ordered open set and
-// which window of the closed tail make up one page of the queue, plus the
-// exact "Showing x–y of z" display numbers and the past-the-end redirect
-// target. This is the composition between the queue reads (the requests
-// route's queue.ts) and the attention ordering (queue-attention.ts): pure,
-// with no database, React, or clock dependency, so the page server component
-// only fetches and renders and a pagination off-by-one fails a unit test
-// instead of reaching staff.
+// Which window of the closed tail make up one page of the queue, plus the
+// Exact "Showing x–y of z" display numbers and the past-the-end redirect
+// Target. This is the composition between the queue reads (the requests
+// Route's queue.ts) and the attention ordering (queue-attention.ts): pure,
+// With no database, React, or clock dependency, so the page server component
+// Only fetches and renders and a pagination off-by-one fails a unit test
+// Instead of reaching staff.
 //
 // Display totals come from the exact per-status SQL counts, while the open
-// slice is taken from the capped in-memory open fetch. Under the cap the two
-// agree. Beyond it the open slice simply runs out and the closed tail is
-// read from its own offset against the capped length — the totals stay exact
-// even though the deepest pages thin out (see OPEN_CANDIDATE_LIMIT in the
-// route's queue.ts, which would need a database view before that matters).
+// Slice is taken from the capped in-memory open fetch. Under the cap the two
+// Agree. Beyond it the open slice simply runs out and the closed tail is
+// Read from its own offset against the capped length — the totals stay exact
+// Even though the deepest pages thin out (see OPEN_CANDIDATE_LIMIT in the
+// Route's queue.ts, which would need a database view before that matters).
 
 import type { RequestStatus } from "./contracts";
 import { REQUEST_PAGE_SIZE } from "./request-query";
 
-export type RequestPageWindowInput = {
+export interface RequestPageWindowInput {
   /** The active status filter; "all" lists every status. */
   filter: RequestStatus | "all";
   /** The requested page, already parsed to a positive integer. */
@@ -28,9 +28,9 @@ export type RequestPageWindowInput = {
   openRows: number;
   /** The probed closed count; ignored unless the filter lists the tail. */
   closedCount: number;
-};
+}
 
-export type RequestPageWindow = {
+export interface RequestPageWindow {
   /** Exact rows matching filter and search — the "of z" in the summary. */
   filteredTotal: number;
   /** At least 1, so the empty queue still sits on a first page. */
@@ -49,7 +49,7 @@ export type RequestPageWindow = {
   firstShown: number;
   /** Last row number in "Showing x–y of z". */
   lastShown: number;
-};
+}
 
 /** Whether the filter lists the closed tail beneath the open set. */
 function includesClosedTail(filter: RequestStatus | "all"): boolean {
@@ -76,7 +76,7 @@ export function requestPageWindow({
   const redirectPage = page > totalPages ? totalPages : null;
 
   // Open rows first (attention-ordered), then the closed tail fetched from
-  // its own offset once the open set runs out.
+  // Its own offset once the open set runs out.
   const from = (page - 1) * REQUEST_PAGE_SIZE;
   const openFrom = Math.min(from, openRows);
   const openTo = Math.min(from + REQUEST_PAGE_SIZE, openRows);

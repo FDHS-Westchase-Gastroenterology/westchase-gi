@@ -1,3 +1,6 @@
+import { jsonSchema } from "@/lib/json";
+import type { Json } from "@/lib/json";
+
 export class GitHubApiError extends Error {
   constructor(
     readonly status: number | null,
@@ -9,7 +12,7 @@ export class GitHubApiError extends Error {
 
 export async function readGitHubResponse(
   response: Response,
-): Promise<{ status: number; data: unknown }> {
+): Promise<{ status: number; data: Json }> {
   if (!response.ok) throw new GitHubApiError(response.status);
   if (response.status === 204) return { status: response.status, data: null };
 
@@ -17,7 +20,7 @@ export async function readGitHubResponse(
   if (!body) return { status: response.status, data: null };
 
   try {
-    return { status: response.status, data: JSON.parse(body) as unknown };
+    return { status: response.status, data: jsonSchema.parse(JSON.parse(body)) };
   } catch {
     throw new GitHubApiError(null, "invalid_response");
   }

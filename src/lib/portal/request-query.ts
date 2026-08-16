@@ -1,7 +1,7 @@
 export const REQUEST_PAGE_SIZE = 50;
 export const REQUEST_SEARCH_MAX_LENGTH = 100;
 // ponytail: offset pagination is bounded to 500,000 rows; use cursor
-// pagination only if request volume approaches that ceiling.
+// Pagination only if request volume approaches that ceiling.
 const MAX_PAGE = 10_000;
 
 type SearchParam = string | string[] | undefined;
@@ -35,7 +35,7 @@ export function requestSearchFilter(search: string): string {
 
 export function availableQueueCount(
   count: number | null,
-  error: unknown,
+  failed: boolean,
 ): number | null {
-  return error ? null : (count ?? 0);
+  return failed ? null : (count ?? 0);
 }

@@ -1,10 +1,8 @@
 import "server-only";
 
 import { serviceClient } from "@/lib/portal/server";
-import {
-  parsePortalReleaseEngagementRows,
-  type PortalReleaseEngagementResult,
-} from "./release-engagement-model";
+import { parsePortalReleaseEngagementRows } from "./release-engagement-model";
+import type { PortalReleaseEngagementResult } from "./release-engagement-model";
 import { parsePortalReleaseId } from "./release-state";
 
 export type {

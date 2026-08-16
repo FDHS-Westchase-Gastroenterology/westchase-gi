@@ -76,7 +76,7 @@ export async function serverClient() {
           }
         } catch {
           // Server Components cannot write cookies. The portal proxy added by
-          // the auth packet owns refresh-cookie writes for those requests.
+          // The auth packet owns refresh-cookie writes for those requests.
         }
       },
     },

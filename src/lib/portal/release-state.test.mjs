@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 
 register(
   `data:text/javascript,${encodeURIComponent(`
+    const srcRoot = ${JSON.stringify(new URL("../../", import.meta.url).href)};
     export async function resolve(specifier, context, nextResolve) {
       if (specifier === "server-only") {
         return {
@@ -12,8 +13,13 @@ register(
           shortCircuit: true,
         };
       }
+      if (specifier.startsWith("@/")) {
+        specifier = srcRoot + specifier.slice(2);
+      }
       if (
-        (specifier.startsWith("./") || specifier.startsWith("../")) &&
+        (specifier.startsWith("./") ||
+          specifier.startsWith("../") ||
+          specifier.startsWith("file:")) &&
         !/\\.(?:[cm]?[jt]s|json|mjs|cjs|tsx|jsx)$/.test(specifier)
       ) {
         try {

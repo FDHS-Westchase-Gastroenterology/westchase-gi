@@ -2,24 +2,24 @@ import "server-only";
 
 import { previousBusinessMorningBoundary } from "./business-time";
 
-export type QueueAttentionRow = {
+export interface QueueAttentionRow {
   id: string;
   status: "new" | "contacted" | "scheduled" | "closed";
   created_at: string;
   follow_up_at: string | null;
-};
+}
 
 export type AttentionBucket =
-  | "new" // unworked
-  | "follow_up" // contacted, follow-up due today or past
-  | "stale" // contacted, no follow-up, silent since before the boundary
-  | "upcoming" // contacted, follow-up in the future
-  | "scheduled" // on the practice schedule
+  | "new" // Unworked
+  | "follow_up" // Contacted, follow-up due today or past
+  | "stale" // Contacted, no follow-up, silent since before the boundary
+  | "upcoming" // Contacted, follow-up in the future
+  | "scheduled" // On the practice schedule
   | "closed";
 
 export type AttentiveRow<T extends QueueAttentionRow> = T & {
   bucket: AttentionBucket;
-  lastActivityAt: string | null; // newest staff-work audit time for the row, if any
+  lastActivityAt: string | null; // Newest staff-work audit time for the row, if any
 };
 
 const PRACTICE_TZ = "America/New_York";
@@ -29,14 +29,14 @@ const NY_DAY = new Intl.DateTimeFormat("en-CA", {
   timeZone: PRACTICE_TZ,
 });
 
-const BUCKET_ORDER: Record<AttentionBucket, number> = {
+const BUCKET_ORDER = {
   new: 0,
   follow_up: 1,
   stale: 2,
   upcoming: 3,
   scheduled: 4,
   closed: 5,
-};
+} as const satisfies Record<AttentionBucket, number>;
 
 function practiceDayNumber(date: Date): number {
   return Math.round(Date.parse(`${NY_DAY.format(date)}T00:00:00Z`) / 86_400_000);

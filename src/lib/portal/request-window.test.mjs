@@ -3,9 +3,9 @@ import { register } from "node:module";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
 
-// request-window uses extensionless relative imports (type-only from
-// contracts, the page size from request-query); Node's test runner needs a
-// resolve hook, matching its sibling suites.
+// Request-window uses extensionless relative imports (type-only from
+// Contracts, the page size from request-query); Node's test runner needs a
+// Resolve hook, matching its sibling suites.
 register(
   `data:text/javascript,${encodeURIComponent(`
     export async function resolve(specifier, context, nextResolve) {
@@ -37,8 +37,8 @@ const counts = (open) => ({
 });
 
 // Each case pins the whole window object: the open-slice range, the
-// closed-tail range, the display totals, and the redirect target. Drift in
-// any of them fails here before it reaches the queue.
+// Closed-tail range, the display totals, and the redirect target. Drift in
+// Any of them fails here before it reaches the queue.
 const cases = [
   {
     name: "the first page is all open rows when the open set fills it",
@@ -189,8 +189,8 @@ const cases = [
   },
   {
     // The open fetch caps at OPEN_CANDIDATE_LIMIT (500); the SQL counts stay
-    // exact. The window follows the capped fetch, so deep pages thin out
-    // instead of inventing rows the fetch never returned.
+    // Exact. The window follows the capped fetch, so deep pages thin out
+    // Instead of inventing rows the fetch never returned.
     name: "past the open-fetch cap the totals stay exact while the window follows the capped fetch",
     input: {
       filter: "all",

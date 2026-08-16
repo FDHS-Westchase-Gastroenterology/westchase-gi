@@ -1,10 +1,8 @@
 import "server-only";
 
 import { Resend } from "resend";
-import {
-  createEmailSender,
-  type PortalEmailTransport,
-} from "@/lib/portal/email";
+import { createEmailSender } from "@/lib/portal/email";
+import type { PortalEmailTransport } from "@/lib/portal/email";
 
 const FALLBACK_SENDER = "onboarding@resend.dev";
 

@@ -9,9 +9,9 @@ import {
 } from "./request-query.ts";
 
 test("never reports a failed queue read as empty", () => {
-  assert.equal(availableQueueCount(0, new Error("read failed")), null);
-  assert.equal(availableQueueCount(null, null), 0);
-  assert.equal(availableQueueCount(3, null), 3);
+  assert.equal(availableQueueCount(0, true), null);
+  assert.equal(availableQueueCount(null, false), 0);
+  assert.equal(availableQueueCount(3, false), 3);
 });
 
 test("parses a bounded positive page", () => {
