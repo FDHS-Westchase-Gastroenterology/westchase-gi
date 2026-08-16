@@ -1,15 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
-import {
-  TransformComponent,
-  TransformWrapper,
-  useControls,
-  useTransformComponent,
-  type ReactZoomPanPinchRef,
-} from "react-zoom-pan-pinch";
-import { Download, Maximize, X, ZoomIn, ZoomOut } from "./icons";
+import { Download, Maximize, X } from "./icons";
+import type { ProfileCardZoomHandle } from "./ProfileCardZoom";
+
+const ProfileCardZoom = dynamic(
+  () => import("./ProfileCardZoom").then((m) => m.ProfileCardZoom),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="pc-loading" role="status">
+        <span className="pc-progress" aria-hidden="true">
+          <span />
+        </span>
+        <span className="pc-spinner" aria-hidden="true" />
+      </div>
+    ),
+  },
+);
 
 type CardImage = { src: string; width: number; height: number };
 
@@ -53,34 +63,6 @@ function useHydrated() {
   return useSyncExternalStore(emptySubscribe, () => true, () => false);
 }
 
-/** Zoom cluster: −, live percentage (tap to reset), +. Must live inside
- * the TransformWrapper context. */
-function ZoomToolbar({ t }: { t: CardStrings }) {
-  const { zoomIn, zoomOut, resetTransform } = useControls();
-  const readout = useTransformComponent(({ state }) => (
-    <span className="min-w-12 text-center tabular-nums">{Math.round(state.scale * 100)}%</span>
-  ));
-  return (
-    <div className="pc-toolbar">
-      <button type="button" aria-label={t.zoomOut} onClick={() => zoomOut()} className="pc-tool">
-        <ZoomOut className="h-4.5 w-4.5" />
-      </button>
-      <button
-        type="button"
-        aria-label={t.zoomReset}
-        title={t.zoomReset}
-        onClick={() => resetTransform()}
-        className="pc-tool px-2 text-[0.88rem] font-bold"
-      >
-        {readout}
-      </button>
-      <button type="button" aria-label={t.zoomIn} onClick={() => zoomIn()} className="pc-tool">
-        <ZoomIn className="h-4.5 w-4.5" />
-      </button>
-    </div>
-  );
-}
-
 /**
  * The practice's official provider profile-card graphic, kept ON the page:
  * a real thumbnail in the profile itself, and a same-page full-screen
@@ -97,10 +79,8 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Profile
   const mounted = useHydrated();
   const [open, setOpen] = useState(false);
   const [warm, setWarm] = useState(false); // start fetching the full-size image
-  const [loaded, setLoaded] = useState(false);
-  const [hintHidden, setHintHidden] = useState(false);
   const dialogRef = useRef<HTMLDialogElement | null>(null);
-  const zoomRef = useRef<ReactZoomPanPinchRef | null>(null);
+  const zoomHandleRef = useRef<ProfileCardZoomHandle | null>(null);
   const coarse = useMedia("(pointer: coarse)");
   const reduced = useMedia("(prefers-reduced-motion: reduce)");
 
@@ -122,13 +102,6 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Profile
     };
   }, [open]);
 
-  // The gesture hint retires itself once the reader zooms, or after a beat.
-  useEffect(() => {
-    if (!open || !loaded || hintHidden) return;
-    const timer = window.setTimeout(() => setHintHidden(true), 6000);
-    return () => window.clearTimeout(timer);
-  }, [open, loaded, hintHidden]);
-
   function openViewer() {
     // Browsers too old for <dialog> (iOS < 15.4) still get the graphic.
     if (typeof dialogRef.current?.showModal !== "function") {
@@ -141,8 +114,7 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Profile
 
   function close() {
     setOpen(false);
-    setHintHidden(false);
-    zoomRef.current?.resetTransform(0);
+    zoomHandleRef.current?.resetTransform(0);
   }
 
   const tileInner = (
@@ -221,62 +193,15 @@ export function ProfileCardViewer({ image, subject, t, className = "" }: Profile
             </header>
 
             <div className="pc-stage">
-              <TransformWrapper
-                ref={zoomRef}
-                minScale={1}
-                maxScale={6}
-                centerOnInit
-                centerZoomedOut
-                // On touch devices the browser synthesizes a mousedown right
-                // after a double-tap's touchend; the library's mouse-pan
-                // handler would cancel the just-started zoom animation.
-                // Touch panning has its own path, so left-click pan is only
-                // needed for fine pointers.
-                panning={{ allowLeftClickPan: !coarse }}
-                // step is an exponent (scale × e^step): 0.95 ≈ 2.6× — right
-                // at card-text reading size; the same step toggles back to 1.
-                doubleClick={{ mode: "toggle", step: 0.95, animationTime: reduced ? 0 : 220 }}
-                zoomAnimation={{ animationTime: reduced ? 0 : 220 }}
-                velocityAnimation={{ disabled: reduced }}
-                onTransform={(_ref, state) => {
-                  if (state.scale > 1.02) setHintHidden(true);
-                }}
-              >
-                <TransformComponent wrapperClass="pc-tw" contentClass="pc-tc">
-                  <div className="pc-frame">
-                    <Image
-                      src={image.src}
-                      alt={alt}
-                      width={image.width}
-                      height={image.height}
-                      sizes="64rem"
-                      draggable={false}
-                      onLoad={() => setLoaded(true)}
-                      className={`h-full w-full object-contain transition-opacity duration-300 ${
-                        loaded ? "opacity-100" : "opacity-0"
-                      }`}
-                    />
-                  </div>
-                </TransformComponent>
-
-                {!loaded ? (
-                  <div className="pc-loading" role="status">
-                    <span className="pc-progress" aria-hidden="true">
-                      <span />
-                    </span>
-                    <span className="pc-spinner" aria-hidden="true" />
-                    <span className="sr-only">{t.loading}</span>
-                  </div>
-                ) : null}
-
-                {loaded && !hintHidden ? (
-                  <p className="pc-hint" aria-hidden="true">
-                    {coarse ? t.hintTouch : t.hintPointer}
-                  </p>
-                ) : null}
-
-                <ZoomToolbar t={t} />
-              </TransformWrapper>
+              <ProfileCardZoom
+                image={image}
+                alt={alt}
+                t={t}
+                coarse={coarse}
+                reduced={reduced}
+                open={open}
+                handleRef={zoomHandleRef}
+              />
             </div>
           </div>
         ) : null}

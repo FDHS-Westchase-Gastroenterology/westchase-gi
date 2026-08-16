@@ -204,7 +204,8 @@ export function Header({ locale, dict }: HeaderProps) {
               alt=""
               width={300}
               height={146}
-              priority
+              loading="eager"
+              sizes="(min-width: 640px) 140px, 115px"
               className="h-14 w-auto flex-none sm:h-[4.25rem]"
             />
             <span className="min-w-0 leading-tight">

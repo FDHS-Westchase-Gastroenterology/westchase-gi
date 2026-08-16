@@ -90,6 +90,7 @@ export default async function HomePage({ params }: PageProps) {
               width={1784}
               height={882}
               priority
+              fetchPriority="high"
               sizes="(min-width: 1024px) 48rem, 100vw"
               className="w-full rounded-[var(--radius-lg)] shadow-[var(--shadow-card)]"
             />
