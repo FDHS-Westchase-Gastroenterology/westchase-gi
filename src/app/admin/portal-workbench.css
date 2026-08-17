@@ -598,16 +598,8 @@
     min-width: 0;
     overflow: hidden;
     border: 1px solid var(--color-line-2);
-    border-block-start-color: color-mix(
-      in oklch,
-      var(--color-line-2) 72%,
-      white
-    );
-    border-block-end-color: color-mix(
-      in oklch,
-      var(--color-line-2) 86%,
-      var(--color-navy)
-    );
+    border-block-start-color: color-mix(in oklch, var(--color-line-2) 72%, white);
+    border-block-end-color: color-mix(in oklch, var(--color-line-2) 86%, var(--color-navy));
     border-radius: var(--radius);
     background: var(--portal-surface);
   }

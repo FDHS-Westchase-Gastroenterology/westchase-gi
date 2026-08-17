@@ -20,8 +20,8 @@ interface HomeTask {
   href: string;
   label: string;
   description: string;
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- SVG icon props are framework member types
-  icon: (props: SVGProps<SVGSVGElement>) => ReactNode;
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+  icon: (props: Readonly<SVGProps<SVGSVGElement>>) => ReactNode;
 }
 
 const DESK_TOOLS: HomeTask[] = [
@@ -69,21 +69,6 @@ interface AttentionPath {
   label: string;
 }
 
-interface HomeWorkbenchProps {
-  greeting: string;
-  firstName: string;
-  date: string;
-  afterHours: boolean;
-  newCount: number | null;
-  oldestWaiting: string | null;
-  newest: readonly NewRequestPreview[];
-  attention: readonly AttentionPath[];
-  attentionUnavailable: boolean;
-  noActiveRecipients: boolean;
-  deliveryFailureCount: number | null;
-  announcements?: ReactNode;
-}
-
 function waitingHeadline(count: number): string {
   if (count === 0) return "No new appointment requests are waiting.";
   return `${count} new appointment ${count === 1 ? "request is" : "requests are"} waiting.`;
@@ -103,7 +88,20 @@ export function HomeWorkbench({
   noActiveRecipients,
   deliveryFailureCount,
   announcements,
-}: Readonly<HomeWorkbenchProps>) {
+}: Readonly<{
+  greeting: string;
+  firstName: string;
+  date: string;
+  afterHours: boolean;
+  newCount: number | null;
+  oldestWaiting: string | null;
+  newest: NewRequestPreview[];
+  attention: AttentionPath[];
+  attentionUnavailable: boolean;
+  noActiveRecipients: boolean;
+  deliveryFailureCount: number | null;
+  announcements?: ReactNode;
+}>) {
   const newViewHref = "/admin/requests?status=new";
 
   return (
@@ -267,7 +265,7 @@ export function HomeWorkbench({
             </p>
           ) : null}
 
-          {deliveryFailureCount !== null && deliveryFailureCount > 0 ? (
+          {deliveryFailureCount !== null && deliveryFailureCount !== 0 ? (
             <p data-testid="delivery-failure-warning" className="portal-operational-warning">
               <strong>
                 {deliveryFailureCount === 1

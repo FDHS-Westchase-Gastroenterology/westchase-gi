@@ -11,11 +11,6 @@ import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 // Software. The queue overview count is real data, paper handoff is one
 // Truthful action away, and occasional tools stay out of the primary path.
 
-const tourAuditRowSchema = z.object({
-  id: z.string(),
-  action: z.string().optional(),
-});
-
 loadLocalEnv();
 
 const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
@@ -398,7 +393,7 @@ test.describe("portal home", () => {
       expect(auditError).toBeNull();
       expect(
         z
-          .array(tourAuditRowSchema)
+          .array(z.object({ id: z.string(), action: z.string() }))
           .parse(audits ?? [])
           .filter((row) => !priorAuditIds.has(row.id))
           .map((row) => row.action),
