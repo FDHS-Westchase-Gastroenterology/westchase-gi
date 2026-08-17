@@ -112,7 +112,11 @@ test.describe("portal management UI", () => {
     // Reported as not found rather than generic success.
     await page.locator("#recipient-email").fill(emailA.toUpperCase());
     await page.getByRole("button", { name: "Add", exact: true }).click();
-    await expect(page.getByRole("alert")).toHaveText("That address is already on the list.");
+    // Scoped like the other alert assertions: Next's route announcer also
+    // Carries role="alert", so a bare getByRole("alert") is strict-unsafe.
+    await expect(
+      page.getByRole("alert").filter({ hasText: "That address is already on the list." }),
+    ).toBeVisible();
 
     const { data: staleRecipient } = await db
       .from("notification_recipients")
@@ -122,9 +126,11 @@ test.describe("portal management UI", () => {
       .single();
     expect(staleRecipient?.id).toBeTruthy();
     await recipientItem(page, emailD).locator('[data-action="toggle"]').click();
-    await expect(page.getByRole("alert")).toHaveText(
-      "That recipient no longer exists — the list has been refreshed.",
-    );
+    await expect(
+      page.getByRole("alert").filter({
+        hasText: "That recipient no longer exists — the list has been refreshed.",
+      }),
+    ).toBeVisible();
     await page.reload();
     await expect(recipientItem(page, emailD)).toHaveCount(0);
 

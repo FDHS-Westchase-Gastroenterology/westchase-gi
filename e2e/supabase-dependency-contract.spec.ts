@@ -15,6 +15,7 @@ import {
   intakeResponseSchema,
 } from "../src/lib/portal/contracts";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+import { assertSafeE2ETarget } from "./target-guard";
 
 const lifecycleRowSchema = z.object({
   status: z.string(),
@@ -22,6 +23,8 @@ const lifecycleRowSchema = z.object({
   closure_disposition: z.string().nullable(),
   closed_at: z.string().nullable(),
   record_handoff_at: z.string().nullable(),
+  closure_reason: z.string().nullable().optional(),
+  closure_provenance: z.string().nullable().optional(),
 });
 const releaseProfileSchema = z.looseObject({
   display_name: jsonSchema,
@@ -65,6 +68,29 @@ const requestEventSchema = z.object({
   status: z.string(),
   meta: jsonSchema.nullable(),
 });
+const commandOutcomeSchema = z.looseObject({
+  ok: z.boolean(),
+  code: z.string().optional(),
+  current: z.looseObject({ version: z.number() }).optional(),
+  undo: z.looseObject({ transitionId: z.string() }).optional(),
+});
+const lifecyclePreviewSchema = z.looseObject({
+  unconverted_requests: z.number().optional(),
+  converted_requests: z.number().optional(),
+  legacy_review_requests: z.number().optional(),
+  requests_removed: z.number().optional(),
+});
+const workflowDecisionSchema = z.looseObject({
+  command: z.string(),
+  state: z.string(),
+  callAgainAt: z.string().nullable(),
+  bookingConfirmedAt: z.string().nullable(),
+  closedAt: z.string().nullable(),
+  closureReason: z.string().nullable(),
+  legacyReviewRequired: z.boolean(),
+  reasonCode: z.string().nullable(),
+  occurredAt: z.string(),
+});
 
 type SafeParseResult<T> =
   | { readonly success: true; readonly data: T }
@@ -83,18 +109,6 @@ function requireText(value: string | null | undefined, message: string): string 
   return value;
 }
 
-function disposableWorkdirArgs(): string[] {
-  const workdir = process.env.SUPABASE_DISPOSABLE_WORKDIR;
-  return workdir !== undefined && workdir !== "" ? ["--workdir", workdir] : [];
-}
-
-interface CallOutcomeAuditDetail {
-  outcome: string;
-  to: string;
-  note_attached: boolean;
-  note_length?: number;
-}
-
 interface RequestInsert {
   id: string;
   name: string;
@@ -104,6 +118,34 @@ interface RequestInsert {
   closure_disposition?: string | null;
   closed_at?: string | null;
   record_handoff_at?: string | null;
+  closure_reason?: string | null;
+  closure_provenance?: string | null;
+  email?: string | null;
+  phone?: string;
+  message?: string | null;
+  legacy_review_required?: boolean;
+  retention_hold_at?: string | null;
+  retention_hold_by?: string | null;
+  retention_hold_reason?: string | null;
+}
+
+interface CallOutcomeAuditDetail {
+  outcome: string;
+  to: string;
+  note_attached: boolean;
+  note_length?: number;
+}
+
+interface WorkflowDecision {
+  command: string;
+  state: string;
+  callAgainAt: string | null;
+  bookingConfirmedAt: string | null;
+  closedAt: string | null;
+  closureReason: string | null;
+  legacyReviewRequired: boolean;
+  reasonCode: string | null;
+  occurredAt: string;
 }
 
 loadLocalEnv();
@@ -191,19 +233,40 @@ async function mutateSettings(
   };
 }
 
-function runDisposableDatabaseQuery(queryArgs: readonly string[]): void {
-  if (process.env.SUPABASE_PROJECT_REF !== "local") {
-    throw new Error("Disposable database query refused outside the local stack");
+function testDatabaseConnectionArgs(): string[] {
+  assertSafeE2ETarget(process.env);
+  if (process.env.SUPABASE_PROJECT_REF === "local") {
+    const workdir = process.env.SUPABASE_DISPOSABLE_WORKDIR;
+    return workdir !== undefined && workdir !== ""
+      ? ["--local", "--workdir", workdir]
+      : ["--local"];
   }
-  const workdirArgs = disposableWorkdirArgs();
-  execFileSync("supabase", ["db", "query", ...queryArgs, "--local", ...workdirArgs, "--agent=no"], {
-    cwd: process.cwd(),
-    stdio: "pipe",
-  });
+
+  const ref = requiredEnv("SUPABASE_BRANCH_PROJECT_REF", "SUPABASE_PROJECT_REF");
+  const dbUrl = requiredEnv("POSTGRES_URL", "POSTGRES_URL_NON_POOLING");
+  const parsedUrl = new URL(dbUrl);
+  const direct = parsedUrl.hostname === `db.${ref}.supabase.co`;
+  const pooler =
+    parsedUrl.hostname.endsWith(".pooler.supabase.com") &&
+    decodeURIComponent(parsedUrl.username) === `postgres.${ref}`;
+  if (process.env.SUPABASE_PREVIEW_BRANCH !== "1" || (!direct && !pooler)) {
+    throw new Error("Destructive database query refused outside a Preview Branch");
+  }
+  if (pooler && parsedUrl.port === "6543") {
+    parsedUrl.port = "5432";
+  }
+  return ["--db-url", parsedUrl.toString()];
 }
 
-function queryDisposableDatabase(sql: string): void {
-  runDisposableDatabaseQuery([sql]);
+function queryTestDatabase(sql: string): void {
+  try {
+    execFileSync("supabase", ["db", "query", sql, ...testDatabaseConnectionArgs(), "--agent=no"], {
+      cwd: process.cwd(),
+      stdio: "pipe",
+    });
+  } catch {
+    throw new Error("Destructive test database query failed");
+  }
 }
 
 function recipientRpcMigrationStatements(): string[] {
@@ -236,17 +299,17 @@ function recipientRpcMigrationStatements(): string[] {
 
 function dropRecipientRpcs(): void {
   for (const sql of DROP_RECIPIENT_RPC_QUERIES) {
-    queryDisposableDatabase(sql);
+    queryTestDatabase(sql);
   }
-  queryDisposableDatabase("notify pgrst, 'reload schema'");
+  queryTestDatabase("notify pgrst, 'reload schema'");
 }
 
 function restoreRecipientRpcs(): void {
   dropRecipientRpcs();
   for (const sql of recipientRpcMigrationStatements()) {
-    queryDisposableDatabase(sql);
+    queryTestDatabase(sql);
   }
-  queryDisposableDatabase("notify pgrst, 'reload schema'");
+  queryTestDatabase("notify pgrst, 'reload schema'");
 }
 
 async function insertRequest(
@@ -433,7 +496,7 @@ test.describe("Supabase dependency contract", () => {
   test("keeps portal release engagement per staff with atomic counters and audits", async () => {
     const db = serviceDb();
     const releaseId = `dependency-${randomUUID()}`;
-    const legacyReleaseId = `legacy-release-${randomUUID()}`;
+    const legacyDefaultReleaseId = `legacy-default-${randomUUID()}`;
     const secondEmail = `release-second-${randomUUID()}@example.test`;
     const pendingEmail = `release-pending-${randomUUID()}@example.test`;
     const inactiveEmail = `release-inactive-${randomUUID()}@example.test`;
@@ -780,10 +843,11 @@ test.describe("Supabase dependency contract", () => {
         .eq("release_id", releaseId)
         .order("staff_user_id");
       expect(reportRows.error).toBeNull();
-      expect(reportRows.data).toHaveLength(2);
-      expect(
-        reportRows.data?.every(({ profile }) => releaseProfileSchema.safeParse(profile).success),
-      ).toBe(true);
+      const reportProfiles = requireDecoded(
+        z.array(z.object({ profile: releaseProfileSchema })).safeParse(reportRows.data ?? []),
+        "Release report rows could not be decoded",
+      );
+      expect(reportProfiles).toHaveLength(2);
 
       for (const rejectedUserId of [pending.userId, inactive.userId, randomUUID()]) {
         for (const mutation of [
@@ -817,29 +881,31 @@ test.describe("Supabase dependency contract", () => {
         }
       }
 
-      const legacyReleaseInsert = await db
+      const legacyDefaultInsert = await db
         .from("portal_release_states")
         .insert({
           staff_user_id: second.userId,
-          release_id: legacyReleaseId,
+          release_id: legacyDefaultReleaseId,
         })
         .select("first_opened_at, last_viewed_at, view_count")
         .single();
-      expect(legacyReleaseInsert.error).toBeNull();
-      expect(legacyReleaseInsert.data).toMatchObject({
+      expect(legacyDefaultInsert.error).toBeNull();
+      const legacyDefaultState = requireDecoded(
+        releaseStateSchema.safeParse(legacyDefaultInsert.data),
+        "Legacy default release state was invalid",
+      );
+      expect(legacyDefaultState).toMatchObject({
         first_opened_at: expect.any(String),
         last_viewed_at: expect.any(String),
         view_count: 1,
       });
-      expect(legacyReleaseInsert.data?.last_viewed_at).toBe(
-        legacyReleaseInsert.data?.first_opened_at,
-      );
-      await db.from("portal_release_states").delete().eq("release_id", legacyReleaseId);
+      expect(legacyDefaultState.last_viewed_at).toBe(legacyDefaultState.first_opened_at);
+      await db.from("portal_release_states").delete().eq("release_id", legacyDefaultReleaseId);
     } finally {
       await db
         .from("portal_release_states")
         .delete()
-        .in("release_id", [releaseId, legacyReleaseId]);
+        .in("release_id", [releaseId, legacyDefaultReleaseId]);
       await db.from("audit_log").delete().contains("detail", { release_id: releaseId });
       if (profileIds.length > 0) {
         await db.from("staff_profiles").delete().in("id", profileIds);
@@ -891,12 +957,18 @@ test.describe("Supabase dependency contract", () => {
         source_path: sourcePath,
         status: "new",
       });
-      expect(joined.data?.request_events).toEqual([
-        expect.objectContaining({
-          type: "dependency-contract",
-          status: "recorded",
-        }),
-      ]);
+      // Intake itself records a `created` event (workflow authority migration),
+      // Plus the event this test inserted through PostgREST.
+      expect(joined.data?.request_events).toHaveLength(2);
+      expect(joined.data?.request_events).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ type: "created", status: "recorded" }),
+          expect.objectContaining({
+            type: "dependency-contract",
+            status: "recorded",
+          }),
+        ]),
+      );
     } finally {
       await db.from("requests").delete().eq("id", body.id);
     }
@@ -951,7 +1023,7 @@ test.describe("Supabase dependency contract", () => {
       });
       expect(added.error).toBeNull();
       expectUuid(z.string().parse(added.data));
-      recipientId = String(added.data);
+      recipientId = z.string().parse(added.data);
 
       const inserted = await db
         .from("notification_recipients")
@@ -1054,7 +1126,7 @@ test.describe("Supabase dependency contract", () => {
       );
       expect(correlationIds.size).toBe(3);
       for (const correlationId of correlationIds) {
-        expectUuid(z.string().parse(correlationId));
+        expectUuid(correlationId);
       }
 
       for (const mutation of [
@@ -1093,10 +1165,10 @@ test.describe("Supabase dependency contract", () => {
   test("bridges only missing recipient RPCs and compensates compatibility failures", async ({
     page,
   }) => {
-    test.setTimeout(60_000);
+    test.setTimeout(180_000);
     test.skip(
-      process.env.SUPABASE_PROJECT_REF !== "local",
-      "RPC removal and forced audit failures use only the disposable database.",
+      process.env.SUPABASE_PROJECT_REF !== "local" && process.env.SUPABASE_PREVIEW_BRANCH !== "1",
+      "RPC removal and forced audit failures require an isolated test database.",
     );
 
     const db = serviceDb();
@@ -1107,13 +1179,13 @@ test.describe("Supabase dependency contract", () => {
     let recipientId: string | null = null;
 
     const clearAuditConstraint = () => {
-      queryDisposableDatabase(
+      queryTestDatabase(
         `alter table public.audit_log drop constraint if exists ${auditConstraint}`,
       );
     };
     const rejectAuditAction = (action: string) => {
       clearAuditConstraint();
-      queryDisposableDatabase(
+      queryTestDatabase(
         `alter table public.audit_log add constraint ${auditConstraint} check (action <> '${action}') not valid`,
       );
     };
@@ -1127,7 +1199,7 @@ test.describe("Supabase dependency contract", () => {
     await expect(page).toHaveURL(/\/admin\/?$/);
 
     try {
-      queryDisposableDatabase(`
+      queryTestDatabase(`
         revoke execute on function public.portal_add_notification_recipient(
           text,
           text,
@@ -1156,7 +1228,7 @@ test.describe("Supabase dependency contract", () => {
         });
         expect((await recipientRows(permissionEmail)).data).toHaveLength(0);
       } finally {
-        queryDisposableDatabase(`
+        queryTestDatabase(`
           grant execute on function public.portal_add_notification_recipient(
             text,
             text,
@@ -1217,10 +1289,17 @@ test.describe("Supabase dependency contract", () => {
 
       const inserted = await recipientRows(recipientEmail);
       expect(inserted.error).toBeNull();
-      expect(inserted.data).toHaveLength(1);
-      expect(inserted.data?.[0].active).toBe(true);
-      recipientId = String(inserted.data?.[0].id);
-      expectUuid(z.string().parse(recipientId));
+      const insertedRecipients = requireDecoded(
+        z.array(z.object({ id: z.string(), active: z.boolean() })).safeParse(inserted.data ?? []),
+        "Compatibility recipient was not created",
+      );
+      const insertedRecipient = requireDecoded(
+        z.object({ id: z.string(), active: z.boolean() }).safeParse(insertedRecipients[0]),
+        "Compatibility recipient was not created",
+      );
+      expect(insertedRecipient.active).toBe(true);
+      recipientId = insertedRecipient.id;
+      expectUuid(recipientId);
 
       const duplicate = await mutateSettings(page, "recipient.add", {
         email: recipientEmail.toUpperCase(),
@@ -1315,8 +1394,11 @@ test.describe("Supabase dependency contract", () => {
           }),
         ]),
       );
-      for (const audit of audits.data ?? []) {
-        expectUuid(z.string().parse(audit.correlation_id));
+      for (const audit of requireDecoded(
+        z.array(correlationIdRowSchema).safeParse(audits.data ?? []),
+        "Compatibility recipient audits could not be decoded",
+      )) {
+        expectUuid(audit.correlation_id);
       }
     } finally {
       try {
@@ -1367,18 +1449,7 @@ test.describe("Supabase dependency contract", () => {
       .select("email, label, active, created_at, updated_at")
       .single();
     expect(inserted.error).toBeNull();
-    const insertedRecipient = requireDecoded(
-      z
-        .object({
-          email: z.string(),
-          label: z.string().nullable(),
-          active: z.boolean(),
-          created_at: z.string(),
-          updated_at: z.string(),
-        })
-        .safeParse(inserted.data),
-      "Recipient label fixture was not created",
-    );
+    if (!inserted.data) throw new Error("Recipient label fixture was not created");
 
     try {
       const changed = await db.rpc("portal_update_recipient_label", {
@@ -1396,12 +1467,12 @@ test.describe("Supabase dependency contract", () => {
         .single();
       expect(updated.error).toBeNull();
       expect(updated.data).toMatchObject({
-        email: insertedRecipient.email,
+        email: inserted.data.email,
         label: "After",
-        active: insertedRecipient.active,
-        created_at: insertedRecipient.created_at,
+        active: inserted.data.active,
+        created_at: inserted.data.created_at,
       });
-      expect(updated.data?.updated_at).not.toBe(insertedRecipient.updated_at);
+      expect(updated.data?.updated_at).not.toBe(inserted.data.updated_at);
 
       const firstAudits = await db
         .from("audit_log")
@@ -1470,16 +1541,18 @@ test.describe("Supabase dependency contract", () => {
         outcome: "booked",
         note: "TEST appointment booked.",
         followUpAt: null,
-        status: "scheduled",
+        status: "booked",
         disposition: null,
-        handedOff: false,
+        closureReason: null,
+        handedOff: true,
       },
       {
         outcome: "scheduled_transferred",
         note: "TEST appointment transferred.",
         followUpAt: null,
-        status: "closed",
-        disposition: "converted",
+        status: "booked",
+        disposition: null,
+        closureReason: null,
         handedOff: true,
       },
       {
@@ -1488,6 +1561,7 @@ test.describe("Supabase dependency contract", () => {
         followUpAt,
         status: "contacted",
         disposition: null,
+        closureReason: null,
         handedOff: false,
       },
       {
@@ -1496,6 +1570,7 @@ test.describe("Supabase dependency contract", () => {
         followUpAt,
         status: "contacted",
         disposition: null,
+        closureReason: null,
         handedOff: false,
       },
       {
@@ -1504,6 +1579,7 @@ test.describe("Supabase dependency contract", () => {
         followUpAt: null,
         status: "contacted",
         disposition: null,
+        closureReason: null,
         handedOff: false,
       },
       {
@@ -1511,7 +1587,8 @@ test.describe("Supabase dependency contract", () => {
         note: null,
         followUpAt: null,
         status: "closed",
-        disposition: "unconverted",
+        disposition: null,
+        closureReason: "wont_schedule",
         handedOff: false,
       },
       {
@@ -1519,7 +1596,8 @@ test.describe("Supabase dependency contract", () => {
         note: "TEST duplicate request.",
         followUpAt: null,
         status: "closed",
-        disposition: "unconverted",
+        disposition: null,
+        closureReason: "not_actionable",
         handedOff: false,
       },
     ] as const;
@@ -1543,11 +1621,13 @@ test.describe("Supabase dependency contract", () => {
         });
         expect(result.error).toBeNull();
         expectUuid(z.string().parse(result.data));
-        const eventId = String(result.data);
+        const eventId = z.string().parse(result.data);
 
         const row = await db
           .from("requests")
-          .select("status, follow_up_at, closure_disposition, closed_at, record_handoff_at")
+          .select(
+            "status, follow_up_at, closure_disposition, closure_reason, closed_at, record_handoff_at",
+          )
           .eq("id", requestId)
           .single();
         expect(row.error).toBeNull();
@@ -1558,6 +1638,7 @@ test.describe("Supabase dependency contract", () => {
         expect(lifecycle).toMatchObject({
           status: item.status,
           closure_disposition: item.disposition,
+          closure_reason: item.closureReason,
         });
         expect(
           lifecycle.follow_up_at !== null && lifecycle.follow_up_at !== ""
@@ -1674,15 +1755,17 @@ test.describe("Supabase dependency contract", () => {
           .select("id, type, status, meta")
           .eq("request_id", requestId);
         expect(finalEvents.error).toBeNull();
-        const original = finalEvents.data?.find(({ id }) => id === eventId);
+        const finalEventRows = requireDecoded(
+          z.array(requestEventSchema).safeParse(finalEvents.data ?? []),
+          "Call-outcome undo events could not be decoded",
+        );
+        const original = finalEventRows.find(({ id }) => id === eventId);
         expect(original).toMatchObject({
           type: "call_outcome",
           status: "undone",
           meta: { outcome: item.outcome },
         });
-        const undoEvents = (finalEvents.data ?? []).filter(
-          ({ type }) => type === "call_outcome_undo",
-        );
+        const undoEvents = finalEventRows.filter(({ type }) => type === "call_outcome_undo");
         expect(undoEvents).toHaveLength(1);
         expect(undoEvents[0]).toMatchObject({
           status: "recorded",
@@ -1693,8 +1776,8 @@ test.describe("Supabase dependency contract", () => {
             restored_status: "new",
           },
         });
-        expect((finalEvents.data ?? []).filter(({ type }) => type === "note")).toHaveLength(
-          item.note ? 1 : 0,
+        expect(finalEventRows.filter(({ type }) => type === "note")).toHaveLength(
+          item.note !== null ? 1 : 0,
         );
 
         const undoAudits = await db
@@ -1703,8 +1786,21 @@ test.describe("Supabase dependency contract", () => {
           .eq("entity_id", requestId)
           .eq("action", "request.call_outcome_undo");
         expect(undoAudits.error).toBeNull();
-        expect(undoAudits.data).toHaveLength(1);
-        expect(undoAudits.data?.[0]).toMatchObject({
+        const undoAuditRows = requireDecoded(
+          z
+            .array(
+              z.object({
+                action: z.string(),
+                source: z.string(),
+                correlation_id: z.string(),
+                detail: jsonSchema.nullable(),
+              }),
+            )
+            .safeParse(undoAudits.data ?? []),
+          "Call-outcome undo audits could not be decoded",
+        );
+        expect(undoAuditRows).toHaveLength(1);
+        expect(undoAuditRows[0]).toMatchObject({
           action: "request.call_outcome_undo",
           source: "staff",
           detail: {
@@ -1721,8 +1817,8 @@ test.describe("Supabase dependency contract", () => {
             },
           },
         });
-        expectUuid(z.string().parse(undoAudits.data?.[0].correlation_id));
-        expectNoPatientLeak(jsonSchema.parse(undoAudits.data?.[0].detail ?? null), item.note);
+        expectUuid(undoAuditRows[0].correlation_id);
+        expectNoPatientLeak(jsonSchema.parse(undoAuditRows[0].detail ?? null), item.note);
 
         const duplicateUndo = await db.rpc("portal_undo_call_outcome", {
           p_actor_email: actor,
@@ -1808,13 +1904,12 @@ test.describe("Supabase dependency contract", () => {
     }
   });
 
-  test("restores every meaningful prior appointment-request-lifecycle shape exactly", async () => {
+  test("restores every meaningful prior appointment-request-lifecycle snapshot exactly", async () => {
     const db = serviceDb();
-    const actor = `undo-shapes-${randomUUID()}@example.test`;
+    const actor = `undo-snapshots-${randomUUID()}@example.test`;
     const requestIds: string[] = [];
     const followUpAt = "2026-08-03T14:30:00.000Z";
     const unconvertedClosedAt = "2026-07-24T15:10:00.000Z";
-    const convertedClosedAt = "2026-07-25T16:20:00.000Z";
     const recordHandoffAt = "2026-07-25T16:22:00.000Z";
     const cases = [
       {
@@ -1840,34 +1935,35 @@ test.describe("Supabase dependency contract", () => {
         outcome: "wont_schedule",
       },
       {
-        name: "scheduled",
+        name: "booked after scheduled backfill",
         before: {
-          status: "scheduled",
+          status: "booked",
           follow_up_at: null,
           closure_disposition: null,
           closed_at: null,
-          record_handoff_at: null,
+          record_handoff_at: recordHandoffAt,
         },
         outcome: "no_answer",
       },
       {
-        name: "closed unconverted",
+        name: "closed unconverted after backfill",
         before: {
           status: "closed",
           follow_up_at: null,
-          closure_disposition: "unconverted",
+          closure_disposition: null,
           closed_at: unconvertedClosedAt,
           record_handoff_at: null,
+          closure_provenance: "migration_unconverted",
         },
         outcome: "booked",
       },
       {
-        name: "closed converted",
+        name: "booked after converted-close backfill",
         before: {
-          status: "closed",
+          status: "booked",
           follow_up_at: null,
-          closure_disposition: "converted",
-          closed_at: convertedClosedAt,
+          closure_disposition: null,
+          closed_at: null,
           record_handoff_at: recordHandoffAt,
         },
         outcome: "voicemail",
@@ -1881,23 +1977,34 @@ test.describe("Supabase dependency contract", () => {
         closure_disposition: string | null;
         closed_at: string | null;
         record_handoff_at: string | null;
+        closure_provenance?: string | null;
       }>,
-    ) => ({
-      status: row.status,
-      follow_up_at:
-        row.follow_up_at !== null && row.follow_up_at !== ""
-          ? new Date(row.follow_up_at).toISOString()
-          : null,
-      closure_disposition: row.closure_disposition,
-      closed_at:
-        row.closed_at !== null && row.closed_at !== ""
-          ? new Date(row.closed_at).toISOString()
-          : null,
-      record_handoff_at:
-        row.record_handoff_at !== null && row.record_handoff_at !== ""
-          ? new Date(row.record_handoff_at).toISOString()
-          : null,
-    });
+    ) => {
+      const normalized = {
+        status: row.status,
+        follow_up_at:
+          row.follow_up_at !== null && row.follow_up_at !== ""
+            ? new Date(row.follow_up_at).toISOString()
+            : null,
+        closure_disposition: row.closure_disposition,
+        closed_at:
+          row.closed_at !== null && row.closed_at !== ""
+            ? new Date(row.closed_at).toISOString()
+            : null,
+        record_handoff_at:
+          row.record_handoff_at !== null && row.record_handoff_at !== ""
+            ? new Date(row.record_handoff_at).toISOString()
+            : null,
+      };
+      if (
+        row.closure_provenance !== undefined &&
+        row.closure_provenance !== null &&
+        row.closure_provenance !== ""
+      ) {
+        return { ...normalized, closure_provenance: row.closure_provenance };
+      }
+      return normalized;
+    };
 
     try {
       for (const item of cases) {
@@ -1906,7 +2013,7 @@ test.describe("Supabase dependency contract", () => {
         await insertRequest(db, {
           id: requestId,
           name: `TEST undo previous ${item.name}`,
-          source_path: "/e2e/call-outcome-undo-shapes",
+          source_path: "/e2e/call-outcome-undo-snapshots",
           ...item.before,
         });
 
@@ -1915,12 +2022,14 @@ test.describe("Supabase dependency contract", () => {
           p_request_id: requestId,
           p_outcome: item.outcome,
           p_note:
-            item.name === "closed converted" ? "TEST note remains after lifecycle undo." : null,
+            item.name === "booked after converted-close backfill"
+              ? "TEST note remains after lifecycle undo."
+              : null,
           p_follow_up_at: null,
         });
         expect(saved.error).toBeNull();
-
         const savedEventId = z.string().parse(saved.data);
+
         const undone = await db.rpc("portal_undo_call_outcome", {
           p_actor_email: actor,
           p_request_id: requestId,
@@ -1931,13 +2040,15 @@ test.describe("Supabase dependency contract", () => {
 
         const restored = await db
           .from("requests")
-          .select("status, follow_up_at, closure_disposition, closed_at, record_handoff_at")
+          .select(
+            "status, follow_up_at, closure_disposition, closed_at, record_handoff_at, closure_provenance",
+          )
           .eq("id", requestId)
           .single();
         expect(restored.error).toBeNull();
         expect(normalizeLifecycle(lifecycleRowSchema.parse(restored.data))).toEqual(item.before);
 
-        if (item.name === "closed converted") {
+        if (item.name === "booked after converted-close backfill") {
           const notes = await db
             .from("request_events")
             .select("status, meta")
@@ -1987,12 +2098,12 @@ test.describe("Supabase dependency contract", () => {
         p_outcome: "no_answer",
       });
       expect(firstSave.error).toBeNull();
-      const firstSaveEventId = z.string().parse(firstSave.data);
+      const firstEventId = z.string().parse(firstSave.data);
 
       const missingRequest = await db.rpc("portal_undo_call_outcome", {
         p_actor_email: actor,
         p_request_id: randomUUID(),
-        p_event_id: firstSaveEventId,
+        p_event_id: firstEventId,
       });
       expect(missingRequest.error?.code).toBe("P0002");
 
@@ -2006,14 +2117,14 @@ test.describe("Supabase dependency contract", () => {
       const mismatched = await db.rpc("portal_undo_call_outcome", {
         p_actor_email: actor,
         p_request_id: secondRequestId,
-        p_event_id: firstSaveEventId,
+        p_event_id: firstEventId,
       });
       expect(mismatched.error?.code).toBe("P0002");
 
       const invalidActor = await db.rpc("portal_undo_call_outcome", {
         p_actor_email: " ",
         p_request_id: firstRequestId,
-        p_event_id: firstSaveEventId,
+        p_event_id: firstEventId,
       });
       expect(invalidActor.error?.code).toBe("22023");
 
@@ -2027,7 +2138,7 @@ test.describe("Supabase dependency contract", () => {
       const stale = await db.rpc("portal_undo_call_outcome", {
         p_actor_email: actor,
         p_request_id: firstRequestId,
-        p_event_id: firstSaveEventId,
+        p_event_id: firstEventId,
       });
       expect(stale.error?.code).toBe("55000");
       const laterState = await db
@@ -2036,11 +2147,11 @@ test.describe("Supabase dependency contract", () => {
         .eq("id", firstRequestId)
         .single();
       expect(laterState.data).toEqual({
-        status: "scheduled",
+        status: "booked",
         follow_up_at: null,
         closure_disposition: null,
         closed_at: null,
-        record_handoff_at: null,
+        record_handoff_at: expect.any(String),
       });
       expect(
         (
@@ -2058,7 +2169,7 @@ test.describe("Supabase dependency contract", () => {
         p_outcome: "voicemail",
       });
       expect(malformedSave.error).toBeNull();
-      const malformedSaveEventId = z.string().parse(malformedSave.data);
+      const malformedEventId = z.string().parse(malformedSave.data);
       const malformedUpdate = await db
         .from("request_events")
         .update({
@@ -2073,21 +2184,20 @@ test.describe("Supabase dependency contract", () => {
             },
           },
         })
-        .eq("id", malformedSaveEventId);
+        .eq("id", malformedEventId);
       expect(malformedUpdate.error).toBeNull();
 
       const malformed = await db.rpc("portal_undo_call_outcome", {
         p_actor_email: actor,
         p_request_id: secondRequestId,
-        p_event_id: malformedSaveEventId,
+        p_event_id: malformedEventId,
       });
       expect(malformed.error?.code).toBe("22023");
       expect(
         (await db.from("requests").select("status").eq("id", secondRequestId).single()).data,
       ).toEqual({ status: "contacted" });
       expect(
-        (await db.from("request_events").select("status").eq("id", malformedSaveEventId).single())
-          .data,
+        (await db.from("request_events").select("status").eq("id", malformedEventId).single()).data,
       ).toEqual({ status: "recorded" });
     } finally {
       await db.from("requests").delete().in("id", requestIds);
@@ -2097,16 +2207,14 @@ test.describe("Supabase dependency contract", () => {
 
   test("rolls back an undo when its audit insert fails", async () => {
     test.skip(
-      process.env.SUPABASE_PROJECT_REF !== "local",
-      "The forced audit failure uses only the disposable local database.",
+      process.env.SUPABASE_PROJECT_REF !== "local" && process.env.SUPABASE_PREVIEW_BRANCH !== "1",
+      "The forced audit failure requires an isolated test database.",
     );
 
     const db = serviceDb();
     const actor = `undo-audit-rollback-${randomUUID()}@example.test`;
     const requestId = randomUUID();
     const constraintName = "audit_log_test_reject_call_outcome_undo";
-    const localWorkdirArgs = disposableWorkdirArgs();
-
     try {
       await insertRequest(db, {
         id: requestId,
@@ -2122,17 +2230,8 @@ test.describe("Supabase dependency contract", () => {
       expect(saved.error).toBeNull();
       const savedEventId = z.string().parse(saved.data);
 
-      execFileSync(
-        "supabase",
-        [
-          "db",
-          "query",
-          `alter table public.audit_log add constraint ${constraintName} check (action <> 'request.call_outcome_undo') not valid`,
-          "--local",
-          ...localWorkdirArgs,
-          "--agent=no",
-        ],
-        { cwd: process.cwd(), stdio: "pipe" },
+      queryTestDatabase(
+        `alter table public.audit_log add constraint ${constraintName} check (action <> 'request.call_outcome_undo') not valid`,
       );
 
       const undo = await db.rpc("portal_undo_call_outcome", {
@@ -2151,11 +2250,11 @@ test.describe("Supabase dependency contract", () => {
             .single()
         ).data,
       ).toEqual({
-        status: "scheduled",
+        status: "booked",
         follow_up_at: null,
         closure_disposition: null,
         closed_at: null,
-        record_handoff_at: null,
+        record_handoff_at: expect.any(String),
       });
       expect(
         (await db.from("request_events").select("status").eq("id", savedEventId).single()).data,
@@ -2171,22 +2270,354 @@ test.describe("Supabase dependency contract", () => {
       ).toHaveLength(0);
     } finally {
       try {
-        execFileSync(
-          "supabase",
-          [
-            "db",
-            "query",
-            `alter table public.audit_log drop constraint if exists ${constraintName}`,
-            "--local",
-            ...localWorkdirArgs,
-            "--agent=no",
-          ],
-          { cwd: process.cwd(), stdio: "pipe" },
+        queryTestDatabase(
+          `alter table public.audit_log drop constraint if exists ${constraintName}`,
         );
       } finally {
         await db.from("requests").delete().eq("id", requestId);
         await db.from("audit_log").delete().eq("entity_id", requestId);
       }
+    }
+  });
+
+  test("enforces workflow version races and command idempotency", async () => {
+    const db = serviceDb();
+    const requestId = randomUUID();
+    const actor = `workflow-race-${randomUUID()}@example.test`;
+    const occurredAt = new Date().toISOString();
+    const decision = (command: string, state: string, reasonCode?: string): WorkflowDecision => ({
+      command,
+      state,
+      callAgainAt: null,
+      bookingConfirmedAt: state === "booked" ? occurredAt : null,
+      closedAt: state === "closed" ? occurredAt : null,
+      closureReason: state === "closed" ? (reasonCode ?? null) : null,
+      legacyReviewRequired: false,
+      reasonCode: reasonCode ?? null,
+      occurredAt,
+    });
+    const execute = (key: string, fingerprint: string, next: Readonly<WorkflowDecision>) =>
+      db.rpc("portal_execute_request_command", {
+        p_actor_email: actor,
+        p_request_id: requestId,
+        p_expected_version: 1,
+        p_idempotency_key: key,
+        p_fingerprint: fingerprint,
+        p_decision: workflowDecisionSchema.parse(next),
+      });
+
+    await insertRequest(db, {
+      id: requestId,
+      name: "TEST workflow race private name",
+      email: "workflow-race-patient@example.test",
+      message: "TEST workflow race private message",
+    });
+    try {
+      const race = await Promise.all([
+        execute(
+          randomUUID(),
+          "a".repeat(64),
+          decision("confirm_booking_handoff", "booked", "booked"),
+        ),
+        execute(
+          randomUUID(),
+          "b".repeat(64),
+          decision("close_request", "closed", "not_actionable"),
+        ),
+      ]);
+      expect(race.every(({ error }) => error === null)).toBe(true);
+      const raceOutcomes = race.map((result) =>
+        requireDecoded(
+          commandOutcomeSchema.safeParse(result.data),
+          "Workflow race result could not be decoded",
+        ),
+      );
+      expect(
+        raceOutcomes
+          .map((outcome) => outcome.ok)
+          .sort((left, right) => Number(left) - Number(right)),
+      ).toEqual([false, true]);
+      expect(raceOutcomes.find((outcome) => !outcome.ok)).toMatchObject({
+        code: "stale_version",
+        current: { version: 2 },
+      });
+
+      const accepted = raceOutcomes.find((outcome) => outcome.ok);
+      const acceptedKey = await db
+        .from("request_command_receipts")
+        .select("idempotency_key, fingerprint")
+        .eq("request_id", requestId)
+        .single();
+      expect(acceptedKey.error).toBeNull();
+      const receipt = requireDecoded(
+        z
+          .object({ idempotency_key: z.string(), fingerprint: z.string() })
+          .safeParse(acceptedKey.data),
+        "Command receipt could not be decoded",
+      );
+      const replay = await execute(
+        receipt.idempotency_key,
+        receipt.fingerprint,
+        decision("close_request", "closed", "not_actionable"),
+      );
+      expect(replay.error).toBeNull();
+      expect(replay.data).toEqual(accepted);
+
+      const conflict = await execute(
+        receipt.idempotency_key,
+        "c".repeat(64),
+        decision("record_contact_attempt", "contacted", "no_answer"),
+      );
+      expect(conflict.data).toEqual({
+        ok: false,
+        code: "idempotency_conflict",
+      });
+      expect(
+        (await db.from("request_transitions").select("id").eq("request_id", requestId)).data,
+      ).toHaveLength(1);
+      expect(
+        (await db.from("request_command_receipts").select("id").eq("request_id", requestId)).data,
+      ).toHaveLength(1);
+    } finally {
+      await db.from("requests").delete().eq("id", requestId);
+      await db.from("audit_log").delete().eq("entity_id", requestId);
+    }
+  });
+
+  test("enforces the workflow undo window and keeps command evidence PHI-free", async () => {
+    const db = serviceDb();
+    const requestId = randomUUID();
+    const actor = `workflow-undo-${randomUUID()}@example.test`;
+    const patientValues = [
+      "TEST Undo Patient Private",
+      "8135550177",
+      "undo-patient@example.test",
+      "TEST private intake reason",
+    ];
+    const firstAt = new Date().toISOString();
+    const firstKey = randomUUID();
+    await insertRequest(db, {
+      id: requestId,
+      name: patientValues[0],
+      phone: patientValues[1],
+      email: patientValues[2],
+      message: patientValues[3],
+    });
+    try {
+      const first = await db.rpc("portal_execute_request_command", {
+        p_actor_email: actor,
+        p_request_id: requestId,
+        p_expected_version: 1,
+        p_idempotency_key: firstKey,
+        p_fingerprint: "d".repeat(64),
+        p_decision: {
+          command: "record_contact_attempt",
+          state: "contacted",
+          callAgainAt: null,
+          bookingConfirmedAt: null,
+          closedAt: null,
+          closureReason: null,
+          legacyReviewRequired: false,
+          reasonCode: "reached_follow_up",
+          occurredAt: firstAt,
+        },
+      });
+      const firstOutcome = requireDecoded(
+        commandOutcomeSchema.safeParse(first.data),
+        "Workflow command result could not be decoded",
+      );
+      expect(firstOutcome.ok).toBe(true);
+      const transitionId = requireText(
+        firstOutcome.undo?.transitionId,
+        "Undo transition id is missing",
+      );
+      const undoKey = randomUUID();
+      const undoDecision = {
+        command: "undo_latest_transition",
+        state: "new",
+        callAgainAt: null,
+        bookingConfirmedAt: null,
+        closedAt: null,
+        closureReason: null,
+        legacyReviewRequired: false,
+        reasonCode: null,
+        occurredAt: new Date(Date.parse(firstAt) + 15 * 60_000).toISOString(),
+      };
+      const undo = await db.rpc("portal_execute_request_command", {
+        p_actor_email: actor,
+        p_request_id: requestId,
+        p_expected_version: 2,
+        p_idempotency_key: undoKey,
+        p_fingerprint: "e".repeat(64),
+        p_decision: undoDecision,
+        p_transition_id: transitionId,
+      });
+      expect(undo.error).toBeNull();
+      const undoOutcome = requireDecoded(
+        commandOutcomeSchema.safeParse(undo.data),
+        "Workflow undo result could not be decoded",
+      );
+      expect(undoOutcome.ok).toBe(true);
+
+      const retryAfterExpiry = await db.rpc("portal_execute_request_command", {
+        p_actor_email: actor,
+        p_request_id: requestId,
+        p_expected_version: 2,
+        p_idempotency_key: undoKey,
+        p_fingerprint: "e".repeat(64),
+        p_decision: {
+          ...undoDecision,
+          occurredAt: new Date(Date.parse(firstAt) + 16 * 60_000).toISOString(),
+        },
+        p_transition_id: transitionId,
+      });
+      expect(retryAfterExpiry.data).toEqual(undo.data);
+
+      const evidence = await Promise.all([
+        db.from("request_transitions").select("*").eq("request_id", requestId),
+        db.from("request_command_receipts").select("*").eq("request_id", requestId),
+        db.from("notification_outbox").select("*").eq("request_id", requestId),
+        db.from("audit_log").select("detail").eq("entity_id", requestId),
+      ]);
+      const serialized = JSON.stringify(evidence.map(({ data }) => data));
+      for (const value of patientValues) expect(serialized).not.toContain(value);
+    } finally {
+      await db.from("requests").delete().eq("id", requestId);
+      await db.from("audit_log").delete().eq("entity_id", requestId);
+    }
+  });
+
+  test("keeps legacy-review rows out of lifecycle deletion and exposes failed outbox work", async () => {
+    const db = serviceDb();
+    const now = new Date();
+    const oldClosed = randomUUID();
+    const oldBooked = randomUUID();
+    const legacyReview = randomUUID();
+    const heldClosed = randomUUID();
+    const recipientId = randomUUID();
+    const survivingRecipientId = randomUUID();
+    const requestIds = [oldClosed, oldBooked, legacyReview, heldClosed];
+    const old180 = new Date(now.getTime() - 181 * 86_400_000).toISOString();
+    const oldYear = new Date(now.getTime() - 366 * 86_400_000).toISOString();
+    const existingReviewCount = await db
+      .from("requests")
+      .select("id", { count: "exact", head: true })
+      .eq("legacy_review_required", true);
+    expect(existingReviewCount.error).toBeNull();
+    await db.from("notification_recipients").insert([
+      {
+        id: recipientId,
+        email: `workflow-outbox-${randomUUID()}@example.test`,
+        active: true,
+      },
+      {
+        id: survivingRecipientId,
+        email: `workflow-outbox-survivor-${randomUUID()}@example.test`,
+        active: true,
+      },
+    ]);
+    await insertRequest(db, {
+      id: oldClosed,
+      name: "TEST lifecycle closed",
+      status: "closed",
+      closed_at: old180,
+      closure_reason: "not_actionable",
+    });
+    await insertRequest(db, {
+      id: oldBooked,
+      name: "TEST lifecycle booked",
+      status: "booked",
+      record_handoff_at: oldYear,
+    });
+    await insertRequest(db, {
+      id: legacyReview,
+      name: "TEST lifecycle review",
+      status: "closed",
+      legacy_review_required: true,
+    });
+    await insertRequest(db, {
+      id: heldClosed,
+      name: "TEST lifecycle held",
+      status: "closed",
+      closed_at: old180,
+      closure_reason: "wont_schedule",
+      retention_hold_at: old180,
+      retention_hold_by: "test@example.test",
+      retention_hold_reason: "TEST legal hold",
+    });
+    try {
+      const failedOutbox = await db.from("notification_outbox").insert({
+        request_id: legacyReview,
+        recipient_id: recipientId,
+        kind: "new_request",
+        status: "failed",
+        normalized_outcome: "transport_failure",
+      });
+      expect(failedOutbox.error).toBeNull();
+      const preview = await db.rpc("portal_preview_data_lifecycle", {
+        p_now: now.toISOString(),
+      });
+      expect(preview.data).toMatchObject({
+        unconverted_requests: 1,
+        converted_requests: 1,
+        legacy_review_requests: (existingReviewCount.count ?? 0) + 1,
+      });
+      expect(
+        (
+          await db
+            .from("notification_outbox")
+            .select("status, normalized_outcome")
+            .eq("request_id", legacyReview)
+            .single()
+        ).data,
+      ).toEqual({
+        status: "failed",
+        normalized_outcome: "transport_failure",
+      });
+      const run = await db.rpc("portal_run_data_lifecycle", {
+        p_actor_email: `lifecycle-${randomUUID()}@example.test`,
+        p_now: now.toISOString(),
+      });
+      expect(run.error).toBeNull();
+      const runOutcome = requireDecoded(
+        lifecyclePreviewSchema.safeParse(run.data),
+        "Lifecycle run result could not be decoded",
+      );
+      expect(runOutcome.requests_removed).toBe(2);
+      const survivors = await db.from("requests").select("id").in("id", requestIds);
+      const survivorIds = requireDecoded(
+        z.array(z.object({ id: z.string() })).safeParse(survivors.data ?? []),
+        "Lifecycle survivors could not be decoded",
+      ).map(({ id }) => id);
+      expect(survivorIds.sort((left, right) => left.localeCompare(right))).toEqual(
+        [heldClosed, legacyReview].sort((left, right) => left.localeCompare(right)),
+      );
+
+      const survivingOutbox = await db.from("notification_outbox").insert({
+        request_id: legacyReview,
+        recipient_id: survivingRecipientId,
+        kind: "new_request",
+      });
+      expect(survivingOutbox.error).toBeNull();
+      const removed = await db.rpc("portal_remove_notification_recipient", {
+        p_actor_email: `lifecycle-${randomUUID()}@example.test`,
+        p_recipient_id: recipientId,
+      });
+      expect(removed.error).toBeNull();
+      expect(removed.data).toBe(true);
+      const remainingOutbox = await db
+        .from("notification_outbox")
+        .select("recipient_id")
+        .eq("request_id", legacyReview);
+      expect(remainingOutbox.error).toBeNull();
+      expect(remainingOutbox.data).toEqual([{ recipient_id: survivingRecipientId }]);
+    } finally {
+      await db.from("requests").delete().in("id", requestIds);
+      await db
+        .from("notification_recipients")
+        .delete()
+        .in("id", [recipientId, survivingRecipientId]);
+      await db.from("audit_log").delete().in("entity_id", requestIds);
     }
   });
 

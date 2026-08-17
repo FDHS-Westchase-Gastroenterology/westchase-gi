@@ -1,76 +1,127 @@
-name: Supabase Dependency Integration
+name: Supabase Branch Integration
 
-# Runs on every PR so the `supabase-integration` gate check always reports.
-# A cheap detection job decides from the actual diff whether the disposable
-# Supabase stack is needed; the gate passes trivially when it is not. This
-# replaces the old hand-enumerated `on.pull_request.paths` list, whose failure
-# mode was a silently absent check when a new database-adjacent file was not
-# added to the list.
+# Supabase creates one hosted Preview Branch for every PR. This workflow waits
+# for that branch's migrations/configuration/seed deployment, fetches only its
+# ephemeral credentials, and runs the destructive portal contract there.
 on:
   pull_request:
     branches: ["main"]
-  # The dependency controller uses this after a GITHUB_TOKEN-authored branch
-  # refresh, which GitHub deliberately does not emit as a pull_request event.
+    types: [opened, reopened, synchronize]
+  # The dependency controller dispatches after token-authored branch refreshes,
+  # which GitHub deliberately does not emit as a pull_request event.
   workflow_dispatch:
 
 permissions:
+  checks: read
   contents: read
 
 concurrency:
-  group: supabase-dependency-${{ github.event.pull_request.number || github.ref }}
+  group: supabase-branch-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  changes:
-    name: detect-database-surface
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    outputs:
-      relevant: ${{ steps.detect.outputs.relevant }}
-    steps:
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-        with:
-          persist-credentials: false
-
-      - name: Detect database-adjacent changes
-        id: detect
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          if [ "$EVENT_NAME" != "pull_request" ]; then
-            echo "Manual dispatch always runs the integration suite."
-            echo "relevant=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          git fetch --quiet --depth=1 origin "$BASE_SHA"
-          changed="$(git diff --name-only "$BASE_SHA" HEAD)"
-          printf 'Changed files:\n%s\n' "$changed"
-          relevant=false
-          while IFS= read -r file; do
-            case "$file" in
-              package.json|package-lock.json) relevant=true ;;
-              .github/workflows/supabase-dependency-integration.yml) relevant=true ;;
-              supabase/*|scripts/*|e2e/*) relevant=true ;;
-              src/lib/portal/*|src/app/admin/*|src/app/api/*) relevant=true ;;
-              "src/app/[locale]/appointment/"*) relevant=true ;;
-            esac
-          done <<< "$changed"
-          echo "relevant=$relevant" >> "$GITHUB_OUTPUT"
-
   integration:
-    name: supabase-integration-test
-    needs: changes
-    if: needs.changes.outputs.relevant == 'true'
+    name: supabase-integration
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
+      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       PORTAL_BASE_URL: http://127.0.0.1:3100
-      PORTAL_SEED_ADMIN_EMAIL: admin@local.westchase.test
-      PORTAL_SEED_ADMIN_PASSWORD: Local-Dependabot-Only-2026!
-      PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF: local
-      SUPABASE_PROJECT_REF: local
+      PORTAL_SEED_ADMIN_EMAIL: ${{ secrets.PORTAL_PREVIEW_ADMIN_EMAIL }}
+      PORTAL_SEED_ADMIN_PASSWORD: ${{ secrets.PORTAL_PREVIEW_ADMIN_PASSWORD }}
+      SUPABASE_PARENT_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_ID }}
     steps:
+      - name: Wait for the Supabase Preview deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          for attempt in {1..90}; do
+            check="$(
+              gh api "repos/$REPOSITORY/commits/$HEAD_SHA/check-runs?per_page=100" \
+                --jq '[.check_runs[]
+                  | select(.name == "Supabase Preview" and .app.slug == "supabase")]
+                  | sort_by(.id) | last // {}'
+            )"
+            status="$(jq -r '.status // "missing"' <<<"$check")"
+            conclusion="$(jq -r '.conclusion // ""' <<<"$check")"
+            echo "Supabase Preview: status=$status conclusion=${conclusion:-pending}"
+
+            if [ "$status" = "completed" ]; then
+              if [ "$conclusion" = "success" ]; then
+                break
+              fi
+              echo "Supabase Preview did not succeed."
+              exit 1
+            fi
+            if [ "$attempt" = 90 ]; then
+              echo "Supabase Preview did not complete within 15 minutes."
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Install pinned Supabase CLI
+        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
+        with:
+          version: 2.113.0
+
+      - name: Load the matching Preview Branch credentials
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          test -n "$SUPABASE_ACCESS_TOKEN"
+          test -n "$SUPABASE_PARENT_PROJECT_REF"
+          test -n "$BRANCH_NAME"
+
+          branch_env="$RUNNER_TEMP/supabase-branch.env"
+          supabase branches get "$BRANCH_NAME" \
+            --project-ref "$SUPABASE_PARENT_PROJECT_REF" \
+            --output env > "$branch_env"
+
+          set -a
+          . "$branch_env"
+          set +a
+          rm -f "$branch_env"
+
+          branch_ref="${SUPABASE_URL#https://}"
+          branch_ref="${branch_ref%.supabase.co}"
+          if ! [[ "$branch_ref" =~ ^[a-z0-9]{20}$ ]] ||
+            [ "$branch_ref" = "$SUPABASE_PARENT_PROJECT_REF" ]; then
+            echo "Refusing a missing, malformed, or Production branch reference."
+            exit 1
+          fi
+
+          public_key="${SUPABASE_PUBLISHABLE_KEY:-${SUPABASE_ANON_KEY:-}}"
+          service_key="${SUPABASE_SERVICE_ROLE_KEY:-${SUPABASE_SECRET_KEY:-}}"
+          test -n "$public_key"
+          test -n "$service_key"
+          test -n "$POSTGRES_URL_NON_POOLING"
+
+          for value in \
+            "$public_key" \
+            "$service_key" \
+            "$POSTGRES_URL" \
+            "$POSTGRES_URL_NON_POOLING"; do
+            echo "::add-mask::$value"
+          done
+
+          {
+            printf 'NEXT_PUBLIC_SUPABASE_URL=%s\n' "$SUPABASE_URL"
+            printf 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=%s\n' "$public_key"
+            printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$service_key"
+            printf 'POSTGRES_URL=%s\n' "$POSTGRES_URL"
+            printf 'POSTGRES_URL_NON_POOLING=%s\n' "$POSTGRES_URL_NON_POOLING"
+            printf 'SUPABASE_BRANCH_PROJECT_REF=%s\n' "$branch_ref"
+            printf 'SUPABASE_PROJECT_REF=%s\n' "$branch_ref"
+            printf 'PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF=%s\n' "$branch_ref"
+            printf 'SUPABASE_PROJECT_REF_PROD=%s\n' "$SUPABASE_PARENT_PROJECT_REF"
+            printf 'SUPABASE_URL_PROD=https://%s.supabase.co\n' \
+              "$SUPABASE_PARENT_PROJECT_REF"
+            printf 'SUPABASE_PREVIEW_BRANCH=1\n'
+          } >> "$GITHUB_ENV"
+
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
           persist-credentials: false
@@ -80,49 +131,17 @@ jobs:
           node-version: "22"
           cache: npm
 
-      # Install hooks run before local credentials exist. The test job receives
-      # no repository secrets, deployment credentials, or persisted Git token.
       - name: Install locked dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
-
-      - name: Verify portal query parsing
-        run: node --test src/lib/portal/request-query.test.mjs
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Install pinned Supabase CLI
-        id: supabase_cli
-        uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
-        with:
-          version: 2.109.1
+      - name: Seed Preview Branch Auth and portal fixtures
+        run: node scripts/seed-portal.mjs --target branch
 
-      - name: Start disposable local Supabase
-        env:
-          OPENAI_API_KEY: local-studio-disabled
-        run: |
-          docker network create \
-            -o com.docker.network.bridge.host_binding_ipv4=127.0.0.1 \
-            supabase-dependency
-          supabase start \
-            --network-id supabase-dependency \
-            --exclude studio,imgproxy,storage-api,realtime,edge-runtime,logflare,vector,supavisor,postgres-meta \
-            --yes
-          eval "$(
-            supabase status -o env \
-              --override-name api.url=NEXT_PUBLIC_SUPABASE_URL \
-              --override-name auth.publishable_key=NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY \
-              --override-name auth.service_role_key=SUPABASE_SERVICE_ROLE_KEY
-          )"
-          {
-            printf 'NEXT_PUBLIC_SUPABASE_URL=%s\n' "$NEXT_PUBLIC_SUPABASE_URL"
-            printf 'NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=%s\n' \
-              "$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY"
-            printf 'SUPABASE_SERVICE_ROLE_KEY=%s\n' "$SUPABASE_SERVICE_ROLE_KEY"
-          } >> "$GITHUB_ENV"
-
-      - name: Seed disposable portal fixtures
-        run: node scripts/seed-portal.mjs --target local
+      - name: Verify Preview Branch schema, RLS, RPCs, and seed
+        run: node scripts/verify-schema.mjs --target branch
 
       - name: Verify Supabase client, SSR Auth, RLS, and PostgREST
         run: >-
@@ -134,38 +153,3 @@ jobs:
           e2e/portal-requests.spec.ts
           e2e/portal-scale.spec.ts
           --project=chromium
-
-      - name: Stop disposable local Supabase
-        if: always() && steps.supabase_cli.outcome == 'success'
-        run: supabase stop --no-backup --yes
-
-  # Always-reporting gate. This job carries the `supabase-integration` check
-  # name that the dependency controller (.github/scripts/dependency-automation.cjs)
-  # and branch protection consume: success when the integration suite passed or
-  # was legitimately skipped, failure otherwise.
-  gate:
-    name: supabase-integration
-    needs: [changes, integration]
-    if: always()
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Require the integration result
-        env:
-          CHANGES_RESULT: ${{ needs.changes.result }}
-          INTEGRATION_RESULT: ${{ needs.integration.result }}
-        run: |
-          echo "changes=$CHANGES_RESULT integration=$INTEGRATION_RESULT"
-          if [ "$CHANGES_RESULT" != "success" ]; then
-            echo "Change detection did not succeed."
-            exit 1
-          fi
-          case "$INTEGRATION_RESULT" in
-            success)
-              echo "Integration suite passed." ;;
-            skipped)
-              echo "No database-adjacent changes; integration suite not required." ;;
-            *)
-              echo "Integration suite did not succeed."
-              exit 1 ;;
-          esac

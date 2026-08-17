@@ -372,12 +372,12 @@ function ReleaseSummary({
     >
       <div className="flex items-start justify-between gap-5">
         <div>
-          <p className="text-[0.8rem] font-bold text-[var(--color-amber-deep)]">Updated July 29</p>
+          <p className="text-[0.8rem] font-bold text-[var(--color-amber-deep)]">Updated August 6</p>
           <h2
             id={`${id}-heading`}
             className="mt-1 text-[1.25rem] leading-snug font-black text-[var(--color-ink)]"
           >
-            A smoother way to manage appointment requests
+            Record what happened — the portal does the rest
           </h2>
         </div>
         <button
@@ -392,11 +392,17 @@ function ReleaseSummary({
 
       <dl className="mt-5 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
         {[
-          ["Start with the next status.", "Choose Contacted, Scheduled, or Closed."],
-          ["Save once.", "Status, call result, call-again timing, and note stay together."],
+          [
+            "Say what happened.",
+            "Pick the call's real outcome — the portal sets the status itself.",
+          ],
+          [
+            "Save once, undo for 15 minutes.",
+            "Outcome, call-again timing, and note save together. Undo restores everything.",
+          ],
           [
             "Work from the top.",
-            "New requests and due callbacks rise. Scheduled requests stay visible.",
+            "New requests and due call-agains rise. Scheduled requests stay visible.",
           ],
         ].map(([term, detail], index) => {
           const releaseRowStyle: React.CSSProperties = {};
@@ -480,12 +486,12 @@ export function PortalReleaseHomeAnnouncement() {
     >
       <div className="relative z-10 flex flex-col gap-4 rounded-[var(--radius-lg)] bg-[var(--color-mint)] px-5 py-5 shadow-[var(--shadow-soft)] sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div>
-          <p className="text-[0.8rem] font-bold text-[var(--color-amber-deep)]">Updated July 29</p>
+          <p className="text-[0.8rem] font-bold text-[var(--color-amber-deep)]">Updated August 6</p>
           <h2
             id="portal-release-title"
             className="mt-1 text-[1.08rem] font-black text-[var(--color-ink)]"
           >
-            A smoother way to manage appointment requests is here.
+            Recording calls now starts with one question: what happened?
           </h2>
         </div>
         <button

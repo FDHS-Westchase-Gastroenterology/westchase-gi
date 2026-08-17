@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import { test, expect } from "@playwright/test";
-import type { Page, APIRequestContext } from "@playwright/test";
+import type { APIRequestContext, Page } from "@playwright/test";
 import { z } from "zod";
 
 import { asJsonObject, asJsonString, jsonSchema } from "../src/lib/json";
@@ -12,25 +12,13 @@ const noteMetaSchema = z.object({
   text: z.string().optional(),
   author_email: z.string().optional(),
 });
-const callOutcomeDetailSchema = z.looseObject({
-  outcome: z.string(),
-  note_attached: z.boolean().optional(),
+const transitionRowSchema = z.object({
+  command: z.string(),
+  from_state: z.string(),
+  to_state: z.string(),
 });
-
-interface QueueInsert {
-  id: string;
-  name: string;
-  phone: string;
-  email: string;
-  location: string;
-  preferred_time: string;
-  message: string;
-  locale: string;
-  source_path: string;
-  status: string;
-  created_at: string;
-  follow_up_at?: string;
-}
+const QUEUE_VIEWS = ["new", "contacted", "scheduled", "closed"] as const;
+type QueueView = (typeof QUEUE_VIEWS)[number];
 
 // VAL-ADMIN-003: the queue leads with the oldest unworked requests first.
 // VAL-ADMIN-004: status filtering matches SQL counts exactly.
@@ -83,11 +71,21 @@ async function signIn(page: Page) {
   await expect(page).toHaveURL(/\/admin\/?$/);
 }
 
-async function sqlCount(status: string): Promise<number> {
+// The Appointments views are presentation views over durable statuses:
+// The Scheduled view reads `booked` (plus `scheduled` rows that may exist
+// Only mid-deploy). The word "scheduled" is never a durable status.
+const VIEW_DB_STATUSES = {
+  new: ["new"],
+  contacted: ["contacted"],
+  scheduled: ["booked", "scheduled"],
+  closed: ["closed"],
+} as const satisfies Record<QueueView, readonly string[]>;
+
+async function sqlCount(view: QueueView): Promise<number> {
   const { count, error } = await db
     .from("requests")
     .select("id", { count: "exact", head: true })
-    .eq("status", status);
+    .in("status", [...VIEW_DB_STATUSES[view]]);
   expect(error).toBeNull();
   return count ?? 0;
 }
@@ -144,7 +142,7 @@ test.describe("portal requests operation", () => {
     expect(firstId && secondId && thirdId).toBeTruthy();
   });
 
-  test("VAL-ADMIN-005: detail shows every field and the composer drives the appointment-request lifecycle", async ({
+  test("VAL-ADMIN-005: detail shows every field and the workflow panel drives the appointment-request lifecycle", async ({
     page,
     request,
   }) => {
@@ -182,82 +180,98 @@ test.describe("portal requests operation", () => {
     await expect(page.getByText("Morning", { exact: true })).toBeVisible();
     await expect(page.getByTestId("request-message")).toContainText(staged.message);
     await expect(page.getByText("/en/appointment").first()).toBeVisible();
-    const notifications = page.getByRole("heading", { name: "Notifications" }).locator("..");
-    // Every recorded delivery attempt renders — no address is hidden.
-    await expect(notifications).toContainText(visibleRecipient);
-    await expect(notifications).toContainText("jason.gitdev@gmail.com");
+    // Every recorded delivery attempt renders in Request history — no
+    // Address is hidden (staff addresses are operational, not PHI).
+    const history = page.getByTestId("request-history");
+    await expect(history).toContainText(visibleRecipient);
+    await expect(history).toContainText("jason.gitdev@gmail.com");
 
-    const composer = page.getByTestId("call-outcome-composer");
-    async function saveLifecycle(
-      destination: "Contacted" | "Scheduled" | "Closed",
-      detail?: string,
-    ) {
-      await composer.getByText(destination, { exact: true }).click();
-      if (detail !== undefined && detail !== "") {
-        await composer.getByText(detail, { exact: true }).click();
-      }
-      await page.getByTestId("save-outcome").click();
-      await expect(page.getByTestId("composer-feedback")).toBeVisible();
-    }
+    const panel = page.getByTestId("workflow-panel");
+    const feedback = page.getByTestId("workflow-feedback");
     async function statusOf() {
       const { data, error } = await db
         .from("requests")
-        .select("status, closure_disposition, follow_up_at")
+        .select("status, closure_reason, closed_at, follow_up_at, record_handoff_at")
         .eq("id", id)
         .single();
       expect(error).toBeNull();
       return data;
     }
 
-    // A call-again outcome requires the callback date before saving.
-    await composer.getByText("Contacted", { exact: true }).click();
-    await composer.getByText("No answer — call again", { exact: true }).click();
-    await expect(page.getByTestId("save-outcome")).toBeDisabled();
-    await composer.getByText("Tomorrow morning", { exact: true }).click();
-    await page.getByTestId("save-outcome").click();
-    await expect(page.getByTestId("composer-feedback")).toContainText("resurface");
+    // A call-again outcome requires the callback day before saving:
+    // The Save button stays disabled until the required choice is made.
+    await panel.getByText("No answer — call again", { exact: true }).click();
+    await expect(page.getByTestId("save-workflow")).toBeDisabled();
+    await panel.getByText("Tomorrow morning", { exact: true }).click();
+    await page.getByTestId("save-workflow").click();
+    await expect(feedback).toContainText("resurface");
     const afterNoAnswer = await statusOf();
     expect(afterNoAnswer?.status).toBe("contacted");
     expect(afterNoAnswer?.follow_up_at).toBeTruthy();
-    await expect(
-      page.getByTestId("lifecycle-destinations").getByText("Contacted", { exact: true }),
-    ).toHaveCount(0);
+    await expect(page.getByTestId("workflow-current-state")).toContainText("Contacted");
 
-    // The daily success path: Scheduled means booked and stays open.
-    await saveLifecycle("Scheduled");
-    expect((await statusOf())?.status).toBe("scheduled");
-    await expect(
-      page.getByTestId("lifecycle-destinations").getByText("Scheduled", { exact: true }),
-    ).toHaveCount(0);
+    // The daily success path: booked in the practice system, presented as
+    // Scheduled everywhere. The durable row is `booked`; the word
+    // "Scheduled" is presentation-only.
+    await panel.getByText("Appointment booked", { exact: true }).click();
+    await page.getByTestId("save-workflow").click();
+    await expect(feedback).toContainText("marked Scheduled");
+    const afterBooked = await statusOf();
+    expect(afterBooked?.status).toBe("booked");
+    expect(afterBooked?.record_handoff_at).toBeTruthy();
+    await expect(page.getByTestId("workflow-current-state")).toContainText("Scheduled");
 
-    // Closed then asks for the closure outcome the database needs.
-    await saveLifecycle("Closed", "Patient won't schedule");
-    const closed = await statusOf();
-    expect(closed?.status).toBe("closed");
-    expect(closed?.closure_disposition).toBe("unconverted");
-    expect(closed?.follow_up_at).toBeNull();
-
-    // A closed request can be deliberately reopened into a non-current status.
-    await saveLifecycle("Contacted", "Reached the patient — follow-up needed");
+    // A resolved request offers reopen — a legal command, not a status
+    // Picker. Reopen returns it to Contacted with history intact.
+    await page.getByTestId("reopen-request").click();
+    await expect(feedback).toContainText("Reopened — back to Contacted");
     const reopened = await statusOf();
     expect(reopened?.status).toBe("contacted");
-    expect(reopened?.closure_disposition).toBeNull();
+    expect(reopened?.record_handoff_at).toBeNull();
 
-    const { data: outcomeAudits, error: outcomeAuditError } = await db
+    // Closing records the concrete reason the database needs.
+    await panel.getByText("Patient won't schedule", { exact: true }).click();
+    await page.getByTestId("save-workflow").click();
+    await expect(feedback).toContainText("closed");
+    const closed = await statusOf();
+    expect(closed?.status).toBe("closed");
+    expect(closed?.closure_reason).toBe("wont_schedule");
+    expect(closed?.closed_at).toBeTruthy();
+    expect(closed?.follow_up_at).toBeNull();
+
+    // Every accepted command leaves exactly one immutable transition and
+    // One PHI-free workflow audit entry; the retired generic status
+    // Setter's audit action never appears.
+    const { data: transitions, error: transitionsError } = await db
+      .from("request_transitions")
+      .select("command, from_state, to_state")
+      .eq("request_id", id)
+      .order("occurred_at");
+    expect(transitionsError).toBeNull();
+    expect(
+      z
+        .array(transitionRowSchema)
+        .parse(transitions ?? [])
+        .map((row) => [row.command, row.from_state, row.to_state]),
+    ).toEqual([
+      ["record_contact_attempt", "new", "contacted"],
+      ["confirm_booking_handoff", "contacted", "booked"],
+      ["reopen_request", "booked", "contacted"],
+      ["close_request", "contacted", "closed"],
+    ]);
+
+    const { data: workflowAudits, error: workflowAuditError } = await db
       .from("audit_log")
       .select("detail")
       .eq("entity_id", id)
-      .eq("action", "request.call_outcome");
-    expect(outcomeAuditError).toBeNull();
-    const outcomes = (outcomeAudits ?? []).map((row) => {
-      const detail = asJsonObject(jsonSchema.parse(row.detail ?? null));
-      return detail ? asJsonString(detail.outcome) : null;
-    });
-    expect(outcomes.sort((left, right) => (left ?? "").localeCompare(right ?? ""))).toEqual(
-      ["booked", "no_answer", "reached_follow_up", "wont_schedule"].sort((left, right) =>
-        left.localeCompare(right),
-      ),
-    );
+      .eq("action", "request.workflow_command");
+    expect(workflowAuditError).toBeNull();
+    expect(workflowAudits).toHaveLength(4);
+    for (const audit of workflowAudits ?? []) {
+      const detailText = JSON.stringify(audit.detail);
+      expect(detailText).not.toContain(staged.name);
+      expect(detailText).not.toContain(staged.phone);
+    }
 
     const { data: statusAudits, error: statusAuditError } = await db
       .from("audit_log")
@@ -285,7 +299,7 @@ test.describe("portal requests operation", () => {
       .select("id")
       .single();
     expect(error).toBeNull();
-    if (data === null) throw new Error("Unsafe email fixture was not created");
+    if (!data) throw new Error("Unsafe email fixture was not created");
 
     await signIn(page);
     await page.goto(`/admin/requests/${data.id}`);
@@ -304,21 +318,21 @@ test.describe("portal requests operation", () => {
     // The assertion samples until one snapshot is INTERNALLY consistent —
     // Chip count, visible rows, and SQL agree exactly at the same instant.
     // Exactness is preserved; transient churn just retries the sample.
-    for (const status of ["new", "contacted", "scheduled", "closed"]) {
+    for (const view of QUEUE_VIEWS) {
       await expect
         .poll(
           async () => {
-            await page.goto(`/admin/requests?status=${status}`);
-            const chip = Number(
-              await page.locator(`[data-filter-count="${status}"]`).textContent(),
-            );
+            await page.goto(`/admin/requests?status=${view}`);
+            const chip = Number(await page.locator(`[data-filter-count="${view}"]`).textContent());
             const shown = await page.locator('[data-testid="request-row"]').count();
             const badges = await page
               .locator('[data-testid="request-row"] [data-status]')
               .evaluateAll((nodes) => nodes.map((node) => node.getAttribute("data-status")));
-            const sql = await sqlCount(status);
+            const sql = await sqlCount(view);
 
-            const badgesOk = badges.every((badge) => badge === status);
+            // Rows in a view always wear that view's presentation status:
+            // Durable `booked` renders as `scheduled`, never as itself.
+            const badgesOk = badges.every((badge) => badge === view);
             // One page holds at most REQUEST_PAGE_SIZE (50) rows; the SQL
             // Count may exceed it, so the honest expectation is a full or
             // Partial first page matching the count at the same instant.
@@ -339,16 +353,21 @@ test.describe("portal requests operation", () => {
     const token = `p2queue-${runId}`;
     const nowMs = Date.now();
     const dayMs = 86_400_000;
+    // Staged rows satisfy the workflow-state constraint: booked rows carry
+    // Their handoff time, classified closed rows carry closed_at + reason.
     const stagedRows = [
       {
         suffix: "closed",
         status: "closed",
         created_at: new Date(nowMs - 5 * dayMs).toISOString(),
+        closed_at: new Date(nowMs - 4 * dayMs).toISOString(),
+        closure_reason: "not_actionable",
       },
       {
         suffix: "scheduled",
-        status: "scheduled",
+        status: "booked",
         created_at: new Date(nowMs - 2 * dayMs).toISOString(),
+        record_handoff_at: new Date(nowMs - dayMs).toISOString(),
       },
       {
         suffix: "stale",
@@ -376,23 +395,19 @@ test.describe("portal requests operation", () => {
     for (const row of stagedRows) {
       const id = randomUUID();
       idsByKey.set(row.suffix, id);
-      const insert: QueueInsert = {
+      const { suffix, ...columns } = row;
+      const { error } = await db.from("requests").insert({
         id,
-        name: `TEST Queue ${runId} ${row.suffix}`,
+        name: `TEST Queue ${runId} ${suffix}`,
         phone: "8135550166",
-        email: `${token}-${row.suffix}@example.test`,
+        email: `${token}-${suffix}@example.test`,
         location: "tampa",
         preferred_time: "morning",
         message: "TEST attention-order fixture.",
         locale: "en",
         source_path: "/e2e/p2queue",
-        status: row.status,
-        created_at: row.created_at,
-      };
-      if (row.follow_up_at !== undefined && row.follow_up_at !== "") {
-        insert.follow_up_at = row.follow_up_at;
-      }
-      const { error } = await db.from("requests").insert(insert);
+        ...columns,
+      });
       expect(error).toBeNull();
     }
 
@@ -419,46 +434,42 @@ test.describe("portal requests operation", () => {
       await expect(prevLink).toHaveAttribute("href", new RegExp(idsByKey.get("newer")!));
       await expect(nextLink).toHaveAttribute("href", new RegExp(idsByKey.get("stale")!));
 
-      // The due row is already Contacted, so that current state is not offered.
-      // One save moves it to Scheduled; continuation appears only after success.
-      const composer = page.getByTestId("call-outcome-composer");
-      await expect(
-        composer.getByTestId("lifecycle-destinations").getByText("Contacted", { exact: true }),
-      ).toHaveCount(0);
-      await expect(page.getByTestId("save-outcome")).toHaveText("Save");
-      await expect(page.getByTestId("save-outcome")).toBeDisabled();
-      await expect(page.getByTestId("save-outcome-next")).toHaveCount(0);
-      await composer.getByText("Scheduled", { exact: true }).click();
-      await expect(page.getByTestId("save-outcome")).toHaveText("Save");
-      await page.getByTestId("save-outcome").click();
-      await expect(page.getByTestId("composer-feedback")).toBeVisible();
-      await expect(page.getByTestId("save-outcome")).toHaveText("Saved");
-      await expect(page.getByTestId("undo-outcome")).toHaveText("Undo");
+      // The panel only offers legal commands — never the request's own
+      // Current state. One save books it; continuation appears only after
+      // A confirmed success.
+      const panel = page.getByTestId("workflow-panel");
+      const feedback = page.getByTestId("workflow-feedback");
+      await expect(page.getByTestId("save-workflow")).toHaveText("Save");
+      await expect(page.getByTestId("save-workflow")).toBeDisabled();
+      await expect(page.getByTestId("open-next-request")).toHaveCount(0);
+      await panel.getByText("Appointment booked", { exact: true }).click();
+      await page.getByTestId("save-workflow").click();
+      await expect(feedback).toContainText("marked Scheduled");
+      await expect(page.getByTestId("undo-latest")).toHaveText("Undo");
 
-      // Undo is a real atomic reversal, not a local form reset.
-      await page.getByTestId("undo-outcome").click();
-      await expect(page.getByTestId("composer-feedback")).toContainText(
-        "Appointment request status restored to Contacted.",
-      );
-      await expect(page.getByTestId("undo-outcome")).toHaveText("Undone");
+      // Undo is a real atomic reversal — a compensating transition that
+      // Restores the prior snapshot — not a local form reset.
+      await page.getByTestId("undo-latest").click();
+      await expect(feedback).toContainText("Undone — this request is Contacted again.");
       const { data: undoneRow, error: undoneRowError } = await db
         .from("requests")
-        .select("status")
+        .select("status, follow_up_at")
         .eq("id", idsByKey.get("due")!)
         .single();
       expect(undoneRowError).toBeNull();
       expect(undoneRow?.status).toBe("contacted");
-      await expect(page.getByTestId("request-activity")).toContainText(
-        "Appointment booked — appointment request status change undone",
-      );
-      await expect(page.getByTestId("request-activity")).toContainText(
-        "Undo — appointment request status restored to Contacted",
-      );
+      // The snapshot restore brings back the call-again time, not just the state.
+      expect(undoneRow?.follow_up_at).toBeTruthy();
+      const history = page.getByTestId("request-history");
+      await expect(
+        history.getByText("Marked Scheduled — appointment booked").first(),
+      ).toBeVisible();
+      await expect(history).toContainText("Undo — restored to Contacted");
 
       // A new save creates the next undo point and offers queue continuation.
-      await composer.getByText("Scheduled", { exact: true }).click();
-      await page.getByTestId("save-outcome").click();
-      await expect(page.getByTestId("composer-feedback")).toBeVisible();
+      await panel.getByText("Appointment booked", { exact: true }).click();
+      await page.getByTestId("save-workflow").click();
+      await expect(feedback).toContainText("marked Scheduled");
       await page.getByTestId("open-next-request").click();
       await expect(page).toHaveURL(new RegExp(`/admin/requests/${idsByKey.get("stale")}`));
 
@@ -468,34 +479,26 @@ test.describe("portal requests operation", () => {
         .eq("id", idsByKey.get("due")!)
         .single();
       expect(savedRowError).toBeNull();
-      expect(savedRow?.status).toBe("scheduled");
+      expect(savedRow?.status).toBe("booked");
 
-      const { data: outcomeAudits, error: outcomeAuditError } = await db
-        .from("audit_log")
-        .select("detail")
-        .eq("entity_id", idsByKey.get("due")!)
-        .eq("action", "request.call_outcome");
-      expect(outcomeAuditError).toBeNull();
-      expect(outcomeAudits).toHaveLength(2);
-      for (const audit of outcomeAudits ?? []) {
-        expect(audit.detail).toMatchObject({
-          outcome: "booked",
-          from: "contacted",
-          to: "scheduled",
-        });
-      }
-      const { data: undoAudits, error: undoAuditError } = await db
-        .from("audit_log")
-        .select("detail")
-        .eq("entity_id", idsByKey.get("due")!)
-        .eq("action", "request.call_outcome_undo");
-      expect(undoAuditError).toBeNull();
-      expect(undoAudits).toHaveLength(1);
-      expect(undoAudits?.[0].detail).toMatchObject({
-        outcome: "booked",
-        from: "scheduled",
-        to: "contacted",
-      });
+      // The evidence chain: booked, compensating undo, booked again.
+      const { data: transitions, error: transitionsError } = await db
+        .from("request_transitions")
+        .select("command, from_state, to_state, compensates_transition_id")
+        .eq("request_id", idsByKey.get("due")!)
+        .order("occurred_at");
+      expect(transitionsError).toBeNull();
+      expect(
+        z
+          .array(transitionRowSchema)
+          .parse(transitions ?? [])
+          .map((row) => [row.command, row.from_state, row.to_state]),
+      ).toEqual([
+        ["confirm_booking_handoff", "contacted", "booked"],
+        ["undo_latest_transition", "booked", "contacted"],
+        ["confirm_booking_handoff", "contacted", "booked"],
+      ]);
+      expect(transitions?.[1]?.compensates_transition_id).toBeTruthy();
     } finally {
       const ids = [...idsByKey.values()];
       await db.from("requests").delete().in("id", ids);
@@ -541,13 +544,13 @@ test.describe("portal requests operation", () => {
     expect(initialStatusError).toBeNull();
     expect(unchangedNewStatus?.status).toBe("new");
 
-    const composer = page.getByTestId("call-outcome-composer");
-    await expect(composer.getByLabel("Note", { exact: true })).toHaveCount(0);
-    await composer.getByText("Contacted", { exact: true }).click();
-    await composer.getByText("Left a voicemail — call again", { exact: true }).click();
-    await composer.getByText("Tomorrow morning", { exact: true }).click();
-    await page.getByTestId("save-outcome").click();
-    await expect(page.getByTestId("composer-feedback")).toBeVisible();
+    // The workflow panel records outcomes; notes have their own surface.
+    const panel = page.getByTestId("workflow-panel");
+    await expect(panel.getByLabel("Note", { exact: true })).toHaveCount(0);
+    await panel.getByText("Left a voicemail — call again", { exact: true }).click();
+    await panel.getByText("Tomorrow morning", { exact: true }).click();
+    await page.getByTestId("save-workflow").click();
+    await expect(page.getByTestId("workflow-feedback")).toContainText("Saved");
 
     const { data: authorProfile } = await db
       .from("staff_profiles")
@@ -555,7 +558,7 @@ test.describe("portal requests operation", () => {
       .eq("email", SEED_EMAIL.toLowerCase())
       .single();
     await expect(notes).toContainText(String(authorProfile?.display_name ?? ""));
-    await expect(page.getByTestId("request-activity")).toContainText("Left a voicemail");
+    await expect(page.getByTestId("request-history")).toContainText("Left a voicemail");
 
     await page.reload();
     await expect(page.getByTestId("note-list")).toContainText(noteText);
@@ -605,9 +608,8 @@ test.describe("portal requests operation", () => {
     await expect(page.getByTestId("request-detail-name")).toBeVisible();
     await expect(page.getByText(staged.message)).toBeVisible();
     await expect(page.getByTestId("note-list")).toContainText(handoffText);
-    await expect(page.getByTestId("request-activity")).toContainText("Left a voicemail");
-    await expect(page.getByTestId("call-outcome-composer")).toBeHidden();
-    await expect(page.getByRole("heading", { name: "Notifications" })).toBeHidden();
+    await expect(page.getByTestId("request-history")).toContainText("Left a voicemail");
+    await expect(page.getByTestId("workflow-panel")).toBeHidden();
     await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toBeHidden();
     expect(
       await page
@@ -633,17 +635,17 @@ test.describe("portal requests operation", () => {
       expect(String(meta.author_email).toLowerCase()).toBe(SEED_EMAIL.toLowerCase());
     }
 
-    const { data: outcomeAudits, error: outcomeAuditError } = await db
+    // The workflow audit records the command payload only — never note text.
+    const { data: workflowAudits, error: workflowAuditError } = await db
       .from("audit_log")
       .select("detail")
       .eq("entity_id", id)
-      .eq("action", "request.call_outcome");
-    expect(outcomeAuditError).toBeNull();
-    expect(outcomeAudits).toHaveLength(1);
-    const detail = callOutcomeDetailSchema.parse(outcomeAudits![0].detail);
-    expect(detail.outcome).toBe("voicemail");
-    expect(detail.note_attached).toBe(false);
-    expect(detail).not.toHaveProperty("note_length");
+      .eq("action", "request.workflow_command");
+    expect(workflowAuditError).toBeNull();
+    expect(workflowAudits).toHaveLength(1);
+    const detail = asJsonObject(jsonSchema.parse(workflowAudits![0].detail ?? null));
+    expect(asJsonString(detail?.command)).toBe("record_contact_attempt");
     expect(JSON.stringify(detail)).not.toContain(noteText);
+    expect(JSON.stringify(detail)).not.toContain(handoffText);
   });
 });

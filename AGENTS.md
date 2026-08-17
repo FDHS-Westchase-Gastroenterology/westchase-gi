@@ -16,7 +16,16 @@ Read in this order, as the task requires:
 
 `README.md` is the user-facing overview. Cite it for the documented custody split. Do not treat it as developer documentation.
 
-`.agents/skills/` holds the committed, vendor-authored skills this project uses. Provenance, versions, and the update procedure are in `.agents/skills/CODEX.md`. Treat them as advisory and subordinate to this file. Never hand-edit a vendored skill; re-copy it from upstream.
+`.agents/skills/` holds the committed vendor skills and project workflow skills this repository
+uses. Provenance, versions, and the update procedure are in `.agents/skills/CODEX.md`. Treat
+vendor guidance as advisory and subordinate to this file. Never hand-edit a vendored skill;
+re-copy it from upstream.
+
+### Documentation style
+
+Write living instructions as the current operating model: name the workflow, its invariants, and
+the steps an agent performs. Historical rationale and chronology belong in dated evidence
+records; operational docs stay present-tense and self-sufficient.
 
 ## Contribution loop
 
@@ -48,7 +57,7 @@ The visual baseline is required. Before working on the frontend UI, open `ui-ref
 
 Refresh the affected images against the matching local or Preview origin before committing. After deployment, use the default live-origin capture for public pages.
 
-The atlas includes the seven top-level staff routes. Refresh them only with the Development/Preview seed identity, keep the browser-side redaction, and never include an individual request or Production data.
+The atlas includes the seven top-level staff routes. Refresh them only with the Preview Branch seed identity, keep the browser-side redaction, and never include an individual request or Production data.
 
 ## Backend development
 
@@ -58,19 +67,28 @@ Never weaken the [architectural invariants](ARCHITECTURE.md#architectural-invari
 
 ### Supabase guidance and dependency contract
 
-Use the committed `supabase` and `supabase-postgres-best-practices` skills for database, Auth, and RLS work.
+Use the project-authored `wgi-supabase-branching` skill first, then the committed `supabase` and
+`supabase-postgres-best-practices` vendor skills for database, Auth, and RLS work.
 
-Every PR reports the `supabase-integration` gate. A database-adjacent change, including a package change, runs `e2e/supabase-dependency-contract.spec.ts` in a separate GitHub-hosted Ubuntu job. That job starts a disposable Docker Supabase stack, replays committed migrations, seeds local-only fixtures, checks Auth/SSR sessions, permission boundaries, intake persistence, shared throttling, lifecycle boundaries, and PostgREST relationships, then stops the stack even on failure.
+Every PR receives an isolated hosted Supabase Preview Branch and reports two database checks:
+`Supabase Preview` deploys configuration, migrations, and fictional SQL seed data;
+`supabase-integration` fetches only that branch's credentials, creates the fictional Auth
+fixture, verifies schema/RLS/RPCs, and exercises Auth/SSR sessions, permission boundaries,
+intake persistence, shared throttling, lifecycle boundaries, and PostgREST relationships.
+Together, these checks are the database release gate for the exact PR head.
 
-The disposable job receives no hosted Supabase, Vercel, or repository secrets. It never runs on Jason's Mac and has no path that applies migrations or test writes to Development or Production. After merge, Production verification only checks the matching Vercel deployment and does a read-only canonical-site smoke request.
+Automatic branching stays enabled for every PR; "Supabase changes only" and "Deploy to
+production" stay disabled. Preview Branches contain no Production rows and may receive
+destructive test writes. A PR merge never authorizes or performs a Production migration;
+Production promotion and scheduler activation remain separate explicit actions.
 
 ## GitHub conventions
 
 ### Branch protection
 
-GitHub `main` requires the current-branch `quality`, `react-doctor`, and `Vercel` statuses, plus resolved conversations. Force pushes and deletions are blocked.
-
-The detector may skip the disposable suite only when the diff is not database-adjacent. The always-reported gate must still pass on the exact head.
+GitHub `main` requires the current-head `quality`, `react-doctor`, `Vercel`, `Supabase Preview`,
+and `supabase-integration` statuses, plus resolved conversations. Force pushes and deletions
+are blocked. A skipped database check is not a passing signal.
 
 ## Release and operational truth
 

@@ -11,20 +11,23 @@ import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 interface LifecycleFixture {
   status?: string;
   closure_disposition?: string;
+  closure_provenance?: string;
   closed_at?: string;
   record_handoff_at?: string;
   retention_hold_at?: string;
   retention_hold_by?: string;
   retention_hold_reason?: string;
   created_at?: string;
+  legacy_review_required?: boolean;
 }
 
 loadLocalEnv();
 
 const supabaseUrl = new URL(requiredEnv("NEXT_PUBLIC_SUPABASE_URL"));
-const disposableLocal =
-  ["127.0.0.1", "localhost", "[::1]"].includes(supabaseUrl.hostname) &&
-  requiredEnv("SUPABASE_PROJECT_REF") === "local";
+const isolatedTestDatabase =
+  process.env.SUPABASE_PREVIEW_BRANCH === "1" ||
+  (["127.0.0.1", "localhost", "[::1]"].includes(supabaseUrl.hostname) &&
+    requiredEnv("SUPABASE_PROJECT_REF") === "local");
 const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
 const runId = randomUUID().slice(0, 8);
@@ -82,9 +85,12 @@ async function stageRequest(
   return id;
 }
 
-test.describe("disposable-local appointment-request lifecycle", () => {
+test.describe("isolated appointment-request lifecycle", () => {
   test.describe.configure({ mode: "serial" });
-  test.skip(!disposableLocal, "destructive lifecycle coverage is disposable-local only");
+  test.skip(
+    !isolatedTestDatabase,
+    "destructive lifecycle coverage requires local Supabase or a Preview Branch",
+  );
   test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== "chromium", "lifecycle coverage requires JavaScript");
   });
@@ -106,98 +112,115 @@ test.describe("disposable-local appointment-request lifecycle", () => {
   });
 
   test("staff classifies closure from the request detail page", async ({ page }) => {
-    const id = await stageRequest("workflow");
+    // A migrated closure with no recorded outcome (DEC-13): closed, review
+    // Flag set, no invented closure fact. It resolves only through the
+    // Dedicated ClassifyLegacyClosure repair path in the workflow panel.
+    const bookedReviewId = await stageRequest("legacy-booked", {
+      status: "closed",
+      legacy_review_required: true,
+    });
+    const unbookedReviewId = await stageRequest("legacy-unbooked", {
+      status: "closed",
+      legacy_review_required: true,
+    });
     await signIn(page);
-    await page.goto(`/admin/requests/${id}`);
 
-    const composer = page.getByTestId("call-outcome-composer");
-    async function saveLifecycle(
-      destination: "Contacted" | "Scheduled" | "Closed",
-      detail?: string,
-    ) {
-      await composer.getByText(destination, { exact: true }).click();
-      if (detail !== undefined && detail !== "") {
-        await composer.getByText(detail, { exact: true }).click();
-      }
-      await page.getByTestId("save-outcome").click();
-      await expect(page.getByTestId("composer-feedback")).toBeVisible();
+    // Reviewed as booked: the record resolves to durable `booked`,
+    // Presented to staff as Scheduled (DEC-04) with migration-safe
+    // Retention (the clock starts at review, not in the past).
+    await page.goto(`/admin/requests/${bookedReviewId}`);
+    const panel = page.getByTestId("workflow-panel");
+    await expect(panel).toContainText("Finish this request's record");
+    // The review is not an ordinary work surface: no contact/close rows.
+    await expect(page.getByTestId("save-workflow")).toHaveCount(0);
+    await panel.getByText("An appointment was booked", { exact: true }).click();
+    await page.getByTestId("classify-legacy").click();
+    await expect(page.getByTestId("workflow-feedback")).toContainText("marked Scheduled");
+
+    const bookedRow = await db
+      .from("requests")
+      .select(
+        "status, legacy_review_required, record_handoff_at, closed_at, closure_reason, version",
+      )
+      .eq("id", bookedReviewId)
+      .single();
+    expect(bookedRow.error).toBeNull();
+    expect(bookedRow.data).toMatchObject({
+      status: "booked",
+      legacy_review_required: false,
+      closed_at: null,
+      closure_reason: null,
+    });
+    expect(bookedRow.data?.record_handoff_at).toBeTruthy();
+    expect(Number(bookedRow.data?.version)).toBe(2);
+
+    // Reviewed as unbooked: normal CLOSED with a typed reason; the
+    // Retention clock starts no earlier than the review itself.
+    await page.goto(`/admin/requests/${unbookedReviewId}`);
+    await page
+      .getByTestId("workflow-panel")
+      .getByText("No appointment — patient wouldn't schedule", {
+        exact: true,
+      })
+      .click();
+    await page.getByTestId("classify-legacy").click();
+    await expect(page.getByTestId("workflow-feedback")).toContainText("stays closed");
+
+    const unbookedRow = await db
+      .from("requests")
+      .select("status, legacy_review_required, record_handoff_at, closed_at, closure_reason")
+      .eq("id", unbookedReviewId)
+      .single();
+    expect(unbookedRow.error).toBeNull();
+    expect(unbookedRow.data).toMatchObject({
+      status: "closed",
+      legacy_review_required: false,
+      record_handoff_at: null,
+      closure_reason: "wont_schedule",
+    });
+    expect(unbookedRow.data?.closed_at).toBeTruthy();
+
+    // Each classification appends one immutable legacy_review transition
+    // And one PHI-free technical audit entry.
+    for (const [id, toState] of [
+      [bookedReviewId, "booked"],
+      [unbookedReviewId, "closed"],
+    ] as const) {
+      const { data: transitions, error: transitionsError } = await db
+        .from("request_transitions")
+        .select("command, from_state, to_state, provenance")
+        .eq("request_id", id);
+      expect(transitionsError).toBeNull();
+      expect(transitions).toEqual([
+        {
+          command: "classify_legacy_closure",
+          from_state: "closed",
+          to_state: toState,
+          provenance: "legacy_review",
+        },
+      ]);
     }
 
-    await saveLifecycle("Closed", "Patient won't schedule");
-    await expect(page.getByTestId("request-lifecycle-summary")).toContainText(
-      "— no appointment booked",
-    );
-
-    let row = await db
-      .from("requests")
-      .select("status, closure_disposition, closed_at, record_handoff_at, retention_hold_at")
-      .eq("id", id)
-      .single();
-    expect(row.error).toBeNull();
-    expect(row.data).toMatchObject({
-      status: "closed",
-      closure_disposition: "unconverted",
-      record_handoff_at: null,
-    });
-    expect(row.data?.closed_at).toBeTruthy();
-
-    // Closed exposes the explicit correction/reopen destinations.
-    await saveLifecycle("Contacted", "Reached the patient — follow-up needed");
-    await expect(page.getByTestId("request-lifecycle-summary")).toHaveCount(0);
-    row = await db
-      .from("requests")
-      .select("status, closure_disposition, closed_at, record_handoff_at, retention_hold_at")
-      .eq("id", id)
-      .single();
-    expect(row.data).toMatchObject({
-      status: "contacted",
-      closure_disposition: null,
-      closed_at: null,
-      record_handoff_at: null,
-    });
-
-    // Closed carries the converted closure outcome as a detail.
-    await saveLifecycle("Closed", "Appointment booked — request complete");
-    await expect(page.getByTestId("request-lifecycle-summary")).toContainText(
-      /—\s+appointment booked/,
-    );
-
-    row = await db
-      .from("requests")
-      .select("status, closure_disposition, closed_at, record_handoff_at, retention_hold_at")
-      .eq("id", id)
-      .single();
-    expect(row.data?.closure_disposition).toBe("converted");
-    expect(row.data?.record_handoff_at).toBeTruthy();
-    expect(row.data?.retention_hold_at).toBeNull();
-
-    const audits = await db
-      .from("audit_log")
-      .select("action")
-      .eq("entity_id", id)
-      .in("action", ["request.call_outcome"]);
-    expect(audits.error).toBeNull();
-    expect(
-      z
-        .array(z.object({ action: z.string() }))
-        .parse(audits.data ?? [])
-        .map(({ action }) => action),
-    ).toEqual(["request.call_outcome", "request.call_outcome", "request.call_outcome"]);
-
-    await db.from("requests").delete().eq("id", id);
-    await db.from("audit_log").delete().eq("entity_id", id);
-    requestIds.delete(id);
+    await db.from("requests").delete().in("id", [bookedReviewId, unbookedReviewId]);
+    await db.from("audit_log").delete().in("entity_id", [bookedReviewId, unbookedReviewId]);
+    requestIds.delete(bookedReviewId);
+    requestIds.delete(unbookedReviewId);
   });
 
-  test("schema-first rollout keeps the deployed close path non-destructive", async () => {
+  test("the retired generic close path can no longer manufacture an unclassified closure", async () => {
+    // DEC-15: the generic status setter is retired from the application.
+    // The RPC survives only for deploy-overlap compatibility, and the new
+    // Workflow shape constraint now rejects the incoherent closure it used
+    // To write (closed with no clock, no reason, no review flag) — it
+    // Fails loudly with no partial write instead of silently minting an
+    // Unclassifiable row.
     const id = await stageRequest("old-app-close");
     const closed = await db.rpc("portal_update_request_status", {
       p_actor_email: lifecycleActor,
       p_request_id: id,
       p_next_status: "closed",
     });
-    expect(closed.error).toBeNull();
-    expect(closed.data).toBe(true);
+    expect(closed.error?.code).toBe("23514");
 
     const row = await db
       .from("requests")
@@ -206,11 +229,19 @@ test.describe("disposable-local appointment-request lifecycle", () => {
       .single();
     expect(row.error).toBeNull();
     expect(row.data).toEqual({
-      status: "closed",
+      status: "new",
       closure_disposition: null,
       closed_at: null,
       record_handoff_at: null,
     });
+
+    // No transition evidence appears for the rejected write, and the
+    // Retention motor has nothing to act on.
+    const { data: transitions } = await db
+      .from("request_transitions")
+      .select("id")
+      .eq("request_id", id);
+    expect(transitions).toHaveLength(0);
 
     const run = await db.rpc("portal_run_data_lifecycle", {
       p_actor_email: lifecycleActor,
@@ -231,6 +262,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     const id = await stageRequest("concurrent-run", {
       status: "closed",
       closure_disposition: "unconverted",
+      closure_provenance: "migration_unconverted",
       closed_at: UNCONVERTED_CUTOFF.toISOString(),
     });
 
@@ -255,38 +287,44 @@ test.describe("disposable-local appointment-request lifecycle", () => {
   });
 
   test("exact boundaries, holds, secrets, cascades, and repeat runs are safe", async () => {
+    // Closed retention runs on typed/provenance-backed closures (the
+    // Workflow shape constraint forbids the old bare `closed` rows), and
+    // Converted requests are durable `booked` rows whose retention clock is
+    // The booking-handoff time (spec §14.1).
     const unconvertedBefore = await stageRequest("unconverted-before", {
       status: "closed",
       closure_disposition: "unconverted",
+      closure_provenance: "migration_unconverted",
       closed_at: shifted(UNCONVERTED_CUTOFF, 1),
     });
     const unconvertedExact = await stageRequest("unconverted-exact", {
       status: "closed",
       closure_disposition: "unconverted",
+      closure_provenance: "migration_unconverted",
       closed_at: UNCONVERTED_CUTOFF.toISOString(),
     });
     const convertedBefore = await stageRequest("converted-before", {
-      status: "closed",
-      closure_disposition: "converted",
-      closed_at: shifted(CONVERTED_CUTOFF, 1),
+      status: "booked",
       record_handoff_at: shifted(CONVERTED_CUTOFF, 1),
     });
     const convertedExact = await stageRequest("converted-exact", {
-      status: "closed",
-      closure_disposition: "converted",
-      closed_at: CONVERTED_CUTOFF.toISOString(),
+      status: "booked",
       record_handoff_at: CONVERTED_CUTOFF.toISOString(),
     });
     const heldExpired = await stageRequest("held-expired", {
       status: "closed",
       closure_disposition: "unconverted",
+      closure_provenance: "migration_unconverted",
       closed_at: shifted(UNCONVERTED_CUTOFF, -1),
       retention_hold_at: shifted(CLOCK, -60_000),
       retention_hold_by: lifecycleActor,
       retention_hold_reason: "CASE-HOLD",
     });
+    // An unclassified legacy closure stays visible, review-required, and
+    // Retention-ineligible until classified (DEC-26).
     const legacyClosed = await stageRequest("legacy-closed", {
       status: "closed",
+      legacy_review_required: true,
     });
     const openOld = await stageRequest("open-old", {
       status: "contacted",
@@ -546,6 +584,7 @@ test.describe("disposable-local appointment-request lifecycle", () => {
     const restoredId = await stageRequest("restored-expired", {
       status: "closed",
       closure_disposition: "unconverted",
+      closure_provenance: "migration_unconverted",
       closed_at: UNCONVERTED_CUTOFF.toISOString(),
     });
     const preview = await db.rpc("portal_preview_data_lifecycle", {

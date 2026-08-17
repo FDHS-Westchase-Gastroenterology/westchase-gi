@@ -1942,10 +1942,6 @@
     font-size: 18pt;
   }
 
-  .request-detail-secondary {
-    display: block;
-  }
-
   .request-print-card {
     break-inside: auto;
     margin-top: 14pt;

@@ -23,7 +23,7 @@ import {
   STATUS_LABELS,
   TIME_LABELS,
 } from "./format";
-import { fetchAttentiveOpenRows, fetchClosedRows, OPEN_STATUSES } from "./queue";
+import { fetchAttentiveOpenRows, fetchClosedRows, OPEN_STATUSES, VIEW_DB_STATUSES } from "./queue";
 import type { QueueRow } from "./queue";
 import { StatusBadge } from "./status-badge";
 
@@ -262,8 +262,16 @@ function QueueRowLink({
             </span>
           ) : null}
         </span>
-        <span className="justify-self-start sm:justify-self-end">
+        <span className="flex flex-wrap items-center gap-2 justify-self-start sm:flex-col sm:items-end sm:justify-self-end">
           <StatusBadge status={request.status} />
+          {request.legacy_review_required ? (
+            <span
+              data-testid="legacy-review-tag"
+              className="inline-flex items-center rounded-full bg-[var(--color-amber-soft)] px-2.5 py-1 text-[0.75rem] font-bold text-[var(--color-ink)]"
+            >
+              Needs review
+            </span>
+          ) : null}
         </span>
       </Link>
     </li>
@@ -291,7 +299,7 @@ export default async function AdminRequestsPage({
     let countQuery = db
       .from("requests")
       .select("id", { count: "exact", head: true })
-      .eq("status", status);
+      .in("status", [...VIEW_DB_STATUSES[status]]);
     if (searchFilter) countQuery = countQuery.or(searchFilter);
     return countQuery;
   });
@@ -365,10 +373,10 @@ export default async function AdminRequestsPage({
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 id="requests-heading" className="portal-title">
-            Appointment requests
+            Appointments
           </h1>
           <p className="mt-1.5 max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
-            What needs attention first, then the rest.
+            Every appointment request — what needs attention first, then the rest.
           </p>
         </div>
         <a
@@ -432,7 +440,7 @@ export default async function AdminRequestsPage({
               ? "Try a name, phone number, or email address."
               : filter === "all"
                 ? "When a patient submits the appointment form on the website, the appointment request appears here instantly and everyone on the notification list gets a notification email."
-                : "Appointment requests move between statuses from their detail page — open one from another filter to triage it."}
+                : "Requests reach this view as staff work them from their request page — open one from another view to record what happened."}
           </p>
         </div>
       ) : (

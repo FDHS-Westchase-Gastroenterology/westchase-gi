@@ -4,14 +4,15 @@ import test from "node:test";
 import { assertSafeE2ETarget } from "./target-guard.ts";
 
 const hosted = {
-  NEXT_PUBLIC_SUPABASE_URL: "https://development-ref.supabase.co",
-  SUPABASE_PROJECT_REF: "development-ref",
-  PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF: "development-ref",
+  NEXT_PUBLIC_SUPABASE_URL: "https://preview-branch-ref.supabase.co",
+  SUPABASE_PROJECT_REF: "preview-branch-ref",
+  PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF: "preview-branch-ref",
   SUPABASE_PROJECT_REF_PROD: "production-ref",
   SUPABASE_URL_PROD: "https://production-ref.supabase.co",
+  SUPABASE_PREVIEW_BRANCH: "1",
 };
 
-test("accepts an explicitly allowlisted hosted Development project", () => {
+test("accepts an explicitly allowlisted hosted Preview Branch", () => {
   assert.doesNotThrow(() => assertSafeE2ETarget(hosted));
 });
 
@@ -32,7 +33,7 @@ test("rejects a missing project reference", () => {
         ...hosted,
         SUPABASE_PROJECT_REF: undefined,
       }),
-    /missing development project reference/,
+    /missing test project reference/,
   );
 });
 
@@ -66,6 +67,17 @@ test("rejects a hosted target without an explicit Production URL", () => {
         SUPABASE_URL_PROD: undefined,
       }),
     /missing Production URL/,
+  );
+});
+
+test("rejects a hosted target that is not marked as a Preview Branch", () => {
+  assert.throws(
+    () =>
+      assertSafeE2ETarget({
+        ...hosted,
+        SUPABASE_PREVIEW_BRANCH: undefined,
+      }),
+    /hosted targets must be ephemeral Supabase Preview Branches/,
   );
 });
 

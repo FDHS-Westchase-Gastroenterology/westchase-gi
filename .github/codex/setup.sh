@@ -25,10 +25,9 @@ npm ci --no-audit --no-fund
 # Playwright downloads browsers from a CDN the agent phase cannot reach.
 npx playwright install --with-deps chromium
 
-# Supabase CLI, for authoring work only: `migration new`, `db diff`, `gen types`,
-# and inspecting config. `supabase start` cannot work here — the sandbox blocks
-# the Docker daemon at the kernel level (openai/codex-universal#19) — so the
-# disposable stack stays a CI-only capability. A download failure is not fatal.
+# Supabase CLI supports migration authoring, branch inspection, type generation,
+# and configuration checks. Credentialed database verification runs against the
+# PR's hosted Preview Branch. A download failure is not fatal during setup.
 if ! command -v supabase >/dev/null 2>&1; then
   case "$(uname -m)" in
     x86_64) supabase_arch=amd64 ;;

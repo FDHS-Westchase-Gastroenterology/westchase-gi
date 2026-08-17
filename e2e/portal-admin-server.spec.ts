@@ -938,7 +938,11 @@ test.describe("portal management server boundaries", () => {
         message: "TEST recent-work fixture.",
         locale: "en",
         source_path: "/e2e/recent-work",
-        status: "scheduled",
+        // Durable workflow shape: the staff-facing Scheduled presentation
+        // Rides on the `booked` state (DEC-04); the historic audit rows
+        // Staged below keep their as-recorded legacy vocabulary.
+        status: "booked",
+        record_handoff_at: new Date().toISOString(),
       })
       .select("id")
       .single();

@@ -1,5 +1,5 @@
-import type { CallOutcomeId } from "@/lib/portal/call-outcomes";
 import type { RequestLocation, RequestStatus, RequestTime } from "@/lib/portal/contracts";
+import type { ClosureReason, ContactOutcome, RequestState } from "@/lib/portal/workflow/contracts";
 import type { Locale } from "@/lib/site";
 
 export const STATUS_LABELS = {
@@ -8,6 +8,33 @@ export const STATUS_LABELS = {
   scheduled: "Scheduled",
   closed: "Closed",
 } as const satisfies Record<RequestStatus, string>;
+
+// DEC-04: the durable `booked` state always renders as **Scheduled** on
+// Staff surfaces. This is the one place that translation happens for
+// Presentation; nothing translates the label back into a stored state.
+export function presentationStatus(state: RequestState): RequestStatus {
+  return state === "booked" ? "scheduled" : state;
+}
+
+export const STATE_LABELS = {
+  new: "New",
+  contacted: "Contacted",
+  booked: "Scheduled",
+  closed: "Closed",
+} as const satisfies Record<RequestState, string>;
+
+/** Contact-attempt outcomes in front-desk past tense (Request history). */
+export const CONTACT_OUTCOME_LABELS = {
+  reached_follow_up: "Reached the patient — follow-up needed",
+  voicemail: "Left a voicemail",
+  no_answer: "No answer",
+} as const satisfies Record<ContactOutcome, string>;
+
+/** Typed unbooked closure reasons in front-desk language. */
+export const CLOSURE_REASON_LABELS = {
+  not_actionable: "duplicate or not actionable",
+  wont_schedule: "patient won't schedule",
+} as const satisfies Record<ClosureReason, string>;
 
 // Practice-local time: front desk staff read these in Tampa.
 const dateTime = new Intl.DateTimeFormat("en-US", {
@@ -64,7 +91,7 @@ export const OUTCOME_HISTORY_LABELS = {
   wont_schedule: "Patient won't schedule",
   not_actionable: "Duplicate or not actionable",
   scheduled_transferred: "Finished — appointment booked",
-} as const satisfies Record<CallOutcomeId, string>;
+} as const;
 
 // A callback date in the front desk's practice-local phrasing:
 // "Friday, August 1 morning" (9:00 ET) / "Friday, August 1 afternoon" (1:00 ET).

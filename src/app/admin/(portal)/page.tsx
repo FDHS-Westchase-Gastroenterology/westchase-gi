@@ -16,6 +16,7 @@ import { requireRole } from "@/lib/portal/auth";
 import { arrivedOutsideOfficeHours, waitingSince } from "@/lib/portal/business-time";
 import { availableQueueCount } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
+import { fetchAttentionSummary } from "@/lib/portal/workflow/reads";
 
 import { PortalReleaseHomeAnnouncement } from "./portal-release-briefing";
 import { PortalTour } from "./portal-tour";
@@ -110,6 +111,53 @@ function headlineFor(newCount: number): React.ReactNode {
   );
 }
 
+function AroundThePortal() {
+  return (
+    <section aria-labelledby="tasks-heading" className="card-lined p-4 sm:p-5">
+      <h2 id="tasks-heading" className="pt-1 text-[1.02rem] font-black text-[var(--color-ink)]">
+        Around the portal
+      </h2>
+      <ul className="mt-2.5">
+        {TASKS.map((task) => {
+          const slug = task.label.toLowerCase().replace(/[^a-z]+/g, "-");
+          return (
+            <li key={task.href}>
+              <Link
+                href={task.href}
+                className="group -mx-3 flex items-center gap-[0.95rem] rounded-[var(--radius)] px-3 py-[0.9rem] transition-colors duration-[180ms] ease-out hover:bg-[var(--color-mint)] active:bg-[var(--color-mint-2)]"
+                aria-labelledby={`task-${slug}-label`}
+                aria-describedby={`task-${slug}-desc`}
+              >
+                <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-[var(--color-mint-2)] text-[var(--color-teal-ink)]">
+                  <task.icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span
+                    id={`task-${slug}-label`}
+                    className="block text-[0.95rem] leading-snug font-bold text-[var(--color-ink)]"
+                  >
+                    {task.label}
+                  </span>
+                  <span
+                    id={`task-${slug}-desc`}
+                    className="mt-0.5 block text-[0.85rem] leading-snug text-[var(--color-muted)]"
+                  >
+                    {task.description}
+                  </span>
+                </span>
+                <ChevronRight
+                  className="h-4.5 w-4.5 flex-none text-[var(--color-muted)] transition-transform duration-200 [transition-timing-function:var(--ease-out-quint)] group-hover:translate-x-[3px]"
+                  aria-hidden="true"
+                />
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
 export default async function AdminHomePage() {
   const session = await requireRole("staff");
   const firstName = session.displayName.trim().split(/\s+/)[0];
@@ -121,12 +169,11 @@ export default async function AdminHomePage() {
   // A failed read must never present as an empty queue: "No new requests"
   // And "the count could not load" are different truths, and conflating
   // Them recreates the silent-queue failure this portal exists to end.
-  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
   const [
     { data: newestRows, count: newCount, error: queueReadError },
     { data: oldestRows },
     { count: recipientCount, error: recipientsReadError },
-    { count: failedNotificationCount, error: notificationsReadError },
+    attention,
   ] = await Promise.all([
     db
       .from("requests")
@@ -144,12 +191,10 @@ export default async function AdminHomePage() {
       .from("notification_recipients")
       .select("id", { count: "exact", head: true })
       .eq("active", true),
-    db
-      .from("request_events")
-      .select("id", { count: "exact", head: true })
-      .eq("type", "notification")
-      .eq("status", "failed")
-      .gte("created_at", oneDayAgo),
+    // The workflow attention summary: due call-agains, silent contacted
+    // Requests, and closed records awaiting legacy review. Each count is
+    // Independently honest — a failed read is null, never zero.
+    fetchAttentionSummary(db, now),
   ]);
   const newestParsed = z.array(newestPreviewSchema).safeParse(newestRows ?? []);
   if (!newestParsed.success) {
@@ -169,12 +214,45 @@ export default async function AdminHomePage() {
       : null;
   // Zero recipients is a real, legal state worth flagging; a failed
   // Recipients read is not evidence of it, so the warning stays silent then.
-  const noActiveRecipients = !recipientsReadError && recipientCount === 0;
+  const noActiveRecipients = recipientsReadError === null && recipientCount === 0;
   // Delivery health is the other silent failure mode: the provider can start
   // Failing while every request still lands in the queue. Same discipline —
-  // A failed events read is not evidence of an outage, so it stays silent.
+  // A failed outbox read is not evidence of an outage, so it stays silent.
   const deliveryFailureCount =
-    !notificationsReadError && (failedNotificationCount ?? 0) > 0 ? failedNotificationCount : null;
+    attention.outboxTrouble !== null && attention.outboxTrouble > 0
+      ? attention.outboxTrouble
+      : null;
+
+  // The rest of the day's attention, beyond brand-new requests: call-agains
+  // Whose day arrived, contacted requests with no call-again set, and
+  // Closed records still awaiting legacy review. Rendered only when real
+  // (Count > 0); an unavailable count gets an honest caveat, never a zero.
+  const attentionPaths = [
+    {
+      key: "due",
+      count: attention.dueCallAgainCount,
+      href: "/admin/requests?status=contacted",
+      label: (n: number) => (n === 1 ? "1 call-again is due" : `${n} call-agains are due`),
+    },
+    {
+      key: "silent",
+      count: attention.silentContactedCount,
+      href: "/admin/requests?status=contacted",
+      label: (n: number) =>
+        n === 1
+          ? "1 contacted request has no call-again day"
+          : `${n} contacted requests have no call-again day`,
+    },
+    {
+      key: "legacy",
+      count: attention.legacyReviewCount,
+      href: "/admin/requests?status=closed",
+      label: (n: number) =>
+        n === 1 ? "1 closed record needs review" : `${n} closed records need review`,
+    },
+  ] as const;
+  const visibleAttention = attentionPaths.filter((item) => item.count !== null && item.count > 0);
+  const attentionUnavailable = attentionPaths.some((item) => item.count === null);
 
   return (
     <section aria-labelledby="home-heading">
@@ -207,7 +285,7 @@ export default async function AdminHomePage() {
             id="queue-overview-heading"
             className="text-[1.02rem] font-black text-[var(--color-ink)]"
           >
-            Appointment requests
+            Appointments
           </h2>
           {availableNewCount === null ? (
             <div data-testid="queue-overview-unavailable">
@@ -273,6 +351,40 @@ export default async function AdminHomePage() {
                   New website submissions appear here the moment they arrive.
                 </p>
               )}
+
+              {visibleAttention.length > 0 ? (
+                <ul
+                  data-testid="attention-summary"
+                  className="mt-5 space-y-1.5 border-t border-[var(--color-line)] pt-4"
+                >
+                  {visibleAttention.map((item) => {
+                    const count = item.count;
+                    if (count === null) return null;
+                    return (
+                      <li key={item.key}>
+                        <Link
+                          href={item.href}
+                          className="group inline-flex min-h-11 items-center gap-2 text-[0.95rem] font-bold text-[var(--color-ink)]"
+                        >
+                          <span className="h-1.5 w-1.5 flex-none rounded-full bg-[var(--color-amber)]" />
+                          <span className="underline-offset-2 group-hover:underline group-hover:decoration-[var(--color-teal-ink)]">
+                            {item.label(count)}
+                          </span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : null}
+              {attentionUnavailable ? (
+                <p
+                  data-testid="attention-summary-unavailable"
+                  className="mt-4 text-[0.9rem] text-[var(--color-muted)]"
+                >
+                  Some attention counts could not load just now — open Appointments to see
+                  everything.
+                </p>
+              ) : null}
             </>
           )}
 
@@ -298,8 +410,8 @@ export default async function AdminHomePage() {
               className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.92rem] leading-relaxed text-[var(--color-ink)]"
             >
               {deliveryFailureCount === 1
-                ? "A notification email failed to send in the last 24 hours."
-                : `${deliveryFailureCount} notification emails failed to send in the last 24 hours.`}{" "}
+                ? "A notification email had trouble sending in the last 24 hours."
+                : `${deliveryFailureCount} notification emails had trouble sending in the last 24 hours.`}{" "}
               Requests still land here — the queue is always the system of record — but notification
               emails may not be reaching anyone.{" "}
               <Link
@@ -313,54 +425,13 @@ export default async function AdminHomePage() {
 
           <div className="mt-6">
             <Link href="/admin/requests" className="btn btn-amber">
-              Open appointment requests
+              Open Appointments
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </div>
         </section>
 
-        <section aria-labelledby="tasks-heading" className="card-lined p-4 sm:p-5">
-          <h2 id="tasks-heading" className="pt-1 text-[1.02rem] font-black text-[var(--color-ink)]">
-            Around the portal
-          </h2>
-          <ul className="mt-2.5">
-            {TASKS.map((task) => {
-              const slug = task.label.toLowerCase().replace(/[^a-z]+/g, "-");
-              return (
-                <li key={task.href}>
-                  <Link
-                    href={task.href}
-                    className="group -mx-3 flex items-center gap-[0.95rem] rounded-[var(--radius)] px-3 py-[0.9rem] transition-colors duration-[180ms] ease-out hover:bg-[var(--color-mint)] active:bg-[var(--color-mint-2)]"
-                    aria-labelledby={`task-${slug}-label`}
-                    aria-describedby={`task-${slug}-desc`}
-                  >
-                    <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-[var(--color-mint-2)] text-[var(--color-teal-ink)]">
-                      <task.icon className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span
-                        id={`task-${slug}-label`}
-                        className="block text-[0.95rem] leading-snug font-bold text-[var(--color-ink)]"
-                      >
-                        {task.label}
-                      </span>
-                      <span
-                        id={`task-${slug}-desc`}
-                        className="mt-0.5 block text-[0.85rem] leading-snug text-[var(--color-muted)]"
-                      >
-                        {task.description}
-                      </span>
-                    </span>
-                    <ChevronRight
-                      className="h-4.5 w-4.5 flex-none text-[var(--color-muted)] transition-transform duration-200 [transition-timing-function:var(--ease-out-quint)] group-hover:translate-x-[3px]"
-                      aria-hidden="true"
-                    />
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
+        <AroundThePortal />
       </div>
     </section>
   );

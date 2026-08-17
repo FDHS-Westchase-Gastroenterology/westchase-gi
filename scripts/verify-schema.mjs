@@ -1,9 +1,16 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
 
 import { z } from "zod";
 
 import { asJsonObject, asJsonString, jsonSchema } from "../src/lib/json.ts";
+
+try {
+  process.loadEnvFile(".env.local");
+} catch (error) {
+  if (error?.code !== "ENOENT") {
+    throw error;
+  }
+}
 
 function providerErrorObject(payload) {
   const parsed = jsonSchema.safeParse(payload);
@@ -37,9 +44,12 @@ const staffProfileRowSchema = z.object({
 
 const TABLES = [
   "audit_log",
+  "notification_outbox",
   "notification_recipients",
   "portal_release_states",
+  "request_command_receipts",
   "request_events",
+  "request_transitions",
   "requests",
   "staff_profiles",
 ];
@@ -59,7 +69,10 @@ const RPC_SIGNATURES = {
     "p_event text, p_route_template text, p_locale text, p_device_class text",
   portal_close_request: "p_actor_email text, p_request_id uuid, p_disposition text",
   portal_complete_staff_onboarding: "p_user_id uuid",
+  portal_create_request_with_outbox: "p_request jsonb",
   portal_delete_request_early: "p_actor_email text, p_request_id uuid, p_authorization_ref text",
+  portal_execute_request_command:
+    "p_actor_email text, p_request_id uuid, p_expected_version bigint, p_idempotency_key uuid, p_fingerprint text, p_decision jsonb, p_note text, p_transition_id uuid",
   portal_log_call_outcome:
     "p_actor_email text, p_request_id uuid, p_outcome text, p_note text, p_follow_up_at timestamp with time zone",
   portal_undo_call_outcome: "p_actor_email text, p_request_id uuid, p_event_id uuid",
@@ -114,7 +127,9 @@ const RPC_RESULTS = {
   portal_record_analytics_event: "boolean",
   portal_close_request: "boolean",
   portal_complete_staff_onboarding: "boolean",
+  portal_create_request_with_outbox: "uuid",
   portal_delete_request_early: "boolean",
+  portal_execute_request_command: "jsonb",
   portal_log_call_outcome: "uuid",
   portal_undo_call_outcome: "jsonb",
   portal_hide_staff_release: "boolean",
@@ -138,6 +153,7 @@ const AUDIT_RPC_SOURCES = {
   portal_close_request: "staff",
   portal_complete_staff_onboarding: "staff",
   portal_delete_request_early: "staff",
+  portal_execute_request_command: "staff",
   portal_log_call_outcome: "staff",
   portal_undo_call_outcome: "staff",
   portal_hide_staff_release: "staff",
@@ -217,8 +233,12 @@ const RECIPIENT_MUTATIONS_MIGRATION = {
   version: "20260802005123",
   name: "atomic_notification_recipient_mutations",
 };
+const APPOINTMENT_WORKFLOW_AUTHORITY_MIGRATION = {
+  version: "20260806120000",
+  name: "appointment_workflow_authority",
+};
 
-const TARGETS = new Set(["dev", "prod"]);
+const TARGETS = new Set(["branch", "prod"]);
 
 function parseTarget(args) {
   const inline = args.find((arg) => arg.startsWith("--target="));
@@ -227,7 +247,7 @@ function parseTarget(args) {
     inline?.slice("--target=".length) ?? (flagIndex >= 0 ? args[flagIndex + 1] : undefined);
 
   if (!value || !TARGETS.has(value)) {
-    throw new Error("Usage: node scripts/verify-schema.mjs --target dev|prod");
+    throw new Error("Usage: node scripts/verify-schema.mjs --target branch|prod");
   }
 
   return value;
@@ -245,17 +265,26 @@ function requireEnv(...names) {
 }
 
 function projectConfig(target) {
-  if (target === "dev") {
+  if (target === "branch") {
+    const ref = requireEnv("SUPABASE_BRANCH_PROJECT_REF", "SUPABASE_PROJECT_REF");
+    const url = requireEnv("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL");
+    const productionRef = requireEnv("SUPABASE_PROD_PROJECT_REF", "SUPABASE_PROJECT_REF_PROD");
+    assert(
+      process.env.SUPABASE_PREVIEW_BRANCH === "1" &&
+        ref !== productionRef &&
+        new URL(url).origin === `https://${ref}.supabase.co`,
+      "Preview Branch verification refused a non-branch or Production target",
+    );
     return {
-      ref: requireEnv("SUPABASE_DEV_PROJECT_REF", "SUPABASE_PROJECT_REF"),
-      url: requireEnv("SUPABASE_DEV_URL", "NEXT_PUBLIC_SUPABASE_URL"),
+      ref,
+      url,
       anonKey: requireEnv(
-        "SUPABASE_DEV_ANON_KEY",
-        "SUPABASE_DEV_PUBLISHABLE_KEY",
-        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "SUPABASE_PUBLISHABLE_KEY",
+        "SUPABASE_ANON_KEY",
         "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
       ),
-      serviceKey: requireEnv("SUPABASE_DEV_SERVICE_ROLE_KEY", "SUPABASE_SERVICE_ROLE_KEY"),
+      serviceKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY"),
     };
   }
 
@@ -273,7 +302,7 @@ function projectConfig(target) {
 }
 
 function adminCredentials(target) {
-  return target === "dev"
+  return target === "branch"
     ? {
         email: requireEnv("PORTAL_SEED_ADMIN_EMAIL"),
         password: requireEnv("PORTAL_SEED_ADMIN_PASSWORD"),
@@ -312,7 +341,44 @@ async function readResponse(response, operation) {
   return payload;
 }
 
+function queryBranchDatabase({ ref, query }) {
+  const dbUrl = requireEnv("POSTGRES_URL", "POSTGRES_URL_NON_POOLING");
+  const parsedUrl = new URL(dbUrl);
+  const direct = parsedUrl.hostname === `db.${ref}.supabase.co`;
+  const pooler =
+    parsedUrl.hostname.endsWith(".pooler.supabase.com") &&
+    decodeURIComponent(parsedUrl.username) === `postgres.${ref}`;
+  assert(
+    process.env.SUPABASE_PREVIEW_BRANCH === "1" && (direct || pooler),
+    "Database verification is Preview-Branch-only",
+  );
+  if (pooler && parsedUrl.port === "6543") {
+    parsedUrl.port = "5432";
+  }
+  const queryUrl = parsedUrl.toString();
+
+  try {
+    return JSON.parse(
+      execFileSync(
+        "supabase",
+        ["db", "query", "--db-url", queryUrl, "--agent=no", "--output", "json", query],
+        {
+          encoding: "utf8",
+          stdio: ["ignore", "pipe", "pipe"],
+        },
+      ),
+    );
+  } catch {
+    throw new Error("Preview Branch database verification query failed");
+  }
+}
+
 async function queryDatabase({ accessToken, ref, query }) {
+  if (process.env.SUPABASE_PREVIEW_BRANCH === "1") {
+    return queryBranchDatabase({ ref, query });
+  }
+
+  assert(accessToken, "SUPABASE_ACCESS_TOKEN is required for Production schema verification");
   const response = await fetch(
     `https://api.supabase.com/v1/projects/${encodeURIComponent(ref)}/database/query`,
     {
@@ -324,27 +390,6 @@ async function queryDatabase({ accessToken, ref, query }) {
       body: JSON.stringify({ query }),
     },
   );
-  if (response.status === 401) {
-    const linkedRef = readFileSync("supabase/.temp/project-ref", "utf8").trim();
-    const devRef = process.env.SUPABASE_DEV_PROJECT_REF ?? process.env.SUPABASE_PROJECT_REF;
-    assert(
-      ref === devRef && linkedRef === devRef,
-      "Direct database verification fallback is Development-only",
-    );
-    const dbUrl = readFileSync("supabase/.temp/pooler-url", "utf8").trim();
-    const password = requireEnv("SUPABASE_DEV_DB_PASSWORD", "SUPABASE_DB_PASSWORD");
-    return JSON.parse(
-      execFileSync(
-        "supabase",
-        ["db", "query", "--db-url", dbUrl, "--agent=no", "--output", "json", query],
-        {
-          encoding: "utf8",
-          env: { ...process.env, PGPASSWORD: password },
-          stdio: ["ignore", "pipe", "inherit"],
-        },
-      ),
-    );
-  }
   const payload = await readResponse(response, "Database verification query");
 
   if (Array.isArray(payload)) {
@@ -504,7 +549,7 @@ function sameValues(actual, expected) {
 async function main() {
   const target = parseTarget(process.argv.slice(2));
   const config = projectConfig(target);
-  const accessToken = requireEnv("SUPABASE_ACCESS_TOKEN");
+  const accessToken = process.env.SUPABASE_ACCESS_TOKEN || null;
   const credentials = adminCredentials(target);
   const email = credentials.email.trim().toLowerCase();
   const password = credentials.password;
@@ -642,6 +687,14 @@ async function main() {
         row.name === RECIPIENT_MUTATIONS_MIGRATION.name,
     ),
     `Recipient-mutations migration ${RECIPIENT_MUTATIONS_MIGRATION.version}_${RECIPIENT_MUTATIONS_MIGRATION.name} is not applied`,
+  );
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === APPOINTMENT_WORKFLOW_AUTHORITY_MIGRATION.version &&
+        row.name === APPOINTMENT_WORKFLOW_AUTHORITY_MIGRATION.name,
+    ),
+    "Appointment-workflow authority migration is not applied",
   );
 
   const onboardingColumnRows = await queryDatabase({
@@ -822,12 +875,16 @@ async function main() {
         and table_name = 'requests'
         and column_name in (
           'closure_disposition',
+          'closure_provenance',
+          'closure_reason',
           'closed_at',
           'follow_up_at',
+          'legacy_review_required',
           'record_handoff_at',
           'retention_hold_at',
           'retention_hold_by',
-          'retention_hold_reason'
+          'retention_hold_reason',
+          'version'
         )
       order by column_name;
     `,
@@ -835,21 +892,50 @@ async function main() {
   const expectedLifecycleColumns = [
     "closed_at",
     "closure_disposition",
+    "closure_provenance",
+    "closure_reason",
+    "follow_up_at",
+    "legacy_review_required",
+    "record_handoff_at",
+    "retention_hold_at",
+    "retention_hold_by",
+    "retention_hold_reason",
+    "version",
+  ];
+  const nullableLifecycleColumns = new Set([
+    "closed_at",
+    "closure_disposition",
+    "closure_provenance",
+    "closure_reason",
     "follow_up_at",
     "record_handoff_at",
     "retention_hold_at",
     "retention_hold_by",
     "retention_hold_reason",
-  ];
+  ]);
   assert(
     sameValues(
       requestLifecycleColumnRows.map((row) => row.column_name),
       expectedLifecycleColumns,
     ) &&
       requestLifecycleColumnRows.every(
-        (row) => row.is_nullable === "YES" && row.column_default === null,
-      ),
-    "Appointment-request lifecycle columns are missing or unexpectedly non-null/defaulted",
+        (row) =>
+          !nullableLifecycleColumns.has(row.column_name) ||
+          (row.is_nullable === "YES" && row.column_default === null),
+      ) &&
+      requestLifecycleColumnRows.find((row) => row.column_name === "version")?.data_type ===
+        "bigint" &&
+      requestLifecycleColumnRows.find((row) => row.column_name === "version")?.is_nullable ===
+        "NO" &&
+      requestLifecycleColumnRows.find((row) => row.column_name === "version")?.column_default !==
+        null &&
+      requestLifecycleColumnRows.find((row) => row.column_name === "legacy_review_required")
+        ?.data_type === "boolean" &&
+      requestLifecycleColumnRows.find((row) => row.column_name === "legacy_review_required")
+        ?.is_nullable === "NO" &&
+      requestLifecycleColumnRows.find((row) => row.column_name === "legacy_review_required")
+        ?.column_default !== null,
+    "Appointment-workflow columns are missing or do not preserve the required nullable/default contract",
   );
 
   const auditProvenanceColumnRows = await queryDatabase({
@@ -901,7 +987,7 @@ async function main() {
     accessToken,
     ref: config.ref,
     query: `
-      select conname
+      select conname, pg_catalog.pg_get_constraintdef(oid) as definition
       from pg_catalog.pg_constraint
       where conrelid = 'public.requests'::pg_catalog.regclass
         and conname in (
@@ -909,25 +995,41 @@ async function main() {
           'requests_phone_length',
           'requests_email_length',
           'requests_closure_disposition_valid',
-          'requests_closure_state_valid',
-          'requests_retention_hold_state_valid'
+          'requests_closure_reason_valid',
+          'requests_retention_hold_state_valid',
+          'requests_status_valid',
+          'requests_workflow_shape_valid'
         )
       order by conname;
     `,
   });
   const expectedRequestConstraints = [
     "requests_closure_disposition_valid",
-    "requests_closure_state_valid",
+    "requests_closure_reason_valid",
     "requests_email_length",
     "requests_name_length",
     "requests_phone_length",
     "requests_retention_hold_state_valid",
+    "requests_status_valid",
+    "requests_workflow_shape_valid",
   ];
+  const requestStatusConstraint =
+    requestConstraintRows
+      .find((row) => row.conname === "requests_status_valid")
+      ?.definition?.toLowerCase() ?? "";
+  const workflowConstraintDefinition =
+    requestConstraintRows
+      .find((row) => row.conname === "requests_workflow_shape_valid")
+      ?.definition?.toLowerCase() ?? "";
   assert(
     sameValues(
       requestConstraintRows.map((row) => row.conname),
       expectedRequestConstraints,
-    ),
+    ) &&
+      requestStatusConstraint.includes("'booked'") &&
+      !requestStatusConstraint.includes("'scheduled'") &&
+      workflowConstraintDefinition.includes("legacy_review_required") &&
+      workflowConstraintDefinition.includes("closure_reason"),
     `Request constraints mismatch: ${requestConstraintRows.map((row) => row.conname).join(", ")}`,
   );
 
@@ -1195,6 +1297,29 @@ async function main() {
         "portal_log_call_outcome must lock the request, audit once, preserve all seven outcomes, and snapshot lifecycle state",
       );
     }
+    if (rpc.proname === "portal_execute_request_command") {
+      const definition = rpc.definition.toLowerCase();
+      assert(
+        definition.includes("for update") &&
+          definition.includes("p_expected_version") &&
+          definition.includes("idempotency_conflict") &&
+          definition.includes("request_command_receipts") &&
+          definition.includes("request_transitions") &&
+          definition.includes("interval '15 minutes'") &&
+          definition.includes("request.workflow_command"),
+        "portal_execute_request_command must serialize versions, persist idempotency evidence, constrain undo, and audit each accepted workflow command",
+      );
+    }
+    if (rpc.proname === "portal_create_request_with_outbox") {
+      const definition = rpc.definition.toLowerCase();
+      assert(
+        definition.includes("insert into public.requests") &&
+          definition.includes("insert into public.request_events") &&
+          definition.includes("insert into public.notification_outbox") &&
+          definition.includes("where active"),
+        "portal_create_request_with_outbox must persist the request, creation evidence, and active-recipient outbox rows together",
+      );
+    }
     if (rpc.proname === "portal_undo_call_outcome") {
       const definition = rpc.definition.toLowerCase();
       assert(
@@ -1203,7 +1328,8 @@ async function main() {
           definition.includes("'call_outcome_undo'") &&
           definition.includes("'request.call_outcome_undo'") &&
           definition.includes("is distinct from") &&
-          definition.includes("set status = 'undone'") &&
+          (definition.includes("set status='undone'") ||
+            definition.includes("set status = 'undone'")) &&
           definition.includes("'restored_lifecycle'"),
         "portal_undo_call_outcome must lock, reject stale state, restore atomically, preserve history, and audit lifecycle-only metadata",
       );
@@ -1299,7 +1425,9 @@ async function main() {
         definition.includes("pg_advisory_xact_lock") &&
           definition.includes("for update skip locked") &&
           definition.includes("retention_hold_at is null") &&
-          definition.includes("request.retention_delete"),
+          definition.includes("request.retention_delete") &&
+          definition.includes("legacy_review_required") &&
+          definition.includes("status = 'booked'"),
         "portal_run_data_lifecycle must serialize runs, lock candidates, exclude holds, and audit deletion",
       );
     }
@@ -1437,7 +1565,10 @@ async function main() {
     `Verified ${target} migration: ${RECIPIENT_MUTATIONS_MIGRATION.version}_${RECIPIENT_MUTATIONS_MIGRATION.name}`,
   );
   console.log(
-    `Verified ${target} appointment-request lifecycle: nullable legacy-safe columns, constraints, preview, hold-aware deletion`,
+    `Verified ${target} migration: ${APPOINTMENT_WORKFLOW_AUTHORITY_MIGRATION.version}_${APPOINTMENT_WORKFLOW_AUTHORITY_MIGRATION.name}`,
+  );
+  console.log(
+    `Verified ${target} appointment-request workflow: versioned state shape, legacy-review safety, immutable command evidence, outbox, and hold-aware deletion`,
   );
   console.log(`Verified ${target} intake limiter: persistent private table, RLS, service-only ACL`);
   console.log(
@@ -1469,7 +1600,7 @@ async function main() {
   console.log(
     `Verified ${target} seed rows: staff_profiles=${staffRows.length}, notification_recipients=${recipientRows.length}`,
   );
-  console.log(`Verified ${target} seed admin sign-in: ${user.id}`);
+  console.log(`Verified ${target} seed admin sign-in`);
 }
 
 main().catch((error) => {
