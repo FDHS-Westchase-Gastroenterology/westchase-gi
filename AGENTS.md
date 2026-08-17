@@ -36,13 +36,14 @@ The standing gates are:
 - `npx oxlint` reports zero warnings and zero errors under the repository's configured rules. Do not skip rules or narrow the scan to make the gate pass.
 - `npx oxfmt --check` reports that every matched file already matches `.oxfmtrc.json`. Do not skip files or narrow the scan to make the gate pass. If it fails, run `npx oxfmt` and check again.
 - `npx react-doctor@latest --verbose` reports a score of 100.
+- `npm run build` completes a production compile and typecheck with no errors. Oxlint, oxfmt, and React Doctor can all pass while this fails, so they do not replace it. Do not skip it, narrow it, or substitute `tsc --noEmit`. Use the no-credentials environment in [`CONTRIBUTING.md`](CONTRIBUTING.md#verification) when `.env.local` is absent. If the build cannot run, say so; the loop has not passed.
 - Visual evidence is in the pull-request conversation for every UI-visible change. A single-state change needs before and after screenshots. A new workflow or a feature with more than one authored step needs a video of that path. A clean lint score with no visual evidence is a failed loop.
 
-An extra linter you are asked to run, including a single oxlint rule, is added to the loop. It does not replace the standing gates. Example: you are given a rule, you fix its findings, and that rule goes quiet. You still run full `npx oxlint`, `npx oxfmt --check`, and React Doctor. Passing the extra check is not a pass of the loop.
+An extra linter you are asked to run, including a single oxlint rule, is added to the loop. It does not replace the standing gates. Example: you are given a rule, you fix its findings, and that rule goes quiet. You still run full `npx oxlint`, `npx oxfmt --check`, React Doctor, and `npm run build`. Passing the extra check is not a pass of the loop.
 
-Order: run the extra check, fix what it finds, then run the standing gates. If a standing gate fails, fix those findings and rerun every check that already passed, including the extra one. A later fix can reopen an earlier lint or undo formatting.
+Order: run the extra check, fix what it finds, then run the standing gates. If a standing gate fails, fix those findings and rerun every check that already passed, including the extra one. A later fix can reopen an earlier lint, undo formatting, or break the production build.
 
-Do not finish the turn until every check in the loop is clean: the extra linters you were given, plus `npx oxlint` with zero warnings and zero errors, plus `npx oxfmt --check` with no drift, plus React Doctor at 100, plus visual evidence in the pull-request conversation when the change is UI-visible. The same bar applies before you open a pull request or merge a worktree into a branch. Formatting drift, a warning, an error, a score below 100, or a UI change whose PR conversation has no screenshots — or no video when the change is a workflow — is a failed gate.
+Do not finish the turn until every check in the loop is clean: the extra linters you were given, plus `npx oxlint` with zero warnings and zero errors, plus `npx oxfmt --check` with no drift, plus React Doctor at 100, plus `npm run build` with a successful compile and typecheck, plus visual evidence in the pull-request conversation when the change is UI-visible. The same bar applies before you open a pull request or merge a worktree into a branch. Formatting drift, a warning, an error, a score below 100, a failed production build, or a UI change whose PR conversation has no screenshots — or no video when the change is a workflow — is a failed gate.
 
 Local React Doctor trap: a local score is not comparable to CI. Local scans also read untracked build output (`.next/`, `.next-e2e/`). Third-party sourcemaps trip the artifact-secret rule. Hits under build directories or `node_modules` are noise. Never "fix" them by editing generated files. The 100 that counts is a clean checkout of the work you are about to share.
 
@@ -62,7 +63,7 @@ The atlas includes the seven top-level staff routes. Refresh them only with the 
 
 ### Visual evidence
 
-This gate sits beside oxlint, oxfmt, and React Doctor. An agent that changes a visible UI surface does not finish, open a pull request, or merge a worktree until the pull-request conversation contains visual evidence of that change.
+This gate sits beside oxlint, oxfmt, React Doctor, and `npm run build`. An agent that changes a visible UI surface does not finish, open a pull request, or merge a worktree until the pull-request conversation contains visual evidence of that change.
 
 What to post:
 
@@ -117,7 +118,7 @@ Distinguish code merged, code deployed, and operational. Before you finish, name
 
 Commands, credential split, honesty rules, and the change-type → checks map live in [`CONTRIBUTING.md`](CONTRIBUTING.md#verification). [`ARCHITECTURE.md`](ARCHITECTURE.md#where-logic-lives) owns the change-type → files map.
 
-Lint and format gates for pull requests and worktree merges live in [Contribution loop](#contribution-loop).
+Lint, format, production-build, and visual-evidence gates for pull requests and worktree merges live in [Contribution loop](#contribution-loop).
 
 ## Agent skills
 
