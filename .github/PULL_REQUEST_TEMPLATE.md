@@ -29,9 +29,9 @@ outcome — “not run” is acceptable before CI reports, silently implying a p
 
 ## UI screenshots
 
-<!-- Required for visible changes. Before/after or annotated captures, with viewport and locale
-coverage noted. Refresh ui-reference/ images when a covered surface changed. N/A for non-UI
-work — say so explicitly. -->
+<!-- Required for visible changes. Post before/after evidence in the PR conversation, not only
+here. A new workflow or multi-step feature needs a video of the authored path. Refresh
+ui-reference/ when a covered surface changed. N/A for non-UI work — say so explicitly. -->
 
 ## Medical / content provenance
 

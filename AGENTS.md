@@ -36,12 +36,13 @@ The standing gates are:
 - `npx oxlint` reports zero warnings and zero errors under the repository's configured rules. Do not skip rules or narrow the scan to make the gate pass.
 - `npx oxfmt --check` reports that every matched file already matches `.oxfmtrc.json`. Do not skip files or narrow the scan to make the gate pass. If it fails, run `npx oxfmt` and check again.
 - `npx react-doctor@latest --verbose` reports a score of 100.
+- Visual evidence is in the pull-request conversation for every UI-visible change. A single-state change needs before and after screenshots. A new workflow or a feature with more than one authored step needs a video of that path. A clean lint score with no visual evidence is a failed loop.
 
 An extra linter you are asked to run, including a single oxlint rule, is added to the loop. It does not replace the standing gates. Example: you are given a rule, you fix its findings, and that rule goes quiet. You still run full `npx oxlint`, `npx oxfmt --check`, and React Doctor. Passing the extra check is not a pass of the loop.
 
 Order: run the extra check, fix what it finds, then run the standing gates. If a standing gate fails, fix those findings and rerun every check that already passed, including the extra one. A later fix can reopen an earlier lint or undo formatting.
 
-Do not finish the turn until every check in the loop is clean: the extra linters you were given, plus `npx oxlint` with zero warnings and zero errors, plus `npx oxfmt --check` with no drift, plus React Doctor at 100. The same bar applies before you open a pull request or merge a worktree into a branch. Formatting drift, a warning, an error, or a score below 100 is a failed gate.
+Do not finish the turn until every check in the loop is clean: the extra linters you were given, plus `npx oxlint` with zero warnings and zero errors, plus `npx oxfmt --check` with no drift, plus React Doctor at 100, plus visual evidence in the pull-request conversation when the change is UI-visible. The same bar applies before you open a pull request or merge a worktree into a branch. Formatting drift, a warning, an error, a score below 100, or a UI change whose PR conversation has no screenshots — or no video when the change is a workflow — is a failed gate.
 
 Local React Doctor trap: a local score is not comparable to CI. Local scans also read untracked build output (`.next/`, `.next-e2e/`). Third-party sourcemaps trip the artifact-secret rule. Hits under build directories or `node_modules` are noise. Never "fix" them by editing generated files. The 100 that counts is a clean checkout of the work you are about to share.
 
@@ -58,6 +59,24 @@ The visual baseline is required. Before working on the frontend UI, open `ui-ref
 Refresh the affected images against the matching local or Preview origin before committing. After deployment, use the default live-origin capture for public pages.
 
 The atlas includes the seven top-level staff routes. Refresh them only with the Preview Branch seed identity, keep the browser-side redaction, and never include an individual request or Production data.
+
+### Visual evidence
+
+This gate sits beside oxlint, oxfmt, and React Doctor. An agent that changes a visible UI surface does not finish, open a pull request, or merge a worktree until the pull-request conversation contains visual evidence of that change.
+
+What to post:
+
+- **Still change** — one screen, one state, or a copy/layout/color shift: before and after screenshots of every affected surface at the viewports the change is authored for. Desktop is 1440×900 and mobile is 390×844 when both apply.
+- **Workflow or multi-step feature** — a new path, a handoff, or any change whose meaning is the sequence of steps: a video of the authored path. Screenshots may sit beside the video; they do not replace it.
+
+How to post it:
+
+- Put the evidence in a pull-request conversation comment, not only the PR body and not only the committed `ui-reference/` atlas.
+- Capture from a local or Preview origin with fictional identity. Never Production. Never real patient or staff data. Never record the sign-in form; start a workflow video after the session exists.
+- Atlas pages may be embedded from `ui-reference/` at the merge-base SHA (before) and the exact head SHA (after), the same way #227 does.
+- Request-detail and other patient-data surfaces stay out of `ui-reference/`. Host those captures on a disposable `assets/pr-<number>-ui-evidence` branch and embed them in the comment.
+- Name the before SHA and the after SHA. For a stack of UI commits, show how each commit changed the screen, not only the branch tip.
+- Do not finish the turn until the comment is posted and the images — and the video, when required — render.
 
 ## Backend development
 
