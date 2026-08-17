@@ -2325,7 +2325,12 @@ test.describe("Supabase dependency contract", () => {
         current: { version: 2 },
       });
 
-      const accepted = raceOutcomes.find(({ ok }) => ok);
+      const acceptedIndex = raceOutcomes.findIndex(({ ok }) => ok);
+      expect(acceptedIndex).toBeGreaterThanOrEqual(0);
+      const accepted = requireDecoded(
+        jsonSchema.safeParse(race[acceptedIndex]?.data),
+        "Accepted workflow result could not be decoded",
+      );
       const acceptedKey = await db
         .from("request_command_receipts")
         .select("idempotency_key, fingerprint")
@@ -2344,7 +2349,11 @@ test.describe("Supabase dependency contract", () => {
         decision("close_request", "closed", "not_actionable"),
       );
       expect(replay.error).toBeNull();
-      expect(replay.data).toEqual(accepted);
+      const replayed = requireDecoded(
+        jsonSchema.safeParse(replay.data),
+        "Replayed workflow result could not be decoded",
+      );
+      expect(replayed).toEqual(accepted);
 
       const conflict = await execute(
         acceptedReceipt.idempotency_key,
