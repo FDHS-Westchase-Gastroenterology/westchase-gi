@@ -81,13 +81,6 @@ export const LOCALE_LABELS = {
   ar: "Arabic",
 } as const satisfies Record<Locale, string>;
 
-export function localeLabel(locale: string): string {
-  if (locale === "en" || locale === "es" || locale === "vi" || locale === "ko" || locale === "ar") {
-    return LOCALE_LABELS[locale];
-  }
-  return locale.toUpperCase();
-}
-
 // Call-outcome vocabulary in front-desk language. Past-tense lines for
 // Request activity, keyed by the RPC outcome ids.
 export const OUTCOME_HISTORY_LABELS = {

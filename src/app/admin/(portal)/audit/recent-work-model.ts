@@ -5,7 +5,6 @@
 import { OUTCOME_HISTORY_LABELS, followUpShortLabel } from "@/app/admin/(portal)/requests/format";
 import { asJsonBoolean, asJsonNumber, asJsonObject, asJsonString } from "@/lib/json";
 import type { Json, JsonObject } from "@/lib/json";
-import { isCallOutcomeId } from "@/lib/portal/call-outcomes";
 import type { RequestStatus } from "@/lib/portal/contracts";
 import { isPortalReleaseAuditAction } from "@/lib/portal/release-state";
 
@@ -173,9 +172,19 @@ function describeAction(
             technical: false,
           };
       }
+      const historyLabel =
+        outcome === "booked" ||
+        outcome === "reached_follow_up" ||
+        outcome === "voicemail" ||
+        outcome === "no_answer" ||
+        outcome === "wont_schedule" ||
+        outcome === "not_actionable" ||
+        outcome === "scheduled_transferred"
+          ? OUTCOME_HISTORY_LABELS[outcome]
+          : null;
       return {
         sentence: `recorded an outcome on a request${
-          isCallOutcomeId(outcome) ? ` — ${OUTCOME_HISTORY_LABELS[outcome]}` : ""
+          historyLabel !== null ? ` — ${historyLabel}` : ""
         }`,
         technical: false,
       };

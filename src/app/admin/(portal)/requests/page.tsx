@@ -376,8 +376,7 @@ export default async function AdminRequestsPage({
             Appointments
           </h1>
           <p className="mt-1.5 max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
-            Every appointment request — what needs attention first, then the
-            rest.
+            Every appointment request — what needs attention first, then the rest.
           </p>
         </div>
         <a

@@ -15,8 +15,8 @@ export default defineConfig({
   globalSetup: publicSmoke ? undefined : "./e2e/global-setup.ts",
   globalTeardown: publicSmoke ? undefined : "./e2e/global-teardown.ts",
   // Hosted Auth rate-limits concurrent sign-ins and email OTP requests. Keep
-  // the branch contract deterministic across files instead of relying on every
-  // caller to remember `--workers=1`.
+  // The branch contract deterministic across files instead of relying on every
+  // Caller to remember `--workers=1`.
   fullyParallel: false,
   workers: 1,
   forbidOnly: process.env.CI !== undefined && process.env.CI !== "",

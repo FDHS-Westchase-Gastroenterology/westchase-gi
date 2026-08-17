@@ -10,8 +10,8 @@ loadLocalEnv();
 const supabaseUrl = new URL(requiredEnv("NEXT_PUBLIC_SUPABASE_URL"));
 const isolatedTestDatabase =
   process.env.SUPABASE_PREVIEW_BRANCH === "1" ||
-  ["127.0.0.1", "localhost", "[::1]"].includes(supabaseUrl.hostname) &&
-  requiredEnv("SUPABASE_PROJECT_REF") === "local";
+  (["127.0.0.1", "localhost", "[::1]"].includes(supabaseUrl.hostname) &&
+    requiredEnv("SUPABASE_PROJECT_REF") === "local");
 const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
 const runId = randomUUID().slice(0, 8);

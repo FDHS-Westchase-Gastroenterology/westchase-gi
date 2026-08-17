@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 
 // The four fixed staff destinations, in the spec's fixed order
 // (DEC-UX-02): Home, Appointments, Settings, Help. Home is the landing
-// surface; the appointment workbench lives under /admin/requests (the
-// records remain appointment requests — the portal owns no Appointment
-// entity); occasional tasks (review flyers, website custody) are
-// reached from Home and Settings instead of holding permanent tabs.
+// Surface; the appointment workbench lives under /admin/requests (the
+// Records remain appointment requests — the portal owns no Appointment
+// Entity); occasional tasks (review flyers, website custody) are
+// Reached from Home and Settings instead of holding permanent tabs.
 // Every destination stays visible on a phone without unmarked
-// horizontal scrolling.
+// Horizontal scrolling.
 
 interface NavItem {
   href: string;
