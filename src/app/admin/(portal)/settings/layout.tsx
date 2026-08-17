@@ -1,5 +1,6 @@
+import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
+
 import { SettingsTabs } from "./settings-tabs";
-import { PortalPageHeader } from "../portal-page-header";
 
 // Settings is one primary-nav destination with two sub-pages: the
 // Frequent staff-facing configuration (notifications, access) and the

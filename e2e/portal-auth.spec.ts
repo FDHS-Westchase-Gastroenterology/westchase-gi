@@ -418,7 +418,9 @@ test.describe("portal authentication and direct REST boundaries", () => {
       await expect(page).toHaveURL(/\/admin\/?$/);
       await expect(page.getByTestId("session-user")).toContainText("TEST Invited Staff");
       await expect(
-        page.getByRole("complementary", { name: "Portal workspace" }).getByText("staff", { exact: true }),
+        page
+          .getByRole("complementary", { name: "Portal workspace" })
+          .getByText("staff", { exact: true }),
       ).toBeVisible();
 
       const completedProfile = await db

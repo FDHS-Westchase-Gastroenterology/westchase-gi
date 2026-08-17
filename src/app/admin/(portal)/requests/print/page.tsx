@@ -1,22 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Printer } from "@/components/icons";
-import { requireRole } from "@/lib/portal/auth";
-import {
-  prepareNewRequestPrintPacket,
-  type NewRequestPrintRow,
-} from "@/lib/portal/request-print";
-import { serviceClient } from "@/lib/portal/server";
-import { PortalPageHeader } from "../../portal-page-header";
+
+import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import {
   CLOSURE_REASON_LABELS,
   CONTACT_OUTCOME_LABELS,
   formatReceived,
-  LOCALE_LABELS,
+  localeLabel,
   LOCATION_LABELS,
   STATUS_LABELS,
   TIME_LABELS,
-} from "../format";
+} from "@/app/admin/(portal)/requests/format";
+import { ArrowRight, Printer } from "@/components/icons";
+import { requireRole } from "@/lib/portal/auth";
+import { prepareNewRequestPrintPacket } from "@/lib/portal/request-print";
+import type { NewRequestPrintRow } from "@/lib/portal/request-print";
+import { serviceClient } from "@/lib/portal/server";
+
 import { PrintPacketControls } from "./print-controls";
 
 export const metadata: Metadata = {
@@ -37,7 +37,8 @@ const referenceTime = new Intl.DateTimeFormat("en-US", {
 });
 
 function valueOrDash(value: string | null | undefined): string {
-  return value?.trim() || "Not provided";
+  const trimmed = value?.trim() ?? "";
+  return trimmed !== "" ? trimmed : "Not provided";
 }
 
 function sentenceCase(value: string): string {
@@ -57,12 +58,12 @@ function PacketField({
   value,
   wide = false,
   redact,
-}: {
+}: Readonly<{
   label: string;
   value: string;
   wide?: boolean;
   redact?: "patient-name" | "patient-contact" | "patient-message";
-}) {
+}>) {
   const className = [
     "portal-print-field",
     wide ? "portal-print-field--wide" : "",
@@ -79,17 +80,18 @@ function PacketField({
   );
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function RequestWorksheet({
   request,
   index,
   total,
   generatedAt,
-}: {
+}: Readonly<{
   request: NewRequestPrintRow;
   index: number;
   total: number;
   generatedAt: string;
-}) {
+}>) {
   const hasLongMessage = (request.message?.length ?? 0) > 1_000;
 
   return (
@@ -115,37 +117,18 @@ function RequestWorksheet({
         <dl className="portal-print-fields portal-print-fields--contact">
           <PacketField label="Name" value={request.name} redact="patient-name" />
           <PacketField label="Phone" value={request.phone} redact="patient-contact" />
-          <PacketField
-            label="Email"
-            value={valueOrDash(request.email)}
-            redact="patient-contact"
-          />
-          <PacketField
-            label="Preferred language"
-            value={LOCALE_LABELS[request.locale] ?? request.locale.toUpperCase()}
-          />
+          <PacketField label="Email" value={valueOrDash(request.email)} redact="patient-contact" />
+          <PacketField label="Preferred language" value={localeLabel(request.locale)} />
         </dl>
       </section>
 
       <section aria-labelledby={`request-${request.id}`}>
         <h3 id={`request-${request.id}`}>Request details</h3>
         <dl className="portal-print-fields">
-          <PacketField
-            label="Office"
-            value={LOCATION_LABELS[request.location]}
-          />
-          <PacketField
-            label="Best time to call"
-            value={TIME_LABELS[request.preferredTime]}
-          />
-          <PacketField
-            label="Received"
-            value={formatReceived(request.createdAt, true)}
-          />
-          <PacketField
-            label="Status when prepared"
-            value="New — not yet contacted"
-          />
+          <PacketField label="Office" value={LOCATION_LABELS[request.location]} />
+          <PacketField label="Best time to call" value={TIME_LABELS[request.preferredTime]} />
+          <PacketField label="Received" value={formatReceived(request.createdAt, true)} />
+          <PacketField label="Status when prepared" value="New — not yet contacted" />
           <PacketField
             label="What the patient shared"
             value={valueOrDash(request.message)}
@@ -182,8 +165,8 @@ function RequestWorksheet({
         </div>
         <p className="portal-paper-later-outcome">
           <span aria-hidden="true" />
-          {sentenceCase(CLOSURE_REASON_LABELS.wont_schedule)} — record the
-          contact attempt first, then close the request.
+          {sentenceCase(CLOSURE_REASON_LABELS.wont_schedule)} — record the contact attempt first,
+          then close the request.
         </p>
         <p className="portal-paper-follow-up">
           <span>Follow up</span>
@@ -198,8 +181,8 @@ function RequestWorksheet({
 
       <footer className="portal-print-sheet-footer">
         <strong className="portal-print-confidentiality">
-          Confidential patient information — clinic use only. Keep inside the
-          clinic and dispose of securely.
+          Confidential patient information — clinic use only. Keep inside the clinic and dispose of
+          securely.
         </strong>
         <span>Request reference {request.id}</span>
         <span>Source {request.sourcePath}</span>
@@ -210,9 +193,9 @@ function RequestWorksheet({
 
 export default async function PrintNewRequestsPage({
   searchParams,
-}: {
+}: Readonly<{
   searchParams: Promise<{ auto?: string }>;
-}) {
+}>) {
   const session = await requireRole("staff");
   const [params, packet] = await Promise.all([
     searchParams,
@@ -233,22 +216,15 @@ export default async function PrintNewRequestsPage({
         <section className="portal-empty-state" role="alert">
           <h2>Try preparing the packet again</h2>
           <p>
-            The secure print service did not prepare a packet. Try again once.
-            If it still fails, continue from the live New view so work is not
-            blocked, then report the printing problem.
+            The secure print service did not prepare a packet. Try again once. If it still fails,
+            continue from the live New view so work is not blocked, then report the printing
+            problem.
           </p>
           <div>
-            <Link
-              href="/admin/requests/print"
-              prefetch={false}
-              className="btn btn-navy min-h-11"
-            >
+            <Link href="/admin/requests/print" prefetch={false} className="btn btn-navy min-h-11">
               Try again
             </Link>
-            <Link
-              href="/admin/requests?status=new"
-              className="btn btn-outline min-h-11"
-            >
+            <Link href="/admin/requests?status=new" className="btn btn-outline min-h-11">
               Open New requests
               <ArrowRight className="h-4 w-4" />
             </Link>
@@ -270,9 +246,8 @@ export default async function PrintNewRequestsPage({
           <Printer className="h-7 w-7" />
           <h2>There is no New work to hand off</h2>
           <p>
-            The live queue may have changed since you opened this window.
-            Return to Home for the next task, or open Appointments to review
-            the current queue.
+            The live queue may have changed since you opened this window. Return to Home for the
+            next task, or open Appointments to review the current queue.
           </p>
           <div>
             <Link href="/admin" className="btn btn-navy min-h-11">
@@ -306,14 +281,11 @@ export default async function PrintNewRequestsPage({
         <div className="portal-print-guidance">
           <strong>Confirm the page count before printing.</strong>
           <span>
-            This is a time-stamped snapshot. If the packet sits unattended,
-            compare it with the live New view before handing out the pages.
+            This is a time-stamped snapshot. If the packet sits unattended, compare it with the live
+            New view before handing out the pages.
           </span>
         </div>
-        <PrintPacketControls
-          autoStart={params.auto === "1"}
-          count={packet.requests.length}
-        />
+        <PrintPacketControls autoStart={params.auto === "1"} count={packet.requests.length} />
       </div>
 
       <section className="portal-print-packet" aria-label="New appointment request print packet">
@@ -330,8 +302,8 @@ export default async function PrintNewRequestsPage({
 
       <div className="portal-print-follow-up print-hide">
         <p>
-          Finished printing? Close this packet window, then return to the live
-          queue before staff begin work. Paper notes do not update the portal.
+          Finished printing? Close this packet window, then return to the live queue before staff
+          begin work. Paper notes do not update the portal.
         </p>
         <Link href="/admin/requests?status=new" className="btn btn-outline min-h-11">
           Open New requests

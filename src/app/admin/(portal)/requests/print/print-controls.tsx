@@ -1,12 +1,15 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+
 import { Printer } from "@/components/icons";
 
-function afterNextPaint(): Promise<void> {
+async function afterNextPaint(): Promise<void> {
   return new Promise((resolve) => {
     window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => resolve());
+      window.requestAnimationFrame(() => {
+        resolve();
+      });
     });
   });
 }
@@ -14,16 +17,12 @@ function afterNextPaint(): Promise<void> {
 export function PrintPacketControls({
   autoStart,
   count,
-}: {
-  autoStart: boolean;
-  count: number;
-}) {
+}: Readonly<{ autoStart: boolean; count: number }>) {
   const started = useRef(false);
 
   useEffect(() => {
-    if (!autoStart || started.current) return;
-
     let cancelled = false;
+
     async function openPrintDialog() {
       if ("fonts" in document) {
         await document.fonts.ready.catch(() => undefined);
@@ -34,7 +33,10 @@ export function PrintPacketControls({
       window.print();
     }
 
-    void openPrintDialog();
+    if (autoStart && !started.current) {
+      void openPrintDialog();
+    }
+
     return () => {
       cancelled = true;
     };
@@ -54,8 +56,8 @@ export function PrintPacketControls({
         Print {count} {count === 1 ? "request" : "requests"}
       </button>
       <p>
-        Printing creates a paper copy only. It does not mark any appointment
-        request as contacted or assign it to a staff member.
+        Printing creates a paper copy only. It does not mark any appointment request as contacted or
+        assign it to a staff member.
       </p>
     </div>
   );

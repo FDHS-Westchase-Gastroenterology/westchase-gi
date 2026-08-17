@@ -1,13 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+
 import { logoutAction } from "@/app/admin/actions";
-import {
-  Activity,
-  ExternalLink,
-  FileText,
-  LogOut,
-  Users,
-} from "@/components/icons";
+import { Activity, ExternalLink, FileText, LogOut, Users } from "@/components/icons";
 import { getSessionUser } from "@/lib/portal/auth";
 import { getPortalReleaseState } from "@/lib/portal/release-briefing";
 import {
@@ -16,29 +11,26 @@ import {
 } from "@/lib/portal/release-briefing-content";
 import { availableQueueCount } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
+
 import { PortalNav } from "./portal-nav";
-import {
-  PortalReleaseProvider,
-  PortalReleaseUtility,
-} from "./portal-release-briefing";
+import { PortalReleaseProvider, PortalReleaseUtility } from "./portal-release-briefing";
 
 // The Front Desk Ledger: one persistent desktop index becomes the same four
-// thumb-reachable destinations on mobile. The navigation stays put while the
-// appointment-request canvas changes, preserving location and task continuity.
+// Thumb-reachable destinations on mobile. The navigation stays put while the
+// Appointment-request canvas changes, preserving location and task continuity.
 
 export default async function PortalLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   const session = await getSessionUser();
   if (!session) redirect("/admin/login");
 
   // The waiting signal travels with the worker: a failed read suppresses the
-  // badge instead of inventing a reassuring zero.
+  // Badge instead of inventing a reassuring zero.
   const releaseEligible =
-    session.portalTourDismissedAt !== null &&
-    isPortalReleaseEligible(session.onboardedAt);
+    session.portalTourDismissedAt !== null && isPortalReleaseEligible(session.onboardedAt);
   const [queueResult, releaseState] = await Promise.all([
     serviceClient()
       .from("requests")
@@ -51,10 +43,7 @@ export default async function PortalLayout({
   const waitingCount = availableQueueCount(queueResult.count, queueResult.error);
 
   return (
-    <PortalReleaseProvider
-      eligible={releaseEligible}
-      initialState={releaseState}
-    >
+    <PortalReleaseProvider eligible={releaseEligible} initialState={releaseState}>
       <div className="portal-workspace min-h-dvh">
         <a href="#portal-main" className="skip-link">
           Skip to staff portal content

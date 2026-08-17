@@ -77,6 +77,10 @@ function detailObject(detail: Json): JsonObject {
   return asJsonObject(detail) ?? {};
 }
 
+function isCallOutcomeId(value: string): value is keyof typeof OUTCOME_HISTORY_LABELS {
+  return Object.hasOwn(OUTCOME_HISTORY_LABELS, value);
+}
+
 function nameOrEmail(namesByEmail: ReadonlyMap<string, string>, email: string): string {
   const name = namesByEmail.get(email.trim().toLowerCase());
   return name !== undefined && name !== "" ? name : email;
@@ -172,19 +176,9 @@ function describeAction(
             technical: false,
           };
       }
-      const historyLabel =
-        outcome === "booked" ||
-        outcome === "reached_follow_up" ||
-        outcome === "voicemail" ||
-        outcome === "no_answer" ||
-        outcome === "wont_schedule" ||
-        outcome === "not_actionable" ||
-        outcome === "scheduled_transferred"
-          ? OUTCOME_HISTORY_LABELS[outcome]
-          : null;
       return {
         sentence: `recorded an outcome on a request${
-          historyLabel !== null ? ` — ${historyLabel}` : ""
+          isCallOutcomeId(outcome) ? ` — ${OUTCOME_HISTORY_LABELS[outcome]}` : ""
         }`,
         technical: false,
       };
@@ -210,13 +204,10 @@ function describeAction(
       };
     }
     case "requests.print_new": {
-      const count =
-        typeof detail.row_count === "number" ? detail.row_count : null;
+      const count = asJsonNumber(detail.row_count);
       return {
         sentence: `prepared the New-request print packet${
-          count !== null
-            ? ` (${count} ${count === 1 ? "request" : "requests"})`
-            : ""
+          count !== null ? ` (${count} ${count === 1 ? "request" : "requests"})` : ""
         }`,
         technical: false,
       };

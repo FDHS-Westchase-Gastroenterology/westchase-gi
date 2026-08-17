@@ -1,5 +1,6 @@
 import type { RequestLocation, RequestStatus, RequestTime } from "@/lib/portal/contracts";
 import type { ClosureReason, ContactOutcome, RequestState } from "@/lib/portal/workflow/contracts";
+import { locales } from "@/lib/site";
 import type { Locale } from "@/lib/site";
 
 export const STATUS_LABELS = {
@@ -80,6 +81,11 @@ export const LOCALE_LABELS = {
   ko: "Korean",
   ar: "Arabic",
 } as const satisfies Record<Locale, string>;
+
+export function localeLabel(locale: string): string {
+  const known = locales.find((value) => value === locale);
+  return known === undefined ? locale : LOCALE_LABELS[known];
+}
 
 // Call-outcome vocabulary in front-desk language. Past-tense lines for
 // Request activity, keyed by the RPC outcome ids.

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode, SVGProps } from "react";
+
 import {
   ArrowRight,
   ChevronRight,
@@ -11,15 +12,17 @@ import {
   Users,
 } from "@/components/icons";
 import { arrivedOutsideOfficeHours } from "@/lib/portal/business-time";
+
 import { PortalPageHeader } from "./portal-page-header";
 import { formatReceived } from "./requests/format";
 
-type HomeTask = {
+interface HomeTask {
   href: string;
   label: string;
   description: string;
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- SVG icon props are framework member types
   icon: (props: SVGProps<SVGSVGElement>) => ReactNode;
-};
+}
 
 const DESK_TOOLS: HomeTask[] = [
   {
@@ -54,23 +57,39 @@ const DESK_TOOLS: HomeTask[] = [
   },
 ];
 
-type NewRequestPreview = {
+interface NewRequestPreview {
   id: string;
   name: string;
   created_at: string;
-};
+}
 
-type AttentionPath = {
+interface AttentionPath {
   key: string;
   href: string;
   label: string;
-};
+}
+
+interface HomeWorkbenchProps {
+  greeting: string;
+  firstName: string;
+  date: string;
+  afterHours: boolean;
+  newCount: number | null;
+  oldestWaiting: string | null;
+  newest: readonly NewRequestPreview[];
+  attention: readonly AttentionPath[];
+  attentionUnavailable: boolean;
+  noActiveRecipients: boolean;
+  deliveryFailureCount: number | null;
+  announcements?: ReactNode;
+}
 
 function waitingHeadline(count: number): string {
   if (count === 0) return "No new appointment requests are waiting.";
   return `${count} new appointment ${count === 1 ? "request is" : "requests are"} waiting.`;
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 export function HomeWorkbench({
   greeting,
   firstName,
@@ -84,20 +103,7 @@ export function HomeWorkbench({
   noActiveRecipients,
   deliveryFailureCount,
   announcements,
-}: {
-  greeting: string;
-  firstName: string;
-  date: string;
-  afterHours: boolean;
-  newCount: number | null;
-  oldestWaiting: string | null;
-  newest: NewRequestPreview[];
-  attention: AttentionPath[];
-  attentionUnavailable: boolean;
-  noActiveRecipients: boolean;
-  deliveryFailureCount: number | null;
-  announcements?: ReactNode;
-}) {
+}: Readonly<HomeWorkbenchProps>) {
   const newViewHref = "/admin/requests?status=new";
 
   return (
@@ -142,15 +148,18 @@ export function HomeWorkbench({
           </header>
 
           {newCount === null ? (
-            <div data-testid="queue-overview-unavailable" className="portal-new-work portal-new-work--unavailable">
+            <div
+              data-testid="queue-overview-unavailable"
+              className="portal-new-work portal-new-work--unavailable"
+            >
               <div>
                 <p className="portal-new-work-label">New requests</p>
                 <h3 data-testid="queue-overview-headline">
                   The request count is unavailable right now.
                 </h3>
                 <p>
-                  This is not an empty queue. Open Appointments to see the live
-                  list, then retry printing from a current New view.
+                  This is not an empty queue. Open Appointments to see the live list, then retry
+                  printing from a current New view.
                 </p>
               </div>
               <div className="portal-new-work-actions">
@@ -167,10 +176,8 @@ export function HomeWorkbench({
             <div className="portal-new-work" data-state={newCount > 0 ? "waiting" : "clear"}>
               <div>
                 <p className="portal-new-work-label">New · not yet contacted</p>
-                <h3 data-testid="queue-overview-headline">
-                  {waitingHeadline(newCount)}
-                </h3>
-                {oldestWaiting ? (
+                <h3 data-testid="queue-overview-headline">{waitingHeadline(newCount)}</h3>
+                {oldestWaiting !== null && oldestWaiting !== "" ? (
                   <p data-testid="queue-overview-oldest">
                     {newCount === 1 ? "Waiting since " : "Oldest waiting since "}
                     <strong>{oldestWaiting}</strong>.
@@ -217,9 +224,7 @@ export function HomeWorkbench({
                       <span data-ui-redact="patient-name">{request.name}</span>
                       <small>
                         {formatReceived(request.created_at)}
-                        {arrivedOutsideOfficeHours(request.created_at)
-                          ? " · after hours"
-                          : ""}
+                        {arrivedOutsideOfficeHours(request.created_at) ? " · after hours" : ""}
                       </small>
                       <ChevronRight className="h-4 w-4" />
                     </Link>
@@ -247,8 +252,8 @@ export function HomeWorkbench({
               ) : null}
               {attentionUnavailable ? (
                 <p data-testid="attention-summary-unavailable">
-                  Some follow-up counts could not load. Open Appointments to
-                  review the complete queue.
+                  Some follow-up counts could not load. Open Appointments to review the complete
+                  queue.
                 </p>
               ) : null}
             </div>
@@ -256,20 +261,20 @@ export function HomeWorkbench({
 
           {noActiveRecipients ? (
             <p data-testid="no-recipients-warning" className="portal-operational-warning">
-              <strong>Notification emails are paused.</strong> Requests still
-              land here, but no email goes out when one arrives. {" "}
+              <strong>Notification emails are paused.</strong> Requests still land here, but no
+              email goes out when one arrives.{" "}
               <Link href="/admin/settings#notifications">Manage recipients</Link>
             </p>
           ) : null}
 
-          {deliveryFailureCount ? (
+          {deliveryFailureCount !== null && deliveryFailureCount > 0 ? (
             <p data-testid="delivery-failure-warning" className="portal-operational-warning">
               <strong>
                 {deliveryFailureCount === 1
                   ? "A notification email had trouble sending in the last 24 hours."
                   : `${deliveryFailureCount} notification emails had trouble sending in the last 24 hours.`}
               </strong>{" "}
-              The queue remains the system of record. {" "}
+              The queue remains the system of record.{" "}
               <Link href="/admin/help#something-wrong">See what to check</Link>
             </p>
           ) : null}
@@ -293,9 +298,7 @@ export function HomeWorkbench({
                     <task.icon className="h-[1.1rem] w-[1.1rem]" />
                     <span>
                       <strong id={`desk-tool-${slug}`}>{task.label}</strong>
-                      <small id={`desk-tool-${slug}-description`}>
-                        {task.description}
-                      </small>
+                      <small id={`desk-tool-${slug}-description`}>{task.description}</small>
                     </span>
                     <ChevronRight className="h-4 w-4" />
                   </Link>

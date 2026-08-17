@@ -111,9 +111,7 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
       }
 
       if (viewport.width < 960) {
-        await page
-          .getByRole("button", { name: "Open account menu" })
-          .click();
+        await page.getByRole("button", { name: "Open account menu" }).click();
       }
 
       const websiteLink = page.getByRole("link", { name: "View website" });
@@ -126,7 +124,7 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
 
       const utilityCollision = await page.evaluate(() => {
         const website = Array.from(document.querySelectorAll("a"))
-          .find((link) => link.textContent?.trim() === "View website")
+          .find((link) => link.textContent.trim() === "View website")
           ?.getBoundingClientRect();
         const signOut = Array.from(
           document.querySelectorAll<HTMLButtonElement>('button[type="submit"]'),
@@ -152,23 +150,19 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
       expect(utilityCollision).toEqual({ signOut: false, identity: false });
 
       if (viewport.width < 960) {
-        await page
-          .getByRole("button", { name: "Open account menu" })
-          .click();
+        await page.getByRole("button", { name: "Open account menu" }).click();
 
         const bottomClearance = await page.evaluate(() => {
           document.documentElement.style.scrollBehavior = "auto";
           window.scrollTo(0, document.documentElement.scrollHeight);
           const navigation = document.querySelector(".portal-sidebar");
           const lastContent = document.querySelector(".portal-content")?.lastElementChild;
-          if (
-            !(navigation instanceof HTMLElement) ||
-            !(lastContent instanceof HTMLElement)
-          ) {
+          if (!(navigation instanceof HTMLElement) || !(lastContent instanceof HTMLElement)) {
             return null;
           }
-          return navigation.getBoundingClientRect().top -
-            lastContent.getBoundingClientRect().bottom;
+          return (
+            navigation.getBoundingClientRect().top - lastContent.getBoundingClientRect().bottom
+          );
         });
         expect(
           bottomClearance,
@@ -189,7 +183,7 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
     }
 
     // Token discipline: the task rail carries navy and the active location
-    // carries teal. Amber remains reserved for requests that need attention.
+    // Carries teal. Amber remains reserved for requests that need attention.
     await page.goto("/admin");
     const tokenCheck = await page.evaluate(() => {
       const probe = document.createElement("div");
@@ -329,9 +323,7 @@ test("staff can view the locale-negotiated website and return with their session
     .locator('nav[aria-label="Portal sections"]')
     .getByRole("link", { name: "Home", exact: true });
   await expect(homeLink).toBeFocused();
-  expect(await homeLink.evaluate((link) => getComputedStyle(link).outlineStyle)).not.toBe(
-    "none",
-  );
+  expect(await homeLink.evaluate((link) => getComputedStyle(link).outlineStyle)).not.toBe("none");
   await websiteLink.click();
   await expect(page).toHaveURL(/\/es\/?$/);
 

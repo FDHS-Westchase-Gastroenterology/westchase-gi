@@ -70,10 +70,12 @@ test("maps one oldest-first RPC packet and passes only the server actor", async 
     actorEmail: "staff@example.test",
   });
 
-  assert.deepEqual(harness.calls, [{
-    name: "portal_prepare_new_request_print_packet",
-    parameters: { p_actor_email: "staff@example.test" },
-  }]);
+  assert.deepEqual(harness.calls, [
+    {
+      name: "portal_prepare_new_request_print_packet",
+      parameters: { p_actor_email: "staff@example.test" },
+    },
+  ]);
   assert.deepEqual(result, {
     ok: true,
     generatedAt: GENERATED_AT,
@@ -108,22 +110,25 @@ test("maps one oldest-first RPC packet and passes only the server actor", async 
 
 test("preserves a successfully empty packet", async () => {
   const harness = rpcHarness(packet([]));
-  assert.deepEqual(await prepareNewRequestPrintPacket({
-    db: harness.db,
-    actorEmail: "staff@example.test",
-  }), { ok: true, generatedAt: GENERATED_AT, requests: [] });
+  assert.deepEqual(
+    await prepareNewRequestPrintPacket({
+      db: harness.db,
+      actorEmail: "staff@example.test",
+    }),
+    { ok: true, generatedAt: GENERATED_AT, requests: [] },
+  );
 });
 
 test("fails closed for RPC errors and thrown transports", async () => {
-  for (const result of [
-    { data: null, error: { code: "PGRST000" } },
-    new Error("unavailable"),
-  ]) {
+  for (const result of [{ data: null, error: { code: "PGRST000" } }, new Error("unavailable")]) {
     const harness = rpcHarness(result);
-    assert.deepEqual(await prepareNewRequestPrintPacket({
-      db: harness.db,
-      actorEmail: "staff@example.test",
-    }), { ok: false });
+    assert.deepEqual(
+      await prepareNewRequestPrintPacket({
+        db: harness.db,
+        actorEmail: "staff@example.test",
+      }),
+      { ok: false },
+    );
   }
 });
 
@@ -137,10 +142,13 @@ test("fails closed for malformed packet objects and arrays", async () => {
   ];
   for (const data of malformed) {
     const harness = rpcHarness({ data, error: null });
-    assert.deepEqual(await prepareNewRequestPrintPacket({
-      db: harness.db,
-      actorEmail: "staff@example.test",
-    }), { ok: false });
+    assert.deepEqual(
+      await prepareNewRequestPrintPacket({
+        db: harness.db,
+        actorEmail: "staff@example.test",
+      }),
+      { ok: false },
+    );
   }
 });
 
@@ -158,10 +166,13 @@ test("fails closed for malformed rows, timestamps, and enums", async () => {
   ];
   for (const result of cases) {
     const harness = rpcHarness(result);
-    assert.deepEqual(await prepareNewRequestPrintPacket({
-      db: harness.db,
-      actorEmail: "staff@example.test",
-    }), { ok: false });
+    assert.deepEqual(
+      await prepareNewRequestPrintPacket({
+        db: harness.db,
+        actorEmail: "staff@example.test",
+      }),
+      { ok: false },
+    );
   }
 });
 
@@ -172,10 +183,13 @@ test("fails closed for duplicate IDs and out-of-order rows", async () => {
     [SECOND_ROW, { ...FIRST_ROW, created_at: SECOND_ROW.created_at }],
   ]) {
     const harness = rpcHarness(packet(requests));
-    assert.deepEqual(await prepareNewRequestPrintPacket({
-      db: harness.db,
-      actorEmail: "staff@example.test",
-    }), { ok: false });
+    assert.deepEqual(
+      await prepareNewRequestPrintPacket({
+        db: harness.db,
+        actorEmail: "staff@example.test",
+      }),
+      { ok: false },
+    );
   }
 });
 
@@ -198,10 +212,10 @@ test("preserves PostgreSQL microsecond order before applying the UUID tie-breake
   });
 
   assert.equal(result.ok, true);
-  assert.deepEqual(
-    result.ok ? result.requests.map((request) => request.id) : [],
-    [SECOND_ROW.id, FIRST_ROW.id],
-  );
+  assert.deepEqual(result.ok ? result.requests.map((request) => request.id) : [], [
+    SECOND_ROW.id,
+    FIRST_ROW.id,
+  ]);
 });
 
 test("rejects reversed PostgreSQL microseconds inside one millisecond", async () => {
@@ -215,8 +229,11 @@ test("rejects reversed PostgreSQL microseconds inside one millisecond", async ()
   };
   const harness = rpcHarness(packet([later, earlier]));
 
-  assert.deepEqual(await prepareNewRequestPrintPacket({
-    db: harness.db,
-    actorEmail: "staff@example.test",
-  }), { ok: false });
+  assert.deepEqual(
+    await prepareNewRequestPrintPacket({
+      db: harness.db,
+      actorEmail: "staff@example.test",
+    }),
+    { ok: false },
+  );
 });

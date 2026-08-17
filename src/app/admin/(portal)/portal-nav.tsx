@@ -2,17 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  CircleHelp,
-  ClipboardCheck,
-  Home,
-  Settings,
-} from "@/components/icons";
+
+import { CircleHelp, ClipboardCheck, Home, Settings } from "@/components/icons";
 
 // The four fixed staff destinations, in the specification's fixed order.
 // Their presentation adapts from a persistent desktop rail to a mobile
-// tab bar, but the vocabulary, order, current-location signal, and waiting
-// count never move. Occasional utilities stay outside this primary index.
+// Tab bar, but the vocabulary, order, current-location signal, and waiting
+// Count never move. Occasional utilities stay outside this primary index.
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Home", icon: Home },
@@ -26,7 +22,7 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function PortalNav({ waitingCount }: { waitingCount: number | null }) {
+export function PortalNav({ waitingCount }: Readonly<{ waitingCount: number | null }>) {
   const pathname = usePathname();
 
   return (
@@ -35,9 +31,7 @@ export function PortalNav({ waitingCount }: { waitingCount: number | null }) {
         {NAV_ITEMS.map((item) => {
           const active = isActive(pathname, item.href);
           const showBadge =
-            item.href === "/admin/requests" &&
-            waitingCount !== null &&
-            waitingCount > 0;
+            item.href === "/admin/requests" && waitingCount !== null && waitingCount > 0;
           const Icon = item.icon;
 
           return (
@@ -45,11 +39,7 @@ export function PortalNav({ waitingCount }: { waitingCount: number | null }) {
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                aria-label={
-                  showBadge
-                    ? `${item.label}, ${waitingCount} waiting`
-                    : item.label
-                }
+                aria-label={showBadge ? `${item.label}, ${waitingCount} waiting` : item.label}
                 className="portal-nav-link"
               >
                 <Icon className="portal-nav-icon" />

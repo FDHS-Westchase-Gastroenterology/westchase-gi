@@ -1,18 +1,19 @@
+import { z } from "zod";
+
 import { requireRole } from "@/lib/portal/auth";
-import {
-  waitingSince,
-} from "@/lib/portal/business-time";
+import { waitingSince } from "@/lib/portal/business-time";
 import { availableQueueCount } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
 import { fetchAttentionSummary } from "@/lib/portal/workflow/reads";
+
 import { HomeWorkbench } from "./home-workbench";
-import { PortalTour } from "./portal-tour";
 import { PortalReleaseHomeAnnouncement } from "./portal-release-briefing";
+import { PortalTour } from "./portal-tour";
 
 // The portal's front door. Staff land on their day, not on software:
-// a greeting, the one thing that may need attention (new appointment
-// requests), and the rest of the portal phrased as plain-language
-// tasks. Occasional tasks live here instead of holding permanent tabs.
+// A greeting, the one thing that may need attention (new appointment
+// Requests), and the rest of the portal phrased as plain-language
+// Tasks. Occasional tasks live here instead of holding permanent tabs.
 
 const NY_TIME = new Intl.DateTimeFormat("en-US", {
   hour: "2-digit",
@@ -31,6 +32,15 @@ const NY_DATE = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
 });
 
+const newestPreviewSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  created_at: z.string(),
+});
+const oldestPreviewSchema = z.object({
+  created_at: z.string(),
+});
+
 // Practice-local clock: the front desk reads this in Tampa.
 function greetingFor(minutes: number): string {
   if (minutes >= MORNING_START && minutes < 12 * 60) return "Good morning";
@@ -47,8 +57,8 @@ export default async function AdminHomePage() {
 
   const db = serviceClient();
   // A failed read must never present as an empty queue: "No new requests"
-  // and "the count could not load" are different truths, and conflating
-  // them recreates the silent-queue failure this portal exists to end.
+  // And "the count could not load" are different truths, and conflating
+  // Them recreates the silent-queue failure this portal exists to end.
   const [
     { data: newestRows, count: newCount, error: queueReadError },
     { data: oldestRows },
@@ -72,41 +82,47 @@ export default async function AdminHomePage() {
       .select("id", { count: "exact", head: true })
       .eq("active", true),
     // The workflow attention summary: due call-agains, silent contacted
-    // requests, and closed records awaiting legacy review. Each count is
-    // independently honest — a failed read is null, never zero.
+    // Requests, and closed records awaiting legacy review. Each count is
+    // Independently honest — a failed read is null, never zero.
     fetchAttentionSummary(db, now),
   ]);
-  const newest = (newestRows ?? []) as Array<{
-    id: string;
-    name: string;
-    created_at: string;
-  }>;
-  const availableNewCount = availableQueueCount(newCount, queueReadError);
-  const oldest = (oldestRows ?? []) as Array<{ created_at: string }>;
+  const newestParsed = z.array(newestPreviewSchema).safeParse(newestRows ?? []);
+  if (!newestParsed.success) {
+    throw new Error("Queue preview read failed: invalid");
+  }
+  const newest = newestParsed.data;
+  const availableNewCount = availableQueueCount(newCount, queueReadError !== null);
+  const oldestParsed = z.array(oldestPreviewSchema).safeParse(oldestRows ?? []);
+  if (!oldestParsed.success) {
+    throw new Error("Queue preview read failed: invalid");
+  }
+  const oldest = oldestParsed.data;
+  const oldestPreview = oldest.at(0);
   const oldestWaiting =
-    availableNewCount && oldest[0] ? waitingSince(oldest[0].created_at, now) : null;
+    availableNewCount !== null && availableNewCount !== 0 && oldestPreview !== undefined
+      ? waitingSince(oldestPreview.created_at, now)
+      : null;
   // Zero recipients is a real, legal state worth flagging; a failed
-  // recipients read is not evidence of it, so the warning stays silent then.
+  // Recipients read is not evidence of it, so the warning stays silent then.
   const noActiveRecipients = !recipientsReadError && recipientCount === 0;
   // Delivery health is the other silent failure mode: the provider can start
-  // failing while every request still lands in the queue. Same discipline —
-  // a failed outbox read is not evidence of an outage, so it stays silent.
+  // Failing while every request still lands in the queue. Same discipline —
+  // A failed outbox read is not evidence of an outage, so it stays silent.
   const deliveryFailureCount =
     attention.outboxTrouble !== null && attention.outboxTrouble > 0
       ? attention.outboxTrouble
       : null;
 
   // The rest of the day's attention, beyond brand-new requests: call-agains
-  // whose day arrived, contacted requests with no call-again set, and
-  // closed records still awaiting legacy review. Rendered only when real
+  // Whose day arrived, contacted requests with no call-again set, and
+  // Closed records still awaiting legacy review. Rendered only when real
   // (count > 0); an unavailable count gets an honest caveat, never a zero.
   const attentionPaths = [
     {
       key: "due",
       count: attention.dueCallAgainCount,
       href: "/admin/requests?status=contacted",
-      label: (n: number) =>
-        n === 1 ? "1 call-again is due" : `${n} call-agains are due`,
+      label: (n: number) => (n === 1 ? "1 call-again is due" : `${n} call-agains are due`),
     },
     {
       key: "silent",
@@ -122,9 +138,7 @@ export default async function AdminHomePage() {
       count: attention.legacyReviewCount,
       href: "/admin/requests?status=closed",
       label: (n: number) =>
-        n === 1
-          ? "1 closed record needs review"
-          : `${n} closed records need review`,
+        n === 1 ? "1 closed record needs review" : `${n} closed records need review`,
     },
   ] as const;
   const visibleAttention = attentionPaths.flatMap((item) =>
@@ -138,9 +152,7 @@ export default async function AdminHomePage() {
         ]
       : [],
   );
-  const attentionUnavailable = attentionPaths.some(
-    (item) => item.count === null,
-  );
+  const attentionUnavailable = attentionPaths.some((item) => item.count === null);
 
   return (
     <HomeWorkbench

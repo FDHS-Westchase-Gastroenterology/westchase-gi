@@ -1,6 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
 import { chromium } from "@playwright/test";
 
 const DEFAULT_ORIGIN = "https://westchasegi.com";
@@ -25,9 +26,7 @@ function originFrom(input) {
 
 const args = process.argv.slice(2);
 const portalMode = args.includes("--portal");
-const origin = originFrom(
-  args.find((argument) => argument !== "--portal") ?? DEFAULT_ORIGIN,
-);
+const origin = originFrom(args.find((argument) => argument !== "--portal") ?? DEFAULT_ORIGIN);
 
 function requiredEnv(name) {
   const value = process.env[name]?.trim();
@@ -42,10 +41,7 @@ function portalCredentials() {
       password: requiredEnv("PORTAL_SEED_ADMIN_PASSWORD"),
     };
   }
-  if (
-    origin.hostname.endsWith(".vercel.app") &&
-    origin.hostname.includes("-git-")
-  ) {
+  if (origin.hostname.endsWith(".vercel.app") && origin.hostname.includes("-git-")) {
     return {
       email: requiredEnv("PORTAL_PREVIEW_USERNAME"),
       password: requiredEnv("PORTAL_PREVIEW_PASSWORD"),
@@ -57,21 +53,86 @@ function portalCredentials() {
 }
 
 const publicCaptures = [
-  { name: "desktop-en-home", path: "/en", viewport: { width: 1440, height: 900 }, locale: "en", ready: "main h1" },
+  {
+    name: "desktop-en-home",
+    path: "/en",
+    viewport: { width: 1440, height: 900 },
+    locale: "en",
+    ready: "main h1",
+  },
   // The English-evidence first visit is banner + hero alone: the chooser only
-  // interrupts on a locale mismatch (I4).
-  { name: "desktop-en-home-first-visit", path: "/en", viewport: { width: 1440, height: 900 }, firstVisit: true, ready: "main h1" },
+  // Interrupts on a locale mismatch (I4).
+  {
+    name: "desktop-en-home-first-visit",
+    path: "/en",
+    viewport: { width: 1440, height: 900 },
+    firstVisit: true,
+    ready: "main h1",
+  },
   // The one standing interruption: the chooser when the browser's language
-  // mismatches the served locale, with that language suggested.
-  { name: "desktop-en-home-locale-hint", path: "/en", viewport: { width: 1440, height: 900 }, firstVisit: true, browserLocale: "es", ready: "dialog.language-dialog[open]" },
-  { name: "desktop-en-services", path: "/en/services", viewport: { width: 1440, height: 900 }, locale: "en", ready: "main h1" },
-  { name: "desktop-en-physicians", path: "/en/physicians", viewport: { width: 1440, height: 900 }, locale: "en", ready: "main h1" },
-  { name: "desktop-en-appointment", path: "/en/appointment", viewport: { width: 1440, height: 900 }, locale: "en", ready: "main form" },
-  { name: "desktop-en-contact", path: "/en/contact", viewport: { width: 1440, height: 900 }, locale: "en", ready: "main form" },
-  { name: "desktop-ar-home", path: "/ar", viewport: { width: 1440, height: 900 }, locale: "ar", ready: "main h1" },
-  { name: "desktop-review", path: "/review", viewport: { width: 1440, height: 900 }, ready: "main h1" },
-  { name: "desktop-admin-login", path: "/admin/login", viewport: { width: 1440, height: 900 }, ready: "form" },
-  { name: "mobile-en-home", path: "/en", viewport: { width: 390, height: 844 }, locale: "en", ready: "main h1" },
+  // Mismatches the served locale, with that language suggested.
+  {
+    name: "desktop-en-home-locale-hint",
+    path: "/en",
+    viewport: { width: 1440, height: 900 },
+    firstVisit: true,
+    browserLocale: "es",
+    ready: "dialog.language-dialog[open]",
+  },
+  {
+    name: "desktop-en-services",
+    path: "/en/services",
+    viewport: { width: 1440, height: 900 },
+    locale: "en",
+    ready: "main h1",
+  },
+  {
+    name: "desktop-en-physicians",
+    path: "/en/physicians",
+    viewport: { width: 1440, height: 900 },
+    locale: "en",
+    ready: "main h1",
+  },
+  {
+    name: "desktop-en-appointment",
+    path: "/en/appointment",
+    viewport: { width: 1440, height: 900 },
+    locale: "en",
+    ready: "main form",
+  },
+  {
+    name: "desktop-en-contact",
+    path: "/en/contact",
+    viewport: { width: 1440, height: 900 },
+    locale: "en",
+    ready: "main form",
+  },
+  {
+    name: "desktop-ar-home",
+    path: "/ar",
+    viewport: { width: 1440, height: 900 },
+    locale: "ar",
+    ready: "main h1",
+  },
+  {
+    name: "desktop-review",
+    path: "/review",
+    viewport: { width: 1440, height: 900 },
+    ready: "main h1",
+  },
+  {
+    name: "desktop-admin-login",
+    path: "/admin/login",
+    viewport: { width: 1440, height: 900 },
+    ready: "form",
+  },
+  {
+    name: "mobile-en-home",
+    path: "/en",
+    viewport: { width: 390, height: 844 },
+    locale: "en",
+    ready: "main h1",
+  },
   {
     name: "mobile-en-menu",
     path: "/en",
@@ -83,25 +144,107 @@ const publicCaptures = [
       await page.getByRole("button", { name: "Close", exact: true }).waitFor();
     },
   },
-  { name: "mobile-en-procedure-prep", path: "/en/procedure-prep", viewport: { width: 390, height: 844 }, locale: "en", ready: "main h1" },
-  { name: "mobile-ar-home", path: "/ar", viewport: { width: 390, height: 844 }, locale: "ar", ready: "main h1" },
+  {
+    name: "mobile-en-procedure-prep",
+    path: "/en/procedure-prep",
+    viewport: { width: 390, height: 844 },
+    locale: "en",
+    ready: "main h1",
+  },
+  {
+    name: "mobile-ar-home",
+    path: "/ar",
+    viewport: { width: 390, height: 844 },
+    locale: "ar",
+    ready: "main h1",
+  },
 ];
 
 const portalCaptures = [
-  { name: "desktop-portal-home", path: "/admin", viewport: { width: 1440, height: 900 }, ready: "main h1" },
-  { name: "desktop-portal-requests", path: "/admin/requests?q=Sample+patient", viewport: { width: 1440, height: 900 }, ready: "main h1" },
-  { name: "desktop-portal-review-flyers", path: "/admin/review-flyers", viewport: { width: 1440, height: 900 }, ready: "main h1" },
-  { name: "desktop-portal-settings", path: "/admin/settings", viewport: { width: 1440, height: 900 }, ready: '[data-testid="recipients-manager"]' },
-  { name: "desktop-portal-settings-software", path: "/admin/settings/software", viewport: { width: 1440, height: 900 }, ready: '[data-testid="managed-product"]' },
-  { name: "desktop-portal-audit", path: "/admin/audit", viewport: { width: 1440, height: 900 }, ready: "main h1" },
-  { name: "desktop-portal-help", path: "/admin/help", viewport: { width: 1440, height: 900 }, ready: "main h1" },
-  { name: "mobile-portal-home", path: "/admin", viewport: { width: 390, height: 844 }, ready: "main h1" },
-  { name: "mobile-portal-requests", path: "/admin/requests?q=Sample+patient", viewport: { width: 390, height: 844 }, ready: "main h1" },
-  { name: "mobile-portal-review-flyers", path: "/admin/review-flyers", viewport: { width: 390, height: 844 }, ready: "main h1" },
-  { name: "mobile-portal-settings", path: "/admin/settings", viewport: { width: 390, height: 844 }, ready: '[data-testid="recipients-manager"]' },
-  { name: "mobile-portal-settings-software", path: "/admin/settings/software", viewport: { width: 390, height: 844 }, ready: '[data-testid="managed-product"]' },
-  { name: "mobile-portal-audit", path: "/admin/audit", viewport: { width: 390, height: 844 }, ready: "main h1" },
-  { name: "mobile-portal-help", path: "/admin/help", viewport: { width: 390, height: 844 }, ready: "main h1" },
+  {
+    name: "desktop-portal-home",
+    path: "/admin",
+    viewport: { width: 1440, height: 900 },
+    ready: "main h1",
+  },
+  {
+    name: "desktop-portal-requests",
+    path: "/admin/requests?q=Sample+patient",
+    viewport: { width: 1440, height: 900 },
+    ready: "main h1",
+  },
+  {
+    name: "desktop-portal-review-flyers",
+    path: "/admin/review-flyers",
+    viewport: { width: 1440, height: 900 },
+    ready: "main h1",
+  },
+  {
+    name: "desktop-portal-settings",
+    path: "/admin/settings",
+    viewport: { width: 1440, height: 900 },
+    ready: '[data-testid="recipients-manager"]',
+  },
+  {
+    name: "desktop-portal-settings-software",
+    path: "/admin/settings/software",
+    viewport: { width: 1440, height: 900 },
+    ready: '[data-testid="managed-product"]',
+  },
+  {
+    name: "desktop-portal-audit",
+    path: "/admin/audit",
+    viewport: { width: 1440, height: 900 },
+    ready: "main h1",
+  },
+  {
+    name: "desktop-portal-help",
+    path: "/admin/help",
+    viewport: { width: 1440, height: 900 },
+    ready: "main h1",
+  },
+  {
+    name: "mobile-portal-home",
+    path: "/admin",
+    viewport: { width: 390, height: 844 },
+    ready: "main h1",
+  },
+  {
+    name: "mobile-portal-requests",
+    path: "/admin/requests?q=Sample+patient",
+    viewport: { width: 390, height: 844 },
+    ready: "main h1",
+  },
+  {
+    name: "mobile-portal-review-flyers",
+    path: "/admin/review-flyers",
+    viewport: { width: 390, height: 844 },
+    ready: "main h1",
+  },
+  {
+    name: "mobile-portal-settings",
+    path: "/admin/settings",
+    viewport: { width: 390, height: 844 },
+    ready: '[data-testid="recipients-manager"]',
+  },
+  {
+    name: "mobile-portal-settings-software",
+    path: "/admin/settings/software",
+    viewport: { width: 390, height: 844 },
+    ready: '[data-testid="managed-product"]',
+  },
+  {
+    name: "mobile-portal-audit",
+    path: "/admin/audit",
+    viewport: { width: 390, height: 844 },
+    ready: "main h1",
+  },
+  {
+    name: "mobile-portal-help",
+    path: "/admin/help",
+    viewport: { width: 390, height: 844 },
+    ready: "main h1",
+  },
 ];
 
 async function settle(page) {
@@ -115,10 +258,7 @@ async function settle(page) {
 async function assertNoHorizontalOverflow(page, label) {
   const dimensions = await page.evaluate(() => ({
     clientWidth: document.documentElement.clientWidth,
-    scrollWidth: Math.max(
-      document.documentElement.scrollWidth,
-      document.body.scrollWidth,
-    ),
+    scrollWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
   }));
   if (dimensions.scrollWidth > dimensions.clientWidth + 1) {
     throw new Error(
@@ -164,17 +304,12 @@ async function redactPortalData(page) {
     }
     const greeting = document.querySelector('[data-testid="home-greeting"]');
     if (greeting) greeting.textContent = "Good morning, Staff.";
-    const queueHeadline = document.querySelector(
-      '[data-testid="queue-overview-headline"]',
-    );
+    const queueHeadline = document.querySelector('[data-testid="queue-overview-headline"]');
     if (queueHeadline) {
       const count = document.createElement("strong");
       count.className = "font-black text-[var(--portal-attention-ink)]";
       count.textContent = "3";
-      queueHeadline.replaceChildren(
-        count,
-        " new appointment requests are waiting.",
-      );
+      queueHeadline.replaceChildren(count, " new appointment requests are waiting.");
     }
     const printNewCount = document.querySelector('[data-testid="print-new-count"]');
     if (printNewCount) printNewCount.textContent = "Print all 3";
@@ -220,9 +355,7 @@ async function capturePortalReferences(browser, credentials) {
     await page.getByLabel("Email").fill(credentials.email);
     await page.getByLabel("Password").fill(credentials.password);
     await Promise.all([
-      page.waitForURL((url) =>
-        url.origin === origin.origin && url.pathname === "/admin",
-      ),
+      page.waitForURL((url) => url.origin === origin.origin && url.pathname === "/admin"),
       page.getByRole("button", { name: "Sign in", exact: true }).click(),
     ]);
 
@@ -235,15 +368,14 @@ async function capturePortalReferences(browser, credentials) {
       await page.waitForTimeout(250);
       if (capture.path === "/admin/review-flyers") {
         await page.waitForFunction(() => {
-          const images = Array.from(
-            document.querySelectorAll("[data-review-target] img"),
-          );
+          const images = Array.from(document.querySelectorAll("[data-review-target] img"));
           const visibleImages = images.filter((image) => {
             const bounds = image.getBoundingClientRect();
             return bounds.bottom > 0 && bounds.top < window.innerHeight;
           });
-          return visibleImages.length > 0 && visibleImages.every(
-            (image) => image.complete && image.naturalWidth > 0,
+          return (
+            visibleImages.length > 0 &&
+            visibleImages.every((image) => image.complete && image.naturalWidth > 0)
           );
         });
       }
@@ -267,8 +399,7 @@ async function capturePortalReferences(browser, credentials) {
 
 await mkdir(outputDirectory, { recursive: true });
 console.log(`Capturing UI reference from ${origin.origin}`);
-const chromiumExecutablePath =
-  process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?.trim();
+const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?.trim();
 const browser = await chromium.launch(
   chromiumExecutablePath ? { executablePath: chromiumExecutablePath } : undefined,
 );
@@ -276,12 +407,15 @@ const browser = await chromium.launch(
 try {
   if (!portalMode) {
     for (const capture of publicCaptures) {
-      const context = await browser.newContext({
+      const contextOptions = {
         viewport: capture.viewport,
         deviceScaleFactor: 1,
         reducedMotion: "reduce",
-        ...(capture.browserLocale ? { locale: capture.browserLocale } : {}),
-      });
+      };
+      if (capture.browserLocale) {
+        contextOptions.locale = capture.browserLocale;
+      }
+      const context = await browser.newContext(contextOptions);
       try {
         if (!capture.firstVisit && capture.locale) {
           await context.addCookies([

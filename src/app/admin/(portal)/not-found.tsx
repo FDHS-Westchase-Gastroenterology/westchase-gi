@@ -1,5 +1,7 @@
 import Link from "next/link";
+
 import { CircleHelp } from "@/components/icons";
+
 import { PortalPageHeader } from "./portal-page-header";
 
 export default function PortalNotFound() {
@@ -13,8 +15,8 @@ export default function PortalNotFound() {
         <CircleHelp className="h-8 w-8" aria-hidden="true" />
         <h2>Return to the live work stack</h2>
         <p>
-          Open Appointments to find the current request and its recorded status.
-          Do not use an old paper copy as the final record.
+          Open Appointments to find the current request and its recorded status. Do not use an old
+          paper copy as the final record.
         </p>
         <div>
           <Link href="/admin/requests" className="btn btn-navy min-h-11">

@@ -1,10 +1,15 @@
 import { createHash, randomUUID } from "node:crypto";
-import { test, expect, type APIRequestContext, type Page } from "@playwright/test";
+
+import { test, expect } from "@playwright/test";
+import type { APIRequestContext, Page } from "@playwright/test";
 import { PDFDocument } from "pdf-lib";
+import { z } from "zod";
+
+import { intakeResponseSchema } from "../src/lib/portal/contracts";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // The paper handoff is a truthful snapshot of the live New queue: complete,
-// oldest first, accountable without PHI, and entirely non-mutating.
+// Oldest first, accountable without PHI, and entirely non-mutating.
 
 loadLocalEnv();
 
@@ -39,16 +44,14 @@ function requestPayload(label: string) {
   };
 }
 
-async function stageRequest(
-  request: APIRequestContext,
-  label: "older" | "newer",
-): Promise<string> {
+async function stageRequest(request: APIRequestContext, label: "older" | "newer"): Promise<string> {
   const response = await request.post("/api/requests", {
     data: requestPayload(label),
     headers: { "X-Forwarded-For": testIp(label) },
   });
   expect(response.status()).toBe(201);
-  const body = (await response.json()) as { id: string };
+  const body = intakeResponseSchema.parse(await response.json());
+  if (!body.ok) throw new Error("Expected an accepted intake response");
   return body.id;
 }
 
@@ -63,9 +66,7 @@ async function signIn(page: Page) {
 async function durableRequest(id: string) {
   const { data, error } = await db
     .from("requests")
-    .select(
-      "id, status, version, follow_up_at, closure_reason, closed_at, record_handoff_at",
-    )
+    .select("id, status, version, follow_up_at, closure_reason, closed_at, record_handoff_at")
     .eq("id", id)
     .single();
   expect(error).toBeNull();
@@ -97,27 +98,17 @@ test.describe("new appointment-request print packet", () => {
     const newer = requestPayload("newer");
 
     const [olderTime, newerTime] = await Promise.all([
-      db
-        .from("requests")
-        .update({ created_at: "2026-08-08T13:00:00.000Z" })
-        .eq("id", olderId),
-      db
-        .from("requests")
-        .update({ created_at: "2026-08-08T14:00:00.000Z" })
-        .eq("id", newerId),
+      db.from("requests").update({ created_at: "2026-08-08T13:00:00.000Z" }).eq("id", olderId),
+      db.from("requests").update({ created_at: "2026-08-08T14:00:00.000Z" }).eq("id", newerId),
     ]);
     expect(olderTime.error).toBeNull();
     expect(newerTime.error).toBeNull();
 
-    const [{ count: newCount, error: countError }, beforeOlder, beforeNewer] =
-      await Promise.all([
-        db
-          .from("requests")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "new"),
-        durableRequest(olderId),
-        durableRequest(newerId),
-      ]);
+    const [{ count: newCount, error: countError }, beforeOlder, beforeNewer] = await Promise.all([
+      db.from("requests").select("id", { count: "exact", head: true }).eq("status", "new"),
+      durableRequest(olderId),
+      durableRequest(newerId),
+    ]);
     expect(countError).toBeNull();
     expect(newCount).not.toBeNull();
 
@@ -127,7 +118,12 @@ test.describe("new appointment-request print packet", () => {
       .eq("actor_email", SEED_EMAIL.trim().toLowerCase())
       .eq("action", "requests.print_new");
     expect(priorAuditError).toBeNull();
-    const priorAuditIds = new Set((priorAudits ?? []).map((row) => row.id));
+    const priorAuditIds = new Set(
+      z
+        .array(z.object({ id: z.string() }))
+        .parse(priorAudits ?? [])
+        .map((row) => row.id),
+    );
 
     await context.addInitScript(() => {
       let releaseFonts = () => {};
@@ -158,15 +154,16 @@ test.describe("new appointment-request print packet", () => {
       .eq("action", "requests.print_new");
     expect(auditsAfterHomeError).toBeNull();
     expect(
-      (auditsAfterHome ?? []).filter((row) => !priorAuditIds.has(row.id)),
+      z
+        .array(z.object({ id: z.string() }))
+        .parse(auditsAfterHome ?? [])
+        .filter((row) => !priorAuditIds.has(row.id)),
       "rendering Home must not prefetch an audited print packet",
     ).toHaveLength(0);
 
     const printLink = page.getByRole("link", {
       name: new RegExp(
-        `^Print all ${newCount} new appointment ${
-          newCount === 1 ? "request" : "requests"
-        }`,
+        `^Print all ${newCount} new appointment ${newCount === 1 ? "request" : "requests"}`,
       ),
     });
     const popupPromise = page.waitForEvent("popup");
@@ -183,7 +180,7 @@ test.describe("new appointment-request print packet", () => {
     await expect(printPage).toHaveURL(/\/admin\/requests\/print\?auto=1$/);
 
     // Auto-print waits for the final font metrics and layout instead of
-    // racing the packet into the browser dialog on an arbitrary timer.
+    // Racing the packet into the browser dialog on an arbitrary timer.
     await printPage.waitForTimeout(350);
     await expect(printPage.locator("html")).not.toHaveAttribute(
       "data-test-packet-print-calls",
@@ -192,10 +189,7 @@ test.describe("new appointment-request print packet", () => {
     await printPage.evaluate(() => {
       window.dispatchEvent(new Event("test-release-print-layout"));
     });
-    await expect(printPage.locator("html")).toHaveAttribute(
-      "data-test-packet-print-calls",
-      "1",
-    );
+    await expect(printPage.locator("html")).toHaveAttribute("data-test-packet-print-calls", "1");
 
     const sheets = printPage.getByTestId("print-request-sheet");
     await expect(sheets).toHaveCount(newCount ?? 0);
@@ -216,9 +210,7 @@ test.describe("new appointment-request print packet", () => {
     await expect(olderSheet).toContainText("New — not yet contacted");
     await expect(olderSheet).toContainText("Paper handoff");
     await expect(olderSheet).toContainText("Record first in the portal");
-    await expect(olderSheet).toContainText(
-      "Reached the patient — follow-up needed",
-    );
+    await expect(olderSheet).toContainText("Reached the patient — follow-up needed");
     await expect(olderSheet).toContainText("Left a voicemail");
     await expect(olderSheet).toContainText("Duplicate or not actionable");
     await expect(olderSheet).toContainText(
@@ -261,13 +253,11 @@ test.describe("new appointment-request print packet", () => {
         name: `Print ${newCount} ${newCount === 1 ? "request" : "requests"}`,
       })
       .click();
-    await expect(printPage.locator("html")).toHaveAttribute(
-      "data-test-packet-print-calls",
-      "2",
+    await expect(printPage.locator("html")).toHaveAttribute("data-test-packet-print-calls", "2");
+    await expect(printPage.getByRole("link", { name: "Open New requests" })).toHaveAttribute(
+      "href",
+      "/admin/requests?status=new",
     );
-    await expect(
-      printPage.getByRole("link", { name: "Open New requests" }),
-    ).toHaveAttribute("href", "/admin/requests?status=new");
 
     expect(await durableRequest(olderId)).toEqual(beforeOlder);
     expect(await durableRequest(newerId)).toEqual(beforeNewer);
@@ -279,9 +269,10 @@ test.describe("new appointment-request print packet", () => {
       .eq("action", "requests.print_new")
       .order("at", { ascending: false });
     expect(packetAuditError).toBeNull();
-    const newAudits = (packetAudits ?? []).filter(
-      (row) => !priorAuditIds.has(row.id),
-    );
+    const newAudits = z
+      .array(z.object({ id: z.string(), detail: z.unknown() }))
+      .parse(packetAudits ?? [])
+      .filter((row) => !priorAuditIds.has(row.id));
     expect(newAudits).toHaveLength(1);
     testAuditIds.push(newAudits[0].id);
     expect(newAudits[0].detail).toEqual({

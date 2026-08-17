@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+
 import { fontVariables } from "@/lib/fonts";
 
 import "@/app/globals.css";

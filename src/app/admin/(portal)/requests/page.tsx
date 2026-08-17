@@ -2,11 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import { ChevronRight, Printer } from "@/components/icons";
-import { REQUEST_STATUSES } from "@/lib/portal/contracts";
-import type { RequestStatus } from "@/lib/portal/contracts";
 import { requireRole } from "@/lib/portal/auth";
 import { waitingSince } from "@/lib/portal/business-time";
+import { REQUEST_STATUSES } from "@/lib/portal/contracts";
+import type { RequestStatus } from "@/lib/portal/contracts";
 import type { AttentionBucket } from "@/lib/portal/queue-attention";
 import {
   parsePage,
@@ -16,14 +17,7 @@ import {
 } from "@/lib/portal/request-query";
 import { requestPageWindow } from "@/lib/portal/request-window";
 import { serviceClient } from "@/lib/portal/server";
-import {
-  fetchAttentiveOpenRows,
-  fetchClosedRows,
-  OPEN_STATUSES,
-  VIEW_DB_STATUSES,
-  type QueueRow,
-} from "./queue";
-import { StatusBadge } from "./status-badge";
+
 import {
   followUpShortLabel,
   formatReceived,
@@ -31,7 +25,9 @@ import {
   STATUS_LABELS,
   TIME_LABELS,
 } from "./format";
-import { PortalPageHeader } from "../portal-page-header";
+import { fetchAttentiveOpenRows, fetchClosedRows, OPEN_STATUSES, VIEW_DB_STATUSES } from "./queue";
+import type { QueueRow } from "./queue";
+import { StatusBadge } from "./status-badge";
 
 type SearchParams = Promise<{
   page?: string | string[];
@@ -53,12 +49,12 @@ function requestsHref({
   path = "/admin/requests",
   search,
   status,
-}: {
+}: Readonly<{
   page?: number;
   path?: string;
   search: string;
   status: RequestStatus | "all";
-}): string {
+}>): string {
   const params = new URLSearchParams();
   if (status !== "all") params.set("status", status);
   if (search) params.set("q", search);
@@ -72,12 +68,12 @@ function detailHref({
   page,
   search,
   status,
-}: {
+}: Readonly<{
   id: string;
   page: number;
   search: string;
   status: RequestStatus | "all";
-}): string {
+}>): string {
   const params = new URLSearchParams();
   if (status !== "all") params.set("status", status);
   if (search) params.set("q", search);
@@ -87,24 +83,24 @@ function detailHref({
 }
 
 // Next-action language per attention bucket. The queue leads with what to
-// work next: unworked rows by age, call-again rows whose time arrived,
-// touched rows that went silent with no callback date set.
+// Work next: unworked rows by age, call-again rows whose time arrived,
+// Touched rows that went silent with no callback date set.
 function nextActionHint({
   bucket,
   followUpAt,
   lastActivityAt,
   createdAt,
   now,
-}: {
+}: Readonly<{
   bucket: AttentionBucket;
   followUpAt: string | null;
   lastActivityAt: string | null;
   createdAt: string;
   now: Date;
-}): { text: string; attention: boolean } | null {
+}>): { text: string; attention: boolean } | null {
   switch (bucket) {
     case "follow_up":
-      return followUpAt
+      return followUpAt !== null && followUpAt !== ""
         ? {
             text: `Call again — due ${followUpShortLabel(followUpAt, now)}`,
             attention: true,
@@ -113,32 +109,39 @@ function nextActionHint({
     case "stale": {
       const since = waitingSince(lastActivityAt ?? createdAt, now);
       return {
-        text: `Silent${since ? ` since ${since}` : " since before today"} — set a call-again day`,
+        text: `Silent${since !== null && since !== "" ? ` since ${since}` : " since before today"} — set a call-again day`,
         attention: true,
       };
     }
     case "upcoming":
-      return followUpAt
+      return followUpAt !== null && followUpAt !== ""
         ? { text: `Call again ${followUpShortLabel(followUpAt, now)}`, attention: false }
         : null;
     case "scheduled":
       return { text: "On the schedule", attention: false };
-    default:
+    case "new":
+    case "closed":
       return null;
   }
+  return null;
 }
 
-type FilterItem = { key: RequestStatus | "all"; label: string; count: number };
+interface FilterItem {
+  key: RequestStatus | "all";
+  label: string;
+  count: number;
+}
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function FilterChips({
   filters,
   active,
   search,
-}: {
+}: Readonly<{
   filters: FilterItem[];
   active: RequestStatus | "all";
   search: string;
-}) {
+}>) {
   return (
     <nav aria-label="Filter by status" className="portal-filter-tabs">
       <ul>
@@ -172,6 +175,7 @@ function FilterChips({
   );
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function QueueRowLink({
   request,
   bucket,
@@ -180,7 +184,7 @@ function QueueRowLink({
   search,
   filter,
   now,
-}: {
+}: Readonly<{
   request: QueueRow;
   bucket: AttentionBucket;
   lastActivityAt: string | null;
@@ -188,7 +192,7 @@ function QueueRowLink({
   search: string;
   filter: RequestStatus | "all";
   now: Date;
-}) {
+}>) {
   const hint = nextActionHint({
     bucket,
     followUpAt: request.follow_up_at,
@@ -196,8 +200,7 @@ function QueueRowLink({
     createdAt: request.created_at,
     now,
   });
-  const waiting =
-    request.status === "new" ? waitingSince(request.created_at, now) : null;
+  const waiting = request.status === "new" ? waitingSince(request.created_at, now) : null;
   const nextAction =
     hint ??
     (request.status === "new"
@@ -218,15 +221,10 @@ function QueueRowLink({
         className="portal-ledger-row"
       >
         <span className="portal-ledger-person">
-          <span
-            data-testid="request-name"
-            data-ui-redact="patient-name"
-          >
+          <span data-testid="request-name" data-ui-redact="patient-name">
             {request.name}
           </span>
-          <span data-ui-redact="patient-contact">
-            {request.phone}
-          </span>
+          <span data-ui-redact="patient-contact">{request.phone}</span>
         </span>
         <span className="portal-ledger-next">
           <small>Next step</small>
@@ -239,15 +237,10 @@ function QueueRowLink({
             </strong>
           ) : null}
           <span>
-            {LOCATION_LABELS[request.location]} ·{" "}
-            {TIME_LABELS[request.preferred_time]}
+            {LOCATION_LABELS[request.location]} · {TIME_LABELS[request.preferred_time]}
           </span>
-          {waiting ? (
-            <span
-              data-testid="request-waiting"
-            >
-              Waiting since {waiting}
-            </span>
+          {waiting !== null && waiting !== "" ? (
+            <span data-testid="request-waiting">Waiting since {waiting}</span>
           ) : null}
         </span>
         <span className="portal-ledger-meta">
@@ -269,9 +262,7 @@ function QueueRowLink({
 
 export default async function AdminRequestsPage({
   searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+}: Readonly<{ searchParams: SearchParams }>) {
   await requireRole("staff");
   const params = await searchParams;
   const filter = activeFilter(params.status);
@@ -283,7 +274,7 @@ export default async function AdminRequestsPage({
   const db = serviceClient();
 
   // Chip counts and the closed tail stay database-paged exactly as before;
-  // the open set is small enough to order by attention in memory.
+  // The open set is small enough to order by attention in memory.
   const countQueries = REQUEST_STATUSES.map((status) => {
     let countQuery = db
       .from("requests")
@@ -294,22 +285,20 @@ export default async function AdminRequestsPage({
   });
 
   const wantsClosed = filter === "all" || filter === "closed";
-  const openStatuses =
-    filter === "all" ? OPEN_STATUSES : filter === "closed" ? [] : [filter];
+  const openStatuses = filter === "all" ? OPEN_STATUSES : filter === "closed" ? [] : [filter];
   const [orderedOpen, closedCountProbe, ...countResults] = await Promise.all([
     openStatuses.length > 0
       ? fetchAttentiveOpenRows(db, { statuses: openStatuses, searchFilter, now })
       : Promise.resolve([]),
     // Closed rows join the default view after the open set; their own window
-    // is computed once the open size is known.
+    // Is computed once the open size is known.
     wantsClosed
       ? db.from("requests").select("id", { count: "exact", head: true }).eq("status", "closed")
       : Promise.resolve({ count: 0, error: null }),
     ...countQueries,
   ]);
 
-  const countError =
-    countResults.find((result) => result.error)?.error ?? closedCountProbe.error;
+  const countError = countResults.find((result) => result.error)?.error ?? closedCountProbe.error;
   if (countError) {
     throw new Error(`Queue read failed: ${countError.code}`);
   }
@@ -319,13 +308,10 @@ export default async function AdminRequestsPage({
     scheduled: countResults[2].count ?? 0,
     closed: countResults[3].count ?? 0,
   } as const satisfies Record<RequestStatus, number>;
-  const total = REQUEST_STATUSES.reduce(
-    (sum, status) => sum + counts[status],
-    0,
-  );
+  const total = REQUEST_STATUSES.reduce((sum, status) => sum + counts[status], 0);
 
   // The page window — open slice, closed-tail range, display totals, and the
-  // past-the-end redirect — is pure math, unit-tested in request-window.
+  // Past-the-end redirect — is pure math, unit-tested in request-window.
   const pageWindow = requestPageWindow({
     filter,
     page,
@@ -334,14 +320,12 @@ export default async function AdminRequestsPage({
     closedCount: closedCountProbe.count ?? 0,
   });
   if (pageWindow.redirectPage !== null) {
-    redirect(
-      requestsHref({ page: pageWindow.redirectPage, search, status: filter }),
-    );
+    redirect(requestsHref({ page: pageWindow.redirectPage, search, status: filter }));
   }
   const { filteredTotal, totalPages, firstShown, lastShown } = pageWindow;
 
   // The page window: open rows first (attention-ordered), then the closed
-  // tail (newest first) fetched from its own offset.
+  // Tail (newest first) fetched from its own offset.
   const openSlice = orderedOpen.slice(pageWindow.openFrom, pageWindow.openTo);
   let closedSlice: QueueRow[] = [];
   if (pageWindow.closedLimit > 0) {
@@ -355,7 +339,7 @@ export default async function AdminRequestsPage({
   const openBuckets = new Map(openSlice.map((row) => [row.id, row]));
   const requests = [...openSlice, ...closedSlice];
 
-  const filters: Array<{ key: RequestStatus | "all"; label: string; count: number }> = [
+  const filters: { key: RequestStatus | "all"; label: string; count: number }[] = [
     { key: "all", label: "All", count: total },
     ...REQUEST_STATUSES.map((status) => ({
       key: status,
@@ -402,15 +386,8 @@ export default async function AdminRequestsPage({
       />
 
       <section className="portal-queue-workbench" aria-label="Appointment request queue">
-        <form
-          action="/admin/requests"
-          method="get"
-          role="search"
-          className="portal-queue-search"
-        >
-          {filter !== "all" ? (
-            <input type="hidden" name="status" value={filter} />
-          ) : null}
+        <form action="/admin/requests" method="get" role="search" className="portal-queue-search">
+          {filter !== "all" ? <input type="hidden" name="status" value={filter} /> : null}
           <label htmlFor="request-search">
             Search requests
             <input
@@ -437,94 +414,89 @@ export default async function AdminRequestsPage({
 
         <FilterChips filters={filters} active={filter} search={search} />
 
-      {requests.length === 0 ? (
-        <div className="portal-queue-empty">
-          <h2>
-            {page > 1
-              ? "No requests are available on this page"
-              : search
-                ? "No appointment requests match that search"
-                : filter === "all"
-                  ? "No appointment requests yet"
-                  : `Nothing marked ${STATUS_LABELS[filter].toLowerCase()}`}
-          </h2>
-          <p>
-            {page > 1
-              ? "Go back to the previous page to continue reviewing requests."
-              : search
-                ? "Try a name, phone number, or email address."
-                : filter === "all"
-                  ? "When a patient submits the appointment form on the website, the appointment request appears here instantly and everyone on the notification list gets a notification email."
-                  : "Requests reach this view as staff work them from their request page — open one from another view to record what happened."}
-          </p>
-        </div>
-      ) : (
-        <ul data-testid="request-list" className="portal-ledger-list">
-          {requests.map((request) => {
-            const derived = openBuckets.get(request.id);
-            return (
-              <QueueRowLink
-                key={request.id}
-                request={request}
-                bucket={derived?.bucket ?? "closed"}
-                lastActivityAt={derived?.lastActivityAt ?? null}
-                page={page}
-                search={search}
-                filter={filter}
-                now={now}
-              />
-            );
-          })}
-        </ul>
-      )}
-
-      {filteredTotal > 0 && (requests.length > 0 || page > 1) ? (
-        <div className="portal-queue-pagination">
-          {requests.length > 0 ? (
-            <p
-              data-testid="request-page-summary"
-            >
-              Showing {firstShown}–{lastShown} of {filteredTotal}
+        {requests.length === 0 ? (
+          <div className="portal-queue-empty">
+            <h2>
+              {page > 1
+                ? "No requests are available on this page"
+                : search
+                  ? "No appointment requests match that search"
+                  : filter === "all"
+                    ? "No appointment requests yet"
+                    : `Nothing marked ${STATUS_LABELS[filter].toLowerCase()}`}
+            </h2>
+            <p>
+              {page > 1
+                ? "Go back to the previous page to continue reviewing requests."
+                : search
+                  ? "Try a name, phone number, or email address."
+                  : filter === "all"
+                    ? "When a patient submits the appointment form on the website, the appointment request appears here instantly and everyone on the notification list gets a notification email."
+                    : "Requests reach this view as staff work them from their request page — open one from another view to record what happened."}
             </p>
-          ) : null}
-          {totalPages > 1 ? (
-            <nav
-              aria-label="Appointment request pages"
-              className="portal-page-nav"
-            >
-              {page > 1 ? (
-                <Link
-                  href={requestsHref({
-                    page: page - 1,
-                    search,
-                    status: filter,
-                  })}
-                  rel="prev"
-                  className="btn btn-outline"
-                >
-                  Previous
-                </Link>
-              ) : null}
-              <span className="text-[0.9rem] font-bold text-[var(--color-body)]">
-                Page {page} of {totalPages}
-              </span>
-              {requests.length > 0 && page < totalPages ? (
-                <Link
-                  href={requestsHref({
-                    page: page + 1,
-                    search,
-                    status: filter,
-                  })}
-                  rel="next"
-                  className="btn btn-outline"
-                >
-                  Next
-                </Link>
-              ) : null}
-            </nav>
-          ) : null}
-        </div>
-      ) : null}
+          </div>
+        ) : (
+          <ul data-testid="request-list" className="portal-ledger-list">
+            {requests.map((request) => {
+              const derived = openBuckets.get(request.id);
+              return (
+                <QueueRowLink
+                  key={request.id}
+                  request={request}
+                  bucket={derived?.bucket ?? "closed"}
+                  lastActivityAt={derived?.lastActivityAt ?? null}
+                  page={page}
+                  search={search}
+                  filter={filter}
+                  now={now}
+                />
+              );
+            })}
+          </ul>
+        )}
+
+        {filteredTotal > 0 && (requests.length > 0 || page > 1) ? (
+          <div className="portal-queue-pagination">
+            {requests.length > 0 ? (
+              <p data-testid="request-page-summary">
+                Showing {firstShown}–{lastShown} of {filteredTotal}
+              </p>
+            ) : null}
+            {totalPages > 1 ? (
+              <nav aria-label="Appointment request pages" className="portal-page-nav">
+                {page > 1 ? (
+                  <Link
+                    href={requestsHref({
+                      page: page - 1,
+                      search,
+                      status: filter,
+                    })}
+                    rel="prev"
+                    className="btn btn-outline"
+                  >
+                    Previous
+                  </Link>
+                ) : null}
+                <span className="text-[0.9rem] font-bold text-[var(--color-body)]">
+                  Page {page} of {totalPages}
+                </span>
+                {requests.length > 0 && page < totalPages ? (
+                  <Link
+                    href={requestsHref({
+                      page: page + 1,
+                      search,
+                      status: filter,
+                    })}
+                    rel="next"
+                    className="btn btn-outline"
+                  >
+                    Next
+                  </Link>
+                ) : null}
+              </nav>
+            ) : null}
+          </div>
+        ) : null}
       </section>
     </section>
   );
