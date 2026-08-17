@@ -261,6 +261,10 @@ const STAFF_REQUEST_CREATION_MIGRATION = {
   version: "20260817153511",
   name: "create_staff_authored_requests",
 };
+const RECEIPT_SERVICE_GRANT_MIGRATION = {
+  version: "20260817164844",
+  name: "restrict_receipt_service_grant",
+};
 
 const TARGETS = new Set(["branch", "prod"]);
 
@@ -912,6 +916,14 @@ async function main() {
         row.name === STAFF_REQUEST_CREATION_MIGRATION.name,
     ),
     "Staff-request creation migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === RECEIPT_SERVICE_GRANT_MIGRATION.version &&
+        row.name === RECEIPT_SERVICE_GRANT_MIGRATION.name,
+    ),
+    "Receipt service-grant restriction migration is not applied",
   );
 
   const onboardingColumnRows = await queryDatabase({
@@ -1834,6 +1846,9 @@ async function main() {
   );
   console.log(
     `Verified ${target} migration: ${STAFF_REQUEST_CREATION_MIGRATION.version}_${STAFF_REQUEST_CREATION_MIGRATION.name}`,
+  );
+  console.log(
+    `Verified ${target} migration: ${RECEIPT_SERVICE_GRANT_MIGRATION.version}_${RECEIPT_SERVICE_GRANT_MIGRATION.name}`,
   );
   console.log(
     `Verified ${target} appointment-request workflow: versioned state shape, legacy-review safety, immutable command evidence, outbox, and hold-aware deletion`,
