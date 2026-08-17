@@ -44,11 +44,7 @@ function analyticsQuery(sql: string): readonly Json[] {
   const pooler =
     parsedUrl.hostname.endsWith(".pooler.supabase.com") &&
     decodeURIComponent(parsedUrl.username) === `postgres.${ref}`;
-  if (
-    preview &&
-    !direct &&
-    !pooler
-  ) {
+  if (preview && !direct && !pooler) {
     throw new Error("Telemetry query refused a non-Preview database URL");
   }
   if (preview && pooler && parsedUrl.port === "6543") {
@@ -59,16 +55,7 @@ function analyticsQuery(sql: string): readonly Json[] {
   try {
     const output = execFileSync(
       "supabase",
-      [
-        "db",
-        "query",
-        "--db-url",
-        queryUrl,
-        "--agent=no",
-        "--output",
-        "json",
-        sql,
-      ],
+      ["db", "query", "--db-url", queryUrl, "--agent=no", "--output", "json", sql],
       {
         encoding: "utf8",
         env: preview

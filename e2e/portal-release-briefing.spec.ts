@@ -117,7 +117,7 @@ test.describe("portal release briefing", () => {
       });
 
     // Reset only this isolated fixture to exercise the pointer-authored
-    // first opening independently from the keyboard path above.
+    // First opening independently from the keyboard path above.
     await db
       .from("portal_release_states")
       .delete()
@@ -157,9 +157,7 @@ test.describe("portal release briefing", () => {
     await quickSummary.getByRole("button", { name: "See the 2-minute guide" }).click();
     await expect(page).toHaveURL(/\/admin\/help#appointment-workflow-guide$/);
     await expect(page.getByRole("heading", { name: "Work an appointment request" })).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "What do the statuses mean?" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "What do the statuses mean?" })).toBeVisible();
 
     await utility.getByRole("button", { name: /What’s new/ }).click();
     await page

@@ -38,9 +38,9 @@ export const OPEN_CANDIDATE_LIMIT = 500;
 
 // The five staff views are presentation vocabulary (spec DEC-UX-04);
 // Scheduled is a label over durable `booked` (DEC-04). Each view queries
-// its durable statuses here — including legacy `scheduled` rows during
-// the deploy-overlap window (spec §14.2 step 3) — and every row
-// normalizes back to presentation vocabulary before rendering.
+// Its durable statuses here — including legacy `scheduled` rows during
+// The deploy-overlap window (spec §14.2 step 3) — and every row
+// Normalizes back to presentation vocabulary before rendering.
 export const VIEW_DB_STATUSES = {
   new: ["new"],
   contacted: ["contacted"],

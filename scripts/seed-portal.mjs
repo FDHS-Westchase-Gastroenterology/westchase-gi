@@ -137,17 +137,23 @@ async function ensureAdminUser({ url, serviceKey, email, password }) {
   const endpoint = existing
     ? `${url}/auth/v1/admin/users/${encodeURIComponent(existing.id)}`
     : `${url}/auth/v1/admin/users`;
+  const body = {
+    password,
+    email_confirm: true,
+    app_metadata: appMetadata,
+  };
+  if (!existing) {
+    body.email = normalizedEmail;
+  }
   const response = await fetch(endpoint, {
     method: existing ? "PUT" : "POST",
     headers: authHeaders(serviceKey),
-    body: JSON.stringify({
-      ...(!existing ? { email: normalizedEmail } : {}),
-      password,
-      email_confirm: true,
-      app_metadata: appMetadata,
-    }),
+    body: JSON.stringify(body),
   });
-  const payload = await readResponse(response, existing ? "Update seed admin" : "Create seed admin");
+  const payload = await readResponse(
+    response,
+    existing ? "Update seed admin" : "Create seed admin",
+  );
   const user = payload?.user ?? payload;
 
   if (!user?.id || !user?.email) {

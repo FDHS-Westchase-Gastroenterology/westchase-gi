@@ -10,31 +10,31 @@ export const STATUS_LABELS = {
 } as const satisfies Record<RequestStatus, string>;
 
 // DEC-04: the durable `booked` state always renders as **Scheduled** on
-// staff surfaces. This is the one place that translation happens for
-// presentation; nothing translates the label back into a stored state.
+// Staff surfaces. This is the one place that translation happens for
+// Presentation; nothing translates the label back into a stored state.
 export function presentationStatus(state: RequestState): RequestStatus {
   return state === "booked" ? "scheduled" : state;
 }
 
-export const STATE_LABELS: Record<RequestState, string> = {
+export const STATE_LABELS = {
   new: "New",
   contacted: "Contacted",
   booked: "Scheduled",
   closed: "Closed",
-};
+} as const satisfies Record<RequestState, string>;
 
 /** Contact-attempt outcomes in front-desk past tense (Request history). */
-export const CONTACT_OUTCOME_LABELS: Record<ContactOutcome, string> = {
+export const CONTACT_OUTCOME_LABELS = {
   reached_follow_up: "Reached the patient — follow-up needed",
   voicemail: "Left a voicemail",
   no_answer: "No answer",
-};
+} as const satisfies Record<ContactOutcome, string>;
 
 /** Typed unbooked closure reasons in front-desk language. */
-export const CLOSURE_REASON_LABELS: Record<ClosureReason, string> = {
+export const CLOSURE_REASON_LABELS = {
   not_actionable: "duplicate or not actionable",
   wont_schedule: "patient won't schedule",
-};
+} as const satisfies Record<ClosureReason, string>;
 
 // Practice-local time: front desk staff read these in Tampa.
 const dateTime = new Intl.DateTimeFormat("en-US", {
@@ -80,6 +80,13 @@ export const LOCALE_LABELS = {
   ko: "Korean",
   ar: "Arabic",
 } as const satisfies Record<Locale, string>;
+
+export function localeLabel(locale: string): string {
+  if (locale === "en" || locale === "es" || locale === "vi" || locale === "ko" || locale === "ar") {
+    return LOCALE_LABELS[locale];
+  }
+  return locale.toUpperCase();
+}
 
 // Call-outcome vocabulary in front-desk language. Past-tense lines for
 // Request activity, keyed by the RPC outcome ids.

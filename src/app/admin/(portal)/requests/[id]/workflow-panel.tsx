@@ -1,25 +1,11 @@
 "use client";
 
-import {
-  useEffect,
-  useReducer,
-  useRef,
-  useState,
-  useTransition,
-  type RefObject,
-} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { FollowUpChoice } from "@/lib/portal/business-time";
-import {
-  legalActionsFor,
-  type ClosureReason,
-  type CommandOutcome,
-  type ContactOutcome,
-  type RequestState,
-  type UndoWindow,
-} from "@/lib/portal/workflow/contracts";
-import { Check } from "@/components/icons";
+import { useEffect, useReducer, useRef, useState, useTransition } from "react";
+import type { RefObject } from "react";
+
+import { followUpWhenLabel, STATE_LABELS } from "@/app/admin/(portal)/requests/format";
 import {
   classifyLegacyClosure,
   closeRequest,
@@ -27,45 +13,53 @@ import {
   recordContactAttempt,
   reopenRequest,
   undoLatestTransition,
-} from "../workflow-actions";
-import { followUpWhenLabel, STATE_LABELS } from "../format";
+} from "@/app/admin/(portal)/requests/workflow-actions";
+import { Check } from "@/components/icons";
+import type { FollowUpChoice } from "@/lib/portal/business-time";
+import { legalActionsFor } from "@/lib/portal/workflow/contracts";
+import type {
+  ClosureReason,
+  CommandOutcome,
+  CommandRejection,
+  ContactOutcome,
+  LegalActions,
+  RequestState,
+  UndoWindow,
+} from "@/lib/portal/workflow/contracts";
 
 // The request work panel. One question — "What happened?" — answered with
-// the real-world outcomes staff just lived through. Every rendered choice
-// derives from the legal-action policy the server itself re-decides with
+// The real-world outcomes staff just lived through. Every rendered choice
+// Derives from the legal-action policy the server itself re-decides with
 // (spec §16.5: UI actions derive from the same legal-action policy as the
-// backend), so the interface can never offer a move the domain would
-// refuse. The old "pick the request's next status" model is retired with
-// the generic status setter (DEC-15): staff record facts, and the state
-// machine decides where the request goes.
+// Backend), so the interface can never offer a move the domain would
+// Refuse. The old "pick the request's next status" model is retired with
+// The generic status setter (DEC-15): staff record facts, and the state
+// Machine decides where the request goes.
 
 // ---------------------------------------------------------------------------
 // Choice vocabulary: each radio row IS a semantic command, in the same
-// front-desk words the retired composer taught staff. Serialized ids keep
-// radio semantics native (arrow keys, form semantics) without extra state.
+// Front-desk words the retired composer taught staff. Serialized ids keep
+// Radio semantics native (arrow keys, form semantics) without extra state.
 // ---------------------------------------------------------------------------
 
 type ActionChoice =
-  | { kind: "attempt"; outcome: ContactOutcome }
-  | { kind: "booked" }
-  | { kind: "close"; reason: ClosureReason };
+  | { readonly kind: "attempt"; readonly outcome: ContactOutcome }
+  | { readonly kind: "booked" }
+  | { readonly kind: "close"; readonly reason: ClosureReason };
 
-type ChoiceId =
-  | `attempt:${ContactOutcome}`
-  | "booked"
-  | `close:${ClosureReason}`;
+type ChoiceId = `attempt:${ContactOutcome}` | "booked" | `close:${ClosureReason}`;
 
-function choiceId(choice: ActionChoice): ChoiceId {
+function choiceId(choice: Readonly<ActionChoice>): ChoiceId {
   if (choice.kind === "attempt") return `attempt:${choice.outcome}`;
   if (choice.kind === "close") return `close:${choice.reason}`;
   return "booked";
 }
 
-type ChoiceRow = {
-  choice: ActionChoice;
-  label: string;
-  helper?: string;
-};
+interface ChoiceRow {
+  readonly choice: ActionChoice;
+  readonly label: string;
+  readonly helper?: string;
+}
 
 const ATTEMPT_ROWS: ChoiceRow[] = [
   {
@@ -86,11 +80,10 @@ const ATTEMPT_ROWS: ChoiceRow[] = [
 const BOOKED_ROW: ChoiceRow = {
   choice: { kind: "booked" },
   label: "Appointment booked",
-  helper:
-    "Booked in the practice scheduling system — this request becomes Scheduled.",
+  helper: "Booked in the practice scheduling system — this request becomes Scheduled.",
 };
 
-const CLOSE_ROWS: Record<ClosureReason, ChoiceRow> = {
+const CLOSE_ROWS = {
   wont_schedule: {
     choice: { kind: "close", reason: "wont_schedule" },
     label: "Patient won't schedule",
@@ -101,17 +94,17 @@ const CLOSE_ROWS: Record<ClosureReason, ChoiceRow> = {
     label: "Duplicate or not actionable",
     helper: "Done — no appointment. Leaves the active queue.",
   },
-};
+} as const satisfies Record<ClosureReason, ChoiceRow>;
 
-const CALL_AGAIN_REQUIRED: Record<ContactOutcome, boolean> = {
+const CALL_AGAIN_REQUIRED = {
   reached_follow_up: false,
   voicemail: true,
   no_answer: true,
-};
+} as const satisfies Record<ContactOutcome, boolean>;
 
 type FollowUpKind = "this_afternoon" | "tomorrow_morning" | "friday" | "day";
 
-const FOLLOW_UP_KINDS: Array<{ kind: FollowUpKind; label: string }> = [
+const FOLLOW_UP_KINDS: { kind: FollowUpKind; label: string }[] = [
   { kind: "this_afternoon", label: "This afternoon" },
   { kind: "tomorrow_morning", label: "Tomorrow morning" },
   { kind: "friday", label: "Friday" },
@@ -131,28 +124,26 @@ const NY_CLOCK = new Intl.DateTimeFormat("en-US", {
 });
 
 // Practice-local "today" for the date input's min/max bounds. The server
-// re-validates the resolved day; these bounds only guide the picker.
+// Re-validates the resolved day; these bounds only guide the picker.
 function practiceLocalDay(offsetDays: number): string {
   const todayEt = NY_DAY_INPUT.format(new Date());
-  const shifted = new Date(
-    Date.parse(`${todayEt}T00:00:00Z`) + offsetDays * 86_400_000,
-  );
+  const shifted = new Date(Date.parse(`${todayEt}T00:00:00Z`) + offsetDays * 86_400_000);
   return shifted.toISOString().slice(0, 10);
 }
 
 // ---------------------------------------------------------------------------
 // Copy. Success names the staff-facing result (Scheduled, never Booked);
-// failure names what is and is not known to have been saved (spec §16.5:
-// never report false success; `unavailable` may or may not have written).
+// Failure names what is and is not known to have been saved (spec §16.5:
+// Never report false success; `unavailable` may or may not have written).
 // ---------------------------------------------------------------------------
 
 function successCopy(
-  choice: ActionChoice | { kind: "reopen" } | { kind: "classify" },
-  outcome: { state: RequestState; callAgainAt: string | null },
+  choice: Readonly<ActionChoice | { kind: "reopen" } | { kind: "classify" }>,
+  outcome: Readonly<{ state: RequestState; callAgainAt: string | null }>,
 ): string {
   switch (choice.kind) {
     case "attempt":
-      return outcome.callAgainAt
+      return outcome.callAgainAt !== null && outcome.callAgainAt !== ""
         ? `Saved — marked Contacted. It will resurface ${followUpWhenLabel(outcome.callAgainAt)}.`
         : "Saved — marked Contacted.";
     case "booked":
@@ -166,9 +157,18 @@ function successCopy(
         ? "Record finished — marked Scheduled."
         : "Record finished — the request stays closed.";
   }
+  return "Saved.";
 }
 
-const FAILURE_COPY: Record<string, string> = {
+type PanelFailureCode =
+  | "invalid_command"
+  | "not_found"
+  | "idempotency_conflict"
+  | "undo_unavailable"
+  | "unauthorized"
+  | "unavailable";
+
+const FAILURE_COPY = {
   invalid_command:
     "Something about that didn't check out. Nothing was recorded — review and try again.",
   not_found:
@@ -181,44 +181,52 @@ const FAILURE_COPY: Record<string, string> = {
     "Your session can't make this change. Sign in again, then check Request history before repeating anything.",
   unavailable:
     "Something went wrong saving that. Nothing may have been recorded — check Request history before repeating anything.",
-};
+} as const satisfies Record<PanelFailureCode, string>;
+
+function isPanelFailureCode(value: string): value is PanelFailureCode {
+  return value in FAILURE_COPY;
+}
+
+function failureCopy(code: CommandRejection): string {
+  return isPanelFailureCode(code) ? FAILURE_COPY[code] : FAILURE_COPY.unavailable;
+}
 
 // ---------------------------------------------------------------------------
 // Panel state
 // ---------------------------------------------------------------------------
 
 /** The durable truth the panel is acting on. Commands carry its version. */
-type Truth = {
-  state: RequestState;
-  version: number;
-  legacyReviewRequired: boolean;
-  callAgainAt: string | null;
-  undo: UndoWindow | null;
-};
+interface Truth {
+  readonly state: RequestState;
+  readonly version: number;
+  readonly legacyReviewRequired: boolean;
+  readonly callAgainAt: string | null;
+  readonly undo: UndoWindow | null;
+}
 
 type Feedback =
-  | { tone: "success"; text: string; closedOrBooked: boolean }
-  | { tone: "error"; text: string };
+  | { readonly tone: "success"; readonly text: string; readonly closedOrBooked: boolean }
+  | { readonly tone: "error"; readonly text: string };
 
-type PanelState = {
-  selected: ChoiceId | null;
-  followUpKind: FollowUpKind | null;
-  followUpDay: string;
+interface PanelState {
+  readonly selected: ChoiceId | null;
+  readonly followUpKind: FollowUpKind | null;
+  readonly followUpDay: string;
   /** Legacy review: has staff said whether an appointment was booked? */
-  reviewResolution: "booked" | ClosureReason | null;
-  attempted: boolean;
-  feedback: Feedback | null;
-};
+  readonly reviewResolution: "booked" | ClosureReason | null;
+  readonly attempted: boolean;
+  readonly feedback: Feedback | null;
+}
 
 type PanelAction =
-  | { type: "select"; id: ChoiceId }
-  | { type: "select_follow_up"; kind: FollowUpKind }
-  | { type: "set_day"; day: string }
-  | { type: "select_review"; resolution: "booked" | ClosureReason }
-  | { type: "attempt" }
-  | { type: "succeeded"; text: string; closedOrBooked: boolean }
-  | { type: "failed"; text: string }
-  | { type: "reset" };
+  | { readonly type: "select"; readonly id: ChoiceId }
+  | { readonly type: "select_follow_up"; readonly kind: FollowUpKind }
+  | { readonly type: "set_day"; readonly day: string }
+  | { readonly type: "select_review"; readonly resolution: "booked" | ClosureReason }
+  | { readonly type: "attempt" }
+  | { readonly type: "succeeded"; readonly text: string; readonly closedOrBooked: boolean }
+  | { readonly type: "failed"; readonly text: string }
+  | { readonly type: "reset" };
 
 const INITIAL_PANEL: PanelState = {
   selected: null,
@@ -229,17 +237,24 @@ const INITIAL_PANEL: PanelState = {
   feedback: null,
 };
 
-function panelReducer(state: PanelState, action: PanelAction): PanelState {
+function panelReducer(state: Readonly<PanelState>, action: Readonly<PanelAction>): PanelState {
   switch (action.type) {
     case "select":
+      if (action.id.startsWith("attempt:")) {
+        return {
+          ...state,
+          selected: action.id,
+          attempted: false,
+          feedback: null,
+        };
+      }
       return {
         ...state,
         selected: action.id,
         attempted: false,
         feedback: null,
-        ...(action.id.startsWith("attempt:")
-          ? {}
-          : { followUpKind: null, followUpDay: "" }),
+        followUpKind: null,
+        followUpDay: "",
       };
     case "select_follow_up":
       return { ...state, followUpKind: action.kind, feedback: null };
@@ -268,11 +283,12 @@ function panelReducer(state: PanelState, action: PanelAction): PanelState {
     case "reset":
       return INITIAL_PANEL;
   }
+  return state;
 }
 
 // ---------------------------------------------------------------------------
 // Presentational pieces (the retired composer's proven row vocabulary:
-// sr-only radios, has-[:checked] treatment, pointer-down scale feedback)
+// Sr-only radios, has-[:checked] treatment, pointer-down scale feedback)
 // ---------------------------------------------------------------------------
 
 function ChoiceRadio({
@@ -283,7 +299,7 @@ function ChoiceRadio({
   label,
   helper,
   onSelect,
-}: {
+}: Readonly<{
   name: string;
   value: string;
   checked: boolean;
@@ -291,9 +307,9 @@ function ChoiceRadio({
   label: string;
   helper?: string;
   onSelect: () => void;
-}) {
+}>) {
   return (
-    <label className="group block cursor-pointer rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-4 py-3 transition-[border-color,background-color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-[var(--color-navy)] has-[:checked]:border-[var(--color-navy)] has-[:checked]:bg-[var(--color-mint)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-teal-ink)] has-[:disabled]:cursor-default has-[:disabled]:opacity-60 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100">
+    <label className="group block cursor-pointer rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-4 py-3 transition-[border-color,background-color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-[var(--color-navy)] active:scale-[0.98] has-[:checked]:border-[var(--color-navy)] has-[:checked]:bg-[var(--color-mint)] has-[:disabled]:cursor-default has-[:disabled]:opacity-60 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-teal-ink)] motion-reduce:transition-none motion-reduce:active:scale-100">
       <input
         type="radio"
         name={name}
@@ -304,7 +320,7 @@ function ChoiceRadio({
         className="sr-only"
       />
       <span className="flex items-center justify-between gap-3">
-        <span className="text-[0.95rem] font-bold leading-snug text-[var(--color-ink)]">
+        <span className="text-[0.95rem] leading-snug font-bold text-[var(--color-ink)]">
           {label}
         </span>
         <span
@@ -314,7 +330,7 @@ function ChoiceRadio({
           <Check className="h-3 w-3 opacity-0 transition-opacity group-has-[:checked]:opacity-100" />
         </span>
       </span>
-      {helper ? (
+      {helper !== undefined && helper !== "" ? (
         <span className="mt-1 block text-[0.82rem] leading-snug text-[var(--color-muted)]">
           {helper}
         </span>
@@ -330,14 +346,14 @@ function CallAgainFieldset({
   attempted,
   pending,
   dispatch,
-}: {
+}: Readonly<{
   outcome: ContactOutcome;
   followUpKind: FollowUpKind | null;
   followUpDay: string;
   attempted: boolean;
   pending: boolean;
   dispatch: React.Dispatch<PanelAction>;
-}) {
+}>) {
   const required = CALL_AGAIN_REQUIRED[outcome];
   const followUpMissing = attempted && required && !followUpKind;
   const dayMissing = attempted && followUpKind === "day" && !followUpDay;
@@ -362,9 +378,9 @@ function CallAgainFieldset({
               name="call-again"
               value={chip.kind}
               checked={followUpKind === chip.kind}
-              onChange={() =>
-                dispatch({ type: "select_follow_up", kind: chip.kind })
-              }
+              onChange={() => {
+                dispatch({ type: "select_follow_up", kind: chip.kind });
+              }}
               disabled={pending}
               className="sr-only"
             />
@@ -379,10 +395,10 @@ function CallAgainFieldset({
             min={practiceLocalDay(0)}
             max={practiceLocalDay(90)}
             disabled={pending}
-            onChange={(event) =>
-              dispatch({ type: "set_day", day: event.target.value })
-            }
-            className="min-h-11 rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.9rem] text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)] disabled:opacity-60"
+            onChange={(event) => {
+              dispatch({ type: "set_day", day: event.target.value });
+            }}
+            className="min-h-11 rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.9rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)] disabled:opacity-60"
           />
         ) : null}
       </div>
@@ -392,8 +408,7 @@ function CallAgainFieldset({
           data-testid="follow-up-required"
           className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.9rem] font-bold text-[var(--color-ink)]"
         >
-          Choose when to call again so the queue knows when to bring this
-          request back.
+          Choose when to call again so the queue knows when to bring this request back.
         </p>
       ) : null}
       {dayMissing ? (
@@ -412,27 +427,25 @@ function PanelFeedback({
   feedback,
   nextHref,
   feedbackRef,
-}: {
+}: Readonly<{
   feedback: Feedback | null;
   nextHref: string | null;
   feedbackRef: RefObject<HTMLParagraphElement | null>;
-}) {
-  if (!feedback) return null;
+}>) {
+  if (feedback === null) return null;
   return (
     <p
       ref={feedbackRef}
       tabIndex={-1}
       role={feedback.tone === "success" ? "status" : "alert"}
       data-testid="workflow-feedback"
-      className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-[0.92rem] font-bold leading-relaxed text-[var(--color-ink)] outline-none ${
-        feedback.tone === "success"
-          ? "bg-[var(--color-mint)]"
-          : "bg-[var(--color-amber-soft)]"
+      className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-[0.92rem] leading-relaxed font-bold text-[var(--color-ink)] outline-none ${
+        feedback.tone === "success" ? "bg-[var(--color-mint)]" : "bg-[var(--color-amber-soft)]"
       }`}
     >
       {feedback.text}{" "}
       {feedback.tone === "success" && feedback.closedOrBooked ? (
-        nextHref ? (
+        nextHref !== null && nextHref !== "" ? (
           <Link
             href={nextHref}
             data-testid="open-next-request"
@@ -457,6 +470,7 @@ function PanelFeedback({
 // The panel
 // ---------------------------------------------------------------------------
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 export function WorkflowPanel({
   requestId,
   state,
@@ -465,7 +479,7 @@ export function WorkflowPanel({
   callAgainAt,
   undo,
   nextHref = null,
-}: {
+}: Readonly<{
   requestId: string;
   state: RequestState;
   version: number;
@@ -473,17 +487,15 @@ export function WorkflowPanel({
   callAgainAt: string | null;
   undo: UndoWindow | null;
   nextHref?: string | null;
-}) {
+}>) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   // Which control started the in-flight transition. `pending` alone can't
-  // label buttons: it also covers the router.refresh() that follows a
-  // success, and during that window every button would falsely claim to be
-  // the one working ("Reopening…" after a save). A button only wears an
-  // in-progress verb for the action the user actually took.
-  const [inFlight, setInFlight] = useState<
-    "save" | "reopen" | "classify" | "undo" | null
-  >(null);
+  // Label buttons: it also covers the router.refresh() that follows a
+  // Success, and during that window every button would falsely claim to be
+  // The one working ("Reopening…" after a save). A button only wears an
+  // In-progress verb for the action the user actually took.
+  const [inFlight, setInFlight] = useState<"save" | "reopen" | "classify" | "undo" | null>(null);
   const [panel, dispatch] = useReducer(panelReducer, INITIAL_PANEL);
   const [truth, setTruth] = useState<Truth>({
     state,
@@ -494,24 +506,28 @@ export function WorkflowPanel({
   });
   const feedbackRef = useRef<HTMLParagraphElement>(null);
   // One idempotency key per staff attempt: a retry after an ambiguous
-  // failure replays the same command; changing the input mints a new one.
-  const keyRef = useRef<string>(crypto.randomUUID());
+  // Failure replays the same command; changing the input mints a new one.
+  const keyRef = useRef<string | null>(null);
 
   // Server truth wins whenever it is newer than what the panel acted on
   // (another tab, another staff member, or our own refresh landing).
   // Guarded render-phase adoption — the React "adjust state on prop
-  // change" pattern — so fresher truth applies before paint.
+  // Change" pattern — so fresher truth applies before paint.
   if (version > truth.version) {
     setTruth({ state, version, legacyReviewRequired, callAgainAt, undo });
   }
 
   // The undo window closing is a fact of time, not of data: a slow tick
-  // retires the affordance while the page sits open. The server filtered
-  // eligibility at read time, so the first render can trust the prop.
+  // Retires the affordance while the page sits open. The server filtered
+  // Eligibility at read time, so the first render can trust the prop.
   const [nowMs, setNowMs] = useState<number | null>(null);
   useEffect(() => {
-    const timer = setInterval(() => setNowMs(Date.now()), 30_000);
-    return () => clearInterval(timer);
+    const timer = setInterval(() => {
+      setNowMs(Date.now());
+    }, 30_000);
+    return () => {
+      clearInterval(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -528,29 +544,35 @@ export function WorkflowPanel({
     ...legal.closeReasons.map((reason) => CLOSE_ROWS[reason]),
   ];
 
-  const selectedRow =
-    rows.find((row) => choiceId(row.choice) === panel.selected) ?? null;
+  const selectedRow = rows.find((row) => choiceId(row.choice) === panel.selected) ?? null;
   const selectedAttempt =
     selectedRow?.choice.kind === "attempt" ? selectedRow.choice.outcome : null;
+
+  function currentKey(): string {
+    keyRef.current ??= crypto.randomUUID();
+    return keyRef.current;
+  }
 
   function freshKey() {
     keyRef.current = crypto.randomUUID();
   }
 
   function applyOutcome(
-    result: CommandOutcome,
-    intent:
+    // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- CommandOutcome carries domain member types that cannot be made readonly
+    result: Readonly<CommandOutcome>,
+    intent: Readonly<
       | ActionChoice
-      | { kind: "reopen" }
-      | { kind: "classify" }
-      | { kind: "undo" },
+      | { readonly kind: "reopen" }
+      | { readonly kind: "classify" }
+      | { readonly kind: "undo" }
+    >,
   ) {
     if (result.ok) {
       setTruth({
         state: result.state,
         version: result.version,
         // Any accepted command from a legacy-review row is the classify
-        // repair itself, which clears the flag (spec §5.6).
+        // Repair itself, which clears the flag (spec §5.6).
         legacyReviewRequired: false,
         callAgainAt: result.callAgainAt,
         undo: result.undo,
@@ -563,8 +585,7 @@ export function WorkflowPanel({
             ? `Undone — this request is ${STATE_LABELS[result.state]} again.`
             : successCopy(intent, result),
         closedOrBooked:
-          intent.kind !== "undo" &&
-          (result.state === "booked" || result.state === "closed"),
+          intent.kind !== "undo" && (result.state === "booked" || result.state === "closed"),
       });
       router.refresh();
       return;
@@ -607,8 +628,8 @@ export function WorkflowPanel({
       router.refresh();
     }
     // `unavailable` deliberately keeps the same key: a retry of an
-    // ambiguous failure must replay, not repeat, the command.
-    dispatch({ type: "failed", text: FAILURE_COPY[result.code] });
+    // Ambiguous failure must replay, not repeat, the command.
+    dispatch({ type: "failed", text: failureCopy(result.code) });
   }
 
   function save() {
@@ -622,7 +643,7 @@ export function WorkflowPanel({
     const common = {
       requestId,
       expectedVersion: truth.version,
-      idempotencyKey: keyRef.current,
+      idempotencyKey: currentKey(),
     };
     setInFlight("save");
     startTransition(async () => {
@@ -647,7 +668,7 @@ export function WorkflowPanel({
       const result = await reopenRequest({
         requestId,
         expectedVersion: truth.version,
-        idempotencyKey: keyRef.current,
+        idempotencyKey: currentKey(),
       });
       applyOutcome(result, { kind: "reopen" });
     });
@@ -662,9 +683,8 @@ export function WorkflowPanel({
       const result = await classifyLegacyClosure({
         requestId,
         expectedVersion: truth.version,
-        idempotencyKey: keyRef.current,
-        resolution:
-          resolution === "booked" ? "booked" : { reason: resolution },
+        idempotencyKey: currentKey(),
+        resolution: resolution === "booked" ? "booked" : { reason: resolution },
       });
       applyOutcome(result, { kind: "classify" });
     });
@@ -677,7 +697,7 @@ export function WorkflowPanel({
       const result = await undoLatestTransition({
         requestId,
         expectedVersion: truth.version,
-        idempotencyKey: keyRef.current,
+        idempotencyKey: currentKey(),
         transitionId: truth.undo!.transitionId,
       });
       applyOutcome(result, { kind: "undo" });
@@ -685,10 +705,7 @@ export function WorkflowPanel({
   }
 
   const undoOpen =
-    truth.undo &&
-    (nowMs === null || Date.parse(truth.undo.expiresAt) > nowMs)
-      ? truth.undo
-      : null;
+    truth.undo && (nowMs === null || Date.parse(truth.undo.expiresAt) > nowMs) ? truth.undo : null;
 
   const saveDisabled =
     pending ||
@@ -697,6 +714,64 @@ export function WorkflowPanel({
       ((CALL_AGAIN_REQUIRED[selectedAttempt] && !panel.followUpKind) ||
         (panel.followUpKind === "day" && !panel.followUpDay)));
 
+  return (
+    <WorkflowPanelBody
+      classify={classify}
+      dispatch={dispatch}
+      feedbackRef={feedbackRef}
+      inFlight={inFlight}
+      legal={legal}
+      nextHref={nextHref}
+      panel={panel}
+      pending={pending}
+      reopen={reopen}
+      rows={rows}
+      save={save}
+      saveDisabled={saveDisabled}
+      selectedAttempt={selectedAttempt}
+      truth={truth}
+      undoLatest={undoLatest}
+      undoOpen={undoOpen}
+    />
+  );
+}
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function WorkflowPanelBody({
+  classify,
+  dispatch,
+  feedbackRef,
+  inFlight,
+  legal,
+  nextHref,
+  panel,
+  pending,
+  reopen,
+  rows,
+  save,
+  saveDisabled,
+  selectedAttempt,
+  truth,
+  undoLatest,
+  undoOpen,
+}: Readonly<{
+  classify: () => void;
+  dispatch: (action: Readonly<PanelAction>) => void;
+  feedbackRef: RefObject<HTMLParagraphElement | null>;
+  inFlight: "save" | "reopen" | "classify" | "undo" | null;
+  legal: LegalActions;
+  nextHref: string | null;
+  panel: PanelState;
+  pending: boolean;
+  reopen: () => void;
+  rows: ChoiceRow[];
+  save: () => void;
+  saveDisabled: boolean;
+  selectedAttempt: ContactOutcome | null;
+  truth: Truth;
+  undoLatest: () => void;
+  undoOpen: UndoWindow | null;
+}>) {
   return (
     <section
       data-testid="workflow-panel"
@@ -716,28 +791,21 @@ export function WorkflowPanel({
         className="mt-1.5 text-[0.85rem] font-bold text-[var(--color-body)]"
       >
         Current status: {STATE_LABELS[truth.state]}
-        {truth.state === "contacted" && truth.callAgainAt
+        {truth.state === "contacted" && truth.callAgainAt !== null && truth.callAgainAt !== ""
           ? ` — call again ${followUpWhenLabel(truth.callAgainAt)}`
           : ""}
       </p>
 
-      <PanelFeedback
-        feedback={panel.feedback}
-        nextHref={nextHref}
-        feedbackRef={feedbackRef}
-      />
+      <PanelFeedback feedback={panel.feedback} nextHref={nextHref} feedbackRef={feedbackRef} />
 
-      {undoOpen ? (
+      {undoOpen !== null ? (
         <div
           data-testid="undo-affordance"
           className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3"
         >
           <p className="text-[0.9rem] text-[var(--color-body)]">
             The last change can be undone until{" "}
-            <strong className="font-bold">
-              {NY_CLOCK.format(new Date(undoOpen.expiresAt))}
-            </strong>
-            .
+            <strong className="font-bold">{NY_CLOCK.format(new Date(undoOpen.expiresAt))}</strong>.
           </p>
           <button
             type="button"
@@ -753,10 +821,9 @@ export function WorkflowPanel({
 
       {legal.classifyLegacyClosure ? (
         <>
-          <p className="mt-4 max-w-[68ch] rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.9rem] font-bold leading-relaxed text-[var(--color-ink)]">
-            This request was closed before outcomes were recorded, so its
-            record is incomplete. Say how it actually ended — nothing else
-            about the request changes.
+          <p className="mt-4 max-w-[68ch] rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.9rem] leading-relaxed font-bold text-[var(--color-ink)]">
+            This request was closed before outcomes were recorded, so its record is incomplete. Say
+            how it actually ended — nothing else about the request changes.
           </p>
           <fieldset className="mt-5" disabled={pending}>
             <legend className="text-sm font-bold text-[var(--color-ink)]">
@@ -770,9 +837,9 @@ export function WorkflowPanel({
                 disabled={pending}
                 label="An appointment was booked"
                 helper="The record will show Scheduled."
-                onSelect={() =>
-                  dispatch({ type: "select_review", resolution: "booked" })
-                }
+                onSelect={() => {
+                  dispatch({ type: "select_review", resolution: "booked" });
+                }}
               />
               <ChoiceRadio
                 name="legacy-review"
@@ -780,12 +847,12 @@ export function WorkflowPanel({
                 checked={panel.reviewResolution === "wont_schedule"}
                 disabled={pending}
                 label="No appointment — patient wouldn't schedule"
-                onSelect={() =>
+                onSelect={() => {
                   dispatch({
                     type: "select_review",
                     resolution: "wont_schedule",
-                  })
-                }
+                  });
+                }}
               />
               <ChoiceRadio
                 name="legacy-review"
@@ -793,12 +860,12 @@ export function WorkflowPanel({
                 checked={panel.reviewResolution === "not_actionable"}
                 disabled={pending}
                 label="No appointment — duplicate or not actionable"
-                onSelect={() =>
+                onSelect={() => {
                   dispatch({
                     type: "select_review",
                     resolution: "not_actionable",
-                  })
-                }
+                  });
+                }}
               />
             </div>
           </fieldset>
@@ -806,13 +873,11 @@ export function WorkflowPanel({
             <button
               type="button"
               data-testid="classify-legacy"
-              disabled={pending || !panel.reviewResolution}
+              disabled={pending || panel.reviewResolution === null}
               onClick={classify}
               className="btn btn-navy min-h-11 disabled:opacity-60"
             >
-              {pending && inFlight === "classify"
-                ? "Saving…"
-                : "Finish record"}
+              {pending && inFlight === "classify" ? "Saving…" : "Finish record"}
             </button>
             <p className="text-[0.85rem] text-[var(--color-muted)]">
               This review is recorded in Request history.
@@ -822,16 +887,11 @@ export function WorkflowPanel({
       ) : rows.length > 0 ? (
         <>
           <fieldset className="mt-5" disabled={pending}>
-            <legend className="text-sm font-bold text-[var(--color-ink)]">
-              What happened?
-            </legend>
+            <legend className="text-sm font-bold text-[var(--color-ink)]">What happened?</legend>
             <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
               Record the call the way it went — the request moves itself.
             </p>
-            <div
-              data-testid="workflow-choices"
-              className="mt-3 grid gap-2.5 sm:grid-cols-2"
-            >
+            <div data-testid="workflow-choices" className="mt-3 grid gap-2.5 sm:grid-cols-2">
               {rows.map((row) => (
                 <ChoiceRadio
                   key={choiceId(row.choice)}
@@ -841,15 +901,15 @@ export function WorkflowPanel({
                   disabled={pending}
                   label={row.label}
                   helper={row.helper}
-                  onSelect={() =>
-                    dispatch({ type: "select", id: choiceId(row.choice) })
-                  }
+                  onSelect={() => {
+                    dispatch({ type: "select", id: choiceId(row.choice) });
+                  }}
                 />
               ))}
             </div>
           </fieldset>
 
-          {selectedAttempt ? (
+          {selectedAttempt !== null ? (
             <CallAgainFieldset
               outcome={selectedAttempt}
               followUpKind={panel.followUpKind}
@@ -871,8 +931,7 @@ export function WorkflowPanel({
               {pending && inFlight === "save" ? "Saving…" : "Save"}
             </button>
             <p className="text-[0.85rem] text-[var(--color-muted)]">
-              Save records one entry in Request history. You can undo for 15
-              minutes.
+              Save records one entry in Request history. You can undo for 15 minutes.
             </p>
           </div>
         </>
@@ -892,9 +951,7 @@ export function WorkflowPanel({
                 onClick={reopen}
                 className="btn btn-outline min-h-11 disabled:opacity-60"
               >
-                {pending && inFlight === "reopen"
-                  ? "Reopening…"
-                  : "Reopen for more work"}
+                {pending && inFlight === "reopen" ? "Reopening…" : "Reopen for more work"}
               </button>
               <p className="text-[0.85rem] text-[var(--color-muted)]">
                 Returns it to Contacted. Its history stays.
@@ -907,8 +964,8 @@ export function WorkflowPanel({
   );
 }
 
-function followUpChoice(panel: PanelState): FollowUpChoice | undefined {
-  if (!panel.followUpKind) return undefined;
+function followUpChoice(panel: Readonly<PanelState>): FollowUpChoice | undefined {
+  if (panel.followUpKind === null) return undefined;
   return panel.followUpKind === "day"
     ? { kind: "day", date: panel.followUpDay }
     : { kind: panel.followUpKind };

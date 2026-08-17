@@ -1,9 +1,14 @@
 import { createHash, randomUUID } from "node:crypto";
-import { test, expect, type Page } from "@playwright/test";
+
+import { test, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { z } from "zod";
+
+import { intakeResponseSchema } from "../src/lib/portal/contracts";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // VAL-ADMIN-007: recipients are manageable from the UI and a staged
-// appointment request attempts notification for exactly the active set.
+// Appointment request attempts notification for exactly the active set.
 // VAL-ADMIN-008: invite -> one-time setup link -> own password -> deactivate
 // -> login refused, across two browser contexts.
 // VAL-ADMIN-012: the help page is substantive plain English (>=400 words).
@@ -17,7 +22,7 @@ const db = serviceDb();
 const runId = randomUUID().slice(0, 8);
 
 // Invite/recovery URLs contain one-time bearer fragments. Never preserve them
-// in a retained-on-failure trace artifact.
+// In a retained-on-failure trace artifact.
 test.use({ trace: "off" });
 
 function testIp(label: string): string {
@@ -34,11 +39,7 @@ async function signIn(page: Page, email: string, password: string) {
 
 /** Successful sign-ins must settle on /admin BEFORE further navigation —
  * a goto that races the login action loses the session cookie write. */
-async function signInExpectingPortal(
-  page: Page,
-  email: string,
-  password: string,
-) {
+async function signInExpectingPortal(page: Page, email: string, password: string) {
   await signIn(page, email, password);
   await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
 }
@@ -50,9 +51,7 @@ async function expectSetupLinkRejected(page: Page, setupUrl: string) {
     timeout: 15_000,
   });
   await expect(
-    page
-      .getByRole("alert")
-      .filter({ hasText: "This link is invalid or expired." }),
+    page.getByRole("alert").filter({ hasText: "This link is invalid or expired." }),
   ).toBeVisible();
 }
 
@@ -63,29 +62,25 @@ function recipientItem(page: Page, email: string) {
 test.describe("portal management UI", () => {
   test.describe.configure({ mode: "serial" });
 
-  test.beforeEach(async ({}, testInfo) => {
+  test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== "chromium", "JS portal UI");
   });
 
   test.afterAll(async () => {
-    await db
-      .from("notification_recipients")
-      .delete()
-      .like("email", `ux-${runId}-%`);
+    await db.from("notification_recipients").delete().like("email", `ux-${runId}-%`);
     await db.from("requests").delete().like("email", `ux-${runId}-%`);
     const { data: leftovers } = await db
       .from("staff_profiles")
       .select("user_id")
       .like("email", `ux-${runId}-%`);
-    for (const row of leftovers ?? []) {
+    const leftoverRows = z.array(z.object({ user_id: z.string() })).parse(leftovers ?? []);
+    for (const row of leftoverRows) {
       await db.from("staff_profiles").delete().eq("user_id", row.user_id);
       await db.auth.admin.deleteUser(row.user_id);
     }
   });
 
-  test("VAL-ADMIN-007: recipient management drives the notification set", async ({
-    page,
-  }) => {
+  test("VAL-ADMIN-007: recipient management drives the notification set", async ({ page }) => {
     test.setTimeout(120_000);
     page.on("dialog", (dialog) => void dialog.accept());
 
@@ -113,16 +108,14 @@ test.describe("portal management UI", () => {
     }
 
     // Database failures keep their stable Server Action mappings: duplicate
-    // normalized mailboxes conflict, while a row removed by another actor is
-    // reported as not found rather than generic success.
+    // Normalized mailboxes conflict, while a row removed by another actor is
+    // Reported as not found rather than generic success.
     await page.locator("#recipient-email").fill(emailA.toUpperCase());
     await page.getByRole("button", { name: "Add", exact: true }).click();
     // Scoped like the other alert assertions: Next's route announcer also
-    // carries role="alert", so a bare getByRole("alert") is strict-unsafe.
+    // Carries role="alert", so a bare getByRole("alert") is strict-unsafe.
     await expect(
-      page
-        .getByRole("alert")
-        .filter({ hasText: "That address is already on the list." }),
+      page.getByRole("alert").filter({ hasText: "That address is already on the list." }),
     ).toBeVisible();
 
     const { data: staleRecipient } = await db
@@ -142,11 +135,12 @@ test.describe("portal management UI", () => {
     await expect(recipientItem(page, emailD)).toHaveCount(0);
 
     // Toggle B to paused; it persists — and the undo offer restores it
-    // without a re-toggle.
+    // Without a re-toggle.
     await recipientItem(page, emailB).locator('[data-action="toggle"]').click();
-    await expect(
-      recipientItem(page, emailB).locator('[data-action="toggle"]'),
-    ).toHaveText("Paused", { timeout: 15_000 });
+    await expect(recipientItem(page, emailB).locator('[data-action="toggle"]')).toHaveText(
+      "Paused",
+      { timeout: 15_000 },
+    );
     const { data: bRow } = await db
       .from("notification_recipients")
       .select("id, active")
@@ -154,12 +148,16 @@ test.describe("portal management UI", () => {
       .single();
     expect(bRow?.active).toBe(false);
 
-    await page.getByTestId("recipient-undo").getByRole("button", {
-      name: "Undo",
-    }).click();
-    await expect(
-      recipientItem(page, emailB).locator('[data-action="toggle"]'),
-    ).toHaveText("Active", { timeout: 15_000 });
+    await page
+      .getByTestId("recipient-undo")
+      .getByRole("button", {
+        name: "Undo",
+      })
+      .click();
+    await expect(recipientItem(page, emailB).locator('[data-action="toggle"]')).toHaveText(
+      "Active",
+      { timeout: 15_000 },
+    );
     const { data: bRestored } = await db
       .from("notification_recipients")
       .select("active")
@@ -168,19 +166,12 @@ test.describe("portal management UI", () => {
     expect(bRestored?.active).toBe(true);
 
     // The label edits in place (no remove-and-re-add), audited by the RPC.
-    await recipientItem(page, emailB)
-      .getByRole("button", { name: "Add a label" })
-      .click();
-    await recipientItem(page, emailB)
-      .locator(`#label-${bRow!.id}`)
-      .fill("Front desk mornings");
-    await recipientItem(page, emailB)
-      .locator('[data-action="save-label"]')
-      .click();
-    await expect(page.getByTestId("recipient-label-status")).toContainText(
-      "Label updated",
-      { timeout: 15_000 },
-    );
+    await recipientItem(page, emailB).getByRole("button", { name: "Add a label" }).click();
+    await recipientItem(page, emailB).locator(`#label-${bRow!.id}`).fill("Front desk mornings");
+    await recipientItem(page, emailB).locator('[data-action="save-label"]').click();
+    await expect(page.getByTestId("recipient-label-status")).toContainText("Label updated", {
+      timeout: 15_000,
+    });
     const { data: labelAudits } = await db
       .from("audit_log")
       .select("id")
@@ -190,9 +181,10 @@ test.describe("portal management UI", () => {
 
     // Pause B again so the active notification set is exactly {A}.
     await recipientItem(page, emailB).locator('[data-action="toggle"]').click();
-    await expect(
-      recipientItem(page, emailB).locator('[data-action="toggle"]'),
-    ).toHaveText("Paused", { timeout: 15_000 });
+    await expect(recipientItem(page, emailB).locator('[data-action="toggle"]')).toHaveText(
+      "Paused",
+      { timeout: 15_000 },
+    );
 
     // Remove C (native confirm accepted above); it disappears and is gone.
     await recipientItem(page, emailC).locator('[data-action="remove"]').click();
@@ -207,8 +199,8 @@ test.describe("portal management UI", () => {
 
     // A staged appointment request attempts notification for EXACTLY the active set.
     // Global setup paused every pre-existing recipient, so the active set
-    // right now is {A}. A rejected provider outcome still counts as an
-    // attempt — that is the assertion, not deliverability.
+    // Right now is {A}. A rejected provider outcome still counts as an
+    // Attempt — that is the assertion, not deliverability.
     const staged = {
       name: `TEST UX ${runId}`,
       phone: "8135550161",
@@ -223,8 +215,9 @@ test.describe("portal management UI", () => {
       headers: { "X-Forwarded-For": testIp("notify-set") },
     });
     expect(response.status()).toBe(201);
-    const body = (await response.json()) as { ok: boolean; id: string };
+    const body = intakeResponseSchema.parse(await response.json());
     expect(body.ok).toBe(true);
+    if (!body.ok) throw new Error("Expected an accepted intake response");
 
     await expect
       .poll(
@@ -234,7 +227,11 @@ test.describe("portal management UI", () => {
             .select("recipient, status")
             .eq("request_id", body.id)
             .eq("type", "notification");
-          return (data ?? []).map((row) => row.recipient).sort();
+          return z
+            .array(z.object({ recipient: z.string() }))
+            .parse(data ?? [])
+            .map((row) => row.recipient)
+            .sort((left, right) => left.localeCompare(right));
         },
         { timeout: 20_000 },
       )
@@ -250,12 +247,8 @@ test.describe("portal management UI", () => {
 
     // The mutations above are on the audit record, visible in the view.
     await page.goto("/admin/audit");
-    await expect(page.getByTestId("audit-table")).toContainText(
-      "recipients.add",
-    );
-    await expect(page.getByTestId("audit-table")).toContainText(
-      "recipients.remove",
-    );
+    await expect(page.getByTestId("audit-table")).toContainText("recipients.add");
+    await expect(page.getByTestId("audit-table")).toContainText("recipients.remove");
 
     // Tidy the two survivors through the UI (also re-proves remove).
     await page.goto("/admin/settings");
@@ -288,9 +281,7 @@ test.describe("portal management UI", () => {
 
     const panel = page.getByTestId("invite-fallback-panel");
     await expect(panel).toBeVisible({ timeout: 15_000 });
-    await expect(panel.locator("p").first()).toHaveText(
-      `Invitation created for ${inviteEmail}`,
-    );
+    await expect(panel.locator("p").first()).toHaveText(`Invitation created for ${inviteEmail}`);
     expect(await panel.getByText("One-time password").count()).toBe(0);
     const originalSetupUrl = (
       (await page.getByTestId("fallback-setup-url").textContent()) ?? ""
@@ -306,46 +297,40 @@ test.describe("portal management UI", () => {
     await expect(invitedRow).toContainText("Pending setup");
 
     // An administrator can replace an expired/lost pending link. Reissuing
-    // invalidates the earlier token without changing the stored role.
+    // Invalidates the earlier token without changing the stored role.
     await invitedRow.locator('[data-action="resend-invite"]').click();
     await expect
       .poll(async () => {
-        const renewed =
-          (await page.getByTestId("fallback-setup-url").textContent()) ?? "";
+        const renewed = (await page.getByTestId("fallback-setup-url").textContent()) ?? "";
         return renewed.trim().length > 0 && renewed.trim() !== originalSetupUrl;
       })
       .toBe(true);
-    const setupUrl = (
-      (await page.getByTestId("fallback-setup-url").textContent()) ?? ""
-    ).trim();
+    const setupUrl = ((await page.getByTestId("fallback-setup-url").textContent()) ?? "").trim();
     expect(URL.canParse(setupUrl)).toBe(true);
     const renewedSetupUrl = new URL(setupUrl);
-    const renewedFragment = new URLSearchParams(
-      renewedSetupUrl.hash.slice(1),
-    );
+    const renewedFragment = new URLSearchParams(renewedSetupUrl.hash.slice(1));
     expect(renewedSetupUrl.pathname).toBe("/admin/auth/confirm");
     expect(renewedFragment.get("type")).toBe("invite");
     expect(Boolean(renewedFragment.get("token_hash"))).toBe(true);
 
     // Reissuing the invitation must supersede the original bearer link. Its
     // Continue action stays on the confirmation screen with the generic
-    // expired-link outcome rather than establishing a password session.
+    // Expired-link outcome rather than establishing a password session.
     const supersededContext = await browser.newContext();
     const supersededPage = await supersededContext.newPage();
     await expectSetupLinkRejected(supersededPage, originalSetupUrl);
     await supersededContext.close();
 
     // A never-onboarded invitation is also revoked when an administrator
-    // deactivates it. The row disappears from the default list immediately,
-    // and its previously issued bearer link cannot reach password setup.
+    // Deactivates it. The row disappears from the default list immediately,
+    // And its previously issued bearer link cannot reach password setup.
     const pendingEmail = `ux-${runId}-pending@example.test`;
     await page.locator("#invite-email").fill(pendingEmail);
     await page.locator("#invite-name").fill("TEST Pending Invite");
     await page.getByRole("button", { name: "Invite", exact: true }).click();
-    await expect(panel.locator("p").first()).toHaveText(
-      `Invitation created for ${pendingEmail}`,
-      { timeout: 15_000 },
-    );
+    await expect(panel.locator("p").first()).toHaveText(`Invitation created for ${pendingEmail}`, {
+      timeout: 15_000,
+    });
     const pendingSetupUrl = (
       (await page.getByTestId("fallback-setup-url").textContent()) ?? ""
     ).trim();
@@ -362,7 +347,7 @@ test.describe("portal management UI", () => {
     await deactivatedInviteContext.close();
 
     // Second context: the invited staffer deliberately consumes the one-time
-    // link, chooses their own password, and lands in the portal.
+    // Link, chooses their own password, and lands in the portal.
     const staffContext = await browser.newContext();
     const staffPage = await staffContext.newPage();
     await staffPage.goto(setupUrl);
@@ -371,14 +356,10 @@ test.describe("portal management UI", () => {
 
     const chosenPassword = `Wgi!${runId}OwnPassword7`;
     await staffPage.getByLabel("New password", { exact: true }).fill(chosenPassword);
-    await staffPage
-      .getByLabel("Confirm password", { exact: true })
-      .fill(chosenPassword);
+    await staffPage.getByLabel("Confirm password", { exact: true }).fill(chosenPassword);
     await staffPage.getByRole("button", { name: "Set password" }).click();
     await expect(staffPage).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
-    await expect(staffPage.getByTestId("session-user")).toHaveText(
-      "TEST Invite",
-    );
+    await expect(staffPage.getByTestId("session-user")).toHaveText("TEST Invite");
 
     await page.reload();
     await expect(invitedRow).not.toContainText("Pending setup");
@@ -399,31 +380,23 @@ test.describe("portal management UI", () => {
     await staffContext.close();
   });
 
-  test("VAL-ADMIN-018: Settings shows last sign-in from existing Auth state", async ({
-    page,
-  }) => {
+  test("VAL-ADMIN-018: Settings shows last sign-in from existing Auth state", async ({ page }) => {
     await signInExpectingPortal(page, SEED_EMAIL, SEED_PASSWORD);
     await page.goto("/admin/settings");
 
     // The seed admin just signed in, so their row reads as a real sign-in
-    // timestamp — never "No sign-ins yet" and never a crashed page.
+    // Timestamp — never "No sign-ins yet" and never a crashed page.
     const ownRow = page
       .getByTestId("staff-list")
       .locator("li")
       .filter({ hasText: SEED_EMAIL.toLowerCase() });
-    await expect(ownRow.getByTestId("staff-last-sign-in")).toContainText(
-      "Last sign in",
-    );
+    await expect(ownRow.getByTestId("staff-last-sign-in")).toContainText("Last sign in");
   });
 
-  test("VAL-ADMIN-012: help page is substantive plain English", async ({
-    page,
-  }) => {
+  test("VAL-ADMIN-012: help page is substantive plain English", async ({ page }) => {
     await signInExpectingPortal(page, SEED_EMAIL, SEED_PASSWORD);
     await page.goto("/admin/help");
-    await expect(
-      page.getByRole("heading", { name: "Help", exact: true }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Help", exact: true })).toBeVisible();
 
     const text = (await page.locator("main").innerText()).trim();
     const words = text.split(/\s+/).filter(Boolean);
@@ -435,9 +408,7 @@ test.describe("portal management UI", () => {
       "Staff access",
       "Getting website changes made",
     ]) {
-      await expect(
-        page.getByRole("heading", { name: heading }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { name: heading })).toBeVisible();
     }
   });
 });

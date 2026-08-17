@@ -1,14 +1,33 @@
 import { createHash, randomUUID } from "node:crypto";
-import { expect, test, type Page } from "@playwright/test";
+
+import { expect, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { z } from "zod";
+
+import { jsonObjectSchema } from "../src/lib/json";
+import type { JsonObject } from "../src/lib/json";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+
+interface LifecycleFixture {
+  status?: string;
+  closure_disposition?: string;
+  closure_provenance?: string;
+  closed_at?: string;
+  record_handoff_at?: string;
+  retention_hold_at?: string;
+  retention_hold_by?: string;
+  retention_hold_reason?: string;
+  created_at?: string;
+  legacy_review_required?: boolean;
+}
 
 loadLocalEnv();
 
 const supabaseUrl = new URL(requiredEnv("NEXT_PUBLIC_SUPABASE_URL"));
 const isolatedTestDatabase =
   process.env.SUPABASE_PREVIEW_BRANCH === "1" ||
-  ["127.0.0.1", "localhost", "[::1]"].includes(supabaseUrl.hostname) &&
-  requiredEnv("SUPABASE_PROJECT_REF") === "local";
+  (["127.0.0.1", "localhost", "[::1]"].includes(supabaseUrl.hostname) &&
+    requiredEnv("SUPABASE_PROJECT_REF") === "local");
 const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
 const runId = randomUUID().slice(0, 8);
@@ -17,9 +36,7 @@ const lifecycleActor = `lifecycle-${runId}@example.test`;
 const requestIds = new Set<string>();
 
 const CLOCK = new Date(Date.now() + 2 * 60 * 1000);
-const UNCONVERTED_CUTOFF = new Date(
-  CLOCK.getTime() - 180 * 24 * 60 * 60 * 1000,
-);
+const UNCONVERTED_CUTOFF = new Date(CLOCK.getTime() - 180 * 24 * 60 * 60 * 1000);
 const CONVERTED_CUTOFF = new Date(CLOCK);
 CONVERTED_CUTOFF.setUTCFullYear(CONVERTED_CUTOFF.getUTCFullYear() - 1);
 const AUDIT_CUTOFF = new Date(CLOCK);
@@ -29,11 +46,11 @@ function shifted(date: Date, milliseconds: number): string {
   return new Date(date.getTime() + milliseconds).toISOString();
 }
 
-function count(result: unknown, key: string): number {
-  if (typeof result !== "object" || result === null || !(key in result)) {
+function count(result: JsonObject, key: string): number {
+  if (!(key in result)) {
     throw new Error(`Lifecycle result is missing ${key}`);
   }
-  return Number((result as Record<string, unknown>)[key]);
+  return Number(result[key]);
 }
 
 async function signIn(page: Page): Promise<void> {
@@ -46,7 +63,7 @@ async function signIn(page: Page): Promise<void> {
 
 async function stageRequest(
   suffix: string,
-  lifecycle: Record<string, unknown> = {},
+  lifecycle: Readonly<LifecycleFixture> = {},
 ): Promise<string> {
   const id = randomUUID();
   requestIds.add(id);
@@ -75,10 +92,7 @@ test.describe("isolated appointment-request lifecycle", () => {
     "destructive lifecycle coverage requires local Supabase or a Preview Branch",
   );
   test.beforeEach(({}, testInfo) => {
-    test.skip(
-      testInfo.project.name !== "chromium",
-      "lifecycle coverage requires JavaScript",
-    );
+    test.skip(testInfo.project.name !== "chromium", "lifecycle coverage requires JavaScript");
   });
 
   const db = serviceDb();
@@ -97,12 +111,10 @@ test.describe("isolated appointment-request lifecycle", () => {
     await db.from("audit_log").delete().eq("actor_email", lifecycleActor);
   });
 
-  test("staff classifies closure from the request detail page", async ({
-    page,
-  }) => {
+  test("staff classifies closure from the request detail page", async ({ page }) => {
     // A migrated closure with no recorded outcome (DEC-13): closed, review
-    // flag set, no invented closure fact. It resolves only through the
-    // dedicated ClassifyLegacyClosure repair path in the workflow panel.
+    // Flag set, no invented closure fact. It resolves only through the
+    // Dedicated ClassifyLegacyClosure repair path in the workflow panel.
     const bookedReviewId = await stageRequest("legacy-booked", {
       status: "closed",
       legacy_review_required: true,
@@ -114,20 +126,16 @@ test.describe("isolated appointment-request lifecycle", () => {
     await signIn(page);
 
     // Reviewed as booked: the record resolves to durable `booked`,
-    // presented to staff as Scheduled (DEC-04) with migration-safe
-    // retention (the clock starts at review, not in the past).
+    // Presented to staff as Scheduled (DEC-04) with migration-safe
+    // Retention (the clock starts at review, not in the past).
     await page.goto(`/admin/requests/${bookedReviewId}`);
     const panel = page.getByTestId("workflow-panel");
     await expect(panel).toContainText("Finish this request's record");
     // The review is not an ordinary work surface: no contact/close rows.
     await expect(page.getByTestId("save-workflow")).toHaveCount(0);
-    await panel
-      .getByText("An appointment was booked", { exact: true })
-      .click();
+    await panel.getByText("An appointment was booked", { exact: true }).click();
     await page.getByTestId("classify-legacy").click();
-    await expect(page.getByTestId("workflow-feedback")).toContainText(
-      "marked Scheduled",
-    );
+    await expect(page.getByTestId("workflow-feedback")).toContainText("marked Scheduled");
 
     const bookedRow = await db
       .from("requests")
@@ -147,7 +155,7 @@ test.describe("isolated appointment-request lifecycle", () => {
     expect(Number(bookedRow.data?.version)).toBe(2);
 
     // Reviewed as unbooked: normal CLOSED with a typed reason; the
-    // retention clock starts no earlier than the review itself.
+    // Retention clock starts no earlier than the review itself.
     await page.goto(`/admin/requests/${unbookedReviewId}`);
     await page
       .getByTestId("workflow-panel")
@@ -156,15 +164,11 @@ test.describe("isolated appointment-request lifecycle", () => {
       })
       .click();
     await page.getByTestId("classify-legacy").click();
-    await expect(page.getByTestId("workflow-feedback")).toContainText(
-      "stays closed",
-    );
+    await expect(page.getByTestId("workflow-feedback")).toContainText("stays closed");
 
     const unbookedRow = await db
       .from("requests")
-      .select(
-        "status, legacy_review_required, record_handoff_at, closed_at, closure_reason",
-      )
+      .select("status, legacy_review_required, record_handoff_at, closed_at, closure_reason")
       .eq("id", unbookedReviewId)
       .single();
     expect(unbookedRow.error).toBeNull();
@@ -177,7 +181,7 @@ test.describe("isolated appointment-request lifecycle", () => {
     expect(unbookedRow.data?.closed_at).toBeTruthy();
 
     // Each classification appends one immutable legacy_review transition
-    // and one PHI-free technical audit entry.
+    // And one PHI-free technical audit entry.
     for (const [id, toState] of [
       [bookedReviewId, "booked"],
       [unbookedReviewId, "closed"],
@@ -197,14 +201,8 @@ test.describe("isolated appointment-request lifecycle", () => {
       ]);
     }
 
-    await db
-      .from("requests")
-      .delete()
-      .in("id", [bookedReviewId, unbookedReviewId]);
-    await db
-      .from("audit_log")
-      .delete()
-      .in("entity_id", [bookedReviewId, unbookedReviewId]);
+    await db.from("requests").delete().in("id", [bookedReviewId, unbookedReviewId]);
+    await db.from("audit_log").delete().in("entity_id", [bookedReviewId, unbookedReviewId]);
     requestIds.delete(bookedReviewId);
     requestIds.delete(unbookedReviewId);
   });
@@ -212,10 +210,10 @@ test.describe("isolated appointment-request lifecycle", () => {
   test("the retired generic close path can no longer manufacture an unclassified closure", async () => {
     // DEC-15: the generic status setter is retired from the application.
     // The RPC survives only for deploy-overlap compatibility, and the new
-    // workflow shape constraint now rejects the incoherent closure it used
-    // to write (closed with no clock, no reason, no review flag) — it
-    // fails loudly with no partial write instead of silently minting an
-    // unclassifiable row.
+    // Workflow shape constraint now rejects the incoherent closure it used
+    // To write (closed with no clock, no reason, no review flag) — it
+    // Fails loudly with no partial write instead of silently minting an
+    // Unclassifiable row.
     const id = await stageRequest("old-app-close");
     const closed = await db.rpc("portal_update_request_status", {
       p_actor_email: lifecycleActor,
@@ -238,7 +236,7 @@ test.describe("isolated appointment-request lifecycle", () => {
     });
 
     // No transition evidence appears for the rejected write, and the
-    // retention motor has nothing to act on.
+    // Retention motor has nothing to act on.
     const { data: transitions } = await db
       .from("request_transitions")
       .select("id")
@@ -250,7 +248,7 @@ test.describe("isolated appointment-request lifecycle", () => {
       p_now: CLOCK.toISOString(),
     });
     expect(run.error).toBeNull();
-    expect(count(run.data, "requests_removed")).toBe(0);
+    expect(count(jsonObjectSchema.parse(run.data), "requests_removed")).toBe(0);
 
     const survivor = await db.from("requests").select("id").eq("id", id);
     expect(survivor.data).toEqual([{ id }]);
@@ -279,7 +277,7 @@ test.describe("isolated appointment-request lifecycle", () => {
     expect(runs.every(({ error }) => error === null)).toBe(true);
     expect(
       runs.reduce(
-        (total, { data }) => total + count(data, "requests_removed"),
+        (total, { data }) => total + count(jsonObjectSchema.parse(data), "requests_removed"),
         0,
       ),
     ).toBe(1);
@@ -290,9 +288,9 @@ test.describe("isolated appointment-request lifecycle", () => {
 
   test("exact boundaries, holds, secrets, cascades, and repeat runs are safe", async () => {
     // Closed retention runs on typed/provenance-backed closures (the
-    // workflow shape constraint forbids the old bare `closed` rows), and
-    // converted requests are durable `booked` rows whose retention clock is
-    // the booking-handoff time (spec §14.1).
+    // Workflow shape constraint forbids the old bare `closed` rows), and
+    // Converted requests are durable `booked` rows whose retention clock is
+    // The booking-handoff time (spec §14.1).
     const unconvertedBefore = await stageRequest("unconverted-before", {
       status: "closed",
       closure_disposition: "unconverted",
@@ -323,7 +321,7 @@ test.describe("isolated appointment-request lifecycle", () => {
       retention_hold_reason: "CASE-HOLD",
     });
     // An unclassified legacy closure stays visible, review-required, and
-    // retention-ineligible until classified (DEC-26).
+    // Retention-ineligible until classified (DEC-26).
     const legacyClosed = await stageRequest("legacy-closed", {
       status: "closed",
       legacy_review_required: true,
@@ -386,9 +384,7 @@ test.describe("isolated appointment-request lifecycle", () => {
     ]);
     expect(auditError).toBeNull();
 
-    const rateHash = createHash("sha256")
-      .update(`lifecycle-${runId}`)
-      .digest("hex");
+    const rateHash = createHash("sha256").update(`lifecycle-${runId}`).digest("hex");
     const rateClaim = await db.rpc("portal_check_intake_rate_limit", {
       p_client_hash: rateHash,
       p_limit: 5,
@@ -400,15 +396,14 @@ test.describe("isolated appointment-request lifecycle", () => {
       p_now: CLOCK.toISOString(),
     });
     expect(preview.error).toBeNull();
-    expect(count(preview.data, "unconverted_requests")).toBe(1);
-    expect(count(preview.data, "converted_requests")).toBe(1);
-    expect(count(preview.data, "held_requests")).toBeGreaterThanOrEqual(1);
-    expect(
-      count(preview.data, "legacy_unclassified_requests"),
-    ).toBeGreaterThanOrEqual(1);
-    expect(count(preview.data, "receipt_secrets")).toBe(1);
-    expect(count(preview.data, "rate_limits")).toBeGreaterThanOrEqual(1);
-    expect(count(preview.data, "audits")).toBe(1);
+    const previewCounts = jsonObjectSchema.parse(preview.data);
+    expect(count(previewCounts, "unconverted_requests")).toBe(1);
+    expect(count(previewCounts, "converted_requests")).toBe(1);
+    expect(count(previewCounts, "held_requests")).toBeGreaterThanOrEqual(1);
+    expect(count(previewCounts, "legacy_unclassified_requests")).toBeGreaterThanOrEqual(1);
+    expect(count(previewCounts, "receipt_secrets")).toBe(1);
+    expect(count(previewCounts, "rate_limits")).toBeGreaterThanOrEqual(1);
+    expect(count(previewCounts, "audits")).toBe(1);
 
     const unsafeClock = await db.rpc("portal_run_data_lifecycle", {
       p_actor_email: lifecycleActor,
@@ -421,12 +416,11 @@ test.describe("isolated appointment-request lifecycle", () => {
       p_now: CLOCK.toISOString(),
     });
     expect(firstRun.error).toBeNull();
-    expect(count(firstRun.data, "requests_removed")).toBe(2);
-    expect(count(firstRun.data, "receipt_secrets_removed")).toBe(1);
-    expect(count(firstRun.data, "rate_limits_removed")).toBeGreaterThanOrEqual(
-      1,
-    );
-    expect(count(firstRun.data, "audits_removed")).toBe(1);
+    const firstRunCounts = jsonObjectSchema.parse(firstRun.data);
+    expect(count(firstRunCounts, "requests_removed")).toBe(2);
+    expect(count(firstRunCounts, "receipt_secrets_removed")).toBe(1);
+    expect(count(firstRunCounts, "rate_limits_removed")).toBeGreaterThanOrEqual(1);
+    expect(count(firstRunCounts, "audits_removed")).toBe(1);
 
     const survivors = await db
       .from("requests")
@@ -441,14 +435,16 @@ test.describe("isolated appointment-request lifecycle", () => {
         openOld,
       ]);
     expect(survivors.error).toBeNull();
-    expect((survivors.data ?? []).map(({ id }) => id).sort()).toEqual(
-      [
-        unconvertedBefore,
-        convertedBefore,
-        heldExpired,
-        legacyClosed,
-        openOld,
-      ].sort(),
+    expect(
+      z
+        .array(z.object({ id: z.string() }))
+        .parse(survivors.data ?? [])
+        .map(({ id }) => id)
+        .sort((left, right) => left.localeCompare(right)),
+    ).toEqual(
+      [unconvertedBefore, convertedBefore, heldExpired, legacyClosed, openOld].sort((left, right) =>
+        left.localeCompare(right),
+      ),
     );
 
     const cascadedEvent = await db
@@ -466,9 +462,7 @@ test.describe("isolated appointment-request lifecycle", () => {
     const expiredReceipt = receipts.data?.find(
       ({ request_id }) => request_id === unconvertedBefore,
     );
-    const liveReceipt = receipts.data?.find(
-      ({ request_id }) => request_id === convertedBefore,
-    );
+    const liveReceipt = receipts.data?.find(({ request_id }) => request_id === convertedBefore);
     expect(expiredReceipt?.status).toBe("expired");
     expect(expiredReceipt?.meta).not.toHaveProperty("token_hash");
     expect(liveReceipt?.status).toBe("issued");
@@ -488,23 +482,25 @@ test.describe("isolated appointment-request lifecycle", () => {
         openOld,
       ]);
     expect(audits.error).toBeNull();
-    const auditActions = (audits.data ?? []).map(({ action }) => action);
+    const auditActions = z
+      .array(z.object({ action: z.string() }))
+      .parse(audits.data ?? [])
+      .map(({ action }) => action);
     expect(auditActions).not.toContain("test.audit.exact");
     expect(auditActions).toContain("test.audit.before");
     expect(auditActions).toContain("test.audit.held");
-    expect(
-      auditActions.filter((action) => action === "request.retention_delete"),
-    ).toHaveLength(2);
+    expect(auditActions.filter((action) => action === "request.retention_delete")).toHaveLength(2);
 
     const secondRun = await db.rpc("portal_run_data_lifecycle", {
       p_actor_email: lifecycleActor,
       p_now: CLOCK.toISOString(),
     });
     expect(secondRun.error).toBeNull();
-    expect(count(secondRun.data, "requests_removed")).toBe(0);
-    expect(count(secondRun.data, "receipt_secrets_removed")).toBe(0);
-    expect(count(secondRun.data, "rate_limits_removed")).toBe(0);
-    expect(count(secondRun.data, "audits_removed")).toBe(0);
+    const secondRunCounts = jsonObjectSchema.parse(secondRun.data);
+    expect(count(secondRunCounts, "requests_removed")).toBe(0);
+    expect(count(secondRunCounts, "receipt_secrets_removed")).toBe(0);
+    expect(count(secondRunCounts, "rate_limits_removed")).toBe(0);
+    expect(count(secondRunCounts, "audits_removed")).toBe(0);
 
     const release = await db.rpc("portal_set_request_legal_hold", {
       p_actor_email: lifecycleActor,
@@ -518,7 +514,7 @@ test.describe("isolated appointment-request lifecycle", () => {
       p_now: CLOCK.toISOString(),
     });
     expect(afterRelease.error).toBeNull();
-    expect(count(afterRelease.data, "requests_removed")).toBe(1);
+    expect(count(jsonObjectSchema.parse(afterRelease.data), "requests_removed")).toBe(1);
   });
 
   test("exceptional deletion is authorized, hold-aware, and replayable after restore", async () => {
@@ -569,14 +565,8 @@ test.describe("isolated appointment-request lifecycle", () => {
     expect(deleted.error).toBeNull();
     expect(deleted.data).toBe(true);
 
-    const deletedRequest = await db
-      .from("requests")
-      .select("id")
-      .eq("id", earlyId);
-    const deletedEvents = await db
-      .from("request_events")
-      .select("id")
-      .eq("request_id", earlyId);
+    const deletedRequest = await db.from("requests").select("id").eq("id", earlyId);
+    const deletedEvents = await db.from("request_events").select("id").eq("request_id", earlyId);
     expect(deletedRequest.data).toHaveLength(0);
     expect(deletedEvents.data).toHaveLength(0);
 
@@ -600,19 +590,16 @@ test.describe("isolated appointment-request lifecycle", () => {
     const preview = await db.rpc("portal_preview_data_lifecycle", {
       p_now: CLOCK.toISOString(),
     });
-    expect(count(preview.data, "unconverted_requests")).toBe(1);
+    expect(count(jsonObjectSchema.parse(preview.data), "unconverted_requests")).toBe(1);
 
     const replay = await db.rpc("portal_run_data_lifecycle", {
       p_actor_email: lifecycleActor,
       p_now: CLOCK.toISOString(),
     });
     expect(replay.error).toBeNull();
-    expect(count(replay.data, "requests_removed")).toBe(1);
+    expect(count(jsonObjectSchema.parse(replay.data), "requests_removed")).toBe(1);
 
-    const restoredRequest = await db
-      .from("requests")
-      .select("id")
-      .eq("id", restoredId);
+    const restoredRequest = await db.from("requests").select("id").eq("id", restoredId);
     expect(restoredRequest.data).toHaveLength(0);
   });
 });

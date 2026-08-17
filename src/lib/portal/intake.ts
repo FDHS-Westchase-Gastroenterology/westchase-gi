@@ -221,7 +221,7 @@ async function notifyActiveRecipients(client: SupabaseClient, requestId: string)
 
   const recipients = items.data.flatMap((item) => {
     const recipient = Array.isArray(item.notification_recipients)
-      ? item.notification_recipients[0]
+      ? item.notification_recipients.at(0)
       : item.notification_recipients;
     return recipient === undefined || recipient === null ? [] : [recipient];
   });
@@ -242,7 +242,7 @@ async function notifyActiveRecipients(client: SupabaseClient, requestId: string)
   await recordNotificationEvents(client, requestId, events);
   await Promise.all(
     items.data.map((item, index) => {
-      const event = events[index];
+      const event = events.at(index);
       const accepted = event?.status === "accepted";
       const failedReason =
         event?.status === "failed" && "reason" in event.meta ? event.meta.reason : null;

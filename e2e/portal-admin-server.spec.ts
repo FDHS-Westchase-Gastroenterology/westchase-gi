@@ -939,8 +939,8 @@ test.describe("portal management server boundaries", () => {
         locale: "en",
         source_path: "/e2e/recent-work",
         // Durable workflow shape: the staff-facing Scheduled presentation
-        // rides on the `booked` state (DEC-04); the historic audit rows
-        // staged below keep their as-recorded legacy vocabulary.
+        // Rides on the `booked` state (DEC-04); the historic audit rows
+        // Staged below keep their as-recorded legacy vocabulary.
         status: "booked",
         record_handoff_at: new Date().toISOString(),
       })
