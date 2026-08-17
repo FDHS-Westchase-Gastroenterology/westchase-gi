@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import { formatReceived } from "@/app/admin/(portal)/requests/format";
 import { asJsonObject, asJsonString, jsonSchema } from "@/lib/json";
 import type { Json } from "@/lib/json";
@@ -122,31 +123,16 @@ export default async function AdminAuditPage({
 
   return (
     <section aria-labelledby="audit-heading">
-      <nav aria-label="Breadcrumb" className="flex items-center text-[0.9rem]">
-        <Link
-          href="/admin"
-          className="inline-flex min-h-11 min-w-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-        >
-          Home
-        </Link>
-        <span aria-hidden="true" className="mx-2 text-[var(--color-muted)]">
-          /
-        </span>
-        <span className="text-[var(--color-muted)]">Activity log</span>
-      </nav>
-
-      <h1 id="audit-heading" className="portal-title mt-4">
-        Activity log
-      </h1>
-      <p className="mt-1.5 max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
-        Who did what, in plain language — with the exact technical record beneath for
-        administrators.
-      </p>
+      <PortalPageHeader
+        back={{ href: "/admin", label: "Back to Home" }}
+        title={<span id="audit-heading">Activity log</span>}
+        description="Who did what, in plain language. Administrators can inspect the exact technical record below when they need it."
+      />
 
       {releaseEngagement ? <ReleaseEngagementSection engagement={releaseEngagement} /> : null}
 
       {entries.length === 0 ? (
-        <div className="mt-10 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-8 text-center sm:p-12">
+        <div className="portal-empty mt-10 p-8 text-center sm:p-12">
           <h2 className="text-[1.1rem] font-black text-[var(--color-ink)]">Nothing recorded yet</h2>
           <p className="mx-auto mt-2 max-w-[52ch] text-[0.95rem] text-[var(--color-body)]">
             The first status change, note, recipient edit, or staff change will appear here
@@ -167,7 +153,12 @@ export default async function AdminAuditPage({
             <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
               The exact actions behind the entries above, for administrators.
             </p>
-            <div className="mt-4 overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white">
+            <div
+              role="region"
+              aria-labelledby="technical-record-heading"
+              tabIndex={0}
+              className="mt-4 overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white"
+            >
               <table data-testid="audit-table" className="w-full min-w-[640px] text-left">
                 <thead>
                   <tr className="border-b border-[var(--color-line)] text-[0.8rem] tracking-[0.06em] text-[var(--color-muted)] uppercase">

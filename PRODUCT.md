@@ -2,7 +2,7 @@
 
 <!-- impeccable:product-schema 1 -->
 
-One repository, one deployment, two products: the patient-facing website (brand register,
+One repository, one deployment, **two products**: the patient-facing website (brand register,
 first half) and the staff portal at `/admin` (product register, second half). They share the
 design charter in `DESIGN.md`.
 
@@ -14,11 +14,11 @@ web
 
 ## Patient website
 
-> **Awaiting re-charter.** This half still speaks in the polish-era register. Its own
+> **Awaiting re-charter.** This half still speaks in the polish-era register; its own
 > re-charter session is charted as
 > [issue #202](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/202).
 > Until that session lands, where this half's framing conflicts with the committed design
-> charter, `DESIGN.md` and its anchors govern. In particular, "preserve the practice's
+> charter, `DESIGN.md` and its anchors govern — in particular, "preserve the practice's
 > identity, execute it better" no longer carries authority as an organizing principle.
 
 ### Register
@@ -29,7 +29,7 @@ brand
 
 Patients of a two-location gastroenterology practice in Tampa and Lutz, Florida. Mostly adults
 45 and older (colonoscopy screening age), many referred by a primary-care physician, many
-Spanish-speaking. They arrive anxious or task-driven, and they skim: find the phone number,
+Spanish-speaking. They arrive anxious or task-driven — and they skim: find the phone number,
 request an appointment, download prep instructions before a procedure, fill out new-patient
 forms, or check directions and hours. Usually on a phone. A second audience is referring
 physician offices verifying credentials, locations, and fax details.
@@ -37,20 +37,20 @@ physician offices verifying credentials, locations, and fax details.
 ### Product Purpose
 
 The patient-facing website of FDHS Westchase Gastroenterology (Florida Digestive Health
-Specialists network). It exists so patients can reach the practice and prepare for visits:
-request an appointment, call or text a staffed line, access the patient portal and
+Specialists network). It exists so patients can reach the practice and prepare for visits without
+friction: request an appointment, call or text a staffed line, access the patient portal and
 online forms, and get accurate location, hours, and provider information in English, Spanish,
 Vietnamese, Korean, or Arabic.
 
 Success: every link works, every fact is verified, all five languages are first-class, and the
-site reads as the polished front door of a practice that answers its own phones. The practice
-can tell, from aggregate and PHI-free evidence, whether patients are reaching the phone, the
-text line, and the request form, without watching anyone do it.
+site reads as the polished front door of a practice that answers its own phones. Success is also
+knowable: the practice can tell, from aggregate and PHI-free evidence, whether patients are
+reaching the phone, the text line, and the request form — without watching anyone do it.
 
 ### Positioning
 
-A real person answers. The practice's differentiator is staffed human attention (a human
-answers the text line within 24 hours) and full five-language service. Template-vendor
+A real person answers. The practice's differentiator is staffed human attention — a human
+answers the text line within 24 hours — and full five-language service. Template-vendor
 competitors cannot truthfully claim either; this site never undermines the claim with bots,
 pop-ups, or conversion pressure.
 
@@ -58,7 +58,7 @@ pop-ups, or conversion pressure.
 
 Calm, credentialed, human. The site must feel attended-to rather than automated: plain
 language, warm but clinical, never salesy. The site never shouts: no pop-ups, no autoplay, no
-urgency. Its confidence shows in what it doesn't do. Three words: steady, attentive,
+urgency — its confidence shows in what it doesn't do. Three words: steady, attentive,
 multilingual.
 
 ### Anti-references
@@ -89,13 +89,13 @@ multilingual.
    directions.
 4. **Every language is a mode, not a footnote.** Every patient-facing surface exists in
    English, Spanish, Vietnamese, Korean, and Arabic with equal care (Arabic fully RTL), and
-   no string may claim a smaller language set than the site actually serves. Availability
+   no string may claim a smaller language set than the site actually serves — availability
    claims stay true at the sentence level, and clinical-care language claims ship only with
    dated practice confirmation.
 5. **Measure like a medical practice.** Product evidence is aggregate, first-party, and
-   PHI-free: counts and funnels, never journeys. No per-visitor profiles, session replay,
+   PHI-free: counts and funnels, never journeys — no per-visitor profiles, session replay,
    heatmaps, or third-party trackers. If a question can't be answered inside that posture,
-   change the question. Do not loosen the posture to fit the question.
+   the instrumentation fits the posture, never the reverse.
 
 ### Capabilities and Constraints
 
@@ -104,7 +104,7 @@ Standing interaction policies, binding until explicitly amended:
 - **Interruptions are earned, never guessed.** At most one standing first-visit interruption,
   and it fires only on positive evidence it helps (the language chooser opens itself only on a
   detected language mismatch; the header menu always works). The once-per-visitor banner is the
-  only standing notice. Any future modal needs an explicit exception here. The old vendor
+  only standing notice. Any future modal needs an explicit exception here — the old vendor
   site's daily popup is the anti-precedent.
 - **Asks are calibrated.** One review ask per page in primary content; the testimonial rail and
   footer carry the standing invitation. Written contact is one honest pipeline, labeled as what
@@ -114,8 +114,8 @@ Standing interaction policies, binding until explicitly amended:
 
 WCAG 2.1 AA. Older-skewing patient base: body text at 17px or larger, contrast at 4.5:1 or
 better everywhere, visible focus states, large tap targets (44px floor, including dismiss
-controls), semantic landmarks, skip link. Async outcome states move focus to the outcome
-(success, failure, and unknown alike), never leaving keyboard users on a detached control.
+controls), semantic landmarks, skip link. Async outcome states move focus to the outcome —
+success, failure, and unknown alike — never leaving keyboard users on a detached control.
 Full reduced-motion alternatives. All five locales use correct `lang` attributes and hreflang
 alternates, with RTL direction for Arabic, so assistive technology and search understand every
 mode.
@@ -129,10 +129,10 @@ patient site is a brand surface; the portal is a tool. UI work inside `src/app/a
 follows this register plus the design charter in `DESIGN.md`.
 
 Re-chartered 2026-08-04
-([issue #190](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/190)):
-the polish-era charter framed the portal around a queue to be watched. This charter claims
-the job the practice now asks for. Sections marked deferred are empty of direction. They
-are rewritten after prototyping under this purpose, not carried forward stale.
+([issue #190](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/190))
+and resolved into its first committed experience world on 2026-08-09: the polish-era charter
+framed the portal around a queue to be watched; this charter claims the deeper job the practice
+now asks for and the working system built around it.
 
 ### Register
 
@@ -150,48 +150,53 @@ a phone. A secondary user is the practice's website maintainer / engineering sup
 One place where practice staff do their web-adjacent jobs without reasoning about
 software topology (repositories, hosting projects, asset ledgers). The jobs:
 
-- **Manage incoming appointment requests, the portal's central job.** Appointments is
+- **Manage incoming appointment requests — the portal's central job.** Appointments is
   a state machine staff use to manage, continuously update, and eventually close
-  incoming appointment requests. The machine itself (its states, transitions,
+  incoming appointment requests. The machine itself — its states, transitions,
   operations, invariants, and its boundary with the practice's real scheduling
-  system) is defined in the
+  system — is defined in the
   [Appointment Request Workflow Specification](docs/appointment-request-workflow-specification.md);
   this charter claims the job while that specification owns the mechanics.
 - Reprint a review QR flyer.
 - Choose who receives new-request notification emails.
 - Manage who can sign in (invite staff, change roles, deactivate accounts).
-- See where the website lives, its connection status, and who can change it, and
+- See where the website lives, its connection status, and who can change it — and
   manage that access (administrators only). The clinic works in its own portal
-  vocabulary: people who "can edit and publish the website," never in repository
-  topology. Management controls stay hidden, failing closed, until the one-time
+  vocabulary — people who "can edit and publish the website" — never in repository
+  topology; management controls stay hidden, failing closed, until the one-time
   owner-side setup steps are complete.
 - Request an occasional website change (today: through the website maintainer).
 
-The charter claims only the jobs listed. No further jobs are claimed speculatively. New
+The charter claims depth, not breadth: no further jobs are claimed speculatively. New
 claims graduate from prototyping under this purpose, never from imagination.
 
 Success: staff move their own way and the portal keeps up. A veteran reaches any job
-directly, never toured through a prescribed flow. A brand-new hire orients without
-training. What needs attention finds staff on whatever path they take. It is never
-tied to one route from the home page. The portal fits the moment (the front-desk
-computer between patients, or a phone in a hallway) without staff adapting to it. It
-behaves like software they already know: truthful states, work never silently lost,
-and quality in the details.
+directly, never toured through a prescribed flow; a brand-new hire orients without
+training. What needs attention finds staff on whatever path they take — it is never
+hostage to one route from the home page. The portal fits the moment — the front-desk
+computer between patients or a phone in a hallway — without staff adapting to it. It
+behaves like software they already know, and the care is felt: truthful states, work
+never silently lost, quality in details staff notice without naming.
 
 ### North star
 
-Deliberately deferred (2026-08-04). Rewritten from scratch once prototyping under the
-new purpose gives direction something concrete to react to. The v1 north star is
-retired and carries no authority; the durable law it rode alongside lives in
-Capabilities and Constraints below.
+**The Front Desk Ledger.** Staff should be able to look once, understand what needs attention,
+and either enter the live appointment request or create a safe paper handoff without losing the
+truth of the shared queue. Each request moves from an unanswered patient ask to a documented
+real-world outcome; interruptions, handoffs, narrow screens, stale data, and failed reads never
+make staff reconstruct what the software meant.
 
 ### Evidence
 
-Evidence comes from software, plus the practice channel. The portal measures its own
-use: staff-usage telemetry, chartered to be built out fully, disclosed to the practice
-(staff know it exists and that it exists for them), with event payloads PHI-free by
-floor. Product decisions are grounded in that telemetry plus the driving dev's input as
-the channel to the practice. The audit layers and sign-in state remain operational
+Evidence comes from software, plus the practice channel. The bulk New-request print workflow is
+grounded in direct staff feedback relayed for this build: the practice manager prints incoming
+requests and distributes them to staff. Other experience priorities come from the implemented
+workflow contract and repository decisions; no additional usage observation is claimed.
+
+The portal measures its own use — staff-usage telemetry, chartered to be built out fully,
+disclosed to the practice (staff know it exists and that it exists for them), with event payloads
+PHI-free by floor. Product decisions are grounded in that telemetry plus the driving developer's
+input as the channel to the practice. The audit layers and sign-in state remain operational
 records, not the evidence system.
 
 Today only the patient site is instrumented; portal usage instrumentation is early
@@ -203,17 +208,18 @@ rather than presenting assumption as measurement.
 The law the portal keeps while its narrative sections await prototyping. Binding until
 explicitly amended.
 
-Floors, on their own authority:
+Floors, riding on their own authority:
 
-- **Honest reads.** A failed read is never presented as an empty result. "Nothing
+- **Honest reads.** A failed read is never presented as an empty result — "nothing
   waiting" and "could not check" are different truths. Counts are suppressed, never
   zeroed, when their read fails; a failed recipients read stays silent rather than
   raising a false zero-recipient warning.
-- **PHI-minimal.** The portal handles appointment requests, not a clinical record.
-  Intake stores an optional patient-supplied brief reason, so the queue is
+- **PHI-minimal.** The portal handles appointment requests, not a clinical record —
+  but intake stores an optional patient-supplied brief reason, so the queue is
   sensitive. Notification emails, operational logs, and telemetry payloads stay free
   of patient fields. Boundary-crossing reads of patient data are audited: a CSV
-  export writes a metadata-only audit row (actor, timestamp, row count, filter).
+  export and a prepared New-request print packet each write a metadata-only audit row
+  (actor, timestamp, row count, filter).
 - No direct browser database access; no assistant that sees patient free text or
   mutates records autonomously.
 
@@ -222,7 +228,13 @@ Durable truths, re-owned in the 2026-08-04 re-charter session:
 - **One human action, one portal transaction.** The interface never splits one
   real-world action across disconnected forms, and server operations backing a
   combined action commit atomically. The concrete save choreography is not chartered
-  here. See the state-machine deferral below.
+  here — see the state-machine deferral below.
+- **Paper handoff is an output, never workflow state.** Every active staff member may prepare
+  one oldest-first packet containing the exact durable `NEW` set at that database snapshot.
+  Preparing or printing it changes no request status, version, attention state, or Request
+  history. The packet carries the patient details staff need for the call, a paper routing area,
+  safe-paper guidance, and the instruction to record the result in the portal. Paper can
+  distribute work; the live queue remains authoritative.
 - **Staff author attention.** Urgency comes from staff, never from configuration: no
   Settings "N days" knob, no practice-meeting threshold. The mechanics through which
   staff express it belong to the state machine's definition.
@@ -235,10 +247,10 @@ Durable truths, re-owned in the 2026-08-04 re-charter session:
 - **Flyer printing is front-desk work**: open to every active staff member, since
   printing an approved artifact mutates nothing. Changing flyer assets stays outside
   the portal.
-- **The assistant seam stays empty.** No floating launcher may ship before the
-  capability exists. When an assistant ships it will be a docked, contextual widget
-  with no dedicated page and no nav entry, and it arrives only when it completes a
-  real job.
+- **The assistant seam is reserved, not occupied**: no floating launcher may ship
+  before the capability exists. When an assistant ships it will be a docked,
+  contextual widget with no dedicated page and no nav entry, and it arrives only when
+  it completes a real job.
 - Deliberately not building: generic metric dashboards or vanity counts; kanban or
   bulk mutations; a CMS, flyer editor, or QR generator.
 
@@ -251,13 +263,18 @@ Appointments workflow contract, defined in the
   for the transition to BOOKED. Semantic commands, versioning, idempotency, an append-only
   transition log, and post-commit notifications govern the build era.
 
-Incumbent inventory, true today as code rather than commitment:
+Committed operational information architecture:
 
-- The portal's surfaces: a task-first Home, the Requests queue and request detail,
-  recipient and staff management, an Activity log, Website/maintainer controls, the
-  protected review-flyer printer, an opt-in first-login tour, and a Help-page systems
-  explainer with a tour-restart path. The design charter's transition rule governs
-  them until rebuilds.
+- **Home** is the triage and handoff surface: the ordered shared work stack, the direct
+  New-request print action, the next request to work, recent operational context, and secondary
+  routes into staff jobs.
+- **Appointments** is the complete queue and request workspace, retaining All, New, Contacted,
+  Scheduled, and Closed as familiar views.
+- **Settings** groups people, notification emails, and software administration without
+  competing with daily appointment work.
+- **Help** explains the workflow, privacy and recovery paths. Activity and review-flyer printing
+  remain named utilities reached from the places they support, not additional top-level
+  destinations.
 
 Explicitly undecided / open product facts: the maintainer invite/cancel/accept/revoke
 acceptance pass; the structured website-change-request workflow (later conversationally
@@ -265,20 +282,39 @@ assisted) planned for the maintainer seam.
 
 ### Product Principles
 
-Deliberately deferred (2026-08-04). Rewritten after prototyping under the new purpose.
-The binding law the v1 principles carried (honest states, PHI-minimal, names-not-
-addresses, one human action one portal transaction) lives in Capabilities and
-Constraints above; the v1 principles otherwise carry no authority, and their token
-rulebook was retired with the v1 `DESIGN.md`.
+1. **Work first; administration second.** Home and Appointments carry the portal's center of
+   gravity. Settings and Help stay easy to reach without turning every capability into an equal
+   card on a dashboard.
+2. **Truth before reassurance.** Empty, waiting, unavailable, stale, conflicted, and completed
+   are different states and say so. A failed read never becomes a zero, a print never becomes a
+   contact attempt, and an optimistic action never hides its durable outcome.
+3. **Resume without reconstruction.** Staff work between calls and patient arrivals. Location,
+   request state, next legal action, recovery, and follow-up remain explicit across page changes,
+   interruptions, desktop, and mobile.
+4. **Familiarity carries the workflow.** Preserve the four destinations, five Appointments views,
+   plain staff language, standard controls, and predictable navigation. Personality comes from
+   precise hierarchy and the paper-ledger metaphor, never from novel affordances staff must learn.
+5. **The shared queue stays shared.** The portal may surface attention and support a manager's
+   paper routing, but it never invents personal ownership or hides work behind "my tasks."
+6. **One system at every size.** Desktop uses a persistent task index and dense working canvas;
+   mobile keeps the same destinations and actions in reach, with information recomposed rather
+   than clipped or reduced to a desktop table.
 
 ### Anti-references
 
-Deliberately deferred (2026-08-04). Re-derived at prototyping alongside the portal's
-visual world; the deliberately-not-building list in Capabilities and Constraints
-carries the surviving refusals until then.
+- Generic SaaS dashboards made from interchangeable metric cards, equal-weight shortcuts, and
+  charts that stand in for the work.
+- Kanban boards, invented assignees, personal task queues, or any interface that implies a domain
+  model the portal does not own.
+- Decorative clinical styling: excessive white cards, blue gradients, stock-health iconography,
+  glass, and motion used to make routine work feel more "digital."
+- Hidden mutation, ambiguous save states, reassuring zeroes after failed reads, and paper actions
+  that silently advance a request.
+- Desktop-only density squeezed onto a phone, or mobile simplification that removes status,
+  recovery, or the next safe action.
 
 ### Accessibility
 
 WCAG 2.1 AA. Touch targets ≥ 44px, visible focus states, semantic landmarks and
 heading order, `prefers-reduced-motion` honored globally. English-only by scope
-decision. The patient site carries the five locales.
+decision — the patient site carries the five locales.

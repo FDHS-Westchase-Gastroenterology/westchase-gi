@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import { restartPortalTourAction } from "@/app/admin/(portal)/tour-actions";
 import { requireRole } from "@/lib/portal/auth";
 import { site } from "@/lib/site";
@@ -19,15 +20,13 @@ export default async function AdminHelpPage() {
 
   return (
     <section aria-labelledby="help-heading">
-      <h1 id="help-heading" className="portal-title">
-        Help
-      </h1>
-      <p className="mt-1.5 max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
-        How this portal works, in plain language. Five minutes here covers everything.
-      </p>
+      <PortalPageHeader
+        title={<span id="help-heading">Help</span>}
+        description="How the staff portal works, in plain language. Start with the task in front of you; the technical background stays optional."
+      />
 
-      <div className="mt-8 space-y-6">
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-mint)] p-6 sm:p-8">
+      <div className="portal-help mt-8">
+        <div className="portal-help-section portal-help-tour">
           <h2 className={SECTION_HEADING}>Portal tour</h2>
           <p className={SECTION_BODY}>
             Reopen the short introduction to Home, Appointments, and Settings whenever a refresher
@@ -40,7 +39,7 @@ export default async function AdminHelpPage() {
           </form>
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
+        <div className="portal-help-section">
           <h2 className={SECTION_HEADING}>What the appointment request queue is</h2>
           <p className={SECTION_BODY}>
             When a patient fills out the appointment form on the website — in any of the five
@@ -60,10 +59,26 @@ export default async function AdminHelpPage() {
           </p>
         </div>
 
-        <div
-          id="appointment-workflow-guide"
-          className="scroll-mt-20 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8"
-        >
+        <div className="portal-help-section">
+          <h2 className={SECTION_HEADING}>Print a paper handoff</h2>
+          <p className={SECTION_BODY}>
+            Home shows a <strong>Print all</strong> action whenever New appointment requests are
+            waiting. It prepares one work sheet per request, oldest first, so a manager can hand the
+            pages to staff. The packet is a time-stamped snapshot: printing does not assign a
+            request, mark it contacted, or change its history. After a call, open the live request
+            in Appointments and record what happened so everyone sees the durable result. If a
+            packet has sat unattended, check the New view before distributing it.
+          </p>
+          <Link
+            href="/admin/requests/print"
+            prefetch={false}
+            className="mt-3 inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+          >
+            Prepare the current New-request packet
+          </Link>
+        </div>
+
+        <div id="appointment-workflow-guide" className="portal-help-section scroll-mt-20">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className={SECTION_HEADING}>Work an appointment request</h2>
@@ -72,7 +87,7 @@ export default async function AdminHelpPage() {
                 for whoever works it next.
               </p>
             </div>
-            <span className="rounded-full bg-[var(--color-amber-soft)] px-3 py-1 text-[0.78rem] font-bold text-[var(--color-amber-deep)]">
+            <span className="rounded-full bg-[var(--color-amber-soft)] px-3 py-1 text-[0.78rem] font-bold text-[var(--portal-attention-ink)]">
               2-minute guide
             </span>
           </div>
@@ -205,7 +220,7 @@ export default async function AdminHelpPage() {
           </div>
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
+        <div className="portal-help-section">
           <h2 className={SECTION_HEADING}>Notification emails</h2>
           <p className={SECTION_BODY}>
             The addresses listed under{" "}
@@ -224,7 +239,7 @@ export default async function AdminHelpPage() {
           </p>
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
+        <div className="portal-help-section">
           <h2 className={SECTION_HEADING}>Staff access</h2>
           <p className={SECTION_BODY}>
             Administrators can invite a new staff member from the Settings page: enter their email,
@@ -243,17 +258,14 @@ export default async function AdminHelpPage() {
               href="/admin/audit"
               className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
             >
-              activity log
+              Activity log
             </Link>{" "}
-            (the Activity log link at the bottom of every page), so there is always a clear record
+            from the desktop task rail or the mobile account menu, so there is always a clear record
             of who did what.
           </p>
         </div>
 
-        <div
-          id="website-changes"
-          className="scroll-mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8"
-        >
+        <div id="website-changes" className="portal-help-section scroll-mt-6">
           <h2 className={SECTION_HEADING}>Getting website changes made</h2>
           <p className={SECTION_BODY}>
             Today, changes to the public website — new hours, a provider update, a new document — go
@@ -270,7 +282,7 @@ export default async function AdminHelpPage() {
           </p>
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
+        <div className="portal-help-section">
           <h2 className={SECTION_HEADING}>How the website systems fit together</h2>
           <p className={SECTION_BODY}>
             This is optional background. You do not need to open or manage any of these systems to
@@ -313,10 +325,7 @@ export default async function AdminHelpPage() {
           </details>
         </div>
 
-        <div
-          id="something-wrong"
-          className="scroll-mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8"
-        >
+        <div id="something-wrong" className="portal-help-section scroll-mt-6">
           <h2 className={SECTION_HEADING}>If something looks wrong</h2>
           <p className={SECTION_BODY}>
             If the portal will not load or an appointment request seems missing, call or text the

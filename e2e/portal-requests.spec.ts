@@ -4,7 +4,6 @@ import { test, expect } from "@playwright/test";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { z } from "zod";
 
-import { asJsonObject, asJsonString, jsonSchema } from "../src/lib/json";
 import { intakeResponseSchema } from "../src/lib/portal/contracts";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
@@ -12,13 +11,14 @@ const noteMetaSchema = z.object({
   text: z.string().optional(),
   author_email: z.string().optional(),
 });
+const workflowCommandDetailSchema = z.looseObject({
+  command: z.string(),
+});
 const transitionRowSchema = z.object({
   command: z.string(),
   from_state: z.string(),
   to_state: z.string(),
 });
-const QUEUE_VIEWS = ["new", "contacted", "scheduled", "closed"] as const;
-type QueueView = (typeof QUEUE_VIEWS)[number];
 
 // VAL-ADMIN-003: the queue leads with the oldest unworked requests first.
 // VAL-ADMIN-004: status filtering matches SQL counts exactly.
@@ -79,13 +79,15 @@ const VIEW_DB_STATUSES = {
   contacted: ["contacted"],
   scheduled: ["booked", "scheduled"],
   closed: ["closed"],
-} as const satisfies Record<QueueView, readonly string[]>;
+} as const;
 
-async function sqlCount(view: QueueView): Promise<number> {
+type AppointmentView = keyof typeof VIEW_DB_STATUSES;
+
+async function sqlCount(view: AppointmentView): Promise<number> {
   const { count, error } = await db
     .from("requests")
     .select("id", { count: "exact", head: true })
-    .in("status", [...VIEW_DB_STATUSES[view]]);
+    .in("status", VIEW_DB_STATUSES[view]);
   expect(error).toBeNull();
   return count ?? 0;
 }
@@ -169,8 +171,11 @@ test.describe("portal requests operation", () => {
     await page.goto(`/admin/requests/${id}`);
 
     await expect(page.getByTestId("request-detail-name")).toHaveText(staged.name);
-    // The breadcrumb's current page is the request's name, not "Detail".
-    await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toContainText(staged.name);
+    // The detail workspace preserves a clear return path to the same queue.
+    await expect(page.getByRole("link", { name: "Back to Appointments" })).toHaveAttribute(
+      "href",
+      "/admin/requests",
+    );
     await expect(page.getByText(staged.phone).first()).toBeVisible();
     await expect(page.getByRole("link", { name: staged.email })).toHaveAttribute(
       "href",
@@ -318,7 +323,7 @@ test.describe("portal requests operation", () => {
     // The assertion samples until one snapshot is INTERNALLY consistent —
     // Chip count, visible rows, and SQL agree exactly at the same instant.
     // Exactness is preserved; transient churn just retries the sample.
-    for (const view of QUEUE_VIEWS) {
+    for (const view of ["new", "contacted", "scheduled", "closed"] as const) {
       await expect
         .poll(
           async () => {
@@ -353,7 +358,7 @@ test.describe("portal requests operation", () => {
     const token = `p2queue-${runId}`;
     const nowMs = Date.now();
     const dayMs = 86_400_000;
-    // Staged rows satisfy the workflow-state constraint: booked rows carry
+    // Staged rows satisfy the workflow constraint: booked rows carry
     // Their handoff time, classified closed rows carry closed_at + reason.
     const stagedRows = [
       {
@@ -599,7 +604,7 @@ test.describe("portal requests operation", () => {
         document.documentElement.dataset.testRequestPrint = "called";
       };
     });
-    await page.getByRole("button", { name: "Print patient page" }).click();
+    await page.getByRole("button", { name: "Print request" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-test-request-print", "called");
 
     // Print keeps the complete patient handoff and removes portal controls
@@ -610,7 +615,7 @@ test.describe("portal requests operation", () => {
     await expect(page.getByTestId("note-list")).toContainText(handoffText);
     await expect(page.getByTestId("request-history")).toContainText("Left a voicemail");
     await expect(page.getByTestId("workflow-panel")).toBeHidden();
-    await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toBeHidden();
+    await expect(page.getByRole("link", { name: "Back to Appointments" })).toBeHidden();
     expect(
       await page
         .locator(".request-detail-print")
@@ -635,7 +640,7 @@ test.describe("portal requests operation", () => {
       expect(String(meta.author_email).toLowerCase()).toBe(SEED_EMAIL.toLowerCase());
     }
 
-    // The workflow audit records the command payload only — never note text.
+    // The workflow audit records the command identity only — never note text.
     const { data: workflowAudits, error: workflowAuditError } = await db
       .from("audit_log")
       .select("detail")
@@ -643,8 +648,8 @@ test.describe("portal requests operation", () => {
       .eq("action", "request.workflow_command");
     expect(workflowAuditError).toBeNull();
     expect(workflowAudits).toHaveLength(1);
-    const detail = asJsonObject(jsonSchema.parse(workflowAudits![0].detail ?? null));
-    expect(asJsonString(detail?.command)).toBe("record_contact_attempt");
+    const detail = workflowCommandDetailSchema.parse(workflowAudits![0].detail);
+    expect(detail.command).toBe("record_contact_attempt");
     expect(JSON.stringify(detail)).not.toContain(noteText);
     expect(JSON.stringify(detail)).not.toContain(handoffText);
   });

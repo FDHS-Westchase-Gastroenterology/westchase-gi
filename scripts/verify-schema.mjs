@@ -4,14 +4,6 @@ import { z } from "zod";
 
 import { asJsonObject, asJsonString, jsonSchema } from "../src/lib/json.ts";
 
-try {
-  process.loadEnvFile(".env.local");
-} catch (error) {
-  if (error?.code !== "ENOENT") {
-    throw error;
-  }
-}
-
 function providerErrorObject(payload) {
   const parsed = jsonSchema.safeParse(payload);
   if (!parsed.success) return null;
@@ -41,6 +33,14 @@ const staffProfileRowSchema = z.object({
   onboarded_at: z.string(),
   portal_tour_dismissed_at: z.string(),
 });
+
+try {
+  process.loadEnvFile(".env.local");
+} catch (error) {
+  if (error?.code !== "ENOENT") {
+    throw error;
+  }
+}
 
 const TABLES = [
   "audit_log",
@@ -78,6 +78,7 @@ const RPC_SIGNATURES = {
   portal_undo_call_outcome: "p_actor_email text, p_request_id uuid, p_event_id uuid",
   portal_hide_staff_release: "p_user_id uuid, p_release_id text",
   portal_open_staff_release: "p_user_id uuid, p_release_id text",
+  portal_prepare_new_request_print_packet: "p_actor_email text",
   portal_preview_data_lifecycle: "p_now timestamp with time zone",
   portal_record_staff_password_reset: "p_user_id uuid",
   portal_record_staff_release_dismiss: "p_user_id uuid, p_release_id text",
@@ -134,6 +135,7 @@ const RPC_RESULTS = {
   portal_undo_call_outcome: "jsonb",
   portal_hide_staff_release: "boolean",
   portal_open_staff_release: "boolean",
+  portal_prepare_new_request_print_packet: "jsonb",
   portal_preview_data_lifecycle: "jsonb",
   portal_record_staff_password_reset: "boolean",
   portal_record_staff_release_dismiss: "boolean",
@@ -158,6 +160,7 @@ const AUDIT_RPC_SOURCES = {
   portal_undo_call_outcome: "staff",
   portal_hide_staff_release: "staff",
   portal_open_staff_release: "staff",
+  portal_prepare_new_request_print_packet: "staff",
   portal_record_staff_password_reset: "staff",
   portal_record_staff_release_dismiss: "staff",
   portal_record_staff_release_guide_open: "staff",
@@ -236,6 +239,18 @@ const RECIPIENT_MUTATIONS_MIGRATION = {
 const APPOINTMENT_WORKFLOW_AUTHORITY_MIGRATION = {
   version: "20260806120000",
   name: "appointment_workflow_authority",
+};
+const NEW_REQUEST_PRINT_PACKET_MIGRATION = {
+  version: "20260809214522",
+  name: "prepare_new_request_print_packet",
+};
+const PRINT_PACKET_COALESCE_REPAIR_MIGRATION = {
+  version: "20260809221925",
+  name: "repair_print_packet_coalesce",
+};
+const PRINT_PACKET_RETURN_STATEMENT_FIX_MIGRATION = {
+  version: "20260809222335",
+  name: "fix_print_packet_return_statement",
 };
 
 const TARGETS = new Set(["branch", "prod"]);
@@ -696,6 +711,30 @@ async function main() {
     ),
     "Appointment-workflow authority migration is not applied",
   );
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === NEW_REQUEST_PRINT_PACKET_MIGRATION.version &&
+        row.name === NEW_REQUEST_PRINT_PACKET_MIGRATION.name,
+    ),
+    "New-request print-packet migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === PRINT_PACKET_COALESCE_REPAIR_MIGRATION.version &&
+        row.name === PRINT_PACKET_COALESCE_REPAIR_MIGRATION.name,
+    ),
+    "Print-packet coalesce repair migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === PRINT_PACKET_RETURN_STATEMENT_FIX_MIGRATION.version &&
+        row.name === PRINT_PACKET_RETURN_STATEMENT_FIX_MIGRATION.name,
+    ),
+    "Print-packet return-statement fix migration is not applied",
+  );
 
   const onboardingColumnRows = await queryDatabase({
     accessToken,
@@ -1017,7 +1056,7 @@ async function main() {
     requestConstraintRows
       .find((row) => row.conname === "requests_status_valid")
       ?.definition?.toLowerCase() ?? "";
-  const workflowConstraintDefinition =
+  const workflowConstraint =
     requestConstraintRows
       .find((row) => row.conname === "requests_workflow_shape_valid")
       ?.definition?.toLowerCase() ?? "";
@@ -1028,8 +1067,8 @@ async function main() {
     ) &&
       requestStatusConstraint.includes("'booked'") &&
       !requestStatusConstraint.includes("'scheduled'") &&
-      workflowConstraintDefinition.includes("legacy_review_required") &&
-      workflowConstraintDefinition.includes("closure_reason"),
+      workflowConstraint.includes("legacy_review_required") &&
+      workflowConstraint.includes("closure_reason"),
     `Request constraints mismatch: ${requestConstraintRows.map((row) => row.conname).join(", ")}`,
   );
 
@@ -1276,6 +1315,21 @@ async function main() {
       assert(
         rpc.definition.toLowerCase().includes("on conflict"),
         "portal_record_analytics_event must upsert rollups atomically",
+      );
+    }
+    if (rpc.proname === "portal_prepare_new_request_print_packet") {
+      const definition = rpc.definition.toLowerCase();
+      assert(
+        definition.includes("packet as materialized") &&
+          definition.includes("snapshot as materialized") &&
+          definition.includes("where request.status = 'new'") &&
+          definition.includes("order by packet.created_at asc, packet.id asc") &&
+          definition.includes("coalesce(") &&
+          !definition.includes("pg_catalog.coalesce(") &&
+          definition.includes("into v_packet") &&
+          definition.includes("'row_count', snapshot.row_count") &&
+          definition.includes("'status_filter', 'new'"),
+        "portal_prepare_new_request_print_packet must materialize one ordered new set with built-in coalesce and a top-level statement for its result and audit count",
       );
     }
     if (rpc.proname === "portal_log_call_outcome") {
@@ -1566,6 +1620,15 @@ async function main() {
   );
   console.log(
     `Verified ${target} migration: ${APPOINTMENT_WORKFLOW_AUTHORITY_MIGRATION.version}_${APPOINTMENT_WORKFLOW_AUTHORITY_MIGRATION.name}`,
+  );
+  console.log(
+    `Verified ${target} migration: ${NEW_REQUEST_PRINT_PACKET_MIGRATION.version}_${NEW_REQUEST_PRINT_PACKET_MIGRATION.name}`,
+  );
+  console.log(
+    `Verified ${target} migration: ${PRINT_PACKET_COALESCE_REPAIR_MIGRATION.version}_${PRINT_PACKET_COALESCE_REPAIR_MIGRATION.name}`,
+  );
+  console.log(
+    `Verified ${target} migration: ${PRINT_PACKET_RETURN_STATEMENT_FIX_MIGRATION.version}_${PRINT_PACKET_RETURN_STATEMENT_FIX_MIGRATION.name}`,
   );
   console.log(
     `Verified ${target} appointment-request workflow: versioned state shape, legacy-review safety, immutable command evidence, outbox, and hold-aware deletion`,

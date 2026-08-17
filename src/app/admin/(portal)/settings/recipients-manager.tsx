@@ -173,14 +173,14 @@ function RecipientRowItem({
                 }
                 if (event.key === "Escape") onCancelLabel();
               }}
-              className="min-h-10 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-3 text-[0.85rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)] disabled:opacity-60"
+              className="min-h-11 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-3 text-[0.85rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)] disabled:opacity-60"
             />
             <button
               type="button"
               data-action="save-label"
               disabled={labelPending}
               onClick={onSaveLabel}
-              className="min-h-10 rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
+              className="min-h-11 rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
             >
               {labelPending ? "Saving…" : "Save"}
             </button>
@@ -188,7 +188,7 @@ function RecipientRowItem({
               type="button"
               disabled={labelPending}
               onClick={onCancelLabel}
-              className="min-h-10 px-2 text-[0.85rem] font-bold text-[var(--color-muted)] disabled:opacity-60"
+              className="min-h-11 px-2 text-[0.85rem] font-bold text-[var(--color-muted)] disabled:opacity-60"
             >
               Cancel
             </button>
@@ -214,7 +214,7 @@ function RecipientRowItem({
           data-action="toggle"
           disabled={togglePending}
           onClick={onToggle}
-          className={`flex min-h-10 items-center rounded-full border px-3.5 text-[0.85rem] font-bold transition-colors disabled:opacity-60 ${
+          className={`flex min-h-11 items-center rounded-full border px-3.5 text-[0.85rem] font-bold transition-colors disabled:opacity-60 ${
             recipient.active
               ? "border-[var(--color-teal-ink)] bg-[var(--color-mint)] text-[var(--color-teal-ink)]"
               : "border-[var(--color-line-2)] bg-white text-[var(--color-muted)]"
@@ -228,146 +228,13 @@ function RecipientRowItem({
             data-action="remove"
             disabled={removePending}
             onClick={onRemove}
-            className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+            className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
           >
             {removePending ? "Removing…" : "Remove"}
           </button>
         )}
       </div>
     </li>
-  );
-}
-
-function RecipientAlerts({
-  error,
-  deliveryNotice,
-  undo,
-  labelNotice,
-  pendingKey,
-  onUndo,
-  onDismissUndo,
-}: Readonly<{
-  error: string | null;
-  deliveryNotice: RecipientsState["deliveryNotice"];
-  undo: RecipientsState["undo"];
-  labelNotice: string | null;
-  pendingKey: string | null;
-  onUndo: () => void;
-  onDismissUndo: () => void;
-}>) {
-  return (
-    <>
-      {error !== null && error !== "" && (
-        <p
-          role="alert"
-          className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
-        >
-          {error}
-        </p>
-      )}
-
-      {deliveryNotice !== null && (
-        <p
-          role="status"
-          data-testid="recipient-delivery-status"
-          className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-sm font-bold text-[var(--color-ink)] ${
-            deliveryNotice.tone === "success"
-              ? "bg-[var(--color-mint)]"
-              : "bg-[var(--color-amber-soft)]"
-          }`}
-        >
-          {deliveryNotice.text}
-        </p>
-      )}
-
-      {undo !== null && (
-        <p
-          role="status"
-          data-testid="recipient-undo"
-          className="mt-4 flex flex-wrap items-center gap-3 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-4 py-3 text-sm text-[var(--color-ink)]"
-        >
-          <span className="font-bold">
-            Notifications {undo.restoredActive ? "paused" : "resumed"} for {undo.email}.
-          </span>
-          <button
-            type="button"
-            data-action="undo-toggle"
-            disabled={pendingKey === `toggle:${undo.recipientId}`}
-            onClick={onUndo}
-            className="min-h-11 font-bold text-[var(--color-teal-ink)] underline underline-offset-2 disabled:opacity-60"
-          >
-            Undo
-          </button>
-          <button
-            type="button"
-            onClick={onDismissUndo}
-            className="min-h-11 font-bold text-[var(--color-muted)]"
-          >
-            Dismiss
-          </button>
-        </p>
-      )}
-
-      {labelNotice !== null && labelNotice !== "" && (
-        <p
-          role="status"
-          data-testid="recipient-label-status"
-          className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
-        >
-          {labelNotice}
-        </p>
-      )}
-    </>
-  );
-}
-
-function AddRecipientForm({
-  pending,
-  onAdd,
-}: Readonly<{
-  pending: boolean;
-  onAdd: (formData: FormData) => void;
-}>) {
-  return (
-    <form className="mt-5 border-t border-[var(--color-line)] pt-5" action={onAdd}>
-      <h3 className="text-sm font-bold text-[var(--color-ink)]">Add a recipient</h3>
-      <div className="mt-3 grid gap-3 sm:grid-cols-[1.4fr_1fr_auto]">
-        <div>
-          <label htmlFor="recipient-email" className="sr-only">
-            Email address
-          </label>
-          <input
-            id="recipient-email"
-            name="email"
-            type="email"
-            required
-            placeholder="frontdesk@example.com"
-            disabled={pending}
-            className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
-          />
-        </div>
-        <div>
-          <label htmlFor="recipient-label" className="sr-only">
-            Label (optional)
-          </label>
-          <input
-            id="recipient-label"
-            name="label"
-            type="text"
-            placeholder="Label (optional)"
-            disabled={pending}
-            className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={pending}
-          className="btn btn-navy min-h-11 disabled:opacity-60"
-        >
-          {pending ? "Saving…" : "Add"}
-        </button>
-      </div>
-    </form>
   );
 }
 
@@ -478,10 +345,7 @@ export function RecipientsManager({
   }
 
   return (
-    <div
-      data-testid="recipients-manager"
-      className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7"
-    >
+    <div data-testid="recipients-manager" className="portal-panel p-6 sm:p-7">
       <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">Notification recipients</h2>
       <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
         Everyone on this list gets an email whenever a patient requests an appointment. The emails
@@ -489,26 +353,76 @@ export function RecipientsManager({
         missed even if an email does.
       </p>
 
-      <RecipientAlerts
-        error={error}
-        deliveryNotice={deliveryNotice}
-        undo={undo}
-        labelNotice={labelNotice}
-        pendingKey={pendingKey}
-        onUndo={() => {
-          if (undo === null) return;
-          const target = undo;
-          run(`toggle:${target.recipientId}`, async () =>
-            toggleNotificationRecipient({
-              recipientId: target.recipientId,
-              active: target.restoredActive,
-            }),
-          );
-        }}
-        onDismissUndo={() => {
-          dispatch({ type: "dismiss_undo" });
-        }}
-      />
+      {error !== null && error !== "" && (
+        <p
+          role="alert"
+          className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
+        >
+          {error}
+        </p>
+      )}
+
+      {deliveryNotice !== null && (
+        <p
+          role="status"
+          data-testid="recipient-delivery-status"
+          className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-sm font-bold text-[var(--color-ink)] ${
+            deliveryNotice.tone === "success"
+              ? "bg-[var(--color-mint)]"
+              : "bg-[var(--color-amber-soft)]"
+          }`}
+        >
+          {deliveryNotice.text}
+        </p>
+      )}
+
+      {undo !== null && (
+        <p
+          role="status"
+          data-testid="recipient-undo"
+          className="mt-4 flex flex-wrap items-center gap-3 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-4 py-3 text-sm text-[var(--color-ink)]"
+        >
+          <span className="font-bold">
+            Notifications {undo.restoredActive ? "paused" : "resumed"} for {undo.email}.
+          </span>
+          <button
+            type="button"
+            data-action="undo-toggle"
+            disabled={pendingKey === `toggle:${undo.recipientId}`}
+            onClick={() => {
+              const target = undo;
+              run(`toggle:${target.recipientId}`, async () =>
+                toggleNotificationRecipient({
+                  recipientId: target.recipientId,
+                  active: target.restoredActive,
+                }),
+              );
+            }}
+            className="min-h-11 font-bold text-[var(--color-teal-ink)] underline underline-offset-2 disabled:opacity-60"
+          >
+            Undo
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              dispatch({ type: "dismiss_undo" });
+            }}
+            className="min-h-11 font-bold text-[var(--color-muted)]"
+          >
+            Dismiss
+          </button>
+        </p>
+      )}
+
+      {labelNotice !== null && labelNotice !== "" && (
+        <p
+          role="status"
+          data-testid="recipient-label-status"
+          className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
+        >
+          {labelNotice}
+        </p>
+      )}
 
       <ul data-testid="recipient-list" className="mt-5 divide-y divide-[var(--color-line)]">
         {recipients.length === 0 && (
@@ -564,7 +478,45 @@ export function RecipientsManager({
       </ul>
 
       {isAdmin ? (
-        <AddRecipientForm pending={pendingKey === "add"} onAdd={addFromForm} />
+        <form className="mt-5 border-t border-[var(--color-line)] pt-5" action={addFromForm}>
+          <h3 className="text-sm font-bold text-[var(--color-ink)]">Add a recipient</h3>
+          <div className="mt-3 grid gap-3 sm:grid-cols-[1.4fr_1fr_auto]">
+            <div>
+              <label htmlFor="recipient-email" className="sr-only">
+                Email address
+              </label>
+              <input
+                id="recipient-email"
+                name="email"
+                type="email"
+                required
+                placeholder="frontdesk@example.com"
+                disabled={pendingKey === "add"}
+                className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
+              />
+            </div>
+            <div>
+              <label htmlFor="recipient-label" className="sr-only">
+                Label (optional)
+              </label>
+              <input
+                id="recipient-label"
+                name="label"
+                type="text"
+                placeholder="Label (optional)"
+                disabled={pendingKey === "add"}
+                className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={pendingKey === "add"}
+              className="btn btn-navy min-h-11 disabled:opacity-60"
+            >
+              {pendingKey === "add" ? "Saving…" : "Add"}
+            </button>
+          </div>
+        </form>
       ) : (
         <p className="mt-5 border-t border-[var(--color-line)] pt-5 text-[0.9rem] text-[var(--color-muted)]">
           Adding or removing recipients needs an administrator — you can pause or resume any address

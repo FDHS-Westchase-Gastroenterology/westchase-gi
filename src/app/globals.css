@@ -1210,17 +1210,142 @@
     color: var(--color-ink);
   }
 
-  /* ---- Staff portal chrome ----
-     The portal shares the site's tokens but is a tool, not a brochure.
-     Exactly one Trocchi page title per screen (the base h1 rule already
-     carries the family at its real weight, 400); every heading below it
-     returns to Lato so section labels read as UI. :where() keeps the
-     rule at class specificity inside @layer components, so explicit
-     font-family declarations (the print-flyer composition, utility
-     classes) still win. */
+  /* ---- Staff portal workbench ----
+     The portal shares the practice palette, then tightens it into an
+     operational system: Lato carries every working hierarchy, white planes
+     hold editable work, and amber is reserved for attention rather than
+     decoration. :where() keeps the rule easy to override in print layouts. */
+  .portal-scope {
+    --portal-canvas: oklch(0.965 0.008 230);
+    --portal-surface: oklch(0.995 0.002 220);
+    --portal-attention-ink: oklch(0.5 0.11 70);
+    background: var(--portal-canvas);
+    font-size: 1rem;
+    line-height: 1.55;
+    accent-color: var(--color-navy);
+    caret-color: var(--color-teal-ink);
+    scrollbar-color: var(--color-line-2) transparent;
+  }
+
+  .portal-scope main {
+    background: var(--portal-canvas);
+  }
+
   .portal-scope :where(h2, h3, h4, h5) {
     font-family: var(--font-body);
     letter-spacing: 0;
+  }
+
+  .portal-scope :where(input, select, textarea) {
+    scroll-margin-block: 6rem;
+  }
+
+  .portal-scope .skip-link {
+    transition: none;
+  }
+
+  .portal-scope .btn {
+    min-height: 2.75rem;
+    padding: 0.8rem 1.2rem;
+    border-radius: 0.5rem;
+    transition:
+      transform 120ms cubic-bezier(0.23, 1, 0.32, 1),
+      background-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+      color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+      box-shadow 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-scope .btn:hover {
+    transform: none;
+  }
+
+  .portal-scope .btn:active {
+    transform: scale(0.98);
+  }
+
+  .portal-header {
+    border-bottom: 1px solid color-mix(in oklch, var(--color-line-dark) 68%, transparent);
+    box-shadow: 0 8px 24px -22px oklch(0.2 0.05 248 / 0.8);
+  }
+
+  .portal-panel {
+    border: 1px solid var(--color-line-2);
+    border-radius: 0.75rem;
+    background: var(--portal-surface);
+  }
+
+  .portal-panel--primary {
+    border-color: color-mix(in oklch, var(--color-navy) 24%, var(--color-line));
+  }
+
+  .portal-utility-list {
+    border-block: 1px solid var(--color-line-2);
+  }
+
+  .portal-utility-list > li + li {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .portal-toolbar {
+    border: 1px solid var(--color-line-2);
+    border-radius: 0.75rem;
+    background: var(--portal-surface);
+    padding: 1rem;
+  }
+
+  .portal-queue-list {
+    overflow: clip;
+    border: 1px solid var(--color-line-2);
+    border-radius: 0.75rem;
+    background: var(--portal-surface);
+  }
+
+  .portal-queue-list > li + li {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .portal-queue-row {
+    transition: background-color 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-queue-row:focus-visible {
+    outline-offset: -3px;
+  }
+
+  .portal-empty {
+    border-block: 1px solid var(--color-line-2);
+    background: var(--color-mint);
+  }
+
+  .portal-help {
+    overflow: clip;
+    max-width: 60rem;
+    border: 1px solid var(--color-line-2);
+    border-radius: 0.75rem;
+    background: var(--portal-surface);
+  }
+
+  .portal-help-section {
+    padding: clamp(1.5rem, 3vw, 2rem);
+  }
+
+  .portal-help-section + .portal-help-section {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .portal-help-tour {
+    background: var(--color-mint);
+  }
+
+  .portal-flyer-list {
+    overflow: clip;
+    border: 1px solid var(--color-line-2);
+    border-radius: 0.75rem;
+    background: var(--portal-surface);
+  }
+
+  .portal-flyer-row + .portal-flyer-row {
+    border-top: 1px solid var(--color-line);
   }
 
   /* First-login tour: the dialog arrives with a short, calm rise (180ms,
@@ -1250,18 +1375,45 @@
     }
   }
   @media (prefers-reduced-motion: reduce) {
+    .portal-scope .btn:active {
+      transform: none;
+    }
+
     .tour-dialog[open],
     .tour-dialog[open]::backdrop {
       animation: none;
     }
   }
 
-  /* Portal page title: the practice serif at its true weight — never
-     synthetic bold (Trocchi ships 400 only). */
+  /* Page titles read as controls and destinations, not brochure headlines. */
   .portal-title {
-    font-size: 1.85rem;
-    line-height: 1.15;
-    font-weight: 400;
+    font-family: var(--font-body);
+    font-size: clamp(1.8rem, 1.58rem + 0.8vw, 2.2rem);
+    line-height: 1.08;
+    font-weight: 900;
+    letter-spacing: -0.028em;
+  }
+
+  .portal-auth-title {
+    font-family: var(--font-body);
+    font-weight: 900;
+    letter-spacing: -0.025em;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .portal-queue-row:hover {
+      background: var(--color-mint);
+    }
+  }
+
+  @media (max-width: 639px) {
+    .portal-toolbar {
+      padding: 0.875rem;
+    }
+
+    .portal-help-section {
+      padding: 1.5rem;
+    }
   }
 
   /* ---- Staff release briefing ----
@@ -1919,8 +2071,6 @@
     page: request-detail;
   }
 
-  body.portal-scope:has(.request-detail-print) header,
-  body.portal-scope:has(.request-detail-print) footer,
   body.portal-scope:has(.request-detail-print) .portal-release-utility {
     display: none !important;
   }
@@ -1938,7 +2088,7 @@
     break-inside: auto !important;
   }
 
-  .request-detail-print .portal-title {
+  .request-detail-print .portal-page-title {
     font-size: 18pt;
   }
 

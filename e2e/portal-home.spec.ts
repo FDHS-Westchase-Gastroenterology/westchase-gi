@@ -8,9 +8,13 @@ import { intakeResponseSchema } from "../src/lib/portal/contracts";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // The portal home page: staff land on a greeting and their tasks, not on
-// Software. The queue overview count is real data, the task list is
-// Role-gated (the flyer printer is an admin task, not a tab), and the
-// Primary action leads to the queue at /admin/requests.
+// Software. The queue overview count is real data, paper handoff is one
+// Truthful action away, and occasional tools stay out of the primary path.
+
+const tourAuditRowSchema = z.object({
+  id: z.string(),
+  action: z.string().optional(),
+});
 
 loadLocalEnv();
 
@@ -124,7 +128,7 @@ test.describe("portal home", () => {
     const oldestLine = page.getByTestId("queue-overview-oldest");
     await expect(oldestLine).toHaveCount(oldestIsPastDay ? 1 : 0);
     if (oldestIsPastDay) {
-      await expect(oldestLine).toHaveText(/^(It|The oldest) has been waiting since .+\.$/);
+      await expect(oldestLine).toHaveText(/^(Waiting|Oldest waiting) since .+\.$/);
     }
 
     // The zero-recipients safety net appears exactly when no active
@@ -152,14 +156,14 @@ test.describe("portal home", () => {
     await expect(nav.getByRole("link", { name: "Print review flyers" })).toHaveCount(0);
 
     // Task list: five rows for every role — flyer printing is staff-wide
-    // (Product decision 2026-07-26) — each a working link. Scoped to the
+    // (product decision 2026-07-26) — each a working link. Scoped to the
     // Tasks section: the zero-recipients warning may repeat a task's name.
-    const tasks = page.locator('section[aria-labelledby="tasks-heading"]');
+    const tasks = page.locator('aside[aria-labelledby="desk-tools-heading"]');
     for (const [label, href] of [
       ["Print review flyers", "/admin/review-flyers"],
-      ["Manage notification emails", "/admin/settings#notifications"],
-      ["Manage staff access", "/admin/settings#staff"],
-      ["Website", "/admin/settings/software"],
+      ["Notification emails", "/admin/settings#notifications"],
+      ["Staff access", "/admin/settings#staff"],
+      ["Website status", "/admin/settings/software"],
       ["Request a website change", "/admin/help#website-changes"],
     ] as const) {
       await expect(
@@ -167,6 +171,16 @@ test.describe("portal home", () => {
         `task row: ${label}`,
       ).toHaveAttribute("href", href);
     }
+
+    // The manager's paper handoff is directly available from Home, opens a
+    // Dedicated print surface, and keeps the live workbench in place.
+    const printLink = page.getByRole("link", {
+      name: `Print all ${newCount} new appointment ${
+        newCount === 1 ? "request" : "requests"
+      }; opens in a new tab`,
+    });
+    await expect(printLink).toHaveAttribute("href", "/admin/requests/print?auto=1");
+    await expect(printLink).toHaveAttribute("target", "_blank");
 
     // The primary action opens the Appointments workbench (DEC-UX-02: the
     // Destination is named Appointments; the records remain appointment
@@ -178,6 +192,13 @@ test.describe("portal home", () => {
     await expect(
       page.locator('nav[aria-label="Portal sections"] a[aria-current="page"]'),
     ).toHaveText(/^Appointments/, { useInnerText: true });
+    await expect(
+      page.getByRole("link", {
+        name: `Print ${newCount} new appointment ${
+          newCount === 1 ? "request" : "requests"
+        }; opens in a new tab`,
+      }),
+    ).toHaveAttribute("target", "_blank");
   });
 
   test("home flags recent notification delivery failures honestly", async ({ page }) => {
@@ -377,7 +398,7 @@ test.describe("portal home", () => {
       expect(auditError).toBeNull();
       expect(
         z
-          .array(z.object({ id: z.string(), action: z.string() }))
+          .array(tourAuditRowSchema)
           .parse(audits ?? [])
           .filter((row) => !priorAuditIds.has(row.id))
           .map((row) => row.action),

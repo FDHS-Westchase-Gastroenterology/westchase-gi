@@ -131,7 +131,7 @@ function StaffList({
                             resendFromRow(person);
                           }
                         }}
-                        className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
+                        className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
                       >
                         Resend invite
                       </button>
@@ -150,7 +150,7 @@ function StaffList({
                             );
                           }
                         }}
-                        className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+                        className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
                       >
                         Deactivate
                       </button>
@@ -170,7 +170,7 @@ function StaffList({
                       const role = parseStaffRole(event.target.value);
                       if (role) onRoleDraft(person.user_id, role);
                     }}
-                    className="min-h-10 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-2.5 text-[0.85rem] font-bold text-[var(--color-body)]"
+                    className="min-h-11 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-2.5 text-[0.85rem] font-bold text-[var(--color-body)]"
                   >
                     <option value="staff">Staff</option>
                     <option value="admin">Admin</option>
@@ -188,7 +188,7 @@ function StaffList({
                           }),
                         );
                       }}
-                      className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
+                      className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
                     >
                       Apply
                     </button>
@@ -208,7 +208,7 @@ function StaffList({
                         );
                       }
                     }}
-                    className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+                    className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
                   >
                     Deactivate
                   </button>
@@ -321,10 +321,7 @@ export function StaffManager({
   }
 
   return (
-    <div
-      data-testid="staff-manager"
-      className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7"
-    >
+    <div data-testid="staff-manager" className="portal-panel p-6 sm:p-7">
       <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">Staff access</h2>
       <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
         Everyone who can open this portal. Administrators can invite people, change roles, and
@@ -379,15 +376,13 @@ export function StaffManager({
                     void navigator.clipboard
                       .writeText(issued.fallbackSetupUrl ?? "")
                       .then(() => {
-                        setIssued((current) =>
-                          current !== null ? { ...current, copied: true } : current,
-                        );
+                        setIssued((current) => (current ? { ...current, copied: true } : current));
                       })
                       .catch(() => {
                         setError("Could not copy the setup link. Select and copy it manually.");
                       });
                   }}
-                  className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)]"
+                  className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)]"
                 >
                   {issued.copied ? "Copied" : "Copy setup link"}
                 </button>
@@ -397,7 +392,7 @@ export function StaffManager({
               onClick={() => {
                 setIssued(null);
               }}
-              className="flex min-h-10 items-center rounded-[var(--radius-sm)] px-3.5 text-[0.85rem] font-bold text-[var(--color-muted)]"
+              className="flex min-h-11 items-center rounded-[var(--radius-sm)] px-3.5 text-[0.85rem] font-bold text-[var(--color-muted)]"
             >
               Dismiss
             </button>
