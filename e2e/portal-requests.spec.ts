@@ -102,6 +102,147 @@ test.describe("portal requests operation", () => {
     await db.from("requests").delete().like("email", `queue-${runId}-%`);
   });
 
+  test("staff can add an appointment request from Home without creating website-notification work", async ({
+    page,
+  }) => {
+    const patientName = `TEST Queue ${runId} staff entry`;
+    const patientEmail = `queue-${runId}-staff@example.test`;
+    const schedulingNote = "TEST Staff entry — afternoons work best; no medical details.";
+    let requestId: string | null = null;
+
+    try {
+      await signIn(page);
+      await page.getByTestId("home-add-patient-request").click();
+      await expect(page).toHaveURL(/\/admin\/requests\/new$/);
+      await expect(page.getByRole("heading", { name: "Add patient request" })).toBeVisible();
+      await expect(page.getByText("Keep this to scheduling.")).toBeVisible();
+
+      const form = page.getByRole("form", { name: "Add patient request" });
+      const name = form.locator("#staff-request-name");
+      const phone = form.locator("#staff-request-phone");
+      const idempotency = form.locator('input[name="idempotencyKey"]');
+      const originalKey = await idempotency.inputValue();
+
+      // Server validation preserves the draft and the idempotency key. This
+      // Lets staff correct one field without retyping or risking a duplicate
+      // After an ambiguous save attempt.
+      await name.fill(patientName);
+      await form.locator("#staff-request-message").fill(schedulingNote);
+      await page.getByTestId("submit-staff-request").click();
+      await expect(phone).toBeFocused();
+      await expect(page.getByTestId("staff-request-error")).toContainText(
+        "Check the highlighted fields.",
+      );
+      await expect(name).toHaveValue(patientName);
+      await expect(form.locator("#staff-request-message")).toHaveValue(schedulingNote);
+      await expect(idempotency).toHaveValue(originalKey);
+
+      await phone.fill("8135550188");
+      await form.locator("#staff-request-email").fill(patientEmail);
+      await form.locator("#staff-request-location").selectOption("lutz");
+      await form.locator("#staff-request-time").selectOption("afternoon");
+      await page.getByTestId("submit-staff-request").click();
+
+      await expect(page).toHaveURL(/\/admin\/requests\/[0-9a-f-]+\?created=1$/, {
+        timeout: 15_000,
+      });
+      requestId = /\/admin\/requests\/([0-9a-f-]+)/.exec(page.url())?.[1] ?? null;
+      expect(requestId).not.toBeNull();
+
+      await expect(page.getByTestId("staff-request-created")).toContainText(
+        "Patient request added to New.",
+      );
+      await expect(page.getByTestId("staff-request-created")).toContainText(
+        "No notification email was sent.",
+      );
+      await expect(page.getByTestId("request-detail-name")).toHaveText(patientName);
+      await expect(page.getByTestId("request-intake-meta")).toContainText("Added by staff");
+      await expect(page.getByTestId("request-history")).toContainText(
+        "Appointment request added by staff",
+      );
+      await expect(page.locator('[data-status="new"]')).toBeVisible();
+
+      const { data: row, error: rowError } = await db
+        .from("requests")
+        .select("status, source_path, locale")
+        .eq("id", requestId!)
+        .single();
+      expect(rowError).toBeNull();
+      expect(row).toMatchObject({
+        status: "new",
+        source_path: "/admin/requests/new",
+        locale: "en",
+      });
+
+      const { data: creationEvents, error: eventError } = await db
+        .from("request_events")
+        .select("type, status, meta")
+        .eq("request_id", requestId!)
+        .eq("type", "created");
+      expect(eventError).toBeNull();
+      expect(creationEvents).toHaveLength(1);
+      expect(creationEvents?.[0]).toMatchObject({
+        type: "created",
+        status: "recorded",
+        meta: { origin: "staff" },
+      });
+
+      const { data: creationAudits, error: auditError } = await db
+        .from("audit_log")
+        .select("actor_email, action, source, detail")
+        .eq("entity_id", requestId!)
+        .eq("action", "request.create");
+      expect(auditError).toBeNull();
+      expect(creationAudits).toHaveLength(1);
+      expect(creationAudits?.[0]).toMatchObject({
+        actor_email: SEED_EMAIL.toLowerCase(),
+        action: "request.create",
+        source: "staff",
+        detail: { origin: "staff" },
+      });
+      const auditJson = JSON.stringify(creationAudits?.[0]?.detail ?? null);
+      expect(auditJson).not.toContain(patientName);
+      expect(auditJson).not.toContain("8135550188");
+      expect(auditJson).not.toContain(patientEmail);
+
+      const { count: outboxCount, error: outboxError } = await db
+        .from("notification_outbox")
+        .select("id", { count: "exact", head: true })
+        .eq("request_id", requestId!);
+      expect(outboxError).toBeNull();
+      expect(outboxCount).toBe(0);
+
+      const { data: receipt, error: receiptError } = await db
+        .from("staff_request_receipts")
+        .select("idempotency_key, request_id")
+        .eq("idempotency_key", originalKey)
+        .single();
+      expect(receiptError).toBeNull();
+      expect(receipt).toMatchObject({ idempotency_key: originalKey, request_id: requestId });
+
+      await page.goto(`/admin/requests?q=${encodeURIComponent(patientEmail)}`);
+      const rowLink = page.getByTestId("request-row").filter({ hasText: patientName });
+      await expect(rowLink).toBeVisible();
+      await expect(rowLink.locator('[data-status="new"]')).toBeVisible();
+      await expect(page.getByTestId("appointments-add-patient-request")).toHaveAttribute(
+        "href",
+        "/admin/requests/new?from=appointments",
+      );
+    } finally {
+      const ids = new Set<string>();
+      if (requestId !== null) ids.add(requestId);
+      const { data: rows } = await db.from("requests").select("id").eq("email", patientEmail);
+      for (const row of z.array(z.object({ id: z.string() })).parse(rows ?? [])) {
+        ids.add(row.id);
+      }
+      if (ids.size > 0) {
+        const stagedIds = [...ids];
+        await db.from("requests").delete().in("id", stagedIds);
+        await db.from("audit_log").delete().in("entity_id", stagedIds);
+      }
+    }
+  });
+
   test("VAL-ADMIN-003: the queue leads with the oldest unworked requests first", async ({
     page,
     request,

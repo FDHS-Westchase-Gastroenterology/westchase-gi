@@ -6,7 +6,7 @@ import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import { ChevronRight, Printer } from "@/components/icons";
 import { requireRole } from "@/lib/portal/auth";
 import { waitingSince } from "@/lib/portal/business-time";
-import { REQUEST_STATUSES } from "@/lib/portal/contracts";
+import { REQUEST_STATUSES, STAFF_REQUEST_SOURCE_PATH } from "@/lib/portal/contracts";
 import type { RequestStatus } from "@/lib/portal/contracts";
 import type { AttentionBucket } from "@/lib/portal/queue-attention";
 import {
@@ -355,6 +355,13 @@ export default async function AdminRequestsPage({
         description="Every appointment request, ordered by what needs attention first. Open one to call, document the outcome, and continue without losing your place."
         actions={
           <>
+            <Link
+              href={`${STAFF_REQUEST_SOURCE_PATH}?from=appointments`}
+              data-testid="appointments-add-patient-request"
+              className="btn btn-outline min-h-11"
+            >
+              Add patient request
+            </Link>
             {counts.new > 0 ? (
               <Link
                 href="/admin/requests/print?auto=1"

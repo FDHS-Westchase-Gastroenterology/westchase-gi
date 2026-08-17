@@ -33,6 +33,7 @@ const staffProfileRowSchema = z.object({
   onboarded_at: z.string(),
   portal_tour_dismissed_at: z.string(),
 });
+const uuidSchema = z.uuid();
 
 try {
   process.loadEnvFile(".env.local");
@@ -52,6 +53,7 @@ const TABLES = [
   "request_transitions",
   "requests",
   "staff_profiles",
+  "staff_request_receipts",
 ];
 
 const RETIRED_TABLES = [["registry", "assets"].join("_"), ["registry", "grants"].join("_")];
@@ -69,6 +71,7 @@ const RPC_SIGNATURES = {
     "p_event text, p_route_template text, p_locale text, p_device_class text",
   portal_close_request: "p_actor_email text, p_request_id uuid, p_disposition text",
   portal_complete_staff_onboarding: "p_user_id uuid",
+  portal_create_staff_request: "p_actor_email text, p_idempotency_key uuid, p_request jsonb",
   portal_create_request_with_outbox: "p_request jsonb",
   portal_delete_request_early: "p_actor_email text, p_request_id uuid, p_authorization_ref text",
   portal_execute_request_command:
@@ -128,6 +131,7 @@ const RPC_RESULTS = {
   portal_record_analytics_event: "boolean",
   portal_close_request: "boolean",
   portal_complete_staff_onboarding: "boolean",
+  portal_create_staff_request: "uuid",
   portal_create_request_with_outbox: "uuid",
   portal_delete_request_early: "boolean",
   portal_execute_request_command: "jsonb",
@@ -154,6 +158,7 @@ const AUDIT_RPC_SOURCES = {
   portal_add_request_note: "staff",
   portal_close_request: "staff",
   portal_complete_staff_onboarding: "staff",
+  portal_create_staff_request: "staff",
   portal_delete_request_early: "staff",
   portal_execute_request_command: "staff",
   portal_log_call_outcome: "staff",
@@ -251,6 +256,10 @@ const PRINT_PACKET_COALESCE_REPAIR_MIGRATION = {
 const PRINT_PACKET_RETURN_STATEMENT_FIX_MIGRATION = {
   version: "20260809222335",
   name: "fix_print_packet_return_statement",
+};
+const STAFF_REQUEST_CREATION_MIGRATION = {
+  version: "20260817153511",
+  name: "create_staff_authored_requests",
 };
 
 const TARGETS = new Set(["branch", "prod"]);
@@ -440,6 +449,167 @@ async function selectRows({ url, serviceKey, table, query }) {
   }
 
   return payload;
+}
+
+async function deleteRows({ url, serviceKey, table, query }) {
+  const response = await fetch(`${url}/rest/v1/${table}?${query}`, {
+    method: "DELETE",
+    headers: serviceHeaders(serviceKey),
+  });
+  await readResponse(response, `Delete ${table}`);
+}
+
+async function callServiceRpc({ url, serviceKey, name, body }) {
+  const response = await fetch(`${url}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: {
+      ...serviceHeaders(serviceKey),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  return { response, payload: await parseResponse(response) };
+}
+
+async function assertStaffRequestCreation({ url, serviceKey }) {
+  const actorEmail = `verify-staff-request-${Date.now()}@example.test`;
+  const idempotencyKey = crypto.randomUUID();
+  const payload = {
+    name: "TEST Staff Request",
+    phone: "813-555-0199",
+    email: "test.staff.request@example.test",
+    location: "tampa",
+    preferred_time: "morning",
+    message: "TEST fictional schema verification request",
+  };
+  let requestId = null;
+
+  try {
+    const first = await callServiceRpc({
+      url,
+      serviceKey,
+      name: "portal_create_staff_request",
+      body: {
+        p_actor_email: actorEmail,
+        p_idempotency_key: idempotencyKey,
+        p_request: payload,
+      },
+    });
+    const createdRequestId = uuidSchema.safeParse(first.payload);
+    assert(first.response.ok && createdRequestId.success, "Staff request creation failed");
+    requestId = createdRequestId.data;
+
+    async function readEffects() {
+      const encodedId = encodeURIComponent(requestId);
+      const [requests, events, audits, outbox] = await Promise.all([
+        selectRows({
+          url,
+          serviceKey,
+          table: "requests",
+          query: `select=id,status,locale,source_path&id=eq.${encodedId}`,
+        }),
+        selectRows({
+          url,
+          serviceKey,
+          table: "request_events",
+          query: `select=id,type,status,meta&request_id=eq.${encodedId}`,
+        }),
+        selectRows({
+          url,
+          serviceKey,
+          table: "audit_log",
+          query: `select=id,actor_email,action,entity,entity_id,source,detail&entity_id=eq.${encodedId}`,
+        }),
+        selectRows({
+          url,
+          serviceKey,
+          table: "notification_outbox",
+          query: `select=id&request_id=eq.${encodedId}`,
+        }),
+      ]);
+      return { requests, events, audits, outbox };
+    }
+
+    function assertEffects(effects) {
+      assert(
+        effects.requests.length === 1 &&
+          effects.requests[0].status === "new" &&
+          effects.requests[0].locale === "en" &&
+          effects.requests[0].source_path === "/admin/requests/new",
+        "Staff request row has incorrect state or provenance",
+      );
+      assert(
+        effects.events.length === 1 &&
+          effects.events[0].type === "created" &&
+          effects.events[0].status === "recorded" &&
+          JSON.stringify(effects.events[0].meta) === '{"origin":"staff"}',
+        "Staff request must have exactly one staff-origin created event",
+      );
+      assert(
+        effects.audits.length === 1 &&
+          effects.audits[0].actor_email === actorEmail &&
+          effects.audits[0].action === "request.create" &&
+          effects.audits[0].entity === "requests" &&
+          effects.audits[0].source === "staff" &&
+          JSON.stringify(effects.audits[0].detail) === '{"origin":"staff"}',
+        "Staff request must have exactly one PHI-free creation audit",
+      );
+      assert(effects.outbox.length === 0, "Staff request unexpectedly created notification work");
+    }
+
+    const initialEffects = await readEffects();
+    assertEffects(initialEffects);
+
+    const replay = await callServiceRpc({
+      url,
+      serviceKey,
+      name: "portal_create_staff_request",
+      body: {
+        p_actor_email: actorEmail,
+        p_idempotency_key: idempotencyKey,
+        p_request: payload,
+      },
+    });
+    assert(
+      replay.response.ok && replay.payload === requestId,
+      "Exact staff request replay did not return the original request",
+    );
+    assertEffects(await readEffects());
+
+    const conflict = await callServiceRpc({
+      url,
+      serviceKey,
+      name: "portal_create_staff_request",
+      body: {
+        p_actor_email: actorEmail,
+        p_idempotency_key: idempotencyKey,
+        p_request: { ...payload, location: "lutz" },
+      },
+    });
+    assert(
+      !conflict.response.ok && providerErrorCode(conflict.payload) === "23505",
+      "Changed-payload idempotency reuse was not rejected",
+    );
+    assertEffects(await readEffects());
+  } finally {
+    if (requestId !== null) {
+      const encodedId = encodeURIComponent(requestId);
+      await Promise.all([
+        deleteRows({
+          url,
+          serviceKey,
+          table: "audit_log",
+          query: `entity_id=eq.${encodedId}&action=eq.request.create`,
+        }),
+        deleteRows({
+          url,
+          serviceKey,
+          table: "requests",
+          query: `id=eq.${encodedId}`,
+        }),
+      ]);
+    }
+  }
 }
 
 async function assertSelectDeniedAsUser({ url, anonKey, accessToken, table, query }) {
@@ -734,6 +904,14 @@ async function main() {
         row.name === PRINT_PACKET_RETURN_STATEMENT_FIX_MIGRATION.name,
     ),
     "Print-packet return-statement fix migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === STAFF_REQUEST_CREATION_MIGRATION.version &&
+        row.name === STAFF_REQUEST_CREATION_MIGRATION.name,
+    ),
+    "Staff-request creation migration is not applied",
   );
 
   const onboardingColumnRows = await queryDatabase({
@@ -1235,10 +1413,17 @@ async function main() {
         !row.authenticated_delete,
       `The authenticated role has portal table access on ${row.table_name}`,
     );
-    assert(
-      row.service_select && row.service_insert && row.service_update && row.service_delete,
-      `The service_role lacks CRUD on ${row.table_name}`,
-    );
+    if (row.table_name === "staff_request_receipts") {
+      assert(
+        row.service_select && row.service_insert && !row.service_update && !row.service_delete,
+        "staff_request_receipts must expose only append-only service access",
+      );
+    } else {
+      assert(
+        row.service_select && row.service_insert && row.service_update && row.service_delete,
+        `The service_role lacks CRUD on ${row.table_name}`,
+      );
+    }
   }
 
   const rpcRows = await queryDatabase({
@@ -1372,6 +1557,20 @@ async function main() {
           definition.includes("insert into public.notification_outbox") &&
           definition.includes("where active"),
         "portal_create_request_with_outbox must persist the request, creation evidence, and active-recipient outbox rows together",
+      );
+    }
+    if (rpc.proname === "portal_create_staff_request") {
+      const definition = rpc.definition.toLowerCase();
+      assert(
+        definition.includes("pg_advisory_xact_lock") &&
+          definition.includes("staff_request_receipts") &&
+          definition.includes("extensions.digest") &&
+          definition.includes("insert into public.requests") &&
+          definition.includes("insert into public.request_events") &&
+          definition.includes("'request.create'") &&
+          definition.includes('\'{"origin":"staff"}\'') &&
+          !definition.includes("notification_outbox"),
+        "portal_create_staff_request must serialize idempotency, atomically create staff provenance, and omit outbox work",
       );
     }
     if (rpc.proname === "portal_undo_call_outcome") {
@@ -1537,6 +1736,9 @@ async function main() {
     url: config.url,
     serviceKey: config.serviceKey,
   });
+  if (target === "branch") {
+    await assertStaffRequestCreation({ url: config.url, serviceKey: config.serviceKey });
+  }
 
   const encodedEmail = encodeURIComponent(email);
   const [staffRows, recipientRows] = await Promise.all([
@@ -1629,6 +1831,9 @@ async function main() {
   );
   console.log(
     `Verified ${target} migration: ${PRINT_PACKET_RETURN_STATEMENT_FIX_MIGRATION.version}_${PRINT_PACKET_RETURN_STATEMENT_FIX_MIGRATION.name}`,
+  );
+  console.log(
+    `Verified ${target} migration: ${STAFF_REQUEST_CREATION_MIGRATION.version}_${STAFF_REQUEST_CREATION_MIGRATION.name}`,
   );
   console.log(
     `Verified ${target} appointment-request workflow: versioned state shape, legacy-review safety, immutable command evidence, outbox, and hold-aware deletion`,

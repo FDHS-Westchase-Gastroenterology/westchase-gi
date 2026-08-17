@@ -83,6 +83,9 @@ surface until it is deliberately re-chartered.
 - Home is a triage and handoff workbench, not a metric dashboard. Appointments is one ordered
   ledger that recomposes from a dense desktop row into a readable mobile record without hiding
   status, next action, or recovery.
+- Staff-authored intake uses a dedicated ruled worksheet within the working canvas, not a modal
+  or a separate patient registry. Contact details, preferences, scheduling context, and the
+  clinical-record boundary remain visible as one linear task on desktop and mobile.
 - Page titles, descriptions, status context, and the primary action form one repeated header
   contract. Settings tabs and appointment filters preserve location with `aria-current` rather
   than inventing new navigation behavior.

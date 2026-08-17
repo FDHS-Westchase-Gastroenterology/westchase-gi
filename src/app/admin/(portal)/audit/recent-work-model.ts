@@ -115,6 +115,8 @@ function describeAction(
 ): ActionDescription {
   const requestEntity = entry.entity === "requests";
   switch (entry.action) {
+    case "request.create":
+      return { sentence: "added an appointment request", technical: false };
     case "request.status_change": {
       const to = asJsonString(detail.to) ?? "";
       if (to === "closed" && detail.legacy_unclassified_close === true) {

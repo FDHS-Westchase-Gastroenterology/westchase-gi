@@ -192,7 +192,7 @@ export const UNDO_WINDOW_MINUTES = 15;
  * Entries render newest-first; `at` is the durable occurrence time.
  */
 export type HistoryEntry =
-  | { kind: "created"; at: string }
+  | { kind: "created"; origin: "staff" | "website"; at: string }
   | {
       kind: "contact_attempt";
       id: string;

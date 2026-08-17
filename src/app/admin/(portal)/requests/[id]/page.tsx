@@ -21,7 +21,7 @@ import {
   OPEN_STATUSES,
 } from "@/app/admin/(portal)/requests/queue";
 import { StatusBadge } from "@/app/admin/(portal)/requests/status-badge";
-import { Clock, Mail, MapPin, MessageSquare, Phone } from "@/components/icons";
+import { Check, Clock, Mail, MapPin, MessageSquare, Phone } from "@/components/icons";
 import { PrintButton } from "@/components/PrintButton";
 import { requireRole } from "@/lib/portal/auth";
 import { isMailbox, REQUEST_STATUSES } from "@/lib/portal/contracts";
@@ -93,7 +93,10 @@ function historyLine(entry: Readonly<HistoryEntry>): HistoryLine | null {
     case "created":
       return {
         id: "created",
-        text: "Appointment request received from the website",
+        text:
+          entry.origin === "staff"
+            ? "Appointment request added by staff"
+            : "Appointment request received from the website",
         actor: null,
         at: entry.at,
         quiet: true,
@@ -186,6 +189,7 @@ export default async function RequestDetailPage({
     status?: string | string[];
     q?: string | string[];
     page?: string | string[];
+    created?: string | string[];
   }>;
 }>) {
   await requireRole("staff");
@@ -194,6 +198,7 @@ export default async function RequestDetailPage({
   const statusParam = firstParam(continuity.status);
   const search = parseRequestSearch(continuity.q);
   const searchFilter = search ? requestSearchFilter(search) : "";
+  const justCreated = firstParam(continuity.created) === "1";
 
   const queueParams = new URLSearchParams();
   if (statusParam !== null && statusParam !== "") queueParams.set("status", statusParam);
@@ -265,6 +270,9 @@ export default async function RequestDetailPage({
   const phoneDisplay = formatPhoneForDisplay(row.phone);
   const formLanguage = localeLabel(row.locale);
   const patientMessage = row.message !== null ? row.message.trim() : "";
+  const staffCreated = surface.history.some(
+    (entry) => entry.kind === "created" && entry.origin === "staff",
+  );
   // Notes and history come from one composed read. Notes keep their own
   // Surface; every other evidence kind renders in Request history.
   const noteViews: RequestNoteView[] = [];
@@ -355,6 +363,16 @@ export default async function RequestDetailPage({
         }
       />
 
+      {justCreated ? (
+        <div role="status" data-testid="staff-request-created" className="portal-request-created">
+          <Check className="h-5 w-5" />
+          <div>
+            <strong>Patient request added to New.</strong>
+            <p>No notification email was sent. The request is ready for staff follow-up below.</p>
+          </div>
+        </div>
+      ) : null}
+
       <div className="portal-request-layout">
         <section
           className="request-print-card portal-request-details"
@@ -367,7 +385,7 @@ export default async function RequestDetailPage({
                 Received{" "}
                 <time dateTime={row.created_at}>{formatReceived(row.created_at, true)}</time>
               </span>
-              <span>{formLanguage} form</span>
+              <span>{staffCreated ? "Added by staff" : `${formLanguage} form`}</span>
             </p>
           </header>
           <div className="portal-request-contact" role="group" aria-label="Patient contact options">

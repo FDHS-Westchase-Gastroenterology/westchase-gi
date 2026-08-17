@@ -229,6 +229,10 @@ Durable truths, re-owned in the 2026-08-04 re-charter session:
   real-world action across disconnected forms, and server operations backing a
   combined action commit atomically. The concrete save choreography is not chartered
   here — see the state-machine deferral below.
+- **Staff-authored intake joins the same ledger.** A call, walk-in, or message can become one
+  `NEW` appointment request from Home or Appointments. This records scheduling intake, not a
+  patient chart; it identifies staff provenance, retries idempotently, and creates no
+  website-submission notification work.
 - **Paper handoff is an output, never workflow state.** Every active staff member may prepare
   one oldest-first packet containing the exact durable `NEW` set at that database snapshot.
   Preparing or printing it changes no request status, version, attention state, or Request
@@ -265,11 +269,11 @@ Appointments workflow contract, defined in the
 
 Committed operational information architecture:
 
-- **Home** is the triage and handoff surface: the ordered shared work stack, the direct
-  New-request print action, the next request to work, recent operational context, and secondary
-  routes into staff jobs.
+- **Home** is the triage and handoff surface: staff can add an appointment request, see the
+  ordered shared work stack, print the exact New set, open the next request to work, and reach
+  recent operational context and secondary staff jobs.
 - **Appointments** is the complete queue and request workspace, retaining All, New, Contacted,
-  Scheduled, and Closed as familiar views.
+  Scheduled, and Closed as familiar views, with the same staff-authored intake action in context.
 - **Settings** groups people, notification emails, and software administration without
   competing with daily appointment work.
 - **Help** explains the workflow, privacy and recovery paths. Activity and review-flyer printing

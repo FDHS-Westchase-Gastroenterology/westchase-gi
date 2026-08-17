@@ -12,6 +12,7 @@ import {
   Users,
 } from "@/components/icons";
 import { arrivedOutsideOfficeHours } from "@/lib/portal/business-time";
+import { STAFF_REQUEST_SOURCE_PATH } from "@/lib/portal/contracts";
 
 import { PortalPageHeader } from "./portal-page-header";
 import { formatReceived } from "./requests/format";
@@ -113,6 +114,15 @@ export function HomeWorkbench({
           </span>
         }
         description="Start with what needs contact, then record the real outcome in Appointments."
+        actions={
+          <Link
+            href={STAFF_REQUEST_SOURCE_PATH}
+            data-testid="home-add-patient-request"
+            className="btn btn-navy min-h-11"
+          >
+            Add patient request
+          </Link>
+        }
         meta={
           <>
             <span>{date}</span>

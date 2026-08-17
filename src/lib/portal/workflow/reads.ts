@@ -102,7 +102,19 @@ export async function fetchRequestWorkSurface(
   for (const row of transitionRows) {
     if (presentId(row.compensates_transition_id)) compensated.add(row.compensates_transition_id);
   }
-  const history: HistoryEntry[] = [{ kind: "created", at: requestRow.data.created_at }];
+  const rawEvents = z.array(z.unknown()).safeParse(events.data);
+  const eventRows: z.infer<typeof eventRowSchema>[] = [];
+  for (const raw of rawEvents.success ? rawEvents.data : []) {
+    const parsed = eventRowSchema.safeParse(raw);
+    if (parsed.success) eventRows.push(parsed.data);
+  }
+  const creationEvent = eventRows.find((event) => event.type === "created");
+  const creationMeta = creationEvent === undefined ? null : asJsonObject(creationEvent.meta);
+  const creationOrigin =
+    creationMeta !== null && asJsonString(creationMeta.origin) === "staff" ? "staff" : "website";
+  const history: HistoryEntry[] = [
+    { kind: "created", origin: creationOrigin, at: requestRow.data.created_at },
+  ];
   for (const row of transitionRows) {
     const from = normalizeRequestState(row.from_state);
     const to = normalizeRequestState(row.to_state);
@@ -142,11 +154,7 @@ export async function fetchRequestWorkSurface(
       });
     }
   }
-  const rawEvents = z.array(z.unknown()).safeParse(events.data);
-  for (const raw of rawEvents.success ? rawEvents.data : []) {
-    const parsed = eventRowSchema.safeParse(raw);
-    if (!parsed.success) continue;
-    const event = parsed.data;
+  for (const event of eventRows) {
     const record = asJsonObject(event.meta);
     if (event.type === "note")
       history.push({
