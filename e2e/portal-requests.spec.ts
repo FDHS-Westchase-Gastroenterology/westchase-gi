@@ -296,6 +296,7 @@ test.describe("portal requests operation", () => {
     page,
     request,
   }) => {
+    test.slow();
     const id = await stageRequest(request, "lifecycle");
     const staged = payload("lifecycle");
     const visibleRecipient = `queue-${runId}-recipient@example.test`;

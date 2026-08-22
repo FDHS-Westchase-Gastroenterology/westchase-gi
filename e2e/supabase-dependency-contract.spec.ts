@@ -1578,7 +1578,7 @@ test.describe("Supabase dependency contract", () => {
       {
         outcome: "no_answer",
         note: null,
-        followUpAt: null,
+        followUpAt,
         status: "contacted",
         disposition: null,
         closureReason: null,
