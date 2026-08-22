@@ -98,6 +98,7 @@ not browser configuration. [`.env.example`](.env.example) is the exact variable 
 | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `public.requests`                | Appointment-request system of record. Owns lifecycle, closure outcome, receipt-token hash state, and legal-hold state.                                                                                    |
 | `public.request_events`          | Child event stream for notification outcomes, attributed appointment-request notes, call outcomes, and Undo evidence. Call outcomes carry versioned lifecycle snapshots; events cascade with the request. |
+| `public.staff_request_receipts`  | Service-only idempotency receipts for staff-authored intake. Binds one actor, payload fingerprint, and request; cascades with the request.                                                                |
 | `public.notification_recipients` | Active/paused destinations for new-request pings.                                                                                                                                                         |
 | `public.staff_profiles`          | Authorization source of truth linked to `auth.users`.                                                                                                                                                     |
 | `public.portal_release_states`   | PHI-free, bounded per-staff engagement with application-owned release briefings.                                                                                                                          |
@@ -109,6 +110,9 @@ not browser configuration. [`.env.example`](.env.example) is the exact variable 
 
 - Intake throttling and analytics increments are database-atomic so multiple application
   instances share one limit and counter.
+- Staff-authored intake commits the request, staff-origin creation event, metadata-only audit,
+  and idempotency receipt together. Exact retries return the original request; changed-payload
+  key reuse conflicts without mutation, and this path never writes notification outbox work.
 - Saving a call outcome commits the outcome, appointment-request lifecycle, call-again
   timing, and closure outcome together. Undo records a new event and restores the saved
   snapshot only when no later mutation has made it stale; it never deletes history.
@@ -153,6 +157,21 @@ procedure live in `CONTRIBUTING.md`.
 7. The no-JS handler returns `303` to a localized receipt page with a 15-minute, one-time
    opaque token bound to the stored request. Only its hash is stored, and that hash expires
    after one hour. No patient value or unsigned success flag enters the URL.
+
+### Staff-authored appointment intake
+
+1. Home and Appointments link to one protected scheduling worksheet at
+   `/admin/requests/new`; it does not create a separate patient or appointment object.
+2. The server action authorizes an active staff profile before parsing input, then applies the
+   shared appointment-request field contract and an opaque UUID idempotency key.
+3. `portal_create_staff_request` runs as a service-only security-invoker RPC. A transaction-level
+   advisory lock serializes each key while one statement writes the `NEW` request, a staff-origin
+   creation event, a metadata-only `request.create` audit, and the service-only receipt.
+4. An exact retry returns the first request ID. Reusing the key with different details returns a
+   conflict without mutation. An ambiguous response keeps the submitted draft and key locked for
+   an exact retry.
+5. This staff path intentionally omits `notification_outbox`; the success page states that no
+   website-submission email was sent and hands the staff member into the normal request workspace.
 
 ### Patient-site telemetry
 

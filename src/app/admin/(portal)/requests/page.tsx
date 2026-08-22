@@ -6,7 +6,7 @@ import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import { ChevronRight, Printer } from "@/components/icons";
 import { requireRole } from "@/lib/portal/auth";
 import { waitingSince } from "@/lib/portal/business-time";
-import { REQUEST_STATUSES } from "@/lib/portal/contracts";
+import { REQUEST_STATUSES, STAFF_REQUEST_SOURCE_PATH } from "@/lib/portal/contracts";
 import type { RequestStatus } from "@/lib/portal/contracts";
 import type { AttentionBucket } from "@/lib/portal/queue-attention";
 import {
@@ -64,11 +64,13 @@ function requestsHref({
 }
 
 function detailHref({
+  focusCallAgain = false,
   id,
   page,
   search,
   status,
 }: Readonly<{
+  focusCallAgain?: boolean;
   id: string;
   page: number;
   search: string;
@@ -79,12 +81,12 @@ function detailHref({
   if (search) params.set("q", search);
   if (page > 1) params.set("page", String(page));
   const query = params.toString();
-  return `/admin/requests/${id}${query ? `?${query}` : ""}`;
+  return `/admin/requests/${id}${query ? `?${query}` : ""}${focusCallAgain ? "#set-call-again" : ""}`;
 }
 
 // Next-action language per attention bucket. The queue leads with what to
 // Work next: unworked rows by age, call-again rows whose time arrived,
-// Touched rows that went silent with no callback date set.
+// Touched rows that went silent with no call-again day set.
 function nextActionHint({
   bucket,
   followUpAt,
@@ -109,14 +111,14 @@ function nextActionHint({
     case "stale": {
       const since = waitingSince(lastActivityAt ?? createdAt, now);
       return {
-        text: `Silent${since !== null && since !== "" ? ` since ${since}` : " since before today"} — set a call-again day`,
+        text: `Set a call-again day${since !== null && since !== "" ? ` — silent since ${since}` : ""}`,
         attention: true,
       };
     }
     case "upcoming":
       return followUpAt !== null && followUpAt !== ""
         ? { text: `Call again ${followUpShortLabel(followUpAt, now)}`, attention: false }
-        : null;
+        : { text: "Set a call-again day", attention: true };
     case "scheduled":
       return { text: "On the schedule", attention: false };
     case "new":
@@ -201,6 +203,9 @@ function QueueRowLink({
     now,
   });
   const waiting = request.status === "new" ? waitingSince(request.created_at, now) : null;
+  const needsCallAgain =
+    request.status === "contacted" &&
+    (request.follow_up_at === null || request.follow_up_at === "");
   const nextAction =
     hint ??
     (request.status === "new"
@@ -212,6 +217,7 @@ function QueueRowLink({
     <li>
       <Link
         href={detailHref({
+          focusCallAgain: needsCallAgain,
           id: request.id,
           page,
           search,
@@ -355,6 +361,13 @@ export default async function AdminRequestsPage({
         description="Every appointment request, ordered by what needs attention first. Open one to call, document the outcome, and continue without losing your place."
         actions={
           <>
+            <Link
+              href={`${STAFF_REQUEST_SOURCE_PATH}?from=appointments`}
+              data-testid="appointments-add-patient-request"
+              className="btn btn-outline min-h-11"
+            >
+              Add appointment request
+            </Link>
             {counts.new > 0 ? (
               <Link
                 href="/admin/requests/print?auto=1"

@@ -74,6 +74,8 @@ const commandUndoSchema = z.object({
 const commandOutcomeSchema = z.object({
   ok: z.boolean(),
   code: z.string().optional(),
+  state: z.string().optional(),
+  callAgainAt: z.string().nullable().optional(),
   current: z
     .object({
       version: z.number(),
@@ -87,6 +89,7 @@ const lifecycleRunSchema = z.object({
 const idRowSchema = z.object({
   id: z.string(),
 });
+const nullableTimestampSchema = z.string().nullable();
 
 type SafeParseResult<T> =
   | { readonly success: true; readonly data: T }
@@ -1576,7 +1579,7 @@ test.describe("Supabase dependency contract", () => {
       {
         outcome: "no_answer",
         note: null,
-        followUpAt: null,
+        followUpAt,
         status: "contacted",
         disposition: null,
         closureReason: null,
@@ -2010,7 +2013,8 @@ test.describe("Supabase dependency contract", () => {
             item.name === "booked after converted-close backfill"
               ? "TEST note remains after lifecycle undo."
               : null,
-          p_follow_up_at: null,
+          p_follow_up_at:
+            item.outcome === "no_answer" || item.outcome === "voicemail" ? followUpAt : null,
         });
         expect(saved.error).toBeNull();
 
@@ -2064,6 +2068,7 @@ test.describe("Supabase dependency contract", () => {
     const firstRequestId = randomUUID();
     const secondRequestId = randomUUID();
     const requestIds = [firstRequestId, secondRequestId];
+    const callAgainAt = "2026-08-03T14:30:00.000Z";
 
     try {
       await insertRequest(db, {
@@ -2081,6 +2086,7 @@ test.describe("Supabase dependency contract", () => {
         p_actor_email: actor,
         p_request_id: firstRequestId,
         p_outcome: "no_answer",
+        p_follow_up_at: callAgainAt,
       });
       expect(firstSave.error).toBeNull();
       const firstEventId = z.string().parse(firstSave.data);
@@ -2152,6 +2158,7 @@ test.describe("Supabase dependency contract", () => {
         p_actor_email: actor,
         p_request_id: secondRequestId,
         p_outcome: "voicemail",
+        p_follow_up_at: callAgainAt,
       });
       expect(malformedSave.error).toBeNull();
       const malformedEventId = z.string().parse(malformedSave.data);
@@ -2325,7 +2332,12 @@ test.describe("Supabase dependency contract", () => {
         current: { version: 2 },
       });
 
-      const accepted = raceOutcomes.find(({ ok }) => ok);
+      const acceptedIndex = raceOutcomes.findIndex(({ ok }) => ok);
+      expect(acceptedIndex).toBeGreaterThanOrEqual(0);
+      const accepted = requireDecoded(
+        jsonSchema.safeParse(race[acceptedIndex]?.data),
+        "Accepted workflow result could not be decoded",
+      );
       const acceptedKey = await db
         .from("request_command_receipts")
         .select("idempotency_key, fingerprint")
@@ -2344,7 +2356,11 @@ test.describe("Supabase dependency contract", () => {
         decision("close_request", "closed", "not_actionable"),
       );
       expect(replay.error).toBeNull();
-      expect(replay.data).toEqual(accepted);
+      const replayed = requireDecoded(
+        jsonSchema.safeParse(replay.data),
+        "Replayed workflow result could not be decoded",
+      );
+      expect(replayed).toEqual(accepted);
 
       const conflict = await execute(
         acceptedReceipt.idempotency_key,
@@ -2396,7 +2412,7 @@ test.describe("Supabase dependency contract", () => {
         p_decision: {
           command: "record_contact_attempt",
           state: "contacted",
-          callAgainAt: null,
+          callAgainAt: new Date(Date.parse(firstAt) + 86_400_000).toISOString(),
           bookingConfirmedAt: null,
           closedAt: null,
           closureReason: null,
@@ -2467,6 +2483,358 @@ test.describe("Supabase dependency contract", () => {
     } finally {
       await db.from("requests").delete().eq("id", requestId);
       await db.from("audit_log").delete().eq("entity_id", requestId);
+    }
+  });
+
+  test("requires call-again authority for Contacted commands and preserves correction evidence", async () => {
+    const db = serviceDb();
+    const actor = `call-again-${randomUUID()}@example.test`;
+    const occurredAt = new Date().toISOString();
+    const callAgainAt = new Date(Date.parse(occurredAt) + 86_400_000).toISOString();
+    const laterCallAgainAt = new Date(Date.parse(occurredAt) + 172_800_000).toISOString();
+    const requestIds: string[] = [];
+    const expectTimestamp = (value: string | null | undefined, expected: string | null) => {
+      expect(value === null || value === undefined ? null : new Date(value).toISOString()).toBe(
+        expected,
+      );
+    };
+    const decision = (
+      command: string,
+      state: string,
+      overrides: Readonly<Partial<WorkflowDecision>> = {},
+    ): WorkflowDecision => ({
+      command,
+      state,
+      callAgainAt: null,
+      bookingConfirmedAt: null,
+      closedAt: null,
+      closureReason: null,
+      legacyReviewRequired: false,
+      reasonCode: null,
+      occurredAt,
+      ...overrides,
+    });
+    const execute = (
+      requestId: string,
+      expectedVersion: number,
+      next: Readonly<WorkflowDecision>,
+      transitionId?: string,
+    ) =>
+      db.rpc("portal_execute_request_command", {
+        p_actor_email: actor,
+        p_request_id: requestId,
+        p_expected_version: expectedVersion,
+        p_idempotency_key: randomUUID(),
+        p_fingerprint: randomUUID().replaceAll("-", "").repeat(2),
+        p_decision: next,
+        p_transition_id: transitionId ?? null,
+      });
+    const writeCounts = async (requestId: string) => {
+      const reads = await Promise.all([
+        db
+          .from("request_events")
+          .select("id", { count: "exact", head: true })
+          .eq("request_id", requestId),
+        db
+          .from("request_transitions")
+          .select("id", { count: "exact", head: true })
+          .eq("request_id", requestId),
+        db
+          .from("request_command_receipts")
+          .select("id", { count: "exact", head: true })
+          .eq("request_id", requestId),
+        db
+          .from("audit_log")
+          .select("id", { count: "exact", head: true })
+          .eq("entity_id", requestId),
+      ]);
+      for (const read of reads) expect(read.error).toBeNull();
+      return reads.map((read) => read.count);
+    };
+    const expectNoWrite = async (requestId: string, attempt: () => ReturnType<typeof execute>) => {
+      const before = await writeCounts(requestId);
+      const result = await attempt();
+      expect(result.error).toBeNull();
+      expect(result.data).toEqual({ ok: false, code: "invalid_command" });
+      expect(await writeCounts(requestId)).toEqual(before);
+    };
+    const insert = async (row: Readonly<RequestInsert>) => {
+      requestIds.push(row.id);
+      await insertRequest(db, row);
+    };
+    const undo = async (requestId: string, expectedVersion: number, transitionId: string) =>
+      execute(
+        requestId,
+        expectedVersion,
+        decision("undo_latest_transition", "new", { occurredAt: new Date().toISOString() }),
+        transitionId,
+      );
+
+    try {
+      for (const outcome of ["reached_follow_up", "voicemail", "no_answer"] as const) {
+        const requestId = randomUUID();
+        await insert({ id: requestId, name: `TEST date-less ${outcome}` });
+        await expectNoWrite(requestId, () =>
+          execute(
+            requestId,
+            1,
+            decision("record_contact_attempt", "contacted", { reasonCode: outcome }),
+          ),
+        );
+      }
+
+      for (const outcome of ["reached_follow_up", "voicemail", "no_answer"] as const) {
+        const requestId = randomUUID();
+        await insert({ id: requestId, name: `TEST dated ${outcome}` });
+        const result = await execute(
+          requestId,
+          1,
+          decision("record_contact_attempt", "contacted", { callAgainAt, reasonCode: outcome }),
+        );
+        expect(result.error).toBeNull();
+        const outcomeResult = requireDecoded(
+          commandOutcomeSchema.safeParse(result.data),
+          "Dated contact command result could not be decoded",
+        );
+        expect(outcomeResult).toMatchObject({ ok: true, state: "contacted" });
+        expectTimestamp(outcomeResult.callAgainAt, callAgainAt);
+        const [request, events, transitions] = await Promise.all([
+          db.from("requests").select("status,follow_up_at").eq("id", requestId).single(),
+          db.from("request_events").select("type").eq("request_id", requestId),
+          db
+            .from("request_transitions")
+            .select("command,call_again_at")
+            .eq("request_id", requestId)
+            .single(),
+        ]);
+        expect(request.data?.status).toBe("contacted");
+        expectTimestamp(
+          requireDecoded(
+            nullableTimestampSchema.safeParse(request.data?.follow_up_at),
+            "Dated contact follow-up timestamp could not be decoded",
+          ),
+          callAgainAt,
+        );
+        expect(events.data?.filter((event) => event.type === "contact_attempt")).toHaveLength(1);
+        expect(transitions.data?.command).toBe("record_contact_attempt");
+        expect(transitions.data?.call_again_at).toBeNull();
+      }
+
+      const dateLessReopenId = randomUUID();
+      await insert({
+        id: dateLessReopenId,
+        name: "TEST date-less reopen",
+        status: "booked",
+        record_handoff_at: occurredAt,
+      });
+      await expectNoWrite(dateLessReopenId, () =>
+        execute(dateLessReopenId, 1, decision("reopen_request", "contacted")),
+      );
+
+      const reopenedBookedId = randomUUID();
+      const reopenedTypedClosedId = randomUUID();
+      const reopenedClosedId = randomUUID();
+      await insert({
+        id: reopenedBookedId,
+        name: "TEST reopen booked",
+        status: "booked",
+        record_handoff_at: occurredAt,
+      });
+      await insert({
+        id: reopenedTypedClosedId,
+        name: "TEST reopen typed closed",
+        status: "closed",
+        closed_at: occurredAt,
+        closure_reason: "wont_schedule",
+      });
+      await insert({
+        id: reopenedClosedId,
+        name: "TEST reopen migrated closed",
+        status: "closed",
+        closed_at: occurredAt,
+        closure_provenance: "migration_unconverted",
+      });
+      const beforeReopenSnapshots = new Map<string, unknown>();
+      const reopenedIds = [reopenedBookedId, reopenedTypedClosedId, reopenedClosedId];
+      for (const requestId of reopenedIds) {
+        const before = await db
+          .from("requests")
+          .select(
+            "status,follow_up_at,record_handoff_at,closed_at,closure_reason,closure_disposition,closure_provenance",
+          )
+          .eq("id", requestId)
+          .single();
+        expect(before.error).toBeNull();
+        beforeReopenSnapshots.set(requestId, before.data);
+        const result = await execute(
+          requestId,
+          1,
+          decision("reopen_request", "contacted", { callAgainAt }),
+        );
+        expect(result.error).toBeNull();
+        const outcome = requireDecoded(
+          commandOutcomeSchema.safeParse(result.data),
+          "Reopen command result could not be decoded",
+        );
+        expect(outcome).toMatchObject({ ok: true });
+        const transitionId = requireText(
+          outcome.undo?.transitionId,
+          "Reopen transition is missing",
+        );
+        const [request, events, transition] = await Promise.all([
+          db
+            .from("requests")
+            .select("status,follow_up_at,record_handoff_at,closed_at,closure_reason")
+            .eq("id", requestId)
+            .single(),
+          db.from("request_events").select("type").eq("request_id", requestId),
+          db
+            .from("request_transitions")
+            .select("command,call_again_at")
+            .eq("id", transitionId)
+            .single(),
+        ]);
+        expect(request.data).toMatchObject({
+          status: "contacted",
+          record_handoff_at: null,
+          closed_at: null,
+          closure_reason: null,
+        });
+        expectTimestamp(
+          requireDecoded(
+            nullableTimestampSchema.safeParse(request.data?.follow_up_at),
+            "Reopened request follow-up timestamp could not be decoded",
+          ),
+          callAgainAt,
+        );
+        expect(events.data?.filter((event) => event.type === "contact_attempt")).toHaveLength(0);
+        expect(transition.data?.command).toBe("reopen_request");
+        expectTimestamp(
+          requireDecoded(
+            nullableTimestampSchema.safeParse(transition.data?.call_again_at),
+            "Reopen transition call-again timestamp could not be decoded",
+          ),
+          callAgainAt,
+        );
+
+        const contactedCount = await db
+          .from("requests")
+          .select("id", { count: "exact", head: true })
+          .in("id", reopenedIds)
+          .eq("status", "contacted");
+        expect(contactedCount).toMatchObject({ error: null, count: 1 });
+
+        const restored = await undo(requestId, 2, transitionId);
+        expect(restored.error).toBeNull();
+        const afterUndo = await db
+          .from("requests")
+          .select(
+            "status,follow_up_at,record_handoff_at,closed_at,closure_reason,closure_disposition,closure_provenance",
+          )
+          .eq("id", requestId)
+          .single();
+        expect(afterUndo.error).toBeNull();
+        expect(afterUndo.data).toEqual(beforeReopenSnapshots.get(requestId));
+      }
+
+      const legacyContactedId = randomUUID();
+      await insert({ id: legacyContactedId, name: "TEST legacy Contacted", status: "contacted" });
+      await expectNoWrite(legacyContactedId, () =>
+        execute(legacyContactedId, 1, decision("set_call_again", "contacted")),
+      );
+      const setResult = await execute(
+        legacyContactedId,
+        1,
+        decision("set_call_again", "contacted", { callAgainAt: laterCallAgainAt }),
+      );
+      expect(setResult.error).toBeNull();
+      const setOutcome = requireDecoded(
+        commandOutcomeSchema.safeParse(setResult.data),
+        "Set-call-again result could not be decoded",
+      );
+      const setTransitionId = requireText(
+        setOutcome.undo?.transitionId,
+        "Correction transition is missing",
+      );
+      const [setRequest, setEvents, setTransition] = await Promise.all([
+        db.from("requests").select("status,follow_up_at").eq("id", legacyContactedId).single(),
+        db.from("request_events").select("type").eq("request_id", legacyContactedId),
+        db
+          .from("request_transitions")
+          .select("command,call_again_at")
+          .eq("id", setTransitionId)
+          .single(),
+      ]);
+      expect(setRequest.data?.status).toBe("contacted");
+      expectTimestamp(
+        requireDecoded(
+          nullableTimestampSchema.safeParse(setRequest.data?.follow_up_at),
+          "Corrected request follow-up timestamp could not be decoded",
+        ),
+        laterCallAgainAt,
+      );
+      expect(setEvents.data?.filter((event) => event.type === "contact_attempt")).toHaveLength(0);
+      expect(setTransition.data?.command).toBe("set_call_again");
+      expectTimestamp(
+        requireDecoded(
+          nullableTimestampSchema.safeParse(setTransition.data?.call_again_at),
+          "Correction transition call-again timestamp could not be decoded",
+        ),
+        laterCallAgainAt,
+      );
+      const undoSet = await undo(legacyContactedId, 2, setTransitionId);
+      expect(undoSet.error).toBeNull();
+      expect(
+        await db
+          .from("requests")
+          .select("status,follow_up_at")
+          .eq("id", legacyContactedId)
+          .single(),
+      ).toMatchObject({ data: { status: "contacted", follow_up_at: null } });
+      expect(
+        await db.from("request_transitions").select("id").eq("request_id", legacyContactedId),
+      ).toMatchObject({ data: expect.any(Array) });
+      expect(
+        (await db.from("request_transitions").select("id").eq("request_id", legacyContactedId))
+          .data,
+      ).toHaveLength(2);
+      expect(
+        (await db.from("audit_log").select("id").eq("entity_id", legacyContactedId)).data,
+      ).toHaveLength(2);
+
+      for (const row of [
+        { status: "new" },
+        { status: "booked", record_handoff_at: occurredAt },
+        { status: "closed", closed_at: occurredAt, closure_reason: "not_actionable" },
+        { status: "contacted", follow_up_at: callAgainAt },
+      ] as const) {
+        const requestId = randomUUID();
+        await insert({ id: requestId, name: `TEST invalid correction ${row.status}`, ...row });
+        await expectNoWrite(requestId, () =>
+          execute(
+            requestId,
+            1,
+            decision("set_call_again", "contacted", { callAgainAt: laterCallAgainAt }),
+          ),
+        );
+      }
+
+      for (const outcome of ["reached_follow_up", "voicemail", "no_answer"] as const) {
+        const requestId = randomUUID();
+        await insert({ id: requestId, name: `TEST overlap ${outcome}` });
+        const before = await writeCounts(requestId);
+        const result = await db.rpc("portal_log_call_outcome", {
+          p_actor_email: actor,
+          p_request_id: requestId,
+          p_outcome: outcome,
+          p_follow_up_at: null,
+        });
+        expect(result.error?.code).toBe("22023");
+        expect(await writeCounts(requestId)).toEqual(before);
+      }
+    } finally {
+      await db.from("requests").delete().in("id", requestIds);
+      await db.from("audit_log").delete().in("entity_id", requestIds);
     }
   });
 

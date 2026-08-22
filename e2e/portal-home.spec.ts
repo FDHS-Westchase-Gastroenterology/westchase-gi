@@ -11,11 +11,6 @@ import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 // Software. The queue overview count is real data, paper handoff is one
 // Truthful action away, and occasional tools stay out of the primary path.
 
-const tourAuditRowSchema = z.object({
-  id: z.string(),
-  action: z.string().optional(),
-});
-
 loadLocalEnv();
 
 const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
@@ -161,7 +156,7 @@ test.describe("portal home", () => {
     const tasks = page.locator('aside[aria-labelledby="desk-tools-heading"]');
     for (const [label, href] of [
       ["Print review flyers", "/admin/review-flyers"],
-      ["Notification emails", "/admin/settings#notifications"],
+      ["Notification recipients", "/admin/settings#notifications"],
       ["Staff access", "/admin/settings#staff"],
       ["Website status", "/admin/settings/software"],
       ["Request a website change", "/admin/help#website-changes"],
@@ -199,6 +194,49 @@ test.describe("portal home", () => {
         }; opens in a new tab`,
       }),
     ).toHaveAttribute("target", "_blank");
+  });
+
+  test("home reports every Contacted request whose call-again day is missing", async ({ page }) => {
+    const id = randomUUID();
+    const { error: stageError } = await db.from("requests").insert({
+      id,
+      name: `TEST Home ${runId} missing call-again`,
+      phone: "8135550199",
+      email: `home-${runId}-missing-call-again@example.test`,
+      location: "any",
+      preferred_time: "any",
+      message: "TEST queue-integrity fixture — no medical details.",
+      locale: "en",
+      source_path: "/e2e/home-missing-call-again",
+      status: "contacted",
+      follow_up_at: null,
+    });
+    expect(stageError).toBeNull();
+
+    try {
+      const { count, error: countError } = await db
+        .from("requests")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "contacted")
+        .is("follow_up_at", null);
+      expect(countError).toBeNull();
+      const missingCount = count ?? 0;
+      expect(missingCount).toBeGreaterThanOrEqual(1);
+      const label =
+        missingCount === 1
+          ? "1 contacted request has no call-again day"
+          : `${missingCount} contacted requests have no call-again day`;
+
+      await signIn(page, SEED_EMAIL, SEED_PASSWORD);
+      const summary = page.getByTestId("attention-summary");
+      await expect(summary.getByRole("link", { name: label, exact: true })).toHaveAttribute(
+        "href",
+        "/admin/requests?status=contacted",
+      );
+    } finally {
+      await db.from("requests").delete().eq("id", id);
+      await db.from("audit_log").delete().eq("entity_id", id);
+    }
   });
 
   test("home flags recent notification delivery failures honestly", async ({ page }) => {
@@ -398,7 +436,7 @@ test.describe("portal home", () => {
       expect(auditError).toBeNull();
       expect(
         z
-          .array(tourAuditRowSchema)
+          .array(z.object({ id: z.string(), action: z.string() }))
           .parse(audits ?? [])
           .filter((row) => !priorAuditIds.has(row.id))
           .map((row) => row.action),

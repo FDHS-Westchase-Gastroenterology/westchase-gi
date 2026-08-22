@@ -1216,7 +1216,7 @@
      hold editable work, and amber is reserved for attention rather than
      decoration. :where() keeps the rule easy to override in print layouts. */
   .portal-scope {
-    --portal-canvas: oklch(0.965 0.008 230);
+    --portal-canvas: oklch(0.955 0.01 230);
     --portal-surface: oklch(0.995 0.002 220);
     --portal-attention-ink: oklch(0.5 0.11 70);
     background: var(--portal-canvas);
@@ -1257,6 +1257,10 @@
 
   .portal-scope .btn:hover {
     transform: none;
+  }
+
+  .portal-scope :where(.btn-amber, .btn-navy):hover {
+    box-shadow: none;
   }
 
   .portal-scope .btn:active {
@@ -2071,6 +2075,13 @@
     page: request-detail;
   }
 
+  body.portal-scope:has(.request-detail-print) .portal-workspace,
+  body.portal-scope:has(.request-detail-print) .portal-stage,
+  body.portal-scope:has(.request-detail-print) .portal-content {
+    min-height: auto !important;
+    background: white !important;
+  }
+
   body.portal-scope:has(.request-detail-print) .portal-release-utility {
     display: none !important;
   }
@@ -2099,6 +2110,19 @@
     border-radius: 0;
     padding: 12pt;
     background: white !important;
+  }
+
+  .request-print-card.portal-request-details {
+    overflow: visible;
+    padding: 0;
+  }
+
+  .request-print-card.portal-request-details .portal-request-contact {
+    background: white !important;
+  }
+
+  .request-print-card.portal-request-details svg {
+    color: black !important;
   }
 
   .request-print-card h2,

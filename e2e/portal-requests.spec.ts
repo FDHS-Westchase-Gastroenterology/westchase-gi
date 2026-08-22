@@ -1,9 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import { test, expect } from "@playwright/test";
-import type { APIRequestContext, Page } from "@playwright/test";
+import type { Page, APIRequestContext } from "@playwright/test";
 import { z } from "zod";
 
+import { asJsonObject, asJsonString, jsonSchema } from "../src/lib/json";
 import { intakeResponseSchema } from "../src/lib/portal/contracts";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
@@ -11,13 +12,13 @@ const noteMetaSchema = z.object({
   text: z.string().optional(),
   author_email: z.string().optional(),
 });
-const workflowCommandDetailSchema = z.looseObject({
-  command: z.string(),
-});
 const transitionRowSchema = z.object({
   command: z.string(),
   from_state: z.string(),
   to_state: z.string(),
+});
+const undoTransitionRowSchema = transitionRowSchema.extend({
+  compensates_transition_id: z.string().nullable(),
 });
 
 // VAL-ADMIN-003: the queue leads with the oldest unworked requests first.
@@ -81,9 +82,7 @@ const VIEW_DB_STATUSES = {
   closed: ["closed"],
 } as const;
 
-type AppointmentView = keyof typeof VIEW_DB_STATUSES;
-
-async function sqlCount(view: AppointmentView): Promise<number> {
+async function sqlCount(view: keyof typeof VIEW_DB_STATUSES): Promise<number> {
   const { count, error } = await db
     .from("requests")
     .select("id", { count: "exact", head: true })
@@ -101,6 +100,155 @@ test.describe("portal requests operation", () => {
 
   test.afterAll(async () => {
     await db.from("requests").delete().like("email", `queue-${runId}-%`);
+  });
+
+  test("staff can add an appointment request from Home without creating website-notification work", async ({
+    page,
+  }) => {
+    const patientName = `TEST Queue ${runId} staff entry`;
+    const patientEmail = `queue-${runId}-staff@example.test`;
+    const schedulingNote = "TEST Staff entry — afternoons work best; no medical details.";
+    let requestId: string | null = null;
+
+    try {
+      await signIn(page);
+      await page.getByTestId("home-add-patient-request").click();
+      await expect(page).toHaveURL(/\/admin\/requests\/new$/);
+      await expect(page.getByRole("heading", { name: "Add appointment request" })).toBeVisible();
+      await expect(page.getByText("Keep this to scheduling.")).toBeVisible();
+
+      const form = page.getByRole("form", { name: "Add appointment request" });
+      const name = form.locator("#staff-request-name");
+      const phone = form.locator("#staff-request-phone");
+      const idempotency = form.locator('input[name="idempotencyKey"]');
+      const originalKey = await idempotency.inputValue();
+
+      // Server validation preserves the draft and the idempotency key. This
+      // Lets staff correct one field without retyping or risking a duplicate
+      // After an ambiguous save attempt.
+      await name.fill(patientName);
+      await form.locator("#staff-request-message").fill(schedulingNote);
+      await page.getByTestId("submit-staff-request").click();
+      await expect(phone).toBeFocused();
+      await expect(page.getByTestId("staff-request-error")).toContainText(
+        "Check the highlighted fields.",
+      );
+      await expect(name).toHaveValue(patientName);
+      await expect(form.locator("#staff-request-message")).toHaveValue(schedulingNote);
+      await expect(idempotency).toHaveValue(originalKey);
+
+      await phone.fill("8135550188");
+      await form.locator("#staff-request-email").fill(patientEmail);
+      await form.locator("#staff-request-location").selectOption("lutz");
+      await form.locator("#staff-request-time").selectOption("afternoon");
+      await page.getByTestId("submit-staff-request").click();
+
+      await expect(page).toHaveURL(/\/admin\/requests\/[0-9a-f-]+\?created=1$/, {
+        timeout: 15_000,
+      });
+      requestId = /\/admin\/requests\/([0-9a-f-]+)/.exec(page.url())?.[1] ?? null;
+      expect(requestId).not.toBeNull();
+
+      await expect(page.getByTestId("staff-request-created")).toContainText(
+        "Appointment request added to New.",
+      );
+      await expect(page.getByTestId("staff-request-created")).toContainText(
+        "No notification email was sent.",
+      );
+      await expect(page.getByTestId("request-detail-name")).toHaveText(patientName);
+      await expect(page.getByTestId("request-intake-meta")).toContainText("Added by staff");
+      await expect(page.getByTestId("request-history")).toContainText(
+        "Appointment request added by staff",
+      );
+      await expect(page.locator('[data-status="new"]')).toBeVisible();
+
+      const { data: row, error: rowError } = await db
+        .from("requests")
+        .select("status, source_path, locale")
+        .eq("id", requestId!)
+        .single();
+      expect(rowError).toBeNull();
+      expect(row).toMatchObject({
+        status: "new",
+        source_path: "/admin/requests/new",
+        locale: "en",
+      });
+
+      const { data: creationEvents, error: eventError } = await db
+        .from("request_events")
+        .select("type, status, meta")
+        .eq("request_id", requestId!)
+        .eq("type", "created");
+      expect(eventError).toBeNull();
+      expect(creationEvents).toHaveLength(1);
+      expect(creationEvents?.[0]).toMatchObject({
+        type: "created",
+        status: "recorded",
+        meta: { origin: "staff" },
+      });
+
+      const { data: creationAudits, error: auditError } = await db
+        .from("audit_log")
+        .select("actor_email, action, source, detail")
+        .eq("entity_id", requestId!)
+        .eq("action", "request.create");
+      expect(auditError).toBeNull();
+      expect(creationAudits).toHaveLength(1);
+      expect(creationAudits?.[0]).toMatchObject({
+        actor_email: SEED_EMAIL.toLowerCase(),
+        action: "request.create",
+        source: "staff",
+        detail: { origin: "staff" },
+      });
+      const auditJson = JSON.stringify(creationAudits?.[0]?.detail ?? null);
+      expect(auditJson).not.toContain(patientName);
+      expect(auditJson).not.toContain("8135550188");
+      expect(auditJson).not.toContain(patientEmail);
+
+      const { count: outboxCount, error: outboxError } = await db
+        .from("notification_outbox")
+        .select("id", { count: "exact", head: true })
+        .eq("request_id", requestId!);
+      expect(outboxError).toBeNull();
+      expect(outboxCount).toBe(0);
+
+      const { data: receipt, error: receiptError } = await db
+        .from("staff_request_receipts")
+        .select("idempotency_key, request_id")
+        .eq("idempotency_key", originalKey)
+        .single();
+      expect(receiptError).toBeNull();
+      expect(receipt).toMatchObject({ idempotency_key: originalKey, request_id: requestId });
+
+      // The human audit view names the work in plain language — never the
+      // Raw request.create action identifier.
+      await page.goto("/admin/audit");
+      const recentWork = page.getByTestId("recent-work-list").first();
+      await expect(recentWork).toBeVisible();
+      await expect(recentWork).toContainText("added an appointment request");
+      await expect(recentWork).not.toContainText("request.create");
+
+      await page.goto(`/admin/requests?q=${encodeURIComponent(patientEmail)}`);
+      const rowLink = page.getByTestId("request-row").filter({ hasText: patientName });
+      await expect(rowLink).toBeVisible();
+      await expect(rowLink.locator('[data-status="new"]')).toBeVisible();
+      await expect(page.getByTestId("appointments-add-patient-request")).toHaveAttribute(
+        "href",
+        "/admin/requests/new?from=appointments",
+      );
+    } finally {
+      const ids = new Set<string>();
+      if (requestId !== null) ids.add(requestId);
+      const { data: rows } = await db.from("requests").select("id").eq("email", patientEmail);
+      for (const row of z.array(z.object({ id: z.string() })).parse(rows ?? [])) {
+        ids.add(row.id);
+      }
+      if (ids.size > 0) {
+        const stagedIds = [...ids];
+        await db.from("requests").delete().in("id", stagedIds);
+        await db.from("audit_log").delete().in("entity_id", stagedIds);
+      }
+    }
   });
 
   test("VAL-ADMIN-003: the queue leads with the oldest unworked requests first", async ({
@@ -144,10 +292,11 @@ test.describe("portal requests operation", () => {
     expect(firstId && secondId && thirdId).toBeTruthy();
   });
 
-  test("VAL-ADMIN-005: detail shows every field and the workflow panel drives the appointment-request lifecycle", async ({
+  test("VAL-ADMIN-005: detail prioritizes contact context and the workflow panel drives the appointment-request lifecycle", async ({
     page,
     request,
   }) => {
+    test.slow();
     const id = await stageRequest(request, "lifecycle");
     const staged = payload("lifecycle");
     const visibleRecipient = `queue-${runId}-recipient@example.test`;
@@ -176,15 +325,24 @@ test.describe("portal requests operation", () => {
       "href",
       "/admin/requests",
     );
-    await expect(page.getByText(staged.phone).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: staged.email })).toHaveAttribute(
+    const details = page.locator('section[aria-labelledby="request-details-heading"]');
+    await expect(details.getByTestId("request-phone-link")).toHaveAttribute(
+      "href",
+      `tel:${staged.phone}`,
+    );
+    await expect(details.getByRole("link", { name: /^Call patient/ })).toBeVisible();
+    await expect(details.getByTestId("request-phone-link")).toContainText("(813) 555-0177");
+    await expect(details.getByTestId("request-email-link")).toHaveAttribute(
       "href",
       `mailto:${staged.email}`,
     );
-    await expect(page.getByText("Tampa", { exact: true })).toBeVisible();
-    await expect(page.getByText("Morning", { exact: true })).toBeVisible();
+    await expect(details.getByRole("link", { name: /^Email patient/ })).toBeVisible();
+    await expect(details.getByTestId("request-preferences")).toContainText("Tampa");
+    await expect(details.getByTestId("request-preferences")).toContainText("Morning");
+    await expect(details.getByTestId("request-intake-meta")).toContainText("Received");
+    await expect(details.getByTestId("request-intake-meta")).toContainText("English form");
     await expect(page.getByTestId("request-message")).toContainText(staged.message);
-    await expect(page.getByText("/en/appointment").first()).toBeVisible();
+    await expect(page.getByText("/en/appointment", { exact: true })).toHaveCount(0);
     // Every recorded delivery attempt renders in Request history — no
     // Address is hidden (staff addresses are operational, not PHI).
     const history = page.getByTestId("request-history");
@@ -203,21 +361,47 @@ test.describe("portal requests operation", () => {
       return data;
     }
 
-    // A call-again outcome requires the callback day before saving:
-    // The Save button stays disabled until the required choice is made.
-    await panel.getByText("No answer — call again", { exact: true }).click();
+    // Every Contacted-producing outcome requires a call-again choice. The
+    // Reached path was the audit gap: Save stays unavailable, and the choice
+    // Group itself explains what is missing before staff choose a time.
+    await panel.getByText("Reached the patient — follow-up needed", { exact: true }).click();
     await expect(page.getByTestId("save-workflow")).toBeDisabled();
-    await panel.getByText("Tomorrow morning", { exact: true }).click();
+    await expect(page.getByTestId("call-again-required-explanation")).toContainText(
+      "Choose one before Save",
+    );
+    await panel.getByText("Pick a day…", { exact: true }).click();
+    const customDay = page.getByTestId("call-again-day");
+    const minimumDay = await customDay.getAttribute("min");
+    expect(minimumDay).not.toBeNull();
+    if (minimumDay === null) throw new Error("Custom call-again input is missing its minimum day");
+    const minimumDayMs = Date.parse(`${minimumDay}T00:00:00.000Z`);
+    const beforeMinimum = new Date(minimumDayMs - 86_400_000).toISOString().slice(0, 10);
+    const validCustomDay = new Date(minimumDayMs + 2 * 86_400_000).toISOString().slice(0, 10);
+    await customDay.fill(beforeMinimum);
+    await expect(page.getByTestId("save-workflow")).toBeDisabled();
+    await customDay.fill(validCustomDay);
+    await expect(page.getByTestId("save-workflow")).toBeEnabled();
     await page.getByTestId("save-workflow").click();
     await expect(feedback).toContainText("resurface");
-    const afterNoAnswer = await statusOf();
-    expect(afterNoAnswer?.status).toBe("contacted");
-    expect(afterNoAnswer?.follow_up_at).toBeTruthy();
+    const afterReached = await statusOf();
+    expect(afterReached?.status).toBe("contacted");
+    expect(afterReached?.follow_up_at).toBeTruthy();
     await expect(page.getByTestId("workflow-current-state")).toContainText("Contacted");
+    await expect(page.getByTestId("workflow-current-state")).toContainText("call again");
+
+    // The three preset shapes use the same required Reached path and each
+    // Saves a concrete call-again time. Repeated Contacted attempts remain
+    // Separate history instead of overwriting the original action.
+    for (const preset of ["This afternoon", "Tomorrow morning", "Friday"] as const) {
+      await panel.getByText("Reached the patient — follow-up needed", { exact: true }).click();
+      await panel.getByText(preset, { exact: true }).click();
+      await page.getByTestId("save-workflow").click();
+      await expect(feedback).toContainText("resurface");
+    }
 
     // The daily success path: booked in the practice system, presented as
     // Scheduled everywhere. The durable row is `booked`; the word
-    // "Scheduled" is presentation-only.
+    // "scheduled" is presentation-only.
     await panel.getByText("Appointment booked", { exact: true }).click();
     await page.getByTestId("save-workflow").click();
     await expect(feedback).toContainText("marked Scheduled");
@@ -226,13 +410,57 @@ test.describe("portal requests operation", () => {
     expect(afterBooked?.record_handoff_at).toBeTruthy();
     await expect(page.getByTestId("workflow-current-state")).toContainText("Scheduled");
 
-    // A resolved request offers reopen — a legal command, not a status
-    // Picker. Reopen returns it to Contacted with history intact.
+    // Reopen asks for the next call before touching the resolved record.
+    // Cancel after making a choice leaves both the request and its evidence
+    // Chain exactly as they were.
+    const { count: transitionsBeforeCancel, error: transitionsBeforeCancelError } = await db
+      .from("request_transitions")
+      .select("id", { count: "exact", head: true })
+      .eq("request_id", id);
+    expect(transitionsBeforeCancelError).toBeNull();
     await page.getByTestId("reopen-request").click();
+    await expect(page.getByTestId("confirm-reopen")).toBeDisabled();
+    await page.getByTestId("reopen-controls").getByText("Friday", { exact: true }).click();
+    await page.getByTestId("cancel-reopen").click();
+    await expect(page.getByTestId("reopen-controls")).toHaveCount(0);
+    expect(await statusOf()).toEqual(afterBooked);
+    const { count: transitionsAfterCancel, error: transitionsAfterCancelError } = await db
+      .from("request_transitions")
+      .select("id", { count: "exact", head: true })
+      .eq("request_id", id);
+    expect(transitionsAfterCancelError).toBeNull();
+    expect(transitionsAfterCancel).toBe(transitionsBeforeCancel);
+
+    // A confirmed Reopen enters Contacted with the chosen call-again time.
+    await page.getByTestId("reopen-request").click();
+    await page
+      .getByTestId("reopen-controls")
+      .getByText("Tomorrow morning", { exact: true })
+      .click();
+    await page.getByTestId("confirm-reopen").click();
     await expect(feedback).toContainText("Reopened — back to Contacted");
     const reopened = await statusOf();
     expect(reopened?.status).toBe("contacted");
     expect(reopened?.record_handoff_at).toBeNull();
+    expect(reopened?.follow_up_at).toBeTruthy();
+    await expect(page.getByTestId("request-history")).toContainText(
+      "Reopened — returned to Contacted — call again",
+    );
+
+    // Undo restores the exact prior Scheduled snapshot, including its
+    // Handoff clock and cleared call-again/closure fields. The original
+    // Reopen remains visible as later-undone evidence.
+    await page.getByTestId("undo-latest").click();
+    await expect(feedback).toContainText("Undone — this request is Scheduled again.");
+    expect(await statusOf()).toEqual(afterBooked);
+    await expect(page.getByTestId("request-history")).toContainText("later undone");
+
+    // Reopen once more so this same fictional request can exercise the
+    // Distinct Closed outcome below.
+    await page.getByTestId("reopen-request").click();
+    await page.getByTestId("reopen-controls").getByText("Friday", { exact: true }).click();
+    await page.getByTestId("confirm-reopen").click();
+    await expect(feedback).toContainText("Reopened — back to Contacted");
 
     // Closing records the concrete reason the database needs.
     await panel.getByText("Patient won't schedule", { exact: true }).click();
@@ -243,6 +471,11 @@ test.describe("portal requests operation", () => {
     expect(closed?.closure_reason).toBe("wont_schedule");
     expect(closed?.closed_at).toBeTruthy();
     expect(closed?.follow_up_at).toBeNull();
+    // The call sheet is the request's stable anchor. Contact details,
+    // Preferences, and the patient note remain available after resolution.
+    await expect(details.getByTestId("request-phone-link")).toBeVisible();
+    await expect(details.getByTestId("request-preferences")).toContainText("Tampa");
+    await expect(details.getByTestId("request-message")).toContainText(staged.message);
 
     // Every accepted command leaves exactly one immutable transition and
     // One PHI-free workflow audit entry; the retired generic status
@@ -260,7 +493,12 @@ test.describe("portal requests operation", () => {
         .map((row) => [row.command, row.from_state, row.to_state]),
     ).toEqual([
       ["record_contact_attempt", "new", "contacted"],
+      ["record_contact_attempt", "contacted", "contacted"],
+      ["record_contact_attempt", "contacted", "contacted"],
+      ["record_contact_attempt", "contacted", "contacted"],
       ["confirm_booking_handoff", "contacted", "booked"],
+      ["reopen_request", "booked", "contacted"],
+      ["undo_latest_transition", "contacted", "booked"],
       ["reopen_request", "booked", "contacted"],
       ["close_request", "contacted", "closed"],
     ]);
@@ -271,7 +509,7 @@ test.describe("portal requests operation", () => {
       .eq("entity_id", id)
       .eq("action", "request.workflow_command");
     expect(workflowAuditError).toBeNull();
-    expect(workflowAudits).toHaveLength(4);
+    expect(workflowAudits).toHaveLength(9);
     for (const audit of workflowAudits ?? []) {
       const detailText = JSON.stringify(audit.detail);
       expect(detailText).not.toContain(staged.name);
@@ -285,9 +523,17 @@ test.describe("portal requests operation", () => {
       .eq("action", "request.status_change");
     expect(statusAuditError).toBeNull();
     expect(statusAudits).toHaveLength(0);
+
+    // The human Recent work view never shows the raw workflow-command
+    // Identifier; the Technical record beneath keeps it for administrators.
+    await page.goto("/admin/audit");
+    const recentWork = page.getByTestId("recent-work-list").first();
+    await expect(recentWork).toBeVisible();
+    await expect(recentWork).not.toContainText("request.workflow_command");
+    await expect(page.getByTestId("audit-table")).toContainText("request.workflow_command");
   });
 
-  test("VAL-ADMIN-005b: unsafe legacy email uses the phone fallback", async ({ page }) => {
+  test("VAL-ADMIN-005b: unsafe legacy email never becomes a mail link", async ({ page }) => {
     const unsafeEmail = `queue-${runId}-unsafe@example.test?subject=Injected`;
     const { data, error } = await db
       .from("requests")
@@ -309,9 +555,59 @@ test.describe("portal requests operation", () => {
     await signIn(page);
     await page.goto(`/admin/requests/${data.id}`);
 
-    const fallback = page.getByText("Not provided — call the phone number above");
+    const fallback = page.getByTestId("request-email-unavailable");
     await expect(fallback).toBeVisible();
-    await expect(fallback.locator("..").locator('a[href^="mailto:"]')).toHaveCount(0);
+    await expect(fallback).toContainText("No email provided");
+    await expect(fallback.locator('a[href^="mailto:"]')).toHaveCount(0);
+  });
+
+  test("VAL-ADMIN-005c: long intake content reflows without clipping", async ({ page }) => {
+    const longEmail = `queue-${runId}-edge@${"a".repeat(50)}.${"b".repeat(50)}.${"c".repeat(50)}.test`;
+    const longMessage = `TEST ${"unbrokenintakedetail".repeat(90)}`;
+    const { data, error } = await db
+      .from("requests")
+      .insert({
+        name: `TEST Queue ${runId} long content`,
+        phone: "18135550179",
+        email: longEmail,
+        location: "any",
+        preferred_time: "any",
+        message: longMessage,
+        locale: "vi",
+        source_path: "/vi/appointment",
+      })
+      .select("id")
+      .single();
+    expect(error).toBeNull();
+    if (!data) throw new Error("Long-content fixture was not created");
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await signIn(page);
+    await page.goto(`/admin/requests/${data.id}`);
+
+    const details = page.locator('section[aria-labelledby="request-details-heading"]');
+    const wrappingTargets = [
+      details.getByTestId("request-email-link").locator(".portal-request-contact-copy"),
+      details.getByTestId("request-message"),
+    ];
+    for (const target of wrappingTargets) {
+      const box = await target.evaluate((element) => ({
+        clientWidth: element.clientWidth,
+        scrollWidth: element.scrollWidth,
+      }));
+      expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth + 1);
+    }
+    const cardBox = await details.boundingBox();
+    expect(cardBox).not.toBeNull();
+    expect((cardBox?.x ?? 0) + (cardBox?.width ?? 0)).toBeLessThanOrEqual(390);
+
+    await page.emulateMedia({ media: "print" });
+    await expect(details).toHaveCSS("overflow", "visible");
+    const printMessage = await details.getByTestId("request-message").evaluate((element) => ({
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+    }));
+    expect(printMessage.scrollWidth).toBeLessThanOrEqual(printMessage.clientWidth + 1);
   });
 
   test("VAL-ADMIN-004: status filters match SQL counts exactly", async ({ page }) => {
@@ -358,7 +654,7 @@ test.describe("portal requests operation", () => {
     const token = `p2queue-${runId}`;
     const nowMs = Date.now();
     const dayMs = 86_400_000;
-    // Staged rows satisfy the workflow constraint: booked rows carry
+    // Staged rows satisfy the workflow-shape constraint: booked rows carry
     // Their handoff time, classified closed rows carry closed_at + reason.
     const stagedRows = [
       {
@@ -415,6 +711,17 @@ test.describe("portal requests operation", () => {
       });
       expect(error).toBeNull();
     }
+    const { error: legacyAttemptError } = await db.from("request_events").insert({
+      request_id: idsByKey.get("stale")!,
+      type: "contact_attempt",
+      status: "recorded",
+      created_at: new Date(nowMs - 3 * dayMs).toISOString(),
+      meta: {
+        outcome: "reached_follow_up",
+        author_email: SEED_EMAIL.toLowerCase(),
+      },
+    });
+    expect(legacyAttemptError).toBeNull();
 
     try {
       await signIn(page);
@@ -429,8 +736,60 @@ test.describe("portal requests operation", () => {
       await expect(page.getByTestId("request-next-action").first()).toBeVisible();
       const hints = await page.getByTestId("request-next-action").allTextContents();
       expect(hints.some((hint) => hint.startsWith("Call again — due"))).toBe(true);
-      expect(hints.some((hint) => hint.startsWith("Silent"))).toBe(true);
+      expect(hints.some((hint) => hint.startsWith("Set a call-again day"))).toBe(true);
       expect(hints.some((hint) => hint === "On the schedule")).toBe(true);
+
+      // A legacy Contacted/null row never has a blank Next step. Its queue
+      // Action targets the dedicated correction control, where no date is
+      // Guessed and Save stays unavailable until staff choose one.
+      const staleRow = page
+        .getByTestId("request-row")
+        .filter({ hasText: `TEST Queue ${runId} stale` });
+      await expect(staleRow.getByTestId("request-next-action")).toContainText(
+        "Set a call-again day",
+      );
+      await expect(staleRow).toHaveAttribute("href", /#set-call-again$/);
+      await staleRow.click();
+      await expect(page).toHaveURL(/#set-call-again$/);
+      const correction = page.getByTestId("set-call-again-controls");
+      await expect(correction).toBeFocused();
+      await expect(page.getByTestId("workflow-current-state")).toContainText(
+        "call-again day missing",
+      );
+      await expect(page.getByTestId("set-call-again-submit")).toBeDisabled();
+      await expect(page.getByTestId("request-history")).toContainText(
+        "Reached the patient — follow-up needed — no call-again day was set",
+      );
+      await correction.getByText("Tomorrow morning", { exact: true }).click();
+      await page.getByTestId("set-call-again-submit").click();
+      await expect(page.getByTestId("workflow-feedback")).toContainText("Saved — call again");
+      const corrected = await db
+        .from("requests")
+        .select("status, follow_up_at")
+        .eq("id", idsByKey.get("stale")!)
+        .single();
+      expect(corrected.error).toBeNull();
+      expect(corrected.data?.status).toBe("contacted");
+      expect(corrected.data?.follow_up_at).toBeTruthy();
+      await expect(page.getByTestId("request-history")).toContainText("Call-again day set");
+
+      // The correction is reversible to the exact legacy null snapshot;
+      // Both the original missing evidence and its correction stay in history.
+      await page.getByTestId("undo-latest").click();
+      await expect(page.getByTestId("workflow-feedback")).toContainText(
+        "Undone — this request is Contacted again.",
+      );
+      const restoredLegacy = await db
+        .from("requests")
+        .select("status, follow_up_at")
+        .eq("id", idsByKey.get("stale")!)
+        .single();
+      expect(restoredLegacy.error).toBeNull();
+      expect(restoredLegacy.data).toEqual({ status: "contacted", follow_up_at: null });
+      await expect(page.getByTestId("request-history")).toContainText("Call-again day set");
+      await expect(page.getByTestId("request-history")).toContainText(
+        "Undo — restored to Contacted",
+      );
 
       // Continuity: the due row chains to its attention-order neighbors.
       await page.goto(`/admin/requests/${idsByKey.get("due")}?q=${token}`);
@@ -495,7 +854,7 @@ test.describe("portal requests operation", () => {
       expect(transitionsError).toBeNull();
       expect(
         z
-          .array(transitionRowSchema)
+          .array(undoTransitionRowSchema)
           .parse(transitions ?? [])
           .map((row) => [row.command, row.from_state, row.to_state]),
       ).toEqual([
@@ -637,10 +996,10 @@ test.describe("portal requests operation", () => {
       });
       expect(event).toBeTruthy();
       const meta = noteMetaSchema.parse(event?.meta ?? {});
-      expect(String(meta.author_email).toLowerCase()).toBe(SEED_EMAIL.toLowerCase());
+      expect(meta.author_email?.toLowerCase()).toBe(SEED_EMAIL.toLowerCase());
     }
 
-    // The workflow audit records the command identity only — never note text.
+    // The workflow audit records the command shape only — never note text.
     const { data: workflowAudits, error: workflowAuditError } = await db
       .from("audit_log")
       .select("detail")
@@ -648,8 +1007,8 @@ test.describe("portal requests operation", () => {
       .eq("action", "request.workflow_command");
     expect(workflowAuditError).toBeNull();
     expect(workflowAudits).toHaveLength(1);
-    const detail = workflowCommandDetailSchema.parse(workflowAudits![0].detail);
-    expect(detail.command).toBe("record_contact_attempt");
+    const detail = asJsonObject(jsonSchema.parse(workflowAudits![0].detail ?? null));
+    expect(asJsonString(detail?.command)).toBe("record_contact_attempt");
     expect(JSON.stringify(detail)).not.toContain(noteText);
     expect(JSON.stringify(detail)).not.toContain(handoffText);
   });

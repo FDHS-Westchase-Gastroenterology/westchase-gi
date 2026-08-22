@@ -12,6 +12,7 @@ import {
   confirmBookingHandoff,
   recordContactAttempt,
   reopenRequest,
+  setCallAgain,
   undoLatestTransition,
 } from "@/app/admin/(portal)/requests/workflow-actions";
 import { Check } from "@/components/icons";
@@ -96,12 +97,6 @@ const CLOSE_ROWS = {
   },
 } as const satisfies Record<ClosureReason, ChoiceRow>;
 
-const CALL_AGAIN_REQUIRED = {
-  reached_follow_up: false,
-  voicemail: true,
-  no_answer: true,
-} as const satisfies Record<ContactOutcome, boolean>;
-
 type FollowUpKind = "this_afternoon" | "tomorrow_morning" | "friday" | "day";
 
 const FOLLOW_UP_KINDS: { kind: FollowUpKind; label: string }[] = [
@@ -131,6 +126,14 @@ function practiceLocalDay(offsetDays: number): string {
   return shifted.toISOString().slice(0, 10);
 }
 
+function isValidCustomCallAgainDay(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value)
+    return false;
+  return value >= practiceLocalDay(0) && value <= practiceLocalDay(90);
+}
+
 // ---------------------------------------------------------------------------
 // Copy. Success names the staff-facing result (Scheduled, never Booked);
 // Failure names what is and is not known to have been saved (spec §16.5:
@@ -138,7 +141,9 @@ function practiceLocalDay(offsetDays: number): string {
 // ---------------------------------------------------------------------------
 
 function successCopy(
-  choice: Readonly<ActionChoice | { kind: "reopen" } | { kind: "classify" }>,
+  choice: Readonly<
+    ActionChoice | { kind: "reopen" } | { kind: "set_call_again" } | { kind: "classify" }
+  >,
   outcome: Readonly<{ state: RequestState; callAgainAt: string | null }>,
 ): string {
   switch (choice.kind) {
@@ -151,7 +156,13 @@ function successCopy(
     case "close":
       return "Saved — the request is closed.";
     case "reopen":
-      return "Reopened — back to Contacted for more work.";
+      return outcome.callAgainAt !== null && outcome.callAgainAt !== ""
+        ? `Reopened — back to Contacted. Call again ${followUpWhenLabel(outcome.callAgainAt)}.`
+        : "Reopened — back to Contacted for more work.";
+    case "set_call_again":
+      return outcome.callAgainAt !== null && outcome.callAgainAt !== ""
+        ? `Saved — call again ${followUpWhenLabel(outcome.callAgainAt)}.`
+        : "Saved.";
     case "classify":
       return outcome.state === "booked"
         ? "Record finished — marked Scheduled."
@@ -214,7 +225,6 @@ interface PanelState {
   readonly followUpDay: string;
   /** Legacy review: has staff said whether an appointment was booked? */
   readonly reviewResolution: "booked" | ClosureReason | null;
-  readonly attempted: boolean;
   readonly feedback: Feedback | null;
 }
 
@@ -223,17 +233,14 @@ type PanelAction =
   | { readonly type: "select_follow_up"; readonly kind: FollowUpKind }
   | { readonly type: "set_day"; readonly day: string }
   | { readonly type: "select_review"; readonly resolution: "booked" | ClosureReason }
-  | { readonly type: "attempt" }
   | { readonly type: "succeeded"; readonly text: string; readonly closedOrBooked: boolean }
-  | { readonly type: "failed"; readonly text: string }
-  | { readonly type: "reset" };
+  | { readonly type: "failed"; readonly text: string };
 
 const INITIAL_PANEL: PanelState = {
   selected: null,
   followUpKind: null,
   followUpDay: "",
   reviewResolution: null,
-  attempted: false,
   feedback: null,
 };
 
@@ -244,14 +251,12 @@ function panelReducer(state: Readonly<PanelState>, action: Readonly<PanelAction>
         return {
           ...state,
           selected: action.id,
-          attempted: false,
           feedback: null,
         };
       }
       return {
         ...state,
         selected: action.id,
-        attempted: false,
         feedback: null,
         followUpKind: null,
         followUpDay: "",
@@ -264,11 +269,8 @@ function panelReducer(state: Readonly<PanelState>, action: Readonly<PanelAction>
       return {
         ...state,
         reviewResolution: action.resolution,
-        attempted: false,
         feedback: null,
       };
-    case "attempt":
-      return { ...state, attempted: true };
     case "succeeded":
       return {
         ...INITIAL_PANEL,
@@ -280,8 +282,6 @@ function panelReducer(state: Readonly<PanelState>, action: Readonly<PanelAction>
       };
     case "failed":
       return { ...state, feedback: { tone: "error", text: action.text } };
-    case "reset":
-      return INITIAL_PANEL;
   }
   return state;
 }
@@ -340,46 +340,56 @@ function ChoiceRadio({
 }
 
 function CallAgainFieldset({
-  outcome,
+  name,
+  legend,
+  description,
   followUpKind,
   followUpDay,
-  attempted,
   pending,
-  dispatch,
+  onKindChange,
+  onDayChange,
 }: Readonly<{
-  outcome: ContactOutcome;
+  name: string;
+  legend: string;
+  description: string;
   followUpKind: FollowUpKind | null;
   followUpDay: string;
-  attempted: boolean;
   pending: boolean;
-  dispatch: React.Dispatch<PanelAction>;
+  onKindChange: (kind: FollowUpKind) => void;
+  onDayChange: (day: string) => void;
 }>) {
-  const required = CALL_AGAIN_REQUIRED[outcome];
-  const followUpMissing = attempted && required && !followUpKind;
-  const dayMissing = attempted && followUpKind === "day" && !followUpDay;
+  const descriptionId = `${name}-description`;
+  const errorId = `${name}-error`;
+  const customDayInvalid =
+    followUpKind === "day" && followUpDay !== "" && !isValidCustomCallAgainDay(followUpDay);
 
   return (
-    <fieldset className="mt-5" disabled={pending}>
-      <legend className="text-sm font-bold text-[var(--color-ink)]">
-        When should this come back to your attention?
-      </legend>
-      <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
-        This tells the queue when to bring the request back.
-        {required ? " Required for this outcome." : ""}
+    <fieldset
+      className="mt-5"
+      disabled={pending}
+      aria-describedby={customDayInvalid ? `${descriptionId} ${errorId}` : descriptionId}
+    >
+      <legend className="text-sm font-bold text-[var(--color-ink)]">{legend}</legend>
+      <p
+        id={descriptionId}
+        data-testid={`${name}-required-explanation`}
+        className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]"
+      >
+        {description}
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {FOLLOW_UP_KINDS.map((chip) => (
           <label
             key={chip.kind}
-            className="flex min-h-11 cursor-pointer items-center rounded-full border border-[var(--color-line-2)] bg-white px-4 text-[0.9rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-navy)] has-[:checked]:border-[var(--color-navy)] has-[:checked]:bg-[var(--color-navy)] has-[:checked]:text-[var(--color-on-dark)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-teal-ink)]"
+            className="flex min-h-11 cursor-pointer items-center rounded-full border border-[var(--color-line-2)] bg-white px-4 text-[0.9rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-navy)] has-[:checked]:border-[var(--color-navy)] has-[:checked]:bg-[var(--color-navy)] has-[:checked]:text-[var(--color-on-dark)] has-[:disabled]:cursor-default has-[:disabled]:opacity-60 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-teal-ink)]"
           >
             <input
               type="radio"
-              name="call-again"
+              name={name}
               value={chip.kind}
               checked={followUpKind === chip.kind}
               onChange={() => {
-                dispatch({ type: "select_follow_up", kind: chip.kind });
+                onKindChange(chip.kind);
               }}
               disabled={pending}
               className="sr-only"
@@ -391,35 +401,170 @@ function CallAgainFieldset({
           <input
             type="date"
             aria-label="Call again on this day"
+            aria-describedby={customDayInvalid ? errorId : descriptionId}
+            aria-invalid={customDayInvalid}
+            data-testid={`${name}-day`}
             value={followUpDay}
             min={practiceLocalDay(0)}
             max={practiceLocalDay(90)}
             disabled={pending}
             onChange={(event) => {
-              dispatch({ type: "set_day", day: event.target.value });
+              onDayChange(event.target.value);
             }}
-            className="min-h-11 rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.9rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)] disabled:opacity-60"
+            className="min-h-11 rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.9rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)] focus:ring-2 focus:ring-[var(--color-teal-ink)] disabled:opacity-60"
           />
         ) : null}
       </div>
-      {followUpMissing ? (
+      {customDayInvalid ? (
         <p
+          id={errorId}
           role="alert"
-          data-testid="follow-up-required"
-          className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.9rem] font-bold text-[var(--color-ink)]"
+          className="mt-2 text-[0.85rem] font-bold text-[var(--color-ink)]"
         >
-          Choose when to call again so the queue knows when to bring this request back.
-        </p>
-      ) : null}
-      {dayMissing ? (
-        <p
-          role="alert"
-          className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.9rem] font-bold text-[var(--color-ink)]"
-        >
-          Pick the day to call again.
+          Choose today or a day within the next 90 days.
         </p>
       ) : null}
     </fieldset>
+  );
+}
+
+function ReturnTimeAction({
+  kind,
+  pending,
+  inFlight,
+  onSubmit,
+}: Readonly<{
+  kind: "reopen" | "set_call_again";
+  pending: boolean;
+  inFlight: "save" | "reopen" | "set_call_again" | "classify" | "undo" | null;
+  onSubmit: (choice: Readonly<FollowUpChoice>) => void;
+}>) {
+  const [open, setOpen] = useState(kind === "set_call_again");
+  const [followUpKind, setFollowUpKind] = useState<FollowUpKind | null>(null);
+  const [followUpDay, setFollowUpDay] = useState("");
+  const correctionRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const focusAfterOpenRef = useRef(false);
+  const restoreTriggerFocusRef = useRef(false);
+  const choice = followUpChoice(followUpKind, followUpDay);
+  const isCorrection = kind === "set_call_again";
+  const headingId = `${kind}-heading`;
+
+  useEffect(() => {
+    if (
+      open &&
+      (focusAfterOpenRef.current || (isCorrection && window.location.hash === "#set-call-again"))
+    ) {
+      focusAfterOpenRef.current = false;
+      correctionRef.current?.focus();
+      return;
+    }
+    if (!open && restoreTriggerFocusRef.current) {
+      restoreTriggerFocusRef.current = false;
+      triggerRef.current?.focus();
+    }
+  }, [isCorrection, open]);
+
+  if (!open) {
+    return (
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          ref={triggerRef}
+          type="button"
+          data-testid="reopen-request"
+          disabled={pending}
+          onClick={() => {
+            focusAfterOpenRef.current = true;
+            setOpen(true);
+          }}
+          className="btn btn-outline min-h-11 disabled:opacity-60"
+        >
+          Reopen for more work
+        </button>
+        <p className="text-[0.85rem] text-[var(--color-muted)]">
+          You will choose when it returns before anything changes.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={correctionRef}
+      id={isCorrection ? "set-call-again" : undefined}
+      tabIndex={-1}
+      role="group"
+      aria-labelledby={headingId}
+      data-testid={isCorrection ? "set-call-again-controls" : "reopen-controls"}
+      className={
+        isCorrection
+          ? "mt-4 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-4 outline-none focus:outline-[3px] focus:outline-offset-2 focus:outline-[var(--color-amber)]"
+          : "mt-4 outline-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[var(--color-teal-ink)]"
+      }
+    >
+      <h3 id={headingId} className="text-[0.95rem] font-black text-[var(--color-ink)]">
+        {isCorrection ? "Set a call-again day" : "Reopen for more work"}
+      </h3>
+      {isCorrection ? (
+        <p className="mt-1 max-w-[68ch] text-[0.85rem] leading-relaxed text-[var(--color-body)]">
+          This Contacted request has no return time. Choose one to put a concrete next action back
+          in the shared queue.
+        </p>
+      ) : null}
+      <CallAgainFieldset
+        name={isCorrection ? "correction-call-again" : "reopen-call-again"}
+        legend={isCorrection ? "When should staff call again?" : "When should this request return?"}
+        description={
+          isCorrection
+            ? "A return choice is required. No date will be guessed for this request."
+            : "Choose a return time before reopening. Cancel leaves the resolved request and its history unchanged."
+        }
+        followUpKind={followUpKind}
+        followUpDay={followUpDay}
+        pending={pending}
+        onKindChange={setFollowUpKind}
+        onDayChange={setFollowUpDay}
+      />
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          data-testid={isCorrection ? "set-call-again-submit" : "confirm-reopen"}
+          disabled={pending || choice === undefined}
+          onClick={() => {
+            if (choice !== undefined) onSubmit(choice);
+          }}
+          className="btn btn-navy min-h-11 disabled:opacity-60"
+        >
+          {pending && inFlight === kind
+            ? isCorrection
+              ? "Saving…"
+              : "Reopening…"
+            : isCorrection
+              ? "Set call-again day"
+              : "Reopen request"}
+        </button>
+        {isCorrection ? (
+          <p className="text-[0.85rem] text-[var(--color-body)]">
+            The correction is recorded in Request history and can be undone for 15 minutes.
+          </p>
+        ) : (
+          <button
+            type="button"
+            data-testid="cancel-reopen"
+            disabled={pending}
+            onClick={() => {
+              restoreTriggerFocusRef.current = true;
+              setOpen(false);
+              setFollowUpKind(null);
+              setFollowUpDay("");
+            }}
+            className="btn btn-outline min-h-11 disabled:opacity-60"
+          >
+            Cancel
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -439,7 +584,7 @@ function PanelFeedback({
       tabIndex={-1}
       role={feedback.tone === "success" ? "status" : "alert"}
       data-testid="workflow-feedback"
-      className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-[0.92rem] leading-relaxed font-bold text-[var(--color-ink)] outline-none ${
+      className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-[0.92rem] leading-relaxed font-bold text-[var(--color-ink)] outline-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[var(--color-teal-ink)] ${
         feedback.tone === "success" ? "bg-[var(--color-mint)]" : "bg-[var(--color-amber-soft)]"
       }`}
     >
@@ -495,7 +640,9 @@ export function WorkflowPanel({
   // Success, and during that window every button would falsely claim to be
   // The one working ("Reopening…" after a save). A button only wears an
   // In-progress verb for the action the user actually took.
-  const [inFlight, setInFlight] = useState<"save" | "reopen" | "classify" | "undo" | null>(null);
+  const [inFlight, setInFlight] = useState<
+    "save" | "reopen" | "set_call_again" | "classify" | "undo" | null
+  >(null);
   const [panel, dispatch] = useReducer(panelReducer, INITIAL_PANEL);
   const [truth, setTruth] = useState<Truth>({
     state,
@@ -536,6 +683,7 @@ export function WorkflowPanel({
 
   const legal = legalActionsFor(truth.state, {
     legacyReviewRequired: truth.legacyReviewRequired,
+    callAgainAt: truth.callAgainAt,
   });
 
   const rows: ChoiceRow[] = [
@@ -563,6 +711,7 @@ export function WorkflowPanel({
     intent: Readonly<
       | ActionChoice
       | { readonly kind: "reopen" }
+      | { readonly kind: "set_call_again" }
       | { readonly kind: "classify" }
       | { readonly kind: "undo" }
     >,
@@ -634,34 +783,37 @@ export function WorkflowPanel({
 
   function save() {
     if (!selectedRow || pending) return;
-    dispatch({ type: "attempt" });
     const choice = selectedRow.choice;
-    if (choice.kind === "attempt") {
-      if (CALL_AGAIN_REQUIRED[choice.outcome] && !panel.followUpKind) return;
-      if (panel.followUpKind === "day" && !panel.followUpDay) return;
-    }
     const common = {
       requestId,
       expectedVersion: truth.version,
       idempotencyKey: currentKey(),
     };
+    if (choice.kind === "attempt") {
+      const callAgain = followUpChoice(panel.followUpKind, panel.followUpDay);
+      if (callAgain === undefined) return;
+      setInFlight("save");
+      startTransition(async () => {
+        const result = await recordContactAttempt({
+          ...common,
+          outcome: choice.outcome,
+          callAgain,
+        });
+        applyOutcome(result, choice);
+      });
+      return;
+    }
     setInFlight("save");
     startTransition(async () => {
       const result =
-        choice.kind === "attempt"
-          ? await recordContactAttempt({
-              ...common,
-              outcome: choice.outcome,
-              callAgain: followUpChoice(panel),
-            })
-          : choice.kind === "booked"
-            ? await confirmBookingHandoff(common)
-            : await closeRequest({ ...common, reason: choice.reason });
+        choice.kind === "booked"
+          ? await confirmBookingHandoff(common)
+          : await closeRequest({ ...common, reason: choice.reason });
       applyOutcome(result, choice);
     });
   }
 
-  function reopen() {
+  function reopen(callAgain: Readonly<FollowUpChoice>) {
     if (pending) return;
     setInFlight("reopen");
     startTransition(async () => {
@@ -669,14 +821,28 @@ export function WorkflowPanel({
         requestId,
         expectedVersion: truth.version,
         idempotencyKey: currentKey(),
+        callAgain,
       });
       applyOutcome(result, { kind: "reopen" });
     });
   }
 
+  function correctCallAgain(callAgain: Readonly<FollowUpChoice>) {
+    if (pending) return;
+    setInFlight("set_call_again");
+    startTransition(async () => {
+      const result = await setCallAgain({
+        requestId,
+        expectedVersion: truth.version,
+        idempotencyKey: currentKey(),
+        callAgain,
+      });
+      applyOutcome(result, { kind: "set_call_again" });
+    });
+  }
+
   function classify() {
     if (pending || !panel.reviewResolution) return;
-    dispatch({ type: "attempt" });
     const resolution = panel.reviewResolution;
     setInFlight("classify");
     startTransition(async () => {
@@ -711,12 +877,12 @@ export function WorkflowPanel({
     pending ||
     !selectedRow ||
     (selectedAttempt !== null &&
-      ((CALL_AGAIN_REQUIRED[selectedAttempt] && !panel.followUpKind) ||
-        (panel.followUpKind === "day" && !panel.followUpDay)));
+      followUpChoice(panel.followUpKind, panel.followUpDay) === undefined);
 
   return (
     <WorkflowPanelBody
       classify={classify}
+      correctCallAgain={correctCallAgain}
       dispatch={dispatch}
       feedbackRef={feedbackRef}
       inFlight={inFlight}
@@ -739,6 +905,7 @@ export function WorkflowPanel({
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function WorkflowPanelBody({
   classify,
+  correctCallAgain,
   dispatch,
   feedbackRef,
   inFlight,
@@ -756,14 +923,15 @@ function WorkflowPanelBody({
   undoOpen,
 }: Readonly<{
   classify: () => void;
+  correctCallAgain: (choice: Readonly<FollowUpChoice>) => void;
   dispatch: (action: Readonly<PanelAction>) => void;
   feedbackRef: RefObject<HTMLParagraphElement | null>;
-  inFlight: "save" | "reopen" | "classify" | "undo" | null;
+  inFlight: "save" | "reopen" | "set_call_again" | "classify" | "undo" | null;
   legal: LegalActions;
   nextHref: string | null;
   panel: PanelState;
   pending: boolean;
-  reopen: () => void;
+  reopen: (choice: Readonly<FollowUpChoice>) => void;
   rows: ChoiceRow[];
   save: () => void;
   saveDisabled: boolean;
@@ -793,7 +961,9 @@ function WorkflowPanelBody({
         Current status: {STATE_LABELS[truth.state]}
         {truth.state === "contacted" && truth.callAgainAt !== null && truth.callAgainAt !== ""
           ? ` — call again ${followUpWhenLabel(truth.callAgainAt)}`
-          : ""}
+          : truth.state === "contacted"
+            ? " — call-again day missing"
+            : ""}
       </p>
 
       <PanelFeedback feedback={panel.feedback} nextHref={nextHref} feedbackRef={feedbackRef} />
@@ -817,6 +987,15 @@ function WorkflowPanelBody({
             {pending && inFlight === "undo" ? "Undoing…" : "Undo"}
           </button>
         </div>
+      ) : null}
+
+      {legal.setCallAgain && panel.selected === null ? (
+        <ReturnTimeAction
+          kind="set_call_again"
+          pending={pending}
+          inFlight={inFlight}
+          onSubmit={correctCallAgain}
+        />
       ) : null}
 
       {legal.classifyLegacyClosure ? (
@@ -889,7 +1068,7 @@ function WorkflowPanelBody({
           <fieldset className="mt-5" disabled={pending}>
             <legend className="text-sm font-bold text-[var(--color-ink)]">What happened?</legend>
             <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
-              Record the call the way it went — the request moves itself.
+              Record what happened on the call. The request moves to the right status.
             </p>
             <div data-testid="workflow-choices" className="mt-3 grid gap-2.5 sm:grid-cols-2">
               {rows.map((row) => (
@@ -911,12 +1090,18 @@ function WorkflowPanelBody({
 
           {selectedAttempt !== null ? (
             <CallAgainFieldset
-              outcome={selectedAttempt}
+              name="call-again"
+              legend="When should this come back to your attention?"
+              description="Choose one before Save. The shared queue uses it to show staff the next call."
               followUpKind={panel.followUpKind}
               followUpDay={panel.followUpDay}
-              attempted={panel.attempted}
               pending={pending}
-              dispatch={dispatch}
+              onKindChange={(kind) => {
+                dispatch({ type: "select_follow_up", kind });
+              }}
+              onDayChange={(day) => {
+                dispatch({ type: "set_day", day });
+              }}
             />
           ) : null}
 
@@ -943,20 +1128,12 @@ function WorkflowPanelBody({
               : "This request is closed — no appointment was booked."}
           </p>
           {legal.reopenRequest ? (
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                data-testid="reopen-request"
-                disabled={pending}
-                onClick={reopen}
-                className="btn btn-outline min-h-11 disabled:opacity-60"
-              >
-                {pending && inFlight === "reopen" ? "Reopening…" : "Reopen for more work"}
-              </button>
-              <p className="text-[0.85rem] text-[var(--color-muted)]">
-                Returns it to Contacted. Its history stays.
-              </p>
-            </div>
+            <ReturnTimeAction
+              kind="reopen"
+              pending={pending}
+              inFlight={inFlight}
+              onSubmit={reopen}
+            />
           ) : null}
         </div>
       )}
@@ -964,9 +1141,13 @@ function WorkflowPanelBody({
   );
 }
 
-function followUpChoice(panel: Readonly<PanelState>): FollowUpChoice | undefined {
-  if (panel.followUpKind === null) return undefined;
-  return panel.followUpKind === "day"
-    ? { kind: "day", date: panel.followUpDay }
-    : { kind: panel.followUpKind };
+function followUpChoice(
+  followUpKind: FollowUpKind | null,
+  followUpDay: string,
+): FollowUpChoice | undefined {
+  if (followUpKind === null) return undefined;
+  if (followUpKind === "day") {
+    return isValidCustomCallAgainDay(followUpDay) ? { kind: "day", date: followUpDay } : undefined;
+  }
+  return { kind: followUpKind };
 }

@@ -12,6 +12,7 @@ import {
   Users,
 } from "@/components/icons";
 import { arrivedOutsideOfficeHours } from "@/lib/portal/business-time";
+import { STAFF_REQUEST_SOURCE_PATH } from "@/lib/portal/contracts";
 
 import { PortalPageHeader } from "./portal-page-header";
 import { formatReceived } from "./requests/format";
@@ -20,8 +21,8 @@ interface HomeTask {
   href: string;
   label: string;
   description: string;
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- SVG icon props are framework member types
-  icon: (props: SVGProps<SVGSVGElement>) => ReactNode;
+  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+  icon: (props: Readonly<SVGProps<SVGSVGElement>>) => ReactNode;
 }
 
 const DESK_TOOLS: HomeTask[] = [
@@ -33,7 +34,7 @@ const DESK_TOOLS: HomeTask[] = [
   },
   {
     href: "/admin/settings#notifications",
-    label: "Notification emails",
+    label: "Notification recipients",
     description: "Choose who hears when a new request arrives.",
     icon: Mail,
   },
@@ -69,21 +70,6 @@ interface AttentionPath {
   label: string;
 }
 
-interface HomeWorkbenchProps {
-  greeting: string;
-  firstName: string;
-  date: string;
-  afterHours: boolean;
-  newCount: number | null;
-  oldestWaiting: string | null;
-  newest: readonly NewRequestPreview[];
-  attention: readonly AttentionPath[];
-  attentionUnavailable: boolean;
-  noActiveRecipients: boolean;
-  deliveryFailureCount: number | null;
-  announcements?: ReactNode;
-}
-
 function waitingHeadline(count: number): string {
   if (count === 0) return "No new appointment requests are waiting.";
   return `${count} new appointment ${count === 1 ? "request is" : "requests are"} waiting.`;
@@ -103,7 +89,20 @@ export function HomeWorkbench({
   noActiveRecipients,
   deliveryFailureCount,
   announcements,
-}: Readonly<HomeWorkbenchProps>) {
+}: Readonly<{
+  greeting: string;
+  firstName: string;
+  date: string;
+  afterHours: boolean;
+  newCount: number | null;
+  oldestWaiting: string | null;
+  newest: NewRequestPreview[];
+  attention: AttentionPath[];
+  attentionUnavailable: boolean;
+  noActiveRecipients: boolean;
+  deliveryFailureCount: number | null;
+  announcements?: ReactNode;
+}>) {
   const newViewHref = "/admin/requests?status=new";
 
   return (
@@ -115,6 +114,15 @@ export function HomeWorkbench({
           </span>
         }
         description="Start with what needs contact, then record the real outcome in Appointments."
+        actions={
+          <Link
+            href={STAFF_REQUEST_SOURCE_PATH}
+            data-testid="home-add-patient-request"
+            className="btn btn-outline min-h-11"
+          >
+            Add appointment request
+          </Link>
+        }
         meta={
           <>
             <span>{date}</span>
@@ -139,7 +147,7 @@ export function HomeWorkbench({
           <header className="portal-work-stack-header">
             <div>
               <h2 id="queue-overview-heading">Appointment requests</h2>
-              <p>The live work stack. Contact the longest-waiting request first.</p>
+              <p>New requests wait here. Contact the longest-waiting one first.</p>
             </div>
             <Link href="/admin/requests" className="portal-inline-link">
               Open Appointments
@@ -188,28 +196,35 @@ export function HomeWorkbench({
               </div>
               <div className="portal-new-work-actions">
                 {newCount > 0 ? (
-                  <Link
-                    href="/admin/requests/print?auto=1"
-                    target="_blank"
-                    rel="noopener"
-                    prefetch={false}
-                    className="btn btn-navy min-h-11"
-                    aria-label={`Print all ${newCount} new appointment ${
-                      newCount === 1 ? "request" : "requests"
-                    }; opens in a new tab`}
-                  >
-                    <Printer className="h-4 w-4" />
-                    <span data-testid="print-new-count">Print all {newCount}</span>
-                  </Link>
+                  <>
+                    <Link href={newViewHref} className="btn btn-navy min-h-11">
+                      Start with oldest request
+                    </Link>
+                    <Link
+                      href="/admin/requests/print?auto=1"
+                      target="_blank"
+                      rel="noopener"
+                      prefetch={false}
+                      className="btn btn-outline min-h-11"
+                      aria-label={`Print all ${newCount} new appointment ${
+                        newCount === 1 ? "request" : "requests"
+                      }; opens in a new tab`}
+                    >
+                      <Printer className="h-4 w-4" />
+                      <span data-testid="print-new-count">Print all {newCount}</span>
+                    </Link>
+                  </>
                 ) : (
-                  <button type="button" className="btn btn-outline min-h-11" disabled>
-                    <Printer className="h-4 w-4" />
-                    <span data-testid="print-new-empty">Nothing to print</span>
-                  </button>
+                  <>
+                    <button type="button" className="btn btn-outline min-h-11" disabled>
+                      <Printer className="h-4 w-4" />
+                      <span data-testid="print-new-empty">Nothing to print</span>
+                    </button>
+                    <Link href={newViewHref} className="btn btn-outline min-h-11">
+                      Open New requests
+                    </Link>
+                  </>
                 )}
-                <Link href={newViewHref} className="btn btn-outline min-h-11">
-                  Open New requests
-                </Link>
               </div>
             </div>
           )}
@@ -267,7 +282,7 @@ export function HomeWorkbench({
             </p>
           ) : null}
 
-          {deliveryFailureCount !== null && deliveryFailureCount > 0 ? (
+          {deliveryFailureCount !== null && deliveryFailureCount !== 0 ? (
             <p data-testid="delivery-failure-warning" className="portal-operational-warning">
               <strong>
                 {deliveryFailureCount === 1

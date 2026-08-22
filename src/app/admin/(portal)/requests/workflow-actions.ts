@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 import { requireRole } from "@/lib/portal/auth";
 import { resolveFollowUpAt } from "@/lib/portal/business-time";
@@ -19,6 +20,13 @@ interface Common {
   readonly expectedVersion: number;
   readonly idempotencyKey: string;
 }
+
+const followUpChoiceSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("this_afternoon") }),
+  z.object({ kind: z.literal("tomorrow_morning") }),
+  z.object({ kind: z.literal("friday") }),
+  z.object({ kind: z.literal("day"), date: z.string() }),
+]);
 
 function refresh(id: string) {
   revalidatePath("/admin");
@@ -44,16 +52,21 @@ async function run(
   return result;
 }
 
+function resolveCallAgainAt(choice: Readonly<FollowUpChoice>): string | null {
+  const parsed = followUpChoiceSchema.safeParse(choice);
+  return parsed.success ? resolveFollowUpAt(parsed.data) : null;
+}
+
 export async function recordContactAttempt(
   input: Readonly<
-    Common & { outcome: ContactOutcome; callAgain?: Readonly<FollowUpChoice>; note?: string }
+    Common & { outcome: ContactOutcome; callAgain: Readonly<FollowUpChoice>; note?: string }
   >,
 ): Promise<CommandOutcome> {
   // The staff quick picks ("This afternoon", "Tomorrow morning", …) resolve
   // Through the same practice-local policy as the legacy composer; the
   // Domain command only ever sees the resolved timestamp.
-  const callAgainAt = input.callAgain !== undefined ? resolveFollowUpAt(input.callAgain) : null;
-  if (input.callAgain !== undefined && callAgainAt === null) {
+  const callAgainAt = resolveCallAgainAt(input.callAgain);
+  if (callAgainAt === null) {
     return { ok: false, code: "invalid_command" } as const;
   }
   return run({
@@ -76,8 +89,24 @@ export async function closeRequest(
   });
 }
 
-export async function reopenRequest(input: Readonly<Common>): Promise<CommandOutcome> {
-  return run({ ...input, command: { kind: "reopen_request" } });
+export async function reopenRequest(
+  input: Readonly<Common & { callAgain: Readonly<FollowUpChoice> }>,
+): Promise<CommandOutcome> {
+  const callAgainAt = resolveCallAgainAt(input.callAgain);
+  if (callAgainAt === null) {
+    return { ok: false, code: "invalid_command" } as const;
+  }
+  return run({ ...input, command: { kind: "reopen_request", callAgainAt } });
+}
+
+export async function setCallAgain(
+  input: Readonly<Common & { callAgain: Readonly<FollowUpChoice> }>,
+): Promise<CommandOutcome> {
+  const callAgainAt = resolveCallAgainAt(input.callAgain);
+  if (callAgainAt === null) {
+    return { ok: false, code: "invalid_command" } as const;
+  }
+  return run({ ...input, command: { kind: "set_call_again", callAgainAt } });
 }
 
 function undoFingerprintCommand(): WorkflowCommand {
