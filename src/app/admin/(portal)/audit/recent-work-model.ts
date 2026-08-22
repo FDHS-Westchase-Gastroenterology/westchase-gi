@@ -2,6 +2,8 @@
 // Grouped by practice-local day. Storage codes stay in the technical table.
 // Patient names are deliberately not resolved here; the request is the link.
 
+import { z } from "zod";
+
 import { OUTCOME_HISTORY_LABELS, followUpShortLabel } from "@/app/admin/(portal)/requests/format";
 import { asJsonBoolean, asJsonNumber, asJsonObject, asJsonString } from "@/lib/json";
 import type { Json, JsonObject } from "@/lib/json";
@@ -34,6 +36,30 @@ export interface RecentWorkContext {
   now: Date;
 }
 
+export type RecentWorkType = "all" | "requests" | "people" | "output" | "site" | "other";
+
+/**
+ * The staff-facing work groups. Labels are plain language — never storage
+ * codes. "Everything else" keeps unknown actions reachable through the
+ * filter so no audit row is silently hidden from staff.
+ */
+export const WORK_TYPE_LABELS = {
+  requests: "Appointment requests",
+  people: "Notifications & staff",
+  output: "Printing & exports",
+  site: "Website & access",
+  other: "Everything else",
+} as const satisfies Record<Exclude<RecentWorkType, "all">, string>;
+
+export const WORK_TYPE_FILTERS = [
+  "all",
+  "requests",
+  "people",
+  "output",
+  "site",
+  "other",
+] as const satisfies readonly RecentWorkType[];
+
 export interface RecentWorkItem {
   readonly id: string;
   readonly at: string;
@@ -43,6 +69,11 @@ export interface RecentWorkItem {
   // True when the action is unknown to the human vocabulary and the entry
   // Falls back to the technical form — an honest fallback, never silence.
   readonly technical: boolean;
+  // Work group for the staff-facing filter, classified from the action.
+  readonly workType: Exclude<RecentWorkType, "all">;
+  // Storage action code. Used only for deterministic grouping; the human
+  // View renders the sentence, never this value.
+  readonly action: string;
 }
 
 const NY_DAY = new Intl.DateTimeFormat("en-CA", {
@@ -75,6 +106,19 @@ export function dayGroupLabel(iso: string, now: Date): string {
 
 function detailObject(detail: Json): JsonObject {
   return asJsonObject(detail) ?? {};
+}
+
+/**
+ * Work-group classification for the staff-facing filter. Prefix rules are
+ * checked in this exact order so classification is deterministic; anything
+ * unknown lands in "other" rather than being dropped.
+ */
+export function classifyWorkType(action: string): Exclude<RecentWorkType, "all"> {
+  if (action === "requests.print_new" || action === "requests.export") return "output";
+  if (action.startsWith("request.")) return "requests";
+  if (action.startsWith("recipients.") || action.startsWith("staff.")) return "people";
+  if (action.startsWith("maintainers.")) return "site";
+  return "other";
 }
 
 function isCallOutcomeId(value: string): value is keyof typeof OUTCOME_HISTORY_LABELS {
@@ -312,16 +356,18 @@ export function toRecentWorkItems(
       sentence,
       requestId: entry.entity === "requests" ? entry.entity_id : null,
       technical,
+      workType: classifyWorkType(entry.action),
+      action: entry.action,
     });
   }
   return items;
 }
 
-export function groupByPracticeDay(
-  items: readonly RecentWorkItem[],
+export function groupByPracticeDay<T extends { readonly at: string }>(
+  items: readonly T[],
   now: Date,
-): { label: string; items: RecentWorkItem[] }[] {
-  const groups: { label: string; items: RecentWorkItem[] }[] = [];
+): { label: string; items: T[] }[] {
+  const groups: { label: string; items: T[] }[] = [];
   for (const item of items) {
     const label = dayGroupLabel(item.at, now);
     const current = groups.at(-1);
@@ -332,4 +378,219 @@ export function groupByPracticeDay(
     }
   }
   return groups;
+}
+
+// ---- Staff-facing search, filters, compaction, and URL state ----
+//
+// These helpers operate on the staff-facing lens only. They never touch the
+// Technical read path: the Technical record query, its row order, and its
+// Counts are unaffected by Recent-work search, filtering, or grouping.
+
+/** The practice-local day key for one timestamp (compact ISO date). */
+function nyDayKey(iso: string): string {
+  return NY_DAY.format(new Date(iso));
+}
+
+/**
+ * Everything Recent-work search may match: the actor exactly as displayed
+ * (display name when known, email only as already shown), the
+ * plain-language sentence, and a linked request's id — which Recent work
+ * already renders as the "open request" link target. Raw detail JSON,
+ * entity UUIDs, storage codes, tokens, secrets, and any field the page does
+ * not already show staff are deliberately excluded from the haystack.
+ */
+function recentWorkHaystack(item: Readonly<RecentWorkItem>): string {
+  return `${item.actor}\n${item.sentence}\n${item.requestId ?? ""}`.toLowerCase();
+}
+
+function matchesRecentWork(
+  item: Readonly<RecentWorkItem>,
+  type: RecentWorkType,
+  needle: string,
+): boolean {
+  if (type !== "all" && item.workType !== type) return false;
+  if (needle === "") return true;
+  return recentWorkHaystack(item).includes(needle);
+}
+
+const workTypeParamSchema = z.union([z.string(), z.array(z.string())]);
+
+/**
+ * Parse the `type` URL parameter into a staff-facing work group; anything
+ * unrecognized falls back to "all" so an old or mistyped link still shows
+ * every entry.
+ */
+export function parseRecentWorkType(
+  param: Readonly<string | string[] | undefined>,
+): RecentWorkType {
+  const parsed = workTypeParamSchema.safeParse(param ?? "");
+  const rawValues = parsed.success
+    ? Array.isArray(parsed.data)
+      ? parsed.data
+      : [parsed.data]
+    : [];
+  const present = new Set(rawValues);
+  for (const candidate of WORK_TYPE_FILTERS) {
+    if (present.has(candidate)) return candidate;
+  }
+  return "all";
+}
+
+/**
+ * Filter the staff-facing lens by search text and work group. Input order is
+ * preserved; an empty search with "all" returns every item.
+ */
+export function filterRecentWork(
+  items: readonly RecentWorkItem[],
+  options: Readonly<{ search: string; type: RecentWorkType }>,
+): RecentWorkItem[] {
+  const needle = options.search.trim().toLowerCase();
+  return items.filter((item) => matchesRecentWork(item, options.type, needle));
+}
+
+/**
+ * Adjacent low-value print/export events collapse into one summary.
+ *
+ * Safety boundaries — a run joins only while every condition holds against
+ * the previous event in the existing (newest-first) order:
+ *
+ * 1. same storage action, and it is a known print/export action rendered in
+ *    plain language (technical fallbacks never group);
+ * 2. same actor and same linked request (never combines people);
+ * 3. same practice-local day;
+ * 4. within OUTPUT_GROUP_MAX_GAP_MS of the previous event (widely separated
+ *    actions stay separate even with identical sentences).
+ *
+ * The rule is a pure scan of the ordered input: deterministic across runs,
+ * never reorders or drops an event — singles pass through untouched and
+ * every grouped member stays reachable through its summary's expansion.
+ */
+export const OUTPUT_GROUP_MAX_GAP_MS = 30 * 60 * 1000;
+
+const OUTPUT_GROUP_PHRASES = {
+  "requests.print_new": "prepared the New-request print packet",
+  "requests.export": "exported the request list",
+} as const;
+
+/** The plain-language phrase for a compactable output action, else null. */
+function outputPhrase(action: string): string | null {
+  if (action === "requests.print_new") return OUTPUT_GROUP_PHRASES["requests.print_new"];
+  if (action === "requests.export") return OUTPUT_GROUP_PHRASES["requests.export"];
+  return null;
+}
+
+export type RecentWorkEntry =
+  | { readonly kind: "single"; readonly at: string; readonly item: RecentWorkItem }
+  | {
+      readonly kind: "group";
+      readonly key: string;
+      // Display time: the newest event in the group.
+      readonly at: string;
+      readonly actor: string;
+      readonly phrase: string;
+      readonly count: number;
+      // Span endpoints: toAt is the newest event, fromAt the oldest.
+      readonly fromAt: string;
+      readonly toAt: string;
+      readonly items: readonly RecentWorkItem[];
+    };
+
+export function compactRepeatedOutput(items: readonly RecentWorkItem[]): RecentWorkEntry[] {
+  const entries: RecentWorkEntry[] = [];
+  let run: RecentWorkItem[] = [];
+  const flush = (): void => {
+    if (run.length === 0) return;
+    const phrase = outputPhrase(run[0].action);
+    if (run.length === 1 || phrase === null) {
+      entries.push({ kind: "single", at: run[0].at, item: run[0] });
+    } else {
+      entries.push({
+        kind: "group",
+        key: `repeated-${run[0].action}-${run[run.length - 1].id}`,
+        at: run[0].at,
+        actor: run[0].actor,
+        phrase,
+        count: run.length,
+        fromAt: run[run.length - 1].at,
+        toAt: run[0].at,
+        items: [...run],
+      });
+    }
+    run = [];
+  };
+  for (const item of items) {
+    const previous = run.at(-1);
+    const gapMs =
+      previous === undefined
+        ? Number.POSITIVE_INFINITY
+        : Date.parse(previous.at) - Date.parse(item.at);
+    const joins =
+      previous !== undefined &&
+      !item.technical &&
+      outputPhrase(item.action) !== null &&
+      item.action === previous.action &&
+      item.actor === previous.actor &&
+      item.requestId === previous.requestId &&
+      nyDayKey(item.at) === nyDayKey(previous.at) &&
+      gapMs >= 0 &&
+      gapMs <= OUTPUT_GROUP_MAX_GAP_MS;
+    if (!joins) flush();
+    run.push(item);
+  }
+  flush();
+  return entries;
+}
+
+export const RECENT_WORK_PAGE_SIZE = 50;
+
+export interface RecentWorkPage<T> {
+  readonly slice: readonly T[];
+  readonly total: number;
+  readonly totalPages: number;
+  readonly firstShown: number;
+  readonly lastShown: number;
+}
+
+/** Deterministic offset window over an ordered result set. */
+export function paginateRecentWork<T>(
+  entries: readonly T[],
+  page: number,
+  pageSize: number = RECENT_WORK_PAGE_SIZE,
+): RecentWorkPage<T> {
+  const total = entries.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const from = (safePage - 1) * pageSize;
+  const slice = entries.slice(from, from + pageSize);
+  return {
+    slice,
+    total,
+    totalPages,
+    firstShown: total === 0 ? 0 : from + 1,
+    lastShown: from + slice.length,
+  };
+}
+
+export interface RecentWorkQuery {
+  readonly q?: string;
+  readonly type?: RecentWorkType;
+  readonly rw?: number;
+  readonly page?: number;
+  readonly hash?: string;
+}
+
+/**
+ * The Activity route's shareable URL state. Defaults are omitted so a
+ * cleared view collapses to `/admin/audit`.
+ */
+export function recentWorkHref(query: Readonly<RecentWorkQuery>): string {
+  const params = new URLSearchParams();
+  const trimmedQ = query.q?.trim() ?? "";
+  if (trimmedQ !== "") params.set("q", trimmedQ);
+  if (query.type !== undefined && query.type !== "all") params.set("type", query.type);
+  if (query.rw !== undefined && query.rw > 1) params.set("rw", String(query.rw));
+  if (query.page !== undefined && query.page > 1) params.set("page", String(query.page));
+  const queryString = params.toString();
+  const hash = query.hash !== undefined && query.hash !== "" ? `#${query.hash}` : "";
+  return `/admin/audit${queryString !== "" ? `?${queryString}` : ""}${hash}`;
 }
