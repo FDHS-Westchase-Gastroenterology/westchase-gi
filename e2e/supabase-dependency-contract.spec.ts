@@ -89,6 +89,7 @@ const lifecycleRunSchema = z.object({
 const idRowSchema = z.object({
   id: z.string(),
 });
+const nullableTimestampSchema = z.string().nullable();
 
 type SafeParseResult<T> =
   | { readonly success: true; readonly data: T }
@@ -2607,7 +2608,13 @@ test.describe("Supabase dependency contract", () => {
             .single(),
         ]);
         expect(request.data?.status).toBe("contacted");
-        expectTimestamp(request.data?.follow_up_at, callAgainAt);
+        expectTimestamp(
+          requireDecoded(
+            nullableTimestampSchema.safeParse(request.data?.follow_up_at),
+            "Dated contact follow-up timestamp could not be decoded",
+          ),
+          callAgainAt,
+        );
         expect(events.data?.filter((event) => event.type === "contact_attempt")).toHaveLength(1);
         expect(transitions.data?.command).toBe("record_contact_attempt");
         expect(transitions.data?.call_again_at).toBeNull();
@@ -2693,10 +2700,22 @@ test.describe("Supabase dependency contract", () => {
           closed_at: null,
           closure_reason: null,
         });
-        expectTimestamp(request.data?.follow_up_at, callAgainAt);
+        expectTimestamp(
+          requireDecoded(
+            nullableTimestampSchema.safeParse(request.data?.follow_up_at),
+            "Reopened request follow-up timestamp could not be decoded",
+          ),
+          callAgainAt,
+        );
         expect(events.data?.filter((event) => event.type === "contact_attempt")).toHaveLength(0);
         expect(transition.data?.command).toBe("reopen_request");
-        expectTimestamp(transition.data?.call_again_at, callAgainAt);
+        expectTimestamp(
+          requireDecoded(
+            nullableTimestampSchema.safeParse(transition.data?.call_again_at),
+            "Reopen transition call-again timestamp could not be decoded",
+          ),
+          callAgainAt,
+        );
 
         const contactedCount = await db
           .from("requests")
@@ -2747,10 +2766,22 @@ test.describe("Supabase dependency contract", () => {
           .single(),
       ]);
       expect(setRequest.data?.status).toBe("contacted");
-      expectTimestamp(setRequest.data?.follow_up_at, laterCallAgainAt);
+      expectTimestamp(
+        requireDecoded(
+          nullableTimestampSchema.safeParse(setRequest.data?.follow_up_at),
+          "Corrected request follow-up timestamp could not be decoded",
+        ),
+        laterCallAgainAt,
+      );
       expect(setEvents.data?.filter((event) => event.type === "contact_attempt")).toHaveLength(0);
       expect(setTransition.data?.command).toBe("set_call_again");
-      expectTimestamp(setTransition.data?.call_again_at, laterCallAgainAt);
+      expectTimestamp(
+        requireDecoded(
+          nullableTimestampSchema.safeParse(setTransition.data?.call_again_at),
+          "Correction transition call-again timestamp could not be decoded",
+        ),
+        laterCallAgainAt,
+      );
       const undoSet = await undo(legacyContactedId, 2, setTransitionId);
       expect(undoSet.error).toBeNull();
       expect(
