@@ -1,10 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { test, expect } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Page } from "playwright-core";
 import { z } from "zod";
 
 import { intakeResponseSchema } from "../src/lib/portal/contracts";
+import { test, expect } from "./harness";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // The portal home page: staff land on a greeting and their tasks, not on

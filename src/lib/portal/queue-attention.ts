@@ -2,6 +2,21 @@ import "server-only";
 
 import { previousBusinessMorningBoundary } from "./business-time";
 
+/**
+ * Queue attention — which bucket each queue row calls for, and the order
+ * staff see them in. Pure: rows in, attentive rows out; no database,
+ * React, or clock dependency, so a mis-bucketed row fails a unit test
+ * instead of reaching the front desk.
+ *
+ * Vocabulary: the staff-chosen day a contacted request should resurface is
+ * the call-again day; the database column spells it follow_up_at. Patient
+ * content uses "follow-up" only in its medical sense (a follow-up visit or
+ * procedure), which is a different concept. A contacted row with no
+ * call-again day goes stale once its last staff activity predates the
+ * previous business-morning boundary (business-time.ts). Silence across a
+ * morning brings a row back to staff attention.
+ */
+
 export interface QueueAttentionRow {
   id: string;
   status: "new" | "contacted" | "scheduled" | "closed";

@@ -1,4 +1,3 @@
-import { test, expect } from "@playwright/test";
 import { z } from "zod";
 
 import { jsonObjectSchema } from "../src/lib/json";
@@ -10,6 +9,7 @@ import {
   runMaintainerOperation,
 } from "../src/lib/portal/maintainer-operation";
 import { getMaintainerViewState } from "../src/lib/portal/maintainer-view";
+import { test, expect } from "./harness";
 
 test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "provider contract");

@@ -3,6 +3,22 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
+/**
+ * New-request print packet — an oldest-first paper snapshot of every
+ * appointment request that is durably NEW when the packet is prepared.
+ *
+ * The RPC (portal_prepare_new_request_print_packet) is the write authority
+ * for packet evidence and records metadata-only audit rows; this module is
+ * the read-side validator. It re-verifies what the paper will claim before
+ * anything prints: strict row shape, unique ids, and a true oldest-first
+ * order compared with microsecond precision, so Postgres timestamps that
+ * differ only below the millisecond cannot silently invert.
+ *
+ * A packet carries patient data, must stay inside the clinic, and never
+ * changes request status, attention, version, or Request history; staff
+ * record every outcome in the portal.
+ */
+
 const RPC_NAME = "portal_prepare_new_request_print_packet";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const POSTGRES_TIMESTAMP_RE =

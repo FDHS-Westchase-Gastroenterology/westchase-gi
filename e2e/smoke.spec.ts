@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./harness";
 
 // Harness smoke: proves the QA stack can drive the app at all.
 // VAL-ENV-007 — /en renders the home hero; /admin redirects

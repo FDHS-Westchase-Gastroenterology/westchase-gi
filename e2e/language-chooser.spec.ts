@@ -1,5 +1,7 @@
-import { expect, test } from "@playwright/test";
-import type { Page, TestInfo } from "@playwright/test";
+import type { Page } from "playwright-core";
+
+import { expect, test } from "./harness";
+import type { TestInfo } from "./harness";
 
 const languageNames = ["English", "Español", "Tiếng Việt", "한국어", "العربية"];
 

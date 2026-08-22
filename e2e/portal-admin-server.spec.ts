@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 
-import { expect, test } from "@playwright/test";
-import type { BrowserContext, Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import type { BrowserContext, Page } from "playwright-core";
 import { z } from "zod";
 
 import { asJsonString, jsonObjectSchema } from "../src/lib/json";
 import type { JsonObject } from "../src/lib/json";
+import { expect, test } from "./harness";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 const inviteDetailSchema = z.looseObject({

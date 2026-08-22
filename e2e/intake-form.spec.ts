@@ -4,8 +4,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdirSync, openSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { test, expect } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Page } from "playwright-core";
 
 import { ar } from "../src/lib/dictionaries/ar";
 import { en } from "../src/lib/dictionaries/en";
@@ -14,6 +13,7 @@ import { ko } from "../src/lib/dictionaries/ko";
 import { vi } from "../src/lib/dictionaries/vi";
 import type { Dictionary } from "../src/lib/i18n";
 import type { Locale } from "../src/lib/site";
+import { test, expect } from "./harness";
 import { serviceDb } from "./support";
 
 const db = serviceDb();

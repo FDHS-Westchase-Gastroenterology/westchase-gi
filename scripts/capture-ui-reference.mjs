@@ -2,11 +2,18 @@ import { mkdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { chromium } from "@playwright/test";
+import { launchManagedBrowser } from "../e2e/harness/browser.ts";
 
 const DEFAULT_ORIGIN = "https://westchasegi.com";
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const outputDirectory = resolve(scriptDirectory, "../ui-reference");
+
+/**
+ * UI-reference atlas capture on the E2E harness browser stack: a hosted
+ * Browserbase session when credentials exist, the workstation's system Chrome
+ * otherwise. Public captures default to the live origin; portal captures
+ * require a local or Vercel Preview origin and the fictional seed identity.
+ */
 
 function originFrom(input) {
   let url;
@@ -32,6 +39,20 @@ function requiredEnv(name) {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`Missing ${name} for portal references`);
   return value;
+}
+
+function resolveProvider(origin) {
+  const forced = process.env.E2E_BROWSER?.trim().toLowerCase();
+  if (forced === "browserbase" || forced === "local") return forced;
+  const hasBrowserbase =
+    Boolean(process.env.BROWSERBASE_API_KEY?.trim()) &&
+    Boolean(process.env.BROWSERBASE_PROJECT_ID?.trim());
+  // Cloud browsers cannot reach a localhost origin without a tunnel.
+  // Prefer the local provider there unless one is explicitly requested.
+  if (origin.hostname === "localhost" || origin.hostname === "127.0.0.1") {
+    return process.env.E2E_TUNNEL === "1" && hasBrowserbase ? "browserbase" : "local";
+  }
+  return hasBrowserbase ? "browserbase" : "local";
 }
 
 function portalCredentials() {
@@ -348,7 +369,7 @@ async function capturePortalReferences(browser, credentials) {
   });
   try {
     const page = await context.newPage();
-    page.setDefaultTimeout(15_000);
+    page.setDefaultTimeout(45_000);
     await page.goto(new URL("/admin/login", origin).toString(), {
       waitUntil: "domcontentloaded",
     });
@@ -398,11 +419,10 @@ async function capturePortalReferences(browser, credentials) {
 }
 
 await mkdir(outputDirectory, { recursive: true });
-console.log(`Capturing UI reference from ${origin.origin}`);
-const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?.trim();
-const browser = await chromium.launch(
-  chromiumExecutablePath ? { executablePath: chromiumExecutablePath } : undefined,
-);
+const provider = resolveProvider(origin);
+process.env.E2E_BROWSER = provider;
+console.log(`Capturing UI reference from ${origin.origin} via ${provider}`);
+const { browser } = await launchManagedBrowser();
 
 try {
   if (!portalMode) {
@@ -424,7 +444,7 @@ try {
         }
 
         const page = await context.newPage();
-        page.setDefaultTimeout(15_000);
+        page.setDefaultTimeout(45_000);
         await page.goto(new URL(capture.path, origin).toString(), {
           waitUntil: "domcontentloaded",
         });

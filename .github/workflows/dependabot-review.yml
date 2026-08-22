@@ -1,4 +1,4 @@
-name: Dependabot Codex Review
+name: Dependabot Review
 
 on:
   pull_request_target:
@@ -7,7 +7,7 @@ on:
 permissions: {}
 
 concurrency:
-  group: dependabot-codex-${{ github.event.pull_request.number }}
+  group: dependabot-review-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
@@ -25,13 +25,7 @@ jobs:
       policy: ${{ steps.policy.outputs.policy }}
       safe_to_review: ${{ steps.policy.outputs.safe_to_review }}
       auto_merge_eligible: ${{ steps.policy.outputs.auto_merge_eligible }}
-      dependency_names: ${{ steps.metadata.outputs.dependency-names }}
-      dependency_type: ${{ steps.metadata.outputs.dependency-type }}
-      update_type: ${{ steps.metadata.outputs.update-type }}
-      previous_version: ${{ steps.metadata.outputs.previous-version }}
-      new_version: ${{ steps.metadata.outputs.new-version }}
       head_sha: ${{ github.event.pull_request.head.sha }}
-      base_sha: ${{ github.event.pull_request.base.sha }}
     steps:
       # pull_request_target can access secrets, so this checkout is explicitly
       # the trusted base commit. No PR-controlled file runs in this job.
@@ -83,81 +77,8 @@ jobs:
           CHANGED_FILES_JSON: ${{ steps.files.outputs.result }}
         run: node .github/scripts/dependency-automation.cjs policy
 
-  codex:
-    needs: preflight
-    if: needs.preflight.outputs.safe_to_review == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-      pull-requests: read
-    outputs:
-      result: ${{ steps.review.outputs.final-message }}
-      outcome: ${{ steps.review.outcome }}
-    steps:
-      # Only verified Dependabot commits with manifest-only diffs reach this
-      # checkout. Credentials are not persisted, and Codex gets no GitHub
-      # mutation token or command-level network access.
-      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
-        with:
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Write sanitized review context
-        env:
-          BASE_SHA: ${{ needs.preflight.outputs.base_sha }}
-          HEAD_SHA: ${{ needs.preflight.outputs.head_sha }}
-          POLICY_JSON: ${{ needs.preflight.outputs.policy }}
-          DEPENDENCY_NAMES: ${{ needs.preflight.outputs.dependency_names }}
-          DEPENDENCY_TYPE: ${{ needs.preflight.outputs.dependency_type }}
-          UPDATE_TYPE: ${{ needs.preflight.outputs.update_type }}
-          PREVIOUS_VERSION: ${{ needs.preflight.outputs.previous_version }}
-          NEW_VERSION: ${{ needs.preflight.outputs.new_version }}
-        run: |
-          node -e '
-            const fs = require("node:fs");
-            fs.mkdirSync(".codex-context", { recursive: true });
-            fs.writeFileSync(
-              ".codex-context/dependabot.json",
-              JSON.stringify({
-                baseSha: process.env.BASE_SHA,
-                headSha: process.env.HEAD_SHA,
-                policy: JSON.parse(process.env.POLICY_JSON),
-                dependencyNames: process.env.DEPENDENCY_NAMES,
-                dependencyType: process.env.DEPENDENCY_TYPE,
-                updateType: process.env.UPDATE_TYPE,
-                previousVersion: process.env.PREVIOUS_VERSION,
-                newVersion: process.env.NEW_VERSION,
-              }, null, 2),
-            );
-          '
-
-      # This must remain the final step. drop-sudo protects the API credential;
-      # :read-only prevents file/network mutations from model-generated commands.
-      # The action-authored CODEX_HOME config must remain enabled so Codex uses
-      # the protected Responses API proxy instead of direct unauthenticated calls.
-      # Its outcome is advisory; the trusted report job owns the deterministic
-      # fallback when the service or structured response is unavailable.
-      - name: Review with Codex
-        id: review
-        continue-on-error: true
-        uses: openai/codex-action@52fe01ec70a42f454c9d2ebd47598f9fd6893d56 # v1
-        with:
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
-          prompt-file: .github/codex/dependabot-review.md
-          output-schema-file: .github/codex/dependabot-review.schema.json
-          permission-profile: ":read-only"
-          safety-strategy: drop-sudo
-          codex-version: "0.145.0"
-          codex-args: '["--ephemeral"]'
-          model: gpt-5.3-codex
-          effort: high
-          allow-bots: "true"
-          allow-bot-users: dependabot
-
   report:
-    needs: [preflight, codex]
+    needs: preflight
     if: always() && needs.preflight.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -180,8 +101,6 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           HEAD_SHA: ${{ needs.preflight.outputs.head_sha }}
           POLICY_JSON: ${{ needs.preflight.outputs.policy }}
-          CODEX_JOB_RESULT: ${{ needs.codex.outputs.outcome }}
-          CODEX_RESULT: ${{ needs.codex.outputs.result }}
         with:
           script: |
             const automation = require(

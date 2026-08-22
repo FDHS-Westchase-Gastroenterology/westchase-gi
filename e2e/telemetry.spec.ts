@@ -3,11 +3,11 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { test, expect } from "@playwright/test";
 import { z } from "zod";
 
 import { asJsonArray, jsonObjectSchema, jsonSchema } from "../src/lib/json";
 import type { Json } from "../src/lib/json";
+import { test, expect } from "./harness";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 import { assertSafeE2ETarget } from "./target-guard";
 

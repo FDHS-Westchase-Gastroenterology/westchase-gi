@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./harness";
 
 // VAL-INTAKE-012: map embeds send no referrer.
 // VAL-INTAKE-013: legacy patient-bearing URLs are scrubbed before the

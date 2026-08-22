@@ -2,9 +2,8 @@ import { execFileSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 
-import { test, expect } from "@playwright/test";
-import type { Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import type { Page } from "playwright-core";
 import { z } from "zod";
 
 import { asJsonNumber, asJsonObject, jsonObjectSchema, jsonSchema } from "../src/lib/json";
@@ -14,6 +13,7 @@ import {
   REQUEST_FIELD_LIMITS,
   intakeResponseSchema,
 } from "../src/lib/portal/contracts";
+import { test, expect } from "./harness";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 import { assertSafeE2ETarget } from "./target-guard";
 

@@ -20,6 +20,28 @@ import type { NotificationEvent } from "@/lib/portal/intake-notification";
 import { portalUrl, serviceClient, serviceRoleKey } from "@/lib/portal/server";
 import type { Locale } from "@/lib/site";
 
+/**
+ * Intake — the pipeline that accepts an appointment request from the
+ * patient site and durably stores it in the queue before the patient sees
+ * success.
+ *
+ * Order matters: validate, rate-limit, insert through the
+ * portal_create_request_with_outbox RPC (request row plus notification
+ * outbox rows in one durable write), then fan out the new-request ping.
+ * The queue is the system of record: notification failures never
+ * downgrade an accepted response.
+ *
+ * Receipts: a no-JavaScript submission cannot hold state across the
+ * redirect, so success is a short-lived confirmation backed by a one-time
+ * token (id.secret; only the SHA-256 hash of the secret is stored). A
+ * consumed or forged token shows the truthful not-found state, and a bot
+ * that fills the honeypot gets a decoy receipt so probing reveals nothing.
+ *
+ * PHI-free discipline: logOperationalFailure carries IDs, counts, and
+ * stable codes only. Never payloads, provider error messages, or patient
+ * fields.
+ */
+
 interface IntakeResult {
   response: IntakeResponse;
   status: 200 | 201 | 400 | 429 | 503;

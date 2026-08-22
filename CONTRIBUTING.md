@@ -20,10 +20,15 @@ than being absorbed by whoever noticed it.
 ```bash
 npm ci
 cp .env.example .env.local   # fill in real values; this is the variable inventory
-npx playwright install chromium
 npm run dev                  # patient site + portal on :3000
 npm run dev:mission          # the E2E stack's server on :3100
 ```
+
+The E2E harness needs no browser download. Local runs drive the workstation's
+system Chrome (`channel: "chrome"`; override with `E2E_CHROME_EXECUTABLE`), and
+CI drives hosted Browserbase sessions. Optional Browserbase credentials
+(`BROWSERBASE_API_KEY`, `BROWSERBASE_PROJECT_ID`) switch local runs onto cloud
+sessions; see [`e2e/harness/README.md`](e2e/harness/README.md).
 
 `.env.local` may point the default environment at the Git branch's ephemeral **Supabase
 Preview Branch**; Production values live under the `_PROD`-suffixed names and in Vercel.
@@ -50,8 +55,7 @@ NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
   NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=ci-public-placeholder \
   SUPABASE_SERVICE_ROLE_KEY=ci-server-placeholder \
   npm run build
-npx playwright install --with-deps chromium
-PLAYWRIGHT_PUBLIC_SMOKE=1 npx playwright test e2e/smoke.spec.ts --project=chromium
+E2E_PUBLIC_SMOKE=1 E2E_BROWSER=local npm run test:e2e:smoke
 ```
 
 `npm run lint` (`oxlint` from the repository root) is the repository's sole linter command.
@@ -80,8 +84,9 @@ on a clean checkout.
 ### How to contribute with a Supabase Preview Branch
 
 ```bash
-npx playwright test                          # full serial E2E suite (boots :3100 itself)
-npx playwright test e2e/smoke.spec.ts        # focused file
+npm run test:e2e                             # full serial E2E suite (boots :3100 itself)
+npm run test:e2e:nojs                        # same suite with JavaScript disabled
+node scripts/run-e2e.mjs e2e/smoke.spec.ts   # focused file
 node scripts/verify-schema.mjs --target branch # schema, RLS, RPC, seed state
 npm run ui:reference:portal                  # staff-route UI captures
 ```
@@ -100,7 +105,8 @@ review environment has the same Git branch in GitHub, Supabase, and Vercel.
 For a workstation run against the PR database, export credentials from
 `supabase branches get <git-branch> --project-ref <production-ref> --output env`, map them to
 the names in `.env.example`, and set `SUPABASE_PREVIEW_BRANCH=1`. `e2e/target-guard.ts`
-enforces the branch/ref/URL match; see
+enforces the branch/ref/URL match (allowlist:
+`E2E_ALLOWED_SUPABASE_PROJECT_REF`); see
 [test isolation](ARCHITECTURE.md#test-isolation-and-release-model). The suite covers the
 intake API contract, form states across all five locales, the no-JS fallback, portal auth/RLS
 boundaries, the queue lifecycle, management surfaces, Website custody, and leak hygiene.
@@ -115,10 +121,10 @@ smoke test.
 | Change                          | Required checks                                                                                     |
 | ------------------------------- | --------------------------------------------------------------------------------------------------- |
 | Patient copy / locale content   | `test:unit`, `lint`, `build`, public smoke; E2E intake-form + language-chooser when behavior shifts |
-| Intake form / API / persistence | Above + `npx playwright test` (intake specs)                                                        |
-| Portal page, route, or action   | Above + `npx playwright test` (portal specs)                                                        |
+| Intake form / API / persistence | Above + `npm run test:e2e` (intake specs)                                                           |
+| Portal page, route, or action   | Above + `npm run test:e2e` (portal specs)                                                           |
 | Migration, RLS, RPC, or seed    | Above + green `Supabase Preview` and `supabase-integration` on the exact head                       |
-| Email paths                     | `npx playwright test e2e/portal-email.spec.ts`                                                      |
+| Email paths                     | `node scripts/run-e2e.mjs e2e/portal-email.spec.ts`                                                 |
 | UI-visible change               | Refresh covered `ui-reference/` images; before/after screenshots in the PR conversation; video when the change is a new workflow or has multiple authored steps |
 | CI / dependency automation      | `node --test .github/scripts/dependency-automation.test.cjs` — policy and test change together      |
 
@@ -194,14 +200,11 @@ changes never request a bypass.
 
 ## Dependency updates
 
-Dependabot PRs travel a guarded automatic lane with three independent boundaries:
+Dependabot PRs travel a guarded automatic lane with two independent boundaries:
 
 1. **Deterministic PR gates** (no-secret runner: clean install, policy self-test,
    build, public smoke) — authoritative.
-2. **Best-effort read-only Codex review** of verified, manifest-only Dependabot commits. It
-   can veto; it cannot override deterministic policy, and an unavailable or malformed
-   response falls back to the deterministic gates rather than becoming a human gate.
-3. **Trusted merge controller** — rechecks the exact SHA, changed paths, CI, React Doctor's
+2. **Trusted merge controller** — rechecks the exact SHA, changed paths, CI, React Doctor's
    exact-head result, Vercel preview, the automation decision, and mergeability; skips a
    failing candidate without stalling green siblings; updates behind branches through
    GitHub's API; merges at most one PR; then pauses until post-merge CI, React Doctor, the
@@ -212,9 +215,7 @@ name/type, SemVer class, grouping, or tool ownership. Maintainer-modified, sourc
 migration-changing, or otherwise untrusted PRs are rejected before review. Executable policy
 
 - regression tests: `.github/scripts/dependency-automation.cjs` and
-  `.github/scripts/dependency-automation.test.cjs` (they change together). SOP:
-  `.github/codex/dependabot-sop-and-examples.md`. `OPENAI_API_KEY` is a repository Actions
-  secret; never copy it into source, logs, PR text, Dependabot secrets, or an agent workspace.
+  `.github/scripts/dependency-automation.test.cjs` (they change together).
 
 ## Shipping to production
 
@@ -280,7 +281,7 @@ handle and dispose of it under clinic rules.
 ```bash
 npm run build && npm run lint && npm run doctor   # build + lint + React Doctor (100 baseline)
 npm run test:e2e-guard                            # target-guard matrix; no server/DB
-npx playwright test                               # full E2E contract
+npm run test:e2e                                  # full E2E contract
 node scripts/verify-schema.mjs --target branch    # Preview Branch schema/RLS/RPC/seed health
 node scripts/verify-schema.mjs --target prod      # authorized Production maintenance action
 node scripts/verify-no-secrets.mjs                # git history secret sweep

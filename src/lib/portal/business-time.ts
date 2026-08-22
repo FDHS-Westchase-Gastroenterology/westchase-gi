@@ -55,6 +55,12 @@ const NY_WALL = new Intl.DateTimeFormat("en-US", {
   hourCycle: "h23",
 });
 
+/**
+ * The staff "call again" chips: the call-again day a contacted request
+ * should resurface for another attempt. Avoid "callback date" and
+ * "follow-up date": patient content uses "follow-up" in its medical
+ * sense (a follow-up visit or procedure), which is a different concept.
+ */
 export type FollowUpChoice =
   | { kind: "this_afternoon" }
   | { kind: "tomorrow_morning" }

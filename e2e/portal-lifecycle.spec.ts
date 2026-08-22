@@ -1,11 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Page } from "playwright-core";
 import { z } from "zod";
 
 import { jsonObjectSchema } from "../src/lib/json";
 import type { JsonObject } from "../src/lib/json";
+import { expect, test } from "./harness";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 interface LifecycleFixture {

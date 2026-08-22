@@ -12,9 +12,12 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "test:e2e-guard": "node --test e2e/target-guard.test.mjs e2e/dictionary-availability.test.mjs",
+    "test:e2e": "node scripts/run-e2e.mjs $(ls e2e/*.spec.ts)",
+    "test:e2e:nojs": "node scripts/run-e2e.mjs --project=no-js $(ls e2e/*.spec.ts)",
+    "test:e2e:smoke": "node scripts/run-e2e.mjs e2e/smoke.spec.ts",
     "test:unit": "node --test src/lib/portal/*.test.mjs src/lib/portal/workflow/*.test.mjs tools/oxlint/anti-slop/plugin.test.mjs",
-    "ui:reference": "node scripts/capture-ui-reference.mjs",
-    "ui:reference:portal": "node --env-file-if-exists=.env.local scripts/capture-ui-reference.mjs --portal"
+    "ui:reference": "tsx scripts/capture-ui-reference.mjs",
+    "ui:reference:portal": "tsx --env-file-if-exists=.env.local scripts/capture-ui-reference.mjs --portal"
   },
   "dependencies": {
     "@supabase/ssr": "0.12.4",
@@ -29,8 +32,8 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@browserbasehq/stagehand": "^3.7.2",
     "@oxlint/plugins": "1.78.0",
-    "@playwright/test": "1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^26",
     "@types/react": "^19",
@@ -40,9 +43,11 @@
     "oxlint": "1.78.0",
     "oxlint-tsgolint": "^7.0.2001",
     "pdf-lib": "^1.17.1",
+    "playwright-core": "1.55.1",
     "pngjs": "^7.0.0",
     "react-doctor": "^0.9.12",
     "tailwindcss": "^4",
+    "tsx": "^4.23.12",
     "typescript": "^6"
   }
 }

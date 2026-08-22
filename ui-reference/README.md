@@ -42,7 +42,7 @@ The first command captures the canonical live public site. The second captures a
 Preview origin before a frontend change is merged. The third captures the staff portal using the seeded
 Development identity locally or the Preview review identity on Vercel Preview. Use the matching
 local/Preview origin when updating reference images in a UI change; use the live default after
-deployment to re-baseline the current public site. It uses the existing Playwright Chromium install;
+deployment to re-baseline the current public site. It runs on the E2E harness browser stack (Browserbase when configured, system Chrome otherwise);
 the portal run signs in but never changes portal records. Inspect the changed PNGs before committing
 them.
 

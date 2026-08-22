@@ -1,13 +1,12 @@
 import { createHash, createHmac, randomUUID } from "node:crypto";
 
-import { test, expect } from "@playwright/test";
-
 import { en } from "../src/lib/dictionaries/en";
 import {
   INTAKE_RATE_LIMIT,
   REQUEST_FIELD_LIMITS,
   intakeResponseSchema,
 } from "../src/lib/portal/contracts";
+import { test, expect } from "./harness";
 import { requiredEnv, serviceDb } from "./support";
 
 type IntakeFixture = Partial<ReturnType<typeof validPayload>> & {

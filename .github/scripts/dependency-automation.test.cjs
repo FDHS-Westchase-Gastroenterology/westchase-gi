@@ -13,7 +13,6 @@ const {
   evaluateGate,
   filesArePackageOnly,
   mergeNextDependabot,
-  parseCodexResult,
   recoverOneDependabotReview,
   resolveReview,
 } = require("./dependency-automation.cjs");
@@ -143,7 +142,7 @@ test("package manifests do not request a human code owner", () => {
   assert.match(codeowners, /^\/package-lock\.json\s*$/m);
 });
 
-test("does not expose an unverified or source-changing PR to Codex", () => {
+test("does not expose an unverified or source-changing PR to automation", () => {
   const metadataFailure = classifyDependabot({
     ...eligible,
     metadataVerified: false,
@@ -167,29 +166,17 @@ test("package-file guard is exact", () => {
   assert.equal(filesArePackageOnly([".github/workflows/ci.yml"]), false);
 });
 
-test("Codex outcomes are autonomous and unavailable review cannot stall CI", () => {
-  for (const decision of ["approve", "retry", "repair", "reject"]) {
-    assert.equal(
-      parseCodexResult(
-        JSON.stringify({
-          decision,
-          summary: "Exact-head decision.",
-          risk_reasons: [],
-          evidence: ["Manifest-only update"],
-          recommended_actions: [],
-        }),
-      ).decision,
-      decision,
-    );
-  }
-  assert.equal(parseCodexResult("not-json").decision, "approve");
-  assert.equal(parseCodexResult(JSON.stringify({ decision: "approve" })).decision, "approve");
-  assert.equal(parseCodexResult(JSON.stringify({ decision: "needs_human" })).decision, "approve");
-  assert.equal(resolveReview(classifyDependabot(eligible), "failure", "").decision, "approve");
+test("review decisions are deterministic and autonomous", () => {
+  assert.equal(resolveReview(classifyDependabot(eligible)).decision, "approve");
   assert.equal(
-    resolveReview(classifyDependabot({ ...eligible, metadataVerified: false }), "skipped", "")
-      .decision,
+    resolveReview(classifyDependabot({ ...eligible, metadataVerified: false })).decision,
     "retry",
+  );
+  assert.equal(
+    resolveReview(
+      classifyDependabot({ ...eligible, changedFiles: ["package.json", "src/app/page.tsx"] }),
+    ).decision,
+    "reject",
   );
 });
 

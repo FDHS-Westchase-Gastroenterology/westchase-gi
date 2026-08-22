@@ -8,6 +8,21 @@ import { z } from "zod";
 import type { JsonObject } from "@/lib/json";
 import type { AuditAction } from "@/lib/portal/contracts";
 
+/**
+ * Audit — the exact, metadata-only technical record beneath Recent work on
+ * the Activity log. Every staff-visible mutation writes exactly one
+ * audit_log row: identifiers, action codes, and closure outcomes, never
+ * patient text (the PHI-free bar).
+ *
+ * detail carries outcome state for external actions: "pending" while the
+ * provider call is in flight, then succeeded / failed / unconfirmed.
+ *
+ * The legacy-row fallback covers deploy overlap with the pre-provenance
+ * schema (PGRST204: unknown column); it writes the same facts without
+ * source/correlation_id. A failed audit write throws: a mutation whose
+ * audit row failed is a failed mutation, not silently unaudited work.
+ */
+
 interface AuditEntry {
   actorEmail: string;
   action: AuditAction;

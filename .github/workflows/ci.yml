@@ -27,10 +27,11 @@ jobs:
           node-version: "22"
           cache: npm
 
-      # This job intentionally receives no repository secrets. npm lifecycle
-      # code and the PR itself therefore cannot reach deployment credentials.
-      - name: Install locked dependencies
-        run: npm ci --no-audit --no-fund
+      # The job's only secret is the Browserbase session key. npm lifecycle
+      # code is skipped so dependency postinstall scripts cannot read it; the
+      # PR itself therefore still cannot reach deployment credentials.
+      - name: Install locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
 
       - name: Verify dependency automation policy
         run: node --test .github/scripts/dependency-automation.test.cjs
@@ -52,10 +53,21 @@ jobs:
           PORTAL_BASE_URL: http://127.0.0.1:3100
         run: npm run build
 
-      - name: Install public-smoke browser
-        run: npx playwright install --with-deps chromium
-
-      - name: Run public smoke
+      - name: Install Cloudflare quick tunnel
+        run: |
+          curl -sSfL "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64" -o cloudflared
+          echo "${CLOUDFLARED_SHA256}  cloudflared" | sha256sum -c -
+          install -m 0755 cloudflared /usr/local/bin/cloudflared
+          cloudflared --version
         env:
-          PLAYWRIGHT_PUBLIC_SMOKE: "1"
-        run: npx playwright test e2e/smoke.spec.ts --project=chromium
+          CLOUDFLARED_VERSION: "2026.8.2"
+          CLOUDFLARED_SHA256: "fcfb02b575a52ca1af2e3267af4e1517bcdeb30ac48c834c69abaed3c0576ad2"
+
+      - name: Run public smoke on Browserbase
+        env:
+          E2E_PUBLIC_SMOKE: "1"
+          E2E_BROWSER: browserbase
+          E2E_TUNNEL: "1"
+          BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+          BROWSERBASE_PROJECT_ID: ${{ secrets.BROWSERBASE_PROJECT_ID }}
+        run: npm run test:e2e:smoke

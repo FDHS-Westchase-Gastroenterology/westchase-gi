@@ -115,7 +115,7 @@ jobs:
             printf 'POSTGRES_URL_NON_POOLING=%s\n' "$POSTGRES_URL_NON_POOLING"
             printf 'SUPABASE_BRANCH_PROJECT_REF=%s\n' "$branch_ref"
             printf 'SUPABASE_PROJECT_REF=%s\n' "$branch_ref"
-            printf 'PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF=%s\n' "$branch_ref"
+            printf 'E2E_ALLOWED_SUPABASE_PROJECT_REF=%s\n' "$branch_ref"
             printf 'SUPABASE_PROJECT_REF_PROD=%s\n' "$SUPABASE_PARENT_PROJECT_REF"
             printf 'SUPABASE_URL_PROD=https://%s.supabase.co\n' \
               "$SUPABASE_PARENT_PROJECT_REF"
@@ -134,8 +134,15 @@ jobs:
       - name: Install locked dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Install Chromium
-        run: npx playwright install --with-deps chromium
+      - name: Install Cloudflare quick tunnel
+        run: |
+          curl -sSfL "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64" -o cloudflared
+          echo "${CLOUDFLARED_SHA256}  cloudflared" | sha256sum -c -
+          install -m 0755 cloudflared /usr/local/bin/cloudflared
+          cloudflared --version
+        env:
+          CLOUDFLARED_VERSION: "2026.8.2"
+          CLOUDFLARED_SHA256: "fcfb02b575a52ca1af2e3267af4e1517bcdeb30ac48c834c69abaed3c0576ad2"
 
       - name: Seed Preview Branch Auth and portal fixtures
         run: node scripts/seed-portal.mjs --target branch
@@ -144,8 +151,13 @@ jobs:
         run: node scripts/verify-schema.mjs --target branch
 
       - name: Verify Supabase client, SSR Auth, RLS, and PostgREST
+        env:
+          E2E_BROWSER: browserbase
+          E2E_TUNNEL: "1"
+          BROWSERBASE_API_KEY: ${{ secrets.BROWSERBASE_API_KEY }}
+          BROWSERBASE_PROJECT_ID: ${{ secrets.BROWSERBASE_PROJECT_ID }}
         run: >-
-          npx playwright test
+          node scripts/run-e2e.mjs
           e2e/supabase-dependency-contract.spec.ts
           e2e/intake-api.spec.ts
           e2e/portal-auth.spec.ts
@@ -153,4 +165,3 @@ jobs:
           e2e/portal-print-packet.spec.ts
           e2e/portal-requests.spec.ts
           e2e/portal-scale.spec.ts
-          --project=chromium

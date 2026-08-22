@@ -133,3 +133,31 @@ The five canonical triage labels are used as-is (`needs-triage`, `needs-info`, `
 ### Domain docs
 
 Single-context: one `CONTEXT.md` plus `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+## Rams design review
+
+After editing UI files, run a Rams quick_review on them and fix what it flags. Before committing, run review_files for a score.
+
+## Loop Convetion
+**This loop convention is the default setting. As a gate, ask the user, “Will we be following the loop convention, or would you like me to do this work myself?” If the user says yes but the “Current implementing agent being used” section below does not specify the model or model‑specific parameters for the headless agent, stop and ask, “What model would you like to handle this, and what parameters would you like to set?” Do not launch the agent without first asking which thinking parameter/effort to set. If the model and parameters are already disclosed in the section below, do not ask. After the user clarifies, ask no further questions. Explore the CLI and launch the agent.**
+> When the next step is actually implementing writing code or modifying the app sheet, the agent that was conversing with the user should typically never do the implementing itself. 
+> Usually, the agent that converses with the user is either planning or auditing. The result of that plan or that audit typically results in some sort of implementation plan or an audit that actually has criteria or results in some sort of requested deliverables. When that is the case, the agent that was conversing with the user should serve as a planner/verifier -> Where the planner and verifier launch a headless agent to implement the work, and upon the headless agent completing, the planner verifier agent then verifies, and that is the loop that loop can sometimes occur multiple times and that is acceptable. 
+> The agent mentioned in the section below is regularly updatedbby the user depending on what agent is actively funded and provisioned for doing work.
+> Before launching a headless agent, always explore the CLI for the given agent first so that you know how to set the correct set of params so that the executing agent does not encounter any execution flow hiccups. This means allowing MCP full perms so the agent can access the file system and freely execute, etc.
+
+### Current Implementing agent being used
+<>Cline 
+model: stealth/ox-alpha
+</>
+
+## Browserbase UI/UX exploration
+
+When an agent needs to explore an internet-hosted UI or UX as a person would,
+it must use the repository-local [Browserbase skill](.agents/skills/browserbase/SKILL.md)
+through the Browserbase Stagehand MCP. This covers public pages, Preview
+deployments, authenticated staff interfaces, and third-party services. Do not
+substitute the Cursor or Codex IDE browser, a Browse plugin, Playwright,
+screenshot-coordinate clicks, CDP, or a direct HTTP driver. Read the skill
+before starting, use fictional or approved non-Production data, capture the
+required evidence, and call `end` for every Browserbase session. If Browserbase
+is unavailable, report the blocker instead of silently changing browsers.

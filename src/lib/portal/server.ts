@@ -31,7 +31,7 @@ export function serviceRoleKey(): string {
 }
 
 /** Build an application-owned URL without accepting an absolute/open-redirect
- * target. HTTP remains valid for local Playwright; production supplies HTTPS. */
+ * target. HTTP remains valid for local E2E; production supplies HTTPS. */
 export function portalUrl(path: string): string | null {
   const base = process.env.PORTAL_BASE_URL?.trim();
   if (base === undefined || base === "" || !path.startsWith("/") || path.startsWith("//")) {

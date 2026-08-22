@@ -1,3 +1,27 @@
+/**
+ * Appointment-request workflow decisions — the pure state machine.
+ *
+ * decide() is the single write authority for request transitions: it takes
+ * the current durable snapshot and one staff command, and returns either
+ * the next snapshot plus the domain facts to record, or a typed rejection.
+ * It performs no I/O, reads no clock it was not handed, and never mutates
+ * its inputs, so every rule below is unit-testable without a database.
+ *
+ * Invariants the commands preserve:
+ * - Contact attempts are append-only evidence. Repeated attempts keep
+ *   their own outcomes; CONTACTED never claims the patient was reached.
+ * - The call-again day (callAgainAt) survives only while a request is
+ *   CONTACTED; every other transition clears it.
+ * - Undo restores the previous position without erasing the transition
+ *   from Request history: the restore snapshot arrives as a command
+ *   argument validated for coherence, never reconstructed here.
+ * - A NEW request may only close as not_actionable: staff cannot close
+ *   work they never touched as "patient won't schedule".
+ *
+ * The UI-facing vocabulary and legal-action derivation live in
+ * workflow/contracts.ts; the command shell that persists decisions lives
+ * in workflow/commands.ts.
+ */
 import type { ClosureReason, ContactOutcome, RequestState } from "./contracts";
 
 export interface RequestSnapshot {
@@ -58,6 +82,15 @@ function isPresent(value: string | null): boolean {
   return value !== null && value !== "";
 }
 
+/**
+ * NEW and CONTACTED are the unresolved states: work a staff member can
+ * still act on. BOOKED and CLOSED are terminal for ordinary work until
+ * reopened.
+ */
+function isUnresolved(state: RequestState): boolean {
+  return state === "new" || state === "contacted";
+}
+
 function coherent(value: Readonly<Omit<RequestSnapshot, "version">>): boolean {
   if (value.state === "new")
     return (
@@ -106,8 +139,7 @@ export function decide(
   });
   switch (command.kind) {
     case "record_contact_attempt": {
-      if (current.state !== "new" && current.state !== "contacted")
-        return reject("illegal_transition");
+      if (!isUnresolved(current.state)) return reject("illegal_transition");
       const required = command.outcome === "voicemail" || command.outcome === "no_answer";
       if (required !== Boolean(command.callAgainAt) && (required || command.callAgainAt === ""))
         return reject("invalid_command");
@@ -124,8 +156,9 @@ export function decide(
       );
     }
     case "confirm_booking_handoff":
-      if (current.state !== "new" && current.state !== "contacted")
-        return reject("illegal_transition");
+      // The staff action label renders as "Scheduled"; the durable fact is
+      // The confirmed booking handoff.
+      if (!isUnresolved(current.state)) return reject("illegal_transition");
       return next(
         {
           state: "booked",
@@ -138,8 +171,7 @@ export function decide(
         { type: "BookingHandoffConfirmed" },
       );
     case "close_request":
-      if (current.state !== "new" && current.state !== "contacted")
-        return reject("illegal_transition");
+      if (!isUnresolved(current.state)) return reject("illegal_transition");
       if (current.state === "new" && command.reason !== "not_actionable")
         return reject("illegal_transition");
       return next(

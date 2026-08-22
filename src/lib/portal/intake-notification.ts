@@ -1,5 +1,15 @@
 import type { PortalEmailOutcome, SendPortalEmail } from "@/lib/portal/email";
 
+/**
+ * New-request ping — the PHI-free email telling notification recipients
+ * that an appointment request arrived (staff surfaces call it a
+ * "notification email"; "ping" is the developer register). It carries a
+ * portal link only: no names, phones, reasons, or any patient-supplied
+ * text. Delivery outcomes are recorded as request_events so they surface
+ * in Request history, and an unconfigured portal URL fails every recipient
+ * honestly rather than sending nothing at all.
+ */
+
 export type NotificationRecipient = Readonly<{
   id: string;
   email: string;

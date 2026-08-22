@@ -46,8 +46,8 @@ export function assertSafeE2ETarget(env: E2ETargetEnvironment) {
   );
   const allowedRef = required(
     env,
-    "explicit Playwright project allowlist",
-    "PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF",
+    "explicit E2E project allowlist",
+    "E2E_ALLOWED_SUPABASE_PROJECT_REF",
   );
   const targetUrl = safeUrl(
     required(env, "Supabase URL", "NEXT_PUBLIC_SUPABASE_URL"),

@@ -43,8 +43,7 @@ yarn-error.log*
 # local runtime logs (dev server output for the QA harness)
 /.logs/
 
-# playwright artifacts
-/playwright-report/
+# e2e artifacts
 /test-results/
 
 # env files (can opt-in for committing if needed)

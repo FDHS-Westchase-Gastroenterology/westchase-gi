@@ -1,9 +1,9 @@
 import { randomUUID } from "node:crypto";
 
-import { expect, test } from "@playwright/test";
-import type { BrowserContext, Page } from "@playwright/test";
 import { PDFDocument } from "pdf-lib";
+import type { BrowserContext, Page } from "playwright-core";
 
+import { expect, test } from "./harness";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 loadLocalEnv();

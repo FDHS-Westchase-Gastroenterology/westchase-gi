@@ -1,9 +1,28 @@
-// Pinned mission contracts — the bridge between the intake pipeline, the
-// Staff portal, and the E2E suite. Both the patient form and the server
-// Route validate against THIS schema; the portal and audit trail consume
-// THESE types and constants. Field names are the wire format (camelCase);
-// The database layer maps time -> preferred_time and sourcePath ->
-// Source_path at the insert boundary.
+/**
+ * Pinned portal contracts — the bridge between the intake pipeline, the
+ * staff portal, and the E2E suite. Both the patient form and the server
+ * route validate against THIS schema; the portal and audit trail consume
+ * THESE types and constants. Field names are the wire format (camelCase);
+ * the database layer maps time -> preferred_time and sourcePath ->
+ * source_path at the insert boundary.
+ *
+ * Domain language, enforced here by construction:
+ *
+ * - "Appointment request" is the portal's unit of work — a patient's ask
+ *   for a callback to schedule a visit. It is never an "Appointment":
+ *   that reserved word means the real booked visit in the practice
+ *   scheduling system, which this codebase never creates or owns. The
+ *   portal only records that a booking handoff was confirmed.
+ * - Storage spells the terminal resolved state `scheduled`; the workflow
+ *   domain spells it `booked` (workflow/contracts.ts). This module keeps
+ *   the storage spelling because it owns the wire and database shapes;
+ *   presentationStatus() in the requests route is the only place the two
+ *   vocabularies meet, and nothing translates a label back into a state.
+ * - PHI-free bar: everything that leaves the queue (notification emails,
+ *   logs, telemetry, audit metadata) carries no patient-supplied data.
+ *   The schemas below bound what may enter; each outbound writer owns the
+ *   bar on the way out.
+ */
 
 import { z } from "zod";
 
@@ -31,6 +50,12 @@ export type RequestLocation = (typeof REQUEST_LOCATIONS)[number];
 const REQUEST_TIMES = ["any", "morning", "afternoon"] as const;
 export type RequestTime = (typeof REQUEST_TIMES)[number];
 
+/**
+ * Storage spelling of the appointment-request lifecycle: NEW and CONTACTED
+ * are unresolved; SCHEDULED (the workflow domain's `booked`) and CLOSED are
+ * terminal for ordinary work until reopened. The lifecycle word is status,
+ * never "stage".
+ */
 export const REQUEST_STATUSES = ["new", "contacted", "scheduled", "closed"] as const;
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
@@ -172,7 +197,12 @@ export const INTAKE_API = "/api/requests";
 /** Pre-hydration/no-JS submissions POST form data here (native form action). */
 export const INTAKE_NOJS_ACTION = "/api/requests/form";
 
-/** Server-rendered receipt page for the no-JS path. */
+/** Server-rendered receipt page for the no-JS path.
+ *
+ * A receipt is the short-lived confirmation a patient sees after a
+ * no-JavaScript submission, backed by a one-time token (intake.ts owns
+ * issuing and consuming it).
+ */
 export function receiptPath(locale: Locale): string {
   return `/${locale}/appointment/received`;
 }

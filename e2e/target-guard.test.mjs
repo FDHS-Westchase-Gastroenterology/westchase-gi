@@ -6,7 +6,7 @@ import { assertSafeE2ETarget } from "./target-guard.ts";
 const hosted = {
   NEXT_PUBLIC_SUPABASE_URL: "https://preview-branch-ref.supabase.co",
   SUPABASE_PROJECT_REF: "preview-branch-ref",
-  PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF: "preview-branch-ref",
+  E2E_ALLOWED_SUPABASE_PROJECT_REF: "preview-branch-ref",
   SUPABASE_PROJECT_REF_PROD: "production-ref",
   SUPABASE_URL_PROD: "https://production-ref.supabase.co",
   SUPABASE_PREVIEW_BRANCH: "1",
@@ -21,7 +21,7 @@ test("accepts the explicit disposable-local sentinel", () => {
     assertSafeE2ETarget({
       NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321",
       SUPABASE_PROJECT_REF: "local",
-      PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF: "local",
+      E2E_ALLOWED_SUPABASE_PROJECT_REF: "local",
     }),
   );
 });
@@ -42,9 +42,9 @@ test("rejects a missing explicit allowlist", () => {
     () =>
       assertSafeE2ETarget({
         ...hosted,
-        PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF: undefined,
+        E2E_ALLOWED_SUPABASE_PROJECT_REF: undefined,
       }),
-    /missing explicit Playwright project allowlist/,
+    /missing explicit E2E project allowlist/,
   );
 });
 
@@ -86,7 +86,7 @@ test("rejects a target outside the explicit allowlist", () => {
     () =>
       assertSafeE2ETarget({
         ...hosted,
-        PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF: "another-development-ref",
+        E2E_ALLOWED_SUPABASE_PROJECT_REF: "another-development-ref",
       }),
     /not the explicitly allowlisted project/,
   );
@@ -99,7 +99,7 @@ test("rejects Production even when it is allowlisted", () => {
         ...hosted,
         NEXT_PUBLIC_SUPABASE_URL: "https://production-ref.supabase.co",
         SUPABASE_PROJECT_REF: "production-ref",
-        PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF: "production-ref",
+        E2E_ALLOWED_SUPABASE_PROJECT_REF: "production-ref",
       }),
     /Production project rejected/,
   );

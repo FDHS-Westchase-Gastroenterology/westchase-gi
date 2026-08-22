@@ -306,7 +306,10 @@ referrer. Unverified patient-service URLs do not ship.
 Credential-bearing release E2E runs against the PR's explicitly allowlisted Supabase Preview
 Branch. `e2e/target-guard.ts` binds the project reference to the URL, requires the hosted-branch
 marker, and rejects Production before the first database call; credentialed runs retain no trace,
-video, or HTML report. GitHub Branching creates the hosted database from the Production schema
+video, or HTML report. The suite runs on `node:test` through `tsx` with repository-owned
+Playwright-compatible fixtures (`e2e/harness/`); browser sessions come from Browserbase in CI
+(behind a Cloudflare quick tunnel to the on-runner dev server) and system Chrome at the desk
+(ADR 0004). GitHub Branching creates the hosted database from the Production schema
 lineage without Production rows. CI waits for that deployment, seeds fictional Auth state, runs
 destructive checks, and discards the branch when the PR closes. The Supabase Vercel integration
 assigns the same branch credentials to the matching Vercel Preview and redeploys it.

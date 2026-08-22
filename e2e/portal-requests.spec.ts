@@ -1,11 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { test, expect } from "@playwright/test";
-import type { Page, APIRequestContext } from "@playwright/test";
+import type { Page, APIRequestContext } from "playwright-core";
 import { z } from "zod";
 
 import { asJsonObject, asJsonString, jsonSchema } from "../src/lib/json";
 import { intakeResponseSchema } from "../src/lib/portal/contracts";
+import { test, expect } from "./harness";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 const noteMetaSchema = z.object({

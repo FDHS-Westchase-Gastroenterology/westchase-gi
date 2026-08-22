@@ -1,11 +1,11 @@
 import { createHash, randomUUID } from "node:crypto";
 
-import { test, expect } from "@playwright/test";
-import type { APIRequestContext, Page } from "@playwright/test";
 import { PDFDocument } from "pdf-lib";
+import type { APIRequestContext, Page } from "playwright-core";
 import { z } from "zod";
 
 import { intakeResponseSchema } from "../src/lib/portal/contracts";
+import { test, expect } from "./harness";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // The paper handoff is a truthful snapshot of the live New queue: complete,

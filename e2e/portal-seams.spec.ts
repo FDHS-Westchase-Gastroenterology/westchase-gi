@@ -1,7 +1,7 @@
-import { test, expect } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Page } from "playwright-core";
 
 import { intakeResponseSchema } from "../src/lib/portal/contracts";
+import { test, expect } from "./harness";
 import { loadLocalEnv, requiredEnv } from "./support";
 
 // VAL-REG-005 (revised 2026-07-26): the portal ships no assistant

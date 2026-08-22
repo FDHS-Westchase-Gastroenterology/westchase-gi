@@ -5,7 +5,7 @@
 const { appendFileSync } = require("node:fs");
 
 const REVIEW_STATUS = "Dependabot Auto-Merge";
-const REVIEW_MARKER = "<!-- dependabot-codex-review -->";
+const REVIEW_MARKER = "<!-- dependabot-automation-review -->";
 const ALLOWED_CHANGED_FILES = new Set(["package.json", "package-lock.json"]);
 const LABELS = {
   approved: {
@@ -41,7 +41,6 @@ const LABELS = {
 };
 const AUTOMATION_LABEL_NAMES = new Set([
   ...Object.values(LABELS).map(({ name }) => name),
-  "dependencies:codex-approved",
   "dependencies:human-review",
 ]);
 
@@ -195,39 +194,7 @@ function sanitizeList(value, maxItems = 6) {
   return value.slice(0, maxItems).map((item) => sanitizeText(item, 500));
 }
 
-function parseCodexResult(raw) {
-  try {
-    const parsed = JSON.parse(String(raw || "").trim());
-    if (
-      !["approve", "retry", "repair", "reject"].includes(parsed.decision) ||
-      Object.prototype.toString.call(parsed.summary) !== "[object String]" ||
-      !parsed.summary.trim() ||
-      !Array.isArray(parsed.risk_reasons) ||
-      !Array.isArray(parsed.evidence) ||
-      !Array.isArray(parsed.recommended_actions)
-    ) {
-      throw new Error("invalid decision");
-    }
-    return {
-      decision: parsed.decision,
-      summary: sanitizeText(parsed.summary),
-      riskReasons: sanitizeList(parsed.risk_reasons),
-      evidence: sanitizeList(parsed.evidence),
-      recommendedActions: sanitizeList(parsed.recommended_actions),
-    };
-  } catch {
-    return {
-      decision: "approve",
-      summary:
-        "Codex did not return a valid structured review; trusted deterministic gates remain authoritative.",
-      riskReasons: ["Codex output was malformed or missing"],
-      evidence: [],
-      recommendedActions: ["Proceed only after every exact-head deterministic gate passes"],
-    };
-  }
-}
-
-function resolveReview(policy, codexJobResult, codexResult) {
+function resolveReview(policy) {
   if (!policy.safeToReview) {
     return policy.retryable
       ? {
@@ -245,17 +212,14 @@ function resolveReview(policy, codexJobResult, codexResult) {
           recommendedActions: ["Close the untrusted dependency update"],
         };
   }
-  if (codexJobResult !== "success") {
-    return {
-      decision: "approve",
-      summary:
-        "Codex semantic review was unavailable; trusted deterministic gates remain authoritative.",
-      riskReasons: [`Codex job result: ${sanitizeText(codexJobResult, 100)}`],
-      evidence: ["Verified Dependabot manifest-only update"],
-      recommendedActions: ["Proceed only after every exact-head deterministic gate passes"],
-    };
-  }
-  return parseCodexResult(codexResult);
+  return {
+    decision: "approve",
+    summary:
+      "Verified Dependabot manifest-only update; trusted deterministic gates remain authoritative.",
+    riskReasons: [],
+    evidence: ["Verified Dependabot manifest-only update"],
+    recommendedActions: ["Proceed only after every exact-head deterministic gate passes"],
+  };
 }
 
 function latestStatus(statuses, contextName) {
@@ -448,7 +412,6 @@ async function reportDependabotReview({ github, context, core }) {
   const pullNumber = Number.parseInt(process.env.PR_NUMBER || "", 10);
   const expectedHead = process.env.HEAD_SHA;
   const policy = JSON.parse(process.env.POLICY_JSON || "{}");
-  const codexJobResult = process.env.CODEX_JOB_RESULT || "skipped";
 
   if (!Number.isInteger(pullNumber) || !expectedHead) {
     throw new Error("Missing pull request number or expected head SHA");
@@ -468,7 +431,7 @@ async function reportDependabotReview({ github, context, core }) {
     return;
   }
 
-  const review = resolveReview(policy, codexJobResult, process.env.CODEX_RESULT);
+  const review = resolveReview(policy);
 
   const eligible = policy.autoMergeEligible === true && review.decision === "approve";
   const desiredLabels = {
@@ -1140,7 +1103,6 @@ module.exports = {
   evaluateGate,
   filesArePackageOnly,
   mergeNextDependabot,
-  parseCodexResult,
   recoverOneDependabotReview,
   reportDependabotReview,
   resolveReview,

@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 
-import { test, expect } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Page } from "playwright-core";
 
+import { test, expect } from "./harness";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // VAL-ADMIN-002: the seed admin can log in and out through the UI.

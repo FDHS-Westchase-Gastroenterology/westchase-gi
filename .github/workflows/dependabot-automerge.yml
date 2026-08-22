@@ -5,7 +5,7 @@ on:
     workflows:
       - CI
       - React Doctor
-      - Dependabot Codex Review
+      - Dependabot Review
       - Supabase Dependency Integration
       - Production Verification
     types: [completed]

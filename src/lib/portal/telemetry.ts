@@ -13,6 +13,13 @@ import {
   telemetryEventSchema,
 } from "@/lib/telemetry";
 
+/**
+ * Telemetry ingest — software-recorded usage evidence, PHI-free by
+ * contract: aggregate counts and funnels, never per-visitor journeys and
+ * never patient-supplied data. The event schema in lib/telemetry.ts bounds
+ * what may enter; this module only validates, rate-limits, and records.
+ */
+
 export type TelemetryStatus = 204 | 400 | 429 | 503;
 
 function logOperationalFailure(

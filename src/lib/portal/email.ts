@@ -3,6 +3,14 @@ export type PortalEmailPurpose =
   | "recipient_confirmation"
   | "staff_invite";
 
+/**
+ * Portal email transport boundary — every email this product sends goes
+ * through one sender with a hard deadline, an idempotency key, and a typed
+ * outcome. Messages can contain patient-adjacent destinations or bearer
+ * links, so failures log stable policy fields only: never content,
+ * recipients, keys, or provider error text.
+ */
+
 export type PortalEmailMessage = Readonly<{
   purpose: PortalEmailPurpose;
   to: string;
