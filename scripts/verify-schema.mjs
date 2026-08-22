@@ -265,6 +265,10 @@ const RECEIPT_SERVICE_GRANT_MIGRATION = {
   version: "20260817164844",
   name: "restrict_receipt_service_grant",
 };
+const QUEUE_INTEGRITY_CALL_AGAIN_MIGRATION = {
+  version: "20260822201152",
+  name: "queue_integrity_call_again_authority",
+};
 
 const TARGETS = new Set(["branch", "prod"]);
 
@@ -925,6 +929,14 @@ async function main() {
     ),
     "Receipt service-grant restriction migration is not applied",
   );
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === QUEUE_INTEGRITY_CALL_AGAIN_MIGRATION.version &&
+        row.name === QUEUE_INTEGRITY_CALL_AGAIN_MIGRATION.name,
+    ),
+    "Queue-integrity call-again migration is not applied",
+  );
 
   const onboardingColumnRows = await queryDatabase({
     accessToken,
@@ -1262,6 +1274,61 @@ async function main() {
     `Request constraints mismatch: ${requestConstraintRows.map((row) => row.conname).join(", ")}`,
   );
 
+  const transitionEvidenceRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select
+        c.column_name,
+        c.data_type,
+        c.is_nullable,
+        c.column_default,
+        constraint_check.definition,
+        constraint_check.convalidated
+      from information_schema.columns as c
+      left join lateral (
+        select
+          pg_catalog.pg_get_constraintdef(pc.oid) as definition,
+          pc.convalidated
+        from pg_catalog.pg_constraint as pc
+        where pc.conrelid = 'public.request_transitions'::pg_catalog.regclass
+          and pc.conname = 'request_transitions_call_again_at_valid'
+      ) as constraint_check on true
+      where c.table_schema = 'public'
+        and c.table_name = 'request_transitions'
+        and c.column_name = 'call_again_at';
+    `,
+  });
+  const transitionEvidence = transitionEvidenceRows[0];
+  const transitionEvidenceConstraint = transitionEvidence?.definition?.toLowerCase() ?? "";
+  assert(
+    transitionEvidenceRows.length === 1 &&
+      transitionEvidence?.data_type === "timestamp with time zone" &&
+      transitionEvidence?.is_nullable === "YES" &&
+      transitionEvidence?.column_default === null &&
+      transitionEvidence?.convalidated === false &&
+      transitionEvidenceConstraint.includes("reopen_request") &&
+      transitionEvidenceConstraint.includes("set_call_again") &&
+      transitionEvidenceConstraint.includes("call_again_at is not null"),
+    "request_transitions must enforce new call-again evidence without rewriting truthful legacy transitions",
+  );
+
+  const transitionCommandRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select pg_catalog.pg_get_constraintdef(oid) as definition
+      from pg_catalog.pg_constraint
+      where conrelid = 'public.request_transitions'::pg_catalog.regclass
+        and conname = 'request_transitions_command_check';
+    `,
+  });
+  assert(
+    transitionCommandRows.length === 1 &&
+      transitionCommandRows[0].definition.toLowerCase().includes("set_call_again"),
+    "request_transitions command vocabulary must include set_call_again",
+  );
+
   const intakeLimitRows = await queryDatabase({
     accessToken,
     ref: config.ref,
@@ -1544,8 +1611,10 @@ async function main() {
           definition.includes("'lifecycle'") &&
           definition.includes("'before'") &&
           definition.includes("'after'") &&
-          definition.includes("'sequence'"),
-        "portal_log_call_outcome must lock the request, audit once, preserve all seven outcomes, and snapshot lifecycle state",
+          definition.includes("'sequence'") &&
+          definition.includes("a call-again time is required") &&
+          definition.includes("p_follow_up_at is null"),
+        "portal_log_call_outcome must lock the request, require dates for Contacted outcomes, audit once, preserve all seven outcomes, and snapshot lifecycle state",
       );
     }
     if (rpc.proname === "portal_execute_request_command") {
@@ -1557,8 +1626,15 @@ async function main() {
           definition.includes("request_command_receipts") &&
           definition.includes("request_transitions") &&
           definition.includes("interval '15 minutes'") &&
-          definition.includes("request.workflow_command"),
-        "portal_execute_request_command must serialize versions, persist idempotency evidence, constrain undo, and audit each accepted workflow command",
+          definition.includes("request.workflow_command") &&
+          definition.includes("record_contact_attempt") &&
+          definition.includes("reopen_request") &&
+          definition.includes("set_call_again") &&
+          definition.includes("next_call_again_at is null") &&
+          definition.includes("v.follow_up_at is not null") &&
+          definition.includes("t.prior_snapshot") &&
+          definition.includes("migration_unconverted"),
+        "portal_execute_request_command must serialize versions, require coherent call-again commands, restore stored snapshots, persist idempotency evidence, constrain undo, and audit each accepted workflow command",
       );
     }
     if (rpc.proname === "portal_create_request_with_outbox") {

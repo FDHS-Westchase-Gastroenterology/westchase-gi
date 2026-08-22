@@ -51,6 +51,7 @@ export const WORKFLOW_COMMAND_KINDS = [
   "confirm_booking_handoff",
   "close_request",
   "reopen_request",
+  "set_call_again",
   "undo_latest_transition",
   "classify_legacy_closure",
 ] as const;
@@ -124,12 +125,20 @@ export interface LegalActions {
   /** Closure reasons legal from this state (empty when close is illegal). */
   closeReasons: readonly ClosureReason[];
   reopenRequest: boolean;
+  /** Repair path for a legacy Contacted row whose call-again day is missing. */
+  setCallAgain: boolean;
   classifyLegacyClosure: boolean;
 }
 
 export function legalActionsFor(
   state: RequestState,
-  { legacyReviewRequired = false }: Readonly<{ legacyReviewRequired?: boolean }> = {},
+  {
+    legacyReviewRequired = false,
+    callAgainAt,
+  }: Readonly<{
+    legacyReviewRequired?: boolean;
+    callAgainAt?: string | null;
+  }> = {},
 ): LegalActions {
   if (state === "closed" && legacyReviewRequired) {
     return {
@@ -137,6 +146,7 @@ export function legalActionsFor(
       confirmBookingHandoff: false,
       closeReasons: [],
       reopenRequest: false,
+      setCallAgain: false,
       classifyLegacyClosure: true,
     };
   }
@@ -147,6 +157,7 @@ export function legalActionsFor(
         confirmBookingHandoff: true,
         closeReasons: ["not_actionable"],
         reopenRequest: false,
+        setCallAgain: false,
         classifyLegacyClosure: false,
       };
     case "contacted":
@@ -155,6 +166,7 @@ export function legalActionsFor(
         confirmBookingHandoff: true,
         closeReasons: ["not_actionable", "wont_schedule"],
         reopenRequest: false,
+        setCallAgain: callAgainAt === null || callAgainAt === "",
         classifyLegacyClosure: false,
       };
     case "booked":
@@ -164,6 +176,7 @@ export function legalActionsFor(
         confirmBookingHandoff: false,
         closeReasons: [],
         reopenRequest: true,
+        setCallAgain: false,
         classifyLegacyClosure: false,
       };
     default:
@@ -172,6 +185,7 @@ export function legalActionsFor(
         confirmBookingHandoff: false,
         closeReasons: [],
         reopenRequest: false,
+        setCallAgain: false,
         classifyLegacyClosure: false,
       };
   }
@@ -209,6 +223,8 @@ export type HistoryEntry =
       from: RequestState;
       to: RequestState;
       closureReason: ClosureReason | null;
+      /** Immutable call-again time selected by reopen or a legacy correction. */
+      callAgainAt: string | null;
       /** True when a later Undo compensated this transition. */
       undone: boolean;
       actor: string;

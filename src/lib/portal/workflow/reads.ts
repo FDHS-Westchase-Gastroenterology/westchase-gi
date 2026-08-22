@@ -30,6 +30,7 @@ const transitionRowSchema = z.object({
   actor_email: z.string(),
   occurred_at: z.string(),
   reason_code: z.string().nullable().optional(),
+  call_again_at: z.string().nullable().optional(),
   compensates_transition_id: z.string().nullable().optional(),
   provenance: z.string(),
 });
@@ -148,6 +149,7 @@ export async function fetchRequestWorkSurface(
           row.reason_code === "not_actionable" || row.reason_code === "wont_schedule"
             ? row.reason_code
             : null,
+        callAgainAt: row.call_again_at ?? null,
         undone: compensated.has(row.id),
         actor: row.actor_email,
         at: row.occurred_at,
