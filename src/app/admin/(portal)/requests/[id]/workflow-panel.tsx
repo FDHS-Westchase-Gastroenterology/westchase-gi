@@ -889,7 +889,7 @@ function WorkflowPanelBody({
           <fieldset className="mt-5" disabled={pending}>
             <legend className="text-sm font-bold text-[var(--color-ink)]">What happened?</legend>
             <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
-              Record the call the way it went — the request moves itself.
+              Record what happened on the call. The request moves to the right status.
             </p>
             <div data-testid="workflow-choices" className="mt-3 grid gap-2.5 sm:grid-cols-2">
               {rows.map((row) => (

@@ -73,8 +73,8 @@ function describedBy(
 }
 
 function submitLabel(pending: boolean, retrying: boolean): string {
-  if (pending) return retrying ? "Checking request…" : "Adding request…";
-  return retrying ? "Try same request again" : "Add patient request";
+  if (pending) return retrying ? "Checking appointment request…" : "Adding appointment request…";
+  return retrying ? "Try same appointment request again" : "Add appointment request";
 }
 
 type StaffRequestErrors = Readonly<Record<StaffRequestField, string | null>>;
@@ -446,7 +446,7 @@ export function StaffRequestForm({
       action={conflicted ? undefined : formAction}
       noValidate
       autoComplete="off"
-      aria-label="Add patient request"
+      aria-label="Add appointment request"
       data-draft-locked={draftLocked || undefined}
       className="portal-request-form-sheet"
     >

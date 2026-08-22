@@ -301,6 +301,10 @@ export function toRecentWorkItems(
     if (entry.action === "staff.tour_dismiss") continue;
     const detail = detailObject(entry.detail);
     const { sentence, technical } = describeAction(entry, detail, ctx);
+    // Unknown actions fall back to their raw identifier, which never
+    // Belongs in the human view: technical items stay in the technical
+    // Table beneath Recent work.
+    if (technical) continue;
     items.push({
       id: entry.id,
       at: entry.at,

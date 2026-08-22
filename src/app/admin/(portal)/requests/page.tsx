@@ -360,7 +360,7 @@ export default async function AdminRequestsPage({
               data-testid="appointments-add-patient-request"
               className="btn btn-outline min-h-11"
             >
-              Add patient request
+              Add appointment request
             </Link>
             {counts.new > 0 ? (
               <Link

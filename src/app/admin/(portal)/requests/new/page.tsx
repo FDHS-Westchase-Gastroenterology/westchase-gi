@@ -32,8 +32,8 @@ export default async function NewStaffRequestPage({
     <section aria-labelledby="new-request-heading" className="portal-request-create">
       <PortalPageHeader
         back={{ href: returnHref, label: returnLabel }}
-        title={<span id="new-request-heading">Add patient request</span>}
-        description="For a call, walk-in, or message that needs appointment follow-up. This adds a New request to the same Appointments work stack."
+        title={<span id="new-request-heading">Add appointment request</span>}
+        description="Use this for a call, walk-in, or message that needs appointment follow-up. It appears in Appointments as a New request."
       />
 
       <StaffRequestForm

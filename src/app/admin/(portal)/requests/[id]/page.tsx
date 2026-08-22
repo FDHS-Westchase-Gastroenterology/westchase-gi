@@ -367,7 +367,7 @@ export default async function RequestDetailPage({
         <div role="status" data-testid="staff-request-created" className="portal-request-created">
           <Check className="h-5 w-5" />
           <div>
-            <strong>Patient request added to New.</strong>
+            <strong>Appointment request added to New.</strong>
             <p>No notification email was sent. The request is ready for staff follow-up below.</p>
           </div>
         </div>
