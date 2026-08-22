@@ -65,12 +65,21 @@ export default async function AdminSettingsSoftwarePage() {
       className="portal-panel p-6 sm:p-8"
     >
       <div data-testid="website-staff-layer">
-        <h2
-          id="website-heading"
-          className="text-[1.3rem] leading-tight font-black text-[var(--color-ink)]"
-        >
-          Clinic website
-        </h2>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <h2
+            id="website-heading"
+            className="text-[1.3rem] leading-tight font-black text-[var(--color-ink)]"
+          >
+            Clinic website
+          </h2>
+          <Link
+            href={WEBSITE_CHANGE_HREF}
+            data-testid="request-website-change"
+            className="btn btn-navy"
+          >
+            Request a website change
+          </Link>
+        </div>
 
         <section className="mt-6" aria-labelledby="what-website-does-heading">
           <h3 id="what-website-does-heading" className={SECTION_LABEL}>
@@ -119,21 +128,12 @@ export default async function AdminSettingsSoftwarePage() {
             {STAFF_SECTION_HEADINGS["how-to-request-change"]}
           </h3>
           <p className={SECTION_BODY}>{STAFF_REQUEST_CHANGE}</p>
-          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-            <Link
-              href={WEBSITE_CHANGE_HREF}
-              data-testid="request-website-change"
-              className="btn btn-navy"
-            >
-              Request a website change
-            </Link>
-            <Link
-              href={REVIEW_FLYERS_HREF}
-              className="flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-            >
-              Print review flyers
-            </Link>
-          </div>
+          <Link
+            href={REVIEW_FLYERS_HREF}
+            className="mt-4 flex min-h-11 w-fit items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+          >
+            Print review flyers
+          </Link>
         </section>
       </div>
 
