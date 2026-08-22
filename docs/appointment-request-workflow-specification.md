@@ -156,10 +156,10 @@ must be read with the linked detailed section when implementing or accepting the
 | ID | Existing decision | Detailed contract |
 |---|---|---|
 | `DEC-07` | The normal request states are exactly `NEW`, `CONTACTED`, `BOOKED`, and `CLOSED`. | [§4](#4-the-to-be-state-machine), [§8](#8-transition-matrix) |
-| `DEC-08` | Staff may record repeated contact attempts from `CONTACTED`; each attempt appends evidence, and only `CONTACTED` may carry current call-again attention data. | [§5.1](#51-recordcontactattempt), [§7.2](#72-state-shape-invariants) |
+| `DEC-08` | Staff may record repeated contact attempts from `CONTACTED`; each attempt appends evidence, every newly accepted Contacted-producing command carries a staff-chosen call-again time, and only `CONTACTED` may carry current call-again attention data. | [§5.1](#51-recordcontactattempt), [§7.2](#72-state-shape-invariants) |
 | `DEC-09` | Confirming a booking from `NEW` or `CONTACTED` resolves the request as `BOOKED`, clears current call-again data, and records booking-handoff evidence without creating an Appointment. | [§5.2](#52-confirmbookinghandoff) |
 | `DEC-10` | Closing resolves a request without booking. `CONTACTED` permits `not_actionable` or `wont_schedule`; `NEW` permits only the non-contact reason `not_actionable`. | [§5.3](#53-closerequest), [§8](#8-transition-matrix) |
-| `DEC-11` | `BOOKED` and `CLOSED` are terminal for ordinary work commands. Explicit reopen returns either state to `CONTACTED`, clears current terminal fields, and preserves prior evidence. | [§4.1](#41-states), [§5.4](#54-reopenrequest) |
+| `DEC-11` | `BOOKED` and `CLOSED` are terminal for ordinary work commands. Explicit reopen requires a staff-chosen call-again time, returns either state to `CONTACTED`, clears current terminal fields, and preserves prior evidence. | [§4.1](#41-states), [§5.4](#54-reopenrequest) |
 | `DEC-12` | Undo is a guarded compensation of the latest eligible human lifecycle transition. It is accepted through 15 minutes after durable occurrence, advances version, and appends rather than rewrites history. | [§5.5](#55-undolatesttransition), [§10.3](#103-undo-under-concurrency) |
 | `DEC-13` | Migrated unclassified closures use the dedicated, versioned, idempotent `ClassifyLegacyClosure` repair path and remain review-required until classified. | [§5.6](#56-classifylegacyclosure-migration-only-repair-path), [§14.1](#141-state-mapping) |
 | `DEC-14` | Adding an appointment request note does not move request state, advance lifecycle version, or stale an otherwise eligible Undo. | [§5.7](#57-operations-outside-the-transition-function) |
@@ -573,6 +573,8 @@ exceptions rather than proof that the terminal states are non-terminal.
 The request state is intentionally not a Cartesian product of unrelated concerns:
 
 - a call-again timestamp is attention data and is valid only on `CONTACTED`;
+- a legacy `CONTACTED` row may have no call-again timestamp, but it remains visible as incomplete
+  work until staff uses the dedicated correction command;
 - contact attempts are append-only evidence, not states;
 - notification delivery has its own outbox state;
 - legal hold belongs to the data lifecycle, not request resolution;
@@ -592,15 +594,13 @@ Records one attempt and leaves unresolved work in `CONTACTED`.
 Payload:
 
 - contact outcome: `reached_follow_up | voicemail | no_answer`;
-- optional call-again day for `reached_follow_up`;
-- required call-again day for `voicemail` and `no_answer`; and
+- required call-again day for every outcome; and
 - optional appointment request note, if the UI preserves the existing one-action combined save.
 
 Guards:
 
 - origin is `NEW` or `CONTACTED`;
-- call-again input follows the outcome policy and the existing practice-local, present-to-90-day
-  boundary;
+- call-again input follows the existing practice-local, present-to-90-day boundary;
 - an optional note satisfies the existing 1–2,000-character trimmed boundary; and
 - the common authorization, version, and idempotency guards pass.
 
@@ -662,20 +662,48 @@ Result:
 
 Returns a resolved request to staff work without pretending it is new.
 
+Payload:
+
+- required call-again day chosen by staff.
+
 Guards:
 
 - origin is `BOOKED` or `CLOSED`;
 - the row is not awaiting legacy-closure review; and
+- the call-again input follows the existing practice-local, present-to-90-day boundary; and
 - the common authorization, version, and idempotency guards pass.
 
 Result:
 
 - state is `CONTACTED`;
 - terminal booking/closure clocks and terminal reason fields are cleared from current state;
-- call-again data starts empty until staff explicitly records it; and
+- current call-again data is set to the staff-chosen value; and
 - one request transition and one technical audit entry preserve the prior resolution.
 
 Clearing current terminal fields never erases prior transition or audit evidence.
+
+#### 5.4a `SetCallAgain`
+
+Corrects one legacy `CONTACTED` row whose current call-again value is missing. This is an
+attention correction, not evidence that another patient contact occurred.
+
+Payload:
+
+- required call-again day chosen by staff.
+
+Guards:
+
+- origin and result are both `CONTACTED`;
+- the durable current call-again value is empty;
+- the call-again input follows the existing practice-local, present-to-90-day boundary; and
+- the common authorization, version, and idempotency guards pass.
+
+Result:
+
+- current call-again data is set to the staff-chosen value;
+- no contact-attempt fact is appended;
+- one reversible request transition and one technical audit entry are appended; and
+- Undo restores the exact legacy `CONTACTED` snapshot, including its missing value.
 
 #### 5.5 `UndoLatestTransition`
 
@@ -755,6 +783,7 @@ the appropriate append-only record within the same transaction as current state.
 | `ConfirmBookingHandoff` | `BookingHandoffConfirmed` |
 | `CloseRequest` | `AppointmentRequestClosed` |
 | `ReopenRequest` | `AppointmentRequestReopened` |
+| `SetCallAgain` | `CallAgainSet` |
 | `UndoLatestTransition` | `AppointmentRequestTransitionUndone` referencing the compensated transition |
 | `ClassifyLegacyClosure` | `LegacyClosureClassified` |
 
@@ -768,6 +797,7 @@ Each accepted lifecycle command also appends exactly one request-transition enve
 - resulting request version;
 - occurred-at time supplied explicitly by the shell;
 - non-PHI reason/outcome code where applicable; and
+- the immutable call-again time chosen by `ReopenRequest` or `SetCallAgain`; and
 - a reference to the compensated transition for Undo.
 
 Transition metadata never contains a patient name, contact detail, intake reason, note text,
@@ -805,6 +835,11 @@ command writes current state, transition history, audit evidence, or outbox work
 - Exactly one current state exists.
 - `NEW` carries no current call-again, booking-handoff, closure, or legacy-review data.
 - Only `CONTACTED` may carry current call-again/attention data.
+- Every newly accepted `RecordContactAttempt`, `ReopenRequest`, or `SetCallAgain` result in
+  `CONTACTED` has a concrete staff-chosen call-again timestamp.
+- Existing `CONTACTED` rows with no call-again timestamp remain legal legacy evidence only so
+  they can stay visible, be corrected individually, or be restored exactly by Undo. No date is
+  inferred or bulk-filled.
 - Normal `BOOKED` carries booking-handoff evidence and no current call-again or closure data.
 - Normal `CLOSED` carries typed closure evidence and no booking-handoff or current call-again
   data.
@@ -824,6 +859,7 @@ command writes current state, transition history, audit evidence, or outbox work
 | Invariant type | Required enforcement |
 |---|---|
 | Legal state × command transition | Pure domain transition function, called by every mutation adapter |
+| Required call-again time on every newly accepted Contacted-producing command | Server command boundary and atomic Postgres RPC shape validation |
 | Role and active-staff policy | Server application policy before the command; database interface unavailable to public roles |
 | State vocabulary and coherent terminal/attention shape | Postgres CHECK constraints |
 | One accepted command key and one resulting version | Postgres UNIQUE constraints |
@@ -844,13 +880,13 @@ and `SECURITY INVOKER` unless a separately reviewed privilege boundary proves ot
 `illegal_transition` with no writes. `guarded` means the command is exceptional and must satisfy
 its dedicated guards.
 
-| Current state | Record contact attempt | Scheduled / confirm booking handoff | Close: not actionable | Close: will not schedule | Reopen | Undo latest | Classify legacy closure |
-|---|---|---|---|---|---|---|---|
-| `NEW` | ✓ → `CONTACTED` | ✓ → `BOOKED` | ✓ → `CLOSED` | — | — | guarded | — |
-| `CONTACTED` | ✓ → `CONTACTED` | ✓ → `BOOKED` | ✓ → `CLOSED` | ✓ → `CLOSED` | — | guarded | — |
-| `BOOKED` | — | — | — | — | ✓ → `CONTACTED` | guarded | — |
-| `CLOSED` | — | — | — | — | ✓ → `CONTACTED` | guarded | — |
-| `CLOSED` + legacy review | — | — | — | — | — | — | guarded → `BOOKED` or normal `CLOSED` |
+| Current state | Record contact attempt | Scheduled / confirm booking handoff | Close: not actionable | Close: will not schedule | Reopen | Set call-again | Undo latest | Classify legacy closure |
+|---|---|---|---|---|---|---|---|---|
+| `NEW` | ✓ → `CONTACTED` | ✓ → `BOOKED` | ✓ → `CLOSED` | — | — | — | guarded | — |
+| `CONTACTED` | ✓ → `CONTACTED` | ✓ → `BOOKED` | ✓ → `CLOSED` | ✓ → `CLOSED` | — | guarded when call-again is missing | guarded | — |
+| `BOOKED` | — | — | — | — | ✓ → `CONTACTED` | — | guarded | — |
+| `CLOSED` | — | — | — | — | ✓ → `CONTACTED` | — | guarded | — |
+| `CLOSED` + legacy review | — | — | — | — | — | — | — | guarded → `BOOKED` or normal `CLOSED` |
 
 The initial creation edge is `∅ → NEW`. Deletion is a data-lifecycle operation, not a request
 state. Legal hold does not add a state or alter this matrix.
@@ -986,7 +1022,8 @@ accepted Undo receives its own new version and idempotency record.
 
 - `NEW` is reachable only through successful intake or migration of current `new` rows.
 - `CONTACTED` is reachable from `NEW`, from itself through another contact attempt, and from a
-  terminal state through explicit reopen.
+  terminal state through explicit reopen. A legacy `CONTACTED` row may self-transition through
+  the dedicated call-again correction without fabricating another contact attempt.
 - `BOOKED` is reachable directly from `NEW`, from `CONTACTED`, through legacy review, or through
   migration of known booked records.
 - `CLOSED` is reachable directly from `NEW` only for a non-contact reason, from `CONTACTED` for
@@ -1006,6 +1043,8 @@ The implementation must make these statements invariant:
 - A `NEW` request cannot close with a reason that asserts patient contact.
 - A request cannot be both booked and closed in current state.
 - Only `CONTACTED` can carry a current call-again value.
+- No newly accepted contact attempt, reopen, or legacy call-again correction can leave
+  `CONTACTED` without a concrete staff-chosen call-again value.
 - A booking command creates booking-handoff evidence exactly once and no Appointment entity.
 - Unauthorized, stale, invalid, or duplicate-conflicting commands make no write.
 - Every accepted lifecycle command has matching transition and audit evidence.
@@ -1019,7 +1058,8 @@ The implementation must make these statements invariant:
 The application cannot guarantee that staff eventually resolve every request. It must make lack
 of progress visible:
 
-- unresolved `NEW` and due/silent `CONTACTED` requests remain queryable as attention work;
+- unresolved `NEW`, due `CONTACTED`, and legacy `CONTACTED` rows with no call-again day remain
+  queryable as attention work with a concrete correction action;
 - no read failure may present as zero work;
 - pending, failed, retrying, and exhausted outbox work is observable to authorized operators;
 - a scheduled retention motor is provisioned and monitored before retention is described as
@@ -1215,9 +1255,15 @@ happy-path examples.
 - Every valid transition preserves every invariant in §7.
 - `CONTACTED → CONTACTED` appends another attempt and replaces current attention without erasing
   history.
+- every Contacted-producing contact outcome and Reopen rejects a missing or invalid call-again
+  choice at both the domain/application boundary and the atomic database boundary.
+- the legacy call-again correction is legal only for `CONTACTED` with no current value, appends no
+  contact-attempt evidence, and Undo restores the exact missing-value snapshot.
 - `NEW → CLOSED` accepts only the non-contact reason.
 - terminal ordinary commands reject.
 - reopen clears current terminal data but preserves history.
+- reopen sets the staff-chosen call-again time atomically and Undo restores the exact prior
+  `BOOKED` or `CLOSED` snapshot.
 - Undo restores the exact saved prior snapshot, advances version, and appends compensation.
 - Undo is accepted at the 15-minute boundary, rejected after it, and an already-committed Undo
   retry still returns its idempotent result after expiry.

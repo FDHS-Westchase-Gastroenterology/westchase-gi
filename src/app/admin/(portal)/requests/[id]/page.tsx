@@ -109,7 +109,7 @@ function historyLine(entry: Readonly<HistoryEntry>): HistoryLine | null {
         text: `${CONTACT_OUTCOME_LABELS[entry.outcome]}${
           entry.callAgainAt !== null && entry.callAgainAt !== ""
             ? ` — call again ${followUpWhenLabel(entry.callAgainAt)}`
-            : ""
+            : " — no call-again day was set"
         }`,
         actor: entry.actor,
         at: entry.at,
@@ -130,8 +130,16 @@ function historyLine(entry: Readonly<HistoryEntry>): HistoryLine | null {
             : entry.command === "close_request"
               ? `Closed — ${entry.closureReason !== null ? CLOSURE_REASON_LABELS[entry.closureReason] : "no appointment booked"}`
               : entry.command === "reopen_request"
-                ? "Reopened — returned to Contacted"
-                : `Marked ${STATE_LABELS[entry.to]}`,
+                ? `Reopened — returned to Contacted${
+                    entry.callAgainAt !== null && entry.callAgainAt !== ""
+                      ? ` — call again ${followUpWhenLabel(entry.callAgainAt)}`
+                      : " — no call-again day was set"
+                  }`
+                : entry.command === "set_call_again"
+                  ? entry.callAgainAt !== null && entry.callAgainAt !== ""
+                    ? `Call-again day set — ${followUpWhenLabel(entry.callAgainAt)}`
+                    : "Call-again day correction recorded"
+                  : `Marked ${STATE_LABELS[entry.to]}`,
         actor: entry.actor,
         at: entry.at,
         undone: entry.undone,

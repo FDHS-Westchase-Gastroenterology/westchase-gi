@@ -196,6 +196,49 @@ test.describe("portal home", () => {
     ).toHaveAttribute("target", "_blank");
   });
 
+  test("home reports every Contacted request whose call-again day is missing", async ({ page }) => {
+    const id = randomUUID();
+    const { error: stageError } = await db.from("requests").insert({
+      id,
+      name: `TEST Home ${runId} missing call-again`,
+      phone: "8135550199",
+      email: `home-${runId}-missing-call-again@example.test`,
+      location: "any",
+      preferred_time: "any",
+      message: "TEST queue-integrity fixture — no medical details.",
+      locale: "en",
+      source_path: "/e2e/home-missing-call-again",
+      status: "contacted",
+      follow_up_at: null,
+    });
+    expect(stageError).toBeNull();
+
+    try {
+      const { count, error: countError } = await db
+        .from("requests")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "contacted")
+        .is("follow_up_at", null);
+      expect(countError).toBeNull();
+      const missingCount = count ?? 0;
+      expect(missingCount).toBeGreaterThanOrEqual(1);
+      const label =
+        missingCount === 1
+          ? "1 contacted request has no call-again day"
+          : `${missingCount} contacted requests have no call-again day`;
+
+      await signIn(page, SEED_EMAIL, SEED_PASSWORD);
+      const summary = page.getByTestId("attention-summary");
+      await expect(summary.getByRole("link", { name: label, exact: true })).toHaveAttribute(
+        "href",
+        "/admin/requests?status=contacted",
+      );
+    } finally {
+      await db.from("requests").delete().eq("id", id);
+      await db.from("audit_log").delete().eq("entity_id", id);
+    }
+  });
+
   test("home flags recent notification delivery failures honestly", async ({ page }) => {
     const staged = await page.request.post("/api/requests", {
       data: {

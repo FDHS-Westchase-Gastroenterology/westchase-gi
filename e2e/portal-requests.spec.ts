@@ -360,17 +360,43 @@ test.describe("portal requests operation", () => {
       return data;
     }
 
-    // A call-again outcome requires the callback day before saving:
-    // The Save button stays disabled until the required choice is made.
-    await panel.getByText("No answer — call again", { exact: true }).click();
+    // Every Contacted-producing outcome requires a call-again choice. The
+    // Reached path was the audit gap: Save stays unavailable, and the choice
+    // Group itself explains what is missing before staff choose a time.
+    await panel.getByText("Reached the patient — follow-up needed", { exact: true }).click();
     await expect(page.getByTestId("save-workflow")).toBeDisabled();
-    await panel.getByText("Tomorrow morning", { exact: true }).click();
+    await expect(page.getByTestId("call-again-required-explanation")).toContainText(
+      "Choose one before Save",
+    );
+    await panel.getByText("Pick a day…", { exact: true }).click();
+    const customDay = page.getByTestId("call-again-day");
+    const minimumDay = await customDay.getAttribute("min");
+    expect(minimumDay).not.toBeNull();
+    if (minimumDay === null) throw new Error("Custom call-again input is missing its minimum day");
+    const minimumDayMs = Date.parse(`${minimumDay}T00:00:00.000Z`);
+    const beforeMinimum = new Date(minimumDayMs - 86_400_000).toISOString().slice(0, 10);
+    const validCustomDay = new Date(minimumDayMs + 2 * 86_400_000).toISOString().slice(0, 10);
+    await customDay.fill(beforeMinimum);
+    await expect(page.getByTestId("save-workflow")).toBeDisabled();
+    await customDay.fill(validCustomDay);
+    await expect(page.getByTestId("save-workflow")).toBeEnabled();
     await page.getByTestId("save-workflow").click();
     await expect(feedback).toContainText("resurface");
-    const afterNoAnswer = await statusOf();
-    expect(afterNoAnswer?.status).toBe("contacted");
-    expect(afterNoAnswer?.follow_up_at).toBeTruthy();
+    const afterReached = await statusOf();
+    expect(afterReached?.status).toBe("contacted");
+    expect(afterReached?.follow_up_at).toBeTruthy();
     await expect(page.getByTestId("workflow-current-state")).toContainText("Contacted");
+    await expect(page.getByTestId("workflow-current-state")).toContainText("call again");
+
+    // The three preset shapes use the same required Reached path and each
+    // Saves a concrete call-again time. Repeated Contacted attempts remain
+    // Separate history instead of overwriting the original action.
+    for (const preset of ["This afternoon", "Tomorrow morning", "Friday"] as const) {
+      await panel.getByText("Reached the patient — follow-up needed", { exact: true }).click();
+      await panel.getByText(preset, { exact: true }).click();
+      await page.getByTestId("save-workflow").click();
+      await expect(feedback).toContainText("resurface");
+    }
 
     // The daily success path: booked in the practice system, presented as
     // Scheduled everywhere. The durable row is `booked`; the word
@@ -383,13 +409,57 @@ test.describe("portal requests operation", () => {
     expect(afterBooked?.record_handoff_at).toBeTruthy();
     await expect(page.getByTestId("workflow-current-state")).toContainText("Scheduled");
 
-    // A resolved request offers reopen — a legal command, not a status
-    // Picker. Reopen returns it to Contacted with history intact.
+    // Reopen asks for the next call before touching the resolved record.
+    // Cancel after making a choice leaves both the request and its evidence
+    // Chain exactly as they were.
+    const { count: transitionsBeforeCancel, error: transitionsBeforeCancelError } = await db
+      .from("request_transitions")
+      .select("id", { count: "exact", head: true })
+      .eq("request_id", id);
+    expect(transitionsBeforeCancelError).toBeNull();
     await page.getByTestId("reopen-request").click();
+    await expect(page.getByTestId("confirm-reopen")).toBeDisabled();
+    await page.getByTestId("reopen-controls").getByText("Friday", { exact: true }).click();
+    await page.getByTestId("cancel-reopen").click();
+    await expect(page.getByTestId("reopen-controls")).toHaveCount(0);
+    expect(await statusOf()).toEqual(afterBooked);
+    const { count: transitionsAfterCancel, error: transitionsAfterCancelError } = await db
+      .from("request_transitions")
+      .select("id", { count: "exact", head: true })
+      .eq("request_id", id);
+    expect(transitionsAfterCancelError).toBeNull();
+    expect(transitionsAfterCancel).toBe(transitionsBeforeCancel);
+
+    // A confirmed Reopen enters Contacted with the chosen call-again time.
+    await page.getByTestId("reopen-request").click();
+    await page
+      .getByTestId("reopen-controls")
+      .getByText("Tomorrow morning", { exact: true })
+      .click();
+    await page.getByTestId("confirm-reopen").click();
     await expect(feedback).toContainText("Reopened — back to Contacted");
     const reopened = await statusOf();
     expect(reopened?.status).toBe("contacted");
     expect(reopened?.record_handoff_at).toBeNull();
+    expect(reopened?.follow_up_at).toBeTruthy();
+    await expect(page.getByTestId("request-history")).toContainText(
+      "Reopened — returned to Contacted — call again",
+    );
+
+    // Undo restores the exact prior Scheduled snapshot, including its
+    // Handoff clock and cleared call-again/closure fields. The original
+    // Reopen remains visible as later-undone evidence.
+    await page.getByTestId("undo-latest").click();
+    await expect(feedback).toContainText("Undone — this request is Scheduled again.");
+    expect(await statusOf()).toEqual(afterBooked);
+    await expect(page.getByTestId("request-history")).toContainText("later undone");
+
+    // Reopen once more so this same fictional request can exercise the
+    // Distinct Closed outcome below.
+    await page.getByTestId("reopen-request").click();
+    await page.getByTestId("reopen-controls").getByText("Friday", { exact: true }).click();
+    await page.getByTestId("confirm-reopen").click();
+    await expect(feedback).toContainText("Reopened — back to Contacted");
 
     // Closing records the concrete reason the database needs.
     await panel.getByText("Patient won't schedule", { exact: true }).click();
@@ -422,7 +492,12 @@ test.describe("portal requests operation", () => {
         .map((row) => [row.command, row.from_state, row.to_state]),
     ).toEqual([
       ["record_contact_attempt", "new", "contacted"],
+      ["record_contact_attempt", "contacted", "contacted"],
+      ["record_contact_attempt", "contacted", "contacted"],
+      ["record_contact_attempt", "contacted", "contacted"],
       ["confirm_booking_handoff", "contacted", "booked"],
+      ["reopen_request", "booked", "contacted"],
+      ["undo_latest_transition", "contacted", "booked"],
       ["reopen_request", "booked", "contacted"],
       ["close_request", "contacted", "closed"],
     ]);
@@ -433,7 +508,7 @@ test.describe("portal requests operation", () => {
       .eq("entity_id", id)
       .eq("action", "request.workflow_command");
     expect(workflowAuditError).toBeNull();
-    expect(workflowAudits).toHaveLength(4);
+    expect(workflowAudits).toHaveLength(9);
     for (const audit of workflowAudits ?? []) {
       const detailText = JSON.stringify(audit.detail);
       expect(detailText).not.toContain(staged.name);
@@ -635,6 +710,17 @@ test.describe("portal requests operation", () => {
       });
       expect(error).toBeNull();
     }
+    const { error: legacyAttemptError } = await db.from("request_events").insert({
+      request_id: idsByKey.get("stale")!,
+      type: "contact_attempt",
+      status: "recorded",
+      created_at: new Date(nowMs - 3 * dayMs).toISOString(),
+      meta: {
+        outcome: "reached_follow_up",
+        author_email: SEED_EMAIL.toLowerCase(),
+      },
+    });
+    expect(legacyAttemptError).toBeNull();
 
     try {
       await signIn(page);
@@ -649,8 +735,60 @@ test.describe("portal requests operation", () => {
       await expect(page.getByTestId("request-next-action").first()).toBeVisible();
       const hints = await page.getByTestId("request-next-action").allTextContents();
       expect(hints.some((hint) => hint.startsWith("Call again — due"))).toBe(true);
-      expect(hints.some((hint) => hint.startsWith("Silent"))).toBe(true);
+      expect(hints.some((hint) => hint.startsWith("Set a call-again day"))).toBe(true);
       expect(hints.some((hint) => hint === "On the schedule")).toBe(true);
+
+      // A legacy Contacted/null row never has a blank Next step. Its queue
+      // Action targets the dedicated correction control, where no date is
+      // Guessed and Save stays unavailable until staff choose one.
+      const staleRow = page
+        .getByTestId("request-row")
+        .filter({ hasText: `TEST Queue ${runId} stale` });
+      await expect(staleRow.getByTestId("request-next-action")).toContainText(
+        "Set a call-again day",
+      );
+      await expect(staleRow).toHaveAttribute("href", /#set-call-again$/);
+      await staleRow.click();
+      await expect(page).toHaveURL(/#set-call-again$/);
+      const correction = page.getByTestId("set-call-again-controls");
+      await expect(correction).toBeFocused();
+      await expect(page.getByTestId("workflow-current-state")).toContainText(
+        "call-again day missing",
+      );
+      await expect(page.getByTestId("set-call-again-submit")).toBeDisabled();
+      await expect(page.getByTestId("request-history")).toContainText(
+        "Reached the patient — follow-up needed — no call-again day was set",
+      );
+      await correction.getByText("Tomorrow morning", { exact: true }).click();
+      await page.getByTestId("set-call-again-submit").click();
+      await expect(page.getByTestId("workflow-feedback")).toContainText("Saved — call again");
+      const corrected = await db
+        .from("requests")
+        .select("status, follow_up_at")
+        .eq("id", idsByKey.get("stale")!)
+        .single();
+      expect(corrected.error).toBeNull();
+      expect(corrected.data?.status).toBe("contacted");
+      expect(corrected.data?.follow_up_at).toBeTruthy();
+      await expect(page.getByTestId("request-history")).toContainText("Call-again day set");
+
+      // The correction is reversible to the exact legacy null snapshot;
+      // Both the original missing evidence and its correction stay in history.
+      await page.getByTestId("undo-latest").click();
+      await expect(page.getByTestId("workflow-feedback")).toContainText(
+        "Undone — this request is Contacted again.",
+      );
+      const restoredLegacy = await db
+        .from("requests")
+        .select("status, follow_up_at")
+        .eq("id", idsByKey.get("stale")!)
+        .single();
+      expect(restoredLegacy.error).toBeNull();
+      expect(restoredLegacy.data).toEqual({ status: "contacted", follow_up_at: null });
+      await expect(page.getByTestId("request-history")).toContainText("Call-again day set");
+      await expect(page.getByTestId("request-history")).toContainText(
+        "Undo — restored to Contacted",
+      );
 
       // Continuity: the due row chains to its attention-order neighbors.
       await page.goto(`/admin/requests/${idsByKey.get("due")}?q=${token}`);
