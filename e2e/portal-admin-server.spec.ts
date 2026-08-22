@@ -1022,4 +1022,71 @@ test.describe("portal management server boundaries", () => {
       await db.from("requests").delete().eq("id", requestId);
     }
   });
+
+  test("VAL-ADMIN-020: Recent work search, work-type filters, compaction, and URL state", async () => {
+    if (!adminPage) throw new Error("Admin session is unavailable");
+    const token = `activity-${runId}`;
+    // Four adjacent print-packet events inside one practice day (anchored to
+    // Local noon so the run never crosses midnight) plus one request action.
+    const noon = new Date();
+    noon.setHours(12, 0, 0, 0);
+    const { data: stagedRows, error: stageError } = await db
+      .from("audit_log")
+      .insert([
+        ...Array.from({ length: 4 }, (_, index) => ({
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "requests.print_new",
+          entity: "requests",
+          entity_id: null,
+          detail: { row_count: 3 },
+          at: new Date(noon.getTime() - index * 60_000).toISOString(),
+        })),
+        {
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "request.create",
+          entity: "requests",
+          entity_id: null,
+          detail: {},
+          at: new Date(noon.getTime() - 10 * 60_000).toISOString(),
+        },
+      ])
+      .select("id");
+    expect(stageError).toBeNull();
+    const fixtureIds = requireDecoded(
+      z.array(idRowSchema).safeParse(stagedRows ?? []),
+      "Activity fixtures were not created",
+    ).map((row) => row.id);
+
+    try {
+      // Search by an action phrase through the URL.
+      await adminPage.goto(`/admin/audit?q=${encodeURIComponent("print packet")}`);
+      const summary = adminPage.getByTestId("recent-work-summary");
+      await expect(summary).toContainText("print packet");
+      const group = adminPage.getByTestId("recent-work-group");
+      await expect(group).toContainText(/4 times between/);
+
+      // Expansion reaches the exact underlying entries.
+      await group.getByText("Show all 4").click();
+      await expect(group).toContainText("prepared the New-request print packet (3 requests)");
+
+      // The exact technical record keeps every underlying event.
+      const technical = adminPage.getByTestId("audit-table");
+      expect(await technical.getByText("requests.print_new").count()).toBeGreaterThanOrEqual(4);
+
+      // Work-type filters narrow the same result set.
+      await adminPage.goto("/admin/audit?type=people");
+      await expect(summary).not.toContainText("print packet");
+
+      // No results explains itself and offers a clear way back.
+      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(`zzz-${token}`)}`);
+      await expect(adminPage.getByTestId("recent-work-empty")).toBeVisible();
+      await adminPage.getByRole("link", { name: "Clear search" }).click();
+      await expect(adminPage).toHaveURL(/\/admin\/audit$/);
+      await expect(adminPage.getByTestId("recent-work-summary")).toBeVisible();
+    } finally {
+      for (const id of fixtureIds) {
+        await db.from("audit_log").delete().eq("id", id);
+      }
+    }
+  });
 });

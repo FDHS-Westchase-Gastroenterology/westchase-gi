@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
@@ -9,16 +8,28 @@ import type { Json } from "@/lib/json";
 import { requireRole } from "@/lib/portal/auth";
 import { PORTAL_RELEASE_BRIEFING } from "@/lib/portal/release-briefing-content";
 import { getPortalReleaseEngagement } from "@/lib/portal/release-engagement";
-import { parsePage } from "@/lib/portal/request-query";
+import { parsePage, parseRequestSearch } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
 import { displayNameOrEmail, fetchStaffNameMap } from "@/lib/portal/staff-identity";
 
 import { RecentWorkSection } from "./recent-work";
-import { toRecentWorkItems } from "./recent-work-model";
+import {
+  compactRepeatedOutput,
+  filterRecentWork,
+  paginateRecentWork,
+  parseRecentWorkType,
+  recentWorkHref,
+  toRecentWorkItems,
+} from "./recent-work-model";
 import type { AuditEntry } from "./recent-work-model";
+import { RecentWorkPagination } from "./recent-work-pagination";
 import { ReleaseEngagementSection } from "./release-engagement";
 
 const PAGE_SIZE = 100;
+// The staff-facing lens reads a bounded window of the newest events for
+// Search, filters, and compaction. The Technical record's own query and
+// Pagination are unchanged by this bound.
+const RECENT_WORK_LENS_LIMIT = 2000;
 
 const auditEntrySchema = z.object({
   id: z.string(),
@@ -59,33 +70,56 @@ function externalAuditSummary(detail: Json): ExternalAuditSummary | null {
 export default async function AdminAuditPage({
   searchParams,
 }: Readonly<{
-  searchParams: Promise<{ page?: string | string[] }>;
+  searchParams: Promise<{
+    page?: string | string[];
+    q?: string | string[];
+    type?: string | string[];
+    rw?: string | string[];
+  }>;
 }>) {
   const session = await requireRole("staff");
-  const page = parsePage((await searchParams).page);
+  const params = await searchParams;
+  const page = parsePage(params.page);
+  // Staff-facing lens state lives in the URL: q (search text), type (work
+  // Group), rw (Recent-work page). The Technical record keeps `page`.
+  const search = parseRequestSearch(params.q);
+  const workType = parseRecentWorkType(params.type);
+  const recentPage = parsePage(params.rw);
   const from = (page - 1) * PAGE_SIZE;
   const now = new Date();
 
   const db = serviceClient();
-  const [{ data: rows, error, count }, nameMap, profileRows, recipientRows, releaseEngagement] =
-    await Promise.all([
-      db
-        .from("audit_log")
-        .select("id, actor_email, action, entity, entity_id, detail, at", {
-          count: "exact",
-        })
-        .order("at", { ascending: false })
-        .order("id", { ascending: false })
-        .range(from, from + PAGE_SIZE - 1),
-      fetchStaffNameMap(db),
-      db.from("staff_profiles").select("id, display_name"),
-      db.from("notification_recipients").select("id, email"),
-      session.role === "admin"
-        ? getPortalReleaseEngagement(PORTAL_RELEASE_BRIEFING.id)
-        : Promise.resolve(null),
-    ]);
-  if (error) {
-    throw new Error(`Audit read failed: ${error.code}`);
+  const [
+    { data: rows, error, count },
+    { data: lensRows, error: lensError },
+    nameMap,
+    profileRows,
+    recipientRows,
+    releaseEngagement,
+  ] = await Promise.all([
+    db
+      .from("audit_log")
+      .select("id, actor_email, action, entity, entity_id, detail, at", {
+        count: "exact",
+      })
+      .order("at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(from, from + PAGE_SIZE - 1),
+    db
+      .from("audit_log")
+      .select("id, actor_email, action, entity, entity_id, detail, at")
+      .order("at", { ascending: false })
+      .order("id", { ascending: false })
+      .range(0, RECENT_WORK_LENS_LIMIT - 1),
+    fetchStaffNameMap(db),
+    db.from("staff_profiles").select("id, display_name"),
+    db.from("notification_recipients").select("id, email"),
+    session.role === "admin"
+      ? getPortalReleaseEngagement(PORTAL_RELEASE_BRIEFING.id)
+      : Promise.resolve(null),
+  ]);
+  if (error !== null || lensError !== null) {
+    throw new Error(`Audit read failed: ${error?.code ?? lensError?.code}`);
   }
 
   const parsedEntries = z.array(auditEntrySchema).safeParse(rows);
@@ -93,6 +127,11 @@ export default async function AdminAuditPage({
     throw new Error("Audit read failed: invalid");
   }
   const entries = parsedEntries.data;
+  const parsedLensEntries = z.array(auditEntrySchema).safeParse(lensRows);
+  if (!parsedLensEntries.success) {
+    throw new Error("Audit read failed: invalid");
+  }
+  const lensEntries = parsedLensEntries.data;
   const namesByProfileId = new Map<string, string>();
   for (const row of profileRows.data ?? []) {
     const parsed = profileNameSchema.safeParse(row);
@@ -107,16 +146,33 @@ export default async function AdminAuditPage({
     if (!parsed.success) continue;
     recipientsById.set(parsed.data.id, parsed.data.email);
   }
-  const recentItems = toRecentWorkItems(entries, {
+  const recentItems = toRecentWorkItems(lensEntries, {
     namesByEmail: nameMap,
     namesByProfileId,
     recipientsById,
     now,
   });
+  // Staff-facing pipeline: filter by search + work group, compact repeated
+  // Print/export runs, then paginate. Every count shown on the page
+  // Describes this same result set.
+  const matchedItems = filterRecentWork(recentItems, { search, type: workType });
+  const recentEntries = compactRepeatedOutput(matchedItems);
+  const recentView = paginateRecentWork(recentEntries, recentPage);
+
   const total = count ?? entries.length;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   if (page > totalPages) {
-    redirect(`/admin/audit${totalPages > 1 ? `?page=${totalPages}` : ""}`);
+    redirect(
+      recentWorkHref({
+        page: Math.min(page, totalPages),
+        q: search,
+        type: workType,
+        rw: recentPage,
+      }),
+    );
+  }
+  if (recentPage > recentView.totalPages) {
+    redirect(recentWorkHref({ rw: recentView.totalPages, q: search, type: workType, page }));
   }
   const firstShown = total === 0 ? 0 : from + 1;
   const lastShown = from + entries.length;
@@ -141,7 +197,19 @@ export default async function AdminAuditPage({
         </div>
       ) : (
         <>
-          <RecentWorkSection items={recentItems} now={now} />
+          <RecentWorkSection
+            entries={recentView.slice}
+            now={now}
+            search={search}
+            type={workType}
+            total={recentView.total}
+            firstShown={recentView.firstShown}
+            lastShown={recentView.lastShown}
+            page={recentPage}
+            totalPages={recentView.totalPages}
+            lensCapped={total > RECENT_WORK_LENS_LIMIT}
+            lensLimit={RECENT_WORK_LENS_LIMIT}
+          />
 
           <section aria-labelledby="technical-record-heading" className="mt-10">
             <h2
@@ -217,30 +285,24 @@ export default async function AdminAuditPage({
 
       {total > 0 ? (
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <p data-testid="audit-page-summary" className="text-[0.9rem] text-[var(--color-muted)]">
+          <p
+            id="audit-page-summary"
+            data-testid="audit-page-summary"
+            tabIndex={-1}
+            className="text-[0.9rem] text-[var(--color-muted)]"
+          >
             Showing {firstShown}–{lastShown} of {total}
           </p>
-          {totalPages > 1 ? (
-            <nav aria-label="Activity log pages" className="flex items-center gap-3">
-              {page > 1 ? (
-                <Link
-                  href={`/admin/audit${page > 2 ? `?page=${page - 1}` : ""}`}
-                  rel="prev"
-                  className="btn btn-outline"
-                >
-                  Previous
-                </Link>
-              ) : null}
-              <span className="text-[0.9rem] font-bold text-[var(--color-body)]">
-                Page {page} of {totalPages}
-              </span>
-              {page < totalPages ? (
-                <Link href={`/admin/audit?page=${page + 1}`} rel="next" className="btn btn-outline">
-                  Next
-                </Link>
-              ) : null}
-            </nav>
-          ) : null}
+          <RecentWorkPagination
+            ariaLabel="Activity log pages"
+            page={page}
+            totalPages={totalPages}
+            q={search}
+            type={workType}
+            param="page"
+            summaryId="audit-page-summary"
+            testId="audit-pagination"
+          />
         </div>
       ) : null}
     </section>
