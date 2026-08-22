@@ -118,9 +118,9 @@ export function HomeWorkbench({
           <Link
             href={STAFF_REQUEST_SOURCE_PATH}
             data-testid="home-add-patient-request"
-            className="btn btn-navy min-h-11"
+            className="btn btn-outline min-h-11"
           >
-            Add patient request
+            Add appointment request
           </Link>
         }
         meta={
@@ -147,7 +147,7 @@ export function HomeWorkbench({
           <header className="portal-work-stack-header">
             <div>
               <h2 id="queue-overview-heading">Appointment requests</h2>
-              <p>The live work stack. Contact the longest-waiting request first.</p>
+              <p>New requests wait here. Contact the longest-waiting one first.</p>
             </div>
             <Link href="/admin/requests" className="portal-inline-link">
               Open Appointments
@@ -196,28 +196,35 @@ export function HomeWorkbench({
               </div>
               <div className="portal-new-work-actions">
                 {newCount > 0 ? (
-                  <Link
-                    href="/admin/requests/print?auto=1"
-                    target="_blank"
-                    rel="noopener"
-                    prefetch={false}
-                    className="btn btn-navy min-h-11"
-                    aria-label={`Print all ${newCount} new appointment ${
-                      newCount === 1 ? "request" : "requests"
-                    }; opens in a new tab`}
-                  >
-                    <Printer className="h-4 w-4" />
-                    <span data-testid="print-new-count">Print all {newCount}</span>
-                  </Link>
+                  <>
+                    <Link href={newViewHref} className="btn btn-navy min-h-11">
+                      Start with oldest request
+                    </Link>
+                    <Link
+                      href="/admin/requests/print?auto=1"
+                      target="_blank"
+                      rel="noopener"
+                      prefetch={false}
+                      className="btn btn-outline min-h-11"
+                      aria-label={`Print all ${newCount} new appointment ${
+                        newCount === 1 ? "request" : "requests"
+                      }; opens in a new tab`}
+                    >
+                      <Printer className="h-4 w-4" />
+                      <span data-testid="print-new-count">Print all {newCount}</span>
+                    </Link>
+                  </>
                 ) : (
-                  <button type="button" className="btn btn-outline min-h-11" disabled>
-                    <Printer className="h-4 w-4" />
-                    <span data-testid="print-new-empty">Nothing to print</span>
-                  </button>
+                  <>
+                    <button type="button" className="btn btn-outline min-h-11" disabled>
+                      <Printer className="h-4 w-4" />
+                      <span data-testid="print-new-empty">Nothing to print</span>
+                    </button>
+                    <Link href={newViewHref} className="btn btn-outline min-h-11">
+                      Open New requests
+                    </Link>
+                  </>
                 )}
-                <Link href={newViewHref} className="btn btn-outline min-h-11">
-                  Open New requests
-                </Link>
               </div>
             </div>
           )}

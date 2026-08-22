@@ -114,10 +114,10 @@ test.describe("portal requests operation", () => {
       await signIn(page);
       await page.getByTestId("home-add-patient-request").click();
       await expect(page).toHaveURL(/\/admin\/requests\/new$/);
-      await expect(page.getByRole("heading", { name: "Add patient request" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Add appointment request" })).toBeVisible();
       await expect(page.getByText("Keep this to scheduling.")).toBeVisible();
 
-      const form = page.getByRole("form", { name: "Add patient request" });
+      const form = page.getByRole("form", { name: "Add appointment request" });
       const name = form.locator("#staff-request-name");
       const phone = form.locator("#staff-request-phone");
       const idempotency = form.locator('input[name="idempotencyKey"]');
@@ -150,7 +150,7 @@ test.describe("portal requests operation", () => {
       expect(requestId).not.toBeNull();
 
       await expect(page.getByTestId("staff-request-created")).toContainText(
-        "Patient request added to New.",
+        "Appointment request added to New.",
       );
       await expect(page.getByTestId("staff-request-created")).toContainText(
         "No notification email was sent.",
@@ -219,6 +219,14 @@ test.describe("portal requests operation", () => {
         .single();
       expect(receiptError).toBeNull();
       expect(receipt).toMatchObject({ idempotency_key: originalKey, request_id: requestId });
+
+      // The human audit view names the work in plain language — never the
+      // Raw request.create action identifier.
+      await page.goto("/admin/audit");
+      const recentWork = page.getByTestId("recent-work-list").first();
+      await expect(recentWork).toBeVisible();
+      await expect(recentWork).toContainText("added an appointment request");
+      await expect(recentWork).not.toContainText("request.create");
 
       await page.goto(`/admin/requests?q=${encodeURIComponent(patientEmail)}`);
       const rowLink = page.getByTestId("request-row").filter({ hasText: patientName });
@@ -439,6 +447,14 @@ test.describe("portal requests operation", () => {
       .eq("action", "request.status_change");
     expect(statusAuditError).toBeNull();
     expect(statusAudits).toHaveLength(0);
+
+    // The human Recent work view never shows the raw workflow-command
+    // Identifier; the Technical record beneath keeps it for administrators.
+    await page.goto("/admin/audit");
+    const recentWork = page.getByTestId("recent-work-list").first();
+    await expect(recentWork).toBeVisible();
+    await expect(recentWork).not.toContainText("request.workflow_command");
+    await expect(page.getByTestId("audit-table")).toContainText("request.workflow_command");
   });
 
   test("VAL-ADMIN-005b: unsafe legacy email never becomes a mail link", async ({ page }) => {
