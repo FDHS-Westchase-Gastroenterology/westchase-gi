@@ -2311,4 +2311,17 @@
   .portal-workflow-shell {
     display: none !important;
   }
+
+  .website-maintainer-details > summary::before {
+    content: "Show ";
+  }
+
+  .website-maintainer-details[open] > summary::before {
+    content: "Hide ";
+  }
+
+  .website-maintainer-details > summary:focus-visible {
+    outline: 3px solid var(--color-amber);
+    outline-offset: 3px;
+  }
 }
