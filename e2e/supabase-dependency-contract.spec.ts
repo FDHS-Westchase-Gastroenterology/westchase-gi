@@ -2012,7 +2012,8 @@ test.describe("Supabase dependency contract", () => {
             item.name === "booked after converted-close backfill"
               ? "TEST note remains after lifecycle undo."
               : null,
-          p_follow_up_at: null,
+          p_follow_up_at:
+            item.outcome === "no_answer" || item.outcome === "voicemail" ? followUpAt : null,
         });
         expect(saved.error).toBeNull();
 
@@ -2066,6 +2067,7 @@ test.describe("Supabase dependency contract", () => {
     const firstRequestId = randomUUID();
     const secondRequestId = randomUUID();
     const requestIds = [firstRequestId, secondRequestId];
+    const callAgainAt = "2026-08-03T14:30:00.000Z";
 
     try {
       await insertRequest(db, {
@@ -2083,6 +2085,7 @@ test.describe("Supabase dependency contract", () => {
         p_actor_email: actor,
         p_request_id: firstRequestId,
         p_outcome: "no_answer",
+        p_follow_up_at: callAgainAt,
       });
       expect(firstSave.error).toBeNull();
       const firstEventId = z.string().parse(firstSave.data);
@@ -2154,6 +2157,7 @@ test.describe("Supabase dependency contract", () => {
         p_actor_email: actor,
         p_request_id: secondRequestId,
         p_outcome: "voicemail",
+        p_follow_up_at: callAgainAt,
       });
       expect(malformedSave.error).toBeNull();
       const malformedEventId = z.string().parse(malformedSave.data);
