@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import { PortalFeedbackMessage, usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
@@ -8,17 +9,14 @@ import { useOutputGuard } from "@/components/output-feedback";
 
 export function StaffRequestCreatedAcknowledgement() {
   const { feedback } = usePortalFeedback();
+  const router = useRouter();
 
   useEffect(() => {
     const url = new URL(window.location.href);
     if (url.searchParams.get("created") !== "1") return;
     url.searchParams.delete("created");
-    window.history.replaceState(
-      window.history.state,
-      "",
-      `${url.pathname}${url.search}${url.hash}`,
-    );
-  }, []);
+    router.replace(`${url.pathname}${url.search}${url.hash}`, { scroll: false });
+  }, [router]);
 
   if (feedback?.source !== "request-created") return null;
 

@@ -235,10 +235,12 @@ test.describe("portal requests operation", () => {
       // Remains a valid deep link, and the banner survives this first paint
       // But not the next note or workflow result.
       await page.goto(
-        `/admin/requests/${requestId!}?status=new&q=deep-link-check&page=2&created=1`,
+        `/admin/requests/${requestId!}?status=new&q=deep-link-check&page=2&created=1#request-notes`,
       );
       await expect(page).toHaveURL(
-        new RegExp(`/admin/requests/${requestId!}\\?status=new&q=deep-link-check&page=2$`),
+        new RegExp(
+          `/admin/requests/${requestId!}\\?status=new&q=deep-link-check&page=2#request-notes$`,
+        ),
       );
       await expect(page.getByTestId("staff-request-created")).toBeVisible();
 
@@ -279,6 +281,24 @@ test.describe("portal requests operation", () => {
       await expect(notesSection.getByTestId("request-note-feedback")).toHaveText("Note added.");
       await expect(notesSection.getByRole("button", { name: "Add note" })).toBeFocused();
       await expect(page.getByTestId("staff-request-created")).toHaveCount(0);
+      await expect(page).toHaveURL(
+        new RegExp(
+          `/admin/requests/${requestId!}\\?status=new&q=deep-link-check&page=2#request-notes$`,
+        ),
+      );
+
+      // Server actions must not restore the consumed flag from Next's route
+      // State. A hard reload keeps the queue scope and does not replay success.
+      await page.reload();
+      await expect(page).toHaveURL(
+        new RegExp(
+          `/admin/requests/${requestId!}\\?status=new&q=deep-link-check&page=2#request-notes$`,
+        ),
+      );
+      await expect(page.getByTestId("staff-request-created")).toHaveCount(0);
+      await expect(
+        notesSection.getByText("TEST creation acknowledgement replacement note."),
+      ).toBeVisible();
 
       // Dismissing the newer note result must not resurrect the consumed
       // Creation acknowledgement underneath it.
@@ -298,6 +318,22 @@ test.describe("portal requests operation", () => {
       await expect(page.getByTestId("staff-request-created")).toHaveCount(0);
       await expect(notesSection.getByLabel("Note", { exact: true })).toBeHidden();
       await expect(notesSection.getByRole("button", { name: "Add note" })).toBeVisible();
+      await expect(page).toHaveURL(
+        new RegExp(
+          `/admin/requests/${requestId!}\\?status=new&q=deep-link-check&page=2#request-notes$`,
+        ),
+      );
+
+      await page.reload();
+      await expect(page).toHaveURL(
+        new RegExp(
+          `/admin/requests/${requestId!}\\?status=new&q=deep-link-check&page=2#request-notes$`,
+        ),
+      );
+      await expect(page.getByTestId("staff-request-created")).toHaveCount(0);
+      await expect(
+        notesSection.getByText("TEST creation acknowledgement replacement note."),
+      ).toBeVisible();
 
       await page.getByTestId("undo-latest").click();
       await expect(page.getByTestId("workflow-feedback")).toContainText(

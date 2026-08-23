@@ -33,12 +33,15 @@ export function PortalFeedbackProvider({
   const [appliedInitialSource, setAppliedInitialSource] = useState(initialSource);
   const [feedback, setFeedback] = useState<PortalFeedback | null>(initialFeedback);
 
-  // A consumed initial message may disappear from the next Server Component
-  // Payload while a newer client result stays mounted. Retire only that old
-  // Initial source so a workflow or note result is not erased by refresh.
+  // A router-level query cleanup removes the initial message from the next
+  // Server Component payload. Keep the mounted acknowledgement until staff
+  // Replace it, but still accept a new non-null initial message when needed.
   if (appliedInitialSource !== initialSource) {
     setAppliedInitialSource(initialSource);
-    if (feedback === null || feedback.source === appliedInitialSource) {
+    if (
+      initialFeedback !== null &&
+      (feedback === null || feedback.source === appliedInitialSource)
+    ) {
       setFeedback(initialFeedback);
     }
   }
