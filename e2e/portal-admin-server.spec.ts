@@ -1077,11 +1077,26 @@ test.describe("portal management server boundaries", () => {
       await adminPage.goto("/admin/audit?type=people");
       await expect(summary).not.toContainText("print packet");
 
-      // No results explains itself and offers a clear way back.
-      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(`zzz-${token}`)}`);
-      await expect(adminPage.getByTestId("recent-work-empty")).toBeVisible();
-      await adminPage.getByRole("link", { name: "Clear search" }).click();
-      await expect(adminPage).toHaveURL(/\/admin\/audit$/);
+      // No-results copy and recovery follow the active Recent work constraints.
+      const miss = `zzz-${token}`;
+      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(miss)}&type=requests`);
+      const empty = adminPage.getByTestId("recent-work-empty");
+      await expect(empty).toBeVisible();
+      await expect(empty).toContainText(
+        `No recent work matches for “${miss}” in Appointment requests.`,
+      );
+      await expect(
+        empty.getByRole("link", { name: "Clear search and filters", exact: true }),
+      ).toHaveAttribute("href", "/admin/audit#recent-work-search");
+
+      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(miss)}`);
+      await expect(empty).toContainText(`No recent work matches for “${miss}”.`);
+      await expect(empty).not.toContainText("Try different words");
+      const searchRecovery = empty.getByRole("link", { name: "Clear search", exact: true });
+      await expect(searchRecovery).toHaveAttribute("href", "/admin/audit#recent-work-search");
+      await searchRecovery.click();
+      await expect(adminPage).toHaveURL(/\/admin\/audit(?:#recent-work-search)?$/);
+      await expect(adminPage.getByLabel("Search recent work")).toBeFocused();
       await expect(adminPage.getByTestId("recent-work-summary")).toBeVisible();
     } finally {
       for (const id of fixtureIds) {

@@ -55,8 +55,10 @@ const {
   paginateRecentWork,
   parseRecentWorkType,
   readNewestWindow,
+  recentWorkEmptyState,
   recentWorkHref,
   RECENT_WORK_LENS_LIMIT,
+  RECENT_WORK_SEARCH_ID,
   toRecentWorkItems,
   WORK_TYPE_FILTERS,
 } = await import("./recent-work-model.ts");
@@ -569,4 +571,45 @@ test("mixed URL state keeps rw and page independent", () => {
   );
   // Clear restores the default view.
   assert.equal(recentWorkHref({}), "/admin/audit");
+});
+
+test("no-results copy and recovery match the active Recent work constraints", () => {
+  const searchOnly = recentWorkEmptyState({
+    search: "zzz-miss",
+    type: "all",
+    page: 5,
+  });
+  assert.equal(searchOnly.explanation, "No recent work matches for “zzz-miss”.");
+  assert.equal(searchOnly.actionLabel, "Clear search");
+  assert.equal(searchOnly.href, `/admin/audit?page=5#${RECENT_WORK_SEARCH_ID}`);
+
+  const filterOnly = recentWorkEmptyState({
+    search: "",
+    type: "site",
+    page: 3,
+  });
+  assert.equal(filterOnly.explanation, "No recent work matches for Website & access.");
+  assert.equal(filterOnly.actionLabel, "Show all work");
+  assert.equal(/search|words/i.test(filterOnly.explanation), false);
+  assert.equal(/search|words/i.test(filterOnly.actionLabel), false);
+  assert.equal(filterOnly.href, `/admin/audit?page=3#${RECENT_WORK_SEARCH_ID}`);
+
+  const both = recentWorkEmptyState({
+    search: "zzz-miss",
+    type: "site",
+    page: 2,
+  });
+  assert.equal(both.explanation, "No recent work matches for “zzz-miss” in Website & access.");
+  assert.equal(both.actionLabel, "Clear search and filters");
+  assert.equal(both.href, `/admin/audit?page=2#${RECENT_WORK_SEARCH_ID}`);
+
+  const firstTechnicalPage = recentWorkEmptyState({
+    search: "zzz-miss",
+    type: "requests",
+    page: 1,
+  });
+  assert.equal(firstTechnicalPage.href, `/admin/audit#${RECENT_WORK_SEARCH_ID}`);
+  assert.equal(firstTechnicalPage.href.includes("page="), false);
+  assert.equal(firstTechnicalPage.href.includes("q="), false);
+  assert.equal(firstTechnicalPage.href.includes("type="), false);
 });

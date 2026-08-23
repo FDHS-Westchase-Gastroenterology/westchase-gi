@@ -681,3 +681,46 @@ export function recentWorkHref(query: Readonly<RecentWorkQuery>): string {
   const hash = query.hash !== undefined && query.hash !== "" ? `#${query.hash}` : "";
   return `/admin/audit${queryString !== "" ? `?${queryString}` : ""}${hash}`;
 }
+
+/** Named search and work-group constraints, or empty when the full list is shown. */
+export function recentWorkConstraintDescription(search: string, type: RecentWorkType): string {
+  const parts: string[] = [];
+  if (search !== "") parts.push(`“${search}”`);
+  if (type !== "all") parts.push(WORK_TYPE_LABELS[type]);
+  return parts.length === 0 ? "" : ` for ${parts.join(" in ")}`;
+}
+
+export interface RecentWorkEmptyState {
+  readonly explanation: string;
+  readonly actionLabel: string;
+  readonly href: string;
+}
+
+/**
+ * No-results copy and recovery. The action removes the named Recent work
+ * constraints, returns to the search field, and keeps the Technical record
+ * page.
+ */
+export function recentWorkEmptyState(
+  query: Readonly<{ search: string; type: RecentWorkType; page?: number }>,
+): RecentWorkEmptyState {
+  const searched = query.search !== "";
+  const filtered = query.type !== "all";
+  let actionLabel = "Clear search";
+  if (searched && filtered) {
+    actionLabel = "Clear search and filters";
+  } else if (filtered) {
+    actionLabel = "Show all work";
+  }
+  return {
+    explanation: `No recent work matches${recentWorkConstraintDescription(
+      query.search,
+      query.type,
+    )}.`,
+    actionLabel,
+    href: recentWorkHref({
+      page: query.page,
+      hash: RECENT_WORK_SEARCH_ID,
+    }),
+  };
+}

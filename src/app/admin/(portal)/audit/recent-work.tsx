@@ -6,8 +6,8 @@ import {
   RECENT_WORK_SEARCH_ID,
   RECENT_WORK_SUMMARY_ID,
   groupByPracticeDay,
-  recentWorkHref,
-  WORK_TYPE_LABELS,
+  recentWorkConstraintDescription,
+  recentWorkEmptyState,
 } from "./recent-work-model";
 import type { RecentWorkEntry, RecentWorkItem, RecentWorkType } from "./recent-work-model";
 import { RecentWorkPagination } from "./recent-work-pagination";
@@ -90,13 +90,6 @@ function RecentWorkGroupRow({
   );
 }
 
-function activeFilterDescription(search: string, type: RecentWorkType): string {
-  const parts: string[] = [];
-  if (search !== "") parts.push(`“${search}”`);
-  if (type !== "all") parts.push(WORK_TYPE_LABELS[type]);
-  return parts.length === 0 ? "" : ` for ${parts.join(" in ")}`;
-}
-
 export function RecentWorkSection({
   entries,
   now,
@@ -125,7 +118,8 @@ export function RecentWorkSection({
   lensLimit: number;
 }>) {
   const groups = groupByPracticeDay(entries, now);
-  const description = activeFilterDescription(search, type);
+  const description = recentWorkConstraintDescription(search, type);
+  const empty = recentWorkEmptyState({ search, type, page: technicalPage });
   return (
     <section aria-labelledby="recent-work-heading" className="mt-8">
       <h2 id="recent-work-heading" className="text-[1.05rem] font-black text-[var(--color-ink)]">
@@ -145,7 +139,7 @@ export function RecentWorkSection({
         className="mt-4 text-[0.9rem] font-bold text-[var(--color-body)]"
       >
         {total === 0
-          ? `No recent work matches${description}.`
+          ? empty.explanation
           : `Showing ${firstShown}–${lastShown} of ${total} ${total === 1 ? "entry" : "entries"}${description}.`}
       </p>
       {lensCapped ? (
@@ -158,15 +152,14 @@ export function RecentWorkSection({
         <div data-testid="recent-work-empty" className="portal-empty mt-4 p-8 text-center sm:p-12">
           <h3 className="text-[1rem] font-black text-[var(--color-ink)]">Nothing matches here</h3>
           <p className="mx-auto mt-2 max-w-[52ch] text-[0.95rem] text-[var(--color-body)]">
-            No recent work matches{description}. Try different words, or remove the search to see
-            everything again.
+            {empty.explanation}
           </p>
           <RecentWorkFocusLink
-            href={recentWorkHref({ hash: RECENT_WORK_SEARCH_ID })}
+            href={empty.href}
             focusId={RECENT_WORK_SEARCH_ID}
             className="btn btn-outline mt-4"
           >
-            Clear search
+            {empty.actionLabel}
           </RecentWorkFocusLink>
         </div>
       ) : (
