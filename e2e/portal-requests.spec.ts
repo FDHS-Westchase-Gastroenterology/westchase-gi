@@ -670,6 +670,228 @@ test.describe("portal requests operation", () => {
     }
   });
 
+  test("search result counts stay unique across chips, range, and rows", async ({ page }) => {
+    const token = `searchtruth-${runId}`;
+    const nowMs = Date.now();
+    const ids: string[] = [];
+
+    const insertRequest = async ({
+      closedAt,
+      closureReason,
+      status,
+      suffix,
+    }: Readonly<{
+      closedAt?: string;
+      closureReason?: string;
+      status: "new" | "closed";
+      suffix: string;
+    }>) => {
+      const id = randomUUID();
+      ids.push(id);
+      const row = {
+        id,
+        name: `TEST Search ${token} ${suffix}`,
+        phone: "8135550199",
+        email: `queue-${runId}-search-${suffix}@example.test`,
+        location: "tampa",
+        preferred_time: "morning",
+        message: "TEST search-truth fixture — no medical details.",
+        locale: "en",
+        source_path: "/e2e/search-truth",
+        status,
+        created_at: new Date(nowMs).toISOString(),
+      };
+      const { error } =
+        closedAt !== undefined && closureReason !== undefined
+          ? await db.from("requests").insert({
+              ...row,
+              closed_at: closedAt,
+              closure_reason: closureReason,
+            })
+          : await db.from("requests").insert(row);
+      expect(error).toBeNull();
+      return id;
+    };
+
+    const closedAt = new Date(nowMs).toISOString();
+    await insertRequest({
+      suffix: "decoy-a",
+      status: "closed",
+      closedAt,
+      closureReason: "not_actionable",
+    });
+    await insertRequest({
+      suffix: "decoy-b",
+      status: "closed",
+      closedAt,
+      closureReason: "not_actionable",
+    });
+    const matchClosed = await insertRequest({
+      suffix: "match",
+      status: "closed",
+      closedAt,
+      closureReason: "not_actionable",
+    });
+    await insertRequest({ suffix: "open-a", status: "new" });
+    await insertRequest({ suffix: "open-b", status: "new" });
+
+    const { error: eventsError } = await db.from("request_events").insert([
+      {
+        request_id: matchClosed,
+        type: "note",
+        status: "recorded",
+        meta: { text: "TEST search-truth note 1.", author_email: SEED_EMAIL.toLowerCase() },
+      },
+      {
+        request_id: matchClosed,
+        type: "note",
+        status: "recorded",
+        meta: { text: "TEST search-truth note 2.", author_email: SEED_EMAIL.toLowerCase() },
+      },
+      {
+        request_id: matchClosed,
+        type: "contact_attempt",
+        status: "recorded",
+        meta: { outcome: "reached_follow_up", author_email: SEED_EMAIL.toLowerCase() },
+      },
+    ]);
+    expect(eventsError).toBeNull();
+    const { error: auditError } = await db.from("audit_log").insert([
+      {
+        actor_email: SEED_EMAIL.toLowerCase(),
+        action: "request.note",
+        entity: "requests",
+        entity_id: matchClosed,
+        detail: {},
+      },
+      {
+        actor_email: SEED_EMAIL.toLowerCase(),
+        action: "request.note",
+        entity: "requests",
+        entity_id: matchClosed,
+        detail: {},
+      },
+    ]);
+    expect(auditError).toBeNull();
+
+    const expectUniqueResult = async (
+      rowCount: number,
+      summary: string,
+      announcement: string,
+      chips: Readonly<Record<"all" | "new" | "contacted" | "scheduled" | "closed", number>>,
+    ) => {
+      await expect(page.getByTestId("request-row")).toHaveCount(rowCount);
+      if (rowCount > 0) {
+        await expect(page.getByTestId("request-page-summary")).toHaveText(summary);
+      }
+      await expect(page.getByTestId("request-search-status")).toHaveText(announcement);
+      for (const [key, count] of Object.entries(chips)) {
+        await expect(page.locator(`[data-filter-count="${key}"]`)).toHaveText(String(count));
+      }
+    };
+
+    try {
+      await signIn(page);
+      await page.goto("/admin/requests");
+      await page.getByLabel("Search requests").fill(`zzz-${token}-nomatch`);
+      await page.getByRole("button", { name: "Search", exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`q=${encodeURIComponent(`zzz-${token}-nomatch`)}`));
+      await expect(page.getByRole("button", { name: "Search", exact: true })).toBeFocused();
+      await expect(
+        page.getByRole("heading", { name: "No appointment requests match that search" }),
+      ).toBeVisible();
+      await expect(page.getByText("Try a name, phone number, or email address.")).toBeVisible();
+      await expectUniqueResult(0, "", "No appointment requests match that search.", {
+        all: 0,
+        new: 0,
+        contacted: 0,
+        scheduled: 0,
+        closed: 0,
+      });
+
+      await page.getByLabel("Search requests").fill(`TEST Search ${token} match`);
+      await page.getByRole("button", { name: "Search", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Search", exact: true })).toBeFocused();
+      await expectUniqueResult(1, "Showing 1–1 of 1", "1 matching appointment request.", {
+        all: 1,
+        new: 0,
+        contacted: 0,
+        scheduled: 0,
+        closed: 1,
+      });
+      await expect(page.getByTestId("request-name")).toHaveText(`TEST Search ${token} match`);
+      const matchQuery = new URLSearchParams({ q: `TEST Search ${token} match` }).toString();
+      await expect(page.getByTestId("export-csv")).toHaveAttribute(
+        "href",
+        `/admin/requests/export?${matchQuery}`,
+      );
+
+      await page.goto(`/admin/requests?${matchQuery}&page=9`);
+      await expect
+        .poll(() => {
+          const url = new URL(page.url());
+          return `${url.searchParams.get("q")}|${url.searchParams.get("page") ?? ""}`;
+        })
+        .toBe(`TEST Search ${token} match|`);
+      await expectUniqueResult(1, "Showing 1–1 of 1", "1 matching appointment request.", {
+        all: 1,
+        new: 0,
+        contacted: 0,
+        scheduled: 0,
+        closed: 1,
+      });
+
+      await page.locator('[data-filter="new"]').click();
+      await expect(page).toHaveURL(/status=new/);
+      await expect(page.getByLabel("Search requests")).toHaveValue(`TEST Search ${token} match`);
+      await expect(
+        page.getByRole("heading", { name: "No appointment requests match that search" }),
+      ).toBeVisible();
+      await expectUniqueResult(0, "", "No appointment requests match that search.", {
+        all: 1,
+        new: 0,
+        contacted: 0,
+        scheduled: 0,
+        closed: 1,
+      });
+
+      await page.locator('[data-filter="all"]').click();
+      await expect(page.getByLabel("Search requests")).toHaveValue(`TEST Search ${token} match`);
+      await expectUniqueResult(1, "Showing 1–1 of 1", "1 matching appointment request.", {
+        all: 1,
+        new: 0,
+        contacted: 0,
+        scheduled: 0,
+        closed: 1,
+      });
+
+      await page.getByLabel("Search requests").fill(`TEST Search ${token} open`);
+      await page.getByRole("button", { name: "Search", exact: true }).click();
+      await expectUniqueResult(2, "Showing 1–2 of 2", "2 matching appointment requests.", {
+        all: 2,
+        new: 2,
+        contacted: 0,
+        scheduled: 0,
+        closed: 0,
+      });
+
+      await page.getByTestId("request-search-clear").click();
+      await expect(page).toHaveURL(/\/admin\/requests\/?$/);
+      await expect(page.getByLabel("Search requests")).toBeFocused();
+      await expect(page.getByLabel("Search requests")).toHaveValue("");
+      const restored = Number(await page.locator('[data-filter-count="all"]').textContent());
+      await expect(page.getByTestId("request-search-status")).toHaveText(
+        restored === 1 ? "1 appointment request." : `${restored} appointment requests.`,
+      );
+      expect(restored).toBeGreaterThanOrEqual(5);
+    } finally {
+      if (ids.length > 0) {
+        await db.from("requests").delete().in("id", ids);
+        await db.from("audit_log").delete().eq("entity_id", matchClosed);
+      }
+    }
+  });
+
   test("VAL-ADMIN-017: the default queue leads with attention and details chain prev/next", async ({
     page,
   }) => {

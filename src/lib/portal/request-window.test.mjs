@@ -47,7 +47,6 @@ const cases = [
       page: 1,
       counts: counts({ new: 40, contacted: 25, scheduled: 5, closed: 30 }),
       openRows: 70,
-      closedCount: 30,
     },
     expected: {
       filteredTotal: 100,
@@ -68,7 +67,6 @@ const cases = [
       page: 2,
       counts: counts({ new: 40, contacted: 25, scheduled: 5, closed: 30 }),
       openRows: 70,
-      closedCount: 30,
     },
     expected: {
       filteredTotal: 100,
@@ -89,7 +87,6 @@ const cases = [
       page: 1,
       counts: counts({ new: 10, closed: 20 }),
       openRows: 10,
-      closedCount: 20,
     },
     expected: {
       filteredTotal: 30,
@@ -110,7 +107,6 @@ const cases = [
       page: 2,
       counts: counts({ closed: 120 }),
       openRows: 0,
-      closedCount: 120,
     },
     expected: {
       filteredTotal: 120,
@@ -131,7 +127,6 @@ const cases = [
       page: 1,
       counts: counts(),
       openRows: 0,
-      closedCount: 0,
     },
     expected: {
       filteredTotal: 0,
@@ -152,7 +147,6 @@ const cases = [
       page: 3,
       counts: counts({ new: 100, contacted: 20, closed: 5 }),
       openRows: 120,
-      closedCount: 5,
     },
     expected: {
       filteredTotal: 125,
@@ -173,7 +167,6 @@ const cases = [
       page: 2,
       counts: counts({ new: 60, closed: 999 }),
       openRows: 60,
-      closedCount: 999,
     },
     expected: {
       filteredTotal: 60,
@@ -197,7 +190,6 @@ const cases = [
       page: 11,
       counts: counts({ new: 500, contacted: 100, closed: 10 }),
       openRows: 500,
-      closedCount: 10,
     },
     expected: {
       filteredTotal: 610,
@@ -209,6 +201,106 @@ const cases = [
       closedLimit: 50,
       firstShown: 501,
       lastShown: 510,
+    },
+  },
+  {
+    name: "a one-row closed search shows 1–1 of 1 from the unique closed count",
+    input: {
+      filter: "all",
+      page: 1,
+      counts: counts({ closed: 1 }),
+      openRows: 0,
+    },
+    expected: {
+      filteredTotal: 1,
+      totalPages: 1,
+      redirectPage: null,
+      openFrom: 0,
+      openTo: 0,
+      closedFrom: 0,
+      closedLimit: 50,
+      firstShown: 1,
+      lastShown: 1,
+    },
+  },
+  {
+    name: "a multi-row search uses unique per-status counts for chips and range",
+    input: {
+      filter: "all",
+      page: 1,
+      counts: counts({ new: 2, closed: 1 }),
+      openRows: 2,
+    },
+    expected: {
+      filteredTotal: 3,
+      totalPages: 1,
+      redirectPage: null,
+      openFrom: 0,
+      openTo: 2,
+      closedFrom: 0,
+      closedLimit: 48,
+      firstShown: 1,
+      lastShown: 3,
+    },
+  },
+  {
+    name: "a status filter on a search uses that unique count only",
+    input: {
+      filter: "closed",
+      page: 1,
+      counts: counts({ new: 2, closed: 1 }),
+      openRows: 0,
+    },
+    expected: {
+      filteredTotal: 1,
+      totalPages: 1,
+      redirectPage: null,
+      openFrom: 0,
+      openTo: 0,
+      closedFrom: 0,
+      closedLimit: 50,
+      firstShown: 1,
+      lastShown: 1,
+    },
+  },
+  {
+    name: "51 unique rows paginate at the 50/51 boundary",
+    input: {
+      filter: "new",
+      page: 1,
+      counts: counts({ new: 51 }),
+      openRows: 51,
+    },
+    expected: {
+      filteredTotal: 51,
+      totalPages: 2,
+      redirectPage: null,
+      openFrom: 0,
+      openTo: 50,
+      closedFrom: 0,
+      closedLimit: 0,
+      firstShown: 1,
+      lastShown: 50,
+    },
+  },
+  {
+    name: "the last page of 51 unique rows is 51–51 of 51",
+    input: {
+      filter: "new",
+      page: 2,
+      counts: counts({ new: 51 }),
+      openRows: 51,
+    },
+    expected: {
+      filteredTotal: 51,
+      totalPages: 2,
+      redirectPage: null,
+      openFrom: 50,
+      openTo: 51,
+      closedFrom: 0,
+      closedLimit: 0,
+      firstShown: 51,
+      lastShown: 51,
     },
   },
 ];
@@ -225,7 +317,6 @@ test("a requested page past the end redirects to the last page", () => {
     page: 4,
     counts: counts({ new: 100, contacted: 20, closed: 5 }),
     openRows: 120,
-    closedCount: 5,
   });
   assert.equal(window.redirectPage, 3);
   assert.equal(window.totalPages, 3);
@@ -238,7 +329,6 @@ test("a requested page past the end of an empty queue redirects to page one", ()
     page: 9,
     counts: counts(),
     openRows: 0,
-    closedCount: 0,
   });
   assert.equal(window.redirectPage, 1);
 });
@@ -253,4 +343,16 @@ test("the last page itself is never a redirect", () => {
       );
     }
   }
+});
+
+test("a page past a one-row search recovers to page one", () => {
+  const window = requestPageWindow({
+    filter: "all",
+    page: 9,
+    counts: counts({ closed: 1 }),
+    openRows: 0,
+  });
+  assert.equal(window.redirectPage, 1);
+  assert.equal(window.filteredTotal, 1);
+  assert.equal(window.totalPages, 1);
 });

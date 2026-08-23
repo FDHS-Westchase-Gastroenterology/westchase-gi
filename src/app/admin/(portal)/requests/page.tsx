@@ -13,7 +13,7 @@ import {
   parsePage,
   parseRequestSearch,
   requestSearchFilter,
-  REQUEST_SEARCH_MAX_LENGTH,
+  requestsHref,
 } from "@/lib/portal/request-query";
 import { requestPageWindow } from "@/lib/portal/request-window";
 import { serviceClient } from "@/lib/portal/server";
@@ -27,6 +27,7 @@ import {
 } from "./format";
 import { fetchAttentiveOpenRows, fetchClosedRows, OPEN_STATUSES, VIEW_DB_STATUSES } from "./queue";
 import type { QueueRow } from "./queue";
+import { RequestSearchForm } from "./request-search-form";
 import { StatusBadge } from "./status-badge";
 
 type SearchParams = Promise<{
@@ -42,25 +43,6 @@ function activeFilter(raw: Readonly<string | string[] | undefined>): RequestStat
     ? requestStatusSchema.safeParse(raw.at(0))
     : requestStatusSchema.safeParse(raw);
   return parsed.success ? parsed.data : "all";
-}
-
-function requestsHref({
-  page = 1,
-  path = "/admin/requests",
-  search,
-  status,
-}: Readonly<{
-  page?: number;
-  path?: string;
-  search: string;
-  status: RequestStatus | "all";
-}>): string {
-  const params = new URLSearchParams();
-  if (status !== "all") params.set("status", status);
-  if (search) params.set("q", search);
-  if (page > 1) params.set("page", String(page));
-  const query = params.toString();
-  return `${path}${query ? `?${query}` : ""}`;
 }
 
 function detailHref({
@@ -279,8 +261,9 @@ export default async function AdminRequestsPage({
 
   const db = serviceClient();
 
-  // Chip counts and the closed tail stay database-paged exactly as before;
-  // The open set is small enough to order by attention in memory.
+  // Unique per-status counts stay on the requests table so related-row
+  // Matches cannot inflate chips or the summary. The open set is small
+  // Enough to order by attention in memory.
   const countQueries = REQUEST_STATUSES.map((status) => {
     let countQuery = db
       .from("requests")
@@ -290,21 +273,15 @@ export default async function AdminRequestsPage({
     return countQuery;
   });
 
-  const wantsClosed = filter === "all" || filter === "closed";
   const openStatuses = filter === "all" ? OPEN_STATUSES : filter === "closed" ? [] : [filter];
-  const [orderedOpen, closedCountProbe, ...countResults] = await Promise.all([
+  const [orderedOpen, ...countResults] = await Promise.all([
     openStatuses.length > 0
       ? fetchAttentiveOpenRows(db, { statuses: openStatuses, searchFilter, now })
       : Promise.resolve([]),
-    // Closed rows join the default view after the open set; their own window
-    // Is computed once the open size is known.
-    wantsClosed
-      ? db.from("requests").select("id", { count: "exact", head: true }).eq("status", "closed")
-      : Promise.resolve({ count: 0, error: null }),
     ...countQueries,
   ]);
 
-  const countError = countResults.find((result) => result.error)?.error ?? closedCountProbe.error;
+  const countError = countResults.find((result) => result.error)?.error;
   if (countError) {
     throw new Error(`Queue read failed: ${countError.code}`);
   }
@@ -318,12 +295,13 @@ export default async function AdminRequestsPage({
 
   // The page window — open slice, closed-tail range, display totals, and the
   // Past-the-end redirect — is pure math, unit-tested in request-window.
+  // Unique per-status SQL counts are the only total; there is no second
+  // Unfiltered closed probe that can disagree with the chips and rows.
   const pageWindow = requestPageWindow({
     filter,
     page,
     counts,
     openRows: orderedOpen.length,
-    closedCount: closedCountProbe.count ?? 0,
   });
   if (pageWindow.redirectPage !== null) {
     redirect(requestsHref({ page: pageWindow.redirectPage, search, status: filter }));
@@ -399,31 +377,7 @@ export default async function AdminRequestsPage({
       />
 
       <section className="portal-queue-workbench" aria-label="Appointment request queue">
-        <form action="/admin/requests" method="get" role="search" className="portal-queue-search">
-          {filter !== "all" ? <input type="hidden" name="status" value={filter} /> : null}
-          <label htmlFor="request-search">
-            Search requests
-            <input
-              id="request-search"
-              name="q"
-              type="search"
-              defaultValue={search}
-              maxLength={REQUEST_SEARCH_MAX_LENGTH}
-              placeholder="Name, phone, or email"
-            />
-          </label>
-          <button type="submit" className="btn btn-navy min-h-11">
-            Search
-          </button>
-          {search ? (
-            <Link
-              href={requestsHref({ search: "", status: filter })}
-              className="btn btn-outline min-h-11"
-            >
-              Clear
-            </Link>
-          ) : null}
-        </form>
+        <RequestSearchForm filter={filter} filteredTotal={filteredTotal} search={search} />
 
         <FilterChips filters={filters} active={filter} search={search} />
 
