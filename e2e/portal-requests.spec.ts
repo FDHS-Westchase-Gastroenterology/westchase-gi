@@ -403,9 +403,9 @@ test.describe("portal requests operation", () => {
     await expect(page.getByTestId("save-workflow")).toBeDisabled();
     await expect(customDay).toHaveAttribute("aria-invalid", "true");
     await expect(customDay).toHaveAttribute("aria-describedby", /call-again-error/);
-    await expect(page.getByRole("alert")).toContainText(
-      "Choose today or a day within the next 90 days.",
-    );
+    const callAgainError = page.locator("#call-again-error");
+    await expect(callAgainError).toHaveAttribute("role", "alert");
+    await expect(callAgainError).toHaveText("Choose today or a day within the next 90 days.");
     await customDay.fill(validCustomDay);
     await expect(page.getByTestId("save-workflow")).toBeEnabled();
     await expect(customDay).not.toHaveAttribute("aria-invalid", "true");
