@@ -1,31 +1,26 @@
 "use client";
 
-// Shared post-navigation focus for Recent work. Pagination, search, and
-// Filters wait for the live summary; Clear targets the search field. The
-// Poll covers the App Router render gap after client navigation.
+import { useEffect } from "react";
+import type { RefObject } from "react";
 
-const MAX_ATTEMPTS = 20;
-const RETRY_MS = 50;
+// Navigation handlers name the focus target before the App Router changes.
+// The target consumes that request in an effect keyed to its new server props,
+// With no timing guess or focus move on direct loads.
 
-export function focusWhenPresent(id: string, attempt = 0): void {
-  const node = document.getElementById(id);
-  if (node !== null) {
-    node.focus();
-    return;
-  }
-  if (attempt < MAX_ATTEMPTS) {
-    window.setTimeout(() => {
-      focusWhenPresent(id, attempt + 1);
-    }, RETRY_MS);
-  }
+let pendingFocusId: string | null = null;
+
+export function requestFocusAfterNavigate(id: string): void {
+  pendingFocusId = id;
 }
 
-export function focusAfterNavigate(id: string): void {
-  window.setTimeout(() => {
-    focusWhenPresent(id, 0);
-  }, 0);
-}
-
-export function isUnmodifiedPrimaryClick(event: React.MouseEvent): boolean {
-  return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+export function useFocusAfterNavigate<T extends HTMLElement>(
+  id: string,
+  renderKey: string,
+  ref: RefObject<T | null>,
+): void {
+  useEffect(() => {
+    if (pendingFocusId !== id || ref.current === null) return;
+    pendingFocusId = null;
+    ref.current.focus();
+  }, [id, ref, renderKey]);
 }

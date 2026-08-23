@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useReducer, useTransition } from "react";
+import { useEffect, useReducer, useRef, useTransition } from "react";
 
 import { RECIPIENTS_INTRO } from "@/lib/portal/staff-language";
 
@@ -146,6 +146,20 @@ function RecipientRowItem({
   const labelPending = pendingKey === `label:${recipient.id}`;
   const label = recipient.label?.trim();
   const hasLabel = label !== undefined && label !== "";
+  const editingLabel = labelDraft !== null && labelDraft.recipientId === recipient.id;
+  const editLabelRef = useRef<HTMLButtonElement>(null);
+  const restoreLabelFocusRef = useRef(false);
+
+  useEffect(() => {
+    if (editingLabel || !restoreLabelFocusRef.current) return;
+    restoreLabelFocusRef.current = false;
+    editLabelRef.current?.focus();
+  }, [editingLabel]);
+
+  function cancelLabel(): void {
+    restoreLabelFocusRef.current = true;
+    onCancelLabel();
+  }
 
   return (
     <li
@@ -154,7 +168,7 @@ function RecipientRowItem({
     >
       <div className="min-w-0">
         <p className="truncate font-bold text-[var(--color-ink)]">{recipient.email}</p>
-        {labelDraft !== null && labelDraft.recipientId === recipient.id ? (
+        {editingLabel ? (
           <span className="mt-1.5 flex flex-wrap items-center gap-2">
             <label htmlFor={`label-${recipient.id}`} className="sr-only">
               Label for {recipient.email}
@@ -173,7 +187,10 @@ function RecipientRowItem({
                   event.preventDefault();
                   onSaveLabel();
                 }
-                if (event.key === "Escape") onCancelLabel();
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  cancelLabel();
+                }
               }}
               className="min-h-11 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-3 text-[0.85rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)] disabled:opacity-60"
             />
@@ -189,7 +206,7 @@ function RecipientRowItem({
             <button
               type="button"
               disabled={labelPending}
-              onClick={onCancelLabel}
+              onClick={cancelLabel}
               className="min-h-11 px-2 text-[0.85rem] font-bold text-[var(--color-muted)] disabled:opacity-60"
             >
               Cancel
@@ -199,6 +216,7 @@ function RecipientRowItem({
           <p className="text-[0.85rem] text-[var(--color-muted)]">
             {hasLabel ? label : "No label"}
             <button
+              ref={editLabelRef}
               type="button"
               data-action="edit-label"
               onClick={onEditLabel}
@@ -211,6 +229,7 @@ function RecipientRowItem({
       </div>
       <div className="flex items-center gap-2">
         <button
+          id={`recipient-toggle-${recipient.id}`}
           type="button"
           aria-pressed={recipient.active}
           data-action="toggle"
@@ -251,7 +270,20 @@ export function RecipientsManager({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [state, dispatch] = useReducer(recipientsReducer, INITIAL_STATE);
+  const recipientFocusAfterRefreshRef = useRef<string | null>(null);
   const { pendingKey, error, deliveryNotice, undo, labelDraft, labelNotice } = state;
+  const recipientRenderKey = recipients
+    .map((recipient) => `${recipient.id}:${String(recipient.active)}:${recipient.label ?? ""}`)
+    .join("\n");
+
+  useEffect(() => {
+    const targetId = recipientFocusAfterRefreshRef.current;
+    if (targetId === null) return;
+    const target = document.getElementById(targetId);
+    if (target === null) return;
+    recipientFocusAfterRefreshRef.current = null;
+    target.focus();
+  }, [recipientRenderKey]);
 
   function run(
     key: string,
@@ -275,6 +307,7 @@ export function RecipientsManager({
   }
 
   function toggleRecipient(recipient: Readonly<RecipientRow>) {
+    recipientFocusAfterRefreshRef.current = `recipient-toggle-${recipient.id}`;
     run(
       `toggle:${recipient.id}`,
       async () =>
@@ -391,6 +424,7 @@ export function RecipientsManager({
             disabled={pendingKey === `toggle:${undo.recipientId}`}
             onClick={() => {
               const target = undo;
+              recipientFocusAfterRefreshRef.current = `recipient-toggle-${target.recipientId}`;
               run(`toggle:${target.recipientId}`, async () =>
                 toggleNotificationRecipient({
                   recipientId: target.recipientId,

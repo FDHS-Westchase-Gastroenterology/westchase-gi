@@ -361,6 +361,7 @@ test.describe("portal home", () => {
         .parse(priorTourAudits ?? [])
         .map((row) => row.id),
     );
+    let completionIdsToClean: string[] = [];
 
     try {
       const { error: resetError } = await db
@@ -375,23 +376,74 @@ test.describe("portal home", () => {
       await expect(nudge.getByRole("button", { name: "Take a quick tour" })).toBeVisible();
       await expect(nudge.getByRole("button", { name: "Not now" })).toBeVisible();
 
-      await nudge.getByRole("button", { name: "Take a quick tour" }).click();
+      const launcher = nudge.getByRole("button", { name: "Take a quick tour" });
+      await launcher.focus();
+      await page.keyboard.press("Enter");
       const dialog = page.getByTestId("portal-tour-dialog");
       await expect(dialog).toBeVisible();
       await expect(dialog.getByRole("heading", { name: "Home", exact: true })).toBeVisible();
-      await dialog.getByRole("button", { name: "Next" }).click();
+      await expect(dialog.getByRole("button", { name: "Close the portal tour" })).toBeFocused();
+      expect(await dialog.evaluate((element) => element.matches(":modal"))).toBe(true);
+      const backgroundAction = page.getByRole("link", { name: "Open Appointments" });
+      expect(
+        await backgroundAction.evaluate((element) => {
+          if (!(element instanceof HTMLElement)) return true;
+          element.focus();
+          return document.activeElement === element;
+        }),
+      ).toBe(false);
+      expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(
+        true,
+      );
+
+      // Native modal tab order stays within the tour. Moving through steps
+      // Keeps the useful action focused even when its visible label changes.
+      await page.keyboard.press("Shift+Tab");
+      await expect(dialog.getByRole("button", { name: "Next" })).toBeFocused();
+      await page.keyboard.press("Enter");
       await expect(
         dialog.getByRole("heading", {
           name: "Appointments",
           exact: true,
         }),
       ).toBeVisible();
-      await dialog.getByRole("button", { name: "Next" }).click();
+      await expect(dialog.getByRole("button", { name: "Next" })).toBeFocused();
+      await page.keyboard.press("Enter");
       await expect(dialog.getByRole("heading", { name: "Settings", exact: true })).toBeVisible();
+      await expect(dialog.getByRole("button", { name: "Finish tour" })).toBeFocused();
+
+      await page.keyboard.press("Shift+Tab");
+      await expect(dialog.getByRole("button", { name: "Back" })).toBeFocused();
+      await page.keyboard.press("Enter");
+      await expect(
+        dialog.getByRole("heading", { name: "Appointments", exact: true }),
+      ).toBeVisible();
+      await expect(dialog.getByRole("button", { name: "Back" })).toBeFocused();
+      await page.keyboard.press("Tab");
+      await page.keyboard.press("Enter");
+      await expect(dialog.getByRole("button", { name: "Finish tour" })).toBeFocused();
+      for (const key of ["Tab", "Tab", "Shift+Tab", "Shift+Tab"]) {
+        await page.keyboard.press(key);
+        expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(
+          true,
+        );
+      }
+
+      // The explicit close action does not complete or dismiss the tour and
+      // Returns focus to the launcher that opened it.
+      await dialog.getByRole("button", { name: "Close the portal tour" }).focus();
+      await page.keyboard.press("Enter");
+      await expect(dialog).toBeHidden();
+      await expect(launcher).toBeFocused();
+      await expect(nudge).toBeVisible();
+
+      await page.keyboard.press("Enter");
+      await expect(dialog).toBeVisible();
 
       // Escape closes without dismissing; the opt-in nudge remains available.
       await page.keyboard.press("Escape");
       await expect(dialog).toBeHidden();
+      await expect(launcher).toBeFocused();
       await expect(nudge).toBeVisible();
       const { data: stillNull } = await db
         .from("staff_profiles")
@@ -400,9 +452,16 @@ test.describe("portal home", () => {
         .single();
       expect(stillNull?.portal_tour_dismissed_at).toBeNull();
 
-      await nudge.getByRole("button", { name: "Not now" }).click();
+      await page.keyboard.press("Tab");
+      await expect(nudge.getByRole("button", { name: "Not now" })).toBeFocused();
+      await page.keyboard.press("Enter");
       await expect(page).toHaveURL(/\/admin\/?$/);
       await expect(page.getByTestId("portal-tour-nudge")).toHaveCount(0);
+      await expect(page.getByTestId("home-greeting")).toBeFocused();
+      await expect(page.getByTestId("portal-tour-return-status")).toHaveText(
+        "The tour is hidden. You can restart it from Help.",
+      );
+      await expect(page.getByTestId("portal-tour-return-status")).toHaveAttribute("role", "status");
       const { data: dismissed } = await db
         .from("staff_profiles")
         .select("portal_tour_dismissed_at")
@@ -419,9 +478,12 @@ test.describe("portal home", () => {
         await expect(systems.getByText(name, { exact: true })).toBeVisible();
       }
 
-      await page.getByRole("button", { name: "Show the portal tour again" }).click();
+      const restart = page.getByRole("button", { name: "Show the portal tour again" });
+      await restart.focus();
+      await page.keyboard.press("Enter");
       await expect(page).toHaveURL(/\/admin\/?$/);
       await expect(page.getByTestId("portal-tour-nudge")).toBeVisible();
+      await expect(page.getByRole("button", { name: "Take a quick tour" })).toBeFocused();
       const { data: restarted } = await db
         .from("staff_profiles")
         .select("portal_tour_dismissed_at")
@@ -429,25 +491,28 @@ test.describe("portal home", () => {
         .single();
       expect(restarted?.portal_tour_dismissed_at).toBeNull();
 
-      await page.getByRole("button", { name: "Take a quick tour" }).click();
-      await page
-        .getByTestId("portal-tour-dialog")
-        .getByRole("button", {
-          name: "Next",
-        })
-        .click();
-      await page
-        .getByTestId("portal-tour-dialog")
-        .getByRole("button", {
-          name: "Next",
-        })
-        .click();
-      await page
-        .getByTestId("portal-tour-dialog")
-        .getByRole("button", { name: "Finish tour" })
-        .click();
+      await page.keyboard.press("Enter");
+      await expect(dialog).toBeVisible();
+      await page.keyboard.press("Shift+Tab");
+      await page.keyboard.press("Enter");
+      await page.keyboard.press("Enter");
+      await expect(dialog.getByRole("button", { name: "Finish tour" })).toBeFocused();
+      const { data: completionsBeforeFinish, error: completionsBeforeFinishError } = await db
+        .from("audit_log")
+        .select("id")
+        .eq("actor_email", email)
+        .eq("action", "staff.tour_complete");
+      expect(completionsBeforeFinishError).toBeNull();
+      const completionIdsBeforeFinish = new Set(
+        z
+          .array(z.object({ id: z.string() }))
+          .parse(completionsBeforeFinish ?? [])
+          .map((row) => row.id),
+      );
+      await page.keyboard.press("Enter");
       await expect(page).toHaveURL(/\/admin\/?$/);
       await expect(page.getByTestId("portal-tour-nudge")).toHaveCount(0);
+      await expect(page.getByTestId("home-greeting")).toBeFocused();
       await page.reload();
       await expect(page.getByTestId("portal-tour-nudge")).toHaveCount(0);
 
@@ -481,12 +546,28 @@ test.describe("portal home", () => {
         .eq("actor_email", email)
         .eq("action", "staff.tour_complete");
       expect(completeError).toBeNull();
-      expect(completes).toHaveLength(1);
-      expect(completes![0].detail).toMatchObject({
+      const newCompletions = z
+        .array(z.object({ id: z.string(), detail: z.record(z.string(), z.unknown()) }))
+        .parse(completes ?? [])
+        .filter((row) => !completionIdsBeforeFinish.has(row.id));
+      expect(newCompletions).toHaveLength(1);
+      completionIdsToClean = newCompletions.map((row) => row.id);
+      expect(newCompletions[0].detail).toMatchObject({
         completed: true,
         step_reached: 3,
         total_steps: 3,
       });
+
+      // Help restores the same launcher after completion too.
+      await page.goto("/admin/help");
+      const restartAfterFinish = page.getByRole("button", {
+        name: "Show the portal tour again",
+      });
+      await restartAfterFinish.focus();
+      await page.keyboard.press("Enter");
+      await expect(page).toHaveURL(/\/admin\/?$/);
+      await expect(page.getByTestId("portal-tour-nudge")).toBeVisible();
+      await expect(page.getByRole("button", { name: "Take a quick tour" })).toBeFocused();
     } finally {
       await db
         .from("staff_profiles")
@@ -508,11 +589,9 @@ test.describe("portal home", () => {
       if (auditIds.length > 0) {
         await db.from("audit_log").delete().in("id", auditIds);
       }
-      await db
-        .from("audit_log")
-        .delete()
-        .eq("actor_email", email)
-        .eq("action", "staff.tour_complete");
+      if (completionIdsToClean.length > 0) {
+        await db.from("audit_log").delete().in("id", completionIdsToClean);
+      }
     }
   });
 });

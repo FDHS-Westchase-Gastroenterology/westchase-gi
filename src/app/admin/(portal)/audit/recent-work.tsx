@@ -4,6 +4,7 @@ import { RECENT_WORK_INTRO } from "@/lib/portal/staff-language";
 
 import { RecentWorkControls } from "./recent-work-controls";
 import { RecentWorkFocusLink } from "./recent-work-focus-link";
+import { RecentWorkFocusTarget } from "./recent-work-focus-target";
 import {
   RECENT_WORK_SEARCH_ID,
   RECENT_WORK_SUMMARY_ID,
@@ -133,17 +134,17 @@ export function RecentWorkSection({
 
       <RecentWorkControls search={search} type={type} technicalPage={technicalPage} />
 
-      <p
+      <RecentWorkFocusTarget
         id={RECENT_WORK_SUMMARY_ID}
-        data-testid="recent-work-summary"
-        role="status"
-        tabIndex={-1}
+        testId="recent-work-summary"
+        renderKey={`${search}\n${type}\n${recentPage}\n${technicalPage}\n${total}\n${firstShown}\n${lastShown}`}
+        live
         className="mt-4 text-[0.9rem] font-bold text-[var(--color-body)]"
       >
         {total === 0
           ? empty.explanation
           : `Showing ${firstShown}–${lastShown} of ${total} ${total === 1 ? "entry" : "entries"}${description}.`}
-      </p>
+      </RecentWorkFocusTarget>
       {lensCapped ? (
         <p className="mt-1 max-w-[65ch] text-[0.85rem] text-[var(--color-muted)]">
           Search and filters cover the {lensLimit.toLocaleString("en-US")} most recent events.

@@ -115,7 +115,7 @@ export function HomeWorkbench({
     <section aria-labelledby="home-heading">
       <PortalPageHeader
         title={
-          <span id="home-heading" data-testid="home-greeting">
+          <span id="home-heading" data-testid="home-greeting" tabIndex={-1}>
             {greeting}
           </span>
         }

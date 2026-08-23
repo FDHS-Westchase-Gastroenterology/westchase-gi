@@ -10,6 +10,8 @@ import { fetchAttentionSummary } from "@/lib/portal/workflow/reads";
 import { HomeWorkbench } from "./home-workbench";
 import { PortalReleaseHomeAnnouncement } from "./portal-release-briefing";
 import { PortalTour } from "./portal-tour";
+import { PortalTourReturnFocus } from "./portal-tour-return-focus";
+import type { PortalTourReturnState } from "./portal-tour-return-focus";
 
 // The portal's front door. Staff land on their day, not on software:
 // A greeting, the one thing that may need attention (new appointment
@@ -50,8 +52,19 @@ function greetingFor(minutes: number): string {
   return "Good evening";
 }
 
-export default async function AdminHomePage() {
+function parseTourReturnState(
+  value: string | readonly string[] | undefined,
+): PortalTourReturnState | null {
+  return value === "finished" || value === "not-now" || value === "restarted" ? value : null;
+}
+
+export default async function AdminHomePage({
+  searchParams,
+}: Readonly<{
+  searchParams: Promise<{ tour?: string | string[] }>;
+}>) {
   const session = await requireRole("staff");
+  const tourReturnState = parseTourReturnState((await searchParams).tour);
   const now = new Date();
   const [hour, minute] = NY_TIME.format(now).split(":").map(Number);
   const minutes = hour * 60 + minute;
@@ -171,6 +184,7 @@ export default async function AdminHomePage() {
       announcements={
         <>
           {session.portalTourDismissedAt === null ? <PortalTour /> : null}
+          {tourReturnState === null ? null : <PortalTourReturnFocus state={tourReturnState} />}
           <PortalReleaseHomeAnnouncement />
         </>
       }

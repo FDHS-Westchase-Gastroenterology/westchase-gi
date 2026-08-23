@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
-import { focusAfterNavigate, isUnmodifiedPrimaryClick } from "./recent-work-focus";
+import { requestFocusAfterNavigate } from "./recent-work-focus";
 import { recentWorkHref } from "./recent-work-model";
 import type { RecentWorkType } from "./recent-work-model";
 
@@ -35,7 +34,6 @@ export function RecentWorkPagination({
   summaryId: string;
   testId: string;
 }>) {
-  const router = useRouter();
   if (totalPages <= 1) return null;
 
   const current = param === "rw" ? recentPage : technicalPage;
@@ -49,13 +47,6 @@ export function RecentWorkPagination({
       hash: summaryId,
     });
 
-  const follow = (event: React.MouseEvent<HTMLAnchorElement>, target: number): void => {
-    if (!isUnmodifiedPrimaryClick(event)) return;
-    event.preventDefault();
-    router.push(hrefFor(target));
-    focusAfterNavigate(summaryId);
-  };
-
   return (
     <nav aria-label={ariaLabel} className="flex items-center gap-3" data-testid={testId}>
       {current > 1 ? (
@@ -63,8 +54,8 @@ export function RecentWorkPagination({
           href={hrefFor(current - 1)}
           rel="prev"
           className="btn btn-outline"
-          onClick={(event) => {
-            follow(event, current - 1);
+          onNavigate={() => {
+            requestFocusAfterNavigate(summaryId);
           }}
         >
           Previous
@@ -82,8 +73,8 @@ export function RecentWorkPagination({
           href={hrefFor(current + 1)}
           rel="next"
           className="btn btn-outline"
-          onClick={(event) => {
-            follow(event, current + 1);
+          onNavigate={() => {
+            requestFocusAfterNavigate(summaryId);
           }}
         >
           Next

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
 
-import { focusAfterNavigate } from "./recent-work-focus";
+import { requestFocusAfterNavigate, useFocusAfterNavigate } from "./recent-work-focus";
 import {
   RECENT_WORK_SEARCH_ID,
   RECENT_WORK_SUMMARY_ID,
@@ -36,6 +36,17 @@ export function RecentWorkControls({
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const active = search !== "" || type !== "all";
+  const renderKey = `${search}\n${type}\n${technicalPage}`;
+  useFocusAfterNavigate(RECENT_WORK_SEARCH_ID, renderKey, inputRef);
+
+  function navigateWithFocus(href: string, focusId: string): void {
+    if (href === `${window.location.pathname}${window.location.search}`) {
+      document.getElementById(focusId)?.focus();
+      return;
+    }
+    requestFocusAfterNavigate(focusId);
+    router.push(href);
+  }
 
   return (
     <form
@@ -43,14 +54,10 @@ export function RecentWorkControls({
       action="/admin/audit"
       onSubmit={(event) => {
         event.preventDefault();
-        router.push(
-          recentWorkHref({
-            q: inputRef.current?.value ?? "",
-            type,
-            page: technicalPage,
-          }),
+        navigateWithFocus(
+          recentWorkHref({ q: inputRef.current?.value ?? "", type, page: technicalPage }),
+          RECENT_WORK_SUMMARY_ID,
         );
-        focusAfterNavigate(RECENT_WORK_SUMMARY_ID);
       }}
       className="mt-4 max-w-[65ch]"
     >
@@ -88,8 +95,10 @@ export function RecentWorkControls({
             data-testid={`recent-work-filter-${value}`}
             aria-pressed={type === value}
             onClick={() => {
-              router.push(recentWorkHref({ q: search, type: value, page: technicalPage }));
-              focusAfterNavigate(RECENT_WORK_SUMMARY_ID);
+              navigateWithFocus(
+                recentWorkHref({ q: search, type: value, page: technicalPage }),
+                RECENT_WORK_SUMMARY_ID,
+              );
             }}
             className={`min-h-11 rounded-full border px-4 text-[0.85rem] font-bold transition-[color,border-color,background-color] duration-150 ${
               type === value
@@ -107,8 +116,7 @@ export function RecentWorkControls({
           data-testid="recent-work-clear"
           onClick={() => {
             if (inputRef.current !== null) inputRef.current.value = "";
-            router.push(recentWorkHref({}));
-            focusAfterNavigate(RECENT_WORK_SEARCH_ID);
+            navigateWithFocus(recentWorkHref({}), RECENT_WORK_SEARCH_ID);
           }}
           className="mt-2 min-h-11 font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
         >

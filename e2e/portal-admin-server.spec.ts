@@ -1364,31 +1364,86 @@ test.describe("portal management server boundaries", () => {
       await recentNext.click();
       await expect(adminPage).toHaveURL(/rw=3/);
       await expect(adminPage).toHaveURL(/page=5/);
+      await expect(summary).toHaveText(`Showing 101–150 of 1260 entries for “${actor}”.`);
+      await expect(
+        adminPage.getByTestId("recent-work-pagination").getByText("Page 3 of 26", {
+          exact: true,
+        }),
+      ).toBeVisible();
       await expect(summary).toBeFocused();
 
-      const technicalPrev = adminPage
-        .getByTestId("audit-pagination")
+      const recentPrevious = adminPage
+        .getByTestId("recent-work-pagination")
         .getByRole("link", { name: "Previous" });
-      const technicalPrevUrl = new URL(
-        (await technicalPrev.getAttribute("href")) ?? "",
+      const recentPreviousUrl = new URL(
+        (await recentPrevious.getAttribute("href")) ?? "",
         adminPage.url(),
       );
-      expect(technicalPrevUrl.searchParams.get("rw")).toBe("3");
-      expect(technicalPrevUrl.searchParams.get("page")).toBe("4");
-      await technicalPrev.click();
-      await expect(adminPage).toHaveURL(/rw=3/);
-      await expect(adminPage).toHaveURL(/page=4/);
+      expect(recentPreviousUrl.searchParams.get("rw")).toBe("2");
+      expect(recentPreviousUrl.searchParams.get("page")).toBe("5");
+      expect(recentPreviousUrl.searchParams.get("q")).toBe(actor);
+      await recentPrevious.click();
+      await expect(adminPage).toHaveURL(/rw=2/);
+      await expect(adminPage).toHaveURL(/page=5/);
+      await expect(summary).toHaveText(`Showing 51–100 of 1260 entries for “${actor}”.`);
+      await expect(
+        adminPage.getByTestId("recent-work-pagination").getByText("Page 2 of 26", {
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(summary).toBeFocused();
+
+      const technicalNext = adminPage
+        .getByTestId("audit-pagination")
+        .getByRole("link", { name: "Next" });
+      const technicalNextUrl = new URL(
+        (await technicalNext.getAttribute("href")) ?? "",
+        adminPage.url(),
+      );
+      expect(technicalNextUrl.searchParams.get("rw")).toBe("2");
+      expect(technicalNextUrl.searchParams.get("page")).toBe("6");
+      expect(technicalNextUrl.searchParams.get("q")).toBe(actor);
+      await technicalNext.click();
+      await expect(adminPage).toHaveURL(/rw=2/);
+      await expect(adminPage).toHaveURL(/page=6/);
+      await expect(adminPage.getByTestId("audit-page-summary")).toContainText("501–600 of");
+      await expect(
+        adminPage.getByTestId("audit-pagination").getByText(/Page 6 of \d+/, {
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(adminPage.getByTestId("audit-page-summary")).toBeFocused();
+
+      const technicalPrevious = adminPage
+        .getByTestId("audit-pagination")
+        .getByRole("link", { name: "Previous" });
+      const technicalPreviousUrl = new URL(
+        (await technicalPrevious.getAttribute("href")) ?? "",
+        adminPage.url(),
+      );
+      expect(technicalPreviousUrl.searchParams.get("rw")).toBe("2");
+      expect(technicalPreviousUrl.searchParams.get("page")).toBe("5");
+      expect(technicalPreviousUrl.searchParams.get("q")).toBe(actor);
+      await technicalPrevious.click();
+      await expect(adminPage).toHaveURL(/rw=2/);
+      await expect(adminPage).toHaveURL(/page=5/);
+      await expect(adminPage.getByTestId("audit-page-summary")).toContainText("401–500 of");
+      await expect(
+        adminPage.getByTestId("audit-pagination").getByText(/Page 5 of \d+/, {
+          exact: true,
+        }),
+      ).toBeVisible();
       await expect(adminPage.getByTestId("audit-page-summary")).toBeFocused();
 
       await adminPage.getByTestId("recent-work-filter-requests").click();
-      await expect(adminPage).toHaveURL(/page=4/);
+      await expect(adminPage).toHaveURL(/page=5/);
       await expect(adminPage).not.toHaveURL(/rw=/);
       await expect(summary).toBeFocused();
 
       await adminPage.getByLabel("Search recent work").fill(actor);
-      await adminPage.getByRole("button", { name: "Search" }).click();
+      await adminPage.getByRole("button", { name: "Search", exact: true }).click();
       await expect(summary).toBeFocused();
-      await expect(adminPage).toHaveURL(/page=4/);
+      await expect(adminPage).toHaveURL(/page=5/);
 
       await adminPage.getByTestId("recent-work-clear").click();
       await expect(adminPage).toHaveURL(/\/admin\/audit$/);

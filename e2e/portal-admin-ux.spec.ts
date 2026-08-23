@@ -136,11 +136,10 @@ test.describe("portal management UI", () => {
 
     // Toggle B to paused; it persists — and the undo offer restores it
     // Without a re-toggle.
-    await recipientItem(page, emailB).locator('[data-action="toggle"]').click();
-    await expect(recipientItem(page, emailB).locator('[data-action="toggle"]')).toHaveText(
-      "Paused",
-      { timeout: 15_000 },
-    );
+    const toggleB = recipientItem(page, emailB).locator('[data-action="toggle"]');
+    await toggleB.click();
+    await expect(toggleB).toHaveText("Paused", { timeout: 15_000 });
+    await expect(toggleB).toBeFocused();
     const { data: bRow } = await db
       .from("notification_recipients")
       .select("id, active")
@@ -154,10 +153,8 @@ test.describe("portal management UI", () => {
         name: "Undo",
       })
       .click();
-    await expect(recipientItem(page, emailB).locator('[data-action="toggle"]')).toHaveText(
-      "Active",
-      { timeout: 15_000 },
-    );
+    await expect(toggleB).toHaveText("Active", { timeout: 15_000 });
+    await expect(toggleB).toBeFocused();
     const { data: bRestored } = await db
       .from("notification_recipients")
       .select("active")
@@ -165,8 +162,16 @@ test.describe("portal management UI", () => {
       .single();
     expect(bRestored?.active).toBe(true);
 
-    // The label edits in place (no remove-and-re-add), audited by the RPC.
-    await recipientItem(page, emailB).getByRole("button", { name: "Add a label" }).click();
+    // Cancel returns to the exact label action that opened the editor. A
+    // Subsequent edit stays in place (no remove-and-re-add) and is audited.
+    const addLabelB = recipientItem(page, emailB).getByRole("button", {
+      name: "Add a label",
+    });
+    await addLabelB.click();
+    await recipientItem(page, emailB).locator(`#label-${bRow!.id}`).fill("Temporary label");
+    await recipientItem(page, emailB).getByRole("button", { name: "Cancel" }).click();
+    await expect(addLabelB).toBeFocused();
+    await page.keyboard.press("Enter");
     await recipientItem(page, emailB).locator(`#label-${bRow!.id}`).fill("Front desk mornings");
     await recipientItem(page, emailB).locator('[data-action="save-label"]').click();
     await expect(page.getByTestId("recipient-label-status")).toContainText("Label updated", {
@@ -180,11 +185,9 @@ test.describe("portal management UI", () => {
     expect(labelAudits?.length).toBeGreaterThanOrEqual(1);
 
     // Pause B again so the active notification set is exactly {A}.
-    await recipientItem(page, emailB).locator('[data-action="toggle"]').click();
-    await expect(recipientItem(page, emailB).locator('[data-action="toggle"]')).toHaveText(
-      "Paused",
-      { timeout: 15_000 },
-    );
+    await toggleB.click();
+    await expect(toggleB).toHaveText("Paused", { timeout: 15_000 });
+    await expect(toggleB).toBeFocused();
 
     // Remove C (native confirm accepted above); it disappears and is gone.
     await recipientItem(page, emailC).locator('[data-action="remove"]').click();

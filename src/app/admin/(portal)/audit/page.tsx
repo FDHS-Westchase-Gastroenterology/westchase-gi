@@ -13,6 +13,7 @@ import { serviceClient } from "@/lib/portal/server";
 import { displayNameOrEmail, fetchStaffNameMap } from "@/lib/portal/staff-identity";
 
 import { RecentWorkSection } from "./recent-work";
+import { RecentWorkFocusTarget } from "./recent-work-focus-target";
 import {
   compactRepeatedOutput,
   filterRecentWork,
@@ -289,14 +290,14 @@ export default async function AdminAuditPage({
 
       {total > 0 ? (
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <p
+          <RecentWorkFocusTarget
             id={TECHNICAL_RECORD_SUMMARY_ID}
-            data-testid="audit-page-summary"
-            tabIndex={-1}
+            testId="audit-page-summary"
+            renderKey={`${search}\n${workType}\n${recentPage}\n${page}\n${total}\n${firstShown}\n${lastShown}`}
             className="text-[0.9rem] text-[var(--color-muted)]"
           >
             Showing {firstShown}–{lastShown} of {total}
-          </p>
+          </RecentWorkFocusTarget>
           <RecentWorkPagination
             ariaLabel="Activity log pages"
             recentPage={recentPage}
