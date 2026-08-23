@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useReducer, useTransition } from "react";
 
+import { RECIPIENTS_INTRO } from "@/lib/portal/staff-language";
+
 import {
   addNotificationRecipient,
   removeNotificationRecipient,
@@ -348,9 +350,7 @@ export function RecipientsManager({
     <div data-testid="recipients-manager" className="portal-panel p-6 sm:p-7">
       <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">Notification recipients</h2>
       <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
-        Everyone on this list gets an email whenever a patient requests an appointment. The emails
-        are just a heads-up — every request is always saved here in the portal, so nothing gets
-        missed even if an email does.
+        {RECIPIENTS_INTRO}
       </p>
 
       {error !== null && error !== "" && (

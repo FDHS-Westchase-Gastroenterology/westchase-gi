@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/portal/auth";
 import { waitingSince } from "@/lib/portal/business-time";
 import { availableQueueCount } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
+import { staffGreeting } from "@/lib/portal/staff-language";
 import { fetchAttentionSummary } from "@/lib/portal/workflow/reads";
 
 import { HomeWorkbench } from "./home-workbench";
@@ -38,6 +39,7 @@ const newestPreviewSchema = z.object({
   created_at: z.string(),
 });
 const oldestPreviewSchema = z.object({
+  id: z.string(),
   created_at: z.string(),
 });
 
@@ -50,7 +52,6 @@ function greetingFor(minutes: number): string {
 
 export default async function AdminHomePage() {
   const session = await requireRole("staff");
-  const firstName = session.displayName.trim().split(/\s+/)[0];
   const now = new Date();
   const [hour, minute] = NY_TIME.format(now).split(":").map(Number);
   const minutes = hour * 60 + minute;
@@ -73,7 +74,7 @@ export default async function AdminHomePage() {
       .limit(3),
     db
       .from("requests")
-      .select("created_at")
+      .select("id, created_at")
       .eq("status", "new")
       .order("created_at", { ascending: true })
       .limit(1),
@@ -156,12 +157,12 @@ export default async function AdminHomePage() {
 
   return (
     <HomeWorkbench
-      greeting={greetingFor(minutes)}
-      firstName={firstName}
+      greeting={staffGreeting(greetingFor(minutes), session.displayName)}
       date={NY_DATE.format(now)}
       afterHours={minutes >= AFTER_HOURS_START || minutes < MORNING_START}
       newCount={availableNewCount}
       oldestWaiting={oldestWaiting}
+      oldestRequestId={oldestPreview?.id ?? null}
       newest={newest}
       attention={visibleAttention}
       attentionUnavailable={attentionUnavailable}

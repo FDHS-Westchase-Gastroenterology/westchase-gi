@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { RECENT_WORK_INTRO } from "@/lib/portal/staff-language";
+
 import { RecentWorkControls } from "./recent-work-controls";
 import { RecentWorkFocusLink } from "./recent-work-focus-link";
 import {
@@ -126,7 +128,7 @@ export function RecentWorkSection({
         Recent work
       </h2>
       <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
-        Who did what, in plain language. The exact technical record stays below for administrators.
+        {RECENT_WORK_INTRO}
       </p>
 
       <RecentWorkControls search={search} type={type} technicalPage={technicalPage} />

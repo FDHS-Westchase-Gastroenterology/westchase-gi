@@ -5,6 +5,7 @@ import type { Page } from "@playwright/test";
 import { z } from "zod";
 
 import { intakeResponseSchema } from "../src/lib/portal/contracts";
+import { greetingName, START_OLDEST_REQUEST_LABEL } from "../src/lib/portal/staff-language";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // The portal home page: staff land on a greeting and their tasks, not on
@@ -26,7 +27,7 @@ function testIp(label: string): string {
 
 async function signIn(page: Page, email: string, password: string) {
   await page.goto("/admin/login");
-  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Email or username").fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
@@ -59,20 +60,24 @@ test.describe("portal home", () => {
 
     await signIn(page, SEED_EMAIL, SEED_PASSWORD);
 
-    // Greeting: practice-local time of day plus the profile's first name.
+    // Greeting: practice-local time of day plus a human name when one exists.
     const { data: profile } = await db
       .from("staff_profiles")
       .select("display_name")
       .eq("email", SEED_EMAIL.toLowerCase())
       .single();
-    const firstName = String(profile?.display_name ?? "")
-      .trim()
-      .split(/\s+/)[0];
-    expect(firstName.length).toBeGreaterThan(0);
+    const displayName = String(profile?.display_name ?? "");
+    const name = greetingName(displayName);
     const greeting = page.getByTestId("home-greeting");
     await expect(greeting).toBeVisible();
-    await expect(greeting).toContainText(/Good (morning|afternoon|evening), /);
-    await expect(greeting).toContainText(firstName);
+    await expect(greeting).not.toContainText("Portal");
+    if (name === null) {
+      await expect(greeting).toHaveText(/Good (morning|afternoon|evening)\.$/);
+    } else {
+      await expect(greeting).toHaveText(
+        new RegExp(`^Good (morning|afternoon|evening), ${name}\\.$`),
+      );
+    }
 
     // The practice-local after-hours cue starts at 7 p.m. Eastern.
     const [easternHour, easternMinute] = new Intl.DateTimeFormat("en-US", {
@@ -194,6 +199,27 @@ test.describe("portal home", () => {
         }; opens in a new tab`,
       }),
     ).toHaveAttribute("target", "_blank");
+  });
+
+  test("Start with oldest request opens the exact oldest New request", async ({ page }) => {
+    await signIn(page, SEED_EMAIL, SEED_PASSWORD);
+
+    const { data: oldestNew, error: oldestError } = await db
+      .from("requests")
+      .select("id")
+      .eq("status", "new")
+      .order("created_at", { ascending: true })
+      .limit(1);
+    expect(oldestError).toBeNull();
+    const oldestId = z.string().safeParse(oldestNew?.[0]?.id);
+    expect(oldestId.success).toBe(true);
+
+    const start = page.getByTestId("start-oldest-request");
+    await expect(start).toHaveText(START_OLDEST_REQUEST_LABEL);
+    await expect(start).toHaveAttribute("href", `/admin/requests/${oldestId.data}`);
+    await start.click();
+    await expect(page).toHaveURL(new RegExp(`/admin/requests/${oldestId.data}`));
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
   });
 
   test("home reports every Contacted request whose call-again day is missing", async ({ page }) => {

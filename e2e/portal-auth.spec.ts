@@ -101,8 +101,9 @@ test.describe("portal authentication and direct REST boundaries", () => {
     );
 
     await page.goto("/admin/login");
-    await expect(page.getByLabel("Email")).toHaveAttribute("type", "text");
-    await page.getByLabel("Email").fill(PREVIEW_USERNAME);
+    await expect(page.locator("label[for='email']")).toHaveText("Email or username");
+    await expect(page.getByLabel("Email or username")).toHaveAttribute("type", "text");
+    await page.getByLabel("Email or username").fill(PREVIEW_USERNAME);
     await page.getByLabel("Password").fill(PREVIEW_PASSWORD);
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL(/\/admin\/?$/);
@@ -131,10 +132,11 @@ test.describe("portal authentication and direct REST boundaries", () => {
     );
 
     await page.goto("/admin/login");
+    await expect(page.locator("label[for='email']")).toHaveText("Email or username");
     if (process.env.VERCEL_ENV !== "preview") {
-      await expect(page.getByLabel("Email")).toHaveAttribute("type", "email");
+      await expect(page.getByLabel("Email or username")).toHaveAttribute("type", "email");
     }
-    await page.getByLabel("Email").fill("nobody@example.test");
+    await page.getByLabel("Email or username").fill("nobody@example.test");
     await page.getByLabel("Password").fill("not-the-password");
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page.locator("#login-error")).toHaveText(GENERIC_LOGIN_ERROR);

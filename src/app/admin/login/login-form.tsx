@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { loginAction } from "@/app/admin/actions";
 import type { LoginActionState } from "@/app/admin/actions";
 import { ResetRequestForm } from "@/app/admin/forgot-password/reset-request-form";
+import { SIGN_IN_IDENTIFIER_LABEL } from "@/lib/portal/staff-language";
 
 const INITIAL_STATE: LoginActionState = { error: null };
 
@@ -38,7 +39,7 @@ export function LoginForm({
     <form action={formAction} className="mt-7 space-y-5">
       <div>
         <label htmlFor="email" className="block text-sm font-bold text-[var(--color-ink)]">
-          Email
+          {SIGN_IN_IDENTIFIER_LABEL}
         </label>
         <input
           id="email"

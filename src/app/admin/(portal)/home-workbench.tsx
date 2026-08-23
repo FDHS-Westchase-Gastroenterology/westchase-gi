@@ -13,6 +13,11 @@ import {
 } from "@/components/icons";
 import { arrivedOutsideOfficeHours } from "@/lib/portal/business-time";
 import { STAFF_REQUEST_SOURCE_PATH } from "@/lib/portal/contracts";
+import {
+  NEW_REQUESTS_HREF,
+  OPEN_NEW_REQUESTS_LABEL,
+  oldestNewRequestAction,
+} from "@/lib/portal/staff-language";
 
 import { PortalPageHeader } from "./portal-page-header";
 import { formatReceived } from "./requests/format";
@@ -78,11 +83,11 @@ function waitingHeadline(count: number): string {
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 export function HomeWorkbench({
   greeting,
-  firstName,
   date,
   afterHours,
   newCount,
   oldestWaiting,
+  oldestRequestId,
   newest,
   attention,
   attentionUnavailable,
@@ -91,11 +96,11 @@ export function HomeWorkbench({
   announcements,
 }: Readonly<{
   greeting: string;
-  firstName: string;
   date: string;
   afterHours: boolean;
   newCount: number | null;
   oldestWaiting: string | null;
+  oldestRequestId: string | null;
   newest: NewRequestPreview[];
   attention: AttentionPath[];
   attentionUnavailable: boolean;
@@ -103,14 +108,15 @@ export function HomeWorkbench({
   deliveryFailureCount: number | null;
   announcements?: ReactNode;
 }>) {
-  const newViewHref = "/admin/requests?status=new";
+  const newViewHref = NEW_REQUESTS_HREF;
+  const oldestAction = oldestNewRequestAction({ newCount, oldestRequestId });
 
   return (
     <section aria-labelledby="home-heading">
       <PortalPageHeader
         title={
           <span id="home-heading" data-testid="home-greeting">
-            {greeting}, {firstName}.
+            {greeting}
           </span>
         }
         description="Start with what needs contact, then record the real outcome in Appointments."
@@ -197,9 +203,23 @@ export function HomeWorkbench({
               <div className="portal-new-work-actions">
                 {newCount > 0 ? (
                   <>
-                    <Link href={newViewHref} className="btn btn-navy min-h-11">
-                      Start with oldest request
-                    </Link>
+                    {oldestAction.kind === "open-oldest" ? (
+                      <Link
+                        href={oldestAction.href}
+                        data-testid="start-oldest-request"
+                        className="btn btn-navy min-h-11"
+                      >
+                        {oldestAction.label}
+                      </Link>
+                    ) : oldestAction.kind === "empty" ? (
+                      <Link
+                        href={oldestAction.href}
+                        data-testid="start-oldest-empty"
+                        className="btn btn-navy min-h-11"
+                      >
+                        {oldestAction.label}
+                      </Link>
+                    ) : null}
                     <Link
                       href="/admin/requests/print?auto=1"
                       target="_blank"
@@ -220,8 +240,12 @@ export function HomeWorkbench({
                       <Printer className="h-4 w-4" />
                       <span data-testid="print-new-empty">Nothing to print</span>
                     </button>
-                    <Link href={newViewHref} className="btn btn-outline min-h-11">
-                      Open New requests
+                    <Link
+                      href={NEW_REQUESTS_HREF}
+                      data-testid="start-oldest-empty"
+                      className="btn btn-outline min-h-11"
+                    >
+                      {OPEN_NEW_REQUESTS_LABEL}
                     </Link>
                   </>
                 )}
