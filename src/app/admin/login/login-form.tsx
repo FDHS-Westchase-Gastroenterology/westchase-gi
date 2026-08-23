@@ -5,7 +5,7 @@ import { useActionState, useState } from "react";
 import { loginAction } from "@/app/admin/actions";
 import type { LoginActionState } from "@/app/admin/actions";
 import { ResetRequestForm } from "@/app/admin/forgot-password/reset-request-form";
-import { SIGN_IN_IDENTIFIER_LABEL } from "@/lib/portal/staff-language";
+import { signInIdentifierField } from "@/lib/portal/staff-language";
 
 const INITIAL_STATE: LoginActionState = { error: null };
 
@@ -21,6 +21,7 @@ export function LoginForm({
   const [email, setEmail] = useState("");
   const [state, formAction, pending] = useActionState(loginAction, INITIAL_STATE);
   const hasError = state.error !== null && state.error !== "";
+  const identifierField = signInIdentifierField(allowPreviewAlias);
 
   if (mode === "recovery") {
     return (
@@ -39,13 +40,13 @@ export function LoginForm({
     <form action={formAction} className="mt-7 space-y-5">
       <div>
         <label htmlFor="email" className="block text-sm font-bold text-[var(--color-ink)]">
-          {SIGN_IN_IDENTIFIER_LABEL}
+          {identifierField.label}
         </label>
         <input
           id="email"
           name="email"
-          type={allowPreviewAlias ? "text" : "email"}
-          inputMode={allowPreviewAlias ? undefined : "email"}
+          type={identifierField.type}
+          inputMode={identifierField.inputMode}
           autoComplete="username"
           autoCapitalize="none"
           spellCheck={false}

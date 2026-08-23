@@ -12,18 +12,27 @@ import {
   OPEN_NEW_REQUESTS_LABEL,
   RECIPIENT_CONFIRMATION_BODY,
   RECIPIENTS_INTRO,
-  SIGN_IN_IDENTIFIER_LABEL,
   START_OLDEST_REQUEST_LABEL,
   allStaffLanguageText,
   greetingName,
   helpOutageCopy,
   oldestNewRequestAction,
+  signInIdentifierField,
   staffGreeting,
   staffLanguageHasForbiddenClaim,
 } from "./staff-language.ts";
 
-test("sign-in identifier names the supported username alias", () => {
-  assert.equal(SIGN_IN_IDENTIFIER_LABEL, "Email or username");
+test("sign-in identifier names only the credential accepted in each environment", () => {
+  assert.deepEqual(signInIdentifierField(true), {
+    label: "Email or username",
+    type: "text",
+    inputMode: undefined,
+  });
+  assert.deepEqual(signInIdentifierField(false), {
+    label: "Email",
+    type: "email",
+    inputMode: "email",
+  });
 });
 
 test("greeting uses a human first name and never greets Portal", () => {

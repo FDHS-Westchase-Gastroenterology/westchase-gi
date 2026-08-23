@@ -5,7 +5,11 @@ import type { Page } from "@playwright/test";
 import { z } from "zod";
 
 import { intakeResponseSchema } from "../src/lib/portal/contracts";
-import { greetingName, START_OLDEST_REQUEST_LABEL } from "../src/lib/portal/staff-language";
+import {
+  greetingName,
+  signInIdentifierField,
+  START_OLDEST_REQUEST_LABEL,
+} from "../src/lib/portal/staff-language";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // The portal home page: staff land on a greeting and their tasks, not on
@@ -16,6 +20,7 @@ loadLocalEnv();
 
 const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
+const SIGN_IN_IDENTIFIER = signInIdentifierField(process.env.VERCEL_ENV === "preview");
 
 const db = serviceDb();
 const runId = randomUUID().slice(0, 8);
@@ -27,7 +32,7 @@ function testIp(label: string): string {
 
 async function signIn(page: Page, email: string, password: string) {
   await page.goto("/admin/login");
-  await page.getByLabel("Email or username").fill(email);
+  await page.getByLabel(SIGN_IN_IDENTIFIER.label).fill(email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });

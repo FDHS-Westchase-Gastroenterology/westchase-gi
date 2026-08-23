@@ -3,7 +3,11 @@
 // Without rendering the pages. Do not greet a system label as a person, and
 // Do not promise behavior the portal cannot enforce.
 
-export const SIGN_IN_IDENTIFIER_LABEL = "Email or username";
+export function signInIdentifierField(allowPreviewAlias: boolean) {
+  return allowPreviewAlias
+    ? ({ label: "Email or username", type: "text", inputMode: undefined } as const)
+    : ({ label: "Email", type: "email", inputMode: "email" } as const);
+}
 
 export const START_OLDEST_REQUEST_LABEL = "Start with oldest request";
 export const OPEN_NEW_REQUESTS_LABEL = "Open New requests";
@@ -132,7 +136,8 @@ export const FORBIDDEN_ABSOLUTE_CLAIMS = [
 
 export function allStaffLanguageText(phoneDisplay: string, textDisplay: string): string {
   return [
-    SIGN_IN_IDENTIFIER_LABEL,
+    signInIdentifierField(false).label,
+    signInIdentifierField(true).label,
     START_OLDEST_REQUEST_LABEL,
     OPEN_NEW_REQUESTS_LABEL,
     HELP_QUEUE_ARRIVAL,
