@@ -569,8 +569,8 @@ test("mixed URL state keeps rw and page independent", () => {
     recentWorkHref({ q: "voicemail", type: "requests", page: 5 }),
     "/admin/audit?q=voicemail&type=requests&page=5",
   );
-  // Clear restores the default view.
-  assert.equal(recentWorkHref({}), "/admin/audit");
+  // Clear removes only Recent-work state and keeps the Technical page.
+  assert.equal(recentWorkHref({ page: 2 }), "/admin/audit?page=2");
 });
 
 test("no-results copy and recovery match the active Recent work constraints", () => {

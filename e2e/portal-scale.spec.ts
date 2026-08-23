@@ -154,5 +154,27 @@ test.describe("isolated portal scale boundaries", () => {
         hasText: actorEmail,
       }),
     ).toHaveCount(1);
+
+    const technicalSummary = page.getByTestId("audit-page-summary");
+    const technicalPageTwoSummary = await technicalSummary.innerText();
+    await page.getByLabel("Search recent work").fill(actorEmail);
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await expect(page).toHaveURL(
+      (url) => url.searchParams.get("q") === actorEmail && url.searchParams.get("page") === "2",
+    );
+    await expect(page.getByTestId("recent-work-summary")).toBeFocused();
+
+    await page.getByTestId("recent-work-clear").focus();
+    await page.getByTestId("recent-work-clear").press("Enter");
+    await expect(page).toHaveURL(
+      (url) =>
+        url.pathname === "/admin/audit" &&
+        url.searchParams.get("page") === "2" &&
+        !url.searchParams.has("q") &&
+        !url.searchParams.has("type") &&
+        !url.searchParams.has("rw"),
+    );
+    await expect(technicalSummary).toHaveText(technicalPageTwoSummary);
+    await expect(page.getByLabel("Search recent work")).toBeFocused();
   });
 });

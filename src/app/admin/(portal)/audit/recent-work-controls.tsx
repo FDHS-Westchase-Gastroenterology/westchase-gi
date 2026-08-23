@@ -16,8 +16,8 @@ import type { RecentWorkType } from "./recent-work-model";
 // The staff-facing controls over Recent work: one persistent labeled search
 // Field and the work-group filter chips. State lives in the URL — these
 // Controls only navigate. Search and filters reset the Recent-work page to
-// 1 and keep the Technical record page. Clear restores the full default
-// View and returns focus to the search field.
+// 1 and keep the Technical record page. Clear removes the Recent-work state,
+// Keeps the Technical record page, and returns focus to the search field.
 
 const FILTER_LABELS = {
   all: "All work",
@@ -116,7 +116,7 @@ export function RecentWorkControls({
           data-testid="recent-work-clear"
           onClick={() => {
             if (inputRef.current !== null) inputRef.current.value = "";
-            navigateWithFocus(recentWorkHref({}), RECENT_WORK_SEARCH_ID);
+            navigateWithFocus(recentWorkHref({ page: technicalPage }), RECENT_WORK_SEARCH_ID);
           }}
           className="mt-2 min-h-11 font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
         >
