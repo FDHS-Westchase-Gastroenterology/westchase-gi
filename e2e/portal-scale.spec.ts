@@ -147,7 +147,8 @@ test.describe("isolated portal scale boundaries", () => {
       .getByRole("navigation", { name: "Activity log pages" })
       .getByRole("link", { name: "Next" })
       .click();
-    await expect(page).toHaveURL(/\/admin\/audit\?page=2$/);
+    await expect(page).toHaveURL(/\/admin\/audit\?page=2#audit-page-summary$/);
+    await expect(page.getByTestId("audit-page-summary")).toBeFocused();
     await expect(
       page.getByTestId("audit-table").getByRole("row").filter({
         hasText: actorEmail,
