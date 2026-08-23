@@ -1547,6 +1547,68 @@
     }
   }
 
+  .portal-settings-field {
+    min-width: 0;
+  }
+
+  .portal-settings-field-label {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: var(--color-body);
+    font-size: 0.8rem;
+    font-weight: 800;
+    line-height: 1.25;
+  }
+
+  .portal-settings-form-summary {
+    margin-top: 0.75rem;
+    border-left: 3px solid var(--color-amber-deep);
+    border-radius: var(--radius-sm);
+    background: var(--color-amber-soft);
+    padding: 0.65rem 0.8rem;
+    color: var(--color-ink);
+    font-size: 0.85rem;
+    font-weight: 800;
+    line-height: 1.4;
+  }
+
+  .portal-settings-field-error {
+    margin-top: 0.35rem;
+    color: var(--portal-attention-ink);
+    font-size: 0.8rem;
+    font-weight: 800;
+    line-height: 1.35;
+  }
+
+  .portal-settings-control[aria-invalid="true"] {
+    border-color: var(--color-amber-deep);
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--color-amber) 24%, transparent);
+  }
+
+  .portal-settings-list-heading:focus-visible {
+    outline: 3px solid var(--color-amber);
+    outline-offset: 4px;
+  }
+
+  .portal-recipient-state {
+    display: inline-flex;
+    min-height: 2.5rem;
+    align-items: center;
+    border: 1px solid var(--color-line-2);
+    border-radius: 999px;
+    background: white;
+    padding-inline: 0.85rem;
+    color: var(--color-muted);
+    font-size: 0.85rem;
+    font-weight: 800;
+  }
+
+  .portal-recipient-state[data-active="true"] {
+    border-color: var(--color-teal-ink);
+    background: var(--color-mint);
+    color: var(--color-teal-ink);
+  }
+
   .portal-confirm-dialog {
     width: min(92vw, 28rem);
     max-height: min(90dvh, 32rem);
@@ -1580,12 +1642,35 @@
     padding: 1.5rem 1.5rem 1.15rem;
   }
 
+  .portal-confirm-dialog-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .portal-confirm-dialog-close {
+    display: inline-flex;
+    min-height: 2.75rem;
+    flex: none;
+    align-items: center;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    padding-inline: 0.65rem;
+    color: var(--color-muted);
+    font-size: 0.85rem;
+    font-weight: 800;
+  }
+
   .portal-confirm-dialog-title {
+    min-width: 0;
     margin: 0;
     font-size: 1.2rem;
     font-weight: 900;
     letter-spacing: -0.02em;
     line-height: 1.25;
+    overflow-wrap: anywhere;
   }
 
   .portal-confirm-dialog-body p {
@@ -1603,9 +1688,22 @@
     padding: 0 1.5rem 1.5rem;
   }
 
-  .portal-confirm-dialog-actions .btn {
+  .portal-confirm-dialog-actions .btn,
+  .portal-confirm-dialog-actions .portal-confirm-dialog-destructive {
     width: 100%;
     justify-content: center;
+  }
+
+  .portal-confirm-dialog-destructive {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--color-amber-deep);
+    border-radius: var(--radius-sm);
+    background: white;
+    padding-inline: 1rem;
+    color: var(--portal-attention-ink);
+    font-size: 0.9rem;
+    font-weight: 800;
   }
 
   .portal-confirm-dialog-discard {
@@ -1631,7 +1729,8 @@
       gap: 1.25rem;
     }
 
-    .portal-confirm-dialog-actions .btn {
+    .portal-confirm-dialog-actions .btn,
+    .portal-confirm-dialog-actions .portal-confirm-dialog-destructive {
       width: auto;
     }
   }
