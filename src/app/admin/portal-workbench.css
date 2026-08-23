@@ -7,7 +7,7 @@
   }
 
   .portal-scope :where(a, button, input, select, textarea, summary):focus-visible {
-    outline: 3px solid var(--color-amber);
+    outline: 3px solid var(--color-amber-deep);
     outline-offset: 3px;
   }
 
@@ -21,7 +21,7 @@
   }
 
   .website-maintainer-details > summary:focus-visible {
-    outline: 3px solid var(--color-amber);
+    outline: 3px solid var(--color-amber-deep);
     outline-offset: 3px;
   }
 
@@ -1586,7 +1586,7 @@
   }
 
   .portal-settings-list-heading:focus-visible {
-    outline: 3px solid var(--color-amber);
+    outline: 3px solid var(--color-amber-deep);
     outline-offset: 4px;
   }
 
