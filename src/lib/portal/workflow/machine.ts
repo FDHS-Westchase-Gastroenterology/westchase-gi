@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 import type { ClosureReason, ContactOutcome, RequestState } from "./contracts";
 
 export interface RequestSnapshot {
@@ -14,11 +16,12 @@ export type WorkflowCommand =
   | {
       readonly kind: "record_contact_attempt";
       readonly outcome: ContactOutcome;
-      readonly callAgainAt: string | null;
+      readonly callAgainAt: string;
     }
   | { readonly kind: "confirm_booking_handoff" }
   | { readonly kind: "close_request"; readonly reason: ClosureReason }
-  | { readonly kind: "reopen_request" }
+  | { readonly kind: "reopen_request"; readonly callAgainAt: string }
+  | { readonly kind: "set_call_again"; readonly callAgainAt: string }
   | { readonly kind: "undo_latest_transition"; readonly restore: Omit<RequestSnapshot, "version"> }
   | {
       readonly kind: "classify_legacy_closure";
@@ -31,6 +34,7 @@ export interface DomainFact {
     | "BookingHandoffConfirmed"
     | "AppointmentRequestClosed"
     | "AppointmentRequestReopened"
+    | "CallAgainSet"
     | "AppointmentRequestTransitionUndone"
     | "LegacyClosureClassified";
   readonly code?: string;
@@ -56,6 +60,14 @@ function isAbsent(value: string | null): boolean {
 
 function isPresent(value: string | null): boolean {
   return value !== null && value !== "";
+}
+
+const callAgainAtSchema = z.iso
+  .datetime({ offset: true })
+  .refine((value) => value === value.trim());
+
+function isCallAgainAt(value: string): boolean {
+  return callAgainAtSchema.safeParse(value).success;
 }
 
 function coherent(value: Readonly<Omit<RequestSnapshot, "version">>): boolean {
@@ -87,7 +99,9 @@ function coherent(value: Readonly<Omit<RequestSnapshot, "version">>): boolean {
     isAbsent(value.bookingConfirmedAt) &&
     (value.legacyReviewRequired
       ? isAbsent(value.closedAt) && value.closureReason === null
-      : isPresent(value.closedAt) && value.closureReason !== null)
+      : // Migrated unconverted closures have a close clock but no typed reason.
+        // The atomic RPC verifies their stored migration provenance before Undo.
+        isPresent(value.closedAt))
   );
 }
 
@@ -108,9 +122,7 @@ export function decide(
     case "record_contact_attempt": {
       if (current.state !== "new" && current.state !== "contacted")
         return reject("illegal_transition");
-      const required = command.outcome === "voicemail" || command.outcome === "no_answer";
-      if (required !== Boolean(command.callAgainAt) && (required || command.callAgainAt === ""))
-        return reject("invalid_command");
+      if (!isCallAgainAt(command.callAgainAt)) return reject("invalid_command");
       return next(
         {
           state: "contacted",
@@ -159,10 +171,11 @@ export function decide(
         current.legacyReviewRequired
       )
         return reject("illegal_transition");
+      if (!isCallAgainAt(command.callAgainAt)) return reject("invalid_command");
       return next(
         {
           state: "contacted",
-          callAgainAt: null,
+          callAgainAt: command.callAgainAt,
           bookingConfirmedAt: null,
           closedAt: null,
           closureReason: null,
@@ -170,6 +183,11 @@ export function decide(
         },
         { type: "AppointmentRequestReopened" },
       );
+    case "set_call_again":
+      if (current.state !== "contacted" || isPresent(current.callAgainAt))
+        return reject("illegal_transition");
+      if (!isCallAgainAt(command.callAgainAt)) return reject("invalid_command");
+      return next({ callAgainAt: command.callAgainAt }, { type: "CallAgainSet" });
     case "undo_latest_transition":
       if (!coherent(command.restore)) return reject("undo_unavailable");
       return next(command.restore, { type: "AppointmentRequestTransitionUndone" });
