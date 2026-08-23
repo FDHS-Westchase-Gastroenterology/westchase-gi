@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { test, expect } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
@@ -52,6 +52,22 @@ async function signIn(page: Page, email: string, password: string) {
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
+}
+
+async function screenDisclosureChrome(summary: Locator) {
+  return summary.evaluate((el) => {
+    const before = getComputedStyle(el, "::before");
+    const style = getComputedStyle(el);
+    return {
+      screen: matchMedia("screen").matches,
+      print: matchMedia("print").matches,
+      beforeContent: before.content,
+      focusVisible: el.matches(":focus-visible"),
+      outlineStyle: style.outlineStyle,
+      outlineWidth: style.outlineWidth,
+      outlineOffset: style.outlineOffset,
+    };
+  });
 }
 
 function expectedConnectionStatus(): "Connected" | "Not configured" | "Connection unavailable" {
@@ -181,13 +197,17 @@ test.describe("website custody", () => {
 
     await signIn(page, SEED_EMAIL, SEED_PASSWORD);
     await page.goto("/admin/settings/software");
+    await page.emulateMedia({ media: "screen" });
 
     const details = page.getByTestId("maintainer-details");
     const summary = details.locator("summary");
     await expect(details).toHaveJSProperty("open", false);
     await expect
-      .poll(async () => summary.evaluate((el) => getComputedStyle(el, "::before").content))
+      .poll(async () => (await screenDisclosureChrome(summary)).beforeContent)
       .toMatch(/Show/);
+    const closedChrome = await screenDisclosureChrome(summary);
+    expect(closedChrome.screen).toBe(true);
+    expect(closedChrome.print).toBe(false);
     await summary.focus();
     await expect(summary).toBeFocused();
     await page.keyboard.press("Enter");
@@ -195,8 +215,15 @@ test.describe("website custody", () => {
     await expect(summary).toBeFocused();
     await expect(summary).toContainText("Maintainer details");
     await expect
-      .poll(async () => summary.evaluate((el) => getComputedStyle(el, "::before").content))
+      .poll(async () => (await screenDisclosureChrome(summary)).beforeContent)
       .toMatch(/Hide/);
+    const openChrome = await screenDisclosureChrome(summary);
+    expect(openChrome.screen).toBe(true);
+    expect(openChrome.print).toBe(false);
+    expect(openChrome.focusVisible).toBe(true);
+    expect(openChrome.outlineStyle).toBe("solid");
+    expect(Number.parseFloat(openChrome.outlineWidth)).toBeGreaterThanOrEqual(3);
+    expect(Number.parseFloat(openChrome.outlineOffset)).toBeGreaterThanOrEqual(3);
 
     await expect(page.getByTestId("website-attention")).toBeVisible();
     await expect(page.getByTestId("website-attention")).toContainText("consultant-managed");
@@ -231,13 +258,19 @@ test.describe("website custody", () => {
       await expect(access.getByTestId("maintainer-list")).toHaveCount(0);
     }
 
-    await page.keyboard.press("Enter");
+    await page.keyboard.press("Space");
     await expect(details).toHaveJSProperty("open", false);
     await expect(summary).toBeFocused();
     await expect(summary).toContainText("Maintainer details");
     await expect
-      .poll(async () => summary.evaluate((el) => getComputedStyle(el, "::before").content))
+      .poll(async () => (await screenDisclosureChrome(summary)).beforeContent)
       .toMatch(/Show/);
+    const restoredChrome = await screenDisclosureChrome(summary);
+    expect(restoredChrome.screen).toBe(true);
+    expect(restoredChrome.print).toBe(false);
+    expect(restoredChrome.focusVisible).toBe(true);
+    expect(restoredChrome.outlineStyle).toBe("solid");
+    expect(Number.parseFloat(restoredChrome.outlineWidth)).toBeGreaterThanOrEqual(3);
     await expect(page.getByTestId("website-attention")).toBeVisible();
     await expect(
       page.getByRole("link", { name: PROVIDER_LINKS[0].name, exact: true }),
