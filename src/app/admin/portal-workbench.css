@@ -1529,6 +1529,122 @@
     }
   }
 
+  .portal-confirm-dialog {
+    width: min(92vw, 28rem);
+    max-height: min(90dvh, 32rem);
+    margin: auto;
+    overflow: auto;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: white;
+    padding: 0;
+    color: var(--color-ink);
+    box-shadow: var(--shadow-card);
+  }
+
+  .portal-confirm-dialog:not([open]) {
+    display: none;
+  }
+
+  .portal-confirm-dialog::backdrop {
+    background: rgba(20, 32, 45, 0.48);
+  }
+
+  .portal-confirm-dialog[open] {
+    animation: portal-confirm-in 180ms var(--ease-out-quint) both;
+  }
+
+  .portal-confirm-dialog[open]::backdrop {
+    animation: portal-confirm-dim 150ms ease-out both;
+  }
+
+  .portal-confirm-dialog-body {
+    padding: 1.5rem 1.5rem 1.15rem;
+  }
+
+  .portal-confirm-dialog-title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+
+  .portal-confirm-dialog-body p {
+    margin-top: 0.65rem;
+    color: var(--color-body);
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .portal-confirm-dialog-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0 1.5rem 1.5rem;
+  }
+
+  .portal-confirm-dialog-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .portal-confirm-dialog-discard {
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    padding-inline: 0.75rem;
+    color: var(--color-teal-ink);
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-underline-offset: 2px;
+  }
+
+  .portal-confirm-dialog-discard:hover {
+    text-decoration: underline;
+  }
+
+  @media (min-width: 40rem) {
+    .portal-confirm-dialog-actions {
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 1.25rem;
+    }
+
+    .portal-confirm-dialog-actions .btn {
+      width: auto;
+    }
+  }
+
+  @keyframes portal-confirm-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes portal-confirm-dim {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .portal-confirm-dialog[open],
+    .portal-confirm-dialog[open]::backdrop {
+      animation: none;
+    }
+  }
+
   .portal-request-layout {
     display: grid;
     grid-template-areas:

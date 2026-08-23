@@ -359,9 +359,14 @@ function CallAgainFieldset({
   onDayChange: (day: string) => void;
 }>) {
   const descriptionId = `${name}-description`;
+  const dayId = `${name}-day`;
+  const dayLabelId = `${name}-day-label`;
+  const dayHintId = `${name}-day-hint`;
   const errorId = `${name}-error`;
+  const pickADayId = `${name}-kind-day`;
   const customDayInvalid =
     followUpKind === "day" && followUpDay !== "" && !isValidCustomCallAgainDay(followUpDay);
+  const dayDescribedBy = customDayInvalid ? `${dayHintId} ${errorId}` : dayHintId;
 
   return (
     <fieldset
@@ -385,9 +390,11 @@ function CallAgainFieldset({
           >
             <input
               type="radio"
+              id={chip.kind === "day" ? pickADayId : undefined}
               name={name}
               value={chip.kind}
               checked={followUpKind === chip.kind}
+              aria-controls={chip.kind === "day" && followUpKind === "day" ? dayId : undefined}
               onChange={() => {
                 onKindChange(chip.kind);
               }}
@@ -397,13 +404,26 @@ function CallAgainFieldset({
             {chip.label}
           </label>
         ))}
-        {followUpKind === "day" ? (
+      </div>
+      {followUpKind === "day" ? (
+        <div role="group" aria-labelledby={`${pickADayId} ${dayLabelId}`} className="mt-3 max-w-sm">
+          <label
+            id={dayLabelId}
+            htmlFor={dayId}
+            className="block text-sm font-bold text-[var(--color-ink)]"
+          >
+            Call again on <span aria-hidden="true">*</span>
+            <span className="sr-only"> (required)</span>
+          </label>
           <input
+            id={dayId}
             type="date"
-            aria-label="Call again on this day"
-            aria-describedby={customDayInvalid ? errorId : descriptionId}
-            aria-invalid={customDayInvalid}
-            data-testid={`${name}-day`}
+            name={`${name}-day`}
+            required
+            aria-required="true"
+            aria-invalid={customDayInvalid || undefined}
+            aria-describedby={dayDescribedBy}
+            data-testid={dayId}
             value={followUpDay}
             min={practiceLocalDay(0)}
             max={practiceLocalDay(90)}
@@ -411,18 +431,24 @@ function CallAgainFieldset({
             onChange={(event) => {
               onDayChange(event.target.value);
             }}
-            className="min-h-11 rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.9rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)] focus:ring-2 focus:ring-[var(--color-teal-ink)] disabled:opacity-60"
+            className="mt-1.5 block min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.9rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)] focus:ring-2 focus:ring-[var(--color-teal-ink)] disabled:opacity-60 aria-[invalid=true]:border-[oklch(0.5_0.19_25)] aria-[invalid=true]:bg-[color-mix(in_oklch,oklch(0.97_0.018_25)_70%,white)]"
           />
-        ) : null}
-      </div>
-      {customDayInvalid ? (
-        <p
-          id={errorId}
-          role="alert"
-          className="mt-2 text-[0.85rem] font-bold text-[var(--color-ink)]"
-        >
-          Choose today or a day within the next 90 days.
-        </p>
+          <p
+            id={dayHintId}
+            className="mt-1.5 text-[0.85rem] leading-relaxed text-[var(--color-muted)]"
+          >
+            Required when Pick a day is selected. Save stays unavailable until this day is valid.
+          </p>
+          {customDayInvalid ? (
+            <p
+              id={errorId}
+              role="alert"
+              className="mt-1.5 text-[0.85rem] font-bold text-[var(--color-ink)]"
+            >
+              Choose today or a day within the next 90 days.
+            </p>
+          ) : null}
+        </div>
       ) : null}
     </fieldset>
   );

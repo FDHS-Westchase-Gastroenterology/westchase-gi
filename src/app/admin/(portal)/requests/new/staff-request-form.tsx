@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useRef, useState } from "react";
+import type { MouseEvent, RefObject } from "react";
 
 import { createStaffRequest } from "@/app/admin/(portal)/requests/new/actions";
 import { REQUEST_FIELD_LIMITS, STAFF_REQUEST_FIELDS } from "@/lib/portal/contracts";
@@ -11,15 +13,10 @@ import type {
   StaffRequestField,
 } from "@/lib/portal/contracts";
 
+import { EMPTY_STAFF_REQUEST_DRAFT, isStaffRequestDraftDirty } from "./staff-request-draft";
+
 const INITIAL_STATE = { status: "idle" } as const satisfies CreateStaffRequestActionState;
-const EMPTY_DRAFT = {
-  name: "",
-  phone: "",
-  email: "",
-  location: "any",
-  time: "any",
-  message: "",
-} as const satisfies StaffRequestDraft;
+const EMPTY_DRAFT = EMPTY_STAFF_REQUEST_DRAFT satisfies StaffRequestDraft;
 
 const FIELD_FALLBACK = {
   name: "Enter the patient’s name.",
@@ -340,17 +337,21 @@ function SchedulingNoteSection({
 }
 
 function StaffRequestFormFooter({
+  cancelRef,
   conflicted,
   pending,
   unavailable,
   returnHref,
   returnLabel,
+  onCancelClick,
 }: Readonly<{
+  cancelRef: RefObject<HTMLAnchorElement | null>;
   conflicted: boolean;
   pending: boolean;
   unavailable: boolean;
   returnHref: string;
   returnLabel: string;
+  onCancelClick: (event: MouseEvent<HTMLAnchorElement>) => void;
 }>) {
   return (
     <footer className="portal-request-form-footer">
@@ -375,15 +376,73 @@ function StaffRequestFormFooter({
           </button>
         )}
         <Link
+          ref={cancelRef}
           href={returnHref}
           aria-disabled={pending || undefined}
           tabIndex={pending ? -1 : undefined}
+          data-testid="cancel-staff-request"
+          onClick={onCancelClick}
           className="btn btn-outline min-h-11"
         >
           {returnLabel}
         </Link>
       </div>
     </footer>
+  );
+}
+
+function DiscardStaffRequestDialog({
+  dialogRef,
+  keepEditingRef,
+  onKeepEditing,
+  onDiscard,
+  onClose,
+}: Readonly<{
+  dialogRef: RefObject<HTMLDialogElement | null>;
+  keepEditingRef: RefObject<HTMLButtonElement | null>;
+  onKeepEditing: () => void;
+  onDiscard: () => void;
+  onClose: () => void;
+}>) {
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-modal="true"
+      aria-labelledby="discard-staff-request-title"
+      aria-describedby="discard-staff-request-copy"
+      data-testid="discard-staff-request-dialog"
+      onClose={onClose}
+      className="portal-confirm-dialog"
+    >
+      <div className="portal-confirm-dialog-body">
+        <h2 id="discard-staff-request-title" className="portal-confirm-dialog-title">
+          Discard this appointment request?
+        </h2>
+        <p id="discard-staff-request-copy">
+          The entered request has not been saved. Discarding it clears this draft.
+        </p>
+      </div>
+      <div className="portal-confirm-dialog-actions">
+        <button
+          ref={keepEditingRef}
+          type="button"
+          autoFocus
+          data-testid="keep-editing-staff-request"
+          onClick={onKeepEditing}
+          className="btn btn-navy min-h-11"
+        >
+          Keep editing
+        </button>
+        <button
+          type="button"
+          data-testid="discard-staff-request"
+          onClick={onDiscard}
+          className="portal-confirm-dialog-discard min-h-11"
+        >
+          Discard request
+        </button>
+      </div>
+    </dialog>
   );
 }
 
@@ -398,6 +457,7 @@ export function StaffRequestForm({
   returnHref: string;
   returnLabel: string;
 }>) {
+  const router = useRouter();
   const [state, formAction, pending] = useActionState(createStaffRequest, INITIAL_STATE, permalink);
   const [draft, setDraft] = useState<StaffRequestDraft>(() =>
     state.status === "error" ? state.values : EMPTY_DRAFT,
@@ -405,6 +465,10 @@ export function StaffRequestForm({
   const [initialIdempotencyKey] = useState(idempotencyKey);
   const formRef = useRef<HTMLFormElement>(null);
   const alertRef = useRef<HTMLDivElement>(null);
+  const cancelRef = useRef<HTMLAnchorElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const keepEditingRef = useRef<HTMLButtonElement>(null);
+  const discardIntentRef = useRef(false);
   const retryKey =
     state.status === "error" && state.idempotencyKey !== null
       ? state.idempotencyKey
@@ -440,91 +504,135 @@ export function StaffRequestForm({
   };
   const showFailure = state.status === "error" && !pending;
 
+  function openDiscardDialog() {
+    discardIntentRef.current = false;
+    dialogRef.current?.showModal();
+    keepEditingRef.current?.focus();
+  }
+
+  function requestLeave(event: MouseEvent<HTMLAnchorElement>) {
+    if (pending) {
+      event.preventDefault();
+      return;
+    }
+    if (!isStaffRequestDraftDirty(draft)) return;
+    event.preventDefault();
+    openDiscardDialog();
+  }
+
+  function keepEditing() {
+    discardIntentRef.current = false;
+    dialogRef.current?.close();
+  }
+
+  function discardRequest() {
+    discardIntentRef.current = true;
+    setDraft(EMPTY_DRAFT);
+    dialogRef.current?.close();
+    router.push(returnHref);
+  }
+
+  function restoreCancelFocus() {
+    if (discardIntentRef.current) return;
+    cancelRef.current?.focus();
+  }
+
   return (
-    <form
-      ref={formRef}
-      action={conflicted ? undefined : formAction}
-      noValidate
-      autoComplete="off"
-      aria-label="Add appointment request"
-      data-draft-locked={draftLocked || undefined}
-      className="portal-request-form-sheet"
-    >
-      <input type="hidden" name="idempotencyKey" value={retryKey} />
-      {unavailable ? (
-        <>
-          <input type="hidden" name="location" value={draft.location} />
-          <input type="hidden" name="time" value={draft.time} />
-        </>
-      ) : null}
+    <>
+      <form
+        ref={formRef}
+        action={conflicted ? undefined : formAction}
+        noValidate
+        autoComplete="off"
+        aria-label="Add appointment request"
+        data-draft-locked={draftLocked || undefined}
+        className="portal-request-form-sheet"
+      >
+        <input type="hidden" name="idempotencyKey" value={retryKey} />
+        {unavailable ? (
+          <>
+            <input type="hidden" name="location" value={draft.location} />
+            <input type="hidden" name="time" value={draft.time} />
+          </>
+        ) : null}
 
-      <div className="portal-request-form-boundary">
-        <strong>Keep this to scheduling.</strong>
-        <p>
-          Do not enter symptoms, diagnoses, medications, or other medical details. Put those in the
-          clinical record instead.
-        </p>
-      </div>
-
-      {showFailure ? (
-        <div
-          ref={alertRef}
-          role="alert"
-          tabIndex={-1}
-          data-testid="staff-request-error"
-          className="portal-request-form-alert"
-        >
-          <strong>
-            {state.code === "validation"
-              ? "Check the highlighted fields."
-              : conflicted
-                ? "These details do not match the first save attempt."
-                : "The portal could not confirm whether this request was added."}
-          </strong>
+        <div className="portal-request-form-boundary">
+          <strong>Keep this to scheduling.</strong>
           <p>
-            {state.code === "validation"
-              ? "Your other entries are still here. Correct the first highlighted field and try again."
-              : conflicted
-                ? "Check New requests for this patient before starting a fresh form."
-                : "Try again with these same details. To change anything, check New requests first."}
+            Do not enter symptoms, diagnoses, medications, or other medical details. Put those in
+            the clinical record instead.
           </p>
-          {state.code === "validation" ? null : (
-            <Link href="/admin/requests?status=new">Check New requests</Link>
-          )}
         </div>
-      ) : null}
 
-      <ContactDetailsSection
-        draft={draft}
-        errors={errors}
-        pending={pending}
-        draftLocked={draftLocked}
-        onFieldChange={onFieldChange}
-      />
+        {showFailure ? (
+          <div
+            ref={alertRef}
+            role="alert"
+            tabIndex={-1}
+            data-testid="staff-request-error"
+            className="portal-request-form-alert"
+          >
+            <strong>
+              {state.code === "validation"
+                ? "Check the highlighted fields."
+                : conflicted
+                  ? "These details do not match the first save attempt."
+                  : "The portal could not confirm whether this request was added."}
+            </strong>
+            <p>
+              {state.code === "validation"
+                ? "Your other entries are still here. Correct the first highlighted field and try again."
+                : conflicted
+                  ? "Check New requests for this patient before starting a fresh form."
+                  : "Try again with these same details. To change anything, check New requests first."}
+            </p>
+            {state.code === "validation" ? null : (
+              <Link href="/admin/requests?status=new">Check New requests</Link>
+            )}
+          </div>
+        ) : null}
 
-      <AppointmentPreferencesSection
-        draft={draft}
-        errors={errors}
-        pending={pending}
-        draftLocked={draftLocked}
-        onFieldChange={onFieldChange}
-      />
+        <ContactDetailsSection
+          draft={draft}
+          errors={errors}
+          pending={pending}
+          draftLocked={draftLocked}
+          onFieldChange={onFieldChange}
+        />
 
-      <SchedulingNoteSection
-        value={draft.message}
-        error={errors.message}
-        pending={pending}
-        draftLocked={draftLocked}
-        onFieldChange={onFieldChange}
-      />
+        <AppointmentPreferencesSection
+          draft={draft}
+          errors={errors}
+          pending={pending}
+          draftLocked={draftLocked}
+          onFieldChange={onFieldChange}
+        />
 
-      <StaffRequestFormFooter
-        conflicted={conflicted}
-        pending={pending}
-        unavailable={unavailable}
-        returnHref={returnHref}
-        returnLabel={returnLabel}
+        <SchedulingNoteSection
+          value={draft.message}
+          error={errors.message}
+          pending={pending}
+          draftLocked={draftLocked}
+          onFieldChange={onFieldChange}
+        />
+
+        <StaffRequestFormFooter
+          cancelRef={cancelRef}
+          conflicted={conflicted}
+          pending={pending}
+          unavailable={unavailable}
+          returnHref={returnHref}
+          returnLabel={returnLabel}
+          onCancelClick={requestLeave}
+        />
+      </form>
+      <DiscardStaffRequestDialog
+        dialogRef={dialogRef}
+        keepEditingRef={keepEditingRef}
+        onKeepEditing={keepEditing}
+        onDiscard={discardRequest}
+        onClose={restoreCancelFocus}
       />
-    </form>
+    </>
   );
 }

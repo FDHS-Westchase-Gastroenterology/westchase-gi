@@ -381,6 +381,18 @@ test.describe("portal requests operation", () => {
     );
     await panel.getByText("Pick a day…", { exact: true }).click();
     const customDay = page.getByTestId("call-again-day");
+    const dayLabel = page.getByText("Call again on", { exact: false });
+    await expect(dayLabel).toBeVisible();
+    await expect(page.getByLabel("Call again on")).toHaveAttribute("id", "call-again-day");
+    await expect(customDay).toHaveAccessibleName(/Call again on/);
+    await expect(customDay).toHaveAttribute("aria-required", "true");
+    await expect(customDay).toHaveAttribute("aria-describedby", /call-again-day-hint/);
+    await expect(page.locator("#call-again-day-hint")).toContainText(
+      "Required when Pick a day is selected",
+    );
+    await expect(page.locator("#call-again-day-hint")).toContainText("Save stays unavailable");
+    const pickADay = page.locator("#call-again-kind-day");
+    await expect(pickADay).toHaveAttribute("aria-controls", "call-again-day");
     const minimumDay = await customDay.getAttribute("min");
     expect(minimumDay).not.toBeNull();
     if (minimumDay === null) throw new Error("Custom call-again input is missing its minimum day");
@@ -389,8 +401,14 @@ test.describe("portal requests operation", () => {
     const validCustomDay = new Date(minimumDayMs + 2 * 86_400_000).toISOString().slice(0, 10);
     await customDay.fill(beforeMinimum);
     await expect(page.getByTestId("save-workflow")).toBeDisabled();
+    await expect(customDay).toHaveAttribute("aria-invalid", "true");
+    await expect(customDay).toHaveAttribute("aria-describedby", /call-again-error/);
+    await expect(page.getByRole("alert")).toContainText(
+      "Choose today or a day within the next 90 days.",
+    );
     await customDay.fill(validCustomDay);
     await expect(page.getByTestId("save-workflow")).toBeEnabled();
+    await expect(customDay).not.toHaveAttribute("aria-invalid", "true");
     await page.getByTestId("save-workflow").click();
     await expect(feedback).toContainText("resurface");
     const afterReached = await statusOf();
