@@ -4,7 +4,9 @@ import { test, expect } from "@playwright/test";
 import type { Page, APIRequestContext } from "@playwright/test";
 import { z } from "zod";
 
+import { followUpWhenLabel } from "../src/app/admin/(portal)/requests/format";
 import { asJsonObject, asJsonString, jsonSchema } from "../src/lib/json";
+import { resolveFollowUpAt } from "../src/lib/portal/business-time";
 import { intakeResponseSchema } from "../src/lib/portal/contracts";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
@@ -37,6 +39,14 @@ const runId = randomUUID().slice(0, 8);
 function testIp(label: string): string {
   const hex = createHash("sha256").update(`${runId}:${label}`).digest("hex");
   return `2001:db8:${hex.slice(0, 4)}:${hex.slice(4, 8)}::3`;
+}
+
+function expectedReopenHistoryLine(kind: "tomorrow_morning" | "friday"): string {
+  const callAgainAt = resolveFollowUpAt({ kind });
+  if (callAgainAt === null || callAgainAt === "") {
+    throw new Error("Call-again time for the chosen reopen day could not be resolved");
+  }
+  return `Reopened — returned to Contacted — call again ${followUpWhenLabel(callAgainAt)}`;
 }
 
 function payload(label: string) {
@@ -443,9 +453,9 @@ test.describe("portal requests operation", () => {
     expect(reopened?.status).toBe("contacted");
     expect(reopened?.record_handoff_at).toBeNull();
     expect(reopened?.follow_up_at).toBeTruthy();
-    await expect(page.getByTestId("request-history")).toContainText(
-      "Reopened — returned to Contacted — call again",
-    );
+    const newestHistory = page.getByTestId("request-history").locator("li").first();
+    await expect(newestHistory).toContainText(expectedReopenHistoryLine("tomorrow_morning"));
+    await expect(newestHistory).not.toContainText("no call-again day was set");
 
     // Undo restores the exact prior Scheduled snapshot, including its
     // Handoff clock and cleared call-again/closure fields. The original
@@ -461,6 +471,9 @@ test.describe("portal requests operation", () => {
     await page.getByTestId("reopen-controls").getByText("Friday", { exact: true }).click();
     await page.getByTestId("confirm-reopen").click();
     await expect(feedback).toContainText("Reopened — back to Contacted");
+    await expect(page.getByTestId("request-history").locator("li").first()).toContainText(
+      expectedReopenHistoryLine("friday"),
+    );
 
     // Closing records the concrete reason the database needs.
     await panel.getByText("Patient won't schedule", { exact: true }).click();
@@ -586,20 +599,29 @@ test.describe("portal requests operation", () => {
     await page.goto(`/admin/requests/${data.id}`);
 
     const details = page.locator('section[aria-labelledby="request-details-heading"]');
-    const wrappingTargets = [
-      details.getByTestId("request-email-link").locator(".portal-request-contact-copy"),
-      details.getByTestId("request-message"),
-    ];
-    for (const target of wrappingTargets) {
-      const box = await target.evaluate((element) => ({
-        clientWidth: element.clientWidth,
-        scrollWidth: element.scrollWidth,
-      }));
+    await expect(details).toBeVisible();
+    const layout = await details.evaluate((section) => {
+      const emailCopy = section.querySelector(
+        '[data-testid="request-email-link"] .portal-request-contact-copy',
+      );
+      const message = section.querySelector('[data-testid="request-message"]');
+      if (!(emailCopy instanceof HTMLElement) || !(message instanceof HTMLElement)) {
+        throw new Error("Long-content wrapping targets are not ready");
+      }
+      const rect = section.getBoundingClientRect();
+      return {
+        x: rect.x,
+        width: rect.width,
+        wrapping: [
+          { clientWidth: emailCopy.clientWidth, scrollWidth: emailCopy.scrollWidth },
+          { clientWidth: message.clientWidth, scrollWidth: message.scrollWidth },
+        ],
+      };
+    });
+    for (const box of layout.wrapping) {
       expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth + 1);
     }
-    const cardBox = await details.boundingBox();
-    expect(cardBox).not.toBeNull();
-    expect((cardBox?.x ?? 0) + (cardBox?.width ?? 0)).toBeLessThanOrEqual(390);
+    expect(layout.x + layout.width).toBeLessThanOrEqual(390);
 
     await page.emulateMedia({ media: "print" });
     await expect(details).toHaveCSS("overflow", "visible");

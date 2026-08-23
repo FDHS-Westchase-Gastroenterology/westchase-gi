@@ -75,12 +75,14 @@ export async function fetchRequestWorkSurface(
       .maybeSingle(),
     db
       .from("request_transitions")
-      .select("*")
+      .select(
+        "id,from_state,to_state,command,actor_email,occurred_at,reason_code,call_again_at,compensates_transition_id,provenance",
+      )
       .eq("request_id", requestId)
       .order("occurred_at", { ascending: false }),
     db
       .from("request_events")
-      .select("*")
+      .select("id,type,recipient,status,meta,created_at")
       .eq("request_id", requestId)
       .order("created_at", { ascending: false }),
   ]);
