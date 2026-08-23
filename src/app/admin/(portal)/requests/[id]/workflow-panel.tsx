@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useReducer, useRef, useState, useTransition } from "react";
-import type { RefObject } from "react";
 
+import { usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { followUpWhenLabel, STATE_LABELS } from "@/app/admin/(portal)/requests/format";
 import {
   classifyLegacyClosure,
@@ -597,20 +597,17 @@ function ReturnTimeAction({
 function PanelFeedback({
   feedback,
   nextHref,
-  feedbackRef,
 }: Readonly<{
   feedback: Feedback | null;
   nextHref: string | null;
-  feedbackRef: RefObject<HTMLParagraphElement | null>;
 }>) {
   if (feedback === null) return null;
   return (
     <p
-      ref={feedbackRef}
-      tabIndex={-1}
       role={feedback.tone === "success" ? "status" : "alert"}
+      aria-atomic="true"
       data-testid="workflow-feedback"
-      className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-[0.92rem] leading-relaxed font-bold text-[var(--color-ink)] outline-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[var(--color-teal-ink)] ${
+      className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-[0.92rem] leading-relaxed font-bold text-[var(--color-ink)] ${
         feedback.tone === "success" ? "bg-[var(--color-mint)]" : "bg-[var(--color-amber-soft)]"
       }`}
     >
@@ -677,7 +674,12 @@ export function WorkflowPanel({
     callAgainAt,
     undo,
   });
-  const feedbackRef = useRef<HTMLParagraphElement>(null);
+  const {
+    feedback: pageFeedback,
+    publish: publishPageFeedback,
+    dismiss: dismissPageFeedback,
+  } = usePortalFeedback();
+  const currentWorkflowFeedback = pageFeedback?.source === "request-workflow" ? pageFeedback : null;
   // One idempotency key per staff attempt: a retry after an ambiguous
   // Failure replays the same command; changing the input mints a new one.
   const keyRef = useRef<string | null>(null);
@@ -704,8 +706,8 @@ export function WorkflowPanel({
   }, []);
 
   useEffect(() => {
-    if (panel.feedback) feedbackRef.current?.focus();
-  }, [panel.feedback]);
+    if (panel.feedback === null) dismissPageFeedback("request-workflow");
+  }, [dismissPageFeedback, panel.feedback]);
 
   const legal = legalActionsFor(truth.state, {
     legacyReviewRequired: truth.legacyReviewRequired,
@@ -753,15 +755,17 @@ export function WorkflowPanel({
         undo: result.undo,
       });
       freshKey();
+      const text =
+        intent.kind === "undo"
+          ? `Undone — this request is ${STATE_LABELS[result.state]} again.`
+          : successCopy(intent, result);
       dispatch({
         type: "succeeded",
-        text:
-          intent.kind === "undo"
-            ? `Undone — this request is ${STATE_LABELS[result.state]} again.`
-            : successCopy(intent, result),
+        text,
         closedOrBooked:
           intent.kind !== "undo" && (result.state === "booked" || result.state === "closed"),
       });
+      publishPageFeedback({ source: "request-workflow", tone: "status", message: text });
       router.refresh();
       return;
     }
@@ -776,21 +780,26 @@ export function WorkflowPanel({
         });
       }
       freshKey();
+      const text = `Someone else worked this request just now — it is currently ${
+        result.current ? STATE_LABELS[result.current.state] : "changed"
+      }. Nothing was saved, and this page has been brought up to date.`;
       dispatch({
         type: "failed",
-        text: `Someone else worked this request just now — it is currently ${
-          result.current ? STATE_LABELS[result.current.state] : "changed"
-        }. Nothing was saved, and this page has been brought up to date.`,
+        text,
       });
+      publishPageFeedback({ source: "request-workflow", tone: "alert", message: text });
       router.refresh();
       return;
     }
     if (result.code === "illegal_transition") {
       freshKey();
+      const text =
+        "That action is no longer available for this request — it changed since this page loaded. This page has been brought up to date.";
       dispatch({
         type: "failed",
-        text: "That action is no longer available for this request — it changed since this page loaded. This page has been brought up to date.",
+        text,
       });
+      publishPageFeedback({ source: "request-workflow", tone: "alert", message: text });
       router.refresh();
       return;
     }
@@ -804,7 +813,9 @@ export function WorkflowPanel({
     }
     // `unavailable` deliberately keeps the same key: a retry of an
     // Ambiguous failure must replay, not repeat, the command.
-    dispatch({ type: "failed", text: failureCopy(result.code) });
+    const text = failureCopy(result.code);
+    dispatch({ type: "failed", text });
+    publishPageFeedback({ source: "request-workflow", tone: "alert", message: text });
   }
 
   function save() {
@@ -910,7 +921,6 @@ export function WorkflowPanel({
       classify={classify}
       correctCallAgain={correctCallAgain}
       dispatch={dispatch}
-      feedbackRef={feedbackRef}
       inFlight={inFlight}
       legal={legal}
       nextHref={nextHref}
@@ -921,6 +931,7 @@ export function WorkflowPanel({
       save={save}
       saveDisabled={saveDisabled}
       selectedAttempt={selectedAttempt}
+      showFeedback={panel.feedback?.tone === "error" || currentWorkflowFeedback !== null}
       truth={truth}
       undoLatest={undoLatest}
       undoOpen={undoOpen}
@@ -933,7 +944,6 @@ function WorkflowPanelBody({
   classify,
   correctCallAgain,
   dispatch,
-  feedbackRef,
   inFlight,
   legal,
   nextHref,
@@ -944,6 +954,7 @@ function WorkflowPanelBody({
   save,
   saveDisabled,
   selectedAttempt,
+  showFeedback,
   truth,
   undoLatest,
   undoOpen,
@@ -951,7 +962,6 @@ function WorkflowPanelBody({
   classify: () => void;
   correctCallAgain: (choice: Readonly<FollowUpChoice>) => void;
   dispatch: (action: Readonly<PanelAction>) => void;
-  feedbackRef: RefObject<HTMLParagraphElement | null>;
   inFlight: "save" | "reopen" | "set_call_again" | "classify" | "undo" | null;
   legal: LegalActions;
   nextHref: string | null;
@@ -962,6 +972,7 @@ function WorkflowPanelBody({
   save: () => void;
   saveDisabled: boolean;
   selectedAttempt: ContactOutcome | null;
+  showFeedback: boolean;
   truth: Truth;
   undoLatest: () => void;
   undoOpen: UndoWindow | null;
@@ -992,7 +1003,7 @@ function WorkflowPanelBody({
             : ""}
       </p>
 
-      <PanelFeedback feedback={panel.feedback} nextHref={nextHref} feedbackRef={feedbackRef} />
+      <PanelFeedback feedback={showFeedback ? panel.feedback : null} nextHref={nextHref} />
 
       {undoOpen !== null ? (
         <div

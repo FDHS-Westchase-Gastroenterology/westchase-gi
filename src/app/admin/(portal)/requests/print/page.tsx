@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { PortalFeedbackProvider } from "@/app/admin/(portal)/portal-feedback";
 import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import {
   CLOSURE_REASON_LABELS,
@@ -263,7 +264,7 @@ export default async function PrintNewRequestsPage({
   }
 
   return (
-    <>
+    <PortalFeedbackProvider>
       <div className="print-hide">
         <PortalPageHeader
           back={{ href: "/admin", label: "Back to Home" }}
@@ -310,6 +311,6 @@ export default async function PrintNewRequestsPage({
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
-    </>
+    </PortalFeedbackProvider>
   );
 }

@@ -2,8 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { PortalFeedbackProvider } from "@/app/admin/(portal)/portal-feedback";
 import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
-import { ChevronRight, Printer } from "@/components/icons";
+import { ChevronRight } from "@/components/icons";
 import { requireRole } from "@/lib/portal/auth";
 import { waitingSince } from "@/lib/portal/business-time";
 import { REQUEST_STATUSES, STAFF_REQUEST_SOURCE_PATH } from "@/lib/portal/contracts";
@@ -28,6 +29,7 @@ import {
 import { fetchAttentiveOpenRows, fetchClosedRows, OPEN_STATUSES, VIEW_DB_STATUSES } from "./queue";
 import type { QueueRow } from "./queue";
 import { RequestSearchForm } from "./request-search-form";
+import { RequestsOutputActions, RequestsOutputFeedback } from "./requests-output-actions";
 import { StatusBadge } from "./status-badge";
 
 type SearchParams = Promise<{
@@ -332,7 +334,7 @@ export default async function AdminRequestsPage({
     })),
   ];
 
-  return (
+  const content = (
     <section aria-labelledby="requests-heading">
       <PortalPageHeader
         title={<span id="requests-heading">Appointments</span>}
@@ -346,35 +348,22 @@ export default async function AdminRequestsPage({
             >
               Add appointment request
             </Link>
-            {counts.new > 0 ? (
-              <Link
-                href="/admin/requests/print?auto=1"
-                target="_blank"
-                rel="noopener"
-                prefetch={false}
-                aria-label={`Print ${counts.new} new appointment ${
-                  counts.new === 1 ? "request" : "requests"
-                }; opens in a new tab`}
-                className="btn btn-navy min-h-11"
-              >
-                <Printer className="h-4 w-4" />
-                Print new ({counts.new})
-              </Link>
-            ) : null}
-            <a
-              href={requestsHref({
+            <RequestsOutputActions
+              exportHref={requestsHref({
                 path: "/admin/requests/export",
                 search,
                 status: filter,
               })}
-              data-testid="export-csv"
-              className="btn btn-outline min-h-11"
-            >
-              Export CSV
-            </a>
+              filteredTotal={filteredTotal}
+              filterLabel={filter === "all" ? "All" : STATUS_LABELS[filter]}
+              hasSearch={search !== ""}
+              newCount={counts.new}
+            />
           </>
         }
       />
+
+      <RequestsOutputFeedback />
 
       <section className="portal-queue-workbench" aria-label="Appointment request queue">
         <RequestSearchForm filter={filter} filteredTotal={filteredTotal} search={search} />
@@ -467,4 +456,6 @@ export default async function AdminRequestsPage({
       </section>
     </section>
   );
+
+  return <PortalFeedbackProvider>{content}</PortalFeedbackProvider>;
 }

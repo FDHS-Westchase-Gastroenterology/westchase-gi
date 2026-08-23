@@ -212,18 +212,21 @@ function parseCsv(document: string): string[][] {
   return rows;
 }
 
-async function fetchCsv(page: Page, status: string): Promise<CsvFetch> {
-  return page.evaluate(async (selectedStatus) => {
-    const response = await fetch(
-      `/admin/requests/export?status=${encodeURIComponent(selectedStatus)}`,
-    );
-    return {
-      status: response.status,
-      contentType: response.headers.get("content-type") ?? "",
-      contentDisposition: response.headers.get("content-disposition") ?? "",
-      text: await response.text(),
-    };
-  }, status);
+async function fetchCsv(page: Page, status: string, search = ""): Promise<CsvFetch> {
+  return page.evaluate(
+    async ({ selectedStatus, selectedSearch }) => {
+      const params = new URLSearchParams({ status: selectedStatus });
+      if (selectedSearch !== "") params.set("q", selectedSearch);
+      const response = await fetch(`/admin/requests/export?${params.toString()}`);
+      return {
+        status: response.status,
+        contentType: response.headers.get("content-type") ?? "",
+        contentDisposition: response.headers.get("content-disposition") ?? "",
+        text: await response.text(),
+      };
+    },
+    { selectedStatus: status, selectedSearch: search },
+  );
 }
 
 async function sqlCount(status: string): Promise<number> {
@@ -804,6 +807,17 @@ test.describe("portal management server boundaries", () => {
         source_path: "/es/contact",
         status: "contacted",
       },
+      {
+        name: `TEST Export ${runId} UTF-8 José`,
+        phone: "8135550183",
+        email: `portal-export-${runId}-utf8@example.test`,
+        location: "tampa",
+        preferred_time: "afternoon",
+        message: `Café, quoted "mañana"\r\n第二行`,
+        locale: "es",
+        source_path: "/es/appointment",
+        status: "contacted",
+      },
       ...formulaRows,
     ];
     const { data: inserted, error: insertError } = await db
@@ -845,6 +859,7 @@ test.describe("portal management server boundaries", () => {
     );
     expect(parsed[0]).toEqual([...CSV_HEADER]);
     expect(parsed.length - 1).toBe(expectedCount);
+    expect(new Set(parsed.slice(1).map((row) => row[0])).size).toBe(expectedCount);
 
     for (const insertedRow of insertedRows) {
       expect(parsed.some((row) => row[0] === insertedRow.id)).toBe(true);
@@ -865,7 +880,7 @@ test.describe("portal management server boundaries", () => {
       expect(plainRow?.[column]).toBe(value);
     }
     for (const [index, formulaRow] of formulaRows.entries()) {
-      const exported = parsed.find((row) => row[0] === insertedRows[index + 2]?.id);
+      const exported = parsed.find((row) => row[0] === insertedRows[index + 3]?.id);
       for (const [column, value] of [
         [3, formulaRow.name],
         [4, formulaRow.phone],
@@ -902,6 +917,37 @@ test.describe("portal management server boundaries", () => {
     });
     expect(JSON.stringify(exportAudits?.[0].detail)).not.toContain("portal-export-");
 
+    const scopedCsv = await fetchCsv(
+      staffPage,
+      "contacted",
+      `portal-export-${runId}-utf8@example.test`,
+    );
+    expect(scopedCsv.status).toBe(200);
+    expect(scopedCsv.contentType).toContain("text/csv; charset=utf-8");
+    const scopedRows = parseCsv(scopedCsv.text);
+    expect(scopedRows[0]).toEqual([...CSV_HEADER]);
+    expect(scopedRows).toHaveLength(2);
+    expect(scopedRows[1]?.[0]).toBe(insertedRows[2]?.id);
+    expect(scopedRows[1]?.[2]).toBe("contacted");
+    expect(scopedRows[1]?.[3]).toBe(stagedRows[2].name);
+    expect(scopedRows[1]?.[5]).toBe(stagedRows[2].email);
+    expect(scopedRows[1]?.[10]).toBe(stagedRows[2].message);
+
+    const { data: scopedAudits, error: scopedAuditError } = await db
+      .from("audit_log")
+      .select("detail")
+      .eq("action", "requests.export")
+      .eq("actor_email", staffEmail)
+      .order("at", { ascending: false })
+      .limit(1);
+    expect(scopedAuditError).toBeNull();
+    expect(scopedAudits?.[0]?.detail).toMatchObject({
+      row_count: 1,
+      status_filter: "contacted",
+      has_search: true,
+    });
+    expect(JSON.stringify(scopedAudits?.[0]?.detail)).not.toContain("portal-export-");
+
     const invalidFilter = await fetchCsv(staffPage, "not-a-status");
     expect(invalidFilter.status).toBe(400);
 
@@ -921,7 +967,7 @@ test.describe("portal management server boundaries", () => {
       .eq("action", "requests.export")
       .eq("actor_email", staffEmail);
     expect(exportAuditCountError).toBeNull();
-    expect(exportAuditTotal).toBe(1);
+    expect(exportAuditTotal).toBe(2);
   });
 
   test("VAL-ADMIN-019: Recent work renders the audit record in plain language", async () => {
@@ -1446,7 +1492,7 @@ test.describe("portal management server boundaries", () => {
       await expect(adminPage).toHaveURL(/page=5/);
 
       await adminPage.getByTestId("recent-work-clear").click();
-      await expect(adminPage).toHaveURL(/\/admin\/audit$/);
+      await expect(adminPage).toHaveURL(/\/admin\/audit\?page=5$/);
       await expect(adminPage.getByLabel("Search recent work")).toBeFocused();
     } finally {
       for (let from = 0; from < fixtureIds.length; from += 250) {

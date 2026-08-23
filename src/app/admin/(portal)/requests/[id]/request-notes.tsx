@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useCallback, useRef, useState } from "react";
+import { useActionState, useCallback, useEffect, useRef, useState } from "react";
 
+import { usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { addRequestNote } from "@/app/admin/(portal)/requests/actions";
 import type { AddRequestNoteState } from "@/app/admin/(portal)/requests/actions";
 
@@ -28,13 +29,29 @@ export function RequestNotes({
   const [draft, setDraft] = useState("");
   const [feedbackDismissed, setFeedbackDismissed] = useState(false);
   const [feedback, formAction, pending] = useActionState(addRequestNote, INITIAL_ACTION_STATE);
+  const {
+    feedback: pageFeedback,
+    publish: publishPageFeedback,
+    dismiss: dismissPageFeedback,
+  } = usePortalFeedback();
+  const currentNoteFeedback = pageFeedback?.source === "request-note" ? pageFeedback : null;
+  const [handledFeedback, setHandledFeedback] = useState(feedback);
+  if (feedback !== handledFeedback) {
+    setHandledFeedback(feedback);
+    if (feedback.status === "success") setComposerOpen(false);
+  }
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const submitWithMotionRef = useRef(false);
   const canSave = draft.trim().length > 0;
   const hiddenCount = Math.max(notes.length - INITIAL_VISIBLE_NOTES, 0);
-  const saved = feedback.status === "success" && !feedbackDismissed && !pending;
-  const composerVisible = composerOpen && !saved;
+  const saved =
+    feedback.status === "success" && !feedbackDismissed && !pending && currentNoteFeedback !== null;
+  const composerVisible = composerOpen;
+  // An actionable field error belongs to the open draft, not to the shared
+  // Page acknowledgement slot. Keep it attached to the field if staff print
+  // Or trigger another output, then retire it when they edit or close.
+  const showError = feedback.status === "error" && !feedbackDismissed && !pending;
   const focusAddButtonOnSave = useCallback(
     // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
     (feedbackElement: Readonly<HTMLParagraphElement | null>) => {
@@ -45,9 +62,19 @@ export function RequestNotes({
     [],
   );
 
+  useEffect(() => {
+    if (pending || feedbackDismissed || feedback.status === "idle") return;
+    publishPageFeedback({
+      source: "request-note",
+      tone: feedback.status === "error" ? "alert" : "status",
+      message: feedback.message,
+    });
+  }, [feedback, feedbackDismissed, pending, publishPageFeedback]);
+
   function openComposer(event: React.MouseEvent<HTMLButtonElement>) {
     setDraft("");
     setFeedbackDismissed(true);
+    dismissPageFeedback("request-note");
     setComposerMotion(event.detail > 0);
     setComposerOpen(true);
     requestAnimationFrame(() => textareaRef.current?.focus());
@@ -56,6 +83,7 @@ export function RequestNotes({
   function closeComposer(event: React.MouseEvent<HTMLButtonElement>) {
     setDraft("");
     setFeedbackDismissed(true);
+    dismissPageFeedback("request-note");
     setComposerMotion(event.detail > 0);
     setComposerOpen(false);
     requestAnimationFrame(() => addButtonRef.current?.focus());
@@ -176,13 +204,14 @@ export function RequestNotes({
               value={draft}
               disabled={pending}
               aria-describedby={
-                feedback.status === "error" && !feedbackDismissed
-                  ? "request-note-guidance request-note-error"
-                  : "request-note-guidance"
+                showError ? "request-note-guidance request-note-error" : "request-note-guidance"
               }
               onChange={(event) => {
                 setDraft(event.target.value);
-                if (feedback.status === "error") setFeedbackDismissed(true);
+                if (feedback.status === "error") {
+                  setFeedbackDismissed(true);
+                  dismissPageFeedback("request-note");
+                }
               }}
               placeholder="What should the next staff member know?"
               className="mt-2 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 py-3 text-[0.95rem] text-[var(--color-ink)] transition-[border-color,box-shadow] outline-none focus:border-[var(--color-teal-ink)] focus:ring-2 focus:ring-[var(--color-teal-ink)] focus:ring-offset-2 disabled:opacity-60"
@@ -193,7 +222,7 @@ export function RequestNotes({
             >
               Keep medical details in the clinical record.
             </p>
-            {feedback.status === "error" && !feedbackDismissed && !pending ? (
+            {showError ? (
               <p
                 id="request-note-error"
                 role="alert"

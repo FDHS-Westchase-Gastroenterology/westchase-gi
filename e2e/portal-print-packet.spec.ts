@@ -166,9 +166,24 @@ test.describe("new appointment-request print packet", () => {
         `^Print all ${newCount} new appointment ${newCount === 1 ? "request" : "requests"}`,
       ),
     });
+    let packetPopupCount = 0;
+    page.on("popup", () => {
+      packetPopupCount += 1;
+    });
     const popupPromise = page.waitForEvent("popup");
-    await printLink.click();
+    await printLink.focus();
+    await printLink.evaluate((link) => {
+      if (!(link instanceof HTMLAnchorElement)) throw new Error("expected packet link");
+      link.click();
+      link.click();
+    });
     const printPage = await popupPromise;
+    await expect(page.getByTestId("home-output-feedback")).toHaveText(
+      "Print dialog is opening in a new tab for the New-request packet.",
+    );
+    await expect(printLink).toBeFocused();
+    await expect(printLink).toHaveAttribute("aria-disabled", "true");
+    await expect.poll(() => packetPopupCount).toBe(1);
 
     await expect(
       printPage.getByRole("heading", {
@@ -190,10 +205,26 @@ test.describe("new appointment-request print packet", () => {
       window.dispatchEvent(new Event("test-release-print-layout"));
     });
     await expect(printPage.locator("html")).toHaveAttribute("data-test-packet-print-calls", "1");
+    await expect(printPage.getByTestId("print-packet-feedback")).toHaveText(
+      "Print dialog is opening for this packet.",
+    );
 
     const sheets = printPage.getByTestId("print-request-sheet");
     await expect(sheets).toHaveCount(newCount ?? 0);
     const sheetText = await sheets.allTextContents();
+    const packetCount = newCount ?? 0;
+    expect(await sheets.locator(".portal-print-sheet-header strong").allTextContents()).toEqual(
+      Array.from({ length: packetCount }, (_, index) => `${index + 1} of ${packetCount}`),
+    );
+    const preparedLabels = await sheets
+      .locator(".portal-print-sheet-header span")
+      .allTextContents();
+    expect(preparedLabels).toHaveLength(packetCount);
+    expect(new Set(preparedLabels).size).toBe(1);
+    expect(preparedLabels[0]).toMatch(/^Prepared .+/);
+    expect(await sheets.locator(".portal-paper-lines p:first-child").allTextContents()).toEqual(
+      Array.from({ length: packetCount }, () => "Assigned to"),
+    );
     const olderIndex = sheetText.findIndex((text) => text.includes(older.name));
     const newerIndex = sheetText.findIndex((text) => text.includes(newer.name));
     expect(olderIndex).toBeGreaterThanOrEqual(0);
@@ -248,12 +279,24 @@ test.describe("new appointment-request print packet", () => {
     );
     expect(packetPdf.getPageCount()).toBe(newCount);
     await printPage.emulateMedia({ media: "screen" });
-    await printPage
-      .getByRole("button", {
-        name: `Print ${newCount} ${newCount === 1 ? "request" : "requests"}`,
-      })
-      .click();
+    await printPage.evaluate(() => window.dispatchEvent(new Event("afterprint")));
+    const packetButton = printPage.getByRole("button", {
+      name: `Print ${newCount} ${newCount === 1 ? "request" : "requests"}`,
+    });
+    await packetButton.focus();
+    await packetButton.evaluate((button) => {
+      if (!(button instanceof HTMLButtonElement)) throw new Error("expected packet button");
+      button.click();
+      button.click();
+    });
     await expect(printPage.locator("html")).toHaveAttribute("data-test-packet-print-calls", "2");
+    await expect(printPage.getByTestId("print-packet-feedback")).toHaveText(
+      "Print dialog is opening for this packet.",
+    );
+    await expect(packetButton).toBeFocused();
+    await expect(packetButton).toHaveAttribute("aria-disabled", "true");
+    await printPage.evaluate(() => window.dispatchEvent(new Event("afterprint")));
+    await expect(packetButton).not.toHaveAttribute("aria-disabled", "true");
     await expect(printPage.getByRole("link", { name: "Open New requests" })).toHaveAttribute(
       "href",
       "/admin/requests?status=new",

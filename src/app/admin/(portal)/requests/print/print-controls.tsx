@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
+import { PortalFeedbackMessage, usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { Printer } from "@/components/icons";
+import { useOutputGuard } from "@/components/output-feedback";
 
 async function afterNextPaint(): Promise<void> {
   return new Promise((resolve) => {
@@ -19,6 +21,21 @@ export function PrintPacketControls({
   count,
 }: Readonly<{ autoStart: boolean; count: number }>) {
   const started = useRef(false);
+  const { publish } = usePortalFeedback();
+  const { begin, locked } = useOutputGuard({ releaseOnAfterPrint: true });
+
+  const printPacket = useCallback((): void => {
+    if (!begin()) return;
+    started.current = true;
+    publish({
+      source: "print-packet",
+      tone: "status",
+      message: "Print dialog is opening for this packet.",
+    });
+    window.requestAnimationFrame(() => {
+      window.print();
+    });
+  }, [begin, publish]);
 
   useEffect(() => {
     let cancelled = false;
@@ -29,8 +46,7 @@ export function PrintPacketControls({
       }
       await afterNextPaint();
       if (cancelled || started.current) return;
-      started.current = true;
-      window.print();
+      printPacket();
     }
 
     if (autoStart && !started.current) {
@@ -40,21 +56,22 @@ export function PrintPacketControls({
     return () => {
       cancelled = true;
     };
-  }, [autoStart]);
+  }, [autoStart, printPacket]);
 
   return (
     <div className="portal-print-controls print-hide">
       <button
         type="button"
+        aria-disabled={locked || undefined}
         onClick={() => {
-          started.current = true;
-          window.print();
+          printPacket();
         }}
-        className="btn btn-navy min-h-11"
+        className="btn btn-navy min-h-11 aria-disabled:pointer-events-none aria-disabled:opacity-60"
       >
         <Printer className="h-[1.05rem] w-[1.05rem]" />
         Print {count} {count === 1 ? "request" : "requests"}
       </button>
+      <PortalFeedbackMessage source="print-packet" testId="print-packet-feedback" />
       <p>
         Printing creates a paper copy only. It does not mark any appointment request as contacted or
         assign it to a staff member.

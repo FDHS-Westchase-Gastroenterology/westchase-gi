@@ -19,8 +19,10 @@ import {
   oldestNewRequestAction,
 } from "@/lib/portal/staff-language";
 
+import { PortalFeedbackMessage, PortalFeedbackProvider } from "./portal-feedback";
 import { PortalPageHeader } from "./portal-page-header";
 import { formatReceived } from "./requests/format";
+import { NewRequestPacketLink } from "./requests/requests-output-actions";
 
 interface HomeTask {
   href: string;
@@ -111,7 +113,7 @@ export function HomeWorkbench({
   const newViewHref = NEW_REQUESTS_HREF;
   const oldestAction = oldestNewRequestAction({ newCount, oldestRequestId });
 
-  return (
+  const content = (
     <section aria-labelledby="home-heading">
       <PortalPageHeader
         title={
@@ -143,6 +145,8 @@ export function HomeWorkbench({
       />
 
       {announcements}
+
+      <PortalFeedbackMessage source="requests-output" testId="home-output-feedback" />
 
       <div className="portal-home-layout">
         <section
@@ -220,19 +224,14 @@ export function HomeWorkbench({
                         {oldestAction.label}
                       </Link>
                     ) : null}
-                    <Link
-                      href="/admin/requests/print?auto=1"
-                      target="_blank"
-                      rel="noopener"
-                      prefetch={false}
-                      className="btn btn-outline min-h-11"
-                      aria-label={`Print all ${newCount} new appointment ${
+                    <NewRequestPacketLink
+                      ariaLabel={`Print all ${newCount} new appointment ${
                         newCount === 1 ? "request" : "requests"
                       }; opens in a new tab`}
-                    >
-                      <Printer className="h-4 w-4" />
-                      <span data-testid="print-new-count">Print all {newCount}</span>
-                    </Link>
+                      className="btn btn-outline min-h-11"
+                      countTestId="print-new-count"
+                      label={`Print all ${newCount}`}
+                    />
                   </>
                 ) : (
                   <>
@@ -349,4 +348,6 @@ export function HomeWorkbench({
       </div>
     </section>
   );
+
+  return <PortalFeedbackProvider>{content}</PortalFeedbackProvider>;
 }

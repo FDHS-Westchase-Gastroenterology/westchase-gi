@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { PortalFeedbackProvider } from "@/app/admin/(portal)/portal-feedback";
 import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import {
   CLOSURE_REASON_LABELS,
@@ -21,8 +22,7 @@ import {
   OPEN_STATUSES,
 } from "@/app/admin/(portal)/requests/queue";
 import { StatusBadge } from "@/app/admin/(portal)/requests/status-badge";
-import { Check, Clock, Mail, MapPin, MessageSquare, Phone } from "@/components/icons";
-import { PrintButton } from "@/components/PrintButton";
+import { Clock, Mail, MapPin, MessageSquare, Phone } from "@/components/icons";
 import { requireRole } from "@/lib/portal/auth";
 import { isMailbox, REQUEST_STATUSES } from "@/lib/portal/contracts";
 import type { RequestStatus } from "@/lib/portal/contracts";
@@ -32,6 +32,11 @@ import { displayNameOrEmail, fetchStaffNameMap } from "@/lib/portal/staff-identi
 import type { HistoryEntry } from "@/lib/portal/workflow/contracts";
 import { fetchRequestWorkSurface } from "@/lib/portal/workflow/reads";
 
+import {
+  RequestPrintButton,
+  RequestPrintFeedback,
+  StaffRequestCreatedAcknowledgement,
+} from "./request-current-feedback";
 import { RequestNotes } from "./request-notes";
 import type { RequestNoteView } from "./request-notes";
 import { WorkflowPanel } from "./workflow-panel";
@@ -298,7 +303,7 @@ export default async function RequestDetailPage({
     if (line !== null) historyLines.push(line);
   }
 
-  return (
+  const content = (
     <section aria-labelledby="request-heading" className="request-detail-print">
       <div className="hidden border-b-2 border-black pb-3 print:block">
         <p className="text-[15pt] font-bold">Westchase Gastroenterology</p>
@@ -366,20 +371,13 @@ export default async function RequestDetailPage({
               </span>
             ) : null}
             <StatusBadge status={presentationStatus(surface.state)} />
-            <PrintButton label="Print request" />
+            <RequestPrintButton />
           </>
         }
       />
 
-      {justCreated ? (
-        <div role="status" data-testid="staff-request-created" className="portal-request-created">
-          <Check className="h-5 w-5" />
-          <div>
-            <strong>Appointment request added to New.</strong>
-            <p>No notification email was sent. The request is ready for staff follow-up below.</p>
-          </div>
-        </div>
-      ) : null}
+      <StaffRequestCreatedAcknowledgement />
+      <RequestPrintFeedback />
 
       <div className="portal-request-layout">
         <section
@@ -535,5 +533,22 @@ export default async function RequestDetailPage({
         </section>
       </div>
     </section>
+  );
+
+  return (
+    <PortalFeedbackProvider
+      key={row.id}
+      initialFeedback={
+        justCreated
+          ? {
+              source: "request-created",
+              tone: "status",
+              message: "Appointment request added to New.",
+            }
+          : null
+      }
+    >
+      {content}
+    </PortalFeedbackProvider>
   );
 }

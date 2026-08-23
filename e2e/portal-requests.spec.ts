@@ -153,7 +153,7 @@ test.describe("portal requests operation", () => {
       await form.locator("#staff-request-time").selectOption("afternoon");
       await page.getByTestId("submit-staff-request").click();
 
-      await expect(page).toHaveURL(/\/admin\/requests\/[0-9a-f-]+\?created=1$/, {
+      await expect(page).toHaveURL(/\/admin\/requests\/[0-9a-f-]+$/, {
         timeout: 15_000,
       });
       requestId = /\/admin\/requests\/([0-9a-f-]+)/.exec(page.url())?.[1] ?? null;
@@ -165,6 +165,7 @@ test.describe("portal requests operation", () => {
       await expect(page.getByTestId("staff-request-created")).toContainText(
         "No notification email was sent.",
       );
+      expect(new URL(page.url()).searchParams.has("created")).toBe(false);
       await expect(page.getByTestId("request-detail-name")).toHaveText(patientName);
       await expect(page.getByTestId("request-intake-meta")).toContainText("Added by staff");
       await expect(page.getByTestId("request-history")).toContainText(
@@ -229,6 +230,81 @@ test.describe("portal requests operation", () => {
         .single();
       expect(receiptError).toBeNull();
       expect(receipt).toMatchObject({ idempotency_key: originalKey, request_id: requestId });
+
+      // The acknowledgement consumes only its own query flag. Queue scope
+      // Remains a valid deep link, and the banner survives this first paint
+      // But not the next note or workflow result.
+      await page.goto(
+        `/admin/requests/${requestId!}?status=new&q=deep-link-check&page=2&created=1`,
+      );
+      await expect(page).toHaveURL(
+        new RegExp(`/admin/requests/${requestId!}\\?status=new&q=deep-link-check&page=2$`),
+      );
+      await expect(page.getByTestId("staff-request-created")).toBeVisible();
+
+      const notesSection = page.getByTestId("request-notes");
+      await notesSection.getByRole("button", { name: "Add note", exact: true }).click();
+      const noteField = notesSection.getByLabel("Note", { exact: true });
+
+      // A recoverable field error belongs to the draft. A later output status
+      // May coexist with it, but must not detach or erase its recovery text.
+      await noteField.fill("   ");
+      await notesSection.locator("form").evaluate((form) => {
+        if (!(form instanceof HTMLFormElement)) throw new Error("Expected the note form");
+        form.requestSubmit();
+      });
+      const noteError = notesSection.getByTestId("request-note-feedback");
+      await expect(noteError).toContainText("Your note is still here");
+      await expect(noteField).toHaveAttribute("aria-describedby", /request-note-error/);
+      await page.evaluate(() => {
+        window.print = () => {
+          document.documentElement.dataset.testRequestPrintCalls = String(
+            Number(document.documentElement.dataset.testRequestPrintCalls ?? "0") + 1,
+          );
+        };
+      });
+      const requestPrint = page.getByRole("button", { name: "Print request" });
+      await requestPrint.click();
+      await expect(page.getByTestId("request-print-feedback")).toHaveText(
+        "Print dialog is opening for this request.",
+      );
+      await expect(requestPrint).toBeFocused();
+      await expect(noteError).toContainText("Your note is still here");
+      await expect(noteField).toHaveAttribute("aria-describedby", /request-note-error/);
+
+      await noteField.fill("TEST creation acknowledgement replacement note.");
+      await expect(noteError).toHaveCount(0);
+      await expect(noteField).not.toHaveAttribute("aria-describedby", /request-note-error/);
+      await notesSection.getByRole("button", { name: "Save note" }).click();
+      await expect(notesSection.getByTestId("request-note-feedback")).toHaveText("Note added.");
+      await expect(notesSection.getByRole("button", { name: "Add note" })).toBeFocused();
+      await expect(page.getByTestId("staff-request-created")).toHaveCount(0);
+
+      // Dismissing the newer note result must not resurrect the consumed
+      // Creation acknowledgement underneath it.
+      await notesSection.getByRole("button", { name: "Add note" }).click();
+      await expect(notesSection.getByLabel("Note", { exact: true })).toBeFocused();
+      await expect(page.getByTestId("staff-request-created")).toHaveCount(0);
+      await notesSection.getByRole("button", { name: "Cancel" }).click();
+      await expect(notesSection.getByRole("button", { name: "Add note" })).toBeFocused();
+
+      const workflowPanel = page.getByTestId("workflow-panel");
+      await workflowPanel.getByText("Left a voicemail — call again", { exact: true }).click();
+      await workflowPanel.getByText("Tomorrow morning", { exact: true }).click();
+      await page.getByTestId("save-workflow").click();
+      await expect(page.getByTestId("workflow-feedback")).toContainText("Saved");
+      await expect(page.getByTestId("workflow-feedback")).not.toBeFocused();
+      await expect(notesSection.getByTestId("request-note-feedback")).toHaveCount(0);
+      await expect(page.getByTestId("staff-request-created")).toHaveCount(0);
+      await expect(notesSection.getByLabel("Note", { exact: true })).toBeHidden();
+      await expect(notesSection.getByRole("button", { name: "Add note" })).toBeVisible();
+
+      await page.getByTestId("undo-latest").click();
+      await expect(page.getByTestId("workflow-feedback")).toContainText(
+        "Undone — this request is New again.",
+      );
+      await expect(notesSection.getByTestId("request-note-feedback")).toHaveCount(0);
+      await expect(page.getByTestId("staff-request-created")).toHaveCount(0);
 
       // The human audit view names the work in plain language — never the
       // Raw request.create action identifier.
@@ -843,6 +919,34 @@ test.describe("portal requests operation", () => {
         "href",
         `/admin/requests/export?${matchQuery}`,
       );
+      const exportCsv = page.getByTestId("export-csv");
+      await expect(exportCsv).toHaveAccessibleDescription(
+        "Exports all 1 result in the current search and All view.",
+      );
+      const search = `TEST Search ${token} match`;
+      let matchingExportDownloads = 0;
+      page.on("download", (download) => {
+        const url = new URL(download.url());
+        if (url.pathname === "/admin/requests/export" && url.searchParams.get("q") === search) {
+          matchingExportDownloads += 1;
+        }
+      });
+      const downloadPromise = page.waitForEvent("download");
+      await exportCsv.focus();
+      await exportCsv.evaluate((element) => {
+        if (!(element instanceof HTMLAnchorElement)) throw new Error("expected export link");
+        element.click();
+        element.click();
+      });
+      const downloadedCsv = await downloadPromise;
+      await expect(page.getByTestId("requests-output-feedback")).toHaveText(
+        "CSV download started for 1 current result.",
+      );
+      await expect(exportCsv).toBeFocused();
+      await expect(exportCsv).toHaveAttribute("aria-disabled", "true");
+      await expect.poll(() => matchingExportDownloads).toBe(1);
+      await expect(exportCsv).not.toHaveAttribute("aria-disabled", "true", { timeout: 3_000 });
+      await downloadedCsv.delete();
 
       await page.goto(`/admin/requests?${matchQuery}&page=9`);
       await expect
@@ -872,6 +976,9 @@ test.describe("portal requests operation", () => {
         scheduled: 0,
         closed: 1,
       });
+      await expect(exportCsv).toHaveAccessibleDescription(
+        "Exports all 0 results in the current search and New filter.",
+      );
 
       await page.locator('[data-filter="all"]').click();
       await expect(page.getByLabel("Search requests")).toHaveValue(`TEST Search ${token} match`);
@@ -1222,11 +1329,40 @@ test.describe("portal requests operation", () => {
     // The explicit print action invokes the browser print surface.
     await page.evaluate(() => {
       window.print = () => {
-        document.documentElement.dataset.testRequestPrint = "called";
+        const root = document.documentElement;
+        root.dataset.testRequestPrintCalls = String(
+          Number(root.dataset.testRequestPrintCalls ?? "0") + 1,
+        );
       };
     });
-    await page.getByRole("button", { name: "Print request" }).click();
-    await expect(page.locator("html")).toHaveAttribute("data-test-request-print", "called");
+    const { data: beforePrint, error: beforePrintError } = await db
+      .from("requests")
+      .select("status, version, follow_up_at, closure_reason, closed_at, record_handoff_at")
+      .eq("id", id)
+      .single();
+    expect(beforePrintError).toBeNull();
+    const printRequest = page.getByTestId("print-request");
+    await printRequest.focus();
+    await printRequest.evaluate((button) => {
+      if (!(button instanceof HTMLButtonElement)) throw new Error("expected print button");
+      button.click();
+      button.click();
+    });
+    await expect(page.locator("html")).toHaveAttribute("data-test-request-print-calls", "1");
+    await expect(page.getByTestId("request-print-feedback")).toHaveText(
+      "Print dialog is opening for this request.",
+    );
+    await expect(printRequest).toBeFocused();
+    await expect(printRequest).toHaveAttribute("aria-disabled", "true");
+    await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
+    await expect(printRequest).not.toHaveAttribute("aria-disabled", "true");
+    const { data: afterPrint, error: afterPrintError } = await db
+      .from("requests")
+      .select("status, version, follow_up_at, closure_reason, closed_at, record_handoff_at")
+      .eq("id", id)
+      .single();
+    expect(afterPrintError).toBeNull();
+    expect(afterPrint).toEqual(beforePrint);
 
     // Print keeps the complete patient handoff and removes portal controls
     // And delivery diagnostics. The request root must be allowed to paginate.
