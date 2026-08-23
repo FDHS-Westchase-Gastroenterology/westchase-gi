@@ -383,7 +383,7 @@ test.describe("portal requests operation", () => {
     const customDay = page.getByTestId("call-again-day");
     const dayLabel = page.getByText("Call again on", { exact: false });
     await expect(dayLabel).toBeVisible();
-    await expect(page.getByLabel("Call again on")).toHaveAttribute("id", "call-again-day");
+    await expect(dayLabel).toHaveAttribute("for", "call-again-day");
     await expect(customDay).toHaveAccessibleName(/Call again on/);
     await expect(customDay).toHaveAttribute("aria-required", "true");
     await expect(customDay).toHaveAttribute("aria-describedby", /call-again-day-hint/);
