@@ -7,20 +7,56 @@ import {
 } from "@/app/admin/(portal)/settings/actions";
 import { Check } from "@/components/icons";
 import { requireRole } from "@/lib/portal/auth";
-import { CANONICAL_REPOSITORY } from "@/lib/portal/integrations";
 import { getMaintainerAccessModel } from "@/lib/portal/maintainers";
+import {
+  MAINTAINER_DISCLOSURE_INTRO,
+  MAINTAINER_DISCLOSURE_SUMMARY,
+  MAINTAINER_GRANT_ACCESS,
+  PROVIDER_LINK_REL,
+  PROVIDER_LINK_TARGET,
+  REVIEW_FLYERS_HREF,
+  STAFF_PRACTICE_CONTROLS,
+  STAFF_REQUEST_CHANGE,
+  STAFF_SECTION_HEADINGS,
+  STAFF_WEBSITE_DOES,
+  WEBSITE_CAPABILITIES,
+  WEBSITE_CHANGE_HREF,
+  WEBSITE_MAINTAINER_SERVICES,
+  websiteAttentionItems,
+  websiteProviderLink,
+} from "@/lib/portal/website-custody";
 
 import { MaintainerAccess } from "./maintainer-access";
 
-const CAPABILITIES = [
-  "Patient-facing website",
-  "Authenticated staff portal",
-  "Review-flyer printing",
-] as const;
+const SECTION_LABEL =
+  "text-[0.82rem] font-bold tracking-[0.06em] text-[var(--color-muted)] uppercase";
+const SECTION_BODY = "mt-3 max-w-[70ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]";
+const PROVIDER_LINK_CLASS =
+  "mt-1 flex min-h-11 w-fit items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2";
+
+function ProviderLink({
+  id,
+}: Readonly<{
+  id: "github" | "vercel" | "supabase" | "porkbun";
+}>) {
+  const link = websiteProviderLink(id);
+  return (
+    <a
+      data-testid={link.testId}
+      href={link.href}
+      target={PROVIDER_LINK_TARGET}
+      rel={PROVIDER_LINK_REL}
+      className={PROVIDER_LINK_CLASS}
+    >
+      {link.name}
+    </a>
+  );
+}
 
 export default async function AdminSettingsSoftwarePage() {
   const session = await requireRole("staff");
   const model = await getMaintainerAccessModel();
+  const attentionItems = websiteAttentionItems(model.state);
 
   return (
     <section
@@ -28,129 +64,125 @@ export default async function AdminSettingsSoftwarePage() {
       aria-labelledby="website-heading"
       className="portal-panel p-6 sm:p-8"
     >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+      <div data-testid="website-staff-layer">
+        <div className="flex flex-wrap items-start justify-between gap-4">
           <h2
             id="website-heading"
             className="text-[1.3rem] leading-tight font-black text-[var(--color-ink)]"
           >
             Clinic website
           </h2>
-          <p className="mt-2 max-w-[62ch] text-[0.92rem] leading-relaxed text-[var(--color-body)]">
-            This is the practice&rsquo;s own software — the public website patients visit and the
-            private portal the staff works in. It was built for Westchase GI and belongs to
-            Westchase GI, and this page shows where everything lives and how the practice stays in
-            control.
-          </p>
+          <Link
+            href={WEBSITE_CHANGE_HREF}
+            data-testid="request-website-change"
+            className="btn btn-navy"
+          >
+            Request a website change
+          </Link>
         </div>
-        <Link href="/admin/review-flyers" className="btn btn-navy">
-          Print review flyers
-        </Link>
-      </div>
 
-      <div className="mt-6 grid gap-6 border-t border-[var(--color-line)] pt-6 md:grid-cols-[minmax(14rem,0.65fr)_minmax(0,1.35fr)] md:gap-10">
-        <div>
-          <h3 className="text-[0.82rem] font-bold tracking-[0.06em] text-[var(--color-muted)] uppercase">
-            Included capabilities
+        <section className="mt-6" aria-labelledby="what-website-does-heading">
+          <h3 id="what-website-does-heading" className={SECTION_LABEL}>
+            {STAFF_SECTION_HEADINGS["what-website-does"]}
           </h3>
+          <p className={SECTION_BODY}>{STAFF_WEBSITE_DOES}</p>
           <ul className="mt-3 space-y-2 text-[0.92rem] text-[var(--color-ink)]">
-            {CAPABILITIES.map((capability) => (
+            {WEBSITE_CAPABILITIES.map((capability) => (
               <li key={capability} className="flex gap-2.5">
-                <Check className="mt-0.5 h-4 w-4 flex-none text-[var(--color-teal-ink)]" />
+                <Check
+                  aria-hidden="true"
+                  className="mt-0.5 h-4 w-4 flex-none text-[var(--color-teal-ink)]"
+                />
                 {capability}
               </li>
             ))}
           </ul>
-        </div>
+        </section>
 
-        <div>
-          <h3 className="text-[0.82rem] font-bold tracking-[0.06em] text-[var(--color-muted)] uppercase">
-            Who owns the website
+        <section className="mt-6" aria-labelledby="what-practice-controls-heading">
+          <h3 id="what-practice-controls-heading" className={SECTION_LABEL}>
+            {STAFF_SECTION_HEADINGS["what-practice-controls"]}
           </h3>
-          <p className="mt-3 max-w-[62ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-            Westchase GI controls this website&apos;s domain, source repository, and deployment.
-            Database and email account custody is documented separately, so this page is not proof
-            that the practice holds every service credential.
-          </p>
-          <dl className="mt-3 max-w-[62ch] space-y-3 text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-            <div>
-              <dt className="font-bold text-[var(--color-ink)]">Website files — GitHub</dt>
-              <dd>
-                GitHub safeguards the files used to build and update the website.
-                <a
-                  data-testid="canonical-repository"
-                  href={`https://github.com/${CANONICAL_REPOSITORY}`}
-                  className="mt-1 flex min-h-11 w-fit items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-                >
-                  Open the website files in GitHub
-                </a>
-              </dd>
-            </div>
-            <div>
-              <dt className="font-bold text-[var(--color-ink)]">Live website — Vercel</dt>
-              <dd>
-                Vercel keeps the website up and running around the clock for patients and staff.
-                <a
-                  href="https://vercel.com/login"
-                  className="mt-1 flex min-h-11 w-fit items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-                >
-                  Sign in to Vercel
-                </a>
-              </dd>
-            </div>
-            <div>
-              <dt className="font-bold text-[var(--color-ink)]">
-                Appointment requests and staff access — Supabase
-              </dt>
-              <dd>
-                Supabase holds the appointment requests shown in this portal and handles staff
-                sign-in.
-                <a
-                  href="https://supabase.com/dashboard/sign-in"
-                  className="mt-1 flex min-h-11 w-fit items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-                >
-                  Sign in to Supabase
-                </a>
-              </dd>
-            </div>
-            <div>
-              <dt className="font-bold text-[var(--color-ink)]">Website address — Porkbun</dt>
-              <dd>
-                Porkbun currently holds the westchasegi.com registration and serves its DNS.
-                Auto-renew and WHOIS privacy still need to be confirmed in the clinic account.
-                <a
-                  href="https://porkbun.com/account/login"
-                  className="mt-1 flex min-h-11 w-fit items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-                >
-                  Sign in to Porkbun
-                </a>
-              </dd>
-            </div>
-          </dl>
-          <p className="mt-3 max-w-[62ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
-            The practice can grant a new maintainer access to GitHub, Vercel, and Porkbun now. After
-            the Supabase project transfer and Resend handoff are documented, it can grant those
-            services too. The application does not need to be rebuilt, and the Supabase transfer
-            requires no data migration.
-          </p>
-        </div>
+          <p className={SECTION_BODY}>{STAFF_PRACTICE_CONTROLS}</p>
+        </section>
+
+        <section
+          className="mt-6"
+          aria-labelledby="still-needs-attention-heading"
+          data-testid="website-attention"
+        >
+          <h3 id="still-needs-attention-heading" className={SECTION_LABEL}>
+            {STAFF_SECTION_HEADINGS["still-needs-attention"]}
+          </h3>
+          <div className="mt-3 rounded-[var(--radius)] border border-[var(--color-line-2)] bg-[var(--color-amber-soft)] p-4">
+            <ul className="max-w-[70ch] list-disc space-y-2 pl-5 text-[0.9rem] leading-relaxed text-[var(--color-ink)]">
+              {attentionItems.map((item) => (
+                <li key={item.id}>{item.text}</li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        <section className="mt-6" aria-labelledby="how-to-request-change-heading">
+          <h3 id="how-to-request-change-heading" className={SECTION_LABEL}>
+            {STAFF_SECTION_HEADINGS["how-to-request-change"]}
+          </h3>
+          <p className={SECTION_BODY}>{STAFF_REQUEST_CHANGE}</p>
+          <Link
+            href={REVIEW_FLYERS_HREF}
+            className="mt-4 flex min-h-11 w-fit items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+          >
+            Print review flyers
+          </Link>
+        </section>
       </div>
 
-      <div className="mt-6 border-t border-[var(--color-line)] pt-6">
-        <MaintainerAccess
-          model={model}
-          isAdmin={session.role === "admin"}
-          actions={
-            session.role === "admin"
-              ? {
-                  inviteMaintainer,
-                  cancelMaintainerInvite,
-                  revokeMaintainer,
-                }
-              : undefined
-          }
-        />
-      </div>
+      <details
+        data-testid="maintainer-details"
+        className="website-maintainer-details mt-8 border-t border-[var(--color-line)] pt-6"
+      >
+        <summary className="min-h-11 cursor-pointer py-2 text-left font-bold text-[var(--color-ink)]">
+          {MAINTAINER_DISCLOSURE_SUMMARY}
+        </summary>
+
+        <div className="mt-4">
+          <p className="max-w-[70ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
+            {MAINTAINER_DISCLOSURE_INTRO}
+          </p>
+
+          <dl className="mt-5 max-w-[70ch] space-y-4 text-[0.9rem] leading-relaxed text-[var(--color-body)]">
+            {WEBSITE_MAINTAINER_SERVICES.map((service) => (
+              <div key={service.id}>
+                <dt className="font-bold text-[var(--color-ink)]">{service.title}</dt>
+                <dd>
+                  {service.body}
+                  {service.linkId !== null ? <ProviderLink id={service.linkId} /> : null}
+                </dd>
+              </div>
+            ))}
+          </dl>
+
+          <p className="mt-5 max-w-[70ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]">
+            {MAINTAINER_GRANT_ACCESS}
+          </p>
+
+          <div className="mt-6 border-t border-[var(--color-line)] pt-6">
+            <MaintainerAccess
+              model={model}
+              isAdmin={session.role === "admin"}
+              actions={
+                session.role === "admin"
+                  ? {
+                      inviteMaintainer,
+                      cancelMaintainerInvite,
+                      revokeMaintainer,
+                    }
+                  : undefined
+              }
+            />
+          </div>
+        </div>
+      </details>
     </section>
   );
 }

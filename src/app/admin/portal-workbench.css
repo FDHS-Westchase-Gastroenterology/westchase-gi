@@ -11,6 +11,20 @@
     outline-offset: 3px;
   }
 
+  /* Visual-only prefix. The summary's accessible name stays unchanged. */
+  .website-maintainer-details > summary::before {
+    content: "Show ";
+  }
+
+  .website-maintainer-details[open] > summary::before {
+    content: "Hide ";
+  }
+
+  .website-maintainer-details > summary:focus-visible {
+    outline: 3px solid var(--color-amber);
+    outline-offset: 3px;
+  }
+
   .portal-workspace {
     min-height: 100dvh;
     --portal-surface-muted: oklch(0.975 0.006 220);
