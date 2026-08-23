@@ -36,19 +36,18 @@ export interface RecentWorkContext {
   now: Date;
 }
 
-export type RecentWorkType = "all" | "requests" | "people" | "output" | "site" | "other";
+export type RecentWorkType = "all" | "requests" | "people" | "output" | "site";
 
 /**
  * The staff-facing work groups. Labels are plain language — never storage
- * codes. "Everything else" keeps unknown actions reachable through the
- * filter so no audit row is silently hidden from staff.
+ * codes. Unknown technical actions stay in the Technical record, not in a
+ * catch-all Recent-work group.
  */
 export const WORK_TYPE_LABELS = {
   requests: "Appointment requests",
   people: "Notifications & staff",
   output: "Printing & exports",
   site: "Website & access",
-  other: "Everything else",
 } as const satisfies Record<Exclude<RecentWorkType, "all">, string>;
 
 export const WORK_TYPE_FILTERS = [
@@ -57,7 +56,6 @@ export const WORK_TYPE_FILTERS = [
   "people",
   "output",
   "site",
-  "other",
 ] as const satisfies readonly RecentWorkType[];
 
 export interface RecentWorkItem {
@@ -74,6 +72,10 @@ export interface RecentWorkItem {
   // Storage action code. Used only for deterministic grouping; the human
   // View renders the sentence, never this value.
   readonly action: string;
+  // Index in the authoritative newest-first audit window. Compaction
+  // Requires consecutive source positions so a filtered-out or intervening
+  // Row cannot create a fake adjacent run.
+  readonly sourceIndex: number;
 }
 
 const NY_DAY = new Intl.DateTimeFormat("en-CA", {
@@ -110,15 +112,15 @@ function detailObject(detail: Json): JsonObject {
 
 /**
  * Work-group classification for the staff-facing filter. Prefix rules are
- * checked in this exact order so classification is deterministic; anything
- * unknown lands in "other" rather than being dropped.
+ * checked in this exact order so classification is deterministic. Unknown
+ * actions return null and stay in the Technical record.
  */
-export function classifyWorkType(action: string): Exclude<RecentWorkType, "all"> {
+export function classifyWorkType(action: string): Exclude<RecentWorkType, "all"> | null {
   if (action === "requests.print_new" || action === "requests.export") return "output";
   if (action.startsWith("request.")) return "requests";
   if (action.startsWith("recipients.") || action.startsWith("staff.")) return "people";
   if (action.startsWith("maintainers.")) return "site";
-  return "other";
+  return null;
 }
 
 function isCallOutcomeId(value: string): value is keyof typeof OUTCOME_HISTORY_LABELS {
@@ -146,6 +148,14 @@ const STATUS_WORDS = {
   scheduled: "Scheduled",
   closed: "Closed",
 } as const satisfies Record<RequestStatus, string>;
+
+function staffStateWord(raw: string): string | null {
+  if (raw === "new") return STATUS_WORDS.new;
+  if (raw === "contacted") return STATUS_WORDS.contacted;
+  if (raw === "booked" || raw === "scheduled") return STATUS_WORDS.scheduled;
+  if (raw === "closed") return STATUS_WORDS.closed;
+  return null;
+}
 
 interface ActionDescription {
   sentence: string;
@@ -323,6 +333,41 @@ function describeAction(
         sentence: `removed ${asJsonString(detail.target_login) ?? "a maintainer"}'s website access`,
         technical: false,
       };
+    case "request.workflow_command": {
+      const command = asJsonString(detail.command) ?? "";
+      const to = asJsonString(detail.to) ?? "";
+      switch (command) {
+        case "record_contact_attempt":
+          return { sentence: "recorded a contact attempt on a request", technical: false };
+        case "confirm_booking_handoff":
+          return { sentence: "marked a request Scheduled", technical: false };
+        case "close_request":
+          return { sentence: "closed a request", technical: false };
+        case "reopen_request":
+          return { sentence: "reopened a request", technical: false };
+        case "set_call_again":
+          return { sentence: "corrected the call-again time on a request", technical: false };
+        case "undo_latest_transition": {
+          const restored = staffStateWord(to);
+          return {
+            sentence:
+              restored === null
+                ? "undid the last change on a request"
+                : `undid the last change on a request — back to ${restored}`,
+            technical: false,
+          };
+        }
+        case "classify_legacy_closure":
+          return { sentence: "classified a closed request", technical: false };
+        default:
+          return {
+            sentence: requestEntity
+              ? `${entry.action} on a request`
+              : `${entry.action} (${entry.entity})`,
+            technical: true,
+          };
+      }
+    }
     default:
       return {
         sentence: requestEntity
@@ -338,17 +383,18 @@ export function toRecentWorkItems(
   ctx: Readonly<RecentWorkContext>,
 ): RecentWorkItem[] {
   const items: RecentWorkItem[] = [];
-  for (const entry of entries) {
+  for (const [sourceIndex, entry] of entries.entries()) {
     if (isPortalReleaseAuditAction(entry.action)) continue;
     // The dismissal nudge pairs with tour_complete on finish; it stays in
     // The technical record rather than the human view.
     if (entry.action === "staff.tour_dismiss") continue;
     const detail = detailObject(entry.detail);
     const { sentence, technical } = describeAction(entry, detail, ctx);
+    const workType = classifyWorkType(entry.action);
     // Unknown actions fall back to their raw identifier, which never
     // Belongs in the human view: technical items stay in the technical
     // Table beneath Recent work.
-    if (technical) continue;
+    if (technical || workType === null) continue;
     items.push({
       id: entry.id,
       at: entry.at,
@@ -356,8 +402,9 @@ export function toRecentWorkItems(
       sentence,
       requestId: entry.entity === "requests" ? entry.entity_id : null,
       technical,
-      workType: classifyWorkType(entry.action),
+      workType,
       action: entry.action,
+      sourceIndex,
     });
   }
   return items;
@@ -458,7 +505,9 @@ export function filterRecentWork(
  *    plain language (technical fallbacks never group);
  * 2. same actor and same linked request (never combines people);
  * 3. same practice-local day;
- * 4. within OUTPUT_GROUP_MAX_GAP_MS of the previous event (widely separated
+ * 4. consecutive sourceIndex values in the authoritative newest-first
+ *    window (a filtered-out or intervening audit row breaks the run);
+ * 5. within OUTPUT_GROUP_MAX_GAP_MS of the previous event (widely separated
  *    actions stay separate even with identical sentences).
  *
  * The rule is a pure scan of the ordered input: deterministic across runs,
@@ -532,6 +581,7 @@ export function compactRepeatedOutput(items: readonly RecentWorkItem[]): RecentW
       item.actor === previous.actor &&
       item.requestId === previous.requestId &&
       nyDayKey(item.at) === nyDayKey(previous.at) &&
+      item.sourceIndex === previous.sourceIndex + 1 &&
       gapMs >= 0 &&
       gapMs <= OUTPUT_GROUP_MAX_GAP_MS;
     if (!joins) flush();
@@ -541,7 +591,44 @@ export function compactRepeatedOutput(items: readonly RecentWorkItem[]): RecentW
   return entries;
 }
 
+export const RECENT_WORK_SEARCH_ID = "recent-work-search";
+export const RECENT_WORK_SUMMARY_ID = "recent-work-summary";
+export const TECHNICAL_RECORD_SUMMARY_ID = "audit-page-summary";
+
 export const RECENT_WORK_PAGE_SIZE = 50;
+// Hosted PostgREST max_rows is 1,000. The staff-facing lens is 2,000 newest
+// Rows, read in provider-safe chunks so a 1,260-row fixture is complete.
+export const AUDIT_PROVIDER_PAGE_SIZE = 1000;
+export const RECENT_WORK_LENS_LIMIT = 2000;
+
+export interface AuditWindowPage<T> {
+  readonly rows: readonly T[];
+  readonly error: { readonly code?: string } | null;
+}
+
+/**
+ * Newest-first window reader. Each range is at most `pageSize` and never
+ * larger than the provider ceiling. Stops at `limit` or the first short page.
+ */
+export async function readNewestWindow<T>(
+  readRange: (from: number, to: number) => Promise<AuditWindowPage<T>>,
+  options: Readonly<{ limit?: number; pageSize?: number }> = {},
+): Promise<AuditWindowPage<T>> {
+  const limit = options.limit ?? RECENT_WORK_LENS_LIMIT;
+  const pageSize = Math.min(options.pageSize ?? AUDIT_PROVIDER_PAGE_SIZE, AUDIT_PROVIDER_PAGE_SIZE);
+  if (limit <= 0 || pageSize <= 0) return { rows: [], error: null };
+  const rows: T[] = [];
+  while (rows.length < limit) {
+    const from = rows.length;
+    const wanted = Math.min(pageSize, limit - rows.length);
+    const page = await readRange(from, from + wanted - 1);
+    if (page.error !== null) return { rows, error: page.error };
+    const chunk = page.rows.slice(0, wanted);
+    rows.push(...chunk);
+    if (chunk.length < wanted) break;
+  }
+  return { rows, error: null };
+}
 
 export interface RecentWorkPage<T> {
   readonly slice: readonly T[];

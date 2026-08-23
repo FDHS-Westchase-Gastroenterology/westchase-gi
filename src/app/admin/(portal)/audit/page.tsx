@@ -18,7 +18,10 @@ import {
   filterRecentWork,
   paginateRecentWork,
   parseRecentWorkType,
+  readNewestWindow,
   recentWorkHref,
+  RECENT_WORK_LENS_LIMIT,
+  TECHNICAL_RECORD_SUMMARY_ID,
   toRecentWorkItems,
 } from "./recent-work-model";
 import type { AuditEntry } from "./recent-work-model";
@@ -26,10 +29,7 @@ import { RecentWorkPagination } from "./recent-work-pagination";
 import { ReleaseEngagementSection } from "./release-engagement";
 
 const PAGE_SIZE = 100;
-// The staff-facing lens reads a bounded window of the newest events for
-// Search, filters, and compaction. The Technical record's own query and
-// Pagination are unchanged by this bound.
-const RECENT_WORK_LENS_LIMIT = 2000;
+const AUDIT_LENS_COLUMNS = "id, actor_email, action, entity, entity_id, detail, at";
 
 const auditEntrySchema = z.object({
   id: z.string(),
@@ -91,7 +91,7 @@ export default async function AdminAuditPage({
   const db = serviceClient();
   const [
     { data: rows, error, count },
-    { data: lensRows, error: lensError },
+    lensWindow,
     nameMap,
     profileRows,
     recipientRows,
@@ -99,18 +99,21 @@ export default async function AdminAuditPage({
   ] = await Promise.all([
     db
       .from("audit_log")
-      .select("id, actor_email, action, entity, entity_id, detail, at", {
+      .select(AUDIT_LENS_COLUMNS, {
         count: "exact",
       })
       .order("at", { ascending: false })
       .order("id", { ascending: false })
       .range(from, from + PAGE_SIZE - 1),
-    db
-      .from("audit_log")
-      .select("id, actor_email, action, entity, entity_id, detail, at")
-      .order("at", { ascending: false })
-      .order("id", { ascending: false })
-      .range(0, RECENT_WORK_LENS_LIMIT - 1),
+    readNewestWindow(async (lensFrom, lensTo) => {
+      const result = await db
+        .from("audit_log")
+        .select(AUDIT_LENS_COLUMNS)
+        .order("at", { ascending: false })
+        .order("id", { ascending: false })
+        .range(lensFrom, lensTo);
+      return { rows: result.data ?? [], error: result.error };
+    }),
     fetchStaffNameMap(db),
     db.from("staff_profiles").select("id, display_name"),
     db.from("notification_recipients").select("id, email"),
@@ -118,8 +121,8 @@ export default async function AdminAuditPage({
       ? getPortalReleaseEngagement(PORTAL_RELEASE_BRIEFING.id)
       : Promise.resolve(null),
   ]);
-  if (error !== null || lensError !== null) {
-    throw new Error(`Audit read failed: ${error?.code ?? lensError?.code}`);
+  if (error !== null || lensWindow.error !== null) {
+    throw new Error(`Audit read failed: ${error?.code ?? lensWindow.error?.code}`);
   }
 
   const parsedEntries = z.array(auditEntrySchema).safeParse(rows);
@@ -127,7 +130,7 @@ export default async function AdminAuditPage({
     throw new Error("Audit read failed: invalid");
   }
   const entries = parsedEntries.data;
-  const parsedLensEntries = z.array(auditEntrySchema).safeParse(lensRows);
+  const parsedLensEntries = z.array(auditEntrySchema).safeParse(lensWindow.rows);
   if (!parsedLensEntries.success) {
     throw new Error("Audit read failed: invalid");
   }
@@ -205,7 +208,8 @@ export default async function AdminAuditPage({
             total={recentView.total}
             firstShown={recentView.firstShown}
             lastShown={recentView.lastShown}
-            page={recentPage}
+            recentPage={recentPage}
+            technicalPage={page}
             totalPages={recentView.totalPages}
             lensCapped={total > RECENT_WORK_LENS_LIMIT}
             lensLimit={RECENT_WORK_LENS_LIMIT}
@@ -286,7 +290,7 @@ export default async function AdminAuditPage({
       {total > 0 ? (
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
           <p
-            id="audit-page-summary"
+            id={TECHNICAL_RECORD_SUMMARY_ID}
             data-testid="audit-page-summary"
             tabIndex={-1}
             className="text-[0.9rem] text-[var(--color-muted)]"
@@ -295,12 +299,13 @@ export default async function AdminAuditPage({
           </p>
           <RecentWorkPagination
             ariaLabel="Activity log pages"
-            page={page}
+            recentPage={recentPage}
+            technicalPage={page}
             totalPages={totalPages}
             q={search}
             type={workType}
             param="page"
-            summaryId="audit-page-summary"
+            summaryId={TECHNICAL_RECORD_SUMMARY_ID}
             testId="audit-pagination"
           />
         </div>

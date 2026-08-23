@@ -1,7 +1,14 @@
 import Link from "next/link";
 
 import { RecentWorkControls } from "./recent-work-controls";
-import { groupByPracticeDay, recentWorkHref, WORK_TYPE_LABELS } from "./recent-work-model";
+import { RecentWorkFocusLink } from "./recent-work-focus-link";
+import {
+  RECENT_WORK_SEARCH_ID,
+  RECENT_WORK_SUMMARY_ID,
+  groupByPracticeDay,
+  recentWorkHref,
+  WORK_TYPE_LABELS,
+} from "./recent-work-model";
 import type { RecentWorkEntry, RecentWorkItem, RecentWorkType } from "./recent-work-model";
 import { RecentWorkPagination } from "./recent-work-pagination";
 
@@ -98,7 +105,8 @@ export function RecentWorkSection({
   total,
   firstShown,
   lastShown,
-  page,
+  recentPage,
+  technicalPage,
   totalPages,
   lensCapped,
   lensLimit,
@@ -110,7 +118,8 @@ export function RecentWorkSection({
   total: number;
   firstShown: number;
   lastShown: number;
-  page: number;
+  recentPage: number;
+  technicalPage: number;
   totalPages: number;
   lensCapped: boolean;
   lensLimit: number;
@@ -126,12 +135,10 @@ export function RecentWorkSection({
         Who did what, in plain language. The exact technical record stays below for administrators.
       </p>
 
-      <div id="recent-work-search" tabIndex={-1}>
-        <RecentWorkControls search={search} type={type} />
-      </div>
+      <RecentWorkControls search={search} type={type} technicalPage={technicalPage} />
 
       <p
-        id="recent-work-summary"
+        id={RECENT_WORK_SUMMARY_ID}
         data-testid="recent-work-summary"
         role="status"
         tabIndex={-1}
@@ -154,12 +161,13 @@ export function RecentWorkSection({
             No recent work matches{description}. Try different words, or remove the search to see
             everything again.
           </p>
-          <Link
-            href={recentWorkHref({ hash: "recent-work-search" })}
+          <RecentWorkFocusLink
+            href={recentWorkHref({ hash: RECENT_WORK_SEARCH_ID })}
+            focusId={RECENT_WORK_SEARCH_ID}
             className="btn btn-outline mt-4"
           >
             Clear search
-          </Link>
+          </RecentWorkFocusLink>
         </div>
       ) : (
         <>
@@ -187,12 +195,13 @@ export function RecentWorkSection({
           <div className="mt-6 flex flex-wrap items-center justify-end">
             <RecentWorkPagination
               ariaLabel="Recent work pages"
-              page={page}
+              recentPage={recentPage}
+              technicalPage={technicalPage}
               totalPages={totalPages}
               q={search}
               type={type}
               param="rw"
-              summaryId="recent-work-summary"
+              summaryId={RECENT_WORK_SUMMARY_ID}
               testId="recent-work-pagination"
             />
           </div>

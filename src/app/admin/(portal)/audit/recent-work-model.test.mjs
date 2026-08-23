@@ -47,14 +47,18 @@ register(
 );
 
 const {
+  AUDIT_PROVIDER_PAGE_SIZE,
   classifyWorkType,
   compactRepeatedOutput,
   filterRecentWork,
   OUTPUT_GROUP_MAX_GAP_MS,
   paginateRecentWork,
   parseRecentWorkType,
+  readNewestWindow,
   recentWorkHref,
+  RECENT_WORK_LENS_LIMIT,
   toRecentWorkItems,
+  WORK_TYPE_FILTERS,
 } = await import("./recent-work-model.ts");
 
 const NOW = new Date("2026-08-22T15:00:00.000Z");
@@ -103,8 +107,10 @@ test("classifies every supported action into a staff-facing work group", () => {
   assert.equal(classifyWorkType("staff.invite"), "people");
   assert.equal(classifyWorkType("staff.tour_complete"), "people");
   assert.equal(classifyWorkType("maintainers.invite"), "site");
-  // Unknown actions land in the reachable "other" group, never dropped.
-  assert.equal(classifyWorkType("future.unknown_action"), "other");
+  assert.equal(classifyWorkType("request.workflow_command"), "requests");
+  // Unknown actions are not a Recent-work group; they stay technical.
+  assert.equal(classifyWorkType("future.unknown_action"), null);
+  assert.deepEqual([...WORK_TYPE_FILTERS], ["all", "requests", "people", "output", "site"]);
 });
 
 test("current lifecycle events still translate into plain language", () => {
@@ -227,7 +233,7 @@ test("every work-type filter narrows correctly and composes with search", () => 
     entry({ action: "maintainers.invite", detail: { target_login: "sam@example.test" } }),
   ];
   const items = toRecentWorkItems(entries, CTX());
-  const expect = { requests: 1, output: 1, people: 1, site: 1, other: 0 };
+  const expect = { requests: 1, output: 1, people: 1, site: 1 };
   for (const [type, expected] of Object.entries(expect)) {
     const filtered = filterRecentWork(items, { search: "", type });
     assert.equal(filtered.length, expected, `filter ${type}`);
@@ -377,4 +383,190 @@ test("URL state builds shareable links and collapses to the bare route when clea
   assert.equal(recentWorkHref({ hash: "recent-work-search" }), "/admin/audit#recent-work-search");
   assert.equal(parseRecentWorkType("output"), "output");
   assert.equal(parseRecentWorkType("bogus"), "all");
+  assert.equal(parseRecentWorkType("other"), "all");
+});
+
+test("current workflow commands render distinguishable plain language", () => {
+  const requestId = "9f83e2a1-aaaa-bbbb-cccc-ddddeeeeffff";
+  const commands = [
+    ["record_contact_attempt", "contacted", "recorded a contact attempt on a request"],
+    ["confirm_booking_handoff", "booked", "marked a request Scheduled"],
+    ["close_request", "closed", "closed a request"],
+    ["reopen_request", "contacted", "reopened a request"],
+    ["set_call_again", "contacted", "corrected the call-again time on a request"],
+    ["undo_latest_transition", "booked", "undid the last change on a request — back to Scheduled"],
+    ["classify_legacy_closure", "closed", "classified a closed request"],
+  ];
+  const items = toRecentWorkItems(
+    commands.map(([command, to], index) =>
+      entry({
+        action: "request.workflow_command",
+        entity_id: requestId,
+        detail: { command, from: "new", to, resulting_version: index + 1 },
+        at: new Date(Date.parse("2026-08-22T14:00:00.000Z") + index * 1000).toISOString(),
+      }),
+    ),
+    CTX(),
+  );
+  assert.equal(items.length, commands.length);
+  const sentences = items.map((item) => item.sentence);
+  for (const [, , phrase] of commands) {
+    assert.ok(sentences.includes(phrase), phrase);
+  }
+  for (const item of items) {
+    assert.equal(item.requestId, requestId);
+    assert.equal(item.workType, "requests");
+    assert.equal(item.technical, false);
+    assert.ok(!item.sentence.includes("request.workflow_command"));
+    assert.ok(!item.sentence.includes("record_contact_attempt"));
+    assert.ok(!item.sentence.includes("undo_latest_transition"));
+    assert.ok(!item.sentence.includes("set_call_again"));
+    assert.ok(!item.sentence.includes("resulting_version"));
+    assert.ok(!item.sentence.includes("booked"));
+  }
+  const hidden = filterRecentWork(items, { search: "resulting_version", type: "all" });
+  assert.equal(hidden.length, 0);
+  const undo = items.find((item) => item.sentence.startsWith("undid the last change"));
+  const callAgain = items.find((item) => item.sentence.includes("call-again"));
+  assert.notEqual(undo?.sentence, callAgain?.sentence);
+});
+
+test("unknown technical actions never appear in Recent work", () => {
+  const items = toRecentWorkItems(
+    [
+      entry({ action: "future.unknown_action", entity: "misc", detail: { secret: "nope" } }),
+      entry({ action: "staff.tour_dismiss" }),
+      entry({ action: "request.note", entity_id: "r1" }),
+    ],
+    CTX(),
+  );
+  assert.equal(items.length, 1);
+  assert.equal(items[0].sentence, "added a note to a request");
+  assert.equal(filterRecentWork(items, { search: "", type: "all" }).length, 1);
+});
+
+test("compaction requires consecutive source positions after filtering", () => {
+  const entries = [
+    entry({
+      action: "requests.print_new",
+      detail: { row_count: 2 },
+      at: "2026-08-22T14:00:00.000Z",
+    }),
+    entry({ action: "request.note", entity_id: "r-gap", at: "2026-08-22T13:55:00.000Z" }),
+    entry({
+      action: "requests.print_new",
+      detail: { row_count: 2 },
+      at: "2026-08-22T13:50:00.000Z",
+    }),
+    entry({
+      action: "requests.print_new",
+      detail: { row_count: 2 },
+      at: "2026-08-22T13:45:00.000Z",
+    }),
+  ];
+  const items = toRecentWorkItems(entries, CTX());
+  assert.deepEqual(
+    items.map((item) => item.sourceIndex),
+    [0, 1, 2, 3],
+  );
+  const outputOnly = filterRecentWork(items, { search: "", type: "output" });
+  assert.equal(outputOnly.length, 3);
+  const compacted = compactRepeatedOutput(outputOnly);
+  const groups = compacted.filter((one) => one.kind === "group");
+  const singles = compacted.filter((one) => one.kind === "single");
+  // The note at sourceIndex 1 splits the first print from the later adjacent pair.
+  assert.equal(singles.length, 1);
+  assert.equal(singles[0].item.sourceIndex, 0);
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].count, 2);
+  assert.deepEqual(
+    groups[0].items.map((item) => item.sourceIndex),
+    [2, 3],
+  );
+});
+
+test("an intervening technical audit row prevents print grouping", () => {
+  const entries = [
+    entry({
+      action: "requests.print_new",
+      detail: { row_count: 1 },
+      at: "2026-08-22T14:00:00.000Z",
+    }),
+    entry({ action: "future.unknown_action", entity: "misc", at: "2026-08-22T13:55:00.000Z" }),
+    entry({
+      action: "requests.print_new",
+      detail: { row_count: 1 },
+      at: "2026-08-22T13:50:00.000Z",
+    }),
+  ];
+  const items = toRecentWorkItems(entries, CTX());
+  assert.equal(items.length, 2);
+  assert.deepEqual(
+    items.map((item) => item.sourceIndex),
+    [0, 2],
+  );
+  const compacted = compactRepeatedOutput(items);
+  assert.equal(compacted.length, 2);
+  for (const one of compacted) assert.equal(one.kind, "single");
+});
+
+function providerCappedRange(all) {
+  const calls = [];
+  return {
+    calls,
+    readRange: async (from, to) => {
+      calls.push([from, to, to - from + 1]);
+      const span = Math.min(to - from + 1, 1000);
+      return { rows: all.slice(from, from + span), error: null };
+    },
+  };
+}
+
+test("the window reader pages around the 1,000-row provider ceiling", async () => {
+  const sizes = [999, 1000, 1001, 1260, 2000, 2001];
+  for (const total of sizes) {
+    const all = Array.from({ length: total }, (_, index) => `row-${index}`);
+    const { calls, readRange } = providerCappedRange(all);
+    const result = await readNewestWindow(readRange);
+    assert.equal(result.error, null, `error ${total}`);
+    const expectedCount = Math.min(total, RECENT_WORK_LENS_LIMIT);
+    assert.equal(result.rows.length, expectedCount, `count ${total}`);
+    assert.equal(result.rows[0], "row-0");
+    assert.equal(result.rows.at(-1), `row-${expectedCount - 1}`);
+    for (const [, , span] of calls) {
+      assert.ok(span <= AUDIT_PROVIDER_PAGE_SIZE, `span ${span} for ${total}`);
+    }
+    if (total < AUDIT_PROVIDER_PAGE_SIZE) {
+      assert.equal(calls.length, 1, `calls ${total}`);
+    } else {
+      assert.ok(calls.length >= 2, `calls ${total}`);
+    }
+  }
+  const oversize = Array.from({ length: 5000 }, (_, index) => index);
+  const { calls, readRange } = providerCappedRange(oversize);
+  const capped = await readNewestWindow(readRange, { limit: 2000, pageSize: 5000 });
+  assert.equal(capped.rows.length, 2000);
+  for (const [, , span] of calls) assert.ok(span <= 1000);
+});
+
+test("mixed URL state keeps rw and page independent", () => {
+  assert.equal(
+    recentWorkHref({ q: "print", type: "output", rw: 2, page: 5 }),
+    "/admin/audit?q=print&type=output&rw=2&page=5",
+  );
+  assert.equal(
+    recentWorkHref({ q: "print", type: "output", rw: 3, page: 5 }),
+    "/admin/audit?q=print&type=output&rw=3&page=5",
+  );
+  assert.equal(
+    recentWorkHref({ q: "print", type: "output", rw: 3, page: 4 }),
+    "/admin/audit?q=print&type=output&rw=3&page=4",
+  );
+  // Search/filter reset Recent page and keep the Technical page.
+  assert.equal(
+    recentWorkHref({ q: "voicemail", type: "requests", page: 5 }),
+    "/admin/audit?q=voicemail&type=requests&page=5",
+  );
+  // Clear restores the default view.
+  assert.equal(recentWorkHref({}), "/admin/audit");
 });

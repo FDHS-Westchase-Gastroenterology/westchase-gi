@@ -3,13 +3,21 @@
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
 
-import { WORK_TYPE_FILTERS, WORK_TYPE_LABELS, recentWorkHref } from "./recent-work-model";
+import { focusAfterNavigate } from "./recent-work-focus";
+import {
+  RECENT_WORK_SEARCH_ID,
+  RECENT_WORK_SUMMARY_ID,
+  WORK_TYPE_FILTERS,
+  WORK_TYPE_LABELS,
+  recentWorkHref,
+} from "./recent-work-model";
 import type { RecentWorkType } from "./recent-work-model";
 
 // The staff-facing controls over Recent work: one persistent labeled search
 // Field and the work-group filter chips. State lives in the URL — these
-// Controls only navigate. Clear restores the full view and returns focus to
-// The search field, so keyboard work stays predictable.
+// Controls only navigate. Search and filters reset the Recent-work page to
+// 1 and keep the Technical record page. Clear restores the full default
+// View and returns focus to the search field.
 
 const FILTER_LABELS = {
   all: "All work",
@@ -19,9 +27,11 @@ const FILTER_LABELS = {
 export function RecentWorkControls({
   search,
   type,
+  technicalPage,
 }: Readonly<{
   search: string;
   type: RecentWorkType;
+  technicalPage: number;
 }>) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -33,13 +43,21 @@ export function RecentWorkControls({
       action="/admin/audit"
       onSubmit={(event) => {
         event.preventDefault();
-        router.push(recentWorkHref({ q: inputRef.current?.value ?? "", type }));
+        router.push(
+          recentWorkHref({
+            q: inputRef.current?.value ?? "",
+            type,
+            page: technicalPage,
+          }),
+        );
+        focusAfterNavigate(RECENT_WORK_SUMMARY_ID);
       }}
       className="mt-4 max-w-[65ch]"
     >
       {type !== "all" ? <input type="hidden" name="type" value={type} /> : null}
+      {technicalPage > 1 ? <input type="hidden" name="page" value={technicalPage} /> : null}
       <label
-        htmlFor="recent-work-search"
+        htmlFor={RECENT_WORK_SEARCH_ID}
         className="block text-[0.85rem] font-bold text-[var(--color-ink)]"
       >
         Search recent work
@@ -47,7 +65,7 @@ export function RecentWorkControls({
       <div className="mt-1.5 flex gap-2">
         <input
           ref={inputRef}
-          id="recent-work-search"
+          id={RECENT_WORK_SEARCH_ID}
           name="q"
           type="search"
           defaultValue={search}
@@ -70,7 +88,8 @@ export function RecentWorkControls({
             data-testid={`recent-work-filter-${value}`}
             aria-pressed={type === value}
             onClick={() => {
-              router.push(recentWorkHref({ q: search, type: value }));
+              router.push(recentWorkHref({ q: search, type: value, page: technicalPage }));
+              focusAfterNavigate(RECENT_WORK_SUMMARY_ID);
             }}
             className={`min-h-11 rounded-full border px-4 text-[0.85rem] font-bold transition-[color,border-color,background-color] duration-150 ${
               type === value
@@ -89,7 +108,7 @@ export function RecentWorkControls({
           onClick={() => {
             if (inputRef.current !== null) inputRef.current.value = "";
             router.push(recentWorkHref({}));
-            inputRef.current?.focus();
+            focusAfterNavigate(RECENT_WORK_SEARCH_ID);
           }}
           className="mt-2 min-h-11 font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
         >

@@ -143,7 +143,10 @@ test.describe("isolated portal scale boundaries", () => {
       }),
     ).toHaveCount(100);
 
-    await page.getByRole("link", { name: "Next" }).click();
+    await page
+      .getByRole("navigation", { name: "Activity log pages" })
+      .getByRole("link", { name: "Next" })
+      .click();
     await expect(page).toHaveURL(/\/admin\/audit\?page=2$/);
     await expect(
       page.getByTestId("audit-table").getByRole("row").filter({
