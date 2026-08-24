@@ -267,18 +267,34 @@ Appointments workflow contract, defined in the
   for the transition to BOOKED. Semantic commands, versioning, idempotency, an append-only
   transition log, and post-commit notifications govern the build era.
 
-Committed operational information architecture:
+Committed product-slice architecture
+([ADR 0004](docs/adr/0004-portal-is-four-outcome-owned-vertical-slices.md)):
 
-- **Home** is the triage and handoff surface: staff can add an appointment request, see the
-  ordered shared work stack, print the exact New set, open the next request to work, and reach
-  recent operational context and secondary staff jobs.
-- **Appointments** is the complete queue and request workspace, retaining All, New, Contacted,
-  Scheduled, and Closed as familiar views, with the same staff-authored intake action in context.
-- **Settings** groups people, notification emails, and software administration without
+The portal remains one `/admin` design surface and shared shell under the Front Desk Ledger world,
+but it is not one product outcome with subordinate pages. Product ownership within it is divided
+among four end-to-end vertical slices. Each slice owns a complete staff outcome; a route is only
+one way the product may deliver that outcome.
+
+- **Home** owns orientation, triage, handoff, and the next useful action: staff can add an
+  appointment request, scan the ordered shared work stack, prepare a print packet by status, open
+  the next request to work, and reach recent operational context and secondary staff jobs.
+- **Appointments** owns the complete appointment-request lifecycle and working queue, retaining
+  All, New, Contacted, Scheduled, and Closed as familiar views, with the same staff-authored intake
+  action in context.
+- **Settings** owns staff access, notification recipients, and software administration without
   competing with daily appointment work.
-- **Help** explains the workflow, privacy and recovery paths. Activity and review-flyer printing
-  remain named utilities reached from the places they support, not additional top-level
-  destinations.
+- **Help** owns cross-job guidance, recovery beyond a slice's own path, and transitions to human
+  support.
+
+Each slice is accountable for its own job, experience thesis, information architecture, state
+matrix, PHI-free instrumentation, tests, and Product Experience acceptance. This architecture
+commits the ownership boundary; it does not claim that every slice's artifacts are complete yet.
+
+Navigation, authentication, authorization policy and enforcement, design tokens, and the Front
+Desk Ledger world remain shared horizontal infrastructure. Settings exposes staff access
+administration; it does not own authorization itself. The Activity log and review-flyer printing
+remain named utilities placed where they support an outcome, not automatic candidates for
+additional slices.
 
 Explicitly undecided / open product facts: the maintainer invite/cancel/accept/revoke
 acceptance pass; the structured website-change-request workflow (later conversationally
