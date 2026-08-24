@@ -5,11 +5,7 @@ import type { Page } from "@playwright/test";
 import { z } from "zod";
 
 import { intakeResponseSchema } from "../src/lib/portal/contracts";
-import {
-  greetingName,
-  signInIdentifierField,
-  START_OLDEST_REQUEST_LABEL,
-} from "../src/lib/portal/staff-language";
+import { greetingName, signInIdentifierField } from "../src/lib/portal/staff-language";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 // The portal home page: staff land on a greeting and their tasks, not on
@@ -177,8 +173,8 @@ test.describe("portal home", () => {
       ).toHaveAttribute("href", href);
     }
 
-    // The manager's paper handoff is directly available from Home, opens a
-    // Dedicated print surface, and keeps the live workbench in place.
+    // Print opens a chooser. All New still uses the existing packet.
+    await page.getByTestId("print-chooser-trigger").click();
     const printLink = page.getByRole("link", {
       name: `Print all ${newCount} new appointment ${
         newCount === 1 ? "request" : "requests"
@@ -186,45 +182,80 @@ test.describe("portal home", () => {
     });
     await expect(printLink).toHaveAttribute("href", "/admin/requests/print?auto=1");
     await expect(printLink).toHaveAttribute("target", "_blank");
+    await expect(page.getByTestId("print-chooser-summary")).toHaveText(
+      "Choose one or more statuses.",
+    );
+    await expect(page.getByRole("button", { name: "Print selected" })).toBeDisabled();
+    const { count: contactedCount, error: contactedError } = await db
+      .from("requests")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "contacted");
+    expect(contactedError).toBeNull();
+    await page.getByTestId("print-status-contacted").check();
+    if ((contactedCount ?? 0) > 0) {
+      await expect(page.getByRole("link", { name: "Print selected" })).toHaveAttribute(
+        "href",
+        "/admin/requests/print?status=contacted&auto=1",
+      );
+    } else {
+      await expect(page.getByRole("button", { name: "Print selected" })).toBeDisabled();
+    }
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("print-chooser")).toBeHidden();
+    await expect(page.getByTestId("print-chooser-trigger")).toBeFocused();
 
-    // The primary action opens the Appointments workbench (DEC-UX-02: the
-    // Destination is named Appointments; the records remain appointment
-    // Requests under /admin/requests).
-    await page.getByRole("link", { name: "Open Appointments" }).click();
+    // Appointments stays on the portal nav (DEC-UX-02: the destination is
+    // Named Appointments; the records remain appointment requests under
+    // /admin/requests).
+    await page
+      .locator('nav[aria-label="Portal sections"]')
+      .getByRole("link", { name: "Appointments" })
+      .click();
     await expect(page).toHaveURL(/\/admin\/requests\/?$/);
     await expect(page.getByRole("heading", { name: "Appointments", exact: true })).toBeVisible();
     // The waiting-count badge may append a count inside the same link.
     await expect(
       page.locator('nav[aria-label="Portal sections"] a[aria-current="page"]'),
     ).toHaveText(/^Appointments/, { useInnerText: true });
+    await page.getByTestId("print-chooser-trigger").click();
     await expect(
       page.getByRole("link", {
-        name: `Print ${newCount} new appointment ${
+        name: `Print all ${newCount} new appointment ${
           newCount === 1 ? "request" : "requests"
         }; opens in a new tab`,
       }),
     ).toHaveAttribute("target", "_blank");
   });
 
-  test("Start with oldest request opens the exact oldest New request", async ({ page }) => {
+  test("New Appointments lists every current New request up to five", async ({ page }) => {
     await signIn(page, SEED_EMAIL, SEED_PASSWORD);
 
-    const { data: oldestNew, error: oldestError } = await db
+    const { data: newestNew, error: newestError } = await db
       .from("requests")
-      .select("id")
+      .select("id, name")
       .eq("status", "new")
-      .order("created_at", { ascending: true })
-      .limit(1);
-    expect(oldestError).toBeNull();
-    const oldestId = z.string().safeParse(oldestNew?.[0]?.id);
-    expect(oldestId.success).toBe(true);
+      .order("created_at", { ascending: false })
+      .limit(5);
+    expect(newestError).toBeNull();
+    const previewRows = z
+      .array(z.object({ id: z.string(), name: z.string() }))
+      .parse(newestNew ?? []);
+    expect(previewRows.length).toBeGreaterThan(0);
 
-    const start = page.getByTestId("start-oldest-request");
-    await expect(start).toHaveText(START_OLDEST_REQUEST_LABEL);
-    await expect(start).toHaveAttribute("href", `/admin/requests/${oldestId.data}`);
-    await start.click();
-    await expect(page).toHaveURL(new RegExp(`/admin/requests/${oldestId.data}`));
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    const preview = page.getByTestId("queue-overview-preview");
+    await expect(page.getByRole("heading", { name: "New Appointments" })).toBeVisible();
+    await expect(preview.locator("li")).toHaveCount(previewRows.length);
+    for (const row of previewRows) {
+      await expect(preview.getByRole("link", { name: new RegExp(row.name) })).toHaveAttribute(
+        "href",
+        `/admin/requests/${row.id}`,
+      );
+    }
+    await expect(page.getByText("Start with oldest request")).toHaveCount(0);
+    await expect(
+      page.locator(".portal-work-stack-header").getByRole("link", { name: "Open Appointments" }),
+    ).toHaveCount(0);
+    await expect(page.getByTestId("home-add-patient-request")).toHaveText("Add Appointment");
   });
 
   test("home reports every Contacted request whose call-again day is missing", async ({ page }) => {
@@ -384,7 +415,7 @@ test.describe("portal home", () => {
       await expect(dialog.getByRole("heading", { name: "Home", exact: true })).toBeVisible();
       await expect(dialog.getByRole("button", { name: "Close the portal tour" })).toBeFocused();
       expect(await dialog.evaluate((element) => element.matches(":modal"))).toBe(true);
-      const backgroundAction = page.getByRole("link", { name: "Open Appointments" });
+      const backgroundAction = page.getByTestId("home-add-patient-request");
       expect(
         await backgroundAction.evaluate((element) => {
           if (!(element instanceof HTMLElement)) return true;

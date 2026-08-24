@@ -140,6 +140,11 @@ test("current lifecycle events still translate into plain language", () => {
         detail: { row_count: 1 },
         at: "2026-08-22T14:25:00.000Z",
       }),
+      entry({
+        action: "requests.print_new",
+        detail: { row_count: 4, status_filter: "new,contacted" },
+        at: "2026-08-22T14:26:00.000Z",
+      }),
     ],
     CTX(),
   );
@@ -150,6 +155,7 @@ test("current lifecycle events still translate into plain language", () => {
   assert.ok(sentences.includes("added a note to a request"));
   assert.ok(sentences.includes("exported the request list (42 requests)"));
   assert.ok(sentences.includes("prepared the New-request print packet (1 request)"));
+  assert.ok(sentences.includes("prepared a print packet of New and Contacted (4 requests)"));
   // Storage vocabulary never reaches the human view.
   for (const item of items) {
     assert.ok(!item.sentence.includes("request."));

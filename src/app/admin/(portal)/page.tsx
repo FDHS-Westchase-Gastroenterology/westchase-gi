@@ -12,6 +12,7 @@ import { PortalReleaseHomeAnnouncement } from "./portal-release-briefing";
 import { PortalTour } from "./portal-tour";
 import { PortalTourReturnFocus } from "./portal-tour-return-focus";
 import type { PortalTourReturnState } from "./portal-tour-return-focus";
+import { VIEW_DB_STATUSES } from "./requests/queue";
 
 // The portal's front door. Staff land on their day, not on software:
 // A greeting, the one thing that may need attention (new appointment
@@ -78,13 +79,16 @@ export default async function AdminHomePage({
     { data: oldestRows },
     { count: recipientCount, error: recipientsReadError },
     attention,
+    contactedCountResult,
+    scheduledCountResult,
+    closedCountResult,
   ] = await Promise.all([
     db
       .from("requests")
       .select("id, name, created_at", { count: "exact" })
       .eq("status", "new")
       .order("created_at", { ascending: false })
-      .limit(3),
+      .limit(5),
     db
       .from("requests")
       .select("id, created_at")
@@ -99,6 +103,18 @@ export default async function AdminHomePage({
     // Requests, and closed records awaiting legacy review. Each count is
     // Independently honest — a failed read is null, never zero.
     fetchAttentionSummary(db, now),
+    db
+      .from("requests")
+      .select("id", { count: "exact", head: true })
+      .in("status", [...VIEW_DB_STATUSES.contacted]),
+    db
+      .from("requests")
+      .select("id", { count: "exact", head: true })
+      .in("status", [...VIEW_DB_STATUSES.scheduled]),
+    db
+      .from("requests")
+      .select("id", { count: "exact", head: true })
+      .in("status", [...VIEW_DB_STATUSES.closed]),
   ]);
   const newestParsed = z.array(newestPreviewSchema).safeParse(newestRows ?? []);
   if (!newestParsed.success) {
@@ -175,8 +191,19 @@ export default async function AdminHomePage({
       afterHours={minutes >= AFTER_HOURS_START || minutes < MORNING_START}
       newCount={availableNewCount}
       oldestWaiting={oldestWaiting}
-      oldestRequestId={oldestPreview?.id ?? null}
       newest={newest}
+      statusCounts={{
+        new: availableNewCount,
+        contacted: availableQueueCount(
+          contactedCountResult.count,
+          contactedCountResult.error !== null,
+        ),
+        scheduled: availableQueueCount(
+          scheduledCountResult.count,
+          scheduledCountResult.error !== null,
+        ),
+        closed: availableQueueCount(closedCountResult.count, closedCountResult.error !== null),
+      }}
       attention={visibleAttention}
       attentionUnavailable={attentionUnavailable}
       noActiveRecipients={noActiveRecipients}

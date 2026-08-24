@@ -1,27 +1,15 @@
 import Link from "next/link";
 import type { ReactNode, SVGProps } from "react";
 
-import {
-  ArrowRight,
-  ChevronRight,
-  Clock,
-  FileText,
-  Globe,
-  Mail,
-  Printer,
-  Users,
-} from "@/components/icons";
+import { ChevronRight, Clock, FileText, Globe, Mail, Printer, Users } from "@/components/icons";
 import { arrivedOutsideOfficeHours } from "@/lib/portal/business-time";
 import { STAFF_REQUEST_SOURCE_PATH } from "@/lib/portal/contracts";
-import {
-  NEW_REQUESTS_HREF,
-  OPEN_NEW_REQUESTS_LABEL,
-  oldestNewRequestAction,
-} from "@/lib/portal/staff-language";
+import type { RequestStatus } from "@/lib/portal/contracts";
+import { NEW_REQUESTS_HREF, OPEN_NEW_REQUESTS_LABEL } from "@/lib/portal/staff-language";
 
 import { PortalFeedbackMessage, PortalFeedbackProvider } from "./portal-feedback";
 import { formatReceived } from "./requests/format";
-import { NewRequestPacketLink } from "./requests/requests-output-actions";
+import { PrintChooser } from "./requests/print-chooser";
 
 interface HomeTask {
   href: string;
@@ -64,8 +52,8 @@ export function HomeWorkbench({
   afterHours,
   newCount,
   oldestWaiting,
-  oldestRequestId,
   newest,
+  statusCounts,
   attention,
   attentionUnavailable,
   noActiveRecipients,
@@ -77,8 +65,8 @@ export function HomeWorkbench({
   afterHours: boolean;
   newCount: number | null;
   oldestWaiting: string | null;
-  oldestRequestId: string | null;
   newest: NewRequestPreview[];
+  statusCounts: Readonly<Partial<Record<RequestStatus, number | null>>>;
   attention: AttentionPath[];
   attentionUnavailable: boolean;
   noActiveRecipients: boolean;
@@ -86,7 +74,6 @@ export function HomeWorkbench({
   announcements?: ReactNode;
 }>) {
   const newViewHref = NEW_REQUESTS_HREF;
-  const oldestAction = oldestNewRequestAction({ newCount, oldestRequestId });
 
   const content = (
     <section aria-labelledby="home-heading">
@@ -118,7 +105,7 @@ export function HomeWorkbench({
           <header className="portal-work-stack-header">
             <div>
               <h2 id="queue-overview-heading">Appointment requests</h2>
-              <p>New requests wait here. Contact the longest-waiting one first.</p>
+              <p>New requests wait here.</p>
             </div>
             <div className="portal-work-stack-commands print-hide">
               <Link
@@ -126,11 +113,7 @@ export function HomeWorkbench({
                 data-testid="home-add-patient-request"
                 className="btn btn-outline portal-work-stack-add"
               >
-                Add appointment request
-              </Link>
-              <Link href="/admin/requests" className="portal-inline-link">
-                Open Appointments
-                <ArrowRight className="h-4 w-4" />
+                Add Appointment
               </Link>
             </div>
           </header>
@@ -151,10 +134,10 @@ export function HomeWorkbench({
                 </p>
               </div>
               <div className="portal-new-work-actions">
-                <button type="button" className="btn btn-outline min-h-11" disabled>
-                  <Printer className="h-4 w-4" />
-                  Printing unavailable
-                </button>
+                <PrintChooser
+                  statusCounts={statusCounts}
+                  triggerClassName="btn btn-outline min-h-11"
+                />
                 <Link href={newViewHref} className="btn btn-navy min-h-11">
                   Open Appointments
                 </Link>
@@ -175,57 +158,30 @@ export function HomeWorkbench({
                 )}
               </div>
               <div className="portal-new-work-actions">
-                {newCount > 0 ? (
-                  <>
-                    {oldestAction.kind === "open-oldest" ? (
-                      <Link
-                        href={oldestAction.href}
-                        data-testid="start-oldest-request"
-                        className="btn btn-navy min-h-11"
-                      >
-                        {oldestAction.label}
-                      </Link>
-                    ) : oldestAction.kind === "empty" ? (
-                      <Link
-                        href={oldestAction.href}
-                        data-testid="start-oldest-empty"
-                        className="btn btn-navy min-h-11"
-                      >
-                        {oldestAction.label}
-                      </Link>
-                    ) : null}
-                    <NewRequestPacketLink
-                      ariaLabel={`Print all ${newCount} new appointment ${
-                        newCount === 1 ? "request" : "requests"
-                      }; opens in a new tab`}
-                      className="btn btn-outline min-h-11"
-                      countTestId="print-new-count"
-                      label={`Print all ${newCount}`}
-                    />
-                  </>
-                ) : (
-                  <>
-                    <button type="button" className="btn btn-outline min-h-11" disabled>
-                      <Printer className="h-4 w-4" />
-                      <span data-testid="print-new-empty">Nothing to print</span>
-                    </button>
-                    <Link
-                      href={NEW_REQUESTS_HREF}
-                      data-testid="start-oldest-empty"
-                      className="btn btn-navy min-h-11"
-                    >
-                      {OPEN_NEW_REQUESTS_LABEL}
-                    </Link>
-                  </>
-                )}
+                <PrintChooser
+                  statusCounts={statusCounts}
+                  triggerClassName="btn btn-outline min-h-11"
+                />
+                {newCount === 0 ? (
+                  <Link
+                    href={NEW_REQUESTS_HREF}
+                    data-testid="start-oldest-empty"
+                    className="btn btn-navy min-h-11"
+                  >
+                    {OPEN_NEW_REQUESTS_LABEL}
+                  </Link>
+                ) : null}
               </div>
             </div>
           )}
 
           {newest.length > 0 && newCount !== null ? (
             <div className="portal-arrivals">
-              <h3>Newest arrivals</h3>
-              <ul data-testid="queue-overview-preview">
+              <h3>New Appointments</h3>
+              <ul
+                data-testid="queue-overview-preview"
+                data-scroll={newest.length > 3 ? "true" : "false"}
+              >
                 {newest.map((request) => (
                   <li key={request.id}>
                     <Link href={`/admin/requests/${request.id}`}>

@@ -223,6 +223,7 @@ function QueueRowLink({
             <strong
               data-testid="request-next-action"
               data-attention={nextAction.attention ? "true" : undefined}
+              aria-label={nextAction.attention ? `Needs attention: ${nextAction.text}` : undefined}
             >
               {nextAction.text}
             </strong>
@@ -373,7 +374,7 @@ export default async function AdminRequestsPage({
               filteredTotal={filteredTotal}
               filterLabel={filter === "all" ? "All" : STATUS_LABELS[filter]}
               hasSearch={search !== ""}
-              newCount={counts.new}
+              statusCounts={counts}
             />
           </span>
         </div>

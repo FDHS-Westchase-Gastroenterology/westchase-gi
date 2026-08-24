@@ -674,10 +674,9 @@
     line-height: 1.5;
   }
 
-  /* The work surface's own command row: opening the ledger stays the
-     frequent path, staff-authored intake sits beside the queue that gives
-     it context instead of floating in a detached page header. Wrapping is
-     the narrow-screen hierarchy: Add first, Open Appointments beneath it. */
+  /* The work surface's own command row: staff-authored intake sits beside
+     the queue that gives it context instead of floating in a detached page
+     header. Wrapping keeps Add inside the card on a narrow screen. */
   .portal-work-stack-commands {
     display: flex;
     flex-wrap: wrap;
@@ -762,10 +761,17 @@
     opacity: 0.58;
   }
 
-  /* Newest arrivals stay an informational preview, not a second queue:
-     compact rows, lighter name weight, hairline rules. */
+  /* New Appointments stay a compact preview, not a second queue: compact
+     rows, lighter name weight, hairline rules. More than three rows scroll
+     inside the list so Home can show all five without becoming a dump. */
   .portal-arrivals {
     padding: 0.95rem 1.05rem;
+  }
+
+  .portal-arrivals ul[data-scroll="true"] {
+    max-height: calc(3 * (2.6rem + 1px));
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .portal-arrivals + .portal-attention-next {
@@ -1812,6 +1818,69 @@
   .portal-recipient-state[data-active="true"] {
     border-color: var(--color-teal-ink);
     background: var(--color-mint);
+    color: var(--color-teal-ink);
+  }
+
+  .portal-print-chooser {
+    width: min(92vw, 26rem);
+  }
+
+  .portal-print-chooser-primary {
+    margin-top: 1rem;
+  }
+
+  .portal-print-chooser-primary .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .portal-print-chooser-statuses {
+    margin-top: 1.1rem;
+    border: 0;
+    padding: 0;
+  }
+
+  .portal-print-chooser-statuses legend {
+    color: var(--color-ink);
+    font-size: 0.82rem;
+    font-weight: 850;
+  }
+
+  .portal-print-chooser-status {
+    display: grid;
+    min-height: 2.75rem;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.65rem;
+    margin-top: 0.35rem;
+    border: 1px solid var(--color-line-2);
+    border-radius: var(--radius-sm);
+    padding-inline: 0.75rem;
+    color: var(--color-ink);
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+
+  .portal-print-chooser-status[data-selected="true"] {
+    border-color: var(--color-teal-ink);
+    background: var(--color-mint);
+    color: var(--color-teal-ink);
+  }
+
+  .portal-print-chooser-status input {
+    width: 1.05rem;
+    height: 1.05rem;
+    accent-color: var(--color-teal-ink);
+  }
+
+  .portal-print-chooser-status small {
+    color: var(--color-muted);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 750;
+  }
+
+  .portal-print-chooser-status[data-selected="true"] small {
     color: var(--color-teal-ink);
   }
 

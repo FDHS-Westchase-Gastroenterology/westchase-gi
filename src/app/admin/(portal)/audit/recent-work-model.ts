@@ -4,10 +4,15 @@
 
 import { z } from "zod";
 
-import { OUTCOME_HISTORY_LABELS, followUpShortLabel } from "@/app/admin/(portal)/requests/format";
+import {
+  OUTCOME_HISTORY_LABELS,
+  STATUS_LABELS,
+  followUpShortLabel,
+} from "@/app/admin/(portal)/requests/format";
 import { asJsonBoolean, asJsonNumber, asJsonObject, asJsonString } from "@/lib/json";
 import type { Json, JsonObject } from "@/lib/json";
 import type { RequestStatus } from "@/lib/portal/contracts";
+import { formatStatusList, parsePrintStatusSelection } from "@/lib/portal/print-selection";
 import { isPortalReleaseAuditAction } from "@/lib/portal/release-state";
 
 // The human lens over the durable audit record: plain-language, grouped by
@@ -261,10 +266,26 @@ function describeAction(
     }
     case "requests.print_new": {
       const count = asJsonNumber(detail.row_count);
+      const countText = count !== null ? ` (${count} ${count === 1 ? "request" : "requests"})` : "";
+      const filter = asJsonString(detail.status_filter);
+      const selection = parsePrintStatusSelection(filter ?? undefined);
+      if (
+        selection === "default" ||
+        (Array.isArray(selection) && selection.length === 1 && selection[0] === "new")
+      ) {
+        return {
+          sentence: `prepared the New-request print packet${countText}`,
+          technical: false,
+        };
+      }
+      if (Array.isArray(selection)) {
+        return {
+          sentence: `prepared a print packet of ${formatStatusList(selection, STATUS_LABELS)}${countText}`,
+          technical: false,
+        };
+      }
       return {
-        sentence: `prepared the New-request print packet${
-          count !== null ? ` (${count} ${count === 1 ? "request" : "requests"})` : ""
-        }`,
+        sentence: `prepared a request print packet${countText}`,
         technical: false,
       };
     }

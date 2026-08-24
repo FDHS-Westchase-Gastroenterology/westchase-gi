@@ -13,15 +13,27 @@ import {
   TIME_LABELS,
 } from "@/app/admin/(portal)/requests/format";
 import { ArrowRight, Printer } from "@/components/icons";
+import { recordAudit } from "@/lib/portal/audit";
 import { requireRole } from "@/lib/portal/auth";
-import { prepareNewRequestPrintPacket } from "@/lib/portal/request-print";
+import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
+import type { RequestStatus } from "@/lib/portal/contracts";
+import {
+  formatStatusList,
+  isNewOnlyPrintSelection,
+  parsePrintStatusSelection,
+  printPacketHref,
+} from "@/lib/portal/print-selection";
+import {
+  prepareNewRequestPrintPacket,
+  prepareStatusRequestPrintPacket,
+} from "@/lib/portal/request-print";
 import type { NewRequestPrintRow } from "@/lib/portal/request-print";
 import { serviceClient } from "@/lib/portal/server";
 
 import { PrintPacketControls } from "./print-controls";
 
 export const metadata: Metadata = {
-  title: "Print new appointment requests | Staff portal",
+  title: "Print appointment requests | Staff portal",
 };
 
 export const dynamic = "force-dynamic";
@@ -103,7 +115,11 @@ function RequestWorksheet({
       <header className="portal-print-sheet-header">
         <div>
           <p>Westchase Gastroenterology</p>
-          <h2>New appointment request</h2>
+          <h2>
+            {request.status === "new"
+              ? "New appointment request"
+              : `${STATUS_LABELS[request.status]} appointment request`}
+          </h2>
         </div>
         <div>
           <strong>
@@ -129,7 +145,12 @@ function RequestWorksheet({
           <PacketField label="Office" value={LOCATION_LABELS[request.location]} />
           <PacketField label="Best time to call" value={TIME_LABELS[request.preferredTime]} />
           <PacketField label="Received" value={formatReceived(request.createdAt, true)} />
-          <PacketField label="Status when prepared" value="New — not yet contacted" />
+          <PacketField
+            label="Status when prepared"
+            value={
+              request.status === "new" ? "New — not yet contacted" : STATUS_LABELS[request.status]
+            }
+          />
           <PacketField
             label="What the patient shared"
             value={valueOrDash(request.message)}
@@ -195,16 +216,83 @@ function RequestWorksheet({
 export default async function PrintNewRequestsPage({
   searchParams,
 }: Readonly<{
-  searchParams: Promise<{ auto?: string }>;
+  searchParams: Promise<{ auto?: string; status?: string | string[] }>;
 }>) {
   const session = await requireRole("staff");
-  const [params, packet] = await Promise.all([
-    searchParams,
-    prepareNewRequestPrintPacket({
-      db: serviceClient(),
-      actorEmail: session.email,
-    }),
-  ]);
+  const params = await searchParams;
+  const selection = parsePrintStatusSelection(params.status);
+  if (selection === "invalid") {
+    return (
+      <>
+        <PortalPageHeader
+          back={{ href: "/admin", label: "Back to Home" }}
+          title="That print list is not valid"
+          description="No patient details were shown and no appointment request changed."
+        />
+        <section className="portal-empty-state" role="alert">
+          <h2>Choose statuses again</h2>
+          <p>Use Print on Home or Appointments and pick one or more request statuses.</p>
+          <div>
+            <Link href="/admin" className="btn btn-navy min-h-11">
+              Back to Home
+            </Link>
+          </div>
+        </section>
+      </>
+    );
+  }
+
+  const selectedStatuses: readonly RequestStatus[] = selection === "default" ? ["new"] : selection;
+  const newOnly = isNewOnlyPrintSelection(selection);
+  const db = serviceClient();
+  const packet = newOnly
+    ? await prepareNewRequestPrintPacket({
+        db,
+        actorEmail: session.email,
+      })
+    : await prepareStatusRequestPrintPacket({
+        db,
+        statuses: selectedStatuses,
+      });
+
+  if (packet.ok && !newOnly) {
+    try {
+      await recordAudit(db, {
+        actorEmail: session.email,
+        action: AUDIT_ACTIONS.REQUESTS_PRINT_NEW,
+        entity: "requests",
+        entityId: null,
+        detail: {
+          row_count: packet.requests.length,
+          status_filter: selectedStatuses.join(","),
+        },
+      });
+    } catch {
+      return (
+        <>
+          <PortalPageHeader
+            back={{ href: "/admin", label: "Back to Home" }}
+            title="Printing is temporarily unavailable"
+            description="No patient details were shown and no appointment request changed."
+          />
+          <section className="portal-empty-state" role="alert">
+            <h2>Try preparing the packet again</h2>
+            <p>
+              The secure print service did not prepare a packet. Try again once. If it still fails,
+              continue from Appointments so work is not blocked, then report the printing problem.
+            </p>
+            <div>
+              <Link href="/admin" className="btn btn-navy min-h-11">
+                Back to Home
+              </Link>
+            </div>
+          </section>
+        </>
+      );
+    }
+  }
+
+  const statusList = formatStatusList(selectedStatuses, STATUS_LABELS);
 
   if (!packet.ok) {
     return (
@@ -218,15 +306,21 @@ export default async function PrintNewRequestsPage({
           <h2>Try preparing the packet again</h2>
           <p>
             The secure print service did not prepare a packet. Try again once. If it still fails,
-            continue from the live New view so work is not blocked, then report the printing
-            problem.
+            continue from Appointments so work is not blocked, then report the printing problem.
           </p>
           <div>
-            <Link href="/admin/requests/print" prefetch={false} className="btn btn-navy min-h-11">
+            <Link
+              href={printPacketHref(selectedStatuses, false)}
+              prefetch={false}
+              className="btn btn-navy min-h-11"
+            >
               Try again
             </Link>
-            <Link href="/admin/requests?status=new" className="btn btn-outline min-h-11">
-              Open New requests
+            <Link
+              href={newOnly ? "/admin/requests?status=new" : "/admin/requests"}
+              className="btn btn-outline min-h-11"
+            >
+              {newOnly ? "Open New requests" : "Open Appointments"}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -240,12 +334,12 @@ export default async function PrintNewRequestsPage({
       <>
         <PortalPageHeader
           back={{ href: "/admin", label: "Back to Home" }}
-          title="No new appointment requests to print"
-          description="No appointment requests were New when this packet was prepared. No pages were created for printing and no request changed."
+          title={`No ${statusList} appointment requests to print`}
+          description={`None of those statuses had requests when this packet was prepared. No pages were created and no request changed.`}
         />
         <section className="portal-empty-state">
           <Printer className="h-7 w-7" />
-          <h2>There is no New work to hand off</h2>
+          <h2>There is no {statusList} work to hand off</h2>
           <p>
             The live queue may have changed since you opened this window. Return to Home for the
             next task, or open Appointments to review the current queue.
@@ -268,10 +362,10 @@ export default async function PrintNewRequestsPage({
       <div className="print-hide">
         <PortalPageHeader
           back={{ href: "/admin", label: "Back to Home" }}
-          title="Print new appointment requests"
+          title={newOnly ? "Print new appointment requests" : "Print appointment requests"}
           description={`${packet.requests.length} ${
             packet.requests.length === 1 ? "request was" : "requests were"
-          } New when this packet was prepared, ordered oldest first for a fair paper handoff.`}
+          } ${statusList} when this packet was prepared, ordered oldest first for a fair paper handoff.`}
           meta={
             <>
               <span>Prepared {referenceTime.format(new Date(packet.generatedAt))}</span>
@@ -283,13 +377,18 @@ export default async function PrintNewRequestsPage({
           <strong>Confirm the page count before printing.</strong>
           <span>
             This is a time-stamped snapshot. If the packet sits unattended, compare it with the live
-            New view before handing out the pages.
+            queue before handing out the pages.
           </span>
         </div>
         <PrintPacketControls autoStart={params.auto === "1"} count={packet.requests.length} />
       </div>
 
-      <section className="portal-print-packet" aria-label="New appointment request print packet">
+      <section
+        className="portal-print-packet"
+        aria-label={
+          newOnly ? "New appointment request print packet" : "Appointment request print packet"
+        }
+      >
         {packet.requests.map((request, index) => (
           <RequestWorksheet
             key={request.id}
@@ -306,8 +405,11 @@ export default async function PrintNewRequestsPage({
           Finished printing? Close this packet window, then return to the live queue before staff
           begin work. Paper notes do not update the portal.
         </p>
-        <Link href="/admin/requests?status=new" className="btn btn-outline min-h-11">
-          Open New requests
+        <Link
+          href={newOnly ? "/admin/requests?status=new" : "/admin/requests"}
+          className="btn btn-outline min-h-11"
+        >
+          {newOnly ? "Open New requests" : "Open Appointments"}
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>

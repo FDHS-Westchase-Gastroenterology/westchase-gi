@@ -1,63 +1,23 @@
 "use client";
 
-import Link from "next/link";
-
 import { PortalFeedbackMessage, usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
-import { Download, Printer } from "@/components/icons";
+import { Download } from "@/components/icons";
 import { useOutputGuard } from "@/components/output-feedback";
+import type { RequestStatus } from "@/lib/portal/contracts";
+
+import { PrintChooser } from "./print-chooser";
 
 /* Appointments demotes Print and Export from page actions to a quiet
    utility group beside Add: occasional outputs, reachable but not
    competing with the recurring work of opening a request. */
 export const REQUESTS_OUTPUT_UTILITY_CLASS = "portal-utility-link min-h-11";
 
-export function NewRequestPacketLink({
-  ariaLabel,
-  className,
-  countTestId,
-  label,
-}: Readonly<{
-  ariaLabel: string;
-  className: string;
-  countTestId?: string;
-  label: string;
-}>) {
-  const { publish } = usePortalFeedback();
-  const guard = useOutputGuard();
-
-  return (
-    <Link
-      href="/admin/requests/print?auto=1"
-      target="_blank"
-      rel="noopener"
-      prefetch={false}
-      aria-label={ariaLabel}
-      aria-disabled={guard.locked || undefined}
-      onClick={(event) => {
-        if (!guard.begin()) {
-          event.preventDefault();
-          return;
-        }
-        publish({
-          source: "requests-output",
-          tone: "status",
-          message: "Print dialog is opening in a new tab for the New-request packet.",
-        });
-      }}
-      className={`${className} aria-disabled:pointer-events-none aria-disabled:opacity-60`}
-    >
-      <Printer className="h-4 w-4" />
-      <span data-testid={countTestId}>{label}</span>
-    </Link>
-  );
-}
-
 interface RequestsOutputActionsProps {
   readonly exportHref: string;
   readonly filteredTotal: number;
   readonly filterLabel: string;
   readonly hasSearch: boolean;
-  readonly newCount: number;
+  readonly statusCounts: Readonly<Partial<Record<RequestStatus, number | null>>>;
 }
 
 function RequestsOutputActionsBody({
@@ -65,7 +25,7 @@ function RequestsOutputActionsBody({
   filteredTotal,
   filterLabel,
   hasSearch,
-  newCount,
+  statusCounts,
 }: Readonly<RequestsOutputActionsProps>) {
   const { publish } = usePortalFeedback();
   const exportGuard = useOutputGuard();
@@ -77,19 +37,11 @@ function RequestsOutputActionsBody({
 
   return (
     <>
-      {newCount > 0 ? (
-        <NewRequestPacketLink
-          ariaLabel={`Print ${newCount} new appointment ${
-            newCount === 1 ? "request" : "requests"
-          }; opens in a new tab`}
-          className={REQUESTS_OUTPUT_UTILITY_CLASS}
-          label={`Print new (${newCount})`}
-        />
-      ) : null}
+      <PrintChooser statusCounts={statusCounts} triggerClassName={REQUESTS_OUTPUT_UTILITY_CLASS} />
       <a
         href={exportHref}
         download
-        aria-label={`Export CSV — ${filteredTotal} current ${resultWord}`}
+        aria-label={`Export CSV: ${filteredTotal} current ${resultWord}`}
         aria-describedby="request-export-scope"
         aria-disabled={exportGuard.locked || undefined}
         data-testid="export-csv"

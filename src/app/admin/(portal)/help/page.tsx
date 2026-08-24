@@ -68,12 +68,12 @@ export default async function AdminHelpPage() {
         <div className="portal-help-section">
           <h2 className={SECTION_HEADING}>Print a paper handoff</h2>
           <p className={SECTION_BODY}>
-            Home shows a <strong>Print all</strong> action whenever New appointment requests are
-            waiting. It prepares one work sheet per request, oldest first, so a manager can hand the
-            pages to staff. The packet is a time-stamped snapshot: printing does not assign a
-            request, mark it contacted, or change its history. After a call, open the live request
+            Home has a <strong>Print</strong> action that can prepare every New request, or a custom
+            list by status. It prepares one work sheet per request, oldest first, so a manager can
+            hand the pages to staff. The packet is a time-stamped snapshot: printing does not assign
+            a request, mark it contacted, or change its history. After a call, open the live request
             in Appointments and record what happened so everyone sees the durable result. If a
-            packet has sat unattended, check the New view before distributing it.
+            packet has sat unattended, check the live queue before distributing it.
           </p>
           <Link
             href={HELP_LINKS.printPacket.href}

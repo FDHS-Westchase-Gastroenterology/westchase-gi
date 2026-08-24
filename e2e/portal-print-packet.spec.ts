@@ -161,6 +161,7 @@ test.describe("new appointment-request print packet", () => {
       "rendering Home must not prefetch an audited print packet",
     ).toHaveLength(0);
 
+    await page.getByTestId("print-chooser-trigger").click();
     const printLink = page.getByRole("link", {
       name: new RegExp(
         `^Print all ${newCount} new appointment ${newCount === 1 ? "request" : "requests"}`,
@@ -181,8 +182,7 @@ test.describe("new appointment-request print packet", () => {
     await expect(page.getByTestId("home-output-feedback")).toHaveText(
       "Print dialog is opening in a new tab for the New-request packet.",
     );
-    await expect(printLink).toBeFocused();
-    await expect(printLink).toHaveAttribute("aria-disabled", "true");
+    await expect(page.getByTestId("print-chooser-trigger")).toBeFocused();
     await expect.poll(() => packetPopupCount).toBe(1);
 
     await expect(

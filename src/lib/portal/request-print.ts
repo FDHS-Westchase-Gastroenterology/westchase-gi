@@ -3,6 +3,8 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
+import type { RequestStatus } from "./contracts";
+
 const RPC_NAME = "portal_prepare_new_request_print_packet";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const POSTGRES_TIMESTAMP_RE =
@@ -19,6 +21,7 @@ export interface NewRequestPrintRow {
   locale: string;
   sourcePath: string;
   createdAt: string;
+  status: RequestStatus;
 }
 
 export type NewRequestPrintPacketResult =
@@ -72,7 +75,29 @@ const rpcEnvelopeSchema = z.object({
   error: z.unknown().nullable().optional(),
 });
 
-function toPrintRow(row: z.infer<typeof printRowSchema>): NewRequestPrintRow {
+const storedPrintStatusSchema = z.enum(["new", "contacted", "scheduled", "booked", "closed"]);
+
+const statusPrintRowSchema = printRowSchema.extend({
+  status: storedPrintStatusSchema,
+});
+
+// Presentation Scheduled is durable `booked`, plus leftover `scheduled`
+// Rows from the deploy-overlap window. Same mapping as the queue chips.
+const PRINT_VIEW_DB_STATUSES = {
+  new: ["new"],
+  contacted: ["contacted"],
+  scheduled: ["booked", "scheduled"],
+  closed: ["closed"],
+} as const satisfies Record<RequestStatus, readonly string[]>;
+
+function presentationPrintStatus(status: z.infer<typeof storedPrintStatusSchema>): RequestStatus {
+  return status === "booked" ? "scheduled" : status;
+}
+
+function toPrintRow(
+  row: z.infer<typeof printRowSchema>,
+  status: RequestStatus = "new",
+): NewRequestPrintRow {
   return {
     id: row.id,
     name: row.name,
@@ -84,7 +109,34 @@ function toPrintRow(row: z.infer<typeof printRowSchema>): NewRequestPrintRow {
     locale: row.locale,
     sourcePath: row.source_path,
     createdAt: row.created_at,
+    status,
   };
+}
+
+function collectOrderedRows(
+  values: readonly Readonly<NewRequestPrintRow>[],
+): NewRequestPrintRow[] | null {
+  const requests: NewRequestPrintRow[] = [];
+  const ids = new Set<string>();
+  let previous: NewRequestPrintRow | null = null;
+  for (const row of values) {
+    if (ids.has(row.id)) return null;
+    if (previous !== null) {
+      const previousTime = postgresTimestampKey(previous.createdAt);
+      const currentTime = postgresTimestampKey(row.createdAt);
+      if (previousTime === null || currentTime === null) return null;
+      const timeOrder =
+        previousTime.epochMilliseconds - currentTime.epochMilliseconds ||
+        previousTime.microsecondsWithinMillisecond - currentTime.microsecondsWithinMillisecond;
+      if (timeOrder > 0 || (timeOrder === 0 && previous.id > row.id)) {
+        return null;
+      }
+    }
+    ids.add(row.id);
+    requests.push(row);
+    previous = row;
+  }
+  return requests;
 }
 
 export async function prepareNewRequestPrintPacket(
@@ -105,29 +157,51 @@ export async function prepareNewRequestPrintPacket(
     const packet = packetSchema.safeParse(envelope.data.data);
     if (!packet.success) return { ok: false };
 
-    const requests: NewRequestPrintRow[] = [];
-    const ids = new Set<string>();
-    let previous: NewRequestPrintRow | null = null;
-    for (const value of packet.data.requests) {
-      const row = toPrintRow(value);
-      if (ids.has(row.id)) return { ok: false };
-      if (previous !== null) {
-        const previousTime = postgresTimestampKey(previous.createdAt);
-        const currentTime = postgresTimestampKey(row.createdAt);
-        if (previousTime === null || currentTime === null) return { ok: false };
-        const timeOrder =
-          previousTime.epochMilliseconds - currentTime.epochMilliseconds ||
-          previousTime.microsecondsWithinMillisecond - currentTime.microsecondsWithinMillisecond;
-        if (timeOrder > 0 || (timeOrder === 0 && previous.id > row.id)) {
-          return { ok: false };
-        }
-      }
-      ids.add(row.id);
-      requests.push(row);
-      previous = row;
-    }
+    const requests = collectOrderedRows(packet.data.requests.map((value) => toPrintRow(value)));
+    if (requests === null) return { ok: false };
 
     return { ok: true, generatedAt: packet.data.generated_at, requests };
+  } catch {
+    return { ok: false };
+  }
+}
+
+export async function prepareStatusRequestPrintPacket(
+  input: Readonly<{
+    db: SupabaseClient;
+    statuses: readonly RequestStatus[];
+  }>,
+): Promise<NewRequestPrintPacketResult> {
+  if (input.statuses.length === 0) return { ok: false };
+
+  try {
+    const dbStatuses = [
+      ...new Set(input.statuses.flatMap((status) => PRINT_VIEW_DB_STATUSES[status])),
+    ];
+    const query = input.db
+      .from("requests")
+      .select(
+        "id, name, phone, email, location, preferred_time, message, locale, source_path, created_at, status",
+      )
+      .in("status", dbStatuses)
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true });
+    const { data, error } = await query;
+    if (error) return { ok: false };
+
+    const parsed = z.array(statusPrintRowSchema).safeParse(data);
+    if (!parsed.success) return { ok: false };
+
+    const requests = collectOrderedRows(
+      parsed.data.map((row) => toPrintRow(row, presentationPrintStatus(row.status))),
+    );
+    if (requests === null) return { ok: false };
+
+    return {
+      ok: true,
+      generatedAt: new Date().toISOString(),
+      requests,
+    };
   } catch {
     return { ok: false };
   }
