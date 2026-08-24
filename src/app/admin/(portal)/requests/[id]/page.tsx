@@ -380,100 +380,158 @@ export default async function RequestDetailPage({
       <RequestPrintFeedback />
 
       <div className="portal-request-layout">
-        <section
-          className="request-print-card portal-request-details"
-          aria-labelledby="request-details-heading"
-        >
-          <header className="portal-request-details-header">
-            <h2 id="request-details-heading">Contact and request</h2>
-            <p data-testid="request-intake-meta">
-              <span>
-                Received{" "}
-                <time dateTime={row.created_at}>{formatReceived(row.created_at, true)}</time>
-              </span>
-              <span>{staffCreated ? "Added by staff" : `${formLanguage} form`}</span>
-            </p>
-          </header>
-          <div className="portal-request-contact" role="group" aria-label="Patient contact options">
-            <a
-              href={`tel:${row.phone}`}
-              data-testid="request-phone-link"
-              className="portal-request-contact-action"
+        <div className="portal-request-record">
+          <section
+            className="request-print-card portal-request-details"
+            aria-labelledby="request-details-heading"
+          >
+            <header className="portal-request-details-header">
+              <h2 id="request-details-heading">Contact and request</h2>
+              <p data-testid="request-intake-meta">
+                <span>
+                  Received{" "}
+                  <time dateTime={row.created_at}>{formatReceived(row.created_at, true)}</time>
+                </span>
+                <span>{staffCreated ? "Added by staff" : `${formLanguage} form`}</span>
+              </p>
+            </header>
+            <div
+              className="portal-request-contact"
+              role="group"
+              aria-label="Patient contact options"
             >
-              <Phone className="portal-request-contact-icon" />
-              <span className="portal-request-contact-copy">
-                <span className="portal-request-contact-label">Call patient</span>
-                <strong
-                  className="portal-request-contact-value portal-request-contact-value--phone"
-                  data-ui-redact="patient-contact"
-                >
-                  {phoneDisplay}
-                </strong>
-              </span>
-            </a>
-            {safeMailbox !== null && safeMailbox !== "" ? (
               <a
-                href={`mailto:${safeMailbox}`}
-                data-testid="request-email-link"
+                href={`tel:${row.phone}`}
+                data-testid="request-phone-link"
                 className="portal-request-contact-action"
               >
-                <Mail className="portal-request-contact-icon" />
+                <Phone className="portal-request-contact-icon" />
                 <span className="portal-request-contact-copy">
-                  <span className="portal-request-contact-label">Email patient</span>
-                  <strong className="portal-request-contact-value" data-ui-redact="patient-contact">
-                    {safeMailbox}
+                  <span className="portal-request-contact-label">Call patient</span>
+                  <strong
+                    className="portal-request-contact-value portal-request-contact-value--phone"
+                    data-ui-redact="patient-contact"
+                  >
+                    {phoneDisplay}
                   </strong>
                 </span>
               </a>
-            ) : (
-              <div
-                data-testid="request-email-unavailable"
-                className="portal-request-contact-action portal-request-contact-action--unavailable"
-              >
-                <Mail className="portal-request-contact-icon" />
-                <span className="portal-request-contact-copy">
-                  <span className="portal-request-contact-label">Email patient</span>
-                  <strong className="portal-request-contact-value">No email provided</strong>
-                </span>
-              </div>
-            )}
-          </div>
-          <div className="portal-request-context">
-            <div className="portal-request-message">
-              <h3>
-                <MessageSquare />
-                Patient note
-              </h3>
-              <blockquote
-                data-testid="request-message"
-                data-ui-redact="patient-message"
-                data-empty={patientMessage !== "" ? undefined : "true"}
-              >
-                {patientMessage !== "" ? patientMessage : "No note was included with this request."}
-              </blockquote>
+              {safeMailbox !== null && safeMailbox !== "" ? (
+                <a
+                  href={`mailto:${safeMailbox}`}
+                  data-testid="request-email-link"
+                  className="portal-request-contact-email"
+                >
+                  <Mail className="portal-request-contact-icon" />
+                  <span className="portal-request-contact-copy">
+                    <span className="portal-request-contact-label">Email patient</span>
+                    <strong
+                      className="portal-request-contact-value"
+                      data-ui-redact="patient-contact"
+                    >
+                      {safeMailbox}
+                    </strong>
+                  </span>
+                </a>
+              ) : (
+                <p
+                  data-testid="request-email-unavailable"
+                  className="portal-request-contact-unavailable"
+                >
+                  No email provided
+                </p>
+              )}
             </div>
-            <dl
-              className="portal-request-preferences"
-              data-testid="request-preferences"
-              aria-label="Appointment preferences"
+            <div
+              className="portal-request-context"
+              data-empty={patientMessage === "" ? "true" : undefined}
             >
-              <div>
-                <dt>
-                  <MapPin />
-                  Preferred office
-                </dt>
-                <dd>{LOCATION_LABELS[row.location]}</dd>
+              <div className="portal-request-message">
+                <h3>
+                  <MessageSquare />
+                  Patient note
+                </h3>
+                <blockquote
+                  data-testid="request-message"
+                  data-ui-redact={patientMessage !== "" ? "patient-message" : undefined}
+                  data-empty={patientMessage !== "" ? undefined : "true"}
+                >
+                  {patientMessage !== ""
+                    ? patientMessage
+                    : "No note was included with this request."}
+                </blockquote>
               </div>
-              <div>
-                <dt>
-                  <Clock />
-                  Preferred time
-                </dt>
-                <dd>{TIME_LABELS[row.preferred_time]}</dd>
-              </div>
-            </dl>
-          </div>
-        </section>
+              <dl
+                className="portal-request-preferences"
+                data-testid="request-preferences"
+                aria-label="Appointment preferences"
+              >
+                <div>
+                  <dt>
+                    <MapPin />
+                    Preferred office
+                  </dt>
+                  <dd>{LOCATION_LABELS[row.location]}</dd>
+                </div>
+                <div>
+                  <dt>
+                    <Clock />
+                    Preferred time
+                  </dt>
+                  <dd>{TIME_LABELS[row.preferred_time]}</dd>
+                </div>
+              </dl>
+            </div>
+          </section>
+
+          <section
+            className="request-print-card portal-request-notes"
+            data-empty={noteViews.length === 0 ? "true" : undefined}
+          >
+            <RequestNotes requestId={row.id} notes={noteViews} />
+          </section>
+
+          <section
+            className="request-print-card portal-request-history"
+            data-short={historyLines.length <= 1 ? "true" : undefined}
+          >
+            <h2 className="portal-record-heading">Request history</h2>
+            <p className="portal-request-section-description">
+              Everything recorded about this request, newest first — contact attempts, status
+              changes, undo corrections, and notification outcomes.
+            </p>
+            {historyLines.length === 0 ? (
+              <p className="portal-request-history-empty">Nothing recorded yet.</p>
+            ) : (
+              <ul data-testid="request-history" className="portal-request-ledger">
+                {historyLines.map((line) => (
+                  <li key={line.id} className="request-activity-item">
+                    <p
+                      className={`portal-request-ledger-event ${
+                        line.undone
+                          ? "portal-request-ledger-event--undone"
+                          : line.attention
+                            ? "portal-request-ledger-event--attention"
+                            : line.quiet
+                              ? "portal-request-ledger-event--quiet"
+                              : ""
+                      }`}
+                    >
+                      {line.text}
+                    </p>
+                    <p className="portal-request-ledger-meta">
+                      {line.actor !== null && line.actor !== ""
+                        ? `${displayNameOrEmail(nameMap, line.actor)} · `
+                        : ""}
+                      {formatReceived(line.at, true)}
+                      {line.undone ? " · later undone" : ""}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
 
         <aside className="portal-workflow-shell" aria-label="Record request outcome">
           <WorkflowPanel
@@ -486,51 +544,6 @@ export default async function RequestDetailPage({
             nextHref={nextId !== null && nextId !== "" ? continuityHref(nextId) : null}
           />
         </aside>
-
-        <section className="request-print-card portal-request-notes">
-          <RequestNotes requestId={row.id} notes={noteViews} />
-        </section>
-
-        <section className="request-print-card portal-request-history">
-          <h2>Request history</h2>
-          <p className="portal-request-section-description">
-            Everything recorded about this request, newest first — contact attempts, status changes,
-            undo corrections, and notification outcomes.
-          </p>
-          {historyLines.length === 0 ? (
-            <p className="mt-3 text-[0.95rem] text-[var(--color-muted)]">Nothing recorded yet.</p>
-          ) : (
-            <ul
-              data-testid="request-history"
-              className="mt-4 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]"
-            >
-              {historyLines.map((line) => (
-                <li key={line.id} className="request-activity-item py-4">
-                  <p
-                    className={`text-[0.95rem] ${
-                      line.undone
-                        ? "font-bold text-[var(--color-muted)] line-through decoration-1"
-                        : line.attention
-                          ? "font-bold text-[var(--portal-attention-ink)]"
-                          : line.quiet
-                            ? "text-[var(--color-muted)]"
-                            : "font-bold text-[var(--color-ink)]"
-                    }`}
-                  >
-                    {line.text}
-                  </p>
-                  <p className="mt-1.5 text-[0.8rem] font-bold text-[var(--color-teal-ink)]">
-                    {line.actor !== null && line.actor !== ""
-                      ? `${displayNameOrEmail(nameMap, line.actor)} · `
-                      : ""}
-                    {formatReceived(line.at, true)}
-                    {line.undone ? " · later undone" : ""}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
       </div>
     </section>
   );

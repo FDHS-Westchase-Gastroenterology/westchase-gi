@@ -92,10 +92,7 @@ export function RequestNotes({
   return (
     <section data-testid="request-notes" aria-labelledby="request-notes-heading">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-        <h2
-          id="request-notes-heading"
-          className="text-[1.05rem] font-black text-[var(--color-ink)]"
-        >
+        <h2 id="request-notes-heading" className="portal-record-heading">
           Appointment request notes
         </h2>
         <button
@@ -126,21 +123,17 @@ export function RequestNotes({
       ) : null}
 
       {notes.length === 0 ? (
-        <p data-testid="notes-empty" className="mt-4 text-[0.95rem] text-[var(--color-muted)]">
+        <p data-testid="notes-empty" className="portal-request-notes-empty">
           No notes yet.
         </p>
       ) : (
         <>
-          <ul
-            id="request-note-list"
-            data-testid="note-list"
-            className="mt-4 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]"
-          >
+          <ul id="request-note-list" data-testid="note-list" className="portal-request-note-list">
             {notes.map((note, index) => (
               <li
                 key={note.id}
-                className={`request-note-item py-4 ${
-                  index >= INITIAL_VISIBLE_NOTES && !showAll ? "hidden print:list-item" : ""
+                className={`request-note-item${
+                  index >= INITIAL_VISIBLE_NOTES && !showAll ? " hidden print:list-item" : ""
                 }`}
               >
                 <p className="text-[0.95rem] leading-relaxed whitespace-pre-wrap text-[var(--color-ink)]">
@@ -203,6 +196,7 @@ export function RequestNotes({
               maxLength={2000}
               value={draft}
               disabled={pending}
+              aria-invalid={showError ? "true" : undefined}
               aria-describedby={
                 showError ? "request-note-guidance request-note-error" : "request-note-guidance"
               }

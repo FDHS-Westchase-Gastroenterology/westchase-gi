@@ -2129,7 +2129,10 @@
   .request-print-card h3,
   .request-print-card dt,
   .request-print-card dd,
-  .request-print-card a {
+  .request-print-card a,
+  .request-print-card .portal-request-contact-unavailable,
+  .request-print-card .portal-request-ledger-event,
+  .request-print-card .portal-request-ledger-meta {
     color: black !important;
   }
 

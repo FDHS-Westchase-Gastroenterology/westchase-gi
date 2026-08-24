@@ -39,3 +39,15 @@ advance). Renders pixel-identical (both atlas request PNGs byte-identical; no bi
 portal routes drifted on live branch-DB data and were reverted). E2E VAL-ADMIN-017 now asserts the
 innerText DOM-text contract. Rams 96/100, findings all pre-existing loop-1 typography frozen by
 the brief. oxlint rewrote a loop-1 pagination span for format compliance (whitespace only).
+
+## 2026-08-24 03:55
+HEAD 4bf13e6
+Candidate 4 loop 1 (request-detail record lane) is ready to commit on
+`codex/pi-candidate-4`. Contact, staff notes, and Request history now share one
+desktop sheet; mobile keeps contact → outcome → notes/history. Unavailable
+email is a quiet line; phone stays the mint action. Rams review_files 92/100
+with four pre-existing notes-composer findings left as documented
+non-actionable except `aria-invalid` on the note field. Focused E2E
+VAL-ADMIN-005/005b/005c/006/018 passed. Evidence is untracked under
+`.pi-evidence/candidate-4-loop-1/`. Disk after cleanup was 6.9 GiB; do not
+install more browsers or start another production build without freeing space.
