@@ -1144,6 +1144,16 @@ test.describe("portal requests operation", () => {
       expect(hints.some((hint) => hint.startsWith("Set a call-again day"))).toBe(true);
       expect(hints.some((hint) => hint === "On the schedule")).toBe(true);
 
+      // The waiting age and the location must read as one phrase in rendered
+      // DOM text: the separator is real text, never a CSS-only ::before glyph.
+      const waitingRow = page
+        .getByTestId("request-row")
+        .filter({ hasText: `TEST Queue ${runId} older` });
+      await expect(waitingRow).toContainText(
+        /Waiting since .+ · (?:Tampa|Lutz|Either office) · (?:Morning|Afternoon|Any time)/,
+        { useInnerText: true },
+      );
+
       // A legacy Contacted/null row never has a blank Next step. Its queue
       // Action targets the dedicated correction control, where no date is
       // Guessed and Save stays unavailable until staff choose one.

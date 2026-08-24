@@ -229,7 +229,10 @@ function QueueRowLink({
           ) : null}
           <span className="portal-ledger-context">
             {waiting !== null && waiting !== "" ? (
-              <span data-testid="request-waiting">Waiting since {waiting}</span>
+              <>
+                <span data-testid="request-waiting">Waiting since {waiting}</span>
+                <span className="portal-ledger-sep"> · </span>
+              </>
             ) : null}
             <span>
               {LOCATION_LABELS[request.location]} · {TIME_LABELS[request.preferred_time]}
@@ -468,7 +471,9 @@ export default async function AdminRequestsPage({
                     Previous
                   </Link>
                 ) : null}
-                <span>Page {page} of {totalPages}</span>
+                <span>
+                  Page {page} of {totalPages}
+                </span>
                 {requests.length > 0 && page < totalPages ? (
                   <Link
                     href={requestsHref({

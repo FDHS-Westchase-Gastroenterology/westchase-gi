@@ -1296,9 +1296,11 @@
     line-height: 1.45;
   }
 
-  .portal-ledger-context > span + span::before {
-    content: "·";
-    margin-inline: 0.4rem;
+  /* The separator is real DOM text so assistive technology hears the same
+     pause the eye sees; the calc restores the prior 0.4rem gaps around the
+     dot now that the literal spaces also contribute width. */
+  .portal-ledger-context .portal-ledger-sep {
+    margin-inline: calc(0.4rem - 0.1925em);
     color: var(--color-line);
   }
 

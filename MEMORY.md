@@ -29,3 +29,13 @@ Visual-evidence gate is now a standing contribution-loop item: UI-visible PRs ne
 ## 2026-08-16 22:05
 HEAD e3ec91c
 Rebased GitHub stack #237 (#224 ← #227 ← #236) onto current `main` and restacked #239 on the new #236 tip. Each layer has a standing-gate follow-up commit. Local gates on this tip: oxlint 0, oxfmt clean, React Doctor 100.
+
+## 2026-08-23 22:45
+HEAD 0e8ca79
+Candidate 2 loop 2 correction is committed on `codex/pi-candidate-2`: the queue waiting→location
+separator is now real DOM text (` · ` in a `portal-ledger-sep` span; `margin-inline:
+calc(0.4rem - 0.1925em)` restores the exact loop-1 16.11px gap because 0.1925em is Lato's space
+advance). Renders pixel-identical (both atlas request PNGs byte-identical; no binary churn — other
+portal routes drifted on live branch-DB data and were reverted). E2E VAL-ADMIN-017 now asserts the
+innerText DOM-text contract. Rams 96/100, findings all pre-existing loop-1 typography frozen by
+the brief. oxlint rewrote a loop-1 pagination span for format compliance (whitespace only).
