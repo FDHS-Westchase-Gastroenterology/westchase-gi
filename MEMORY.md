@@ -1,5 +1,17 @@
 # Memory
 
+## 2026-08-23 22:16
+HEAD e62a4fe
+Candidate 2 loop 1 (Appointments queue) is committed on `codex/pi-candidate-2`. Rams
+review_files scored 92/100 with three findings left as documented non-actionable:
+chevron `aria-hidden` and pagination `tabular-nums` are false positives (icons.tsx `base()`
+sets `aria-hidden` by default; `.portal-queue-pagination > p` already sets tabular-nums),
+and the row `data-attention` color is emphasis-only — urgency is carried by the differing
+next-action text itself. Local credentialed E2E needs
+`PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF=$SUPABASE_BRANCH_PROJECT_REF` exported from
+`.env.local` before `npx playwright test`; the Playwright chromium headless shell had to be
+installed once with `npx playwright install chromium`.
+
 ## 2026-08-23 21:30
 HEAD 103d21d
 Pre-existing finding, not fixed in the pi-candidate-1 loop-2 commit: `npm run ui:reference:portal`

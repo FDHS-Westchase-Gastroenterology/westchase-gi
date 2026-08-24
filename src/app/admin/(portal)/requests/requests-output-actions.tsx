@@ -3,8 +3,13 @@
 import Link from "next/link";
 
 import { PortalFeedbackMessage, usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
-import { Printer } from "@/components/icons";
+import { Download, Printer } from "@/components/icons";
 import { useOutputGuard } from "@/components/output-feedback";
+
+/* Appointments demotes Print and Export from page actions to a quiet
+   utility group beside Add: occasional outputs, reachable but not
+   competing with the recurring work of opening a request. */
+export const REQUESTS_OUTPUT_UTILITY_CLASS = "portal-utility-link min-h-11";
 
 export function NewRequestPacketLink({
   ariaLabel,
@@ -77,13 +82,14 @@ function RequestsOutputActionsBody({
           ariaLabel={`Print ${newCount} new appointment ${
             newCount === 1 ? "request" : "requests"
           }; opens in a new tab`}
-          className="btn btn-navy min-h-11"
+          className={REQUESTS_OUTPUT_UTILITY_CLASS}
           label={`Print new (${newCount})`}
         />
       ) : null}
       <a
         href={exportHref}
         download
+        aria-label={`Export CSV — ${filteredTotal} current ${resultWord}`}
         aria-describedby="request-export-scope"
         aria-disabled={exportGuard.locked || undefined}
         data-testid="export-csv"
@@ -98,8 +104,9 @@ function RequestsOutputActionsBody({
             message: `CSV download started for ${filteredTotal} current ${resultWord}.`,
           });
         }}
-        className="btn btn-outline min-h-11 aria-disabled:pointer-events-none aria-disabled:opacity-60"
+        className={REQUESTS_OUTPUT_UTILITY_CLASS}
       >
+        <Download className="h-4 w-4" />
         Export CSV
       </a>
       <span id="request-export-scope" className="sr-only">

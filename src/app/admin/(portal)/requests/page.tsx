@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { PortalFeedbackProvider } from "@/app/admin/(portal)/portal-feedback";
-import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import { ChevronRight } from "@/components/icons";
 import { requireRole } from "@/lib/portal/auth";
 import { waitingSince } from "@/lib/portal/business-time";
@@ -197,6 +196,9 @@ function QueueRowLink({
       : request.status === "closed"
         ? { text: "No further action", attention: false }
         : null);
+  // The action column is the queue's comparison axis: the next step first,
+  // Then its operational reason or timing, then scheduling context. The
+  // Status pill and received time stay available in the quiet meta column.
   return (
     <li>
       <Link
@@ -217,7 +219,6 @@ function QueueRowLink({
           <span data-ui-redact="patient-contact">{request.phone}</span>
         </span>
         <span className="portal-ledger-next">
-          <small>Next step</small>
           {nextAction ? (
             <strong
               data-testid="request-next-action"
@@ -226,15 +227,17 @@ function QueueRowLink({
               {nextAction.text}
             </strong>
           ) : null}
-          <span>
-            {LOCATION_LABELS[request.location]} · {TIME_LABELS[request.preferred_time]}
+          <span className="portal-ledger-context">
+            {waiting !== null && waiting !== "" ? (
+              <span data-testid="request-waiting">Waiting since {waiting}</span>
+            ) : null}
+            <span>
+              {LOCATION_LABELS[request.location]} · {TIME_LABELS[request.preferred_time]}
+            </span>
           </span>
-          {waiting !== null && waiting !== "" ? (
-            <span data-testid="request-waiting">Waiting since {waiting}</span>
-          ) : null}
         </span>
         <span className="portal-ledger-meta">
-          <span>
+          <span className="portal-ledger-meta-status">
             <StatusBadge status={request.status} />
             {request.legacy_review_required ? (
               <span data-testid="legacy-review-tag" className="portal-review-tag">
@@ -243,8 +246,8 @@ function QueueRowLink({
             ) : null}
           </span>
           <small>Received {formatReceived(request.created_at)}</small>
-          <ChevronRight className="h-4 w-4" />
         </span>
+        <ChevronRight className="portal-ledger-disclosure h-4 w-4" />
       </Link>
     </li>
   );
@@ -336,18 +339,28 @@ export default async function AdminRequestsPage({
 
   const content = (
     <section aria-labelledby="requests-heading">
-      <PortalPageHeader
-        title={<span id="requests-heading">Appointments</span>}
-        description="Every appointment request, ordered by what needs attention first. Open one to call, document the outcome, and continue without losing your place."
-        actions={
-          <>
-            <Link
-              href={`${STAFF_REQUEST_SOURCE_PATH}?from=appointments`}
-              data-testid="appointments-add-patient-request"
-              className="btn btn-outline min-h-11"
-            >
-              Add appointment request
-            </Link>
+      {/* One-line masthead in the Home grammar: identity, one true
+          Sentence, and the page commands. Opening a request is the
+          Recurring task, so Print and Export sit in a quiet utility group
+          Beside Add instead of competing as page actions. */}
+      <header className="portal-queue-masthead">
+        <div>
+          <h1 id="requests-heading" className="portal-queue-title">
+            Appointments
+          </h1>
+          <p className="portal-queue-lede">
+            Every appointment request, ordered by what needs attention first.
+          </p>
+        </div>
+        <div className="portal-queue-masthead-actions print-hide">
+          <Link
+            href={`${STAFF_REQUEST_SOURCE_PATH}?from=appointments`}
+            data-testid="appointments-add-patient-request"
+            className="btn btn-outline portal-queue-add min-h-11"
+          >
+            Add appointment request
+          </Link>
+          <span className="portal-utility-group">
             <RequestsOutputActions
               exportHref={requestsHref({
                 path: "/admin/requests/export",
@@ -359,9 +372,9 @@ export default async function AdminRequestsPage({
               hasSearch={search !== ""}
               newCount={counts.new}
             />
-          </>
-        }
-      />
+          </span>
+        </div>
+      </header>
 
       <RequestsOutputFeedback />
 
@@ -390,6 +403,28 @@ export default async function AdminRequestsPage({
                     ? "When a patient submits the appointment form on the website, the appointment request appears here instantly and everyone on the notification list gets a notification email."
                     : "Requests reach this view as staff work them from their request page — open one from another view to record what happened."}
             </p>
+            {page === 1 && !search && filter === "all" ? (
+              <Link
+                href={`${STAFF_REQUEST_SOURCE_PATH}?from=appointments`}
+                className="portal-inline-link"
+              >
+                Add an appointment request from a call or visit
+              </Link>
+            ) : page === 1 && search ? (
+              <Link
+                href={requestsHref({ page: 1, search: "", status: filter })}
+                className="portal-inline-link"
+              >
+                Clear search
+              </Link>
+            ) : page === 1 && filter !== "all" ? (
+              <Link
+                href={requestsHref({ page: 1, search, status: "all" })}
+                className="portal-inline-link"
+              >
+                View all requests
+              </Link>
+            ) : null}
           </div>
         ) : (
           <ul data-testid="request-list" className="portal-ledger-list">
@@ -433,9 +468,7 @@ export default async function AdminRequestsPage({
                     Previous
                   </Link>
                 ) : null}
-                <span className="text-[0.9rem] font-bold text-[var(--color-body)]">
-                  Page {page} of {totalPages}
-                </span>
+                <span>Page {page} of {totalPages}</span>
                 {requests.length > 0 && page < totalPages ? (
                   <Link
                     href={requestsHref({
