@@ -30,6 +30,7 @@ const transitionRowSchema = z.object({
   actor_email: z.string(),
   occurred_at: z.string(),
   reason_code: z.string().nullable().optional(),
+  call_again_at: z.string().nullable().optional(),
   compensates_transition_id: z.string().nullable().optional(),
   provenance: z.string(),
 });
@@ -74,12 +75,14 @@ export async function fetchRequestWorkSurface(
       .maybeSingle(),
     db
       .from("request_transitions")
-      .select("*")
+      .select(
+        "id,from_state,to_state,command,actor_email,occurred_at,reason_code,call_again_at,compensates_transition_id,provenance",
+      )
       .eq("request_id", requestId)
       .order("occurred_at", { ascending: false }),
     db
       .from("request_events")
-      .select("*")
+      .select("id,type,recipient,status,meta,created_at")
       .eq("request_id", requestId)
       .order("created_at", { ascending: false }),
   ]);
@@ -102,7 +105,19 @@ export async function fetchRequestWorkSurface(
   for (const row of transitionRows) {
     if (presentId(row.compensates_transition_id)) compensated.add(row.compensates_transition_id);
   }
-  const history: HistoryEntry[] = [{ kind: "created", at: requestRow.data.created_at }];
+  const rawEvents = z.array(z.unknown()).safeParse(events.data);
+  const eventRows: z.infer<typeof eventRowSchema>[] = [];
+  for (const raw of rawEvents.success ? rawEvents.data : []) {
+    const parsed = eventRowSchema.safeParse(raw);
+    if (parsed.success) eventRows.push(parsed.data);
+  }
+  const creationEvent = eventRows.find((event) => event.type === "created");
+  const creationMeta = creationEvent === undefined ? null : asJsonObject(creationEvent.meta);
+  const creationOrigin =
+    creationMeta !== null && asJsonString(creationMeta.origin) === "staff" ? "staff" : "website";
+  const history: HistoryEntry[] = [
+    { kind: "created", origin: creationOrigin, at: requestRow.data.created_at },
+  ];
   for (const row of transitionRows) {
     const from = normalizeRequestState(row.from_state);
     const to = normalizeRequestState(row.to_state);
@@ -136,17 +151,14 @@ export async function fetchRequestWorkSurface(
           row.reason_code === "not_actionable" || row.reason_code === "wont_schedule"
             ? row.reason_code
             : null,
+        callAgainAt: row.call_again_at ?? null,
         undone: compensated.has(row.id),
         actor: row.actor_email,
         at: row.occurred_at,
       });
     }
   }
-  const rawEvents = z.array(z.unknown()).safeParse(events.data);
-  for (const raw of rawEvents.success ? rawEvents.data : []) {
-    const parsed = eventRowSchema.safeParse(raw);
-    if (!parsed.success) continue;
-    const event = parsed.data;
+  for (const event of eventRows) {
     const record = asJsonObject(event.meta);
     if (event.type === "note")
       history.push({

@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { RequestStatus } from "@/lib/portal/contracts";
 import { orderQueueRows } from "@/lib/portal/queue-attention";
 import type { AttentiveRow } from "@/lib/portal/queue-attention";
+import { uniqueByRequestId } from "@/lib/portal/request-query";
 
 // Shared queue reads for the requests list and the detail page's
 // Previous/next continuity: one attention derivation, one fetch shape.
@@ -107,7 +108,10 @@ export async function fetchAttentiveOpenRows(
   if (error) throw new Error(`Queue read failed: ${error.code}`);
   const parsedRows = z.array(storedQueueRowSchema).safeParse(data);
   if (!parsedRows.success) throw new Error("Queue read failed: invalid");
-  const rows = parsedRows.data.map(toQueueRow);
+  // Unique at the request, not the related-row fan-out. Counts on the
+  // Page use the same unique `requests` rows, so chips, range, and list
+  // Cannot disagree because notes or events matched more than once.
+  const rows = uniqueByRequestId(parsedRows.data.map(toQueueRow));
 
   const activityById = new Map<string, string>();
   const ids = rows.map((row) => row.id);
@@ -172,5 +176,8 @@ export async function fetchClosedRows(
   if (error) throw new Error(`Queue read failed: ${error.code}`);
   const parsed = z.array(storedQueueRowSchema).safeParse(data);
   if (!parsed.success) throw new Error("Queue read failed: invalid");
+  // Offset pages stay on `requests`. Unique-after-range would hide a join
+  // Fan-out by returning a short page, so this query never joins related
+  // Tables.
   return parsed.data.map(toQueueRow);
 }

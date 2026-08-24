@@ -40,7 +40,7 @@ export default async function PortalLayout({
       ? getPortalReleaseState(session, PORTAL_RELEASE_BRIEFING.id)
       : Promise.resolve({ status: "hidden" } as const),
   ]);
-  const waitingCount = availableQueueCount(queueResult.count, queueResult.error);
+  const waitingCount = availableQueueCount(queueResult.count, queueResult.error !== null);
 
   return (
     <PortalReleaseProvider eligible={releaseEligible} initialState={releaseState}>

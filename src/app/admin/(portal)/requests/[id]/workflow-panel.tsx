@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useReducer, useRef, useState, useTransition } from "react";
-import type { RefObject } from "react";
+import type { ReactNode } from "react";
 
+import { usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { followUpWhenLabel, STATE_LABELS } from "@/app/admin/(portal)/requests/format";
 import {
   classifyLegacyClosure,
@@ -12,6 +13,7 @@ import {
   confirmBookingHandoff,
   recordContactAttempt,
   reopenRequest,
+  setCallAgain,
   undoLatestTransition,
 } from "@/app/admin/(portal)/requests/workflow-actions";
 import { Check } from "@/components/icons";
@@ -96,12 +98,6 @@ const CLOSE_ROWS = {
   },
 } as const satisfies Record<ClosureReason, ChoiceRow>;
 
-const CALL_AGAIN_REQUIRED = {
-  reached_follow_up: false,
-  voicemail: true,
-  no_answer: true,
-} as const satisfies Record<ContactOutcome, boolean>;
-
 type FollowUpKind = "this_afternoon" | "tomorrow_morning" | "friday" | "day";
 
 const FOLLOW_UP_KINDS: { kind: FollowUpKind; label: string }[] = [
@@ -131,6 +127,14 @@ function practiceLocalDay(offsetDays: number): string {
   return shifted.toISOString().slice(0, 10);
 }
 
+function isValidCustomCallAgainDay(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value)
+    return false;
+  return value >= practiceLocalDay(0) && value <= practiceLocalDay(90);
+}
+
 // ---------------------------------------------------------------------------
 // Copy. Success names the staff-facing result (Scheduled, never Booked);
 // Failure names what is and is not known to have been saved (spec §16.5:
@@ -138,7 +142,9 @@ function practiceLocalDay(offsetDays: number): string {
 // ---------------------------------------------------------------------------
 
 function successCopy(
-  choice: Readonly<ActionChoice | { kind: "reopen" } | { kind: "classify" }>,
+  choice: Readonly<
+    ActionChoice | { kind: "reopen" } | { kind: "set_call_again" } | { kind: "classify" }
+  >,
   outcome: Readonly<{ state: RequestState; callAgainAt: string | null }>,
 ): string {
   switch (choice.kind) {
@@ -151,7 +157,13 @@ function successCopy(
     case "close":
       return "Saved — the request is closed.";
     case "reopen":
-      return "Reopened — back to Contacted for more work.";
+      return outcome.callAgainAt !== null && outcome.callAgainAt !== ""
+        ? `Reopened — back to Contacted. Call again ${followUpWhenLabel(outcome.callAgainAt)}.`
+        : "Reopened — back to Contacted for more work.";
+    case "set_call_again":
+      return outcome.callAgainAt !== null && outcome.callAgainAt !== ""
+        ? `Saved — call again ${followUpWhenLabel(outcome.callAgainAt)}.`
+        : "Saved.";
     case "classify":
       return outcome.state === "booked"
         ? "Record finished — marked Scheduled."
@@ -214,7 +226,6 @@ interface PanelState {
   readonly followUpDay: string;
   /** Legacy review: has staff said whether an appointment was booked? */
   readonly reviewResolution: "booked" | ClosureReason | null;
-  readonly attempted: boolean;
   readonly feedback: Feedback | null;
 }
 
@@ -223,17 +234,14 @@ type PanelAction =
   | { readonly type: "select_follow_up"; readonly kind: FollowUpKind }
   | { readonly type: "set_day"; readonly day: string }
   | { readonly type: "select_review"; readonly resolution: "booked" | ClosureReason }
-  | { readonly type: "attempt" }
   | { readonly type: "succeeded"; readonly text: string; readonly closedOrBooked: boolean }
-  | { readonly type: "failed"; readonly text: string }
-  | { readonly type: "reset" };
+  | { readonly type: "failed"; readonly text: string };
 
 const INITIAL_PANEL: PanelState = {
   selected: null,
   followUpKind: null,
   followUpDay: "",
   reviewResolution: null,
-  attempted: false,
   feedback: null,
 };
 
@@ -244,14 +252,12 @@ function panelReducer(state: Readonly<PanelState>, action: Readonly<PanelAction>
         return {
           ...state,
           selected: action.id,
-          attempted: false,
           feedback: null,
         };
       }
       return {
         ...state,
         selected: action.id,
-        attempted: false,
         feedback: null,
         followUpKind: null,
         followUpDay: "",
@@ -264,11 +270,8 @@ function panelReducer(state: Readonly<PanelState>, action: Readonly<PanelAction>
       return {
         ...state,
         reviewResolution: action.resolution,
-        attempted: false,
         feedback: null,
       };
-    case "attempt":
-      return { ...state, attempted: true };
     case "succeeded":
       return {
         ...INITIAL_PANEL,
@@ -280,18 +283,18 @@ function panelReducer(state: Readonly<PanelState>, action: Readonly<PanelAction>
       };
     case "failed":
       return { ...state, feedback: { tone: "error", text: action.text } };
-    case "reset":
-      return INITIAL_PANEL;
   }
   return state;
 }
 
 // ---------------------------------------------------------------------------
-// Presentational pieces (the retired composer's proven row vocabulary:
-// Sr-only radios, has-[:checked] treatment, pointer-down scale feedback)
+// Presentational pieces. The outcome list is one native radio group.
+// Sr-only inputs sit inside whole-row labels on ruled decision rows.
+// All five outcomes share one continuous keyboard sequence.
+// Each row height follows its own copy. The equal-card matrix is retired.
 // ---------------------------------------------------------------------------
 
-function ChoiceRadio({
+function DecisionRow({
   name,
   value,
   checked,
@@ -309,7 +312,7 @@ function ChoiceRadio({
   onSelect: () => void;
 }>) {
   return (
-    <label className="group block cursor-pointer rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-4 py-3 transition-[border-color,background-color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-[var(--color-navy)] active:scale-[0.98] has-[:checked]:border-[var(--color-navy)] has-[:checked]:bg-[var(--color-mint)] has-[:disabled]:cursor-default has-[:disabled]:opacity-60 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-teal-ink)] motion-reduce:transition-none motion-reduce:active:scale-100">
+    <label className="portal-choice-row">
       <input
         type="radio"
         name={name}
@@ -319,67 +322,79 @@ function ChoiceRadio({
         onChange={onSelect}
         className="sr-only"
       />
-      <span className="flex items-center justify-between gap-3">
-        <span className="text-[0.95rem] leading-snug font-bold text-[var(--color-ink)]">
-          {label}
-        </span>
-        <span
-          aria-hidden="true"
-          className="grid h-5 w-5 flex-none place-items-center rounded-full border border-[var(--color-line-2)] text-white transition-colors group-has-[:checked]:border-[var(--color-navy)] group-has-[:checked]:bg-[var(--color-navy)]"
-        >
-          <Check className="h-3 w-3 opacity-0 transition-opacity group-has-[:checked]:opacity-100" />
-        </span>
+      <span aria-hidden="true" className="portal-choice-indicator">
+        <Check className="portal-choice-check" />
       </span>
-      {helper !== undefined && helper !== "" ? (
-        <span className="mt-1 block text-[0.82rem] leading-snug text-[var(--color-muted)]">
-          {helper}
-        </span>
-      ) : null}
+      <span className="portal-choice-copy">
+        <span className="portal-choice-label">{label}</span>
+        {helper !== undefined && helper !== "" ? (
+          <span className="portal-choice-helper">{helper}</span>
+        ) : null}
+      </span>
     </label>
   );
 }
 
 function CallAgainFieldset({
-  outcome,
+  name,
+  legend,
+  description,
   followUpKind,
   followUpDay,
-  attempted,
   pending,
-  dispatch,
+  onKindChange,
+  onDayChange,
+  className = "mt-5",
 }: Readonly<{
-  outcome: ContactOutcome;
+  name: string;
+  legend: string;
+  description: string;
   followUpKind: FollowUpKind | null;
   followUpDay: string;
-  attempted: boolean;
   pending: boolean;
-  dispatch: React.Dispatch<PanelAction>;
+  onKindChange: (kind: FollowUpKind) => void;
+  onDayChange: (day: string) => void;
+  className?: string;
 }>) {
-  const required = CALL_AGAIN_REQUIRED[outcome];
-  const followUpMissing = attempted && required && !followUpKind;
-  const dayMissing = attempted && followUpKind === "day" && !followUpDay;
+  const descriptionId = `${name}-description`;
+  const dayId = `${name}-day`;
+  const dayLabelId = `${name}-day-label`;
+  const dayHintId = `${name}-day-hint`;
+  const errorId = `${name}-error`;
+  const pickADayId = `${name}-kind-day`;
+  const customDayInvalid =
+    followUpKind === "day" && followUpDay !== "" && !isValidCustomCallAgainDay(followUpDay);
+  const dayDescribedBy = customDayInvalid ? `${dayHintId} ${errorId}` : dayHintId;
 
   return (
-    <fieldset className="mt-5" disabled={pending}>
-      <legend className="text-sm font-bold text-[var(--color-ink)]">
-        When should this come back to your attention?
-      </legend>
-      <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
-        This tells the queue when to bring the request back.
-        {required ? " Required for this outcome." : ""}
+    <fieldset
+      className={className}
+      disabled={pending}
+      aria-describedby={customDayInvalid ? `${descriptionId} ${errorId}` : descriptionId}
+    >
+      <legend className="text-sm font-bold text-[var(--color-ink)]">{legend}</legend>
+      <p
+        id={descriptionId}
+        data-testid={`${name}-required-explanation`}
+        className="mt-1 text-sm leading-relaxed text-[var(--color-muted)]"
+      >
+        {description}
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {FOLLOW_UP_KINDS.map((chip) => (
           <label
             key={chip.kind}
-            className="flex min-h-11 cursor-pointer items-center rounded-full border border-[var(--color-line-2)] bg-white px-4 text-[0.9rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-navy)] has-[:checked]:border-[var(--color-navy)] has-[:checked]:bg-[var(--color-navy)] has-[:checked]:text-[var(--color-on-dark)] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-teal-ink)]"
+            className="flex min-h-11 cursor-pointer items-center rounded-full border border-[var(--color-line-2)] bg-white px-4 text-[0.9rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-navy)] has-[:checked]:border-[var(--color-navy)] has-[:checked]:bg-[var(--color-navy)] has-[:checked]:text-[var(--color-on-dark)] has-[:disabled]:cursor-default has-[:disabled]:opacity-60 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-teal-ink)]"
           >
             <input
               type="radio"
-              name="call-again"
+              id={chip.kind === "day" ? pickADayId : undefined}
+              name={name}
               value={chip.kind}
               checked={followUpKind === chip.kind}
+              aria-controls={chip.kind === "day" && followUpKind === "day" ? dayId : undefined}
               onChange={() => {
-                dispatch({ type: "select_follow_up", kind: chip.kind });
+                onKindChange(chip.kind);
               }}
               disabled={pending}
               className="sr-only"
@@ -387,59 +402,209 @@ function CallAgainFieldset({
             {chip.label}
           </label>
         ))}
-        {followUpKind === "day" ? (
+      </div>
+      {followUpKind === "day" ? (
+        <div role="group" aria-labelledby={`${pickADayId} ${dayLabelId}`} className="mt-3 max-w-sm">
+          <label
+            id={dayLabelId}
+            htmlFor={dayId}
+            className="block text-sm font-bold text-[var(--color-ink)]"
+          >
+            Call again on <span aria-hidden="true">*</span>
+            <span className="sr-only"> (required)</span>
+          </label>
           <input
+            id={dayId}
             type="date"
-            aria-label="Call again on this day"
+            name={`${name}-day`}
+            required
+            aria-required="true"
+            aria-invalid={customDayInvalid || undefined}
+            aria-describedby={dayDescribedBy}
+            data-testid={dayId}
             value={followUpDay}
             min={practiceLocalDay(0)}
             max={practiceLocalDay(90)}
             disabled={pending}
             onChange={(event) => {
-              dispatch({ type: "set_day", day: event.target.value });
+              onDayChange(event.target.value);
             }}
-            className="min-h-11 rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.9rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)] disabled:opacity-60"
+            className="mt-1.5 block min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.9rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)] focus:ring-2 focus:ring-[var(--color-teal-ink)] disabled:opacity-60 aria-[invalid=true]:border-[oklch(0.5_0.19_25)] aria-[invalid=true]:bg-[color-mix(in_oklch,oklch(0.97_0.018_25)_70%,white)]"
           />
-        ) : null}
-      </div>
-      {followUpMissing ? (
-        <p
-          role="alert"
-          data-testid="follow-up-required"
-          className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.9rem] font-bold text-[var(--color-ink)]"
-        >
-          Choose when to call again so the queue knows when to bring this request back.
-        </p>
-      ) : null}
-      {dayMissing ? (
-        <p
-          role="alert"
-          className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.9rem] font-bold text-[var(--color-ink)]"
-        >
-          Pick the day to call again.
-        </p>
+          <p id={dayHintId} className="mt-1.5 text-sm leading-relaxed text-[var(--color-muted)]">
+            Required when Pick a day is selected. Save stays unavailable until this day is valid.
+          </p>
+          {customDayInvalid ? (
+            <p
+              id={errorId}
+              role="alert"
+              className="mt-1.5 text-sm font-bold text-[var(--color-ink)]"
+            >
+              Choose today or a day within the next 90 days.
+            </p>
+          ) : null}
+        </div>
       ) : null}
     </fieldset>
+  );
+}
+
+function ReturnTimeAction({
+  kind,
+  pending,
+  inFlight,
+  onSubmit,
+}: Readonly<{
+  kind: "reopen" | "set_call_again";
+  pending: boolean;
+  inFlight: "save" | "reopen" | "set_call_again" | "classify" | "undo" | null;
+  onSubmit: (choice: Readonly<FollowUpChoice>) => void;
+}>) {
+  const [open, setOpen] = useState(kind === "set_call_again");
+  const [followUpKind, setFollowUpKind] = useState<FollowUpKind | null>(null);
+  const [followUpDay, setFollowUpDay] = useState("");
+  const correctionRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const focusAfterOpenRef = useRef(false);
+  const restoreTriggerFocusRef = useRef(false);
+  const choice = followUpChoice(followUpKind, followUpDay);
+  const isCorrection = kind === "set_call_again";
+  const headingId = `${kind}-heading`;
+
+  useEffect(() => {
+    if (
+      open &&
+      (focusAfterOpenRef.current || (isCorrection && window.location.hash === "#set-call-again"))
+    ) {
+      focusAfterOpenRef.current = false;
+      correctionRef.current?.focus();
+      return;
+    }
+    if (!open && restoreTriggerFocusRef.current) {
+      restoreTriggerFocusRef.current = false;
+      triggerRef.current?.focus();
+    }
+  }, [isCorrection, open]);
+
+  if (!open) {
+    return (
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          ref={triggerRef}
+          type="button"
+          data-testid="reopen-request"
+          disabled={pending}
+          onClick={() => {
+            focusAfterOpenRef.current = true;
+            setOpen(true);
+          }}
+          className="btn btn-outline min-h-11 disabled:opacity-60"
+        >
+          Reopen for more work
+        </button>
+        <p className="text-sm text-[var(--color-muted)]">
+          You will choose when it returns before anything changes.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={correctionRef}
+      id={isCorrection ? "set-call-again" : undefined}
+      tabIndex={-1}
+      role="group"
+      aria-labelledby={headingId}
+      data-testid={isCorrection ? "set-call-again-controls" : "reopen-controls"}
+      className={
+        isCorrection
+          ? "mt-4 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-4 outline-none focus:outline-[3px] focus:outline-offset-2 focus:outline-[var(--color-amber)]"
+          : "mt-4 outline-none focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[var(--color-teal-ink)]"
+      }
+    >
+      <h3 id={headingId} className="text-[0.95rem] font-black text-[var(--color-ink)]">
+        {isCorrection ? "Set a call-again day" : "Reopen for more work"}
+      </h3>
+      {isCorrection ? (
+        <p className="mt-1 max-w-[68ch] text-sm leading-relaxed text-[var(--color-body)]">
+          This Contacted request has no return time. Choose one to put a concrete next action back
+          in the shared queue.
+        </p>
+      ) : null}
+      <CallAgainFieldset
+        name={isCorrection ? "correction-call-again" : "reopen-call-again"}
+        legend={isCorrection ? "When should staff call again?" : "When should this request return?"}
+        description={
+          isCorrection
+            ? "A return choice is required. No date will be guessed for this request."
+            : "Choose a return time before reopening. Cancel leaves the resolved request and its history unchanged."
+        }
+        followUpKind={followUpKind}
+        followUpDay={followUpDay}
+        pending={pending}
+        onKindChange={setFollowUpKind}
+        onDayChange={setFollowUpDay}
+      />
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          data-testid={isCorrection ? "set-call-again-submit" : "confirm-reopen"}
+          disabled={pending || choice === undefined}
+          onClick={() => {
+            if (choice !== undefined) onSubmit(choice);
+          }}
+          className={`btn min-h-11 ${
+            choice !== undefined || (pending && inFlight === kind) ? "btn-navy" : "btn-outline"
+          } disabled:opacity-60`}
+        >
+          {pending && inFlight === kind
+            ? isCorrection
+              ? "Saving…"
+              : "Reopening…"
+            : isCorrection
+              ? "Set call-again day"
+              : "Reopen request"}
+        </button>
+        {isCorrection ? (
+          <p className="text-sm text-[var(--color-body)]">
+            The correction is recorded in Request history and can be undone for 15 minutes.
+          </p>
+        ) : (
+          <button
+            type="button"
+            data-testid="cancel-reopen"
+            disabled={pending}
+            onClick={() => {
+              restoreTriggerFocusRef.current = true;
+              setOpen(false);
+              setFollowUpKind(null);
+              setFollowUpDay("");
+            }}
+            className="btn btn-outline min-h-11 disabled:opacity-60"
+          >
+            Cancel
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
 function PanelFeedback({
   feedback,
   nextHref,
-  feedbackRef,
 }: Readonly<{
   feedback: Feedback | null;
   nextHref: string | null;
-  feedbackRef: RefObject<HTMLParagraphElement | null>;
 }>) {
   if (feedback === null) return null;
   return (
     <p
-      ref={feedbackRef}
-      tabIndex={-1}
       role={feedback.tone === "success" ? "status" : "alert"}
+      aria-atomic="true"
       data-testid="workflow-feedback"
-      className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-[0.92rem] leading-relaxed font-bold text-[var(--color-ink)] outline-none ${
+      className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-[0.92rem] leading-relaxed font-bold text-[var(--color-ink)] ${
         feedback.tone === "success" ? "bg-[var(--color-mint)]" : "bg-[var(--color-amber-soft)]"
       }`}
     >
@@ -495,7 +660,9 @@ export function WorkflowPanel({
   // Success, and during that window every button would falsely claim to be
   // The one working ("Reopening…" after a save). A button only wears an
   // In-progress verb for the action the user actually took.
-  const [inFlight, setInFlight] = useState<"save" | "reopen" | "classify" | "undo" | null>(null);
+  const [inFlight, setInFlight] = useState<
+    "save" | "reopen" | "set_call_again" | "classify" | "undo" | null
+  >(null);
   const [panel, dispatch] = useReducer(panelReducer, INITIAL_PANEL);
   const [truth, setTruth] = useState<Truth>({
     state,
@@ -504,7 +671,12 @@ export function WorkflowPanel({
     callAgainAt,
     undo,
   });
-  const feedbackRef = useRef<HTMLParagraphElement>(null);
+  const {
+    feedback: pageFeedback,
+    publish: publishPageFeedback,
+    dismiss: dismissPageFeedback,
+  } = usePortalFeedback();
+  const currentWorkflowFeedback = pageFeedback?.source === "request-workflow" ? pageFeedback : null;
   // One idempotency key per staff attempt: a retry after an ambiguous
   // Failure replays the same command; changing the input mints a new one.
   const keyRef = useRef<string | null>(null);
@@ -531,11 +703,12 @@ export function WorkflowPanel({
   }, []);
 
   useEffect(() => {
-    if (panel.feedback) feedbackRef.current?.focus();
-  }, [panel.feedback]);
+    if (panel.feedback === null) dismissPageFeedback("request-workflow");
+  }, [dismissPageFeedback, panel.feedback]);
 
   const legal = legalActionsFor(truth.state, {
     legacyReviewRequired: truth.legacyReviewRequired,
+    callAgainAt: truth.callAgainAt,
   });
 
   const rows: ChoiceRow[] = [
@@ -563,6 +736,7 @@ export function WorkflowPanel({
     intent: Readonly<
       | ActionChoice
       | { readonly kind: "reopen" }
+      | { readonly kind: "set_call_again" }
       | { readonly kind: "classify" }
       | { readonly kind: "undo" }
     >,
@@ -578,15 +752,17 @@ export function WorkflowPanel({
         undo: result.undo,
       });
       freshKey();
+      const text =
+        intent.kind === "undo"
+          ? `Undone — this request is ${STATE_LABELS[result.state]} again.`
+          : successCopy(intent, result);
       dispatch({
         type: "succeeded",
-        text:
-          intent.kind === "undo"
-            ? `Undone — this request is ${STATE_LABELS[result.state]} again.`
-            : successCopy(intent, result),
+        text,
         closedOrBooked:
           intent.kind !== "undo" && (result.state === "booked" || result.state === "closed"),
       });
+      publishPageFeedback({ source: "request-workflow", tone: "status", message: text });
       router.refresh();
       return;
     }
@@ -601,21 +777,26 @@ export function WorkflowPanel({
         });
       }
       freshKey();
+      const text = `Someone else worked this request just now — it is currently ${
+        result.current ? STATE_LABELS[result.current.state] : "changed"
+      }. Nothing was saved, and this page has been brought up to date.`;
       dispatch({
         type: "failed",
-        text: `Someone else worked this request just now — it is currently ${
-          result.current ? STATE_LABELS[result.current.state] : "changed"
-        }. Nothing was saved, and this page has been brought up to date.`,
+        text,
       });
+      publishPageFeedback({ source: "request-workflow", tone: "alert", message: text });
       router.refresh();
       return;
     }
     if (result.code === "illegal_transition") {
       freshKey();
+      const text =
+        "That action is no longer available for this request — it changed since this page loaded. This page has been brought up to date.";
       dispatch({
         type: "failed",
-        text: "That action is no longer available for this request — it changed since this page loaded. This page has been brought up to date.",
+        text,
       });
+      publishPageFeedback({ source: "request-workflow", tone: "alert", message: text });
       router.refresh();
       return;
     }
@@ -629,39 +810,44 @@ export function WorkflowPanel({
     }
     // `unavailable` deliberately keeps the same key: a retry of an
     // Ambiguous failure must replay, not repeat, the command.
-    dispatch({ type: "failed", text: failureCopy(result.code) });
+    const text = failureCopy(result.code);
+    dispatch({ type: "failed", text });
+    publishPageFeedback({ source: "request-workflow", tone: "alert", message: text });
   }
 
   function save() {
     if (!selectedRow || pending) return;
-    dispatch({ type: "attempt" });
     const choice = selectedRow.choice;
-    if (choice.kind === "attempt") {
-      if (CALL_AGAIN_REQUIRED[choice.outcome] && !panel.followUpKind) return;
-      if (panel.followUpKind === "day" && !panel.followUpDay) return;
-    }
     const common = {
       requestId,
       expectedVersion: truth.version,
       idempotencyKey: currentKey(),
     };
+    if (choice.kind === "attempt") {
+      const callAgain = followUpChoice(panel.followUpKind, panel.followUpDay);
+      if (callAgain === undefined) return;
+      setInFlight("save");
+      startTransition(async () => {
+        const result = await recordContactAttempt({
+          ...common,
+          outcome: choice.outcome,
+          callAgain,
+        });
+        applyOutcome(result, choice);
+      });
+      return;
+    }
     setInFlight("save");
     startTransition(async () => {
       const result =
-        choice.kind === "attempt"
-          ? await recordContactAttempt({
-              ...common,
-              outcome: choice.outcome,
-              callAgain: followUpChoice(panel),
-            })
-          : choice.kind === "booked"
-            ? await confirmBookingHandoff(common)
-            : await closeRequest({ ...common, reason: choice.reason });
+        choice.kind === "booked"
+          ? await confirmBookingHandoff(common)
+          : await closeRequest({ ...common, reason: choice.reason });
       applyOutcome(result, choice);
     });
   }
 
-  function reopen() {
+  function reopen(callAgain: Readonly<FollowUpChoice>) {
     if (pending) return;
     setInFlight("reopen");
     startTransition(async () => {
@@ -669,14 +855,28 @@ export function WorkflowPanel({
         requestId,
         expectedVersion: truth.version,
         idempotencyKey: currentKey(),
+        callAgain,
       });
       applyOutcome(result, { kind: "reopen" });
     });
   }
 
+  function correctCallAgain(callAgain: Readonly<FollowUpChoice>) {
+    if (pending) return;
+    setInFlight("set_call_again");
+    startTransition(async () => {
+      const result = await setCallAgain({
+        requestId,
+        expectedVersion: truth.version,
+        idempotencyKey: currentKey(),
+        callAgain,
+      });
+      applyOutcome(result, { kind: "set_call_again" });
+    });
+  }
+
   function classify() {
     if (pending || !panel.reviewResolution) return;
-    dispatch({ type: "attempt" });
     const resolution = panel.reviewResolution;
     setInFlight("classify");
     startTransition(async () => {
@@ -711,14 +911,13 @@ export function WorkflowPanel({
     pending ||
     !selectedRow ||
     (selectedAttempt !== null &&
-      ((CALL_AGAIN_REQUIRED[selectedAttempt] && !panel.followUpKind) ||
-        (panel.followUpKind === "day" && !panel.followUpDay)));
+      followUpChoice(panel.followUpKind, panel.followUpDay) === undefined);
 
   return (
     <WorkflowPanelBody
       classify={classify}
+      correctCallAgain={correctCallAgain}
       dispatch={dispatch}
-      feedbackRef={feedbackRef}
       inFlight={inFlight}
       legal={legal}
       nextHref={nextHref}
@@ -728,7 +927,7 @@ export function WorkflowPanel({
       rows={rows}
       save={save}
       saveDisabled={saveDisabled}
-      selectedAttempt={selectedAttempt}
+      showFeedback={panel.feedback?.tone === "error" || currentWorkflowFeedback !== null}
       truth={truth}
       undoLatest={undoLatest}
       undoOpen={undoOpen}
@@ -736,11 +935,112 @@ export function WorkflowPanel({
   );
 }
 
+// ---------------------------------------------------------------------------
+// The outcome choice list renders one native radio group as ruled rows.
+// Segment captions mark the three decision kinds inside the one group.
+// The dependent call-again plan rides directly beneath the selected continuing-work row.
+// ---------------------------------------------------------------------------
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function OutcomeChoiceList({
+  rows,
+  pending,
+  selected,
+  followUpKind,
+  followUpDay,
+  onSelect,
+  onSelectFollowUp,
+  onDayChange,
+}: Readonly<{
+  rows: ChoiceRow[];
+  pending: boolean;
+  selected: ChoiceId | null;
+  followUpKind: FollowUpKind | null;
+  followUpDay: string;
+  onSelect: (id: ChoiceId) => void;
+  onSelectFollowUp: (kind: FollowUpKind) => void;
+  onDayChange: (day: string) => void;
+}>) {
+  const segments: { id: string; caption: string; rows: ChoiceRow[] }[] = [];
+  const attemptRows = rows.filter((row) => row.choice.kind === "attempt");
+  if (attemptRows.length > 0) {
+    segments.push({ id: "continue", caption: "Continue working", rows: attemptRows });
+  }
+  const bookedRows = rows.filter((row) => row.choice.kind === "booked");
+  if (bookedRows.length > 0) {
+    segments.push({ id: "complete", caption: "Appointment completed", rows: bookedRows });
+  }
+  const closeRows = rows.filter((row) => row.choice.kind === "close");
+  if (closeRows.length > 0) {
+    segments.push({ id: "close", caption: "Close without an appointment", rows: closeRows });
+  }
+
+  // The plan is one keyed node in a single child array.
+  // React relocates that node when the selection moves between rows.
+  // A chosen return time and a finished reveal survive the move.
+  const choiceItems: ReactNode[] = [];
+  for (const segment of segments) {
+    choiceItems.push(
+      <p key={`caption-${segment.id}`} className="portal-choice-caption">
+        {segment.caption}
+      </p>,
+    );
+    for (const row of segment.rows) {
+      const id = choiceId(row.choice);
+      choiceItems.push(
+        <DecisionRow
+          key={id}
+          name="what-happened"
+          value={id}
+          checked={selected === id}
+          disabled={pending}
+          label={row.label}
+          helper={row.helper}
+          onSelect={() => {
+            onSelect(id);
+          }}
+        />,
+      );
+      if (row.choice.kind === "attempt" && selected === id) {
+        choiceItems.push(
+          <div key="call-again-plan" className="portal-choice-reveal">
+            <div>
+              <CallAgainFieldset
+                name="call-again"
+                className="portal-choice-plan"
+                legend="When should this come back to your attention?"
+                description="Choose one before Save. The shared queue uses it to show staff the next call."
+                followUpKind={followUpKind}
+                followUpDay={followUpDay}
+                pending={pending}
+                onKindChange={onSelectFollowUp}
+                onDayChange={onDayChange}
+              />
+            </div>
+          </div>,
+        );
+      }
+    }
+  }
+
+  return (
+    <fieldset className="mt-5" disabled={pending}>
+      <legend className="text-sm font-bold text-[var(--color-ink)]">What happened?</legend>
+      <p className="mt-1 text-sm leading-relaxed text-[var(--color-muted)]">
+        Record what happened on the call. The request moves to the right status.
+      </p>
+      <div data-testid="workflow-choices" className="portal-choice-list">
+        {choiceItems}
+      </div>
+    </fieldset>
+  );
+}
+
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function WorkflowPanelBody({
   classify,
+  correctCallAgain,
   dispatch,
-  feedbackRef,
   inFlight,
   legal,
   nextHref,
@@ -750,24 +1050,24 @@ function WorkflowPanelBody({
   rows,
   save,
   saveDisabled,
-  selectedAttempt,
+  showFeedback,
   truth,
   undoLatest,
   undoOpen,
 }: Readonly<{
   classify: () => void;
+  correctCallAgain: (choice: Readonly<FollowUpChoice>) => void;
   dispatch: (action: Readonly<PanelAction>) => void;
-  feedbackRef: RefObject<HTMLParagraphElement | null>;
-  inFlight: "save" | "reopen" | "classify" | "undo" | null;
+  inFlight: "save" | "reopen" | "set_call_again" | "classify" | "undo" | null;
   legal: LegalActions;
   nextHref: string | null;
   panel: PanelState;
   pending: boolean;
-  reopen: () => void;
+  reopen: (choice: Readonly<FollowUpChoice>) => void;
   rows: ChoiceRow[];
   save: () => void;
   saveDisabled: boolean;
-  selectedAttempt: ContactOutcome | null;
+  showFeedback: boolean;
   truth: Truth;
   undoLatest: () => void;
   undoOpen: UndoWindow | null;
@@ -788,15 +1088,17 @@ function WorkflowPanelBody({
       <p
         id="workflow-current-state"
         data-testid="workflow-current-state"
-        className="mt-1.5 text-[0.85rem] font-bold text-[var(--color-body)]"
+        className="mt-1.5 text-sm font-bold text-[var(--color-body)]"
       >
         Current status: {STATE_LABELS[truth.state]}
         {truth.state === "contacted" && truth.callAgainAt !== null && truth.callAgainAt !== ""
           ? ` — call again ${followUpWhenLabel(truth.callAgainAt)}`
-          : ""}
+          : truth.state === "contacted"
+            ? " — call-again day missing"
+            : ""}
       </p>
 
-      <PanelFeedback feedback={panel.feedback} nextHref={nextHref} feedbackRef={feedbackRef} />
+      <PanelFeedback feedback={showFeedback ? panel.feedback : null} nextHref={nextHref} />
 
       {undoOpen !== null ? (
         <div
@@ -819,6 +1121,15 @@ function WorkflowPanelBody({
         </div>
       ) : null}
 
+      {legal.setCallAgain && panel.selected === null ? (
+        <ReturnTimeAction
+          kind="set_call_again"
+          pending={pending}
+          inFlight={inFlight}
+          onSubmit={correctCallAgain}
+        />
+      ) : null}
+
       {legal.classifyLegacyClosure ? (
         <>
           <p className="mt-4 max-w-[68ch] rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.9rem] leading-relaxed font-bold text-[var(--color-ink)]">
@@ -829,8 +1140,8 @@ function WorkflowPanelBody({
             <legend className="text-sm font-bold text-[var(--color-ink)]">
               How did this request actually end?
             </legend>
-            <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
-              <ChoiceRadio
+            <div className="portal-choice-list">
+              <DecisionRow
                 name="legacy-review"
                 value="booked"
                 checked={panel.reviewResolution === "booked"}
@@ -841,7 +1152,7 @@ function WorkflowPanelBody({
                   dispatch({ type: "select_review", resolution: "booked" });
                 }}
               />
-              <ChoiceRadio
+              <DecisionRow
                 name="legacy-review"
                 value="wont_schedule"
                 checked={panel.reviewResolution === "wont_schedule"}
@@ -854,7 +1165,7 @@ function WorkflowPanelBody({
                   });
                 }}
               />
-              <ChoiceRadio
+              <DecisionRow
                 name="legacy-review"
                 value="not_actionable"
                 checked={panel.reviewResolution === "not_actionable"}
@@ -869,68 +1180,61 @@ function WorkflowPanelBody({
               />
             </div>
           </fieldset>
-          <div className="mt-5 flex flex-wrap items-center gap-3">
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
             <button
               type="button"
               data-testid="classify-legacy"
               disabled={pending || panel.reviewResolution === null}
               onClick={classify}
-              className="btn btn-navy min-h-11 disabled:opacity-60"
+              className={`btn min-h-11 ${
+                panel.reviewResolution !== null || (pending && inFlight === "classify")
+                  ? "btn-navy"
+                  : "btn-outline"
+              } disabled:opacity-60`}
             >
               {pending && inFlight === "classify" ? "Saving…" : "Finish record"}
             </button>
-            <p className="text-[0.85rem] text-[var(--color-muted)]">
+            <p className="text-sm text-[var(--color-muted)]">
               This review is recorded in Request history.
             </p>
           </div>
         </>
       ) : rows.length > 0 ? (
         <>
-          <fieldset className="mt-5" disabled={pending}>
-            <legend className="text-sm font-bold text-[var(--color-ink)]">What happened?</legend>
-            <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
-              Record the call the way it went — the request moves itself.
-            </p>
-            <div data-testid="workflow-choices" className="mt-3 grid gap-2.5 sm:grid-cols-2">
-              {rows.map((row) => (
-                <ChoiceRadio
-                  key={choiceId(row.choice)}
-                  name="what-happened"
-                  value={choiceId(row.choice)}
-                  checked={panel.selected === choiceId(row.choice)}
-                  disabled={pending}
-                  label={row.label}
-                  helper={row.helper}
-                  onSelect={() => {
-                    dispatch({ type: "select", id: choiceId(row.choice) });
-                  }}
-                />
-              ))}
-            </div>
-          </fieldset>
+          <OutcomeChoiceList
+            rows={rows}
+            pending={pending}
+            selected={panel.selected}
+            followUpKind={panel.followUpKind}
+            followUpDay={panel.followUpDay}
+            onSelect={(id) => {
+              dispatch({ type: "select", id });
+            }}
+            onSelectFollowUp={(kind) => {
+              dispatch({ type: "select_follow_up", kind });
+            }}
+            onDayChange={(day) => {
+              dispatch({ type: "set_day", day });
+            }}
+          />
 
-          {selectedAttempt !== null ? (
-            <CallAgainFieldset
-              outcome={selectedAttempt}
-              followUpKind={panel.followUpKind}
-              followUpDay={panel.followUpDay}
-              attempted={panel.attempted}
-              pending={pending}
-              dispatch={dispatch}
-            />
-          ) : null}
-
-          <div className="mt-5 flex flex-wrap items-center gap-3">
+          <div
+            className={`mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 ${
+              panel.selected !== null ? "portal-commit-shelf" : ""
+            }`}
+          >
             <button
               type="button"
               data-testid="save-workflow"
               disabled={saveDisabled}
               onClick={save}
-              className="btn btn-navy min-h-11 disabled:opacity-60"
+              className={`btn min-h-11 ${
+                !saveDisabled || (pending && inFlight === "save") ? "btn-navy" : "btn-outline"
+              } disabled:opacity-60`}
             >
               {pending && inFlight === "save" ? "Saving…" : "Save"}
             </button>
-            <p className="text-[0.85rem] text-[var(--color-muted)]">
+            <p className="text-sm text-[var(--color-muted)]">
               Save records one entry in Request history. You can undo for 15 minutes.
             </p>
           </div>
@@ -943,20 +1247,12 @@ function WorkflowPanelBody({
               : "This request is closed — no appointment was booked."}
           </p>
           {legal.reopenRequest ? (
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                data-testid="reopen-request"
-                disabled={pending}
-                onClick={reopen}
-                className="btn btn-outline min-h-11 disabled:opacity-60"
-              >
-                {pending && inFlight === "reopen" ? "Reopening…" : "Reopen for more work"}
-              </button>
-              <p className="text-[0.85rem] text-[var(--color-muted)]">
-                Returns it to Contacted. Its history stays.
-              </p>
-            </div>
+            <ReturnTimeAction
+              kind="reopen"
+              pending={pending}
+              inFlight={inFlight}
+              onSubmit={reopen}
+            />
           ) : null}
         </div>
       )}
@@ -964,9 +1260,13 @@ function WorkflowPanelBody({
   );
 }
 
-function followUpChoice(panel: Readonly<PanelState>): FollowUpChoice | undefined {
-  if (panel.followUpKind === null) return undefined;
-  return panel.followUpKind === "day"
-    ? { kind: "day", date: panel.followUpDay }
-    : { kind: panel.followUpKind };
+function followUpChoice(
+  followUpKind: FollowUpKind | null,
+  followUpDay: string,
+): FollowUpChoice | undefined {
+  if (followUpKind === null) return undefined;
+  if (followUpKind === "day") {
+    return isValidCustomCallAgainDay(followUpDay) ? { kind: "day", date: followUpDay } : undefined;
+  }
+  return { kind: followUpKind };
 }

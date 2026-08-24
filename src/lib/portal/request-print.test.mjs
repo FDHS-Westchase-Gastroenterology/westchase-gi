@@ -18,7 +18,8 @@ register(
   pathToFileURL("./"),
 );
 
-const { prepareNewRequestPrintPacket } = await import("./request-print.ts");
+const { prepareNewRequestPrintPacket, prepareStatusRequestPrintPacket } =
+  await import("./request-print.ts");
 
 const GENERATED_AT = "2026-08-09T12:00:00.000Z";
 const FIRST_ROW = {
@@ -91,6 +92,7 @@ test("maps one oldest-first RPC packet and passes only the server actor", async 
         locale: "en",
         sourcePath: "/en/appointment",
         createdAt: FIRST_ROW.created_at,
+        status: "new",
       },
       {
         id: SECOND_ROW.id,
@@ -103,6 +105,7 @@ test("maps one oldest-first RPC packet and passes only the server actor", async 
         locale: "es",
         sourcePath: "/es/appointment",
         createdAt: SECOND_ROW.created_at,
+        status: "new",
       },
     ],
   });
@@ -233,6 +236,83 @@ test("rejects reversed PostgreSQL microseconds inside one millisecond", async ()
     await prepareNewRequestPrintPacket({
       db: harness.db,
       actorEmail: "staff@example.test",
+    }),
+    { ok: false },
+  );
+});
+
+function queryHarness(result) {
+  const calls = [];
+  const builder = {
+    select(columns) {
+      calls.push({ method: "select", columns });
+      return builder;
+    },
+    in(column, values) {
+      calls.push({ method: "in", column, values });
+      return builder;
+    },
+    order(column, options) {
+      calls.push({ method: "order", column, options });
+      return builder;
+    },
+    then(onFulfilled, onRejected) {
+      return Promise.resolve(result).then(onFulfilled, onRejected);
+    },
+  };
+  return {
+    calls,
+    db: {
+      from(table) {
+        calls.push({ method: "from", table });
+        return builder;
+      },
+    },
+  };
+}
+
+test("maps a custom status packet oldest first and keeps the status on each row", async () => {
+  const contacted = {
+    ...SECOND_ROW,
+    status: "contacted",
+  };
+  const scheduled = {
+    ...FIRST_ROW,
+    status: "booked",
+    created_at: "2026-08-09T08:00:00.000Z",
+  };
+  const harness = queryHarness({ data: [scheduled, contacted], error: null });
+  const result = await prepareStatusRequestPrintPacket({
+    db: harness.db,
+    statuses: ["contacted", "scheduled"],
+  });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(
+    result.ok ? result.requests.map((request) => [request.id, request.status]) : [],
+    [
+      [scheduled.id, "scheduled"],
+      [contacted.id, "contacted"],
+    ],
+  );
+  assert.deepEqual(
+    harness.calls.filter((call) => call.method === "in"),
+    [{ method: "in", column: "status", values: ["contacted", "booked", "scheduled"] }],
+  );
+});
+
+test("fails closed for an empty custom status list or a query error", async () => {
+  assert.deepEqual(
+    await prepareStatusRequestPrintPacket({
+      db: queryHarness({ data: [], error: null }).db,
+      statuses: [],
+    }),
+    { ok: false },
+  );
+  assert.deepEqual(
+    await prepareStatusRequestPrintPacket({
+      db: queryHarness({ data: null, error: { code: "PGRST000" } }).db,
+      statuses: ["contacted"],
     }),
     { ok: false },
   );

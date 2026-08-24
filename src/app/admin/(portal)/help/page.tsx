@@ -3,6 +3,18 @@ import Link from "next/link";
 import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import { restartPortalTourAction } from "@/app/admin/(portal)/tour-actions";
 import { requireRole } from "@/lib/portal/auth";
+import {
+  HELP_ACTIVITY_LEAD,
+  HELP_ACTIVITY_TRUTH,
+  HELP_CONTACTED_STATUS,
+  HELP_LINKS,
+  HELP_NOTIFICATION_LEAD,
+  HELP_NOTIFICATION_TRUTH,
+  HELP_QUEUE_ARRIVAL,
+  HELP_QUEUE_OPEN,
+  HELP_QUEUE_RECORD,
+  helpOutageCopy,
+} from "@/lib/portal/staff-language";
 import { site } from "@/lib/site";
 
 // Plain-language operations guide for the front desk (VAL-ADMIN-012:
@@ -42,39 +54,33 @@ export default async function AdminHelpPage() {
         <div className="portal-help-section">
           <h2 className={SECTION_HEADING}>What the appointment request queue is</h2>
           <p className={SECTION_BODY}>
-            When a patient fills out the appointment form on the website — in any of the five
-            languages — their appointment request is saved instantly to the practice&apos;s own
-            secure database and appears on the{" "}
+            {HELP_QUEUE_ARRIVAL} {HELP_QUEUE_OPEN}{" "}
             <Link
-              href="/admin/requests"
+              href={HELP_LINKS.appointments.href}
               className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
             >
-              Appointments
+              {HELP_LINKS.appointments.label}
             </Link>{" "}
-            page. Nothing depends on anyone watching an email inbox: even if every notification
-            email went missing, the request would still be sitting safely in the queue. That is the
-            whole point of this system — the practice can never lose one again. These are
-            appointment requests, not booked appointments: someone still calls the patient to
-            schedule.
+            {HELP_QUEUE_RECORD}
           </p>
         </div>
 
         <div className="portal-help-section">
           <h2 className={SECTION_HEADING}>Print a paper handoff</h2>
           <p className={SECTION_BODY}>
-            Home shows a <strong>Print all</strong> action whenever New appointment requests are
-            waiting. It prepares one work sheet per request, oldest first, so a manager can hand the
-            pages to staff. The packet is a time-stamped snapshot: printing does not assign a
-            request, mark it contacted, or change its history. After a call, open the live request
+            Home has a <strong>Print</strong> action that can prepare every New request, or a custom
+            list by status. It prepares one work sheet per request, oldest first, so a manager can
+            hand the pages to staff. The packet is a time-stamped snapshot: printing does not assign
+            a request, mark it contacted, or change its history. After a call, open the live request
             in Appointments and record what happened so everyone sees the durable result. If a
-            packet has sat unattended, check the New view before distributing it.
+            packet has sat unattended, check the live queue before distributing it.
           </p>
           <Link
-            href="/admin/requests/print"
+            href={HELP_LINKS.printPacket.href}
             prefetch={false}
             className="mt-3 inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
           >
-            Prepare the current New-request packet
+            {HELP_LINKS.printPacket.label}
           </Link>
         </div>
 
@@ -108,9 +114,7 @@ export default async function AdminHelpPage() {
                 </span>
               </dt>
               <dd className="text-[0.94rem] leading-relaxed text-[var(--color-body)]">
-                Someone has called the patient at least once — reached them, left a voicemail, or
-                got no answer. If another call is needed, the request carries a call-again time so
-                the queue brings it back at the right moment.
+                {HELP_CONTACTED_STATUS}
               </dd>
             </div>
             <div className="grid gap-1.5 py-4 sm:grid-cols-[8rem_1fr] sm:gap-5">
@@ -208,14 +212,14 @@ export default async function AdminHelpPage() {
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-4">
-            <Link href="/admin/requests" className="btn btn-amber btn-sm min-h-11">
-              Open Appointments
+            <Link href={HELP_LINKS.openAppointments.href} className="btn btn-amber btn-sm min-h-11">
+              {HELP_LINKS.openAppointments.label}
             </Link>
             <Link
-              href="/admin"
+              href={HELP_LINKS.home.href}
               className="min-h-11 py-3 text-[0.9rem] font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
             >
-              Return to Home
+              {HELP_LINKS.home.label}
             </Link>
           </div>
         </div>
@@ -223,19 +227,14 @@ export default async function AdminHelpPage() {
         <div className="portal-help-section">
           <h2 className={SECTION_HEADING}>Notification emails</h2>
           <p className={SECTION_BODY}>
-            The addresses listed under{" "}
+            {HELP_NOTIFICATION_LEAD}{" "}
             <Link
-              href="/admin/settings"
+              href={HELP_LINKS.settings.href}
               className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
             >
-              Settings
+              {HELP_LINKS.settings.label}
             </Link>{" "}
-            get a short email whenever a new appointment request arrives. The email deliberately
-            contains no patient information — just a notice that a request is waiting and a link
-            back here — so nothing sensitive ever sits in an inbox. Anyone on staff can pause a
-            recipient (going on vacation, for example); adding or removing addresses is an
-            administrator task. Remember: notifications are a convenience. The queue is the system
-            of record.
+            {HELP_NOTIFICATION_TRUTH}
           </p>
         </div>
 
@@ -253,15 +252,14 @@ export default async function AdminHelpPage() {
             and Spam or Junk, confirm the link is less than one hour old, and have them resend from
             the public recovery screen after its cooldown. An authorized operator can then check
             Supabase Auth and SMTP delivery evidence. Never ask for the password, one-time link, or
-            copied email content. Every access change is recorded in the{" "}
+            copied email content. {HELP_ACTIVITY_LEAD}{" "}
             <Link
-              href="/admin/audit"
+              href={HELP_LINKS.activity.href}
               className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
             >
-              Activity log
+              {HELP_LINKS.activity.label}
             </Link>{" "}
-            from the desktop task rail or the mobile account menu, so there is always a clear record
-            of who did what.
+            {HELP_ACTIVITY_TRUTH}
           </p>
         </div>
 
@@ -272,10 +270,10 @@ export default async function AdminHelpPage() {
             through the practice&apos;s website maintainer: email the request and it is typically
             live within a day. The{" "}
             <Link
-              href="/admin/settings/software"
+              href={HELP_LINKS.website.href}
               className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
             >
-              Website
+              {HELP_LINKS.website.label}
             </Link>{" "}
             page under Settings records clinic custody, the canonical repository, and the live
             GitHub connection status.
@@ -328,11 +326,7 @@ export default async function AdminHelpPage() {
         <div id="something-wrong" className="portal-help-section scroll-mt-6">
           <h2 className={SECTION_HEADING}>If something looks wrong</h2>
           <p className={SECTION_BODY}>
-            If the portal will not load or an appointment request seems missing, call or text the
-            office line first — patients always see the call-and-text numbers on the website (
-            {site.phone.display} / text {site.textLine.display}), so no one is ever stranded even
-            during an outage. Then let the website maintainer know what you saw. Sign out when you
-            step away from a shared computer.
+            {helpOutageCopy(site.phone.display, site.textLine.display)}
           </p>
         </div>
       </div>

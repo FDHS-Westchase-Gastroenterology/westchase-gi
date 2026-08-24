@@ -2,18 +2,18 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
-import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
-import { ChevronRight, Printer } from "@/components/icons";
+import { PortalFeedbackProvider } from "@/app/admin/(portal)/portal-feedback";
+import { ChevronRight } from "@/components/icons";
 import { requireRole } from "@/lib/portal/auth";
 import { waitingSince } from "@/lib/portal/business-time";
-import { REQUEST_STATUSES } from "@/lib/portal/contracts";
+import { REQUEST_STATUSES, STAFF_REQUEST_SOURCE_PATH } from "@/lib/portal/contracts";
 import type { RequestStatus } from "@/lib/portal/contracts";
 import type { AttentionBucket } from "@/lib/portal/queue-attention";
 import {
   parsePage,
   parseRequestSearch,
   requestSearchFilter,
-  REQUEST_SEARCH_MAX_LENGTH,
+  requestsHref,
 } from "@/lib/portal/request-query";
 import { requestPageWindow } from "@/lib/portal/request-window";
 import { serviceClient } from "@/lib/portal/server";
@@ -27,6 +27,8 @@ import {
 } from "./format";
 import { fetchAttentiveOpenRows, fetchClosedRows, OPEN_STATUSES, VIEW_DB_STATUSES } from "./queue";
 import type { QueueRow } from "./queue";
+import { RequestSearchForm } from "./request-search-form";
+import { RequestsOutputActions, RequestsOutputFeedback } from "./requests-output-actions";
 import { StatusBadge } from "./status-badge";
 
 type SearchParams = Promise<{
@@ -44,31 +46,14 @@ function activeFilter(raw: Readonly<string | string[] | undefined>): RequestStat
   return parsed.success ? parsed.data : "all";
 }
 
-function requestsHref({
-  page = 1,
-  path = "/admin/requests",
-  search,
-  status,
-}: Readonly<{
-  page?: number;
-  path?: string;
-  search: string;
-  status: RequestStatus | "all";
-}>): string {
-  const params = new URLSearchParams();
-  if (status !== "all") params.set("status", status);
-  if (search) params.set("q", search);
-  if (page > 1) params.set("page", String(page));
-  const query = params.toString();
-  return `${path}${query ? `?${query}` : ""}`;
-}
-
 function detailHref({
+  focusCallAgain = false,
   id,
   page,
   search,
   status,
 }: Readonly<{
+  focusCallAgain?: boolean;
   id: string;
   page: number;
   search: string;
@@ -79,12 +64,12 @@ function detailHref({
   if (search) params.set("q", search);
   if (page > 1) params.set("page", String(page));
   const query = params.toString();
-  return `/admin/requests/${id}${query ? `?${query}` : ""}`;
+  return `/admin/requests/${id}${query ? `?${query}` : ""}${focusCallAgain ? "#set-call-again" : ""}`;
 }
 
 // Next-action language per attention bucket. The queue leads with what to
 // Work next: unworked rows by age, call-again rows whose time arrived,
-// Touched rows that went silent with no callback date set.
+// Touched rows that went silent with no call-again day set.
 function nextActionHint({
   bucket,
   followUpAt,
@@ -109,14 +94,14 @@ function nextActionHint({
     case "stale": {
       const since = waitingSince(lastActivityAt ?? createdAt, now);
       return {
-        text: `Silent${since !== null && since !== "" ? ` since ${since}` : " since before today"} — set a call-again day`,
+        text: `Set a call-again day${since !== null && since !== "" ? ` — silent since ${since}` : ""}`,
         attention: true,
       };
     }
     case "upcoming":
       return followUpAt !== null && followUpAt !== ""
         ? { text: `Call again ${followUpShortLabel(followUpAt, now)}`, attention: false }
-        : null;
+        : { text: "Set a call-again day", attention: true };
     case "scheduled":
       return { text: "On the schedule", attention: false };
     case "new":
@@ -201,6 +186,9 @@ function QueueRowLink({
     now,
   });
   const waiting = request.status === "new" ? waitingSince(request.created_at, now) : null;
+  const needsCallAgain =
+    request.status === "contacted" &&
+    (request.follow_up_at === null || request.follow_up_at === "");
   const nextAction =
     hint ??
     (request.status === "new"
@@ -208,10 +196,14 @@ function QueueRowLink({
       : request.status === "closed"
         ? { text: "No further action", attention: false }
         : null);
+  // The action column is the queue's comparison axis: the next step first,
+  // Then its operational reason or timing, then scheduling context. The
+  // Status pill and received time stay available in the quiet meta column.
   return (
     <li>
       <Link
         href={detailHref({
+          focusCallAgain: needsCallAgain,
           id: request.id,
           page,
           search,
@@ -227,24 +219,29 @@ function QueueRowLink({
           <span data-ui-redact="patient-contact">{request.phone}</span>
         </span>
         <span className="portal-ledger-next">
-          <small>Next step</small>
           {nextAction ? (
             <strong
               data-testid="request-next-action"
               data-attention={nextAction.attention ? "true" : undefined}
+              aria-label={nextAction.attention ? `Needs attention: ${nextAction.text}` : undefined}
             >
               {nextAction.text}
             </strong>
           ) : null}
-          <span>
-            {LOCATION_LABELS[request.location]} · {TIME_LABELS[request.preferred_time]}
+          <span className="portal-ledger-context">
+            {waiting !== null && waiting !== "" ? (
+              <>
+                <span data-testid="request-waiting">Waiting since {waiting}</span>
+                <span className="portal-ledger-sep"> · </span>
+              </>
+            ) : null}
+            <span>
+              {LOCATION_LABELS[request.location]} · {TIME_LABELS[request.preferred_time]}
+            </span>
           </span>
-          {waiting !== null && waiting !== "" ? (
-            <span data-testid="request-waiting">Waiting since {waiting}</span>
-          ) : null}
         </span>
         <span className="portal-ledger-meta">
-          <span>
+          <span className="portal-ledger-meta-status">
             <StatusBadge status={request.status} />
             {request.legacy_review_required ? (
               <span data-testid="legacy-review-tag" className="portal-review-tag">
@@ -253,8 +250,8 @@ function QueueRowLink({
             ) : null}
           </span>
           <small>Received {formatReceived(request.created_at)}</small>
-          <ChevronRight className="h-4 w-4" />
         </span>
+        <ChevronRight className="portal-ledger-disclosure h-4 w-4" />
       </Link>
     </li>
   );
@@ -273,8 +270,9 @@ export default async function AdminRequestsPage({
 
   const db = serviceClient();
 
-  // Chip counts and the closed tail stay database-paged exactly as before;
-  // The open set is small enough to order by attention in memory.
+  // Unique per-status counts stay on the requests table so related-row
+  // Matches cannot inflate chips or the summary. The open set is small
+  // Enough to order by attention in memory.
   const countQueries = REQUEST_STATUSES.map((status) => {
     let countQuery = db
       .from("requests")
@@ -284,21 +282,15 @@ export default async function AdminRequestsPage({
     return countQuery;
   });
 
-  const wantsClosed = filter === "all" || filter === "closed";
   const openStatuses = filter === "all" ? OPEN_STATUSES : filter === "closed" ? [] : [filter];
-  const [orderedOpen, closedCountProbe, ...countResults] = await Promise.all([
+  const [orderedOpen, ...countResults] = await Promise.all([
     openStatuses.length > 0
       ? fetchAttentiveOpenRows(db, { statuses: openStatuses, searchFilter, now })
       : Promise.resolve([]),
-    // Closed rows join the default view after the open set; their own window
-    // Is computed once the open size is known.
-    wantsClosed
-      ? db.from("requests").select("id", { count: "exact", head: true }).eq("status", "closed")
-      : Promise.resolve({ count: 0, error: null }),
     ...countQueries,
   ]);
 
-  const countError = countResults.find((result) => result.error)?.error ?? closedCountProbe.error;
+  const countError = countResults.find((result) => result.error)?.error;
   if (countError) {
     throw new Error(`Queue read failed: ${countError.code}`);
   }
@@ -312,12 +304,13 @@ export default async function AdminRequestsPage({
 
   // The page window — open slice, closed-tail range, display totals, and the
   // Past-the-end redirect — is pure math, unit-tested in request-window.
+  // Unique per-status SQL counts are the only total; there is no second
+  // Unfiltered closed probe that can disagree with the chips and rows.
   const pageWindow = requestPageWindow({
     filter,
     page,
     counts,
     openRows: orderedOpen.length,
-    closedCount: closedCountProbe.count ?? 0,
   });
   if (pageWindow.redirectPage !== null) {
     redirect(requestsHref({ page: pageWindow.redirectPage, search, status: filter }));
@@ -348,69 +341,49 @@ export default async function AdminRequestsPage({
     })),
   ];
 
-  return (
+  const content = (
     <section aria-labelledby="requests-heading">
-      <PortalPageHeader
-        title={<span id="requests-heading">Appointments</span>}
-        description="Every appointment request, ordered by what needs attention first. Open one to call, document the outcome, and continue without losing your place."
-        actions={
-          <>
-            {counts.new > 0 ? (
-              <Link
-                href="/admin/requests/print?auto=1"
-                target="_blank"
-                rel="noopener"
-                prefetch={false}
-                aria-label={`Print ${counts.new} new appointment ${
-                  counts.new === 1 ? "request" : "requests"
-                }; opens in a new tab`}
-                className="btn btn-navy min-h-11"
-              >
-                <Printer className="h-4 w-4" />
-                Print new ({counts.new})
-              </Link>
-            ) : null}
-            <a
-              href={requestsHref({
+      {/* One-line masthead in the Home grammar: identity, one true
+          Sentence, and the page commands. Opening a request is the
+          Recurring task, so Print and Export sit in a quiet utility group
+          Beside Add instead of competing as page actions. */}
+      <header className="portal-queue-masthead">
+        <div>
+          <h1 id="requests-heading" className="portal-queue-title">
+            Appointments
+          </h1>
+          <p className="portal-queue-lede">
+            Every appointment request, ordered by what needs attention first.
+          </p>
+        </div>
+        <div className="portal-queue-masthead-actions print-hide">
+          <Link
+            href={`${STAFF_REQUEST_SOURCE_PATH}?from=appointments`}
+            data-testid="appointments-add-patient-request"
+            className="btn btn-outline portal-queue-add min-h-11"
+          >
+            Add appointment request
+          </Link>
+          <span className="portal-utility-group">
+            <RequestsOutputActions
+              exportHref={requestsHref({
                 path: "/admin/requests/export",
                 search,
                 status: filter,
               })}
-              data-testid="export-csv"
-              className="btn btn-outline min-h-11"
-            >
-              Export CSV
-            </a>
-          </>
-        }
-      />
+              filteredTotal={filteredTotal}
+              filterLabel={filter === "all" ? "All" : STATUS_LABELS[filter]}
+              hasSearch={search !== ""}
+              statusCounts={counts}
+            />
+          </span>
+        </div>
+      </header>
+
+      <RequestsOutputFeedback />
 
       <section className="portal-queue-workbench" aria-label="Appointment request queue">
-        <form action="/admin/requests" method="get" role="search" className="portal-queue-search">
-          {filter !== "all" ? <input type="hidden" name="status" value={filter} /> : null}
-          <label htmlFor="request-search">
-            Search requests
-            <input
-              id="request-search"
-              name="q"
-              type="search"
-              defaultValue={search}
-              maxLength={REQUEST_SEARCH_MAX_LENGTH}
-              placeholder="Name, phone, or email"
-            />
-          </label>
-          <button type="submit" className="btn btn-navy min-h-11">
-            Search
-          </button>
-          {search ? (
-            <Link
-              href={requestsHref({ search: "", status: filter })}
-              className="btn btn-outline min-h-11"
-            >
-              Clear
-            </Link>
-          ) : null}
-        </form>
+        <RequestSearchForm filter={filter} filteredTotal={filteredTotal} search={search} />
 
         <FilterChips filters={filters} active={filter} search={search} />
 
@@ -434,6 +407,28 @@ export default async function AdminRequestsPage({
                     ? "When a patient submits the appointment form on the website, the appointment request appears here instantly and everyone on the notification list gets a notification email."
                     : "Requests reach this view as staff work them from their request page — open one from another view to record what happened."}
             </p>
+            {page === 1 && !search && filter === "all" ? (
+              <Link
+                href={`${STAFF_REQUEST_SOURCE_PATH}?from=appointments`}
+                className="portal-inline-link"
+              >
+                Add an appointment request from a call or visit
+              </Link>
+            ) : page === 1 && search ? (
+              <Link
+                href={requestsHref({ page: 1, search: "", status: filter })}
+                className="portal-inline-link"
+              >
+                Clear search
+              </Link>
+            ) : page === 1 && filter !== "all" ? (
+              <Link
+                href={requestsHref({ page: 1, search, status: "all" })}
+                className="portal-inline-link"
+              >
+                View all requests
+              </Link>
+            ) : null}
           </div>
         ) : (
           <ul data-testid="request-list" className="portal-ledger-list">
@@ -477,7 +472,7 @@ export default async function AdminRequestsPage({
                     Previous
                   </Link>
                 ) : null}
-                <span className="text-[0.9rem] font-bold text-[var(--color-body)]">
+                <span>
                   Page {page} of {totalPages}
                 </span>
                 {requests.length > 0 && page < totalPages ? (
@@ -500,4 +495,6 @@ export default async function AdminRequestsPage({
       </section>
     </section>
   );
+
+  return <PortalFeedbackProvider>{content}</PortalFeedbackProvider>;
 }

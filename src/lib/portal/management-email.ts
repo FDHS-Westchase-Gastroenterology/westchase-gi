@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 
 import type { SendPortalEmail } from "@/lib/portal/email";
+import { RECIPIENT_CONFIRMATION_BODY } from "@/lib/portal/staff-language";
 
 export type ManagementEmailDelivery =
   | { ok: true; delivery: "accepted" }
@@ -25,11 +26,7 @@ export async function sendRecipientConfirmation(
     purpose: "recipient_confirmation",
     to: recipient.email,
     subject: "Appointment notification access — Westchase GI portal",
-    text: [
-      "A Westchase GI portal administrator added this address to appointment request notifications.",
-      "Future notification emails only say that an appointment request is waiting and link to the secure portal. They do not contain patient details.",
-      "If you did not expect this, contact the Westchase GI office directly.",
-    ].join("\n\n"),
+    text: RECIPIENT_CONFIRMATION_BODY,
     idempotencyKey: `recipient-confirmation/${recipient.id}`,
   });
 

@@ -4,11 +4,15 @@ import { requireRole } from "@/lib/portal/auth";
 import { waitingSince } from "@/lib/portal/business-time";
 import { availableQueueCount } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
+import { staffGreeting } from "@/lib/portal/staff-language";
 import { fetchAttentionSummary } from "@/lib/portal/workflow/reads";
 
 import { HomeWorkbench } from "./home-workbench";
 import { PortalReleaseHomeAnnouncement } from "./portal-release-briefing";
 import { PortalTour } from "./portal-tour";
+import { PortalTourReturnFocus } from "./portal-tour-return-focus";
+import type { PortalTourReturnState } from "./portal-tour-return-focus";
+import { VIEW_DB_STATUSES } from "./requests/queue";
 
 // The portal's front door. Staff land on their day, not on software:
 // A greeting, the one thing that may need attention (new appointment
@@ -38,6 +42,7 @@ const newestPreviewSchema = z.object({
   created_at: z.string(),
 });
 const oldestPreviewSchema = z.object({
+  id: z.string(),
   created_at: z.string(),
 });
 
@@ -48,9 +53,19 @@ function greetingFor(minutes: number): string {
   return "Good evening";
 }
 
-export default async function AdminHomePage() {
+function parseTourReturnState(
+  value: string | readonly string[] | undefined,
+): PortalTourReturnState | null {
+  return value === "finished" || value === "not-now" || value === "restarted" ? value : null;
+}
+
+export default async function AdminHomePage({
+  searchParams,
+}: Readonly<{
+  searchParams: Promise<{ tour?: string | string[] }>;
+}>) {
   const session = await requireRole("staff");
-  const firstName = session.displayName.trim().split(/\s+/)[0];
+  const tourReturnState = parseTourReturnState((await searchParams).tour);
   const now = new Date();
   const [hour, minute] = NY_TIME.format(now).split(":").map(Number);
   const minutes = hour * 60 + minute;
@@ -64,16 +79,19 @@ export default async function AdminHomePage() {
     { data: oldestRows },
     { count: recipientCount, error: recipientsReadError },
     attention,
+    contactedCountResult,
+    scheduledCountResult,
+    closedCountResult,
   ] = await Promise.all([
     db
       .from("requests")
       .select("id, name, created_at", { count: "exact" })
       .eq("status", "new")
       .order("created_at", { ascending: false })
-      .limit(3),
+      .limit(5),
     db
       .from("requests")
-      .select("created_at")
+      .select("id, created_at")
       .eq("status", "new")
       .order("created_at", { ascending: true })
       .limit(1),
@@ -85,6 +103,18 @@ export default async function AdminHomePage() {
     // Requests, and closed records awaiting legacy review. Each count is
     // Independently honest — a failed read is null, never zero.
     fetchAttentionSummary(db, now),
+    db
+      .from("requests")
+      .select("id", { count: "exact", head: true })
+      .in("status", [...VIEW_DB_STATUSES.contacted]),
+    db
+      .from("requests")
+      .select("id", { count: "exact", head: true })
+      .in("status", [...VIEW_DB_STATUSES.scheduled]),
+    db
+      .from("requests")
+      .select("id", { count: "exact", head: true })
+      .in("status", [...VIEW_DB_STATUSES.closed]),
   ]);
   const newestParsed = z.array(newestPreviewSchema).safeParse(newestRows ?? []);
   if (!newestParsed.success) {
@@ -156,13 +186,24 @@ export default async function AdminHomePage() {
 
   return (
     <HomeWorkbench
-      greeting={greetingFor(minutes)}
-      firstName={firstName}
+      greeting={staffGreeting(greetingFor(minutes), session.displayName)}
       date={NY_DATE.format(now)}
       afterHours={minutes >= AFTER_HOURS_START || minutes < MORNING_START}
       newCount={availableNewCount}
       oldestWaiting={oldestWaiting}
       newest={newest}
+      statusCounts={{
+        new: availableNewCount,
+        contacted: availableQueueCount(
+          contactedCountResult.count,
+          contactedCountResult.error !== null,
+        ),
+        scheduled: availableQueueCount(
+          scheduledCountResult.count,
+          scheduledCountResult.error !== null,
+        ),
+        closed: availableQueueCount(closedCountResult.count, closedCountResult.error !== null),
+      }}
       attention={visibleAttention}
       attentionUnavailable={attentionUnavailable}
       noActiveRecipients={noActiveRecipients}
@@ -170,6 +211,7 @@ export default async function AdminHomePage() {
       announcements={
         <>
           {session.portalTourDismissedAt === null ? <PortalTour /> : null}
+          {tourReturnState === null ? null : <PortalTourReturnFocus state={tourReturnState} />}
           <PortalReleaseHomeAnnouncement />
         </>
       }

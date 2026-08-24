@@ -212,18 +212,21 @@ function parseCsv(document: string): string[][] {
   return rows;
 }
 
-async function fetchCsv(page: Page, status: string): Promise<CsvFetch> {
-  return page.evaluate(async (selectedStatus) => {
-    const response = await fetch(
-      `/admin/requests/export?status=${encodeURIComponent(selectedStatus)}`,
-    );
-    return {
-      status: response.status,
-      contentType: response.headers.get("content-type") ?? "",
-      contentDisposition: response.headers.get("content-disposition") ?? "",
-      text: await response.text(),
-    };
-  }, status);
+async function fetchCsv(page: Page, status: string, search = ""): Promise<CsvFetch> {
+  return page.evaluate(
+    async ({ selectedStatus, selectedSearch }) => {
+      const params = new URLSearchParams({ status: selectedStatus });
+      if (selectedSearch !== "") params.set("q", selectedSearch);
+      const response = await fetch(`/admin/requests/export?${params.toString()}`);
+      return {
+        status: response.status,
+        contentType: response.headers.get("content-type") ?? "",
+        contentDisposition: response.headers.get("content-disposition") ?? "",
+        text: await response.text(),
+      };
+    },
+    { selectedStatus: status, selectedSearch: search },
+  );
 }
 
 async function sqlCount(status: string): Promise<number> {
@@ -804,6 +807,17 @@ test.describe("portal management server boundaries", () => {
         source_path: "/es/contact",
         status: "contacted",
       },
+      {
+        name: `TEST Export ${runId} UTF-8 José`,
+        phone: "8135550183",
+        email: `portal-export-${runId}-utf8@example.test`,
+        location: "tampa",
+        preferred_time: "afternoon",
+        message: `Café, quoted "mañana"\r\n第二行`,
+        locale: "es",
+        source_path: "/es/appointment",
+        status: "contacted",
+      },
       ...formulaRows,
     ];
     const { data: inserted, error: insertError } = await db
@@ -845,6 +859,7 @@ test.describe("portal management server boundaries", () => {
     );
     expect(parsed[0]).toEqual([...CSV_HEADER]);
     expect(parsed.length - 1).toBe(expectedCount);
+    expect(new Set(parsed.slice(1).map((row) => row[0])).size).toBe(expectedCount);
 
     for (const insertedRow of insertedRows) {
       expect(parsed.some((row) => row[0] === insertedRow.id)).toBe(true);
@@ -865,7 +880,7 @@ test.describe("portal management server boundaries", () => {
       expect(plainRow?.[column]).toBe(value);
     }
     for (const [index, formulaRow] of formulaRows.entries()) {
-      const exported = parsed.find((row) => row[0] === insertedRows[index + 2]?.id);
+      const exported = parsed.find((row) => row[0] === insertedRows[index + 3]?.id);
       for (const [column, value] of [
         [3, formulaRow.name],
         [4, formulaRow.phone],
@@ -902,6 +917,37 @@ test.describe("portal management server boundaries", () => {
     });
     expect(JSON.stringify(exportAudits?.[0].detail)).not.toContain("portal-export-");
 
+    const scopedCsv = await fetchCsv(
+      staffPage,
+      "contacted",
+      `portal-export-${runId}-utf8@example.test`,
+    );
+    expect(scopedCsv.status).toBe(200);
+    expect(scopedCsv.contentType).toContain("text/csv; charset=utf-8");
+    const scopedRows = parseCsv(scopedCsv.text);
+    expect(scopedRows[0]).toEqual([...CSV_HEADER]);
+    expect(scopedRows).toHaveLength(2);
+    expect(scopedRows[1]?.[0]).toBe(insertedRows[2]?.id);
+    expect(scopedRows[1]?.[2]).toBe("contacted");
+    expect(scopedRows[1]?.[3]).toBe(stagedRows[2].name);
+    expect(scopedRows[1]?.[5]).toBe(stagedRows[2].email);
+    expect(scopedRows[1]?.[10]).toBe(stagedRows[2].message);
+
+    const { data: scopedAudits, error: scopedAuditError } = await db
+      .from("audit_log")
+      .select("detail")
+      .eq("action", "requests.export")
+      .eq("actor_email", staffEmail)
+      .order("at", { ascending: false })
+      .limit(1);
+    expect(scopedAuditError).toBeNull();
+    expect(scopedAudits?.[0]?.detail).toMatchObject({
+      row_count: 1,
+      status_filter: "contacted",
+      has_search: true,
+    });
+    expect(JSON.stringify(scopedAudits?.[0]?.detail)).not.toContain("portal-export-");
+
     const invalidFilter = await fetchCsv(staffPage, "not-a-status");
     expect(invalidFilter.status).toBe(400);
 
@@ -921,7 +967,7 @@ test.describe("portal management server boundaries", () => {
       .eq("action", "requests.export")
       .eq("actor_email", staffEmail);
     expect(exportAuditCountError).toBeNull();
-    expect(exportAuditTotal).toBe(1);
+    expect(exportAuditTotal).toBe(2);
   });
 
   test("VAL-ADMIN-019: Recent work renders the audit record in plain language", async () => {
@@ -1020,6 +1066,444 @@ test.describe("portal management server boundaries", () => {
         .eq("actor_email", SEED_ADMIN_EMAIL.toLowerCase())
         .contains("detail", { row_count: 42 });
       await db.from("requests").delete().eq("id", requestId);
+    }
+  });
+
+  test("VAL-ADMIN-020: Recent work search, work-type filters, compaction, and URL state", async () => {
+    if (!adminPage) throw new Error("Admin session is unavailable");
+    const token = `activity-${runId}`;
+    // Four adjacent print-packet events inside one practice day (anchored to
+    // Local noon so the run never crosses midnight) plus one request action.
+    const noon = new Date();
+    noon.setHours(12, 0, 0, 0);
+    const { data: stagedRows, error: stageError } = await db
+      .from("audit_log")
+      .insert([
+        ...Array.from({ length: 4 }, (_, index) => ({
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "requests.print_new",
+          entity: "requests",
+          entity_id: null,
+          detail: { row_count: 3 },
+          at: new Date(noon.getTime() - index * 60_000).toISOString(),
+        })),
+        {
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "request.create",
+          entity: "requests",
+          entity_id: null,
+          detail: {},
+          at: new Date(noon.getTime() - 10 * 60_000).toISOString(),
+        },
+      ])
+      .select("id");
+    expect(stageError).toBeNull();
+    const fixtureIds = requireDecoded(
+      z.array(idRowSchema).safeParse(stagedRows ?? []),
+      "Activity fixtures were not created",
+    ).map((row) => row.id);
+
+    try {
+      // Search by an action phrase through the URL.
+      await adminPage.goto(`/admin/audit?q=${encodeURIComponent("print packet")}`);
+      const summary = adminPage.getByTestId("recent-work-summary");
+      await expect(summary).toContainText("print packet");
+      const group = adminPage.getByTestId("recent-work-group");
+      await expect(group).toContainText(/4 times between/);
+
+      // Expansion reaches the exact underlying entries.
+      await group.getByText("Show all 4").click();
+      await expect(group).toContainText("prepared the New-request print packet (3 requests)");
+
+      // The exact technical record keeps every underlying event.
+      const technical = adminPage.getByTestId("audit-table");
+      expect(await technical.getByText("requests.print_new").count()).toBeGreaterThanOrEqual(4);
+
+      // Work-type filters narrow the same result set.
+      await adminPage.goto("/admin/audit?type=people");
+      await expect(summary).not.toContainText("print packet");
+
+      // No-results copy and recovery follow the active Recent work constraints.
+      const miss = `zzz-${token}`;
+      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(miss)}&type=requests`);
+      const empty = adminPage.getByTestId("recent-work-empty");
+      await expect(empty).toBeVisible();
+      await expect(empty).toContainText(
+        `No recent work matches for “${miss}” in Appointment requests.`,
+      );
+      await expect(
+        empty.getByRole("link", { name: "Clear search and filters", exact: true }),
+      ).toHaveAttribute("href", "/admin/audit#recent-work-search");
+
+      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(miss)}`);
+      await expect(empty).toContainText(`No recent work matches for “${miss}”.`);
+      await expect(empty).not.toContainText("Try different words");
+      const searchRecovery = empty.getByRole("link", { name: "Clear search", exact: true });
+      await expect(searchRecovery).toHaveAttribute("href", "/admin/audit#recent-work-search");
+      await searchRecovery.click();
+      await expect(adminPage).toHaveURL(/\/admin\/audit(?:#recent-work-search)?$/);
+      await expect(adminPage.getByLabel("Search recent work")).toBeFocused();
+      await expect(adminPage.getByTestId("recent-work-summary")).toBeVisible();
+    } finally {
+      for (const id of fixtureIds) {
+        await db.from("audit_log").delete().eq("id", id);
+      }
+    }
+  });
+
+  test("VAL-ADMIN-021: workflow-command vocabulary, filters, adjacency, and unique search id", async () => {
+    if (!adminPage) throw new Error("Admin session is unavailable");
+    const token = `slice8-${runId}`;
+    const noon = new Date();
+    noon.setHours(12, 0, 0, 0);
+    const { data: staged, error: stageError } = await db
+      .from("requests")
+      .insert({
+        name: `TEST Slice8 ${runId}`,
+        phone: "8135550112",
+        email: `${token}@example.test`,
+        location: "tampa",
+        preferred_time: "morning",
+        message: "TEST slice8 workflow fixture.",
+        locale: "en",
+        source_path: "/e2e/slice8",
+        status: "contacted",
+      })
+      .select("id")
+      .single();
+    expect(stageError).toBeNull();
+    const requestId = requireDecoded(
+      idRowSchema.safeParse(staged),
+      "Slice 8 request fixture was not created",
+    ).id;
+    const commands = [
+      ["record_contact_attempt", "new", "contacted", "recorded a contact attempt on a request"],
+      ["confirm_booking_handoff", "contacted", "booked", "marked a request Scheduled"],
+      ["close_request", "contacted", "closed", "closed a request"],
+      ["reopen_request", "closed", "contacted", "reopened a request"],
+      ["set_call_again", "contacted", "contacted", "corrected the call-again time on a request"],
+      [
+        "undo_latest_transition",
+        "contacted",
+        "booked",
+        "undid the last change on a request — back to Scheduled",
+      ],
+      ["classify_legacy_closure", "closed", "closed", "classified a closed request"],
+    ] as const;
+    const { data: stagedRows, error: auditError } = await db
+      .from("audit_log")
+      .insert([
+        ...commands.map(([command, from, to], index) => ({
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "request.workflow_command",
+          entity: "requests",
+          entity_id: requestId,
+          detail: { command, from, to, resulting_version: index + 1 },
+          at: new Date(noon.getTime() - index * 1000).toISOString(),
+        })),
+        {
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "requests.print_new",
+          entity: "requests",
+          entity_id: null,
+          detail: { row_count: 17 },
+          at: new Date(noon.getTime() - 20 * 60_000).toISOString(),
+        },
+        {
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "request.note",
+          entity: "requests",
+          entity_id: requestId,
+          detail: {},
+          at: new Date(noon.getTime() - 21 * 60_000).toISOString(),
+        },
+        {
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "requests.print_new",
+          entity: "requests",
+          entity_id: null,
+          detail: { row_count: 17 },
+          at: new Date(noon.getTime() - 22 * 60_000).toISOString(),
+        },
+        {
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "recipients.add",
+          entity: "notification_recipients",
+          entity_id: null,
+          detail: {},
+          at: new Date(noon.getTime() - 30 * 60_000).toISOString(),
+        },
+        {
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "maintainers.invite",
+          entity: "maintainers",
+          entity_id: null,
+          detail: { target_login: `${token}-maintainer` },
+          at: new Date(noon.getTime() - 40 * 60_000).toISOString(),
+        },
+      ])
+      .select("id");
+    expect(auditError).toBeNull();
+    const fixtureIds = requireDecoded(
+      z.array(idRowSchema).safeParse(stagedRows ?? []),
+      "Slice 8 activity fixtures were not created",
+    ).map((row) => row.id);
+
+    try {
+      await adminPage.goto("/admin/audit");
+      expect(await adminPage.locator("#recent-work-search").count()).toBe(1);
+      await expect(adminPage.locator("#recent-work-search")).toHaveAttribute("name", "q");
+      await expect(adminPage.getByTestId("recent-work-filter-other")).toHaveCount(0);
+
+      const recent = adminPage.getByTestId("recent-work-list").first();
+      for (const [, , , phrase] of commands) {
+        await expect(recent).toContainText(phrase);
+      }
+      await expect(recent).not.toContainText("request.workflow_command");
+      await expect(recent).not.toContainText("record_contact_attempt");
+      await expect(recent).not.toContainText("set_call_again");
+      await expect(recent).not.toContainText("undo_latest_transition");
+      await expect(recent).not.toContainText("resulting_version");
+      await expect(
+        recent
+          .locator("li", { hasText: "recorded a contact attempt on a request" })
+          .first()
+          .getByRole("link", { name: "open request" }),
+      ).toHaveAttribute("href", `/admin/requests/${requestId}`);
+      await expect(adminPage.getByTestId("audit-table")).toContainText("request.workflow_command");
+
+      const filters = [
+        ["all", "All work"],
+        ["requests", "Appointment requests"],
+        ["people", "Notifications & staff"],
+        ["output", "Printing & exports"],
+        ["site", "Website & access"],
+      ] as const;
+      for (const [type, label] of filters) {
+        await adminPage.getByTestId(`recent-work-filter-${type}`).click();
+        await expect(adminPage.getByTestId(`recent-work-filter-${type}`)).toHaveAttribute(
+          "aria-pressed",
+          "true",
+        );
+        await expect(adminPage.getByTestId(`recent-work-filter-${type}`)).toHaveText(label);
+        if (type !== "all") {
+          await expect(adminPage.getByTestId("recent-work-summary")).toContainText(label);
+          await expect(adminPage).toHaveURL(new RegExp(`[?&]type=${type}\\b`));
+        }
+      }
+
+      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(requestId)}&type=requests`);
+      await expect(adminPage.getByTestId("recent-work-list").first()).toContainText(
+        "contact attempt",
+      );
+      await adminPage.goto("/admin/audit?q=notification%20emails&type=people");
+      await expect(adminPage.getByTestId("recent-work-list").first()).toContainText(
+        "notification emails",
+      );
+      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(`${token}-maintainer`)}&type=site`);
+      await expect(adminPage.getByTestId("recent-work-list").first()).toContainText(
+        `${token}-maintainer`,
+      );
+      await adminPage.goto("/admin/audit?q=17%20requests&type=output");
+      await expect(adminPage.getByTestId("recent-work-group")).toHaveCount(0);
+      await expect(
+        adminPage
+          .getByTestId("recent-work-list")
+          .getByText("prepared the New-request print packet (17 requests)"),
+      ).toHaveCount(2);
+
+      await adminPage.getByTestId("recent-work-clear").click();
+      await expect(adminPage).toHaveURL(/\/admin\/audit$/);
+      await expect(adminPage.getByLabel("Search recent work")).toBeFocused();
+    } finally {
+      for (const id of fixtureIds) {
+        await db.from("audit_log").delete().eq("id", id);
+      }
+      await db.from("requests").delete().eq("id", requestId);
+    }
+  });
+
+  test("VAL-ADMIN-022: Recent work 1,260-row lens, mixed pagers, and focus", async () => {
+    if (!adminPage) throw new Error("Admin session is unavailable");
+    test.setTimeout(120_000);
+    const actor = `lens-${runId}@example.test`;
+    const oldestId = randomUUID();
+    const { data: staged, error: stageError } = await db
+      .from("requests")
+      .insert({
+        id: oldestId,
+        name: `TEST Lens ${runId}`,
+        phone: "8135550113",
+        email: actor,
+        location: "tampa",
+        preferred_time: "morning",
+        message: "TEST recent-work 1260-row fixture.",
+        locale: "en",
+        source_path: "/e2e/recent-work-lens",
+        status: "contacted",
+      })
+      .select("id")
+      .single();
+    expect(stageError).toBeNull();
+    expect(requireDecoded(idRowSchema.safeParse(staged), "Lens request was not created").id).toBe(
+      oldestId,
+    );
+
+    const base = Date.UTC(2042, 5, 1, 12, 0, 0);
+    const rows = Array.from({ length: 1260 }, (_, index) => ({
+      actor_email: actor,
+      action: "request.note",
+      entity: "requests",
+      entity_id: index === 1259 ? oldestId : null,
+      detail: {},
+      at: new Date(base - index * 1000).toISOString(),
+    }));
+    const fixtureIds: string[] = [];
+    try {
+      for (let from = 0; from < rows.length; from += 250) {
+        const { data, error } = await db
+          .from("audit_log")
+          .insert(rows.slice(from, from + 250))
+          .select("id");
+        expect(error).toBeNull();
+        fixtureIds.push(
+          ...requireDecoded(
+            z.array(idRowSchema).safeParse(data ?? []),
+            "Lens audit chunk was not created",
+          ).map((row) => row.id),
+        );
+      }
+      expect(fixtureIds).toHaveLength(1260);
+
+      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(actor)}`);
+      const summary = adminPage.getByTestId("recent-work-summary");
+      await expect(summary).toHaveText(`Showing 1–50 of 1260 entries for “${actor}”.`);
+      await expect(adminPage.getByText(/Search and filters cover the/)).toHaveCount(0);
+
+      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(oldestId)}`);
+      await expect(adminPage.getByTestId("recent-work-summary")).toContainText("1–1 of 1");
+      await expect(adminPage.getByRole("link", { name: "open request" })).toHaveAttribute(
+        "href",
+        `/admin/requests/${oldestId}`,
+      );
+
+      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(actor)}&rw=26`);
+      await expect(summary).toHaveText(`Showing 1251–1260 of 1260 entries for “${actor}”.`);
+      await expect(adminPage.getByRole("link", { name: "open request" })).toHaveAttribute(
+        "href",
+        `/admin/requests/${oldestId}`,
+      );
+
+      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(actor)}&rw=99&page=5`);
+      await expect(adminPage).toHaveURL(new RegExp(`rw=26`));
+      await expect(adminPage).toHaveURL(/page=5/);
+      await expect(summary).toContainText("1251–1260 of 1260");
+
+      await adminPage.goto(`/admin/audit?q=${encodeURIComponent(actor)}&rw=2&page=5`);
+      const recentNext = adminPage
+        .getByTestId("recent-work-pagination")
+        .getByRole("link", { name: "Next" });
+      const recentNextUrl = new URL((await recentNext.getAttribute("href")) ?? "", adminPage.url());
+      expect(recentNextUrl.searchParams.get("rw")).toBe("3");
+      expect(recentNextUrl.searchParams.get("page")).toBe("5");
+      expect(recentNextUrl.searchParams.get("q")).toBe(actor);
+      await recentNext.click();
+      await expect(adminPage).toHaveURL(/rw=3/);
+      await expect(adminPage).toHaveURL(/page=5/);
+      await expect(summary).toHaveText(`Showing 101–150 of 1260 entries for “${actor}”.`);
+      await expect(
+        adminPage.getByTestId("recent-work-pagination").getByText("Page 3 of 26", {
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(summary).toBeFocused();
+
+      const recentPrevious = adminPage
+        .getByTestId("recent-work-pagination")
+        .getByRole("link", { name: "Previous" });
+      const recentPreviousUrl = new URL(
+        (await recentPrevious.getAttribute("href")) ?? "",
+        adminPage.url(),
+      );
+      expect(recentPreviousUrl.searchParams.get("rw")).toBe("2");
+      expect(recentPreviousUrl.searchParams.get("page")).toBe("5");
+      expect(recentPreviousUrl.searchParams.get("q")).toBe(actor);
+      await recentPrevious.click();
+      await expect(adminPage).toHaveURL(/rw=2/);
+      await expect(adminPage).toHaveURL(/page=5/);
+      await expect(summary).toHaveText(`Showing 51–100 of 1260 entries for “${actor}”.`);
+      await expect(
+        adminPage.getByTestId("recent-work-pagination").getByText("Page 2 of 26", {
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(summary).toBeFocused();
+
+      const technicalNext = adminPage
+        .getByTestId("audit-pagination")
+        .getByRole("link", { name: "Next" });
+      const technicalNextUrl = new URL(
+        (await technicalNext.getAttribute("href")) ?? "",
+        adminPage.url(),
+      );
+      expect(technicalNextUrl.searchParams.get("rw")).toBe("2");
+      expect(technicalNextUrl.searchParams.get("page")).toBe("6");
+      expect(technicalNextUrl.searchParams.get("q")).toBe(actor);
+      await technicalNext.click();
+      await expect(adminPage).toHaveURL(/rw=2/);
+      await expect(adminPage).toHaveURL(/page=6/);
+      await expect(adminPage.getByTestId("audit-page-summary")).toContainText("501–600 of");
+      await expect(
+        adminPage.getByTestId("audit-pagination").getByText(/Page 6 of \d+/, {
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(adminPage.getByTestId("audit-page-summary")).toBeFocused();
+
+      const technicalPrevious = adminPage
+        .getByTestId("audit-pagination")
+        .getByRole("link", { name: "Previous" });
+      const technicalPreviousUrl = new URL(
+        (await technicalPrevious.getAttribute("href")) ?? "",
+        adminPage.url(),
+      );
+      expect(technicalPreviousUrl.searchParams.get("rw")).toBe("2");
+      expect(technicalPreviousUrl.searchParams.get("page")).toBe("5");
+      expect(technicalPreviousUrl.searchParams.get("q")).toBe(actor);
+      await technicalPrevious.click();
+      await expect(adminPage).toHaveURL(/rw=2/);
+      await expect(adminPage).toHaveURL(/page=5/);
+      await expect(adminPage.getByTestId("audit-page-summary")).toContainText("401–500 of");
+      await expect(
+        adminPage.getByTestId("audit-pagination").getByText(/Page 5 of \d+/, {
+          exact: true,
+        }),
+      ).toBeVisible();
+      await expect(adminPage.getByTestId("audit-page-summary")).toBeFocused();
+
+      await adminPage.getByTestId("recent-work-filter-requests").click();
+      await expect(adminPage).toHaveURL(/page=5/);
+      await expect(adminPage).not.toHaveURL(/rw=/);
+      await expect(summary).toBeFocused();
+
+      await adminPage.getByLabel("Search recent work").fill(actor);
+      await adminPage.getByRole("button", { name: "Search", exact: true }).click();
+      await expect(summary).toBeFocused();
+      await expect(adminPage).toHaveURL(/page=5/);
+
+      await adminPage.getByTestId("recent-work-clear").click();
+      await expect(adminPage).toHaveURL(/\/admin\/audit\?page=5$/);
+      await expect(adminPage.getByLabel("Search recent work")).toBeFocused();
+    } finally {
+      for (let from = 0; from < fixtureIds.length; from += 250) {
+        const { error } = await db
+          .from("audit_log")
+          .delete()
+          .in("id", fixtureIds.slice(from, from + 250));
+        expect(error).toBeNull();
+      }
+      await db.from("audit_log").delete().eq("actor_email", actor);
+      await db.from("requests").delete().eq("id", oldestId);
     }
   });
 });

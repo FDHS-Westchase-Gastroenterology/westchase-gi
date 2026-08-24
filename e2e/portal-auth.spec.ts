@@ -4,6 +4,7 @@ import { test, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
+import { signInIdentifierField } from "../src/lib/portal/staff-language";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 
 loadLocalEnv();
@@ -17,6 +18,7 @@ const SEED_ADMIN_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_ADMIN_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
 const PREVIEW_USERNAME = process.env.PORTAL_PREVIEW_USERNAME ?? "";
 const PREVIEW_PASSWORD = process.env.PORTAL_PREVIEW_PASSWORD ?? "";
+const SIGN_IN_IDENTIFIER = signInIdentifierField(process.env.VERCEL_ENV === "preview");
 const GENERIC_LOGIN_ERROR = "Unable to sign in. Check your credentials and try again.";
 const RESET_REQUEST_MESSAGE =
   "If an active staff account exists for that email, you’ll receive a password reset link.";
@@ -101,8 +103,12 @@ test.describe("portal authentication and direct REST boundaries", () => {
     );
 
     await page.goto("/admin/login");
-    await expect(page.getByLabel("Email")).toHaveAttribute("type", "text");
-    await page.getByLabel("Email").fill(PREVIEW_USERNAME);
+    await expect(page.locator("label[for='email']")).toHaveText(SIGN_IN_IDENTIFIER.label);
+    await expect(page.getByLabel(SIGN_IN_IDENTIFIER.label)).toHaveAttribute(
+      "type",
+      SIGN_IN_IDENTIFIER.type,
+    );
+    await page.getByLabel(SIGN_IN_IDENTIFIER.label).fill(PREVIEW_USERNAME);
     await page.getByLabel("Password").fill(PREVIEW_PASSWORD);
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page).toHaveURL(/\/admin\/?$/);
@@ -131,10 +137,12 @@ test.describe("portal authentication and direct REST boundaries", () => {
     );
 
     await page.goto("/admin/login");
-    if (process.env.VERCEL_ENV !== "preview") {
-      await expect(page.getByLabel("Email")).toHaveAttribute("type", "email");
-    }
-    await page.getByLabel("Email").fill("nobody@example.test");
+    await expect(page.locator("label[for='email']")).toHaveText(SIGN_IN_IDENTIFIER.label);
+    await expect(page.getByLabel(SIGN_IN_IDENTIFIER.label)).toHaveAttribute(
+      "type",
+      SIGN_IN_IDENTIFIER.type,
+    );
+    await page.getByLabel(SIGN_IN_IDENTIFIER.label).fill("nobody@example.test");
     await page.getByLabel("Password").fill("not-the-password");
     await page.getByRole("button", { name: "Sign in" }).click();
     await expect(page.locator("#login-error")).toHaveText(GENERIC_LOGIN_ERROR);
@@ -253,7 +261,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       // Entered address, move focus, and do not navigate or send on mode
       // Change alone.
       await page.goto("/admin/login");
-      await page.getByLabel("Email").fill(accounts[0].email);
+      await page.getByLabel(SIGN_IN_IDENTIFIER.label).fill(accounts[0].email);
       const togglePosts: string[] = [];
       page.on("request", (outgoingRequest) => {
         if (outgoingRequest.method() === "POST") {

@@ -119,7 +119,7 @@ smoke test.
 | Portal page, route, or action   | Above + `npx playwright test` (portal specs)                                                        |
 | Migration, RLS, RPC, or seed    | Above + green `Supabase Preview` and `supabase-integration` on the exact head                       |
 | Email paths                     | `npx playwright test e2e/portal-email.spec.ts`                                                      |
-| UI-visible change               | Refresh covered `ui-reference/` images; before/after screenshots in the PR                          |
+| UI-visible change               | Refresh covered `ui-reference/` images; before/after screenshots in the PR conversation; video when the change is a new workflow or has multiple authored steps |
 | CI / dependency automation      | `node --test .github/scripts/dependency-automation.test.cjs` — policy and test change together      |
 
 Every PR reports both `Supabase Preview` and `supabase-integration`. Automatic branching applies
@@ -143,6 +143,11 @@ capture after deployment for public pages. The portal atlas covers only the seve
 staff routes with the Preview Branch seed identity, redacts in-browser, and never runs
 against Production.
 
+UI-visible work also has to satisfy the [visual evidence](AGENTS.md#visual-evidence) gate:
+before and after screenshots in the pull-request conversation, or a video of the authored
+path when the change is a new workflow or has more than one step. Committed atlas images
+alone do not pass the gate.
+
 ## Commit messages
 
 Use **imperative `type(scope): summary`** subjects and a short **why-focused** body:
@@ -158,7 +163,8 @@ subjects).
 **The review-ready PR is the default path for all normal source, content, and UI changes.**
 The template (`.github/PULL_REQUEST_TEMPLATE.md`) is the contract: summary/why, scope,
 verification with evidence (paste output or CI links; check only what actually ran), UI
-screenshots for visible changes (or an explicit N/A), medical/content provenance when
+screenshots — or a workflow video — in the PR conversation for visible changes (or an
+explicit N/A), medical/content provenance when
 compliance-sensitive text changes (provider credentials are verbatim — see
 `src/lib/providers.ts`), risk/rollback, and deployment impact.
 
