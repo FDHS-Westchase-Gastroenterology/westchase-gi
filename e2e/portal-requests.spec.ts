@@ -762,6 +762,106 @@ test.describe("portal requests operation", () => {
     expect(printMessage.scrollWidth).toBeLessThanOrEqual(printMessage.clientWidth + 1);
   });
 
+  // The outcome surface's interaction contract: one native radio group.
+  // One keyboard sequence covers every outcome.
+  // The call-again plan appears directly beneath the selected continuing-work row.
+  // Reduced motion makes the reveal instant.
+  // The mobile commit shelf clears the fixed bottom index.
+  test("VAL-ADMIN-018: outcome decisions stay one keyboard sequence with an in-place plan", async ({
+    page,
+    request,
+  }) => {
+    const id = await stageRequest(request, "keyboard");
+    await signIn(page);
+    await page.goto(`/admin/requests/${id}`);
+
+    const panel = page.getByTestId("workflow-panel");
+    const group = page.getByRole("group", { name: "What happened?" });
+    await expect(group).toBeVisible();
+    const radios = group.getByRole("radio");
+    // A NEW request exposes the attempt, booking, and non-contact closure outcomes.
+    // The captions mark the kinds without forking the group.
+    await expect(radios).toHaveCount(5);
+    await expect(panel.getByText("Continue working", { exact: true })).toBeVisible();
+    await expect(panel.getByText("Appointment completed", { exact: true })).toBeVisible();
+    await expect(panel.getByText("Close without an appointment", { exact: true })).toBeVisible();
+
+    // Arrow keys walk the whole set in DOM order and check as they go.
+    const first = radios.first();
+    await first.focus();
+    await expect(first).toBeFocused();
+    const values = await radios.evaluateAll((inputs) =>
+      inputs.map((input) => (input instanceof HTMLInputElement ? input.value : "(not-an-input)")),
+    );
+    for (let index = 1; index < values.length; index += 1) {
+      await page.keyboard.press("ArrowDown");
+      const state = await page.evaluate(() => {
+        const active = document.activeElement;
+        return active instanceof HTMLInputElement
+          ? { value: active.value, checked: active.checked }
+          : { value: "(none)", checked: false };
+      });
+      expect(state.value).toBe(values[index]);
+      expect(state.checked).toBe(true);
+    }
+
+    // The call-again plan appears directly beneath the selected row, not after the whole list.
+    const voicemail = group.getByRole("radio", { name: /Left a voicemail/ });
+    await voicemail.focus();
+    await page.keyboard.press("Space");
+    await expect(voicemail).toBeChecked();
+    const reveal = panel.locator(".portal-choice-reveal");
+    await expect(reveal).toBeVisible();
+    const adjacent = await reveal.evaluate((node) => {
+      const sibling = node.previousElementSibling;
+      const input = sibling?.querySelector("input[type=radio]");
+      return {
+        siblingIsRow: sibling?.classList.contains("portal-choice-row") ?? false,
+        siblingValue: input instanceof HTMLInputElement ? input.value : null,
+      };
+    });
+    expect(adjacent.siblingIsRow).toBe(true);
+    expect(adjacent.siblingValue).toBe("attempt:voicemail");
+
+    // Tab reaches the dependent plan straight after the selected choice.
+    await page.keyboard.press("Tab");
+    const planFocus = await page.evaluate(() =>
+      document.activeElement instanceof HTMLInputElement
+        ? { name: document.activeElement.name, value: document.activeElement.value }
+        : null,
+    );
+    expect(planFocus?.name).toBe("call-again");
+
+    // ArrowDown from the voicemail row lands on the next outcome, not the plan's fields.
+    await voicemail.focus();
+    await page.keyboard.press("ArrowDown");
+    const afterSkip = await page.evaluate(() =>
+      document.activeElement instanceof HTMLInputElement ? document.activeElement.value : null,
+    );
+    expect(afterSkip).toBe("attempt:no_answer");
+
+    // Reduced motion makes the reveal effectively instant.
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect(reveal).toHaveCSS("animation-name", "none");
+    await page.emulateMedia({ reducedMotion: null });
+    await expect(reveal).toHaveCSS("animation-name", "portal-choice-reveal-in");
+
+    // The mobile commit shelf sticks only with a choice active.
+    // It clears the fixed bottom navigation.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await panel.scrollIntoViewIfNeeded();
+    const shelf = panel.locator(".portal-commit-shelf");
+    await expect(shelf).toBeVisible();
+    await expect(shelf).toHaveCSS("position", "sticky");
+    const clearance = await page.evaluate<number | null>(() => {
+      const save = document.querySelector('[data-testid="save-workflow"]');
+      const nav = document.querySelector(".portal-sidebar");
+      if (!save || !nav) return null;
+      return Math.round(nav.getBoundingClientRect().top - save.getBoundingClientRect().bottom);
+    });
+    expect(clearance ?? -1).toBeGreaterThanOrEqual(0);
+  });
+
   test("VAL-ADMIN-004: status filters match SQL counts exactly", async ({ page }) => {
     test.setTimeout(120_000);
     await signIn(page);

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useReducer, useRef, useState, useTransition } from "react";
+import type { ReactNode } from "react";
 
 import { usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { followUpWhenLabel, STATE_LABELS } from "@/app/admin/(portal)/requests/format";
@@ -287,11 +288,13 @@ function panelReducer(state: Readonly<PanelState>, action: Readonly<PanelAction>
 }
 
 // ---------------------------------------------------------------------------
-// Presentational pieces (the retired composer's proven row vocabulary:
-// Sr-only radios, has-[:checked] treatment, pointer-down scale feedback)
+// Presentational pieces. The outcome list is one native radio group.
+// Sr-only inputs sit inside whole-row labels on ruled decision rows.
+// All five outcomes share one continuous keyboard sequence.
+// Each row height follows its own copy. The equal-card matrix is retired.
 // ---------------------------------------------------------------------------
 
-function ChoiceRadio({
+function DecisionRow({
   name,
   value,
   checked,
@@ -309,7 +312,7 @@ function ChoiceRadio({
   onSelect: () => void;
 }>) {
   return (
-    <label className="group block cursor-pointer rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-4 py-3 transition-[border-color,background-color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:border-[var(--color-navy)] active:scale-[0.98] has-[:checked]:border-[var(--color-navy)] has-[:checked]:bg-[var(--color-mint)] has-[:disabled]:cursor-default has-[:disabled]:opacity-60 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[var(--color-teal-ink)] motion-reduce:transition-none motion-reduce:active:scale-100">
+    <label className="portal-choice-row">
       <input
         type="radio"
         name={name}
@@ -319,22 +322,15 @@ function ChoiceRadio({
         onChange={onSelect}
         className="sr-only"
       />
-      <span className="flex items-center justify-between gap-3">
-        <span className="text-[0.95rem] leading-snug font-bold text-[var(--color-ink)]">
-          {label}
-        </span>
-        <span
-          aria-hidden="true"
-          className="grid h-5 w-5 flex-none place-items-center rounded-full border border-[var(--color-line-2)] text-white transition-colors group-has-[:checked]:border-[var(--color-navy)] group-has-[:checked]:bg-[var(--color-navy)]"
-        >
-          <Check className="h-3 w-3 opacity-0 transition-opacity group-has-[:checked]:opacity-100" />
-        </span>
+      <span aria-hidden="true" className="portal-choice-indicator">
+        <Check className="portal-choice-check" />
       </span>
-      {helper !== undefined && helper !== "" ? (
-        <span className="mt-1 block text-[0.82rem] leading-snug text-[var(--color-muted)]">
-          {helper}
-        </span>
-      ) : null}
+      <span className="portal-choice-copy">
+        <span className="portal-choice-label">{label}</span>
+        {helper !== undefined && helper !== "" ? (
+          <span className="portal-choice-helper">{helper}</span>
+        ) : null}
+      </span>
     </label>
   );
 }
@@ -348,6 +344,7 @@ function CallAgainFieldset({
   pending,
   onKindChange,
   onDayChange,
+  className = "mt-5",
 }: Readonly<{
   name: string;
   legend: string;
@@ -357,6 +354,7 @@ function CallAgainFieldset({
   pending: boolean;
   onKindChange: (kind: FollowUpKind) => void;
   onDayChange: (day: string) => void;
+  className?: string;
 }>) {
   const descriptionId = `${name}-description`;
   const dayId = `${name}-day`;
@@ -370,7 +368,7 @@ function CallAgainFieldset({
 
   return (
     <fieldset
-      className="mt-5"
+      className={className}
       disabled={pending}
       aria-describedby={customDayInvalid ? `${descriptionId} ${errorId}` : descriptionId}
     >
@@ -378,7 +376,7 @@ function CallAgainFieldset({
       <p
         id={descriptionId}
         data-testid={`${name}-required-explanation`}
-        className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]"
+        className="mt-1 text-sm leading-relaxed text-[var(--color-muted)]"
       >
         {description}
       </p>
@@ -433,17 +431,14 @@ function CallAgainFieldset({
             }}
             className="mt-1.5 block min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.9rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)] focus:ring-2 focus:ring-[var(--color-teal-ink)] disabled:opacity-60 aria-[invalid=true]:border-[oklch(0.5_0.19_25)] aria-[invalid=true]:bg-[color-mix(in_oklch,oklch(0.97_0.018_25)_70%,white)]"
           />
-          <p
-            id={dayHintId}
-            className="mt-1.5 text-[0.85rem] leading-relaxed text-[var(--color-muted)]"
-          >
+          <p id={dayHintId} className="mt-1.5 text-sm leading-relaxed text-[var(--color-muted)]">
             Required when Pick a day is selected. Save stays unavailable until this day is valid.
           </p>
           {customDayInvalid ? (
             <p
               id={errorId}
               role="alert"
-              className="mt-1.5 text-[0.85rem] font-bold text-[var(--color-ink)]"
+              className="mt-1.5 text-sm font-bold text-[var(--color-ink)]"
             >
               Choose today or a day within the next 90 days.
             </p>
@@ -507,7 +502,7 @@ function ReturnTimeAction({
         >
           Reopen for more work
         </button>
-        <p className="text-[0.85rem] text-[var(--color-muted)]">
+        <p className="text-sm text-[var(--color-muted)]">
           You will choose when it returns before anything changes.
         </p>
       </div>
@@ -532,7 +527,7 @@ function ReturnTimeAction({
         {isCorrection ? "Set a call-again day" : "Reopen for more work"}
       </h3>
       {isCorrection ? (
-        <p className="mt-1 max-w-[68ch] text-[0.85rem] leading-relaxed text-[var(--color-body)]">
+        <p className="mt-1 max-w-[68ch] text-sm leading-relaxed text-[var(--color-body)]">
           This Contacted request has no return time. Choose one to put a concrete next action back
           in the shared queue.
         </p>
@@ -559,7 +554,9 @@ function ReturnTimeAction({
           onClick={() => {
             if (choice !== undefined) onSubmit(choice);
           }}
-          className="btn btn-navy min-h-11 disabled:opacity-60"
+          className={`btn min-h-11 ${
+            choice !== undefined || (pending && inFlight === kind) ? "btn-navy" : "btn-outline"
+          } disabled:opacity-60`}
         >
           {pending && inFlight === kind
             ? isCorrection
@@ -570,7 +567,7 @@ function ReturnTimeAction({
               : "Reopen request"}
         </button>
         {isCorrection ? (
-          <p className="text-[0.85rem] text-[var(--color-body)]">
+          <p className="text-sm text-[var(--color-body)]">
             The correction is recorded in Request history and can be undone for 15 minutes.
           </p>
         ) : (
@@ -930,12 +927,112 @@ export function WorkflowPanel({
       rows={rows}
       save={save}
       saveDisabled={saveDisabled}
-      selectedAttempt={selectedAttempt}
       showFeedback={panel.feedback?.tone === "error" || currentWorkflowFeedback !== null}
       truth={truth}
       undoLatest={undoLatest}
       undoOpen={undoOpen}
     />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// The outcome choice list renders one native radio group as ruled rows.
+// Segment captions mark the three decision kinds inside the one group.
+// The dependent call-again plan rides directly beneath the selected continuing-work row.
+// ---------------------------------------------------------------------------
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function OutcomeChoiceList({
+  rows,
+  pending,
+  selected,
+  followUpKind,
+  followUpDay,
+  onSelect,
+  onSelectFollowUp,
+  onDayChange,
+}: Readonly<{
+  rows: ChoiceRow[];
+  pending: boolean;
+  selected: ChoiceId | null;
+  followUpKind: FollowUpKind | null;
+  followUpDay: string;
+  onSelect: (id: ChoiceId) => void;
+  onSelectFollowUp: (kind: FollowUpKind) => void;
+  onDayChange: (day: string) => void;
+}>) {
+  const segments: { id: string; caption: string; rows: ChoiceRow[] }[] = [];
+  const attemptRows = rows.filter((row) => row.choice.kind === "attempt");
+  if (attemptRows.length > 0) {
+    segments.push({ id: "continue", caption: "Continue working", rows: attemptRows });
+  }
+  const bookedRows = rows.filter((row) => row.choice.kind === "booked");
+  if (bookedRows.length > 0) {
+    segments.push({ id: "complete", caption: "Appointment completed", rows: bookedRows });
+  }
+  const closeRows = rows.filter((row) => row.choice.kind === "close");
+  if (closeRows.length > 0) {
+    segments.push({ id: "close", caption: "Close without an appointment", rows: closeRows });
+  }
+
+  // The plan is one keyed node in a single child array.
+  // React relocates that node when the selection moves between rows.
+  // A chosen return time and a finished reveal survive the move.
+  const choiceItems: ReactNode[] = [];
+  for (const segment of segments) {
+    choiceItems.push(
+      <p key={`caption-${segment.id}`} className="portal-choice-caption">
+        {segment.caption}
+      </p>,
+    );
+    for (const row of segment.rows) {
+      const id = choiceId(row.choice);
+      choiceItems.push(
+        <DecisionRow
+          key={id}
+          name="what-happened"
+          value={id}
+          checked={selected === id}
+          disabled={pending}
+          label={row.label}
+          helper={row.helper}
+          onSelect={() => {
+            onSelect(id);
+          }}
+        />,
+      );
+      if (row.choice.kind === "attempt" && selected === id) {
+        choiceItems.push(
+          <div key="call-again-plan" className="portal-choice-reveal">
+            <div>
+              <CallAgainFieldset
+                name="call-again"
+                className="portal-choice-plan"
+                legend="When should this come back to your attention?"
+                description="Choose one before Save. The shared queue uses it to show staff the next call."
+                followUpKind={followUpKind}
+                followUpDay={followUpDay}
+                pending={pending}
+                onKindChange={onSelectFollowUp}
+                onDayChange={onDayChange}
+              />
+            </div>
+          </div>,
+        );
+      }
+    }
+  }
+
+  return (
+    <fieldset className="mt-5" disabled={pending}>
+      <legend className="text-sm font-bold text-[var(--color-ink)]">What happened?</legend>
+      <p className="mt-1 text-sm leading-relaxed text-[var(--color-muted)]">
+        Record what happened on the call. The request moves to the right status.
+      </p>
+      <div data-testid="workflow-choices" className="portal-choice-list">
+        {choiceItems}
+      </div>
+    </fieldset>
   );
 }
 
@@ -953,7 +1050,6 @@ function WorkflowPanelBody({
   rows,
   save,
   saveDisabled,
-  selectedAttempt,
   showFeedback,
   truth,
   undoLatest,
@@ -971,7 +1067,6 @@ function WorkflowPanelBody({
   rows: ChoiceRow[];
   save: () => void;
   saveDisabled: boolean;
-  selectedAttempt: ContactOutcome | null;
   showFeedback: boolean;
   truth: Truth;
   undoLatest: () => void;
@@ -993,7 +1088,7 @@ function WorkflowPanelBody({
       <p
         id="workflow-current-state"
         data-testid="workflow-current-state"
-        className="mt-1.5 text-[0.85rem] font-bold text-[var(--color-body)]"
+        className="mt-1.5 text-sm font-bold text-[var(--color-body)]"
       >
         Current status: {STATE_LABELS[truth.state]}
         {truth.state === "contacted" && truth.callAgainAt !== null && truth.callAgainAt !== ""
@@ -1045,8 +1140,8 @@ function WorkflowPanelBody({
             <legend className="text-sm font-bold text-[var(--color-ink)]">
               How did this request actually end?
             </legend>
-            <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
-              <ChoiceRadio
+            <div className="portal-choice-list">
+              <DecisionRow
                 name="legacy-review"
                 value="booked"
                 checked={panel.reviewResolution === "booked"}
@@ -1057,7 +1152,7 @@ function WorkflowPanelBody({
                   dispatch({ type: "select_review", resolution: "booked" });
                 }}
               />
-              <ChoiceRadio
+              <DecisionRow
                 name="legacy-review"
                 value="wont_schedule"
                 checked={panel.reviewResolution === "wont_schedule"}
@@ -1070,7 +1165,7 @@ function WorkflowPanelBody({
                   });
                 }}
               />
-              <ChoiceRadio
+              <DecisionRow
                 name="legacy-review"
                 value="not_actionable"
                 checked={panel.reviewResolution === "not_actionable"}
@@ -1085,74 +1180,61 @@ function WorkflowPanelBody({
               />
             </div>
           </fieldset>
-          <div className="mt-5 flex flex-wrap items-center gap-3">
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
             <button
               type="button"
               data-testid="classify-legacy"
               disabled={pending || panel.reviewResolution === null}
               onClick={classify}
-              className="btn btn-navy min-h-11 disabled:opacity-60"
+              className={`btn min-h-11 ${
+                panel.reviewResolution !== null || (pending && inFlight === "classify")
+                  ? "btn-navy"
+                  : "btn-outline"
+              } disabled:opacity-60`}
             >
               {pending && inFlight === "classify" ? "Saving…" : "Finish record"}
             </button>
-            <p className="text-[0.85rem] text-[var(--color-muted)]">
+            <p className="text-sm text-[var(--color-muted)]">
               This review is recorded in Request history.
             </p>
           </div>
         </>
       ) : rows.length > 0 ? (
         <>
-          <fieldset className="mt-5" disabled={pending}>
-            <legend className="text-sm font-bold text-[var(--color-ink)]">What happened?</legend>
-            <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
-              Record what happened on the call. The request moves to the right status.
-            </p>
-            <div data-testid="workflow-choices" className="mt-3 grid gap-2.5 sm:grid-cols-2">
-              {rows.map((row) => (
-                <ChoiceRadio
-                  key={choiceId(row.choice)}
-                  name="what-happened"
-                  value={choiceId(row.choice)}
-                  checked={panel.selected === choiceId(row.choice)}
-                  disabled={pending}
-                  label={row.label}
-                  helper={row.helper}
-                  onSelect={() => {
-                    dispatch({ type: "select", id: choiceId(row.choice) });
-                  }}
-                />
-              ))}
-            </div>
-          </fieldset>
+          <OutcomeChoiceList
+            rows={rows}
+            pending={pending}
+            selected={panel.selected}
+            followUpKind={panel.followUpKind}
+            followUpDay={panel.followUpDay}
+            onSelect={(id) => {
+              dispatch({ type: "select", id });
+            }}
+            onSelectFollowUp={(kind) => {
+              dispatch({ type: "select_follow_up", kind });
+            }}
+            onDayChange={(day) => {
+              dispatch({ type: "set_day", day });
+            }}
+          />
 
-          {selectedAttempt !== null ? (
-            <CallAgainFieldset
-              name="call-again"
-              legend="When should this come back to your attention?"
-              description="Choose one before Save. The shared queue uses it to show staff the next call."
-              followUpKind={panel.followUpKind}
-              followUpDay={panel.followUpDay}
-              pending={pending}
-              onKindChange={(kind) => {
-                dispatch({ type: "select_follow_up", kind });
-              }}
-              onDayChange={(day) => {
-                dispatch({ type: "set_day", day });
-              }}
-            />
-          ) : null}
-
-          <div className="mt-5 flex flex-wrap items-center gap-3">
+          <div
+            className={`mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 ${
+              panel.selected !== null ? "portal-commit-shelf" : ""
+            }`}
+          >
             <button
               type="button"
               data-testid="save-workflow"
               disabled={saveDisabled}
               onClick={save}
-              className="btn btn-navy min-h-11 disabled:opacity-60"
+              className={`btn min-h-11 ${
+                !saveDisabled || (pending && inFlight === "save") ? "btn-navy" : "btn-outline"
+              } disabled:opacity-60`}
             >
               {pending && inFlight === "save" ? "Saving…" : "Save"}
             </button>
-            <p className="text-[0.85rem] text-[var(--color-muted)]">
+            <p className="text-sm text-[var(--color-muted)]">
               Save records one entry in Request history. You can undo for 15 minutes.
             </p>
           </div>
