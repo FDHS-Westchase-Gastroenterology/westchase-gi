@@ -774,6 +774,11 @@
     overscroll-behavior: contain;
   }
 
+  .portal-arrivals ul[data-scroll="true"] a {
+    margin-inline: 0;
+    padding-inline: 0;
+  }
+
   .portal-arrivals + .portal-attention-next {
     border-top: 1px solid var(--color-line-2);
   }
