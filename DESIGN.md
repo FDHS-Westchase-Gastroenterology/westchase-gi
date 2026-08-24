@@ -65,6 +65,58 @@ Operate posture: scanability, consistency, and native expectations outrank expre
 brand lives in precise details, used with restraint. Motion is state-conveying only, within
 ordinary UI budgets. Task vocabulary and workflow truths are product law in `PRODUCT.md`.
 
+## Committed staff-portal world — The Front Desk Ledger (2026-08-09)
+
+The staff portal is a calm clinical workbench modeled on the practice's paper-routing stack,
+not a generic software dashboard. Appointment requests are the visual and operational center;
+administration recedes without becoming hard to find. This world governs the complete `/admin`
+surface until it is deliberately re-chartered.
+
+### Composition and navigation
+
+- The persistent desktop task index is 17rem wide and carries four destinations: Home,
+  Appointments, Settings, and Help. At narrow widths, the same destinations become a fixed,
+  thumb-reachable bottom index; the mobile header carries identity and account actions.
+- The working canvas is a cool near-white field (`--portal-canvas`), and its white work surfaces
+  (`--portal-surface`) read as ruled sheets rather than floating cards. Borders establish
+  sequence and grouping; shadow is reserved for overlays and temporary depth.
+- Home is a triage and handoff workbench, not a metric dashboard. Appointments is one ordered
+  ledger that recomposes from a dense desktop row into a readable mobile record without hiding
+  status, next action, or recovery.
+- Staff-authored intake uses a dedicated ruled worksheet within the working canvas, not a modal
+  or a separate patient registry. Contact details, preferences, scheduling context, and the
+  clinical-record boundary remain visible as one linear task on desktop and mobile.
+- Page titles, descriptions, status context, and the primary action form one repeated header
+  contract. Settings tabs and appointment filters preserve location with `aria-current` rather
+  than inventing new navigation behavior.
+
+### Color, type, and state
+
+- Deep navy (`--color-navy-2`) carries the task index and primary actions. Steel teal
+  (`--color-teal`, `--color-teal-ink`) means selected, active, or ready. Amber
+  (`--color-amber`, `--color-amber-soft`, `--portal-attention-ink`) is reserved for work that
+  needs attention and for the visible focus ring. Color never carries state alone.
+- The portal uses the body sans-serif for both interface text and headings. Hierarchy comes from
+  weight, size, spacing, and density; display serif remains a restrained brand mark, never a
+  costume for operational content. Counts and times use tabular numerals.
+- Corners stay compact (`--radius-sm` through `--radius-lg`) and controls retain familiar native
+  shapes. Pills are limited to counts and compact status tags, never used as page structure.
+
+### Interaction, motion, and adaptation
+
+- Every actionable target is at least 44px. Keyboard focus uses a three-pixel amber outline with
+  offset, landmarks and headings remain semantic, and the shell exposes a skip link.
+- Routine portal motion is limited to 150–160ms color feedback using a strong ease-out curve.
+  Navigation and keyboard-triggered work do not slide, scale, or delay. Reduced motion keeps the
+  state-changing color and opacity cues while removing nonessential movement.
+- Desktop prioritizes scan density and a persistent working location. Mobile becomes one readable
+  column with the primary destinations and account actions still in reach; it never clips a table
+  or removes workflow truth. Print is a third authored mode: US Letter worksheets, one request per
+  sheet, complete contact and request context, a paper routing area, and no application chrome.
+- Pending, success, empty, partial-read, unavailable, conflict, unauthorized, completion, and
+  recovery states use the same page and action contracts. Printing is explicitly non-mutating;
+  the live queue remains authoritative before and after the paper handoff.
+
 ## Transition
 
 Until a surface is rebuilt under a committed world, maintenance matches the surface's

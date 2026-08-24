@@ -1,7 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useReducer, useTransition } from "react";
+import { useEffect, useReducer, useRef, useState, useTransition } from "react";
+import type { ComponentProps, KeyboardEvent as ReactKeyboardEvent, RefObject } from "react";
+
+import { RECIPIENTS_INTRO } from "@/lib/portal/staff-language";
 
 import {
   addNotificationRecipient,
@@ -41,6 +44,23 @@ function failureMessage(result: Readonly<MutationOutcome>): string {
   return isRecipientFailureCode(code) ? FAILURE_COPY[code] : FAILURE_COPY.unavailable;
 }
 
+function keepFocusInDialog(event: ReactKeyboardEvent<HTMLDialogElement>) {
+  if (event.key !== "Tab") return;
+  const controls = Array.from(
+    event.currentTarget.querySelectorAll<HTMLButtonElement>("button:not([disabled])"),
+  );
+  const first = controls.at(0);
+  const last = controls.at(-1);
+  if (first === undefined || last === undefined) return;
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
 // Every mutation reports per row, not per panel: only the affected control
 // Goes pending while the rest of the list stays live. The reversible toggle
 // Offers an undo in plain language instead of making staff reverse it
@@ -48,6 +68,7 @@ function failureMessage(result: Readonly<MutationOutcome>): string {
 interface RecipientsState {
   readonly pendingKey: string | null;
   readonly error: string | null;
+  readonly addEmailError: string | null;
   readonly deliveryNotice: { readonly tone: "success" | "warning"; readonly text: string } | null;
   readonly undo: {
     readonly recipientId: string;
@@ -56,25 +77,31 @@ interface RecipientsState {
   } | null;
   readonly labelDraft: { readonly recipientId: string; readonly value: string } | null;
   readonly labelNotice: string | null;
+  readonly removalNotice: string | null;
 }
 
 type RecipientsAction =
   | { readonly type: "begin"; readonly key: string }
   | { readonly type: "failed"; readonly message: string }
+  | { readonly type: "add_validation"; readonly message: string }
+  | { readonly type: "clear_add_validation" }
   | { readonly type: "settle" }
   | { readonly type: "delivery"; readonly notice: RecipientsState["deliveryNotice"] }
   | { readonly type: "undo_ready"; readonly undo: RecipientsState["undo"] }
   | { readonly type: "dismiss_undo" }
   | { readonly type: "label_draft"; readonly draft: RecipientsState["labelDraft"] }
-  | { readonly type: "label_saved"; readonly notice: string };
+  | { readonly type: "label_saved"; readonly notice: string }
+  | { readonly type: "removed"; readonly notice: string };
 
 const INITIAL_STATE: RecipientsState = {
   pendingKey: null,
   error: null,
+  addEmailError: null,
   deliveryNotice: null,
   undo: null,
   labelDraft: null,
   labelNotice: null,
+  removalNotice: null,
 };
 
 function recipientsReducer(
@@ -87,12 +114,26 @@ function recipientsReducer(
         ...state,
         pendingKey: action.key,
         error: null,
+        addEmailError: null,
         deliveryNotice: null,
         undo: null,
         labelNotice: null,
+        removalNotice: null,
       };
     case "failed":
       return { ...state, pendingKey: null, error: action.message };
+    case "add_validation":
+      return {
+        ...state,
+        error: null,
+        addEmailError: action.message,
+        deliveryNotice: null,
+        undo: null,
+        labelNotice: null,
+        removalNotice: null,
+      };
+    case "clear_add_validation":
+      return { ...state, addEmailError: null };
     case "settle":
       return { ...state, pendingKey: null };
     case "delivery":
@@ -110,9 +151,95 @@ function recipientsReducer(
         labelDraft: null,
         labelNotice: action.notice,
       };
+    case "removed":
+      return {
+        ...state,
+        pendingKey: null,
+        error: null,
+        removalNotice: action.notice,
+      };
     default:
       return state;
   }
+}
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework ref types that cannot be made deeply readonly
+function RemoveRecipientDialog({
+  recipient,
+  dialogRef,
+  cancelRef,
+  pending,
+  onCancel,
+  onConfirm,
+  onClose,
+}: Readonly<{
+  recipient: RecipientRow;
+  dialogRef: RefObject<HTMLDialogElement | null>;
+  cancelRef: RefObject<HTMLButtonElement | null>;
+  pending: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+  onClose: () => void;
+}>) {
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-modal="true"
+      aria-labelledby="remove-recipient-title"
+      aria-describedby="remove-recipient-copy"
+      data-testid="remove-recipient-dialog"
+      onCancel={(event) => {
+        event.preventDefault();
+        if (!pending) onCancel();
+      }}
+      onKeyDown={keepFocusInDialog}
+      onClose={onClose}
+      className="portal-confirm-dialog"
+    >
+      <div className="portal-confirm-dialog-body">
+        <div className="portal-confirm-dialog-heading">
+          <h2 id="remove-recipient-title" className="portal-confirm-dialog-title">
+            Remove {recipient.email}?
+          </h2>
+          <button
+            type="button"
+            disabled={pending}
+            data-testid="close-remove-recipient-dialog"
+            onClick={onCancel}
+            className="portal-confirm-dialog-close"
+          >
+            Close
+          </button>
+        </div>
+        <p id="remove-recipient-copy">
+          Notification emails will stop for {recipient.email}. Removing this address does not remove
+          appointment requests from the portal queue.
+        </p>
+      </div>
+      <div className="portal-confirm-dialog-actions">
+        <button
+          ref={cancelRef}
+          type="button"
+          autoFocus
+          disabled={pending}
+          data-testid="cancel-remove-recipient"
+          onClick={onCancel}
+          className="btn btn-navy min-h-11 disabled:opacity-60"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          data-testid="confirm-remove-recipient"
+          onClick={onConfirm}
+          className="portal-confirm-dialog-destructive min-h-11 disabled:opacity-60"
+        >
+          {pending ? "Removing recipient…" : "Remove recipient"}
+        </button>
+      </div>
+    </dialog>
+  );
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
@@ -144,59 +271,96 @@ function RecipientRowItem({
   const labelPending = pendingKey === `label:${recipient.id}`;
   const label = recipient.label?.trim();
   const hasLabel = label !== undefined && label !== "";
+  const activeLabelDraft = labelDraft?.recipientId === recipient.id ? labelDraft : null;
+  const editingLabel = activeLabelDraft !== null;
+  const labelInputRef = useRef<HTMLInputElement>(null);
+  const editButtonRef = useRef<HTMLButtonElement>(null);
+  const toggleButtonRef = useRef<HTMLButtonElement>(null);
+  const restoreEditFocusRef = useRef(false);
+  const restoreToggleFocusRef = useRef(false);
+
+  useEffect(() => {
+    if (!editingLabel) return;
+    labelInputRef.current?.focus();
+  }, [editingLabel]);
+
+  useEffect(() => {
+    if (editingLabel || !restoreEditFocusRef.current) return;
+    restoreEditFocusRef.current = false;
+    editButtonRef.current?.focus();
+  }, [editingLabel]);
+
+  useEffect(() => {
+    if (togglePending || !restoreToggleFocusRef.current) return;
+    restoreToggleFocusRef.current = false;
+    toggleButtonRef.current?.focus();
+  }, [togglePending]);
 
   return (
     <li
+      data-recipient-id={recipient.id}
       data-recipient-email={recipient.email}
+      data-recipient-active={recipient.active}
       className="flex flex-wrap items-center justify-between gap-3 py-3.5"
     >
       <div className="min-w-0">
         <p className="truncate font-bold text-[var(--color-ink)]">{recipient.email}</p>
-        {labelDraft !== null && labelDraft.recipientId === recipient.id ? (
-          <span className="mt-1.5 flex flex-wrap items-center gap-2">
-            <label htmlFor={`label-${recipient.id}`} className="sr-only">
-              Label for {recipient.email}
-            </label>
-            <input
-              id={`label-${recipient.id}`}
-              type="text"
-              maxLength={120}
-              value={labelDraft.value}
-              disabled={labelPending}
-              onChange={(event) => {
-                onDraftChange(event.target.value);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  onSaveLabel();
-                }
-                if (event.key === "Escape") onCancelLabel();
-              }}
-              className="min-h-10 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-3 text-[0.85rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)] disabled:opacity-60"
-            />
+        {editingLabel ? (
+          <div className="mt-1.5 flex flex-wrap items-end gap-2">
+            <div className="portal-settings-field">
+              <label htmlFor={`label-${recipient.id}`} className="portal-settings-field-label">
+                Recipient label
+              </label>
+              <input
+                ref={labelInputRef}
+                id={`label-${recipient.id}`}
+                type="text"
+                maxLength={120}
+                value={activeLabelDraft.value}
+                disabled={labelPending}
+                onChange={(event) => {
+                  onDraftChange(event.target.value);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    onSaveLabel();
+                  }
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    restoreEditFocusRef.current = true;
+                    onCancelLabel();
+                  }
+                }}
+                className="portal-settings-control min-h-11 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-3 text-[0.85rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)] disabled:opacity-60"
+              />
+            </div>
             <button
               type="button"
               data-action="save-label"
               disabled={labelPending}
               onClick={onSaveLabel}
-              className="min-h-10 rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
+              className="min-h-11 rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
             >
               {labelPending ? "Saving…" : "Save"}
             </button>
             <button
               type="button"
               disabled={labelPending}
-              onClick={onCancelLabel}
-              className="min-h-10 px-2 text-[0.85rem] font-bold text-[var(--color-muted)] disabled:opacity-60"
+              onClick={() => {
+                restoreEditFocusRef.current = true;
+                onCancelLabel();
+              }}
+              className="min-h-11 px-2 text-[0.85rem] font-bold text-[var(--color-muted)] disabled:opacity-60"
             >
               Cancel
             </button>
-          </span>
+          </div>
         ) : (
           <p className="text-[0.85rem] text-[var(--color-muted)]">
             {hasLabel ? label : "No label"}
             <button
+              ref={editButtonRef}
               type="button"
               data-action="edit-label"
               onClick={onEditLabel}
@@ -207,28 +371,38 @@ function RecipientRowItem({
           </p>
         )}
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        <span
+          data-testid="recipient-state"
+          data-active={recipient.active}
+          className="portal-recipient-state"
+        >
+          {recipient.active ? "Active" : "Paused"}
+        </span>
         <button
+          id={`recipient-toggle-${recipient.id}`}
+          ref={toggleButtonRef}
           type="button"
           aria-pressed={recipient.active}
+          aria-label={`${recipient.active ? "Pause" : "Resume"} notifications for ${recipient.email}`}
           data-action="toggle"
           disabled={togglePending}
-          onClick={onToggle}
-          className={`flex min-h-10 items-center rounded-full border px-3.5 text-[0.85rem] font-bold transition-colors disabled:opacity-60 ${
-            recipient.active
-              ? "border-[var(--color-teal-ink)] bg-[var(--color-mint)] text-[var(--color-teal-ink)]"
-              : "border-[var(--color-line-2)] bg-white text-[var(--color-muted)]"
-          }`}
+          onClick={() => {
+            restoreToggleFocusRef.current = true;
+            onToggle();
+          }}
+          className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] transition-colors disabled:opacity-60"
         >
-          {togglePending ? "Saving…" : recipient.active ? "Active" : "Paused"}
+          {togglePending ? "Saving…" : recipient.active ? "Pause" : "Resume"}
         </button>
         {isAdmin && (
           <button
+            id={`remove-recipient-${recipient.id}`}
             type="button"
             data-action="remove"
             disabled={removePending}
             onClick={onRemove}
-            className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+            className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
           >
             {removePending ? "Removing…" : "Remove"}
           </button>
@@ -238,23 +412,19 @@ function RecipientRowItem({
   );
 }
 
-function RecipientAlerts({
-  error,
-  deliveryNotice,
-  undo,
-  labelNotice,
-  pendingKey,
+type FormAction = Exclude<ComponentProps<"form">["action"], string | undefined>;
+
+function RecipientNotices({
+  state,
   onUndo,
   onDismissUndo,
 }: Readonly<{
-  error: string | null;
-  deliveryNotice: RecipientsState["deliveryNotice"];
-  undo: RecipientsState["undo"];
-  labelNotice: string | null;
-  pendingKey: string | null;
+  state: Readonly<RecipientsState>;
   onUndo: () => void;
   onDismissUndo: () => void;
 }>) {
+  const { pendingKey, error, deliveryNotice, undo, labelNotice, removalNotice } = state;
+
   return (
     <>
       {error !== null && error !== "" && (
@@ -317,58 +487,119 @@ function RecipientAlerts({
           {labelNotice}
         </p>
       )}
+
+      {removalNotice !== null && removalNotice !== "" && (
+        <p
+          role="status"
+          data-testid="recipient-removal-status"
+          className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
+        >
+          {removalNotice}
+        </p>
+      )}
     </>
   );
 }
 
 function AddRecipientForm({
+  action,
+  emailRef,
+  emailError,
   pending,
-  onAdd,
+  onClearEmailError,
 }: Readonly<{
+  action: FormAction;
+  emailRef: RefObject<HTMLInputElement | null>;
+  emailError: string | null;
   pending: boolean;
-  onAdd: (formData: FormData) => void;
+  onClearEmailError: () => void;
 }>) {
   return (
-    <form className="mt-5 border-t border-[var(--color-line)] pt-5" action={onAdd}>
-      <h3 className="text-sm font-bold text-[var(--color-ink)]">Add a recipient</h3>
+    <form
+      className="mt-5 border-t border-[var(--color-line)] pt-5"
+      action={action}
+      noValidate
+      aria-labelledby="add-recipient-heading"
+    >
+      <h3 id="add-recipient-heading" className="text-sm font-bold text-[var(--color-ink)]">
+        Add a recipient
+      </h3>
+      {emailError !== null && (
+        <p
+          role="alert"
+          data-testid="add-recipient-error-summary"
+          className="portal-settings-form-summary"
+        >
+          Check the highlighted field before adding this recipient.
+        </p>
+      )}
       <div className="mt-3 grid gap-3 sm:grid-cols-[1.4fr_1fr_auto]">
-        <div>
-          <label htmlFor="recipient-email" className="sr-only">
-            Email address
+        <div className="portal-settings-field">
+          <label htmlFor="recipient-email" className="portal-settings-field-label">
+            Recipient email
           </label>
           <input
+            ref={emailRef}
             id="recipient-email"
             name="email"
             type="email"
             required
             placeholder="frontdesk@example.com"
+            aria-invalid={emailError !== null || undefined}
+            aria-describedby={emailError !== null ? "recipient-email-error" : undefined}
             disabled={pending}
-            className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
+            onChange={() => {
+              if (emailError !== null) onClearEmailError();
+            }}
+            className="portal-settings-control min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
           />
+          {emailError !== null && (
+            <p id="recipient-email-error" className="portal-settings-field-error">
+              {emailError}
+            </p>
+          )}
         </div>
-        <div>
-          <label htmlFor="recipient-label" className="sr-only">
-            Label (optional)
+        <div className="portal-settings-field">
+          <label htmlFor="recipient-label" className="portal-settings-field-label">
+            Recipient label (optional)
           </label>
           <input
             id="recipient-label"
             name="label"
             type="text"
-            placeholder="Label (optional)"
+            placeholder="Front desk"
             disabled={pending}
-            className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
+            className="portal-settings-control min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
           />
         </div>
         <button
           type="submit"
           disabled={pending}
-          className="btn btn-navy min-h-11 disabled:opacity-60"
+          className="btn btn-navy min-h-11 self-end disabled:opacity-60"
         >
-          {pending ? "Saving…" : "Add"}
+          {pending ? "Saving…" : "Add recipient"}
         </button>
       </div>
     </form>
   );
+}
+
+function useRecipientFocusAfterRefresh(recipients: readonly Readonly<RecipientRow>[]) {
+  const focusAfterRefreshRef = useRef<string | null>(null);
+  const recipientRenderKey = recipients
+    .map((recipient) => `${recipient.id}:${String(recipient.active)}:${recipient.label ?? ""}`)
+    .join("\n");
+
+  useEffect(() => {
+    const targetId = focusAfterRefreshRef.current;
+    if (targetId === null) return;
+    const target = document.getElementById(targetId);
+    if (target === null) return;
+    focusAfterRefreshRef.current = null;
+    target.focus();
+  }, [recipientRenderKey]);
+
+  return focusAfterRefreshRef;
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
@@ -382,18 +613,36 @@ export function RecipientsManager({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [state, dispatch] = useReducer(recipientsReducer, INITIAL_STATE);
-  const { pendingKey, error, deliveryNotice, undo, labelDraft, labelNotice } = state;
+  const [removeTarget, setRemoveTarget] = useState<RecipientRow | null>(null);
+  const recipientEmailRef = useRef<HTMLInputElement>(null);
+  const listHeadingRef = useRef<HTMLHeadingElement>(null);
+  const removeDialogRef = useRef<HTMLDialogElement>(null);
+  const removeCancelRef = useRef<HTMLButtonElement>(null);
+  const removeOpenerIdRef = useRef<string | null>(null);
+  const removalSucceededRef = useRef(false);
+  const recipientFocusAfterRefreshRef = useRecipientFocusAfterRefresh(recipients);
+  const { pendingKey, addEmailError, undo, labelDraft } = state;
+
+  useEffect(() => {
+    if (removeTarget === null) return;
+    const dialog = removeDialogRef.current;
+    if (dialog === null) return;
+    if (!dialog.open) dialog.showModal();
+    removeCancelRef.current?.focus();
+  }, [removeTarget]);
 
   function run(
     key: string,
     action: () => Promise<MutationOutcome>,
     onSuccess?: (result: Readonly<MutationOutcome>) => void,
+    onFailure?: () => void,
   ) {
     dispatch({ type: "begin", key });
     startTransition(async () => {
       const result = await action();
       if (!result.ok) {
         dispatch({ type: "failed", message: failureMessage(result) });
+        onFailure?.();
         return;
       }
       if (onSuccess) {
@@ -406,6 +655,7 @@ export function RecipientsManager({
   }
 
   function toggleRecipient(recipient: Readonly<RecipientRow>) {
+    recipientFocusAfterRefreshRef.current = `recipient-toggle-${recipient.id}`;
     run(
       `toggle:${recipient.id}`,
       async () =>
@@ -423,6 +673,63 @@ export function RecipientsManager({
           },
         });
       },
+    );
+  }
+
+  function undoToggle() {
+    if (undo === null) return;
+    const target = undo;
+    recipientFocusAfterRefreshRef.current = `recipient-toggle-${target.recipientId}`;
+    run(`toggle:${target.recipientId}`, async () =>
+      toggleNotificationRecipient({
+        recipientId: target.recipientId,
+        active: target.restoredActive,
+      }),
+    );
+  }
+
+  function openRemoveDialog(recipient: Readonly<RecipientRow>) {
+    removeOpenerIdRef.current = `remove-recipient-${recipient.id}`;
+    removalSucceededRef.current = false;
+    setRemoveTarget(recipient);
+  }
+
+  function closeRemoveDialog() {
+    removeDialogRef.current?.close();
+  }
+
+  function finishRemoveDialog() {
+    const removalSucceeded = removalSucceededRef.current;
+    setRemoveTarget(null);
+    requestAnimationFrame(() => {
+      if (removalSucceeded) {
+        listHeadingRef.current?.focus();
+      } else {
+        const opener =
+          removeOpenerIdRef.current === null
+            ? null
+            : document.getElementById(removeOpenerIdRef.current);
+        if (opener instanceof HTMLButtonElement) opener.focus();
+      }
+      removalSucceededRef.current = false;
+    });
+  }
+
+  function confirmRemoval() {
+    if (removeTarget === null) return;
+    const recipient = removeTarget;
+    run(
+      `remove:${recipient.id}`,
+      async () => removeNotificationRecipient({ id: recipient.id }),
+      () => {
+        removalSucceededRef.current = true;
+        dispatch({
+          type: "removed",
+          notice: `Removed ${recipient.email} from notification recipients.`,
+        });
+        closeRemoveDialog();
+      },
+      closeRemoveDialog,
     );
   }
 
@@ -455,7 +762,17 @@ export function RecipientsManager({
     const rawLabel = formData.get("label");
     const email = rawEmail === null || rawEmail instanceof File ? "" : rawEmail.trim();
     const label = rawLabel === null || rawLabel instanceof File ? "" : rawLabel.trim();
-    if (!email) return;
+    const emailError =
+      email === ""
+        ? "Enter a recipient email address."
+        : recipientEmailRef.current?.validity.typeMismatch === true
+          ? "Enter a complete email address."
+          : null;
+    if (emailError !== null) {
+      dispatch({ type: "add_validation", message: emailError });
+      recipientEmailRef.current?.focus();
+      return;
+    }
     run(
       "add",
       async () => addNotificationRecipient(label ? { email, label } : { email }),
@@ -478,39 +795,33 @@ export function RecipientsManager({
   }
 
   return (
-    <div
-      data-testid="recipients-manager"
-      className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7"
-    >
-      <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">Notification recipients</h2>
+    <div data-testid="recipients-manager" className="portal-panel p-6 sm:p-7">
+      <h2
+        ref={listHeadingRef}
+        id="recipient-list-heading"
+        tabIndex={-1}
+        data-testid="recipient-list-heading"
+        className="portal-settings-list-heading text-[1.05rem] font-black text-[var(--color-ink)]"
+      >
+        Notification recipients
+      </h2>
       <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
-        Everyone on this list gets an email whenever a patient requests an appointment. The emails
-        are just a heads-up — every request is always saved here in the portal, so nothing gets
-        missed even if an email does.
+        {RECIPIENTS_INTRO}
       </p>
 
-      <RecipientAlerts
-        error={error}
-        deliveryNotice={deliveryNotice}
-        undo={undo}
-        labelNotice={labelNotice}
-        pendingKey={pendingKey}
-        onUndo={() => {
-          if (undo === null) return;
-          const target = undo;
-          run(`toggle:${target.recipientId}`, async () =>
-            toggleNotificationRecipient({
-              recipientId: target.recipientId,
-              active: target.restoredActive,
-            }),
-          );
-        }}
+      <RecipientNotices
+        state={state}
+        onUndo={undoToggle}
         onDismissUndo={() => {
           dispatch({ type: "dismiss_undo" });
         }}
       />
 
-      <ul data-testid="recipient-list" className="mt-5 divide-y divide-[var(--color-line)]">
+      <ul
+        aria-labelledby="recipient-list-heading"
+        data-testid="recipient-list"
+        className="mt-5 divide-y divide-[var(--color-line)]"
+      >
         {recipients.length === 0 && (
           <li className="py-4 text-[0.95rem] text-[var(--color-muted)]">
             No recipients yet — new-appointment-request emails are currently going to no one. The
@@ -528,15 +839,7 @@ export function RecipientsManager({
               toggleRecipient(recipient);
             }}
             onRemove={() => {
-              if (
-                window.confirm(
-                  `Remove ${recipient.email} from notifications? The queue keeps working either way.`,
-                )
-              ) {
-                run(`remove:${recipient.id}`, async () =>
-                  removeNotificationRecipient({ id: recipient.id }),
-                );
-              }
+              openRemoveDialog(recipient);
             }}
             onEditLabel={() => {
               dispatch({
@@ -564,12 +867,31 @@ export function RecipientsManager({
       </ul>
 
       {isAdmin ? (
-        <AddRecipientForm pending={pendingKey === "add"} onAdd={addFromForm} />
+        <AddRecipientForm
+          action={addFromForm}
+          emailRef={recipientEmailRef}
+          emailError={addEmailError}
+          pending={pendingKey === "add"}
+          onClearEmailError={() => {
+            dispatch({ type: "clear_add_validation" });
+          }}
+        />
       ) : (
         <p className="mt-5 border-t border-[var(--color-line)] pt-5 text-[0.9rem] text-[var(--color-muted)]">
           Adding or removing recipients needs an administrator — you can pause or resume any address
           above.
         </p>
+      )}
+      {removeTarget !== null && (
+        <RemoveRecipientDialog
+          recipient={removeTarget}
+          dialogRef={removeDialogRef}
+          cancelRef={removeCancelRef}
+          pending={pendingKey === `remove:${removeTarget.id}`}
+          onCancel={closeRemoveDialog}
+          onConfirm={confirmRemoval}
+          onClose={finishRemoveDialog}
+        />
       )}
     </div>
   );

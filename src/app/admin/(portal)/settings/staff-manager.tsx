@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
+import type { ComponentProps, RefObject } from "react";
 
 import { formatReceived } from "@/app/admin/(portal)/requests/format";
 
@@ -22,6 +23,18 @@ interface MutationOutcome {
   code?: string;
   delivery?: "accepted" | "failed";
   fallbackSetupUrl?: string;
+}
+
+interface InviteErrors {
+  readonly email?: string;
+  readonly displayName?: string;
+}
+
+interface IssuedInvite {
+  readonly email: string;
+  readonly delivery: "accepted" | "failed";
+  readonly fallbackSetupUrl?: string;
+  readonly copied: boolean;
 }
 
 type StaffFailureCode = "invalid" | "conflict" | "not_found" | "unavailable";
@@ -131,7 +144,7 @@ function StaffList({
                             resendFromRow(person);
                           }
                         }}
-                        className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
+                        className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
                       >
                         Resend invite
                       </button>
@@ -150,7 +163,7 @@ function StaffList({
                             );
                           }
                         }}
-                        className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+                        className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
                       >
                         Deactivate
                       </button>
@@ -170,7 +183,7 @@ function StaffList({
                       const role = parseStaffRole(event.target.value);
                       if (role) onRoleDraft(person.user_id, role);
                     }}
-                    className="min-h-10 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-2.5 text-[0.85rem] font-bold text-[var(--color-body)]"
+                    className="min-h-11 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-2.5 text-[0.85rem] font-bold text-[var(--color-body)]"
                   >
                     <option value="staff">Staff</option>
                     <option value="admin">Admin</option>
@@ -188,7 +201,7 @@ function StaffList({
                           }),
                         );
                       }}
-                      className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
+                      className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
                     >
                       Apply
                     </button>
@@ -208,7 +221,7 @@ function StaffList({
                         );
                       }
                     }}
-                    className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+                    className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
                   >
                     Deactivate
                   </button>
@@ -223,6 +236,183 @@ function StaffList({
         );
       })}
     </ul>
+  );
+}
+
+type StaffFormAction = Exclude<ComponentProps<"form">["action"], string | undefined>;
+
+function InviteResultPanel({
+  issued,
+  onCopy,
+  onDismiss,
+}: Readonly<{
+  issued: Readonly<IssuedInvite>;
+  onCopy: () => void;
+  onDismiss: () => void;
+}>) {
+  const hasFallbackLink =
+    issued.delivery === "failed" &&
+    issued.fallbackSetupUrl !== undefined &&
+    issued.fallbackSetupUrl !== "";
+
+  return (
+    <div
+      data-testid={
+        issued.delivery === "accepted" ? "invite-delivery-panel" : "invite-fallback-panel"
+      }
+      className="mt-4 rounded-[var(--radius)] border border-[var(--color-teal-ink)] bg-[var(--color-mint)] p-4"
+    >
+      <div role="status">
+        <p className="text-sm font-bold text-[var(--color-ink)]">
+          {issued.delivery === "accepted"
+            ? `Invitation accepted for delivery to ${issued.email}`
+            : `Invitation created for ${issued.email}`}
+        </p>
+        <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-body)]">
+          {issued.delivery === "accepted"
+            ? "They can use the one-time link in the email to choose their own password."
+            : "Email delivery could not be confirmed. Share this one-time setup link securely if they do not receive the message; it is shown only this once."}
+        </p>
+      </div>
+      {hasFallbackLink && (
+        <code
+          data-testid="fallback-setup-url"
+          className="mt-3 block rounded-[var(--radius-sm)] bg-white px-3 py-2 font-mono text-[0.8rem] leading-relaxed break-all text-[var(--color-ink)]"
+        >
+          {issued.fallbackSetupUrl}
+        </code>
+      )}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {hasFallbackLink && (
+          <button
+            type="button"
+            onClick={onCopy}
+            className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)]"
+          >
+            {issued.copied ? "Copied" : "Copy setup link"}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onDismiss}
+          className="flex min-h-11 items-center rounded-[var(--radius-sm)] px-3.5 text-[0.85rem] font-bold text-[var(--color-muted)]"
+        >
+          Dismiss
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function InviteStaffForm({
+  action,
+  emailRef,
+  nameRef,
+  errors,
+  pending,
+  onClearEmailError,
+  onClearNameError,
+}: Readonly<{
+  action: StaffFormAction;
+  emailRef: RefObject<HTMLInputElement | null>;
+  nameRef: RefObject<HTMLInputElement | null>;
+  errors: Readonly<InviteErrors>;
+  pending: boolean;
+  onClearEmailError: () => void;
+  onClearNameError: () => void;
+}>) {
+  const hasErrors = errors.email !== undefined || errors.displayName !== undefined;
+
+  return (
+    <form
+      className="mt-5 border-t border-[var(--color-line)] pt-5"
+      action={action}
+      noValidate
+      aria-labelledby="invite-staff-heading"
+    >
+      <h3 id="invite-staff-heading" className="text-sm font-bold text-[var(--color-ink)]">
+        Invite a staff member
+      </h3>
+      {hasErrors && (
+        <p role="alert" data-testid="invite-error-summary" className="portal-settings-form-summary">
+          Check the highlighted fields before sending this invitation.
+        </p>
+      )}
+      <div className="mt-3 grid gap-3 sm:grid-cols-[1.3fr_1.3fr_auto_auto]">
+        <div className="portal-settings-field">
+          <label htmlFor="invite-email" className="portal-settings-field-label">
+            Staff email
+          </label>
+          <input
+            ref={emailRef}
+            id="invite-email"
+            name="email"
+            type="email"
+            required
+            placeholder="person@example.com"
+            aria-invalid={errors.email !== undefined || undefined}
+            aria-describedby={errors.email !== undefined ? "invite-email-error" : undefined}
+            disabled={pending}
+            onChange={() => {
+              if (errors.email !== undefined) onClearEmailError();
+            }}
+            className="portal-settings-control min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
+          />
+          {errors.email !== undefined && (
+            <p id="invite-email-error" className="portal-settings-field-error">
+              {errors.email}
+            </p>
+          )}
+        </div>
+        <div className="portal-settings-field">
+          <label htmlFor="invite-name" className="portal-settings-field-label">
+            Full name
+          </label>
+          <input
+            ref={nameRef}
+            id="invite-name"
+            name="displayName"
+            type="text"
+            required
+            placeholder="Jordan Lee"
+            aria-invalid={errors.displayName !== undefined || undefined}
+            aria-describedby={errors.displayName !== undefined ? "invite-name-error" : undefined}
+            disabled={pending}
+            onChange={() => {
+              if (errors.displayName !== undefined) onClearNameError();
+            }}
+            className="portal-settings-control min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
+          />
+          {errors.displayName !== undefined && (
+            <p id="invite-name-error" className="portal-settings-field-error">
+              {errors.displayName}
+            </p>
+          )}
+        </div>
+        <div className="portal-settings-field">
+          <label htmlFor="invite-role" className="portal-settings-field-label">
+            Role
+          </label>
+          <select
+            id="invite-role"
+            name="role"
+            defaultValue="staff"
+            disabled={pending}
+            className="portal-settings-control min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3 text-[0.95rem] font-bold text-[var(--color-body)]"
+          >
+            <option value="staff">Staff</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <button
+          type="submit"
+          disabled={pending}
+          className="btn btn-navy min-h-11 self-end disabled:opacity-60"
+        >
+          {pending ? "Sending invite…" : "Send invite"}
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -242,13 +432,11 @@ export function StaffManager({
   const [, startTransition] = useTransition();
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [issued, setIssued] = useState<{
-    email: string;
-    delivery: "accepted" | "failed";
-    fallbackSetupUrl?: string;
-    copied: boolean;
-  } | null>(null);
+  const [issued, setIssued] = useState<IssuedInvite | null>(null);
   const [roleDrafts, setRoleDrafts] = useState<Record<string, "admin" | "staff">>({});
+  const [inviteErrors, setInviteErrors] = useState<InviteErrors>({});
+  const inviteEmailRef = useRef<HTMLInputElement>(null);
+  const inviteNameRef = useRef<HTMLInputElement>(null);
 
   function run(key: string, action: () => Promise<MutationOutcome>) {
     setError(null);
@@ -297,10 +485,30 @@ export function StaffManager({
       rawDisplayName === null || rawDisplayName instanceof File ? "" : rawDisplayName.trim();
     const roleValue = rawRole === null || rawRole instanceof File ? "staff" : rawRole;
     const role = roleValue === "admin" ? "admin" : "staff";
-    if (!email || !displayName) return;
+    const nextErrors: InviteErrors = {
+      email:
+        email === ""
+          ? "Enter a staff email address."
+          : inviteEmailRef.current?.validity.typeMismatch === true
+            ? "Enter a complete email address."
+            : undefined,
+      displayName: displayName === "" ? "Enter the staff member's full name." : undefined,
+    };
+    if (nextErrors.email !== undefined || nextErrors.displayName !== undefined) {
+      setError(null);
+      setIssued(null);
+      setInviteErrors(nextErrors);
+      if (nextErrors.email !== undefined) {
+        inviteEmailRef.current?.focus();
+      } else {
+        inviteNameRef.current?.focus();
+      }
+      return;
+    }
 
     setError(null);
     setIssued(null);
+    setInviteErrors({});
     setPendingKey("invite");
     startTransition(async () => {
       const result = await inviteStaff({ email, displayName, role });
@@ -320,11 +528,20 @@ export function StaffManager({
     });
   }
 
+  function copyIssuedLink() {
+    if (issued?.fallbackSetupUrl === undefined || issued.fallbackSetupUrl === "") return;
+    void navigator.clipboard
+      .writeText(issued.fallbackSetupUrl)
+      .then(() => {
+        setIssued((current) => (current ? { ...current, copied: true } : current));
+      })
+      .catch(() => {
+        setError("Could not copy the setup link. Select and copy it manually.");
+      });
+  }
+
   return (
-    <div
-      data-testid="staff-manager"
-      className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7"
-    >
+    <div data-testid="staff-manager" className="portal-panel p-6 sm:p-7">
       <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">Staff access</h2>
       <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
         Everyone who can open this portal. Administrators can invite people, change roles, and
@@ -341,68 +558,13 @@ export function StaffManager({
       )}
 
       {issued && (
-        <div
-          data-testid={
-            issued.delivery === "accepted" ? "invite-delivery-panel" : "invite-fallback-panel"
-          }
-          className="mt-4 rounded-[var(--radius)] border border-[var(--color-teal-ink)] bg-[var(--color-mint)] p-4"
-        >
-          <div role="status">
-            <p className="text-sm font-bold text-[var(--color-ink)]">
-              {issued.delivery === "accepted"
-                ? `Invitation accepted for delivery to ${issued.email}`
-                : `Invitation created for ${issued.email}`}
-            </p>
-            <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-body)]">
-              {issued.delivery === "accepted"
-                ? "They can use the one-time link in the email to choose their own password."
-                : "Email delivery could not be confirmed. Share this one-time setup link securely if they do not receive the message; it is shown only this once."}
-            </p>
-          </div>
-          {issued.delivery === "failed" &&
-            issued.fallbackSetupUrl !== undefined &&
-            issued.fallbackSetupUrl !== "" && (
-              <code
-                data-testid="fallback-setup-url"
-                className="mt-3 block rounded-[var(--radius-sm)] bg-white px-3 py-2 font-mono text-[0.8rem] leading-relaxed break-all text-[var(--color-ink)]"
-              >
-                {issued.fallbackSetupUrl}
-              </code>
-            )}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {issued.delivery === "failed" &&
-              issued.fallbackSetupUrl !== undefined &&
-              issued.fallbackSetupUrl !== "" && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    void navigator.clipboard
-                      .writeText(issued.fallbackSetupUrl ?? "")
-                      .then(() => {
-                        setIssued((current) =>
-                          current !== null ? { ...current, copied: true } : current,
-                        );
-                      })
-                      .catch(() => {
-                        setError("Could not copy the setup link. Select and copy it manually.");
-                      });
-                  }}
-                  className="flex min-h-10 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)]"
-                >
-                  {issued.copied ? "Copied" : "Copy setup link"}
-                </button>
-              )}
-            <button
-              type="button"
-              onClick={() => {
-                setIssued(null);
-              }}
-              className="flex min-h-10 items-center rounded-[var(--radius-sm)] px-3.5 text-[0.85rem] font-bold text-[var(--color-muted)]"
-            >
-              Dismiss
-            </button>
-          </div>
-        </div>
+        <InviteResultPanel
+          issued={issued}
+          onCopy={copyIssuedLink}
+          onDismiss={() => {
+            setIssued(null);
+          }}
+        />
       )}
 
       <StaffList
@@ -420,61 +582,19 @@ export function StaffManager({
       />
 
       {isAdmin ? (
-        <form className="mt-5 border-t border-[var(--color-line)] pt-5" action={inviteFromForm}>
-          <h3 className="text-sm font-bold text-[var(--color-ink)]">Invite a staff member</h3>
-          <div className="mt-3 grid gap-3 sm:grid-cols-[1.3fr_1.3fr_auto_auto]">
-            <div>
-              <label htmlFor="invite-email" className="sr-only">
-                Email address
-              </label>
-              <input
-                id="invite-email"
-                name="email"
-                type="email"
-                required
-                placeholder="person@example.com"
-                disabled={pendingKey === "invite"}
-                className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
-              />
-            </div>
-            <div>
-              <label htmlFor="invite-name" className="sr-only">
-                Display name
-              </label>
-              <input
-                id="invite-name"
-                name="displayName"
-                type="text"
-                required
-                placeholder="Full name"
-                disabled={pendingKey === "invite"}
-                className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
-              />
-            </div>
-            <div>
-              <label htmlFor="invite-role" className="sr-only">
-                Role
-              </label>
-              <select
-                id="invite-role"
-                name="role"
-                defaultValue="staff"
-                disabled={pendingKey === "invite"}
-                className="min-h-11 rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3 text-[0.95rem] font-bold text-[var(--color-body)]"
-              >
-                <option value="staff">Staff</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-            <button
-              type="submit"
-              disabled={pendingKey === "invite"}
-              className="btn btn-navy min-h-11 disabled:opacity-60"
-            >
-              {pendingKey === "invite" ? "Inviting…" : "Invite"}
-            </button>
-          </div>
-        </form>
+        <InviteStaffForm
+          action={inviteFromForm}
+          emailRef={inviteEmailRef}
+          nameRef={inviteNameRef}
+          errors={inviteErrors}
+          pending={pendingKey === "invite"}
+          onClearEmailError={() => {
+            setInviteErrors((current) => ({ ...current, email: undefined }));
+          }}
+          onClearNameError={() => {
+            setInviteErrors((current) => ({ ...current, displayName: undefined }));
+          }}
+        />
       ) : (
         <p className="mt-5 border-t border-[var(--color-line)] pt-5 text-[0.9rem] text-[var(--color-muted)]">
           Inviting or deactivating staff needs an administrator.

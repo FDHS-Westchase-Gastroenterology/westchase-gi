@@ -2,12 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { PortalFeedbackProvider } from "@/app/admin/(portal)/portal-feedback";
+import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import {
   CLOSURE_REASON_LABELS,
   CONTACT_OUTCOME_LABELS,
   formatReceived,
   followUpWhenLabel,
-  LOCALE_LABELS,
+  localeLabel,
   LOCATION_LABELS,
   presentationStatus,
   STATE_LABELS,
@@ -20,34 +22,28 @@ import {
   OPEN_STATUSES,
 } from "@/app/admin/(portal)/requests/queue";
 import { StatusBadge } from "@/app/admin/(portal)/requests/status-badge";
-import { PrintButton } from "@/components/PrintButton";
-import { isLocale } from "@/lib/i18n";
+import { Clock, Mail, MapPin, MessageSquare, Phone } from "@/components/icons";
 import { requireRole } from "@/lib/portal/auth";
 import { isMailbox, REQUEST_STATUSES } from "@/lib/portal/contracts";
+import type { RequestStatus } from "@/lib/portal/contracts";
 import { parseRequestSearch, requestSearchFilter } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
 import { displayNameOrEmail, fetchStaffNameMap } from "@/lib/portal/staff-identity";
 import type { HistoryEntry } from "@/lib/portal/workflow/contracts";
 import { fetchRequestWorkSurface } from "@/lib/portal/workflow/reads";
 
+import {
+  RequestPrintButton,
+  RequestPrintFeedback,
+  StaffRequestCreatedAcknowledgement,
+} from "./request-current-feedback";
 import { RequestNotes } from "./request-notes";
 import type { RequestNoteView } from "./request-notes";
 import { WorkflowPanel } from "./workflow-panel";
 
-interface RequestRow {
-  id: string;
-  name: string;
-  phone: string;
-  email: string | null;
-  location: "any" | "tampa" | "lutz";
-  preferred_time: "any" | "morning" | "afternoon";
-  message: string | null;
-  locale: string;
-  source_path: string;
-  created_at: string;
-}
+const requestStatusSchema = z.enum(REQUEST_STATUSES);
 
-const requestRowSchema = z.object({
+const requestDetailSchema = z.object({
   id: z.string(),
   name: z.string(),
   phone: z.string(),
@@ -56,18 +52,29 @@ const requestRowSchema = z.object({
   preferred_time: z.enum(["any", "morning", "afternoon"]),
   message: z.string().nullable(),
   locale: z.string(),
-  source_path: z.string(),
   created_at: z.string(),
 });
-const requestStatusSchema = z.enum(REQUEST_STATUSES);
 
-function isStringArray(value: string | readonly string[]): value is readonly string[] {
-  return Array.isArray(value);
+function firstParam(value: Readonly<string | string[] | undefined>): string | null {
+  const parsed = z.union([z.string(), z.array(z.string())]).safeParse(value);
+  if (!parsed.success) return null;
+  if (Array.isArray(parsed.data)) {
+    const first = parsed.data.at(0);
+    return first !== undefined && first !== "" ? first : null;
+  }
+  return parsed.data !== "" ? parsed.data : null;
 }
 
-function firstParam(value: string | readonly string[] | undefined): string | null {
-  if (value === undefined) return null;
-  return isStringArray(value) ? (value[0] ?? null) : value;
+function formatPhoneForDisplay(value: string): string {
+  const trimmed = value.trim();
+  const digits = trimmed.replace(/\D/g, "");
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return trimmed;
 }
 
 // Request history keeps each evidence kind distinct (DEC-05): contact
@@ -81,9 +88,9 @@ interface HistoryLine {
   text: string;
   actor: string | null;
   at: string;
-  undone?: boolean;
-  quiet?: boolean;
-  attention?: boolean;
+  undone: boolean;
+  quiet: boolean;
+  attention: boolean;
 }
 
 function historyLine(entry: Readonly<HistoryEntry>): HistoryLine | null {
@@ -91,10 +98,15 @@ function historyLine(entry: Readonly<HistoryEntry>): HistoryLine | null {
     case "created":
       return {
         id: "created",
-        text: "Appointment request received from the website",
+        text:
+          entry.origin === "staff"
+            ? "Appointment request added by staff"
+            : "Appointment request received from the website",
         actor: null,
         at: entry.at,
         quiet: true,
+        undone: false,
+        attention: false,
       };
     case "contact_attempt":
       return {
@@ -102,10 +114,13 @@ function historyLine(entry: Readonly<HistoryEntry>): HistoryLine | null {
         text: `${CONTACT_OUTCOME_LABELS[entry.outcome]}${
           entry.callAgainAt !== null && entry.callAgainAt !== ""
             ? ` — call again ${followUpWhenLabel(entry.callAgainAt)}`
-            : ""
+            : " — no call-again day was set"
         }`,
         actor: entry.actor,
         at: entry.at,
+        quiet: false,
+        undone: false,
+        attention: false,
       };
     case "note":
       // Notes render in their own surface above the work panel.
@@ -120,11 +135,21 @@ function historyLine(entry: Readonly<HistoryEntry>): HistoryLine | null {
             : entry.command === "close_request"
               ? `Closed — ${entry.closureReason !== null ? CLOSURE_REASON_LABELS[entry.closureReason] : "no appointment booked"}`
               : entry.command === "reopen_request"
-                ? "Reopened — returned to Contacted"
-                : `Marked ${STATE_LABELS[entry.to]}`,
+                ? `Reopened — returned to Contacted${
+                    entry.callAgainAt !== null && entry.callAgainAt !== ""
+                      ? ` — call again ${followUpWhenLabel(entry.callAgainAt)}`
+                      : " — no call-again day was set"
+                  }`
+                : entry.command === "set_call_again"
+                  ? entry.callAgainAt !== null && entry.callAgainAt !== ""
+                    ? `Call-again day set — ${followUpWhenLabel(entry.callAgainAt)}`
+                    : "Call-again day correction recorded"
+                  : `Marked ${STATE_LABELS[entry.to]}`,
         actor: entry.actor,
         at: entry.at,
         undone: entry.undone,
+        quiet: false,
+        attention: false,
       };
     case "undo":
       return {
@@ -132,6 +157,9 @@ function historyLine(entry: Readonly<HistoryEntry>): HistoryLine | null {
         text: `Undo — restored to ${STATE_LABELS[entry.restoredState]}`,
         actor: entry.actor,
         at: entry.at,
+        quiet: false,
+        undone: false,
+        attention: false,
       };
     case "legacy_classified":
       return {
@@ -142,17 +170,21 @@ function historyLine(entry: Readonly<HistoryEntry>): HistoryLine | null {
             : "Record reviewed — closed without an appointment",
         actor: entry.actor,
         at: entry.at,
+        quiet: false,
+        undone: false,
+        attention: false,
       };
     case "delivery":
       return {
         id: entry.id,
         text: `Notification email ${
           entry.accepted ? "accepted for delivery" : "failed"
-        } — ${entry.recipient || "recipient unavailable"}`,
+        } — ${entry.recipient !== "" ? entry.recipient : "recipient unavailable"}`,
         actor: null,
         at: entry.at,
         quiet: entry.accepted,
         attention: !entry.accepted,
+        undone: false,
       };
   }
   return null;
@@ -170,6 +202,7 @@ export default async function RequestDetailPage({
     status?: string | string[];
     q?: string | string[];
     page?: string | string[];
+    created?: string | string[];
   }>;
 }>) {
   await requireRole("staff");
@@ -178,6 +211,7 @@ export default async function RequestDetailPage({
   const statusParam = firstParam(continuity.status);
   const search = parseRequestSearch(continuity.q);
   const searchFilter = search ? requestSearchFilter(search) : "";
+  const justCreated = firstParam(continuity.created) === "1";
 
   const queueParams = new URLSearchParams();
   if (statusParam !== null && statusParam !== "") queueParams.set("status", statusParam);
@@ -191,7 +225,7 @@ export default async function RequestDetailPage({
   if (search !== "") continuityParams.set("q", search);
   const continuityQuery = continuityParams.toString();
   const continuityHref = (requestId: string): string =>
-    `/admin/requests/${requestId}${continuityQuery !== "" ? `?${continuityQuery}` : ""}`;
+    `/admin/requests/${requestId}${continuityQuery ? `?${continuityQuery}` : ""}`;
 
   const db = serviceClient();
   // The work surface is the single workflow read (spec §6): durable state,
@@ -201,23 +235,26 @@ export default async function RequestDetailPage({
   const [{ data: request, error }, surface, nameMap] = await Promise.all([
     db
       .from("requests")
-      .select(
-        "id, name, phone, email, location, preferred_time, message, locale, source_path, created_at",
-      )
+      .select("id, name, phone, email, location, preferred_time, message, locale, created_at")
       .eq("id", id)
       .maybeSingle(),
     fetchRequestWorkSurface(db, id),
     fetchStaffNameMap(db),
   ]);
 
-  if (error !== null || request === null || surface === null) notFound();
+  if (error) throw new Error("Request detail read failed");
+  const parsedRequest = requestDetailSchema.safeParse(request);
+  if (!parsedRequest.success || surface === null) notFound();
 
   // Previous/next within the viewer's queue scope: the same attention
   // Ordering the list renders, so staff can keep working without
   // Returning to the list each time. A request outside the current scope
-  // (E.g. an old closed row beyond the tail window) simply shows no chain.
-  const scopedParsed = requestStatusSchema.safeParse(statusParam);
-  const scoped = scopedParsed.success ? scopedParsed.data : null;
+  // (e.g. an old closed row beyond the tail window) simply shows no chain.
+  const scopedStatus = requestStatusSchema.safeParse(statusParam);
+  const scoped: RequestStatus | null =
+    statusParam !== null && statusParam !== "" && statusParam !== "all" && scopedStatus.success
+      ? scopedStatus.data
+      : null;
   const neighborIds: string[] = [];
   if (scoped !== "closed") {
     const openStatuses = scoped ? [scoped] : [...OPEN_STATUSES];
@@ -240,93 +277,82 @@ export default async function RequestDetailPage({
   const nextId =
     selfIndex >= 0 && selfIndex < neighborIds.length - 1 ? neighborIds[selfIndex + 1] : null;
 
-  const parsedRequest = requestRowSchema.safeParse(request);
-  if (!parsedRequest.success) notFound();
-  const row: RequestRow = parsedRequest.data;
-  const mailbox = row.email?.trim();
-  const safeMailbox =
-    mailbox !== undefined && mailbox !== "" && isMailbox(mailbox) ? mailbox : null;
+  const row = parsedRequest.data;
+  const mailbox = row.email !== null ? row.email.trim() : "";
+  const safeMailbox = mailbox !== "" && isMailbox(mailbox) ? mailbox : null;
+  const phoneDisplay = formatPhoneForDisplay(row.phone);
+  const formLanguage = localeLabel(row.locale);
+  const patientMessage = row.message !== null ? row.message.trim() : "";
+  const staffCreated = surface.history.some(
+    (entry) => entry.kind === "created" && entry.origin === "staff",
+  );
   // Notes and history come from one composed read. Notes keep their own
   // Surface; every other evidence kind renders in Request history.
   const noteViews: RequestNoteView[] = [];
+  const historyLines: HistoryLine[] = [];
   for (const entry of surface.history) {
-    if (entry.kind !== "note") continue;
-    noteViews.push({
-      id: entry.id,
-      text: entry.text,
-      byline: `${displayNameOrEmail(nameMap, entry.actor)} · ${formatReceived(entry.at, true)}`,
-    });
+    if (entry.kind === "note") {
+      noteViews.push({
+        id: entry.id,
+        text: entry.text,
+        byline: `${displayNameOrEmail(nameMap, entry.actor)} · ${formatReceived(entry.at, true)}`,
+      });
+      continue;
+    }
+    const line = historyLine(entry);
+    if (line !== null) historyLines.push(line);
   }
-  const historyLines = surface.history
-    .map(historyLine)
-    .filter((line): line is HistoryLine => line !== null);
 
-  const fields: { label: string; value: React.ReactNode }[] = [
-    {
-      label: "Phone",
-      value: (
-        <a
-          href={`tel:${row.phone}`}
-          className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-        >
-          {row.phone}
-        </a>
-      ),
-    },
-    {
-      label: "Email",
-      value:
-        safeMailbox !== null ? (
-          <a
-            href={`mailto:${safeMailbox}`}
-            className="font-bold break-all text-[var(--color-teal-ink)] underline underline-offset-2"
-          >
-            {safeMailbox}
-          </a>
-        ) : (
-          <span className="text-[var(--color-muted)]">
-            Not provided — call the phone number above
-          </span>
-        ),
-    },
-    { label: "Preferred office", value: LOCATION_LABELS[row.location] },
-    { label: "Preferred time", value: TIME_LABELS[row.preferred_time] },
-    {
-      label: "Submitted in",
-      value: isLocale(row.locale) ? LOCALE_LABELS[row.locale] : row.locale,
-    },
-    { label: "From page", value: row.source_path },
-    { label: "Received", value: formatReceived(row.created_at, true) },
-  ];
-
-  return (
+  const content = (
     <section aria-labelledby="request-heading" className="request-detail-print">
       <div className="hidden border-b-2 border-black pb-3 print:block">
         <p className="text-[15pt] font-bold">Westchase Gastroenterology</p>
         <p className="mt-1 text-[9pt] font-bold tracking-[0.08em] uppercase">Appointment request</p>
       </div>
 
-      <nav aria-label="Breadcrumb" className="print-hide flex items-center text-[0.9rem]">
-        <Link
-          href={queueHref}
-          className="inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-        >
-          Appointments
-        </Link>
-        <span aria-hidden="true" className="mx-2 text-[var(--color-muted)]">
-          /
-        </span>
-        <span className="truncate text-[var(--color-muted)]">{row.name}</span>
-        {(prevId !== null && prevId !== "") || (nextId !== null && nextId !== "") ? (
-          <span className="ml-auto flex items-center gap-3">
+      <PortalPageHeader
+        back={{ href: queueHref, label: "Back to Appointments" }}
+        title={
+          <span
+            id="request-heading"
+            data-testid="request-detail-name"
+            data-ui-redact="patient-name"
+          >
+            {row.name}
+          </span>
+        }
+        description={
+          surface.state === "closed" && surface.closedAt !== null && surface.closedAt !== "" ? (
+            <span data-testid="request-lifecycle-summary">
+              Closed {formatReceived(surface.closedAt, true)}
+              {surface.closureReason !== null
+                ? ` — ${CLOSURE_REASON_LABELS[surface.closureReason]}`
+                : " — no appointment booked"}
+              .
+            </span>
+          ) : surface.state === "closed" && surface.legacyReviewRequired ? (
+            <span data-testid="request-lifecycle-summary">
+              Closed before outcomes were recorded — how it ended still needs review.
+            </span>
+          ) : surface.state === "booked" &&
+            surface.bookingConfirmedAt !== null &&
+            surface.bookingConfirmedAt !== "" ? (
+            <span data-testid="request-lifecycle-summary">
+              Marked Scheduled {formatReceived(surface.bookingConfirmedAt, true)} — the appointment
+              lives in the practice scheduling system.
+            </span>
+          ) : undefined
+        }
+        actions={
+          <>
             {prevId !== null && prevId !== "" ? (
               <Link
                 href={continuityHref(prevId)}
                 rel="prev"
                 data-testid="prev-request"
-                className="inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+                className="btn btn-outline min-h-11"
               >
-                ← Previous
+                Previous
               </Link>
             ) : null}
             {nextId !== null && nextId !== "" ? (
@@ -334,145 +360,208 @@ export default async function RequestDetailPage({
                 href={continuityHref(nextId)}
                 rel="next"
                 data-testid="next-request"
-                className="inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+                className="btn btn-outline min-h-11"
               >
-                Next →
+                Next
               </Link>
             ) : null}
-          </span>
-        ) : null}
-      </nav>
+            {surface.legacyReviewRequired ? (
+              <span data-testid="legacy-review-tag" className="portal-review-tag">
+                Needs review
+              </span>
+            ) : null}
+            <StatusBadge status={presentationStatus(surface.state)} />
+            <RequestPrintButton />
+          </>
+        }
+      />
 
-      <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
-        <h1 id="request-heading" data-testid="request-detail-name" className="portal-title">
-          {row.name}
-        </h1>
-        <div className="flex flex-wrap items-center gap-3">
-          {surface.legacyReviewRequired ? (
-            <span
-              data-testid="legacy-review-tag"
-              className="inline-flex items-center rounded-full bg-[var(--color-amber-soft)] px-2.5 py-1 text-[0.75rem] font-bold tracking-[0.05em] text-[var(--color-ink)] uppercase"
+      <StaffRequestCreatedAcknowledgement />
+      <RequestPrintFeedback />
+
+      <div className="portal-request-layout">
+        <div className="portal-request-record">
+          <section
+            className="request-print-card portal-request-details"
+            aria-labelledby="request-details-heading"
+          >
+            <header className="portal-request-details-header">
+              <h2 id="request-details-heading">Contact and request</h2>
+              <p data-testid="request-intake-meta">
+                <span>
+                  Received{" "}
+                  <time dateTime={row.created_at}>{formatReceived(row.created_at, true)}</time>
+                </span>
+                <span>{staffCreated ? "Added by staff" : `${formLanguage} form`}</span>
+              </p>
+            </header>
+            <div
+              className="portal-request-contact"
+              role="group"
+              aria-label="Patient contact options"
             >
-              Needs review
-            </span>
-          ) : null}
-          <StatusBadge status={presentationStatus(surface.state)} />
-          <PrintButton label="Print patient page" />
-        </div>
-      </div>
-      {surface.state === "closed" && surface.closedAt !== null && surface.closedAt !== "" ? (
-        <p
-          data-testid="request-lifecycle-summary"
-          className="mt-1.5 text-[0.9rem] text-[var(--color-muted)]"
-        >
-          Closed {formatReceived(surface.closedAt, true)}
-          {surface.closureReason !== null
-            ? ` — ${CLOSURE_REASON_LABELS[surface.closureReason]}`
-            : " — no appointment booked"}
-          .
-        </p>
-      ) : surface.state === "closed" && surface.legacyReviewRequired ? (
-        <p
-          data-testid="request-lifecycle-summary"
-          className="mt-1.5 text-[0.9rem] text-[var(--color-muted)]"
-        >
-          Closed before outcomes were recorded — how it ended still needs review.
-        </p>
-      ) : surface.state === "booked" &&
-        surface.bookingConfirmedAt !== null &&
-        surface.bookingConfirmedAt !== "" ? (
-        <p
-          data-testid="request-lifecycle-summary"
-          className="mt-1.5 text-[0.9rem] text-[var(--color-muted)]"
-        >
-          Marked Scheduled {formatReceived(surface.bookingConfirmedAt, true)} — the appointment
-          lives in the practice scheduling system.
-        </p>
-      ) : null}
-
-      <div className="request-print-card mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
-        <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
-          Appointment request details
-        </h2>
-        <dl className="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-2">
-          {fields.map((field) => (
-            <div key={field.label}>
-              <dt className="text-[0.8rem] font-bold tracking-[0.06em] text-[var(--color-muted)] uppercase">
-                {field.label}
-              </dt>
-              <dd className="mt-1 text-[0.95rem] text-[var(--color-ink)]">{field.value}</dd>
-            </div>
-          ))}
-        </dl>
-        <div className="mt-5 border-t border-[var(--color-line)] pt-5">
-          <h3 className="text-[0.8rem] font-bold tracking-[0.06em] text-[var(--color-muted)] uppercase">
-            Reason for requesting this appointment
-          </h3>
-          <p
-            data-testid="request-message"
-            className="mt-2 text-[0.95rem] leading-relaxed whitespace-pre-wrap text-[var(--color-body)]"
-          >
-            {row.message !== null && row.message.trim() !== ""
-              ? row.message.trim()
-              : "— none provided —"}
-          </p>
-        </div>
-      </div>
-
-      <div className="request-print-card mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
-        <RequestNotes requestId={row.id} notes={noteViews} />
-
-        <WorkflowPanel
-          requestId={row.id}
-          state={surface.state}
-          version={surface.version}
-          legacyReviewRequired={surface.legacyReviewRequired}
-          callAgainAt={surface.callAgainAt}
-          undo={surface.undo}
-          nextHref={nextId !== null && nextId !== "" ? continuityHref(nextId) : null}
-        />
-      </div>
-
-      <div className="request-print-card mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
-        <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">Request history</h2>
-        <p className="mt-1.5 text-[0.88rem] leading-relaxed text-[var(--color-muted)]">
-          Everything recorded about this request, newest first — contact attempts, status changes,
-          undo corrections, and notification outcomes.
-        </p>
-        {historyLines.length === 0 ? (
-          <p className="mt-3 text-[0.95rem] text-[var(--color-muted)]">Nothing recorded yet.</p>
-        ) : (
-          <ul
-            data-testid="request-history"
-            className="mt-4 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]"
-          >
-            {historyLines.map((line) => (
-              <li key={line.id} className="request-activity-item py-4">
-                <p
-                  className={`text-[0.95rem] ${
-                    line.undone === true
-                      ? "font-bold text-[var(--color-muted)] line-through decoration-1"
-                      : line.attention === true
-                        ? "font-bold text-[var(--color-amber-deep)]"
-                        : line.quiet === true
-                          ? "text-[var(--color-muted)]"
-                          : "font-bold text-[var(--color-ink)]"
-                  }`}
+              <a
+                href={`tel:${row.phone}`}
+                data-testid="request-phone-link"
+                className="portal-request-contact-action"
+              >
+                <Phone className="portal-request-contact-icon" />
+                <span className="portal-request-contact-copy">
+                  <span className="portal-request-contact-label">Call patient</span>
+                  <strong
+                    className="portal-request-contact-value portal-request-contact-value--phone"
+                    data-ui-redact="patient-contact"
+                  >
+                    {phoneDisplay}
+                  </strong>
+                </span>
+              </a>
+              {safeMailbox !== null && safeMailbox !== "" ? (
+                <a
+                  href={`mailto:${safeMailbox}`}
+                  data-testid="request-email-link"
+                  className="portal-request-contact-email"
                 >
-                  {line.text}
+                  <Mail className="portal-request-contact-icon" />
+                  <span className="portal-request-contact-copy">
+                    <span className="portal-request-contact-label">Email patient</span>
+                    <strong
+                      className="portal-request-contact-value"
+                      data-ui-redact="patient-contact"
+                    >
+                      {safeMailbox}
+                    </strong>
+                  </span>
+                </a>
+              ) : (
+                <p
+                  data-testid="request-email-unavailable"
+                  className="portal-request-contact-unavailable"
+                >
+                  No email provided
                 </p>
-                <p className="mt-1.5 text-[0.8rem] font-bold text-[var(--color-teal-ink)]">
-                  {line.actor !== null && line.actor !== ""
-                    ? `${displayNameOrEmail(nameMap, line.actor)} · `
-                    : ""}
-                  {formatReceived(line.at, true)}
-                  {line.undone === true ? " · later undone" : ""}
-                </p>
-              </li>
-            ))}
-          </ul>
-        )}
+              )}
+            </div>
+            <div
+              className="portal-request-context"
+              data-empty={patientMessage === "" ? "true" : undefined}
+            >
+              <div className="portal-request-message">
+                <h3>
+                  <MessageSquare />
+                  Patient note
+                </h3>
+                <blockquote
+                  data-testid="request-message"
+                  data-ui-redact={patientMessage !== "" ? "patient-message" : undefined}
+                  data-empty={patientMessage !== "" ? undefined : "true"}
+                >
+                  {patientMessage !== ""
+                    ? patientMessage
+                    : "No note was included with this request."}
+                </blockquote>
+              </div>
+              <dl
+                className="portal-request-preferences"
+                data-testid="request-preferences"
+                aria-label="Appointment preferences"
+              >
+                <div>
+                  <dt>
+                    <MapPin />
+                    Preferred office
+                  </dt>
+                  <dd>{LOCATION_LABELS[row.location]}</dd>
+                </div>
+                <div>
+                  <dt>
+                    <Clock />
+                    Preferred time
+                  </dt>
+                  <dd>{TIME_LABELS[row.preferred_time]}</dd>
+                </div>
+              </dl>
+            </div>
+          </section>
+
+          <section
+            className="request-print-card portal-request-notes"
+            data-empty={noteViews.length === 0 ? "true" : undefined}
+          >
+            <RequestNotes requestId={row.id} notes={noteViews} />
+          </section>
+
+          <section
+            className="request-print-card portal-request-history"
+            data-short={historyLines.length <= 1 ? "true" : undefined}
+          >
+            <h2 className="portal-record-heading">Request history</h2>
+            <p className="portal-request-section-description">
+              Everything recorded about this request, newest first — contact attempts, status
+              changes, undo corrections, and notification outcomes.
+            </p>
+            {historyLines.length === 0 ? (
+              <p className="portal-request-history-empty">Nothing recorded yet.</p>
+            ) : (
+              <ul data-testid="request-history" className="portal-request-ledger">
+                {historyLines.map((line) => (
+                  <li key={line.id} className="request-activity-item">
+                    <p
+                      className={`portal-request-ledger-event ${
+                        line.undone
+                          ? "portal-request-ledger-event--undone"
+                          : line.attention
+                            ? "portal-request-ledger-event--attention"
+                            : line.quiet
+                              ? "portal-request-ledger-event--quiet"
+                              : ""
+                      }`}
+                    >
+                      {line.text}
+                    </p>
+                    <p className="portal-request-ledger-meta">
+                      {line.actor !== null && line.actor !== ""
+                        ? `${displayNameOrEmail(nameMap, line.actor)} · `
+                        : ""}
+                      {formatReceived(line.at, true)}
+                      {line.undone ? " · later undone" : ""}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </div>
+
+        <aside className="portal-workflow-shell" aria-label="Record request outcome">
+          <WorkflowPanel
+            requestId={row.id}
+            state={surface.state}
+            version={surface.version}
+            legacyReviewRequired={surface.legacyReviewRequired}
+            callAgainAt={surface.callAgainAt}
+            undo={surface.undo}
+            nextHref={nextId !== null && nextId !== "" ? continuityHref(nextId) : null}
+          />
+        </aside>
       </div>
     </section>
+  );
+
+  return (
+    <PortalFeedbackProvider
+      key={row.id}
+      initialFeedback={
+        justCreated
+          ? {
+              source: "request-created",
+              tone: "status",
+              message: "Appointment request added to New.",
+            }
+          : null
+      }
+    >
+      {content}
+    </PortalFeedbackProvider>
   );
 }

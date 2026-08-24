@@ -29,7 +29,7 @@ import {
 type ReleaseActionResult = { ok: true } | { ok: false; code: "invalid" | "unavailable" };
 
 interface PortalNavigator {
-  push(href: string): void;
+  push: (href: string) => void;
 }
 
 interface PortalReleaseContextValue {
@@ -49,7 +49,7 @@ interface PortalReleaseContextValue {
   hide: () => void;
   toggleQuick: (animate: boolean) => void;
   dismissQuick: () => void;
-  openGuide: (navigator: PortalNavigator) => void;
+  openGuide: (navigator: Readonly<PortalNavigator>) => void;
 }
 
 const PortalReleaseContext = createContext<PortalReleaseContextValue | null>(null);
@@ -216,7 +216,7 @@ export function PortalReleaseProvider({
     requestAnimationFrame(() => quickButtonRef.current?.focus());
   }, [recordDismiss]);
 
-  const openGuide = useCallback((navigator: PortalNavigator) => {
+  const openGuide = useCallback((navigator: Readonly<PortalNavigator>) => {
     setGuidePending(true);
     setActionError(null);
     startTransition(async () => {
@@ -372,7 +372,9 @@ function ReleaseSummary({
     >
       <div className="flex items-start justify-between gap-5">
         <div>
-          <p className="text-[0.8rem] font-bold text-[var(--color-amber-deep)]">Updated August 6</p>
+          <p className="text-[0.8rem] font-bold text-[var(--portal-attention-ink)]">
+            Updated August 6
+          </p>
           <h2
             id={`${id}-heading`}
             className="mt-1 text-[1.25rem] leading-snug font-black text-[var(--color-ink)]"
@@ -484,9 +486,11 @@ export function PortalReleaseHomeAnnouncement() {
       data-testid="portal-release-announcement"
       className="portal-release-home relative mt-6"
     >
-      <div className="relative z-10 flex flex-col gap-4 rounded-[var(--radius-lg)] bg-[var(--color-mint)] px-5 py-5 shadow-[var(--shadow-soft)] sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="relative z-10 flex flex-col gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line-2)] bg-[var(--color-mint)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div>
-          <p className="text-[0.8rem] font-bold text-[var(--color-amber-deep)]">Updated August 6</p>
+          <p className="text-[0.8rem] font-bold text-[var(--portal-attention-ink)]">
+            Updated August 6
+          </p>
           <h2
             id="portal-release-title"
             className="mt-1 text-[1.08rem] font-black text-[var(--color-ink)]"

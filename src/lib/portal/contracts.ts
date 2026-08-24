@@ -78,6 +78,47 @@ export const requestInputSchema = z.object({
 
 export type RequestInput = z.infer<typeof requestInputSchema>;
 
+export const STAFF_REQUEST_SOURCE_PATH = "/admin/requests/new";
+
+export const staffRequestInputSchema = requestInputSchema.omit({
+  locale: true,
+  sourcePath: true,
+});
+
+export type StaffRequestInput = z.infer<typeof staffRequestInputSchema>;
+
+export const STAFF_REQUEST_FIELDS = [
+  "name",
+  "phone",
+  "email",
+  "location",
+  "time",
+  "message",
+] as const;
+
+export type StaffRequestField = (typeof STAFF_REQUEST_FIELDS)[number];
+
+export interface StaffRequestDraft {
+  readonly name: string;
+  readonly phone: string;
+  readonly email: string;
+  readonly location: string;
+  readonly time: string;
+  readonly message: string;
+}
+
+export type CreateStaffRequestActionState =
+  | { status: "idle" }
+  | {
+      status: "error";
+      code: "validation" | "conflict" | "unavailable";
+      /** Submitted values survive validation and ambiguous failures. */
+      values: StaffRequestDraft;
+      /** Reuse on every retry so an ambiguous response cannot duplicate work. */
+      idempotencyKey: string | null;
+      fieldErrors?: Partial<Record<StaffRequestField, string>>;
+    };
+
 export type IntakeFailureCode = "validation" | "rate_limited" | "unavailable";
 
 /** The only response shapes POST /api/requests may produce. */
@@ -118,7 +159,9 @@ export const AUDIT_ACTIONS = {
   MAINTAINERS_INVITE: "maintainers.invite",
   MAINTAINERS_CANCEL: "maintainers.cancel",
   MAINTAINERS_REVOKE: "maintainers.revoke",
+  REQUEST_CREATE: "request.create",
   REQUESTS_EXPORT: "requests.export",
+  REQUESTS_PRINT_NEW: "requests.print_new",
   ...RELEASE_AUDIT_ACTIONS,
 } as const;
 export type AuditAction = (typeof AUDIT_ACTIONS)[keyof typeof AUDIT_ACTIONS];

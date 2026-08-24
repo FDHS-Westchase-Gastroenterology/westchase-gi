@@ -1,7 +1,20 @@
 import Link from "next/link";
 
+import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import { restartPortalTourAction } from "@/app/admin/(portal)/tour-actions";
 import { requireRole } from "@/lib/portal/auth";
+import {
+  HELP_ACTIVITY_LEAD,
+  HELP_ACTIVITY_TRUTH,
+  HELP_CONTACTED_STATUS,
+  HELP_LINKS,
+  HELP_NOTIFICATION_LEAD,
+  HELP_NOTIFICATION_TRUTH,
+  HELP_QUEUE_ARRIVAL,
+  HELP_QUEUE_OPEN,
+  HELP_QUEUE_RECORD,
+  helpOutageCopy,
+} from "@/lib/portal/staff-language";
 import { site } from "@/lib/site";
 
 // Plain-language operations guide for the front desk (VAL-ADMIN-012:
@@ -19,15 +32,13 @@ export default async function AdminHelpPage() {
 
   return (
     <section aria-labelledby="help-heading">
-      <h1 id="help-heading" className="portal-title">
-        Help
-      </h1>
-      <p className="mt-1.5 max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
-        How this portal works, in plain language. Five minutes here covers everything.
-      </p>
+      <PortalPageHeader
+        title={<span id="help-heading">Help</span>}
+        description="How the staff portal works, in plain language. Start with the task in front of you; the technical background stays optional."
+      />
 
-      <div className="mt-8 space-y-6">
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-mint)] p-6 sm:p-8">
+      <div className="portal-help mt-8">
+        <div className="portal-help-section portal-help-tour">
           <h2 className={SECTION_HEADING}>Portal tour</h2>
           <p className={SECTION_BODY}>
             Reopen the short introduction to Home, Appointments, and Settings whenever a refresher
@@ -40,30 +51,40 @@ export default async function AdminHelpPage() {
           </form>
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
+        <div className="portal-help-section">
           <h2 className={SECTION_HEADING}>What the appointment request queue is</h2>
           <p className={SECTION_BODY}>
-            When a patient fills out the appointment form on the website — in any of the five
-            languages — their appointment request is saved instantly to the practice&apos;s own
-            secure database and appears on the{" "}
+            {HELP_QUEUE_ARRIVAL} {HELP_QUEUE_OPEN}{" "}
             <Link
-              href="/admin/requests"
+              href={HELP_LINKS.appointments.href}
               className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
             >
-              Appointments
+              {HELP_LINKS.appointments.label}
             </Link>{" "}
-            page. Nothing depends on anyone watching an email inbox: even if every notification
-            email went missing, the request would still be sitting safely in the queue. That is the
-            whole point of this system — the practice can never lose one again. These are
-            appointment requests, not booked appointments: someone still calls the patient to
-            schedule.
+            {HELP_QUEUE_RECORD}
           </p>
         </div>
 
-        <div
-          id="appointment-workflow-guide"
-          className="scroll-mt-20 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8"
-        >
+        <div className="portal-help-section">
+          <h2 className={SECTION_HEADING}>Print a paper handoff</h2>
+          <p className={SECTION_BODY}>
+            Home has a <strong>Print</strong> action that can prepare every New request, or a custom
+            list by status. It prepares one work sheet per request, oldest first, so a manager can
+            hand the pages to staff. The packet is a time-stamped snapshot: printing does not assign
+            a request, mark it contacted, or change its history. After a call, open the live request
+            in Appointments and record what happened so everyone sees the durable result. If a
+            packet has sat unattended, check the live queue before distributing it.
+          </p>
+          <Link
+            href={HELP_LINKS.printPacket.href}
+            prefetch={false}
+            className="mt-3 inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+          >
+            {HELP_LINKS.printPacket.label}
+          </Link>
+        </div>
+
+        <div id="appointment-workflow-guide" className="portal-help-section scroll-mt-20">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className={SECTION_HEADING}>Work an appointment request</h2>
@@ -72,7 +93,7 @@ export default async function AdminHelpPage() {
                 for whoever works it next.
               </p>
             </div>
-            <span className="rounded-full bg-[var(--color-amber-soft)] px-3 py-1 text-[0.78rem] font-bold text-[var(--color-amber-deep)]">
+            <span className="rounded-full bg-[var(--color-amber-soft)] px-3 py-1 text-[0.78rem] font-bold text-[var(--portal-attention-ink)]">
               2-minute guide
             </span>
           </div>
@@ -93,9 +114,7 @@ export default async function AdminHelpPage() {
                 </span>
               </dt>
               <dd className="text-[0.94rem] leading-relaxed text-[var(--color-body)]">
-                Someone has called the patient at least once — reached them, left a voicemail, or
-                got no answer. If another call is needed, the request carries a call-again time so
-                the queue brings it back at the right moment.
+                {HELP_CONTACTED_STATUS}
               </dd>
             </div>
             <div className="grid gap-1.5 py-4 sm:grid-cols-[8rem_1fr] sm:gap-5">
@@ -193,38 +212,33 @@ export default async function AdminHelpPage() {
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-4">
-            <Link href="/admin/requests" className="btn btn-amber btn-sm min-h-11">
-              Open Appointments
+            <Link href={HELP_LINKS.openAppointments.href} className="btn btn-amber btn-sm min-h-11">
+              {HELP_LINKS.openAppointments.label}
             </Link>
             <Link
-              href="/admin"
+              href={HELP_LINKS.home.href}
               className="min-h-11 py-3 text-[0.9rem] font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
             >
-              Return to Home
+              {HELP_LINKS.home.label}
             </Link>
           </div>
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
+        <div className="portal-help-section">
           <h2 className={SECTION_HEADING}>Notification emails</h2>
           <p className={SECTION_BODY}>
-            The addresses listed under{" "}
+            {HELP_NOTIFICATION_LEAD}{" "}
             <Link
-              href="/admin/settings"
+              href={HELP_LINKS.settings.href}
               className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
             >
-              Settings
+              {HELP_LINKS.settings.label}
             </Link>{" "}
-            get a short email whenever a new appointment request arrives. The email deliberately
-            contains no patient information — just a notice that a request is waiting and a link
-            back here — so nothing sensitive ever sits in an inbox. Anyone on staff can pause a
-            recipient (going on vacation, for example); adding or removing addresses is an
-            administrator task. Remember: notifications are a convenience. The queue is the system
-            of record.
+            {HELP_NOTIFICATION_TRUTH}
           </p>
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
+        <div className="portal-help-section">
           <h2 className={SECTION_HEADING}>Staff access</h2>
           <p className={SECTION_BODY}>
             Administrators can invite a new staff member from the Settings page: enter their email,
@@ -238,39 +252,35 @@ export default async function AdminHelpPage() {
             and Spam or Junk, confirm the link is less than one hour old, and have them resend from
             the public recovery screen after its cooldown. An authorized operator can then check
             Supabase Auth and SMTP delivery evidence. Never ask for the password, one-time link, or
-            copied email content. Every access change is recorded in the{" "}
+            copied email content. {HELP_ACTIVITY_LEAD}{" "}
             <Link
-              href="/admin/audit"
+              href={HELP_LINKS.activity.href}
               className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
             >
-              activity log
+              {HELP_LINKS.activity.label}
             </Link>{" "}
-            (the Activity log link at the bottom of every page), so there is always a clear record
-            of who did what.
+            {HELP_ACTIVITY_TRUTH}
           </p>
         </div>
 
-        <div
-          id="website-changes"
-          className="scroll-mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8"
-        >
+        <div id="website-changes" className="portal-help-section scroll-mt-6">
           <h2 className={SECTION_HEADING}>Getting website changes made</h2>
           <p className={SECTION_BODY}>
             Today, changes to the public website — new hours, a provider update, a new document — go
             through the practice&apos;s website maintainer: email the request and it is typically
             live within a day. The{" "}
             <Link
-              href="/admin/settings/software"
+              href={HELP_LINKS.website.href}
               className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
             >
-              Website
+              {HELP_LINKS.website.label}
             </Link>{" "}
             page under Settings records clinic custody, the canonical repository, and the live
             GitHub connection status.
           </p>
         </div>
 
-        <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8">
+        <div className="portal-help-section">
           <h2 className={SECTION_HEADING}>How the website systems fit together</h2>
           <p className={SECTION_BODY}>
             This is optional background. You do not need to open or manage any of these systems to
@@ -313,17 +323,10 @@ export default async function AdminHelpPage() {
           </details>
         </div>
 
-        <div
-          id="something-wrong"
-          className="scroll-mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-8"
-        >
+        <div id="something-wrong" className="portal-help-section scroll-mt-6">
           <h2 className={SECTION_HEADING}>If something looks wrong</h2>
           <p className={SECTION_BODY}>
-            If the portal will not load or an appointment request seems missing, call or text the
-            office line first — patients always see the call-and-text numbers on the website (
-            {site.phone.display} / text {site.textLine.display}), so no one is ever stranded even
-            during an outage. Then let the website maintainer know what you saw. Sign out when you
-            step away from a shared computer.
+            {helpOutageCopy(site.phone.display, site.textLine.display)}
           </p>
         </div>
       </div>

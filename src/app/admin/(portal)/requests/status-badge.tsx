@@ -17,7 +17,7 @@ export function StatusBadge({ status }: Readonly<{ status: RequestStatus }>) {
   return (
     <span
       data-status={status}
-      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[0.75rem] font-bold tracking-[0.05em] uppercase ${BADGE_STYLES[status]}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[0.78rem] font-bold ${BADGE_STYLES[status]}`}
     >
       {STATUS_LABELS[status]}
     </span>

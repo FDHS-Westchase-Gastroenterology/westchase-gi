@@ -98,6 +98,7 @@ not browser configuration. [`.env.example`](.env.example) is the exact variable 
 | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `public.requests`                | Appointment-request system of record. Owns lifecycle, closure outcome, receipt-token hash state, and legal-hold state.                                                                                    |
 | `public.request_events`          | Child event stream for notification outcomes, attributed appointment-request notes, call outcomes, and Undo evidence. Call outcomes carry versioned lifecycle snapshots; events cascade with the request. |
+| `public.staff_request_receipts`  | Service-only idempotency receipts for staff-authored intake. Binds one actor, payload fingerprint, and request; cascades with the request.                                                                |
 | `public.notification_recipients` | Active/paused destinations for new-request pings.                                                                                                                                                         |
 | `public.staff_profiles`          | Authorization source of truth linked to `auth.users`.                                                                                                                                                     |
 | `public.portal_release_states`   | PHI-free, bounded per-staff engagement with application-owned release briefings.                                                                                                                          |
@@ -109,11 +110,18 @@ not browser configuration. [`.env.example`](.env.example) is the exact variable 
 
 - Intake throttling and analytics increments are database-atomic so multiple application
   instances share one limit and counter.
+- Staff-authored intake commits the request, staff-origin creation event, metadata-only audit,
+  and idempotency receipt together. Exact retries return the original request; changed-payload
+  key reuse conflicts without mutation, and this path never writes notification outbox work.
 - Saving a call outcome commits the outcome, appointment-request lifecycle, call-again
   timing, and closure outcome together. Undo records a new event and restores the saved
   snapshot only when no later mutation has made it stale; it never deletes history.
 - Staff, recipient, release-state, legal-hold, and deletion operations apply their data and
   audit effects as one database operation where partial success would misrepresent state.
+- New-request packet preparation materializes the exact durable `new` membership and generated
+  time, orders it oldest first, and inserts one metadata-only audit entry in a single statement.
+  The service adapter rejects malformed, duplicate, or out-of-order responses; print behavior
+  never writes to the request or Request history.
 - GitHub mutations cannot share a database transaction with the provider. They write a
   `pending` audit row before the call, then finish it as `succeeded`, `failed`, or
   `unconfirmed`, so an unclear GitHub result still leaves an audit trail.
@@ -150,6 +158,21 @@ procedure live in `CONTRIBUTING.md`.
    opaque token bound to the stored request. Only its hash is stored, and that hash expires
    after one hour. No patient value or unsigned success flag enters the URL.
 
+### Staff-authored appointment intake
+
+1. Home and Appointments link to one protected scheduling worksheet at
+   `/admin/requests/new`; it does not create a separate patient or appointment object.
+2. The server action authorizes an active staff profile before parsing input, then applies the
+   shared appointment-request field contract and an opaque UUID idempotency key.
+3. `portal_create_staff_request` runs as a service-only security-invoker RPC. A transaction-level
+   advisory lock serializes each key while one statement writes the `NEW` request, a staff-origin
+   creation event, a metadata-only `request.create` audit, and the service-only receipt.
+4. An exact retry returns the first request ID. Reusing the key with different details returns a
+   conflict without mutation. An ambiguous response keeps the submitted draft and key locked for
+   an exact retry.
+5. This staff path intentionally omits `notification_outbox`; the success page states that no
+   website-submission email was sent and hands the staff member into the normal request workspace.
+
 ### Patient-site telemetry
 
 `POST /api/telemetry` validates four allowlisted dimensions, uses a telemetry-specific HMAC
@@ -184,6 +207,22 @@ receives account or delivery state. Hosted Auth SMTP, custom recovery template, 
 expiry, 60-second resend cooldown, site URL, disabled public signup, and the exact
 `/admin/auth/confirm` redirect allowlist are project configuration, not migrations. Manage
 and verify Preview Branches and Production separately.
+
+### New-request print packet
+
+`/admin/requests/print` reauthorizes every active staff member server-side, then calls
+`portal_prepare_new_request_print_packet` through the service-role client. The security-invoker
+RPC is executable only by `service_role`; browsers retain no database access. One SQL statement
+materializes the durable `new` rows, derives the database snapshot time, aggregates the complete
+bounded request values oldest first, and inserts one `requests.print_new` audit row containing
+only row count and status filter. If any part fails, Postgres returns no packet and the page shows
+an unavailable recovery state.
+
+The RSC renders one letter-sized worksheet per returned request and may ask the browser to open
+its native print dialog after the page loads. Browser printing, cancellation, reload, and tab
+close are deliberately outside the database transaction and cause no request mutation. The paper
+contains patient data and is clinic-only; its staff-name field is physical routing, not a stored
+assignment. The live queue remains authoritative after the snapshot.
 
 ### Email
 
