@@ -20,49 +20,24 @@ import {
 } from "@/lib/portal/staff-language";
 
 import { PortalFeedbackMessage, PortalFeedbackProvider } from "./portal-feedback";
-import { PortalPageHeader } from "./portal-page-header";
 import { formatReceived } from "./requests/format";
 import { NewRequestPacketLink } from "./requests/requests-output-actions";
 
 interface HomeTask {
   href: string;
   label: string;
-  description: string;
   // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
   icon: (props: Readonly<SVGProps<SVGSVGElement>>) => ReactNode;
 }
 
+// Occasional destinations, kept as quiet single-line rows. Each label is
+// Complete on its own; the aside description carries the shared context.
 const DESK_TOOLS: HomeTask[] = [
-  {
-    href: "/admin/review-flyers",
-    label: "Print review flyers",
-    description: "Bilingual QR flyers for the front desk.",
-    icon: Printer,
-  },
-  {
-    href: "/admin/settings#notifications",
-    label: "Notification recipients",
-    description: "Choose who hears when a new request arrives.",
-    icon: Mail,
-  },
-  {
-    href: "/admin/settings#staff",
-    label: "Staff access",
-    description: "Invite staff and manage portal roles.",
-    icon: Users,
-  },
-  {
-    href: "/admin/settings/software",
-    label: "Website status",
-    description: "Review the clinic site and its connections.",
-    icon: Globe,
-  },
-  {
-    href: "/admin/help#website-changes",
-    label: "Request a website change",
-    description: "Send content and update requests safely.",
-    icon: FileText,
-  },
+  { href: "/admin/review-flyers", label: "Print review flyers", icon: Printer },
+  { href: "/admin/settings#notifications", label: "Notification recipients", icon: Mail },
+  { href: "/admin/settings#staff", label: "Staff access", icon: Users },
+  { href: "/admin/settings/software", label: "Website status", icon: Globe },
+  { href: "/admin/help#website-changes", label: "Request a website change", icon: FileText },
 ];
 
 interface NewRequestPreview {
@@ -115,34 +90,20 @@ export function HomeWorkbench({
 
   const content = (
     <section aria-labelledby="home-heading">
-      <PortalPageHeader
-        title={
-          <span id="home-heading" data-testid="home-greeting" tabIndex={-1}>
-            {greeting}
-          </span>
-        }
-        description="Start with what needs contact, then record the real outcome in Appointments."
-        actions={
-          <Link
-            href={STAFF_REQUEST_SOURCE_PATH}
-            data-testid="home-add-patient-request"
-            className="btn btn-outline min-h-11"
-          >
-            Add appointment request
-          </Link>
-        }
-        meta={
-          <>
-            <span>{date}</span>
-            {afterHours ? (
-              <span data-testid="after-hours" className="portal-after-hours">
-                <Clock className="h-3.5 w-3.5" />
-                After hours
-              </span>
-            ) : null}
-          </>
-        }
-      />
+      <header className="portal-home-masthead">
+        <h1 id="home-heading" data-testid="home-greeting" tabIndex={-1}>
+          {greeting}
+        </h1>
+        <p className="portal-home-day">
+          <span>{date}</span>
+          {afterHours ? (
+            <span data-testid="after-hours" className="portal-after-hours">
+              <Clock className="h-3.5 w-3.5" />
+              After hours
+            </span>
+          ) : null}
+        </p>
+      </header>
 
       {announcements}
 
@@ -159,10 +120,19 @@ export function HomeWorkbench({
               <h2 id="queue-overview-heading">Appointment requests</h2>
               <p>New requests wait here. Contact the longest-waiting one first.</p>
             </div>
-            <Link href="/admin/requests" className="portal-inline-link">
-              Open Appointments
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            <div className="portal-work-stack-commands print-hide">
+              <Link
+                href={STAFF_REQUEST_SOURCE_PATH}
+                data-testid="home-add-patient-request"
+                className="btn btn-outline portal-work-stack-add"
+              >
+                Add appointment request
+              </Link>
+              <Link href="/admin/requests" className="portal-inline-link">
+                Open Appointments
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
           </header>
 
           {newCount === null ? (
@@ -242,7 +212,7 @@ export function HomeWorkbench({
                     <Link
                       href={NEW_REQUESTS_HREF}
                       data-testid="start-oldest-empty"
-                      className="btn btn-outline min-h-11"
+                      className="btn btn-navy min-h-11"
                     >
                       {OPEN_NEW_REQUESTS_LABEL}
                     </Link>
@@ -264,7 +234,7 @@ export function HomeWorkbench({
                         {formatReceived(request.created_at)}
                         {arrivedOutsideOfficeHours(request.created_at) ? " · after hours" : ""}
                       </small>
-                      <ChevronRight className="h-4 w-4" />
+                      <ChevronRight className="h-3.5 w-3.5" />
                     </Link>
                   </li>
                 ))}
@@ -324,25 +294,15 @@ export function HomeWorkbench({
             <p>Occasional work, kept out of the appointment-request path.</p>
           </div>
           <ul>
-            {DESK_TOOLS.map((task) => {
-              const slug = task.label.toLowerCase().replace(/[^a-z]+/g, "-");
-              return (
-                <li key={task.href}>
-                  <Link
-                    href={task.href}
-                    aria-labelledby={`desk-tool-${slug}`}
-                    aria-describedby={`desk-tool-${slug}-description`}
-                  >
-                    <task.icon className="h-[1.1rem] w-[1.1rem]" />
-                    <span>
-                      <strong id={`desk-tool-${slug}`}>{task.label}</strong>
-                      <small id={`desk-tool-${slug}-description`}>{task.description}</small>
-                    </span>
-                    <ChevronRight className="h-4 w-4" />
-                  </Link>
-                </li>
-              );
-            })}
+            {DESK_TOOLS.map((task) => (
+              <li key={task.href}>
+                <Link href={task.href}>
+                  <task.icon className="h-4 w-4" />
+                  <strong>{task.label}</strong>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+              </li>
+            ))}
           </ul>
         </aside>
       </div>
