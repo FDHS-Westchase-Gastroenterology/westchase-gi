@@ -16,7 +16,7 @@ loadLocalEnv();
 
 const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
-const SIGN_IN_IDENTIFIER = signInIdentifierField(process.env.VERCEL_ENV === "preview");
+const SIGN_IN_IDENTIFIER = signInIdentifierField(process.env.VERCEL_ENV !== "production");
 
 const db = serviceDb();
 const runId = randomUUID().slice(0, 8);

@@ -18,7 +18,7 @@ const SEED_ADMIN_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_ADMIN_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
 const PREVIEW_USERNAME = process.env.PORTAL_PREVIEW_USERNAME ?? "";
 const PREVIEW_PASSWORD = process.env.PORTAL_PREVIEW_PASSWORD ?? "";
-const SIGN_IN_IDENTIFIER = signInIdentifierField(process.env.VERCEL_ENV === "preview");
+const SIGN_IN_IDENTIFIER = signInIdentifierField(process.env.VERCEL_ENV !== "production");
 const GENERIC_LOGIN_ERROR = "Unable to sign in. Check your credentials and try again.";
 const RESET_REQUEST_MESSAGE =
   "If an active staff account exists for that email, you’ll receive a password reset link.";

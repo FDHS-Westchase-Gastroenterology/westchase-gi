@@ -65,7 +65,7 @@ function previewLoginCredentials(
   submittedEmail: string,
   submittedPassword: string,
 ): { email: string; password: string } | null {
-  if (process.env.VERCEL_ENV !== "preview") return null;
+  if (process.env.VERCEL_ENV === "production") return null;
 
   const username = process.env.PORTAL_PREVIEW_USERNAME?.trim();
   const password = process.env.PORTAL_PREVIEW_PASSWORD;
