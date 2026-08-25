@@ -64,7 +64,7 @@ export function LoginForm({
       </div>
 
       <div>
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-4">
           <label htmlFor="password" className="block text-sm font-bold text-[var(--color-ink)]">
             Password
           </label>
@@ -73,7 +73,7 @@ export function LoginForm({
             onClick={() => {
               setMode("recovery");
             }}
-            className="inline-flex min-h-11 items-center justify-center py-2 text-sm font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+            className="-mx-2 inline-flex min-h-11 shrink-0 items-center justify-center rounded-[var(--radius)] px-2 py-2 text-sm font-bold text-[var(--color-teal-ink)] underline underline-offset-2 transition-colors duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:bg-[var(--color-teal-ink)]/14 motion-reduce:transition-none [@media(hover:hover)_and_(pointer:fine)]:hover:bg-[var(--color-teal-ink)]/8"
           >
             Forgot password?
           </button>
