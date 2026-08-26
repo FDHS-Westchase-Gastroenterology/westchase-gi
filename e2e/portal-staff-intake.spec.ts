@@ -101,6 +101,7 @@ test.describe("staff-authored intake data-entry protection", () => {
     await expect(dialog).toBeHidden();
     await expect(page).toHaveURL(/\/admin\/?$/);
     await expect(page.getByTestId("add-appointment-dialog")).toBeVisible();
+    await expect(page.getByLabel("Patient name (required)")).toHaveValue("UX Audit Draft");
     await expect(page.getByTestId("cancel-staff-request")).toBeFocused();
     await expect(name).toHaveValue("UX Audit Draft");
 

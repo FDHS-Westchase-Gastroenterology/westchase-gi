@@ -78,7 +78,8 @@ export function AddAppointmentDialog({
           event.preventDefault();
           requestClose();
         }}
-        onClose={() => {
+        onClose={(event) => {
+          if (event.target !== event.currentTarget) return;
           setOpen(false);
           triggerRef.current?.focus();
         }}
