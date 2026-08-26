@@ -448,9 +448,11 @@ test.describe("portal requests operation", () => {
       "/admin/requests",
     );
     const details = page.locator('section[aria-labelledby="request-details-heading"]');
+    // A dialable href is E.164: numbers are stored as submitted, and a staff
+    // Surface exists to be tapped once and connect.
     await expect(details.getByTestId("request-phone-link")).toHaveAttribute(
       "href",
-      `tel:${staged.phone}`,
+      `tel:+1${staged.phone}`,
     );
     await expect(details.getByRole("link", { name: /^Call patient/ })).toBeVisible();
     await expect(details.getByTestId("request-phone-link")).toContainText("(813) 555-0177");
