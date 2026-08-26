@@ -5,6 +5,7 @@ import { useCallback, useId, useRef, useState } from "react";
 
 import { usePortalFeedback } from "./portal-feedback";
 import { StaffRequestForm } from "./requests/new/staff-request-form";
+import type { StaffRequestFormHandle } from "./requests/new/staff-request-form";
 
 /* Adding a walk-in or a phoned-in request used to cost two navigations: out to
    a page and back again. Coming to the portal is already an interruption to the
@@ -25,12 +26,17 @@ export function AddAppointmentDialog({
   const titleId = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const formHandleRef = useRef<StaffRequestFormHandle>(null);
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const { publish } = usePortalFeedback();
 
   const close = useCallback(() => {
     dialogRef.current?.close();
+  }, []);
+
+  const requestClose = useCallback(() => {
+    formHandleRef.current?.requestDismiss();
   }, []);
 
   const created = useCallback(
@@ -68,8 +74,9 @@ export function AddAppointmentDialog({
         aria-labelledby={titleId}
         data-testid="add-appointment-dialog"
         onCancel={(event) => {
+          if (event.target !== event.currentTarget) return;
           event.preventDefault();
-          close();
+          requestClose();
         }}
         onClose={() => {
           setOpen(false);
@@ -82,7 +89,7 @@ export function AddAppointmentDialog({
             <h2 id={titleId} className="portal-confirm-dialog-title">
               Add appointment request
             </h2>
-            <button type="button" onClick={close} className="portal-confirm-dialog-close">
+            <button type="button" onClick={requestClose} className="portal-confirm-dialog-close">
               Close
             </button>
           </div>
@@ -98,6 +105,7 @@ export function AddAppointmentDialog({
               returnLabel="Cancel"
               onCreated={created}
               onDismiss={close}
+              dismissRequestRef={formHandleRef}
             />
           ) : null}
         </div>

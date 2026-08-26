@@ -22,6 +22,7 @@ const transitionRowSchema = z.object({
 const undoTransitionRowSchema = transitionRowSchema.extend({
   compensates_transition_id: z.string().nullable(),
 });
+const createdRequestRowSchema = z.object({ id: z.uuid() });
 
 // VAL-ADMIN-003: the queue leads with the oldest unworked requests first.
 // VAL-ADMIN-004: status filtering matches SQL counts exactly.
@@ -131,7 +132,8 @@ test.describe("portal requests operation", () => {
     try {
       await signIn(page);
       await page.getByTestId("home-add-patient-request").click();
-      await expect(page).toHaveURL(/\/admin\/requests\/new$/);
+      await expect(page).toHaveURL(/\/admin\/?$/);
+      await expect(page.getByTestId("add-appointment-dialog")).toBeVisible();
       await expect(page.getByRole("heading", { name: "Add appointment request" })).toBeVisible();
       await expect(page.getByText("Keep this to scheduling.")).toBeVisible();
 
@@ -161,19 +163,20 @@ test.describe("portal requests operation", () => {
       await form.locator("#staff-request-time").selectOption("afternoon");
       await page.getByTestId("submit-staff-request").click();
 
-      await expect(page).toHaveURL(/\/admin\/requests\/[0-9a-f-]+$/, {
-        timeout: 15_000,
-      });
-      requestId = /\/admin\/requests\/([0-9a-f-]+)/.exec(page.url())?.[1] ?? null;
+      await expect(page.getByTestId("add-appointment-dialog")).toBeHidden({ timeout: 15_000 });
+      await expect(page.getByText(`${patientName} is on the line under Call first.`)).toBeVisible();
+
+      const { data: createdRow, error: createdRowError } = await db
+        .from("requests")
+        .select("id")
+        .eq("email", patientEmail)
+        .single();
+      expect(createdRowError).toBeNull();
+      const parsedCreatedRow = createdRequestRowSchema.safeParse(createdRow);
+      requestId = parsedCreatedRow.success ? parsedCreatedRow.data.id : null;
       expect(requestId).not.toBeNull();
 
-      await expect(page.getByTestId("staff-request-created")).toContainText(
-        "Appointment request added to New.",
-      );
-      await expect(page.getByTestId("staff-request-created")).toContainText(
-        "No notification email was sent.",
-      );
-      expect(new URL(page.url()).searchParams.has("created")).toBe(false);
+      await page.goto(`/admin/requests/${requestId}`);
       await expect(page.getByTestId("request-detail-name")).toHaveText(patientName);
       await expect(page.getByTestId("request-intake-meta")).toContainText("Added by staff");
       await expect(page.getByTestId("request-history")).toContainText(

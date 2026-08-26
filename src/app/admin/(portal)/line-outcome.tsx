@@ -91,6 +91,7 @@ export function LineOutcome({
   const panelId = `line-record-${requestId}`;
   const booking = appointmentChoice(appointmentDay, appointmentTime);
   const returnDay = callAgainChoice(callAgain, customDay);
+  const uncertain = error?.startsWith("The portal could not confirm") === true;
   const ready =
     selection === null
       ? false
@@ -124,12 +125,21 @@ export function LineOutcome({
       router.refresh();
       return;
     }
+    if (result.code === "unavailable") {
+      setError(
+        "The portal could not confirm whether that saved. Check Request history before repeating it; Try again will safely check the same attempt.",
+      );
+      return;
+    }
     keyRef.current = null;
-    setError(
-      result.code === "stale_version"
-        ? "Someone else worked this request just now. Nothing was saved — reload the page to see where it stands."
-        : "That did not save. Nothing was recorded, so it is safe to try again.",
-    );
+    if (result.code === "stale_version" || result.code === "illegal_transition") {
+      setError(
+        "Someone else worked this request just now. Nothing was saved; the line is updating.",
+      );
+      router.refresh();
+      return;
+    }
+    setError("That did not save. Nothing was recorded, so it is safe to try again.");
   }
 
   function save() {
@@ -186,7 +196,7 @@ export function LineOutcome({
     <>
       {trigger}
       <div id={panelId} data-testid={panelId} className="portal-line-record">
-        <fieldset className="portal-line-outcomes" disabled={pending}>
+        <fieldset className="portal-line-outcomes" disabled={pending || uncertain}>
           <legend>What happened with {name}?</legend>
           {SELECTIONS.map((key) => (
             <label key={key} className="portal-line-outcome">
@@ -210,7 +220,7 @@ export function LineOutcome({
             <input
               type="checkbox"
               checked={voicemail}
-              disabled={pending}
+              disabled={pending || uncertain}
               data-testid={`line-voicemail-${requestId}`}
               onChange={(event) => {
                 setVoicemail(event.target.checked);
@@ -221,7 +231,7 @@ export function LineOutcome({
         ) : null}
 
         {selection !== null && selection !== "booked" ? (
-          <fieldset className="portal-line-when" disabled={pending}>
+          <fieldset className="portal-line-when" disabled={pending || uncertain}>
             <legend>Call again</legend>
             <div className="portal-line-chips">
               {CALL_AGAIN_PRESETS.map((preset) => (
@@ -257,7 +267,7 @@ export function LineOutcome({
                 value={customDay}
                 min={practiceLocalDay(0)}
                 max={practiceLocalDay(90)}
-                disabled={pending}
+                disabled={pending || uncertain}
                 data-testid={`line-call-again-day-${requestId}`}
                 onChange={(event) => {
                   setCustomDay(event.target.value);
@@ -269,7 +279,7 @@ export function LineOutcome({
         ) : null}
 
         {selection === "booked" ? (
-          <fieldset className="portal-line-when" disabled={pending}>
+          <fieldset className="portal-line-when" disabled={pending || uncertain}>
             <legend>When is the appointment?</legend>
             <div className="portal-line-appointment">
               <input
@@ -279,7 +289,7 @@ export function LineOutcome({
                 value={appointmentDay}
                 min={practiceLocalDay(0)}
                 max={practiceLocalDay(400)}
-                disabled={pending}
+                disabled={pending || uncertain}
                 data-testid={`line-appointment-day-${requestId}`}
                 onChange={(event) => {
                   setAppointmentDay(event.target.value);
@@ -291,7 +301,7 @@ export function LineOutcome({
                 aria-label="Appointment time"
                 required
                 value={appointmentTime}
-                disabled={pending}
+                disabled={pending || uncertain}
                 data-testid={`line-appointment-time-${requestId}`}
                 onChange={(event) => {
                   setAppointmentTime(event.target.value);
@@ -320,7 +330,7 @@ export function LineOutcome({
             className="btn btn-navy portal-line-save"
             onClick={save}
           >
-            {pending ? "Saving…" : "Save"}
+            {pending ? "Saving…" : uncertain ? "Try again" : "Save"}
           </button>
           <button type="button" disabled={pending} className="portal-line-cancel" onClick={reset}>
             Cancel

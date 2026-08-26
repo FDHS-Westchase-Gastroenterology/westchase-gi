@@ -19,7 +19,8 @@ async function signIn(page: Page) {
 async function openNewRequest(page: Page, from: "home" | "appointments") {
   if (from === "home") {
     await page.getByTestId("home-add-patient-request").click();
-    await expect(page).toHaveURL(/\/admin\/requests\/new$/);
+    await expect(page).toHaveURL(/\/admin\/?$/);
+    await expect(page.getByTestId("add-appointment-dialog")).toBeVisible();
   } else {
     await page.goto("/admin/requests");
     await page.getByTestId("appointments-add-patient-request").click();
@@ -92,7 +93,8 @@ test.describe("staff-authored intake data-entry protection", () => {
 
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
-    await expect(page).toHaveURL(/\/admin\/requests\/new$/);
+    await expect(page).toHaveURL(/\/admin\/?$/);
+    await expect(page.getByTestId("add-appointment-dialog")).toBeVisible();
     await expect(page.getByTestId("cancel-staff-request")).toBeFocused();
     await expect(name).toHaveValue("UX Audit Draft");
 
@@ -101,9 +103,43 @@ test.describe("staff-authored intake data-entry protection", () => {
     await expect(keepEditing).toBeFocused();
     await keepEditing.click();
     await expect(dialog).toBeHidden();
-    await expect(page).toHaveURL(/\/admin\/requests\/new$/);
+    await expect(page).toHaveURL(/\/admin\/?$/);
+    await expect(page.getByTestId("add-appointment-dialog")).toBeVisible();
     await expect(page.getByTestId("cancel-staff-request")).toBeFocused();
     await expect(name).toHaveValue("UX Audit Draft");
+  });
+
+  test("dirty Home Escape and Close share discard protection and return focus", async ({
+    page,
+  }) => {
+    await signIn(page);
+    await openNewRequest(page, "home");
+
+    const name = page.locator("#staff-request-name");
+    const addDialog = page.getByTestId("add-appointment-dialog");
+    const discardDialog = page.getByTestId("discard-staff-request-dialog");
+    const close = addDialog.getByRole("button", { name: "Close" });
+    await name.fill("UX Audit Draft");
+    await name.focus();
+
+    await page.keyboard.press("Escape");
+    await expectDialogOpen(discardDialog);
+    await page.getByTestId("keep-editing-staff-request").click();
+    await expect(discardDialog).toBeHidden();
+    await expect(name).toBeFocused();
+    await expect(name).toHaveValue("UX Audit Draft");
+
+    await close.click();
+    await expectDialogOpen(discardDialog);
+    await page.keyboard.press("Escape");
+    await expect(discardDialog).toBeHidden();
+    await expect(close).toBeFocused();
+    await expect(name).toHaveValue("UX Audit Draft");
+
+    await close.click();
+    await page.getByTestId("discard-staff-request").click();
+    await expect(addDialog).toBeHidden();
+    await expect(page.getByTestId("home-add-patient-request")).toBeFocused();
   });
 
   test("Discard request from Home clears the draft and returns Home", async ({ page }) => {

@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useRef, useState } from "react";
-import type { MouseEvent, RefObject } from "react";
+import { useActionState, useEffect, useImperativeHandle, useRef, useState } from "react";
+import type { MouseEvent, Ref, RefObject } from "react";
 
 import { createStaffRequest } from "@/app/admin/(portal)/requests/new/actions";
 import { REQUEST_FIELD_LIMITS, STAFF_REQUEST_FIELDS } from "@/lib/portal/contracts";
@@ -17,6 +17,10 @@ import { EMPTY_STAFF_REQUEST_DRAFT, isStaffRequestDraftDirty } from "./staff-req
 
 const INITIAL_STATE = { status: "idle" } as const satisfies CreateStaffRequestActionState;
 const EMPTY_DRAFT = EMPTY_STAFF_REQUEST_DRAFT satisfies StaffRequestDraft;
+
+export interface StaffRequestFormHandle {
+  requestDismiss: () => void;
+}
 
 const FIELD_FALLBACK = {
   name: "Enter the patient’s name.",
@@ -83,12 +87,14 @@ function ContactDetailsSection({
   pending,
   draftLocked,
   onFieldChange,
+  autoFocusName = false,
 }: Readonly<{
   draft: StaffRequestDraft;
   errors: StaffRequestErrors;
   pending: boolean;
   draftLocked: boolean;
   onFieldChange: ChangeStaffRequestField;
+  autoFocusName?: boolean;
 }>) {
   return (
     <fieldset className="portal-request-form-section">
@@ -108,6 +114,7 @@ function ContactDetailsSection({
             name="name"
             type="text"
             autoComplete="off"
+            autoFocus={autoFocusName}
             required
             maxLength={REQUEST_FIELD_LIMITS.name}
             value={draft.name}
@@ -453,6 +460,7 @@ export function StaffRequestForm({
   returnLabel,
   onCreated,
   onDismiss,
+  dismissRequestRef,
 }: Readonly<{
   idempotencyKey: string;
   permalink: string;
@@ -462,6 +470,8 @@ export function StaffRequestForm({
   onCreated?: (name: string) => void;
   /** Present when a dialog hosts the form: cancelling closes it instead of navigating. */
   onDismiss?: () => void;
+  /** Lets the host route Close and Escape through this form's draft protection. */
+  dismissRequestRef?: Ref<StaffRequestFormHandle>;
 }>) {
   const router = useRouter();
   const hosted = onCreated !== undefined && onDismiss !== undefined;
@@ -486,6 +496,7 @@ export function StaffRequestForm({
   const cancelRef = useRef<HTMLAnchorElement>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const keepEditingRef = useRef<HTMLButtonElement>(null);
+  const discardReturnFocusRef = useRef<HTMLElement | null>(null);
   const discardIntentRef = useRef(false);
   const retryKey =
     state.status === "error" && state.idempotencyKey !== null
@@ -524,9 +535,26 @@ export function StaffRequestForm({
 
   function openDiscardDialog() {
     discardIntentRef.current = false;
+    discardReturnFocusRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     dialogRef.current?.showModal();
     keepEditingRef.current?.focus();
   }
+
+  useImperativeHandle(
+    dismissRequestRef,
+    () => ({
+      requestDismiss() {
+        if (pending) return;
+        if (isStaffRequestDraftDirty(draft)) {
+          openDiscardDialog();
+          return;
+        }
+        onDismiss?.();
+      },
+    }),
+    [draft, onDismiss, pending],
+  );
 
   function requestLeave(event: MouseEvent<HTMLAnchorElement>) {
     if (pending) {
@@ -562,7 +590,8 @@ export function StaffRequestForm({
 
   function restoreCancelFocus() {
     if (discardIntentRef.current) return;
-    cancelRef.current?.focus();
+    (discardReturnFocusRef.current ?? cancelRef.current)?.focus();
+    discardReturnFocusRef.current = null;
   }
 
   return (
@@ -627,6 +656,7 @@ export function StaffRequestForm({
           pending={pending}
           draftLocked={draftLocked}
           onFieldChange={onFieldChange}
+          autoFocusName={hosted}
         />
 
         <AppointmentPreferencesSection

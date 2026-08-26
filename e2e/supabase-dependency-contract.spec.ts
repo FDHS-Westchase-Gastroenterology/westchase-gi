@@ -2390,6 +2390,76 @@ test.describe("Supabase dependency contract", () => {
     }
   });
 
+  test("rolls back decisions whose command does not match the recorded transition", async () => {
+    const db = serviceDb();
+    const actor = `workflow-semantic-boundary-${randomUUID()}@example.test`;
+    const occurredAt = new Date().toISOString();
+    const cases = [
+      {
+        command: "close_request",
+        state: "booked",
+        reasonCode: null,
+        bookingConfirmedAt: occurredAt,
+      },
+      {
+        command: "classify_legacy_closure",
+        state: "booked",
+        reasonCode: "booked",
+        bookingConfirmedAt: occurredAt,
+      },
+    ] as const;
+    const requestIds: string[] = [];
+
+    try {
+      for (const item of cases) {
+        const requestId = randomUUID();
+        requestIds.push(requestId);
+        await insertRequest(db, {
+          id: requestId,
+          name: `TEST malformed ${item.command} decision`,
+          source_path: "/e2e/workflow-semantic-boundary",
+        });
+
+        const result = await db.rpc("portal_execute_request_command", {
+          p_actor_email: actor,
+          p_request_id: requestId,
+          p_expected_version: 1,
+          p_idempotency_key: randomUUID(),
+          p_fingerprint: "f".repeat(64),
+          p_decision: {
+            command: item.command,
+            state: item.state,
+            callAgainAt: null,
+            bookingConfirmedAt: item.bookingConfirmedAt,
+            appointmentAt: null,
+            closedAt: null,
+            closureReason: null,
+            legacyReviewRequired: false,
+            reasonCode: item.reasonCode,
+            occurredAt,
+          },
+        });
+
+        expect(result.error?.code).toBe("23514");
+        expect(
+          (await db.from("requests").select("status,version").eq("id", requestId).single()).data,
+        ).toMatchObject({ status: "new", version: 1 });
+        expect(
+          (await db.from("request_transitions").select("id").eq("request_id", requestId)).data,
+        ).toHaveLength(0);
+        expect(
+          (await db.from("request_command_receipts").select("id").eq("request_id", requestId)).data,
+        ).toHaveLength(0);
+        expect(
+          (await db.from("audit_log").select("id").eq("entity_id", requestId)).data,
+        ).toHaveLength(0);
+      }
+    } finally {
+      await db.from("requests").delete().in("id", requestIds);
+      await db.from("audit_log").delete().in("entity_id", requestIds);
+    }
+  });
+
   test("refuses a booking with no appointment time and records the one it accepts", async () => {
     const db = serviceDb();
     const requestId = randomUUID();
