@@ -154,6 +154,7 @@ jobs:
                   --arg head_sha "$HEAD_SHA" \
                   '.ok == true
                     and .schemaCompatible == true
+                    and .clientKeySafe == true
                     and .projectRef == $branch_ref
                     and .gitCommitSha == $head_sha' \
                   <<<"$attestation" >/dev/null

@@ -21,6 +21,21 @@ function response(body: Readonly<Record<string, boolean | string | null>>, statu
   return Response.json(body, { status, headers: NO_STORE_HEADERS });
 }
 
+function clientKeyIsSafe(): boolean {
+  const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?.trim();
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  const clientKey =
+    publishableKey !== undefined && publishableKey !== "" ? publishableKey : anonKey;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+  return (
+    clientKey !== undefined &&
+    clientKey !== "" &&
+    !clientKey.startsWith("sb_secret_") &&
+    (serviceKey === undefined || clientKey !== serviceKey)
+  );
+}
+
 /**
  * A non-secret deployment attestation for the PR integration gate. Production
  * does not expose this route. Preview returns success only when every declared
@@ -40,13 +55,15 @@ export async function GET() {
     projectRef === urlProjectRef &&
     branchProjectRef === urlProjectRef &&
     process.env.SUPABASE_PREVIEW_BRANCH === "1";
+  const safeClientKey = clientKeyIsSafe();
 
-  if (!refsAgree) {
+  if (!refsAgree || !safeClientKey) {
     return response(
       {
         ok: false,
         projectRef: urlProjectRef,
         gitCommitSha: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
+        clientKeySafe: safeClientKey,
         schemaCompatible: false,
       },
       503,
@@ -66,6 +83,7 @@ export async function GET() {
         ok: schemaCompatible,
         projectRef: urlProjectRef,
         gitCommitSha: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
+        clientKeySafe: safeClientKey,
         schemaCompatible,
       },
       schemaCompatible ? 200 : 503,
@@ -76,6 +94,7 @@ export async function GET() {
         ok: false,
         projectRef: urlProjectRef,
         gitCommitSha: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
+        clientKeySafe: safeClientKey,
         schemaCompatible: false,
       },
       503,
