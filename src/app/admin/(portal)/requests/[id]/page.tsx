@@ -7,12 +7,14 @@ import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import {
   CLOSURE_REASON_LABELS,
   CONTACT_OUTCOME_LABELS,
+  formatPhoneForDisplay,
   formatReceived,
   followUpWhenLabel,
   localeLabel,
   LOCATION_LABELS,
   presentationStatus,
   STATE_LABELS,
+  telHref,
   TIME_LABELS,
 } from "@/app/admin/(portal)/requests/format";
 import {
@@ -63,18 +65,6 @@ function firstParam(value: Readonly<string | string[] | undefined>): string | nu
     return first !== undefined && first !== "" ? first : null;
   }
   return parsed.data !== "" ? parsed.data : null;
-}
-
-function formatPhoneForDisplay(value: string): string {
-  const trimmed = value.trim();
-  const digits = trimmed.replace(/\D/g, "");
-  if (digits.length === 10) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-  }
-  if (digits.length === 11 && digits.startsWith("1")) {
-    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
-  }
-  return trimmed;
 }
 
 // Request history keeps each evidence kind distinct (DEC-05): contact
@@ -401,7 +391,7 @@ export default async function RequestDetailPage({
               aria-label="Patient contact options"
             >
               <a
-                href={`tel:${row.phone}`}
+                href={telHref(row.phone)}
                 data-testid="request-phone-link"
                 className="portal-request-contact-action"
               >

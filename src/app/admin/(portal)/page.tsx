@@ -14,7 +14,7 @@ import { followUpShortLabel, LOCATION_LABELS, TIME_LABELS } from "./requests/for
 import { fetchAttentiveOpenRows, VIEW_DB_STATUSES } from "./requests/queue";
 import type { AttentiveQueueRow } from "./requests/queue";
 
-/* Home is the practice's day sheet. It answers one question — who has to be
+/* Home is the practice's call list. It answers one question — who has to be
    called, in what order — by reading the attention buckets the queue already
    derives, rather than counting statuses and describing them in a sentence. */
 

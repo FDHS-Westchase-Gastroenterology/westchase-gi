@@ -8,7 +8,6 @@ import { usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { STATUS_LABELS } from "@/app/admin/(portal)/requests/format";
 import { Printer } from "@/components/icons";
 import { useOutputGuard } from "@/components/output-feedback";
-import { REQUEST_STATUSES } from "@/lib/portal/contracts";
 import type { RequestStatus } from "@/lib/portal/contracts";
 import {
   formatStatusList,
@@ -16,6 +15,13 @@ import {
   printPacketHref,
   printSelectionIsAvailable,
 } from "@/lib/portal/print-selection";
+
+/* Printing exists to hand paper to staff, so the menu offers the two statuses
+   that get handed out: New requests nobody has called, and Contacted requests
+   that have not reached scheduling yet. Scheduled and Closed are readable and
+   printable from Appointments — the packet route parses any status from the
+   URL — they just are not questions worth asking at this moment. */
+const PRINTABLE_STATUSES = ["new", "contacted"] as const satisfies readonly RequestStatus[];
 
 function keepFocusInDialog(event: KeyboardEvent<HTMLDialogElement>) {
   if (event.key !== "Tab") return;
@@ -149,7 +155,7 @@ export function PrintChooser({
         <div className="portal-confirm-dialog-body">
           <div className="portal-confirm-dialog-heading">
             <h2 id={titleId} className="portal-confirm-dialog-title">
-              Print requests
+              Print appointments
             </h2>
             <button type="button" onClick={closeChooser} className="portal-confirm-dialog-close">
               Close
@@ -193,7 +199,7 @@ export function PrintChooser({
           </div>
           <fieldset className="portal-print-chooser-statuses">
             <legend>Custom list</legend>
-            {REQUEST_STATUSES.map((status) => {
+            {PRINTABLE_STATUSES.map((status) => {
               const count = statusCounts[status];
               const checked = selected.includes(status);
               return (

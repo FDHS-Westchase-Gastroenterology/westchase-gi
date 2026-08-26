@@ -37,6 +37,30 @@ export const CLOSURE_REASON_LABELS = {
   wont_schedule: "patient won't schedule",
 } as const satisfies Record<ClosureReason, string>;
 
+/* Phone numbers are stored as submitted, so presentation belongs here rather
+   than in each surface. Every staff surface reads a number the same way and
+   dials it the same way. */
+export function formatPhoneForDisplay(value: string): string {
+  const trimmed = value.trim();
+  const digits = trimmed.replace(/\D/gu, "");
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return trimmed;
+}
+
+/* A dialable href. Most dialers tolerate punctuation, but a phone on a staff
+   surface exists to be tapped once and connect. */
+export function telHref(phone: string): string {
+  const digits = phone.replace(/\D/gu, "");
+  if (digits.length === 10) return `tel:+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `tel:+${digits}`;
+  return `tel:${digits}`;
+}
+
 // Practice-local time: front desk staff read these in Tampa.
 const dateTime = new Intl.DateTimeFormat("en-US", {
   month: "short",

@@ -1,31 +1,32 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { ChevronRight } from "@/components/icons";
+import { ChevronRight, Phone } from "@/components/icons";
 import { STAFF_REQUEST_SOURCE_PATH } from "@/lib/portal/contracts";
 import type { RequestStatus } from "@/lib/portal/contracts";
 
 import { PortalFeedbackMessage, PortalFeedbackProvider } from "./portal-feedback";
+import { formatPhoneForDisplay, telHref } from "./requests/format";
 import { PrintChooser } from "./requests/print-chooser";
 
-/* THESIS: Home is the practice's day sheet, not a dashboard about one. It
-   refuses the greeting-plus-metric-cards page this category always ships:
-   counts demote to column headers, patient lines become the figure.
+/* THESIS: Home lists the calls and takes them. It refuses the
+   greeting-plus-metric-cards page this category always ships: counts demote to
+   column headers, patient lines become the figure, and the line itself is where
+   an outcome gets recorded rather than a link to a page that records it.
 
    OWN-WORLD: White paper, navy printed ink, hairline rules, tracked small
    caps. One sans, three weights. Amber only as a stamp on a line, teal only
    as the tracked line, mint the only large tint. No card washes, no icon rail.
 
-   STORY: Staff read the date, see who must be called today in priority
-   order, and either open the first line or print the sheet.
+   STORY: Staff read the date, see who must be called today in priority order,
+   dial from the line, and record what happened without leaving the page.
 
    FIRST VIEWPORT: the day at 28px with the greeting as small print above it,
-   Print day sheet in navy opposite, a rule, then Call first / Call again
-   today / No call-again day set as ruled lines of name, phone, and timing.
+   Print appointments in navy opposite, a rule, then Call first / Call again
+   today as ruled lines of name, dialable phone, and timing.
 
-   FORM: the clinic's own daily call sheet — the artifact staff already hold,
-   and what the print mode already outputs, so screen and paper are one
-   thing. */
+   FORM: the practice's own call list, and what the print mode already outputs,
+   so screen and paper are one thing. */
 
 export interface SheetLine {
   id: string;
@@ -69,23 +70,36 @@ const ELSEWHERE = [
   { href: "/admin/help#website-changes", label: "Request a website change" },
 ];
 
+/* Three affordances, three sets of pixels. The row used to be one link, which
+   meant the phone number — the one datum the page exists to act on — could not
+   be a `tel:` link at all, and a thumb aiming at it navigated instead of
+   dialing. Splitting them also separates hover from focus for free: hover tints
+   the row, focus rings whichever target the keyboard is actually on. */
 function SheetLineRow({ line }: Readonly<{ line: Readonly<SheetLine> }>) {
   return (
-    <li>
-      <Link href={`/admin/requests/${line.id}`} className="portal-sheet-line">
+    <li className="portal-sheet-row">
+      <Link href={`/admin/requests/${line.id}`} className="portal-sheet-open">
         <span className="portal-sheet-who">
-          <strong data-ui-redact="patient-name">{line.name}</strong>
+          <span className="portal-sheet-name">
+            <strong data-ui-redact="patient-name">{line.name}</strong>
+            <ChevronRight className="portal-sheet-disclosure h-4 w-4" aria-hidden="true" />
+          </span>
           <small>{line.preference}</small>
         </span>
-        <span className="portal-sheet-phone" data-ui-redact="patient-contact">
-          {line.phone}
-        </span>
-        <span className="portal-sheet-when">
-          {line.stamp === null ? null : <span className="portal-stamp">{line.stamp}</span>}
-          <span>{line.timing}</span>
-        </span>
-        <ChevronRight className="portal-sheet-disclosure h-4 w-4" />
       </Link>
+      <a
+        href={telHref(line.phone)}
+        className="portal-sheet-phone"
+        data-ui-redact="patient-contact"
+        aria-label={`Call ${line.name} at ${formatPhoneForDisplay(line.phone)}`}
+      >
+        <Phone className="portal-sheet-phone-icon h-3.5 w-3.5" aria-hidden="true" />
+        {formatPhoneForDisplay(line.phone)}
+      </a>
+      <span className="portal-sheet-when">
+        {line.stamp === null ? null : <span className="portal-stamp">{line.stamp}</span>}
+        <span>{line.timing}</span>
+      </span>
     </li>
   );
 }
@@ -180,7 +194,7 @@ export function HomeWorkbench({
           <PrintChooser
             statusCounts={statusCounts}
             triggerClassName="btn btn-navy portal-sheet-print"
-            triggerLabel="Print day sheet"
+            triggerLabel="Print appointments"
           />
           <Link
             href={STAFF_REQUEST_SOURCE_PATH}
@@ -198,7 +212,7 @@ export function HomeWorkbench({
 
       {groups === null ? (
         <div data-testid="queue-overview-unavailable" className="portal-sheet-notice">
-          <h2>The day sheet could not load.</h2>
+          <h2>Today&rsquo;s calls could not load.</h2>
           <p>
             This is not an empty day. Open Appointments to read the live queue, then print from a
             current view.
