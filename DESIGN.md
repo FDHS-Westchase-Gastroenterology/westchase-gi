@@ -65,57 +65,108 @@ Operate posture: scanability, consistency, and native expectations outrank expre
 brand lives in precise details, used with restraint. Motion is state-conveying only, within
 ordinary UI budgets. Task vocabulary and workflow truths are product law in `PRODUCT.md`.
 
-## Committed staff-portal world — The Front Desk Ledger (2026-08-09)
+## Committed staff-portal world — The Day Sheet (2026-08-25)
 
-The staff portal is a calm clinical workbench modeled on the practice's paper-routing stack,
-not a generic software dashboard. Appointment requests are the visual and operational center;
-administration recedes without becoming hard to find. This world governs the complete `/admin`
-surface until it is deliberately re-chartered.
+The staff portal is the practice's daily call sheet: the ruled, columnar worksheet a medical
+front office actually runs its day from. It is not a dashboard, and it is not a dashboard wearing
+paper vocabulary. This world replaces The Front Desk Ledger (2026-08-09), which named a paper
+metaphor and shipped cards, colored summary bands, and count sentences instead. It governs the
+complete `/admin` surface until deliberately re-chartered.
+
+The unit of every operational surface is **the line**: one patient, one next action, one time.
+Counts are column headers, never headlines. The largest text on a working page is the day it
+describes; the second largest is a patient's name. A number nobody can act on never outranks a
+name somebody must call.
 
 ### Composition and navigation
 
 - The persistent desktop task index is 17rem wide and carries four destinations: Home,
-  Appointments, Settings, and Help. At narrow widths, the same destinations become a fixed,
+  Appointments, Settings, and Help. At narrow widths the same destinations become a fixed,
   thumb-reachable bottom index; the mobile header carries identity and account actions.
-- The working canvas is a cool near-white field (`--portal-canvas`), and its white work surfaces
-  (`--portal-surface`) read as ruled sheets rather than floating cards. Borders establish
-  sequence and grouping; shadow is reserved for overlays and temporary depth.
-- Home is a triage and handoff workbench, not a metric dashboard. Appointments is one ordered
-  ledger that recomposes from a dense desktop row into a readable mobile record without hiding
-  status, next action, or recovery.
-- Staff-authored intake uses a dedicated ruled worksheet within the working canvas, not a modal
-  or a separate patient registry. Contact details, preferences, scheduling context, and the
-  clinical-record boundary remain visible as one linear task on desktop and mobile.
-- Page titles, descriptions, status context, and the primary action form one repeated header
-  contract. Settings tabs and appointment filters preserve location with `aria-current` rather
-  than inventing new navigation behavior.
+- The working canvas is a cool near-white field (`--portal-canvas`). Rows sit on white paper
+  (`--portal-surface`) and are divided by hairlines and space. Cards are not a page scaffold;
+  shadow is reserved for overlays.
+- **Figure and ground come from value alone, and the separation is deliberately slight.** No
+  shadow, no filter, no border on a row: white rows on the cool field are about a 1.12:1
+  luminance step, which reads as ruled bands recessed into the desk rather than as cards
+  floating above it. Headings and names, sitting directly on the field at full ink contrast, are
+  the forward layer. This quietness is the decision, not an oversight — do not "fix" it by
+  adding depth. The rule against filled regions is about color washes carrying meaning, not
+  about the paper the rows are printed on.
+- Every operational page opens with a **sheet header**: the day or the page's subject set large,
+  identity as small print above it, the primary action at the opposite end, and a closing rule.
+  It is a title block on a form, not a hero.
+- Sections are ruled groups introduced by a heading and a count. Rows carry no internal card
+  chrome; the hairline between them is the ruling.
+- Staff-authored intake and other multi-field tasks remain ruled worksheets in the working
+  canvas, laid out as one linear task on desktop and mobile.
+- Settings tabs and appointment filters preserve location with `aria-current` rather than
+  inventing navigation behavior.
 
-### Color, type, and state
+### Type
 
-- Deep navy (`--color-navy-2`) carries the task index and primary actions. Steel teal
-  (`--color-teal`, `--color-teal-ink`) means selected, active, or ready. Amber
-  (`--color-amber`, `--color-amber-soft`, `--portal-attention-ink`) is reserved for work that
-  needs attention and for the visible focus ring. Color never carries state alone.
-- The portal uses the body sans-serif for both interface text and headings. Hierarchy comes from
-  weight, size, spacing, and density; display serif remains a restrained brand mark, never a
-  costume for operational content. Counts and times use tabular numerals.
-- Corners stay compact (`--radius-sm` through `--radius-lg`) and controls retain familiar native
-  shapes. Pills are limited to counts and compact status tags, never used as page structure.
+- One family: the body sans-serif carries interface text, headings, labels, and data. The
+  display serif never dresses operational content.
+- A fixed rem scale, never fluid. `clamp()` headings do not serve product UI, and a fluid size
+  on a count sentence is what inverted figure and ground in the previous world. The steps, at a
+  1.2 ratio on a 15px body floor:
+  `--pt-2xs` 0.6875rem tracked uppercase column heads, `--pt-xs` 0.8125rem meta and timestamps,
+  `--pt-sm` 0.9375rem body floor, `--pt-base` 1.0625rem the datum on a line (a patient's name),
+  `--pt-lg` 1.25rem group headings, `--pt-xl` 1.75rem the sheet's day.
+- Exactly three weights: 400 body and meta, 600 names and labels, 800 the day and group heads.
+  Hierarchy comes from size and space. Stacking many near-identical sizes and pushing hierarchy
+  onto weight is the failure this replaces.
+- Counts, phone numbers, and times use tabular numerals.
+
+### Space
+
+- A 4px base. Space, not color, performs grouping: 32px above a group heading and 8px below it,
+  rows separated by hairlines with no gap, sheet padding 24px desktop and 16px mobile.
+- More space above a heading than below it, everywhere.
+
+### Color
+
+Restrained: white paper and navy ink, with each practice hue holding exactly one role. The four
+hues remain the identity (see anchor 1); this world re-weights and reassigns them.
+
+- **Navy** (`--color-navy`, `--color-navy-2`) is the form's printed ink: the task index, sheet
+  rules, and primary actions.
+- **Teal** (`--color-teal`, `--color-teal-ink`) means current, selected, or hovered — the finger
+  tracking a line. Nothing else.
+- **Amber** (`--color-amber`, `--color-amber-deep`, `--portal-attention-ink`) means attention,
+  and appears only as a stamp, a tag, or a hairline marker **on a line**, plus the focus ring.
+  Amber never washes a region. Filling whole bands with competing amber tints is what drained the
+  one color reserved for attention.
+- **Mint** (`--color-mint`) is the only hue permitted to tint a large area, and only for a
+  settled or cleared state.
+- Color never carries state alone; a stamp always carries words.
 
 ### Interaction, motion, and adaptation
 
-- Every actionable target is at least 44px. Keyboard focus uses a three-pixel amber outline with
-  offset, landmarks and headings remain semantic, and the shell exposes a skip link.
-- Routine portal motion is limited to 150–160ms color feedback using a strong ease-out curve.
-  Navigation and keyboard-triggered work do not slide, scale, or delay. Reduced motion keeps the
-  state-changing color and opacity cues while removing nonessential movement.
-- Desktop prioritizes scan density and a persistent working location. Mobile becomes one readable
-  column with the primary destinations and account actions still in reach; it never clips a table
-  or removes workflow truth. Print is a third authored mode: US Letter worksheets, one request per
-  sheet, complete contact and request context, a paper routing area, and no application chrome.
+- Every actionable target is at least 44px. Keyboard focus uses a two-pixel teal outline with
+  offset — focus is the tracked line, which is teal's one role — turned inward on full-bleed
+  rows so the hairline above and below cannot clip it. Landmarks and headings stay semantic, and
+  the shell exposes a skip link.
+- Motion is state feedback only: 150–160ms color transitions on a strong ease-out. Navigation
+  and keyboard-triggered work never slide, scale, or delay. Reduced motion keeps color and
+  opacity cues and drops movement.
+- **Lists are never clipped, and they never scroll inside the page.** A fixed-height scroll box
+  is not disclosure: it makes eighteen rows look exactly like four, hides its own size behind an
+  overlay scrollbar, captures the wheel from the page that already scrolls, sends keyboard focus
+  to rows nobody can see, and prints as whatever fit the clipped height. A long group instead
+  holds six lines open and **expands the rest in place**, and its heading's count states the true
+  total whether open or closed. Only past a render ceiling does a remainder link out. The reason
+  to cap is that a long first group must not bury the groups below it — never to conceal how much
+  work is waiting.
+- Desktop prioritizes scan density and a persistent working location. Mobile becomes one
+  readable column with destinations and account actions in reach; it never clips a row or drops
+  workflow truth. Print is a third authored mode, and screen and paper are the same material:
+  US Letter worksheets, one request per sheet, full contact and request context, a paper routing
+  area, no application chrome.
 - Pending, success, empty, partial-read, unavailable, conflict, unauthorized, completion, and
-  recovery states use the same page and action contracts. Printing is explicitly non-mutating;
-  the live queue remains authoritative before and after the paper handoff.
+  recovery states use the same page and action contracts. A failed read reports that it failed;
+  it never renders as a zero. Printing is non-mutating, and the live queue stays authoritative
+  before and after a paper handoff.
 
 ## Transition
 

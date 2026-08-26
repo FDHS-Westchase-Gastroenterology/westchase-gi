@@ -18,7 +18,7 @@ complete staff outcome. The shell should orient staff and then recede; it must n
 jobs into subordinate pages of one generic dashboard.
 
 ## Shared experience world
-**The Front Desk Ledger** is a calm clinical workbench modeled on the paper routing stack staff already use, not a generic SaaS dashboard. New appointment requests form the actionable work stack. The interface recedes around that work, but remains explicit about status, ownership, timing, recovery, and completion.
+**The Day Sheet** (2026-08-25) is the practice's daily call sheet: the ruled columnar worksheet a medical front office runs its day from. It replaces The Front Desk Ledger, which named a paper metaphor and shipped cards, colored summary bands, and count sentences. The unit of every operational surface is the line — one patient, one next action, one time. Counts are column headers, never headlines; the largest text on a page is the day, and the second largest is a patient's name. The interface recedes around the work but stays explicit about status, timing, recovery, and completion.
 
 ## Product-slice architecture
 The portal remains one `/admin` design surface and shared shell under this world, but it is not one
@@ -49,7 +49,8 @@ slice-specific artifacts remain follow-up work where they are not yet complete.
 - Printing or preparing a packet never changes request status, attention state, history, or version.
 - Every mutation communicates pending, success, failure, conflict, undo, and the durable result in staff language.
 - Desktop uses a persistent task rail and working canvas. Mobile preserves the same four destinations in thumb reach.
-- Amber means attention is needed. Teal means ready or active. Navy carries navigation and primary actions.
+- Amber means attention and appears only as a stamp or hairline marker on a line, never as a region wash. Teal means current, selected, or hovered. Navy is the form's printed ink: navigation, rules, and primary actions. Mint is the only hue that may tint a large area, for a settled state.
+- Lists are never clipped to a scroll box; a long group caps and names its exact remainder.
 - Appointment request is the unit of appointment work; “Appointments” is the destination label,
   not the product boundary.
 
