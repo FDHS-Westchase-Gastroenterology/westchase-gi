@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useActionState, useEffect, useImperativeHandle, useRef, useState } from "react";
-import type { MouseEvent, Ref, RefObject } from "react";
+import type { KeyboardEvent, MouseEvent, Ref, RefObject } from "react";
 
 import { createStaffRequest } from "@/app/admin/(portal)/requests/new/actions";
 import { REQUEST_FIELD_LIMITS, STAFF_REQUEST_FIELDS } from "@/lib/portal/contracts";
@@ -411,6 +411,24 @@ function DiscardStaffRequestDialog({
   onDiscard: () => void;
   onClose: () => void;
 }>) {
+  function containTab(event: KeyboardEvent<HTMLDialogElement>) {
+    if (event.key !== "Tab") return;
+    const first = keepEditingRef.current;
+    const last = dialogRef.current?.querySelector<HTMLButtonElement>(
+      '[data-testid="discard-staff-request"]',
+    );
+    if (first === null || last === null || last === undefined) return;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+      return;
+    }
+    if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
   return (
     <dialog
       ref={dialogRef}
@@ -418,6 +436,7 @@ function DiscardStaffRequestDialog({
       aria-labelledby="discard-staff-request-title"
       aria-describedby="discard-staff-request-copy"
       data-testid="discard-staff-request-dialog"
+      onKeyDown={containTab}
       onClose={onClose}
       className="portal-confirm-dialog"
     >

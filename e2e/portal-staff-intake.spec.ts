@@ -86,6 +86,12 @@ test.describe("staff-authored intake data-entry protection", () => {
     await expect(page.getByTestId("discard-staff-request")).toBeFocused();
     await expectFocusInsideDialog(page, dialog);
 
+    await page.keyboard.press("Tab");
+    await expect(keepEditing).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(page.getByTestId("discard-staff-request")).toBeFocused();
+    await expectFocusInsideDialog(page, dialog);
+
     await page.evaluate(() => {
       document.getElementById("staff-request-name")?.focus();
     });
