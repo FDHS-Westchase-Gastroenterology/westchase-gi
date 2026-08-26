@@ -14,6 +14,7 @@ on:
 permissions:
   checks: read
   contents: read
+  deployments: read
 
 concurrency:
   group: supabase-branch-${{ github.event.pull_request.number || github.ref }}
@@ -121,6 +122,60 @@ jobs:
               "$SUPABASE_PARENT_PROJECT_REF"
             printf 'SUPABASE_PREVIEW_BRANCH=1\n'
           } >> "$GITHUB_ENV"
+
+      - name: Verify Vercel uses the matching Preview Branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          for attempt in {1..90}; do
+            deployment_id="$(
+              gh api "repos/$REPOSITORY/deployments?sha=$HEAD_SHA&per_page=100" \
+                --jq '[.[]
+                  | select(.environment == "Preview" and .creator.login == "vercel[bot]")]
+                  | sort_by(.id) | last | .id // empty'
+            )"
+
+            if [ -n "$deployment_id" ]; then
+              deployment_status="$(
+                gh api "repos/$REPOSITORY/deployments/$deployment_id/statuses?per_page=100" \
+                  --jq 'sort_by(.id) | last // {}'
+              )"
+              state="$(jq -r '.state // "pending"' <<<"$deployment_status")"
+              preview_url="$(jq -r '.environment_url // .target_url // empty' \
+                <<<"$deployment_status")"
+              echo "Vercel Preview: state=$state"
+
+              if [ "$state" = "success" ] && [ -n "$preview_url" ]; then
+                attestation="$(curl --fail --silent --show-error \
+                  "$preview_url/api/preview-environment")"
+                jq -e \
+                  --arg branch_ref "$SUPABASE_BRANCH_PROJECT_REF" \
+                  --arg head_sha "$HEAD_SHA" \
+                  '.ok == true
+                    and .schemaCompatible == true
+                    and .projectRef == $branch_ref
+                    and .gitCommitSha == $head_sha' \
+                  <<<"$attestation" >/dev/null
+                printf 'Verified Vercel Preview %s uses Supabase branch %s.\n' \
+                  "$preview_url" "$SUPABASE_BRANCH_PROJECT_REF"
+                break
+              fi
+
+              if [ "$state" = "failure" ] || [ "$state" = "error" ]; then
+                echo "Vercel Preview did not succeed."
+                exit 1
+              fi
+            else
+              echo "Vercel Preview: deployment pending"
+            fi
+
+            if [ "$attempt" = 90 ]; then
+              echo "Vercel Preview did not become verifiably branch-matched within 15 minutes."
+              exit 1
+            fi
+            sleep 10
+          done
 
       - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
         with:
