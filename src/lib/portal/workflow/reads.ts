@@ -16,6 +16,7 @@ const requestWorkRowSchema = z.object({
   version: versionSchema,
   follow_up_at: z.string().nullable(),
   record_handoff_at: z.string().nullable(),
+  appointment_at: z.string().nullable().optional(),
   closed_at: z.string().nullable(),
   closure_reason: z.string().nullable(),
   legacy_review_required: z.boolean(),
@@ -31,6 +32,7 @@ const transitionRowSchema = z.object({
   occurred_at: z.string(),
   reason_code: z.string().nullable().optional(),
   call_again_at: z.string().nullable().optional(),
+  appointment_at: z.string().nullable().optional(),
   compensates_transition_id: z.string().nullable().optional(),
   provenance: z.string(),
 });
@@ -69,14 +71,14 @@ export async function fetchRequestWorkSurface(
     db
       .from("requests")
       .select(
-        "id,status,version,follow_up_at,record_handoff_at,closed_at,closure_reason,legacy_review_required,created_at",
+        "id,status,version,follow_up_at,record_handoff_at,appointment_at,closed_at,closure_reason,legacy_review_required,created_at",
       )
       .eq("id", requestId)
       .maybeSingle(),
     db
       .from("request_transitions")
       .select(
-        "id,from_state,to_state,command,actor_email,occurred_at,reason_code,call_again_at,compensates_transition_id,provenance",
+        "id,from_state,to_state,command,actor_email,occurred_at,reason_code,call_again_at,appointment_at,compensates_transition_id,provenance",
       )
       .eq("request_id", requestId)
       .order("occurred_at", { ascending: false }),
@@ -152,6 +154,7 @@ export async function fetchRequestWorkSurface(
             ? row.reason_code
             : null,
         callAgainAt: row.call_again_at ?? null,
+        appointmentAt: row.appointment_at ?? null,
         undone: compensated.has(row.id),
         actor: row.actor_email,
         at: row.occurred_at,
@@ -213,6 +216,7 @@ export async function fetchRequestWorkSurface(
     legacyReviewRequired: requestRow.data.legacy_review_required,
     callAgainAt: requestRow.data.follow_up_at,
     bookingConfirmedAt: requestRow.data.record_handoff_at,
+    appointmentAt: requestRow.data.appointment_at ?? null,
     closedAt: requestRow.data.closed_at,
     closureReason,
     undo:

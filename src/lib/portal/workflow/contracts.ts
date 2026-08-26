@@ -101,6 +101,8 @@ export interface CommandSuccess {
   version: number;
   /** Current call-again attention value after the command, if any. */
   callAgainAt: string | null;
+  /** When the appointment is, once booked. Null means the time is unknown. */
+  appointmentAt: string | null;
   /** Undo eligibility for the transition this command appended. */
   undo: UndoWindow | null;
 }
@@ -225,6 +227,8 @@ export type HistoryEntry =
       closureReason: ClosureReason | null;
       /** Immutable call-again time selected by reopen or a legacy correction. */
       callAgainAt: string | null;
+      /** Immutable appointment time recorded by a booking handoff. */
+      appointmentAt: string | null;
       /** True when a later Undo compensated this transition. */
       undone: boolean;
       actor: string;
@@ -266,6 +270,12 @@ export interface RequestWorkSurface {
   callAgainAt: string | null;
   /** Booking-handoff confirmation time while state is `booked`. */
   bookingConfirmedAt: string | null;
+  /**
+   * When the appointment is, while state is `booked`. Null means the time is
+   * unknown — a booking recorded before the portal owned the calendar, or a
+   * legacy closure reclassified as booked — never "no appointment".
+   */
+  appointmentAt: string | null;
   /** Closure facts while state is `closed` (null for legacy review rows). */
   closedAt: string | null;
   closureReason: ClosureReason | null;

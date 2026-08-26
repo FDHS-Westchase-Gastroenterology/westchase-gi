@@ -24,12 +24,14 @@ export interface QueueRow {
   follow_up_at: string | null;
   /** Migrated closure awaiting staff review (spec DEC-26): stays visible. */
   legacy_review_required: boolean;
+  /** Optimistic-concurrency token, so a row can be worked where it is read. */
+  version: number;
 }
 
 export type AttentiveQueueRow = AttentiveRow<QueueRow>;
 
 const COLUMNS =
-  "id, name, phone, location, preferred_time, locale, status, created_at, follow_up_at, legacy_review_required";
+  "id, name, phone, location, preferred_time, locale, status, created_at, follow_up_at, legacy_review_required, version";
 
 // Open-queue candidates are bounded well past any realistic front-desk
 // Backlog; beyond this the attention ordering would need a database view.
@@ -65,12 +67,16 @@ const storedQueueRowSchema = z.object({
   created_at: z.string(),
   follow_up_at: z.string().nullable(),
   legacy_review_required: z.boolean(),
+  // Postgres may hand a bigint back as a string, the way the work-surface
+  // Read already allows for.
+  version: z.union([z.number(), z.string()]),
 });
 
 function toQueueRow(row: z.infer<typeof storedQueueRowSchema>): QueueRow {
   return {
     ...row,
     status: row.status === "booked" ? "scheduled" : row.status,
+    version: Number(row.version),
   };
 }
 

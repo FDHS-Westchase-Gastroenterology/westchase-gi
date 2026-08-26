@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { requireRole } from "@/lib/portal/auth";
 import { arrivedOutsideOfficeHours, waitingSince } from "@/lib/portal/business-time";
 import { availableQueueCount } from "@/lib/portal/request-query";
@@ -103,6 +105,7 @@ function lineFor(row: Readonly<AttentiveQueueRow>, now: Date): SheetLine {
     id: row.id,
     name: row.name,
     phone: row.phone,
+    version: row.version,
     preference: preferenceOf(row),
   };
 
@@ -303,6 +306,7 @@ export default async function AdminHomePage({
       afterHours={minutes >= AFTER_HOURS_START || minutes < MORNING_START}
       groups={groups}
       tail={tail}
+      addRequestKey={randomUUID()}
       statusCounts={{
         new: countOf(newCountRead),
         contacted: countOf(contactedCountRead),

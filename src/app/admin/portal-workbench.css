@@ -746,10 +746,10 @@
      wrapping everything cannot let the phone number be dialable. */
   .portal-sheet-row {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-areas:
-      "open open"
-      "phone when";
+      "open open open"
+      "phone when record";
     align-items: center;
     gap: var(--ps-1) var(--ps-3);
     background: var(--portal-surface);
@@ -885,6 +885,166 @@
   .portal-sheet-open:hover .portal-sheet-disclosure,
   .portal-sheet-open:focus-visible .portal-sheet-disclosure {
     color: var(--color-teal-ink);
+  }
+
+  /* Recording on the line.
+     The trigger is deliberately the quietest thing on the row: reading the
+     sheet is the frequent act and recording is the occasional one, so the
+     control that types must not out-shout the names it sits beside. It only
+     takes ink once a pointer or the keyboard arrives on it. */
+  .portal-line-record-open {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    grid-area: record;
+    padding-inline: var(--ps-2);
+    color: var(--color-muted);
+    font-size: var(--pt-xs);
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    transition:
+      color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-line-record-open:hover {
+    color: var(--color-teal-ink);
+  }
+
+  .portal-line-record-open:active {
+    color: var(--color-navy);
+    transition-duration: 0s;
+  }
+
+  .portal-line-record-open[aria-expanded="true"] {
+    color: var(--color-navy);
+  }
+
+  /* The panel belongs to its line, so it opens inside the row's own band
+     rather than floating over the sheet. Mint marks it as the one working
+     surface on the page; the rule above it keeps it attached to its name. */
+  .portal-line-record {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ps-3);
+    /* An implicit row, so a closed line pays no gap for a panel it does not
+       render. A declared empty area would still take its row gap on every
+       line in the sheet. */
+    grid-column: 1 / -1;
+    margin-block-start: var(--ps-2);
+    border-block-start: 1px solid var(--color-line);
+    background: color-mix(in oklch, var(--color-mint) 55%, white);
+    padding: var(--ps-3) var(--ps-2);
+  }
+
+  .portal-line-record legend {
+    padding-block-end: var(--ps-1);
+    color: var(--color-ink);
+    font-size: var(--pt-sm);
+    font-weight: 700;
+  }
+
+  /* The three outcomes staff live through, as ruled rows rather than pills:
+     they are a decision, not a filter. */
+  .portal-line-outcomes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ps-1) var(--ps-4);
+  }
+
+  .portal-line-outcome,
+  .portal-line-voicemail,
+  .portal-line-chip {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: var(--ps-2);
+    color: var(--color-body);
+    font-size: var(--pt-sm);
+    line-height: 1.4;
+  }
+
+  .portal-line-outcome:hover,
+  .portal-line-voicemail:hover,
+  .portal-line-chip:hover {
+    color: var(--color-teal-ink);
+  }
+
+  .portal-line-outcome input,
+  .portal-line-voicemail input,
+  .portal-line-chip input {
+    flex: none;
+    width: 1.05rem;
+    height: 1.05rem;
+    accent-color: var(--color-teal-ink);
+  }
+
+  /* A voicemail is something that happened during a no-answer call, so it
+     indents under the outcome it belongs to instead of standing beside it. */
+  .portal-line-voicemail {
+    margin-inline-start: var(--ps-4);
+  }
+
+  .portal-line-when {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ps-1);
+  }
+
+  .portal-line-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--ps-4);
+  }
+
+  .portal-line-appointment {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ps-2);
+  }
+
+  .portal-line-date {
+    min-height: 2.75rem;
+    border: 1px solid var(--color-line-2);
+    border-radius: var(--radius);
+    background: white;
+    padding-inline: var(--ps-2);
+    color: var(--color-ink);
+    font-size: var(--pt-sm);
+  }
+
+  .portal-line-date:focus-visible {
+    border-color: var(--color-teal-ink);
+  }
+
+  .portal-line-error {
+    color: oklch(0.45 0.19 25);
+    font-size: var(--pt-sm);
+    line-height: 1.45;
+  }
+
+  .portal-line-commit {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ps-3);
+  }
+
+  .portal-line-save:disabled {
+    opacity: 0.55;
+  }
+
+  .portal-line-cancel {
+    min-height: 2.75rem;
+    color: var(--color-muted);
+    font-size: var(--pt-sm);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .portal-line-cancel:hover {
+    color: var(--color-ink);
   }
 
   /* The rest of a long group opens in place. A control sitting on the field
@@ -1130,8 +1290,8 @@
      same edges and no row grows taller than its neighbours. */
   @media (min-width: 60rem) {
     .portal-sheet-row {
-      grid-template-columns: minmax(0, 1fr) 11rem minmax(0, 12rem);
-      grid-template-areas: "open phone when";
+      grid-template-columns: minmax(0, 1fr) 11rem minmax(0, 12rem) auto;
+      grid-template-areas: "open phone when record";
       gap: var(--ps-4);
       padding-inline: var(--ps-2);
     }
@@ -1934,6 +2094,18 @@
     border-color: var(--color-teal-ink);
     background: var(--color-mint);
     color: var(--color-teal-ink);
+  }
+
+  /* A form needs more room than a confirmation, and a tall day needs the sheet
+     to scroll inside the dialog rather than push the page. */
+  .portal-add-appointment {
+    width: min(94vw, 40rem);
+    max-height: min(90vh, 46rem);
+    overflow-y: auto;
+  }
+
+  .portal-add-appointment .portal-request-form-sheet {
+    margin-block-start: var(--ps-3);
   }
 
   .portal-print-chooser {

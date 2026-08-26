@@ -140,12 +140,16 @@ interface WorkflowDecision {
   state: string;
   callAgainAt: string | null;
   bookingConfirmedAt: string | null;
+  appointmentAt?: string | null;
   closedAt: string | null;
   closureReason: string | null;
   legacyReviewRequired: boolean;
   reasonCode: string | null;
   occurredAt: string;
 }
+
+/** A fictional appointment far enough ahead to stay in the future as tests age. */
+const APPOINTMENT_AT = "2027-03-04T15:30:00.000Z";
 
 loadLocalEnv();
 
@@ -2277,15 +2281,18 @@ test.describe("Supabase dependency contract", () => {
     const requestId = randomUUID();
     const actor = `workflow-race-${randomUUID()}@example.test`;
     const occurredAt = new Date().toISOString();
+    // A booking carries no reason code and must state its appointment time, the
+    // Same shape the client sends.
     const decision = (command: string, state: string, reasonCode?: string): WorkflowDecision => ({
       command,
       state,
       callAgainAt: null,
       bookingConfirmedAt: state === "booked" ? occurredAt : null,
+      appointmentAt: state === "booked" ? APPOINTMENT_AT : null,
       closedAt: state === "closed" ? occurredAt : null,
       closureReason: state === "closed" ? (reasonCode ?? null) : null,
       legacyReviewRequired: false,
-      reasonCode: reasonCode ?? null,
+      reasonCode: state === "booked" ? null : (reasonCode ?? null),
       occurredAt,
     });
     const execute = (key: string, fingerprint: string, next: Readonly<WorkflowDecision>) =>
@@ -2377,6 +2384,75 @@ test.describe("Supabase dependency contract", () => {
       expect(
         (await db.from("request_command_receipts").select("id").eq("request_id", requestId)).data,
       ).toHaveLength(1);
+    } finally {
+      await db.from("requests").delete().eq("id", requestId);
+      await db.from("audit_log").delete().eq("entity_id", requestId);
+    }
+  });
+
+  test("refuses a booking with no appointment time and records the one it accepts", async () => {
+    const db = serviceDb();
+    const requestId = randomUUID();
+    const actor = `workflow-appointment-${randomUUID()}@example.test`;
+    const occurredAt = new Date().toISOString();
+    const book = (appointmentAt: string | null) =>
+      db.rpc("portal_execute_request_command", {
+        p_actor_email: actor,
+        p_request_id: requestId,
+        p_expected_version: 1,
+        p_idempotency_key: randomUUID(),
+        p_fingerprint: randomUUID().replaceAll("-", "").repeat(2),
+        p_decision: {
+          command: "confirm_booking_handoff",
+          state: "booked",
+          callAgainAt: null,
+          bookingConfirmedAt: occurredAt,
+          appointmentAt,
+          closedAt: null,
+          closureReason: null,
+          legacyReviewRequired: false,
+          reasonCode: null,
+          occurredAt,
+        },
+      });
+
+    await insertRequest(db, {
+      id: requestId,
+      name: "TEST appointment calendar private name",
+      email: "appointment-calendar-patient@example.test",
+      message: "TEST appointment calendar private message",
+    });
+    try {
+      // The portal owns the calendar, so the server refuses a silent booking even
+      // If a client forgets to send one.
+      expect((await book(null)).data).toEqual({ ok: false, code: "invalid_command" });
+      expect(
+        (await db.from("requests").select("status,appointment_at").eq("id", requestId).single())
+          .data,
+      ).toMatchObject({ status: "new", appointment_at: null });
+
+      const booked = requireDecoded(
+        commandOutcomeSchema.safeParse((await book(APPOINTMENT_AT)).data),
+        "Booking result could not be decoded",
+      );
+      expect(booked.ok).toBe(true);
+
+      const stored = await db
+        .from("requests")
+        .select("status,appointment_at")
+        .eq("id", requestId)
+        .single();
+      expect(stored.data?.status).toBe("booked");
+      expect(new Date(String(stored.data?.appointment_at)).toISOString()).toBe(APPOINTMENT_AT);
+
+      // The transition carries the same time as append-only evidence.
+      const transition = await db
+        .from("request_transitions")
+        .select("command,appointment_at,prior_snapshot")
+        .eq("request_id", requestId)
+        .single();
+      expect(transition.data?.command).toBe("confirm_booking_handoff");
+      expect(new Date(String(transition.data?.appointment_at)).toISOString()).toBe(APPOINTMENT_AT);
     } finally {
       await db.from("requests").delete().eq("id", requestId);
       await db.from("audit_log").delete().eq("entity_id", requestId);
@@ -2507,6 +2583,7 @@ test.describe("Supabase dependency contract", () => {
       state,
       callAgainAt: null,
       bookingConfirmedAt: null,
+      appointmentAt: null,
       closedAt: null,
       closureReason: null,
       legacyReviewRequired: false,

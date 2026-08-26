@@ -41,6 +41,14 @@ function testIp(label: string): string {
   return `2001:db8:${hex.slice(0, 4)}:${hex.slice(4, 8)}::3`;
 }
 
+// The portal owns the appointment calendar, so a Scheduled save must name the
+// Day and wall-clock time of the appointment before Save becomes available.
+async function nameTheAppointment(page: Page, daysAhead: number): Promise<void> {
+  const day = new Date(Date.now() + daysAhead * 86_400_000).toISOString().slice(0, 10);
+  await page.getByTestId("appointment-day").fill(day);
+  await page.getByTestId("appointment-time").fill("14:30");
+}
+
 function expectedReopenHistoryLine(kind: "tomorrow_morning" | "friday"): string {
   const callAgainAt = resolveFollowUpAt({ kind });
   if (callAgainAt === null || callAgainAt === "") {
@@ -478,7 +486,9 @@ test.describe("portal requests operation", () => {
     async function statusOf() {
       const { data, error } = await db
         .from("requests")
-        .select("status, closure_reason, closed_at, follow_up_at, record_handoff_at")
+        .select(
+          "status, closure_reason, closed_at, follow_up_at, record_handoff_at, appointment_at",
+        )
         .eq("id", id)
         .single();
       expect(error).toBeNull();
@@ -544,12 +554,18 @@ test.describe("portal requests operation", () => {
     // The daily success path: booked in the practice system, presented as
     // Scheduled everywhere. The durable row is `booked`; the word
     // "scheduled" is presentation-only.
+    // Booking now owns the appointment calendar, so Scheduled cannot be
+    // Recorded without saying when the appointment is.
     await panel.getByText("Appointment booked", { exact: true }).click();
+    await expect(page.getByTestId("save-workflow")).toBeDisabled();
+    await nameTheAppointment(page, 7);
+    await expect(page.getByTestId("save-workflow")).toBeEnabled();
     await page.getByTestId("save-workflow").click();
     await expect(feedback).toContainText("marked Scheduled");
     const afterBooked = await statusOf();
     expect(afterBooked?.status).toBe("booked");
     expect(afterBooked?.record_handoff_at).toBeTruthy();
+    expect(afterBooked?.appointment_at).toBeTruthy();
     await expect(page.getByTestId("workflow-current-state")).toContainText("Scheduled");
 
     // Reopen asks for the next call before touching the resolved record.
@@ -585,6 +601,8 @@ test.describe("portal requests operation", () => {
     expect(reopened?.status).toBe("contacted");
     expect(reopened?.record_handoff_at).toBeNull();
     expect(reopened?.follow_up_at).toBeTruthy();
+    // Reopening un-books the request, so the appointment it held is gone.
+    expect(reopened?.appointment_at).toBeNull();
     const newestHistory = page.getByTestId("request-history").locator("li").first();
     await expect(newestHistory).toContainText(expectedReopenHistoryLine("tomorrow_morning"));
     await expect(newestHistory).not.toContainText("no call-again day was set");
@@ -616,6 +634,7 @@ test.describe("portal requests operation", () => {
     expect(closed?.closure_reason).toBe("wont_schedule");
     expect(closed?.closed_at).toBeTruthy();
     expect(closed?.follow_up_at).toBeNull();
+    expect(closed?.appointment_at).toBeNull();
     // The call sheet is the request's stable anchor. Contact details,
     // Preferences, and the patient note remain available after resolution.
     await expect(details.getByTestId("request-phone-link")).toBeVisible();
@@ -1324,6 +1343,7 @@ test.describe("portal requests operation", () => {
       await expect(page.getByTestId("save-workflow")).toBeDisabled();
       await expect(page.getByTestId("open-next-request")).toHaveCount(0);
       await panel.getByText("Appointment booked", { exact: true }).click();
+      await nameTheAppointment(page, 9);
       await page.getByTestId("save-workflow").click();
       await expect(feedback).toContainText("marked Scheduled");
       await expect(page.getByTestId("undo-latest")).toHaveText("Undo");
@@ -1349,6 +1369,7 @@ test.describe("portal requests operation", () => {
 
       // A new save creates the next undo point and offers queue continuation.
       await panel.getByText("Appointment booked", { exact: true }).click();
+      await nameTheAppointment(page, 9);
       await page.getByTestId("save-workflow").click();
       await expect(feedback).toContainText("marked Scheduled");
       await page.getByTestId("open-next-request").click();

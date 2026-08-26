@@ -7,6 +7,10 @@ export interface RequestSnapshot {
   readonly version: number;
   readonly callAgainAt: string | null;
   readonly bookingConfirmedAt: string | null;
+  /* When the appointment is. Null means the time is unknown — true of bookings
+     recorded before the portal owned the calendar, and of legacy closures the
+     review reclassifies as booked — never "no appointment". */
+  readonly appointmentAt: string | null;
   readonly closedAt: string | null;
   readonly closureReason: ClosureReason | null;
   readonly legacyReviewRequired: boolean;
@@ -18,7 +22,7 @@ export type WorkflowCommand =
       readonly outcome: ContactOutcome;
       readonly callAgainAt: string;
     }
-  | { readonly kind: "confirm_booking_handoff" }
+  | { readonly kind: "confirm_booking_handoff"; readonly appointmentAt: string }
   | { readonly kind: "close_request"; readonly reason: ClosureReason }
   | { readonly kind: "reopen_request"; readonly callAgainAt: string }
   | { readonly kind: "set_call_again"; readonly callAgainAt: string }
@@ -54,23 +58,29 @@ const reject = (code: "invalid_command" | "illegal_transition" | "undo_unavailab
   facts: [],
 });
 
-function isAbsent(value: string | null): boolean {
-  return value === null || value === "";
+/* Total on undefined as well as null: a snapshot restored from a transition
+   written before a field existed has no key at all, and an absent key must read
+   as absent rather than as a value. */
+function isAbsent(value: string | null | undefined): boolean {
+  return value === null || value === undefined || value === "";
 }
 
-function isPresent(value: string | null): boolean {
-  return value !== null && value !== "";
+function isPresent(value: string | null | undefined): boolean {
+  return !isAbsent(value);
 }
 
-const callAgainAtSchema = z.iso
-  .datetime({ offset: true })
-  .refine((value) => value === value.trim());
+const instantSchema = z.iso.datetime({ offset: true }).refine((value) => value === value.trim());
 
-function isCallAgainAt(value: string): boolean {
-  return callAgainAtSchema.safeParse(value).success;
+function isInstant(value: string): boolean {
+  return instantSchema.safeParse(value).success;
 }
 
+/* Only a booked request may carry an appointment time, and a booked one may
+   still lack it: pre-calendar bookings and reclassified legacy closures have no
+   recoverable time. So this permits either for booked and forbids it elsewhere,
+   rather than requiring it wherever the state is booked. */
 function coherent(value: Readonly<Omit<RequestSnapshot, "version">>): boolean {
+  if (value.state !== "booked" && isPresent(value.appointmentAt)) return false;
   if (value.state === "new")
     return (
       isAbsent(value.callAgainAt) &&
@@ -122,12 +132,13 @@ export function decide(
     case "record_contact_attempt": {
       if (current.state !== "new" && current.state !== "contacted")
         return reject("illegal_transition");
-      if (!isCallAgainAt(command.callAgainAt)) return reject("invalid_command");
+      if (!isInstant(command.callAgainAt)) return reject("invalid_command");
       return next(
         {
           state: "contacted",
           callAgainAt: command.callAgainAt,
           bookingConfirmedAt: null,
+          appointmentAt: null,
           closedAt: null,
           closureReason: null,
           legacyReviewRequired: false,
@@ -138,11 +149,13 @@ export function decide(
     case "confirm_booking_handoff":
       if (current.state !== "new" && current.state !== "contacted")
         return reject("illegal_transition");
+      if (!isInstant(command.appointmentAt)) return reject("invalid_command");
       return next(
         {
           state: "booked",
           callAgainAt: null,
           bookingConfirmedAt: now.toISOString(),
+          appointmentAt: command.appointmentAt,
           closedAt: null,
           closureReason: null,
           legacyReviewRequired: false,
@@ -159,6 +172,7 @@ export function decide(
           state: "closed",
           callAgainAt: null,
           bookingConfirmedAt: null,
+          appointmentAt: null,
           closedAt: now.toISOString(),
           closureReason: command.reason,
           legacyReviewRequired: false,
@@ -171,12 +185,15 @@ export function decide(
         current.legacyReviewRequired
       )
         return reject("illegal_transition");
-      if (!isCallAgainAt(command.callAgainAt)) return reject("invalid_command");
+      if (!isInstant(command.callAgainAt)) return reject("invalid_command");
+      /* Reopening voids the appointment: the patient is back in the calling
+         queue, so a time that is no longer expected must not linger. */
       return next(
         {
           state: "contacted",
           callAgainAt: command.callAgainAt,
           bookingConfirmedAt: null,
+          appointmentAt: null,
           closedAt: null,
           closureReason: null,
           legacyReviewRequired: false,
@@ -186,7 +203,7 @@ export function decide(
     case "set_call_again":
       if (current.state !== "contacted" || isPresent(current.callAgainAt))
         return reject("illegal_transition");
-      if (!isCallAgainAt(command.callAgainAt)) return reject("invalid_command");
+      if (!isInstant(command.callAgainAt)) return reject("invalid_command");
       return next({ callAgainAt: command.callAgainAt }, { type: "CallAgainSet" });
     case "undo_latest_transition":
       if (!coherent(command.restore)) return reject("undo_unavailable");
@@ -194,12 +211,16 @@ export function decide(
     case "classify_legacy_closure":
       if (current.state !== "closed" || !current.legacyReviewRequired)
         return reject("illegal_transition");
+      /* A reclassified legacy closure is booked with no recoverable appointment
+         time. Inventing one would be worse than admitting the gap, so this is
+         the one booking path that stays null. */
       return command.resolution === "booked"
         ? next(
             {
               state: "booked",
               callAgainAt: null,
               bookingConfirmedAt: now.toISOString(),
+              appointmentAt: null,
               closedAt: null,
               closureReason: null,
               legacyReviewRequired: false,
@@ -211,6 +232,7 @@ export function decide(
               state: "closed",
               callAgainAt: null,
               bookingConfirmedAt: null,
+              appointmentAt: null,
               closedAt: now.toISOString(),
               closureReason: command.resolution.reason,
               legacyReviewRequired: false,

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { requireRole } from "@/lib/portal/auth";
-import { resolveFollowUpAt } from "@/lib/portal/business-time";
+import { resolveAppointmentAt, resolveFollowUpAt } from "@/lib/portal/business-time";
 import type { FollowUpChoice } from "@/lib/portal/business-time";
 import { serviceClient } from "@/lib/portal/server";
 import { executeRequestCommand } from "@/lib/portal/workflow/commands";
@@ -75,8 +75,29 @@ export async function recordContactAttempt(
   });
 }
 
-export async function confirmBookingHandoff(input: Readonly<Common>): Promise<CommandOutcome> {
-  return run({ ...input, command: { kind: "confirm_booking_handoff" } });
+export interface AppointmentChoice {
+  readonly date: string;
+  readonly hour: number;
+  readonly minute: number;
+}
+
+const appointmentChoiceSchema = z.object({
+  date: z.string(),
+  hour: z.number(),
+  minute: z.number(),
+});
+
+export async function confirmBookingHandoff(
+  input: Readonly<Common & { appointment: Readonly<AppointmentChoice> }>,
+): Promise<CommandOutcome> {
+  // The portal owns the calendar, so a booking states when. Staff pick a day and
+  // A wall-clock time; the domain command only ever sees the resolved instant.
+  const parsed = appointmentChoiceSchema.safeParse(input.appointment);
+  const appointmentAt = parsed.success ? resolveAppointmentAt(parsed.data) : null;
+  if (appointmentAt === null) {
+    return { ok: false, code: "invalid_command" } as const;
+  }
+  return run({ ...input, command: { kind: "confirm_booking_handoff", appointmentAt } });
 }
 
 export async function closeRequest(
