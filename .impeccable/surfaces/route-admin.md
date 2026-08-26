@@ -18,7 +18,9 @@ complete staff outcome. The shell should orient staff and then recede; it must n
 jobs into subordinate pages of one generic dashboard.
 
 ## Shared experience world
-**The Day Sheet** (2026-08-25) is the practice's daily call sheet: the ruled columnar worksheet a medical front office runs its day from. It replaces The Front Desk Ledger, which named a paper metaphor and shipped cards, colored summary bands, and count sentences. The unit of every operational surface is the line — one patient, one next action, one time. Counts are column headers, never headlines; the largest text on a page is the day, and the second largest is a patient's name. The interface recedes around the work but stays explicit about status, timing, recovery, and completion.
+**The Line** (2026-08-25) names a structural commitment rather than a paper artifact: the unit of every operational surface is the line — one patient, one next action, one time — and the line is where work is both read and recorded. It replaces The Front Desk Ledger and The Day Sheet, which each named a metaphor that became something to decorate (cards, colored summary bands, count sentences). Counts are column headers, never headlines; the largest text on a page is the day, and the second largest is a patient's name. The interface recedes around the work but stays explicit about status, timing, recovery, and completion.
+- Work happens where the work is listed. A dialog is for work about the whole sheet (printing a packet, adding a new request); work about one patient happens on that patient's line, and never covers the page.
+- A line records a decision, not a form: nobody picked up, we talked, or it is booked. Every contact schedules its own return — no path leaves a contacted request without a call-again day.
 
 ## Product-slice architecture
 The portal remains one `/admin` design surface and shared shell under this world, but it is not one

@@ -65,18 +65,39 @@ Operate posture: scanability, consistency, and native expectations outrank expre
 brand lives in precise details, used with restraint. Motion is state-conveying only, within
 ordinary UI budgets. Task vocabulary and workflow truths are product law in `PRODUCT.md`.
 
-## Committed staff-portal world — The Day Sheet (2026-08-25)
+## Committed staff-portal world — The Line (2026-08-25)
 
-The staff portal is the practice's daily call sheet: the ruled, columnar worksheet a medical
-front office actually runs its day from. It is not a dashboard, and it is not a dashboard wearing
-paper vocabulary. This world replaces The Front Desk Ledger (2026-08-09), which named a paper
-metaphor and shipped cards, colored summary bands, and count sentences instead. It governs the
-complete `/admin` surface until deliberately re-chartered.
+The unit of every operational surface is **the line**: one patient, one next action, one time. The
+line is not a row in a report and not a link to somewhere else — it is where the work is read *and*
+where the work is recorded. This world governs the complete `/admin` surface until deliberately
+re-chartered.
 
-The unit of every operational surface is **the line**: one patient, one next action, one time.
+It replaces two worlds that failed the same way. The Front Desk Ledger (2026-08-09) and The Day
+Sheet (2026-08-25) both named a paper artifact, and both times the metaphor became something to
+decorate rather than a rule to obey — cards, colored summary bands, count sentences. This world is
+named for a structural commitment instead, because there is no artifact here to dress up.
+
 Counts are column headers, never headlines. The largest text on a working page is the day it
 describes; the second largest is a patient's name. A number nobody can act on never outranks a
 name somebody must call.
+
+**Work happens where the work is listed.** A staff member who can see that a patient must be called
+can record what happened on that call without leaving the page, because arriving at the portal is
+already an interruption of a fast clinic day and every further navigation compounds it. The
+consequence is a hard rule about layers: **a dialog is for work about the whole sheet** — printing a
+packet, adding a request that does not exist yet, neither of which belongs to any one line — **and
+work about one patient happens on that patient's line.** Nothing about a single row ever covers the
+page.
+
+What a line can record is a decision, not a form. The question staff answer is the one they
+actually face, in the order they face it: nobody picked up, we talked, or it is booked. A flat list
+of every possible outcome, weighted equally, forces a reader to consider the rare case every time
+they record the common one. Outcome wording, order, and color come from one source shared by every
+surface, so the line and the request record can differ in density without drifting in vocabulary.
+
+**Every contact schedules its own return.** No path may leave a contacted request without a
+call-again day; a request nobody will be reminded about is lost, not tracked. The day is prefilled
+from what happened and stays adjustable.
 
 ### Composition and navigation
 
