@@ -37,15 +37,21 @@ const requestCommandRowSchema = z.object({
   version: versionSchema,
   follow_up_at: z.string().nullable(),
   record_handoff_at: z.string().nullable(),
+  appointment_at: z.string().nullable(),
   closed_at: z.string().nullable(),
   closure_reason: z.string().nullable(),
   legacy_review_required: z.boolean(),
 });
 
+/* The appointmentAt key is optional here on purpose: snapshots written before the
+   portal owned the calendar do not carry it, and absent reads as null, which is
+   the correct value to restore for them. Requiring it would make every in-flight
+   request un-undoable the moment this deploys. */
 const restoreSnapshotSchema = z.object({
   state: z.string(),
   callAgainAt: z.string().nullable(),
   bookingConfirmedAt: z.string().nullable(),
+  appointmentAt: z.string().nullable().optional(),
   closedAt: z.string().nullable(),
   closureReason: z.string().nullable(),
   legacyReviewRequired: z.boolean(),
@@ -63,6 +69,7 @@ const commandSuccessSchema = z.object({
   state: z.string(),
   version: versionSchema,
   callAgainAt: z.string().nullable(),
+  appointmentAt: z.string().nullable().optional(),
   undo: undoWindowSchema.nullable(),
 });
 
@@ -99,6 +106,7 @@ function commandOutcomeFromRow(
       state,
       version,
       callAgainAt: row.callAgainAt,
+      appointmentAt: row.appointmentAt ?? null,
       undo: row.undo,
     };
   }
@@ -121,6 +129,7 @@ function requestSnapshotFromRow(row: Readonly<RequestCommandRow>): RequestSnapsh
     version,
     callAgainAt: row.follow_up_at,
     bookingConfirmedAt: row.record_handoff_at,
+    appointmentAt: row.appointment_at,
     closedAt: row.closed_at,
     closureReason,
     legacyReviewRequired: row.legacy_review_required,
@@ -138,6 +147,7 @@ function restoreSnapshotFromRow(
     state,
     callAgainAt: row.callAgainAt,
     bookingConfirmedAt: row.bookingConfirmedAt,
+    appointmentAt: row.appointmentAt ?? null,
     closedAt: row.closedAt,
     closureReason,
     legacyReviewRequired: row.legacyReviewRequired,
@@ -197,7 +207,7 @@ export async function executeRequestCommand(
   const { data: row, error } = await db
     .from("requests")
     .select(
-      "status,version,follow_up_at,record_handoff_at,closed_at,closure_reason,legacy_review_required",
+      "status,version,follow_up_at,record_handoff_at,appointment_at,closed_at,closure_reason,legacy_review_required",
     )
     .eq("id", input.requestId)
     .maybeSingle();
@@ -234,6 +244,7 @@ export async function executeRequestCommand(
     state: decision.next.state,
     callAgainAt: decision.next.callAgainAt,
     bookingConfirmedAt: decision.next.bookingConfirmedAt,
+    appointmentAt: decision.next.appointmentAt,
     closedAt: decision.next.closedAt,
     closureReason: decision.next.closureReason,
     legacyReviewRequired: decision.next.legacyReviewRequired,

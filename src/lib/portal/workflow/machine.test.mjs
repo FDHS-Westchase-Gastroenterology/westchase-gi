@@ -5,12 +5,14 @@ import { decide } from "./machine.ts";
 
 const now = new Date("2026-08-06T15:00:00.000Z");
 const callAgainAt = "2026-08-07T13:00:00.000Z";
+const appointmentAt = "2026-09-03T14:30:00.000Z";
 const snapshots = {
   new: {
     state: "new",
     version: 1,
     callAgainAt: null,
     bookingConfirmedAt: null,
+    appointmentAt: null,
     closedAt: null,
     closureReason: null,
     legacyReviewRequired: false,
@@ -20,6 +22,7 @@ const snapshots = {
     version: 1,
     callAgainAt: null,
     bookingConfirmedAt: null,
+    appointmentAt: null,
     closedAt: null,
     closureReason: null,
     legacyReviewRequired: false,
@@ -29,6 +32,7 @@ const snapshots = {
     version: 1,
     callAgainAt: null,
     bookingConfirmedAt: now.toISOString(),
+    appointmentAt,
     closedAt: null,
     closureReason: null,
     legacyReviewRequired: false,
@@ -38,6 +42,7 @@ const snapshots = {
     version: 1,
     callAgainAt: null,
     bookingConfirmedAt: null,
+    appointmentAt: null,
     closedAt: now.toISOString(),
     closureReason: "not_actionable",
     legacyReviewRequired: false,
@@ -47,6 +52,7 @@ const snapshots = {
     version: 1,
     callAgainAt: null,
     bookingConfirmedAt: null,
+    appointmentAt: null,
     closedAt: null,
     closureReason: null,
     legacyReviewRequired: true,
@@ -58,7 +64,7 @@ const commands = {
     outcome: "no_answer",
     callAgainAt,
   },
-  booking: { kind: "confirm_booking_handoff" },
+  booking: { kind: "confirm_booking_handoff", appointmentAt },
   closeNot: { kind: "close_request", reason: "not_actionable" },
   closeWont: { kind: "close_request", reason: "wont_schedule" },
   reopen: { kind: "reopen_request", callAgainAt },
@@ -136,8 +142,67 @@ test("every Contacted-producing command requires a concrete call-again time", ()
   }
 });
 
+test("a booking states when the appointment is, and only a booking may carry one", () => {
+  for (const invalid of [
+    null,
+    "",
+    "2026-09-03",
+    "2026-02-30T09:00:00.000Z",
+    " 2026-09-03T14:30:00.000Z",
+  ]) {
+    const malformed = decide(
+      snapshots.new,
+      { kind: "confirm_booking_handoff", appointmentAt: invalid },
+      now,
+    );
+    assert.equal(malformed.accepted, false, String(invalid));
+    assert.equal(malformed.code, "invalid_command", String(invalid));
+  }
+
+  const booked = decide(snapshots.contacted, commands.booking, now);
+  assert.equal(booked.accepted, true);
+  assert.equal(booked.accepted && booked.next.appointmentAt, appointmentAt);
+  assert.equal(booked.accepted && booked.next.callAgainAt, null);
+
+  // Closing clears it, so a closed request never carries a time nobody expects.
+  const closed = decide(snapshots.contacted, commands.closeWont, now);
+  assert.equal(closed.accepted && closed.next.appointmentAt, null);
+
+  // A legacy closure reclassified as booked has no recoverable time, and saying
+  // So is better than inventing one.
+  const classified = decide(snapshots.legacy, commands.classify, now);
+  assert.equal(classified.accepted, true);
+  assert.equal(classified.accepted && classified.next.appointmentAt, null);
+
+  // Undo refuses a restore that puts an appointment on a non-booked state.
+  for (const state of ["new", "contacted", "closed"]) {
+    const incoherent = decide(
+      snapshots.booked,
+      {
+        kind: "undo_latest_transition",
+        restore: { ...snapshots[state], version: undefined, appointmentAt },
+      },
+      now,
+    );
+    assert.equal(incoherent.accepted, false, state);
+    assert.equal(incoherent.code, "undo_unavailable", state);
+  }
+
+  // A pre-calendar booking has no appointmentAt key at all. Absent must read as
+  // Absent, not as a value, or every such request becomes un-undoable.
+  const legacySnapshot = { ...snapshots.booked, version: undefined };
+  delete legacySnapshot.appointmentAt;
+  const restoredLegacyBooking = decide(
+    { ...snapshots.contacted, version: 4, callAgainAt },
+    { kind: "undo_latest_transition", restore: legacySnapshot },
+    now,
+  );
+  assert.equal(restoredLegacyBooking.accepted, true);
+});
+
 test("reopen, legacy correction, terminal clearing, and undo preserve exact snapshots", () => {
   const reopened = decide(snapshots.booked, commands.reopen, now);
+  // Reopening voids the appointment: the patient is back in the calling queue.
   assert.deepEqual(reopened.accepted && reopened.next, {
     ...snapshots.contacted,
     version: 2,

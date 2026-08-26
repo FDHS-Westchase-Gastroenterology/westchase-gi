@@ -135,6 +135,29 @@ function isValidCustomCallAgainDay(value: string): boolean {
   return value >= practiceLocalDay(0) && value <= practiceLocalDay(90);
 }
 
+/* Appointments reach further out than a call-again: a procedure is routinely
+   booked months ahead. The server re-validates both bounds. */
+function isValidAppointmentDay(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value)
+    return false;
+  return value >= practiceLocalDay(0) && value <= practiceLocalDay(400);
+}
+
+function appointmentChoice(
+  day: string,
+  time: string,
+): { date: string; hour: number; minute: number } | undefined {
+  if (!isValidAppointmentDay(day)) return undefined;
+  const match = /^(\d{2}):(\d{2})$/.exec(time);
+  if (match === null) return undefined;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return undefined;
+  return { date: day, hour, minute };
+}
+
 // ---------------------------------------------------------------------------
 // Copy. Success names the staff-facing result (Scheduled, never Booked);
 // Failure names what is and is not known to have been saved (spec §16.5:
@@ -224,6 +247,9 @@ interface PanelState {
   readonly selected: ChoiceId | null;
   readonly followUpKind: FollowUpKind | null;
   readonly followUpDay: string;
+  /** The appointment a booking is recording: practice-local day and wall time. */
+  readonly appointmentDay: string;
+  readonly appointmentTime: string;
   /** Legacy review: has staff said whether an appointment was booked? */
   readonly reviewResolution: "booked" | ClosureReason | null;
   readonly feedback: Feedback | null;
@@ -233,6 +259,8 @@ type PanelAction =
   | { readonly type: "select"; readonly id: ChoiceId }
   | { readonly type: "select_follow_up"; readonly kind: FollowUpKind }
   | { readonly type: "set_day"; readonly day: string }
+  | { readonly type: "set_appointment_day"; readonly day: string }
+  | { readonly type: "set_appointment_time"; readonly time: string }
   | { readonly type: "select_review"; readonly resolution: "booked" | ClosureReason }
   | { readonly type: "succeeded"; readonly text: string; readonly closedOrBooked: boolean }
   | { readonly type: "failed"; readonly text: string };
@@ -241,6 +269,8 @@ const INITIAL_PANEL: PanelState = {
   selected: null,
   followUpKind: null,
   followUpDay: "",
+  appointmentDay: "",
+  appointmentTime: "",
   reviewResolution: null,
   feedback: null,
 };
@@ -266,6 +296,10 @@ function panelReducer(state: Readonly<PanelState>, action: Readonly<PanelAction>
       return { ...state, followUpKind: action.kind, feedback: null };
     case "set_day":
       return { ...state, followUpDay: action.day, feedback: null };
+    case "set_appointment_day":
+      return { ...state, appointmentDay: action.day, feedback: null };
+    case "set_appointment_time":
+      return { ...state, appointmentTime: action.time, feedback: null };
     case "select_review":
       return {
         ...state,
@@ -635,6 +669,36 @@ function PanelFeedback({
 // The panel
 // ---------------------------------------------------------------------------
 
+/* The undo window closing is a fact of time, not of data: a slow tick retires
+   the affordance while the page sits open. Null until the first tick, so the
+   first render trusts the eligibility the server already filtered. */
+function useMinuteClock(): number | null {
+  const [nowMs, setNowMs] = useState<number | null>(null);
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNowMs(Date.now());
+    }, 30_000);
+    return () => {
+      clearInterval(timer);
+    };
+  }, []);
+  return nowMs;
+}
+
+function choiceRowsFor(
+  legal: Readonly<{
+    recordContactAttempt: boolean;
+    confirmBookingHandoff: boolean;
+    closeReasons: readonly ClosureReason[];
+  }>,
+): ChoiceRow[] {
+  return [
+    ...(legal.recordContactAttempt ? ATTEMPT_ROWS : []),
+    ...(legal.confirmBookingHandoff ? [BOOKED_ROW] : []),
+    ...legal.closeReasons.map((reason) => CLOSE_ROWS[reason]),
+  ];
+}
+
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 export function WorkflowPanel({
   requestId,
@@ -689,18 +753,7 @@ export function WorkflowPanel({
     setTruth({ state, version, legacyReviewRequired, callAgainAt, undo });
   }
 
-  // The undo window closing is a fact of time, not of data: a slow tick
-  // Retires the affordance while the page sits open. The server filtered
-  // Eligibility at read time, so the first render can trust the prop.
-  const [nowMs, setNowMs] = useState<number | null>(null);
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setNowMs(Date.now());
-    }, 30_000);
-    return () => {
-      clearInterval(timer);
-    };
-  }, []);
+  const nowMs = useMinuteClock();
 
   useEffect(() => {
     if (panel.feedback === null) dismissPageFeedback("request-workflow");
@@ -711,11 +764,7 @@ export function WorkflowPanel({
     callAgainAt: truth.callAgainAt,
   });
 
-  const rows: ChoiceRow[] = [
-    ...(legal.recordContactAttempt ? ATTEMPT_ROWS : []),
-    ...(legal.confirmBookingHandoff ? [BOOKED_ROW] : []),
-    ...legal.closeReasons.map((reason) => CLOSE_ROWS[reason]),
-  ];
+  const rows = choiceRowsFor(legal);
 
   const selectedRow = rows.find((row) => choiceId(row.choice) === panel.selected) ?? null;
   const selectedAttempt =
@@ -837,12 +886,19 @@ export function WorkflowPanel({
       });
       return;
     }
+    if (choice.kind === "booked") {
+      const appointment = appointmentChoice(panel.appointmentDay, panel.appointmentTime);
+      if (appointment === undefined) return;
+      setInFlight("save");
+      startTransition(async () => {
+        const result = await confirmBookingHandoff({ ...common, appointment });
+        applyOutcome(result, choice);
+      });
+      return;
+    }
     setInFlight("save");
     startTransition(async () => {
-      const result =
-        choice.kind === "booked"
-          ? await confirmBookingHandoff(common)
-          : await closeRequest({ ...common, reason: choice.reason });
+      const result = await closeRequest({ ...common, reason: choice.reason });
       applyOutcome(result, choice);
     });
   }
@@ -911,7 +967,9 @@ export function WorkflowPanel({
     pending ||
     !selectedRow ||
     (selectedAttempt !== null &&
-      followUpChoice(panel.followUpKind, panel.followUpDay) === undefined);
+      followUpChoice(panel.followUpKind, panel.followUpDay) === undefined) ||
+    (selectedRow.choice.kind === "booked" &&
+      appointmentChoice(panel.appointmentDay, panel.appointmentTime) === undefined);
 
   return (
     <WorkflowPanelBody
@@ -941,6 +999,86 @@ export function WorkflowPanel({
 // The dependent call-again plan rides directly beneath the selected continuing-work row.
 // ---------------------------------------------------------------------------
 
+/* The portal owns the appointment calendar, so recording a booking means saying
+   when. Two native inputs rather than one datetime-local: staff reach for a day
+   first and a time second, and the two fields keep their own labels and errors. */
+function AppointmentFieldset({
+  className,
+  day,
+  time,
+  pending,
+  onDayChange,
+  onTimeChange,
+}: Readonly<{
+  className: string;
+  day: string;
+  time: string;
+  pending: boolean;
+  onDayChange: (day: string) => void;
+  onTimeChange: (time: string) => void;
+}>) {
+  const dayId = "appointment-day";
+  const timeId = "appointment-time";
+  const hintId = "appointment-hint";
+  const dayInvalid = day !== "" && !isValidAppointmentDay(day);
+  const fieldClass =
+    "mt-1.5 block min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.9rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)] focus:ring-2 focus:ring-[var(--color-teal-ink)] disabled:opacity-60 aria-[invalid=true]:border-[oklch(0.5_0.19_25)] aria-[invalid=true]:bg-[color-mix(in_oklch,oklch(0.97_0.018_25)_70%,white)]";
+
+  return (
+    <fieldset className={className} disabled={pending} aria-describedby={hintId}>
+      <legend className="text-sm font-bold text-[var(--color-ink)]">
+        When is the appointment?
+      </legend>
+      <p id={hintId} className="mt-1 text-sm leading-relaxed text-[var(--color-muted)]">
+        Required before Save. This is what the practice reads to see who is coming in.
+      </p>
+      <div className="mt-3 flex max-w-md flex-wrap gap-3">
+        <div className="min-w-[10rem] flex-1">
+          <label htmlFor={dayId} className="block text-sm font-bold text-[var(--color-ink)]">
+            Day <span aria-hidden="true">*</span>
+            <span className="sr-only"> (required)</span>
+          </label>
+          <input
+            id={dayId}
+            type="date"
+            required
+            aria-required="true"
+            aria-invalid={dayInvalid || undefined}
+            data-testid="appointment-day"
+            value={day}
+            min={practiceLocalDay(0)}
+            max={practiceLocalDay(400)}
+            disabled={pending}
+            onChange={(event) => {
+              onDayChange(event.target.value);
+            }}
+            className={fieldClass}
+          />
+        </div>
+        <div className="min-w-[8rem] flex-1">
+          <label htmlFor={timeId} className="block text-sm font-bold text-[var(--color-ink)]">
+            Time <span aria-hidden="true">*</span>
+            <span className="sr-only"> (required)</span>
+          </label>
+          <input
+            id={timeId}
+            type="time"
+            required
+            aria-required="true"
+            data-testid="appointment-time"
+            value={time}
+            disabled={pending}
+            onChange={(event) => {
+              onTimeChange(event.target.value);
+            }}
+            className={fieldClass}
+          />
+        </div>
+      </div>
+    </fieldset>
+  );
+}
+
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function OutcomeChoiceList({
   rows,
@@ -948,18 +1086,26 @@ function OutcomeChoiceList({
   selected,
   followUpKind,
   followUpDay,
+  appointmentDay,
+  appointmentTime,
   onSelect,
   onSelectFollowUp,
   onDayChange,
+  onAppointmentDayChange,
+  onAppointmentTimeChange,
 }: Readonly<{
   rows: ChoiceRow[];
   pending: boolean;
   selected: ChoiceId | null;
   followUpKind: FollowUpKind | null;
   followUpDay: string;
+  appointmentDay: string;
+  appointmentTime: string;
   onSelect: (id: ChoiceId) => void;
   onSelectFollowUp: (kind: FollowUpKind) => void;
   onDayChange: (day: string) => void;
+  onAppointmentDayChange: (day: string) => void;
+  onAppointmentTimeChange: (time: string) => void;
 }>) {
   const segments: { id: string; caption: string; rows: ChoiceRow[] }[] = [];
   const attemptRows = rows.filter((row) => row.choice.kind === "attempt");
@@ -1015,6 +1161,22 @@ function OutcomeChoiceList({
                 pending={pending}
                 onKindChange={onSelectFollowUp}
                 onDayChange={onDayChange}
+              />
+            </div>
+          </div>,
+        );
+      }
+      if (row.choice.kind === "booked" && selected === id) {
+        choiceItems.push(
+          <div key="appointment-plan" className="portal-choice-reveal">
+            <div>
+              <AppointmentFieldset
+                className="portal-choice-plan"
+                day={appointmentDay}
+                time={appointmentTime}
+                pending={pending}
+                onDayChange={onAppointmentDayChange}
+                onTimeChange={onAppointmentTimeChange}
               />
             </div>
           </div>,
@@ -1207,6 +1369,8 @@ function WorkflowPanelBody({
             selected={panel.selected}
             followUpKind={panel.followUpKind}
             followUpDay={panel.followUpDay}
+            appointmentDay={panel.appointmentDay}
+            appointmentTime={panel.appointmentTime}
             onSelect={(id) => {
               dispatch({ type: "select", id });
             }}
@@ -1215,6 +1379,12 @@ function WorkflowPanelBody({
             }}
             onDayChange={(day) => {
               dispatch({ type: "set_day", day });
+            }}
+            onAppointmentDayChange={(day) => {
+              dispatch({ type: "set_appointment_day", day });
+            }}
+            onAppointmentTimeChange={(time) => {
+              dispatch({ type: "set_appointment_time", time });
             }}
           />
 
