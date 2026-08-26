@@ -103,6 +103,7 @@ function lineFor(row: Readonly<AttentiveQueueRow>, now: Date): SheetLine {
     id: row.id,
     name: row.name,
     phone: row.phone,
+    version: row.version,
     preference: preferenceOf(row),
   };
 

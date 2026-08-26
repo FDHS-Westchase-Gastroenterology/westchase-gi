@@ -6,6 +6,12 @@ import { useEffect, useReducer, useRef, useState, useTransition } from "react";
 import type { ReactNode } from "react";
 
 import { usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
+import {
+  appointmentChoice,
+  isValidAppointmentDay,
+  isValidCustomCallAgainDay,
+  practiceLocalDay,
+} from "@/app/admin/(portal)/requests/appointment-input";
 import { followUpWhenLabel, STATE_LABELS } from "@/app/admin/(portal)/requests/format";
 import {
   classifyLegacyClosure,
@@ -107,56 +113,12 @@ const FOLLOW_UP_KINDS: { kind: FollowUpKind; label: string }[] = [
   { kind: "day", label: "Pick a day…" },
 ];
 
-const NY_DAY_INPUT = new Intl.DateTimeFormat("en-CA", {
-  dateStyle: "short",
-  timeZone: "America/New_York",
-});
-
 const NY_CLOCK = new Intl.DateTimeFormat("en-US", {
   hour: "numeric",
   minute: "2-digit",
   hour12: true,
   timeZone: "America/New_York",
 });
-
-// Practice-local "today" for the date input's min/max bounds. The server
-// Re-validates the resolved day; these bounds only guide the picker.
-function practiceLocalDay(offsetDays: number): string {
-  const todayEt = NY_DAY_INPUT.format(new Date());
-  const shifted = new Date(Date.parse(`${todayEt}T00:00:00Z`) + offsetDays * 86_400_000);
-  return shifted.toISOString().slice(0, 10);
-}
-
-function isValidCustomCallAgainDay(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value)
-    return false;
-  return value >= practiceLocalDay(0) && value <= practiceLocalDay(90);
-}
-
-/* Appointments reach further out than a call-again: a procedure is routinely
-   booked months ahead. The server re-validates both bounds. */
-function isValidAppointmentDay(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const parsed = new Date(`${value}T00:00:00.000Z`);
-  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== value)
-    return false;
-  return value >= practiceLocalDay(0) && value <= practiceLocalDay(400);
-}
-
-function appointmentChoice(
-  day: string,
-  time: string,
-): { date: string; hour: number; minute: number } | undefined {
-  if (!isValidAppointmentDay(day)) return undefined;
-  const match = /^(\d{2}):(\d{2})$/.exec(time);
-  if (match === null) return undefined;
-  const hour = Number(match[1]);
-  const minute = Number(match[2]);
-  if (hour > 23 || minute > 59) return undefined;
-  return { date: day, hour, minute };
-}
 
 // ---------------------------------------------------------------------------
 // Copy. Success names the staff-facing result (Scheduled, never Booked);

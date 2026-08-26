@@ -5,6 +5,7 @@ import { ChevronRight, Phone } from "@/components/icons";
 import { STAFF_REQUEST_SOURCE_PATH } from "@/lib/portal/contracts";
 import type { RequestStatus } from "@/lib/portal/contracts";
 
+import { LineOutcome } from "./line-outcome";
 import { PortalFeedbackMessage, PortalFeedbackProvider } from "./portal-feedback";
 import { formatPhoneForDisplay, telHref } from "./requests/format";
 import { PrintChooser } from "./requests/print-chooser";
@@ -32,6 +33,8 @@ export interface SheetLine {
   id: string;
   name: string;
   phone: string;
+  /** Optimistic-concurrency token, so the outcome can be recorded on the line. */
+  version: number;
   /** "Tampa · Morning" — the patient's stated preference. */
   preference: string;
   /** The line's timing fact: waiting since, due, or silent since. */
@@ -100,6 +103,7 @@ function SheetLineRow({ line }: Readonly<{ line: Readonly<SheetLine> }>) {
         {line.stamp === null ? null : <span className="portal-stamp">{line.stamp}</span>}
         <span>{line.timing}</span>
       </span>
+      <LineOutcome requestId={line.id} name={line.name} version={line.version} />
     </li>
   );
 }
