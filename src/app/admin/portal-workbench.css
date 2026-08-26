@@ -2096,6 +2096,18 @@
     color: var(--color-teal-ink);
   }
 
+  /* A form needs more room than a confirmation, and a tall day needs the sheet
+     to scroll inside the dialog rather than push the page. */
+  .portal-add-appointment {
+    width: min(94vw, 40rem);
+    max-height: min(90vh, 46rem);
+    overflow-y: auto;
+  }
+
+  .portal-add-appointment .portal-request-form-sheet {
+    margin-block-start: var(--ps-3);
+  }
+
   .portal-print-chooser {
     width: min(92vw, 26rem);
   }

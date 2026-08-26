@@ -2,9 +2,9 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { ChevronRight, Phone } from "@/components/icons";
-import { STAFF_REQUEST_SOURCE_PATH } from "@/lib/portal/contracts";
 import type { RequestStatus } from "@/lib/portal/contracts";
 
+import { AddAppointmentDialog } from "./add-appointment-dialog";
 import { LineOutcome } from "./line-outcome";
 import { PortalFeedbackMessage, PortalFeedbackProvider } from "./portal-feedback";
 import { formatPhoneForDisplay, telHref } from "./requests/format";
@@ -160,10 +160,13 @@ export function HomeWorkbench({
   noActiveRecipients,
   deliveryFailureCount,
   announcements,
+  addRequestKey,
 }: Readonly<{
   greeting: string;
   date: string;
   afterHours: boolean;
+  /** Server-generated, so adding from the line cannot duplicate a request. */
+  addRequestKey: string;
   /** Null when the sheet read failed — never an empty day. */
   groups: SheetGroup[] | null;
   tail: SheetTailItem[];
@@ -200,13 +203,10 @@ export function HomeWorkbench({
             triggerClassName="btn btn-navy portal-sheet-print"
             triggerLabel="Print appointments"
           />
-          <Link
-            href={STAFF_REQUEST_SOURCE_PATH}
-            data-testid="home-add-patient-request"
-            className="btn btn-outline portal-sheet-add"
-          >
-            Add appointment
-          </Link>
+          <AddAppointmentDialog
+            idempotencyKey={addRequestKey}
+            triggerClassName="btn btn-outline portal-sheet-add"
+          />
         </div>
       </header>
 

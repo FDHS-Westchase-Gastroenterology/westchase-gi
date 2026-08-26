@@ -451,14 +451,32 @@ export function StaffRequestForm({
   permalink,
   returnHref,
   returnLabel,
+  onCreated,
+  onDismiss,
 }: Readonly<{
   idempotencyKey: string;
   permalink: string;
   returnHref: string;
   returnLabel: string;
+  /** Present when a dialog hosts the form: the caller stays put and is told the name. */
+  onCreated?: (name: string) => void;
+  /** Present when a dialog hosts the form: cancelling closes it instead of navigating. */
+  onDismiss?: () => void;
 }>) {
   const router = useRouter();
-  const [state, formAction, pending] = useActionState(createStaffRequest, INITIAL_STATE, permalink);
+  const hosted = onCreated !== undefined && onDismiss !== undefined;
+  /* A hosted form tells its dialog about the new request from inside the
+     action, not from an effect watching the result: the host learns at the
+     moment the fact exists rather than a render later. The unhosted route keeps
+     the bare server action so the form still posts without JavaScript. */
+  const action = hosted
+    ? async (previous: Readonly<CreateStaffRequestActionState>, formData: FormData) => {
+        const next = await createStaffRequest(previous, formData);
+        if (next.status === "created") onCreated(next.name);
+        return next;
+      }
+    : createStaffRequest;
+  const [state, formAction, pending] = useActionState(action, INITIAL_STATE, permalink);
   const [draft, setDraft] = useState<StaffRequestDraft>(() =>
     state.status === "error" ? state.values : EMPTY_DRAFT,
   );
@@ -515,7 +533,13 @@ export function StaffRequestForm({
       event.preventDefault();
       return;
     }
-    if (!isStaffRequestDraftDirty(draft)) return;
+    if (!isStaffRequestDraftDirty(draft)) {
+      if (hosted) {
+        event.preventDefault();
+        onDismiss();
+      }
+      return;
+    }
     event.preventDefault();
     openDiscardDialog();
   }
@@ -529,6 +553,10 @@ export function StaffRequestForm({
     discardIntentRef.current = true;
     setDraft(EMPTY_DRAFT);
     dialogRef.current?.close();
+    if (hosted) {
+      onDismiss();
+      return;
+    }
     router.push(returnHref);
   }
 
@@ -549,6 +577,7 @@ export function StaffRequestForm({
         className="portal-request-form-sheet"
       >
         <input type="hidden" name="idempotencyKey" value={retryKey} />
+        {hosted ? <input type="hidden" name="stayHere" value="1" /> : null}
         {unavailable ? (
           <>
             <input type="hidden" name="location" value={draft.location} />
