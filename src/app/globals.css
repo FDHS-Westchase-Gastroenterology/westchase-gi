@@ -1219,6 +1219,27 @@
     --portal-canvas: oklch(0.955 0.01 230);
     --portal-surface: oklch(0.995 0.002 220);
     --portal-attention-ink: oklch(0.5 0.11 70);
+
+    /* The Day Sheet type scale: fixed rem steps, a 1.2 ratio on a 15px body
+       floor. Hierarchy comes from size and space; three weights (400/600/800)
+       carry the rest. Never fluid — a clamp()ed heading in product UI is what
+       let a count sentence outrank the page title. */
+    --pt-2xs: 0.6875rem;
+    --pt-xs: 0.8125rem;
+    --pt-sm: 0.9375rem;
+    --pt-base: 1.0625rem;
+    --pt-lg: 1.25rem;
+    --pt-xl: 1.75rem;
+
+    /* Space, not color, performs grouping. 4px base. */
+    --ps-1: 0.25rem;
+    --ps-2: 0.5rem;
+    --ps-3: 0.75rem;
+    --ps-4: 1rem;
+    --ps-6: 1.5rem;
+    --ps-8: 2rem;
+    --ps-12: 3rem;
+
     background: var(--portal-canvas);
     font-size: 1rem;
     line-height: 1.55;

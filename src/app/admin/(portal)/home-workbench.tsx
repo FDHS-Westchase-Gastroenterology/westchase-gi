@@ -1,48 +1,134 @@
 import Link from "next/link";
-import type { ReactNode, SVGProps } from "react";
+import type { ReactNode } from "react";
 
-import { ChevronRight, Clock, FileText, Globe, Mail, Printer, Users } from "@/components/icons";
-import { arrivedOutsideOfficeHours } from "@/lib/portal/business-time";
+import { ChevronRight } from "@/components/icons";
 import { STAFF_REQUEST_SOURCE_PATH } from "@/lib/portal/contracts";
 import type { RequestStatus } from "@/lib/portal/contracts";
-import { NEW_REQUESTS_HREF, OPEN_NEW_REQUESTS_LABEL } from "@/lib/portal/staff-language";
 
 import { PortalFeedbackMessage, PortalFeedbackProvider } from "./portal-feedback";
-import { formatReceived } from "./requests/format";
 import { PrintChooser } from "./requests/print-chooser";
 
-interface HomeTask {
-  href: string;
-  label: string;
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-  icon: (props: Readonly<SVGProps<SVGSVGElement>>) => ReactNode;
-}
+/* THESIS: Home is the practice's day sheet, not a dashboard about one. It
+   refuses the greeting-plus-metric-cards page this category always ships:
+   counts demote to column headers, patient lines become the figure.
 
-// Occasional destinations, kept as quiet single-line rows. Each label is
-// Complete on its own; the aside description carries the shared context.
-const DESK_TOOLS: HomeTask[] = [
-  { href: "/admin/review-flyers", label: "Print review flyers", icon: Printer },
-  { href: "/admin/settings#notifications", label: "Notification recipients", icon: Mail },
-  { href: "/admin/settings#staff", label: "Staff access", icon: Users },
-  { href: "/admin/settings/software", label: "Website status", icon: Globe },
-  { href: "/admin/help#website-changes", label: "Request a website change", icon: FileText },
-];
+   OWN-WORLD: White paper, navy printed ink, hairline rules, tracked small
+   caps. One sans, three weights. Amber only as a stamp on a line, teal only
+   as the tracked line, mint the only large tint. No card washes, no icon rail.
 
-interface NewRequestPreview {
+   STORY: Staff read the date, see who must be called today in priority
+   order, and either open the first line or print the sheet.
+
+   FIRST VIEWPORT: the day at 28px with the greeting as small print above it,
+   Print day sheet in navy opposite, a rule, then Call first / Call again
+   today / No call-again day set as ruled lines of name, phone, and timing.
+
+   FORM: the clinic's own daily call sheet — the artifact staff already hold,
+   and what the print mode already outputs, so screen and paper are one
+   thing. */
+
+export interface SheetLine {
   id: string;
   name: string;
-  created_at: string;
+  phone: string;
+  /** "Tampa · Morning" — the patient's stated preference. */
+  preference: string;
+  /** The line's timing fact: waiting since, due, or silent since. */
+  timing: string;
+  /** The only amber on a row: the exception within its group, or null. */
+  stamp: string | null;
 }
 
-interface AttentionPath {
+export interface SheetGroup {
+  key: "new" | "follow_up" | "stale";
+  heading: string;
+  caption: string;
+  /** Where the whole group is read. */
+  href: string;
+  /** The group's true size, always shown beside its heading. */
+  count: number;
+  /** The lines that stand open. */
+  lines: SheetLine[];
+  /** Lines that expand in place beneath them. Never a clipped scroll box. */
+  moreLines: SheetLine[];
+  /** Rows past the render ceiling, read in Appointments instead. */
+  overflow: number;
+}
+
+export interface SheetTailItem {
   key: string;
   href: string;
   label: string;
 }
 
-function waitingHeadline(count: number): string {
-  if (count === 0) return "No new appointment requests are waiting.";
-  return `${count} new appointment ${count === 1 ? "request is" : "requests are"} waiting.`;
+const ELSEWHERE = [
+  { href: "/admin/review-flyers", label: "Review flyers" },
+  { href: "/admin/settings#notifications", label: "Notification recipients" },
+  { href: "/admin/settings#staff", label: "Staff access" },
+  { href: "/admin/settings/software", label: "Website status" },
+  { href: "/admin/help#website-changes", label: "Request a website change" },
+];
+
+function SheetLineRow({ line }: Readonly<{ line: Readonly<SheetLine> }>) {
+  return (
+    <li>
+      <Link href={`/admin/requests/${line.id}`} className="portal-sheet-line">
+        <span className="portal-sheet-who">
+          <strong data-ui-redact="patient-name">{line.name}</strong>
+          <small>{line.preference}</small>
+        </span>
+        <span className="portal-sheet-phone" data-ui-redact="patient-contact">
+          {line.phone}
+        </span>
+        <span className="portal-sheet-when">
+          {line.stamp === null ? null : <span className="portal-stamp">{line.stamp}</span>}
+          <span>{line.timing}</span>
+        </span>
+        <ChevronRight className="portal-sheet-disclosure h-4 w-4" />
+      </Link>
+    </li>
+  );
+}
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function SheetGroupSection({ group }: Readonly<{ group: SheetGroup }>) {
+  const headingId = `sheet-group-${group.key}`;
+  return (
+    <section aria-labelledby={headingId} data-group={group.key} className="portal-sheet-group">
+      <header>
+        <h2 id={headingId}>{group.heading}</h2>
+        <span data-testid={`sheet-count-${group.key}`} className="portal-sheet-count">
+          {group.count}
+        </span>
+      </header>
+      <p className="portal-sheet-caption">{group.caption}</p>
+      <ul data-testid={`sheet-lines-${group.key}`} className="portal-sheet-lines">
+        {group.lines.map((line) => (
+          <SheetLineRow key={line.id} line={line} />
+        ))}
+      </ul>
+      {group.moreLines.length > 0 ? (
+        <details data-testid={`sheet-more-${group.key}`} className="portal-sheet-more">
+          <summary>
+            <span className="portal-sheet-more-show">Show all {group.count}</span>
+            <span className="portal-sheet-more-hide">Show only the first {group.lines.length}</span>
+          </summary>
+          <ul className="portal-sheet-lines portal-sheet-lines--more">
+            {group.moreLines.map((line) => (
+              <SheetLineRow key={line.id} line={line} />
+            ))}
+          </ul>
+          {group.overflow > 0 ? (
+            <Link href={group.href} className="portal-sheet-overflow">
+              {group.overflow === 1
+                ? "1 more in Appointments"
+                : `${group.overflow} more in Appointments`}
+            </Link>
+          ) : null}
+        </details>
+      ) : null}
+    </section>
+  );
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
@@ -50,12 +136,9 @@ export function HomeWorkbench({
   greeting,
   date,
   afterHours,
-  newCount,
-  oldestWaiting,
-  newest,
+  groups,
+  tail,
   statusCounts,
-  attention,
-  attentionUnavailable,
   noActiveRecipients,
   deliveryFailureCount,
   announcements,
@@ -63,205 +146,125 @@ export function HomeWorkbench({
   greeting: string;
   date: string;
   afterHours: boolean;
-  newCount: number | null;
-  oldestWaiting: string | null;
-  newest: NewRequestPreview[];
+  /** Null when the sheet read failed — never an empty day. */
+  groups: SheetGroup[] | null;
+  tail: SheetTailItem[];
   statusCounts: Readonly<Partial<Record<RequestStatus, number | null>>>;
-  attention: AttentionPath[];
-  attentionUnavailable: boolean;
   noActiveRecipients: boolean;
   deliveryFailureCount: number | null;
   announcements?: ReactNode;
 }>) {
-  const newViewHref = NEW_REQUESTS_HREF;
+  const working = groups === null ? [] : groups.filter((group) => group.count > 0);
 
   const content = (
-    <section aria-labelledby="home-heading">
-      <header className="portal-home-masthead">
-        <h1 id="home-heading" data-testid="home-greeting" tabIndex={-1}>
-          {greeting}
-        </h1>
-        <p className="portal-home-day">
-          <span>{date}</span>
+    <section aria-labelledby="home-heading" className="portal-sheet">
+      <header className="portal-sheet-head">
+        <div>
+          <h1
+            id="home-heading"
+            data-testid="home-greeting"
+            tabIndex={-1}
+            className="portal-sheet-title"
+          >
+            <span className="portal-sheet-greeting">{greeting}</span>{" "}
+            <span className="portal-sheet-day">{date}</span>
+          </h1>
           {afterHours ? (
-            <span data-testid="after-hours" className="portal-after-hours">
-              <Clock className="h-3.5 w-3.5" />
-              After hours
-            </span>
+            <p data-testid="after-hours" className="portal-sheet-hours">
+              <span className="portal-stamp">After hours</span>
+              The office is closed. Requests still arrive.
+            </p>
           ) : null}
-        </p>
+        </div>
+        <div className="portal-sheet-commands print-hide">
+          <PrintChooser
+            statusCounts={statusCounts}
+            triggerClassName="btn btn-navy portal-sheet-print"
+            triggerLabel="Print day sheet"
+          />
+          <Link
+            href={STAFF_REQUEST_SOURCE_PATH}
+            data-testid="home-add-patient-request"
+            className="btn btn-outline portal-sheet-add"
+          >
+            Add appointment
+          </Link>
+        </div>
       </header>
 
       {announcements}
 
       <PortalFeedbackMessage source="requests-output" testId="home-output-feedback" />
 
-      <div className="portal-home-layout">
-        <section
-          aria-labelledby="queue-overview-heading"
-          data-testid="queue-overview"
-          className="portal-work-stack"
-        >
-          <header className="portal-work-stack-header">
-            <div>
-              <h2 id="queue-overview-heading">Appointment requests</h2>
-              <p>New requests wait here.</p>
-            </div>
-            <div className="portal-work-stack-commands print-hide">
-              <Link
-                href={STAFF_REQUEST_SOURCE_PATH}
-                data-testid="home-add-patient-request"
-                className="btn btn-outline portal-work-stack-add"
-              >
-                Add Appointment
-              </Link>
-            </div>
-          </header>
+      {groups === null ? (
+        <div data-testid="queue-overview-unavailable" className="portal-sheet-notice">
+          <h2>The day sheet could not load.</h2>
+          <p>
+            This is not an empty day. Open Appointments to read the live queue, then print from a
+            current view.
+          </p>
+          <Link href="/admin/requests" className="btn btn-navy portal-sheet-notice-action">
+            Open Appointments
+          </Link>
+        </div>
+      ) : working.length === 0 ? (
+        <div data-testid="sheet-empty" className="portal-sheet-notice portal-sheet-notice--clear">
+          <h2>No calls waiting.</h2>
+          <p>
+            A website request lands here the moment a patient submits the form, and a contacted
+            request comes back on the day staff set for it. Nothing needs a call right now.
+          </p>
+          <Link href="/admin/requests" className="btn btn-outline portal-sheet-notice-action">
+            Open Appointments
+          </Link>
+        </div>
+      ) : (
+        working.map((group) => <SheetGroupSection key={group.key} group={group} />)
+      )}
 
-          {newCount === null ? (
-            <div
-              data-testid="queue-overview-unavailable"
-              className="portal-new-work portal-new-work--unavailable"
-            >
-              <div>
-                <p className="portal-new-work-label">New requests</p>
-                <h3 data-testid="queue-overview-headline">
-                  The request count is unavailable right now.
-                </h3>
-                <p>
-                  This is not an empty queue. Open Appointments to see the live list, then retry
-                  printing from a current New view.
-                </p>
-              </div>
-              <div className="portal-new-work-actions">
-                <PrintChooser
-                  statusCounts={statusCounts}
-                  triggerClassName="btn btn-outline min-h-11"
-                />
-                <Link href={newViewHref} className="btn btn-navy min-h-11">
-                  Open Appointments
-                </Link>
-              </div>
-            </div>
-          ) : (
-            <div className="portal-new-work" data-state={newCount > 0 ? "waiting" : "clear"}>
-              <div>
-                <p className="portal-new-work-label">New · not yet contacted</p>
-                <h3 data-testid="queue-overview-headline">{waitingHeadline(newCount)}</h3>
-                {oldestWaiting !== null && oldestWaiting !== "" ? (
-                  <p data-testid="queue-overview-oldest">
-                    {newCount === 1 ? "Waiting since " : "Oldest waiting since "}
-                    <strong>{oldestWaiting}</strong>.
-                  </p>
-                ) : (
-                  <p>New website requests will appear here as soon as they arrive.</p>
-                )}
-              </div>
-              <div className="portal-new-work-actions">
-                <PrintChooser
-                  statusCounts={statusCounts}
-                  triggerClassName="btn btn-outline min-h-11"
-                />
-                {newCount === 0 ? (
-                  <Link
-                    href={NEW_REQUESTS_HREF}
-                    data-testid="start-oldest-empty"
-                    className="btn btn-navy min-h-11"
-                  >
-                    {OPEN_NEW_REQUESTS_LABEL}
-                  </Link>
-                ) : null}
-              </div>
-            </div>
-          )}
-
-          {newest.length > 0 && newCount !== null ? (
-            <div className="portal-arrivals">
-              <h3>New Appointments</h3>
-              <ul
-                data-testid="queue-overview-preview"
-                data-scroll={newest.length > 3 ? "true" : "false"}
-              >
-                {newest.map((request) => (
-                  <li key={request.id}>
-                    <Link href={`/admin/requests/${request.id}`}>
-                      <span data-ui-redact="patient-name">{request.name}</span>
-                      <small>
-                        {formatReceived(request.created_at)}
-                        {arrivedOutsideOfficeHours(request.created_at) ? " · after hours" : ""}
-                      </small>
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          {attention.length > 0 || attentionUnavailable ? (
-            <div className="portal-attention-next">
-              <h3>Continue next</h3>
-              {attention.length > 0 ? (
-                <ul data-testid="attention-summary">
-                  {attention.map((item) => (
-                    <li key={item.key}>
-                      <Link href={item.href}>
-                        <span aria-hidden="true" />
-                        <strong>{item.label}</strong>
-                        <ChevronRight className="h-4 w-4" />
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              {attentionUnavailable ? (
-                <p data-testid="attention-summary-unavailable">
-                  Some follow-up counts could not load. Open Appointments to review the complete
-                  queue.
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-
-          {noActiveRecipients ? (
-            <p data-testid="no-recipients-warning" className="portal-operational-warning">
-              <strong>Notification emails are paused.</strong> Requests still land here, but no
-              email goes out when one arrives.{" "}
-              <Link href="/admin/settings#notifications">Manage recipients</Link>
-            </p>
-          ) : null}
-
-          {deliveryFailureCount !== null && deliveryFailureCount !== 0 ? (
-            <p data-testid="delivery-failure-warning" className="portal-operational-warning">
-              <strong>
-                {deliveryFailureCount === 1
-                  ? "A notification email had trouble sending in the last 24 hours."
-                  : `${deliveryFailureCount} notification emails had trouble sending in the last 24 hours.`}
-              </strong>{" "}
-              The queue remains the system of record.{" "}
-              <Link href="/admin/help#something-wrong">See what to check</Link>
-            </p>
-          ) : null}
-        </section>
-
-        <aside aria-labelledby="desk-tools-heading" className="portal-desk-tools">
-          <div>
-            <h2 id="desk-tools-heading">Desk tools</h2>
-            <p>Occasional work, kept out of the appointment-request path.</p>
-          </div>
+      {tail.length > 0 ? (
+        <details className="portal-sheet-tail">
+          <summary>Not today</summary>
           <ul>
-            {DESK_TOOLS.map((task) => (
-              <li key={task.href}>
-                <Link href={task.href}>
-                  <task.icon className="h-4 w-4" />
-                  <strong>{task.label}</strong>
-                  <ChevronRight className="h-3.5 w-3.5" />
+            {tail.map((item) => (
+              <li key={item.key}>
+                <Link href={item.href}>
+                  {item.label}
+                  <ChevronRight className="h-4 w-4" />
                 </Link>
               </li>
             ))}
           </ul>
-        </aside>
-      </div>
+        </details>
+      ) : null}
+
+      {noActiveRecipients ? (
+        <p data-testid="no-recipients-warning" className="portal-sheet-alert">
+          <strong>Notification emails are paused.</strong> Requests still land here, but no email
+          goes out when one arrives.{" "}
+          <Link href="/admin/settings#notifications">Manage recipients</Link>
+        </p>
+      ) : null}
+
+      {deliveryFailureCount !== null ? (
+        <p data-testid="delivery-failure-warning" className="portal-sheet-alert">
+          <strong>
+            {deliveryFailureCount === 1
+              ? "A notification email had trouble sending in the last 24 hours."
+              : `${deliveryFailureCount} notification emails had trouble sending in the last 24 hours.`}
+          </strong>{" "}
+          The queue remains the system of record.{" "}
+          <Link href="/admin/help#something-wrong">See what to check</Link>
+        </p>
+      ) : null}
+
+      <nav aria-label="Other staff jobs" className="portal-sheet-elsewhere print-hide">
+        {ELSEWHERE.map((item) => (
+          <Link key={item.href} href={item.href}>
+            {item.label}
+          </Link>
+        ))}
+      </nav>
     </section>
   );
 
