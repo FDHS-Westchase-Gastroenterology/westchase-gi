@@ -33,6 +33,7 @@
   /* Lines */
   --color-line: oklch(0.9 0.012 230);
   --color-line-2: oklch(0.82 0.018 230);
+  --color-line-3: oklch(0.6 0.025 235); /* control boundaries (>=3:1 on paper+mint) */
   --color-line-dark: oklch(0.47 0.05 245); /* hairlines on navy */
 
   /* Fonts */
@@ -178,6 +179,36 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.001ms !important;
       scroll-behavior: auto !important;
+    }
+
+    /* The staff portal authors its own reduced-motion temperament instead of
+       inheriting the blanket reset: modals keep a ~120ms cross-fade and give
+       up only the travel, which is the charter's promise that reduced motion
+       withholds the physics and nothing else.
+       The opt-out has to live here rather than next to the rules it serves.
+       The reset above is !important inside @layer base, and for important
+       declarations the cascade reverses layer order — an earlier layer wins —
+       so nothing in @layer components can override it, with or without
+       !important. The duration itself stays a registry token, because custom
+       properties resolve by inheritance rather than by layer: the value is
+       authored once on .portal-scope with the rest of the motion registry. */
+    .portal-confirm-dialog,
+    .portal-confirm-dialog::backdrop {
+      transition-duration: var(--pm-reduced-duration, 120ms) !important;
+    }
+
+    /* The unfolding sections keep the fade and give up the fold itself, so
+       the duration is per-property against their
+       `grid-template-rows, opacity, visibility` list — a blanket value here
+       would animate the height, which is the movement being removed. */
+    .portal-line-reveal {
+      transition-duration: 0s, var(--pm-reduced-duration, 120ms), 0s !important;
+    }
+
+    /* The calendar's month turn keeps its 120ms cross-fade and gives up the
+       travel, same temperament as the modals above. */
+    .portal-calendar-weeks[data-turn] {
+      animation-duration: var(--pm-reduced-duration, 120ms) !important;
     }
   }
 }
@@ -1239,6 +1270,52 @@
     --ps-6: 1.5rem;
     --ps-8: 2rem;
     --ps-12: 3rem;
+
+    /* The Line motion registry. Six tokens carry every authored movement in
+       the portal, so surfaces cannot each invent a temperament:
+       --pm-spring / --pm-spring-duration — arrival. A ζ≈0.7 spring sampled
+       into linear(): the visible move lands in the first ~110ms, overshoots
+       4.6% once, and settles without a second bounce. Alive, never playful.
+       --pm-exit / --pm-exit-duration — departure. A strong ease-out, faster
+       than arrival, along a shorter version of the path it entered on.
+       --pm-scrim-duration — the backdrop's fade-in, a beat slower than the
+       exit so the dim reads as room tone under the rising paper, not a flash.
+       --pm-reduced-duration — what survives under prefers-reduced-motion: a
+       cross-fade with no travel at all. Read by the reduced-motion opt-out in
+       @layer base, which is the only place that can outrank the blanket
+       reset; the value belongs here with the rest of the registry.
+       --pm-fade-duration — an opacity-only fade that rides alongside a spring
+       (the working band's unfold, the scrim's cousin). Longer than the exit,
+       shorter than the scrim, because the fold is already carrying the motion.
+       Micro state changes (hover tints, pressed ink) keep their own 150ms
+       ease-out inline; these tokens govern surfaces that move. */
+    --pm-spring: linear(
+      0,
+      0.066 2.5%,
+      0.217 5%,
+      0.397 7.5%,
+      0.574 10%,
+      0.726 12.5%,
+      0.846 15%,
+      0.933 17.5%,
+      0.991 20%,
+      1.025 22.5%,
+      1.042 25%,
+      1.046 27.5%,
+      1.036 32.5%,
+      1.02 37.5%,
+      1.007 42.5%,
+      0.999 50%,
+      0.998 60%,
+      1 75%,
+      1
+    );
+    --pm-spring-duration: 440ms;
+    --pm-exit: cubic-bezier(0.23, 1, 0.32, 1);
+    --pm-exit-duration: 160ms;
+    --pm-reduced-duration: 120ms;
+    --pm-fade-duration: 200ms;
+    --pm-scrim-duration: 220ms;
 
     background: var(--portal-canvas);
     font-size: 1rem;

@@ -731,6 +731,66 @@
     line-height: 1.5;
   }
 
+  /* The window. A group of five lines or fewer stands fully open. A taller
+     group scrolls behind a half-cut line: the cut row itself says "more"
+     honestly, so no Show-all control interrupts the ruling, and the heading's
+     count keeps stating the true total. */
+  .portal-sheet-frame {
+    position: relative;
+    margin-block-start: var(--ps-3);
+    timeline-scope: --sheet-scroll;
+  }
+
+  .portal-sheet-frame > .portal-sheet-lines {
+    margin-block-start: 0;
+  }
+
+  /* Three and a half rows of the tall two-line mobile rows; the desktop
+     query below widens the window to four and a half of its shorter rows. */
+  .portal-sheet-frame[data-window] > .portal-sheet-lines {
+    max-height: calc(3.5 * (6.75rem + 1px));
+    overflow-y: auto;
+    scroll-timeline: --sheet-scroll block;
+    scrollbar-width: thin;
+  }
+
+  /* The finger on the sheet: a hairline track beside a windowed group, and a
+     teal fill that tracks reading position 1:1 with the scroll. Teal already
+     means "the finger tracking a line"; here it tracks the whole group.
+     Browsers without scroll-driven animations get no rail at all — the
+     half-cut row alone carries the affordance. */
+  @supports (animation-timeline: scroll()) {
+    .portal-sheet-frame[data-window]::before,
+    .portal-sheet-frame[data-window]::after {
+      position: absolute;
+      inset-block: 0;
+      inset-inline-start: 0;
+      width: 2px;
+      content: "";
+    }
+
+    .portal-sheet-frame[data-window]::before {
+      background: var(--color-line);
+    }
+
+    .portal-sheet-frame[data-window]::after {
+      background: var(--color-teal);
+      transform: scaleY(0);
+      transform-origin: top;
+      animation: portal-sheet-track linear both;
+      animation-timeline: --sheet-scroll;
+    }
+  }
+
+  @keyframes portal-sheet-track {
+    from {
+      transform: scaleY(0);
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+
   .portal-sheet-lines {
     margin-block-start: var(--ps-3);
     border-block-start: 1px solid var(--color-line-2);
@@ -742,9 +802,10 @@
 
   /* Narrow: the name owns its own row, then the phone and its timing read as
      one line beneath — the way a call sheet reads in the hand. The row is the
-     grid; the targets inside it are separate elements, because a single link
+     grid; the targets inside it are separate elements, because a single target
      wrapping everything cannot let the phone number be dialable. */
   .portal-sheet-row {
+    position: relative;
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
     grid-template-areas:
@@ -759,19 +820,28 @@
 
   /* Hover tints the line, focus rings the target. Previously both painted the
      same mint, so "my keyboard is here" and "my mouse is passing over" were the
-     same picture. They are now different signals with different pictures. */
-  .portal-sheet-row:has(.portal-sheet-open:hover) {
-    background: var(--color-mint);
+     same picture. They are now different signals with different pictures.
+     Pointer-gated: a touch tap leaves a sticky false hover, so the tint would
+     otherwise linger on the last-touched row after the finger lifts. */
+  @media (hover: hover) and (pointer: fine) {
+    .portal-sheet-row:has(.portal-sheet-open:hover),
+    .portal-sheet-row:has(.portal-line-record-open:hover) {
+      background: var(--color-mint);
+    }
   }
 
   /* Pressed is deeper and arrives instantly — easing into a press is just the
      lag it looks like, and an unacknowledged click invites a second one. */
-  .portal-sheet-row:has(.portal-sheet-open:active) {
+  .portal-sheet-row:has(.portal-sheet-open:active),
+  .portal-sheet-row:has(.portal-line-record-open:active) {
     background: color-mix(in oklch, var(--color-teal) 22%, var(--color-mint));
     transition-duration: 0s;
   }
 
-  /* Opening the record: the name and what the patient asked for. */
+  /* Opening the record: the whole line is the target. The name button
+     stretches an invisible hit area across the row, so a press anywhere that
+     is not the phone number or Record — which sit above it — lifts the line
+     into its modal. Focus still rings the name, not the stretched box. */
   .portal-sheet-open {
     display: flex;
     min-height: 2.75rem;
@@ -780,6 +850,19 @@
     grid-area: open;
     padding-inline: var(--ps-1);
     color: var(--color-ink);
+    cursor: pointer;
+    text-align: start;
+  }
+
+  .portal-sheet-open::after {
+    position: absolute;
+    inset: 0;
+    content: "";
+  }
+
+  .portal-sheet-phone,
+  .portal-line-record-open {
+    position: relative;
   }
 
   .portal-sheet-open:focus-visible {
@@ -862,6 +945,7 @@
     opacity: 0.55;
   }
 
+  /* Timing is a fact, not a control: presses on it fall through to the line. */
   .portal-sheet-when {
     display: flex;
     min-width: 0;
@@ -870,6 +954,7 @@
     justify-content: flex-end;
     gap: var(--ps-1) var(--ps-2);
     grid-area: when;
+    pointer-events: none;
     color: var(--color-muted);
     font-size: var(--pt-xs);
     line-height: 1.4;
@@ -898,14 +983,13 @@
     align-items: center;
     grid-area: record;
     padding-inline: var(--ps-2);
+    cursor: pointer;
     color: var(--color-muted);
     font-size: var(--pt-xs);
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    transition:
-      color 150ms cubic-bezier(0.23, 1, 0.32, 1),
-      background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+    transition: color 150ms cubic-bezier(0.23, 1, 0.32, 1);
   }
 
   .portal-line-record-open:hover {
@@ -917,25 +1001,21 @@
     transition-duration: 0s;
   }
 
-  .portal-line-record-open[aria-expanded="true"] {
-    color: var(--color-navy);
-  }
-
-  /* The panel belongs to its line, so it opens inside the row's own band
-     rather than floating over the sheet. Mint marks it as the one working
-     surface on the page; the rule above it keeps it attached to its name. */
+  /* The working band of the lifted line: mint marks it as the one surface on
+     the page where something is being recorded, full-bleed inside the modal.
+     The band spaces its children itself (no flex gap), because the collapsed
+     reveal sections must occupy no space at all — not even a gap's worth. */
   .portal-line-record {
     display: flex;
     flex-direction: column;
-    gap: var(--ps-3);
-    /* An implicit row, so a closed line pays no gap for a panel it does not
-       render. A declared empty area would still take its row gap on every
-       line in the sheet. */
-    grid-column: 1 / -1;
-    margin-block-start: var(--ps-2);
+    margin-block-start: var(--ps-3);
     border-block-start: 1px solid var(--color-line);
     background: color-mix(in oklch, var(--color-mint) 55%, white);
-    padding: var(--ps-3) var(--ps-2);
+    padding: var(--ps-3) var(--ps-4) 0;
+  }
+
+  .portal-line-record > * + * {
+    margin-block-start: var(--ps-3);
   }
 
   .portal-line-record legend {
@@ -945,73 +1025,175 @@
     font-weight: 700;
   }
 
-  /* The three outcomes staff live through, as ruled rows rather than pills:
-     they are a decision, not a filter. */
-  .portal-line-outcomes {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--ps-1) var(--ps-4);
+  /* The three outcomes borrow the decision grammar the request panel
+     committed: ruled rows on white paper, one indicator, a mint wash on the
+     chosen row. A decision learned once is learned everywhere. */
+  .portal-line-outcomes .portal-choice-list {
+    margin-block-start: 0;
   }
 
-  .portal-line-outcome,
-  .portal-line-voicemail,
-  .portal-line-chip {
+  /* An unfolding section of the working band. Always in the DOM, opened and
+     closed by animating its one grid row between nothing and everything —
+     transitions, not keyframes, so changing an answer mid-motion retargets
+     from wherever the fold is. Arrival rides the registry spring; departure
+     takes the registry exit, faster and without ceremony. The inner ride
+     (a 5px settle) is the only transform, so the overshoot reads as the
+     paper relaxing, never as bounce. Closed sections are inert in markup
+     and invisible here; visibility waits for the fold to finish. */
+  .portal-line-reveal {
+    display: grid;
+    grid-template-rows: 0fr;
+    margin-block-start: 0;
+    visibility: hidden;
+    opacity: 0;
+    transition:
+      grid-template-rows var(--pm-exit-duration) var(--pm-exit),
+      opacity var(--pm-exit-duration) var(--pm-exit),
+      visibility 0s linear var(--pm-exit-duration);
+  }
+
+  .portal-line-reveal > div {
+    min-height: 0;
+    overflow: hidden;
+    transform: translateY(-0.3rem);
+    transition: transform var(--pm-exit-duration) var(--pm-exit);
+  }
+
+  .portal-line-reveal[data-open="true"] {
+    grid-template-rows: 1fr;
+    visibility: visible;
+    opacity: 1;
+    transition:
+      grid-template-rows var(--pm-spring-duration) var(--pm-spring),
+      opacity var(--pm-fade-duration) var(--pm-exit),
+      visibility 0s;
+  }
+
+  .portal-line-reveal[data-open="true"] > div {
+    transform: none;
+    transition: transform var(--pm-spring-duration) var(--pm-spring);
+  }
+
+  /* The deeper-mint plan band inside an unfolded section: the same surface
+     the request panel's dependent plan rides on. Its top margin lives inside
+     the fold, so it collapses with it. */
+  .portal-line-band {
+    margin-block-start: var(--ps-3);
+    border-radius: var(--radius-sm);
+    background: var(--color-mint-2);
+    padding: var(--ps-3);
+  }
+
+  .portal-line-voicemail {
     display: inline-flex;
     min-height: 2.75rem;
     align-items: center;
     gap: var(--ps-2);
+    margin-block-end: var(--ps-1);
     color: var(--color-body);
     font-size: var(--pt-sm);
     line-height: 1.4;
   }
 
-  .portal-line-outcome:hover,
-  .portal-line-voicemail:hover,
-  .portal-line-chip:hover {
+  .portal-line-voicemail:hover {
     color: var(--color-teal-ink);
   }
 
-  .portal-line-outcome input,
-  .portal-line-voicemail input,
-  .portal-line-chip input {
+  .portal-line-voicemail input {
     flex: none;
     width: 1.05rem;
     height: 1.05rem;
     accent-color: var(--color-teal-ink);
   }
 
-  /* A voicemail is something that happened during a no-answer call, so it
-     indents under the outcome it belongs to instead of standing beside it. */
-  .portal-line-voicemail {
-    margin-inline-start: var(--ps-4);
-  }
-
   .portal-line-when {
     display: flex;
     flex-direction: column;
-    gap: var(--ps-1);
+    gap: var(--ps-2);
   }
 
   .portal-line-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 0 var(--ps-4);
+    gap: var(--ps-2);
   }
 
-  .portal-line-appointment {
+  /* Return-day presets as pills — the same chip the request panel uses:
+     hairline at rest, navy ink when chosen, a settle on press. The rest
+     border is the control hairline: >=3:1 against the mint band it sits on. */
+  .portal-line-chip {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    border: 1px solid var(--color-line-3);
+    border-radius: 999px;
+    background: white;
+    padding-inline: var(--ps-3);
+    cursor: pointer;
+    color: var(--color-body);
+    font-size: var(--pt-sm);
+    font-weight: 600;
+    line-height: 1.2;
+    transition:
+      background-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      border-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .portal-line-chip:hover {
+      border-color: var(--color-navy);
+      color: var(--color-ink);
+    }
+  }
+
+  .portal-line-chip:active {
+    transform: scale(0.97);
+    transition-duration: 0s, 0s, 0s, 0s;
+  }
+
+  .portal-line-chip:has(input:checked) {
+    border-color: var(--color-navy);
+    background: var(--color-navy);
+    color: white;
+  }
+
+  .portal-line-chip:has(input:focus-visible) {
+    outline: 3px solid var(--color-amber-deep);
+    outline-offset: 2px;
+  }
+
+  .portal-line-chip:has(input:disabled) {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  .portal-line-day-pick {
+    padding-block-start: var(--ps-1);
+  }
+
+  .portal-line-time {
     display: flex;
-    flex-wrap: wrap;
+    align-items: center;
     gap: var(--ps-2);
+  }
+
+  .portal-line-time > span {
+    color: var(--color-ink);
+    font-size: var(--pt-sm);
+    font-weight: 600;
   }
 
   .portal-line-date {
     min-height: 2.75rem;
-    border: 1px solid var(--color-line-2);
+    border: 1px solid var(--color-line-3);
     border-radius: var(--radius);
     background: white;
     padding-inline: var(--ps-2);
     color: var(--color-ink);
     font-size: var(--pt-sm);
+    font-variant-numeric: tabular-nums;
   }
 
   .portal-line-date:focus-visible {
@@ -1024,11 +1206,20 @@
     line-height: 1.45;
   }
 
+  /* The commit shelf holds the bottom of the dialog while a tall day (a
+     calendar month) scrolls, so Save is never below the fold it belongs to. */
   .portal-line-commit {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--ps-3);
+    margin-inline: calc(var(--ps-4) * -1);
+    border-block-start: 1px solid var(--color-line);
+    background: color-mix(in oklch, var(--color-mint) 55%, white);
+    padding: var(--ps-3) var(--ps-4);
   }
 
   .portal-line-save:disabled {
@@ -1047,68 +1238,192 @@
     color: var(--color-ink);
   }
 
-  /* The rest of a long group opens in place. A control sitting on the field
-     between two white bands, so it reads as a break in the ruling rather than
-     as one more patient line. */
-  .portal-sheet-more > summary {
+  /* ---- The portal calendar ----
+     A month of ruled paper: tabular numerals on white, hairline rules, navy
+     ink for the chosen day, teal for the finger passing over one, and a navy
+     hairline ring for today. Day cells hold the 44px target floor. */
+  .portal-calendar {
+    border: 1px solid var(--color-line-3);
+    border-radius: var(--radius);
+    background: white;
+    padding: var(--ps-2) var(--ps-2) var(--ps-3);
+  }
+
+  .portal-calendar-head {
     display: flex;
-    width: fit-content;
-    min-height: 2.75rem;
     align-items: center;
+    justify-content: space-between;
     gap: var(--ps-2);
-    padding-inline: var(--ps-2);
-    cursor: pointer;
-    color: var(--color-teal-ink);
-    font-size: var(--pt-xs);
+    border-block-end: 1px solid var(--color-line);
+    padding: 0 var(--ps-1) var(--ps-1);
+  }
+
+  .portal-calendar-month {
+    color: var(--color-ink);
+    font-size: var(--pt-sm);
     font-weight: 600;
-    list-style: none;
+    font-variant-numeric: tabular-nums;
   }
 
-  .portal-sheet-more > summary::-webkit-details-marker {
-    display: none;
+  .portal-calendar-nav {
+    display: flex;
+    gap: var(--ps-1);
   }
 
-  .portal-sheet-more > summary::after {
-    width: 0.4rem;
-    height: 0.4rem;
-    border-block-end: 1.5px solid currentcolor;
-    border-inline-end: 1.5px solid currentcolor;
-    content: "";
-    transform: translateY(-0.1rem) rotate(45deg);
-    transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  .portal-calendar-nav button {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    place-items: center;
+    border-radius: var(--radius-sm);
+    color: var(--color-body);
+    cursor: pointer;
+    transition:
+      background-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
   }
 
-  .portal-sheet-more[open] > summary::after {
-    transform: translateY(0.05rem) rotate(-135deg);
+  .portal-calendar-nav button:hover:enabled {
+    background: var(--color-mint);
+    color: var(--color-teal-ink);
   }
 
-  .portal-sheet-more > summary:hover {
-    text-decoration: underline;
-    text-underline-offset: 3px;
+  .portal-calendar-nav button:active:enabled {
+    background: color-mix(in oklch, var(--color-teal) 22%, var(--color-mint));
+    transform: scale(0.96);
+    transition-duration: 0s;
   }
 
-  /* One label, two truths: the closed state names the whole group, the open
-     state names the way back. */
-  .portal-sheet-more-hide,
-  .portal-sheet-more[open] .portal-sheet-more-show {
-    display: none;
+  .portal-calendar-nav button:disabled {
+    color: color-mix(in oklch, var(--color-muted) 50%, white);
+    cursor: default;
   }
 
-  .portal-sheet-more[open] .portal-sheet-more-hide {
-    display: inline;
+  .portal-calendar-weekdays,
+  .portal-calendar-week {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
   }
 
-  /* The revealed rows resume the same ruling, flush under the control. */
-  .portal-sheet-lines--more {
-    margin-block-start: 0;
+  .portal-calendar-weekdays {
+    padding-block: var(--ps-1);
   }
 
-  /* Past the render ceiling the remainder is stated with its exact count. The
-     sheet never clips a list into a scroll box that hides rows. */
+  .portal-calendar-weekdays > span {
+    display: grid;
+    min-height: 1.6rem;
+    place-items: center;
+    color: var(--color-muted);
+    font-size: var(--pt-2xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .portal-calendar-week > span {
+    display: grid;
+  }
+
+  /* Turning a month replaces thirty numerals at once, which reads as a
+     glitch rather than a change. The weeks slide a half-step out of the
+     direction travelled and settle on the registry exit — short, because
+     this is the calendar's most-pressed control and motion here is paying
+     off a jarring swap, not decorating one. Only the weeks move; the ruled
+     head they move under holds still, so the month name stays readable.
+     The attribute is set for pointer turns only: an arrow key crossing a
+     month boundary arrives with no motion at all. */
+  .portal-calendar-weeks[data-turn] {
+    animation: portal-calendar-turn 160ms var(--pm-exit) both;
+  }
+
+  .portal-calendar-weeks[data-turn="prev"] {
+    --portal-turn-from: -0.5rem;
+  }
+
+  .portal-calendar-weeks[data-turn="next"] {
+    --portal-turn-from: 0.5rem;
+  }
+
+  @keyframes portal-calendar-turn {
+    from {
+      opacity: 0;
+      transform: translateX(var(--portal-turn-from));
+    }
+  }
+
+  .portal-calendar-day {
+    display: grid;
+    min-height: 2.75rem;
+    place-items: center;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--color-ink);
+    font-size: var(--pt-sm);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    transition:
+      background-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .portal-calendar-day:hover:enabled {
+      background: var(--color-mint);
+      color: var(--color-teal-ink);
+    }
+  }
+
+  .portal-calendar-day:active:enabled {
+    transform: scale(0.96);
+    transition-duration: 0s, 0s, 0s;
+  }
+
+  .portal-calendar-day:focus-visible {
+    outline-offset: -2px;
+  }
+
+  .portal-calendar-day[aria-current="date"] {
+    font-weight: 600;
+    box-shadow: inset 0 0 0 1px var(--color-navy);
+  }
+
+  .portal-calendar-day[data-selected] {
+    background: var(--color-navy);
+    color: white;
+    font-weight: 600;
+    box-shadow: none;
+  }
+
+  /* The pick itself: one settle on the day just chosen, distinct from the
+     fill's state transition. Keyed by data-picked, so it never replays on
+     re-render and never fires for a day that arrived pre-chosen. */
+  .portal-calendar-day[data-picked] {
+    animation: portal-day-pick 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  @keyframes portal-day-pick {
+    from {
+      transform: scale(0.97);
+    }
+  }
+
+  /* Days that cannot be chosen stay quiet but legible: half-strength muted
+     ink, distinct from the full ink of an offerable day. */
+  .portal-calendar-day:disabled {
+    color: color-mix(in oklch, var(--color-muted) 50%, white);
+    cursor: default;
+  }
+
+  /* Past the render ceiling the remainder is stated with its exact count and
+     read in Appointments. The window scrolls what is rendered; it never hides
+     what is not. */
   .portal-sheet-overflow {
     display: inline-flex;
     min-height: 2.75rem;
     align-items: center;
+    padding-inline: var(--ps-2);
     color: var(--color-teal-ink);
     font-size: var(--pt-xs);
     font-weight: 600;
@@ -1294,6 +1609,11 @@
       grid-template-areas: "open phone when record";
       gap: var(--ps-4);
       padding-inline: var(--ps-2);
+    }
+
+    /* Single-line rows are shorter, so the window holds four and a half. */
+    .portal-sheet-frame[data-window] > .portal-sheet-lines {
+      max-height: calc(4.5 * (3.75rem + 1px));
     }
   }
 
@@ -2171,6 +2491,16 @@
     color: var(--color-teal-ink);
   }
 
+  /* The portal's one modal grammar. Every dialog arrives the same way: it
+     rises 12px and grows from 97% on the registry spring (--pm-spring), one
+     4.6% overshoot, settled well inside half a second. The fade rides the
+     exit curve instead — opacity clamps at 1, so a spring's overshoot is
+     wasted on it, and the quick fade finishes "it's here" while the spring
+     settles the travel. It leaves faster than it came, along a shorter
+     version of the same path. Transitions rather than keyframes, so a close
+     during the entrance reverses from wherever the surface is, and
+     `allow-discrete` holds the dialog in the top layer while it leaves.
+     Modals stay centered — they answer the whole sheet, not one trigger. */
   .portal-confirm-dialog {
     width: min(92vw, 28rem);
     max-height: min(90dvh, 32rem);
@@ -2182,22 +2512,58 @@
     padding: 0;
     color: var(--color-ink);
     box-shadow: var(--shadow-card);
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity var(--pm-exit-duration) var(--pm-exit),
+      transform var(--pm-exit-duration) var(--pm-exit),
+      display var(--pm-exit-duration) allow-discrete,
+      overlay var(--pm-exit-duration) allow-discrete;
   }
 
   .portal-confirm-dialog:not([open]) {
     display: none;
-  }
-
-  .portal-confirm-dialog::backdrop {
-    background: rgba(20, 32, 45, 0.48);
+    opacity: 0;
+    transform: translateY(0.4rem) scale(0.985);
   }
 
   .portal-confirm-dialog[open] {
-    animation: portal-confirm-in 180ms var(--ease-out-quint) both;
+    transition:
+      opacity var(--pm-exit-duration) var(--pm-exit),
+      transform var(--pm-spring-duration) var(--pm-spring),
+      display var(--pm-spring-duration) allow-discrete,
+      overlay var(--pm-spring-duration) allow-discrete;
+  }
+
+  @starting-style {
+    .portal-confirm-dialog[open] {
+      opacity: 0;
+      transform: translateY(0.75rem) scale(0.97);
+    }
+  }
+
+  /* The scrim is plain dim: focus comes from the paper rising, not glass. */
+  .portal-confirm-dialog::backdrop {
+    background: rgba(20, 32, 45, 0.48);
+    opacity: 0;
+    transition:
+      opacity var(--pm-exit-duration) var(--pm-exit),
+      display var(--pm-exit-duration) allow-discrete,
+      overlay var(--pm-exit-duration) allow-discrete;
   }
 
   .portal-confirm-dialog[open]::backdrop {
-    animation: portal-confirm-dim 150ms ease-out both;
+    opacity: 1;
+    transition:
+      opacity var(--pm-scrim-duration) var(--pm-exit),
+      display var(--pm-scrim-duration) allow-discrete,
+      overlay var(--pm-scrim-duration) allow-discrete;
+  }
+
+  @starting-style {
+    .portal-confirm-dialog[open]::backdrop {
+      opacity: 0;
+    }
   }
 
   .portal-confirm-dialog-body {
@@ -2297,29 +2663,306 @@
     }
   }
 
-  @keyframes portal-confirm-in {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
+  /* Reduced motion keeps the fade that says "something opened" and drops
+     every translation and scale: no rise, no spring, no travel. Reduced
+     motion is a temperament here, not a kill switch.
+     These durations only reach the screen because globals.css hands this
+     family an opt-out from its blanket reduced-motion reset; see the note
+     beside that reset. Do not add !important here — it cannot win from this
+     layer, and it reads as a fix that is doing nothing. */
+  @media (prefers-reduced-motion: reduce) {
+    .portal-confirm-dialog,
+    .portal-confirm-dialog[open],
+    .portal-confirm-dialog:not([open]) {
       transform: none;
+      transition-duration: 120ms;
+      transition-timing-function: ease-out;
+    }
+
+    @starting-style {
+      .portal-confirm-dialog[open] {
+        transform: none;
+      }
     }
   }
 
-  @keyframes portal-confirm-dim {
-    from {
+  /* ---- The day, brought forward ----
+     The one portal modal that is not centred grammar. A month is the next
+     question after "Appointment scheduled", not a detail of it, so it opens
+     as its own dialog nested in the top layer above the line — and it grows
+     out of the control that asked for it.
+
+     --pm-origin-x/y is the trigger's centre in this dialog's own
+     coordinates, published by PortalModal at open. The point sits outside
+     the box, which is the whole mechanism: a transform origin past an edge
+     turns the registry spring's plain scale into travel from that direction,
+     with no second translate to keep in sync. Departure runs the registry
+     exit back toward the same point at a shallower scale — the shorter
+     version of the path it entered on. A dialog opened with no trigger
+     falls back to centre and behaves like every other portal modal.
+
+     These rules follow .portal-confirm-dialog's rather than out-specifying
+     it: same specificity, later in source. Keep them in that order. */
+  .portal-day-dialog {
+    width: min(94vw, 23rem);
+    max-height: min(90dvh, 42rem);
+    transform-origin: var(--pm-origin-x, 50%) var(--pm-origin-y, 50%);
+  }
+
+  .portal-day-dialog:not([open]) {
+    transform: scale(0.96);
+  }
+
+  @starting-style {
+    .portal-day-dialog[open] {
       opacity: 0;
+      transform: scale(0.92);
     }
+  }
+
+  /* Lighter than the root scrim: the line modal underneath is pushed back a
+     layer, not replaced. Stacked dim, never stacked glass. */
+  .portal-day-dialog::backdrop {
+    background: rgba(20, 32, 45, 0.32);
+  }
+
+  .portal-day-dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ps-3);
+    padding: var(--ps-4);
+  }
+
+  .portal-day-dialog-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--ps-3);
+  }
+
+  .portal-day-dialog-head h2 {
+    margin: 0;
+    color: var(--color-ink);
+    font-size: var(--pt-base);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+  }
+
+  .portal-day-dialog-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ps-3);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .portal-day-dialog,
+    .portal-day-dialog:not([open]) {
+      transform: none;
+    }
+
+    @starting-style {
+      .portal-day-dialog[open] {
+        transform: none;
+      }
+    }
+  }
+
+  /* The closed question: one line of the mint band stating the day chosen so
+     far and the word for changing it. Hairline until answered, navy ink once
+     it is — the same "chosen" grammar the preset chips use. */
+  .portal-day-trigger {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ps-3);
+    border: 1px solid var(--color-line-3);
+    border-radius: var(--radius);
+    background: white;
+    padding: var(--ps-2) var(--ps-3);
+    cursor: pointer;
+    color: var(--color-muted);
+    font-size: var(--pt-sm);
+    line-height: 1.3;
+    text-align: start;
+    transition:
+      border-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-day-trigger[data-chosen] {
+    border-color: var(--color-navy);
+    color: var(--color-ink);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The commit landing: one mint wash — mint means settled — that fades back
+     to white while the border settles navy. Fired by data-just-chosen, set for
+     the length of the animation and then removed, so it never replays on
+     re-render. */
+  .portal-day-trigger[data-just-chosen] {
+    animation: portal-day-chosen 480ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  @keyframes portal-day-chosen {
+    from {
+      background-color: var(--color-mint);
+    }
+  }
+
+  .portal-day-trigger > small {
+    flex: none;
+    color: var(--color-teal-ink);
+    font-size: var(--pt-xs);
+    font-weight: 600;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .portal-day-trigger:hover:enabled {
+      border-color: var(--color-navy);
+      color: var(--color-ink);
+    }
+  }
+
+  .portal-day-trigger:active:enabled {
+    transform: scale(0.98);
+    transition-duration: 0s;
+  }
+
+  .portal-day-trigger:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  /* The lifted line. The modal is the line at reading distance: the same
+     facts in the same order — name, preference and timing, the dialable
+     number, then the mint working band where the outcome is recorded. The
+     detail page demotes to one quiet link at the foot. */
+  .portal-line-modal {
+    width: min(94vw, 30rem);
+    /* A month of calendar is taller than a confirmation: more headroom, and
+       the commit shelf (sticky above) keeps Save in reach while it scrolls. */
+    max-height: min(92dvh, 46rem);
+  }
+
+  .portal-line-modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--ps-3);
+    padding: var(--ps-4) var(--ps-4) var(--ps-3);
+  }
+
+  .portal-line-modal-title {
+    min-width: 0;
+  }
+
+  .portal-line-modal-title h2 {
+    color: var(--color-ink);
+    font-size: var(--pt-lg);
+    font-weight: 800;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .portal-line-modal-title p {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ps-1) var(--ps-2);
+    margin-block-start: var(--ps-1);
+    color: var(--color-muted);
+    font-size: var(--pt-xs);
+    line-height: 1.4;
+  }
+
+  /* Calling is the act the line exists for, so the number is the modal's
+     strongest target: a full ruled band in printed ink, dialable as one press. */
+  .portal-line-modal-call {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: var(--ps-2);
+    margin-inline: var(--ps-4);
+    border-block-start: 1px solid var(--color-line);
+    color: var(--color-navy);
+    font-size: var(--pt-base);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    transition: color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-line-modal-call:hover {
+    color: var(--color-teal-ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .portal-line-modal-foot {
+    display: flex;
+    justify-content: flex-end;
+    border-block-start: 1px solid var(--color-line);
+    padding: var(--ps-1) var(--ps-3);
+  }
+
+  .portal-line-modal-foot a {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: var(--ps-1);
+    color: var(--color-teal-ink);
+    font-size: var(--pt-xs);
+    font-weight: 600;
+  }
+
+  .portal-line-modal-foot a:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* Registry loading state: a modal that must fetch still opens on the
+     spring's schedule and shimmers while it waits — the surface is never
+     late, only its facts. Reduced motion holds the bars still. */
+  .portal-modal-skeleton {
+    display: grid;
+    gap: var(--ps-2);
+    padding: var(--ps-4);
+  }
+
+  /* The sweep is a translating overlay, not a background-position march:
+     transforms composite on the GPU while background-position repaints the
+     bar every frame for as long as the fetch runs. */
+  .portal-modal-skeleton > i {
+    position: relative;
+    display: block;
+    height: 1rem;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background-color: color-mix(in oklch, var(--color-line-2) 72%, white);
+  }
+
+  .portal-modal-skeleton > i::after {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 75%), transparent);
+    content: "";
+    transform: translateX(-100%);
+    animation: portal-skeleton-sweep 1.1s ease-in-out infinite;
+  }
+
+  @keyframes portal-skeleton-sweep {
     to {
-      opacity: 1;
+      transform: translateX(100%);
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .portal-confirm-dialog[open],
-    .portal-confirm-dialog[open]::backdrop {
+    .portal-modal-skeleton > i::after {
       animation: none;
     }
   }
@@ -2798,7 +3441,7 @@
     margin-top: 0.06rem;
     display: grid;
     place-items: center;
-    border: 1.5px solid var(--color-line-2);
+    border: 1.5px solid var(--color-line-3);
     border-radius: 999px;
     background: white;
     color: white;
@@ -2920,6 +3563,45 @@
     .portal-choice-indicator,
     .portal-choice-check {
       transition: none;
+    }
+
+    /* Reduced motion keeps the fade that says "something unfolded" and drops
+       the fold and the settle: sections appear at full height. The
+       per-property durations (0s, 120ms, 0s) are authored once in globals.css's
+       reduced-motion block — this layer cannot outrank the blanket reset, so
+       only the property list is repeated here. */
+    .portal-line-reveal,
+    .portal-line-reveal[data-open="true"] {
+      transition-property: grid-template-rows, opacity, visibility;
+    }
+
+    .portal-line-reveal[data-open="true"] {
+      transition-property: grid-template-rows, opacity, visibility;
+    }
+
+    .portal-line-reveal > div,
+    .portal-line-reveal[data-open="true"] > div {
+      transform: none;
+      transition: none;
+    }
+
+    .portal-line-chip,
+    .portal-day-trigger,
+    .portal-calendar-day {
+      transition-property: background-color, border-color, color;
+    }
+
+    /* The month still changes; it just stops travelling to say so. The 120ms
+       duration is authored in globals.css's reduced-motion block — this layer
+       cannot outrank the blanket reset. */
+    .portal-calendar-weeks[data-turn] {
+      animation-name: portal-calendar-turn-still;
+    }
+  }
+
+  @keyframes portal-calendar-turn-still {
+    from {
+      opacity: 0;
     }
   }
 
@@ -3416,6 +4098,18 @@
   .portal-content {
     max-width: none !important;
     padding: 0 !important;
+  }
+
+  /* Paper has no scroll: a windowed group prints every rendered line, and
+     the scroll rail — track and fill — stays off the page. */
+  .portal-sheet-frame[data-window] > .portal-sheet-lines {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .portal-sheet-frame[data-window]::before,
+  .portal-sheet-frame[data-window]::after {
+    content: none;
   }
 
   .portal-print-packet {
