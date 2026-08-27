@@ -132,12 +132,26 @@ follows this register plus the design charter in `DESIGN.md`.
 
 product
 
-### Users
+### People and working contexts
 
-Front-desk staff, practitioners and the practice manager of a two-location gastroenterology practice.
-Not software people; they run on phone calls, schedules, and paper. They open the
-portal between patient interactions, usually on the front-desk computer, sometimes on
-a phone. A secondary user is the practice's website maintainer / engineering support.
+These are the people the portal serves. They are role groups grounded in the practice's work,
+not research-backed personas with invented names or biographies.
+
+- **Front-desk staff are the primary daily users.** They work the shared appointment-request
+  queue, prepare paper handoffs, and print review flyers between calls and patient arrivals.
+  They usually use a shared front-desk computer and may pick up the same work on a phone. The
+  portal must make interruptions and handoffs safe.
+- **The practice manager does the same appointment work and administers the portal.** The
+  manager also manages staff access and notification recipients and may distribute printed
+  requests to staff. Administrative tools must stay available without crowding daily work.
+- **Practitioners may use the shared operational record, but no practitioner-only workflow is
+  claimed.** The portal supports appointment-request operations; it is not a clinical record.
+- **The website maintainer or engineering support is a secondary user.** This person handles
+  website custody, connection, access, and change requests. Most staff should never need to
+  understand or enter the underlying provider systems.
+
+These people are not software specialists. Portal permissions remain the simpler `staff` and
+`admin` roles; those access levels do not replace the working groups above.
 
 ### Product Purpose
 
