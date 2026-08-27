@@ -43,6 +43,7 @@
     ".next-verify/**",
     ".opencode/**",
     ".pi/**",
+    ".product-design-audit/**",
     ".roo/**",
     ".windsurf/**",
     "*.md",

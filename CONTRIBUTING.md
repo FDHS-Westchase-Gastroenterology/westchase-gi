@@ -21,9 +21,15 @@ than being absorbed by whoever noticed it.
 npm ci
 cp .env.example .env.local   # fill in real values; this is the variable inventory
 npx playwright install chromium
-npm run dev                  # patient site + portal on :3000
+npm run dev                  # refresh fictional patients, then serve :3000
+npm run dev:patients         # refresh the fictional queue without starting Next
 npm run dev:mission          # the E2E stack's server on :3100
 ```
+
+`npm run dev` replaces the `/seed` appointment-request rows with a random mix from
+the name pool in `scripts/dev-patients.mjs` (15 patients: 10 new, 3 call-again
+today, 1 stale, 1 later). `DEV_SEED=0` skips it. `npm run dev:mission` does not
+seed, so E2E stays on `supabase/seed.sql`. Production targets are refused.
 
 `.env.local` may point the default environment at the Git branch's ephemeral **Supabase
 Preview Branch**; Production values live under the `_PROD`-suffixed names and in Vercel.

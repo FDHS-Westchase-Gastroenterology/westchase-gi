@@ -136,7 +136,8 @@ lineage into the PR's isolated Preview Branch; both its native deployment check 
 hosted integration suite must pass on the exact head. Merging does not authorize Production
 promotion. When old and new application versions can overlap, change the schema first and
 keep the deployed interface backward compatible until the new application is live. Fictional
-seed fixtures live in `supabase/seed.sql` and `scripts/seed-portal.mjs`. Commands and release
+seed fixtures live in `supabase/seed.sql`, `scripts/seed-portal.mjs`, and the local
+`scripts/dev-patients.mjs` generator that `npm run dev` runs. Commands and release
 procedure live in `CONTRIBUTING.md`.
 
 ## Critical flows
