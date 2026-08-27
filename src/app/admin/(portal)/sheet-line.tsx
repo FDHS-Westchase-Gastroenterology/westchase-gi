@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { RefObject } from "react";
-import { useId, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useRef, useState, useTransition } from "react";
 
 import { Check, ChevronRight, Phone } from "@/components/icons";
 import type { FollowUpChoice } from "@/lib/portal/business-time";
@@ -59,13 +59,18 @@ export interface SheetLine {
  * changing an answer mid-motion retargets instead of restarting. Closed
  * sections are inert: invisible to focus and assistive technology alike.
  *
- * What unfolds stays small. A call-again day is a short list of presets, so
- * its month can afford to open in place; an appointment day is a year of
- * calendar, and unfolding that into a dialog already at its height ceiling
- * only produced a clipped month inside a scroll region that appeared under
- * the reader. So the booked band holds one line — the day chosen so far —
- * and the month itself comes forward as a nested dialog that grows from
- * that line. See AppointmentDayDialog at the foot of this file.
+ * Every outcome's dated question is answered the same way. Each band holds
+ * one line — the day chosen so far — and pressing it brings the month
+ * forward as a nested dialog that grows out of that line. The grammar used
+ * to split: call-again days unfolded chips and a month in place while the
+ * appointment day came forward as a dialog, and the in-place month arrived
+ * clipped inside a modal already at its height ceiling. Now the calendar is
+ * the one answer to "when", learned once. The call-again dialog keeps the
+ * three presets as chips above its month, so the common days stay one press,
+ * and a single press is the whole answer there — the dialog commits and
+ * departs on the pick, no confirm step, while the appointment dialog keeps
+ * its "Use this day" because it collects a time as well. See
+ * CallAgainDayDialog and AppointmentDayDialog at the foot of this file.
  */
 
 /* Ordered the way the day goes: the two ways a call fails to finish the job,
@@ -109,6 +114,44 @@ const APPOINTMENT_DAY_LABEL = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   timeZone: "UTC",
 });
+
+/* What the closed call-again line says: the preset's own words, or the picked
+   day spelled out. A default preset is always standing, so unlike the booking
+   trigger this line never has to ask its question as a prompt. */
+function callAgainSummary(kind: CallAgainKind, day: string): string {
+  if (kind !== "day") {
+    return CALL_AGAIN_PRESETS.find((preset) => preset.kind === kind)?.label ?? "";
+  }
+  return isValidCustomCallAgainDay(day)
+    ? APPOINTMENT_DAY_LABEL.format(new Date(`${day}T00:00:00Z`))
+    : "Pick a day";
+}
+
+/* The mint landing a trigger flashes when its dialog hands a choice back.
+   Stamped for the length of the animation, then removed, so it never replays
+   on re-render; `clear` belongs in the owning form's reset. */
+function useJustChosen() {
+  const timerRef = useRef<number | null>(null);
+  const [stamped, setStamped] = useState(false);
+  return {
+    stamped,
+    stamp: () => {
+      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+      setStamped(true);
+      timerRef.current = window.setTimeout(() => {
+        setStamped(false);
+        timerRef.current = null;
+      }, 480);
+    },
+    clear: () => {
+      if (timerRef.current !== null) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      setStamped(false);
+    },
+  };
+}
 
 /* What the closed trigger says. A half-answered booking states the half it
    has rather than falling back to the prompt, so staff can see at a glance
@@ -200,11 +243,13 @@ function LineRecordModal({
   const [appointmentDay, setAppointmentDay] = useState("");
   const [appointmentTime, setAppointmentTime] = useState("");
   const [dayOpen, setDayOpen] = useState(false);
-  const [justChosen, setJustChosen] = useState(false);
+  const [callAgainOpen, setCallAgainOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const keyRef = useRef<string | null>(null);
-  const chosenTimerRef = useRef<number | null>(null);
   const dayTriggerRef = useRef<HTMLButtonElement>(null);
+  const callAgainTriggerRef = useRef<HTMLButtonElement>(null);
+  const bookingChosen = useJustChosen();
+  const callAgainChosen = useJustChosen();
   const titleId = useId();
 
   const panelId = `line-record-${line.id}`;
@@ -223,7 +268,10 @@ function LineRecordModal({
     setError(null);
     if (next !== "booked") {
       setCallAgain(DEFAULT_CALL_AGAIN[next]);
+      setCustomDay("");
       setDayOpen(false);
+    } else {
+      setCallAgainOpen(false);
     }
     if (next !== "no_answer") setVoicemail(false);
   }
@@ -235,12 +283,10 @@ function LineRecordModal({
     setAppointmentDay("");
     setAppointmentTime("");
     setDayOpen(false);
+    setCallAgainOpen(false);
     setError(null);
-    if (chosenTimerRef.current !== null) {
-      window.clearTimeout(chosenTimerRef.current);
-      chosenTimerRef.current = null;
-    }
-    setJustChosen(false);
+    bookingChosen.clear();
+    callAgainChosen.clear();
   }
 
   function close() {
@@ -378,45 +424,30 @@ function LineRecordModal({
 
         <CallAgainBand
           lineId={line.id}
-          panelId={panelId}
           selection={selection}
           disabled={pending || uncertain}
           voicemail={voicemail}
           onVoicemail={setVoicemail}
-          callAgain={callAgain}
-          onCallAgain={setCallAgain}
-          customDay={customDay}
-          onCustomDay={setCustomDay}
+          summary={callAgainSummary(callAgain, customDay)}
+          justChosen={callAgainChosen.stamped}
+          triggerRef={callAgainTriggerRef}
+          onOpen={() => {
+            setCallAgainOpen(true);
+          }}
         />
 
-        <div
-          className="portal-line-reveal"
-          data-open={selection === "booked"}
-          inert={selection !== "booked"}
-        >
-          <div>
-            <div className="portal-line-band">
-              <fieldset className="portal-line-when" disabled={pending || uncertain}>
-                <legend>When is the appointment?</legend>
-                <button
-                  ref={dayTriggerRef}
-                  type="button"
-                  aria-haspopup="dialog"
-                  data-chosen={booking === undefined ? undefined : true}
-                  data-just-chosen={justChosen || undefined}
-                  data-testid={`line-appointment-open-${line.id}`}
-                  className="portal-day-trigger"
-                  onClick={() => {
-                    setDayOpen(true);
-                  }}
-                >
-                  <span>{appointmentSummary(appointmentDay, appointmentTime)}</span>
-                  <small>{booking === undefined ? "Choose" : "Change"}</small>
-                </button>
-              </fieldset>
-            </div>
-          </div>
-        </div>
+        <BookedBand
+          lineId={line.id}
+          selection={selection}
+          disabled={pending || uncertain}
+          summary={appointmentSummary(appointmentDay, appointmentTime)}
+          chosen={booking !== undefined}
+          justChosen={bookingChosen.stamped}
+          triggerRef={dayTriggerRef}
+          onOpen={() => {
+            setDayOpen(true);
+          }}
+        />
 
         {error === null ? null : (
           <p
@@ -451,12 +482,31 @@ function LineRecordModal({
         </Link>
       </footer>
 
-      {/* Last, deliberately. A nested dialog renders in the top layer, so its
-          position here costs nothing visually — but it is still a DOM
-          descendant of this modal, and it borrows this modal's control
-          classes. Keeping it after the footer leaves the line's own Save and
+      {/* Last, deliberately. Nested dialogs render in the top layer, so their
+          position here costs nothing visually — but they are still DOM
+          descendants of this modal, and they borrow this modal's control
+          classes. Keeping them after the footer leaves the line's own Save and
           Cancel first in document order, so a selector scoped to the line
-          modal reaches the line's controls rather than the day picker's. */}
+          modal reaches the line's controls rather than the day pickers'. */}
+      <CallAgainDayDialog
+        lineId={line.id}
+        panelId={panelId}
+        open={callAgainOpen}
+        originRef={callAgainTriggerRef}
+        kind={callAgain}
+        day={customDay}
+        onCancel={() => {
+          setCallAgainOpen(false);
+        }}
+        onCommit={(kind, day) => {
+          setCallAgain(kind);
+          setCustomDay(day);
+        }}
+        onSettled={() => {
+          setCallAgainOpen(false);
+          callAgainChosen.stamp();
+        }}
+      />
       <AppointmentDayDialog
         lineId={line.id}
         open={dayOpen}
@@ -470,12 +520,7 @@ function LineRecordModal({
           setAppointmentDay(day);
           setAppointmentTime(time);
           setDayOpen(false);
-          setJustChosen(true);
-          if (chosenTimerRef.current !== null) window.clearTimeout(chosenTimerRef.current);
-          chosenTimerRef.current = window.setTimeout(() => {
-            setJustChosen(false);
-            chosenTimerRef.current = null;
-          }, 480);
+          bookingChosen.stamp();
         }}
       />
     </PortalModal>
@@ -487,32 +532,31 @@ function LineRecordModal({
  * Two outcomes share it, so it opens for either and holds the voicemail note
  * in a fold of its own — a voicemail is something that happened during a
  * no-answer call, not a separate result. Every contact must name its own
- * return day, so a preset arrives already chosen and "Pick a day…" unfolds a
- * calendar in place. That month can afford the fold: it reaches ninety days,
- * not four hundred, and it sits in a band that is already open.
+ * return day, so the day each outcome usually means arrives already chosen
+ * and the band holds one line stating it. Pressing the line brings the
+ * calendar forward — the same nested-dialog answer the booked band gives,
+ * so "when" is asked one way everywhere. See CallAgainDayDialog below.
  */
 function CallAgainBand({
   lineId,
-  panelId,
   selection,
   disabled,
   voicemail,
   onVoicemail,
-  callAgain,
-  onCallAgain,
-  customDay,
-  onCustomDay,
+  summary,
+  justChosen,
+  triggerRef,
+  onOpen,
 }: Readonly<{
   lineId: string;
-  panelId: string;
   selection: Selection | null;
   disabled: boolean;
   voicemail: boolean;
   onVoicemail: (next: boolean) => void;
-  callAgain: CallAgainKind;
-  onCallAgain: (next: CallAgainKind) => void;
-  customDay: string;
-  onCustomDay: (next: string) => void;
+  summary: string;
+  justChosen: boolean;
+  triggerRef: RefObject<HTMLButtonElement | null>;
+  onOpen: () => void;
 }>) {
   const owed = selection === "no_answer" || selection === "reached_follow_up";
 
@@ -542,58 +586,191 @@ function CallAgainBand({
           </div>
           <fieldset className="portal-line-when" disabled={disabled}>
             <legend>Call again</legend>
-            <div className="portal-line-chips">
-              {CALL_AGAIN_PRESETS.map((preset) => (
-                <label key={preset.kind} className="portal-line-chip">
-                  <input
-                    type="radio"
-                    name={`${panelId}-call-again`}
-                    checked={callAgain === preset.kind}
-                    data-testid={`line-call-again-${preset.kind}-${lineId}`}
-                    onChange={() => {
-                      onCallAgain(preset.kind);
-                    }}
-                    className="sr-only"
-                  />
-                  <span>{preset.label}</span>
-                </label>
-              ))}
-              <label className="portal-line-chip">
-                <input
-                  type="radio"
-                  name={`${panelId}-call-again`}
-                  checked={callAgain === "day"}
-                  onChange={() => {
-                    onCallAgain("day");
-                  }}
-                  className="sr-only"
-                />
-                <span>Pick a day…</span>
-              </label>
-            </div>
-            <div
-              className="portal-line-reveal"
-              data-open={callAgain === "day"}
-              inert={callAgain !== "day"}
+            <button
+              ref={triggerRef}
+              type="button"
+              aria-haspopup="dialog"
+              data-chosen={true}
+              data-just-chosen={justChosen || undefined}
+              data-testid={`line-call-again-open-${lineId}`}
+              className="portal-day-trigger"
+              onClick={onOpen}
             >
-              <div>
-                <div className="portal-line-day-pick">
-                  <PortalCalendar
-                    value={customDay}
-                    min={practiceLocalDay(0)}
-                    max={practiceLocalDay(90)}
-                    today={practiceLocalDay(0)}
-                    label="Call again on"
-                    testId={`line-call-again-day-${lineId}`}
-                    onSelect={onCustomDay}
-                  />
-                </div>
-              </div>
-            </div>
+              <span>{summary}</span>
+              <small>Change</small>
+            </button>
           </fieldset>
         </div>
       </div>
     </div>
+  );
+}
+
+/* The booked band: one line stating the appointment day and time chosen so
+   far. Unlike the call-again line it starts as a prompt — no honest default
+   exists for an appointment — so it earns its navy "chosen" ink only once
+   the dialog has handed a day back. */
+function BookedBand({
+  lineId,
+  selection,
+  disabled,
+  summary,
+  chosen,
+  justChosen,
+  triggerRef,
+  onOpen,
+}: Readonly<{
+  lineId: string;
+  selection: Selection | null;
+  disabled: boolean;
+  summary: string;
+  chosen: boolean;
+  justChosen: boolean;
+  triggerRef: RefObject<HTMLButtonElement | null>;
+  onOpen: () => void;
+}>) {
+  return (
+    <div
+      className="portal-line-reveal"
+      data-open={selection === "booked"}
+      inert={selection !== "booked"}
+    >
+      <div>
+        <div className="portal-line-band">
+          <fieldset className="portal-line-when" disabled={disabled}>
+            <legend>When is the appointment?</legend>
+            <button
+              ref={triggerRef}
+              type="button"
+              aria-haspopup="dialog"
+              data-chosen={chosen || undefined}
+              data-just-chosen={justChosen || undefined}
+              data-testid={`line-appointment-open-${lineId}`}
+              className="portal-day-trigger"
+              onClick={onOpen}
+            >
+              <span>{summary}</span>
+              <small>{chosen ? "Change" : "Choose"}</small>
+            </button>
+          </fieldset>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* The return day, brought forward the same way the appointment day is.
+ *
+ * One question, both of its honest answers on one surface: the three days
+ * the desk actually says — this afternoon, tomorrow morning, Friday — as
+ * chips above the month for any other day within ninety. A single press is
+ * the whole answer here (there is no time to collect), so the dialog
+ * commits on the pick and departs after the pick's settle has had its
+ * 150ms — long enough to read as "taken", never as a wait. Cancel and
+ * Escape stay free: the standing choice only changes when a chip or a day
+ * is pressed.
+ */
+function CallAgainDayDialog({
+  lineId,
+  panelId,
+  open,
+  originRef,
+  kind,
+  day,
+  onCancel,
+  onCommit,
+  onSettled,
+}: Readonly<{
+  lineId: string;
+  panelId: string;
+  open: boolean;
+  originRef: RefObject<HTMLButtonElement | null>;
+  kind: CallAgainKind;
+  day: string;
+  onCancel: () => void;
+  onCommit: (kind: CallAgainKind, day: string) => void;
+  onSettled: () => void;
+}>) {
+  const titleId = useId();
+  const settleRef = useRef<number | null>(null);
+
+  /* The departure timer lives and dies with the dialog: closed early by
+     Escape or Cancel, nothing left behind fires later. */
+  useEffect(() => {
+    if (open) return;
+    if (settleRef.current !== null) {
+      window.clearTimeout(settleRef.current);
+      settleRef.current = null;
+    }
+  }, [open]);
+
+  function pick(nextKind: CallAgainKind, nextDay: string) {
+    onCommit(nextKind, nextDay);
+    if (settleRef.current !== null) window.clearTimeout(settleRef.current);
+    settleRef.current = window.setTimeout(() => {
+      settleRef.current = null;
+      onSettled();
+    }, 200);
+  }
+
+  return (
+    <PortalModal
+      open={open}
+      onClose={onCancel}
+      labelledBy={titleId}
+      originRef={originRef}
+      testId={`line-call-again-dialog-${lineId}`}
+      className="portal-confirm-dialog portal-day-dialog"
+    >
+      <div className="portal-day-dialog-body">
+        <header className="portal-day-dialog-head">
+          <h2 id={titleId}>When should we call again?</h2>
+          <button type="button" onClick={onCancel} className="portal-confirm-dialog-close">
+            Close
+          </button>
+        </header>
+
+        <div className="portal-line-chips">
+          {CALL_AGAIN_PRESETS.map((preset) => (
+            <label key={preset.kind} className="portal-line-chip">
+              <input
+                type="radio"
+                name={`${panelId}-call-again`}
+                checked={kind === preset.kind}
+                data-testid={`line-call-again-${preset.kind}-${lineId}`}
+                onChange={() => {
+                  pick(preset.kind, "");
+                }}
+                className="sr-only"
+              />
+              <span>{preset.label}</span>
+            </label>
+          ))}
+        </div>
+
+        <p className="portal-day-dialog-or" aria-hidden="true">
+          or pick a day
+        </p>
+
+        <PortalCalendar
+          value={kind === "day" ? day : ""}
+          min={practiceLocalDay(0)}
+          max={practiceLocalDay(90)}
+          today={practiceLocalDay(0)}
+          label="Call again on"
+          testId={`line-call-again-day-${lineId}`}
+          onSelect={(picked) => {
+            pick("day", picked);
+          }}
+        />
+
+        <div className="portal-day-dialog-actions">
+          <button type="button" className="portal-line-cancel" onClick={onCancel}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </PortalModal>
   );
 }
 

@@ -1119,8 +1119,9 @@
   }
 
   /* Return-day presets as pills — the same chip the request panel uses:
-     hairline at rest, navy ink when chosen, a settle on press. The rest
-     border is the control hairline: >=3:1 against the mint band it sits on. */
+     hairline at rest, navy ink when chosen, a settle on press. They live in
+     the call-again day dialog now, above its month; the rest border is the
+     control hairline, >=3:1 on white and on the mint band alike. */
   .portal-line-chip {
     display: inline-flex;
     min-height: 2.75rem;
@@ -1167,10 +1168,6 @@
   .portal-line-chip:has(input:disabled) {
     cursor: default;
     opacity: 0.6;
-  }
-
-  .portal-line-day-pick {
-    padding-block-start: var(--ps-1);
   }
 
   .portal-line-time {
@@ -2754,6 +2751,29 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--ps-3);
+  }
+
+  /* The rubric between the preset chips and the month: small print with a
+     hairline either side, stating that both answer the same question. Hidden
+     from assistive technology — the chips and the grid already name
+     themselves — so it is layout, not structure. */
+  .portal-day-dialog-or {
+    display: flex;
+    align-items: center;
+    gap: var(--ps-2);
+    color: var(--color-muted);
+    font-size: var(--pt-2xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .portal-day-dialog-or::before,
+  .portal-day-dialog-or::after {
+    flex: 1;
+    height: 1px;
+    background: var(--color-line);
+    content: "";
   }
 
   @media (prefers-reduced-motion: reduce) {
