@@ -7,7 +7,7 @@
 // States, commands, typed rejections, and the legal-action derivation
 // That keeps rendered controls and server authority in agreement.
 //
-// Staff-facing language rule (spec §2.2 / DEC-04): the durable state is
+// Staff-facing language rule (spec §2): the durable state is
 // `booked`; every staff surface renders it as **Scheduled**, never
 // "Booked". Presentation labels live with the UI (requests/format.ts);
 // This module deliberately carries only domain vocabulary.
@@ -24,7 +24,7 @@ function included<T extends string>(values: readonly T[], raw: string): T | null
 }
 
 /**
- * Read-side normalization for the deploy-overlap window (spec §14.2 step 3):
+ * Read-side normalization for retained legacy rows (spec §14):
  * this application understands the legacy stored value `scheduled` as
  * `booked` but never writes it.
  */
@@ -197,14 +197,14 @@ export function legalActionsFor(
 export const UNDO_WINDOW_MINUTES = 15;
 
 // ---------------------------------------------------------------------------
-// Read-side contracts: the work surface and Request history (spec §6, DEC-05).
+// Read-side contracts: the work surface and Request history (spec §6).
 // The backend read module composes these; the UI renders them. Actors are
 // Staff emails — display-name resolution stays a UI concern.
 // ---------------------------------------------------------------------------
 
 /**
  * One Request history entry. History keeps notes, contact attempts,
- * transitions, delivery outcomes, and Undo evidence distinct (DEC-05).
+ * transitions, delivery outcomes, and Undo evidence distinct.
  * Entries render newest-first; `at` is the durable occurrence time.
  */
 export type HistoryEntry =

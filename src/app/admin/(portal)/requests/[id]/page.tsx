@@ -67,7 +67,7 @@ function firstParam(value: Readonly<string | string[] | undefined>): string | nu
   return parsed.data !== "" ? parsed.data : null;
 }
 
-// Request history keeps each evidence kind distinct (DEC-05): contact
+// Request history keeps each evidence kind distinct (spec §6): contact
 // Attempts, lifecycle transitions, Undo evidence, the legacy-review
 // Classification, and relevant delivery outcomes. Notes keep their own
 // Staff surface above the panel; the technical audit stays on the
@@ -221,7 +221,7 @@ export default async function RequestDetailPage({
   // The work surface is the single workflow read (spec §6): durable state,
   // Version for optimistic commands, Undo eligibility, and Request history.
   // A failed read throws to the error boundary — it never renders as an
-  // Empty history or a workable request (DEC-24).
+  // Empty history or a workable request (spec §3).
   const [{ data: request, error }, surface, nameMap] = await Promise.all([
     db
       .from("requests")

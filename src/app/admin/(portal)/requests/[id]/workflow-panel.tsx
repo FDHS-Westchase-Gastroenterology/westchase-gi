@@ -38,10 +38,10 @@ import type {
 // The request work panel. One question — "What happened?" — answered with
 // The real-world outcomes staff just lived through. Every rendered choice
 // Derives from the legal-action policy the server itself re-decides with
-// (spec §16.5: UI actions derive from the same legal-action policy as the
+// (spec §7: UI actions derive from the same legal-action policy as the
 // Backend), so the interface can never offer a move the domain would
 // Refuse. The old "pick the request's next status" model is retired with
-// The generic status setter (DEC-15): staff record facts, and the state
+// The generic status setter (spec §1): staff record facts, and the state
 // Machine decides where the request goes.
 
 // ---------------------------------------------------------------------------
@@ -122,7 +122,7 @@ const NY_CLOCK = new Intl.DateTimeFormat("en-US", {
 
 // ---------------------------------------------------------------------------
 // Copy. Success names the staff-facing result (Scheduled, never Booked);
-// Failure names what is and is not known to have been saved (spec §16.5:
+// Failure names what is and is not known to have been saved (spec §7:
 // Never report false success; `unavailable` may or may not have written).
 // ---------------------------------------------------------------------------
 
@@ -757,7 +757,7 @@ export function WorkflowPanel({
         state: result.state,
         version: result.version,
         // Any accepted command from a legacy-review row is the classify
-        // Repair itself, which clears the flag (spec §5.6).
+        // Repair itself, which clears the flag (spec §5.7).
         legacyReviewRequired: false,
         callAgainAt: result.callAgainAt,
         undo: result.undo,

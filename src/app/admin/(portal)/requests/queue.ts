@@ -22,7 +22,7 @@ export interface QueueRow {
   status: RequestStatus;
   created_at: string;
   follow_up_at: string | null;
-  /** Migrated closure awaiting staff review (spec DEC-26): stays visible. */
+  /** Migrated closure awaiting staff review (spec §14): stays visible. */
   legacy_review_required: boolean;
   /** Optimistic-concurrency token, so a row can be worked where it is read. */
   version: number;
@@ -39,10 +39,10 @@ const COLUMNS =
 // Ordering column instead of widening it.
 export const OPEN_CANDIDATE_LIMIT = 500;
 
-// The five staff views are presentation vocabulary (spec DEC-UX-04);
-// Scheduled is a label over durable `booked` (DEC-04). Each view queries
+// The five staff views are presentation vocabulary (spec §3);
+// Scheduled is a label over durable `booked` (spec §2). Each view queries
 // Its durable statuses here — including legacy `scheduled` rows during
-// The deploy-overlap window (spec §14.2 step 3) — and every row
+// The compatibility window (spec §14) — and every row
 // Normalizes back to presentation vocabulary before rendering.
 export const VIEW_DB_STATUSES = {
   new: ["new"],

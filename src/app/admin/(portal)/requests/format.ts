@@ -10,7 +10,7 @@ export const STATUS_LABELS = {
   closed: "Closed",
 } as const satisfies Record<RequestStatus, string>;
 
-// DEC-04: the durable `booked` state always renders as **Scheduled** on
+// Spec §2: the durable `booked` state always renders as **Scheduled** on
 // Staff surfaces. This is the one place that translation happens for
 // Presentation; nothing translates the label back into a stored state.
 export function presentationStatus(state: RequestState): RequestStatus {

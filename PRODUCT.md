@@ -128,19 +128,13 @@ The `/admin` staff portal is the repository's second product, with its own regis
 patient site is a brand surface; the portal is a tool. UI work inside `src/app/admin/`
 follows this register plus the design charter in `DESIGN.md`.
 
-Re-chartered 2026-08-04
-([issue #190](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/issues/190))
-and resolved into its first committed experience world on 2026-08-09: the polish-era charter
-framed the portal around a queue to be watched; this charter claims the deeper job the practice
-now asks for and the working system built around it.
-
 ### Register
 
 product
 
 ### Users
 
-Front-desk staff and the practice manager of a two-location gastroenterology practice.
+Front-desk staff, practitioners and the practice manager of a two-location gastroenterology practice.
 Not software people; they run on phone calls, schedules, and paper. They open the
 portal between patient interactions, usually on the front-desk computer, sometimes on
 a phone. A secondary user is the practice's website maintainer / engineering support.
@@ -151,7 +145,7 @@ One place where practice staff do their web-adjacent jobs without reasoning abou
 software topology (repositories, hosting projects, asset ledgers). The jobs:
 
 - **Manage incoming appointment requests — the portal's central job.** Appointments is
-  a state machine staff use to manage, continuously update, and eventually close
+  a state machine staff use to manage, advance, and eventually close
   incoming appointment requests. The machine itself — its states, transitions,
   operations, invariants, and its boundary with the practice's real scheduling
   system — is defined in the
