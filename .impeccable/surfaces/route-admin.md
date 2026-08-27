@@ -19,7 +19,7 @@ jobs into subordinate pages of one generic dashboard.
 
 ## Shared experience world
 **The Line** (2026-08-25) names a structural commitment rather than a paper artifact: the unit of every operational surface is the line — one patient, one next action, one time — and the line is where work is both read and recorded. It replaces The Front Desk Ledger and The Day Sheet, which each named a metaphor that became something to decorate (cards, colored summary bands, count sentences). Counts are column headers, never headlines; the largest text on a page is the day, and the second largest is a patient's name. The interface recedes around the work but stays explicit about status, timing, recovery, and completion.
-- Work happens where the work is listed. A dialog is for work about the whole sheet (printing a packet, adding a new request); work about one patient happens on that patient's line, and never covers the page.
+- Work happens where the work is listed. A dialog is for work about the whole sheet (printing a packet, adding a new request) or for one patient's line, lifted: pressing anywhere on a line opens that line as a modal carrying the same facts plus the outcome decision, and focus returns to the line on close (amended 2026-08-27; the line-modal supersedes "work about one patient never covers the page"). The detail page survives as a quiet "Open full record" link at the modal's foot.
 - A line records a decision, not a form: nobody picked up, we talked, or it is booked. Every contact schedules its own return — no path leaves a contacted request without a call-again day.
 
 ## Product-slice architecture
@@ -51,8 +51,14 @@ slice-specific artifacts remain follow-up work where they are not yet complete.
 - Printing or preparing a packet never changes request status, attention state, history, or version.
 - Every mutation communicates pending, success, failure, conflict, undo, and the durable result in staff language.
 - Desktop uses a persistent task rail and working canvas. Mobile preserves the same four destinations in thumb reach.
-- Amber means attention and appears only as a stamp or hairline marker on a line, never as a region wash. Teal means current, selected, or hovered. Navy is the form's printed ink: navigation, rules, and primary actions. Mint is the only hue that may tint a large area, for a settled state.
-- Lists are never clipped to a scroll box; a long group caps and names its exact remainder.
+- Amber marks attention. Teal marks current, selected, or hovered. Navy is printed ink:
+  navigation, rules, and primary actions. Mint may tint a large settled area.
+- A group of five lines or fewer stands fully open; a taller group scrolls inside a fixed
+  row-unit window behind a half-cut line, with a teal rail tracking scroll progress
+  (amended 2026-08-27; supersedes "lists are never clipped to a scroll box"). The guard that
+  rule protected survives it: the heading's count always states the true total, rendering
+  still caps per group, and a group past the cap names its exact remainder as a link into
+  Appointments.
 - Appointment request is the unit of appointment work; “Appointments” is the destination label,
   not the product boundary.
 

@@ -57,14 +57,11 @@ const NY_DAY = new Intl.DateTimeFormat("en-CA", {
 const MORNING_START = 5 * 60 + 30;
 const AFTER_HOURS_START = 19 * 60;
 
-/* How many lines of a group stand open. The rest expand in place rather than
-   scrolling inside a clipped box: a long first group must not bury the groups
-   below it, but hiding a list's true size is a different failure. The heading's
-   count always states the real total. */
-const VISIBLE_LINES = 6;
-
 /* A ceiling on what the page will render at once, so a post-vacation backlog
-   cannot build a 500-row document. Past it, the tail links to Appointments. */
+   cannot build a 500-row document. Past it, the tail links to Appointments.
+   How many lines stand open before a group scrolls is the window's decision,
+   made in CSS beside the sheet; the heading's count always states the real
+   total. */
 const RENDER_CEILING = 40;
 
 function practiceDayNumber(date: Date): number {
@@ -156,8 +153,7 @@ function groupFor(
     caption,
     href,
     count: rows.length,
-    lines: rendered.slice(0, VISIBLE_LINES),
-    moreLines: rendered.slice(VISIBLE_LINES),
+    lines: rendered,
     overflow: Math.max(0, rows.length - RENDER_CEILING),
   };
 }

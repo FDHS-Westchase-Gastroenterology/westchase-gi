@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "node scripts/dev-patients.mjs && next dev",
+    "dev:patients": "node scripts/dev-patients.mjs",
     "dev:mission": "mkdir -p .logs; lsof -ti tcp:3100 | xargs -r kill -9; exec next dev -p 3100",
     "build": "next build",
     "start": "next start",
@@ -12,7 +13,7 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "test:e2e-guard": "node --test e2e/target-guard.test.mjs e2e/dictionary-availability.test.mjs",
-    "test:unit": "node --test src/lib/portal/*.test.mjs src/lib/portal/workflow/*.test.mjs \"src/app/admin/(portal)/audit/\"*.test.mjs \"src/app/admin/(portal)/requests/new/\"*.test.mjs tools/oxlint/anti-slop/plugin.test.mjs",
+    "test:unit": "node --test src/lib/portal/*.test.mjs src/lib/portal/workflow/*.test.mjs \"src/app/admin/(portal)/audit/\"*.test.mjs \"src/app/admin/(portal)/requests/new/\"*.test.mjs scripts/dev-patients.test.mjs tools/oxlint/anti-slop/plugin.test.mjs",
     "ui:reference": "node scripts/capture-ui-reference.mjs",
     "ui:reference:portal": "node --env-file-if-exists=.env.local scripts/capture-ui-reference.mjs --portal"
   },

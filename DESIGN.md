@@ -1,16 +1,4 @@
-# Design Charter: Westchase Gastroenterology
-
-The v2 frame. Fidelity to the previous vendor site is no longer the mission. This document
-records what the practice owns, the floors that bind every surface, and the guardrails each
-register keeps. Everything else is free: typefaces (Lato and Trocchi are v1 incumbents, not
-commitments), token values and their roles, layout system, component vocabulary, motion
-grammar, header treatment, and composition. The v1 rulebook is retired without archive and
-carries no authority anywhere.
-
-Visual worlds are chosen at build kickoff, per surface effort, through a full direction
-derivation. They are never inherited from this file. When a first build settles a world, its
-surviving tokens and rules are recorded here. Until then this charter carries no palette
-table, no component vocabulary, and no motion spec.
+# Design 
 
 ## What the practice owns
 
@@ -41,63 +29,18 @@ Non-negotiable in every world, both registers:
 
 - **WCAG 2.1 AA**, with every text/background pair verified, not assumed, at AA or
   better. Accessibility specifics (tap targets, focus, landmarks) live in `PRODUCT.md`.
-- **Reduced motion is honored globally**: gentler, never broken.
 - **Five locales are one design.** Any chosen typeface serves English, Spanish,
   Vietnamese, Korean, and Arabic, or names script companions, and layout holds under
   RTL. Type is free; the languages are not.
-- **Content is visible without JavaScript.** No world may hide content behind script
-  that might not run.
 - **Provenance.** Harvested practice artifacts (official provider-card graphics,
   source mirrors in `public/images/`) remain byte-exact as preserved; the six published
   headshot derivatives remain the documented exception. No re-encoding, no unapproved
   replacement.
 
-## Patient site guardrails (brand register)
+## Staff portal — The Line
 
-The scene: adults 45 and older, often anxious, usually on phones, in waiting rooms and
-kitchens. The scene, not category habit, keeps the site light-themed, generously typed,
-and high-contrast until the scene itself changes. Interruption and ask policies are
-product law in `PRODUCT.md`.
-
-## Staff portal guardrails (product register)
-
-Operate posture: scanability, consistency, and native expectations outrank expression;
-brand lives in precise details, used with restraint. Motion is state-conveying only, within
-ordinary UI budgets. Task vocabulary and workflow truths are product law in `PRODUCT.md`.
-
-## Committed staff-portal world — The Line (2026-08-25)
-
-The unit of every operational surface is **the line**: one patient, one next action, one time. The
-line is not a row in a report and not a link to somewhere else — it is where the work is read *and*
-where the work is recorded. This world governs the complete `/admin` surface until deliberately
-re-chartered.
-
-It replaces two worlds that failed the same way. The Front Desk Ledger (2026-08-09) and The Day
-Sheet (2026-08-25) both named a paper artifact, and both times the metaphor became something to
-decorate rather than a rule to obey — cards, colored summary bands, count sentences. This world is
-named for a structural commitment instead, because there is no artifact here to dress up.
-
-Counts are column headers, never headlines. The largest text on a working page is the day it
-describes; the second largest is a patient's name. A number nobody can act on never outranks a
-name somebody must call.
-
-**Work happens where the work is listed.** A staff member who can see that a patient must be called
-can record what happened on that call without leaving the page, because arriving at the portal is
-already an interruption of a fast clinic day and every further navigation compounds it. The
-consequence is a hard rule about layers: **a dialog is for work about the whole sheet** — printing a
-packet, adding a request that does not exist yet, neither of which belongs to any one line — **and
-work about one patient happens on that patient's line.** Nothing about a single row ever covers the
-page.
-
-What a line can record is a decision, not a form. The question staff answer is the one they
-actually face, in the order they face it: nobody picked up, we talked, or it is booked. A flat list
-of every possible outcome, weighted equally, forces a reader to consider the rare case every time
-they record the common one. Outcome wording, order, and color come from one source shared by every
-surface, so the line and the request record can differ in density without drifting in vocabulary.
-
-**Every contact schedules its own return.** No path may leave a contacted request without a
-call-again day; a request nobody will be reminded about is lost, not tracked. The day is prefilled
-from what happened and stays adjustable.
+The world itself is product law in [`PRODUCT.md`](PRODUCT.md#north-star). This section is how
+that world is composed.
 
 ### Composition and navigation
 
@@ -105,24 +48,7 @@ from what happened and stays adjustable.
   Appointments, Settings, and Help. At narrow widths the same destinations become a fixed,
   thumb-reachable bottom index; the mobile header carries identity and account actions.
 - The working canvas is a cool near-white field (`--portal-canvas`). Rows sit on white paper
-  (`--portal-surface`) and are divided by hairlines and space. Cards are not a page scaffold;
-  shadow is reserved for overlays.
-- **Figure and ground come from value alone, and the separation is deliberately slight.** No
-  shadow, no filter, no border on a row: white rows on the cool field are about a 1.12:1
-  luminance step, which reads as ruled bands recessed into the desk rather than as cards
-  floating above it. Headings and names, sitting directly on the field at full ink contrast, are
-  the forward layer. This quietness is the decision, not an oversight — do not "fix" it by
-  adding depth. The rule against filled regions is about color washes carrying meaning, not
-  about the paper the rows are printed on.
-- Every operational page opens with a **sheet header**: the day or the page's subject set large,
-  identity as small print above it, the primary action at the opposite end, and a closing rule.
-  It is a title block on a form, not a hero.
-- Sections are ruled groups introduced by a heading and a count. Rows carry no internal card
-  chrome; the hairline between them is the ruling.
-- Staff-authored intake and other multi-field tasks remain ruled worksheets in the working
-  canvas, laid out as one linear task on desktop and mobile.
-- Settings tabs and appointment filters preserve location with `aria-current` rather than
-  inventing navigation behavior.
+  (`--portal-surface`) and are divided by hairlines and space.
 
 ### Type
 
@@ -141,9 +67,26 @@ from what happened and stays adjustable.
 
 ### Space
 
-- A 4px base. Space, not color, performs grouping: 32px above a group heading and 8px below it,
-  rows separated by hairlines with no gap, sheet padding 24px desktop and 16px mobile.
-- More space above a heading than below it, everywhere.
+- A seven-step rem scale carries every gap: `--ps-1` 0.25rem, `--ps-2` 0.5rem, `--ps-3`
+  0.75rem, `--ps-4` 1rem, `--ps-6` 1.5rem, `--ps-8` 2rem, `--ps-12` 3rem. Values between
+  steps do not exist; a gap that wants one is a hierarchy question, not a spacing one.
+- Space separates; hairlines (`--color-line`) divide. A group owns its lines with a rule
+  and breathing room, never a card wash or a border box.
+- **Groups window, they do not grow.** A group of five lines or fewer stands fully open.
+  A taller group holds a fixed window — four and a half rows on desktop, three and a half
+  on mobile — and scrolls within it. The deliberately half-cut row at the window's edge is
+  the whole affordance: a reader who can see half a line knows there is more, the way a
+  paper tray does. No Show-all control, no disclosure caret, no reflow. This overturns the
+  earlier contract that lists are never clipped to a scroll box; that rule guarded against
+  hidden truth, and the guard survives it — the heading's count always states the group's
+  true total, so nothing scrolled out of view is ever unaccounted for.
+- The window is cut in row units (`calc()` on the row's authored height plus its
+  hairline), never in pixels of viewport, so the half-cut line lands on a line at every
+  size.
+- The page still refuses unbounded documents: rendering caps at forty lines per group,
+  and a group past the cap says its exact remainder as a link into Appointments
+  ("6 more in Appointments").
+- Print is paper: a windowed group prints every rendered line, unscrolled.
 
 ### Color
 
@@ -154,44 +97,54 @@ hues remain the identity (see anchor 1); this world re-weights and reassigns the
   rules, and primary actions.
 - **Teal** (`--color-teal`, `--color-teal-ink`) means current, selected, or hovered — the finger
   tracking a line. Nothing else.
-- **Amber** (`--color-amber`, `--color-amber-deep`, `--portal-attention-ink`) means attention,
-  and appears only as a stamp, a tag, or a hairline marker **on a line**, plus the focus ring.
-  Amber never washes a region. Filling whole bands with competing amber tints is what drained the
-  one color reserved for attention.
+- **Amber** (`--color-amber`, `--color-amber-deep`, `--portal-attention-ink`) means attention.
+  Current use is a stamp, a tag, or a hairline marker on a line, plus the focus ring.
 - **Mint** (`--color-mint`) is the only hue permitted to tint a large area, and only for a
   settled or cleared state.
 - Color never carries state alone; a stamp always carries words.
 
 ### Interaction, motion, and adaptation
 
-- Every actionable target is at least 44px. Keyboard focus uses a two-pixel teal outline with
-  offset — focus is the tracked line, which is teal's one role — turned inward on full-bleed
-  rows so the hairline above and below cannot clip it. Landmarks and headings stay semantic, and
-  the shell exposes a skip link.
-- Motion is state feedback only: 150–160ms color transitions on a strong ease-out. Navigation
-  and keyboard-triggered work never slide, scale, or delay. Reduced motion keeps color and
-  opacity cues and drops movement.
-- **Lists are never clipped, and they never scroll inside the page.** A fixed-height scroll box
-  is not disclosure: it makes eighteen rows look exactly like four, hides its own size behind an
-  overlay scrollbar, captures the wheel from the page that already scrolls, sends keyboard focus
-  to rows nobody can see, and prints as whatever fit the clipped height. A long group instead
-  holds six lines open and **expands the rest in place**, and its heading's count states the true
-  total whether open or closed. Only past a render ceiling does a remainder link out. The reason
-  to cap is that a long first group must not bury the groups below it — never to conceal how much
-  work is waiting.
-- Desktop prioritizes scan density and a persistent working location. Mobile becomes one
-  readable column with destinations and account actions in reach; it never clips a row or drops
-  workflow truth. Print is a third authored mode, and screen and paper are the same material:
-  US Letter worksheets, one request per sheet, full contact and request context, a paper routing
-  area, no application chrome.
-- Pending, success, empty, partial-read, unavailable, conflict, unauthorized, completion, and
-  recovery states use the same page and action contracts. A failed read reports that it failed;
-  it never renders as a zero. Printing is non-mutating, and the live queue stays authoritative
-  before and after a paper handoff.
+The world's thesis — the line is where work is read and recorded — now includes how the
+work opens. A patient's line is one press target end to end: press anywhere on it and the
+line lifts into a modal that carries the same facts (name, stamp, preference, timing, the
+dialable number) plus the outcome decision. The phone number stays a live `tel:` link
+inside the row and inside the modal; Record remains as a labeled synonym for the same
+press. The old behavior — the row navigating to a detail page — is demoted to a quiet
+"Open full record" link at the modal's foot. This amends the earlier contract that work
+about one patient never covers the page: the modal is the line, lifted; it opens over the
+sheet it came from, returns focus to the line that opened it, and never navigates.
 
-## Transition
+**The motion registry.** Four tokens in the portal scope carry every authored movement,
+so surfaces cannot each invent a temperament:
 
-Until a surface is rebuilt under a committed world, maintenance matches the surface's
-existing implementation. The code is the reference; consistency with the surrounding
-surface is the rule. No incumbent grammar constrains a rebuild, and no future world's
-grammar half-adopts into a surface that has not been rebuilt.
+- `--pm-spring` / `--pm-spring-duration` (440ms) — arrival. A ζ≈0.7 spring sampled into
+  CSS `linear()`: the visible move lands in the first ~110ms, overshoots 4.6% once, and
+  settles without a second bounce. Alive, never playful — this is a clinic.
+- `--pm-exit` / `--pm-exit-duration` (160ms) — departure. A strong ease-out, faster than
+  arrival, back along the entrance path.
+
+Rules of use:
+
+- **Every modal is one modal.** Dialogs render through the shared native-`<dialog>`
+  primitive and the shared dialog class: rise 12px, grow from 97%, on the registry spring;
+  leave on the registry exit. A modal learned once is learned everywhere. Entrances and
+  exits are transitions, not keyframes, so a close mid-entrance reverses from wherever the
+  surface is.
+- **A modal that must fetch still opens on the spring's schedule** and shimmers a
+  skeleton while it waits. The surface is never late, only its facts.
+- **Scroll is tracked, not decorated.** A windowed group carries a 2px teal rail that
+  fills with scroll progress — teal's one meaning, the finger tracking the sheet, driven
+  by `scroll-timeline` with no script. Browsers without scroll-driven animations get no
+  rail; the half-cut row alone carries the affordance.
+- **Micro state changes stay micro.** Hover tints, pressed ink, and focus rings keep
+  their own ~150ms ease-out; the registry tokens govern surfaces that move, not surfaces
+  that tint.
+- **Reduced motion is a first-class temperament, not a disability switch:** modals cross-
+  fade in ~120ms with no travel, skeletons hold still, the rail does not animate. Nothing
+  is withheld; only the physics are.
+- Keyboard is whole: the row press target is a real button, Escape cancels a modal,
+  and focus returns to the line. Adaptation holds the same grammar at every width —
+  the mobile window is shorter, the modal is near-full-width, the targets stay 44px.
+
+

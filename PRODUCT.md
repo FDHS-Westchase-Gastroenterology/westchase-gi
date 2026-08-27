@@ -134,13 +134,16 @@ product
 
 ### People and working contexts
 
-These are the people the portal serves. They are role groups grounded in the practice's work,
+These are the Persons the portal serves. They are role groups grounded in the practice's work,
 not research-backed personas with invented names or biographies.
 
 - **Front-desk staff are the primary daily users.** They work the shared appointment-request
   queue, prepare paper handoffs, and print review flyers between calls and patient arrivals.
   They usually use a shared front-desk computer and may pick up the same work on a phone. The
-  portal must make interruptions and handoffs safe.
+  portal must make interruptions and handoffs safe. These staff members need to be able to: 
+  - Quickly and efficiently retrieve any information they need from the portal, past appointments, current appointments, individuals currently in the state machine as it advances through the appointment lifecycle, or a requested website change. 
+  
+  
 - **The practice manager does the same appointment work and administers the portal.** The
   manager also manages staff access and notification recipients and may distribute printed
   requests to staff. Administrative tools must stay available without crowding daily work.
@@ -188,11 +191,36 @@ never silently lost, quality in details staff notice without naming.
 
 ### North star
 
-**The Front Desk Ledger.** Staff should be able to look once, understand what needs attention,
-and either enter the live appointment request or create a safe paper handoff without losing the
-truth of the shared queue. Each request moves from an unanswered patient ask to a documented
-real-world outcome; interruptions, handoffs, narrow screens, stale data, and failed reads never
-make staff reconstruct what the software meant.
+**The Line** (2026-08-25). The unit of every operational surface is **the line**: one
+patient, one next action, one time. The line is not a row in a report and not a link to
+somewhere else — it is where the work is read and where the work is recorded. This world
+governs the complete `/admin` surface until deliberately re-chartered.
+
+Staff look once, see who must be called, and record what happened on that line — or
+prepare a paper handoff — without losing the truth of the shared queue. Each request
+moves from an unanswered patient ask to a documented real-world outcome; interruptions,
+handoffs, narrow screens, stale data, and failed reads never make staff reconstruct what
+the software meant.
+
+The world is named for that structural commitment, not for a paper artifact. It replaces
+The Front Desk Ledger (2026-08-09) and The Day Sheet (2026-08-25). Counts are column
+headers, never headlines. The largest text on a working page is the day it describes; the
+second largest is a patient's name. A number nobody can act on never outranks a name
+somebody must call.
+
+**Work happens where the work is listed.** A staff member who can see that a patient must
+be called can record what happened on that call without leaving the page. A dialog is for
+work about the whole sheet — printing a packet, adding a request that does not exist yet.
+Work about one patient happens on that patient's line. Nothing about a single row ever
+covers the page.
+
+What a line can record is a decision, not a form. The question staff answer is the one
+they actually face, in the order they face it: nobody picked up, we talked, or it is
+booked. Outcome wording, order, and color come from one source shared by every surface,
+so the line and the request record can differ in density without drifting in vocabulary.
+
+**Every contact schedules its own return.** No path may leave a contacted request without
+a call-again day. The day is prefilled from what happened and stays adjustable.
 
 ### Evidence
 
@@ -213,43 +241,29 @@ rather than presenting assumption as measurement.
 
 ### Capabilities and Constraints
 
-The law the portal keeps while its narrative sections await prototyping. Binding until
-explicitly amended.
 
-Floors, riding on their own authority:
-
-- **Honest reads.** A failed read is never presented as an empty result — "nothing
-  waiting" and "could not check" are different truths. Counts are suppressed, never
-  zeroed, when their read fails; a failed recipients read stays silent rather than
-  raising a false zero-recipient warning.
-- **PHI-minimal.** The portal handles appointment requests, not a clinical record —
-  but intake stores an optional patient-supplied brief reason, so the queue is
-  sensitive. Notification emails, operational logs, and telemetry payloads stay free
-  of patient fields. Boundary-crossing reads of patient data are audited: a CSV
-  export and a prepared New-request print packet each write a metadata-only audit row
-  (actor, timestamp, row count, filter).
-- No direct browser database access; no assistant that sees patient free text or
-  mutates records autonomously.
-
-Durable truths, re-owned in the 2026-08-04 re-charter session:
+Durable truths:
 
 - **One human action, one portal transaction.** The interface never splits one
   real-world action across disconnected forms, and server operations backing a
   combined action commit atomically. The concrete save choreography is not chartered
-  here — see the state-machine deferral below.
-- **Staff-authored intake joins the same ledger.** A call, walk-in, or message can become one
+  here — see the workflow contract below.
+- **Staff-authored intake joins the same queue.** A call, walk-in, or message can become one
   `NEW` appointment request from Home or Appointments. This records scheduling intake, not a
   patient chart; it identifies staff provenance, retries idempotently, and creates no
   website-submission notification work.
 - **Paper handoff is an output, never workflow state.** Every active staff member may prepare
-  one oldest-first packet containing the exact durable `NEW` set at that database snapshot.
-  Preparing or printing it changes no request status, version, attention state, or Request
-  history. The packet carries the patient details staff need for the call, a paper routing area,
-  safe-paper guidance, and the instruction to record the result in the portal. Paper can
-  distribute work; the live queue remains authoritative.
-- **Staff author attention.** Urgency comes from staff, never from configuration: no
-  Settings "N days" knob, no practice-meeting threshold. The mechanics through which
-  staff express it belong to the state machine's definition.
+  an oldest-first packet of the exact durable `NEW` set, or a custom list of New and/or
+  Contacted requests, at that database snapshot. Preparing or printing it changes no request
+  status, version, attention state, or Request history. The packet carries the patient details
+  staff need for the call, a paper routing area, safe-paper guidance, and the instruction to
+  record the result in the portal. Paper can distribute work; the live queue remains
+  authoritative.
+- **Staff author attention.** Urgency comes from staff-authored facts, never from a Settings
+  control: no "N days" knob, no practice-meeting threshold. Staff set the call-again day when
+  they record contact. The portal then treats `NEW` as a first call, a due call-again as due
+  now, a missing call-again as repair, and a silent Contacted request as stale after the
+  previous business morning.
 - **Two audit layers.** The human Recent-work view renders plain-language,
   work-linked entries; the exact technical audit (action codes, UUID fragments,
   correlation IDs) is preserved beneath it for administrators. Storage vocabulary is
@@ -278,17 +292,18 @@ Appointments workflow contract, defined in the
 Committed product-slice architecture
 ([ADR 0004](docs/adr/0004-portal-is-four-outcome-owned-vertical-slices.md)):
 
-The portal remains one `/admin` design surface and shared shell under the Front Desk Ledger world,
-but it is not one product outcome with subordinate pages. Product ownership within it is divided
-among four end-to-end vertical slices. Each slice owns a complete staff outcome; a route is only
-one way the product may deliver that outcome.
+The portal remains one `/admin` design surface and shared shell under The Line world, but it is
+not one product outcome with subordinate pages. Product ownership within it is divided among four
+end-to-end vertical slices. Each slice owns a complete staff outcome; a route is only one way the
+product may deliver that outcome.
 
-- **Home** owns orientation, triage, handoff, and the next useful action: staff can add an
-  appointment request, scan the ordered shared work stack, prepare a print packet by status, open
-  the next request to work, and reach recent operational context and secondary staff jobs.
+- **Home** owns today's calls: staff can add an appointment request, read who must be called in
+  order, record the common outcome on that line (no answer, contacted, or booked), prepare a
+  New-request print packet or a New/Contacted custom list, and reach secondary staff jobs.
+  Opening the request record is for notes, close, Undo, and reopen — not for the ordinary call.
 - **Appointments** owns the complete appointment-request lifecycle and working queue, retaining
   All, New, Contacted, Scheduled, and Closed as familiar views, with the same staff-authored intake
-  action in context.
+  action in context. Close, notes, Undo, reopen, and legacy review live here.
 - **Settings** owns staff access, notification recipients, and software administration without
   competing with daily appointment work.
 - **Help** owns cross-job guidance, recovery beyond a slice's own path, and transitions to human
@@ -298,15 +313,12 @@ Each slice is accountable for its own job, experience thesis, information archit
 matrix, PHI-free instrumentation, tests, and Product Experience acceptance. This architecture
 commits the ownership boundary; it does not claim that every slice's artifacts are complete yet.
 
-Navigation, authentication, authorization policy and enforcement, design tokens, and the Front
-Desk Ledger world remain shared horizontal infrastructure. Settings exposes staff access
-administration; it does not own authorization itself. The Activity log and review-flyer printing
-remain named utilities placed where they support an outcome, not automatic candidates for
-additional slices.
+Navigation, authentication, authorization policy and enforcement, design tokens, and The Line
+world remain shared horizontal infrastructure. Settings exposes staff access administration; it
+does not own authorization itself. The Activity log and review-flyer printing remain named
+utilities placed where they support an outcome, not automatic candidates for additional slices.
 
-Explicitly undecided / open product facts: the maintainer invite/cancel/accept/revoke
-acceptance pass; the structured website-change-request workflow (later conversationally
-assisted) planned for the maintainer seam.
+
 
 ### Product Principles
 
@@ -321,25 +333,14 @@ assisted) planned for the maintainer seam.
    interruptions, desktop, and mobile.
 4. **Familiarity carries the workflow.** Preserve the four destinations, five Appointments views,
    plain staff language, standard controls, and predictable navigation. Personality comes from
-   precise hierarchy and the paper-ledger metaphor, never from novel affordances staff must learn.
+   precise hierarchy and the line — one patient, one next action, one time — never from novel
+   affordances staff must learn.
 5. **The shared queue stays shared.** The portal may surface attention and support a manager's
    paper routing, but it never invents personal ownership or hides work behind "my tasks."
 6. **One system at every size.** Desktop uses a persistent task index and dense working canvas;
    mobile keeps the same destinations and actions in reach, with information recomposed rather
    than clipped or reduced to a desktop table.
 
-### Anti-references
-
-- Generic SaaS dashboards made from interchangeable metric cards, equal-weight shortcuts, and
-  charts that stand in for the work.
-- Kanban boards, invented assignees, personal task queues, or any interface that implies a domain
-  model the portal does not own.
-- Decorative clinical styling: excessive white cards, blue gradients, stock-health iconography,
-  glass, and motion used to make routine work feel more "digital."
-- Hidden mutation, ambiguous save states, reassuring zeroes after failed reads, and paper actions
-  that silently advance a request.
-- Desktop-only density squeezed onto a phone, or mobile simplification that removes status,
-  recovery, or the next safe action.
 
 ### Accessibility
 
