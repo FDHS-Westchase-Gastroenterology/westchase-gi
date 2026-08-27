@@ -236,7 +236,7 @@ function ReviewFlyerPrinterBody({ flyers }: Readonly<{ flyers: ReviewFlyer[] }>)
                   {flyer.credentials !== null && flyer.credentials !== "" ? (
                     <p className="mt-1 font-bold text-[var(--color-ink)]">{flyer.credentials}</p>
                   ) : null}
-                  <p className="mt-2 max-w-[56ch] text-[0.95rem] text-[var(--color-muted)]">
+                  <p className="mt-2 max-w-[56ch] text-[0.95rem] text-[var(--color-muted-ink)]">
                     {flyer.description}
                   </p>
                   <div className="mt-4 flex flex-wrap items-center gap-2.5">
@@ -262,7 +262,7 @@ function ReviewFlyerPrinterBody({ flyers }: Readonly<{ flyers: ReviewFlyer[] }>)
           </div>
         </section>
 
-        <aside className="mt-8 max-w-[68ch] border-t border-[var(--color-line)] pt-6 text-[0.9rem] text-[var(--color-muted)]">
+        <aside className="mt-8 max-w-[68ch] border-t border-[var(--color-line)] pt-6 text-[0.9rem] text-[var(--color-muted-ink)]">
           <p>
             <strong className="text-[var(--color-ink)]">Printing tip:</strong> use bright-white
             cardstock and color ink. Keep the white area around each QR code clear so phone cameras

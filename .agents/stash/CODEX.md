@@ -17,6 +17,7 @@ Discovery is progressive. An agent sees each skill's name and description first 
 | `vercel-react-best-practices`      | Vercel Engineering                                                                                                                               | 1.0.0                    | MIT              |
 | `wgi-supabase-branching`           | Project-authored                                                                                                                                 | 1.0.0                    | Repository       |
 | `writing-quality`                  | [vercel-labs/eve-software-factory-template](https://github.com/vercel-labs/eve-software-factory-template/tree/main/agent/skills/writing-quality) | Not declared (`4cb890e`) | MIT              |
+| `shadcn`                           | [shadcn-ui/ui](https://github.com/shadcn-ui/ui/tree/main/skills/shadcn)                                                                          | Not declared (`683a5a9`) | MIT              |
 
 ## Precedence
 
@@ -34,7 +35,13 @@ practice, so they rank below the repository's own rules:
 5. The vendored skill.
 
 A vendored skill that contradicts a hard rule is wrong for this repository, not a reason to
-revisit the rule.
+revisit the rule. Concrete standing example: the `shadcn` skill's preset and theming workflow
+would happily overwrite this repository's committed brand palette; the palette-protection and
+reconciliation rules in [`AGENTS.md`](../../AGENTS.md#shadcnui) outrank it, and a preset whose
+palette reaches a commit is a failed loop.
+
+The `shadcn` skill also has a machine-global mirror at `~/.agents/skills/shadcn` for agents
+working outside this checkout. The committed copy is canonical; refresh both together.
 
 ## Updating vendor skills
 

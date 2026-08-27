@@ -43,7 +43,7 @@ export function LocationMaps({ locale, dict }: Readonly<LocationMapsProps>) {
                 <span className="block font-extrabold text-[var(--color-ink)]">
                   {loc.name[locale]}
                 </span>
-                <span className="block text-[0.95rem] text-[var(--color-muted)]">
+                <span className="block text-[0.95rem] text-[var(--color-muted-ink)]">
                   {loc.street}, {loc.city}, {loc.region} {loc.postal}
                 </span>
               </span>

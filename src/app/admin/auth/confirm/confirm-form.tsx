@@ -57,7 +57,9 @@ export function ConfirmAuthForm() {
   }, []);
 
   if (link === null) {
-    return <p className="mt-6 text-sm text-[var(--color-muted)]">Preparing your secure link…</p>;
+    return (
+      <p className="mt-6 text-sm text-[var(--color-muted-ink)]">Preparing your secure link…</p>
+    );
   }
 
   if (link === "invalid") {

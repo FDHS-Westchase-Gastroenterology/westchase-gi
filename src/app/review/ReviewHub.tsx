@@ -186,7 +186,7 @@ export function ReviewHub() {
       </nav>
 
       <h1 className="mt-8 text-center text-[1.9rem] leading-[1.15]">{t.heading}</h1>
-      <p className="mx-auto mt-3 max-w-[36ch] text-center text-[1.02rem] text-[var(--color-muted)]">
+      <p className="mx-auto mt-3 max-w-[36ch] text-center text-[1.02rem] text-[var(--color-muted-ink)]">
         {t.sub}
       </p>
 
@@ -218,14 +218,14 @@ export function ReviewHub() {
         </a>
 
         <div className="card-lined flex items-center justify-between gap-3 px-5 py-3.5 opacity-80">
-          <span className="font-bold text-[var(--color-muted)]">Yelp</span>
+          <span className="font-bold text-[var(--color-muted-ink)]">Yelp</span>
           <span className="rounded-full bg-[var(--color-mint-2)] px-2.5 py-1 text-[0.78rem] font-bold text-[var(--color-teal-ink)]">
             {t.comingSoon}
           </span>
         </div>
       </div>
 
-      <p className="mt-9 text-center text-[0.82rem] font-extrabold tracking-[0.08em] text-[var(--color-muted)] uppercase">
+      <p className="mt-9 text-center text-[0.82rem] font-extrabold tracking-[0.08em] text-[var(--color-muted-ink)] uppercase">
         {t.moreHeading}
       </p>
 
@@ -233,25 +233,25 @@ export function ReviewHub() {
         <a href={siteHref(lang)} className="btn btn-outline w-full bg-white">
           <Globe className="h-4.5 w-4.5 text-[var(--color-teal-ink)]" />
           {t.website}
-          <ExternalLink className="h-3.5 w-3.5 text-[var(--color-muted)]" />
+          <ExternalLink className="h-3.5 w-3.5 text-[var(--color-muted-ink)]" />
         </a>
         <a href={site.phone.href} className="btn btn-outline w-full bg-white">
           <Phone className="h-4.5 w-4.5 text-[var(--color-teal-ink)]" />
           {t.call}
-          <span dir="ltr" className="font-normal whitespace-nowrap text-[var(--color-muted)]">
+          <span dir="ltr" className="font-normal whitespace-nowrap text-[var(--color-muted-ink)]">
             {site.phone.display}
           </span>
         </a>
         <a href={site.textLine.href} className="btn btn-outline w-full bg-white">
           <MessageSquare className="h-4.5 w-4.5 text-[var(--color-teal-ink)]" />
           {t.text}
-          <span dir="ltr" className="font-normal whitespace-nowrap text-[var(--color-muted)]">
+          <span dir="ltr" className="font-normal whitespace-nowrap text-[var(--color-muted-ink)]">
             {site.textLine.display}
           </span>
         </a>
       </div>
 
-      <footer className="mt-auto pt-10 text-center text-[0.85rem] text-[var(--color-muted)]">
+      <footer className="mt-auto pt-10 text-center text-[0.85rem] text-[var(--color-muted-ink)]">
         <p className="font-bold text-[var(--color-body)]">{site.name}</p>
         <p className="mt-0.5">{t.locations}</p>
         <p className="mt-0.5">{site.network}</p>

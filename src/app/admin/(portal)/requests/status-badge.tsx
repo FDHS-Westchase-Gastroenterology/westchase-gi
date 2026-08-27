@@ -10,7 +10,7 @@ const BADGE_STYLES = {
   new: "bg-[var(--color-amber-soft)] text-[var(--color-ink)]",
   contacted: "bg-[var(--color-mint-2)] text-[var(--color-teal-ink)]",
   scheduled: "bg-[var(--color-navy)] text-[var(--color-on-dark)]",
-  closed: "bg-[var(--color-line)] text-[var(--color-muted)]",
+  closed: "bg-[var(--color-line)] text-[var(--color-muted-ink)]",
 } as const satisfies Record<RequestStatus, string>;
 
 export function StatusBadge({ status }: Readonly<{ status: RequestStatus }>) {

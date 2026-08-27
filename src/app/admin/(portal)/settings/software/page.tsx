@@ -29,7 +29,7 @@ import {
 import { MaintainerAccess } from "./maintainer-access";
 
 const SECTION_LABEL =
-  "text-[0.82rem] font-bold tracking-[0.06em] text-[var(--color-muted)] uppercase";
+  "text-[0.82rem] font-bold tracking-[0.06em] text-[var(--color-muted-ink)] uppercase";
 const SECTION_BODY = "mt-3 max-w-[70ch] text-[0.9rem] leading-relaxed text-[var(--color-body)]";
 const PROVIDER_LINK_CLASS =
   "mt-1 flex min-h-11 w-fit items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2";

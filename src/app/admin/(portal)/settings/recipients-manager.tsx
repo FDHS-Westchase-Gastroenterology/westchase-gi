@@ -351,13 +351,13 @@ function RecipientRowItem({
                 restoreEditFocusRef.current = true;
                 onCancelLabel();
               }}
-              className="min-h-11 px-2 text-[0.85rem] font-bold text-[var(--color-muted)] disabled:opacity-60"
+              className="min-h-11 px-2 text-[0.85rem] font-bold text-[var(--color-muted-ink)] disabled:opacity-60"
             >
               Cancel
             </button>
           </div>
         ) : (
-          <p className="text-[0.85rem] text-[var(--color-muted)]">
+          <p className="text-[0.85rem] text-[var(--color-muted-ink)]">
             {hasLabel ? label : "No label"}
             <button
               ref={editButtonRef}
@@ -471,7 +471,7 @@ function RecipientNotices({
           <button
             type="button"
             onClick={onDismissUndo}
-            className="min-h-11 font-bold text-[var(--color-muted)]"
+            className="min-h-11 font-bold text-[var(--color-muted-ink)]"
           >
             Dismiss
           </button>
@@ -805,7 +805,7 @@ export function RecipientsManager({
       >
         Notification recipients
       </h2>
-      <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
+      <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted-ink)]">
         {RECIPIENTS_INTRO}
       </p>
 
@@ -823,7 +823,7 @@ export function RecipientsManager({
         className="mt-5 divide-y divide-[var(--color-line)]"
       >
         {recipients.length === 0 && (
-          <li className="py-4 text-[0.95rem] text-[var(--color-muted)]">
+          <li className="py-4 text-[0.95rem] text-[var(--color-muted-ink)]">
             No recipients yet — new-appointment-request emails are currently going to no one. The
             queue still records everything.
           </li>
@@ -877,7 +877,7 @@ export function RecipientsManager({
           }}
         />
       ) : (
-        <p className="mt-5 border-t border-[var(--color-line)] pt-5 text-[0.9rem] text-[var(--color-muted)]">
+        <p className="mt-5 border-t border-[var(--color-line)] pt-5 text-[0.9rem] text-[var(--color-muted-ink)]">
           Adding or removing recipients needs an administrator — you can pause or resume any address
           above.
         </p>

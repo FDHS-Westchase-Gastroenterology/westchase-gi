@@ -372,7 +372,7 @@ function CallAgainFieldset({
       <p
         id={descriptionId}
         data-testid={`${name}-required-explanation`}
-        className="mt-1 text-sm leading-relaxed text-[var(--color-muted)]"
+        className="mt-1 text-sm leading-relaxed text-[var(--color-muted-ink)]"
       >
         {description}
       </p>
@@ -427,7 +427,10 @@ function CallAgainFieldset({
             }}
             className="mt-1.5 block min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.9rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)] focus:ring-2 focus:ring-[var(--color-teal-ink)] disabled:opacity-60 aria-[invalid=true]:border-[oklch(0.5_0.19_25)] aria-[invalid=true]:bg-[color-mix(in_oklch,oklch(0.97_0.018_25)_70%,white)]"
           />
-          <p id={dayHintId} className="mt-1.5 text-sm leading-relaxed text-[var(--color-muted)]">
+          <p
+            id={dayHintId}
+            className="mt-1.5 text-sm leading-relaxed text-[var(--color-muted-ink)]"
+          >
             Required when Pick a day is selected. Save stays unavailable until this day is valid.
           </p>
           {customDayInvalid ? (
@@ -498,7 +501,7 @@ function ReturnTimeAction({
         >
           Reopen for more work
         </button>
-        <p className="text-sm text-[var(--color-muted)]">
+        <p className="text-sm text-[var(--color-muted-ink)]">
           You will choose when it returns before anything changes.
         </p>
       </div>
@@ -991,7 +994,7 @@ function AppointmentFieldset({
       <legend className="text-sm font-bold text-[var(--color-ink)]">
         When is the appointment?
       </legend>
-      <p id={hintId} className="mt-1 text-sm leading-relaxed text-[var(--color-muted)]">
+      <p id={hintId} className="mt-1 text-sm leading-relaxed text-[var(--color-muted-ink)]">
         Required before Save. This is what the practice reads to see who is coming in.
       </p>
       <div className="mt-3 flex max-w-md flex-wrap gap-3">
@@ -1150,7 +1153,7 @@ function OutcomeChoiceList({
   return (
     <fieldset className="mt-5" disabled={pending}>
       <legend className="text-sm font-bold text-[var(--color-ink)]">What happened?</legend>
-      <p className="mt-1 text-sm leading-relaxed text-[var(--color-muted)]">
+      <p className="mt-1 text-sm leading-relaxed text-[var(--color-muted-ink)]">
         Record what happened on the call. The request moves to the right status.
       </p>
       <div data-testid="workflow-choices" className="portal-choice-list">
@@ -1318,7 +1321,7 @@ function WorkflowPanelBody({
             >
               {pending && inFlight === "classify" ? "Saving…" : "Finish record"}
             </button>
-            <p className="text-sm text-[var(--color-muted)]">
+            <p className="text-sm text-[var(--color-muted-ink)]">
               This review is recorded in Request history.
             </p>
           </div>
@@ -1366,7 +1369,7 @@ function WorkflowPanelBody({
             >
               {pending && inFlight === "save" ? "Saving…" : "Save"}
             </button>
-            <p className="text-sm text-[var(--color-muted)]">
+            <p className="text-sm text-[var(--color-muted-ink)]">
               Save records one entry in Request history. You can undo for 15 minutes.
             </p>
           </div>

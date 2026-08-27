@@ -45,7 +45,7 @@ export function LocationCards({ locale, dict }: Readonly<LocationCardsProps>) {
                   {c.textLine}:{" "}
                   <span className="bidi-ltr whitespace-nowrap">{site.textLine.display}</span>
                 </a>
-                <span className="block text-[0.9rem] text-[var(--color-muted)]">
+                <span className="block text-[0.9rem] text-[var(--color-muted-ink)]">
                   {c.textLineHuman}
                 </span>
               </span>

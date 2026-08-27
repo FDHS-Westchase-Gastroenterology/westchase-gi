@@ -28,12 +28,14 @@ export function AuthCard({
             <h1 className="portal-auth-title text-[1.55rem] leading-tight text-[var(--color-ink)]">
               {title}
             </h1>
-            <p className="mt-1.5 text-[0.9rem] text-[var(--color-muted)]">{description}</p>
+            <p className="mt-1.5 text-[0.9rem] text-[var(--color-muted-ink)]">{description}</p>
             {children}
           </div>
         </div>
         {footer !== undefined && footer !== null && footer !== false && footer !== "" ? (
-          <div className="mt-5 text-center text-[0.85rem] text-[var(--color-muted)]">{footer}</div>
+          <div className="mt-5 text-center text-[0.85rem] text-[var(--color-muted-ink)]">
+            {footer}
+          </div>
         ) : null}
       </div>
     </main>

@@ -221,7 +221,7 @@ function AppointmentFields({
       <div>
         <label htmlFor="email" className="field-label">
           {f.email}{" "}
-          <span className="font-semibold text-[var(--color-muted)]">{f.emailOptional}</span>
+          <span className="font-semibold text-[var(--color-muted-ink)]">{f.emailOptional}</span>
         </label>
         <input
           id="email"

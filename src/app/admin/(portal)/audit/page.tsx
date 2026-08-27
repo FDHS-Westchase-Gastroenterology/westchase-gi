@@ -223,7 +223,7 @@ export default async function AdminAuditPage({
             >
               Technical record
             </h2>
-            <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
+            <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted-ink)]">
               The exact actions behind the entries above, for administrators.
             </p>
             <div
@@ -234,7 +234,7 @@ export default async function AdminAuditPage({
             >
               <table data-testid="audit-table" className="w-full min-w-[640px] text-left">
                 <thead>
-                  <tr className="border-b border-[var(--color-line)] text-[0.8rem] tracking-[0.06em] text-[var(--color-muted)] uppercase">
+                  <tr className="border-b border-[var(--color-line)] text-[0.8rem] tracking-[0.06em] text-[var(--color-muted-ink)] uppercase">
                     <th scope="col" className="px-5 py-3.5 font-bold">
                       When
                     </th>
@@ -254,7 +254,7 @@ export default async function AdminAuditPage({
                     const external = externalAuditSummary(entry.detail);
                     return (
                       <tr key={entry.id} className="text-[0.9rem]">
-                        <td className="px-5 py-3 whitespace-nowrap text-[var(--color-muted)]">
+                        <td className="px-5 py-3 whitespace-nowrap text-[var(--color-muted-ink)]">
                           {formatReceived(entry.at, true)}
                         </td>
                         <td className="px-5 py-3 font-bold text-[var(--color-ink)]">
@@ -268,12 +268,12 @@ export default async function AdminAuditPage({
                         <td className="px-5 py-3 text-[var(--color-body)]">
                           {entry.entity}
                           {entry.entity_id !== null && entry.entity_id !== "" ? (
-                            <span className="ml-1.5 text-[0.8rem] text-[var(--color-muted)]">
+                            <span className="ml-1.5 text-[0.8rem] text-[var(--color-muted-ink)]">
                               {entry.entity_id.slice(0, 8)}…
                             </span>
                           ) : null}
                           {external ? (
-                            <span className="mt-0.5 block text-[0.8rem] text-[var(--color-muted)]">
+                            <span className="mt-0.5 block text-[0.8rem] text-[var(--color-muted-ink)]">
                               {external.target} · Outcome {external.outcome}
                             </span>
                           ) : null}
@@ -294,7 +294,7 @@ export default async function AdminAuditPage({
             id={TECHNICAL_RECORD_SUMMARY_ID}
             testId="audit-page-summary"
             renderKey={`${search}\n${workType}\n${recentPage}\n${page}\n${total}\n${firstShown}\n${lastShown}`}
-            className="text-[0.9rem] text-[var(--color-muted)]"
+            className="text-[0.9rem] text-[var(--color-muted-ink)]"
           >
             Showing {firstShown}–{lastShown} of {total}
           </RecentWorkFocusTarget>

@@ -147,4 +147,30 @@ Rules of use:
   and focus returns to the line. Adaptation holds the same grammar at every width —
   the mobile window is shorter, the modal is near-full-width, the targets stay 44px.
 
+## shadcn/ui and the committed tokens
+
+shadcn/ui is the approved component source for velocity. It never becomes a second identity:
+components adopt **through** the committed token system, never around it.
+
+- **The bridge.** Every shadcn component resolves color through semantic tokens
+  (`--background`, `--primary`, `--muted`, …). In `src/app/globals.css` those tokens are mapped
+  one-to-one onto the committed brand tokens — primary to navy, secondary/accent to the mint
+  family, surfaces to paper, lines to the line family, ring to teal-ink. A shadcn component
+  dropped in unmodified renders in the practice's palette because the bridge says so.
+- **The one non-brand hue is destructive.** Destructive actions have no brand hue; shadcn's
+  red is permitted for `--destructive` only. Any other literal color reaching the semantic
+  blocks is palette drift (see the reconciliation procedure in
+  [`AGENTS.md`](AGENTS.md#shadcnui)).
+- **Brand owns the shared namespaces.** The brand `@theme` block keeps the last word on colors
+  and the radius scale (`--radius` 0.625rem, sm 0.375rem, lg 0.875rem); the bridge re-declares
+  neither. Presets and `apply --preset` overwrite this wholesale and never run without a
+  palette-diff review.
+- **Composition rules still govern.** A shadcn Dialog in the portal rides the motion registry
+  like every modal — one modal, registry spring, reduced-motion cross-fade — and restyling
+  happens on the component or through `className`, never by re-pointing the semantic tokens
+  away from the brand.
+- **Dark mode is not a shipped surface.** The `.dark` mapping exists only so an accidental
+  `dark:` utility still lands on brand darks (the navy family). A real dark theme is a
+  practice decision under anchor 1.
+
 

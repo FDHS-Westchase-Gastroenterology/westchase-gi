@@ -296,7 +296,7 @@ export function Header({ locale, dict }: Readonly<HeaderProps>) {
                             className="flex items-center justify-between gap-2 rounded-md px-3 py-2.5 font-semibold text-[var(--color-body)] transition-colors hover:bg-[var(--color-mint)] hover:text-[var(--color-ink)]"
                           >
                             {child.label}
-                            <ExternalLink className="h-3.5 w-3.5 flex-none text-[var(--color-muted)]" />
+                            <ExternalLink className="h-3.5 w-3.5 flex-none text-[var(--color-muted-ink)]" />
                           </a>
                         ) : (
                           <Link
@@ -355,7 +355,7 @@ export function Header({ locale, dict }: Readonly<HeaderProps>) {
             {nav.map((item) =>
               item.children ? (
                 <div key={item.label} className="mt-1">
-                  <p className="px-3 pt-3 pb-1 text-[0.8rem] font-extrabold tracking-wide text-[var(--color-muted)] uppercase">
+                  <p className="px-3 pt-3 pb-1 text-[0.8rem] font-extrabold tracking-wide text-[var(--color-muted-ink)] uppercase">
                     {item.label}
                   </p>
                   {item.children.map((child) =>
@@ -368,7 +368,7 @@ export function Header({ locale, dict }: Readonly<HeaderProps>) {
                         className="flex items-center justify-between gap-2 rounded-md px-3 py-3 text-lg font-semibold hover:bg-[var(--color-mint)]"
                       >
                         {child.label}
-                        <ExternalLink className="h-4 w-4 flex-none text-[var(--color-muted)]" />
+                        <ExternalLink className="h-4 w-4 flex-none text-[var(--color-muted-ink)]" />
                       </a>
                     ) : (
                       <Link
@@ -398,7 +398,7 @@ export function Header({ locale, dict }: Readonly<HeaderProps>) {
               className="flex items-center justify-between gap-2 rounded-md px-3 py-3 text-lg font-bold hover:bg-[var(--color-mint)]"
             >
               {c.patientPortal}
-              <ExternalLink className="h-4 w-4 flex-none text-[var(--color-muted)]" />
+              <ExternalLink className="h-4 w-4 flex-none text-[var(--color-muted-ink)]" />
             </a>
             <div className="mt-4 grid gap-3 border-t border-[var(--color-line)] pt-5">
               <Link href={localePath(locale, "/appointment")} className="btn btn-amber btn-lg">

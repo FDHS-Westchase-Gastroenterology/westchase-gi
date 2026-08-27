@@ -79,6 +79,57 @@ How to post it:
 - Name the before SHA and the after SHA. For a stack of UI commits, show how each commit changed the screen, not only the branch tip.
 - Do not finish the turn until the comment is posted and the images — and the video, when required — render.
 
+### shadcn/ui
+
+shadcn/ui is installed and configured through `components.json` (style `base-nova`, Base UI
+primitives, Tailwind v4 CSS variables). The vendored `.agents/skills/shadcn` skill documents the
+CLI and component workflow; use it. Components resolve every color through **semantic tokens**
+(`--background`, `--primary`, `--muted`, …) that are bridged onto the committed brand palette in
+`src/app/globals.css`. The bridge is the only place shadcn's tokens exist; the brand `@theme`
+block above it belongs to the committed palette and is hands-off for shadcn and agents alike.
+
+**The hard rule: shadcn never overwrites the brand palette.** The brand hues — navy, teal,
+amber, mint — are a DESIGN.md anchor. `shadcn init` and `shadcn apply` (and any `add` that runs
+against a preset) inject neutral OKLCH literals, a `@theme inline` block that re-declares the
+Tailwind radius scale, and `@apply` rules that hijack `html`/`body` into shadcn's defaults. On
+install day these would have turned every `rounded-lg` on the site from the brand `0.875rem` to
+`0.625rem` and repainted the page white. That must never merge.
+
+Reconciliation procedure — run after **every** CLI operation that touches CSS:
+
+1. Commit or stash a clean checkpoint of `src/app/globals.css` **before** running the command.
+2. Run the command, then `git diff src/app/globals.css` and reject or rewrite anything that:
+   - adds OKLCH color literals to the semantic `:root` / `.dark` blocks — every semantic token
+     must reference a brand `--color-*` token. The single permitted literal is `--destructive`
+     (destructive actions have no brand hue by design);
+   - touches the brand `@theme` block, its comment header, or any brand token value;
+   - re-declares `--radius-*` inside the bridge's `@theme inline` block — the brand `@theme`
+     owns the radius namespace (`--radius` 0.625rem, sm 0.375rem, lg 0.875rem);
+   - injects `@apply` into the base layer (`border-border`, `outline-ring/50`, `font-sans`,
+     `bg-background text-foreground`) — the existing base rules already carry brand values;
+   - changes the font mappings — `--font-sans`/`--font-heading` resolve to the body sans (Lato).
+3. New semantic tokens a component introduces get mapped onto brand tokens in the bridge, with a
+   comment naming the brand pair.
+4. Rerun the full contribution loop and capture before/after screenshots — palette drift is a
+   UI-visible change.
+
+Namespace collision watch: shadcn and the brand share the Tailwind `--color-*` namespace, and
+the later `@theme` block wins. This bit once already: brand `--color-muted` (secondary text ink)
+was renamed to `--color-muted-ink` because shadcn's `--color-muted` is a surface tint. Before
+adopting a component, list the semantic utilities it uses (`bg-*`, `text-*`, `border-*`) and
+check for brand-token collisions the same way.
+
+Adoption pattern: `npx shadcn@latest add <component>` generates into `src/components/ui/`. Run
+`add --dry-run` / `--diff` before overwriting an existing component; local edits are merged, not
+clobbered, but verify. Generated files are project-owned the moment they land: bring them up to
+the repo's lint bar (top-level type-only imports, the documented disable-comment convention for
+framework-typed props) and restyle through the bridge or `className` — not by editing token
+values. Add a component only when something renders it; React Doctor fails the loop on unused
+generated files and unused dependencies.
+
+`apply --preset` / `init --preset <code>` overwrite preset-driven CSS wholesale. Do not run one
+without the reconciliation review above, and never let a preset's palette reach a commit.
+
 ## Backend development
 
 ### Intake, privacy, and portal security

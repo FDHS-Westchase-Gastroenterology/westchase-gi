@@ -412,7 +412,7 @@ export default async function PhysiciansPage({ params }: Readonly<PageProps>) {
                   </tbody>
                 </table>
               </div>
-              <p className="mt-3 text-[0.92rem] text-[var(--color-muted)]">
+              <p className="mt-3 text-[0.92rem] text-[var(--color-muted-ink)]">
                 {inf.biologics.note[locale]}
               </p>
             </section>

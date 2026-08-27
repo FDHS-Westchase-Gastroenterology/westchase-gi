@@ -89,7 +89,7 @@ export default async function PrepDetailPage({ params }: Readonly<PageProps>) {
           <p className="lead measure mt-4 text-[var(--color-body)]">{doc.regimen[locale]}</p>
           <div className="print-hide mt-6 flex flex-wrap items-center gap-x-6 gap-y-4">
             <PrintButton label={t.print} />
-            <p className="measure-sm text-[0.9rem] text-[var(--color-muted)]">{t.blanksHint}</p>
+            <p className="measure-sm text-[0.9rem] text-[var(--color-muted-ink)]">{t.blanksHint}</p>
           </div>
         </div>
       </section>

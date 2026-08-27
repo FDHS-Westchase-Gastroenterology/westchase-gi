@@ -160,7 +160,7 @@ export default async function HomePage({ params }: Readonly<PageProps>) {
                       {tile.title}
                       <ArrowRight className="h-4 w-4 flex-none text-[var(--color-teal-ink)] transition-transform duration-300 group-hover:translate-x-1" />
                     </span>
-                    <span className="mt-0.5 block text-[0.92rem] leading-snug text-[var(--color-muted)]">
+                    <span className="mt-0.5 block text-[0.92rem] leading-snug text-[var(--color-muted-ink)]">
                       {tile.sub}
                     </span>
                   </span>
@@ -248,7 +248,7 @@ export default async function HomePage({ params }: Readonly<PageProps>) {
         <div className="container-x">
           <Reveal>
             <h2 className="h2 heading-tick">{t.testimonialsHeading}</h2>
-            <p className="mt-3 text-[var(--color-muted)]">{t.testimonialsNote}</p>
+            <p className="mt-3 text-[var(--color-muted-ink)]">{t.testimonialsNote}</p>
           </Reveal>
         </div>
         <div className="mt-8">

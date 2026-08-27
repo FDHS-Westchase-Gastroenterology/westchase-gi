@@ -39,7 +39,7 @@ export function PasswordForm({
   return (
     <form action={formAction} className="mt-7 space-y-5">
       {hasRecoveryToken ? <input type="hidden" name="tokenHash" value={recoveryTokenHash} /> : null}
-      <p id="password-policy" className="text-sm text-[var(--color-muted)]">
+      <p id="password-policy" className="text-sm text-[var(--color-muted-ink)]">
         Use at least 12 characters. Password managers and pasted passwords are supported.
       </p>
       <div>
@@ -92,7 +92,7 @@ export function PasswordForm({
         </p>
       ) : null}
       {state.changeCommitted && mode === "recovery" ? (
-        <div className="rounded-[var(--radius)] border border-[var(--color-line)] p-4 text-sm text-[var(--color-muted)]">
+        <div className="rounded-[var(--radius)] border border-[var(--color-line)] p-4 text-sm text-[var(--color-muted-ink)]">
           <p>Do not repeat the reset. Your new password is already active.</p>
           <Link
             href="/admin/login"

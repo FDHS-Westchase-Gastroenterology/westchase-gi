@@ -27,7 +27,7 @@ export function SettingsTabs() {
                 className={`flex min-h-11 items-center border-b-2 text-[0.92rem] transition-[color,border-color,transform] duration-150 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 ${
                   active
                     ? "border-[var(--color-navy)] font-bold text-[var(--color-ink)]"
-                    : "border-transparent font-bold text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+                    : "border-transparent font-bold text-[var(--color-muted-ink)] hover:text-[var(--color-ink)]"
                 }`}
               >
                 {tab.label}

@@ -212,7 +212,7 @@ export function RequestNotes({
             />
             <p
               id="request-note-guidance"
-              className="mt-2 text-[0.85rem] leading-relaxed text-[var(--color-muted)]"
+              className="mt-2 text-[0.85rem] leading-relaxed text-[var(--color-muted-ink)]"
             >
               Keep medical details in the clinical record.
             </p>

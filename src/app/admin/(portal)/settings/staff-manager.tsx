@@ -106,10 +106,12 @@ function StaffList({
                   </span>
                 )}
               </p>
-              <p className="truncate text-[0.85rem] text-[var(--color-muted)]">{person.email}</p>
+              <p className="truncate text-[0.85rem] text-[var(--color-muted-ink)]">
+                {person.email}
+              </p>
               <p
                 data-testid="staff-last-sign-in"
-                className="mt-0.5 text-[0.8rem] text-[var(--color-muted)]"
+                className="mt-0.5 text-[0.8rem] text-[var(--color-muted-ink)]"
               >
                 {signInReadFailed
                   ? "Sign-in info unavailable"
@@ -295,7 +297,7 @@ function InviteResultPanel({
         <button
           type="button"
           onClick={onDismiss}
-          className="flex min-h-11 items-center rounded-[var(--radius-sm)] px-3.5 text-[0.85rem] font-bold text-[var(--color-muted)]"
+          className="flex min-h-11 items-center rounded-[var(--radius-sm)] px-3.5 text-[0.85rem] font-bold text-[var(--color-muted-ink)]"
         >
           Dismiss
         </button>
@@ -543,7 +545,7 @@ export function StaffManager({
   return (
     <div data-testid="staff-manager" className="portal-panel p-6 sm:p-7">
       <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">Staff access</h2>
-      <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
+      <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted-ink)]">
         Everyone who can open this portal. Administrators can invite people, change roles, and
         deactivate accounts; deactivated staff are locked out immediately.
       </p>
@@ -596,7 +598,7 @@ export function StaffManager({
           }}
         />
       ) : (
-        <p className="mt-5 border-t border-[var(--color-line)] pt-5 text-[0.9rem] text-[var(--color-muted)]">
+        <p className="mt-5 border-t border-[var(--color-line)] pt-5 text-[0.9rem] text-[var(--color-muted-ink)]">
           Inviting or deactivating staff needs an administrator.
         </p>
       )}

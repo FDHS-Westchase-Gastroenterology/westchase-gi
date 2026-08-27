@@ -116,7 +116,7 @@ export function ResetRequestForm({
             This only repeats what you entered; it does not confirm an account or inbox delivery.
           </p>
         ) : null}
-        <div className="mt-4 space-y-2 text-sm text-[var(--color-muted)]">
+        <div className="mt-4 space-y-2 text-sm text-[var(--color-muted-ink)]">
           <p>Delivery can take a few minutes. Check your Inbox and Spam or Junk folders.</p>
           <p>
             The one-time link expires in one hour. Use the newest message if you requested more than
@@ -136,7 +136,7 @@ export function ResetRequestForm({
           />
         </div>
 
-        <p className="mt-5 text-sm text-[var(--color-muted)]">
+        <p className="mt-5 text-sm text-[var(--color-muted-ink)]">
           Still no message? Ask your portal administrator to confirm your expected staff email and
           active status. They should never ask for your password or reset link.
         </p>
@@ -160,7 +160,7 @@ export function ResetRequestForm({
       {inline ? (
         <div className="mb-5">
           <h2 className="text-xl text-[var(--color-ink)]">Reset your password</h2>
-          <p className="mt-1.5 text-sm text-[var(--color-muted)]">
+          <p className="mt-1.5 text-sm text-[var(--color-muted-ink)]">
             Enter your staff email and we’ll send a secure reset link if the account is eligible.
           </p>
         </div>

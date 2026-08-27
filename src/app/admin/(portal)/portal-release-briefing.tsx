@@ -422,7 +422,7 @@ function ReleaseSummary({
         })}
       </dl>
 
-      <p className="mt-4 text-[0.86rem] leading-relaxed text-[var(--color-muted)]">
+      <p className="mt-4 text-[0.86rem] leading-relaxed text-[var(--color-muted-ink)]">
         Also improved: language help on the patient site now appears only when useful, and the
         review invitation is simpler.
       </p>
@@ -465,7 +465,7 @@ function ReleaseSummary({
         type="button"
         onClick={hide}
         disabled={actionPending}
-        className="mt-3 min-h-11 text-[0.82rem] font-bold text-[var(--color-muted)] underline underline-offset-2 disabled:cursor-wait disabled:opacity-65"
+        className="mt-3 min-h-11 text-[0.82rem] font-bold text-[var(--color-muted-ink)] underline underline-offset-2 disabled:cursor-wait disabled:opacity-65"
       >
         Hide this update now
       </button>
@@ -563,7 +563,7 @@ export function PortalReleaseUtility() {
           <ReleaseSignal animate={false} resolved compact />
           <span>
             <strong className="font-black">What’s new</strong>
-            <span className="ml-2 hidden text-[0.8rem] text-[var(--color-muted)] sm:inline">
+            <span className="ml-2 hidden text-[0.8rem] text-[var(--color-muted-ink)] sm:inline">
               Opened recently
             </span>
           </span>

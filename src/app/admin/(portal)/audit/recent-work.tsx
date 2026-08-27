@@ -43,7 +43,7 @@ function requestLink(requestId: string): React.ReactNode {
 function RecentWorkRow({ item }: Readonly<{ item: RecentWorkItem }>) {
   return (
     <li className="flex flex-wrap items-baseline gap-x-2 px-5 py-3 text-[0.95rem]">
-      <span className="text-[0.82rem] font-bold whitespace-nowrap text-[var(--color-muted)] tabular-nums">
+      <span className="text-[0.82rem] font-bold whitespace-nowrap text-[var(--color-muted-ink)] tabular-nums">
         {timeOnly.format(new Date(item.at))}
       </span>
       <span>
@@ -65,7 +65,7 @@ function RecentWorkGroupRow({
   return (
     <li data-testid="recent-work-group" className="px-5 py-3 text-[0.95rem]">
       <span className="flex flex-wrap items-baseline gap-x-2">
-        <span className="text-[0.82rem] font-bold whitespace-nowrap text-[var(--color-muted)] tabular-nums">
+        <span className="text-[0.82rem] font-bold whitespace-nowrap text-[var(--color-muted-ink)] tabular-nums">
           {timeOnly.format(new Date(entry.toAt))}
         </span>
         <span>
@@ -81,7 +81,7 @@ function RecentWorkGroupRow({
         <ul className="mt-2 space-y-1 border-l-2 border-[var(--color-line)] pl-4">
           {entry.items.map((item) => (
             <li key={item.id} className="text-[0.9rem] text-[var(--color-body)]">
-              <span className="mr-2 text-[0.8rem] font-bold whitespace-nowrap text-[var(--color-muted)] tabular-nums">
+              <span className="mr-2 text-[0.8rem] font-bold whitespace-nowrap text-[var(--color-muted-ink)] tabular-nums">
                 {timeOnly.format(new Date(item.at))}
               </span>
               {item.sentence}
@@ -128,7 +128,7 @@ export function RecentWorkSection({
       <h2 id="recent-work-heading" className="text-[1.05rem] font-black text-[var(--color-ink)]">
         Recent work
       </h2>
-      <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
+      <p className="mt-1.5 max-w-[65ch] text-[0.9rem] leading-relaxed text-[var(--color-muted-ink)]">
         {RECENT_WORK_INTRO}
       </p>
 
@@ -146,7 +146,7 @@ export function RecentWorkSection({
           : `Showing ${firstShown}–${lastShown} of ${total} ${total === 1 ? "entry" : "entries"}${description}.`}
       </RecentWorkFocusTarget>
       {lensCapped ? (
-        <p className="mt-1 max-w-[65ch] text-[0.85rem] text-[var(--color-muted)]">
+        <p className="mt-1 max-w-[65ch] text-[0.85rem] text-[var(--color-muted-ink)]">
           Search and filters cover the {lensLimit.toLocaleString("en-US")} most recent events.
         </p>
       ) : null}
@@ -170,7 +170,7 @@ export function RecentWorkSection({
           <div className="mt-4 space-y-6">
             {groups.map((group) => (
               <div key={group.label}>
-                <h3 className="text-[0.8rem] font-bold tracking-[0.06em] text-[var(--color-muted)] uppercase">
+                <h3 className="text-[0.8rem] font-bold tracking-[0.06em] text-[var(--color-muted-ink)] uppercase">
                   {group.label}
                 </h3>
                 <ul
