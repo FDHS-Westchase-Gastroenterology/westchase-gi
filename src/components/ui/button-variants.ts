@@ -37,12 +37,10 @@ export const buttonVariants = cva(
       motion: {
         /* The brand physics every button wears unless told otherwise. */
         wgi: "transition-all duration-[var(--btn-duration,200ms)] ease-[var(--btn-ease,var(--ease-out-quint))] hover:translate-y-[var(--btn-lift,-2px)] active:translate-y-0 active:scale-[var(--btn-active-scale,1)] motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100",
-        /* The upstream base-nova button's stock feel (1px press, default
-           timing), kept by name for comparison; no consumer today. The
-           reduced-motion guards are ours — the repo's law applies to
-           every temperament. */
-        shadcn:
-          "transition-all active:not-aria-[haspopup]:translate-y-px motion-reduce:transition-none motion-reduce:active:translate-y-0",
+        /* The upstream base-nova button's stock feel, verbatim from the
+           registry — kept unmodified so the difference between stock and
+           ours stays feelable; no consumer today. */
+        shadcn: "transition-all active:not-aria-[haspopup]:translate-y-px",
         /* No transitions at all; no consumer today. */
         none: "transition-none",
       },
