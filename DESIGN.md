@@ -136,11 +136,16 @@ Rules of use:
 
 - **Every modal is one modal.** Dialogs render through the shared dialog primitive and
   the shared dialog class: rise 12px, grow from 97%, on the registry spring; leave on the
-  registry exit. The shared primitive is the shadcn Dialog as the component system adopts
-  it; the native-`<dialog>` implementation it replaces carries the identical contract
-  until the overlay migration lands. A modal learned once is learned everywhere. Entrances
-  and exits are transitions, not keyframes, so a close mid-entrance reverses from wherever
-  the surface is.
+  registry exit. The shared primitive is `PortalModal` on the native `<dialog>` element —
+  a fit-checked keep, not a migration debt. The contract lives on the native top layer:
+  entrances and exits are transitions (`display`/`overlay` with `allow-discrete`,
+  `@starting-style`, `::backdrop`), so a close mid-entrance reverses from wherever the
+  surface is; a dialog can grow from the control that opened it (`--pm-origin-x/y`); and
+  dialogs nest (the calendar opens inside the request sheet). A portalled Dialog
+  (shadcn/Base UI) cannot transition the `overlay` property or style `::backdrop`, so
+  adopting it would trade capability for none — the shadcn Dialog stays unadopted here
+  the same way `SettingsTabs` kept `nav` semantics. A modal learned once is learned
+  everywhere.
 - **A modal that must fetch still opens on the spring's schedule** and shimmers a
   skeleton while it waits. The surface is never late, only its facts.
 - **Scroll is tracked, not decorated.** A windowed group carries a 2px teal rail that
@@ -175,10 +180,10 @@ components adopt **through** the committed token system, never around it.
   and the radius scale (`--radius` 0.625rem, sm 0.375rem, lg 0.875rem); the bridge re-declares
   neither. Presets and `apply --preset` overwrite this wholesale and never run without a
   palette-diff review.
-- **Composition rules still govern.** A shadcn Dialog in the portal rides the motion registry
-  like every modal — one modal, registry spring, reduced-motion cross-fade — and restyling
-  happens on the component or through `className`, never by re-pointing the semantic tokens
-  away from the brand.
+- **Composition rules still govern.** Any adopted overlay or surface rides the motion
+  registry like every modal — one modal, registry spring, reduced-motion cross-fade — and
+  restyling happens on the component or through `className`, never by re-pointing the
+  semantic tokens away from the brand.
 - **Dark mode is not a shipped surface.** The `.dark` mapping exists only so an accidental
   `dark:` utility still lands on brand darks (the navy family). A real dark theme is a
   practice decision under anchor 1.
@@ -232,8 +237,17 @@ consultation; a new appearance decision always gets one.
 5. Standing gates plus before/after visual evidence.
 
 Fit is judged honestly: a registry component that would regress semantics is a no-fit.
-Standing finding: route navigation (the Settings underline tabs) keeps `nav` +
-`aria-current` link semantics; shadcn Tabs serves in-page panel switching only.
+Standing findings:
+
+- Route navigation (the Settings underline tabs) keeps `nav` + `aria-current` link
+  semantics; shadcn Tabs serves in-page panel switching only.
+- The portal modal keeps the native `<dialog>` top layer (see the motion registry's
+  one-modal rule); shadcn Dialog stays unadopted for it.
+- The authored loading skeletons (`portal-loading`, `portal-modal-skeleton`) are
+  structured shapes with one sweep animation; shadcn Skeleton's generic pulse would be a
+  register downgrade, not an adoption.
+- Tooltip, DropdownMenu, and Pagination have no consumer today. Nothing is adopted
+  without a surface that renders it — an unused generated file fails the loop.
 
 [`docs/COMPONENT-INVENTORY.md`](docs/COMPONENT-INVENTORY.md) is the descriptive census of
 what renders today; regenerate it as tiers fill rather than letting it drift.

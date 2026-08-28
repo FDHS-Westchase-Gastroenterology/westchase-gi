@@ -3,6 +3,14 @@ import { z } from "zod";
 
 import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import { formatReceived } from "@/app/admin/(portal)/requests/format";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { asJsonObject, asJsonString, jsonSchema } from "@/lib/json";
 import type { Json } from "@/lib/json";
 import { requireRole } from "@/lib/portal/auth";
@@ -232,40 +240,32 @@ export default async function AdminAuditPage({
               tabIndex={0}
               className="mt-4 overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white"
             >
-              <table data-testid="audit-table" className="w-full min-w-[640px] text-left">
-                <thead>
-                  <tr className="border-b border-[var(--color-line)] text-[0.8rem] tracking-[0.06em] text-[var(--color-muted-ink)] uppercase">
-                    <th scope="col" className="px-5 py-3.5 font-bold">
-                      When
-                    </th>
-                    <th scope="col" className="px-5 py-3.5 font-bold">
-                      Who
-                    </th>
-                    <th scope="col" className="px-5 py-3.5 font-bold">
-                      Action
-                    </th>
-                    <th scope="col" className="px-5 py-3.5 font-bold">
-                      Entity
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--color-line)]">
+              <Table data-testid="audit-table" className="min-w-[640px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead scope="col">When</TableHead>
+                    <TableHead scope="col">Who</TableHead>
+                    <TableHead scope="col">Action</TableHead>
+                    <TableHead scope="col">Entity</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {entries.map((entry) => {
                     const external = externalAuditSummary(entry.detail);
                     return (
-                      <tr key={entry.id} className="text-[0.9rem]">
-                        <td className="px-5 py-3 whitespace-nowrap text-[var(--color-muted-ink)]">
+                      <TableRow key={entry.id}>
+                        <TableCell className="whitespace-nowrap text-[var(--color-muted-ink)]">
                           {formatReceived(entry.at, true)}
-                        </td>
-                        <td className="px-5 py-3 font-bold text-[var(--color-ink)]">
+                        </TableCell>
+                        <TableCell className="font-bold text-[var(--color-ink)]">
                           {displayNameOrEmail(nameMap, entry.actor_email)}
-                        </td>
-                        <td className="px-5 py-3">
+                        </TableCell>
+                        <TableCell>
                           <code className="rounded bg-[var(--color-mint)] px-2 py-0.5 text-[0.85rem] text-[var(--color-teal-ink)]">
                             {entry.action}
                           </code>
-                        </td>
-                        <td className="px-5 py-3 text-[var(--color-body)]">
+                        </TableCell>
+                        <TableCell className="text-[var(--color-body)]">
                           {entry.entity}
                           {entry.entity_id !== null && entry.entity_id !== "" ? (
                             <span className="ml-1.5 text-[0.8rem] text-[var(--color-muted-ink)]">
@@ -277,12 +277,12 @@ export default async function AdminAuditPage({
                               {external.target} · Outcome {external.outcome}
                             </span>
                           ) : null}
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </section>
         </>

@@ -1,4 +1,12 @@
 import { formatReceived } from "@/app/admin/(portal)/requests/format";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import type {
   PortalReleaseEngagementResult,
   PortalReleaseEngagementRow,
@@ -127,55 +135,42 @@ export function ReleaseEngagementSection({
         </div>
       ) : (
         <div className="mt-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white">
-          <table
-            data-testid="release-engagement-table"
-            className="hidden w-full text-left md:table"
-          >
-            <thead>
-              <tr className="border-b border-[var(--color-line)] text-[0.78rem] tracking-[0.055em] text-[var(--color-muted-ink)] uppercase">
-                <th scope="col" className="px-5 py-3.5 font-bold">
-                  Staff member
-                </th>
-                <th scope="col" className="px-5 py-3.5 font-bold">
-                  Summary
-                </th>
-                <th scope="col" className="px-5 py-3.5 font-bold">
-                  Guide
-                </th>
-                <th scope="col" className="px-5 py-3.5 font-bold">
-                  Dismissals
-                </th>
-                <th scope="col" className="px-5 py-3.5 font-bold">
-                  Response
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--color-line)]">
+          <Table data-testid="release-engagement-table" className="hidden md:table">
+            <TableHeader>
+              <TableRow>
+                <TableHead scope="col">Staff member</TableHead>
+                <TableHead scope="col">Summary</TableHead>
+                <TableHead scope="col">Guide</TableHead>
+                <TableHead scope="col">Dismissals</TableHead>
+                <TableHead scope="col">Response</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {engagement.rows.map((row) => (
-                <tr key={row.staffUserId} className="align-top text-[0.88rem]">
-                  <td className="px-5 py-4">
+                <TableRow key={row.staffUserId} className="text-[0.88rem]">
+                  <TableCell className="py-4 align-top">
                     <strong className="block text-[var(--color-ink)]">{row.displayName}</strong>
                     <span className="mt-0.5 block text-[0.8rem] text-[var(--color-muted-ink)]">
                       {row.email}
                       {!row.active ? " · Inactive" : ""}
                     </span>
-                  </td>
-                  <td className="px-5 py-4 text-[var(--color-body)]">
+                  </TableCell>
+                  <TableCell className="py-4 align-top text-[var(--color-body)]">
                     <SummaryValue row={row} />
-                  </td>
-                  <td className="px-5 py-4 text-[var(--color-body)]">
+                  </TableCell>
+                  <TableCell className="py-4 align-top text-[var(--color-body)]">
                     <GuideValue row={row} />
-                  </td>
-                  <td className="px-5 py-4 text-[var(--color-body)]">
+                  </TableCell>
+                  <TableCell className="py-4 align-top text-[var(--color-body)]">
                     <DismissalValue row={row} />
-                  </td>
-                  <td className="px-5 py-4 text-[var(--color-body)]">
+                  </TableCell>
+                  <TableCell className="py-4 align-top text-[var(--color-body)]">
                     <ResponseValue row={row} />
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
           <ul
             data-testid="release-engagement-cards"
             className="divide-y divide-[var(--color-line)] md:hidden"
