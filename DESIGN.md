@@ -262,9 +262,24 @@ The registers are read by people who are not native coders; definitions carry th
   instead of implying use. Refresh these comments whenever the census regenerates; the
   census's `rg` commands are the source of the lists.
 - **Axes are decoupled by concern.** Color and surface, geometry, and motion are separate
-  cva axes, never welded into one another. Motion temperaments are named (`wgi` is the
-  brand default; `shadcn` preserves the upstream stock feel by name), so a surface can
-  wear one variant's color with another temperament's physics without inventing classes.
+  cva axes, never welded into one another. Base strings carry no motion: every transition,
+  duration, easing, and transform lives on the motion axis, so an unowned animation has
+  nowhere to hide. Motion temperaments are named — the default is the brand's authored
+  physics (`wgi`, or `none` where the brand's stance is stillness, as on Badge), and
+  `shadcn` preserves the upstream stock feel verbatim by name — so a surface can wear one
+  variant's color with another temperament's physics without inventing classes. A state
+  prefix like `hover:` is a trigger, not motion: the hovered *paint* belongs to `variant`,
+  the journey there belongs to `motion`.
+- **One line per job.** A class string long enough to hold several concerns is written as
+  an array — one string per job (layout, shape, typography, focus, states), each line
+  under a comment naming the job; cva joins them back into one string. When restructuring
+  an existing register, verify parity mechanically: emit every combination's sorted class
+  set before and after, and diff.
+- **Unconsumed variants are labeled or pruned.** A generated variant nothing wears is
+  either kept as deliberate vocabulary under a "no consumer today" comment, or pruned with
+  the date recorded in the register header (re-fetch from the registry if one is ever
+  wanted). Where the register's own law makes an unnamed variant meaningless — a stamp
+  always carries a meaning — prune the scaffolding and make the axis a required prop.
 - **Defaults produce the brand.** The default of every axis is the committed brand
   register; scaffolding (upstream stock values) is reachable only by name. A forgotten
   prop must render the brand, never the generic.

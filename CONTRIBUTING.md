@@ -1,19 +1,27 @@
 # Contributing — Westchase GI
 
 How to contribute to this repository: setup, verification, commit/PR/merge discipline, and
-the path to production. Read [`ARCHITECTURE.md`](ARCHITECTURE.md) for the system design and
-the where-logic-lives map this guide references. The non-negotiable product and security
-rules are in [`AGENTS.md`](AGENTS.md) — read its hard rules before editing anything.
+the path to production. [`ARCHITECTURE.md`](ARCHITECTURE.md) explains how the system runs,
+where state lives, and which files own each behavior. Read its system map and the section for
+your change before editing. The non-negotiable product and security rules are in
+[`AGENTS.md`](AGENTS.md).
 
 Product truth lives in `PRODUCT.md` (patient-site and staff-portal registers) and `DESIGN.md`.
 Repository custody facts are summarized in [`README.md`](README.md); the design of every
 external connection is in [`ARCHITECTURE.md`](ARCHITECTURE.md#external-interfaces).
 
-Task responsibility is governed by the roles register in
-[`docs/roles/README.md`](docs/roles/README.md). Before starting or assigning
-specification, prototype, or user-facing work, check whether it falls inside a defined
-role's remit — if so, it routes to that role (label `role:product-experience`) rather
-than being absorbed by whoever noticed it.
+## Before editing
+
+1. Find the change in the architecture
+   [common starting points](ARCHITECTURE.md#common-starting-points).
+2. Read the matching execution path, source-of-truth entry, and trust boundary. Do not infer
+   authorization, atomicity, or failure behavior from the UI.
+3. For appointment-request states, commands, queue behavior, history, notifications, printing,
+   or workflow controls, also read the
+   [workflow specification](docs/appointment-request-workflow-specification.md).
+4. For user-visible work, read `PRODUCT.md`, `DESIGN.md`, and
+   [`ui-reference/README.md`](ui-reference/README.md).
+5. Use the [change-type matrix](#by-change-type) to choose the required checks before coding.
 
 ## Setup
 
@@ -40,6 +48,22 @@ Node version is pinned in `.nvmrc`. It deliberately does not live in `engines.no
 reads that field and would take Production off the version chosen in Project Settings.
 
 ## Verification
+
+### Standing gates
+
+Every change must pass these repository-wide checks:
+
+```bash
+npx oxlint
+npx oxfmt --check
+npx react-doctor@latest --verbose
+npm run build
+```
+
+Oxlint must report zero warnings and errors, oxfmt must report no drift, React Doctor must score
+100 on a clean checkout, and the production build must compile and typecheck. A focused check
+adds coverage for the changed behavior; it does not replace these gates. UI-visible changes also
+require the [visual evidence](#ui-changes) described below.
 
 ### What to run — without credentials
 
@@ -106,8 +130,8 @@ review environment has the same Git branch in GitHub, Supabase, and Vercel.
 For a workstation run against the PR database, export credentials from
 `supabase branches get <git-branch> --project-ref <production-ref> --output env`, map them to
 the names in `.env.example`, and set `SUPABASE_PREVIEW_BRANCH=1`. `e2e/target-guard.ts`
-enforces the branch/ref/URL match; see
-[test isolation](ARCHITECTURE.md#test-isolation-and-release-model). The suite covers the
+binds the project reference to the URL, requires the hosted-branch marker, and rejects
+Production before the first database call. The suite covers the
 intake API contract, form states across all five locales, the no-JS fallback, portal auth/RLS
 boundaries, the queue lifecycle, management surfaces, Website custody, and leak hygiene.
 
@@ -118,15 +142,17 @@ smoke test.
 
 ### By change type
 
-| Change                          | Required checks                                                                                     |
-| ------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Patient copy / locale content   | `test:unit`, `lint`, `build`, public smoke; E2E intake-form + language-chooser when behavior shifts |
-| Intake form / API / persistence | Above + `npx playwright test` (intake specs)                                                        |
-| Portal page, route, or action   | Above + `npx playwright test` (portal specs)                                                        |
-| Migration, RLS, RPC, or seed    | Above + green `Supabase Preview` and `supabase-integration` on the exact head                       |
-| Email paths                     | `npx playwright test e2e/portal-email.spec.ts`                                                      |
-| UI-visible change               | Refresh covered `ui-reference/` images; before/after screenshots in the PR conversation; video when the change is a new workflow or has multiple authored steps |
-| CI / dependency automation      | `node --test .github/scripts/dependency-automation.test.cjs` — policy and test change together      |
+The checks below are added to the standing gates.
+
+| Change | Read first | Additional checks |
+| --- | --- | --- |
+| Patient copy / locale content | [Localized patient reads](ARCHITECTURE.md#localized-patient-reads) and [trust boundaries](ARCHITECTURE.md#trust-boundaries) | `test:unit`, public smoke; E2E intake-form and language-chooser when behavior shifts |
+| Intake form / API / persistence | [Patient appointment intake](ARCHITECTURE.md#patient-appointment-intake) | Focused intake Playwright specs |
+| Portal page, route, or action | [Portal identity, authorization, and reads](ARCHITECTURE.md#portal-identity-authorization-and-reads); add the [workflow specification](docs/appointment-request-workflow-specification.md) for queue work | Focused portal Playwright specs |
+| Migration, RLS, RPC, or seed | [State and persistence](ARCHITECTURE.md#state-and-persistence) and [trust boundaries](ARCHITECTURE.md#trust-boundaries) | `verify-schema --target branch`; green `Supabase Preview` and `supabase-integration` on the exact head |
+| Email paths | [Email](ARCHITECTURE.md#email) | `npx playwright test e2e/portal-email.spec.ts` |
+| UI-visible change | `PRODUCT.md`, `DESIGN.md`, and [`ui-reference/README.md`](ui-reference/README.md) | Refresh covered `ui-reference/` images; before/after screenshots in the PR conversation; video when the change is a new workflow or has multiple authored steps |
+| CI / dependency automation | [Common starting points](ARCHITECTURE.md#common-starting-points) | `node --test .github/scripts/dependency-automation.test.cjs`; policy and test change together |
 
 Every PR reports both `Supabase Preview` and `supabase-integration`. Automatic branching applies
 to every PR, and **Supabase changes only** remains disabled, so application and schema changes are
@@ -177,10 +203,6 @@ compliance-sensitive text changes (provider credentials are verbatim — see
 Keep PRs small and single-purpose. Link the issue. Anything unverified (links, facts,
 locales) stays out until verified — see `PRODUCT.md` design principle 1.
 
-A PR inside a defined role's remit (see [`docs/roles/README.md`](docs/roles/README.md))
-carries that role's acceptance before merge: for anything a user sees, the Lead of
-Product Experience's.
-
 ## Merging
 
 `main` is protected and **is production**. As configured, it requires current-branch
@@ -191,8 +213,8 @@ explicitly non-user-visible (tooling, governance, docs-only).
 Before merge, confirm `Supabase Preview` and `supabase-integration` passed on the **exact
 head**. Skipped, pending, missing, stale, or failed signals withhold the merge.
 
-React Doctor is advisory: a green check proves execution, not a clean result — inspect the
-report rather than the badge.
+A green React Doctor check proves execution, not a clean result. Inspect the report and require a
+score of 100 on the exact head.
 
 **Direct push to `main`** is for urgent production hotfixes only (admin), and must carry the
 same verification evidence a PR would (CI green, live spot-check, rollback noted). Normal
@@ -300,7 +322,7 @@ node scripts/verify-review-flyers.mjs             # QR destinations + artifact f
   box) switches to a download link in all five languages. A slot with no real file keeps its
   honest fallback; never point at a path that does not exist.
 - **Everything else** — provider updates, preps, blog posts, education topics, portal pages,
-  migrations, SEO, CI: use the architecture [change-type → files map](ARCHITECTURE.md#where-logic-lives)
+  migrations, SEO, CI: use the architecture [common starting points](ARCHITECTURE.md#common-starting-points)
   and the change-type → checks map under §Verification above.
 
 ## Access lifecycle

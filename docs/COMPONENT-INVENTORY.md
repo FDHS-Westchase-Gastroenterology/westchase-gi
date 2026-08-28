@@ -33,25 +33,30 @@ the component's API and anatomy while `DESIGN.md` and the file itself govern how
 The `primitives/` tier is brand-authored composition with no registry counterpart.
 
 Counts below are a snapshot taken at `ad5e68f`, after the `.btn*` / `.field-*` CSS registers
-retired into this system.
+retired into this system, and refreshed 2026-08-28 by the register-legibility pass (motion
+decoupled onto a named axis in every register, Badge pruned to the four color-law variants,
+long class strings restructured one line per job — DESIGN.md "Register legibility rules").
 
 ### `src/components/ui/`
 
 | File | Source | Lines | Call sites | Where it renders |
 |---|---|---|---|---|
-| `button.tsx` | [shadcn Button](https://ui.shadcn.com/docs/components/base/button) | 26 | 21 | Interactive buttons everywhere: the request workflow panel, notes composer, queue search, print chooser and packet, settings managers, maintainer access, portal tour, release briefing, home workbench sheet, Activity log search, portal error page, all four auth screens, and the patient appointment form and prep print button |
-| `button-variants.ts` | Project-authored register split from [shadcn Button](https://ui.shadcn.com/docs/components/base/button) | 54 | 32 | The same register worn by zero-JS anchors via `className`: every patient-site CTA (home, appointment and received, new-patients, resources, procedure prep, patient education, office gallery, not-found, Header, Footer, LocationCards, LocationMaps, TextBand), portal link-buttons (help, home, queue, request detail, print, review flyers, software settings, audit pagination), and the review hub |
+| `button.tsx` | [shadcn Button](https://ui.shadcn.com/docs/components/base/button) | 27 | 21 | Interactive buttons everywhere: the request workflow panel, notes composer, queue search, print chooser and packet, settings managers, maintainer access, portal tour, release briefing, home workbench sheet, Activity log search, portal error page, all four auth screens, and the patient appointment form and prep print button |
+| `button-variants.ts` | Project-authored register split from [shadcn Button](https://ui.shadcn.com/docs/components/base/button) | 152 | 32 | The same register worn by zero-JS anchors via `className`: every patient-site CTA (home, appointment and received, new-patients, resources, procedure prep, patient education, office gallery, not-found, Header, Footer, LocationCards, LocationMaps, TextBand), portal link-buttons (help, home, queue, request detail, print, review flyers, software settings, audit pagination), and the review hub |
 | `field.tsx` | [shadcn Field](https://ui.shadcn.com/docs/components/base/field) | 235 | 5 | Every form: patient appointment form (appointment, contact), staff add-request form (new request, add-appointment dialog), queue search, and the settings recipients and staff managers |
-| `input.tsx` | [shadcn Input](https://ui.shadcn.com/docs/components/base/input) | 27 | 5 | The same five forms |
-| `native-select.tsx` | Project-authored; wears the Input register on a native `<select>` | 23 | 3 | Patient appointment form, staff add-request form, staff manager role picker |
-| `textarea.tsx` | [shadcn Textarea](https://ui.shadcn.com/docs/components/base/textarea) | 22 | 2 | Patient appointment form, staff add-request form |
-| `badge.tsx` | [shadcn Badge](https://ui.shadcn.com/docs/components/base/badge) | 64 | 1 | Status pills via `StatusBadge` on the Appointments queue and request detail |
+| `input.tsx` | [shadcn Input](https://ui.shadcn.com/docs/components/base/input) | 71 | 5 | The same five forms |
+| `native-select.tsx` | Project-authored; wears the Input register on a native `<select>` | 64 | 3 | Patient appointment form, staff add-request form, staff manager role picker |
+| `textarea.tsx` | [shadcn Textarea](https://ui.shadcn.com/docs/components/base/textarea) | 63 | 2 | Patient appointment form, staff add-request form |
+| `badge.tsx` | [shadcn Badge](https://ui.shadcn.com/docs/components/base/badge) | 100 | 1 | Status pills via `StatusBadge` on the Appointments queue and request detail; pruned to the four color-law variants with `variant` required (2026-08-28) |
 | `table.tsx` | [shadcn Table](https://ui.shadcn.com/docs/components/base/table) | 95 | 2 | The Activity log's audit table and release-engagement table |
 | `label.tsx` | [shadcn Label](https://ui.shadcn.com/docs/components/base/label) | 21 | 1 | Internal to `field.tsx` (`FieldLabel`); forms consume it through Field |
 | `separator.tsx` | [shadcn Separator](https://ui.shadcn.com/docs/components/base/separator) | 22 | 1 | Internal to `field.tsx` (`FieldSeparator`) |
 
 `button-variants.ts` exists apart from `button.tsx` so server components can wear the register
 without importing the client component; its call-site count excludes `button.tsx` itself.
+Every register decouples motion onto a named axis — the brand's authored physics as the
+default (`wgi`, or `none` on Badge), the upstream stock feel verbatim as `shadcn` — per
+DESIGN.md "Register legibility rules".
 Adoption decisions and the standing no-fits (native `<dialog>`, SettingsTabs, the authored
 skeletons, unconsumed Tooltip/DropdownMenu/Pagination) are recorded in `DESIGN.md`, not here.
 
