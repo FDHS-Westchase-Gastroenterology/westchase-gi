@@ -252,4 +252,21 @@ Standing findings:
 [`docs/COMPONENT-INVENTORY.md`](docs/COMPONENT-INVENTORY.md) is the descriptive census of
 what renders today; regenerate it as tiers fill rather than letting it drift.
 
+### Register legibility rules
+
+The registers are read by people who are not native coders; definitions carry their own map.
+
+- **Consumer maps at the definition.** Each variant in a register file carries a one-line
+  comment naming the surfaces that wear it — file paths and surface names, never line
+  numbers (they rot on every edit). A variant with no consumer says "no consumer today"
+  instead of implying use. Refresh these comments whenever the census regenerates; the
+  census's `rg` commands are the source of the lists.
+- **Axes are decoupled by concern.** Color and surface, geometry, and motion are separate
+  cva axes, never welded into one another. Motion temperaments are named (`wgi` is the
+  brand default; `shadcn` preserves the upstream stock feel by name), so a surface can
+  wear one variant's color with another temperament's physics without inventing classes.
+- **Defaults produce the brand.** The default of every axis is the committed brand
+  register; scaffolding (upstream stock values) is reachable only by name. A forgotten
+  prop must render the brand, never the generic.
+
 
