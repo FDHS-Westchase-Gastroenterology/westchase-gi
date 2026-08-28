@@ -16,7 +16,7 @@ Use the following sources with it:
 | --- | --- |
 | [`PRODUCT.md`](../PRODUCT.md#staff-portal-admin) | Users, product boundaries, principles, and staff language |
 | [`DESIGN.md`](../DESIGN.md#staff-portal-guardrails-product-register) | Staff-portal design system and interaction guardrails |
-| [`ARCHITECTURE.md`](../ARCHITECTURE.md#architectural-invariants) | Privacy, security, data custody, lifecycle, and external systems |
+| [`ARCHITECTURE.md`](../ARCHITECTURE.md) | Privacy, security, data custody, lifecycle, and external systems |
 | [`src/lib/portal/workflow/`](../src/lib/portal/workflow) | Executable state, command, read, and result contracts |
 | [`CONTRIBUTING.md`](../CONTRIBUTING.md#verification) | Required local, hosted, and visual verification |
 
