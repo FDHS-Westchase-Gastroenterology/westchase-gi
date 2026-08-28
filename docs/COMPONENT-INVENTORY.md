@@ -4,13 +4,10 @@ A descriptive census of every component this repository renders: what exists, wh
 it exports, and how many places call it. It is a companion to [`DESIGN.md`](../DESIGN.md), which
 owns the design system itself. This file makes no recommendations and proposes no changes.
 
-Counts are a snapshot taken at `f5d062e`. Regenerate them with the commands in
+Counts in the legacy sections are a snapshot taken at `f5d062e`, before the component-system
+migration. The [Component system](#component-system) section is a fresh census of the tiers that
+migration created, taken at `ad5e68f`. Regenerate either with the commands in
 [Regenerating this inventory](#regenerating-this-inventory) rather than editing numbers by hand.
-
-Since that snapshot, the component-system migration (DESIGN.md "Component system") has landed
-`src/components/ui/` (Badge, Button, Field, Input, Label, NativeSelect, Separator, Table,
-Textarea) and `src/components/primitives/` (PageHero, TextBand, Reveal), and retired the
-`.btn*` / `.field-*` CSS registers. Regenerate the census once the tiers settle.
 
 ## What counts as a component here
 
@@ -23,12 +20,55 @@ sites is filed under Reused; one call site puts it under Single call site. That 
 mechanical and carries no judgment — several single-call-site components are layout singletons that
 are supposed to be mounted exactly once.
 
-At the snapshot there are **56 component files**: 21 reused and 35 with a single call site.
-`src/components/ui/` does not exist.
+At the `f5d062e` snapshot there are **56 component files**: 21 reused and 35 with a single call
+site. `src/components/ui/` did not exist yet; it and `src/components/primitives/` are censused in
+the next section.
+
+## Component system
+
+The design system's committed tiers (DESIGN.md "Component system"). The `ui/` tier is the shadcn
+registry adopted through the brand token bridge — every component below was generated from the
+Base UI variant of the shadcn registry and then brand-adapted, so the linked shadcn page documents
+the component's API and anatomy while `DESIGN.md` and the file itself govern how it looks here.
+The `primitives/` tier is brand-authored composition with no registry counterpart.
+
+Counts below are a snapshot taken at `ad5e68f`, after the `.btn*` / `.field-*` CSS registers
+retired into this system.
+
+### `src/components/ui/`
+
+| File | Source | Lines | Call sites | Where it renders |
+|---|---|---|---|---|
+| `button.tsx` | [shadcn Button](https://ui.shadcn.com/docs/components/base/button) | 26 | 21 | Interactive buttons everywhere: the request workflow panel, notes composer, queue search, print chooser and packet, settings managers, maintainer access, portal tour, release briefing, home workbench sheet, Activity log search, portal error page, all four auth screens, and the patient appointment form and prep print button |
+| `button-variants.ts` | Project-authored register split from [shadcn Button](https://ui.shadcn.com/docs/components/base/button) | 54 | 32 | The same register worn by zero-JS anchors via `className`: every patient-site CTA (home, appointment and received, new-patients, resources, procedure prep, patient education, office gallery, not-found, Header, Footer, LocationCards, LocationMaps, TextBand), portal link-buttons (help, home, queue, request detail, print, review flyers, software settings, audit pagination), and the review hub |
+| `field.tsx` | [shadcn Field](https://ui.shadcn.com/docs/components/base/field) | 235 | 5 | Every form: patient appointment form (appointment, contact), staff add-request form (new request, add-appointment dialog), queue search, and the settings recipients and staff managers |
+| `input.tsx` | [shadcn Input](https://ui.shadcn.com/docs/components/base/input) | 27 | 5 | The same five forms |
+| `native-select.tsx` | Project-authored; wears the Input register on a native `<select>` | 23 | 3 | Patient appointment form, staff add-request form, staff manager role picker |
+| `textarea.tsx` | [shadcn Textarea](https://ui.shadcn.com/docs/components/base/textarea) | 22 | 2 | Patient appointment form, staff add-request form |
+| `badge.tsx` | [shadcn Badge](https://ui.shadcn.com/docs/components/base/badge) | 64 | 1 | Status pills via `StatusBadge` on the Appointments queue and request detail |
+| `table.tsx` | [shadcn Table](https://ui.shadcn.com/docs/components/base/table) | 95 | 2 | The Activity log's audit table and release-engagement table |
+| `label.tsx` | [shadcn Label](https://ui.shadcn.com/docs/components/base/label) | 21 | 1 | Internal to `field.tsx` (`FieldLabel`); forms consume it through Field |
+| `separator.tsx` | [shadcn Separator](https://ui.shadcn.com/docs/components/base/separator) | 22 | 1 | Internal to `field.tsx` (`FieldSeparator`) |
+
+`button-variants.ts` exists apart from `button.tsx` so server components can wear the register
+without importing the client component; its call-site count excludes `button.tsx` itself.
+Adoption decisions and the standing no-fits (native `<dialog>`, SettingsTabs, the authored
+skeletons, unconsumed Tooltip/DropdownMenu/Pagination) are recorded in `DESIGN.md`, not here.
+
+### `src/components/primitives/`
+
+| File | Exports | Lines | Call sites | Where it renders |
+|---|---|---|---|---|
+| `TextBand.tsx` | `TextBand` | 44 | 14 | Most locale pages |
+| `Reveal.tsx` | `Reveal` | 75 | 12 | Most locale pages |
+| `PageHero.tsx` | `PageHero` | 22 | 11 | Every locale page with a hero |
+| `reveal-delay.ts` | `revealDelay` | 9 | 3 | home, office-gallery, procedure-prep |
 
 ## Patient site — reused
 
-All paths in this section are relative to `src/components/`.
+All paths in this section are relative to `src/components/`. Since the `f5d062e` snapshot,
+`TextBand.tsx`, `Reveal.tsx`, and `PageHero.tsx` moved to `src/components/primitives/` and are
+censused in [Component system](#component-system); their rows below keep the snapshot's counts.
 
 | File | Exports | Lines | Call sites | Used in |
 |---|---|---|---|---|
@@ -167,9 +207,11 @@ A second component system lives in `src/app/globals.css` (2,612 lines at the sna
 understates what the design system actually contains, so the families are recorded here.
 `DESIGN.md` remains the authority on what each one means.
 
-**Element primitives** — `.btn` with the variants `.btn-navy`, `.btn-amber`, `.btn-outline`,
-`.btn-ghost-light`, `.btn-sm`, `.btn-lg`; `.card` and `.card-lined`; the form set `.field-input`,
-`.field-label`, `.field-hint`, `.field-error`.
+**Element primitives** — `.card` and `.card-lined`. At the `f5d062e` snapshot this family also
+carried `.btn` with its variants (`.btn-navy`, `.btn-amber`, `.btn-outline`, `.btn-ghost-light`,
+`.btn-sm`, `.btn-lg`) and the form set (`.field-input`, `.field-label`, `.field-hint`,
+`.field-error`); both registers have since retired into `src/components/ui/`
+([Component system](#component-system)).
 
 **Typography** — `.display`, `.h1`, `.h2`, `.h3`, `.lead`, `.measure`, `.measure-sm`, `.link-line`,
 `.link-plain`, and the list family `.list-check`, `.list-avoid`, `.list-steps`, `.list-plain`.
@@ -208,6 +250,18 @@ without the extension:
 ```bash
 rg -l "/NAME[\"']|\./NAME[\"']" src --glob '*.tsx' --glob '*.ts'
 ```
+
+Importer lists for the component-system tiers (swap in each basename):
+
+```bash
+rg -l 'components/ui/NAME"' src
+rg -l 'primitives/NAME"' src
+```
+
+The shadcn source links in the tier table point at the Base UI variant of each registry page
+(`https://ui.shadcn.com/docs/components/base/<name>`), matching this project's `components.json`
+(style `base-nova`, Base UI primitives). When a new registry component is adopted, add its row
+with the same link shape and its importer list at adoption time.
 
 Exported symbols for a file:
 
