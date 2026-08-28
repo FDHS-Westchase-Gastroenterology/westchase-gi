@@ -126,11 +126,13 @@ so surfaces cannot each invent a temperament:
 
 Rules of use:
 
-- **Every modal is one modal.** Dialogs render through the shared native-`<dialog>`
-  primitive and the shared dialog class: rise 12px, grow from 97%, on the registry spring;
-  leave on the registry exit. A modal learned once is learned everywhere. Entrances and
-  exits are transitions, not keyframes, so a close mid-entrance reverses from wherever the
-  surface is.
+- **Every modal is one modal.** Dialogs render through the shared dialog primitive and
+  the shared dialog class: rise 12px, grow from 97%, on the registry spring; leave on the
+  registry exit. The shared primitive is the shadcn Dialog as the component system adopts
+  it; the native-`<dialog>` implementation it replaces carries the identical contract
+  until the overlay migration lands. A modal learned once is learned everywhere. Entrances
+  and exits are transitions, not keyframes, so a close mid-entrance reverses from wherever
+  the surface is.
 - **A modal that must fetch still opens on the spring's schedule** and shimmers a
   skeleton while it waits. The surface is never late, only its facts.
 - **Scroll is tracked, not decorated.** A windowed group carries a 2px teal rail that
@@ -172,5 +174,56 @@ components adopt **through** the committed token system, never around it.
 - **Dark mode is not a shipped surface.** The `.dark` mapping exists only so an accidental
   `dark:` utility still lands on brand darks (the navy family). A real dark theme is a
   practice decision under anchor 1.
+
+## Component system
+
+Components live in three tiers, and each tier earns its place differently:
+
+- **`src/components/ui/`** — shadcn-generated behavioral primitives (Button, Dialog,
+  Tabs, Field, …). The CLI generates them; the project owns them the moment they land,
+  and every one is brand-adapted before its first merge.
+- **`src/components/primitives/`** — brand-authored reusables composed from `ui/` and
+  the token system: heroes, text bands, stamps, timestamps, and their kin.
+- **Domain components** stay colocated with the route that owns them. A domain component
+  that gains a second consumer or proves genuinely generic is promoted into `primitives/`
+  (or rebuilt on `ui/`). Central placement is earned by reuse, never granted by category.
+
+### Defaults are scaffolding, not design
+
+shadcn supplies behavior, accessibility, and velocity; this document supplies appearance.
+Every adopted component receives a brand adaptation pass — variants, spacing, motion,
+register — before its first merge. A component shipped at its registry defaults is an
+unfinished adoption: the registry exists so surfaces compose faster, never so the product
+drifts toward a generic dashboard's look.
+
+### The design-partner protocol
+
+Design decisions are made with the human director, not for them. Before adopting a
+component from the registry, meaningfully adapting an existing one, or composing a new
+design surface, an agent brings to the table:
+
+1. What the system already has that fits the use case ("the registry spring and the
+   shared dialog treatment exist — this modal rides them").
+2. The reasoned directions the adaptation could take: motion, size, variants, register.
+3. Its own recommendation, with the reasoning.
+4. An honest "nothing we have fits" when that is true.
+
+The consultation is contextual and reasoned every time, never a ceremonial checkbox.
+Mechanical call-site migrations onto an already-decided adaptation need no new
+consultation; a new appearance decision always gets one.
+
+### Adoption workflow
+
+1. Design-partner consultation, as above.
+2. `npx shadcn@latest add <component>` only when a real consumer is ready to render it —
+   React Doctor fails the loop on unused generated files.
+3. Reconciliation diff on `src/app/globals.css` (procedure in
+   [`AGENTS.md`](AGENTS.md#shadcnui)).
+4. Brand adaptation pass: variants mapped onto the committed register, motion onto the
+   registry, sizing onto the committed scales.
+5. Standing gates plus before/after visual evidence.
+
+[`docs/COMPONENT-INVENTORY.md`](docs/COMPONENT-INVENTORY.md) is the descriptive census of
+what renders today; regenerate it as tiers fill rather than letting it drift.
 
 
