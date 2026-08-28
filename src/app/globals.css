@@ -1734,13 +1734,19 @@
      The composer is a disclosure already present inside the Notes surface:
      pointer activation unfolds it from the top edge; keyboard activation is
      immediate. The bounded grid track is the only layout transition needed
-     to preserve page continuity around content with an unknown final height. */
+     to preserve page continuity around content with an unknown final height.
+     The trigger's transitions are !important because the trigger is a Button
+     and the register's transition utilities (utilities layer) would otherwise
+     outrank this choreography — transition-all would put `visibility` on the
+     160ms clock, and the close path focuses the trigger on the next frame,
+     while it would still be hidden. Focus restoration depends on the 0s
+     visibility flip authored here. */
   .request-note-add-trigger {
     touch-action: manipulation;
     transition:
       opacity 100ms cubic-bezier(0.23, 1, 0.32, 1),
       transform 120ms cubic-bezier(0.23, 1, 0.32, 1),
-      visibility 0s linear 0s;
+      visibility 0s linear 0s !important;
   }
 
   .request-note-add-trigger:active {
@@ -1755,7 +1761,7 @@
     transition:
       opacity 100ms cubic-bezier(0.23, 1, 0.32, 1),
       transform 100ms cubic-bezier(0.23, 1, 0.32, 1),
-      visibility 0s linear 100ms;
+      visibility 0s linear 100ms !important;
   }
 
   .request-note-disclosure {
@@ -1799,16 +1805,16 @@
   .request-note-add-trigger[data-animate="false"],
   .request-note-disclosure[data-animate="false"],
   .request-note-disclosure[data-animate="false"] .request-note-composer {
-    transition: none;
+    transition: none !important;
   }
 
   @media (prefers-reduced-motion: reduce) {
     .request-note-add-trigger,
     .request-note-add-trigger[data-open="true"] {
       transform: none;
-      transition-property: opacity, visibility;
+      transition-property: opacity, visibility !important;
       transition-duration: 120ms, 0s !important;
-      transition-delay: 0s;
+      transition-delay: 0s !important;
     }
 
     .request-note-disclosure,
