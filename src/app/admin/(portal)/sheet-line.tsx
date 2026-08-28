@@ -6,6 +6,7 @@ import type { RefObject } from "react";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 
 import { Check, ChevronRight, Phone } from "@/components/icons";
+import { Button } from "@/components/ui/button";
 import type { FollowUpChoice } from "@/lib/portal/business-time";
 import type { CommandOutcome, ContactOutcome } from "@/lib/portal/workflow/contracts";
 
@@ -460,15 +461,15 @@ function LineRecordModal({
         )}
 
         <div className="portal-line-commit">
-          <button
+          <Button
             type="button"
             disabled={!ready || pending}
             data-testid={`line-record-save-${line.id}`}
-            className="btn btn-navy portal-line-save"
+            className="portal-line-save"
             onClick={save}
           >
             {pending ? "Saving…" : uncertain ? "Try again" : "Save"}
-          </button>
+          </Button>
           <button type="button" disabled={pending} className="portal-line-cancel" onClick={close}>
             Cancel
           </button>
@@ -869,17 +870,17 @@ function AppointmentDayDialog({
         </label>
 
         <div className="portal-day-dialog-actions">
-          <button
+          <Button
             type="button"
             disabled={chosen === undefined}
             data-testid={`line-appointment-commit-${lineId}`}
-            className="btn btn-navy portal-line-save"
+            className="portal-line-save"
             onClick={() => {
               onCommit(draftDay, draftTime);
             }}
           >
             Use this day
-          </button>
+          </Button>
           <button type="button" className="portal-line-cancel" onClick={onCancel}>
             Cancel
           </button>

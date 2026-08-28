@@ -1,8 +1,8 @@
+import { MessageSquare, Phone } from "@/components/icons";
+import { buttonVariants } from "@/components/ui/button-variants";
 import type { Dictionary } from "@/lib/i18n";
 import { site } from "@/lib/site";
 import type { Locale } from "@/lib/site";
-
-import { MessageSquare, Phone } from "./icons";
 
 interface TextBandProps {
   locale: Locale;
@@ -23,10 +23,18 @@ export function TextBand({ dict }: Readonly<TextBandProps>) {
           <p className="mt-3 text-[var(--color-on-dark-muted)]">{t.body}</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <a href={site.textLine.href} className="btn btn-amber btn-lg">
+          <a
+            href={site.textLine.href}
+            data-slot="button"
+            className={buttonVariants({ variant: "amber", size: "lg" })}
+          >
             <MessageSquare className="h-4.5 w-4.5" /> {t.cta}
           </a>
-          <a href={site.phone.href} className="btn btn-ghost-light btn-lg">
+          <a
+            href={site.phone.href}
+            data-slot="button"
+            className={buttonVariants({ variant: "ghost-light", size: "lg" })}
+          >
             <Phone className="h-4.5 w-4.5" /> {dict.common.callUs}
           </a>
         </div>

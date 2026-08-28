@@ -23,6 +23,7 @@ import {
   undoLatestTransition,
 } from "@/app/admin/(portal)/requests/workflow-actions";
 import { Check } from "@/components/icons";
+import { Button } from "@/components/ui/button";
 import type { FollowUpChoice } from "@/lib/portal/business-time";
 import { legalActionsFor } from "@/lib/portal/workflow/contracts";
 import type {
@@ -488,19 +489,20 @@ function ReturnTimeAction({
   if (!open) {
     return (
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button
+        <Button
           ref={triggerRef}
           type="button"
+          variant="outline"
           data-testid="reopen-request"
           disabled={pending}
           onClick={() => {
             focusAfterOpenRef.current = true;
             setOpen(true);
           }}
-          className="btn btn-outline min-h-11 disabled:opacity-60"
+          className="disabled:opacity-60"
         >
           Reopen for more work
-        </button>
+        </Button>
         <p className="text-sm text-[var(--color-muted-ink)]">
           You will choose when it returns before anything changes.
         </p>
@@ -546,16 +548,15 @@ function ReturnTimeAction({
         onDayChange={setFollowUpDay}
       />
       <div className="mt-4 flex flex-wrap items-center gap-3">
-        <button
+        <Button
           type="button"
+          variant={choice !== undefined || (pending && inFlight === kind) ? "default" : "outline"}
           data-testid={isCorrection ? "set-call-again-submit" : "confirm-reopen"}
           disabled={pending || choice === undefined}
           onClick={() => {
             if (choice !== undefined) onSubmit(choice);
           }}
-          className={`btn min-h-11 ${
-            choice !== undefined || (pending && inFlight === kind) ? "btn-navy" : "btn-outline"
-          } disabled:opacity-60`}
+          className="disabled:opacity-60"
         >
           {pending && inFlight === kind
             ? isCorrection
@@ -564,14 +565,15 @@ function ReturnTimeAction({
             : isCorrection
               ? "Set call-again day"
               : "Reopen request"}
-        </button>
+        </Button>
         {isCorrection ? (
           <p className="text-sm text-[var(--color-body)]">
             The correction is recorded in Request history and can be undone for 15 minutes.
           </p>
         ) : (
-          <button
+          <Button
             type="button"
+            variant="outline"
             data-testid="cancel-reopen"
             disabled={pending}
             onClick={() => {
@@ -580,10 +582,10 @@ function ReturnTimeAction({
               setFollowUpKind(null);
               setFollowUpDay("");
             }}
-            className="btn btn-outline min-h-11 disabled:opacity-60"
+            className="disabled:opacity-60"
           >
             Cancel
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -1236,15 +1238,16 @@ function WorkflowPanelBody({
             The last change can be undone until{" "}
             <strong className="font-bold">{NY_CLOCK.format(new Date(undoOpen.expiresAt))}</strong>.
           </p>
-          <button
+          <Button
             type="button"
+            variant="outline"
             data-testid="undo-latest"
             disabled={pending}
             onClick={undoLatest}
-            className="btn btn-outline min-h-11 disabled:opacity-60"
+            className="disabled:opacity-60"
           >
             {pending && inFlight === "undo" ? "Undoing…" : "Undo"}
-          </button>
+          </Button>
         </div>
       ) : null}
 
@@ -1308,19 +1311,20 @@ function WorkflowPanelBody({
             </div>
           </fieldset>
           <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-            <button
+            <Button
               type="button"
+              variant={
+                panel.reviewResolution !== null || (pending && inFlight === "classify")
+                  ? "default"
+                  : "outline"
+              }
               data-testid="classify-legacy"
               disabled={pending || panel.reviewResolution === null}
               onClick={classify}
-              className={`btn min-h-11 ${
-                panel.reviewResolution !== null || (pending && inFlight === "classify")
-                  ? "btn-navy"
-                  : "btn-outline"
-              } disabled:opacity-60`}
+              className="disabled:opacity-60"
             >
               {pending && inFlight === "classify" ? "Saving…" : "Finish record"}
-            </button>
+            </Button>
             <p className="text-sm text-[var(--color-muted-ink)]">
               This review is recorded in Request history.
             </p>
@@ -1358,17 +1362,16 @@ function WorkflowPanelBody({
               panel.selected !== null ? "portal-commit-shelf" : ""
             }`}
           >
-            <button
+            <Button
               type="button"
+              variant={!saveDisabled || (pending && inFlight === "save") ? "default" : "outline"}
               data-testid="save-workflow"
               disabled={saveDisabled}
               onClick={save}
-              className={`btn min-h-11 ${
-                !saveDisabled || (pending && inFlight === "save") ? "btn-navy" : "btn-outline"
-              } disabled:opacity-60`}
+              className="disabled:opacity-60"
             >
               {pending && inFlight === "save" ? "Saving…" : "Save"}
-            </button>
+            </Button>
             <p className="text-sm text-[var(--color-muted-ink)]">
               Save records one entry in Request history. You can undo for 15 minutes.
             </p>

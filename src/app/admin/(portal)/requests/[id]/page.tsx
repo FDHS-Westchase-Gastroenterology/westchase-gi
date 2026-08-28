@@ -25,6 +25,7 @@ import {
 } from "@/app/admin/(portal)/requests/queue";
 import { StatusBadge } from "@/app/admin/(portal)/requests/status-badge";
 import { Clock, Mail, MapPin, MessageSquare, Phone } from "@/components/icons";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { requireRole } from "@/lib/portal/auth";
 import { isMailbox, REQUEST_STATUSES } from "@/lib/portal/contracts";
 import type { RequestStatus } from "@/lib/portal/contracts";
@@ -340,7 +341,8 @@ export default async function RequestDetailPage({
                 href={continuityHref(prevId)}
                 rel="prev"
                 data-testid="prev-request"
-                className="btn btn-outline min-h-11"
+                data-slot="button"
+                className={buttonVariants({ variant: "outline" })}
               >
                 Previous
               </Link>
@@ -350,7 +352,8 @@ export default async function RequestDetailPage({
                 href={continuityHref(nextId)}
                 rel="next"
                 data-testid="next-request"
-                className="btn btn-outline min-h-11"
+                data-slot="button"
+                className={buttonVariants({ variant: "outline" })}
               >
                 Next
               </Link>

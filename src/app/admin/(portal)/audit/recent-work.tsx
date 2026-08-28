@@ -1,6 +1,8 @@
 import Link from "next/link";
 
+import { buttonVariants } from "@/components/ui/button-variants";
 import { RECENT_WORK_INTRO } from "@/lib/portal/staff-language";
+import { cn } from "@/lib/utils";
 
 import { RecentWorkControls } from "./recent-work-controls";
 import { RecentWorkFocusLink } from "./recent-work-focus-link";
@@ -160,7 +162,7 @@ export function RecentWorkSection({
           <RecentWorkFocusLink
             href={empty.href}
             focusId={RECENT_WORK_SEARCH_ID}
-            className="btn btn-outline mt-4"
+            className={cn(buttonVariants({ variant: "outline" }), "mt-4")}
           >
             {empty.actionLabel}
           </RecentWorkFocusLink>

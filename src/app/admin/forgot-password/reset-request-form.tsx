@@ -5,6 +5,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 
 import { requestPasswordResetAction } from "@/app/admin/actions";
 import type { ResetRequestActionState } from "@/app/admin/actions";
+import { Button } from "@/components/ui/button";
 import {
   PASSWORD_RESET_RESEND_COOLDOWN_SECONDS,
   RESET_REQUEST_MESSAGE,
@@ -44,17 +45,17 @@ function ResendControl({
   return (
     <form action={action}>
       <input type="hidden" name="email" value={email} />
-      <button
+      <Button
         type="submit"
         disabled={pending || secondsRemaining > 0}
-        className="btn btn-navy min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
+        className="min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
       >
         {pending
           ? "Requesting…"
           : secondsRemaining > 0
             ? `Resend in ${secondsRemaining}s`
             : "Resend link"}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -125,9 +126,9 @@ export function ResetRequestForm({
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <button type="button" onClick={changeEmail} className="btn btn-outline min-h-11 w-full">
+          <Button type="button" variant="outline" onClick={changeEmail} className="min-h-11 w-full">
             Change email
-          </button>
+          </Button>
           <ResendControl
             key={state.requestKey}
             action={formAction}
@@ -195,13 +196,13 @@ export function ResetRequestForm({
             className={inputClassName}
           />
         </div>
-        <button
+        <Button
           type="submit"
           disabled={pending}
-          className="btn btn-navy min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
+          className="min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
         >
           {pending ? "Sending…" : "Send reset link"}
-        </button>
+        </Button>
       </form>
       <div className="mt-3 text-center">
         {onBack ? (

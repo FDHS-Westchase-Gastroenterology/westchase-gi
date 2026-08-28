@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 
 import { ArticleBody } from "@/components/ArticleBody";
 import { ArrowRight, Download, FileText, MessageSquare } from "@/components/icons";
-import { TextBand } from "@/components/TextBand";
+import { TextBand } from "@/components/primitives/TextBand";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { educationTopics, getTopic } from "@/lib/content/education";
 import { documents } from "@/lib/documents";
 import { getDictionary, isLocale } from "@/lib/i18n";
@@ -87,11 +88,15 @@ export default async function EducationTopicPage({ params }: Readonly<PageProps>
                 </div>
               </div>
               {sheet.file !== null && sheet.file !== "" ? (
-                <a href={sheet.file} download className="btn btn-navy">
+                <a href={sheet.file} download data-slot="button" className={buttonVariants()}>
                   <Download className="h-4 w-4" /> {dict.common.docs.download}
                 </a>
               ) : (
-                <a href={site.textLine.href} className="btn btn-outline">
+                <a
+                  href={site.textLine.href}
+                  data-slot="button"
+                  className={buttonVariants({ variant: "outline" })}
+                >
                   <MessageSquare className="h-4 w-4" /> {dict.common.textUs}
                 </a>
               )}

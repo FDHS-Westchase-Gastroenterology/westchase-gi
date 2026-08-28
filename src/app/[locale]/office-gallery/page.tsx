@@ -3,10 +3,11 @@ import Image from "next/image";
 
 import { ExternalLink, Star } from "@/components/icons";
 import { LocationCards } from "@/components/LocationCards";
-import { PageHero } from "@/components/PageHero";
-import { Reveal } from "@/components/Reveal";
-import { revealDelay } from "@/components/reveal-delay";
-import { TextBand } from "@/components/TextBand";
+import { PageHero } from "@/components/primitives/PageHero";
+import { Reveal } from "@/components/primitives/Reveal";
+import { revealDelay } from "@/components/primitives/reveal-delay";
+import { TextBand } from "@/components/primitives/TextBand";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
 import { site } from "@/lib/site";
@@ -124,7 +125,8 @@ export default async function GalleryPage({ params }: Readonly<PageProps>) {
                 href={link.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`btn ${i === 0 ? "btn-navy" : "btn-outline"}`}
+                data-slot="button"
+                className={buttonVariants({ variant: i === 0 ? "default" : "outline" })}
               >
                 {i === 0 ? <Star className="h-4 w-4 text-[var(--color-amber)]" /> : null}
                 {link.label}

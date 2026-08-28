@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { loginAction } from "@/app/admin/actions";
 import type { LoginActionState } from "@/app/admin/actions";
 import { ResetRequestForm } from "@/app/admin/forgot-password/reset-request-form";
+import { Button } from "@/components/ui/button";
 import { signInIdentifierField } from "@/lib/portal/staff-language";
 
 const INITIAL_STATE: LoginActionState = { error: null };
@@ -102,13 +103,13 @@ export function LoginForm({
         </p>
       ) : null}
 
-      <button
+      <Button
         type="submit"
         disabled={pending}
-        className="btn btn-navy min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
+        className="min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
       >
         {pending ? "Signing in…" : "Sign in"}
-      </button>
+      </Button>
     </form>
   );
 }

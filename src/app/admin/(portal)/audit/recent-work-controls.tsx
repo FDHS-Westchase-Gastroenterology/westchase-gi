@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
 
+import { Button } from "@/components/ui/button";
+
 import { requestFocusAfterNavigate, useFocusAfterNavigate } from "./recent-work-focus";
 import {
   RECENT_WORK_SEARCH_ID,
@@ -79,9 +81,12 @@ export function RecentWorkControls({
           placeholder="Person, action, or request"
           className="min-h-11 w-full rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-3 text-[0.95rem] text-[var(--color-body)]"
         />
-        <button type="submit" className="btn btn-primary shrink-0">
+        {/* Was `.btn btn-primary` — a class that never existed, so this
+            rendered as a transparent text button. Default navy matches the
+            identical Search control on the requests queue. */}
+        <Button type="submit" className="shrink-0">
           Search
-        </button>
+        </Button>
       </div>
       <div
         role="group"

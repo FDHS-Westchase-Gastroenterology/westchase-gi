@@ -5,6 +5,7 @@ import { useActionState, useLayoutEffect } from "react";
 
 import { recoverPasswordAction, setPasswordAction } from "@/app/admin/actions";
 import type { SetPasswordActionState } from "@/app/admin/actions";
+import { Button } from "@/components/ui/button";
 
 const INITIAL_STATE: SetPasswordActionState = {
   error: null,
@@ -103,13 +104,13 @@ export function PasswordForm({
         </div>
       ) : null}
       {!state.changeCommitted ? (
-        <button
+        <Button
           type="submit"
           disabled={pending}
-          className="btn btn-navy min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
+          className="min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
         >
           {pending ? "Saving…" : mode === "recovery" ? "Set password and continue" : "Set password"}
-        </button>
+        </Button>
       ) : null}
     </form>
   );

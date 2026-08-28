@@ -11,10 +11,11 @@ import {
   Phone,
 } from "@/components/icons";
 import { LocationCards } from "@/components/LocationCards";
-import { Reveal } from "@/components/Reveal";
-import { revealDelay } from "@/components/reveal-delay";
+import { Reveal } from "@/components/primitives/Reveal";
+import { revealDelay } from "@/components/primitives/reveal-delay";
+import { TextBand } from "@/components/primitives/TextBand";
 import { TestimonialRail } from "@/components/TestimonialRail";
-import { TextBand } from "@/components/TextBand";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
 import { physicians, nursePractitioners, infusionNurse } from "@/lib/providers";
@@ -90,10 +91,18 @@ export default async function HomePage({ params }: Readonly<PageProps>) {
             </h1>
             <p className="lead mt-5 max-w-xl text-[var(--color-on-dark-muted)]">{t.heroLead}</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href={p("/appointment")} className="btn btn-amber btn-lg">
+              <Link
+                href={p("/appointment")}
+                data-slot="button"
+                className={buttonVariants({ variant: "amber", size: "lg" })}
+              >
                 {dict.common.requestAppointment}
               </Link>
-              <a href={site.phone.href} className="btn btn-ghost-light btn-lg">
+              <a
+                href={site.phone.href}
+                data-slot="button"
+                className={buttonVariants({ variant: "ghost-light", size: "lg" })}
+              >
                 <Phone className="h-4.5 w-4.5" /> {dict.common.callUs}
               </a>
             </div>
@@ -185,7 +194,7 @@ export default async function HomePage({ params }: Readonly<PageProps>) {
             ))}
           </div>
           <div className="mt-9 flex flex-wrap items-center gap-5">
-            <Link href={p("/appointment")} className="btn btn-navy">
+            <Link href={p("/appointment")} data-slot="button" className={buttonVariants()}>
               {dict.common.requestAppointment}
             </Link>
             <Link href={p("/about")} className="link-line">
@@ -259,7 +268,8 @@ export default async function HomePage({ params }: Readonly<PageProps>) {
             href={site.links.googleReview}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn btn-outline"
+            data-slot="button"
+            className={buttonVariants({ variant: "outline" })}
           >
             {t.reviewCta} <ExternalLink className="h-4 w-4" />
           </a>

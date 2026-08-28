@@ -6,6 +6,7 @@ import {
   revokeMaintainer,
 } from "@/app/admin/(portal)/settings/actions";
 import { Check } from "@/components/icons";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { requireRole } from "@/lib/portal/auth";
 import { getMaintainerAccessModel } from "@/lib/portal/maintainers";
 import {
@@ -75,7 +76,8 @@ export default async function AdminSettingsSoftwarePage() {
           <Link
             href={WEBSITE_CHANGE_HREF}
             data-testid="request-website-change"
-            className="btn btn-navy"
+            data-slot="button"
+            className={buttonVariants()}
           >
             Request a website change
           </Link>

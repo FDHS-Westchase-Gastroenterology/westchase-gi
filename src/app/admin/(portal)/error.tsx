@@ -3,6 +3,8 @@
 import Link from "next/link";
 
 import { Activity } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 
 import { PortalPageHeader } from "./portal-page-header";
 
@@ -25,10 +27,14 @@ export default function PortalError({ reset }: Readonly<{ reset: () => void }>) 
           open Appointments and confirm the live queue before continuing from paper or email.
         </p>
         <div>
-          <button type="button" onClick={reset} className="btn btn-navy min-h-11">
+          <Button type="button" onClick={reset}>
             Try again
-          </button>
-          <Link href="/admin/requests" className="btn btn-outline min-h-11">
+          </Button>
+          <Link
+            href="/admin/requests"
+            data-slot="button"
+            className={buttonVariants({ variant: "outline" })}
+          >
             Open Appointments
           </Link>
           <Link href="/admin/help#something-wrong" className="portal-inline-link">

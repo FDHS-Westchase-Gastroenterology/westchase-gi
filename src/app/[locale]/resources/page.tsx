@@ -3,9 +3,10 @@ import Link from "next/link";
 
 import { DocumentList } from "@/components/DocumentList";
 import { ArrowRight, ExternalLink } from "@/components/icons";
-import { PageHero } from "@/components/PageHero";
-import { Reveal } from "@/components/Reveal";
-import { TextBand } from "@/components/TextBand";
+import { PageHero } from "@/components/primitives/PageHero";
+import { Reveal } from "@/components/primitives/Reveal";
+import { TextBand } from "@/components/primitives/TextBand";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
 import { patientResources, professionalOrgs, patientEducation } from "@/lib/resources";
@@ -47,7 +48,11 @@ export default async function ResourcesPage({ params }: Readonly<PageProps>) {
               <h2 className="h3 font-[var(--font-display)]">{t.educationHeading}</h2>
               <p className="mt-2 text-[var(--color-body)]">{t.educationBody}</p>
             </div>
-            <Link href={localePath(locale, "/patient-education")} className="btn btn-navy">
+            <Link
+              href={localePath(locale, "/patient-education")}
+              data-slot="button"
+              className={buttonVariants()}
+            >
               {t.educationCta} <ArrowRight className="h-4 w-4" />
             </Link>
           </Reveal>

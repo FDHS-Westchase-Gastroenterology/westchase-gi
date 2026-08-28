@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { CircleHelp } from "@/components/icons";
+import { buttonVariants } from "@/components/ui/button-variants";
 
 import { PortalPageHeader } from "./portal-page-header";
 
@@ -19,10 +20,10 @@ export default function PortalNotFound() {
           paper copy as the final record.
         </p>
         <div>
-          <Link href="/admin/requests" className="btn btn-navy min-h-11">
+          <Link href="/admin/requests" data-slot="button" className={buttonVariants()}>
             Open Appointments
           </Link>
-          <Link href="/admin" className="btn btn-outline min-h-11">
+          <Link href="/admin" data-slot="button" className={buttonVariants({ variant: "outline" })}>
             Return Home
           </Link>
         </div>

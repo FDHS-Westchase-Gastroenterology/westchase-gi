@@ -2158,7 +2158,7 @@
     gap: 0.65rem;
   }
 
-  .portal-request-form-footer .btn {
+  .portal-request-form-footer [data-slot="button"] {
     width: 100%;
     justify-content: center;
   }
@@ -2250,7 +2250,7 @@
       justify-content: flex-end;
     }
 
-    .portal-request-form-footer .btn {
+    .portal-request-form-footer [data-slot="button"] {
       width: auto;
     }
   }
@@ -2311,7 +2311,7 @@
     margin-top: 1rem;
   }
 
-  .portal-print-chooser-primary .btn {
+  .portal-print-chooser-primary [data-slot="button"] {
     width: 100%;
     justify-content: center;
   }
@@ -2491,7 +2491,7 @@
     padding: 0 1.5rem 1.5rem;
   }
 
-  .portal-confirm-dialog-actions .btn,
+  .portal-confirm-dialog-actions [data-slot="button"],
   .portal-confirm-dialog-actions .portal-confirm-dialog-destructive {
     width: 100%;
     justify-content: center;
@@ -2532,7 +2532,7 @@
       gap: 1.25rem;
     }
 
-    .portal-confirm-dialog-actions .btn,
+    .portal-confirm-dialog-actions [data-slot="button"],
     .portal-confirm-dialog-actions .portal-confirm-dialog-destructive {
       width: auto;
     }
@@ -3441,7 +3441,7 @@
       padding: 0.55rem 0.65rem;
     }
 
-    .portal-workflow-shell .portal-commit-shelf .btn {
+    .portal-workflow-shell .portal-commit-shelf [data-slot="button"] {
       width: auto;
       flex: none;
     }
@@ -3503,12 +3503,12 @@
     }
   }
 
-  .portal-workflow-shell .btn {
+  .portal-workflow-shell [data-slot="button"] {
     width: 100%;
     justify-content: center;
   }
 
-  .portal-workflow-shell [data-testid="undo-affordance"] .btn {
+  .portal-workflow-shell [data-testid="undo-affordance"] [data-slot="button"] {
     width: auto;
   }
 

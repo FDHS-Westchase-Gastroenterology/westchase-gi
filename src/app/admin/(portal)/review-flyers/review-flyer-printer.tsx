@@ -11,7 +11,9 @@ import {
 import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import { Check } from "@/components/icons";
 import { useOutputGuard } from "@/components/output-feedback";
+import { buttonVariants } from "@/components/ui/button-variants";
 import type { ReviewFlyer, ReviewTargetKey } from "@/lib/review-flyers";
+import { cn } from "@/lib/utils";
 
 const DOWNLOAD_ACTIONS = [
   ["pdf", "Flyer PDF"],
@@ -47,6 +49,7 @@ function FlyerPrintButton({
     <button
       type="button"
       aria-disabled={locked || undefined}
+      data-slot="button"
       className={`${className} aria-disabled:pointer-events-none aria-disabled:opacity-60`}
       onClick={() => {
         if (!begin()) return;
@@ -77,7 +80,11 @@ function FlyerDownloadLink({
 
   return (
     <a
-      className="btn btn-outline btn-sm min-h-11 aria-disabled:pointer-events-none aria-disabled:opacity-60"
+      data-slot="button"
+      className={cn(
+        buttonVariants({ variant: "outline" }),
+        "aria-disabled:pointer-events-none aria-disabled:opacity-60",
+      )}
       href={href}
       download={filename}
       aria-disabled={locked || undefined}
@@ -195,7 +202,7 @@ function ReviewFlyerPrinterBody({ flyers }: Readonly<{ flyers: ReviewFlyer[] }>)
           description="Choose one ready-to-print bilingual flyer, or print the full set. Use the PDF when a print shop or another device needs a guaranteed one-page file."
           actions={
             <FlyerPrintButton
-              className="btn btn-navy min-h-11"
+              className={buttonVariants()}
               label="Print all six flyers"
               message="Print dialog is opening for all six flyers."
               target="all"
@@ -241,7 +248,7 @@ function ReviewFlyerPrinterBody({ flyers }: Readonly<{ flyers: ReviewFlyer[] }>)
                   </p>
                   <div className="mt-4 flex flex-wrap items-center gap-2.5">
                     <FlyerPrintButton
-                      className="btn btn-amber btn-sm min-h-11"
+                      className={buttonVariants({ variant: "amber" })}
                       label="Print flyer"
                       message={`Print dialog is opening for ${flyer.title}.`}
                       target={flyer.key}

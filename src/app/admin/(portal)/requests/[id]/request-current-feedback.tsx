@@ -6,6 +6,7 @@ import { useEffect } from "react";
 import { PortalFeedbackMessage, usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { Check, Printer } from "@/components/icons";
 import { useOutputGuard } from "@/components/output-feedback";
+import { Button } from "@/components/ui/button";
 
 export function StaffRequestCreatedAcknowledgement() {
   const { feedback } = usePortalFeedback();
@@ -41,7 +42,7 @@ export function RequestPrintButton() {
   const { begin, locked } = useOutputGuard({ releaseOnAfterPrint: true });
 
   return (
-    <button
+    <Button
       type="button"
       aria-disabled={locked || undefined}
       data-testid="print-request"
@@ -56,10 +57,10 @@ export function RequestPrintButton() {
           window.print();
         });
       }}
-      className="btn btn-navy print-hide aria-disabled:pointer-events-none aria-disabled:opacity-60"
+      className="print-hide aria-disabled:pointer-events-none aria-disabled:opacity-60"
     >
       <Printer className="h-4.5 w-4.5" /> Print request
-    </button>
+    </Button>
   );
 }
 

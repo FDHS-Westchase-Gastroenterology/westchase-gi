@@ -3,13 +3,15 @@ import type { Metadata } from "next";
 import { DocumentList } from "@/components/DocumentList";
 import { ExternalLink, FileText } from "@/components/icons";
 import { LocationMaps } from "@/components/LocationMaps";
-import { PageHero } from "@/components/PageHero";
-import { Reveal } from "@/components/Reveal";
-import { TextBand } from "@/components/TextBand";
+import { PageHero } from "@/components/primitives/PageHero";
+import { Reveal } from "@/components/primitives/Reveal";
+import { TextBand } from "@/components/primitives/TextBand";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
 import { site } from "@/lib/site";
 import type { Locale } from "@/lib/site";
+import { cn } from "@/lib/utils";
 
 interface PageProps {
   params: Promise<{ locale: string }>;
@@ -51,7 +53,8 @@ export default async function NewPatientsPage({ params }: Readonly<PageProps>) {
                 href={site.links.newPatientFormsEn}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn btn-navy justify-between"
+                data-slot="button"
+                className={cn(buttonVariants(), "justify-between")}
               >
                 <span className="inline-flex items-center gap-2">
                   <FileText className="h-4.5 w-4.5" /> {t.formsOnlineEn}
@@ -62,7 +65,8 @@ export default async function NewPatientsPage({ params }: Readonly<PageProps>) {
                 href={site.links.newPatientFormsEs}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn btn-navy justify-between"
+                data-slot="button"
+                className={cn(buttonVariants(), "justify-between")}
               >
                 <span className="inline-flex items-center gap-2">
                   <FileText className="h-4.5 w-4.5" /> {t.formsOnlineEs}

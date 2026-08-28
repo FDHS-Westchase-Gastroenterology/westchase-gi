@@ -6,6 +6,9 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { confirmAuthLinkAction } from "@/app/admin/actions";
 import type { ConfirmAuthActionState } from "@/app/admin/actions";
 import { PasswordForm } from "@/app/admin/set-password/password-form";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { cn } from "@/lib/utils";
 
 interface AuthLink {
   tokenHash: string;
@@ -71,7 +74,11 @@ export function ConfirmAuthForm() {
         >
           This link is incomplete or no longer valid. Request a new link to continue.
         </p>
-        <Link href="/admin/forgot-password" className="btn btn-navy mt-4 min-h-11 w-full">
+        <Link
+          href="/admin/forgot-password"
+          data-slot="button"
+          className={cn(buttonVariants(), "mt-4 min-h-11 w-full")}
+        >
           Request a new link
         </Link>
       </div>
@@ -94,13 +101,13 @@ export function ConfirmAuthForm() {
           {state.error}
         </p>
       ) : null}
-      <button
+      <Button
         type="submit"
         disabled={pending}
-        className="btn btn-navy min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
+        className="min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
       >
         {pending ? "Verifying…" : "Continue"}
-      </button>
+      </Button>
     </form>
   );
 }

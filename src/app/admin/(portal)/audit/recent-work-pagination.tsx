@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 
+import { buttonVariants } from "@/components/ui/button-variants";
+
 import { requestFocusAfterNavigate } from "./recent-work-focus";
 import { recentWorkHref } from "./recent-work-model";
 import type { RecentWorkType } from "./recent-work-model";
@@ -53,7 +55,8 @@ export function RecentWorkPagination({
         <Link
           href={hrefFor(current - 1)}
           rel="prev"
-          className="btn btn-outline"
+          data-slot="button"
+          className={buttonVariants({ variant: "outline" })}
           onNavigate={() => {
             requestFocusAfterNavigate(summaryId);
           }}
@@ -72,7 +75,8 @@ export function RecentWorkPagination({
         <Link
           href={hrefFor(current + 1)}
           rel="next"
-          className="btn btn-outline"
+          data-slot="button"
+          className={buttonVariants({ variant: "outline" })}
           onNavigate={() => {
             requestFocusAfterNavigate(summaryId);
           }}

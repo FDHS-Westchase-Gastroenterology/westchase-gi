@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { Button } from "@/components/ui/button";
 import { getMaintainerViewState } from "@/lib/portal/maintainer-view";
 
 // The staff-facing surface for "who can change the website". This component
@@ -401,13 +402,9 @@ export function MaintainerAccess({
                     className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
                   />
                 </div>
-                <button
-                  type="submit"
-                  disabled={pending}
-                  className="btn btn-navy min-h-11 disabled:opacity-60"
-                >
+                <Button type="submit" disabled={pending} className="disabled:opacity-60">
                   {pending ? "Sending…" : "Send invitation"}
-                </button>
+                </Button>
               </div>
             </form>
           )}

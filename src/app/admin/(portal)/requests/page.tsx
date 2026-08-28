@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { PortalFeedbackProvider } from "@/app/admin/(portal)/portal-feedback";
 import { ChevronRight } from "@/components/icons";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { requireRole } from "@/lib/portal/auth";
 import { waitingSince } from "@/lib/portal/business-time";
 import { REQUEST_STATUSES, STAFF_REQUEST_SOURCE_PATH } from "@/lib/portal/contracts";
@@ -17,6 +18,7 @@ import {
 } from "@/lib/portal/request-query";
 import { requestPageWindow } from "@/lib/portal/request-window";
 import { serviceClient } from "@/lib/portal/server";
+import { cn } from "@/lib/utils";
 
 import {
   followUpShortLabel,
@@ -360,7 +362,8 @@ export default async function AdminRequestsPage({
           <Link
             href={`${STAFF_REQUEST_SOURCE_PATH}?from=appointments`}
             data-testid="appointments-add-patient-request"
-            className="btn btn-outline portal-queue-add min-h-11"
+            data-slot="button"
+            className={cn(buttonVariants({ variant: "outline" }), "portal-queue-add")}
           >
             Add appointment request
           </Link>
@@ -467,7 +470,8 @@ export default async function AdminRequestsPage({
                       status: filter,
                     })}
                     rel="prev"
-                    className="btn btn-outline"
+                    data-slot="button"
+                    className={buttonVariants({ variant: "outline" })}
                   >
                     Previous
                   </Link>
@@ -483,7 +487,8 @@ export default async function AdminRequestsPage({
                       status: filter,
                     })}
                     rel="next"
-                    className="btn btn-outline"
+                    data-slot="button"
+                    className={buttonVariants({ variant: "outline" })}
                   >
                     Next
                   </Link>

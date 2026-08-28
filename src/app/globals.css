@@ -314,77 +314,10 @@
     margin-inline: auto;
   }
 
-  /* ---- Buttons ---- */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.55rem;
-    font-family: var(--font-body);
-    font-weight: 700;
-    font-size: 0.98rem;
-    line-height: 1;
-    padding: 0.95rem 1.5rem;
-    border-radius: var(--radius);
-    cursor: pointer;
-    transition:
-      transform 0.35s var(--ease-out-quint),
-      background-color 0.25s,
-      color 0.25s,
-      box-shadow 0.35s;
-  }
-  .btn:hover {
-    transform: translateY(-2px);
-  }
-  .btn:active {
-    transform: translateY(0);
-  }
-
-  .btn-amber {
-    background: var(--color-amber);
-    color: var(--color-navy-2);
-  }
-  .btn-amber:hover {
-    background: color-mix(in oklch, var(--color-amber) 90%, white);
-    box-shadow: var(--shadow-soft);
-  }
-
-  .btn-navy {
-    background: var(--color-navy);
-    color: var(--color-on-dark);
-  }
-  .btn-navy:hover {
-    background: var(--color-navy-2);
-    box-shadow: var(--shadow-soft);
-  }
-
-  .btn-outline {
-    background: transparent;
-    color: var(--color-ink);
-    box-shadow: inset 0 0 0 1.5px var(--color-line-2);
-  }
-  .btn-outline:hover {
-    box-shadow: inset 0 0 0 1.5px var(--color-navy);
-    background: color-mix(in oklch, var(--color-navy) 5%, transparent);
-  }
-
-  .btn-ghost-light {
-    background: color-mix(in oklch, white 12%, transparent);
-    color: var(--color-on-dark);
-    box-shadow: inset 0 0 0 1.5px color-mix(in oklch, white 34%, transparent);
-  }
-  .btn-ghost-light:hover {
-    background: color-mix(in oklch, white 20%, transparent);
-  }
-
-  .btn-lg {
-    padding: 1.1rem 1.9rem;
-    font-size: 1.02rem;
-  }
-  .btn-sm {
-    padding: 0.65rem 1.1rem;
-    font-size: 0.9rem;
-  }
+  /* Buttons live in the component system now: the register is
+     src/components/ui/button-variants.ts, and scopes assign their
+     temperament through the --btn-* knobs (see .portal-scope and
+     .review-flyer-screen). */
 
   /* Latin-order islands inside RTL text (phone numbers, the practice's
      Latin-script name): keep internal character order + ellipsis side. */
@@ -1291,27 +1224,18 @@
     transition: none;
   }
 
-  .portal-scope .btn {
-    min-height: 2.75rem;
-    padding: 0.8rem 1.2rem;
-    border-radius: 0.5rem;
-    transition:
-      transform 120ms cubic-bezier(0.23, 1, 0.32, 1),
-      background-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
-      color 160ms cubic-bezier(0.23, 1, 0.32, 1),
-      box-shadow 160ms cubic-bezier(0.23, 1, 0.32, 1);
-  }
-
-  .portal-scope .btn:hover {
-    transform: none;
-  }
-
-  .portal-scope :where(.btn-amber, .btn-navy):hover {
-    box-shadow: none;
-  }
-
-  .portal-scope .btn:active {
-    transform: scale(0.98);
+  /* The portal's Button temperament, assigned through the register's
+     --btn-* knobs (see button-variants.ts): tighter geometry, no hover
+     lift or shadow, a 0.98 press, and the exit curve's calmer timing. */
+  .portal-scope {
+    --btn-radius: 0.5rem;
+    --btn-px: 1.2rem;
+    --btn-py: 0.8rem;
+    --btn-lift: 0px;
+    --btn-hover-shadow: 0 0 #0000;
+    --btn-active-scale: 0.98;
+    --btn-duration: 160ms;
+    --btn-ease: var(--motion-exit);
   }
 
   .portal-header {
@@ -1425,10 +1349,6 @@
 
     .language-dialog__option {
       transition: none;
-    }
-
-    .portal-scope .btn:active {
-      transform: none;
     }
   }
 
@@ -2198,25 +2118,16 @@
   display: none;
 }
 
-.review-flyer-screen .btn {
-  transition:
-    transform 160ms var(--ease-out-quint),
-    background-color 160ms ease,
-    color 160ms ease,
-    box-shadow 160ms ease;
-}
-
-.review-flyer-screen .btn:active {
-  transform: scale(0.98);
+/* The flyer screen's Button temperament through the register knobs:
+   calmer 160ms timing, a 0.98 press, and no hover lift on touch. */
+.review-flyer-screen {
+  --btn-duration: 160ms;
+  --btn-active-scale: 0.98;
 }
 
 @media (hover: none) {
-  .review-flyer-screen .btn:hover {
-    transform: none;
-  }
-
-  .review-flyer-screen .btn:active {
-    transform: scale(0.98);
+  .review-flyer-screen {
+    --btn-lift: 0px;
   }
 }
 

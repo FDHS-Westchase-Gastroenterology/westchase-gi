@@ -13,6 +13,7 @@ import {
   TIME_LABELS,
 } from "@/app/admin/(portal)/requests/format";
 import { ArrowRight, Printer } from "@/components/icons";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { recordAudit } from "@/lib/portal/audit";
 import { requireRole } from "@/lib/portal/auth";
 import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
@@ -233,7 +234,7 @@ export default async function PrintNewRequestsPage({
           <h2>Choose statuses again</h2>
           <p>Use Print on Home or Appointments and pick one or more request statuses.</p>
           <div>
-            <Link href="/admin" className="btn btn-navy min-h-11">
+            <Link href="/admin" data-slot="button" className={buttonVariants()}>
               Back to Home
             </Link>
           </div>
@@ -282,7 +283,7 @@ export default async function PrintNewRequestsPage({
               continue from Appointments so work is not blocked, then report the printing problem.
             </p>
             <div>
-              <Link href="/admin" className="btn btn-navy min-h-11">
+              <Link href="/admin" data-slot="button" className={buttonVariants()}>
                 Back to Home
               </Link>
             </div>
@@ -312,13 +313,15 @@ export default async function PrintNewRequestsPage({
             <Link
               href={printPacketHref(selectedStatuses, false)}
               prefetch={false}
-              className="btn btn-navy min-h-11"
+              data-slot="button"
+              className={buttonVariants()}
             >
               Try again
             </Link>
             <Link
               href={newOnly ? "/admin/requests?status=new" : "/admin/requests"}
-              className="btn btn-outline min-h-11"
+              data-slot="button"
+              className={buttonVariants({ variant: "outline" })}
             >
               {newOnly ? "Open New requests" : "Open Appointments"}
               <ArrowRight className="h-4 w-4" />
@@ -345,10 +348,14 @@ export default async function PrintNewRequestsPage({
             next task, or open Appointments to review the current queue.
           </p>
           <div>
-            <Link href="/admin" className="btn btn-navy min-h-11">
+            <Link href="/admin" data-slot="button" className={buttonVariants()}>
               Back to Home
             </Link>
-            <Link href="/admin/requests" className="btn btn-outline min-h-11">
+            <Link
+              href="/admin/requests"
+              data-slot="button"
+              className={buttonVariants({ variant: "outline" })}
+            >
               Open Appointments
             </Link>
           </div>
@@ -407,7 +414,8 @@ export default async function PrintNewRequestsPage({
         </p>
         <Link
           href={newOnly ? "/admin/requests?status=new" : "/admin/requests"}
-          className="btn btn-outline min-h-11"
+          data-slot="button"
+          className={buttonVariants({ variant: "outline" })}
         >
           {newOnly ? "Open New requests" : "Open Appointments"}
           <ArrowRight className="h-4 w-4" />

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { PortalFeedbackMessage, usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { Printer } from "@/components/icons";
 import { useOutputGuard } from "@/components/output-feedback";
+import { Button } from "@/components/ui/button";
 
 async function afterNextPaint(): Promise<void> {
   return new Promise((resolve) => {
@@ -60,17 +61,17 @@ export function PrintPacketControls({
 
   return (
     <div className="portal-print-controls print-hide">
-      <button
+      <Button
         type="button"
         aria-disabled={locked || undefined}
         onClick={() => {
           printPacket();
         }}
-        className="btn btn-navy min-h-11 aria-disabled:pointer-events-none aria-disabled:opacity-60"
+        className="aria-disabled:pointer-events-none aria-disabled:opacity-60"
       >
         <Printer className="h-[1.05rem] w-[1.05rem]" />
         Print {count} {count === 1 ? "request" : "requests"}
-      </button>
+      </Button>
       <PortalFeedbackMessage source="print-packet" testId="print-packet-feedback" />
       <p>
         Printing creates a paper copy only. It does not mark any appointment request as contacted or

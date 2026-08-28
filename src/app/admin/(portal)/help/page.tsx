@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import { restartPortalTourAction } from "@/app/admin/(portal)/tour-actions";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { requireRole } from "@/lib/portal/auth";
 import {
   HELP_ACTIVITY_LEAD,
@@ -45,7 +46,7 @@ export default async function AdminHelpPage() {
             would help. This takes you back to Home, where you can choose when to start it.
           </p>
           <form action={restartPortalTourAction} className="mt-4">
-            <button type="submit" className="btn btn-navy btn-sm min-h-11">
+            <button type="submit" data-slot="button" className={buttonVariants()}>
               Show the portal tour again
             </button>
           </form>
@@ -212,7 +213,11 @@ export default async function AdminHelpPage() {
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-4">
-            <Link href={HELP_LINKS.openAppointments.href} className="btn btn-amber btn-sm min-h-11">
+            <Link
+              href={HELP_LINKS.openAppointments.href}
+              data-slot="button"
+              className={buttonVariants({ variant: "amber" })}
+            >
               {HELP_LINKS.openAppointments.label}
             </Link>
             <Link

@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 
 import { X } from "@/components/icons";
+import { Button } from "@/components/ui/button";
 
 import { dismissPortalTourAction, finishPortalTourAction } from "./tour-actions";
 
@@ -76,15 +77,9 @@ export function PortalTour() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            ref={launcherRef}
-            id="portal-tour-launcher"
-            type="button"
-            onClick={openTour}
-            className="btn btn-navy btn-sm min-h-11"
-          >
+          <Button ref={launcherRef} id="portal-tour-launcher" type="button" onClick={openTour}>
             Take a quick tour
-          </button>
+          </Button>
           <form action={dismissPortalTourAction}>
             <button
               type="submit"
@@ -165,12 +160,9 @@ export function PortalTour() {
                 setStep((value) => Math.min(STEPS.length - 1, value + 1));
               }}
             >
-              <button
-                type="submit"
-                className={`btn btn-sm min-h-11 ${finalStep ? "btn-amber" : "btn-navy"}`}
-              >
+              <Button type="submit" variant={finalStep ? "amber" : "default"}>
                 {finalStep ? "Finish tour" : "Next"}
-              </button>
+              </Button>
             </form>
           </div>
         </div>

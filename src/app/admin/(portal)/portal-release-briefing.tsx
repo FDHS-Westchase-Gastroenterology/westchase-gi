@@ -15,6 +15,8 @@ import {
 } from "react";
 
 import { ArrowRight, ChevronDown, X } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { PORTAL_RELEASE_BRIEFING } from "@/lib/portal/release-briefing-content";
 import type { PortalReleaseViewState } from "@/lib/portal/release-briefing-content";
 
@@ -437,20 +439,24 @@ function ReleaseSummary({
       ) : null}
 
       <div className="mt-5 flex flex-wrap items-center gap-2.5">
-        <Link href="/admin/requests" className="btn btn-amber btn-sm min-h-11">
+        <Link
+          href="/admin/requests"
+          data-slot="button"
+          className={buttonVariants({ variant: "amber" })}
+        >
           Open requests
           <ArrowRight className="h-4 w-4" />
         </Link>
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() => {
             openGuide(router);
           }}
           disabled={guidePending}
-          className="btn btn-outline btn-sm min-h-11"
         >
           {guidePending ? "Opening guide…" : "See the 2-minute guide"}
-        </button>
+        </Button>
         <button
           type="button"
           onClick={acknowledge}

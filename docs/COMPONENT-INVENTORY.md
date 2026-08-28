@@ -7,6 +7,11 @@ owns the design system itself. This file makes no recommendations and proposes n
 Counts are a snapshot taken at `f5d062e`. Regenerate them with the commands in
 [Regenerating this inventory](#regenerating-this-inventory) rather than editing numbers by hand.
 
+Since that snapshot, the component-system migration (DESIGN.md "Component system") has landed
+`src/components/ui/` (Badge, Button, Field, Input, Label, NativeSelect, Separator, Table,
+Textarea) and `src/components/primitives/` (PageHero, TextBand, Reveal), and retired the
+`.btn*` / `.field-*` CSS registers. Regenerate the census once the tiers settle.
+
 ## What counts as a component here
 
 Every `.tsx` file under `src/` that exports a React component, excluding App Router route files

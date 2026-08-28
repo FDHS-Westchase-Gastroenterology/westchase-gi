@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 
 import { JsonLd } from "@/components/JsonLd";
-import { PageHero } from "@/components/PageHero";
+import { PageHero } from "@/components/primitives/PageHero";
+import { Reveal } from "@/components/primitives/Reveal";
+import { TextBand } from "@/components/primitives/TextBand";
 import { ProfileCardViewer } from "@/components/ProfileCardViewer";
-import { Reveal } from "@/components/Reveal";
-import { TextBand } from "@/components/TextBand";
 import type { Dictionary } from "@/lib/dictionaries/en";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";

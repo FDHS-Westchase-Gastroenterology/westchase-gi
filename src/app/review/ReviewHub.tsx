@@ -4,7 +4,9 @@ import Image from "next/image";
 import { useState, useSyncExternalStore } from "react";
 
 import { ExternalLink, Facebook, Globe, MessageSquare, Phone, Star } from "@/components/icons";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { site, localeSet } from "@/lib/site";
+import { cn } from "@/lib/utils";
 
 // The hub speaks every language the practice serves, on one URL, without a
 // Page reload. Printed master QRs stay valid while this encoded hub URL is
@@ -199,7 +201,8 @@ export function ReviewHub() {
           href={site.links.googleReview}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn btn-amber btn-lg w-full"
+          data-slot="button"
+          className={cn(buttonVariants({ variant: "amber", size: "lg" }), "w-full")}
           title={t.googleHint}
         >
           <Star className="h-5 w-5" />
@@ -210,7 +213,8 @@ export function ReviewHub() {
           href={site.links.facebookReviews}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn btn-navy btn-lg w-full"
+          data-slot="button"
+          className={cn(buttonVariants({ size: "lg" }), "w-full")}
           title={t.facebookHint}
         >
           <Facebook className="h-5 w-5" />
@@ -230,19 +234,31 @@ export function ReviewHub() {
       </p>
 
       <div className="mt-3 grid gap-3">
-        <a href={siteHref(lang)} className="btn btn-outline w-full bg-white">
+        <a
+          href={siteHref(lang)}
+          data-slot="button"
+          className={cn(buttonVariants({ variant: "outline" }), "w-full bg-white")}
+        >
           <Globe className="h-4.5 w-4.5 text-[var(--color-teal-ink)]" />
           {t.website}
           <ExternalLink className="h-3.5 w-3.5 text-[var(--color-muted-ink)]" />
         </a>
-        <a href={site.phone.href} className="btn btn-outline w-full bg-white">
+        <a
+          href={site.phone.href}
+          data-slot="button"
+          className={cn(buttonVariants({ variant: "outline" }), "w-full bg-white")}
+        >
           <Phone className="h-4.5 w-4.5 text-[var(--color-teal-ink)]" />
           {t.call}
           <span dir="ltr" className="font-normal whitespace-nowrap text-[var(--color-muted-ink)]">
             {site.phone.display}
           </span>
         </a>
-        <a href={site.textLine.href} className="btn btn-outline w-full bg-white">
+        <a
+          href={site.textLine.href}
+          data-slot="button"
+          className={cn(buttonVariants({ variant: "outline" }), "w-full bg-white")}
+        >
           <MessageSquare className="h-4.5 w-4.5 text-[var(--color-teal-ink)]" />
           {t.text}
           <span dir="ltr" className="font-normal whitespace-nowrap text-[var(--color-muted-ink)]">

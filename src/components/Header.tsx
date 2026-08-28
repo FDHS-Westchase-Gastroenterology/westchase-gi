@@ -5,10 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { buttonVariants } from "@/components/ui/button-variants";
 import type { Dictionary } from "@/lib/i18n";
 import { LANGUAGE_TRIGGER_ID, rememberLocale } from "@/lib/locale-preference";
 import { site, localePath, locales, localeNames, pathInLocale } from "@/lib/site";
 import type { Locale } from "@/lib/site";
+import { cn } from "@/lib/utils";
 
 import { Check, ChevronDown, ExternalLink, Globe, Menu, MessageSquare, Phone, X } from "./icons";
 
@@ -323,7 +325,11 @@ export function Header({ locale, dict }: Readonly<HeaderProps>) {
                 </Link>
               ),
             )}
-            <Link href={localePath(locale, "/appointment")} className="btn btn-amber btn-sm ms-2">
+            <Link
+              href={localePath(locale, "/appointment")}
+              data-slot="button"
+              className={cn(buttonVariants({ variant: "amber", size: "sm" }), "ms-2")}
+            >
               {c.requestAppointment}
             </Link>
           </nav>
@@ -401,13 +407,25 @@ export function Header({ locale, dict }: Readonly<HeaderProps>) {
               <ExternalLink className="h-4 w-4 flex-none text-[var(--color-muted-ink)]" />
             </a>
             <div className="mt-4 grid gap-3 border-t border-[var(--color-line)] pt-5">
-              <Link href={localePath(locale, "/appointment")} className="btn btn-amber btn-lg">
+              <Link
+                href={localePath(locale, "/appointment")}
+                data-slot="button"
+                className={buttonVariants({ variant: "amber", size: "lg" })}
+              >
                 {c.requestAppointment}
               </Link>
-              <a href={site.phone.href} className="btn btn-outline">
+              <a
+                href={site.phone.href}
+                data-slot="button"
+                className={buttonVariants({ variant: "outline" })}
+              >
                 <Phone className="h-4 w-4" /> {c.callUs}
               </a>
-              <a href={site.textLine.href} className="btn btn-outline">
+              <a
+                href={site.textLine.href}
+                data-slot="button"
+                className={buttonVariants({ variant: "outline" })}
+              >
                 <MessageSquare className="h-4 w-4" /> {c.textUs}
               </a>
             </div>

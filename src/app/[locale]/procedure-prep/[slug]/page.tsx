@@ -4,8 +4,9 @@ import { notFound } from "next/navigation";
 
 import { MessageSquare, Phone } from "@/components/icons";
 import { PrepBody } from "@/components/PrepBody";
+import { TextBand } from "@/components/primitives/TextBand";
 import { PrintButton } from "@/components/PrintButton";
-import { TextBand } from "@/components/TextBand";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { getPrep, prepDocs } from "@/lib/content/preps";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
@@ -108,10 +109,14 @@ export default async function PrepDetailPage({ params }: Readonly<PageProps>) {
               {t.questionsBody}
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <a href={site.textLine.href} className="btn btn-navy">
+              <a href={site.textLine.href} data-slot="button" className={buttonVariants()}>
                 <MessageSquare className="h-4.5 w-4.5" /> {dict.common.textUs}
               </a>
-              <a href={site.phone.href} className="btn btn-outline">
+              <a
+                href={site.phone.href}
+                data-slot="button"
+                className={buttonVariants({ variant: "outline" })}
+              >
                 <Phone className="h-4.5 w-4.5" /> {dict.common.callUs}
               </a>
             </div>

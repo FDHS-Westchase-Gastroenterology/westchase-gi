@@ -5,6 +5,7 @@ import { useActionState, useCallback, useEffect, useRef, useState } from "react"
 import { usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { addRequestNote } from "@/app/admin/(portal)/requests/actions";
 import type { AddRequestNoteState } from "@/app/admin/(portal)/requests/actions";
+import { Button } from "@/components/ui/button";
 
 export interface RequestNoteView {
   id: string;
@@ -95,9 +96,10 @@ export function RequestNotes({
         <h2 id="request-notes-heading" className="portal-record-heading">
           Appointment request notes
         </h2>
-        <button
+        <Button
           ref={addButtonRef}
           type="button"
+          variant="outline"
           aria-controls="request-note-form"
           aria-expanded={composerVisible}
           aria-hidden={composerVisible}
@@ -105,10 +107,10 @@ export function RequestNotes({
           data-animate={composerMotion}
           inert={composerVisible}
           onClick={openComposer}
-          className="request-note-add-trigger btn btn-outline btn-sm print-hide min-h-11"
+          className="request-note-add-trigger print-hide"
         >
           Add note
-        </button>
+        </Button>
       </div>
 
       {saved ? (
@@ -227,24 +229,25 @@ export function RequestNotes({
               </p>
             ) : null}
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <button
+              <Button
                 type="submit"
                 disabled={!canSave || pending}
                 onClick={(event) => {
                   submitWithMotionRef.current = event.detail > 0;
                 }}
-                className="btn btn-navy min-h-11 transition-transform duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100"
+                className="transition-transform duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100"
               >
                 {pending ? "Saving…" : "Save note"}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="outline"
                 disabled={pending}
                 onClick={closeComposer}
-                className="btn btn-outline min-h-11 transition-transform duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100"
+                className="transition-transform duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100"
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           </form>
         </div>

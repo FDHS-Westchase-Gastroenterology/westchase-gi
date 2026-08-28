@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { AppointmentForm } from "@/components/AppointmentForm";
 import { HoursTable } from "@/components/HoursTable";
 import { MessageSquare, Phone } from "@/components/icons";
-import { PageHero } from "@/components/PageHero";
+import { PageHero } from "@/components/primitives/PageHero";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
 import { site } from "@/lib/site";
@@ -45,10 +46,18 @@ export default async function AppointmentPage({ params }: Readonly<PageProps>) {
               </h2>
               <p className="mt-3 text-[var(--color-on-dark-muted)]">{dict.common.textBand.body}</p>
               <div className="mt-5 flex flex-wrap gap-3">
-                <a href={site.textLine.href} className="btn btn-amber">
+                <a
+                  href={site.textLine.href}
+                  data-slot="button"
+                  className={buttonVariants({ variant: "amber" })}
+                >
                   <MessageSquare className="h-4 w-4" /> {dict.common.textUs}
                 </a>
-                <a href={site.phone.href} className="btn btn-ghost-light">
+                <a
+                  href={site.phone.href}
+                  data-slot="button"
+                  className={buttonVariants({ variant: "ghost-light" })}
+                >
                   <Phone className="h-4 w-4" /> {dict.common.callUs}
                 </a>
               </div>

@@ -2,7 +2,9 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { ChevronRight } from "@/components/icons";
+import { buttonVariants } from "@/components/ui/button-variants";
 import type { RequestStatus } from "@/lib/portal/contracts";
+import { cn } from "@/lib/utils";
 
 import { AddAppointmentDialog } from "./add-appointment-dialog";
 import { PortalFeedbackMessage, PortalFeedbackProvider } from "./portal-feedback";
@@ -147,12 +149,12 @@ export function HomeWorkbench({
         <div className="portal-sheet-commands print-hide">
           <PrintChooser
             statusCounts={statusCounts}
-            triggerClassName="btn btn-navy portal-sheet-print"
+            triggerClassName={cn(buttonVariants(), "portal-sheet-print")}
             triggerLabel="Print appointments"
           />
           <AddAppointmentDialog
             idempotencyKey={addRequestKey}
-            triggerClassName="btn btn-outline portal-sheet-add"
+            triggerClassName={cn(buttonVariants({ variant: "outline" }), "portal-sheet-add")}
           />
         </div>
       </header>
@@ -168,7 +170,11 @@ export function HomeWorkbench({
             This is not an empty day. Open Appointments to read the live queue, then print from a
             current view.
           </p>
-          <Link href="/admin/requests" className="btn btn-navy portal-sheet-notice-action">
+          <Link
+            href="/admin/requests"
+            data-slot="button"
+            className={cn(buttonVariants(), "portal-sheet-notice-action")}
+          >
             Open Appointments
           </Link>
         </div>
@@ -179,7 +185,11 @@ export function HomeWorkbench({
             A website request lands here the moment a patient submits the form, and a contacted
             request comes back on the day staff set for it. Nothing needs a call right now.
           </p>
-          <Link href="/admin/requests" className="btn btn-outline portal-sheet-notice-action">
+          <Link
+            href="/admin/requests"
+            data-slot="button"
+            className={cn(buttonVariants({ variant: "outline" }), "portal-sheet-notice-action")}
+          >
             Open Appointments
           </Link>
         </div>

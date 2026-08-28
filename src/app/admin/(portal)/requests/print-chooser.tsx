@@ -8,6 +8,8 @@ import { usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { STATUS_LABELS } from "@/app/admin/(portal)/requests/format";
 import { Printer } from "@/components/icons";
 import { useOutputGuard } from "@/components/output-feedback";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import type { RequestStatus } from "@/lib/portal/contracts";
 import {
   formatStatusList,
@@ -15,6 +17,7 @@ import {
   printPacketHref,
   printSelectionIsAvailable,
 } from "@/lib/portal/print-selection";
+import { cn } from "@/lib/utils";
 
 /* Printing exists to hand paper to staff, so the menu offers the two statuses
    that get handed out: New requests nobody has called, and Contacted requests
@@ -185,16 +188,20 @@ export function PrintChooser({
                   });
                   closeChooser();
                 }}
-                className="btn btn-navy min-h-11 aria-disabled:pointer-events-none aria-disabled:opacity-60"
+                data-slot="button"
+                className={cn(
+                  buttonVariants(),
+                  "aria-disabled:pointer-events-none aria-disabled:opacity-60",
+                )}
               >
                 <Printer className="h-4 w-4" />
                 <span data-testid="print-new-count">Print all New ({newCount})</span>
               </Link>
             ) : (
-              <button type="button" disabled className="btn btn-navy min-h-11">
+              <Button type="button" disabled>
                 <Printer className="h-4 w-4" />
                 {newCount === null ? "New is unavailable" : "No New requests"}
-              </button>
+              </Button>
             )}
           </div>
           <fieldset className="portal-print-chooser-statuses">
@@ -236,16 +243,20 @@ export function PrintChooser({
               aria-describedby={summaryId}
               aria-disabled={guard.locked || undefined}
               onClick={beginCustomPrint}
-              className="btn btn-outline min-h-11 aria-disabled:pointer-events-none aria-disabled:opacity-60"
+              data-slot="button"
+              className={cn(
+                buttonVariants({ variant: "outline" }),
+                "aria-disabled:pointer-events-none aria-disabled:opacity-60",
+              )}
             >
               <Printer className="h-4 w-4" />
               Print selected
             </Link>
           ) : (
-            <button type="button" disabled className="btn btn-outline min-h-11">
+            <Button type="button" variant="outline" disabled>
               <Printer className="h-4 w-4" />
               Print selected
-            </button>
+            </Button>
           )}
           <button
             type="button"
