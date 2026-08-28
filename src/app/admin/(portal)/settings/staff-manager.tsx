@@ -5,6 +5,10 @@ import { useRef, useState, useTransition } from "react";
 import type { ComponentProps, RefObject } from "react";
 
 import { formatReceived } from "@/app/admin/(portal)/requests/format";
+import { Button } from "@/components/ui/button";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 
 import { changeStaffRole, deactivateStaff, inviteStaff, resendStaffInvite } from "./actions";
 
@@ -341,11 +345,9 @@ function InviteStaffForm({
         </p>
       )}
       <div className="mt-3 grid gap-3 sm:grid-cols-[1.3fr_1.3fr_auto_auto]">
-        <div className="portal-settings-field">
-          <label htmlFor="invite-email" className="portal-settings-field-label">
-            Staff email
-          </label>
-          <input
+        <Field className="min-w-0">
+          <FieldLabel htmlFor="invite-email">Staff email</FieldLabel>
+          <Input
             ref={emailRef}
             id="invite-email"
             name="email"
@@ -358,19 +360,14 @@ function InviteStaffForm({
             onChange={() => {
               if (errors.email !== undefined) onClearEmailError();
             }}
-            className="portal-settings-control min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
           />
           {errors.email !== undefined && (
-            <p id="invite-email-error" className="portal-settings-field-error">
-              {errors.email}
-            </p>
+            <FieldError id="invite-email-error">{errors.email}</FieldError>
           )}
-        </div>
-        <div className="portal-settings-field">
-          <label htmlFor="invite-name" className="portal-settings-field-label">
-            Full name
-          </label>
-          <input
+        </Field>
+        <Field className="min-w-0">
+          <FieldLabel htmlFor="invite-name">Full name</FieldLabel>
+          <Input
             ref={nameRef}
             id="invite-name"
             name="displayName"
@@ -383,36 +380,27 @@ function InviteStaffForm({
             onChange={() => {
               if (errors.displayName !== undefined) onClearNameError();
             }}
-            className="portal-settings-control min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
           />
           {errors.displayName !== undefined && (
-            <p id="invite-name-error" className="portal-settings-field-error">
-              {errors.displayName}
-            </p>
+            <FieldError id="invite-name-error">{errors.displayName}</FieldError>
           )}
-        </div>
-        <div className="portal-settings-field">
-          <label htmlFor="invite-role" className="portal-settings-field-label">
-            Role
-          </label>
-          <select
+        </Field>
+        <Field className="min-w-0">
+          <FieldLabel htmlFor="invite-role">Role</FieldLabel>
+          <NativeSelect
             id="invite-role"
             name="role"
             defaultValue="staff"
             disabled={pending}
-            className="portal-settings-control min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3 text-[0.95rem] font-bold text-[var(--color-body)]"
+            className="font-bold text-[var(--color-body)]"
           >
             <option value="staff">Staff</option>
             <option value="admin">Admin</option>
-          </select>
-        </div>
-        <button
-          type="submit"
-          disabled={pending}
-          className="btn btn-navy min-h-11 self-end disabled:opacity-60"
-        >
+          </NativeSelect>
+        </Field>
+        <Button type="submit" disabled={pending} className="self-end disabled:opacity-60">
           {pending ? "Sending invite…" : "Send invite"}
-        </button>
+        </Button>
       </div>
     </form>
   );

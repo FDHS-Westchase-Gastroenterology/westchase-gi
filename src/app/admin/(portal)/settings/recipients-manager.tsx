@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useReducer, useRef, useState, useTransition } from "react";
 import type { ComponentProps, KeyboardEvent as ReactKeyboardEvent, RefObject } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { RECIPIENTS_INTRO } from "@/lib/portal/staff-language";
 
 import {
@@ -217,17 +220,17 @@ function RemoveRecipientDialog({
         </p>
       </div>
       <div className="portal-confirm-dialog-actions">
-        <button
+        <Button
           ref={cancelRef}
           type="button"
           autoFocus
           disabled={pending}
           data-testid="cancel-remove-recipient"
           onClick={onCancel}
-          className="btn btn-navy min-h-11 disabled:opacity-60"
+          className="disabled:opacity-60"
         >
           Cancel
-        </button>
+        </Button>
         <button
           type="button"
           disabled={pending}
@@ -307,11 +310,9 @@ function RecipientRowItem({
         <p className="truncate font-bold text-[var(--color-ink)]">{recipient.email}</p>
         {editingLabel ? (
           <div className="mt-1.5 flex flex-wrap items-end gap-2">
-            <div className="portal-settings-field">
-              <label htmlFor={`label-${recipient.id}`} className="portal-settings-field-label">
-                Recipient label
-              </label>
-              <input
+            <Field className="w-56">
+              <FieldLabel htmlFor={`label-${recipient.id}`}>Recipient label</FieldLabel>
+              <Input
                 ref={labelInputRef}
                 id={`label-${recipient.id}`}
                 type="text"
@@ -332,9 +333,9 @@ function RecipientRowItem({
                     onCancelLabel();
                   }
                 }}
-                className="portal-settings-control min-h-11 rounded-[var(--radius-sm)] border border-[var(--color-line-2)] bg-white px-3 text-[0.85rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)] disabled:opacity-60"
+                className="text-[0.85rem]"
               />
-            </div>
+            </Field>
             <button
               type="button"
               data-action="save-label"
@@ -534,11 +535,9 @@ function AddRecipientForm({
         </p>
       )}
       <div className="mt-3 grid gap-3 sm:grid-cols-[1.4fr_1fr_auto]">
-        <div className="portal-settings-field">
-          <label htmlFor="recipient-email" className="portal-settings-field-label">
-            Recipient email
-          </label>
-          <input
+        <Field className="min-w-0">
+          <FieldLabel htmlFor="recipient-email">Recipient email</FieldLabel>
+          <Input
             ref={emailRef}
             id="recipient-email"
             name="email"
@@ -551,34 +550,22 @@ function AddRecipientForm({
             onChange={() => {
               if (emailError !== null) onClearEmailError();
             }}
-            className="portal-settings-control min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
           />
-          {emailError !== null && (
-            <p id="recipient-email-error" className="portal-settings-field-error">
-              {emailError}
-            </p>
-          )}
-        </div>
-        <div className="portal-settings-field">
-          <label htmlFor="recipient-label" className="portal-settings-field-label">
-            Recipient label (optional)
-          </label>
-          <input
+          {emailError !== null && <FieldError id="recipient-email-error">{emailError}</FieldError>}
+        </Field>
+        <Field className="min-w-0">
+          <FieldLabel htmlFor="recipient-label">Recipient label (optional)</FieldLabel>
+          <Input
             id="recipient-label"
             name="label"
             type="text"
             placeholder="Front desk"
             disabled={pending}
-            className="portal-settings-control min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
           />
-        </div>
-        <button
-          type="submit"
-          disabled={pending}
-          className="btn btn-navy min-h-11 self-end disabled:opacity-60"
-        >
+        </Field>
+        <Button type="submit" disabled={pending} className="self-end disabled:opacity-60">
           {pending ? "Saving…" : "Add recipient"}
-        </button>
+        </Button>
       </div>
     </form>
   );

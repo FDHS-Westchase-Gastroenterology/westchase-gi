@@ -2118,65 +2118,16 @@
     min-width: 0;
   }
 
-  .portal-request-field > label {
-    display: flex;
-    min-height: 1.45rem;
-    align-items: baseline;
-    gap: 0.35rem;
-    color: var(--color-ink);
-    font-size: 0.86rem;
-    font-weight: 800;
-  }
-
-  .portal-request-field > label > span[aria-hidden="true"] {
-    color: var(--portal-attention-ink);
-  }
-
-  .portal-request-field > label > span:not(.sr-only, [aria-hidden="true"]) {
-    color: var(--color-muted-ink);
-    font-size: 0.72rem;
-    font-weight: 650;
-  }
-
-  .portal-request-field-control {
-    display: block;
-    width: 100%;
-    min-height: 3rem;
-    margin-top: 0.35rem;
-    border: 1px solid var(--color-line-2);
-    border-radius: 0.55rem;
-    background: white;
-    padding: 0.68rem 0.8rem;
-    color: var(--color-ink);
-    font-size: 0.95rem;
-    line-height: 1.4;
-  }
-
-  .portal-request-field-control:focus-visible {
-    border-color: var(--color-teal-ink);
-    box-shadow: 0 0 0 2px color-mix(in oklch, var(--color-teal) 24%, transparent);
-  }
-
-  .portal-request-field-control[aria-invalid="true"] {
-    border-color: oklch(0.5 0.19 25);
-    background: color-mix(in oklch, oklch(0.97 0.018 25) 70%, white);
-  }
-
-  .portal-request-field-control:disabled {
-    cursor: wait;
-    opacity: 0.62;
-  }
-
+  /* A locked draft (unavailable/conflict) must stay readable while staff
+     compare values: full ink, muted paper, no dimming. */
   .portal-request-form-sheet[data-draft-locked="true"]
-    .portal-request-field-control:is([readonly], :disabled) {
+    :is([data-slot="input"], [data-slot="native-select"], [data-slot="textarea"]):is(
+      [readonly],
+      :disabled
+    ) {
     cursor: default;
     background: var(--portal-surface-muted);
     opacity: 1;
-  }
-
-  textarea.portal-request-field-control {
-    min-height: 7.4rem;
-    resize: vertical;
   }
 
   .portal-request-form-footer {
@@ -2304,19 +2255,6 @@
     }
   }
 
-  .portal-settings-field {
-    min-width: 0;
-  }
-
-  .portal-settings-field-label {
-    display: block;
-    margin-bottom: 0.4rem;
-    color: var(--color-body);
-    font-size: 0.8rem;
-    font-weight: 800;
-    line-height: 1.25;
-  }
-
   .portal-settings-form-summary {
     margin-top: 0.75rem;
     border-left: 3px solid var(--color-amber-deep);
@@ -2327,19 +2265,6 @@
     font-size: 0.85rem;
     font-weight: 800;
     line-height: 1.4;
-  }
-
-  .portal-settings-field-error {
-    margin-top: 0.35rem;
-    color: var(--portal-attention-ink);
-    font-size: 0.8rem;
-    font-weight: 800;
-    line-height: 1.35;
-  }
-
-  .portal-settings-control[aria-invalid="true"] {
-    border-color: var(--color-amber-deep);
-    box-shadow: 0 0 0 2px color-mix(in oklch, var(--color-amber) 24%, transparent);
   }
 
   .portal-settings-list-heading:focus-visible {

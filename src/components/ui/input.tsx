@@ -4,7 +4,7 @@ import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
 /*
- * Brand adaptation of the shadcn Input: the committed .field-input register.
+ * Brand adaptation of the shadcn Input: the committed field register.
  * White paper, a 1.5px line-2 border on the brand radius-sm, teal focus
  * (teal's one meaning: the finger tracking a line), destructive reserved
  * for the invalid state, and the 44px minimum target.

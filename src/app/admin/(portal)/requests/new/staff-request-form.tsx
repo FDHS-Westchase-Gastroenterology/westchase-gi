@@ -6,6 +6,12 @@ import { useActionState, useEffect, useImperativeHandle, useRef, useState } from
 import type { KeyboardEvent, MouseEvent, Ref, RefObject } from "react";
 
 import { createStaffRequest } from "@/app/admin/(portal)/requests/new/actions";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
 import { REQUEST_FIELD_LIMITS, STAFF_REQUEST_FIELDS } from "@/lib/portal/contracts";
 import type {
   CreateStaffRequestActionState,
@@ -104,12 +110,15 @@ function ContactDetailsSection({
       </p>
 
       <div className="portal-request-form-grid portal-request-form-grid--contact">
-        <div className="portal-request-field">
-          <label htmlFor="staff-request-name">
-            Patient name <span aria-hidden="true">*</span>
+        <Field className="portal-request-field">
+          <FieldLabel htmlFor="staff-request-name">
+            Patient name{" "}
+            <span aria-hidden="true" className="text-[var(--portal-attention-ink)]">
+              *
+            </span>
             <span className="sr-only"> (required)</span>
-          </label>
-          <input
+          </FieldLabel>
+          <Input
             id="staff-request-name"
             name="name"
             type="text"
@@ -125,21 +134,21 @@ function ContactDetailsSection({
             }}
             aria-invalid={errors.name === null ? undefined : true}
             aria-describedby={describedBy(null, "staff-request-name-error", errors.name)}
-            className="portal-request-field-control"
           />
           {errors.name === null ? null : (
-            <p id="staff-request-name-error" className="field-error">
-              {errors.name}
-            </p>
+            <FieldError id="staff-request-name-error">{errors.name}</FieldError>
           )}
-        </div>
+        </Field>
 
-        <div className="portal-request-field">
-          <label htmlFor="staff-request-phone">
-            Phone number <span aria-hidden="true">*</span>
+        <Field className="portal-request-field">
+          <FieldLabel htmlFor="staff-request-phone">
+            Phone number{" "}
+            <span aria-hidden="true" className="text-[var(--portal-attention-ink)]">
+              *
+            </span>
             <span className="sr-only"> (required)</span>
-          </label>
-          <input
+          </FieldLabel>
+          <Input
             id="staff-request-phone"
             name="phone"
             type="tel"
@@ -159,23 +168,18 @@ function ContactDetailsSection({
               "staff-request-phone-error",
               errors.phone,
             )}
-            className="portal-request-field-control"
           />
-          <p id="staff-request-phone-hint" className="field-hint">
-            Include the area code.
-          </p>
+          <FieldDescription id="staff-request-phone-hint">Include the area code.</FieldDescription>
           {errors.phone === null ? null : (
-            <p id="staff-request-phone-error" className="field-error">
-              {errors.phone}
-            </p>
+            <FieldError id="staff-request-phone-error">{errors.phone}</FieldError>
           )}
-        </div>
+        </Field>
 
-        <div className="portal-request-field portal-request-field--wide">
-          <label htmlFor="staff-request-email">
-            Email address <span>Optional</span>
-          </label>
-          <input
+        <Field className="portal-request-field portal-request-field--wide">
+          <FieldLabel htmlFor="staff-request-email">
+            Email address <span className="text-xs font-semibold text-muted-ink">Optional</span>
+          </FieldLabel>
+          <Input
             id="staff-request-email"
             name="email"
             type="email"
@@ -194,17 +198,14 @@ function ContactDetailsSection({
               "staff-request-email-error",
               errors.email,
             )}
-            className="portal-request-field-control"
           />
-          <p id="staff-request-email-hint" className="field-hint">
+          <FieldDescription id="staff-request-email-hint">
             Leave blank when phone is the only contact method.
-          </p>
+          </FieldDescription>
           {errors.email === null ? null : (
-            <p id="staff-request-email-error" className="field-error">
-              {errors.email}
-            </p>
+            <FieldError id="staff-request-email-error">{errors.email}</FieldError>
           )}
-        </div>
+        </Field>
       </div>
     </fieldset>
   );
@@ -231,9 +232,9 @@ function AppointmentPreferencesSection({
       </p>
 
       <div className="portal-request-form-grid">
-        <div className="portal-request-field">
-          <label htmlFor="staff-request-location">Preferred office</label>
-          <select
+        <Field className="portal-request-field">
+          <FieldLabel htmlFor="staff-request-location">Preferred office</FieldLabel>
+          <NativeSelect
             id="staff-request-location"
             name="location"
             value={draft.location}
@@ -244,22 +245,19 @@ function AppointmentPreferencesSection({
             }}
             aria-invalid={errors.location === null ? undefined : true}
             aria-describedby={describedBy(null, "staff-request-location-error", errors.location)}
-            className="portal-request-field-control"
           >
             <option value="any">No office preference</option>
             <option value="tampa">Tampa</option>
             <option value="lutz">Lutz</option>
-          </select>
+          </NativeSelect>
           {errors.location === null ? null : (
-            <p id="staff-request-location-error" className="field-error">
-              {errors.location}
-            </p>
+            <FieldError id="staff-request-location-error">{errors.location}</FieldError>
           )}
-        </div>
+        </Field>
 
-        <div className="portal-request-field">
-          <label htmlFor="staff-request-time">Preferred time</label>
-          <select
+        <Field className="portal-request-field">
+          <FieldLabel htmlFor="staff-request-time">Preferred time</FieldLabel>
+          <NativeSelect
             id="staff-request-time"
             name="time"
             value={draft.time}
@@ -270,18 +268,15 @@ function AppointmentPreferencesSection({
             }}
             aria-invalid={errors.time === null ? undefined : true}
             aria-describedby={describedBy(null, "staff-request-time-error", errors.time)}
-            className="portal-request-field-control"
           >
             <option value="any">No time preference</option>
             <option value="morning">Morning</option>
             <option value="afternoon">Afternoon</option>
-          </select>
+          </NativeSelect>
           {errors.time === null ? null : (
-            <p id="staff-request-time-error" className="field-error">
-              {errors.time}
-            </p>
+            <FieldError id="staff-request-time-error">{errors.time}</FieldError>
           )}
-        </div>
+        </Field>
       </div>
     </fieldset>
   );
@@ -306,11 +301,11 @@ function SchedulingNoteSection({
       <p className="portal-request-form-section-copy">
         Optional. Include only what another staff member needs to arrange the appointment.
       </p>
-      <div className="portal-request-field">
-        <label htmlFor="staff-request-message">
-          Note <span>Optional</span>
-        </label>
-        <textarea
+      <Field className="portal-request-field">
+        <FieldLabel htmlFor="staff-request-message">
+          Note <span className="text-xs font-semibold text-muted-ink">Optional</span>
+        </FieldLabel>
+        <Textarea
           id="staff-request-message"
           name="message"
           rows={4}
@@ -328,17 +323,13 @@ function SchedulingNoteSection({
             error,
           )}
           placeholder="For example: Referred by Dr. Smith; afternoons work best."
-          className="portal-request-field-control"
+          className="min-h-28 resize-y"
         />
-        <p id="staff-request-message-hint" className="field-hint">
+        <FieldDescription id="staff-request-message-hint">
           Keep medical details in the clinical record.
-        </p>
-        {error === null ? null : (
-          <p id="staff-request-message-error" className="field-error">
-            {error}
-          </p>
-        )}
-      </div>
+        </FieldDescription>
+        {error === null ? null : <FieldError id="staff-request-message-error">{error}</FieldError>}
+      </Field>
     </fieldset>
   );
 }
@@ -369,18 +360,18 @@ function StaffRequestFormFooter({
       </p>
       <div>
         {conflicted ? (
-          <Link href="/admin/requests?status=new" className="btn btn-navy min-h-11">
+          <Link href="/admin/requests?status=new" className={buttonVariants()}>
             Check New requests
           </Link>
         ) : (
-          <button
+          <Button
             type="submit"
             disabled={pending}
             data-testid="submit-staff-request"
-            className="btn btn-navy min-h-11 disabled:cursor-not-allowed disabled:opacity-60"
+            className="disabled:pointer-events-auto disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitLabel(pending, unavailable)}
-          </button>
+          </Button>
         )}
         <Link
           ref={cancelRef}
@@ -389,7 +380,7 @@ function StaffRequestFormFooter({
           tabIndex={pending ? -1 : undefined}
           data-testid="cancel-staff-request"
           onClick={onCancelClick}
-          className="btn btn-outline min-h-11"
+          className={buttonVariants({ variant: "outline" })}
         >
           {returnLabel}
         </Link>
@@ -449,16 +440,15 @@ function DiscardStaffRequestDialog({
         </p>
       </div>
       <div className="portal-confirm-dialog-actions">
-        <button
+        <Button
           ref={keepEditingRef}
           type="button"
           autoFocus
           data-testid="keep-editing-staff-request"
           onClick={onKeepEditing}
-          className="btn btn-navy min-h-11"
         >
           Keep editing
-        </button>
+        </Button>
         <button
           type="button"
           data-testid="discard-staff-request"

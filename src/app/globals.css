@@ -474,49 +474,6 @@
     background: var(--color-amber);
   }
 
-  /* ---- Forms ---- */
-  .field-label {
-    display: block;
-    font-weight: 700;
-    font-size: 0.92rem;
-    color: var(--color-ink);
-    margin-bottom: 0.4rem;
-  }
-  .field-input {
-    width: 100%;
-    background: white;
-    border: 1.5px solid var(--color-line-2);
-    border-radius: var(--radius-sm);
-    padding: 0.8rem 0.95rem;
-    font-size: 1rem;
-    color: var(--color-ink);
-    transition:
-      border-color 0.2s,
-      box-shadow 0.2s;
-  }
-  .field-input::placeholder {
-    color: var(--color-muted-ink);
-  }
-  .field-input:focus {
-    outline: none;
-    border-color: var(--color-teal-ink);
-    box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-teal) 25%, transparent);
-  }
-  .field-input[aria-invalid="true"] {
-    border-color: oklch(0.55 0.19 25);
-  }
-  .field-error {
-    margin-top: 0.35rem;
-    font-size: 0.88rem;
-    font-weight: 600;
-    color: oklch(0.5 0.19 25);
-  }
-  .field-hint {
-    margin-top: 0.35rem;
-    font-size: 0.88rem;
-    color: var(--color-muted-ink);
-  }
-
   /* ---- Reveal on scroll (progressive enhancement; see Reveal.tsx) ---- */
   html.js .reveal {
     opacity: 0;

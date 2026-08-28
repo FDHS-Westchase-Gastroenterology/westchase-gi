@@ -3,6 +3,12 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
+import { Textarea } from "@/components/ui/textarea";
 import type { Dictionary } from "@/lib/i18n";
 import {
   HONEYPOT_FIELD,
@@ -54,10 +60,10 @@ function requireKnownIntakeStatus(response: Response) {
 function ContactActions({ dict }: Readonly<{ dict: Dictionary }>) {
   return (
     <>
-      <a href={site.phone.href} className="btn btn-navy">
+      <a href={site.phone.href} className={buttonVariants()}>
         <Phone className="h-4 w-4" /> {dict.common.callUs}
       </a>
-      <a href={site.textLine.href} className="btn btn-outline">
+      <a href={site.textLine.href} className={buttonVariants({ variant: "outline" })}>
         <MessageSquare className="h-4 w-4" /> {dict.common.textUs}
       </a>
     </>
@@ -165,14 +171,14 @@ function AppointmentFields({
 }>) {
   return (
     <div className="grid gap-5 sm:grid-cols-2">
-      <div className="sm:col-span-2">
-        <label htmlFor="name" className="field-label">
+      <Field className="sm:col-span-2">
+        <FieldLabel htmlFor="name">
           {f.name}{" "}
           <span aria-hidden="true" className="text-[var(--color-amber-deep)]">
             *
           </span>
-        </label>
-        <input
+        </FieldLabel>
+        <Input
           id="name"
           name="name"
           type="text"
@@ -183,22 +189,19 @@ function AppointmentFields({
           aria-describedby={
             errors.name !== undefined && errors.name !== "" ? "err-name" : undefined
           }
-          className="field-input"
         />
         {errors.name !== undefined && errors.name !== "" && (
-          <p id="err-name" className="field-error">
-            {errors.name}
-          </p>
+          <FieldError id="err-name">{errors.name}</FieldError>
         )}
-      </div>
-      <div>
-        <label htmlFor="phone" className="field-label">
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="phone">
           {f.phone}{" "}
           <span aria-hidden="true" className="text-[var(--color-amber-deep)]">
             *
           </span>
-        </label>
-        <input
+        </FieldLabel>
+        <Input
           id="phone"
           name="phone"
           type="tel"
@@ -210,20 +213,17 @@ function AppointmentFields({
           aria-describedby={
             errors.phone !== undefined && errors.phone !== "" ? "err-phone" : undefined
           }
-          className="field-input"
         />
         {errors.phone !== undefined && errors.phone !== "" && (
-          <p id="err-phone" className="field-error">
-            {errors.phone}
-          </p>
+          <FieldError id="err-phone">{errors.phone}</FieldError>
         )}
-      </div>
-      <div>
-        <label htmlFor="email" className="field-label">
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="email">
           {f.email}{" "}
           <span className="font-semibold text-[var(--color-muted-ink)]">{f.emailOptional}</span>
-        </label>
-        <input
+        </FieldLabel>
+        <Input
           id="email"
           name="email"
           type="email"
@@ -233,53 +233,42 @@ function AppointmentFields({
           aria-describedby={
             errors.email !== undefined && errors.email !== "" ? "err-email" : undefined
           }
-          className="field-input"
         />
         {errors.email !== undefined && errors.email !== "" && (
-          <p id="err-email" className="field-error">
-            {errors.email}
-          </p>
+          <FieldError id="err-email">{errors.email}</FieldError>
         )}
-      </div>
-      <div>
-        <label htmlFor="location" className="field-label">
-          {f.location}
-        </label>
-        <select id="location" name="location" className="field-input" defaultValue="any">
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="location">{f.location}</FieldLabel>
+        <NativeSelect id="location" name="location" defaultValue="any">
           <option value="any">{f.locationAny}</option>
           {site.locations.map((loc) => (
             <option key={loc.id} value={loc.id}>
               {loc.name[locale]}
             </option>
           ))}
-        </select>
-      </div>
-      <div>
-        <label htmlFor="time" className="field-label">
-          {f.time}
-        </label>
-        <select id="time" name="time" className="field-input" defaultValue="any">
+        </NativeSelect>
+      </Field>
+      <Field>
+        <FieldLabel htmlFor="time">{f.time}</FieldLabel>
+        <NativeSelect id="time" name="time" defaultValue="any">
           <option value="any">{f.timeAny}</option>
           <option value="morning">{f.timeMorning}</option>
           <option value="afternoon">{f.timeAfternoon}</option>
-        </select>
-      </div>
-      <div className="sm:col-span-2">
-        <label htmlFor="message" className="field-label">
-          {f.message}
-        </label>
-        <textarea
+        </NativeSelect>
+      </Field>
+      <Field className="sm:col-span-2">
+        <FieldLabel htmlFor="message">{f.message}</FieldLabel>
+        <Textarea
           id="message"
           name="message"
           rows={4}
           maxLength={REQUEST_FIELD_LIMITS.message}
-          className="field-input"
           aria-describedby="hint-message"
+          className="min-h-28"
         />
-        <p id="hint-message" className="field-hint">
-          {f.messageHint}
-        </p>
-      </div>
+        <FieldDescription id="hint-message">{f.messageHint}</FieldDescription>
+      </Field>
     </div>
   );
 }
@@ -461,13 +450,15 @@ export function AppointmentForm({ locale, dict }: Readonly<AppointmentFormProps>
       <fieldset className="contents" disabled={status === "submitting"}>
         <AppointmentFields f={f} locale={locale} errors={errors} />
       </fieldset>
-      <button
+      <Button
         type="submit"
+        variant="amber"
+        size="lg"
         disabled={status === "submitting"}
-        className="btn btn-amber btn-lg mt-7 w-full disabled:opacity-70 sm:w-auto"
+        className="mt-7 w-full disabled:opacity-70 sm:w-auto"
       >
         {status === "submitting" ? f.submitting : f.submit}
-      </button>
+      </Button>
     </form>
   );
 }
