@@ -11,21 +11,52 @@ import { cn } from "@/lib/utils";
  * weight 600). The named variants below make the DESIGN.md color law
  * executable: each hue holds exactly one role, and a stamp always carries
  * words beside its color.
+ *
+ * Sole importer today: src/app/admin/(portal)/requests/status-badge.tsx
+ * (rendered on the portal queue and request-detail pages). Consumer maps
+ * below are crutches — refresh with docs/COMPONENT-INVENTORY.md; full list
+ * regenerates with: rg -l 'ui/badge' src
+ *
+ * Two axes, decoupled per DESIGN.md "Register legibility rules":
+ * - `variant` is color and surface only, and is required: the color law
+ *   means there is no meaningless stamp. The registry's six stock variants
+ *   were pruned unconsumed (2026-08-28); re-fetch from the registry if a
+ *   consumer ever wants one.
+ * - `motion` is animation temperament. The default, `none`, is the brand
+ *   stance — a stamp is static ink. `shadcn` keeps the upstream registry's
+ *   stock transition-all by name. The base string carries no motion.
  */
 const badgeVariants = cva(
-  "group/badge inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-full border border-transparent px-2.5 py-1 text-[0.8125rem] leading-none font-semibold whitespace-nowrap transition-all focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&>svg]:pointer-events-none [&>svg]:size-3!",
+  [
+    // Layout: how the stamp and its contents sit
+    "group/badge inline-flex w-fit shrink-0 items-center justify-center gap-1 overflow-hidden",
+    // Shape and geometry: the full pill
+    "rounded-full border border-transparent px-2.5 py-1",
+    // Typography: the committed stamp type step
+    "text-[0.8125rem] leading-none font-semibold whitespace-nowrap",
+    // Focus: the keyboard ring
+    "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
+    // Icon-aware padding: tighter on the icon side
+    "has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
+    // Invalid state
+    "aria-invalid:border-destructive aria-invalid:ring-destructive/20",
+    // Icons: no pointer events, held at stamp scale
+    "[&>svg]:pointer-events-none [&>svg]:size-3!",
+  ],
   {
     variants: {
+      motion: {
+        /* The brand default: stamps don't move, state changes swap
+           instantly. Worn by every StatusBadge. */
+        none: "transition-none",
+        /* The upstream registry's stock feel, verbatim; no consumer today. */
+        shadcn: "transition-all",
+      },
       variant: {
-        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
-        secondary: "bg-secondary text-secondary-foreground [a]:hover:bg-secondary/80",
-        destructive:
-          "bg-destructive/10 text-destructive focus-visible:ring-destructive/20 [a]:hover:bg-destructive/20",
-        outline: "border-border text-foreground [a]:hover:bg-muted [a]:hover:text-muted-foreground",
-        ghost: "hover:bg-muted hover:text-muted-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
         /* The color law: amber means attention, teal/mint means current or
-           in motion, navy is settled ink, neutral recedes. */
+           in motion, navy is settled ink, neutral recedes. All four are worn
+           by status-badge.tsx — new=attention, contacted=current,
+           scheduled=settled, closed=quiet. */
         attention: "bg-amber-soft text-ink",
         current: "bg-mint-2 text-teal-ink",
         settled: "bg-navy text-on-dark",
@@ -33,7 +64,7 @@ const badgeVariants = cva(
       },
     },
     defaultVariants: {
-      variant: "default",
+      motion: "none",
     },
   },
 );
@@ -41,15 +72,20 @@ const badgeVariants = cva(
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function Badge({
   className,
-  variant = "default",
+  variant,
+  motion = "none",
   render,
   ...props
-}: useRender.ComponentProps<"span"> & VariantProps<typeof badgeVariants>) {
+}: useRender.ComponentProps<"span"> &
+  VariantProps<typeof badgeVariants> & {
+    /* Required on purpose: every stamp carries a meaning. */
+    variant: NonNullable<VariantProps<typeof badgeVariants>["variant"]>;
+  }) {
   return useRender({
     defaultTagName: "span",
     props: mergeProps<"span">(
       {
-        className: cn(badgeVariants({ variant }), className),
+        className: cn(badgeVariants({ motion, variant }), className),
       },
       props,
     ),
