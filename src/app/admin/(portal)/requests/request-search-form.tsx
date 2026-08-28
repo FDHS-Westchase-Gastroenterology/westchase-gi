@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import type { RequestStatus } from "@/lib/portal/contracts";
 import {
   REQUEST_SEARCH_INPUT_ID,
@@ -59,7 +62,7 @@ export function RequestSearchForm({
       action="/admin/requests"
       method="get"
       role="search"
-      className="portal-queue-search"
+      className="flex flex-wrap items-end gap-2.5 px-4 pt-3.5 pb-3"
       onSubmit={(event) => {
         event.preventDefault();
         router.push(
@@ -72,9 +75,11 @@ export function RequestSearchForm({
       }}
     >
       {filter !== "all" ? <input type="hidden" name="status" value={filter} /> : null}
-      <label htmlFor={REQUEST_SEARCH_INPUT_ID}>
-        Search requests
-        <input
+      <Field className="min-w-0 flex-[1_1_13rem] gap-1.5 md:min-w-60 md:flex-[1_1_22rem]">
+        <FieldLabel htmlFor={REQUEST_SEARCH_INPUT_ID} className="text-[0.8125rem]">
+          Search requests
+        </FieldLabel>
+        <Input
           ref={inputRef}
           id={REQUEST_SEARCH_INPUT_ID}
           name="q"
@@ -86,30 +91,29 @@ export function RequestSearchForm({
           autoCorrect="off"
           spellCheck={false}
         />
-      </label>
-      <button
-        id={REQUEST_SEARCH_SUBMIT_ID}
-        type="submit"
-        data-testid="request-search-submit"
-        className="btn btn-navy min-h-11"
-      >
+      </Field>
+      <Button id={REQUEST_SEARCH_SUBMIT_ID} type="submit" data-testid="request-search-submit">
         Search
-      </button>
+      </Button>
       {search ? (
-        <Link
-          href={requestsHref({ search: "", status: filter })}
+        <Button
+          variant="outline"
           data-testid="request-search-clear"
-          className="btn btn-outline min-h-11"
-          onClick={(event) => {
-            if (!isUnmodifiedPrimaryClick(event)) return;
-            event.preventDefault();
-            if (inputRef.current !== null) inputRef.current.value = "";
-            router.push(requestsHref({ search: "", status: filter }));
-            focusAfterNavigate(REQUEST_SEARCH_INPUT_ID);
-          }}
+          render={
+            <Link
+              href={requestsHref({ search: "", status: filter })}
+              onClick={(event) => {
+                if (!isUnmodifiedPrimaryClick(event)) return;
+                event.preventDefault();
+                if (inputRef.current !== null) inputRef.current.value = "";
+                router.push(requestsHref({ search: "", status: filter }));
+                focusAfterNavigate(REQUEST_SEARCH_INPUT_ID);
+              }}
+            />
+          }
         >
           Clear
-        </Link>
+        </Button>
       ) : null}
       <p
         id={REQUEST_SEARCH_STATUS_ID}

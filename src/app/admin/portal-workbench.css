@@ -1697,44 +1697,6 @@
     background: var(--portal-surface);
   }
 
-  /* Search and status navigation compose one compact command surface on
-     the workbench sheet: hairline rules, no separate bands. */
-  .portal-queue-search {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-end;
-    gap: 0.55rem;
-    padding: 0.85rem 1rem 0.7rem;
-  }
-
-  .portal-queue-search label {
-    display: block;
-    min-width: 0;
-    flex: 1 1 13rem;
-    color: var(--color-ink);
-    font-size: 0.76rem;
-    font-weight: 800;
-  }
-
-  .portal-queue-search input {
-    display: block;
-    width: 100%;
-    min-height: 2.75rem;
-    margin-top: 0.3rem;
-    border: 1px solid var(--color-line-2);
-    border-radius: 0.55rem;
-    background: white;
-    padding-inline: 0.8rem;
-    color: var(--color-ink);
-    font-size: 0.92rem;
-    font-weight: 450;
-    outline: none;
-  }
-
-  .portal-queue-search input:focus {
-    border-color: var(--color-teal-ink);
-  }
-
   .portal-filter-tabs {
     border-block: 1px solid var(--color-line-2);
     padding-inline: 0.4rem;
@@ -2002,15 +1964,6 @@
   @media (min-width: 40rem) {
     .portal-queue-masthead {
       align-items: flex-end;
-    }
-
-    .portal-queue-search {
-      padding: 0.85rem 1.15rem 0.7rem;
-    }
-
-    .portal-queue-search label {
-      min-width: 15rem;
-      flex: 1 1 22rem;
     }
 
     .portal-filter-tabs {

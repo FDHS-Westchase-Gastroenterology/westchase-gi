@@ -223,6 +223,10 @@ consultation; a new appearance decision always gets one.
    registry, sizing onto the committed scales.
 5. Standing gates plus before/after visual evidence.
 
+Fit is judged honestly: a registry component that would regress semantics is a no-fit.
+Standing finding: route navigation (the Settings underline tabs) keeps `nav` +
+`aria-current` link semantics; shadcn Tabs serves in-page panel switching only.
+
 [`docs/COMPONENT-INVENTORY.md`](docs/COMPONENT-INVENTORY.md) is the descriptive census of
 what renders today; regenerate it as tiers fill rather than letting it drift.
 
