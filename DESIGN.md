@@ -115,14 +115,22 @@ press. The old behavior — the row navigating to a detail page — is demoted t
 about one patient never covers the page: the modal is the line, lifted; it opens over the
 sheet it came from, returns focus to the line that opened it, and never navigates.
 
-**The motion registry.** Four tokens in the portal scope carry every authored movement,
-so surfaces cannot each invent a temperament:
+**The motion registry.** One global vocabulary — the `--motion-*` tokens in the brand
+`@theme` — carries every authored movement, so surfaces cannot each invent a
+temperament. Each register assigns its own: the portal assigns its clinical
+temperament through the `--pm-*` aliases on the portal scope, and patient-site
+surfaces assign theirs at the call site, in the animation shorthand on the shared
+overlay keyframes.
 
-- `--pm-spring` / `--pm-spring-duration` (440ms) — arrival. A ζ≈0.7 spring sampled into
-  CSS `linear()`: the visible move lands in the first ~110ms, overshoots 4.6% once, and
-  settles without a second bounce. Alive, never playful — this is a clinic.
-- `--pm-exit` / `--pm-exit-duration` (160ms) — departure. A strong ease-out, faster than
-  arrival, back along the entrance path.
+- `--motion-spring` / `--motion-spring-duration` (440ms) — arrival. A ζ≈0.7 spring
+  sampled into CSS `linear()`: the visible move lands in the first ~110ms, overshoots
+  4.6% once, and settles without a second bounce. Alive, never playful — this is a
+  clinic. The portal reads it as `--pm-spring` / `--pm-spring-duration`.
+- `--motion-exit` / `--motion-exit-duration` (160ms) — departure. A strong ease-out,
+  faster than arrival, back along the entrance path. The portal reads it as
+  `--pm-exit` / `--pm-exit-duration`.
+- `--motion-micro-duration` (150ms) — micro state changes: hover tints, pressed ink,
+  focus rings. Surfaces that tint, not surfaces that move.
 
 Rules of use:
 
@@ -140,8 +148,8 @@ Rules of use:
   by `scroll-timeline` with no script. Browsers without scroll-driven animations get no
   rail; the half-cut row alone carries the affordance.
 - **Micro state changes stay micro.** Hover tints, pressed ink, and focus rings keep
-  their own ~150ms ease-out; the registry tokens govern surfaces that move, not surfaces
-  that tint.
+  their own ~150ms ease-out (`--motion-micro-duration`); the spring and exit govern
+  surfaces that move, not surfaces that tint.
 - **Reduced motion is a first-class temperament, not a disability switch:** modals cross-
   fade in ~120ms with no travel, skeletons hold still, the rail does not animate. Nothing
   is withheld; only the physics are.

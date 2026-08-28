@@ -53,9 +53,37 @@
   --shadow-soft: 0 12px 32px -20px oklch(0.3 0.05 245 / 0.5);
   --shadow-card: 0 22px 48px -28px oklch(0.28 0.05 245 / 0.55);
 
-  /* Motion */
+  /* Motion — one vocabulary, per-register temperaments */
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  /* Arrival — a ζ≈0.7 spring sampled into linear(): lands in the first
+     ~110ms, overshoots 4.6% once, settles without a second bounce. */
+  --motion-spring: linear(
+    0,
+    0.066 2.5%,
+    0.217 5%,
+    0.397 7.5%,
+    0.574 10%,
+    0.726 12.5%,
+    0.846 15%,
+    0.933 17.5%,
+    0.991 20%,
+    1.025 22.5%,
+    1.042 25%,
+    1.046 27.5%,
+    1.036 32.5%,
+    1.02 37.5%,
+    1.007 42.5%,
+    0.999 50%,
+    0.998 60%,
+    1 75%,
+    1
+  );
+  --motion-spring-duration: 440ms;
+  /* Departure — a strong ease-out, faster than arrival. */
+  --motion-exit: cubic-bezier(0.23, 1, 0.32, 1);
+  --motion-exit-duration: 160ms;
+  --motion-micro-duration: 150ms; /* micro states: hover tints, pressed ink, focus rings */
 
   /* Z-index scale */
   --z-header: 50;
@@ -595,10 +623,11 @@
   }
 
   .language-dialog[open] {
-    animation: language-dialog-in 260ms var(--ease-out-quint);
+    --overlay-scale: 0.985;
+    animation: overlay-rise 260ms var(--ease-out-quint);
   }
   .language-dialog[open]::backdrop {
-    animation: language-backdrop-in 180ms ease-out;
+    animation: overlay-dim 180ms ease-out;
   }
 
   .language-dialog__header {
@@ -730,16 +759,29 @@
     text-underline-offset: 0.2em;
   }
 
-  @keyframes language-dialog-in {
+  /* ---- Shared overlay entrance ----
+     One keyframe pair carries every overlay's arrival: the surface rises
+     while the backdrop dims. Each call site assigns its own temperament in
+     the animation shorthand (its exact duration, an easing from the motion
+     vocabulary) and shapes the travel through --overlay-rise /
+     --overlay-scale, which resolve per element. */
+  @keyframes overlay-rise {
     from {
       opacity: 0;
-      transform: scale(0.985);
+      transform: translateY(var(--overlay-rise, 0)) scale(var(--overlay-scale, 1));
+    }
+    to {
+      opacity: 1;
+      transform: none;
     }
   }
 
-  @keyframes language-backdrop-in {
+  @keyframes overlay-dim {
     from {
       opacity: 0;
+    }
+    to {
+      opacity: 1;
     }
   }
 
@@ -769,16 +811,6 @@
     }
     .language-dialog__option {
       min-height: 3.25rem;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .language-dialog[open],
-    .language-dialog[open]::backdrop {
-      animation: none;
-    }
-    .language-dialog__option {
-      transition: none;
     }
   }
 
@@ -1007,34 +1039,12 @@
     backdrop-filter: blur(6px);
   }
   .pc-dialog[open] .pc-shell {
-    animation: pc-rise 0.42s var(--ease-out-quint) both;
+    --overlay-rise: 14px;
+    --overlay-scale: 0.985;
+    animation: overlay-rise 0.42s var(--ease-out-quint) both;
   }
   .pc-dialog[open]::backdrop {
-    animation: pc-dim 0.3s ease-out both;
-  }
-  @keyframes pc-rise {
-    from {
-      opacity: 0;
-      transform: translateY(14px) scale(0.985);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
-  @keyframes pc-dim {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .pc-dialog[open] .pc-shell,
-    .pc-dialog[open]::backdrop {
-      animation: none;
-    }
+    animation: overlay-dim 0.3s ease-out both;
   }
 
   /* Pointer-only dismiss target behind the shell (a real button; keyboard
@@ -1209,11 +1219,6 @@
       transform: translateX(-50%);
     }
   }
-  @media (prefers-reduced-motion: reduce) {
-    .pc-hint {
-      animation: none;
-    }
-  }
   /* Floating zoom cluster, bottom center. */
   .pc-toolbar {
     position: absolute;
@@ -1276,7 +1281,10 @@
     --ps-12: 3rem;
 
     /* The Line motion registry. Six tokens carry every authored movement in
-       the portal, so surfaces cannot each invent a temperament:
+       the portal, so surfaces cannot each invent a temperament. The spring
+       and exit pairs are the portal's clinical assignment of the global
+       --motion-* vocabulary (the brand @theme at the top of this file);
+       portal CSS and DESIGN.md keep speaking the --pm-* names.
        --pm-spring / --pm-spring-duration — arrival. A ζ≈0.7 spring sampled
        into linear(): the visible move lands in the first ~110ms, overshoots
        4.6% once, and settles without a second bounce. Alive, never playful.
@@ -1293,30 +1301,10 @@
        shorter than the scrim, because the fold is already carrying the motion.
        Micro state changes (hover tints, pressed ink) keep their own 150ms
        ease-out inline; these tokens govern surfaces that move. */
-    --pm-spring: linear(
-      0,
-      0.066 2.5%,
-      0.217 5%,
-      0.397 7.5%,
-      0.574 10%,
-      0.726 12.5%,
-      0.846 15%,
-      0.933 17.5%,
-      0.991 20%,
-      1.025 22.5%,
-      1.042 25%,
-      1.046 27.5%,
-      1.036 32.5%,
-      1.02 37.5%,
-      1.007 42.5%,
-      0.999 50%,
-      0.998 60%,
-      1 75%,
-      1
-    );
-    --pm-spring-duration: 440ms;
-    --pm-exit: cubic-bezier(0.23, 1, 0.32, 1);
-    --pm-exit-duration: 160ms;
+    --pm-spring: var(--motion-spring);
+    --pm-spring-duration: var(--motion-spring-duration);
+    --pm-exit: var(--motion-exit);
+    --pm-exit-duration: var(--motion-exit-duration);
     --pm-reduced-duration: 120ms;
     --pm-fade-duration: 200ms;
     --pm-scrim-duration: 220ms;
@@ -1457,37 +1445,33 @@
   /* First-login tour: the dialog arrives with a short, calm rise (180ms,
      strong ease-out) — the rare-tier motion budget, state-conveying only. */
   .tour-dialog[open] {
-    animation: tour-in 180ms var(--ease-out-quint) both;
+    --overlay-rise: 8px;
+    animation: overlay-rise 180ms var(--ease-out-quint) both;
   }
   .tour-dialog[open]::backdrop {
-    animation: tour-dim 150ms ease-out both;
+    animation: overlay-dim 150ms ease-out both;
   }
-  @keyframes tour-in {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
-  @keyframes tour-dim {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .portal-scope .btn:active {
-      transform: none;
-    }
 
+  /* One reduced-motion block for the overlay entrances and their reveals:
+     every entrance stops entirely and the surface appears in place. Sits
+     after every call site above, so source order keeps it winning. */
+  @media (prefers-reduced-motion: reduce) {
+    .language-dialog[open],
+    .language-dialog[open]::backdrop,
+    .pc-dialog[open] .pc-shell,
+    .pc-dialog[open]::backdrop,
+    .pc-hint,
     .tour-dialog[open],
     .tour-dialog[open]::backdrop {
       animation: none;
+    }
+
+    .language-dialog__option {
+      transition: none;
+    }
+
+    .portal-scope .btn:active {
+      transform: none;
     }
   }
 
