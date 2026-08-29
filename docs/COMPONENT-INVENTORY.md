@@ -2,7 +2,8 @@
 
 A descriptive census of every component this repository renders: what exists, where it lives, what
 it exports, and how many places call it. It is a companion to [`DESIGN.md`](../DESIGN.md), which
-owns the design system itself. This file makes no recommendations and proposes no changes.
+owns the design system itself, and to [`COMPONENT-REFERENCE.md`](COMPONENT-REFERENCE.md), which
+lists every importer path. This file makes no recommendations and proposes no changes.
 
 Counts in the legacy sections are a snapshot taken at `f5d062e`, before the component-system
 migration. The [Component system](#component-system) section is a fresh census of the tiers that
@@ -55,7 +56,8 @@ long class strings restructured one line per job — DESIGN.md "Register legibil
 `button-variants.ts` exists apart from `button.tsx` so server components can wear the register
 without importing the client component; its call-site count excludes `button.tsx` itself.
 Every register decouples motion onto a named axis — the brand's authored physics as the
-default (`wgi`, or `none` on Badge), the upstream stock feel verbatim as `shadcn` — per
+default (`wgi`, or `none` on Badge), the committed press for server-bound controls as
+`commit` (staff sign-in), the upstream stock feel verbatim as `shadcn` — per
 DESIGN.md "Register legibility rules".
 Adoption decisions and the standing no-fits (native `<dialog>`, SettingsTabs, the authored
 skeletons, unconsumed Tooltip/DropdownMenu/Pagination) are recorded in `DESIGN.md`, not here.
@@ -282,4 +284,6 @@ rg -n '^\s{0,4}\.[a-z][a-zA-Z0-9_-]*(,|\s*\{)' src/app/globals.css -o | sort -u
 
 The importer query matches on file path, so it counts the files that import a module rather than
 the number of times each export is used. Two components exported from one file share a single
-count. Where that distinction matters, the Exports column lists every symbol.
+count. Where that distinction matters, the Exports column lists every symbol. The path lists
+themselves live in [`COMPONENT-REFERENCE.md`](COMPONENT-REFERENCE.md); refresh that file when the
+importer set changes.

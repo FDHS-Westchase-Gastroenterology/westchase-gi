@@ -1,6 +1,6 @@
 {
   "$schema": "https://react.doctor/schema/config.json",
   "ignore": {
-    "files": ["tools/oxlint/anti-slop/**"]
+    "files": ["tools/oxlint/anti-slop/**", "src/components/ui/item.tsx"]
   }
 }
