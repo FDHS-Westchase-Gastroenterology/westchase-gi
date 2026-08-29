@@ -13,6 +13,7 @@ otherwise sound — no HIGH-severity findings.
 | 003 | Tokenize the reveal's hardcoded 200ms fade | LOW | DONE |
 | 004 | Confirm a calendar pick with a micro settle | LOW | DONE |
 | 005 | Confirm the day commit on the trigger | LOW | DONE |
+| 006 | Give the staff sign-in press a committed beat | MEDIUM | DONE |
 
 ## Recommended execution order
 
@@ -22,6 +23,9 @@ otherwise sound — no HIGH-severity findings.
 3. **003** — trivial token rename, no behavior change; safe any time.
 4. **004** and **005** — independent additive polish; either order. Both touch
    `sheet-line.tsx`/`portal-workbench.css`, so rebase the second on the first.
+5. **006** — a later, separately requested plan outside the modal audit's scope
+   (staff sign-in, `button-variants.ts` + `login-form.tsx`); independent of
+   001–005 and safe in any order.
 
 ## Dependencies
 
