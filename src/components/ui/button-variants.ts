@@ -14,9 +14,10 @@ import { cva } from "class-variance-authority";
  * - `motion` is animation temperament. The default, `wgi`, is the
  *   authored .btn physics (200ms quint, the -2px hover lift, the
  *   knob-driven press) — defaults produce the brand, so no call site
- *   has to opt in. `shadcn` preserves the upstream registry's stock
- *   feel by name; `none` turns transitions off. The base string carries
- *   no motion at all.
+ *   has to opt in. `commit` is the firmer press for controls that wait
+ *   on a server answer. `shadcn` preserves the upstream registry's
+ *   stock feel by name; `none` turns transitions off. The base string
+ *   carries no motion at all.
  *
  * Temperament knobs: the `wgi` motion resolves through --btn-*
  * variables with patient-site defaults; a scope assigns its own
@@ -63,6 +64,24 @@ export const buttonVariants = cva(
           "hover:translate-y-[var(--btn-lift,-2px)] active:translate-y-0 active:scale-[var(--btn-active-scale,1)]",
           // Reduced motion: everything flattens
           "motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100",
+        ],
+        /* The committed press, for a control that waits on the server:
+           three discrete beats instead of one blend. Down is deep and
+           fast (90ms); release snaps (140ms); and once the action
+           commits, `data-pending` holds the button down at a shallower
+           scale — it never travels back to idle while the user waits.
+           Depth is an inset shadow, not a second transform, so reduced
+           motion can drop every scale and still confirm the press.
+           Worn by: src/app/admin/login/login-form.tsx. */
+        commit: [
+          // Journey: transform and depth only, never `all` — the press stays on the GPU
+          "transition-[transform,box-shadow] duration-[var(--btn-release-duration,140ms)] ease-[var(--btn-ease,var(--motion-exit))]",
+          // Down beat: deeper than the register press, landing fast
+          "active:duration-[var(--btn-press-duration,90ms)] active:scale-[var(--btn-press-scale,0.96)] active:shadow-[var(--btn-press-depth,inset_0_2px_3px_-1px_oklch(0_0_0_/_0.32))]",
+          // Held beat: the press does not release until the action resolves
+          "data-pending:duration-[var(--btn-commit-duration,110ms)] data-pending:scale-[var(--btn-commit-scale,0.98)] data-pending:shadow-[var(--btn-press-depth,inset_0_2px_3px_-1px_oklch(0_0_0_/_0.32))]",
+          // Reduced motion: the depth cue alone carries press and commit
+          "motion-reduce:transition-[box-shadow] motion-reduce:active:scale-100 motion-reduce:data-pending:scale-100",
         ],
         /* The upstream base-nova button's stock feel, verbatim from the
            registry — kept unmodified so the difference between stock and
