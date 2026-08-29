@@ -6,6 +6,8 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { requestPasswordResetAction } from "@/app/admin/actions";
 import type { ResetRequestActionState } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import {
   PASSWORD_RESET_RESEND_COOLDOWN_SECONDS,
   RESET_REQUEST_MESSAGE,
@@ -16,8 +18,6 @@ const INITIAL_STATE: ResetRequestActionState = {
   email: "",
   requestKey: 0,
 };
-const inputClassName =
-  "mt-2 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 py-3 text-base text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)]";
 const textActionClassName =
   "inline-flex min-h-11 items-center justify-center py-2 text-sm font-bold text-[var(--color-teal-ink)] underline underline-offset-2";
 
@@ -168,41 +168,40 @@ export function ResetRequestForm({
       ) : null}
       <form
         action={formAction}
-        className={inline ? "space-y-5" : "mt-7 space-y-5"}
+        className={inline ? undefined : "mt-7"}
         onSubmit={() => {
           setEditing(false);
         }}
       >
-        <div>
-          <label htmlFor="reset-email" className="block text-sm font-bold text-[var(--color-ink)]">
-            Email
-          </label>
-          <input
-            ref={emailRef}
-            id="reset-email"
-            name="email"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            autoCapitalize="none"
-            spellCheck={false}
-            required
-            maxLength={254}
+        <FieldGroup>
+          <Field data-disabled={pending || undefined}>
+            <FieldLabel htmlFor="reset-email">Email</FieldLabel>
+            <Input
+              ref={emailRef}
+              id="reset-email"
+              name="email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              required
+              maxLength={254}
+              disabled={pending}
+              value={email}
+              onChange={(event) => {
+                updateEmail(event.target.value);
+              }}
+            />
+          </Field>
+          <Button
+            type="submit"
             disabled={pending}
-            value={email}
-            onChange={(event) => {
-              updateEmail(event.target.value);
-            }}
-            className={inputClassName}
-          />
-        </div>
-        <Button
-          type="submit"
-          disabled={pending}
-          className="min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
-        >
-          {pending ? "Sending…" : "Send reset link"}
-        </Button>
+            className="min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
+          >
+            {pending ? "Sending…" : "Send reset link"}
+          </Button>
+        </FieldGroup>
       </form>
       <div className="mt-3 text-center">
         {onBack ? (

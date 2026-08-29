@@ -7,6 +7,7 @@ import { useEffect, useId, useRef, useState, useTransition } from "react";
 
 import { Check, ChevronRight, Phone } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import type { FollowUpChoice } from "@/lib/portal/business-time";
 import type { CommandOutcome, ContactOutcome } from "@/lib/portal/workflow/contracts";
 
@@ -178,44 +179,38 @@ export function SheetLineRow({ line }: Readonly<{ line: Readonly<SheetLine> }>) 
   }
 
   return (
-    <li className="portal-sheet-row">
+    <Item render={<li />} variant="outline" className="portal-sheet-row">
+      {/* The whole line is the target: this button stretches an invisible hit
+          area across the Item, so a press anywhere that is not the phone
+          number lifts the line into its modal. Focus rings the name block. */}
       <button
         type="button"
         data-testid={`line-open-${line.id}`}
         aria-haspopup="dialog"
-        className="portal-sheet-open"
+        className="portal-sheet-open basis-full min-[60rem]:flex-1 min-[60rem]:basis-auto"
         onClick={show}
       >
-        <span className="portal-sheet-who">
-          <span className="portal-sheet-name">
-            <strong data-ui-redact="patient-name">{line.name}</strong>
+        <ItemContent>
+          <ItemTitle className="portal-sheet-name text-base font-semibold tracking-[-0.01em]">
+            <span data-ui-redact="patient-name">{line.name}</span>
             <ChevronRight className="portal-sheet-disclosure h-4 w-4" aria-hidden="true" />
-          </span>
-          <small>{line.preference}</small>
-        </span>
+          </ItemTitle>
+          <ItemDescription>{line.preference}</ItemDescription>
+        </ItemContent>
       </button>
       <a
         href={telHref(line.phone)}
-        className="portal-sheet-phone"
+        className="portal-sheet-phone min-[60rem]:w-44"
         data-ui-redact="patient-contact"
         aria-label={`Call ${line.name} at ${formatPhoneForDisplay(line.phone)}`}
       >
         <Phone className="portal-sheet-phone-icon h-3.5 w-3.5" aria-hidden="true" />
         {formatPhoneForDisplay(line.phone)}
       </a>
-      <span className="portal-sheet-when">
+      <ItemActions className="portal-sheet-when ml-auto min-[60rem]:w-48">
         {line.stamp === null ? null : <span className="portal-stamp">{line.stamp}</span>}
         <span>{line.timing}</span>
-      </span>
-      <button
-        type="button"
-        data-testid={`line-record-open-${line.id}`}
-        aria-haspopup="dialog"
-        className="portal-line-record-open"
-        onClick={show}
-      >
-        Record
-      </button>
+      </ItemActions>
       {everOpened ? (
         <LineRecordModal
           line={line}
@@ -225,7 +220,7 @@ export function SheetLineRow({ line }: Readonly<{ line: Readonly<SheetLine> }>) 
           }}
         />
       ) : null}
-    </li>
+    </Item>
   );
 }
 

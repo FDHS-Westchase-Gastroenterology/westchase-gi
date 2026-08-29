@@ -1367,6 +1367,35 @@
     letter-spacing: -0.025em;
   }
 
+  /* ---- Auth submit label swap ----
+     The sign-in button's label morphs ("Sign in" → spinner + "Signing
+     in…") the instant the action commits. The incoming label enters
+     through a 180ms opacity + 2px blur veil: the blur bridges the two
+     states so the swap reads as one surface changing rather than a
+     teleport (the outgoing label unmounts under the same veil, so exit
+     needs no choreography). @starting-style carries the entrance with no
+     JS; each swap remounts the label, so the entrance runs both ways.
+     Under prefers-reduced-motion the blanket base reset zeroes the
+     transition and the swap is instant — the label text alone carries
+     the state, per the portal's reduced-motion charter. */
+  .portal-submit-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 1;
+    filter: blur(0);
+    transition:
+      opacity 180ms cubic-bezier(0.23, 1, 0.32, 1),
+      filter 180ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  @starting-style {
+    .portal-submit-label {
+      opacity: 0.55;
+      filter: blur(2px);
+    }
+  }
+
   @media (hover: hover) and (pointer: fine) {
     .portal-queue-row:hover {
       background: var(--color-mint);

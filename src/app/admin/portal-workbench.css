@@ -748,7 +748,7 @@
   /* Three and a half rows of the tall two-line mobile rows; the desktop
      query below widens the window to four and a half of its shorter rows. */
   .portal-sheet-frame[data-window] > .portal-sheet-lines {
-    max-height: calc(3.5 * (6.75rem + 1px));
+    max-height: calc(3.5 * 8rem);
     overflow-y: auto;
     scroll-timeline: --sheet-scroll block;
     scrollbar-width: thin;
@@ -764,7 +764,7 @@
     .portal-sheet-frame[data-window]::after {
       position: absolute;
       inset-block: 0;
-      inset-inline-start: 0;
+      inset-inline-start: -0.75rem;
       width: 2px;
       content: "";
     }
@@ -791,64 +791,53 @@
     }
   }
 
+  /* The rows are shadcn Items now: each line a bordered, rounded surface,
+     separated by space instead of hairline ruling. The Item carries the
+     frame (border, radius, focus ring, layout); this block carries only what
+     the component cannot know — the stretched whole-line target, the brand's
+     hover/press choreography, and the call-sheet typography. */
   .portal-sheet-lines {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ps-2);
     margin-block-start: var(--ps-3);
-    border-block-start: 1px solid var(--color-line-2);
   }
 
-  .portal-sheet-lines > li {
-    border-block-end: 1px solid var(--color-line);
-  }
-
-  /* Narrow: the name owns its own row, then the phone and its timing read as
-     one line beneath — the way a call sheet reads in the hand. The row is the
-     grid; the targets inside it are separate elements, because a single target
-     wrapping everything cannot let the phone number be dialable. */
   .portal-sheet-row {
     position: relative;
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas:
-      "open open open"
-      "phone when record";
-    align-items: center;
-    gap: var(--ps-1) var(--ps-3);
     background: var(--portal-surface);
-    padding: var(--ps-2);
-    transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+    transition:
+      background-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
   }
 
-  /* Hover tints the line, focus rings the target. Previously both painted the
-     same mint, so "my keyboard is here" and "my mouse is passing over" were the
-     same picture. They are now different signals with different pictures.
-     Pointer-gated: a touch tap leaves a sticky false hover, so the tint would
-     otherwise linger on the last-touched row after the finger lifts. */
+  /* Hover tints the row, focus rings the target — different signals,
+     different pictures. Pointer-gated: a touch tap leaves a sticky false
+     hover that would linger on the last-touched row after the finger lifts. */
   @media (hover: hover) and (pointer: fine) {
-    .portal-sheet-row:has(.portal-sheet-open:hover),
-    .portal-sheet-row:has(.portal-line-record-open:hover) {
+    .portal-sheet-row:has(.portal-sheet-open:hover) {
       background: var(--color-mint);
     }
   }
 
-  /* Pressed is deeper and arrives instantly — easing into a press is just the
-     lag it looks like, and an unacknowledged click invites a second one. */
-  .portal-sheet-row:has(.portal-sheet-open:active),
-  .portal-sheet-row:has(.portal-line-record-open:active) {
+  /* Pressed arrives instantly — easing into a press is just the lag it looks
+     like — and releases on the 160ms ease-out above. The whole line dips to
+     0.97: it is the thing being taken, so it is the thing that responds. */
+  .portal-sheet-row:has(.portal-sheet-open:active) {
     background: color-mix(in oklch, var(--color-teal) 22%, var(--color-mint));
+    transform: scale(0.97);
     transition-duration: 0s;
   }
 
   /* Opening the record: the whole line is the target. The name button
-     stretches an invisible hit area across the row, so a press anywhere that
-     is not the phone number or Record — which sit above it — lifts the line
-     into its modal. Focus still rings the name, not the stretched box. */
+     stretches an invisible hit area across the Item, so a press anywhere
+     that is not the phone number — which sits above it — lifts the line into
+     its modal. Focus still rings the name, not the stretched box. */
   .portal-sheet-open {
     display: flex;
+    min-width: 0;
     min-height: 2.75rem;
     align-items: center;
-    gap: var(--ps-3);
-    grid-area: open;
-    padding-inline: var(--ps-1);
     color: var(--color-ink);
     cursor: pointer;
     text-align: start;
@@ -860,8 +849,7 @@
     content: "";
   }
 
-  .portal-sheet-phone,
-  .portal-line-record-open {
+  .portal-sheet-phone {
     position: relative;
   }
 
@@ -869,46 +857,11 @@
     outline-offset: -2px;
   }
 
-  .portal-sheet-who {
-    display: flex;
-    min-width: 0;
-    flex: 1;
-    flex-direction: column;
-    gap: 0.1rem;
-  }
-
-  /* The chevron rides beside the name rather than at the far edge of the
-     column, where it read as a divider between the name and the phone instead
-     of as the thing that opens the record. */
-  .portal-sheet-name {
-    display: flex;
-    min-width: 0;
-    align-items: center;
-    gap: var(--ps-1);
-  }
-
-  /* The name is the datum on the line. */
-  .portal-sheet-who strong {
-    overflow: hidden;
-    font-size: var(--pt-base);
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    line-height: 1.25;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
   /* Bold ink alone does not say "link", so the name takes the underline on
      hover the way any other text link would. */
-  .portal-sheet-open:hover .portal-sheet-who strong {
+  .portal-sheet-open:hover [data-slot="item-title"] {
     text-decoration: underline;
     text-underline-offset: 3px;
-  }
-
-  .portal-sheet-who small {
-    color: var(--color-muted-ink);
-    font-size: var(--pt-xs);
-    line-height: 1.4;
   }
 
   /* Dialing is its own intent, so it gets its own 44px target rather than
@@ -918,8 +871,6 @@
     min-height: 2.75rem;
     align-items: center;
     gap: var(--ps-1);
-    grid-area: phone;
-    padding-inline: var(--ps-1);
     color: var(--color-body);
     font-size: var(--pt-sm);
     font-variant-numeric: tabular-nums;
@@ -947,13 +898,10 @@
 
   /* Timing is a fact, not a control: presses on it fall through to the line. */
   .portal-sheet-when {
-    display: flex;
     min-width: 0;
     flex-wrap: wrap;
-    align-items: center;
     justify-content: flex-end;
     gap: var(--ps-1) var(--ps-2);
-    grid-area: when;
     pointer-events: none;
     color: var(--color-muted-ink);
     font-size: var(--pt-xs);
@@ -970,35 +918,6 @@
   .portal-sheet-open:hover .portal-sheet-disclosure,
   .portal-sheet-open:focus-visible .portal-sheet-disclosure {
     color: var(--color-teal-ink);
-  }
-
-  /* Recording on the line.
-     The trigger is deliberately the quietest thing on the row: reading the
-     sheet is the frequent act and recording is the occasional one, so the
-     control that types must not out-shout the names it sits beside. It only
-     takes ink once a pointer or the keyboard arrives on it. */
-  .portal-line-record-open {
-    display: inline-flex;
-    min-height: 2.75rem;
-    align-items: center;
-    grid-area: record;
-    padding-inline: var(--ps-2);
-    cursor: pointer;
-    color: var(--color-muted-ink);
-    font-size: var(--pt-xs);
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    transition: color 150ms cubic-bezier(0.23, 1, 0.32, 1);
-  }
-
-  .portal-line-record-open:hover {
-    color: var(--color-teal-ink);
-  }
-
-  .portal-line-record-open:active {
-    color: var(--color-navy);
-    transition-duration: 0s;
   }
 
   /* The working band of the lifted line: mint marks it as the one surface on
@@ -1597,20 +1516,13 @@
     }
   }
 
-  /* At the width where the shell gains its task index, the line gains its
-     real columns: who, phone, timing. Fixed tracks so every row rules to the
-     same edges and no row grows taller than its neighbours. */
+  /* At the width where the shell gains its task index, the line reads as one
+     row: who, phone, timing. The phone and timing take fixed widths in the
+     markup (w-44 / w-48) so every row rules to the same edges. Single-line
+     rows are shorter, so the window holds four and a half. */
   @media (min-width: 60rem) {
-    .portal-sheet-row {
-      grid-template-columns: minmax(0, 1fr) 11rem minmax(0, 12rem) auto;
-      grid-template-areas: "open phone when record";
-      gap: var(--ps-4);
-      padding-inline: var(--ps-2);
-    }
-
-    /* Single-line rows are shorter, so the window holds four and a half. */
     .portal-sheet-frame[data-window] > .portal-sheet-lines {
-      max-height: calc(4.5 * (3.75rem + 1px));
+      max-height: calc(4.5 * 4.25rem);
     }
   }
 
@@ -2739,7 +2651,18 @@
   /* The lifted line. The modal is the line at reading distance: the same
      facts in the same order — name, preference and timing, the dialable
      number, then the mint working band where the outcome is recorded. The
-     detail page demotes to one quiet link at the foot. */
+     detail page demotes to one quiet link at the foot.
+
+     Arrival runs faster than the registry spring: this dialog opens dozens
+     of times a day, so it enters on a 180ms ease-out instead of the 440ms
+     spring — immediate, no bounce. The nested day dialogs inherit the same
+     pace, and the exit token already outruns it. */
+  .portal-line-modal,
+  .portal-day-dialog {
+    --pm-spring: cubic-bezier(0.23, 1, 0.32, 1);
+    --pm-spring-duration: 180ms;
+  }
+
   .portal-line-modal {
     width: min(94vw, 30rem);
     /* A month of calendar is taller than a confirmation: more headroom, and
