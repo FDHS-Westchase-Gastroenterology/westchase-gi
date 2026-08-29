@@ -2,7 +2,7 @@
 
 Read this first. It has the hard rules, environment facts, and pointers to the rest. The aim is work that is right on the first pass.
 
-[`MEMORY.md`](MEMORY.md) is scratch memory: short notes that are not (or not yet) durable product or architecture truth. Glance at it early. Append sparingly. Promote or delete when settled. Each entry: a `##` heading with the local date and time, a line `HEAD` plus the short SHA from `git log -1 --format=%h` at write time, then the note body.
+Using skills is non negotioable -- even if your smart and know most things -- invoke relavent skills --- they are always of net value.
 
 ## Rule authority and ramp-up
 
