@@ -1,0 +1,133 @@
+/* ------------------------------------------------------------------ *
+   The design gallery (/design) — route-scoped chrome.
+   Imported only by src/app/design/layout.tsx. Nothing here is a product
+   token: the brand tokens live in src/app/globals.css, and the gallery
+   reads them like every other surface.
+ * ------------------------------------------------------------------ */
+
+.design-scope {
+  background: var(--color-paper);
+  color: var(--color-body);
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+
+.design-scope :where(h1, h2, h3, h4) {
+  font-family: var(--font-body);
+  letter-spacing: 0;
+}
+
+/* ---- The stock palette scope ----
+   shadcn `nova` on the `neutral` base color, verbatim from `shadcn init`
+   (v4.19.0). Applied to the stock panel when the palette switch is on
+   "stock", so the before is the true out-of-the-box before. It lives here
+   and only here: these literals must never reach the semantic bridge in
+   globals.css (AGENTS.md "shadcn/ui").
+
+   Type: stock ships Geist; the gallery does not install it, so the stock
+   panel falls back to the system sans. Portalled parts (menus, dialogs,
+   tooltips) render outside this element and keep the brand bridge. */
+[data-palette="stock"] {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+
+  /* Stock radius ramp: one --radius, the rest derived. */
+  --radius: 0.625rem;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+
+  /* Stock type: the bridge inlines --font-sans as var(--font-lato), so the
+     brand family is re-pointed at the system sans for this scope. */
+  --font-lato: ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    sans-serif;
+  color: var(--foreground);
+  color-scheme: light;
+}
+
+/* ---- Token specimens ---- */
+.design-swatch {
+  aspect-ratio: 5 / 3;
+  border-radius: var(--radius);
+  box-shadow: inset 0 0 0 1px oklch(0 0 0 / 0.06);
+}
+
+.design-space-bar {
+  height: 0.75rem;
+  border-radius: 999px;
+  background: var(--color-navy);
+}
+
+/* ---- Motion specimen ----
+   Two pucks, one track each. The CSS puck rides the registry tokens
+   verbatim; the motion.dev puck rides src/lib/motion.ts. They should be
+   indistinguishable, which is the point. */
+.design-track {
+  --design-travel: 220px;
+  position: relative;
+  height: 3rem;
+  border-radius: 999px;
+  background: var(--color-mint);
+  box-shadow: inset 0 0 0 1px var(--color-line);
+}
+
+.design-puck {
+  position: absolute;
+  inset-block: 0.375rem;
+  inset-inline-start: 0.375rem;
+  width: 2.25rem;
+  border-radius: 999px;
+  background: var(--color-navy);
+  will-change: transform;
+}
+
+.design-puck[data-engine="css"] {
+  transition: transform var(--motion-exit-duration) var(--motion-exit);
+}
+
+.design-puck[data-engine="css"][data-away="true"] {
+  transform: translateX(var(--design-travel));
+  transition: transform var(--motion-spring-duration) var(--motion-spring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .design-puck[data-engine="css"] {
+    transition: none;
+  }
+}

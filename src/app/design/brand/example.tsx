@@ -1,0 +1,58 @@
+import type { ComponentProps } from "react";
+
+import { cn } from "@/lib/utils";
+
+/* The brand panel's frame: the same grid and card the registry's own
+   examples use (src/components/stock/examples/example.tsx), so a stock and
+   a brand demo sit in identical rooms and only the recipe differs. */
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function ExampleWrapper({ className, ...props }: ComponentProps<"div">) {
+  return (
+    <div className="w-full bg-muted">
+      <div
+        data-slot="example-wrapper"
+        className={cn(
+          "mx-auto grid min-h-screen w-full max-w-5xl min-w-0 content-center items-start gap-8 p-4 pt-2 sm:gap-12 sm:p-6 md:grid-cols-2 md:gap-8 lg:p-12 2xl:max-w-6xl",
+          className,
+        )}
+        {...props}
+      />
+    </div>
+  );
+}
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function Example({
+  title,
+  children,
+  className,
+  containerClassName,
+  ...props
+}: ComponentProps<"div"> & { title?: string; containerClassName?: string }) {
+  return (
+    <div
+      data-slot="example"
+      className={cn(
+        "mx-auto flex w-full max-w-lg min-w-0 flex-col gap-1 self-stretch lg:max-w-none",
+        containerClassName,
+      )}
+      {...props}
+    >
+      {title !== undefined ? (
+        <div className="px-1.5 py-2 text-xs font-medium text-muted-foreground">{title}</div>
+      ) : null}
+      <div
+        data-slot="example-content"
+        className={cn(
+          "flex min-w-0 flex-1 flex-col items-start gap-6 rounded-xl bg-card p-12 text-foreground *:[div:not([class*='w-'])]:w-full",
+          className,
+        )}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export { ExampleWrapper, Example };
