@@ -25,8 +25,8 @@ import { SheetLineRow } from "./sheet-line";
    dial from the line, and record what happened without leaving the page.
 
    FIRST VIEWPORT: the day at 28px with the greeting as small print above it,
-   Print appointments in navy opposite, a rule, then Call first / Call again
-   today as ruled lines of name, dialable phone, and timing.
+   Print appointments in navy opposite, a rule, then New / Call Again as
+   ruled lines of name, dialable phone, and timing.
 
    FORM: the practice's own call list, and what the print mode already outputs,
    so screen and paper are one thing. */
@@ -34,15 +34,13 @@ import { SheetLineRow } from "./sheet-line";
 export type { SheetLine };
 
 /* A group taller than the window scrolls behind a half-cut line instead of
-   growing a Show-all control: the cut row is the affordance, the heading's
-   count is the truth, and the teal rail beside the window tracks the finger
-   down the sheet. Five lines or fewer stand fully open. */
+   growing a Show-all control: the cut row is the affordance and the
+   heading's count is the truth. Five lines or fewer stand fully open. */
 const WINDOW_LINES = 5;
 
 export interface SheetGroup {
-  key: "new" | "follow_up" | "stale";
+  key: "new" | "follow_up";
   heading: string;
-  caption: string;
   /** Where the whole group is read. */
   href: string;
   /** The group's true size, always shown beside its heading. */
@@ -79,7 +77,6 @@ function SheetGroupSection({ group }: Readonly<{ group: SheetGroup }>) {
           {group.count}
         </span>
       </header>
-      <p className="portal-sheet-caption">{group.caption}</p>
       <div className="portal-sheet-frame" data-window={windowed ? "true" : undefined}>
         <ul data-testid={`sheet-lines-${group.key}`} className="portal-sheet-lines">
           {group.lines.map((line) => (
@@ -102,7 +99,6 @@ function SheetGroupSection({ group }: Readonly<{ group: SheetGroup }>) {
 export function HomeWorkbench({
   greeting,
   date,
-  afterHours,
   groups,
   tail,
   statusCounts,
@@ -113,7 +109,6 @@ export function HomeWorkbench({
 }: Readonly<{
   greeting: string;
   date: string;
-  afterHours: boolean;
   /** Server-generated, so adding from the line cannot duplicate a request. */
   addRequestKey: string;
   /** Null when the sheet read failed — never an empty day. */
@@ -139,12 +134,6 @@ export function HomeWorkbench({
             <span className="portal-sheet-greeting">{greeting}</span>{" "}
             <span className="portal-sheet-day">{date}</span>
           </h1>
-          {afterHours ? (
-            <p data-testid="after-hours" className="portal-sheet-hours">
-              <span className="portal-stamp">After hours</span>
-              The office is closed. Requests still arrive.
-            </p>
-          ) : null}
         </div>
         <div className="portal-sheet-commands print-hide">
           <PrintChooser

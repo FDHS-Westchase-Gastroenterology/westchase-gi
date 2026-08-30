@@ -652,16 +652,6 @@
     line-height: 1.15;
   }
 
-  .portal-sheet-hours {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--ps-2);
-    margin-block-start: var(--ps-3);
-    color: var(--color-muted-ink);
-    font-size: var(--pt-xs);
-  }
-
   /* Attention, and the only amber on the sheet: a rubber stamp on one line,
      never a wash over a region. It always carries a word, so color is never
      the sole carrier of state. */
@@ -724,21 +714,12 @@
     line-height: 1.2;
   }
 
-  .portal-sheet-caption {
-    margin-block-start: var(--ps-1);
-    color: var(--color-muted-ink);
-    font-size: var(--pt-xs);
-    line-height: 1.5;
-  }
-
   /* The window. A group of five lines or fewer stands fully open. A taller
      group scrolls behind a half-cut line: the cut row itself says "more"
      honestly, so no Show-all control interrupts the ruling, and the heading's
      count keeps stating the true total. */
   .portal-sheet-frame {
-    position: relative;
     margin-block-start: var(--ps-3);
-    timeline-scope: --sheet-scroll;
   }
 
   .portal-sheet-frame > .portal-sheet-lines {
@@ -746,49 +727,20 @@
   }
 
   /* Three and a half rows of the tall two-line mobile rows; the desktop
-     query below widens the window to four and a half of its shorter rows. */
+     query below widens the window to four and a half of its shorter rows.
+     Native overflow is the physics. contain keeps the platform bounce on
+     this box so a flick does not die at the edge and hand the page the
+     rest of the gesture. auto opts out of the document's inherited
+     smooth. The half-cut row and the heading's count are the affordance;
+     there is no rail. */
   .portal-sheet-frame[data-window] > .portal-sheet-lines {
     max-height: calc(3.5 * 8rem);
     overflow-y: auto;
-    scroll-timeline: --sheet-scroll block;
+    overscroll-behavior: contain;
+    scroll-behavior: auto;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
-  }
-
-  /* The finger on the sheet: a hairline track beside a windowed group, and a
-     teal fill that tracks reading position 1:1 with the scroll. Teal already
-     means "the finger tracking a line"; here it tracks the whole group.
-     Browsers without scroll-driven animations get no rail at all — the
-     half-cut row alone carries the affordance. */
-  @supports (animation-timeline: scroll()) {
-    .portal-sheet-frame[data-window]::before,
-    .portal-sheet-frame[data-window]::after {
-      position: absolute;
-      inset-block: 0;
-      inset-inline-start: -0.75rem;
-      width: 2px;
-      content: "";
-    }
-
-    .portal-sheet-frame[data-window]::before {
-      background: var(--color-line);
-    }
-
-    .portal-sheet-frame[data-window]::after {
-      background: var(--color-teal);
-      transform: scaleY(0);
-      transform-origin: top;
-      animation: portal-sheet-track linear both;
-      animation-timeline: --sheet-scroll;
-    }
-  }
-
-  @keyframes portal-sheet-track {
-    from {
-      transform: scaleY(0);
-    }
-    to {
-      transform: scaleY(1);
-    }
   }
 
   /* The rows are shadcn Items now: each line a bordered, rounded surface,
@@ -3921,16 +3873,10 @@
     padding: 0 !important;
   }
 
-  /* Paper has no scroll: a windowed group prints every rendered line, and
-     the scroll rail — track and fill — stays off the page. */
+  /* Paper has no scroll: a windowed group prints every rendered line. */
   .portal-sheet-frame[data-window] > .portal-sheet-lines {
     max-height: none;
     overflow: visible;
-  }
-
-  .portal-sheet-frame[data-window]::before,
-  .portal-sheet-frame[data-window]::after {
-    content: none;
   }
 
   .portal-print-packet {

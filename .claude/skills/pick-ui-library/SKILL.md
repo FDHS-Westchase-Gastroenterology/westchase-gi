@@ -1,6 +1,6 @@
 ---
 name: pick-ui-library
-description: Pick the right library for a given frontend task from a curated, opinionated list — numbers, OTP inputs, charts, command menus, virtualization, drag and drop, toasts, state, styling, and more. Use when choosing, recommending, or installing a library for any of these tasks.
+description: Pick the right library for a given frontend task from a curated, opinionated list — numbers, OTP inputs, charts, command menus, virtualization, drag and drop, toasts, state, styling, and more. Must Use when choosing, recommending, or installing a library for any of these tasks.
 ---
 
 # Picking The Right Library

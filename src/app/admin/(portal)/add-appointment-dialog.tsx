@@ -45,7 +45,7 @@ export function AddAppointmentDialog({
       publish({
         source: "requests-output",
         tone: "status",
-        message: `${name} is on the line under Call first.`,
+        message: `${name} is on the line under New.`,
       });
       router.refresh();
     },

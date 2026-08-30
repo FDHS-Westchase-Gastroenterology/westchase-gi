@@ -55,7 +55,6 @@ const NY_DAY = new Intl.DateTimeFormat("en-CA", {
 });
 
 const MORNING_START = 5 * 60 + 30;
-const AFTER_HOURS_START = 19 * 60;
 
 /* A ceiling on what the page will render at once, so a post-vacation backlog
    cannot build a 500-row document. Past it, the tail links to Appointments.
@@ -118,15 +117,6 @@ function lineFor(row: Readonly<AttentiveQueueRow>, now: Date): SheetLine {
     };
   }
 
-  if (row.bucket === "stale") {
-    const since = waitingSince(row.lastActivityAt ?? row.created_at, now);
-    return {
-      ...base,
-      timing: since === null ? "Silent since earlier today" : `Silent since ${since}`,
-      stamp: null,
-    };
-  }
-
   const waiting = waitingSince(row.created_at, now);
   return {
     ...base,
@@ -141,7 +131,6 @@ function lineFor(row: Readonly<AttentiveQueueRow>, now: Date): SheetLine {
 function groupFor(
   key: SheetGroup["key"],
   heading: string,
-  caption: string,
   href: string,
   rows: readonly Readonly<AttentiveQueueRow>[],
   now: Date,
@@ -150,7 +139,6 @@ function groupFor(
   return {
     key,
     heading,
-    caption,
     href,
     count: rows.length,
     lines: rendered,
@@ -221,26 +209,16 @@ export default async function AdminHomePage({
       : [
           groupFor(
             "new",
-            "Call first",
-            "Nobody has called these yet. Oldest first.",
+            "New",
             "/admin/requests?status=new",
             rows.filter((row) => row.bucket === "new"),
             now,
           ),
           groupFor(
             "follow_up",
-            "Call again today",
-            "The call-again day has arrived.",
+            "Call Again",
             "/admin/requests?status=contacted",
             rows.filter((row) => row.bucket === "follow_up"),
-            now,
-          ),
-          groupFor(
-            "stale",
-            "No call-again day set",
-            "Contacted, then went quiet. Set a day so these come back.",
-            "/admin/requests?status=contacted",
-            rows.filter((row) => row.bucket === "stale"),
             now,
           ),
         ];
@@ -299,7 +277,6 @@ export default async function AdminHomePage({
     <HomeWorkbench
       greeting={staffGreeting(greetingFor(minutes), session.displayName)}
       date={NY_DATE.format(now)}
-      afterHours={minutes >= AFTER_HOURS_START || minutes < MORNING_START}
       groups={groups}
       tail={tail}
       addRequestKey={randomUUID()}

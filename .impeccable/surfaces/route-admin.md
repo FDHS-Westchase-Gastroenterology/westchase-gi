@@ -54,10 +54,10 @@ slice-specific artifacts remain follow-up work where they are not yet complete.
 - Amber marks attention. Teal marks current, selected, or hovered. Navy is printed ink:
   navigation, rules, and primary actions. Mint may tint a large settled area.
 - A group of five lines or fewer stands fully open; a taller group scrolls inside a fixed
-  row-unit window behind a half-cut line, with a teal rail tracking scroll progress
-  (amended 2026-08-27; supersedes "lists are never clipped to a scroll box"). The guard that
-  rule protected survives it: the heading's count always states the true total, rendering
-  still caps per group, and a group past the cap names its exact remainder as a link into
+  row-unit window behind a half-cut line. The window has mass (`overscroll-behavior:
+  contain`); there is no progress rail (amended 2026-08-28; supersedes the 2026-08-27
+  teal-rail fill). The heading's count always states the true total, rendering still
+  caps per group, and a group past the cap names its exact remainder as a link into
   Appointments.
 - Appointment request is the unit of appointment work; “Appointments” is the destination label,
   not the product boundary.

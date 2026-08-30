@@ -148,16 +148,16 @@ Rules of use:
   everywhere.
 - **A modal that must fetch still opens on the spring's schedule** and shimmers a
   skeleton while it waits. The surface is never late, only its facts.
-- **Scroll is tracked, not decorated.** A windowed group carries a 2px teal rail that
-  fills with scroll progress — teal's one meaning, the finger tracking the sheet, driven
-  by `scroll-timeline` with no script. Browsers without scroll-driven animations get no
-  rail; the half-cut row alone carries the affordance.
+- **Scroll has mass, not decoration.** A windowed group is a nested overflow box.
+  `overscroll-behavior: contain` keeps the platform bounce on the list so a flick
+  does not die at the edge and hand the page the rest of the gesture. The half-cut
+  row and the heading's count are the whole affordance. No rail, no progress fill.
 - **Micro state changes stay micro.** Hover tints, pressed ink, and focus rings keep
   their own ~150ms ease-out (`--motion-micro-duration`); the spring and exit govern
   surfaces that move, not surfaces that tint.
 - **Reduced motion is a first-class temperament, not a disability switch:** modals cross-
-  fade in ~120ms with no travel, skeletons hold still, the rail does not animate. Nothing
-  is withheld; only the physics are.
+  fade in ~120ms with no travel, skeletons hold still. Nothing is withheld; only the
+  physics are.
 - Keyboard is whole: the row press target is a real button, Escape cancels a modal,
   and focus returns to the line. Adaptation holds the same grammar at every width —
   the mobile window is shorter, the modal is near-full-width, the targets stay 44px.

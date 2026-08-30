@@ -164,7 +164,7 @@ test.describe("portal requests operation", () => {
       await page.getByTestId("submit-staff-request").click();
 
       await expect(page.getByTestId("add-appointment-dialog")).toBeHidden({ timeout: 15_000 });
-      await expect(page.getByText(`${patientName} is on the line under Call first.`)).toBeVisible();
+      await expect(page.getByText(`${patientName} is on the line under New.`)).toBeVisible();
 
       const { data: createdRow, error: createdRowError } = await db
         .from("requests")
