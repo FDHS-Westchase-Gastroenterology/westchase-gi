@@ -22,47 +22,53 @@ mechanical and carries no judgment — several single-call-site components are l
 are supposed to be mounted exactly once.
 
 At the `f5d062e` snapshot there are **56 component files**: 21 reused and 35 with a single call
-site. `src/components/ui/` did not exist yet; it and `src/components/primitives/` are censused in
+site. `src/components/ui/` did not exist yet; it and `src/components/patterns/` are censused in
 the next section.
 
 ## Component system
+
+> **Stock tier added 2026-08-30.** `src/components/stock/` now vendors the entire shadcn registry
+> (62 `ui` items, 60 examples) byte-exact; it is not censused here because nothing in a product
+> surface renders it. Its manifest is `src/components/stock/MANIFEST.json`; the gallery at
+> `/design` (`src/app/design/`) renders it beside the `ui/` tier. The tiers and their rules are
+> in `DESIGN.md` "Component tiers".
 
 The design system's committed tiers (DESIGN.md "Component system"). The `ui/` tier is the shadcn
 registry adopted through the brand token bridge — every component below was generated from the
 Base UI variant of the shadcn registry and then brand-adapted, so the linked shadcn page documents
 the component's API and anatomy while `DESIGN.md` and the file itself govern how it looks here.
-The `primitives/` tier is brand-authored composition with no registry counterpart.
+The `patterns/` tier (named `primitives/` until 2026-08-30) is brand-authored composition with no registry counterpart.
 
-Counts below are a snapshot taken at `ad5e68f`, after the `.btn*` / `.field-*` CSS registers
-retired into this system, and refreshed 2026-08-28 by the register-legibility pass (motion
-decoupled onto a named axis in every register, Badge pruned to the four color-law variants,
-long class strings restructured one line per job — DESIGN.md "Register legibility rules").
+Counts below are a snapshot taken at `ad5e68f`, after the `.btn*` / `.field-*` CSS recipes
+retired into this system, and refreshed 2026-08-28 by the recipe-legibility pass (motion
+decoupled onto a named axis in every recipe, Badge pruned to the four color-law variants,
+long class strings restructured one line per job — DESIGN.md "Component API rules").
 
 ### `src/components/ui/`
 
 | File | Source | Lines | Call sites | Where it renders |
 |---|---|---|---|---|
 | `button.tsx` | [shadcn Button](https://ui.shadcn.com/docs/components/base/button) | 27 | 21 | Interactive buttons everywhere: the request workflow panel, notes composer, queue search, print chooser and packet, settings managers, maintainer access, portal tour, release briefing, home workbench sheet, Activity log search, portal error page, all four auth screens, and the patient appointment form and prep print button |
-| `button-variants.ts` | Project-authored register split from [shadcn Button](https://ui.shadcn.com/docs/components/base/button) | 152 | 32 | The same register worn by zero-JS anchors via `className`: every patient-site CTA (home, appointment and received, new-patients, resources, procedure prep, patient education, office gallery, not-found, Header, Footer, LocationCards, LocationMaps, TextBand), portal link-buttons (help, home, queue, request detail, print, review flyers, software settings, audit pagination), and the review hub |
+| `button-variants.ts` | Project-authored recipe split from [shadcn Button](https://ui.shadcn.com/docs/components/base/button) | 152 | 32 | The same recipe worn by zero-JS anchors via `className`: every patient-site CTA (home, appointment and received, new-patients, resources, procedure prep, patient education, office gallery, not-found, Header, Footer, LocationCards, LocationMaps, TextBand), portal link-buttons (help, home, queue, request detail, print, review flyers, software settings, audit pagination), and the review hub |
 | `field.tsx` | [shadcn Field](https://ui.shadcn.com/docs/components/base/field) | 235 | 5 | Every form: patient appointment form (appointment, contact), staff add-request form (new request, add-appointment dialog), queue search, and the settings recipients and staff managers |
 | `input.tsx` | [shadcn Input](https://ui.shadcn.com/docs/components/base/input) | 71 | 5 | The same five forms |
-| `native-select.tsx` | Project-authored; wears the Input register on a native `<select>` | 64 | 3 | Patient appointment form, staff add-request form, staff manager role picker |
+| `native-select.tsx` | Project-authored; wears the Input recipe on a native `<select>` | 64 | 3 | Patient appointment form, staff add-request form, staff manager role picker |
 | `textarea.tsx` | [shadcn Textarea](https://ui.shadcn.com/docs/components/base/textarea) | 63 | 2 | Patient appointment form, staff add-request form |
 | `badge.tsx` | [shadcn Badge](https://ui.shadcn.com/docs/components/base/badge) | 100 | 1 | Status pills via `StatusBadge` on the Appointments queue and request detail; pruned to the four color-law variants with `variant` required (2026-08-28) |
 | `table.tsx` | [shadcn Table](https://ui.shadcn.com/docs/components/base/table) | 95 | 2 | The Activity log's audit table and release-engagement table |
 | `label.tsx` | [shadcn Label](https://ui.shadcn.com/docs/components/base/label) | 21 | 1 | Internal to `field.tsx` (`FieldLabel`); forms consume it through Field |
 | `separator.tsx` | [shadcn Separator](https://ui.shadcn.com/docs/components/base/separator) | 22 | 1 | Internal to `field.tsx` (`FieldSeparator`) |
 
-`button-variants.ts` exists apart from `button.tsx` so server components can wear the register
+`button-variants.ts` exists apart from `button.tsx` so server components can wear the recipe
 without importing the client component; its call-site count excludes `button.tsx` itself.
-Every register decouples motion onto a named axis — the brand's authored physics as the
+Every recipe decouples motion onto a named axis — the brand's authored physics as the
 default (`wgi`, or `none` on Badge), the committed press for server-bound controls as
 `commit` (staff sign-in), the upstream stock feel verbatim as `shadcn` — per
-DESIGN.md "Register legibility rules".
+DESIGN.md "Component API rules".
 Adoption decisions and the standing no-fits (native `<dialog>`, SettingsTabs, the authored
 skeletons, unconsumed Tooltip/DropdownMenu/Pagination) are recorded in `DESIGN.md`, not here.
 
-### `src/components/primitives/`
+### `src/components/patterns/`
 
 | File | Exports | Lines | Call sites | Where it renders |
 |---|---|---|---|---|
@@ -74,7 +80,7 @@ skeletons, unconsumed Tooltip/DropdownMenu/Pagination) are recorded in `DESIGN.m
 ## Patient site — reused
 
 All paths in this section are relative to `src/components/`. Since the `f5d062e` snapshot,
-`TextBand.tsx`, `Reveal.tsx`, and `PageHero.tsx` moved to `src/components/primitives/` and are
+`TextBand.tsx`, `Reveal.tsx`, and `PageHero.tsx` moved to `src/components/patterns/` and are
 censused in [Component system](#component-system); their rows below keep the snapshot's counts.
 
 | File | Exports | Lines | Call sites | Used in |
@@ -217,7 +223,7 @@ understates what the design system actually contains, so the families are record
 **Element primitives** — `.card` and `.card-lined`. At the `f5d062e` snapshot this family also
 carried `.btn` with its variants (`.btn-navy`, `.btn-amber`, `.btn-outline`, `.btn-ghost-light`,
 `.btn-sm`, `.btn-lg`) and the form set (`.field-input`, `.field-label`, `.field-hint`,
-`.field-error`); both registers have since retired into `src/components/ui/`
+`.field-error`); both recipes have since retired into `src/components/ui/`
 ([Component system](#component-system)).
 
 **Typography** — `.display`, `.h1`, `.h2`, `.h3`, `.lead`, `.measure`, `.measure-sm`, `.link-line`,
@@ -262,7 +268,7 @@ Importer lists for the component-system tiers (swap in each basename):
 
 ```bash
 rg -l 'components/ui/NAME"' src
-rg -l 'primitives/NAME"' src
+rg -l 'patterns/NAME"' src
 ```
 
 The shadcn source links in the tier table point at the Base UI variant of each registry page

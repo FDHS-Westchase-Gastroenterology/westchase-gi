@@ -82,20 +82,40 @@ How to post it:
 ### shadcn/ui
 
 shadcn/ui is installed and configured through `components.json` (style `base-nova`, Base UI
-primitives, Tailwind v4 CSS variables). The vendored `.agents/skills/shadcn` skill documents the
-CLI and component workflow; use it. Components resolve every color through **semantic tokens**
-(`--background`, `--primary`, `--muted`, …) that are bridged onto the committed brand palette in
-`src/app/globals.css`. The bridge is the only place shadcn's tokens exist; the brand `@theme`
-block above it belongs to the committed palette and is hands-off for shadcn and agents alike.
+primitives, Tailwind v4 CSS variables). The `.claude/skills/shadcn` skill documents the CLI and
+component workflow; use it. The design system itself — tokens, tiers, recipes, motion, the
+ownership table — is [`DESIGN.md`](DESIGN.md); read its "Where does this belong?" table before
+touching any UI.
+
+**Three tiers, one direction.** `src/components/stock/` is the entire registry vendored byte-exact
+(the before); `src/components/ui/` is the brand-adapted recipe (the after);
+`src/components/patterns/` composes on `ui/`. Product surfaces never import from `stock/`; only
+the gallery at `/design` does. `stock/**` is exempt from oxlint, oxfmt, and React Doctor's project
+rules as vendored upstream code — the same standing as `.agents/**` — and is regenerated only by
+`npm run ds:stock` (`scripts/design-system/sync-stock.mjs`), never hand-edited. The gallery
+(`src/app/design/`) is project code and meets the full lint bar.
+
+**The gallery is the first stop.** Before adopting or adapting a component, open
+`http://localhost:3000/design/<component>` with `npm run dev` running (a top-level route, not
+under `/admin`; also on Vercel Preview; a 404 in Production) and look at
+stock, stock-through-the-bridge, and brand. A brand adaptation is not finished until its
+example exists in `src/app/design/brand/` and is registered in `src/app/design/brand/index.ts`.
+
+Components resolve every color through **semantic tokens** (`--background`, `--primary`,
+`--muted`, …) that are bridged onto the committed brand palette in `src/app/globals.css`. The
+bridge is the only place shadcn's tokens exist; the brand `@theme` block above it belongs to the
+committed palette and is hands-off for shadcn and agents alike.
 
 **The hard rule: shadcn never overwrites the brand palette.** The brand hues — navy, teal,
 amber, mint — are a DESIGN.md anchor. `shadcn init` and `shadcn apply` (and any `add` that runs
 against a preset) inject neutral OKLCH literals, a `@theme inline` block that re-declares the
 Tailwind radius scale, and `@apply` rules that hijack `html`/`body` into shadcn's defaults. On
 install day these would have turned every `rounded-lg` on the site from the brand `0.875rem` to
-`0.625rem` and repainted the page white. That must never merge.
+`0.625rem` and repainted the page white. That must never merge. The only place shadcn's neutral
+literals may exist is the gallery's `[data-palette="stock"]` scope in `src/app/design/design.css`.
 
-Reconciliation procedure — run after **every** CLI operation that touches CSS:
+Reconciliation procedure — run after **every** CLI operation that touches CSS (the stock sync
+script performs the hash check itself and fails on any change):
 
 1. Commit or stash a clean checkpoint of `src/app/globals.css` **before** running the command.
 2. Run the command, then `git diff src/app/globals.css` and reject or rewrite anything that:
@@ -123,9 +143,15 @@ Adoption pattern: `npx shadcn@latest add <component>` generates into `src/compon
 `add --dry-run` / `--diff` before overwriting an existing component; local edits are merged, not
 clobbered, but verify. Generated files are project-owned the moment they land: bring them up to
 the repo's lint bar (top-level type-only imports, the documented disable-comment convention for
-framework-typed props) and restyle through the bridge or `className` — not by editing token
-values. Add a component only when something renders it; React Doctor fails the loop on unused
-generated files and unused dependencies.
+framework-typed props) and restyle through the recipe's axes or `className` for layout — not
+by editing token values. Add a component only when something renders it; React Doctor fails the
+loop on unused generated files and unused dependencies. The registry dependencies the stock tier
+carries (`recharts`, `cmdk`, `react-day-picker`, …) are owned by `stock/` until a `ui/`
+adaptation adopts one for real (`src/components/stock/README.md`).
+
+Motion: two engines, one registry. CSS reads the `--motion-*` tokens; `motion/react` reads the
+presets in `src/lib/motion.ts`, which are the same temperaments. Use whichever fits the job.
+Neither engine invents a curve or duration — DESIGN.md "Motion".
 
 `apply --preset` / `init --preset <code>` overwrite preset-driven CSS wholesale. Do not run one
 without the reconciliation review above, and never let a preset's palette reach a commit.

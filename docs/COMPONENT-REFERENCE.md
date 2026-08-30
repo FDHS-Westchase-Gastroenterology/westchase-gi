@@ -20,7 +20,7 @@ still appears once.
 
 - [Component system](#component-system)
   - [`src/components/ui/`](#srccomponentsui)
-  - [`src/components/primitives/`](#srccomponentsprimitives)
+  - [`src/components/patterns/`](#srccomponentspatterns)
 - [Patient site](#patient-site)
   - [Reused](#reused)
   - [Single call site](#single-call-site)
@@ -37,7 +37,7 @@ still appears once.
 ## Component system
 
 The design-system tiers from DESIGN.md. `ui/` is the brand-adapted shadcn
-register. `primitives/` is brand-authored composition.
+recipe. `patterns/` (named `primitives/` until 2026-08-30) is brand-authored composition.
 
 ### [`src/components/ui/`](<../src/components/ui/>)
 
@@ -106,12 +106,12 @@ Used in 33 files:
 - [`src/components/Header.tsx`](<../src/components/Header.tsx>)
 - [`src/components/LocationCards.tsx`](<../src/components/LocationCards.tsx>)
 - [`src/components/LocationMaps.tsx`](<../src/components/LocationMaps.tsx>)
-- [`src/components/primitives/TextBand.tsx`](<../src/components/primitives/TextBand.tsx>)
+- [`src/components/patterns/TextBand.tsx`](<../src/components/patterns/TextBand.tsx>)
 - [`src/components/ui/button.tsx`](<../src/components/ui/button.tsx>)
 
-`button.tsx` is listed because it imports the register. The inventory's
+`button.tsx` is listed because it imports the recipe. The inventory's
 call-site count excludes that wrapper so the number is the surfaces that wear
-the register directly.
+the recipe directly.
 
 ### [`src/components/ui/field.tsx`](<../src/components/ui/field.tsx>)
 
@@ -193,9 +193,9 @@ Used in 1 file:
 
 - [`src/components/ui/field.tsx`](<../src/components/ui/field.tsx>)
 
-### [`src/components/primitives/`](<../src/components/primitives/>)
+### [`src/components/patterns/`](<../src/components/patterns/>)
 
-### [`src/components/primitives/TextBand.tsx`](<../src/components/primitives/TextBand.tsx>)
+### [`src/components/patterns/TextBand.tsx`](<../src/components/patterns/TextBand.tsx>)
 
 Exports: `TextBand`.
 
@@ -216,7 +216,7 @@ Used in 14 files:
 - [`src/app/[locale]/resources/page.tsx`](<../src/app/[locale]/resources/page.tsx>)
 - [`src/app/[locale]/services/page.tsx`](<../src/app/[locale]/services/page.tsx>)
 
-### [`src/components/primitives/Reveal.tsx`](<../src/components/primitives/Reveal.tsx>)
+### [`src/components/patterns/Reveal.tsx`](<../src/components/patterns/Reveal.tsx>)
 
 Exports: `Reveal`.
 
@@ -235,7 +235,7 @@ Used in 12 files:
 - [`src/app/[locale]/resources/page.tsx`](<../src/app/[locale]/resources/page.tsx>)
 - [`src/app/[locale]/services/page.tsx`](<../src/app/[locale]/services/page.tsx>)
 
-### [`src/components/primitives/PageHero.tsx`](<../src/components/primitives/PageHero.tsx>)
+### [`src/components/patterns/PageHero.tsx`](<../src/components/patterns/PageHero.tsx>)
 
 Exports: `PageHero`.
 
@@ -253,7 +253,7 @@ Used in 11 files:
 - [`src/app/[locale]/resources/page.tsx`](<../src/app/[locale]/resources/page.tsx>)
 - [`src/app/[locale]/services/page.tsx`](<../src/app/[locale]/services/page.tsx>)
 
-### [`src/components/primitives/reveal-delay.ts`](<../src/components/primitives/reveal-delay.ts>)
+### [`src/components/patterns/reveal-delay.ts`](<../src/components/patterns/reveal-delay.ts>)
 
 Exports: `RevealDelay`, `revealDelay`.
 
@@ -264,7 +264,7 @@ Used in 4 files:
 | [`src/app/[locale]/office-gallery/page.tsx`](<../src/app/[locale]/office-gallery/page.tsx>) | `revealDelay` |
 | [`src/app/[locale]/page.tsx`](<../src/app/[locale]/page.tsx>) | `revealDelay` |
 | [`src/app/[locale]/procedure-prep/page.tsx`](<../src/app/[locale]/procedure-prep/page.tsx>) | `RevealDelay`, `revealDelay` |
-| [`src/components/primitives/Reveal.tsx`](<../src/components/primitives/Reveal.tsx>) | `RevealDelay` |
+| [`src/components/patterns/Reveal.tsx`](<../src/components/patterns/Reveal.tsx>) | `RevealDelay` |
 
 ## Patient site
 
@@ -324,7 +324,7 @@ Used in 47 files:
 | [`src/components/LocationCards.tsx`](<../src/components/LocationCards.tsx>) | `Clock`, `Mail`, `MapPin`, `MessageSquare`, `Phone`, `Printer` |
 | [`src/components/LocationMaps.tsx`](<../src/components/LocationMaps.tsx>) | `MapPin` |
 | [`src/components/NoticeBanner.tsx`](<../src/components/NoticeBanner.tsx>) | `X` |
-| [`src/components/primitives/TextBand.tsx`](<../src/components/primitives/TextBand.tsx>) | `MessageSquare`, `Phone` |
+| [`src/components/patterns/TextBand.tsx`](<../src/components/patterns/TextBand.tsx>) | `MessageSquare`, `Phone` |
 | [`src/components/PrintButton.tsx`](<../src/components/PrintButton.tsx>) | `Printer` |
 | [`src/components/ProfileCardViewer.tsx`](<../src/components/ProfileCardViewer.tsx>) | `Download`, `Maximize`, `X`, `ZoomIn`, `ZoomOut` |
 | [`src/components/TestimonialRail.tsx`](<../src/components/TestimonialRail.tsx>) | `ChevronLeft`, `ChevronRight`, `Star` |
@@ -844,7 +844,7 @@ For a single module, where `NAME` is the file's basename without the extension:
 
 ```bash
 rg -l 'components/ui/NAME"' src
-rg -l 'primitives/NAME"' src
+rg -l 'patterns/NAME"' src
 ```
 
 Refresh this file when a component is added, removed, or gains or loses an

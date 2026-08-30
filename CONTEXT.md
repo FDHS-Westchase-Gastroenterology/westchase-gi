@@ -17,6 +17,44 @@ The authenticated tool where practice staff do their web-adjacent jobs, centered
 appointment-request queue.
 _Avoid_: dashboard
 
+### Design system
+
+**Token**:
+A named CSS custom property holding one design decision (`--color-navy`,
+`--motion-exit-duration`). Brand tokens live in the `@theme` block of `src/app/globals.css`.
+_Avoid_: variable, theme value
+
+**Recipe**:
+A component's complete appearance vocabulary as a `cva` definition with decoupled axes —
+`variant` (paint), `size` (geometry), `motion` (temperament). Lives in `src/components/ui/`.
+_Avoid_: styles, theme, register (that word is the product voice — see below)
+
+**Temperament**:
+A named motion physics on a recipe's `motion` axis: `wgi` (the brand's), `commit`, `shadcn`
+(stock, verbatim), `none`.
+
+**Scope**:
+A class on an ancestor that assigns the brand for a product surface (`.portal-scope`) through
+knobs and aliases. A scope never redefines a brand token.
+
+**The bridge**:
+The block at the end of `globals.css` that maps shadcn's semantic tokens (`--primary`,
+`--muted`) onto brand tokens. The only place shadcn's tokens exist.
+
+**Tier**:
+Where a component lives: `stock/` (the registry, untouched), `ui/` (brand recipes),
+`patterns/` (brand compositions), domain (colocated with its route).
+
+**Stock**:
+A shadcn registry item exactly as `shadcn add` generates it, vendored in
+`src/components/stock/`. The before.
+_Avoid_: default, vanilla
+
+**The gallery**:
+`http://localhost:3000/design` — tokens rendered live and every registry item shown stock,
+bridged, and brand-adapted. A top-level route (not under `/admin`); local and Preview only.
+_Avoid_: storybook, styleguide
+
 ### Appointments
 
 **Appointment request**:
