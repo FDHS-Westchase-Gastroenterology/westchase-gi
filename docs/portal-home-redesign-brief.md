@@ -20,16 +20,22 @@ small-print greeting, the date as the headline, Print appointments and Add appoi
 opposite, the rule beneath — **stays exactly as marked** in
 [`current-portal-home-header-annotated.png`](./portal-home-redesign-brief/current-portal-home-header-annotated.png);
 it is part of home's identity, not the redesign's target. What the Vercel reference
-reshapes is everything *below* that rule(Rough description of how the dashboard works -- Images are more faithful.): 
-a filter bar, then a dense, hairline-ruled
-list of lines — no metric tiles, no analytics chrome. The filter bar
+reshapes is everything *below* that rule: a filter bar, then a dense, hairline-ruled
+list of lines — no metric tiles, no analytics chrome. (The prose in this brief is a
+rough map of how the dashboard works; the images in §6 are the faithful reference.
+Where words and image disagree, the image wins.) The filter bar
 is the centerpiece: filters appear as pills whose whole state lives in the URL, likely
 filters are pre-offered as ghost suggestions one click from active, and every list surface
 in the portal eventually speaks this same filter language. The job of home does not change:
 who has to be called, in what order. The Vercel dashboard is the reference for *how that
 list carries itself*, not for what it says.
 
-The page is not to be broken up into sections, such as New, Call Again, etc. Instead, the filters should be what organizes the list.Badges should serve to further define the state of a line item(Appointment) Helping staff get immediate signal to the state of any given appointment that is shown on the list.
+**One list, no sections.** The page is not broken into groups — no New, no Call Again,
+no section headings. Filters are the organizing principle: what the list shows, and how
+it is sliced, is whatever the filter bar says, nothing more. State moves into the lines
+themselves: each appointment's badges (`new`, `overdue`, `after hours`, and kin) give
+staff immediate signal about that line's standing, so the list never needs to pre-sort
+lines into boxes to communicate it.
 
 
 ## 2. Reference anatomy (audited)
@@ -123,7 +129,8 @@ as a predicate.
 The portal already has its world: white paper, navy printed ink, hairline rules, tracked
 small caps; amber only as a stamp, teal only as the tracked line; stamps always carry
 words. **Take the reference's bones — density, one-line rows, dot+word status, the filter
-bar — and paint them entirely with the portal's existing tokens through the bridge.** Do
+bar — and paint them entirely with the portal's existing color tokens through the
+bridge** (motion is the exception: it is developed fresh for this surface, per §4.5). Do
 not import Vercel's dark palette, radii, or type; a Vercel-dark screen inside the portal
 is a failure of this brief. The dot+word status pattern is the portal's existing stamp
 discipline and needs no new component, only the row context.
@@ -140,7 +147,7 @@ discipline and needs no new component, only the row context.
 | Author | Staff member who last acted |
 | Created | Received (`created_at`) |
 | Build duration | Waiting-since (existing `waitingSince` derivation) |
-| Preview button | The line's own outcome actions (the existing sheet-line actions) |
+| Preview button | The line's own outcome actions (same outcomes as today's lines, rebuilt fresh per §4.5) |
 | Current-production accent | The attention bucket that must be called today |
 
 ### 3.2 Filters to define (initial set)
@@ -156,8 +163,9 @@ discipline and needs no new component, only the row context.
   same URL and bar.
 
 Default home = no params, but the bar opens with **suggestion pills tuned to the job**:
-e.g. `Attention Needs call`, `Status New`, `Received Last 7 Days`. Home's two groups (New
-/ Call again) keep their counts as group headers; counts never grow into metric cards.
+e.g. `Attention Needs call`, `Status New`, `Received Last 7 Days`. There are no group
+headers left to carry counts — the flat, badge-signaled list replaces the old New /
+Call Again sections (§1) — and counts never grow into metric cards.
 
 ### 3.3 What home keeps
 
@@ -169,10 +177,10 @@ and it is **kept, not redesigned**. Where the Vercel reference shows a bare page
 home's equivalent is this header; do not swap it for a `Deployments`-style label.
 
 Home's job survives with it: the page lists the calls and takes them, outcomes recorded
-on the line, the New / Call Again grouping keeping its counts as group headers — never
-as metric cards. The redesign applies from the rule downward: the filter bar slots in
-between the header and the groups, and the lines adopt the reference's row anatomy and
-the portal-wide filter language. It does not turn home into an analytics page.
+on the line. The old New / Call Again sections do not survive — below the rule sits the
+filter bar, then one flat, attention-ordered list whose lines adopt the reference's row
+anatomy, the portal-wide filter language, and per-line badges for state. It does not
+turn home into an analytics page.
 
 ## 4. Filter-system architecture (build it this way)
 
@@ -253,18 +261,38 @@ sequence lets the model mean "the current user" (here: the signed-in staff membe
 come back raw so the client parses them in its own timezone. Phase 1 ships without this,
 but nothing in phase 1 may preclude it — which costs nothing if the definitions rule.
 
-### 4.5 Placement (per DESIGN.md's ownership table)
+### 4.5 Component sourcing: start from stock, on purpose
+
+Nearly everything this dashboard needs already exists in the stock shadcn registry, and
+the repo vendors that registry in `src/components/stock/` — `popover`, `command`,
+`checkbox`, `badge`, `separator`, `skeleton`, `item`, `button`, and the rest. **Build the
+dashboard from those stock components, converting each one fresh for this surface — not
+from the components already adapted for other surfaces** (`ui/button`, `ui/item`,
+`sheet-line`, and kin). Even where an adapted twin exists, take the stock part and do the
+conversion again, for the dashboard's own needs.
+
+This will duplicate some work, and that is accepted — deliberately. Components adapted
+for other surfaces carry those surfaces' decisions, and reaching for them first forces
+the dashboard down their corridor before it has found its own shapes. Starting from
+stock is starting from scratch without actually being from scratch.Let the pieces fall where they may;
+whether the dashboard's conversions later consolidate with `ui/` is a decision to make
+*after* the dashboard has settled, never before.
+
+The freedom is in shape, composition, and animation/interactive behavior — not in paint.
+Motion is developed **from scratch** for this surface: do not reach for the existing
+`motion` tokens or temperaments; the dashboard finds its own physics, durations, and
+easings. What cannot be sacrificed is the brand itself — its geometry, its colors, its
+load-bearing aspects: every fresh conversion still draws its colors through the semantic
+bridge and keeps the brand's radii and type, adding no new colors, radii, or type steps.
+If a part seems to need one of those, the answer is an existing token, or the design is
+drifting.
+
+### 4.6 Placement (per DESIGN.md's ownership table)
 
 - Filter definitions: with the portal's domain logic (e.g. `src/lib/portal/filters/`),
   one module per filter — they are contracts, not styling.
-- Pill, editor popover, bar: recipes/compositions from the vendored shadcn parts —
-  `stock/` already holds `popover`, `command`, `checkbox`, `badge`, `separator`,
-  `skeleton`, `item`; adopt into `ui/` via the documented Adoption workflow, paint only
-  through the semantic bridge, motion only through the `motion` axis tokens.
-- The list rows: the portal's existing line components (`sheet-line`, `ui/item.tsx` is
-  already adopted); this brief re-frames them, it does not fork them.
-- No new colors, radii, durations, or type steps. If a pill seems to need one, the answer
-  is a knob or an existing token, or the design is drifting.
+- The dashboard's converted components: theirs, colocated with the dashboard until a
+  second consumer exists, per the ownership table's colocation rule.
 
 ## 5. Interaction contract (acceptance checklist)
 
