@@ -1,0 +1,8 @@
+{
+  "name": "westchase-gi",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Synthetic package manifest for the claude.ai/design import. Not installed, not published, not part of the app build — it exists so design-sync's converter has a package root and a .d.ts entry to read API contracts from, without touching the repo's own package.json.",
+  "types": "./types/index.d.ts",
+  "module": "./entry.ts"
+}
