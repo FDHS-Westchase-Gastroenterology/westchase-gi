@@ -1,10 +1,19 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useEffect } from "react";
 
+import {
+  PortalFeedbackMessage,
+  PortalFeedbackProvider,
+  usePortalFeedback,
+} from "@/app/admin/(portal)/portal-feedback";
+import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
+import { Check } from "@/components/icons";
+import { useOutputGuard } from "@/components/output-feedback";
+import { buttonVariants } from "@/components/ui/button-variants";
 import type { ReviewFlyer, ReviewTargetKey } from "@/lib/review-flyers";
+import { cn } from "@/lib/utils";
 
 const DOWNLOAD_ACTIONS = [
   ["pdf", "Flyer PDF"],
@@ -20,6 +29,80 @@ function assetUrl(filename: string, download = false): string {
 function printFlyer(key: ReviewTargetKey | "all") {
   document.body.dataset.reviewFlyerPrint = key;
   window.print();
+}
+
+function FlyerPrintButton({
+  className,
+  label,
+  message,
+  target,
+}: Readonly<{
+  className: string;
+  label: string;
+  message: string;
+  target: ReviewTargetKey | "all";
+}>) {
+  const { publish } = usePortalFeedback();
+  const { begin, locked } = useOutputGuard({ releaseOnAfterPrint: true });
+
+  return (
+    <button
+      type="button"
+      aria-disabled={locked || undefined}
+      data-slot="button"
+      className={`${className} aria-disabled:pointer-events-none aria-disabled:opacity-60`}
+      onClick={() => {
+        if (!begin()) return;
+        publish({ source: "review-flyer-output", tone: "status", message });
+        window.requestAnimationFrame(() => {
+          printFlyer(target);
+        });
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
+function FlyerDownloadLink({
+  filename,
+  href,
+  label,
+  title,
+}: Readonly<{
+  filename: string;
+  href: string;
+  label: string;
+  title: string;
+}>) {
+  const { publish } = usePortalFeedback();
+  const { begin, locked } = useOutputGuard();
+
+  return (
+    <a
+      data-slot="button"
+      className={cn(
+        buttonVariants({ variant: "outline" }),
+        "aria-disabled:pointer-events-none aria-disabled:opacity-60",
+      )}
+      href={href}
+      download={filename}
+      aria-disabled={locked || undefined}
+      onClick={(event) => {
+        if (!begin()) {
+          event.preventDefault();
+          return;
+        }
+        publish({
+          source: "review-flyer-output",
+          tone: "status",
+          message: `${label} download started for ${title}.`,
+        });
+      }}
+    >
+      {label}
+    </a>
+  );
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
@@ -90,7 +173,7 @@ function Flyer({ flyer }: Readonly<{ flyer: ReviewFlyer }>) {
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-export function ReviewFlyerPrinter({ flyers }: Readonly<{ flyers: ReviewFlyer[] }>) {
+function ReviewFlyerPrinterBody({ flyers }: Readonly<{ flyers: ReviewFlyer[] }>) {
   useEffect(() => {
     const beforePrint = () => {
       const currentPrint = document.body.dataset.reviewFlyerPrint;
@@ -113,48 +196,33 @@ export function ReviewFlyerPrinter({ flyers }: Readonly<{ flyers: ReviewFlyer[] 
   return (
     <>
       <div className="review-flyer-screen">
-        <nav aria-label="Breadcrumb" className="flex items-center text-[0.9rem]">
-          <Link
-            href="/admin"
-            className="inline-flex min-h-11 min-w-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-          >
-            Home
-          </Link>
-          <span aria-hidden="true" className="mx-2 text-[var(--color-muted)]">
-            /
-          </span>
-          <span className="text-[var(--color-muted)]">Print review flyers</span>
-        </nav>
-        <div className="mt-4 flex flex-wrap items-end justify-between gap-5">
-          <div className="max-w-[46rem]">
-            <h1 className="portal-title">Print review flyers</h1>
-            <p className="mt-2 max-w-[62ch] text-[0.95rem] text-[var(--color-muted)]">
-              Choose one ready-to-print bilingual flyer, or print the full set. The PDF option is
-              best for a print shop or when another device needs a guaranteed one-page file.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="btn btn-navy shrink-0"
-            onClick={() => {
-              printFlyer("all");
-            }}
-          >
-            Print all six flyers
-          </button>
-        </div>
+        <PortalPageHeader
+          back={{ href: "/admin", label: "Back to Home" }}
+          title="Print review flyers"
+          description="Choose one ready-to-print bilingual flyer, or print the full set. Use the PDF when a print shop or another device needs a guaranteed one-page file."
+          actions={
+            <FlyerPrintButton
+              className={buttonVariants()}
+              label="Print all six flyers"
+              message="Print dialog is opening for all six flyers."
+              target="all"
+            />
+          }
+        />
 
-        <p className="mt-6 inline-flex items-center gap-2 rounded-full bg-[var(--color-mint)] px-3.5 py-2 text-[0.88rem] font-bold text-[var(--color-navy)]">
-          <span aria-hidden="true">✓</span>
+        <PortalFeedbackMessage source="review-flyer-output" testId="review-flyer-output-feedback" />
+
+        <p className="mt-6 inline-flex items-center gap-2 rounded-[var(--radius)] bg-[var(--color-mint)] px-3.5 py-2 text-[0.88rem] font-bold text-[var(--color-navy)]">
+          <Check className="h-4 w-4 flex-none" />
           All six codes and one-page PDFs are machine-verified.
         </p>
 
         <section className="mt-8" aria-label="Available review flyers">
-          <div className="grid gap-4">
+          <div className="portal-flyer-list">
             {flyers.map((flyer) => (
               <article
                 key={flyer.key}
-                className="card-lined grid min-w-0 gap-5 p-5 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:p-6"
+                className="portal-flyer-row grid min-w-0 gap-5 p-5 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:items-center sm:p-6"
                 data-review-target={flyer.key}
               >
                 <Image
@@ -175,28 +243,24 @@ export function ReviewFlyerPrinter({ flyers }: Readonly<{ flyers: ReviewFlyer[] 
                   {flyer.credentials !== null && flyer.credentials !== "" ? (
                     <p className="mt-1 font-bold text-[var(--color-ink)]">{flyer.credentials}</p>
                   ) : null}
-                  <p className="mt-2 max-w-[56ch] text-[0.95rem] text-[var(--color-muted)]">
+                  <p className="mt-2 max-w-[56ch] text-[0.95rem] text-[var(--color-muted-ink)]">
                     {flyer.description}
                   </p>
                   <div className="mt-4 flex flex-wrap items-center gap-2.5">
-                    <button
-                      type="button"
-                      className="btn btn-amber btn-sm min-h-11"
-                      onClick={() => {
-                        printFlyer(flyer.key);
-                      }}
-                    >
-                      Print flyer
-                    </button>
+                    <FlyerPrintButton
+                      className={buttonVariants({ variant: "amber" })}
+                      label="Print flyer"
+                      message={`Print dialog is opening for ${flyer.title}.`}
+                      target={flyer.key}
+                    />
                     {DOWNLOAD_ACTIONS.map(([kind, label]) => (
-                      <a
+                      <FlyerDownloadLink
                         key={kind}
-                        className="btn btn-outline btn-sm min-h-11"
+                        filename={flyer.assets[kind].filename}
                         href={assetUrl(flyer.assets[kind].filename, true)}
-                        download={flyer.assets[kind].filename}
-                      >
-                        {label}
-                      </a>
+                        label={label}
+                        title={flyer.title}
+                      />
                     ))}
                   </div>
                 </div>
@@ -205,7 +269,7 @@ export function ReviewFlyerPrinter({ flyers }: Readonly<{ flyers: ReviewFlyer[] 
           </div>
         </section>
 
-        <aside className="mt-8 max-w-[68ch] border-t border-[var(--color-line)] pt-6 text-[0.9rem] text-[var(--color-muted)]">
+        <aside className="mt-8 max-w-[68ch] border-t border-[var(--color-line)] pt-6 text-[0.9rem] text-[var(--color-muted-ink)]">
           <p>
             <strong className="text-[var(--color-ink)]">Printing tip:</strong> use bright-white
             cardstock and color ink. Keep the white area around each QR code clear so phone cameras
@@ -220,5 +284,14 @@ export function ReviewFlyerPrinter({ flyers }: Readonly<{ flyers: ReviewFlyer[] 
         ))}
       </div>
     </>
+  );
+}
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+export function ReviewFlyerPrinter({ flyers }: Readonly<{ flyers: ReviewFlyer[] }>) {
+  return (
+    <PortalFeedbackProvider>
+      <ReviewFlyerPrinterBody flyers={flyers} />
+    </PortalFeedbackProvider>
   );
 }

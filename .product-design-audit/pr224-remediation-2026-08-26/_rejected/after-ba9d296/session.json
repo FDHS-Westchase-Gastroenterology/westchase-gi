@@ -1,0 +1,19 @@
+{
+  "startedAt": "2026-08-26T11:29:23.921Z",
+  "endedAt": "2026-08-26T11:30:53.813Z",
+  "provider": "browserbase",
+  "evidenceDir": "/Users/Jason/studio/tampa-clinics/westchase-gi/.product-design-audit/pr224-remediation-2026-08-26/after-ba9d296",
+  "evidenceDb": "/Users/Jason/.stagehand-mcp/evidence.db",
+  "recording": {
+    "mode": "video",
+    "available": true,
+    "sessionId": "cec9de10-f24f-4955-94ab-e35345614701",
+    "dashboardUrl": "https://www.browserbase.com/sessions/cec9de10-f24f-4955-94ab-e35345614701",
+    "durationMs": 96451,
+    "sha256": "a00343a3c304f0cc3d43e6958aa1464d3e11b8467b3d00a6600020a276b54ab3",
+    "pages": [],
+    "downloaded": [],
+    "skippedReason": null
+  },
+  "actions": 14
+}

@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 /* ------------------------------------------------------------------ *
    FDHS Westchase Gastroenterology — design tokens
@@ -26,13 +30,14 @@
   /* Ink */
   --color-ink: oklch(0.25 0.03 248); /* headings */
   --color-body: oklch(0.35 0.03 245); /* body copy */
-  --color-muted: oklch(0.47 0.025 240); /* secondary text (>=4.5:1 on paper+mint) */
+  --color-muted-ink: oklch(0.47 0.025 240); /* secondary text (>=4.5:1 on paper+mint) */
   --color-on-dark: oklch(0.97 0.008 220);
   --color-on-dark-muted: oklch(0.86 0.025 230); /* >=4.5:1 on navy */
 
   /* Lines */
   --color-line: oklch(0.9 0.012 230);
   --color-line-2: oklch(0.82 0.018 230);
+  --color-line-3: oklch(0.6 0.025 235); /* control boundaries (>=3:1 on paper+mint) */
   --color-line-dark: oklch(0.47 0.05 245); /* hairlines on navy */
 
   /* Fonts */
@@ -48,9 +53,37 @@
   --shadow-soft: 0 12px 32px -20px oklch(0.3 0.05 245 / 0.5);
   --shadow-card: 0 22px 48px -28px oklch(0.28 0.05 245 / 0.55);
 
-  /* Motion */
+  /* Motion — one vocabulary, per-register temperaments */
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  /* Arrival — a ζ≈0.7 spring sampled into linear(): lands in the first
+     ~110ms, overshoots 4.6% once, settles without a second bounce. */
+  --motion-spring: linear(
+    0,
+    0.066 2.5%,
+    0.217 5%,
+    0.397 7.5%,
+    0.574 10%,
+    0.726 12.5%,
+    0.846 15%,
+    0.933 17.5%,
+    0.991 20%,
+    1.025 22.5%,
+    1.042 25%,
+    1.046 27.5%,
+    1.036 32.5%,
+    1.02 37.5%,
+    1.007 42.5%,
+    0.999 50%,
+    0.998 60%,
+    1 75%,
+    1
+  );
+  --motion-spring-duration: 440ms;
+  /* Departure — a strong ease-out, faster than arrival. */
+  --motion-exit: cubic-bezier(0.23, 1, 0.32, 1);
+  --motion-exit-duration: 160ms;
+  --motion-micro-duration: 150ms; /* micro states: hover tints, pressed ink, focus rings */
 
   /* Z-index scale */
   --z-header: 50;
@@ -179,6 +212,36 @@
       transition-duration: 0.001ms !important;
       scroll-behavior: auto !important;
     }
+
+    /* The staff portal authors its own reduced-motion temperament instead of
+       inheriting the blanket reset: modals keep a ~120ms cross-fade and give
+       up only the travel, which is the charter's promise that reduced motion
+       withholds the physics and nothing else.
+       The opt-out has to live here rather than next to the rules it serves.
+       The reset above is !important inside @layer base, and for important
+       declarations the cascade reverses layer order — an earlier layer wins —
+       so nothing in @layer components can override it, with or without
+       !important. The duration itself stays a registry token, because custom
+       properties resolve by inheritance rather than by layer: the value is
+       authored once on .portal-scope with the rest of the motion registry. */
+    .portal-confirm-dialog,
+    .portal-confirm-dialog::backdrop {
+      transition-duration: var(--pm-reduced-duration, 120ms) !important;
+    }
+
+    /* The unfolding sections keep the fade and give up the fold itself, so
+       the duration is per-property against their
+       `grid-template-rows, opacity, visibility` list — a blanket value here
+       would animate the height, which is the movement being removed. */
+    .portal-line-reveal {
+      transition-duration: 0s, var(--pm-reduced-duration, 120ms), 0s !important;
+    }
+
+    /* The calendar's month turn keeps its 120ms cross-fade and gives up the
+       travel, same temperament as the modals above. */
+    .portal-calendar-weeks[data-turn] {
+      animation-duration: var(--pm-reduced-duration, 120ms) !important;
+    }
   }
 }
 
@@ -251,77 +314,10 @@
     margin-inline: auto;
   }
 
-  /* ---- Buttons ---- */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.55rem;
-    font-family: var(--font-body);
-    font-weight: 700;
-    font-size: 0.98rem;
-    line-height: 1;
-    padding: 0.95rem 1.5rem;
-    border-radius: var(--radius);
-    cursor: pointer;
-    transition:
-      transform 0.35s var(--ease-out-quint),
-      background-color 0.25s,
-      color 0.25s,
-      box-shadow 0.35s;
-  }
-  .btn:hover {
-    transform: translateY(-2px);
-  }
-  .btn:active {
-    transform: translateY(0);
-  }
-
-  .btn-amber {
-    background: var(--color-amber);
-    color: var(--color-navy-2);
-  }
-  .btn-amber:hover {
-    background: color-mix(in oklch, var(--color-amber) 90%, white);
-    box-shadow: var(--shadow-soft);
-  }
-
-  .btn-navy {
-    background: var(--color-navy);
-    color: var(--color-on-dark);
-  }
-  .btn-navy:hover {
-    background: var(--color-navy-2);
-    box-shadow: var(--shadow-soft);
-  }
-
-  .btn-outline {
-    background: transparent;
-    color: var(--color-ink);
-    box-shadow: inset 0 0 0 1.5px var(--color-line-2);
-  }
-  .btn-outline:hover {
-    box-shadow: inset 0 0 0 1.5px var(--color-navy);
-    background: color-mix(in oklch, var(--color-navy) 5%, transparent);
-  }
-
-  .btn-ghost-light {
-    background: color-mix(in oklch, white 12%, transparent);
-    color: var(--color-on-dark);
-    box-shadow: inset 0 0 0 1.5px color-mix(in oklch, white 34%, transparent);
-  }
-  .btn-ghost-light:hover {
-    background: color-mix(in oklch, white 20%, transparent);
-  }
-
-  .btn-lg {
-    padding: 1.1rem 1.9rem;
-    font-size: 1.02rem;
-  }
-  .btn-sm {
-    padding: 0.65rem 1.1rem;
-    font-size: 0.9rem;
-  }
+  /* Buttons live in the component system now: the recipe is
+     src/components/ui/button-variants.ts, and scopes assign their
+     temperament through the --btn-* knobs (see .portal-scope and
+     .review-flyer-screen). */
 
   /* Latin-order islands inside RTL text (phone numbers, the practice's
      Latin-script name): keep internal character order + ellipsis side. */
@@ -409,49 +405,6 @@
   /* On navy surfaces the navy check disappears; the amber twin carries it. */
   .list-check--amber li::before {
     background: var(--color-amber);
-  }
-
-  /* ---- Forms ---- */
-  .field-label {
-    display: block;
-    font-weight: 700;
-    font-size: 0.92rem;
-    color: var(--color-ink);
-    margin-bottom: 0.4rem;
-  }
-  .field-input {
-    width: 100%;
-    background: white;
-    border: 1.5px solid var(--color-line-2);
-    border-radius: var(--radius-sm);
-    padding: 0.8rem 0.95rem;
-    font-size: 1rem;
-    color: var(--color-ink);
-    transition:
-      border-color 0.2s,
-      box-shadow 0.2s;
-  }
-  .field-input::placeholder {
-    color: var(--color-muted);
-  }
-  .field-input:focus {
-    outline: none;
-    border-color: var(--color-teal-ink);
-    box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-teal) 25%, transparent);
-  }
-  .field-input[aria-invalid="true"] {
-    border-color: oklch(0.55 0.19 25);
-  }
-  .field-error {
-    margin-top: 0.35rem;
-    font-size: 0.88rem;
-    font-weight: 600;
-    color: oklch(0.5 0.19 25);
-  }
-  .field-hint {
-    margin-top: 0.35rem;
-    font-size: 0.88rem;
-    color: var(--color-muted);
   }
 
   /* ---- Reveal on scroll (progressive enhancement; see Reveal.tsx) ---- */
@@ -560,10 +513,11 @@
   }
 
   .language-dialog[open] {
-    animation: language-dialog-in 260ms var(--ease-out-quint);
+    --overlay-scale: 0.985;
+    animation: overlay-rise 260ms var(--ease-out-quint);
   }
   .language-dialog[open]::backdrop {
-    animation: language-backdrop-in 180ms ease-out;
+    animation: overlay-dim 180ms ease-out;
   }
 
   .language-dialog__header {
@@ -597,7 +551,7 @@
     height: 2.75rem;
     place-items: center;
     border-radius: 999px;
-    color: var(--color-muted);
+    color: var(--color-muted-ink);
     transition:
       background-color 160ms ease,
       color 160ms ease;
@@ -695,16 +649,29 @@
     text-underline-offset: 0.2em;
   }
 
-  @keyframes language-dialog-in {
+  /* ---- Shared overlay entrance ----
+     One keyframe pair carries every overlay's arrival: the surface rises
+     while the backdrop dims. Each call site assigns its own temperament in
+     the animation shorthand (its exact duration, an easing from the motion
+     vocabulary) and shapes the travel through --overlay-rise /
+     --overlay-scale, which resolve per element. */
+  @keyframes overlay-rise {
     from {
       opacity: 0;
-      transform: scale(0.985);
+      transform: translateY(var(--overlay-rise, 0)) scale(var(--overlay-scale, 1));
+    }
+    to {
+      opacity: 1;
+      transform: none;
     }
   }
 
-  @keyframes language-backdrop-in {
+  @keyframes overlay-dim {
     from {
       opacity: 0;
+    }
+    to {
+      opacity: 1;
     }
   }
 
@@ -734,16 +701,6 @@
     }
     .language-dialog__option {
       min-height: 3.25rem;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .language-dialog[open],
-    .language-dialog[open]::backdrop {
-      animation: none;
-    }
-    .language-dialog__option {
-      transition: none;
     }
   }
 
@@ -972,34 +929,12 @@
     backdrop-filter: blur(6px);
   }
   .pc-dialog[open] .pc-shell {
-    animation: pc-rise 0.42s var(--ease-out-quint) both;
+    --overlay-rise: 14px;
+    --overlay-scale: 0.985;
+    animation: overlay-rise 0.42s var(--ease-out-quint) both;
   }
   .pc-dialog[open]::backdrop {
-    animation: pc-dim 0.3s ease-out both;
-  }
-  @keyframes pc-rise {
-    from {
-      opacity: 0;
-      transform: translateY(14px) scale(0.985);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
-  @keyframes pc-dim {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .pc-dialog[open] .pc-shell,
-    .pc-dialog[open]::backdrop {
-      animation: none;
-    }
+    animation: overlay-dim 0.3s ease-out both;
   }
 
   /* Pointer-only dismiss target behind the shell (a real button; keyboard
@@ -1174,11 +1109,6 @@
       transform: translateX(-50%);
     }
   }
-  @media (prefers-reduced-motion: reduce) {
-    .pc-hint {
-      animation: none;
-    }
-  }
   /* Floating zoom cluster, bottom center. */
   .pc-toolbar {
     position: absolute;
@@ -1210,58 +1140,276 @@
     color: var(--color-ink);
   }
 
-  /* ---- Staff portal chrome ----
-     The portal shares the site's tokens but is a tool, not a brochure.
-     Exactly one Trocchi page title per screen (the base h1 rule already
-     carries the family at its real weight, 400); every heading below it
-     returns to Lato so section labels read as UI. :where() keeps the
-     rule at class specificity inside @layer components, so explicit
-     font-family declarations (the print-flyer composition, utility
-     classes) still win. */
+  /* ---- Staff portal workbench ----
+     The portal shares the practice palette, then tightens it into an
+     operational system: Lato carries every working hierarchy, white planes
+     hold editable work, and amber is reserved for attention rather than
+     decoration. :where() keeps the rule easy to override in print layouts. */
+  .portal-scope {
+    --portal-canvas: oklch(0.955 0.01 230);
+    --portal-surface: oklch(0.995 0.002 220);
+    --portal-attention-ink: oklch(0.5 0.11 70);
+
+    /* The Line type scale: fixed rem steps, a 1.2 ratio on a 15px body
+       floor. Hierarchy comes from size and space; three weights (400/600/800)
+       carry the rest. Never fluid — a clamp()ed heading in product UI is what
+       let a count sentence outrank the page title. */
+    --pt-2xs: 0.6875rem;
+    --pt-xs: 0.8125rem;
+    --pt-sm: 0.9375rem;
+    --pt-base: 1.0625rem;
+    --pt-lg: 1.25rem;
+    --pt-xl: 1.75rem;
+
+    /* Space, not color, performs grouping. 4px base. */
+    --ps-1: 0.25rem;
+    --ps-2: 0.5rem;
+    --ps-3: 0.75rem;
+    --ps-4: 1rem;
+    --ps-6: 1.5rem;
+    --ps-8: 2rem;
+    --ps-12: 3rem;
+
+    /* The Line motion registry. Six tokens carry every authored movement in
+       the portal, so surfaces cannot each invent a temperament. The spring
+       and exit pairs are the portal's clinical assignment of the global
+       --motion-* vocabulary (the brand @theme at the top of this file);
+       portal CSS and DESIGN.md keep speaking the --pm-* names.
+       --pm-spring / --pm-spring-duration — arrival. A ζ≈0.7 spring sampled
+       into linear(): the visible move lands in the first ~110ms, overshoots
+       4.6% once, and settles without a second bounce. Alive, never playful.
+       --pm-exit / --pm-exit-duration — departure. A strong ease-out, faster
+       than arrival, along a shorter version of the path it entered on.
+       --pm-scrim-duration — the backdrop's fade-in, a beat slower than the
+       exit so the dim reads as room tone under the rising paper, not a flash.
+       --pm-reduced-duration — what survives under prefers-reduced-motion: a
+       cross-fade with no travel at all. Read by the reduced-motion opt-out in
+       @layer base, which is the only place that can outrank the blanket
+       reset; the value belongs here with the rest of the registry.
+       --pm-fade-duration — an opacity-only fade that rides alongside a spring
+       (the working band's unfold, the scrim's cousin). Longer than the exit,
+       shorter than the scrim, because the fold is already carrying the motion.
+       Micro state changes (hover tints, pressed ink) keep their own 150ms
+       ease-out inline; these tokens govern surfaces that move. */
+    --pm-spring: var(--motion-spring);
+    --pm-spring-duration: var(--motion-spring-duration);
+    --pm-exit: var(--motion-exit);
+    --pm-exit-duration: var(--motion-exit-duration);
+    --pm-reduced-duration: 120ms;
+    --pm-fade-duration: 200ms;
+    --pm-scrim-duration: 220ms;
+
+    background: var(--portal-canvas);
+    font-size: 1rem;
+    line-height: 1.55;
+    accent-color: var(--color-navy);
+    caret-color: var(--color-teal-ink);
+    scrollbar-color: var(--color-line-2) transparent;
+  }
+
+  .portal-scope main {
+    background: var(--portal-canvas);
+  }
+
   .portal-scope :where(h2, h3, h4, h5) {
     font-family: var(--font-body);
     letter-spacing: 0;
   }
 
+  .portal-scope :where(input, select, textarea) {
+    scroll-margin-block: 6rem;
+  }
+
+  .portal-scope .skip-link {
+    transition: none;
+  }
+
+  /* The portal's Button temperament, assigned through the recipe's
+     --btn-* knobs (see button-variants.ts): tighter geometry, no hover
+     lift or shadow, a 0.98 press, and the exit curve's calmer timing. */
+  .portal-scope {
+    --btn-radius: 0.5rem;
+    --btn-px: 1.2rem;
+    --btn-py: 0.8rem;
+    --btn-lift: 0px;
+    --btn-hover-shadow: 0 0 #0000;
+    --btn-active-scale: 0.98;
+    --btn-duration: 160ms;
+    --btn-ease: var(--motion-exit);
+  }
+
+  .portal-header {
+    border-bottom: 1px solid color-mix(in oklch, var(--color-line-dark) 68%, transparent);
+    box-shadow: 0 8px 24px -22px oklch(0.2 0.05 248 / 0.8);
+  }
+
+  .portal-panel {
+    border: 1px solid var(--color-line-2);
+    border-radius: 0.75rem;
+    background: var(--portal-surface);
+  }
+
+  .portal-panel--primary {
+    border-color: color-mix(in oklch, var(--color-navy) 24%, var(--color-line));
+  }
+
+  .portal-utility-list {
+    border-block: 1px solid var(--color-line-2);
+  }
+
+  .portal-utility-list > li + li {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .portal-toolbar {
+    border: 1px solid var(--color-line-2);
+    border-radius: 0.75rem;
+    background: var(--portal-surface);
+    padding: 1rem;
+  }
+
+  .portal-queue-list {
+    overflow: clip;
+    border: 1px solid var(--color-line-2);
+    border-radius: 0.75rem;
+    background: var(--portal-surface);
+  }
+
+  .portal-queue-list > li + li {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .portal-queue-row {
+    transition: background-color 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-queue-row:focus-visible {
+    outline-offset: -3px;
+  }
+
+  .portal-empty {
+    border-block: 1px solid var(--color-line-2);
+    background: var(--color-mint);
+  }
+
+  .portal-help {
+    overflow: clip;
+    max-width: 60rem;
+    border: 1px solid var(--color-line-2);
+    border-radius: 0.75rem;
+    background: var(--portal-surface);
+  }
+
+  .portal-help-section {
+    padding: clamp(1.5rem, 3vw, 2rem);
+  }
+
+  .portal-help-section + .portal-help-section {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .portal-help-tour {
+    background: var(--color-mint);
+  }
+
+  .portal-flyer-list {
+    overflow: clip;
+    border: 1px solid var(--color-line-2);
+    border-radius: 0.75rem;
+    background: var(--portal-surface);
+  }
+
+  .portal-flyer-row + .portal-flyer-row {
+    border-top: 1px solid var(--color-line);
+  }
+
   /* First-login tour: the dialog arrives with a short, calm rise (180ms,
      strong ease-out) — the rare-tier motion budget, state-conveying only. */
   .tour-dialog[open] {
-    animation: tour-in 180ms var(--ease-out-quint) both;
+    --overlay-rise: 8px;
+    animation: overlay-rise 180ms var(--ease-out-quint) both;
   }
   .tour-dialog[open]::backdrop {
-    animation: tour-dim 150ms ease-out both;
+    animation: overlay-dim 150ms ease-out both;
   }
-  @keyframes tour-in {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: none;
-    }
-  }
-  @keyframes tour-dim {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
+
+  /* One reduced-motion block for the overlay entrances and their reveals:
+     every entrance stops entirely and the surface appears in place. Sits
+     after every call site above, so source order keeps it winning. */
   @media (prefers-reduced-motion: reduce) {
+    .language-dialog[open],
+    .language-dialog[open]::backdrop,
+    .pc-dialog[open] .pc-shell,
+    .pc-dialog[open]::backdrop,
+    .pc-hint,
     .tour-dialog[open],
     .tour-dialog[open]::backdrop {
       animation: none;
     }
+
+    .language-dialog__option {
+      transition: none;
+    }
   }
 
-  /* Portal page title: the practice serif at its true weight — never
-     synthetic bold (Trocchi ships 400 only). */
+  /* Page titles read as controls and destinations, not brochure headlines. */
   .portal-title {
-    font-size: 1.85rem;
-    line-height: 1.15;
-    font-weight: 400;
+    font-family: var(--font-body);
+    font-size: clamp(1.8rem, 1.58rem + 0.8vw, 2.2rem);
+    line-height: 1.08;
+    font-weight: 900;
+    letter-spacing: -0.028em;
+  }
+
+  .portal-auth-title {
+    font-family: var(--font-body);
+    font-weight: 900;
+    letter-spacing: -0.025em;
+  }
+
+  /* ---- Auth submit label swap ----
+     The sign-in button's label morphs ("Sign in" → spinner + "Signing
+     in…") the instant the action commits. The incoming label enters
+     through a 180ms opacity + 2px blur veil: the blur bridges the two
+     states so the swap reads as one surface changing rather than a
+     teleport (the outgoing label unmounts under the same veil, so exit
+     needs no choreography). @starting-style carries the entrance with no
+     JS; each swap remounts the label, so the entrance runs both ways.
+     Under prefers-reduced-motion the blanket base reset zeroes the
+     transition and the swap is instant — the label text alone carries
+     the state, per the portal's reduced-motion charter. */
+  .portal-submit-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    opacity: 1;
+    filter: blur(0);
+    transition:
+      opacity 180ms cubic-bezier(0.23, 1, 0.32, 1),
+      filter 180ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  @starting-style {
+    .portal-submit-label {
+      opacity: 0.55;
+      filter: blur(2px);
+    }
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .portal-queue-row:hover {
+      background: var(--color-mint);
+    }
+  }
+
+  @media (max-width: 639px) {
+    .portal-toolbar {
+      padding: 0.875rem;
+    }
+
+    .portal-help-section {
+      padding: 1.5rem;
+    }
   }
 
   /* ---- Staff release briefing ----
@@ -1310,7 +1458,7 @@
     flex: none;
     place-items: center;
     border-radius: var(--radius-sm);
-    color: var(--color-muted);
+    color: var(--color-muted-ink);
   }
 
   .release-signal {
@@ -1615,13 +1763,19 @@
      The composer is a disclosure already present inside the Notes surface:
      pointer activation unfolds it from the top edge; keyboard activation is
      immediate. The bounded grid track is the only layout transition needed
-     to preserve page continuity around content with an unknown final height. */
+     to preserve page continuity around content with an unknown final height.
+     The trigger's transitions are !important because the trigger is a Button
+     and the recipe's transition utilities (utilities layer) would otherwise
+     outrank this choreography — transition-all would put `visibility` on the
+     160ms clock, and the close path focuses the trigger on the next frame,
+     while it would still be hidden. Focus restoration depends on the 0s
+     visibility flip authored here. */
   .request-note-add-trigger {
     touch-action: manipulation;
     transition:
       opacity 100ms cubic-bezier(0.23, 1, 0.32, 1),
       transform 120ms cubic-bezier(0.23, 1, 0.32, 1),
-      visibility 0s linear 0s;
+      visibility 0s linear 0s !important;
   }
 
   .request-note-add-trigger:active {
@@ -1636,7 +1790,7 @@
     transition:
       opacity 100ms cubic-bezier(0.23, 1, 0.32, 1),
       transform 100ms cubic-bezier(0.23, 1, 0.32, 1),
-      visibility 0s linear 100ms;
+      visibility 0s linear 100ms !important;
   }
 
   .request-note-disclosure {
@@ -1680,16 +1834,16 @@
   .request-note-add-trigger[data-animate="false"],
   .request-note-disclosure[data-animate="false"],
   .request-note-disclosure[data-animate="false"] .request-note-composer {
-    transition: none;
+    transition: none !important;
   }
 
   @media (prefers-reduced-motion: reduce) {
     .request-note-add-trigger,
     .request-note-add-trigger[data-open="true"] {
       transform: none;
-      transition-property: opacity, visibility;
+      transition-property: opacity, visibility !important;
       transition-duration: 120ms, 0s !important;
-      transition-delay: 0s;
+      transition-delay: 0s !important;
     }
 
     .request-note-disclosure,
@@ -1919,8 +2073,13 @@
     page: request-detail;
   }
 
-  body.portal-scope:has(.request-detail-print) header,
-  body.portal-scope:has(.request-detail-print) footer,
+  body.portal-scope:has(.request-detail-print) .portal-workspace,
+  body.portal-scope:has(.request-detail-print) .portal-stage,
+  body.portal-scope:has(.request-detail-print) .portal-content {
+    min-height: auto !important;
+    background: white !important;
+  }
+
   body.portal-scope:has(.request-detail-print) .portal-release-utility {
     display: none !important;
   }
@@ -1938,12 +2097,8 @@
     break-inside: auto !important;
   }
 
-  .request-detail-print .portal-title {
+  .request-detail-print .portal-page-title {
     font-size: 18pt;
-  }
-
-  .request-detail-secondary {
-    display: block;
   }
 
   .request-print-card {
@@ -1955,11 +2110,27 @@
     background: white !important;
   }
 
+  .request-print-card.portal-request-details {
+    overflow: visible;
+    padding: 0;
+  }
+
+  .request-print-card.portal-request-details .portal-request-contact {
+    background: white !important;
+  }
+
+  .request-print-card.portal-request-details svg {
+    color: black !important;
+  }
+
   .request-print-card h2,
   .request-print-card h3,
   .request-print-card dt,
   .request-print-card dd,
-  .request-print-card a {
+  .request-print-card a,
+  .request-print-card .portal-request-contact-unavailable,
+  .request-print-card .portal-request-ledger-event,
+  .request-print-card .portal-request-ledger-meta {
     color: black !important;
   }
 
@@ -1982,25 +2153,16 @@
   display: none;
 }
 
-.review-flyer-screen .btn {
-  transition:
-    transform 160ms var(--ease-out-quint),
-    background-color 160ms ease,
-    color 160ms ease,
-    box-shadow 160ms ease;
-}
-
-.review-flyer-screen .btn:active {
-  transform: scale(0.98);
+/* The flyer screen's Button temperament through the recipe knobs:
+   calmer 160ms timing, a 0.98 press, and no hover lift on touch. */
+.review-flyer-screen {
+  --btn-duration: 160ms;
+  --btn-active-scale: 0.98;
 }
 
 @media (hover: none) {
-  .review-flyer-screen .btn:hover {
-    transform: none;
-  }
-
-  .review-flyer-screen .btn:active {
-    transform: scale(0.98);
+  .review-flyer-screen {
+    --btn-lift: 0px;
   }
 }
 
@@ -2204,4 +2366,134 @@
     font-size: 9.5pt;
     letter-spacing: 0.02em;
   }
+}
+
+/* ------------------------------------------------------------------ *
+   shadcn/ui semantic token bridge
+   shadcn components resolve every color through the semantic tokens
+   below; each one is mapped onto the committed brand palette in the
+   @theme block at the top of this file. This bridge is the ONLY place
+   shadcn's tokens exist, and the ONLY non-brand hue is --destructive
+   (destructive actions have no brand hue by design).
+
+   NEVER let the shadcn CLI (`init`/`apply`/`add` with a preset) or an
+   agent rewrite this block back to neutral OKLCH literals, and never
+   let it touch the brand `@theme` block above. Brand anchors: navy,
+   teal, amber, mint — see DESIGN.md "shadcn/ui adoption".
+ * ------------------------------------------------------------------ */
+@theme inline {
+  /* Fonts stay brand-owned: Lato carries interface text for shadcn
+     components exactly as it does for hand-authored ones. */
+  --font-sans: var(--font-lato), ui-sans-serif, system-ui, sans-serif;
+  --font-heading: var(--font-lato), ui-sans-serif, system-ui, sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  /* Radius: the shadcn-generated --radius-sm/md/lg re-declarations were
+     removed ON PURPOSE. The brand `@theme` block above owns the radius
+     namespace (--radius 0.625rem, sm 0.375rem, lg 0.875rem); letting
+     this block re-declare them silently shrank every rounded-lg on the
+     site. shadcn components inherit the brand scale. */
+}
+
+/* Semantic → brand values (light). Every pairing below resolves to a
+   contrast-verified brand pair from the committed palette. */
+:root {
+  --background: var(--color-paper);
+  --foreground: var(--color-body);
+  --card: var(--color-paper);
+  --card-foreground: var(--color-body);
+  --popover: var(--color-paper);
+  --popover-foreground: var(--color-body);
+  --primary: var(--color-navy);
+  --primary-foreground: var(--color-on-dark);
+  --secondary: var(--color-mint);
+  --secondary-foreground: var(--color-ink);
+  --muted: var(--color-mint-2);
+  --muted-foreground: var(--color-muted-ink);
+  --accent: var(--color-mint);
+  --accent-foreground: var(--color-ink);
+  --destructive: oklch(0.577 0.245 27.325); /* the one non-brand hue: destructive actions only */
+  --border: var(--color-line);
+  --input: var(--color-line-3);
+  --ring: var(--color-teal-ink); /* matches the site's :focus-visible outline */
+  --chart-1: var(--color-navy);
+  --chart-2: var(--color-teal);
+  --chart-3: var(--color-amber-deep);
+  --chart-4: var(--color-teal-ink);
+  --chart-5: var(--color-ink);
+  --sidebar: var(--color-navy-2);
+  --sidebar-foreground: var(--color-on-dark);
+  --sidebar-primary: var(--color-navy);
+  --sidebar-primary-foreground: var(--color-on-dark);
+  --sidebar-accent: var(--color-navy);
+  --sidebar-accent-foreground: var(--color-on-dark);
+  --sidebar-border: var(--color-line-dark);
+  --sidebar-ring: var(--color-teal);
+}
+
+/* Dark mode is not a shipped surface. The mapping exists so an
+   accidental .dark class or dark: utility still resolves to brand
+   darks (navy family) instead of shadcn's neutral grays. Any real
+   dark theme is a practice decision — see DESIGN.md anchors. */
+.dark {
+  --background: var(--color-navy-2);
+  --foreground: var(--color-on-dark);
+  --card: var(--color-navy);
+  --card-foreground: var(--color-on-dark);
+  --popover: var(--color-navy);
+  --popover-foreground: var(--color-on-dark);
+  --primary: var(--color-on-dark);
+  --primary-foreground: var(--color-navy-2);
+  --secondary: var(--color-navy);
+  --secondary-foreground: var(--color-on-dark);
+  --muted: var(--color-navy);
+  --muted-foreground: var(--color-on-dark-muted);
+  --accent: var(--color-navy);
+  --accent-foreground: var(--color-on-dark);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: var(--color-line-dark);
+  --input: var(--color-line-dark);
+  --ring: var(--color-teal);
+  --chart-1: var(--color-navy);
+  --chart-2: var(--color-teal);
+  --chart-3: var(--color-amber-deep);
+  --chart-4: var(--color-teal-ink);
+  --chart-5: var(--color-ink);
+  --sidebar: var(--color-navy-2);
+  --sidebar-foreground: var(--color-on-dark);
+  --sidebar-primary: var(--color-navy);
+  --sidebar-primary-foreground: var(--color-on-dark);
+  --sidebar-accent: var(--color-navy);
+  --sidebar-accent-foreground: var(--color-on-dark);
+  --sidebar-border: var(--color-line-dark);
+  --sidebar-ring: var(--color-teal);
 }

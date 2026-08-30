@@ -3,36 +3,64 @@
 import { useRef, useState } from "react";
 
 import { X } from "@/components/icons";
+import { Button } from "@/components/ui/button";
 
 import { dismissPortalTourAction, finishPortalTourAction } from "./tour-actions";
 
 const STEPS = [
   {
     title: "Home",
-    body: "Start here to see whether new appointment requests are waiting. Home also gives you quick links to the other jobs you may need around the portal.",
+    body: "Start here to see what needs contact now. When New appointment requests are waiting, a manager can print the complete paper handoff here without changing their status.",
   },
   {
-    title: "Appointment requests",
+    title: "Appointments",
     body: "Open a request, call the patient, and record what happened on the call. The queue is the practice’s complete list even if a notification email is missed.",
   },
   {
     title: "Settings",
-    body: "Manage notification email recipients here. Administrators can also invite staff and manage access. Help is always available in the top navigation.",
+    body: "Manage notification email recipients here. Administrators can also invite staff and manage access. Help stays in the desktop task rail or the mobile navigation.",
   },
 ] as const;
 
 export function PortalTour() {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
   const [step, setStep] = useState(0);
   const current = STEPS[step];
+  const finalStep = step === STEPS.length - 1;
 
   function openTour() {
     setStep(0);
     dialogRef.current?.showModal();
+    closeRef.current?.focus();
   }
 
   function closeTour() {
     dialogRef.current?.close();
+  }
+
+  function keepFocusWithinDialog(event: React.KeyboardEvent<HTMLDialogElement>) {
+    if (event.key !== "Tab") return;
+    const dialog = dialogRef.current;
+    if (dialog === null) return;
+
+    const focusable = Array.from(
+      dialog.querySelectorAll<HTMLElement>(
+        'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+      ),
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
   }
 
   return (
@@ -49,9 +77,9 @@ export function PortalTour() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
-          <button type="button" onClick={openTour} className="btn btn-navy btn-sm min-h-11">
+          <Button ref={launcherRef} id="portal-tour-launcher" type="button" onClick={openTour}>
             Take a quick tour
-          </button>
+          </Button>
           <form action={dismissPortalTourAction}>
             <button
               type="submit"
@@ -68,8 +96,10 @@ export function PortalTour() {
         aria-labelledby="portal-tour-heading"
         aria-describedby="portal-tour-description"
         data-testid="portal-tour-dialog"
+        onKeyDown={keepFocusWithinDialog}
         onClose={() => {
           setStep(0);
+          launcherRef.current?.focus();
         }}
         className="tour-dialog m-auto max-h-[90dvh] w-[90vw] max-w-xl overflow-y-auto rounded-[var(--radius-lg)] border-0 bg-white p-0 shadow-[var(--shadow-card)] backdrop:bg-[rgba(20,32,45,0.48)]"
       >
@@ -78,6 +108,7 @@ export function PortalTour() {
             Portal tour
           </p>
           <button
+            ref={closeRef}
             type="button"
             aria-label="Close the portal tour"
             onClick={closeTour}
@@ -118,28 +149,21 @@ export function PortalTour() {
               Back
             </button>
 
-            {step < STEPS.length - 1 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setStep((value) => Math.min(STEPS.length - 1, value + 1));
-                }}
-                className="btn btn-navy btn-sm min-h-11"
-              >
-                Next
-              </button>
-            ) : (
-              <form
-                action={finishPortalTourAction.bind(null, {
-                  stepReached: STEPS.length,
-                  totalSteps: STEPS.length,
-                })}
-              >
-                <button type="submit" className="btn btn-amber btn-sm min-h-11">
-                  Finish tour
-                </button>
-              </form>
-            )}
+            <form
+              action={finishPortalTourAction.bind(null, {
+                stepReached: STEPS.length,
+                totalSteps: STEPS.length,
+              })}
+              onSubmit={(event) => {
+                if (finalStep) return;
+                event.preventDefault();
+                setStep((value) => Math.min(STEPS.length - 1, value + 1));
+              }}
+            >
+              <Button type="submit" variant={finalStep ? "amber" : "default"}>
+                {finalStep ? "Finish tour" : "Next"}
+              </Button>
+            </form>
           </div>
         </div>
       </dialog>

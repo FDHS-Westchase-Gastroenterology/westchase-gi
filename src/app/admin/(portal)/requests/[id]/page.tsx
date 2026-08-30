@@ -2,12 +2,19 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { z } from "zod";
 
+import { PortalFeedbackProvider } from "@/app/admin/(portal)/portal-feedback";
+import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import {
+  CLOSURE_REASON_LABELS,
+  CONTACT_OUTCOME_LABELS,
+  formatPhoneForDisplay,
   formatReceived,
   followUpWhenLabel,
-  LOCALE_LABELS,
+  localeLabel,
   LOCATION_LABELS,
-  OUTCOME_HISTORY_LABELS,
+  presentationStatus,
+  STATE_LABELS,
+  telHref,
   TIME_LABELS,
 } from "@/app/admin/(portal)/requests/format";
 import {
@@ -17,59 +24,29 @@ import {
   OPEN_STATUSES,
 } from "@/app/admin/(portal)/requests/queue";
 import { StatusBadge } from "@/app/admin/(portal)/requests/status-badge";
-import { PrintButton } from "@/components/PrintButton";
-import { isLocale } from "@/lib/i18n";
-import { asJsonBoolean, asJsonObject, asJsonString, jsonSchema } from "@/lib/json";
-import type { Json, JsonObject } from "@/lib/json";
+import { Clock, Mail, MapPin, MessageSquare, Phone } from "@/components/icons";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { requireRole } from "@/lib/portal/auth";
-import { isCallOutcomeId } from "@/lib/portal/call-outcomes";
 import { isMailbox, REQUEST_STATUSES } from "@/lib/portal/contracts";
-import type { RequestClosureOutcome, RequestStatus } from "@/lib/portal/contracts";
+import type { RequestStatus } from "@/lib/portal/contracts";
 import { parseRequestSearch, requestSearchFilter } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
 import { displayNameOrEmail, fetchStaffNameMap } from "@/lib/portal/staff-identity";
+import type { HistoryEntry } from "@/lib/portal/workflow/contracts";
+import { fetchRequestWorkSurface } from "@/lib/portal/workflow/reads";
 
-import { CallOutcomeComposer } from "./call-outcome-composer";
+import {
+  RequestPrintButton,
+  RequestPrintFeedback,
+  StaffRequestCreatedAcknowledgement,
+} from "./request-current-feedback";
 import { RequestNotes } from "./request-notes";
 import type { RequestNoteView } from "./request-notes";
-
-interface RequestRow {
-  id: string;
-  name: string;
-  phone: string;
-  email: string | null;
-  location: "any" | "tampa" | "lutz";
-  preferred_time: "any" | "morning" | "afternoon";
-  message: string | null;
-  locale: string;
-  source_path: string;
-  status: RequestStatus;
-  closure_disposition: RequestClosureOutcome | null;
-  closed_at: string | null;
-  record_handoff_at: string | null;
-  created_at: string;
-}
-
-interface EventRow {
-  readonly id: string;
-  readonly type: string;
-  readonly recipient: string | null;
-  readonly status: string;
-  readonly meta: Json | null;
-  readonly created_at: string;
-}
-
-interface AuditRow {
-  readonly id: string;
-  readonly actor_email: string | null;
-  readonly action: string;
-  readonly detail: Json | null;
-  readonly at: string;
-}
+import { WorkflowPanel } from "./workflow-panel";
 
 const requestStatusSchema = z.enum(REQUEST_STATUSES);
 
-const requestRowSchema = z.object({
+const requestDetailSchema = z.object({
   id: z.string(),
   name: z.string(),
   phone: z.string(),
@@ -78,150 +55,130 @@ const requestRowSchema = z.object({
   preferred_time: z.enum(["any", "morning", "afternoon"]),
   message: z.string().nullable(),
   locale: z.string(),
-  source_path: z.string(),
-  status: z.enum(REQUEST_STATUSES),
-  closure_disposition: z.enum(["unconverted", "converted"]).nullable(),
-  closed_at: z.string().nullable(),
-  record_handoff_at: z.string().nullable(),
   created_at: z.string(),
-}) satisfies z.ZodType<RequestRow>;
+});
 
-const eventRowSchema = z.object({
-  id: z.string(),
-  type: z.string(),
-  recipient: z.string().nullable(),
-  status: z.string(),
-  meta: jsonSchema.nullable(),
-  created_at: z.string(),
-}) satisfies z.ZodType<EventRow>;
-
-const requestAuditRowSchema = z.object({
-  id: z.string(),
-  actor_email: z.string().nullable(),
-  action: z.string(),
-  detail: jsonSchema.nullable(),
-  at: z.string(),
-}) satisfies z.ZodType<AuditRow>;
-
-// Call outcomes from the request event stream, plus status moves and closes
-// From the audit record. Appointment request notes remain a separate,
-// First-class staff abstraction; corresponding call-outcome and
-// Appointment-request-note audit rows are excluded here so each human action
-// Renders exactly once.
-type ActivityEntry =
-  | {
-      kind: "outcome";
-      id: string;
-      outcome: string;
-      followUpAt: string | null;
-      undone: boolean;
-      author: string;
-      at: string;
-    }
-  | {
-      kind: "undo";
-      id: string;
-      outcome: string;
-      restoredStatus: string;
-      author: string;
-      at: string;
-    }
-  | {
-      kind: "status";
-      id: string;
-      to: string;
-      legacyClose: boolean;
-      author: string;
-      at: string;
-    }
-  | {
-      kind: "close";
-      id: string;
-      disposition: string;
-      author: string;
-      at: string;
-    };
-
-function metaText(meta: Json | null, key: string): string {
-  const object = meta === null ? null : asJsonObject(meta);
-  return object ? (asJsonString(object[key]) ?? "") : "";
-}
-
-function auditDetail(detail: Json | null): JsonObject {
-  return detail === null ? {} : (asJsonObject(detail) ?? {});
-}
-
-function isStringArray(value: string | readonly string[]): value is readonly string[] {
-  return Array.isArray(value);
-}
-
-function firstParam(value: string | readonly string[] | undefined): string | null {
-  if (value === undefined) return null;
-  return isStringArray(value) ? (value[0] ?? null) : value;
-}
-
-function activityEntries(
-  events: readonly EventRow[],
-  audits: readonly AuditRow[],
-): ActivityEntry[] {
-  const entries: ActivityEntry[] = [];
-  for (const event of events) {
-    if (event.type === "call_outcome") {
-      entries.push({
-        kind: "outcome",
-        id: `event-${event.id}`,
-        outcome: metaText(event.meta, "outcome"),
-        followUpAt: metaText(event.meta, "follow_up_at") || null,
-        undone: event.status === "undone",
-        author: metaText(event.meta, "author_email"),
-        at: event.created_at,
-      });
-    } else if (event.type === "call_outcome_undo") {
-      entries.push({
-        kind: "undo",
-        id: `event-${event.id}`,
-        outcome: metaText(event.meta, "outcome"),
-        restoredStatus: metaText(event.meta, "restored_status"),
-        author: metaText(event.meta, "author_email"),
-        at: event.created_at,
-      });
-    }
+function firstParam(value: Readonly<string | string[] | undefined>): string | null {
+  const parsed = z.union([z.string(), z.array(z.string())]).safeParse(value);
+  if (!parsed.success) return null;
+  if (Array.isArray(parsed.data)) {
+    const first = parsed.data.at(0);
+    return first !== undefined && first !== "" ? first : null;
   }
-  for (const audit of audits) {
-    const detail = auditDetail(audit.detail);
-    if (audit.action === "request.status_change") {
-      const to = asJsonString(detail.to) ?? "";
-      entries.push({
-        kind: "status",
-        id: `audit-${audit.id}`,
-        to,
-        legacyClose: to === "closed" && asJsonBoolean(detail.legacy_unclassified_close) === true,
-        author: audit.actor_email ?? "",
-        at: audit.at,
-      });
-    } else if (audit.action === "request.close") {
-      entries.push({
-        kind: "close",
-        id: `audit-${audit.id}`,
-        disposition: asJsonString(detail.disposition) ?? "",
-        author: audit.actor_email ?? "",
-        at: audit.at,
-      });
-    }
-  }
-  return entries.sort((a, b) => b.at.localeCompare(a.at));
+  return parsed.data !== "" ? parsed.data : null;
 }
 
-const STATUS_LINE_LABELS = {
-  new: "New",
-  contacted: "Contacted",
-  scheduled: "Scheduled",
-  closed: "Closed",
-} as const satisfies Record<RequestStatus, string>;
+// Request history keeps each evidence kind distinct (spec §6): contact
+// Attempts, lifecycle transitions, Undo evidence, the legacy-review
+// Classification, and relevant delivery outcomes. Notes keep their own
+// Staff surface above the panel; the technical audit stays on the
+// Activity log page. A RecordContactAttempt save renders once — as its
+// Contact attempt — so its self-transition row is presentation-skipped.
+interface HistoryLine {
+  id: string;
+  text: string;
+  actor: string | null;
+  at: string;
+  undone: boolean;
+  quiet: boolean;
+  attention: boolean;
+}
 
-function statusLineLabel(status: string): string {
-  const parsed = requestStatusSchema.safeParse(status);
-  return parsed.success ? STATUS_LINE_LABELS[parsed.data] : status;
+function historyLine(entry: Readonly<HistoryEntry>): HistoryLine | null {
+  switch (entry.kind) {
+    case "created":
+      return {
+        id: "created",
+        text:
+          entry.origin === "staff"
+            ? "Appointment request added by staff"
+            : "Appointment request received from the website",
+        actor: null,
+        at: entry.at,
+        quiet: true,
+        undone: false,
+        attention: false,
+      };
+    case "contact_attempt":
+      return {
+        id: entry.id,
+        text: `${CONTACT_OUTCOME_LABELS[entry.outcome]}${
+          entry.callAgainAt !== null && entry.callAgainAt !== ""
+            ? ` — call again ${followUpWhenLabel(entry.callAgainAt)}`
+            : " — no call-again day was set"
+        }`,
+        actor: entry.actor,
+        at: entry.at,
+        quiet: false,
+        undone: false,
+        attention: false,
+      };
+    case "note":
+      // Notes render in their own surface above the work panel.
+      return null;
+    case "transition":
+      if (entry.command === "record_contact_attempt") return null;
+      return {
+        id: entry.id,
+        text:
+          entry.command === "confirm_booking_handoff"
+            ? "Marked Scheduled — appointment booked"
+            : entry.command === "close_request"
+              ? `Closed — ${entry.closureReason !== null ? CLOSURE_REASON_LABELS[entry.closureReason] : "no appointment booked"}`
+              : entry.command === "reopen_request"
+                ? `Reopened — returned to Contacted${
+                    entry.callAgainAt !== null && entry.callAgainAt !== ""
+                      ? ` — call again ${followUpWhenLabel(entry.callAgainAt)}`
+                      : " — no call-again day was set"
+                  }`
+                : entry.command === "set_call_again"
+                  ? entry.callAgainAt !== null && entry.callAgainAt !== ""
+                    ? `Call-again day set — ${followUpWhenLabel(entry.callAgainAt)}`
+                    : "Call-again day correction recorded"
+                  : `Marked ${STATE_LABELS[entry.to]}`,
+        actor: entry.actor,
+        at: entry.at,
+        undone: entry.undone,
+        quiet: false,
+        attention: false,
+      };
+    case "undo":
+      return {
+        id: entry.id,
+        text: `Undo — restored to ${STATE_LABELS[entry.restoredState]}`,
+        actor: entry.actor,
+        at: entry.at,
+        quiet: false,
+        undone: false,
+        attention: false,
+      };
+    case "legacy_classified":
+      return {
+        id: entry.id,
+        text:
+          entry.to === "booked"
+            ? "Record reviewed — an appointment was booked (Scheduled)"
+            : "Record reviewed — closed without an appointment",
+        actor: entry.actor,
+        at: entry.at,
+        quiet: false,
+        undone: false,
+        attention: false,
+      };
+    case "delivery":
+      return {
+        id: entry.id,
+        text: `Notification email ${
+          entry.accepted ? "accepted for delivery" : "failed"
+        } — ${entry.recipient !== "" ? entry.recipient : "recipient unavailable"}`,
+        actor: null,
+        at: entry.at,
+        quiet: entry.accepted,
+        attention: !entry.accepted,
+        undone: false,
+      };
+  }
+  return null;
 }
 
 // One protected fetch feeds one cohesive request workflow; splitting its JSX
@@ -236,6 +193,7 @@ export default async function RequestDetailPage({
     status?: string | string[];
     q?: string | string[];
     page?: string | string[];
+    created?: string | string[];
   }>;
 }>) {
   await requireRole("staff");
@@ -244,77 +202,53 @@ export default async function RequestDetailPage({
   const statusParam = firstParam(continuity.status);
   const search = parseRequestSearch(continuity.q);
   const searchFilter = search ? requestSearchFilter(search) : "";
+  const justCreated = firstParam(continuity.created) === "1";
 
   const queueParams = new URLSearchParams();
-  if (statusParam !== null && statusParam !== "") {
-    queueParams.set("status", statusParam);
-  }
-  if (search) queueParams.set("q", search);
+  if (statusParam !== null && statusParam !== "") queueParams.set("status", statusParam);
+  if (search !== "") queueParams.set("q", search);
   const pageParam = firstParam(continuity.page);
-  if (pageParam !== null && pageParam !== "") {
-    queueParams.set("page", pageParam);
-  }
+  if (pageParam !== null && pageParam !== "") queueParams.set("page", pageParam);
   const queueQuery = queueParams.toString();
-  const queueHref = `/admin/requests${queueQuery ? `?${queueQuery}` : ""}`;
+  const queueHref = `/admin/requests${queueQuery !== "" ? `?${queueQuery}` : ""}`;
   const continuityParams = new URLSearchParams();
-  if (statusParam !== null && statusParam !== "") {
-    continuityParams.set("status", statusParam);
-  }
-  if (search) continuityParams.set("q", search);
+  if (statusParam !== null && statusParam !== "") continuityParams.set("status", statusParam);
+  if (search !== "") continuityParams.set("q", search);
   const continuityQuery = continuityParams.toString();
   const continuityHref = (requestId: string): string =>
     `/admin/requests/${requestId}${continuityQuery ? `?${continuityQuery}` : ""}`;
 
   const db = serviceClient();
-  const [
-    { data: request, error },
-    { data: events, error: eventsError },
-    { data: auditRows, error: auditError },
-    nameMap,
-  ] = await Promise.all([
+  // The work surface is the single workflow read (spec §6): durable state,
+  // Version for optimistic commands, Undo eligibility, and Request history.
+  // A failed read throws to the error boundary — it never renders as an
+  // Empty history or a workable request (spec §3).
+  const [{ data: request, error }, surface, nameMap] = await Promise.all([
     db
       .from("requests")
-      .select(
-        "id, name, phone, email, location, preferred_time, message, locale, source_path, status, closure_disposition, closed_at, record_handoff_at, created_at",
-      )
+      .select("id, name, phone, email, location, preferred_time, message, locale, created_at")
       .eq("id", id)
       .maybeSingle(),
-    db
-      .from("request_events")
-      .select("id, type, recipient, status, meta, created_at")
-      .eq("request_id", id)
-      .order("created_at", { ascending: true }),
-    db
-      .from("audit_log")
-      .select("id, actor_email, action, detail, at")
-      .eq("entity", "requests")
-      .eq("entity_id", id)
-      .in("action", ["request.status_change", "request.close"])
-      .order("at", { ascending: false })
-      .limit(50),
+    fetchRequestWorkSurface(db, id),
     fetchStaffNameMap(db),
   ]);
 
-  if (error || !request) notFound();
-  if (eventsError) {
-    throw new Error(`Event read failed: ${eventsError.code}`);
-  }
-  if (auditError) {
-    throw new Error(`Request activity read failed: ${auditError.code}`);
-  }
+  if (error) throw new Error("Request detail read failed");
+  const parsedRequest = requestDetailSchema.safeParse(request);
+  if (!parsedRequest.success || surface === null) notFound();
 
   // Previous/next within the viewer's queue scope: the same attention
   // Ordering the list renders, so staff can keep working without
   // Returning to the list each time. A request outside the current scope
   // (e.g. an old closed row beyond the tail window) simply shows no chain.
-  const scopedParsed = requestStatusSchema.safeParse(statusParam);
-  const scoped =
-    statusParam !== null && statusParam !== "" && statusParam !== "all" && scopedParsed.success
-      ? scopedParsed.data
+  const scopedStatus = requestStatusSchema.safeParse(statusParam);
+  const scoped: RequestStatus | null =
+    statusParam !== null && statusParam !== "" && statusParam !== "all" && scopedStatus.success
+      ? scopedStatus.data
       : null;
   const neighborIds: string[] = [];
   if (scoped !== "closed") {
-    const openStatuses = scoped !== null ? [scoped] : [...OPEN_STATUSES];
+    const openStatuses = scoped ? [scoped] : [...OPEN_STATUSES];
     const openRows = await fetchAttentiveOpenRows(db, {
       statuses: openStatuses,
       searchFilter,
@@ -330,110 +264,87 @@ export default async function RequestDetailPage({
     neighborIds.push(...closedRows.map((row) => row.id));
   }
   const selfIndex = neighborIds.indexOf(id);
-  const prevId = selfIndex > 0 ? (neighborIds.at(selfIndex - 1) ?? null) : null;
+  const prevId = selfIndex > 0 ? neighborIds[selfIndex - 1] : null;
   const nextId =
-    selfIndex >= 0 && selfIndex < neighborIds.length - 1
-      ? (neighborIds.at(selfIndex + 1) ?? null)
-      : null;
+    selfIndex >= 0 && selfIndex < neighborIds.length - 1 ? neighborIds[selfIndex + 1] : null;
 
-  const parsedRequest = requestRowSchema.safeParse(request);
-  if (!parsedRequest.success) {
-    throw new Error("Request read failed: invalid");
-  }
   const row = parsedRequest.data;
-  const message = row.message?.trim();
-  const mailbox = row.email?.trim();
-  const safeMailbox =
-    mailbox !== undefined && mailbox !== "" && isMailbox(mailbox) ? mailbox : null;
-  const parsedEvents = z.array(eventRowSchema).safeParse(events);
-  if (!parsedEvents.success) {
-    throw new Error("Event read failed: invalid");
+  const mailbox = row.email !== null ? row.email.trim() : "";
+  const safeMailbox = mailbox !== "" && isMailbox(mailbox) ? mailbox : null;
+  const phoneDisplay = formatPhoneForDisplay(row.phone);
+  const formLanguage = localeLabel(row.locale);
+  const patientMessage = row.message !== null ? row.message.trim() : "";
+  const staffCreated = surface.history.some(
+    (entry) => entry.kind === "created" && entry.origin === "staff",
+  );
+  // Notes and history come from one composed read. Notes keep their own
+  // Surface; every other evidence kind renders in Request history.
+  const noteViews: RequestNoteView[] = [];
+  const historyLines: HistoryLine[] = [];
+  for (const entry of surface.history) {
+    if (entry.kind === "note") {
+      noteViews.push({
+        id: entry.id,
+        text: entry.text,
+        byline: `${displayNameOrEmail(nameMap, entry.actor)} · ${formatReceived(entry.at, true)}`,
+      });
+      continue;
+    }
+    const line = historyLine(entry);
+    if (line !== null) historyLines.push(line);
   }
-  const allEvents = parsedEvents.data;
-  const notes = allEvents
-    .filter((event) => event.type === "note")
-    .sort((a, b) => b.created_at.localeCompare(a.created_at));
-  const noteViews: RequestNoteView[] = notes.map((note) => ({
-    id: note.id,
-    text: metaText(note.meta, "text"),
-    byline: `${displayNameOrEmail(
-      nameMap,
-      metaText(note.meta, "author_email"),
-    )} · ${formatReceived(note.created_at, true)}`,
-  }));
-  const parsedAudits = z.array(requestAuditRowSchema).safeParse(auditRows);
-  if (!parsedAudits.success) {
-    throw new Error("Request activity read failed: invalid");
-  }
-  const entries = activityEntries(allEvents, parsedAudits.data);
-  const notifications = allEvents.filter((event) => event.type === "notification");
 
-  const fields: { label: string; value: React.ReactNode }[] = [
-    {
-      label: "Phone",
-      value: (
-        <a
-          href={`tel:${row.phone}`}
-          className="font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-        >
-          {row.phone}
-        </a>
-      ),
-    },
-    {
-      label: "Email",
-      value:
-        safeMailbox !== null && safeMailbox !== "" ? (
-          <a
-            href={`mailto:${safeMailbox}`}
-            className="font-bold break-all text-[var(--color-teal-ink)] underline underline-offset-2"
-          >
-            {safeMailbox}
-          </a>
-        ) : (
-          <span className="text-[var(--color-muted)]">
-            Not provided — call the phone number above
-          </span>
-        ),
-    },
-    { label: "Preferred office", value: LOCATION_LABELS[row.location] },
-    { label: "Preferred time", value: TIME_LABELS[row.preferred_time] },
-    {
-      label: "Submitted in",
-      value: isLocale(row.locale) ? LOCALE_LABELS[row.locale] : row.locale,
-    },
-    { label: "From page", value: row.source_path },
-    { label: "Received", value: formatReceived(row.created_at, true) },
-  ];
-
-  return (
+  const content = (
     <section aria-labelledby="request-heading" className="request-detail-print">
       <div className="hidden border-b-2 border-black pb-3 print:block">
         <p className="text-[15pt] font-bold">Westchase Gastroenterology</p>
         <p className="mt-1 text-[9pt] font-bold tracking-[0.08em] uppercase">Appointment request</p>
       </div>
 
-      <nav aria-label="Breadcrumb" className="print-hide flex items-center text-[0.9rem]">
-        <Link
-          href={queueHref}
-          className="inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-        >
-          Appointment requests
-        </Link>
-        <span aria-hidden="true" className="mx-2 text-[var(--color-muted)]">
-          /
-        </span>
-        <span className="truncate text-[var(--color-muted)]">{row.name}</span>
-        {(prevId !== null && prevId !== "") || (nextId !== null && nextId !== "") ? (
-          <span className="ml-auto flex items-center gap-3">
+      <PortalPageHeader
+        back={{ href: queueHref, label: "Back to Appointments" }}
+        title={
+          <span
+            id="request-heading"
+            data-testid="request-detail-name"
+            data-ui-redact="patient-name"
+          >
+            {row.name}
+          </span>
+        }
+        description={
+          surface.state === "closed" && surface.closedAt !== null && surface.closedAt !== "" ? (
+            <span data-testid="request-lifecycle-summary">
+              Closed {formatReceived(surface.closedAt, true)}
+              {surface.closureReason !== null
+                ? ` — ${CLOSURE_REASON_LABELS[surface.closureReason]}`
+                : " — no appointment booked"}
+              .
+            </span>
+          ) : surface.state === "closed" && surface.legacyReviewRequired ? (
+            <span data-testid="request-lifecycle-summary">
+              Closed before outcomes were recorded — how it ended still needs review.
+            </span>
+          ) : surface.state === "booked" &&
+            surface.bookingConfirmedAt !== null &&
+            surface.bookingConfirmedAt !== "" ? (
+            <span data-testid="request-lifecycle-summary">
+              Marked Scheduled {formatReceived(surface.bookingConfirmedAt, true)} — the appointment
+              lives in the practice scheduling system.
+            </span>
+          ) : undefined
+        }
+        actions={
+          <>
             {prevId !== null && prevId !== "" ? (
               <Link
                 href={continuityHref(prevId)}
                 rel="prev"
                 data-testid="prev-request"
-                className="inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+                data-slot="button"
+                className={buttonVariants({ variant: "outline" })}
               >
-                ← Previous
+                Previous
               </Link>
             ) : null}
             {nextId !== null && nextId !== "" ? (
@@ -441,167 +352,209 @@ export default async function RequestDetailPage({
                 href={continuityHref(nextId)}
                 rel="next"
                 data-testid="next-request"
-                className="inline-flex min-h-11 items-center font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+                data-slot="button"
+                className={buttonVariants({ variant: "outline" })}
               >
-                Next →
+                Next
               </Link>
             ) : null}
-          </span>
-        ) : null}
-      </nav>
+            {surface.legacyReviewRequired ? (
+              <span data-testid="legacy-review-tag" className="portal-review-tag">
+                Needs review
+              </span>
+            ) : null}
+            <StatusBadge status={presentationStatus(surface.state)} />
+            <RequestPrintButton />
+          </>
+        }
+      />
 
-      <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
-        <h1 id="request-heading" data-testid="request-detail-name" className="portal-title">
-          {row.name}
-        </h1>
-        <div className="flex flex-wrap items-center gap-3">
-          <StatusBadge status={row.status} />
-          <PrintButton label="Print patient page" />
-        </div>
-      </div>
-      {row.status === "closed" && row.closed_at !== null && row.closed_at !== "" ? (
-        <p
-          data-testid="request-lifecycle-summary"
-          className="mt-1.5 text-[0.9rem] text-[var(--color-muted)]"
-        >
-          Closed {formatReceived(row.closed_at, true)}
-          {row.closure_disposition
-            ? ` — ${
-                row.closure_disposition === "converted"
-                  ? "appointment booked"
-                  : "no appointment booked"
-              }`
-            : ""}
-          .
-        </p>
-      ) : null}
+      <StaffRequestCreatedAcknowledgement />
+      <RequestPrintFeedback />
 
-      <div className="request-print-card mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
-        <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
-          Appointment request details
-        </h2>
-        <dl className="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-2">
-          {fields.map((field) => (
-            <div key={field.label}>
-              <dt className="text-[0.8rem] font-bold tracking-[0.06em] text-[var(--color-muted)] uppercase">
-                {field.label}
-              </dt>
-              <dd className="mt-1 text-[0.95rem] text-[var(--color-ink)]">{field.value}</dd>
-            </div>
-          ))}
-        </dl>
-        <div className="mt-5 border-t border-[var(--color-line)] pt-5">
-          <h3 className="text-[0.8rem] font-bold tracking-[0.06em] text-[var(--color-muted)] uppercase">
-            Reason for requesting this appointment
-          </h3>
-          <p
-            data-testid="request-message"
-            className="mt-2 text-[0.95rem] leading-relaxed whitespace-pre-wrap text-[var(--color-body)]"
+      <div className="portal-request-layout">
+        <div className="portal-request-record">
+          <section
+            className="request-print-card portal-request-details"
+            aria-labelledby="request-details-heading"
           >
-            {message !== undefined && message !== "" ? message : "— none provided —"}
-          </p>
-        </div>
-      </div>
-
-      <div className="request-print-card mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
-        <RequestNotes requestId={row.id} notes={noteViews} />
-
-        <CallOutcomeComposer
-          requestId={row.id}
-          status={row.status}
-          closureOutcome={row.closure_disposition}
-          closedAtLabel={
-            row.closed_at !== null && row.closed_at !== "" ? formatReceived(row.closed_at) : null
-          }
-          nextHref={nextId !== null && nextId !== "" ? continuityHref(nextId) : null}
-        />
-      </div>
-
-      <div className="request-detail-secondary mt-6 grid items-start gap-6 lg:grid-cols-[1.5fr_1fr]">
-        <div className="space-y-6">
-          <div className="request-print-card rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
-            <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">Request activity</h2>
-            <p className="mt-1.5 text-[0.88rem] leading-relaxed text-[var(--color-muted)]">
-              Call outcomes and status changes, newest first.
-            </p>
-            {entries.length === 0 ? (
-              <p className="mt-3 text-[0.95rem] text-[var(--color-muted)]">
-                No call or status activity yet.
+            <header className="portal-request-details-header">
+              <h2 id="request-details-heading">Contact and request</h2>
+              <p data-testid="request-intake-meta">
+                <span>
+                  Received{" "}
+                  <time dateTime={row.created_at}>{formatReceived(row.created_at, true)}</time>
+                </span>
+                <span>{staffCreated ? "Added by staff" : `${formLanguage} form`}</span>
               </p>
-            ) : (
-              <ul
-                data-testid="request-activity"
-                className="mt-4 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]"
+            </header>
+            <div
+              className="portal-request-contact"
+              role="group"
+              aria-label="Patient contact options"
+            >
+              <a
+                href={telHref(row.phone)}
+                data-testid="request-phone-link"
+                className="portal-request-contact-action"
               >
-                {entries.map((entry) => {
-                  const line =
-                    entry.kind === "outcome"
-                      ? `${isCallOutcomeId(entry.outcome) ? OUTCOME_HISTORY_LABELS[entry.outcome] : entry.outcome}${
-                          entry.followUpAt !== null && entry.followUpAt !== ""
-                            ? ` — call again ${followUpWhenLabel(entry.followUpAt)}`
-                            : ""
-                        }${entry.undone ? " — appointment request status change undone" : ""}`
-                      : entry.kind === "undo"
-                        ? `Undo — appointment request status restored to ${statusLineLabel(entry.restoredStatus)}`
-                        : entry.kind === "status"
-                          ? entry.legacyClose
-                            ? "Closed without an outcome"
-                            : `Marked ${statusLineLabel(entry.to)}`
-                          : `Closed — ${
-                              entry.disposition === "converted"
-                                ? "appointment booked"
-                                : "no appointment booked"
-                            }`;
-                  return (
-                    <li key={entry.id} className="request-activity-item py-4">
-                      <p className="text-[0.95rem] font-bold text-[var(--color-ink)]">{line}</p>
-                      <p className="mt-1.5 text-[0.8rem] font-bold text-[var(--color-teal-ink)]">
-                        {displayNameOrEmail(nameMap, entry.author)} ·{" "}
-                        {formatReceived(entry.at, true)}
-                      </p>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="request-notifications print-hide rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-6 sm:p-7">
-            <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">Notifications</h2>
-            {notifications.length === 0 ? (
-              <p className="mt-3 text-[0.9rem] text-[var(--color-muted)]">
-                No notification attempts recorded for this request.
-              </p>
-            ) : (
-              <ul className="mt-3 space-y-2">
-                {notifications.map((event) => (
-                  <li
-                    key={event.id}
-                    className="flex items-center justify-between gap-3 text-[0.9rem]"
+                <Phone className="portal-request-contact-icon" />
+                <span className="portal-request-contact-copy">
+                  <span className="portal-request-contact-label">Call patient</span>
+                  <strong
+                    className="portal-request-contact-value portal-request-contact-value--phone"
+                    data-ui-redact="patient-contact"
                   >
-                    <span className="truncate text-[var(--color-body)]">
-                      {event.recipient ?? "—"}
-                    </span>
-                    <span
-                      className={`font-bold ${
-                        event.status === "accepted" || event.status === "sent"
-                          ? "text-[var(--color-teal-ink)]"
-                          : "text-[var(--color-amber-deep)]"
+                    {phoneDisplay}
+                  </strong>
+                </span>
+              </a>
+              {safeMailbox !== null && safeMailbox !== "" ? (
+                <a
+                  href={`mailto:${safeMailbox}`}
+                  data-testid="request-email-link"
+                  className="portal-request-contact-email"
+                >
+                  <Mail className="portal-request-contact-icon" />
+                  <span className="portal-request-contact-copy">
+                    <span className="portal-request-contact-label">Email patient</span>
+                    <strong
+                      className="portal-request-contact-value"
+                      data-ui-redact="patient-contact"
+                    >
+                      {safeMailbox}
+                    </strong>
+                  </span>
+                </a>
+              ) : (
+                <p
+                  data-testid="request-email-unavailable"
+                  className="portal-request-contact-unavailable"
+                >
+                  No email provided
+                </p>
+              )}
+            </div>
+            <div
+              className="portal-request-context"
+              data-empty={patientMessage === "" ? "true" : undefined}
+            >
+              <div className="portal-request-message">
+                <h3>
+                  <MessageSquare />
+                  Patient note
+                </h3>
+                <blockquote
+                  data-testid="request-message"
+                  data-ui-redact={patientMessage !== "" ? "patient-message" : undefined}
+                  data-empty={patientMessage !== "" ? undefined : "true"}
+                >
+                  {patientMessage !== ""
+                    ? patientMessage
+                    : "No note was included with this request."}
+                </blockquote>
+              </div>
+              <dl
+                className="portal-request-preferences"
+                data-testid="request-preferences"
+                aria-label="Appointment preferences"
+              >
+                <div>
+                  <dt>
+                    <MapPin />
+                    Preferred office
+                  </dt>
+                  <dd>{LOCATION_LABELS[row.location]}</dd>
+                </div>
+                <div>
+                  <dt>
+                    <Clock />
+                    Preferred time
+                  </dt>
+                  <dd>{TIME_LABELS[row.preferred_time]}</dd>
+                </div>
+              </dl>
+            </div>
+          </section>
+
+          <section
+            className="request-print-card portal-request-notes"
+            data-empty={noteViews.length === 0 ? "true" : undefined}
+          >
+            <RequestNotes requestId={row.id} notes={noteViews} />
+          </section>
+
+          <section
+            className="request-print-card portal-request-history"
+            data-short={historyLines.length <= 1 ? "true" : undefined}
+          >
+            <h2 className="portal-record-heading">Request history</h2>
+            <p className="portal-request-section-description">
+              Everything recorded about this request, newest first — contact attempts, status
+              changes, undo corrections, and notification outcomes.
+            </p>
+            {historyLines.length === 0 ? (
+              <p className="portal-request-history-empty">Nothing recorded yet.</p>
+            ) : (
+              <ul data-testid="request-history" className="portal-request-ledger">
+                {historyLines.map((line) => (
+                  <li key={line.id} className="request-activity-item">
+                    <p
+                      className={`portal-request-ledger-event ${
+                        line.undone
+                          ? "portal-request-ledger-event--undone"
+                          : line.attention
+                            ? "portal-request-ledger-event--attention"
+                            : line.quiet
+                              ? "portal-request-ledger-event--quiet"
+                              : ""
                       }`}
                     >
-                      {event.status === "accepted" || event.status === "sent"
-                        ? "Accepted for delivery"
-                        : "Failed"}
-                    </span>
+                      {line.text}
+                    </p>
+                    <p className="portal-request-ledger-meta">
+                      {line.actor !== null && line.actor !== ""
+                        ? `${displayNameOrEmail(nameMap, line.actor)} · `
+                        : ""}
+                      {formatReceived(line.at, true)}
+                      {line.undone ? " · later undone" : ""}
+                    </p>
                   </li>
                 ))}
               </ul>
             )}
-          </div>
+          </section>
         </div>
+
+        <aside className="portal-workflow-shell" aria-label="Record request outcome">
+          <WorkflowPanel
+            requestId={row.id}
+            state={surface.state}
+            version={surface.version}
+            legacyReviewRequired={surface.legacyReviewRequired}
+            callAgainAt={surface.callAgainAt}
+            undo={surface.undo}
+            nextHref={nextId !== null && nextId !== "" ? continuityHref(nextId) : null}
+          />
+        </aside>
       </div>
     </section>
+  );
+
+  return (
+    <PortalFeedbackProvider
+      key={row.id}
+      initialFeedback={
+        justCreated
+          ? {
+              source: "request-created",
+              tone: "status",
+              message: "Appointment request added to New.",
+            }
+          : null
+      }
+    >
+      {content}
+    </PortalFeedbackProvider>
   );
 }

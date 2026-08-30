@@ -222,6 +222,31 @@ test("review flyers stay closed to visitors and open to every staff member", asy
     }
   }
 
+  const masterPdf = cards
+    .filter({ has: page.getByRole("heading", { name: "Master code — review hub" }) })
+    .getByRole("link", { name: "Flyer PDF" });
+  let masterPdfDownloads = 0;
+  page.on("download", (download) => {
+    const url = new URL(download.url());
+    if (url.pathname.endsWith("/WGI-Master-Review-Hub-Flyer.pdf")) masterPdfDownloads += 1;
+  });
+  const masterDownload = page.waitForEvent("download");
+  await masterPdf.focus();
+  await masterPdf.evaluate((link) => {
+    if (!(link instanceof HTMLAnchorElement)) throw new Error("expected flyer download link");
+    link.click();
+    link.click();
+  });
+  const downloadedMasterPdf = await masterDownload;
+  await expect(page.getByTestId("review-flyer-output-feedback")).toHaveText(
+    "Flyer PDF download started for Master code — review hub.",
+  );
+  await expect(masterPdf).toBeFocused();
+  await expect(masterPdf).toHaveAttribute("aria-disabled", "true");
+  await expect.poll(() => masterPdfDownloads).toBe(1);
+  await expect(masterPdf).not.toHaveAttribute("aria-disabled", "true", { timeout: 3_000 });
+  await downloadedMasterPdf.delete();
+
   const unknown = await page.request.get("/admin/review-flyers/assets/not-in-the-manifest.pdf");
   expect(unknown.status()).toBe(404);
 
@@ -284,12 +309,22 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
     }
   }
 
-  await page
+  const individualPrintButton = page
     .locator('[data-review-target="awad"]')
-    .getByRole("button", { name: "Print flyer" })
-    .click();
+    .getByRole("button", { name: "Print flyer" });
+  await individualPrintButton.focus();
+  await individualPrintButton.evaluate((button) => {
+    if (!(button instanceof HTMLButtonElement)) throw new Error("expected flyer print button");
+    button.click();
+    button.click();
+  });
   await expect(page.locator("body")).toHaveAttribute("data-review-flyer-print", "awad");
   await expect(page.locator("html")).toHaveAttribute("data-test-print-calls", "1");
+  await expect(page.getByTestId("review-flyer-output-feedback")).toHaveText(
+    "Print dialog is opening for Dr. Amir Awad.",
+  );
+  await expect(individualPrintButton).toBeFocused();
+  await expect(individualPrintButton).toHaveAttribute("aria-disabled", "true");
 
   await page.emulateMedia({ media: "print" });
   const individualPrint = await page.locator("[data-review-flyer]").evaluateAll((flyers) =>
@@ -331,9 +366,20 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
   expect(pageRule).toMatch(/margin:\s*0\.45in/i);
 
   await page.emulateMedia({ media: "screen" });
-  await page.getByRole("button", { name: "Print all six flyers" }).click();
+  const printAll = page.getByRole("button", { name: "Print all six flyers" });
+  await printAll.focus();
+  await printAll.evaluate((button) => {
+    if (!(button instanceof HTMLButtonElement)) throw new Error("expected print-all button");
+    button.click();
+    button.click();
+  });
   await expect(page.locator("body")).toHaveAttribute("data-review-flyer-print", "all");
   await expect(page.locator("html")).toHaveAttribute("data-test-print-calls", "2");
+  await expect(page.getByTestId("review-flyer-output-feedback")).toHaveText(
+    "Print dialog is opening for all six flyers.",
+  );
+  await expect(printAll).toBeFocused();
+  await expect(printAll).toHaveAttribute("aria-disabled", "true");
 
   await page.emulateMedia({ media: "print" });
   const allPrint = await page.locator("[data-review-flyer]").evaluateAll((flyers) =>
@@ -357,6 +403,7 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
   await page.emulateMedia({ media: "screen" });
   await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
   await expect(page.locator("body")).not.toHaveAttribute("data-review-flyer-print");
+  await expect(printAll).not.toHaveAttribute("aria-disabled", "true");
   await page.evaluate(() => window.dispatchEvent(new Event("beforeprint")));
   await expect(page.locator("body")).toHaveAttribute("data-review-flyer-print", "practice");
   await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));

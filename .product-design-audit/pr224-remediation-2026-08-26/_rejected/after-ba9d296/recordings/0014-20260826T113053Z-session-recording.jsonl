@@ -1,0 +1,12 @@
+{"sessionId":"cec9de10-f24f-4955-94ab-e35345614701","startedAt":"2026-08-26T11:29:16.558+00:00","endedAt":"2026-08-26T11:30:53.009+00:00","durationMs":96451,"status":"COMPLETED","pages":[]}
+{
+  "mode": "video",
+  "available": true,
+  "sessionId": "cec9de10-f24f-4955-94ab-e35345614701",
+  "dashboardUrl": "https://www.browserbase.com/sessions/cec9de10-f24f-4955-94ab-e35345614701",
+  "durationMs": 96451,
+  "sha256": "a00343a3c304f0cc3d43e6958aa1464d3e11b8467b3d00a6600020a276b54ab3",
+  "pages": [],
+  "downloaded": [],
+  "skippedReason": null
+}

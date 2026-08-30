@@ -1,47 +1,71 @@
-import Link from "next/link";
-import type { SVGProps } from "react";
-import { z } from "zod";
+import { randomUUID } from "node:crypto";
 
-import {
-  ArrowRight,
-  ChevronRight,
-  Clock,
-  FileText,
-  Globe,
-  Mail,
-  Printer,
-  Users,
-} from "@/components/icons";
 import { requireRole } from "@/lib/portal/auth";
 import { arrivedOutsideOfficeHours, waitingSince } from "@/lib/portal/business-time";
 import { availableQueueCount } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
+import { staffGreeting } from "@/lib/portal/staff-language";
 
+import { HomeWorkbench } from "./home-workbench";
+import type { SheetGroup, SheetLine, SheetTailItem } from "./home-workbench";
 import { PortalReleaseHomeAnnouncement } from "./portal-release-briefing";
 import { PortalTour } from "./portal-tour";
-import { formatReceived } from "./requests/format";
+import { PortalTourReturnFocus } from "./portal-tour-return-focus";
+import type { PortalTourReturnState } from "./portal-tour-return-focus";
+import { followUpShortLabel, LOCATION_LABELS, TIME_LABELS } from "./requests/format";
+import { fetchAttentiveOpenRows, VIEW_DB_STATUSES } from "./requests/queue";
+import type { AttentiveQueueRow } from "./requests/queue";
 
-// The portal's front door. Staff land on their day, not on software:
-// A greeting, the one thing that may need attention (new appointment
-// Requests), and the rest of the portal phrased as plain-language
-// Tasks. Occasional tasks live here instead of holding permanent tabs.
+/* Home is the practice's call list. It answers one question — who has to be
+   called, in what order — by reading the attention buckets the queue already
+   derives, rather than counting statuses and describing them in a sentence. */
 
-const NY_TIME = new Intl.DateTimeFormat("en-US", {
+const PRACTICE_TZ = "America/New_York";
+
+const NY_CLOCK = new Intl.DateTimeFormat("en-US", {
   hour: "2-digit",
   minute: "2-digit",
   hourCycle: "h23",
-  timeZone: "America/New_York",
+  timeZone: PRACTICE_TZ,
 });
-
-const MORNING_START = 5 * 60 + 30;
-const AFTER_HOURS_START = 19 * 60;
 
 const NY_DATE = new Intl.DateTimeFormat("en-US", {
   weekday: "long",
   month: "long",
   day: "numeric",
-  timeZone: "America/New_York",
+  timeZone: PRACTICE_TZ,
 });
+
+const NY_TIME_OF_DAY = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+  timeZone: PRACTICE_TZ,
+});
+
+const NY_MONTH_DAY = new Intl.DateTimeFormat("en-US", {
+  month: "long",
+  day: "numeric",
+  timeZone: PRACTICE_TZ,
+});
+
+const NY_DAY = new Intl.DateTimeFormat("en-CA", {
+  dateStyle: "short",
+  timeZone: PRACTICE_TZ,
+});
+
+const MORNING_START = 5 * 60 + 30;
+
+/* A ceiling on what the page will render at once, so a post-vacation backlog
+   cannot build a 500-row document. Past it, the tail links to Appointments.
+   How many lines stand open before a group scrolls is the window's decision,
+   made in CSS beside the sheet; the heading's count always states the real
+   total. */
+const RENDER_CEILING = 40;
+
+function practiceDayNumber(date: Date): number {
+  return Math.round(Date.parse(`${NY_DAY.format(date)}T00:00:00Z`) / 86_400_000);
+}
 
 // Practice-local clock: the front desk reads this in Tampa.
 function greetingFor(minutes: number): string {
@@ -50,318 +74,227 @@ function greetingFor(minutes: number): string {
   return "Good evening";
 }
 
-interface Task {
-  href: string;
-  label: string;
-  description: string;
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-  icon: (props: Readonly<SVGProps<SVGSVGElement>>) => React.ReactNode;
+function parseTourReturnState(
+  value: string | readonly string[] | undefined,
+): PortalTourReturnState | null {
+  return value === "finished" || value === "not-now" || value === "restarted" ? value : null;
 }
 
-const newestPreviewSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  created_at: z.string(),
-});
-const oldestPreviewSchema = z.object({
-  created_at: z.string(),
-});
-
-const TASKS: Task[] = [
-  {
-    href: "/admin/review-flyers",
-    label: "Print review flyers",
-    description: "Print-ready bilingual QR flyers for the front desk.",
-    icon: Printer,
-  },
-  {
-    href: "/admin/settings#notifications",
-    label: "Manage notification emails",
-    description: "Choose who gets an email when a new request arrives.",
-    icon: Mail,
-  },
-  {
-    href: "/admin/settings#staff",
-    label: "Manage staff access",
-    description: "Who can sign in to this portal, and their roles.",
-    icon: Users,
-  },
-  {
-    href: "/admin/settings/software",
-    label: "Website",
-    description: "Where the clinic's site lives, and its connection status.",
-    icon: Globe,
-  },
-  {
-    href: "/admin/help#website-changes",
-    label: "Request a website change",
-    description: "How updates to the public website get made.",
-    icon: FileText,
-  },
-];
-
-function headlineFor(newCount: number): React.ReactNode {
-  if (newCount === 0) return "No new appointment requests are waiting.";
-  return (
-    <>
-      <strong className="font-black text-[var(--color-amber-deep)]">{newCount}</strong> new
-      appointment {newCount === 1 ? "request is" : "requests are"} waiting.
-    </>
-  );
+/* A settled count read, or null when it failed. A rejected promise and a
+   PostgREST error both mean unavailable — never zero. */
+function countOf(
+  read: Readonly<PromiseSettledResult<Readonly<{ count: number | null; error: unknown }>>>,
+): number | null {
+  if (read.status !== "fulfilled") return null;
+  return availableQueueCount(read.value.count, read.value.error !== null);
 }
 
-export default async function AdminHomePage() {
+function preferenceOf(row: Readonly<AttentiveQueueRow>): string {
+  return `${LOCATION_LABELS[row.location]} · ${TIME_LABELS[row.preferred_time]}`;
+}
+
+/* One line of the sheet. `stamp` is the only amber on a row, and it marks the
+   exception within a group — never the group's own meaning, which its heading
+   already carries. */
+function lineFor(row: Readonly<AttentiveQueueRow>, now: Date): SheetLine {
+  const base = {
+    id: row.id,
+    name: row.name,
+    phone: row.phone,
+    version: row.version,
+    preference: preferenceOf(row),
+  };
+
+  if (row.bucket === "follow_up" && row.follow_up_at !== null) {
+    const due = new Date(row.follow_up_at);
+    const overdue = practiceDayNumber(due) < practiceDayNumber(now);
+    return {
+      ...base,
+      timing: overdue
+        ? `Due ${NY_MONTH_DAY.format(due)}`
+        : `Due ${followUpShortLabel(row.follow_up_at, now)}`,
+      stamp: overdue ? "Overdue" : null,
+    };
+  }
+
+  const waiting = waitingSince(row.created_at, now);
+  return {
+    ...base,
+    timing:
+      waiting === null
+        ? `Arrived ${NY_TIME_OF_DAY.format(new Date(row.created_at))}`
+        : `Since ${waiting}`,
+    stamp: arrivedOutsideOfficeHours(row.created_at) ? "After hours" : null,
+  };
+}
+
+function groupFor(
+  key: SheetGroup["key"],
+  heading: string,
+  href: string,
+  rows: readonly Readonly<AttentiveQueueRow>[],
+  now: Date,
+): SheetGroup {
+  const rendered = rows.slice(0, RENDER_CEILING).map((row) => lineFor(row, now));
+  return {
+    key,
+    heading,
+    href,
+    count: rows.length,
+    lines: rendered,
+    overflow: Math.max(0, rows.length - RENDER_CEILING),
+  };
+}
+
+export default async function AdminHomePage({
+  searchParams,
+}: Readonly<{
+  searchParams: Promise<{ tour?: string | string[] }>;
+}>) {
   const session = await requireRole("staff");
-  const firstName = session.displayName.trim().split(/\s+/)[0];
+  const tourReturnState = parseTourReturnState((await searchParams).tour);
   const now = new Date();
-  const [hour, minute] = NY_TIME.format(now).split(":").map(Number);
+  const [hour, minute] = NY_CLOCK.format(now).split(":").map(Number);
   const minutes = hour * 60 + minute;
 
   const db = serviceClient();
-  // A failed read must never present as an empty queue: "No new requests"
-  // And "the count could not load" are different truths, and conflating
-  // Them recreates the silent-queue failure this portal exists to end.
-  const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+
+  /* A failed read is never an empty day. The sheet read settles independently
+     of every count, so one unavailable number suppresses itself instead of
+     blanking the work — and no read can present as a reassuring zero. */
   const [
-    { data: newestRows, count: newCount, error: queueReadError },
-    { data: oldestRows },
-    { count: recipientCount, error: recipientsReadError },
-    { count: failedNotificationCount, error: notificationsReadError },
-  ] = await Promise.all([
+    sheetRead,
+    newCountRead,
+    contactedCountRead,
+    scheduledCountRead,
+    closedCountRead,
+    recipientsRead,
+    legacyRead,
+    outboxRead,
+  ] = await Promise.allSettled([
+    fetchAttentiveOpenRows(db, { now }),
+    db.from("requests").select("id", { count: "exact", head: true }).eq("status", "new"),
     db
       .from("requests")
-      .select("id, name, created_at", { count: "exact" })
-      .eq("status", "new")
-      .order("created_at", { ascending: false })
-      .limit(3),
+      .select("id", { count: "exact", head: true })
+      .in("status", [...VIEW_DB_STATUSES.contacted]),
     db
       .from("requests")
-      .select("created_at")
-      .eq("status", "new")
-      .order("created_at", { ascending: true })
-      .limit(1),
+      .select("id", { count: "exact", head: true })
+      .in("status", [...VIEW_DB_STATUSES.scheduled]),
+    db
+      .from("requests")
+      .select("id", { count: "exact", head: true })
+      .in("status", [...VIEW_DB_STATUSES.closed]),
     db
       .from("notification_recipients")
       .select("id", { count: "exact", head: true })
       .eq("active", true),
     db
-      .from("request_events")
+      .from("requests")
       .select("id", { count: "exact", head: true })
-      .eq("type", "notification")
-      .eq("status", "failed")
-      .gte("created_at", oneDayAgo),
+      .eq("legacy_review_required", true),
+    db
+      .from("notification_outbox")
+      .select("id", { count: "exact", head: true })
+      .in("status", ["failed", "retry_pending", "exhausted"])
+      .gte("updated_at", new Date(now.getTime() - 86_400_000).toISOString()),
   ]);
-  const newestParsed = z.array(newestPreviewSchema).safeParse(newestRows ?? []);
-  if (!newestParsed.success) {
-    throw new Error("Queue preview read failed: invalid");
-  }
-  const newest = newestParsed.data;
-  const availableNewCount = availableQueueCount(newCount, Boolean(queueReadError));
-  const oldestParsed = z.array(oldestPreviewSchema).safeParse(oldestRows ?? []);
-  if (!oldestParsed.success) {
-    throw new Error("Queue preview read failed: invalid");
-  }
-  const oldest = oldestParsed.data;
-  const oldestPreview = oldest.at(0);
-  const oldestWaiting =
-    availableNewCount !== null && availableNewCount !== 0 && oldestPreview !== undefined
-      ? waitingSince(oldestPreview.created_at, now)
-      : null;
-  // Zero recipients is a real, legal state worth flagging; a failed
-  // Recipients read is not evidence of it, so the warning stays silent then.
-  const noActiveRecipients = !recipientsReadError && recipientCount === 0;
-  // Delivery health is the other silent failure mode: the provider can start
-  // Failing while every request still lands in the queue. Same discipline —
-  // A failed events read is not evidence of an outage, so it stays silent.
-  const deliveryFailureCount =
-    !notificationsReadError && (failedNotificationCount ?? 0) > 0 ? failedNotificationCount : null;
+
+  const rows = sheetRead.status === "fulfilled" ? sheetRead.value : null;
+
+  const groups: SheetGroup[] | null =
+    rows === null
+      ? null
+      : [
+          groupFor(
+            "new",
+            "New",
+            "/admin/requests?status=new",
+            rows.filter((row) => row.bucket === "new"),
+            now,
+          ),
+          groupFor(
+            "follow_up",
+            "Call Again",
+            "/admin/requests?status=contacted",
+            rows.filter((row) => row.bucket === "follow_up"),
+            now,
+          ),
+        ];
+
+  /* Everything that is real but not today's calling work. Stated as counts
+     because that is all these are; each opens the view that holds them. */
+  const upcomingCount =
+    rows === null ? null : rows.filter((row) => row.bucket === "upcoming").length;
+  const scheduledCount = countOf(scheduledCountRead);
+  const legacyCount = countOf(legacyRead);
+  const tail: SheetTailItem[] = [
+    ...(upcomingCount !== null && upcomingCount > 0
+      ? [
+          {
+            key: "upcoming",
+            href: "/admin/requests?status=contacted",
+            label:
+              upcomingCount === 1
+                ? "1 call-again is set for a later day"
+                : `${upcomingCount} call-agains are set for later days`,
+          },
+        ]
+      : []),
+    ...(scheduledCount !== null && scheduledCount > 0
+      ? [
+          {
+            key: "scheduled",
+            href: "/admin/requests?status=scheduled",
+            label:
+              scheduledCount === 1
+                ? "1 request handed off to scheduling"
+                : `${scheduledCount} requests handed off to scheduling`,
+          },
+        ]
+      : []),
+    ...(legacyCount !== null && legacyCount > 0
+      ? [
+          {
+            key: "legacy",
+            href: "/admin/requests?status=closed",
+            label:
+              legacyCount === 1
+                ? "1 closed record needs review"
+                : `${legacyCount} closed records need review`,
+          },
+        ]
+      : []),
+  ];
+
+  /* Zero recipients is a real state worth flagging; a failed recipients read
+     is not evidence of it, so the warning stays silent then. */
+  const recipientCount = countOf(recipientsRead);
+  const outboxTrouble = countOf(outboxRead);
 
   return (
-    <section aria-labelledby="home-heading">
-      <h1 id="home-heading" data-testid="home-greeting" className="portal-title">
-        {greetingFor(minutes)}, {firstName}.
-      </h1>
-      <div className="mt-1.5 flex flex-wrap items-center gap-2.5 text-[0.95rem] text-[var(--color-muted)]">
-        <p>{NY_DATE.format(now)}</p>
-        {minutes >= AFTER_HOURS_START || minutes < MORNING_START ? (
-          <span
-            data-testid="after-hours"
-            className="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-navy)] px-2.5 py-1 text-[0.78rem] font-extrabold text-white"
-          >
-            <Clock className="h-3.5 w-3.5" />
-            After hours
-          </span>
-        ) : null}
-      </div>
-
-      {session.portalTourDismissedAt === null ? <PortalTour /> : null}
-      <PortalReleaseHomeAnnouncement />
-
-      <div className="mt-7 grid items-start gap-6 lg:grid-cols-[1.55fr_1fr]">
-        <section
-          aria-labelledby="queue-overview-heading"
-          data-testid="queue-overview"
-          className="card-lined p-6 sm:p-8"
-        >
-          <h2
-            id="queue-overview-heading"
-            className="text-[1.02rem] font-black text-[var(--color-ink)]"
-          >
-            Appointment requests
-          </h2>
-          {availableNewCount === null ? (
-            <div data-testid="queue-overview-unavailable">
-              <p
-                data-testid="queue-overview-headline"
-                className="mt-3 max-w-[26ch] text-[1.4rem] leading-snug font-bold text-[var(--color-ink)]"
-              >
-                The request count is unavailable right now.
-              </p>
-              <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.92rem] leading-relaxed text-[var(--color-ink)]">
-                This does not mean the queue is empty — this page could not check it. Refresh in a
-                moment, or open the queue below to see every request.
-              </p>
-            </div>
-          ) : (
-            <>
-              <p
-                data-testid="queue-overview-headline"
-                className="mt-3 max-w-[26ch] text-[1.4rem] leading-snug font-bold text-[var(--color-ink)]"
-              >
-                {headlineFor(availableNewCount)}
-              </p>
-
-              {oldestWaiting !== null && oldestWaiting !== "" ? (
-                <p
-                  data-testid="queue-overview-oldest"
-                  className="mt-2 text-[0.92rem] text-[var(--color-body)]"
-                >
-                  {availableNewCount === 1
-                    ? "It has been waiting since "
-                    : "The oldest has been waiting since "}
-                  <strong className="font-bold text-[var(--color-amber-deep)]">
-                    {oldestWaiting}
-                  </strong>
-                  .
-                </p>
-              ) : null}
-
-              {newest.length > 0 ? (
-                <ul
-                  data-testid="queue-overview-preview"
-                  className="mt-5 divide-y divide-[var(--color-line)] border-t border-[var(--color-line)]"
-                >
-                  {newest.map((request) => (
-                    <li key={request.id}>
-                      <Link
-                        href={`/admin/requests/${request.id}`}
-                        className="group flex min-h-11 items-center justify-between gap-4 py-3"
-                      >
-                        <span className="truncate font-bold text-[var(--color-ink)] underline-offset-2 group-hover:underline group-hover:decoration-[var(--color-teal-ink)]">
-                          {request.name}
-                        </span>
-                        <span className="flex-none text-[0.88rem] text-[var(--color-muted)]">
-                          {formatReceived(request.created_at)}
-                          {arrivedOutsideOfficeHours(request.created_at) ? " · after hours" : ""}
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="mt-2 text-[0.92rem] text-[var(--color-muted)]">
-                  New website submissions appear here the moment they arrive.
-                </p>
-              )}
-            </>
-          )}
-
-          {noActiveRecipients ? (
-            <p
-              data-testid="no-recipients-warning"
-              className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.92rem] leading-relaxed text-[var(--color-ink)]"
-            >
-              No one is getting notification emails right now. New requests still land here, but no
-              email goes out when one arrives.{" "}
-              <Link
-                href="/admin/settings#notifications"
-                className="font-bold underline underline-offset-2"
-              >
-                Manage notification emails
-              </Link>
-            </p>
-          ) : null}
-
-          {deliveryFailureCount !== null && deliveryFailureCount !== 0 ? (
-            <p
-              data-testid="delivery-failure-warning"
-              className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-[0.92rem] leading-relaxed text-[var(--color-ink)]"
-            >
-              {deliveryFailureCount === 1
-                ? "A notification email failed to send in the last 24 hours."
-                : `${deliveryFailureCount} notification emails failed to send in the last 24 hours.`}{" "}
-              Requests still land here — the queue is always the system of record — but notification
-              emails may not be reaching anyone.{" "}
-              <Link
-                href="/admin/help#something-wrong"
-                className="font-bold underline underline-offset-2"
-              >
-                See what to check
-              </Link>
-            </p>
-          ) : null}
-
-          <div className="mt-6">
-            <Link href="/admin/requests" className="btn btn-amber">
-              Open appointment requests
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
-            </Link>
-          </div>
-        </section>
-
-        <section aria-labelledby="tasks-heading" className="card-lined p-4 sm:p-5">
-          <h2 id="tasks-heading" className="pt-1 text-[1.02rem] font-black text-[var(--color-ink)]">
-            Around the portal
-          </h2>
-          <ul className="mt-2.5">
-            {TASKS.map((task) => {
-              const slug = task.label.toLowerCase().replace(/[^a-z]+/g, "-");
-              return (
-                <li key={task.href}>
-                  <Link
-                    href={task.href}
-                    className="group -mx-3 flex items-center gap-[0.95rem] rounded-[var(--radius)] px-3 py-[0.9rem] transition-colors duration-[180ms] ease-out hover:bg-[var(--color-mint)] active:bg-[var(--color-mint-2)]"
-                    aria-labelledby={`task-${slug}-label`}
-                    aria-describedby={`task-${slug}-desc`}
-                  >
-                    <span className="grid h-10 w-10 flex-none place-items-center rounded-full bg-[var(--color-mint-2)] text-[var(--color-teal-ink)]">
-                      <task.icon className="h-5 w-5" aria-hidden="true" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span
-                        id={`task-${slug}-label`}
-                        className="block text-[0.95rem] leading-snug font-bold text-[var(--color-ink)]"
-                      >
-                        {task.label}
-                      </span>
-                      <span
-                        id={`task-${slug}-desc`}
-                        className="mt-0.5 block text-[0.85rem] leading-snug text-[var(--color-muted)]"
-                      >
-                        {task.description}
-                      </span>
-                    </span>
-                    <ChevronRight
-                      className="h-4.5 w-4.5 flex-none text-[var(--color-muted)] transition-transform duration-200 [transition-timing-function:var(--ease-out-quint)] group-hover:translate-x-[3px]"
-                      aria-hidden="true"
-                    />
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      </div>
-    </section>
+    <HomeWorkbench
+      greeting={staffGreeting(greetingFor(minutes), session.displayName)}
+      date={NY_DATE.format(now)}
+      groups={groups}
+      tail={tail}
+      addRequestKey={randomUUID()}
+      statusCounts={{
+        new: countOf(newCountRead),
+        contacted: countOf(contactedCountRead),
+        scheduled: scheduledCount,
+        closed: countOf(closedCountRead),
+      }}
+      noActiveRecipients={recipientCount === 0}
+      deliveryFailureCount={outboxTrouble !== null && outboxTrouble > 0 ? outboxTrouble : null}
+      announcements={
+        <>
+          {session.portalTourDismissedAt === null ? <PortalTour /> : null}
+          {tourReturnState === null ? null : <PortalTourReturnFocus state={tourReturnState} />}
+          <PortalReleaseHomeAnnouncement />
+        </>
+      }
+    />
   );
 }

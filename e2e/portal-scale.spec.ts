@@ -8,9 +8,10 @@ import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
 loadLocalEnv();
 
 const supabaseUrl = new URL(requiredEnv("NEXT_PUBLIC_SUPABASE_URL"));
-const disposableLocal =
-  ["127.0.0.1", "localhost", "[::1]"].includes(supabaseUrl.hostname) &&
-  requiredEnv("SUPABASE_PROJECT_REF") === "local";
+const isolatedTestDatabase =
+  process.env.SUPABASE_PREVIEW_BRANCH === "1" ||
+  (["127.0.0.1", "localhost", "[::1]"].includes(supabaseUrl.hostname) &&
+    requiredEnv("SUPABASE_PROJECT_REF") === "local");
 const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
 const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
 const runId = randomUUID().slice(0, 8);
@@ -28,9 +29,12 @@ async function signIn(page: Page) {
   await expect(page).toHaveURL(/\/admin\/?$/);
 }
 
-test.describe("disposable-local portal scale boundaries", () => {
+test.describe("isolated portal scale boundaries", () => {
   test.describe.configure({ mode: "serial" });
-  test.skip(!disposableLocal, "bulk boundary coverage is disposable-local only");
+  test.skip(
+    !isolatedTestDatabase,
+    "bulk boundary coverage requires local Supabase or a Preview Branch",
+  );
   test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== "chromium", "portal scale coverage requires JavaScript");
   });
@@ -85,7 +89,9 @@ test.describe("disposable-local portal scale boundaries", () => {
 
     await expect(page.getByTestId("request-row")).toHaveCount(50);
     await expect(page.getByTestId("request-page-summary")).toHaveText("Showing 1–50 of 1001");
-    const next = page.getByRole("link", { name: "Next" });
+    const next = page
+      .getByRole("navigation", { name: "Appointment request pages" })
+      .getByRole("link", { name: "Next", exact: true });
     const nextUrl = new URL((await next.getAttribute("href")) ?? "", "http://localhost:3100");
     expect(nextUrl.searchParams.get("status")).toBe("contacted");
     expect(nextUrl.searchParams.get("q")).toBe(searchToken);
@@ -137,12 +143,38 @@ test.describe("disposable-local portal scale boundaries", () => {
       }),
     ).toHaveCount(100);
 
-    await page.getByRole("link", { name: "Next" }).click();
-    await expect(page).toHaveURL(/\/admin\/audit\?page=2$/);
+    await page
+      .getByRole("navigation", { name: "Activity log pages" })
+      .getByRole("link", { name: "Next" })
+      .click();
+    await expect(page).toHaveURL(/\/admin\/audit\?page=2#audit-page-summary$/);
+    await expect(page.getByTestId("audit-page-summary")).toBeFocused();
     await expect(
       page.getByTestId("audit-table").getByRole("row").filter({
         hasText: actorEmail,
       }),
     ).toHaveCount(1);
+
+    const technicalSummary = page.getByTestId("audit-page-summary");
+    const technicalPageTwoSummary = await technicalSummary.innerText();
+    await page.getByLabel("Search recent work").fill(actorEmail);
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    await expect(page).toHaveURL(
+      (url) => url.searchParams.get("q") === actorEmail && url.searchParams.get("page") === "2",
+    );
+    await expect(page.getByTestId("recent-work-summary")).toBeFocused();
+
+    await page.getByTestId("recent-work-clear").focus();
+    await page.getByTestId("recent-work-clear").press("Enter");
+    await expect(page).toHaveURL(
+      (url) =>
+        url.pathname === "/admin/audit" &&
+        url.searchParams.get("page") === "2" &&
+        !url.searchParams.has("q") &&
+        !url.searchParams.has("type") &&
+        !url.searchParams.has("rw"),
+    );
+    await expect(technicalSummary).toHaveText(technicalPageTwoSummary);
+    await expect(page.getByLabel("Search recent work")).toBeFocused();
   });
 });

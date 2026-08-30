@@ -33,6 +33,7 @@
     "next-env.d.ts",
     "out/**",
     "private/tmp/**",
+    "src/components/stock/**",
     "tools/oxlint/anti-slop/**"
   ],
   "jsPlugins": [

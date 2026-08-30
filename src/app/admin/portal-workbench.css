@@ -1,0 +1,4012 @@
+@layer components {
+  /* The Front Desk Ledger shell: a persistent desktop index that becomes the
+     same four thumb-reachable destinations on narrow screens. */
+  .portal-scope ::selection {
+    background: var(--color-amber-soft);
+    color: var(--color-navy-2);
+  }
+
+  .portal-scope :where(a, button, input, select, textarea, summary):focus-visible {
+    outline: 3px solid var(--color-amber-deep);
+    outline-offset: 3px;
+  }
+
+  /* Visual-only prefix. The summary's accessible name stays unchanged. */
+  .website-maintainer-details > summary::before {
+    content: "Show ";
+  }
+
+  .website-maintainer-details[open] > summary::before {
+    content: "Hide ";
+  }
+
+  .website-maintainer-details > summary:focus-visible {
+    outline: 3px solid var(--color-amber-deep);
+    outline-offset: 3px;
+  }
+
+  .portal-workspace {
+    min-height: 100dvh;
+    --portal-surface-muted: oklch(0.975 0.006 220);
+    background: var(--portal-canvas);
+  }
+
+  .portal-stage {
+    min-width: 0;
+  }
+
+  .portal-stage .portal-release-utility {
+    top: 3.6rem;
+  }
+
+  .portal-content {
+    margin-inline: auto;
+    width: 100%;
+    max-width: 92rem;
+    padding: 1.5rem 1rem 6.5rem;
+  }
+
+  .portal-sidebar {
+    position: fixed;
+    inset: auto 0 0;
+    z-index: 60;
+    border-top: 1px solid rgb(255 255 255 / 14%);
+    background: var(--color-navy-2);
+    color: var(--color-on-dark);
+    box-shadow: 0 -10px 30px rgb(19 40 56 / 12%);
+  }
+
+  .portal-sidebar-brand,
+  .portal-sidebar-tools,
+  .portal-sidebar-account {
+    display: none;
+  }
+
+  .portal-primary-nav > ul {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .portal-nav-link {
+    position: relative;
+    display: flex;
+    min-height: 4.25rem;
+    min-width: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.28rem;
+    padding: 0.45rem 0.2rem max(0.45rem, env(safe-area-inset-bottom));
+    color: var(--color-on-dark-muted);
+    font-size: 0.7rem;
+    font-weight: 760;
+    line-height: 1;
+    letter-spacing: -0.01em;
+    transition:
+      background-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+      color 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-nav-link:hover {
+    background: rgb(255 255 255 / 7%);
+    color: white;
+  }
+
+  .portal-nav-link[aria-current="page"] {
+    background: rgb(80 168 165 / 20%);
+    color: white;
+  }
+
+  .portal-nav-link[aria-current="page"]::before {
+    position: absolute;
+    inset: 0.15rem 1.1rem auto;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--color-teal);
+    content: "";
+  }
+
+  .portal-nav-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    stroke-width: 1.9;
+  }
+
+  .portal-nav-count {
+    position: absolute;
+    top: 0.42rem;
+    left: calc(50% + 0.38rem);
+    display: inline-flex;
+    min-width: 1.2rem;
+    min-height: 1.2rem;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--color-navy-2);
+    border-radius: 999px;
+    background: var(--color-amber);
+    padding-inline: 0.22rem;
+    color: var(--color-navy-2);
+    font-size: 0.62rem;
+    font-weight: 900;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .portal-mobile-header {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 40;
+    display: flex;
+    min-height: 3.6rem;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--color-line-2);
+    background: rgb(255 255 255 / 96%);
+    padding-inline: 1rem;
+  }
+
+  .portal-mobile-brand {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.65rem;
+    color: var(--color-navy-2);
+  }
+
+  .portal-mobile-brand > span {
+    display: grid;
+    width: 2rem;
+    height: 2rem;
+    place-items: center;
+    border-radius: 0.55rem;
+    background: var(--color-navy-2);
+    color: white;
+    font-family: var(--font-display), Georgia, serif;
+    font-size: 1.05rem;
+  }
+
+  .portal-mobile-brand strong {
+    font-size: 0.95rem;
+    font-weight: 850;
+  }
+
+  .portal-account-menu {
+    position: relative;
+  }
+
+  .portal-account-menu > summary {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    cursor: pointer;
+    list-style: none;
+    place-items: center;
+    border: 1px solid var(--color-line-2);
+    border-radius: 0.7rem;
+    color: var(--color-navy);
+  }
+
+  .portal-account-menu > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .portal-account-menu[open] > summary {
+    border-color: var(--color-teal-ink);
+    background: var(--color-mint);
+  }
+
+  .portal-account-menu > div {
+    position: absolute;
+    inset: calc(100% + 0.5rem) 0 auto auto;
+    z-index: 70;
+    width: min(18rem, calc(100vw - 2rem));
+    overflow: hidden;
+    border: 1px solid var(--color-line-2);
+    border-radius: var(--radius);
+    background: white;
+    box-shadow: 0 16px 40px rgb(23 51 71 / 16%);
+  }
+
+  .portal-account-menu p {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    border-bottom: 1px solid var(--color-line-2);
+    padding: 1rem;
+  }
+
+  .portal-account-menu p strong {
+    color: var(--color-ink);
+  }
+
+  .portal-account-menu p span {
+    color: var(--color-muted-ink);
+    font-size: 0.82rem;
+  }
+
+  .portal-account-menu a,
+  .portal-account-menu button {
+    display: flex;
+    width: 100%;
+    min-height: 2.75rem;
+    align-items: center;
+    padding-inline: 1rem;
+    color: var(--color-body);
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-align: start;
+  }
+
+  .portal-account-menu a:hover,
+  .portal-account-menu button:hover {
+    background: var(--portal-surface-muted);
+    color: var(--color-navy-2);
+  }
+
+  .portal-page-header {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin-block-end: 1.5rem;
+  }
+
+  .portal-page-title {
+    max-width: 20ch;
+    color: var(--color-ink);
+    font-family: var(--font-body), Arial, sans-serif;
+    font-size: clamp(1.75rem, 5vw, 2.4rem);
+    font-weight: 900;
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+
+  .portal-page-description {
+    max-width: 68ch;
+    margin-block-start: 0.55rem;
+    color: var(--color-muted-ink);
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  .portal-page-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem 1rem;
+    margin-block-start: 0.75rem;
+    color: var(--color-muted-ink);
+    font-size: 0.82rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .portal-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+  }
+
+  .portal-back-link {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.3rem;
+    margin-block-end: 0.55rem;
+    color: var(--color-teal-ink);
+    font-size: 0.88rem;
+    font-weight: 780;
+  }
+
+  .portal-loading {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .portal-loading-heading {
+    display: grid;
+    max-width: 42rem;
+    gap: 0.65rem;
+    padding-block: 0.35rem 0.75rem;
+  }
+
+  .portal-loading-heading > span,
+  .portal-loading-heading > i,
+  .portal-loading-workbench > span {
+    display: block;
+    border-radius: 0.35rem;
+    background: color-mix(in oklch, var(--color-line-2) 72%, white);
+  }
+
+  .portal-loading-heading > span {
+    width: min(18rem, 62vw);
+    height: 2.35rem;
+  }
+
+  .portal-loading-heading > i {
+    width: min(31rem, 78vw);
+    height: 0.85rem;
+  }
+
+  .portal-loading-workbench {
+    display: grid;
+    min-height: 10rem;
+    gap: 1rem;
+    align-content: start;
+    border: 1px solid var(--color-line-2);
+    border-radius: var(--radius);
+    background: var(--portal-surface);
+    padding: 1.25rem;
+  }
+
+  .portal-loading-workbench > span {
+    width: 100%;
+    height: 1rem;
+  }
+
+  .portal-loading-workbench > span:first-child {
+    width: min(13rem, 52vw);
+    height: 1.2rem;
+  }
+
+  .portal-loading-workbench > span:last-child {
+    width: min(25rem, 78vw);
+  }
+
+  @media (min-width: 48rem) {
+    .portal-content {
+      padding: 2.4rem 2rem 4rem;
+    }
+
+    .portal-page-header {
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 2rem;
+      margin-block-end: 2rem;
+    }
+
+    .portal-page-actions {
+      justify-content: flex-end;
+    }
+  }
+
+  @media (min-width: 60rem) {
+    .portal-sidebar {
+      inset: 0 auto 0 0;
+      display: flex;
+      width: 17rem;
+      flex-direction: column;
+      border-top: 0;
+      border-right: 1px solid rgb(255 255 255 / 12%);
+      box-shadow: 12px 0 32px rgb(19 40 56 / 8%);
+    }
+
+    .portal-stage {
+      margin-inline-start: 17rem;
+    }
+
+    .portal-mobile-header {
+      display: none;
+    }
+
+    .portal-stage .portal-release-utility {
+      top: 0;
+    }
+
+    .portal-content {
+      padding: 3rem clamp(2.5rem, 4vw, 4.5rem) 5rem;
+    }
+
+    .portal-sidebar-brand {
+      display: flex;
+      min-height: 6.6rem;
+      align-items: center;
+      gap: 0.8rem;
+      border-bottom: 1px solid rgb(255 255 255 / 10%);
+      padding: 1.35rem 1.5rem;
+      color: white;
+    }
+
+    .portal-sidebar-mark {
+      display: grid;
+      width: 2.55rem;
+      height: 2.55rem;
+      flex: none;
+      place-items: center;
+      border: 1px solid rgb(255 255 255 / 25%);
+      border-radius: 0.7rem;
+      background: rgb(255 255 255 / 8%);
+      color: var(--color-amber);
+      font-family: var(--font-display), Georgia, serif;
+      font-size: 1.35rem;
+    }
+
+    .portal-sidebar-brand > span:last-child {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 0.14rem;
+    }
+
+    .portal-sidebar-brand strong {
+      font-size: 0.98rem;
+      font-weight: 850;
+      letter-spacing: -0.015em;
+    }
+
+    .portal-sidebar-brand small {
+      color: var(--color-on-dark-muted);
+      font-size: 0.72rem;
+      font-weight: 720;
+      letter-spacing: 0.04em;
+    }
+
+    .portal-primary-nav {
+      padding: 1.35rem 1rem;
+    }
+
+    .portal-primary-nav > ul {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .portal-nav-link {
+      min-height: 3rem;
+      flex-direction: row;
+      justify-content: flex-start;
+      gap: 0.75rem;
+      border-radius: 0.65rem;
+      padding: 0.65rem 0.8rem;
+      color: var(--color-on-dark-muted);
+      font-size: 0.9rem;
+    }
+
+    .portal-nav-link[aria-current="page"]::before {
+      inset: 0.72rem auto 0.72rem 0;
+      width: 2px;
+      height: auto;
+    }
+
+    .portal-nav-icon {
+      width: 1.15rem;
+      height: 1.15rem;
+    }
+
+    .portal-nav-count {
+      position: static;
+      min-width: 1.35rem;
+      min-height: 1.35rem;
+      margin-inline-start: auto;
+      border-width: 0;
+      font-size: 0.66rem;
+    }
+
+    .portal-sidebar-tools {
+      display: block;
+      margin-top: 0.65rem;
+      padding: 0 1rem;
+    }
+
+    .portal-sidebar-tools > p {
+      margin: 0 0 0.45rem 0.75rem;
+      color: rgb(226 239 240 / 58%);
+      font-size: 0.66rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .portal-sidebar-tools a {
+      display: flex;
+      min-height: 2.75rem;
+      align-items: center;
+      gap: 0.7rem;
+      border-radius: 0.6rem;
+      padding-inline: 0.8rem;
+      color: var(--color-on-dark-muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .portal-sidebar-tools a:hover {
+      background: rgb(255 255 255 / 7%);
+      color: white;
+    }
+
+    .portal-sidebar-account {
+      display: block;
+      margin: auto 1rem 1rem;
+      border-top: 1px solid rgb(255 255 255 / 12%);
+      padding-top: 1rem;
+    }
+
+    .portal-sidebar-person {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 0.2rem;
+      padding-inline: 0.45rem;
+    }
+
+    .portal-sidebar-person > span {
+      color: white;
+      font-size: 0.85rem;
+      font-weight: 780;
+    }
+
+    .portal-sidebar-person small {
+      overflow: hidden;
+      color: var(--color-on-dark-muted);
+      font-size: 0.72rem;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .portal-sidebar-person-meta {
+      display: flex;
+      min-width: 0;
+      align-items: center;
+      gap: 0.32rem;
+    }
+
+    .portal-sidebar-person-meta > span:first-child,
+    .portal-sidebar-person-meta > span:nth-child(2) {
+      flex: none;
+    }
+
+    .portal-sidebar-person-meta > span:last-child {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .portal-sidebar-account-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.35rem;
+      margin-top: 0.75rem;
+    }
+
+    .portal-sidebar-account-actions a,
+    .portal-sidebar-account-actions button {
+      display: flex;
+      min-height: 2.75rem;
+      width: 100%;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      border-radius: 0.55rem;
+      color: var(--color-on-dark-muted);
+      font-size: 0.75rem;
+      font-weight: 750;
+    }
+
+    .portal-sidebar-account-actions a:hover,
+    .portal-sidebar-account-actions button:hover {
+      background: rgb(255 255 255 / 8%);
+      color: white;
+    }
+  }
+
+  .portal-after-hours {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 999px;
+    background: var(--color-navy);
+    padding: 0.2rem 0.62rem;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 800;
+  }
+
+  .portal-inline-link {
+    display: inline-flex;
+    min-height: 2.75rem;
+    flex: none;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--color-teal-ink);
+    font-size: 0.84rem;
+    font-weight: 800;
+  }
+
+  /* ---- Home: The Line ----
+     The practice's daily call sheet. White paper divided by hairlines and
+     space, never by filled regions. The unit is the line: one patient, one
+     phone number, one timing fact. Counts are column headers; the day is the
+     only large type. Amber appears solely as a stamp on a line. */
+  .portal-sheet {
+    max-width: 68rem;
+  }
+
+  /* Title block on a form, not a hero: identity as small print, the day set
+     large, the print command opposite, and a rule that closes the header. */
+  .portal-sheet-head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ps-4);
+    border-block-end: 2px solid var(--color-navy);
+    padding-block-end: var(--ps-4);
+  }
+
+  .portal-sheet-title {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ps-1);
+  }
+
+  .portal-sheet-greeting {
+    color: var(--color-muted-ink);
+    font-size: var(--pt-sm);
+    font-weight: 400;
+    line-height: 1.3;
+  }
+
+  .portal-sheet-day {
+    color: var(--color-ink);
+    font-size: var(--pt-xl);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+
+  /* Attention, and the only amber on the sheet: a rubber stamp on one line,
+     never a wash over a region. It always carries a word, so color is never
+     the sole carrier of state. */
+  .portal-stamp {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid color-mix(in oklch, var(--color-amber-deep) 45%, white);
+    border-radius: var(--radius-sm);
+    background: color-mix(in oklch, var(--color-amber-soft) 55%, white);
+    padding: 0.1rem 0.34rem;
+    color: var(--portal-attention-ink);
+    font-size: var(--pt-2xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .portal-sheet-commands {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ps-2);
+  }
+
+  .portal-sheet-print,
+  .portal-sheet-add {
+    min-height: 2.75rem;
+    font-size: var(--pt-sm);
+    font-weight: 600;
+  }
+
+  /* A ruled group. Space carries the grouping: generous above the heading,
+     tight below it, and no gap between rows — the hairline is the ruling. */
+  .portal-sheet-group {
+    margin-block-start: var(--ps-8);
+  }
+
+  .portal-sheet-group > header {
+    display: flex;
+    align-items: baseline;
+    gap: var(--ps-2);
+  }
+
+  .portal-sheet-group > header h2 {
+    color: var(--color-ink);
+    font-size: var(--pt-lg);
+    font-weight: 800;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+  }
+
+  /* The count is a column header, not a headline. */
+  .portal-sheet-count {
+    color: var(--color-muted-ink);
+    font-size: var(--pt-lg);
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+  }
+
+  /* The window. A group of five lines or fewer stands fully open. A taller
+     group scrolls behind a half-cut line: the cut row itself says "more"
+     honestly, so no Show-all control interrupts the ruling, and the heading's
+     count keeps stating the true total. */
+  .portal-sheet-frame {
+    margin-block-start: var(--ps-3);
+  }
+
+  .portal-sheet-frame > .portal-sheet-lines {
+    margin-block-start: 0;
+  }
+
+  /* Three and a half rows of the tall two-line mobile rows; the desktop
+     query below widens the window to four and a half of its shorter rows.
+     Native overflow is the physics. contain keeps the platform bounce on
+     this box so a flick does not die at the edge and hand the page the
+     rest of the gesture. auto opts out of the document's inherited
+     smooth. The half-cut row and the heading's count are the affordance;
+     there is no rail. */
+  .portal-sheet-frame[data-window] > .portal-sheet-lines {
+    max-height: calc(3.5 * 8rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scroll-behavior: auto;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  /* The rows are shadcn Items now: each line a bordered, rounded surface,
+     separated by space instead of hairline ruling. The Item carries the
+     frame (border, radius, focus ring, layout); this block carries only what
+     the component cannot know — the stretched whole-line target, the brand's
+     hover/press choreography, and the call-sheet typography. */
+  .portal-sheet-lines {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ps-2);
+    margin-block-start: var(--ps-3);
+  }
+
+  .portal-sheet-row {
+    position: relative;
+    background: var(--portal-surface);
+    transition:
+      background-color 160ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  /* Hover tints the row, focus rings the target — different signals,
+     different pictures. Pointer-gated: a touch tap leaves a sticky false
+     hover that would linger on the last-touched row after the finger lifts. */
+  @media (hover: hover) and (pointer: fine) {
+    .portal-sheet-row:has(.portal-sheet-open:hover) {
+      background: var(--color-mint);
+    }
+  }
+
+  /* Pressed arrives instantly — easing into a press is just the lag it looks
+     like — and releases on the 160ms ease-out above. The whole line dips to
+     0.97: it is the thing being taken, so it is the thing that responds. */
+  .portal-sheet-row:has(.portal-sheet-open:active) {
+    background: color-mix(in oklch, var(--color-teal) 22%, var(--color-mint));
+    transform: scale(0.97);
+    transition-duration: 0s;
+  }
+
+  /* Opening the record: the whole line is the target. The name button
+     stretches an invisible hit area across the Item, so a press anywhere
+     that is not the phone number — which sits above it — lifts the line into
+     its modal. Focus still rings the name, not the stretched box. */
+  .portal-sheet-open {
+    display: flex;
+    min-width: 0;
+    min-height: 2.75rem;
+    align-items: center;
+    color: var(--color-ink);
+    cursor: pointer;
+    text-align: start;
+  }
+
+  .portal-sheet-open::after {
+    position: absolute;
+    inset: 0;
+    content: "";
+  }
+
+  .portal-sheet-phone {
+    position: relative;
+  }
+
+  .portal-sheet-open:focus-visible {
+    outline-offset: -2px;
+  }
+
+  /* Bold ink alone does not say "link", so the name takes the underline on
+     hover the way any other text link would. */
+  .portal-sheet-open:hover [data-slot="item-title"] {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* Dialing is its own intent, so it gets its own 44px target rather than
+     losing the tap to the row it sits in. */
+  .portal-sheet-phone {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: var(--ps-1);
+    color: var(--color-body);
+    font-size: var(--pt-sm);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.4;
+    white-space: nowrap;
+    transition: color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-sheet-phone:hover {
+    color: var(--color-teal-ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .portal-sheet-phone:active {
+    color: var(--color-navy);
+    transition-duration: 0s;
+  }
+
+  /* currentcolor, so the glyph tracks the link's own state for free. */
+  .portal-sheet-phone-icon {
+    flex: none;
+    opacity: 0.55;
+  }
+
+  /* Timing is a fact, not a control: presses on it fall through to the line. */
+  .portal-sheet-when {
+    min-width: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--ps-1) var(--ps-2);
+    pointer-events: none;
+    color: var(--color-muted-ink);
+    font-size: var(--pt-xs);
+    line-height: 1.4;
+    text-align: end;
+  }
+
+  .portal-sheet-disclosure {
+    flex: none;
+    color: var(--color-line-2);
+    transition: color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-sheet-open:hover .portal-sheet-disclosure,
+  .portal-sheet-open:focus-visible .portal-sheet-disclosure {
+    color: var(--color-teal-ink);
+  }
+
+  /* The working band of the lifted line: mint marks it as the one surface on
+     the page where something is being recorded, full-bleed inside the modal.
+     The band spaces its children itself (no flex gap), because the collapsed
+     reveal sections must occupy no space at all — not even a gap's worth. */
+  .portal-line-record {
+    display: flex;
+    flex-direction: column;
+    margin-block-start: var(--ps-3);
+    border-block-start: 1px solid var(--color-line);
+    background: color-mix(in oklch, var(--color-mint) 55%, white);
+    padding: var(--ps-3) var(--ps-4) 0;
+  }
+
+  .portal-line-record > * + * {
+    margin-block-start: var(--ps-3);
+  }
+
+  .portal-line-record legend {
+    padding-block-end: var(--ps-1);
+    color: var(--color-ink);
+    font-size: var(--pt-sm);
+    font-weight: 700;
+  }
+
+  /* The three outcomes borrow the decision grammar the request panel
+     committed: ruled rows on white paper, one indicator, a mint wash on the
+     chosen row. A decision learned once is learned everywhere. */
+  .portal-line-outcomes .portal-choice-list {
+    margin-block-start: 0;
+  }
+
+  /* An unfolding section of the working band. Always in the DOM, opened and
+     closed by animating its one grid row between nothing and everything —
+     transitions, not keyframes, so changing an answer mid-motion retargets
+     from wherever the fold is. Arrival rides the registry spring; departure
+     takes the registry exit, faster and without ceremony. The inner ride
+     (a 5px settle) is the only transform, so the overshoot reads as the
+     paper relaxing, never as bounce. Closed sections are inert in markup
+     and invisible here; visibility waits for the fold to finish. */
+  .portal-line-reveal {
+    display: grid;
+    grid-template-rows: 0fr;
+    margin-block-start: 0;
+    visibility: hidden;
+    opacity: 0;
+    transition:
+      grid-template-rows var(--pm-exit-duration) var(--pm-exit),
+      opacity var(--pm-exit-duration) var(--pm-exit),
+      visibility 0s linear var(--pm-exit-duration);
+  }
+
+  .portal-line-reveal > div {
+    min-height: 0;
+    overflow: hidden;
+    transform: translateY(-0.3rem);
+    transition: transform var(--pm-exit-duration) var(--pm-exit);
+  }
+
+  .portal-line-reveal[data-open="true"] {
+    grid-template-rows: 1fr;
+    visibility: visible;
+    opacity: 1;
+    transition:
+      grid-template-rows var(--pm-spring-duration) var(--pm-spring),
+      opacity var(--pm-fade-duration) var(--pm-exit),
+      visibility 0s;
+  }
+
+  .portal-line-reveal[data-open="true"] > div {
+    transform: none;
+    transition: transform var(--pm-spring-duration) var(--pm-spring);
+  }
+
+  /* The deeper-mint plan band inside an unfolded section: the same surface
+     the request panel's dependent plan rides on. Its top margin lives inside
+     the fold, so it collapses with it. */
+  .portal-line-band {
+    margin-block-start: var(--ps-3);
+    border-radius: var(--radius-sm);
+    background: var(--color-mint-2);
+    padding: var(--ps-3);
+  }
+
+  .portal-line-voicemail {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: var(--ps-2);
+    margin-block-end: var(--ps-1);
+    color: var(--color-body);
+    font-size: var(--pt-sm);
+    line-height: 1.4;
+  }
+
+  .portal-line-voicemail:hover {
+    color: var(--color-teal-ink);
+  }
+
+  .portal-line-voicemail input {
+    flex: none;
+    width: 1.05rem;
+    height: 1.05rem;
+    accent-color: var(--color-teal-ink);
+  }
+
+  .portal-line-when {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ps-2);
+  }
+
+  .portal-line-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ps-2);
+  }
+
+  /* Return-day presets as pills — the same chip the request panel uses:
+     hairline at rest, navy ink when chosen, a settle on press. They live in
+     the call-again day dialog now, above its month; the rest border is the
+     control hairline, >=3:1 on white and on the mint band alike. */
+  .portal-line-chip {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    border: 1px solid var(--color-line-3);
+    border-radius: 999px;
+    background: white;
+    padding-inline: var(--ps-3);
+    cursor: pointer;
+    color: var(--color-body);
+    font-size: var(--pt-sm);
+    font-weight: 600;
+    line-height: 1.2;
+    transition:
+      background-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      border-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .portal-line-chip:hover {
+      border-color: var(--color-navy);
+      color: var(--color-ink);
+    }
+  }
+
+  .portal-line-chip:active {
+    transform: scale(0.97);
+    transition-duration: 0s, 0s, 0s, 0s;
+  }
+
+  .portal-line-chip:has(input:checked) {
+    border-color: var(--color-navy);
+    background: var(--color-navy);
+    color: white;
+  }
+
+  .portal-line-chip:has(input:focus-visible) {
+    outline: 3px solid var(--color-amber-deep);
+    outline-offset: 2px;
+  }
+
+  .portal-line-chip:has(input:disabled) {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  .portal-line-time {
+    display: flex;
+    align-items: center;
+    gap: var(--ps-2);
+  }
+
+  .portal-line-time > span {
+    color: var(--color-ink);
+    font-size: var(--pt-sm);
+    font-weight: 600;
+  }
+
+  .portal-line-date {
+    min-height: 2.75rem;
+    border: 1px solid var(--color-line-3);
+    border-radius: var(--radius);
+    background: white;
+    padding-inline: var(--ps-2);
+    color: var(--color-ink);
+    font-size: var(--pt-sm);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .portal-line-date:focus-visible {
+    border-color: var(--color-teal-ink);
+  }
+
+  .portal-line-error {
+    color: oklch(0.45 0.19 25);
+    font-size: var(--pt-sm);
+    line-height: 1.45;
+  }
+
+  /* The commit shelf holds the bottom of the dialog while a tall day (a
+     calendar month) scrolls, so Save is never below the fold it belongs to. */
+  .portal-line-commit {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ps-3);
+    margin-inline: calc(var(--ps-4) * -1);
+    border-block-start: 1px solid var(--color-line);
+    background: color-mix(in oklch, var(--color-mint) 55%, white);
+    padding: var(--ps-3) var(--ps-4);
+  }
+
+  .portal-line-save:disabled {
+    opacity: 0.55;
+  }
+
+  .portal-line-cancel {
+    min-height: 2.75rem;
+    color: var(--color-muted-ink);
+    font-size: var(--pt-sm);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .portal-line-cancel:hover {
+    color: var(--color-ink);
+  }
+
+  /* ---- The portal calendar ----
+     A month of ruled paper: tabular numerals on white, hairline rules, navy
+     ink for the chosen day, teal for the finger passing over one, and a navy
+     hairline ring for today. Day cells hold the 44px target floor. */
+  .portal-calendar {
+    border: 1px solid var(--color-line-3);
+    border-radius: var(--radius);
+    background: white;
+    padding: var(--ps-2) var(--ps-2) var(--ps-3);
+  }
+
+  .portal-calendar-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ps-2);
+    border-block-end: 1px solid var(--color-line);
+    padding: 0 var(--ps-1) var(--ps-1);
+  }
+
+  .portal-calendar-month {
+    color: var(--color-ink);
+    font-size: var(--pt-sm);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .portal-calendar-nav {
+    display: flex;
+    gap: var(--ps-1);
+  }
+
+  .portal-calendar-nav button {
+    display: grid;
+    width: 2.75rem;
+    height: 2.75rem;
+    place-items: center;
+    border-radius: var(--radius-sm);
+    color: var(--color-body);
+    cursor: pointer;
+    transition:
+      background-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-calendar-nav button:hover:enabled {
+    background: var(--color-mint);
+    color: var(--color-teal-ink);
+  }
+
+  .portal-calendar-nav button:active:enabled {
+    background: color-mix(in oklch, var(--color-teal) 22%, var(--color-mint));
+    transform: scale(0.96);
+    transition-duration: 0s;
+  }
+
+  .portal-calendar-nav button:disabled {
+    color: color-mix(in oklch, var(--color-muted-ink) 50%, white);
+    cursor: default;
+  }
+
+  .portal-calendar-weekdays,
+  .portal-calendar-week {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .portal-calendar-weekdays {
+    padding-block: var(--ps-1);
+  }
+
+  .portal-calendar-weekdays > span {
+    display: grid;
+    min-height: 1.6rem;
+    place-items: center;
+    color: var(--color-muted-ink);
+    font-size: var(--pt-2xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .portal-calendar-week > span {
+    display: grid;
+  }
+
+  /* Turning a month replaces thirty numerals at once, which reads as a
+     glitch rather than a change. The weeks slide a half-step out of the
+     direction travelled and settle on the registry exit — short, because
+     this is the calendar's most-pressed control and motion here is paying
+     off a jarring swap, not decorating one. Only the weeks move; the ruled
+     head they move under holds still, so the month name stays readable.
+     The attribute is set for pointer turns only: an arrow key crossing a
+     month boundary arrives with no motion at all. */
+  .portal-calendar-weeks[data-turn] {
+    animation: portal-calendar-turn 160ms var(--pm-exit) both;
+  }
+
+  .portal-calendar-weeks[data-turn="prev"] {
+    --portal-turn-from: -0.5rem;
+  }
+
+  .portal-calendar-weeks[data-turn="next"] {
+    --portal-turn-from: 0.5rem;
+  }
+
+  @keyframes portal-calendar-turn {
+    from {
+      opacity: 0;
+      transform: translateX(var(--portal-turn-from));
+    }
+  }
+
+  .portal-calendar-day {
+    display: grid;
+    min-height: 2.75rem;
+    place-items: center;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--color-ink);
+    font-size: var(--pt-sm);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    transition:
+      background-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .portal-calendar-day:hover:enabled {
+      background: var(--color-mint);
+      color: var(--color-teal-ink);
+    }
+  }
+
+  .portal-calendar-day:active:enabled {
+    transform: scale(0.96);
+    transition-duration: 0s, 0s, 0s;
+  }
+
+  .portal-calendar-day:focus-visible {
+    outline-offset: -2px;
+  }
+
+  .portal-calendar-day[aria-current="date"] {
+    font-weight: 600;
+    box-shadow: inset 0 0 0 1px var(--color-navy);
+  }
+
+  .portal-calendar-day[data-selected] {
+    background: var(--color-navy);
+    color: white;
+    font-weight: 600;
+    box-shadow: none;
+  }
+
+  /* The pick itself: one settle on the day just chosen, distinct from the
+     fill's state transition. Keyed by data-picked, so it never replays on
+     re-render and never fires for a day that arrived pre-chosen. */
+  .portal-calendar-day[data-picked] {
+    animation: portal-day-pick 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  @keyframes portal-day-pick {
+    from {
+      transform: scale(0.97);
+    }
+  }
+
+  /* Days that cannot be chosen stay quiet but legible: half-strength muted
+     ink, distinct from the full ink of an offerable day. */
+  .portal-calendar-day:disabled {
+    color: color-mix(in oklch, var(--color-muted-ink) 50%, white);
+    cursor: default;
+  }
+
+  /* Past the render ceiling the remainder is stated with its exact count and
+     read in Appointments. The window scrolls what is rendered; it never hides
+     what is not. */
+  .portal-sheet-overflow {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    padding-inline: var(--ps-2);
+    color: var(--color-teal-ink);
+    font-size: var(--pt-xs);
+    font-weight: 600;
+  }
+
+  .portal-sheet-overflow:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* Empty and unavailable are different truths and read differently: mint
+     for a settled day, plain paper for a read that failed. */
+  .portal-sheet-notice {
+    margin-block-start: var(--ps-8);
+    border: 1px solid var(--color-line-2);
+    border-radius: var(--radius);
+    background: var(--portal-surface);
+    padding: var(--ps-6);
+  }
+
+  .portal-sheet-notice--clear {
+    border-color: color-mix(in oklch, var(--color-mint) 70%, var(--color-line-2));
+    background: color-mix(in oklch, var(--color-mint) 45%, white);
+  }
+
+  .portal-sheet-notice h2 {
+    color: var(--color-ink);
+    font-size: var(--pt-lg);
+    font-weight: 800;
+    letter-spacing: -0.015em;
+  }
+
+  .portal-sheet-notice p {
+    max-width: 68ch;
+    margin-block-start: var(--ps-2);
+    color: var(--color-body);
+    font-size: var(--pt-sm);
+    line-height: 1.6;
+  }
+
+  .portal-sheet-notice-action {
+    min-height: 2.75rem;
+    margin-block-start: var(--ps-4);
+    font-size: var(--pt-sm);
+    font-weight: 600;
+  }
+
+  /* Real disclosure: what is true but not today's calling work, closed by
+     default and available without JavaScript. */
+  .portal-sheet-tail {
+    margin-block-start: var(--ps-8);
+    border-block-start: 1px solid var(--color-line-2);
+  }
+
+  .portal-sheet-tail > summary {
+    display: flex;
+    min-height: 2.75rem;
+    width: fit-content;
+    align-items: center;
+    gap: var(--ps-2);
+    cursor: pointer;
+    color: var(--color-teal-ink);
+    font-size: var(--pt-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    list-style: none;
+    text-transform: uppercase;
+  }
+
+  .portal-sheet-tail > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  /* The disclosure carries its own affordance: a chevron that turns when the
+     group opens, so the label never reads as a stranded caption. */
+  .portal-sheet-tail > summary::after {
+    width: 0.4rem;
+    height: 0.4rem;
+    border-block-end: 1.5px solid currentcolor;
+    border-inline-end: 1.5px solid currentcolor;
+    content: "";
+    transform: translateY(-0.1rem) rotate(45deg);
+    transition: transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-sheet-tail[open] > summary::after {
+    transform: translateY(0.05rem) rotate(-135deg);
+  }
+
+  .portal-sheet-tail > ul {
+    padding-block-end: var(--ps-3);
+  }
+
+  .portal-sheet-tail a {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ps-3);
+    color: var(--color-body);
+    font-size: var(--pt-sm);
+  }
+
+  .portal-sheet-tail a:hover {
+    color: var(--color-teal-ink);
+  }
+
+  .portal-sheet-tail a > svg {
+    flex: none;
+    color: var(--color-line-2);
+  }
+
+  /* Operational trouble is about the machine, not the day, so it sits below
+     the sheet as one quiet line. */
+  .portal-sheet-alert {
+    max-width: 68ch;
+    margin-block-start: var(--ps-4);
+    border-inline-start: 1px solid var(--color-amber-deep);
+    padding-inline-start: var(--ps-3);
+    color: var(--color-body);
+    font-size: var(--pt-xs);
+    line-height: 1.6;
+  }
+
+  .portal-sheet-alert strong {
+    color: var(--color-ink);
+    font-weight: 600;
+  }
+
+  .portal-sheet-alert a {
+    color: var(--color-teal-ink);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  /* Secondary jobs stay reachable as one quiet line of text, not a boxed
+     icon rail competing with the day's work. */
+  .portal-sheet-elsewhere {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 var(--ps-4);
+    margin-block-start: var(--ps-12);
+    border-block-start: 1px solid var(--color-line);
+    padding-block-start: var(--ps-2);
+  }
+
+  .portal-sheet-elsewhere a {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    color: var(--color-muted-ink);
+    font-size: var(--pt-xs);
+  }
+
+  .portal-sheet-elsewhere a:hover {
+    color: var(--color-teal-ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  @media (min-width: 48rem) {
+    .portal-sheet-head {
+      flex-direction: row;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: var(--ps-6);
+    }
+
+    .portal-sheet-commands {
+      flex: none;
+      padding-block-end: 0.15rem;
+    }
+  }
+
+  /* At the width where the shell gains its task index, the line reads as one
+     row: who, phone, timing. The phone and timing take fixed widths in the
+     markup (w-44 / w-48) so every row rules to the same edges. Single-line
+     rows are shorter, so the window holds four and a half. */
+  @media (min-width: 60rem) {
+    .portal-sheet-frame[data-window] > .portal-sheet-lines {
+      max-height: calc(4.5 * 4.25rem);
+    }
+  }
+
+  /* Appointments trades the oversized page-title header for the Home
+     masthead grammar: identity, one true sentence, then the queue. Add
+     stays a real button; Print and Export demote to a quiet utility
+     group that no longer competes with opening a request. */
+  .portal-queue-masthead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.55rem 1.25rem;
+    margin-block-end: 1.1rem;
+  }
+
+  .portal-queue-title {
+    color: var(--color-ink);
+    font-size: 1.25rem;
+    font-weight: 880;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+  }
+
+  .portal-queue-lede {
+    margin-top: 0.1rem;
+    color: var(--color-muted-ink);
+    font-size: 0.84rem;
+    line-height: 1.45;
+  }
+
+  .portal-queue-masthead-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .portal-queue-add {
+    padding: 0.5rem 0.9rem;
+    font-size: 0.85rem;
+    font-weight: 800;
+  }
+
+  .portal-utility-group {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.15rem 0.7rem;
+    margin-inline-start: 0.25rem;
+    border-inline-start: 1px solid var(--color-line-2);
+    padding-inline-start: 0.8rem;
+  }
+
+  .portal-utility-link {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.45rem;
+    border-radius: var(--radius-sm);
+    color: var(--color-body);
+    font-size: 0.84rem;
+    font-weight: 760;
+    padding-inline: 0.35rem;
+    transition: color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-utility-link > svg {
+    color: var(--color-muted-ink);
+  }
+
+  .portal-utility-link:hover {
+    color: var(--color-teal-ink);
+  }
+
+  .portal-utility-link:hover > svg {
+    color: inherit;
+  }
+
+  .portal-queue-workbench {
+    overflow: hidden;
+    border: 1px solid var(--color-line-2);
+    border-radius: var(--radius);
+    background: var(--portal-surface);
+  }
+
+  .portal-filter-tabs {
+    border-block: 1px solid var(--color-line-2);
+    padding-inline: 0.4rem;
+  }
+
+  .portal-filter-tabs ul {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .portal-filter-tab {
+    position: relative;
+    display: flex;
+    width: 100%;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.32rem;
+    padding-inline: 0.35rem;
+    color: var(--color-muted-ink);
+    font-size: 0.78rem;
+    font-weight: 780;
+    transition:
+      color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-filter-tabs li:nth-child(-n + 3) {
+    grid-column: span 2;
+  }
+
+  .portal-filter-tabs li:nth-child(n + 4) {
+    grid-column: span 3;
+  }
+
+  .portal-filter-tab:hover {
+    background: white;
+    color: var(--color-ink);
+  }
+
+  .portal-filter-tab[aria-current="page"] {
+    background: white;
+    color: var(--color-navy-2);
+  }
+
+  .portal-filter-tab[aria-current="page"]::after {
+    position: absolute;
+    inset: auto 0.55rem 0;
+    height: 2px;
+    background: var(--color-teal-ink);
+    content: "";
+  }
+
+  /* One quiet count treatment: a tabular number beside the label, not a
+     pill per tab. Empty views stay legible but recede. */
+  .portal-filter-tab [data-filter-count] {
+    color: var(--color-muted-ink);
+    font-size: 0.78rem;
+    font-weight: 740;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .portal-filter-tab [data-filter-count][data-empty="true"] {
+    opacity: 0.55;
+  }
+
+  .portal-filter-tab[aria-current="page"] [data-filter-count] {
+    color: var(--color-navy-2);
+    font-weight: 820;
+  }
+
+  /* The queue row: identity left, the next action as the stable
+     comparison axis in the middle, quiet status and received metadata
+     right, and an always-visible disclosure chevron. The whole row is
+     one link; hover and focus treat it as one surface. */
+  .portal-ledger-list > li + li {
+    border-top: 1px solid var(--color-line-2);
+  }
+
+  .portal-ledger-row {
+    display: grid;
+    min-height: 6rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "person person"
+      "next next"
+      "meta disclosure";
+    gap: 0.28rem 0.6rem;
+    align-items: center;
+    padding: 0.8rem 1rem;
+    color: var(--color-body);
+    transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-ledger-row:hover,
+  .portal-ledger-row:focus-visible {
+    background: color-mix(in oklch, var(--color-mint) 42%, white);
+  }
+
+  .portal-ledger-disclosure {
+    grid-area: disclosure;
+    color: var(--color-muted-ink);
+  }
+
+  .portal-ledger-row:hover > .portal-ledger-disclosure,
+  .portal-ledger-row:focus-visible > .portal-ledger-disclosure {
+    color: var(--color-teal-ink);
+  }
+
+  .portal-ledger-person {
+    display: flex;
+    grid-area: person;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.15rem 0.55rem;
+  }
+
+  .portal-ledger-person > span:first-child {
+    overflow: hidden;
+    color: var(--color-ink);
+    font-size: 0.94rem;
+    font-weight: 850;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .portal-ledger-person > span:last-child {
+    color: var(--color-muted-ink);
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .portal-ledger-next {
+    display: flex;
+    grid-area: next;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.12rem;
+  }
+
+  .portal-ledger-next > strong {
+    color: var(--color-body);
+    font-size: 0.87rem;
+    font-weight: 820;
+    line-height: 1.35;
+  }
+
+  .portal-ledger-next > strong[data-attention="true"] {
+    color: var(--portal-attention-ink);
+  }
+
+  .portal-ledger-context {
+    color: var(--color-muted-ink);
+    font-size: 0.76rem;
+    line-height: 1.45;
+  }
+
+  /* The separator is real DOM text so assistive technology hears the same
+     pause the eye sees; the calc restores the prior 0.4rem gaps around the
+     dot now that the literal spaces also contribute width. */
+  .portal-ledger-context .portal-ledger-sep {
+    margin-inline: calc(0.4rem - 0.1925em);
+    color: var(--color-line);
+  }
+
+  .portal-ledger-context [data-testid="request-waiting"] {
+    color: var(--portal-attention-ink);
+    font-weight: 740;
+  }
+
+  .portal-ledger-meta {
+    display: flex;
+    grid-area: meta;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.3rem 0.65rem;
+  }
+
+  .portal-ledger-meta > small {
+    color: var(--color-muted-ink);
+    font-size: 0.74rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .portal-ledger-meta-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .portal-review-tag {
+    display: inline-flex;
+    min-height: 1.65rem;
+    align-items: center;
+    border-radius: 999px;
+    background: var(--color-amber-soft);
+    padding-inline: 0.55rem;
+    color: var(--color-ink);
+    font-size: 0.68rem;
+    font-weight: 800;
+  }
+
+  .portal-queue-empty {
+    display: flex;
+    min-height: 18rem;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem 1rem;
+    text-align: center;
+  }
+
+  .portal-queue-empty h2 {
+    color: var(--color-ink);
+    font-size: 1.08rem;
+    font-weight: 880;
+  }
+
+  .portal-queue-empty p {
+    max-width: 52ch;
+    margin-top: 0.5rem;
+    color: var(--color-muted-ink);
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+
+  .portal-queue-empty .portal-inline-link {
+    margin-top: 1.1rem;
+  }
+
+  .portal-queue-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border-top: 1px solid var(--color-line-2);
+    padding: 0.85rem 1rem;
+  }
+
+  .portal-queue-pagination > p {
+    color: var(--color-muted-ink);
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .portal-page-nav {
+    display: flex;
+    margin-left: auto;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .portal-page-nav > span {
+    color: var(--color-body);
+    font-size: 0.8rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (min-width: 40rem) {
+    .portal-queue-masthead {
+      align-items: flex-end;
+    }
+
+    .portal-filter-tabs {
+      padding-inline: 0.7rem;
+    }
+
+    .portal-filter-tabs ul {
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    .portal-filter-tab {
+      width: auto;
+      justify-content: flex-start;
+      padding-inline: 0.8rem;
+      font-size: 0.83rem;
+    }
+
+    /* Desktop scan row: identity, action axis, quiet metadata, disclosure.
+       Density is tightened so five to seven records compare in one view. */
+    .portal-ledger-row {
+      min-height: 5.15rem;
+      grid-template-columns: minmax(9.5rem, 1fr) minmax(13rem, 1.6fr) max-content 1.35rem;
+      grid-template-areas: "person next meta disclosure";
+      align-items: center;
+      gap: 0.35rem 1.1rem;
+      padding: 0.6rem 1.15rem;
+    }
+
+    .portal-ledger-person {
+      flex-direction: column;
+      flex-wrap: nowrap;
+      align-items: stretch;
+      gap: 0.08rem;
+    }
+
+    .portal-ledger-meta {
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.3rem;
+    }
+
+    .portal-ledger-meta > small {
+      text-align: end;
+    }
+
+    .portal-queue-pagination {
+      padding-inline: 1.15rem;
+    }
+  }
+
+  .portal-request-create {
+    max-width: 55rem;
+  }
+
+  .portal-request-form-sheet {
+    overflow: hidden;
+    border: 1px solid var(--color-line-2);
+    border-radius: var(--radius);
+    background: var(--portal-surface);
+  }
+
+  .portal-request-form-boundary {
+    border-bottom: 1px solid var(--color-line-2);
+    background: color-mix(in oklch, var(--color-amber-soft) 55%, white);
+    padding: 1rem 1.15rem;
+  }
+
+  .portal-request-form-boundary strong {
+    color: var(--color-ink);
+    font-size: 0.9rem;
+    font-weight: 850;
+  }
+
+  .portal-request-form-boundary p {
+    max-width: 66ch;
+    margin-top: 0.2rem;
+    color: var(--color-body);
+    font-size: 0.82rem;
+    line-height: 1.55;
+  }
+
+  .portal-request-form-alert {
+    margin: 1rem 1.15rem 0;
+    border: 1px solid color-mix(in oklch, oklch(0.5 0.19 25) 45%, white);
+    border-radius: var(--radius-sm);
+    background: color-mix(in oklch, oklch(0.96 0.025 25) 82%, white);
+    padding: 0.85rem 1rem;
+    color: var(--color-body);
+    font-size: 0.84rem;
+    line-height: 1.5;
+  }
+
+  .portal-request-form-alert strong {
+    display: block;
+    color: var(--color-ink);
+    font-weight: 850;
+  }
+
+  .portal-request-form-alert p {
+    margin-top: 0.15rem;
+  }
+
+  .portal-request-form-alert a {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    margin-top: 0.25rem;
+    color: var(--color-teal-ink);
+    font-weight: 800;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .portal-request-form-section {
+    min-width: 0;
+    padding: 1.3rem 1.15rem 1.4rem;
+  }
+
+  .portal-request-form-section + .portal-request-form-section {
+    border-top: 1px solid var(--color-line-2);
+  }
+
+  .portal-request-form-section legend {
+    float: left;
+    width: 100%;
+    color: var(--color-ink);
+    font-size: 1.02rem;
+    font-weight: 900;
+    letter-spacing: -0.015em;
+  }
+
+  .portal-request-form-section legend + * {
+    clear: both;
+  }
+
+  .portal-request-form-section-copy {
+    max-width: 62ch;
+    padding-top: 0.2rem;
+    color: var(--color-muted-ink);
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  .portal-request-form-grid {
+    display: grid;
+    gap: 1.1rem;
+    margin-top: 1rem;
+  }
+
+  .portal-request-field {
+    min-width: 0;
+  }
+
+  /* A locked draft (unavailable/conflict) must stay readable while staff
+     compare values: full ink, muted paper, no dimming. */
+  .portal-request-form-sheet[data-draft-locked="true"]
+    :is([data-slot="input"], [data-slot="native-select"], [data-slot="textarea"]):is(
+      [readonly],
+      :disabled
+    ) {
+    cursor: default;
+    background: var(--portal-surface-muted);
+    opacity: 1;
+  }
+
+  .portal-request-form-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    border-top: 1px solid var(--color-line-2);
+    background: var(--portal-surface-muted);
+    padding: 1.15rem;
+  }
+
+  .portal-request-form-footer > p {
+    max-width: 54ch;
+    color: var(--color-muted-ink);
+    font-size: 0.8rem;
+    line-height: 1.5;
+  }
+
+  .portal-request-form-footer > p strong {
+    display: block;
+    margin-bottom: 0.15rem;
+    color: var(--color-ink);
+    font-weight: 850;
+  }
+
+  .portal-request-form-footer > div {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .portal-request-form-footer [data-slot="button"] {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .portal-request-form-footer a[aria-disabled="true"] {
+    pointer-events: none;
+    opacity: 0.55;
+  }
+
+  .portal-request-created {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 0.7rem;
+    margin-bottom: 1rem;
+    border: 1px solid color-mix(in oklch, var(--color-teal-ink) 30%, white);
+    border-radius: var(--radius-sm);
+    background: color-mix(in oklch, var(--color-mint) 72%, white);
+    padding: 0.9rem 1rem;
+  }
+
+  .portal-request-created > svg {
+    margin-top: 0.05rem;
+    color: var(--color-teal-ink);
+  }
+
+  .portal-request-created strong {
+    color: var(--color-ink);
+    font-size: 0.9rem;
+    font-weight: 850;
+  }
+
+  .portal-request-created p {
+    margin-top: 0.12rem;
+    color: var(--color-body);
+    font-size: 0.82rem;
+    line-height: 1.5;
+  }
+
+  .portal-output-feedback {
+    width: 100%;
+    margin-block-end: 1rem;
+    border: 1px solid color-mix(in oklch, var(--color-teal-ink) 25%, white);
+    border-radius: var(--radius-sm);
+    background: color-mix(in oklch, var(--color-mint) 72%, white);
+    padding: 0.8rem 1rem;
+    color: var(--color-ink);
+    font-size: 0.9rem;
+    font-weight: 800;
+    line-height: 1.5;
+  }
+
+  .portal-output-feedback[role="alert"] {
+    border-color: color-mix(in oklch, var(--color-amber) 40%, white);
+    background: var(--color-amber-soft);
+  }
+
+  @media (min-width: 40rem) {
+    .portal-request-form-boundary,
+    .portal-request-form-section,
+    .portal-request-form-footer {
+      padding-inline: 1.5rem;
+    }
+
+    .portal-request-form-alert {
+      margin-inline: 1.5rem;
+    }
+
+    .portal-request-form-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1.15rem 1.25rem;
+    }
+
+    .portal-request-field--wide {
+      grid-column: 1 / -1;
+    }
+
+    .portal-request-form-footer {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+    }
+
+    .portal-request-form-footer > div {
+      display: flex;
+      flex: none;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .portal-request-form-footer [data-slot="button"] {
+      width: auto;
+    }
+  }
+
+  .portal-settings-form-summary {
+    margin-top: 0.75rem;
+    border-left: 3px solid var(--color-amber-deep);
+    border-radius: var(--radius-sm);
+    background: var(--color-amber-soft);
+    padding: 0.65rem 0.8rem;
+    color: var(--color-ink);
+    font-size: 0.85rem;
+    font-weight: 800;
+    line-height: 1.4;
+  }
+
+  .portal-settings-list-heading:focus-visible {
+    outline: 3px solid var(--color-amber-deep);
+    outline-offset: 4px;
+  }
+
+  .portal-recipient-state {
+    display: inline-flex;
+    min-height: 2.5rem;
+    align-items: center;
+    border: 1px solid var(--color-line-2);
+    border-radius: 999px;
+    background: white;
+    padding-inline: 0.85rem;
+    color: var(--color-muted-ink);
+    font-size: 0.85rem;
+    font-weight: 800;
+  }
+
+  .portal-recipient-state[data-active="true"] {
+    border-color: var(--color-teal-ink);
+    background: var(--color-mint);
+    color: var(--color-teal-ink);
+  }
+
+  /* A form needs more room than a confirmation, and a tall day needs the sheet
+     to scroll inside the dialog rather than push the page. */
+  .portal-add-appointment {
+    width: min(94vw, 40rem);
+    max-height: min(90vh, 46rem);
+    overflow-y: auto;
+  }
+
+  .portal-add-appointment .portal-request-form-sheet {
+    margin-block-start: var(--ps-3);
+  }
+
+  .portal-print-chooser {
+    width: min(92vw, 26rem);
+  }
+
+  .portal-print-chooser-primary {
+    margin-top: 1rem;
+  }
+
+  .portal-print-chooser-primary [data-slot="button"] {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .portal-print-chooser-statuses {
+    margin-top: 1.1rem;
+    border: 0;
+    padding: 0;
+  }
+
+  .portal-print-chooser-statuses legend {
+    color: var(--color-ink);
+    font-size: 0.82rem;
+    font-weight: 850;
+  }
+
+  .portal-print-chooser-status {
+    display: grid;
+    min-height: 2.75rem;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.65rem;
+    margin-top: 0.35rem;
+    border: 1px solid var(--color-line-2);
+    border-radius: var(--radius-sm);
+    padding-inline: 0.75rem;
+    color: var(--color-ink);
+    font-size: 0.9rem;
+    font-weight: 700;
+  }
+
+  .portal-print-chooser-status[data-selected="true"] {
+    border-color: var(--color-teal-ink);
+    background: var(--color-mint);
+    color: var(--color-teal-ink);
+  }
+
+  .portal-print-chooser-status input {
+    width: 1.05rem;
+    height: 1.05rem;
+    accent-color: var(--color-teal-ink);
+  }
+
+  .portal-print-chooser-status small {
+    color: var(--color-muted-ink);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 750;
+  }
+
+  .portal-print-chooser-status[data-selected="true"] small {
+    color: var(--color-teal-ink);
+  }
+
+  /* The portal's one modal grammar. Every dialog arrives the same way: it
+     rises 12px and grows from 97% on the registry spring (--pm-spring), one
+     4.6% overshoot, settled well inside half a second. The fade rides the
+     exit curve instead — opacity clamps at 1, so a spring's overshoot is
+     wasted on it, and the quick fade finishes "it's here" while the spring
+     settles the travel. It leaves faster than it came, along a shorter
+     version of the same path. Transitions rather than keyframes, so a close
+     during the entrance reverses from wherever the surface is, and
+     `allow-discrete` holds the dialog in the top layer while it leaves.
+     Modals stay centered — they answer the whole sheet, not one trigger. */
+  .portal-confirm-dialog {
+    width: min(92vw, 28rem);
+    max-height: min(90dvh, 32rem);
+    margin: auto;
+    overflow: auto;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: white;
+    padding: 0;
+    color: var(--color-ink);
+    box-shadow: var(--shadow-card);
+    opacity: 1;
+    transform: none;
+    transition:
+      opacity var(--pm-exit-duration) var(--pm-exit),
+      transform var(--pm-exit-duration) var(--pm-exit),
+      display var(--pm-exit-duration) allow-discrete,
+      overlay var(--pm-exit-duration) allow-discrete;
+  }
+
+  .portal-confirm-dialog:not([open]) {
+    display: none;
+    opacity: 0;
+    transform: translateY(0.4rem) scale(0.985);
+  }
+
+  .portal-confirm-dialog[open] {
+    transition:
+      opacity var(--pm-exit-duration) var(--pm-exit),
+      transform var(--pm-spring-duration) var(--pm-spring),
+      display var(--pm-spring-duration) allow-discrete,
+      overlay var(--pm-spring-duration) allow-discrete;
+  }
+
+  @starting-style {
+    .portal-confirm-dialog[open] {
+      opacity: 0;
+      transform: translateY(0.75rem) scale(0.97);
+    }
+  }
+
+  /* The scrim is plain dim: focus comes from the paper rising, not glass. */
+  .portal-confirm-dialog::backdrop {
+    background: rgba(20, 32, 45, 0.48);
+    opacity: 0;
+    transition:
+      opacity var(--pm-exit-duration) var(--pm-exit),
+      display var(--pm-exit-duration) allow-discrete,
+      overlay var(--pm-exit-duration) allow-discrete;
+  }
+
+  .portal-confirm-dialog[open]::backdrop {
+    opacity: 1;
+    transition:
+      opacity var(--pm-scrim-duration) var(--pm-exit),
+      display var(--pm-scrim-duration) allow-discrete,
+      overlay var(--pm-scrim-duration) allow-discrete;
+  }
+
+  @starting-style {
+    .portal-confirm-dialog[open]::backdrop {
+      opacity: 0;
+    }
+  }
+
+  .portal-confirm-dialog-body {
+    padding: 1.5rem 1.5rem 1.15rem;
+  }
+
+  .portal-confirm-dialog-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .portal-confirm-dialog-close {
+    display: inline-flex;
+    min-height: 2.75rem;
+    flex: none;
+    align-items: center;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    padding-inline: 0.65rem;
+    color: var(--color-muted-ink);
+    font-size: 0.85rem;
+    font-weight: 800;
+  }
+
+  .portal-confirm-dialog-title {
+    min-width: 0;
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .portal-confirm-dialog-body p {
+    margin-top: 0.65rem;
+    color: var(--color-body);
+    font-size: 0.95rem;
+    line-height: 1.5;
+  }
+
+  .portal-confirm-dialog-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0 1.5rem 1.5rem;
+  }
+
+  .portal-confirm-dialog-actions [data-slot="button"],
+  .portal-confirm-dialog-actions .portal-confirm-dialog-destructive {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .portal-confirm-dialog-destructive {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--color-amber-deep);
+    border-radius: var(--radius-sm);
+    background: white;
+    padding-inline: 1rem;
+    color: var(--portal-attention-ink);
+    font-size: 0.9rem;
+    font-weight: 800;
+  }
+
+  .portal-confirm-dialog-discard {
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    padding-inline: 0.75rem;
+    color: var(--color-teal-ink);
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-underline-offset: 2px;
+  }
+
+  .portal-confirm-dialog-discard:hover {
+    text-decoration: underline;
+  }
+
+  @media (min-width: 40rem) {
+    .portal-confirm-dialog-actions {
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 1.25rem;
+    }
+
+    .portal-confirm-dialog-actions [data-slot="button"],
+    .portal-confirm-dialog-actions .portal-confirm-dialog-destructive {
+      width: auto;
+    }
+  }
+
+  /* Reduced motion keeps the fade that says "something opened" and drops
+     every translation and scale: no rise, no spring, no travel. Reduced
+     motion is a temperament here, not a kill switch.
+     These durations only reach the screen because globals.css hands this
+     family an opt-out from its blanket reduced-motion reset; see the note
+     beside that reset. Do not add !important here — it cannot win from this
+     layer, and it reads as a fix that is doing nothing. */
+  @media (prefers-reduced-motion: reduce) {
+    .portal-confirm-dialog,
+    .portal-confirm-dialog[open],
+    .portal-confirm-dialog:not([open]) {
+      transform: none;
+      transition-duration: 120ms;
+      transition-timing-function: ease-out;
+    }
+
+    @starting-style {
+      .portal-confirm-dialog[open] {
+        transform: none;
+      }
+    }
+  }
+
+  /* ---- The day, brought forward ----
+     The one portal modal that is not centred grammar. A month is the next
+     question after "Appointment scheduled", not a detail of it, so it opens
+     as its own dialog nested in the top layer above the line — and it grows
+     out of the control that asked for it.
+
+     --pm-origin-x/y is the trigger's centre in this dialog's own
+     coordinates, published by PortalModal at open. The point sits outside
+     the box, which is the whole mechanism: a transform origin past an edge
+     turns the registry spring's plain scale into travel from that direction,
+     with no second translate to keep in sync. Departure runs the registry
+     exit back toward the same point at a shallower scale — the shorter
+     version of the path it entered on. A dialog opened with no trigger
+     falls back to centre and behaves like every other portal modal.
+
+     These rules follow .portal-confirm-dialog's rather than out-specifying
+     it: same specificity, later in source. Keep them in that order. */
+  .portal-day-dialog {
+    width: min(94vw, 23rem);
+    max-height: min(90dvh, 42rem);
+    transform-origin: var(--pm-origin-x, 50%) var(--pm-origin-y, 50%);
+  }
+
+  .portal-day-dialog:not([open]) {
+    transform: scale(0.96);
+  }
+
+  @starting-style {
+    .portal-day-dialog[open] {
+      opacity: 0;
+      transform: scale(0.92);
+    }
+  }
+
+  /* Lighter than the root scrim: the line modal underneath is pushed back a
+     layer, not replaced. Stacked dim, never stacked glass. */
+  .portal-day-dialog::backdrop {
+    background: rgba(20, 32, 45, 0.32);
+  }
+
+  .portal-day-dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ps-3);
+    padding: var(--ps-4);
+  }
+
+  .portal-day-dialog-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--ps-3);
+  }
+
+  .portal-day-dialog-head h2 {
+    margin: 0;
+    color: var(--color-ink);
+    font-size: var(--pt-base);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    line-height: 1.3;
+  }
+
+  .portal-day-dialog-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ps-3);
+  }
+
+  /* The rubric between the preset chips and the month: small print with a
+     hairline either side, stating that both answer the same question. Hidden
+     from assistive technology — the chips and the grid already name
+     themselves — so it is layout, not structure. */
+  .portal-day-dialog-or {
+    display: flex;
+    align-items: center;
+    gap: var(--ps-2);
+    color: var(--color-muted-ink);
+    font-size: var(--pt-2xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .portal-day-dialog-or::before,
+  .portal-day-dialog-or::after {
+    flex: 1;
+    height: 1px;
+    background: var(--color-line);
+    content: "";
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .portal-day-dialog,
+    .portal-day-dialog:not([open]) {
+      transform: none;
+    }
+
+    @starting-style {
+      .portal-day-dialog[open] {
+        transform: none;
+      }
+    }
+  }
+
+  /* The closed question: one line of the mint band stating the day chosen so
+     far and the word for changing it. Hairline until answered, navy ink once
+     it is — the same "chosen" grammar the preset chips use. */
+  .portal-day-trigger {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ps-3);
+    border: 1px solid var(--color-line-3);
+    border-radius: var(--radius);
+    background: white;
+    padding: var(--ps-2) var(--ps-3);
+    cursor: pointer;
+    color: var(--color-muted-ink);
+    font-size: var(--pt-sm);
+    line-height: 1.3;
+    text-align: start;
+    transition:
+      border-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      transform 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-day-trigger[data-chosen] {
+    border-color: var(--color-navy);
+    color: var(--color-ink);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The commit landing: one mint wash — mint means settled — that fades back
+     to white while the border settles navy. Fired by data-just-chosen, set for
+     the length of the animation and then removed, so it never replays on
+     re-render. */
+  .portal-day-trigger[data-just-chosen] {
+    animation: portal-day-chosen 480ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  @keyframes portal-day-chosen {
+    from {
+      background-color: var(--color-mint);
+    }
+  }
+
+  .portal-day-trigger > small {
+    flex: none;
+    color: var(--color-teal-ink);
+    font-size: var(--pt-xs);
+    font-weight: 600;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .portal-day-trigger:hover:enabled {
+      border-color: var(--color-navy);
+      color: var(--color-ink);
+    }
+  }
+
+  .portal-day-trigger:active:enabled {
+    transform: scale(0.98);
+    transition-duration: 0s;
+  }
+
+  .portal-day-trigger:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  /* The lifted line. The modal is the line at reading distance: the same
+     facts in the same order — name, preference and timing, the dialable
+     number, then the mint working band where the outcome is recorded. The
+     detail page demotes to one quiet link at the foot.
+
+     Arrival runs faster than the registry spring: this dialog opens dozens
+     of times a day, so it enters on a 180ms ease-out instead of the 440ms
+     spring — immediate, no bounce. The nested day dialogs inherit the same
+     pace, and the exit token already outruns it. */
+  .portal-line-modal,
+  .portal-day-dialog {
+    --pm-spring: cubic-bezier(0.23, 1, 0.32, 1);
+    --pm-spring-duration: 180ms;
+  }
+
+  .portal-line-modal {
+    width: min(94vw, 30rem);
+    /* A month of calendar is taller than a confirmation: more headroom, and
+       the commit shelf (sticky above) keeps Save in reach while it scrolls. */
+    max-height: min(92dvh, 46rem);
+  }
+
+  .portal-line-modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--ps-3);
+    padding: var(--ps-4) var(--ps-4) var(--ps-3);
+  }
+
+  .portal-line-modal-title {
+    min-width: 0;
+  }
+
+  .portal-line-modal-title h2 {
+    color: var(--color-ink);
+    font-size: var(--pt-lg);
+    font-weight: 800;
+    letter-spacing: -0.015em;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .portal-line-modal-title p {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--ps-1) var(--ps-2);
+    margin-block-start: var(--ps-1);
+    color: var(--color-muted-ink);
+    font-size: var(--pt-xs);
+    line-height: 1.4;
+  }
+
+  /* Calling is the act the line exists for, so the number is the modal's
+     strongest target: a full ruled band in printed ink, dialable as one press. */
+  .portal-line-modal-call {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: var(--ps-2);
+    margin-inline: var(--ps-4);
+    border-block-start: 1px solid var(--color-line);
+    color: var(--color-navy);
+    font-size: var(--pt-base);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    transition: color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-line-modal-call:hover {
+    color: var(--color-teal-ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .portal-line-modal-foot {
+    display: flex;
+    justify-content: flex-end;
+    border-block-start: 1px solid var(--color-line);
+    padding: var(--ps-1) var(--ps-3);
+  }
+
+  .portal-line-modal-foot a {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: var(--ps-1);
+    color: var(--color-teal-ink);
+    font-size: var(--pt-xs);
+    font-weight: 600;
+  }
+
+  .portal-line-modal-foot a:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* Registry loading state: a modal that must fetch still opens on the
+     spring's schedule and shimmers while it waits — the surface is never
+     late, only its facts. Reduced motion holds the bars still. */
+  .portal-modal-skeleton {
+    display: grid;
+    gap: var(--ps-2);
+    padding: var(--ps-4);
+  }
+
+  /* The sweep is a translating overlay, not a background-position march:
+     transforms composite on the GPU while background-position repaints the
+     bar every frame for as long as the fetch runs. */
+  .portal-modal-skeleton > i {
+    position: relative;
+    display: block;
+    height: 1rem;
+    overflow: hidden;
+    border-radius: var(--radius-sm);
+    background-color: color-mix(in oklch, var(--color-line-2) 72%, white);
+  }
+
+  .portal-modal-skeleton > i::after {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 75%), transparent);
+    content: "";
+    transform: translateX(-100%);
+    animation: portal-skeleton-sweep 1.1s ease-in-out infinite;
+  }
+
+  @keyframes portal-skeleton-sweep {
+    to {
+      transform: translateX(100%);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .portal-modal-skeleton > i::after {
+      animation: none;
+    }
+  }
+
+  .portal-request-layout {
+    display: grid;
+    grid-template-areas:
+      "details"
+      "action"
+      "notes"
+      "history";
+    gap: 0;
+  }
+
+  .portal-request-record {
+    display: contents;
+  }
+
+  .portal-request-details,
+  .portal-request-notes,
+  .portal-request-history,
+  .portal-workflow-shell {
+    min-width: 0;
+    border: 1px solid var(--color-line-2);
+    background: var(--portal-surface);
+  }
+
+  .portal-request-details {
+    grid-area: details;
+    overflow: hidden;
+    margin-bottom: 0.85rem;
+    border-radius: var(--radius);
+  }
+
+  .portal-request-notes {
+    grid-area: notes;
+    padding: 0.9rem 1.15rem 0.8rem;
+    border-radius: var(--radius) var(--radius) 0 0;
+    border-bottom: 0;
+  }
+
+  .portal-request-history {
+    grid-area: history;
+    padding: 0.85rem 1.15rem 1rem;
+    border-radius: 0 0 var(--radius) var(--radius);
+    border-top: 1px solid var(--color-line);
+  }
+
+  .portal-workflow-shell {
+    grid-area: action;
+    margin-bottom: 0.85rem;
+    border-radius: var(--radius);
+  }
+
+  .portal-request-details-header h2,
+  .portal-record-heading {
+    color: var(--color-ink);
+    font-size: 1.05rem;
+    font-weight: 900;
+    letter-spacing: -0.015em;
+  }
+
+  .portal-request-details-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.3rem 1rem;
+    padding: 1.15rem 1.15rem 0.85rem;
+  }
+
+  .portal-request-details-header p {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    color: var(--color-muted-ink);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 740;
+    line-height: 1.45;
+  }
+
+  .portal-request-details-header p > span {
+    white-space: nowrap;
+  }
+
+  .portal-request-details-header p > span + span::before {
+    content: "·";
+    margin-inline: 0.5rem;
+    color: var(--color-line);
+  }
+
+  .portal-request-contact {
+    display: grid;
+    border-block: 1px solid var(--color-line-2);
+    background: color-mix(in oklch, var(--color-mint) 40%, white);
+  }
+
+  .portal-request-contact-action {
+    display: grid;
+    min-height: 4.25rem;
+    min-width: 0;
+    grid-template-columns: 1.15rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.72rem;
+    padding: 0.78rem 1.15rem;
+    color: var(--color-teal-ink);
+    transition:
+      background-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-request-contact-action:focus-visible {
+    outline-offset: -4px;
+  }
+
+  .portal-request-contact-action:active {
+    background: color-mix(in oklch, var(--color-mint) 76%, white);
+  }
+
+  .portal-request-contact-icon {
+    width: 1.15rem;
+    height: 1.15rem;
+    align-self: center;
+    stroke-width: 2.15;
+  }
+
+  .portal-request-contact-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.08rem;
+  }
+
+  .portal-request-contact-label {
+    color: var(--color-muted-ink);
+    font-size: 0.74rem;
+    font-weight: 780;
+    line-height: 1.35;
+  }
+
+  .portal-request-contact-value {
+    overflow-wrap: anywhere;
+    color: currentColor;
+    font-size: 0.94rem;
+    font-weight: 830;
+    line-height: 1.35;
+    letter-spacing: -0.006em;
+  }
+
+  .portal-request-contact-value--phone {
+    font-size: 1.08rem;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+  }
+
+  .portal-request-contact-email {
+    display: grid;
+    min-height: 2.75rem;
+    min-width: 0;
+    grid-template-columns: 1.05rem minmax(0, 1fr);
+    align-items: center;
+    gap: 0.55rem;
+    border-top: 1px solid var(--color-line-2);
+    background: var(--portal-surface);
+    padding: 0.42rem 1.15rem;
+    color: var(--color-teal-ink);
+    transition:
+      background-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-request-contact-email:focus-visible {
+    outline-offset: -4px;
+  }
+
+  .portal-request-contact-email:active {
+    background: color-mix(in oklch, var(--color-mint) 42%, white);
+  }
+
+  .portal-request-contact-email .portal-request-contact-icon {
+    width: 1.05rem;
+    height: 1.05rem;
+    stroke-width: 2;
+  }
+
+  .portal-request-contact-email .portal-request-contact-value {
+    font-size: 0.88rem;
+    font-weight: 760;
+  }
+
+  .portal-request-contact-unavailable {
+    margin: 0;
+    border-top: 1px solid var(--color-line-2);
+    background: var(--portal-surface);
+    padding: 0.42rem 1.15rem 0.48rem;
+    color: var(--color-muted-ink);
+    font-size: 0.82rem;
+    font-weight: 650;
+    line-height: 1.4;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .portal-request-contact-action[href]:hover {
+      background: color-mix(in oklch, var(--color-mint) 64%, white);
+      color: var(--color-navy-2);
+    }
+
+    .portal-request-contact-email[href]:hover {
+      background: color-mix(in oklch, var(--color-mint) 36%, white);
+      color: var(--color-navy-2);
+    }
+  }
+
+  .portal-request-context {
+    display: grid;
+    gap: 0.85rem;
+    padding: 0.9rem 1.15rem 1rem;
+  }
+
+  .portal-request-context[data-empty="true"] {
+    gap: 0.65rem;
+    padding-block: 0.68rem 0.78rem;
+  }
+
+  .portal-request-message {
+    min-width: 0;
+  }
+
+  .portal-request-message h3,
+  .portal-request-preferences dt {
+    display: flex;
+    align-items: center;
+    gap: 0.42rem;
+    color: var(--color-muted-ink);
+    font-size: 0.76rem;
+    font-weight: 800;
+    line-height: 1.4;
+  }
+
+  .portal-request-message h3 svg,
+  .portal-request-preferences dt svg {
+    width: 0.95rem;
+    height: 0.95rem;
+    flex: none;
+    color: var(--color-teal-ink);
+    stroke-width: 2.1;
+  }
+
+  .portal-request-message blockquote {
+    position: relative;
+    max-width: 62ch;
+    margin-top: 0.42rem;
+    padding-inline-start: 1.15rem;
+    overflow-wrap: anywhere;
+    color: var(--color-body);
+    font-size: 0.98rem;
+    line-height: 1.62;
+    white-space: pre-wrap;
+  }
+
+  .portal-request-message blockquote::before {
+    content: "“";
+    position: absolute;
+    inset-block-start: -0.07em;
+    inset-inline-start: 0;
+    color: color-mix(in oklch, var(--color-teal-ink) 40%, white);
+    font-size: 1.55rem;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .portal-request-message blockquote[data-empty="true"] {
+    margin-top: 0.18rem;
+    padding-inline-start: 0;
+    color: var(--color-muted-ink);
+    font-size: 0.88rem;
+    line-height: 1.45;
+  }
+
+  .portal-request-message blockquote[data-empty="true"]::before {
+    content: none;
+  }
+
+  .portal-request-preferences {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+    border-top: 1px solid var(--color-line-2);
+    padding-top: 0.75rem;
+  }
+
+  .portal-request-context[data-empty="true"] .portal-request-preferences {
+    padding-top: 0.62rem;
+  }
+
+  .portal-request-preferences > div {
+    min-width: 0;
+  }
+
+  .portal-request-preferences dd {
+    overflow-wrap: anywhere;
+    margin-top: 0.18rem;
+    color: var(--color-ink);
+    font-size: 0.9rem;
+    font-weight: 820;
+    line-height: 1.35;
+  }
+
+  .portal-request-notes[data-empty] {
+    padding-bottom: 0.85rem;
+  }
+
+  .portal-request-notes-empty,
+  .portal-request-history-empty {
+    margin-top: 0.4rem;
+    color: var(--color-muted-ink);
+    font-size: 0.9rem;
+    line-height: 1.45;
+  }
+
+  .portal-request-note-list {
+    margin-top: 0.65rem;
+    border-block: 1px solid var(--color-line-2);
+  }
+
+  .portal-request-note-list > li {
+    padding: 0.7rem 0;
+  }
+
+  .portal-request-note-list > li + li {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .portal-request-note-list .request-note-item p:first-child {
+    max-width: 62ch;
+    font-size: 0.95rem;
+    line-height: 1.58;
+    white-space: pre-wrap;
+  }
+
+  .portal-request-note-list .request-note-item p:last-child {
+    margin-top: 0.28rem;
+    color: var(--color-teal-ink);
+    font-size: 0.8rem;
+    font-weight: 740;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .portal-request-history[data-short] {
+    padding-bottom: 0.85rem;
+  }
+
+  .portal-request-ledger {
+    margin-top: 0.55rem;
+    border-top: 1px solid var(--color-line-2);
+  }
+
+  .portal-request-ledger > li {
+    display: grid;
+    gap: 0.12rem;
+    padding: 0.52rem 0 0.48rem;
+    border-bottom: 1px solid var(--color-line);
+  }
+
+  .portal-request-ledger > li:last-child {
+    border-bottom: 0;
+    padding-bottom: 0.1rem;
+  }
+
+  .portal-request-ledger-event {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--color-ink);
+    font-size: 0.9rem;
+    font-weight: 800;
+    line-height: 1.4;
+  }
+
+  .portal-request-ledger-event--quiet {
+    color: var(--color-muted-ink);
+    font-weight: 650;
+  }
+
+  .portal-request-ledger-event--attention {
+    color: var(--portal-attention-ink);
+  }
+
+  .portal-request-ledger-event--undone {
+    color: var(--color-muted-ink);
+    font-weight: 750;
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+  }
+
+  .portal-request-ledger-meta {
+    color: var(--color-teal-ink);
+    font-size: 0.78rem;
+    font-weight: 740;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.4;
+  }
+
+  .portal-workflow-shell > [data-testid="workflow-panel"] {
+    margin: 0;
+    border: 0;
+    padding: 1.15rem;
+  }
+
+  /* The outcome decision list: one ruled sheet of compact full-width rows,
+     not a matrix of equal cards. Segment captions separate the three
+     decision kinds inside the single radio group; the indicator sits at
+     the label's first line so multi-line rows keep it anchored. */
+  .portal-choice-list {
+    margin-top: 0.85rem;
+    border-block: 1px solid var(--color-line-2);
+    background: var(--portal-surface);
+  }
+
+  .portal-choice-list > * + * {
+    border-top: 1px solid var(--color-line);
+  }
+
+  .portal-choice-caption {
+    padding: 0.7rem 0.75rem 0.26rem;
+    color: var(--color-muted-ink);
+    font-size: 0.74rem;
+    font-weight: 780;
+    line-height: 1.4;
+  }
+
+  .portal-choice-list > * + .portal-choice-caption {
+    margin-top: 0.5rem;
+    border-top-color: var(--color-line-2);
+    padding-top: 0.62rem;
+  }
+
+  .portal-choice-row {
+    display: grid;
+    min-height: 2.75rem;
+    grid-template-columns: 1.3rem minmax(0, 1fr);
+    gap: 0 0.6rem;
+    align-items: start;
+    align-content: center;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-choice-list > .portal-choice-row + .portal-choice-reveal {
+    border-top: 0;
+  }
+
+  .portal-choice-row:has(input:enabled):hover {
+    background: color-mix(in oklch, var(--color-mint) 42%, white);
+  }
+
+  .portal-choice-row:has(input:checked) {
+    background: color-mix(in oklch, var(--color-mint) 76%, white);
+    box-shadow: inset 2px 0 0 var(--color-teal-ink);
+  }
+
+  .portal-choice-row:has(input:focus-visible) {
+    outline: 3px solid var(--color-amber-deep);
+    outline-offset: -3px;
+  }
+
+  .portal-choice-row:has(input:disabled) {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  .portal-choice-indicator {
+    width: 1.15rem;
+    height: 1.15rem;
+    margin-top: 0.06rem;
+    display: grid;
+    place-items: center;
+    border: 1.5px solid var(--color-line-3);
+    border-radius: 999px;
+    background: white;
+    color: white;
+    transition:
+      background-color 150ms cubic-bezier(0.23, 1, 0.32, 1),
+      border-color 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-choice-row:has(input:checked) .portal-choice-indicator {
+    border-color: var(--color-navy);
+    background: var(--color-navy);
+  }
+
+  .portal-choice-check {
+    width: 0.7rem;
+    height: 0.7rem;
+    opacity: 0;
+    transition: opacity 150ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .portal-choice-row:has(input:checked) .portal-choice-check {
+    opacity: 1;
+  }
+
+  .portal-choice-copy {
+    min-width: 0;
+  }
+
+  .portal-choice-label {
+    display: block;
+    color: var(--color-ink);
+    font-size: 0.92rem;
+    font-weight: 800;
+    line-height: 1.35;
+    letter-spacing: -0.005em;
+  }
+
+  .portal-choice-helper {
+    display: block;
+    margin-top: 0.1rem;
+    color: var(--color-muted-ink);
+    font-size: 0.8rem;
+    line-height: 1.4;
+  }
+
+  /* The dependent call-again plan rides directly beneath the selected
+     continuing-work row — no hairline between — as a deeper-mint band whose
+     content aligns with the label column. The reveal is a one-shot,
+     interruptible height-and-opacity entrance; reduced motion makes it
+     effectively instant. Keyboard focus must land dependent fields clear
+     of the mobile commit shelf, so scroll-margin reserves room for the
+     stuck bar when focus scrolls it into view. */
+  .portal-choice-reveal {
+    display: grid;
+    grid-template-rows: 1fr;
+    padding: 0.12rem 0.75rem 0.7rem calc(0.75rem + 1.3rem + 0.6rem);
+    background: var(--color-mint-2);
+    animation: portal-choice-reveal-in 180ms cubic-bezier(0.23, 1, 0.32, 1);
+    scroll-margin-bottom: 9rem;
+  }
+
+  .portal-choice-reveal > * {
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .portal-choice-plan {
+    margin: 0;
+  }
+
+  @keyframes portal-choice-reveal-in {
+    from {
+      grid-template-rows: 0fr;
+      opacity: 0;
+    }
+    to {
+      grid-template-rows: 1fr;
+      opacity: 1;
+    }
+  }
+
+  .portal-choice-reveal input[type="date"] {
+    scroll-margin-bottom: 9.5rem;
+  }
+
+  /* The mobile commit shelf. It only sticks while a choice (and its
+     dependent fields) is active, sits above the fixed bottom index, and
+     stays inside the panel so it leaves with the workflow it commits. */
+  @media (max-width: 59.99rem) {
+    .portal-commit-shelf {
+      position: sticky;
+      bottom: calc(4.35rem + max(0.45rem, env(safe-area-inset-bottom)));
+      z-index: 30;
+      margin-top: 0.85rem;
+      border: 1px solid var(--color-line-2);
+      border-radius: var(--radius);
+      background: var(--portal-surface);
+      box-shadow: 0 -10px 30px -22px oklch(0.2 0.05 248 / 0.55);
+      padding: 0.55rem 0.65rem;
+    }
+
+    .portal-workflow-shell .portal-commit-shelf [data-slot="button"] {
+      width: auto;
+      flex: none;
+    }
+
+    .portal-workflow-shell .portal-commit-shelf > p {
+      flex: 1 1 11rem;
+      min-width: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .portal-choice-reveal {
+      animation: none;
+    }
+
+    .portal-choice-row,
+    .portal-choice-indicator,
+    .portal-choice-check {
+      transition: none;
+    }
+
+    /* Reduced motion keeps the fade that says "something unfolded" and drops
+       the fold and the settle: sections appear at full height. The
+       per-property durations (0s, 120ms, 0s) are authored once in globals.css's
+       reduced-motion block — this layer cannot outrank the blanket reset, so
+       only the property list is repeated here. */
+    .portal-line-reveal,
+    .portal-line-reveal[data-open="true"] {
+      transition-property: grid-template-rows, opacity, visibility;
+    }
+
+    .portal-line-reveal[data-open="true"] {
+      transition-property: grid-template-rows, opacity, visibility;
+    }
+
+    .portal-line-reveal > div,
+    .portal-line-reveal[data-open="true"] > div {
+      transform: none;
+      transition: none;
+    }
+
+    .portal-line-chip,
+    .portal-day-trigger,
+    .portal-calendar-day {
+      transition-property: background-color, border-color, color;
+    }
+
+    /* The month still changes; it just stops travelling to say so. The 120ms
+       duration is authored in globals.css's reduced-motion block — this layer
+       cannot outrank the blanket reset. */
+    .portal-calendar-weeks[data-turn] {
+      animation-name: portal-calendar-turn-still;
+    }
+  }
+
+  @keyframes portal-calendar-turn-still {
+    from {
+      opacity: 0;
+    }
+  }
+
+  .portal-workflow-shell [data-slot="button"] {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .portal-workflow-shell [data-testid="undo-affordance"] [data-slot="button"] {
+    width: auto;
+  }
+
+  .portal-request-section-description {
+    max-width: 65ch;
+    margin-top: 0.35rem;
+    color: var(--color-muted-ink);
+    font-size: 0.82rem;
+    line-height: 1.55;
+  }
+
+  @media (min-width: 40rem) {
+    .portal-request-notes,
+    .portal-request-history {
+      padding: 1.15rem 1.5rem 1.2rem;
+    }
+
+    .portal-workflow-shell > [data-testid="workflow-panel"] {
+      padding: 1.5rem;
+    }
+
+    .portal-request-details-header {
+      padding: 1.5rem 1.5rem 0.9rem;
+    }
+
+    .portal-request-contact-action,
+    .portal-request-contact-email,
+    .portal-request-contact-unavailable {
+      padding-inline: 1.5rem;
+    }
+
+    .portal-request-context {
+      grid-template-columns: minmax(0, 1fr) 10.5rem;
+      align-items: start;
+      gap: 1.15rem;
+      padding: 0.95rem 1.5rem 1.05rem;
+    }
+
+    .portal-request-context[data-empty="true"] {
+      padding-block: 0.75rem 0.85rem;
+    }
+
+    .portal-request-preferences {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0.75rem;
+      border-top: 0;
+      border-inline-start: 1px solid var(--color-line-2);
+      padding-top: 0;
+      padding-inline-start: 1.15rem;
+    }
+
+    .portal-request-ledger > li {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: baseline;
+      gap: 0.2rem 1rem;
+    }
+
+    .portal-request-ledger-meta {
+      margin-top: 0;
+      text-align: end;
+      white-space: nowrap;
+    }
+  }
+
+  @media (min-width: 75rem) {
+    .portal-request-layout {
+      grid-template-areas: "record action";
+      grid-template-columns: minmax(0, 1.45fr) minmax(21rem, 0.72fr);
+      align-items: start;
+      column-gap: 1.25rem;
+    }
+
+    .portal-request-record {
+      display: flex;
+      flex-direction: column;
+      grid-area: record;
+      overflow: hidden;
+      min-width: 0;
+      border: 1px solid var(--color-line-2);
+      border-radius: var(--radius);
+      background: var(--portal-surface);
+    }
+
+    .portal-request-details,
+    .portal-request-notes,
+    .portal-request-history {
+      margin: 0;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+    }
+
+    .portal-request-notes,
+    .portal-request-history {
+      border-top: 1px solid var(--color-line);
+    }
+
+    .portal-workflow-shell {
+      position: sticky;
+      top: 1.5rem;
+      margin-bottom: 0;
+      max-height: calc(100dvh - 3rem);
+      overflow: auto;
+    }
+  }
+
+  .portal-empty-state {
+    display: flex;
+    min-height: 19rem;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    border-block: 1px solid var(--color-line-2);
+    padding: 2.5rem 0;
+  }
+
+  .portal-empty-state > svg {
+    margin-bottom: 1rem;
+    color: var(--color-teal-ink);
+  }
+
+  .portal-empty-state h2 {
+    color: var(--color-ink);
+    font-size: 1.2rem;
+    font-weight: 850;
+  }
+
+  .portal-empty-state p {
+    max-width: 58ch;
+    margin-top: 0.55rem;
+    color: var(--color-muted-ink);
+    line-height: 1.65;
+  }
+
+  .portal-empty-state > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-top: 1.4rem;
+  }
+
+  .portal-print-guidance {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    border-block: 1px solid var(--color-line-2);
+    background: color-mix(in oklch, var(--color-amber-soft) 55%, white);
+    padding: 1rem 1.1rem;
+    color: var(--color-body);
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+
+  .portal-print-guidance strong {
+    color: var(--color-ink);
+  }
+
+  .portal-print-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding-block: 1.25rem 1.75rem;
+  }
+
+  .portal-print-controls p {
+    max-width: 64ch;
+    color: var(--color-muted-ink);
+    font-size: 0.85rem;
+    line-height: 1.55;
+  }
+
+  .portal-print-controls .portal-output-feedback {
+    max-width: 64ch;
+    margin-block-end: 0;
+    color: var(--color-ink);
+    font-size: 0.9rem;
+  }
+
+  .portal-print-packet {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .portal-print-sheet {
+    width: 100%;
+    overflow: hidden;
+    border: 1px solid var(--color-line-2);
+    border-radius: var(--radius);
+    background: white;
+    color: #172b39;
+  }
+
+  .portal-print-sheet-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    border-bottom: 3px solid var(--color-navy);
+    padding: 1.25rem;
+  }
+
+  .portal-print-sheet-header p {
+    color: var(--color-navy);
+    font-family: var(--font-display), Georgia, serif;
+    font-size: 0.95rem;
+    font-weight: 650;
+  }
+
+  .portal-print-sheet-header h2 {
+    margin-top: 0.15rem;
+    color: #172b39;
+    font-size: 1.55rem;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+  }
+
+  .portal-print-sheet-header > div:last-child {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    color: #475a65;
+    font-size: 0.76rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .portal-print-sheet-header > div:last-child strong {
+    color: #172b39;
+    font-size: 0.85rem;
+  }
+
+  .portal-print-sheet > section {
+    padding: 1.15rem 1.25rem 0;
+  }
+
+  .portal-print-sheet section h3 {
+    margin-bottom: 0.6rem;
+    color: #28495d;
+    font-size: 0.78rem;
+    font-weight: 900;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .portal-print-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-top: 1px solid #cdd7dc;
+  }
+
+  .portal-print-field {
+    min-width: 0;
+    border-bottom: 1px solid #cdd7dc;
+    padding: 0.6rem 0.45rem 0.65rem 0;
+  }
+
+  .portal-print-field:nth-child(even) {
+    border-left: 1px solid #cdd7dc;
+    padding-left: 0.75rem;
+  }
+
+  .portal-print-field--wide {
+    grid-column: 1 / -1;
+    border-left: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  .portal-print-field dt {
+    color: #5b6c76;
+    font-size: 0.68rem;
+    font-weight: 800;
+  }
+
+  .portal-print-field dd {
+    overflow-wrap: anywhere;
+    margin-top: 0.14rem;
+    color: #172b39;
+    font-size: 0.9rem;
+    font-weight: 750;
+    line-height: 1.4;
+  }
+
+  .portal-print-fields--contact dd {
+    font-size: 0.98rem;
+  }
+
+  .portal-paper-handoff {
+    margin-top: 0.3rem;
+  }
+
+  .portal-paper-identity {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+    margin-bottom: 0.7rem;
+    border-block: 1px solid #cdd7dc;
+    padding-block: 0.4rem;
+    color: #172b39;
+    font-size: 0.72rem;
+  }
+
+  .portal-paper-identity > span {
+    font-weight: 900;
+  }
+
+  .portal-paper-identity > small {
+    color: #5b6c76;
+    overflow-wrap: anywhere;
+  }
+
+  .portal-paper-lines {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .portal-paper-lines p,
+  .portal-paper-follow-up {
+    min-height: 2.1rem;
+    border-bottom: 1px solid #172b39;
+    color: #5b6c76;
+    font-size: 0.7rem;
+    font-weight: 800;
+  }
+
+  .portal-paper-outcomes {
+    margin-top: 0.85rem;
+  }
+
+  .portal-paper-outcomes > p {
+    margin-bottom: 0.4rem;
+    color: #5b6c76;
+    font-size: 0.7rem;
+    font-weight: 800;
+  }
+
+  .portal-paper-outcomes ul {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 1rem;
+  }
+
+  .portal-paper-outcomes li {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: #283d49;
+    font-size: 0.72rem;
+    line-height: 1.3;
+  }
+
+  .portal-paper-outcomes li > span {
+    width: 0.78rem;
+    height: 0.78rem;
+    flex: none;
+    border: 1px solid #172b39;
+  }
+
+  .portal-paper-later-outcome {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+    margin-top: 0.7rem;
+    color: #283d49;
+    font-size: 0.72rem;
+    line-height: 1.35;
+  }
+
+  .portal-paper-later-outcome > span {
+    width: 0.78rem;
+    height: 0.78rem;
+    flex: none;
+    border: 1px solid #172b39;
+  }
+
+  .portal-paper-follow-up {
+    width: 48%;
+    margin-top: 0.9rem;
+  }
+
+  .portal-paper-notes {
+    margin-top: 0.85rem;
+    color: #5b6c76;
+    font-size: 0.7rem;
+    font-weight: 800;
+  }
+
+  .portal-paper-notes i {
+    display: block;
+    height: 1.55rem;
+    border-bottom: 1px solid #a6b3ba;
+  }
+
+  .portal-print-sheet-footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.4rem 1rem;
+    margin: 1rem 1.25rem 0;
+    border-top: 1px solid #cdd7dc;
+    padding-block: 0.65rem;
+    color: #657680;
+    font-size: 0.62rem;
+    overflow-wrap: anywhere;
+  }
+
+  .portal-print-confidentiality {
+    flex-basis: 100%;
+    color: #172b39;
+    font-weight: 850;
+  }
+
+  .portal-print-follow-up {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-top: 1.75rem;
+    border-top: 1px solid var(--color-line-2);
+    padding-top: 1.25rem;
+  }
+
+  .portal-print-follow-up p {
+    max-width: 58ch;
+    color: var(--color-muted-ink);
+    font-size: 0.86rem;
+    line-height: 1.55;
+  }
+
+  @media (min-width: 40rem) {
+    .portal-print-controls,
+    .portal-print-follow-up {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .portal-print-sheet-header {
+      flex-direction: row;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 1.4rem 1.6rem;
+    }
+
+    .portal-print-sheet-header > div:last-child {
+      align-items: flex-end;
+      text-align: end;
+    }
+
+    .portal-print-sheet > section {
+      padding-inline: 1.6rem;
+    }
+
+    .portal-print-sheet-footer {
+      margin-inline: 1.6rem;
+    }
+  }
+}
+
+@page request-packet {
+  size: letter portrait;
+  margin: 0.38in;
+}
+
+@media print {
+  body.portal-scope:has(.portal-print-packet) {
+    page: request-packet;
+  }
+
+  html,
+  body.portal-scope {
+    width: auto !important;
+    min-height: auto !important;
+    background: white !important;
+  }
+
+  .portal-stage {
+    margin: 0 !important;
+  }
+
+  .portal-scope main {
+    background: white !important;
+  }
+
+  .portal-content {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  /* Paper has no scroll: a windowed group prints every rendered line. */
+  .portal-sheet-frame[data-window] > .portal-sheet-lines {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .portal-print-packet {
+    display: block !important;
+  }
+
+  .portal-print-sheet {
+    box-sizing: border-box;
+    min-height: 10.24in;
+    break-after: page;
+    overflow: visible;
+    border: 0 !important;
+    border-radius: 0 !important;
+    print-color-adjust: exact;
+  }
+
+  .portal-print-sheet:last-child {
+    break-after: auto;
+  }
+
+  .portal-print-sheet-header {
+    padding-top: 0;
+  }
+
+  .portal-print-sheet > section {
+    break-inside: auto;
+  }
+
+  .portal-print-sheet > section:first-of-type,
+  .portal-paper-handoff {
+    break-inside: avoid;
+  }
+
+  .portal-print-field--message dd {
+    column-count: 2;
+    column-gap: 0.25in;
+    font-size: 9pt;
+    line-height: 1.3;
+  }
+
+  /* Keep an unusually long patient note and its routing area on one physical
+     handoff sheet. The full message remains present; only that sheet spends
+     density to preserve the one-request/one-sheet contract. */
+  .portal-print-sheet--dense .portal-print-sheet-header {
+    gap: 0.35rem;
+    padding-bottom: 0.65rem;
+  }
+
+  .portal-print-sheet--dense > section {
+    padding-top: 0.55rem;
+  }
+
+  .portal-print-sheet--dense section h3 {
+    margin-bottom: 0.35rem;
+  }
+
+  .portal-print-sheet--dense .portal-print-field {
+    padding-block: 0.34rem 0.38rem;
+  }
+
+  .portal-print-sheet--dense .portal-print-field--message dd {
+    font-size: 7.5pt;
+    line-height: 1.15;
+  }
+
+  .portal-print-sheet--dense .portal-paper-identity {
+    margin-bottom: 0.35rem;
+    padding-block: 0.25rem;
+  }
+
+  .portal-print-sheet--dense .portal-paper-lines p,
+  .portal-print-sheet--dense .portal-paper-follow-up {
+    min-height: 1.35rem;
+  }
+
+  .portal-print-sheet--dense .portal-paper-outcomes {
+    margin-top: 0.45rem;
+  }
+
+  .portal-print-sheet--dense .portal-paper-later-outcome,
+  .portal-print-sheet--dense .portal-paper-follow-up,
+  .portal-print-sheet--dense .portal-paper-notes {
+    margin-top: 0.4rem;
+  }
+
+  .portal-print-sheet--dense .portal-paper-notes i {
+    height: 1.05rem;
+  }
+
+  .portal-print-sheet--dense .portal-print-sheet-footer {
+    margin-top: 0.45rem;
+    padding-block: 0.35rem;
+  }
+
+  .portal-request-record {
+    display: contents;
+    border: 0;
+    background: transparent;
+  }
+
+  .portal-request-details,
+  .portal-request-notes,
+  .portal-request-history {
+    margin: 14pt 0 0;
+    border: 1pt solid #777;
+    border-radius: 0;
+    background: white;
+  }
+
+  .portal-request-contact,
+  .portal-request-contact-email,
+  .portal-request-contact-unavailable {
+    background: white;
+  }
+
+  .portal-workflow-shell {
+    display: none !important;
+  }
+}
+
+/* Unlayered so these beat the panel's leftover Tailwind spacing utilities
+   and keep the record heading aligned with the action rail. */
+.portal-workflow-shell > [data-testid="workflow-panel"] {
+  margin: 0;
+  border: 0;
+  padding: 1.15rem;
+}
+
+@media (min-width: 40rem) {
+  .portal-workflow-shell > [data-testid="workflow-panel"] {
+    padding: 1.5rem;
+  }
+}

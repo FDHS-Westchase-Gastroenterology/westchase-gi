@@ -178,6 +178,28 @@ export function resolveFollowUpAt(
   }
 }
 
+/**
+ * Resolve a staff-entered appointment day and wall-clock time to an absolute
+ * instant, DST-safe in practice-local time.
+ *
+ * The horizon is wider than a call-again's 90 days because a procedure is often
+ * booked months out, but a past day is still refused: an appointment that has
+ * already happened is a correction, not a booking.
+ */
+export function resolveAppointmentAt(
+  choice: Readonly<{ date: string; hour: number; minute: number }>,
+  now: Date = new Date(),
+): string | null {
+  const todayNumber = ymdToDayNumber(NY_DAY.format(now));
+  if (todayNumber === null) return null;
+  if (!isValidCalendarYmd(choice.date)) return null;
+  const target = ymdToDayNumber(choice.date);
+  if (target === null || target < todayNumber || target > todayNumber + 400) return null;
+  if (!Number.isInteger(choice.hour) || choice.hour < 0 || choice.hour > 23) return null;
+  if (!Number.isInteger(choice.minute) || choice.minute < 0 || choice.minute > 59) return null;
+  return atPracticeLocal(choice.date, choice.hour, choice.minute);
+}
+
 export function arrivedOutsideOfficeHours(iso: string): boolean {
   const { weekday, minutes } = nyClock(new Date(iso));
   if (weekday === "Sat" || weekday === "Sun") return true;

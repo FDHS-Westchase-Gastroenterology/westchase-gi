@@ -43,6 +43,7 @@
     ".next-verify/**",
     ".opencode/**",
     ".pi/**",
+    ".product-design-audit/**",
     ".roo/**",
     ".windsurf/**",
     "*.md",
@@ -50,6 +51,7 @@
     "next-env.d.ts",
     "out/**",
     "private/tmp/**",
+    "src/components/stock/**",
     "ui-reference/**"
   ]
 }

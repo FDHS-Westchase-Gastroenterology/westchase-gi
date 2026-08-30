@@ -9,6 +9,7 @@ import { z } from "zod";
 import { asJsonArray, jsonObjectSchema, jsonSchema } from "../src/lib/json";
 import type { Json } from "../src/lib/json";
 import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+import { assertSafeE2ETarget } from "./target-guard";
 
 const rollupSchema = z.object({
   event: z.string(),
@@ -32,22 +33,45 @@ const db = serviceDb();
 const runId = randomUUID().slice(0, 8);
 
 function analyticsQuery(sql: string): readonly Json[] {
-  const poolerUrl = readFileSync(
-    resolve(process.cwd(), "supabase/.temp/pooler-url"),
-    "utf8",
-  ).trim();
-  const password = requiredEnv("SUPABASE_DEV_DB_PASSWORD", "SUPABASE_DB_PASSWORD");
-  const output = execFileSync(
-    "supabase",
-    ["db", "query", "--db-url", poolerUrl, "--agent=no", "--output", "json", sql],
-    {
-      encoding: "utf8",
-      env: { ...process.env, PGPASSWORD: password },
-      stdio: ["ignore", "pipe", "pipe"],
-    },
-  );
-  const parsed = asJsonArray(jsonSchema.parse(JSON.parse(output)));
-  return parsed ?? [];
+  assertSafeE2ETarget(process.env);
+  const preview = process.env.SUPABASE_PREVIEW_BRANCH === "1";
+  const dbUrl = preview
+    ? requiredEnv("POSTGRES_URL", "POSTGRES_URL_NON_POOLING")
+    : readFileSync(resolve(process.cwd(), "supabase/.temp/pooler-url"), "utf8").trim();
+  const parsedUrl = new URL(dbUrl);
+  const ref = preview ? requiredEnv("SUPABASE_BRANCH_PROJECT_REF", "SUPABASE_PROJECT_REF") : "";
+  const direct = parsedUrl.hostname === `db.${ref}.supabase.co`;
+  const pooler =
+    parsedUrl.hostname.endsWith(".pooler.supabase.com") &&
+    decodeURIComponent(parsedUrl.username) === `postgres.${ref}`;
+  if (preview && !direct && !pooler) {
+    throw new Error("Telemetry query refused a non-Preview database URL");
+  }
+  if (preview && pooler && parsedUrl.port === "6543") {
+    parsedUrl.port = "5432";
+  }
+  const queryUrl = preview ? parsedUrl.toString() : dbUrl;
+
+  try {
+    const output = execFileSync(
+      "supabase",
+      ["db", "query", "--db-url", queryUrl, "--agent=no", "--output", "json", sql],
+      {
+        encoding: "utf8",
+        env: preview
+          ? process.env
+          : {
+              ...process.env,
+              PGPASSWORD: requiredEnv("SUPABASE_DB_PASSWORD"),
+            },
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
+    const parsed = asJsonArray(jsonSchema.parse(JSON.parse(output)));
+    return parsed ?? [];
+  } catch {
+    throw new Error("Telemetry database query failed");
+  }
 }
 
 function rollupCount(event: string, routeTemplate: string): number {
