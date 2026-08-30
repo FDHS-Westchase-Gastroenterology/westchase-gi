@@ -6,10 +6,10 @@ import { cn } from "@/lib/utils";
 
 /*
  * Brand adaptation of the shadcn Textarea: the same committed field
- * register as Input (white paper, 1.5px line-2 border, brand radius-sm,
+ * recipe as Input (white paper, 1.5px line-2 border, brand radius-sm,
  * teal focus), with content-following sizing.
  *
- * Motion is decoupled onto its own axis (DESIGN.md "Register legibility
+ * Motion is decoupled onto its own axis (DESIGN.md "Component API
  * rules"), mirroring Input: `wgi` (default) is the authored .field-input
  * physics; `shadcn` is the stock transition-colors, verbatim.
  */

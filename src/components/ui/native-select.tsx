@@ -8,9 +8,9 @@ import { cn } from "@/lib/utils";
  * Project-authored primitive, not a registry component (DESIGN.md
  * "Component system"): patient-facing selects keep the native element —
  * the OS picker on mobile is better for patients than a scripted listbox —
- * and wear the committed field register.
+ * and wear the committed field recipe.
  *
- * Motion is decoupled onto its own axis (DESIGN.md "Register legibility
+ * Motion is decoupled onto its own axis (DESIGN.md "Component API
  * rules"), mirroring Input: `wgi` (default) is the authored .field-input
  * physics; `shadcn` is the stock Input transition-colors, verbatim.
  */
@@ -34,7 +34,7 @@ const nativeSelectVariants = cva(
       motion: {
         /* The authored field physics: border and focus ring fade at 200ms. */
         wgi: "transition-[border-color,box-shadow] duration-200 ease-[ease]",
-        /* The stock feel this register would wear upstream; no consumer today. */
+        /* The stock feel this recipe would wear upstream; no consumer today. */
         shadcn: "transition-colors",
         /* No transitions at all; no consumer today. */
         none: "transition-none",

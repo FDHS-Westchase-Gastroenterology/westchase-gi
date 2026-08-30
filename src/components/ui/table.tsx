@@ -3,7 +3,7 @@ import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
 /* Brand adaptation of the shadcn Table (DESIGN.md "Component system"):
- * the portal's audit register — line-bordered rows, uppercase muted
+ * the portal's audit recipe — line-bordered rows, uppercase muted
  * headers, px-5 rhythm — baked into the slots. Server-safe on purpose
  * (plain elements, no client hooks). The generated version wrapped the
  * table in an overflow container; consumers here own their scroll

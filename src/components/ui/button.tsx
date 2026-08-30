@@ -4,7 +4,7 @@ import type { VariantProps } from "class-variance-authority";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 
-/* Brand adaptation of the shadcn Button; the register itself lives in
+/* Brand adaptation of the shadcn Button; the recipe itself lives in
    button-variants.ts so zero-JS anchors can wear it without this client
    component. */
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly

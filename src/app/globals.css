@@ -314,7 +314,7 @@
     margin-inline: auto;
   }
 
-  /* Buttons live in the component system now: the register is
+  /* Buttons live in the component system now: the recipe is
      src/components/ui/button-variants.ts, and scopes assign their
      temperament through the --btn-* knobs (see .portal-scope and
      .review-flyer-screen). */
@@ -1224,7 +1224,7 @@
     transition: none;
   }
 
-  /* The portal's Button temperament, assigned through the register's
+  /* The portal's Button temperament, assigned through the recipe's
      --btn-* knobs (see button-variants.ts): tighter geometry, no hover
      lift or shadow, a 0.98 press, and the exit curve's calmer timing. */
   .portal-scope {
@@ -1765,7 +1765,7 @@
      immediate. The bounded grid track is the only layout transition needed
      to preserve page continuity around content with an unknown final height.
      The trigger's transitions are !important because the trigger is a Button
-     and the register's transition utilities (utilities layer) would otherwise
+     and the recipe's transition utilities (utilities layer) would otherwise
      outrank this choreography — transition-all would put `visibility` on the
      160ms clock, and the close path focuses the trigger on the next frame,
      while it would still be hidden. Focus restoration depends on the 0s
@@ -2153,7 +2153,7 @@
   display: none;
 }
 
-/* The flyer screen's Button temperament through the register knobs:
+/* The flyer screen's Button temperament through the recipe knobs:
    calmer 160ms timing, a 0.98 press, and no hover lift on touch. */
 .review-flyer-screen {
   --btn-duration: 160ms;

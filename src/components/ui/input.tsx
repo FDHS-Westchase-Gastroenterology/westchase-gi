@@ -6,12 +6,12 @@ import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
 /*
- * Brand adaptation of the shadcn Input: the committed field register.
+ * Brand adaptation of the shadcn Input: the committed field recipe.
  * White paper, a 1.5px line-2 border on the brand radius-sm, teal focus
  * (teal's one meaning: the finger tracking a line), destructive reserved
  * for the invalid state, and the 44px minimum target.
  *
- * Motion is decoupled onto its own axis (DESIGN.md "Register legibility
+ * Motion is decoupled onto its own axis (DESIGN.md "Component API
  * rules"): the base string carries none. `wgi` (default) is the authored
  * .field-input physics — border-color and box-shadow at 200ms. `shadcn`
  * is the upstream registry's stock transition-colors, verbatim.

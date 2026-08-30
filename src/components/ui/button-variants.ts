@@ -1,9 +1,9 @@
 import { cva } from "class-variance-authority";
 
 /*
- * The Button register, server-safe (DESIGN.md "Component system").
+ * The Button recipe, server-safe (DESIGN.md "Component system").
  * Lives apart from button.tsx so zero-JS surfaces (patient-site anchor
- * CTAs) can wear the register through className without importing the
+ * CTAs) can wear the recipe through className without importing the
  * client component.
  *
  * Three axes, decoupled on purpose:
@@ -76,7 +76,7 @@ export const buttonVariants = cva(
         commit: [
           // Journey: transform and depth only, never `all` — the press stays on the GPU
           "transition-[transform,box-shadow] duration-[var(--btn-release-duration,140ms)] ease-[var(--btn-ease,var(--motion-exit))]",
-          // Down beat: deeper than the register press, landing fast
+          // Down beat: deeper than the recipe press, landing fast
           "active:duration-[var(--btn-press-duration,90ms)] active:scale-[var(--btn-press-scale,0.96)] active:shadow-[var(--btn-press-depth,inset_0_2px_3px_-1px_oklch(0_0_0_/_0.32))]",
           // Held beat: the press does not release until the action resolves
           "data-pending:duration-[var(--btn-commit-duration,110ms)] data-pending:scale-[var(--btn-commit-scale,0.98)] data-pending:shadow-[var(--btn-press-depth,inset_0_2px_3px_-1px_oklch(0_0_0_/_0.32))]",

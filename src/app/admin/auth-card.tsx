@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 
 /* The staff-portal auth surface on the shadcn Card composition. The
-   className overrides keep exact parity with the committed register:
+   className overrides keep exact parity with the committed recipe:
    brand radius-lg + shadow-card elevation (never paired with the Card's
    default ring), white paper, and the portal's inherited type scale
    instead of the Card's text-sm. The title stays a real <h1> — it is the

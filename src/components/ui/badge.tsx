@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils";
  * below are crutches — refresh with docs/COMPONENT-INVENTORY.md; full list
  * regenerates with: rg -l 'ui/badge' src
  *
- * Two axes, decoupled per DESIGN.md "Register legibility rules":
+ * Two axes, decoupled per DESIGN.md "Component API rules":
  * - `variant` is color and surface only, and is required: the color law
  *   means there is no meaningless stamp. The registry's six stock variants
  *   were pruned unconsumed (2026-08-28); re-fetch from the registry if a
