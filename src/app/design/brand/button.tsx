@@ -98,7 +98,7 @@ function Motion() {
 
 function AnchorsWearTheRegister() {
   return (
-    <Example title="Zero-JS anchors wear the recipe through className">
+    <Example id="brand-button" title="Zero-JS anchors wear the recipe through className">
       <div className="flex flex-wrap items-center gap-2">
         <a href="#brand-button" className={buttonVariants({ variant: "amber", size: "lg" })}>
           Request an appointment
