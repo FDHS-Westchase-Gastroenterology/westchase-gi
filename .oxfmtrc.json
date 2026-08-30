@@ -51,6 +51,7 @@
     "next-env.d.ts",
     "out/**",
     "private/tmp/**",
+    "src/components/stock/**",
     "ui-reference/**"
   ]
 }
