@@ -316,6 +316,12 @@ The implementation is done when all of these hold:
     the portal's ring tokens, Esc closes editors, and every text/background pair passes
     WCAG 2.1 AA in the portal palette.
 11. Nothing in the build violates DESIGN.md's floors or the practice anchors.
+12. The page renders one flat list — no section headings, no groups; state reads from
+    each line's badges, and organization comes only from the filter bar.
+13. Every dashboard component is a fresh conversion from `stock/`, not a borrow of a
+    component adapted for another surface. Its colors come only from the bridge, its
+    geometry and type from the brand; its motion and interactive behavior are its own,
+    built from scratch for this surface.
 
 ## 6. Reference assets
 
