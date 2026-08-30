@@ -3,9 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { ArrowRight } from "@/components/icons";
-import { PageHero } from "@/components/primitives/PageHero";
-import { Reveal } from "@/components/primitives/Reveal";
-import { TextBand } from "@/components/primitives/TextBand";
+import { PageHero } from "@/components/patterns/PageHero";
+import { Reveal } from "@/components/patterns/Reveal";
+import { TextBand } from "@/components/patterns/TextBand";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
 import { conditions, procedures } from "@/lib/services";

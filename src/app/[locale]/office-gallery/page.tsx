@@ -3,10 +3,10 @@ import Image from "next/image";
 
 import { ExternalLink, Star } from "@/components/icons";
 import { LocationCards } from "@/components/LocationCards";
-import { PageHero } from "@/components/primitives/PageHero";
-import { Reveal } from "@/components/primitives/Reveal";
-import { revealDelay } from "@/components/primitives/reveal-delay";
-import { TextBand } from "@/components/primitives/TextBand";
+import { PageHero } from "@/components/patterns/PageHero";
+import { Reveal } from "@/components/patterns/Reveal";
+import { revealDelay } from "@/components/patterns/reveal-delay";
+import { TextBand } from "@/components/patterns/TextBand";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";

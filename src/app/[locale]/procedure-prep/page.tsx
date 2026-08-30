@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ArrowRight, MessageSquare } from "@/components/icons";
-import { PageHero } from "@/components/primitives/PageHero";
-import { Reveal } from "@/components/primitives/Reveal";
-import { revealDelay } from "@/components/primitives/reveal-delay";
-import type { RevealDelay } from "@/components/primitives/reveal-delay";
-import { TextBand } from "@/components/primitives/TextBand";
+import { PageHero } from "@/components/patterns/PageHero";
+import { Reveal } from "@/components/patterns/Reveal";
+import { revealDelay } from "@/components/patterns/reveal-delay";
+import type { RevealDelay } from "@/components/patterns/reveal-delay";
+import { TextBand } from "@/components/patterns/TextBand";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { prepGroups } from "@/lib/content/preps";
 import type { PrepDoc, PrepGroup } from "@/lib/content/preps";

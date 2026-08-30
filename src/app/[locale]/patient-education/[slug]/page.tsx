@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 
 import { ArticleBody } from "@/components/ArticleBody";
 import { ArrowRight, Download, FileText, MessageSquare } from "@/components/icons";
-import { TextBand } from "@/components/primitives/TextBand";
+import { TextBand } from "@/components/patterns/TextBand";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { educationTopics, getTopic } from "@/lib/content/education";
 import { documents } from "@/lib/documents";

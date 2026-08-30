@@ -3,8 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { MessageSquare, Phone } from "@/components/icons";
+import { TextBand } from "@/components/patterns/TextBand";
 import { PrepBody } from "@/components/PrepBody";
-import { TextBand } from "@/components/primitives/TextBand";
 import { PrintButton } from "@/components/PrintButton";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { getPrep, prepDocs } from "@/lib/content/preps";

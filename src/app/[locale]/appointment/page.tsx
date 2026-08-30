@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { AppointmentForm } from "@/components/AppointmentForm";
 import { HoursTable } from "@/components/HoursTable";
 import { MessageSquare, Phone } from "@/components/icons";
-import { PageHero } from "@/components/primitives/PageHero";
+import { PageHero } from "@/components/patterns/PageHero";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";

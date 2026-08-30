@@ -11,9 +11,9 @@ import {
   Phone,
 } from "@/components/icons";
 import { LocationCards } from "@/components/LocationCards";
-import { Reveal } from "@/components/primitives/Reveal";
-import { revealDelay } from "@/components/primitives/reveal-delay";
-import { TextBand } from "@/components/primitives/TextBand";
+import { Reveal } from "@/components/patterns/Reveal";
+import { revealDelay } from "@/components/patterns/reveal-delay";
+import { TextBand } from "@/components/patterns/TextBand";
 import { TestimonialRail } from "@/components/TestimonialRail";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { getDictionary, isLocale } from "@/lib/i18n";
