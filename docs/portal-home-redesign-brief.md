@@ -359,6 +359,10 @@ says).
 | [audit-07-nl-result-empty-state.jpg](./portal-home-redesign-brief/audit-07-nl-result-empty-state.jpg) | The AI result: `Status` rewritten to just `Error`, `Branch main` and `Created Aug 23 – 30` added as pills; a contextual branch-link card above the list; `No Results` empty state naming the `main` branch, with `Clear Filters` | `?status=error&branch=main&created=1787457600000-1788148799999` |
 | [audit-08-created-date-editor.jpg](./portal-home-redesign-brief/audit-08-created-date-editor.jpg) | The `Created` pill's editor: single-select rows (`Any Date`, `Last Hour`, `Last 24 Hours`, `Last 7 Days`, `Last 30 Days`, `This Month`), the AI's range shown as `Custom Date Range` ✓ | `?status=error&branch=main&created=1787457600000-1788148799999` |
 
+
+> The `Record` button can be done away with 
+
+
 ## 7. Sources
 
 - Reference screenshots (Vercel dashboard, deployments view; filter bar states; three
