@@ -12,9 +12,9 @@ import { cva } from "class-variance-authority";
  *   the on-navy ghost.
  * - `size` is geometry; every size keeps the 44px minimum target.
  * - `motion` is animation temperament. The default, `wgi`, is the
- *   authored .btn physics (200ms quint, the -2px hover lift, the
- *   knob-driven press) — defaults produce the brand, so no call site
- *   has to opt in. `commit` is the firmer press for controls that wait
+ *   authored .btn physics (200ms quint journey, the -2px hover lift,
+ *   an instant 0.98 press) — defaults produce the brand, so no call
+ *   site has to opt in. `commit` is the firmer press for controls that wait
  *   on a server answer. `shadcn` preserves the upstream registry's
  *   stock feel by name; `none` turns transitions off. The base string
  *   carries no motion at all.
@@ -58,12 +58,19 @@ export const buttonVariants = cva(
       motion: {
         /* The brand physics every button wears unless told otherwise. */
         wgi: [
-          // Journey: what animates, how long, on which curve
-          "transition-all duration-[var(--btn-duration,200ms)] ease-[var(--btn-ease,var(--ease-out-quint))]",
-          // Physics: the hover lift and the knob-driven press
-          "hover:translate-y-[var(--btn-lift,-2px)] active:translate-y-0 active:scale-[var(--btn-active-scale,1)]",
-          // Reduced motion: everything flattens
-          "motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100",
+          /* Journey: paint and travel by name — never `all`. Box-shadow is
+             deliberately not listed: the keyboard focus ring must land
+             instantly (a Tab press repeats all day and never animates), and
+             the hover shadows snap with it. */
+          "transition-[background-color,border-color,color,translate,scale] duration-[var(--btn-duration,200ms)] ease-[var(--btn-ease,var(--ease-out-quint))]",
+          /* Physics: the hover lift and the knob-driven press. Down arrives
+             instantly (easing into a press is the lag it looks like);
+             release rides the journey above. 0.98 is the default press so
+             touch — which never sees the hover-gated lift — still gets an
+             answer. */
+          "hover:translate-y-[var(--btn-lift,-2px)] active:translate-y-0 active:scale-[var(--btn-active-scale,0.98)] active:duration-0",
+          // Reduced motion: travel flattens, paint feedback stays
+          "motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100 motion-reduce:transition-[background-color,border-color,color]",
         ],
         /* The committed press, for a control that waits on the server:
            three discrete beats instead of one blend. Down is deep and

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { FilterKey } from "@/lib/portal/filters";
 import { useActiveFilters } from "@/lib/portal/filters/use-filter-param";
@@ -39,6 +39,27 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
   const [openRowId, setOpenRowId] = useState<string | null>(null);
   const [sheetRowId, setSheetRowId] = useState<string | null>(null);
   const [settledId, setSettledId] = useState<string | null>(null);
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /* One timer, not one per row: a new outcome on another row moves the tint
+     and lets the previous row's transition retarget on its own. The clear at
+     200ms is what arms the exhale (CSS handles the 240ms fade) and what lets
+     the same row acknowledge a second outcome later. */
+  const markSettled = (id: string) => {
+    if (settleTimer.current !== null) clearTimeout(settleTimer.current);
+    setSettledId(id);
+    settleTimer.current = setTimeout(() => {
+      settleTimer.current = null;
+      setSettledId(null);
+    }, 200);
+  };
+
+  useEffect(
+    () => () => {
+      if (settleTimer.current !== null) clearTimeout(settleTimer.current);
+    },
+    [],
+  );
 
   const filtered = useMemo(() => applyFilters(lines, active), [lines, active]);
 
@@ -97,7 +118,7 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
               setSheetRowId(id);
               setOpenRowId(null);
             }}
-            onSettled={setSettledId}
+            onSettled={markSettled}
           />
           {showClosedNote ? (
             <p className="wgi-list-note">

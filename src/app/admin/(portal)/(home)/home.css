@@ -179,19 +179,18 @@
   border-top: 1px solid var(--color-line);
 }
 
-/* A recorded outcome lands: the row exhales mint, then settles. */
-@keyframes wgi-settle {
-  from {
-    background-color: var(--color-mint-2);
-  }
-
-  to {
-    background-color: transparent;
-  }
+/* A recorded outcome lands: the tint arrives with the settle, holds while
+   the popover closes, and exhales over 240ms once the timed clear in
+   home-dashboard.tsx removes the attribute. A transition, not a keyframe,
+   so a second outcome retargets the wash mid-flight instead of cutting it,
+   and the attribute cycling off and back on lets it replay. */
+.wgi-line-row {
+  transition: background-color 240ms cubic-bezier(0.19, 1, 0.22, 1);
 }
 
 .wgi-line-row[data-settled] {
-  animation: wgi-settle 480ms cubic-bezier(0.19, 1, 0.22, 1) both;
+  background-color: var(--color-mint-2);
+  transition-duration: 0s;
 }
 
 /* The row-as-trigger fills the line and carries hover/press; the whole line
@@ -955,12 +954,16 @@
   inset: 0;
   z-index: 50;
   background: rgb(0 0 0 / 10%);
-  transition: opacity 150ms ease;
+  transition: opacity 200ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 .wgi-sheet-overlay[data-starting-style],
 .wgi-sheet-overlay[data-ending-style] {
   opacity: 0;
+}
+
+.wgi-sheet-overlay[data-ending-style] {
+  transition-duration: 150ms;
 }
 
 @supports (backdrop-filter: blur(2px)) {
@@ -993,6 +996,10 @@
 .wgi-sheet[data-ending-style] {
   opacity: 0;
   transform: translateX(2.5rem);
+}
+
+.wgi-sheet[data-ending-style] {
+  transition-duration: 150ms;
 }
 
 .wgi-sheet-surface {
@@ -1138,11 +1145,18 @@
   font-size: var(--pt-base);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  transition:
+    background-color 130ms ease,
+    transform 130ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 .wgi-sheet-call:hover {
   background: var(--color-mint-2);
   color: var(--color-teal-ink);
+}
+
+.wgi-sheet-call:active {
+  transform: scale(0.98);
 }
 
 .wgi-sheet-call > svg {
@@ -1220,6 +1234,7 @@
   color: var(--color-teal-ink);
   font-size: var(--pt-xs);
   font-weight: 700;
+  transition: background-color 130ms ease;
 }
 
 .wgi-sheet-foot:hover {
@@ -1258,12 +1273,11 @@
 /* ---------- Reduced motion: gentler, never zero comprehension ---------- */
 
 @media (prefers-reduced-motion: reduce) {
-  .wgi-popover,
-  .wgi-sheet,
-  .wgi-sheet-overlay {
-    transition-duration: 1ms;
-  }
-
+  /* Durations are authored in globals.css's @layer base reduced-motion
+     block — the blanket reset there is !important, and important
+     declarations outrank everything non-important regardless of layers, so
+     nothing this (unlayered) file declares can restore a duration. Only
+     the travel is dropped here. */
   .wgi-popover[data-starting-style],
   .wgi-popover[data-ending-style],
   .wgi-sheet[data-starting-style],
@@ -1271,23 +1285,17 @@
     transform: none;
   }
 
-  .wgi-line-row[data-settled] {
-    animation: none;
-    background-color: var(--color-mint-2);
-    transition: background-color 1ms;
-  }
+  /* The settle wash needs no override: the timed clear in
+     home-dashboard.tsx shows the mint tint for ~200ms either way, and the
+     blanket reset in globals.css @layer base already collapses the 240ms
+     exhale to an instant change. */
 
   .wgi-add-filter:active,
   .wgi-sug:active,
   .wgi-outcome:active,
   .wgi-empty-clear:active,
+  .wgi-sheet-call:active,
   .wgi-sheet-close:active {
     transform: none;
-  }
-
-  .wgi-skeleton-list > li,
-  .wgi-loading-head > span,
-  .wgi-loading-head > i {
-    animation-duration: 3.2s;
   }
 }
