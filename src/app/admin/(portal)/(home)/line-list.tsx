@@ -89,6 +89,7 @@ function LineRow({
       <HomePopover open={open} onOpenChange={onOpenChange}>
         <HomePopoverTrigger
           nativeButton={false}
+          // react-doctor-disable-next-line react-doctor/prefer-tag-over-role -- the row nests an interactive <a> (the phone link), which HTML forbids inside a native <button>; Base UI's non-native trigger wires the keyboard and ARIA plumbing
           render={<div role="button" className="appt-line-trigger" />}
         >
           <LineItem>

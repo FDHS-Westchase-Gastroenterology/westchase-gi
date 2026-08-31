@@ -30,11 +30,12 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
 
   /* Suggestion queue: base suggestions not already active, in offer order.
      Removing an active filter returns its suggestion to the end of the bar. */
-  const [suggestionQueue, setSuggestionQueue] = useState<readonly FilterKey[]>(() =>
-    BASE_SUGGESTIONS.map((suggestion) => suggestion.key).filter(
-      (key) => !active.some((entry) => entry.key === key),
-    ),
-  );
+  const [suggestionQueue, setSuggestionQueue] = useState<readonly FilterKey[]>(() => {
+    const activeKeys = new Set(active.map((entry) => entry.key));
+    return BASE_SUGGESTIONS.flatMap((suggestion) =>
+      activeKeys.has(suggestion.key) ? [] : [suggestion.key],
+    );
+  });
 
   const [openRowId, setOpenRowId] = useState<string | null>(null);
   const [sheetRowId, setSheetRowId] = useState<string | null>(null);
@@ -66,10 +67,12 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
   /* The visible queue is derived, not synchronized: queued keys that are not
      active, then any base suggestion the URL freed up behind our back
      (back/forward, a pasted link) rejoining at the end. */
+  const activeKeys = new Set(active.map((entry) => entry.key));
+  const queuedKeys = new Set(suggestionQueue);
   const visibleQueue = [
-    ...suggestionQueue.filter((key) => !active.some((entry) => entry.key === key)),
-    ...BASE_SUGGESTIONS.map((suggestion) => suggestion.key).filter(
-      (key) => !active.some((entry) => entry.key === key) && !suggestionQueue.includes(key),
+    ...suggestionQueue.filter((key) => !activeKeys.has(key)),
+    ...BASE_SUGGESTIONS.flatMap((suggestion) =>
+      activeKeys.has(suggestion.key) || queuedKeys.has(suggestion.key) ? [] : [suggestion.key],
     ),
   ];
   const suggestions: FilterSuggestion[] = visibleQueue

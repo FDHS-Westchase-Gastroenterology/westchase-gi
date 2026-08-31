@@ -138,7 +138,9 @@ function AddFilterButton({
         {viewDef === null ? (
           <>
             <input
+              // react-doctor-disable-next-line react-doctor/no-autofocus -- focus lands in the just-opened popover's search input (a user-initiated open), not page-load focus stealing
               autoFocus
+              aria-label="Search filters"
               className="wgi-editor-input"
               placeholder="Filter by…"
               value={query}
@@ -331,12 +333,16 @@ function OptionEditor({
     if (from !== null && to !== null && from <= to) setParam("received", `${from}-${to}`);
   };
 
+  /* `selected` keeps encode order; the Set answers membership in the rows. */
   const selected = def.type === "multi-select" && raw !== null ? (def.decode(raw) ?? []) : [];
+  const selectedSet = new Set(selected);
 
   return (
     <>
       <input
+        // react-doctor-disable-next-line react-doctor/no-autofocus -- focus lands in the just-opened popover's search input (a user-initiated open), not page-load focus stealing
         autoFocus
+        aria-label="Search options"
         className="wgi-editor-input"
         placeholder="Filter to…"
         value={query}
@@ -360,135 +366,132 @@ function OptionEditor({
         </div>
 
         {def.type === "multi-select"
-          ? def.options
-              .filter((option) => option.label.toLowerCase().includes(q))
-              .map((option) => {
-                const checked = selected.includes(option.value);
-                return (
-                  <div key={option.value} className="wgi-editor-opt">
-                    <button
-                      type="button"
-                      className="wgi-editor-row"
-                      aria-pressed={checked}
-                      onClick={() => {
-                        const next = checked
-                          ? selected.filter((value) => value !== option.value)
-                          : [...selected, option.value];
-                        if (next.length === 0) {
-                          setParam(def.key, null);
-                          close();
-                          return;
-                        }
-                        setParam(def.key, def.encode(next));
-                      }}
+          ? def.options.flatMap((option) => {
+              if (!option.label.toLowerCase().includes(q)) return [];
+              const checked = selectedSet.has(option.value);
+              return (
+                <div key={option.value} className="wgi-editor-opt">
+                  <button
+                    type="button"
+                    className="wgi-editor-row"
+                    aria-pressed={checked}
+                    onClick={() => {
+                      const next = checked
+                        ? selected.filter((value) => value !== option.value)
+                        : [...selected, option.value];
+                      if (next.length === 0) {
+                        setParam(def.key, null);
+                        close();
+                        return;
+                      }
+                      setParam(def.key, def.encode(next));
+                    }}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="wgi-editor-box"
+                      data-checked={checked || undefined}
                     >
-                      <span
-                        aria-hidden="true"
-                        className="wgi-editor-box"
-                        data-checked={checked || undefined}
-                      >
-                        {checked ? <CheckGlyph /> : null}
-                      </span>
-                      {option.label}
-                    </button>
-                    <button
-                      type="button"
-                      className="wgi-editor-quick"
-                      aria-label={checked ? `Only ${option.label}` : `Check ${option.label}`}
-                      onClick={() => {
-                        setParam(
-                          def.key,
-                          def.encode(checked ? [option.value] : [...selected, option.value]),
-                        );
-                      }}
-                    >
-                      {checked ? "Only" : "Check"}
-                    </button>
-                  </div>
-                );
-              })
+                      {checked ? <CheckGlyph /> : null}
+                    </span>
+                    {option.label}
+                  </button>
+                  <button
+                    type="button"
+                    className="wgi-editor-quick"
+                    aria-label={checked ? `Only ${option.label}` : `Check ${option.label}`}
+                    onClick={() => {
+                      setParam(
+                        def.key,
+                        def.encode(checked ? [option.value] : [...selected, option.value]),
+                      );
+                    }}
+                  >
+                    {checked ? "Only" : "Check"}
+                  </button>
+                </div>
+              );
+            })
           : null}
 
         {def.type === "select"
-          ? def.options
-              .filter((option) => option.label.toLowerCase().includes(q))
-              .map((option) => {
-                const checked = raw !== null && def.decode(raw) === option.value;
-                return (
-                  <div key={option.value} className="wgi-editor-opt">
-                    <button
-                      type="button"
-                      className="wgi-editor-row"
-                      aria-pressed={checked}
-                      onClick={() => {
-                        setParam(def.key, def.encode(option.value));
-                      }}
-                    >
-                      <span aria-hidden="true" className="wgi-editor-tick">
-                        {checked ? (
-                          <svg
-                            width="13"
-                            height="13"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.6"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            aria-hidden="true"
-                          >
-                            <path d="M20 6 9 17l-5-5" />
-                          </svg>
-                        ) : null}
-                      </span>
-                      {option.label}
-                    </button>
-                  </div>
-                );
-              })
+          ? def.options.flatMap((option) => {
+              if (!option.label.toLowerCase().includes(q)) return [];
+              const checked = raw !== null && def.decode(raw) === option.value;
+              return (
+                <div key={option.value} className="wgi-editor-opt">
+                  <button
+                    type="button"
+                    className="wgi-editor-row"
+                    aria-pressed={checked}
+                    onClick={() => {
+                      setParam(def.key, def.encode(option.value));
+                    }}
+                  >
+                    <span aria-hidden="true" className="wgi-editor-tick">
+                      {checked ? (
+                        <svg
+                          width="13"
+                          height="13"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.6"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M20 6 9 17l-5-5" />
+                        </svg>
+                      ) : null}
+                    </span>
+                    {option.label}
+                  </button>
+                </div>
+              );
+            })
           : null}
 
         {def.type === "date" ? (
           <>
-            {presets
-              .filter((preset) => preset.label.toLowerCase().includes(q))
-              .map((preset) => {
-                const checked = range !== null && matchesPreset(preset, range, nowMs);
-                return (
-                  <div key={preset.id} className="wgi-editor-opt">
-                    <button
-                      type="button"
-                      className="wgi-editor-row"
-                      aria-pressed={checked}
-                      onClick={() => {
-                        setRangeOpen(false);
-                        setFromDraft("");
-                        setToDraft("");
-                        setParam(def.key, def.encode(preset.range));
-                      }}
-                    >
-                      <span aria-hidden="true" className="wgi-editor-tick">
-                        {checked ? (
-                          <svg
-                            width="13"
-                            height="13"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2.6"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            aria-hidden="true"
-                          >
-                            <path d="M20 6 9 17l-5-5" />
-                          </svg>
-                        ) : null}
-                      </span>
-                      {preset.label}
-                    </button>
-                  </div>
-                );
-              })}
+            {presets.flatMap((preset) => {
+              if (!preset.label.toLowerCase().includes(q)) return [];
+              const checked = range !== null && matchesPreset(preset, range, nowMs);
+              return (
+                <div key={preset.id} className="wgi-editor-opt">
+                  <button
+                    type="button"
+                    className="wgi-editor-row"
+                    aria-pressed={checked}
+                    onClick={() => {
+                      setRangeOpen(false);
+                      setFromDraft("");
+                      setToDraft("");
+                      setParam(def.key, def.encode(preset.range));
+                    }}
+                  >
+                    <span aria-hidden="true" className="wgi-editor-tick">
+                      {checked ? (
+                        <svg
+                          width="13"
+                          height="13"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.6"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden="true"
+                        >
+                          <path d="M20 6 9 17l-5-5" />
+                        </svg>
+                      ) : null}
+                    </span>
+                    {preset.label}
+                  </button>
+                </div>
+              );
+            })}
             <div className="wgi-editor-opt">
               <button
                 type="button"
@@ -579,7 +582,9 @@ function TextEditor({
   return (
     <>
       <input
+        // react-doctor-disable-next-line react-doctor/no-autofocus -- focus lands in the just-opened popover's text input (a user-initiated open), not page-load focus stealing
         autoFocus
+        aria-label={def.label}
         className="wgi-editor-input"
         placeholder={def.placeholder}
         value={draft}

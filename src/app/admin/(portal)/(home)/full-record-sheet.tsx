@@ -129,9 +129,9 @@ export function FullRecordSheet({
             <header className="wgi-sheet-head">
               <div>
                 <p className="wgi-sheet-kicker">Full record</p>
-                <HomeSheetTitle
-                  render={<h2 className="wgi-sheet-name" data-ui-redact="patient-name" />}
-                >
+                {/* Base UI's Title renders an <h2> itself — no render element,
+                    so the heading and its content stay in one JSX node. */}
+                <HomeSheetTitle className="wgi-sheet-name" data-ui-redact="patient-name">
                   {line.name}
                 </HomeSheetTitle>
                 <p className="wgi-sheet-meta">

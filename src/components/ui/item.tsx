@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 function ItemGroup({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
+      // react-doctor-disable-next-line react-doctor/prefer-tag-over-role -- upstream shadcn renders a generic container with list semantics; its children are Items (divs), which a <ul> would mislabel as invalid non-<li> content
       role="list"
       data-slot="item-group"
       className={cn(
