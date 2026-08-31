@@ -30,6 +30,9 @@ export interface QueueRow {
 
 export type AttentiveQueueRow = AttentiveRow<QueueRow>;
 
+/** A queue row that also knows who last worked it (newest audit actor). */
+export type WorkedQueueRow = AttentiveQueueRow & { lastActivityBy: string | null };
+
 const COLUMNS =
   "id, name, phone, location, preferred_time, locale, status, created_at, follow_up_at, legacy_review_required, version";
 
@@ -83,6 +86,7 @@ function toQueueRow(row: z.infer<typeof storedQueueRowSchema>): QueueRow {
 const activityRowSchema = z.object({
   entity_id: z.string().nullable(),
   at: z.string(),
+  actor_email: z.string().nullable(),
 });
 
 /**
@@ -101,7 +105,7 @@ export async function fetchAttentiveOpenRows(
     searchFilter?: string;
     now?: Date;
   }> = {},
-): Promise<AttentiveQueueRow[]> {
+): Promise<WorkedQueueRow[]> {
   const dbStatuses = statuses.flatMap((view) => VIEW_DB_STATUSES[view]);
   let query = db
     .from("requests")
@@ -120,6 +124,9 @@ export async function fetchAttentiveOpenRows(
   const rows = uniqueByRequestId(parsedRows.data.map(toQueueRow));
 
   const activityById = new Map<string, string>();
+  // "Last worked by": the newest audit row that names a staff actor. Tracked
+  // With its own timestamp so row order inside a chunk cannot change the answer.
+  const actorById = new Map<string, { at: string; email: string }>();
   const ids = rows.map((row) => row.id);
   // PostgREST URL limits reject long `in` lists (a 500-row candidate set is
   // ~18KB of UUIDs), so the activity map is fetched in parallel chunks.
@@ -128,7 +135,7 @@ export async function fetchAttentiveOpenRows(
     Array.from({ length: Math.ceil(ids.length / ACTIVITY_ID_CHUNK) }, (_, chunkIndex) =>
       db
         .from("audit_log")
-        .select("entity_id, at")
+        .select("entity_id, at, actor_email")
         .eq("entity", "requests")
         .in(
           "entity_id",
@@ -143,16 +150,23 @@ export async function fetchAttentiveOpenRows(
     for (const row of chunk.data) {
       const parsed = activityRowSchema.safeParse(row);
       if (!parsed.success) continue;
-      const { entity_id: id, at } = parsed.data;
+      const { entity_id: id, at, actor_email: actor } = parsed.data;
       if (id === null || id === "") continue;
       const current = activityById.get(id);
       if (current === undefined || current === "" || at > current) {
         activityById.set(id, at);
       }
+      if (actor !== null && actor !== "") {
+        const knownActor = actorById.get(id);
+        if (knownActor === undefined || at > knownActor.at) actorById.set(id, { at, email: actor });
+      }
     }
   }
 
-  return orderQueueRows(rows, activityById, now);
+  return orderQueueRows(rows, activityById, now).map((row) => ({
+    ...row,
+    lastActivityBy: actorById.get(row.id)?.email ?? null,
+  }));
 }
 
 /**
