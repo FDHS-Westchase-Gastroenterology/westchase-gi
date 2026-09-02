@@ -6,13 +6,13 @@ Off-limits, even where this brief mentions them: the row popover, the detail she
 
 Also out of scope: Vercel's natural-language search (typing a sentence into Add filter and having filters applied for you). The portal is not there yet.
 
-Visual design is not part of this brief. The bar keeps the portal's existing design system — type, color, spacing, components — exactly as it is. Nothing below asks for a visual change; if a behavior seems to need one, use what the repo already has.
+Visual design is not part of this brief. The bar keeps the portal's existing design system — type, color, spacing, components — exactly as it is. Where a behavior needs an element the bar lacks today (the editor header, the calendar grid), build it from components the repo already has; restyle nothing.
 
 **Audience.** The implementing agent. This brief says what must happen and which kinds of interaction to use. Internals are the agent's call; the repo already carries the portal's conventions.
 
 **Base branch.** All work branches off PR 224 (`portal/appointment-workflow-experience`). Test login: `admin` / `123`. Preview of the base branch: `https://westchase-gi-git-portal-appoi-dce1f5-jasongitdev-1290s-projects.vercel.app/admin`. The floating dark button on the right edge of the preview is Vercel's toolbar, not the portal; ignore it.
 
-There are no open decisions and no screenshots in this brief. Walk the portal yourself (the preview above, or the repo run locally) with Stagehand; section 3 describes Vercel's side. Where the text is silent, section 4's "verified fine" list means "as today".
+Walk the portal yourself (the preview above, or the repo run locally) with Stagehand; section 3 describes Vercel's side. Where the text is silent, section 4's "verified fine" list means "as today".
 
 ---
 
@@ -20,9 +20,8 @@ There are no open decisions and no screenshots in this brief. Walk the portal yo
 
 1. **Never clean up, merge, or alter existing records or data as a side effect of a UI change.** Repeated or odd-looking data may be something staff did that the old UX allowed. Report it in your hand-off notes; Jason decides.
 2. **Use the portal's own vocabulary, exactly, in every label, hint, and message.** The vocabulary is pinned in section 2. Do not introduce synonyms.
-3. **Every acceptance criterion in section 6 must be checkable by walking the UI**, not by reading code or config. If you believe one can't be met, say so in hand-off notes rather than quietly building something adjacent.
+3. **Section 6 is checked by walking the UI**, not by reading code or config. If a box can't be met as written, say so in hand-off notes rather than quietly building something adjacent.
 4. **Build what is asked; don't add guardrails, rules, or scope beyond it.** If something seems missing, ask in hand-off notes.
-5. **Stakeholder requests are inputs, not owners.** Don't tune a surface around one person's ask.
 
 ---
 
@@ -46,7 +45,7 @@ There are no open decisions and no screenshots in this brief. Walk the portal yo
 | Hover actions inside a checkbox editor | **Only** (isolate this value) · **Check all** (bring every value back) |
 | Resetting the bar | **Clear filters** |
 
-Decided during annotation (Sept 2): the **AFTER HOURS** and **OVERDUE** words do not become Attention options. The Attention list above is complete. The rows carry AFTER HOURS and OVERDUE stamps today; those are row content, off-limits in this brief, and stay exactly as they are.
+The Attention list above is complete. **AFTER HOURS** and **OVERDUE** are row stamps, not Attention options; the rows keep those stamps exactly as they are (rows are off-limits in this brief).
 
 ---
 
@@ -84,7 +83,7 @@ Each finding can be reproduced live on the preview as `admin`; the steps are the
 
 **F3 — Submenus reached through Add filter have no header and no way back.** Add filter → Status shows only the "Filter to…" box above the options; to pick a different dimension you must close and reopen. Vercel shows "Status ⌄" beside the box on that path, and clicking it returns to the category list. An editor opened from a chip is the same on both sides — a bare "Filter to…" box scoped to that chip's dimension — so nothing changes there.
 
-**F4 — Chip value collapse: not a gap.** Portal: two values inline, "3 selected" from three. Vercel: three inline, "4 Selected" from four. The Sept 2 draft's claim that the chip "keeps appending" was wrong; it collapses at three today. Once section 5.3 lands, all values checked means no chip, so a Status chip can hold at most three values and a Location chip at most two. Keep the portal's rule as it is: the bar is narrower than Vercel's, and "3 selected" is the only case where the two rules differ.
+**F4 — Chip value collapse: not a gap.** Portal: two values inline, "3 selected" from three. Vercel: three inline, "4 Selected" from four. Once section 5.3 lands, all values checked means no chip, so a Status chip can hold at most three values and a Location chip at most two. Keep the portal's rule as it is: the bar is narrower than Vercel's, and "3 selected" is the only case where the two rules differ.
 
 **F5 — Custom range applies before you've chosen it.** Received → Custom range immediately applies a two-week range (chip "RECEIVED <14 days ago> – <today>", list narrows) and reveals From / To native date inputs. Editing From applies at once against the old To; a range typed halfway applies itself. Nothing in the editor lets you set both ends and then commit.
 
@@ -136,7 +135,7 @@ Each finding can be reproduced live on the preview as `admin`; the steps are the
 
 ## 6. Acceptance criteria
 
-Each box is pass/fail by walking `/admin` on the preview as `admin`.
+Each box is pass/fail by walking `/admin` as `admin` on your own build (local, or your PR's preview, not the base-branch preview above). Walk every box before hand-off and report each as passed or not, with what you saw.
 
 **Resting state**
 - [ ] On a fresh load of `/admin`, Add filter → Status shows all four values checked and a ✓ on "Any status"; no STATUS chip is shown; the URL has no `status` param.
