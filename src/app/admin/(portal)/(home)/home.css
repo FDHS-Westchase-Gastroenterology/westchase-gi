@@ -716,8 +716,10 @@
 
 /* ---------- The editor popover ---------- */
 
+/* 20rem: room for the category list to breathe, and the exact width the
+   calendar fills when the Received editor turns into it. */
 .wgi-editor {
-  width: 17rem;
+  width: 20rem;
   max-height: min(40rem, var(--available-height, 24rem));
   overflow: auto;
   padding: 0;
@@ -745,8 +747,9 @@
   box-shadow: inset 0 -2px 0 var(--color-teal);
 }
 
-/* Add-filter path only: "<Dimension> ⌄" beside the search box. Clicking it
-   returns to the category list; the box beside it keeps the input's paint. */
+/* "<Dimension> ⌄" beside the search box, going up one level: the category
+   list on the Add-filter path, the preset list from the calendar. The box
+   beside it keeps the input's paint. */
 .wgi-editor-head {
   display: flex;
   align-items: center;
@@ -783,6 +786,25 @@
 
 .wgi-editor-dim > svg {
   color: var(--color-muted-ink);
+}
+
+/* The calendar view's header text: the draft range in the input's slot,
+   "Start – End" filling in as days are picked. Not a field — nothing to type. */
+.wgi-editor-readout {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0.7rem 0.9rem;
+  color: var(--color-ink);
+  font-size: var(--pt-xs);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wgi-editor-readout[data-empty] {
+  color: var(--color-muted-ink);
+  font-weight: 400;
 }
 
 .wgi-editor-body {
@@ -913,38 +935,48 @@
   visibility: hidden;
 }
 
+/* The calendar view: the month grid is the popover's full width, then a
+   ruled block of Start, End, and Apply beneath it. */
 .wgi-editor-range {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  border-top: 1px solid var(--color-line);
-  margin-top: 0.3rem;
-  padding: 0.6rem 0.6rem 0.4rem;
 }
 
-.wgi-editor-range label {
+.wgi-editor-cal {
+  --cell-size: 2.4rem;
+
+  width: 100%;
+  padding: 0.6rem 0.6rem 0.5rem;
+}
+
+.wgi-editor-range-fields {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ps-2);
+  flex-direction: column;
+  gap: 0.55rem;
+  border-top: 1px solid var(--color-line);
+  padding: 0.7rem 0.6rem 0.6rem;
+}
+
+.wgi-editor-range-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
   color: var(--color-muted-ink);
   font-size: var(--pt-2xs);
   font-weight: 700;
 }
 
-.wgi-editor-range input {
+.wgi-editor-range-fields input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 2.25rem;
   border: 1px solid var(--color-line-2);
   border-radius: var(--radius-sm);
   background: white;
-  padding: 0.3rem 0.45rem;
+  padding: 0.3rem 0.6rem;
   color: var(--color-ink);
   font-family: inherit;
   font-size: var(--pt-xs);
-}
-
-.wgi-editor-range > [data-slot="calendar"] {
-  align-self: center;
-  margin-bottom: 0.2rem;
 }
 
 /* Apply: the one deliberate commit in the bar, painted as the portal's

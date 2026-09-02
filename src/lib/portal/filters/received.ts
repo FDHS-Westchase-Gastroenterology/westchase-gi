@@ -97,6 +97,12 @@ export function matchesPreset(
   );
 }
 
+/** "Aug 23" for a practice-local day string (YYYY-MM-DD); malformed days echo back. */
+export function dayLabel(day: string): string {
+  const ms = nyStartOfDayMs(day);
+  return ms === null ? day : NY_MONTH_DAY.format(new Date(ms));
+}
+
 /** "Aug 23 – 30", practice-local, for ranges that match no preset. */
 export function dateRangeLabel(value: Readonly<DateRange>): string {
   return `${NY_MONTH_DAY.format(new Date(value.from))} – ${NY_MONTH_DAY.format(new Date(value.to))}`;

@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import {
   datePresets,
+  dayLabel,
   filterByKey,
   filterValueLabel,
   HOME_FILTERS,
@@ -31,7 +32,8 @@ import { HomePopover, HomePopoverContent, HomePopoverTrigger } from "./parts/pop
 /* The filter bar (brief §2.2): Add Filter, then active pills in URL order,
    then suggestion pills. Every toggle applies instantly — URL, pill label,
    and list update per click. The one exception is the Received editor's
-   custom range, which holds a draft until Apply (filter-bar brief §5.5). */
+   custom range, which takes over the popover and holds a draft until Apply
+   (filter-bar brief §5.5). */
 
 interface FilterBarProps {
   readonly active: readonly ActiveFilter[];
@@ -162,20 +164,7 @@ function AddFilterButton({
                     }}
                   >
                     {def.label}
-                    <svg
-                      data-chevron="true"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="m9 18 6-6-6-6" />
-                    </svg>
+                    <ChevronRightGlyph />
                   </button>
                 </div>
               ))}
@@ -273,7 +262,32 @@ function FilterEditor({
   if (def.type === "text") {
     return <TextEditor def={def} raw={raw} setParam={setParam} onBack={onBack} />;
   }
-  return <OptionEditor def={def} raw={raw} nowMs={nowMs} setParam={setParam} onBack={onBack} />;
+  if (def.type === "date") {
+    return <DateEditor def={def} raw={raw} nowMs={nowMs} setParam={setParam} onBack={onBack} />;
+  }
+  return <OptionEditor def={def} raw={raw} setParam={setParam} onBack={onBack} />;
+}
+
+/* "<Dimension> ⌄": the header pill that goes up one level. */
+function DimButton({ label, onClick }: Readonly<{ label: string; onClick: () => void }>) {
+  return (
+    <button type="button" className="wgi-editor-dim" onClick={onClick}>
+      {label}
+      <svg
+        width="12"
+        height="12"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden="true"
+      >
+        <path d="m6 9 6 6 6-6" />
+      </svg>
+    </button>
+  );
 }
 
 function EditorHead({
@@ -284,24 +298,29 @@ function EditorHead({
   if (onBack === undefined) return <>{children}</>;
   return (
     <div className="wgi-editor-head">
-      <button type="button" className="wgi-editor-dim" onClick={onBack}>
-        {label}
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <path d="m6 9 6 6 6-6" />
-        </svg>
-      </button>
+      <DimButton label={label} onClick={onBack} />
       {children}
     </div>
+  );
+}
+
+/* The row-end chevron: this row opens another level. */
+function ChevronRightGlyph() {
+  return (
+    <svg
+      data-chevron="true"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="m9 18 6-6-6-6" />
+    </svg>
   );
 }
 
@@ -341,19 +360,17 @@ function TickGlyph() {
   );
 }
 
-/* Multi-select (checkbox + label as two targets), select (single ✓), and
-   date (presets + custom range) share one shell: search box, an "Any …"
-   escape row that carries ✓ in the resting state, then the option rows. */
+/* Multi-select (checkbox + label as two targets) and select (single ✓)
+   share one shell: search box, an "Any …" escape row that carries ✓ in the
+   resting state, then the option rows. */
 function OptionEditor({
   def,
   raw,
-  nowMs,
   setParam,
   onBack,
 }: Readonly<{
-  def: MultiSelectFilterParam | SelectFilterParam | DateFilterParam;
+  def: MultiSelectFilterParam | SelectFilterParam;
   raw: string | null;
-  nowMs: number;
   setParam: SetParam;
   onBack: (() => void) | undefined;
 }>) {
@@ -381,9 +398,6 @@ function OptionEditor({
         ) : null}
         {def.type === "select" ? (
           <SelectRows def={def} raw={raw} q={q} setParam={setParam} />
-        ) : null}
-        {def.type === "date" ? (
-          <DateRows def={def} raw={raw} q={q} nowMs={nowMs} setParam={setParam} />
         ) : null}
       </div>
     </>
@@ -549,27 +563,31 @@ function SelectRows({
 }
 
 /* Presets apply on click, as every other toggle does. Custom range is the
-   one deliberate step in the bar: the calendar, Start, and End edit a draft,
-   and nothing — list, chip, URL — moves until Apply. */
-function DateRows({
+   one deliberate step in the bar, and it takes the whole popover (the Vercel
+   model): the row swaps the list for the calendar with Start, End, and
+   Apply beneath it; the header's "Received ⌄" brings the list back; and
+   nothing — list, chip, URL — moves until Apply. A chip already holding a
+   custom range opens straight onto the calendar with that range in place. */
+function DateEditor({
   def,
   raw,
-  q,
   nowMs,
   setParam,
+  onBack,
 }: Readonly<{
   def: DateFilterParam;
   raw: string | null;
-  q: string;
   nowMs: number;
   setParam: SetParam;
+  onBack: (() => void) | undefined;
 }>) {
   const range = raw === null ? null : def.decode(raw);
   const presets = datePresets(nowMs);
   const isCustomRange =
     range !== null && !presets.some((preset) => matchesPreset(preset, range, nowMs));
 
-  const [rangeOpen, setRangeOpen] = useState(isCustomRange);
+  const [query, setQuery] = useState("");
+  const [view, setView] = useState<"list" | "range">(isCustomRange ? "range" : "list");
   const [fromDraft, setFromDraft] = useState(() =>
     range !== null && isCustomRange ? msToNyDay(range.from) : "",
   );
@@ -586,55 +604,23 @@ function DateRows({
     if (from !== null && to !== null && from <= to) setParam(def.key, `${from}-${to}`);
   };
 
-  return (
-    <>
-      <AnyRow
-        label={def.anyLabel}
-        checked={range === null}
-        onChoose={() => {
-          setRangeOpen(false);
-          setParam(def.key, null);
-        }}
-      />
-      {presets.flatMap((preset) => {
-        if (!preset.label.toLowerCase().includes(q)) return [];
-        const checked = range !== null && matchesPreset(preset, range, nowMs);
-        return (
-          <div key={preset.id} className="wgi-editor-opt">
-            <button
-              type="button"
-              className="wgi-editor-row"
-              aria-pressed={checked}
-              onClick={() => {
-                setRangeOpen(false);
-                setParam(def.key, def.encode(preset.range));
-              }}
-            >
-              <span aria-hidden="true" className="wgi-editor-tick">
-                {checked ? <TickGlyph /> : null}
-              </span>
-              {preset.label}
-            </button>
-          </div>
-        );
-      })}
-      <div className="wgi-editor-opt">
-        <button
-          type="button"
-          className="wgi-editor-row"
-          aria-pressed={isCustomRange}
-          aria-expanded={rangeOpen}
-          onClick={() => {
-            setRangeOpen(true);
-          }}
-        >
-          <span aria-hidden="true" className="wgi-editor-tick">
-            {isCustomRange ? <TickGlyph /> : null}
+  if (view === "range") {
+    return (
+      <>
+        <div className="wgi-editor-head">
+          <DimButton
+            label={def.label}
+            onClick={() => {
+              setView("list");
+            }}
+          />
+          {/* The readout is the template — Start – End — filling in as the draft does. */}
+          <span className="wgi-editor-readout" data-empty={fromDraft === "" || undefined}>
+            {fromDraft === "" ? "Start" : dayLabel(fromDraft)}
+            {" – "}
+            {toDraft === "" ? "End" : dayLabel(toDraft)}
           </span>
-          Custom range
-        </button>
-      </div>
-      {rangeOpen ? (
+        </div>
         <div className="wgi-editor-range">
           <HomeRangeCalendar
             from={fromDraft}
@@ -645,31 +631,104 @@ function DateRows({
               setToDraft(to);
             }}
           />
-          <label>
-            Start
-            <input
-              type="date"
-              value={fromDraft}
-              onChange={(event) => {
-                setFromDraft(event.target.value);
-              }}
-            />
-          </label>
-          <label>
-            End
-            <input
-              type="date"
-              value={toDraft}
-              onChange={(event) => {
-                setToDraft(event.target.value);
-              }}
-            />
-          </label>
-          <button type="button" className="wgi-editor-apply" disabled={!draftValid} onClick={apply}>
-            Apply
+          <div className="wgi-editor-range-fields">
+            <label>
+              Start
+              <input
+                type="date"
+                value={fromDraft}
+                onChange={(event) => {
+                  setFromDraft(event.target.value);
+                }}
+              />
+            </label>
+            <label>
+              End
+              <input
+                type="date"
+                value={toDraft}
+                onChange={(event) => {
+                  setToDraft(event.target.value);
+                }}
+              />
+            </label>
+            <button
+              type="button"
+              className="wgi-editor-apply"
+              disabled={!draftValid}
+              onClick={apply}
+            >
+              Apply
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  const q = query.trim().toLowerCase();
+  return (
+    <>
+      <EditorHead label={def.label} onBack={onBack}>
+        <input
+          // react-doctor-disable-next-line react-doctor/no-autofocus -- focus lands in the just-opened popover's search input (a user-initiated open), not page-load focus stealing
+          autoFocus
+          aria-label="Search options"
+          className="wgi-editor-input"
+          placeholder="Filter to…"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+          }}
+        />
+      </EditorHead>
+      <div className="wgi-editor-body">
+        <AnyRow
+          label={def.anyLabel}
+          checked={range === null}
+          onChoose={() => {
+            setParam(def.key, null);
+          }}
+        />
+        {presets.flatMap((preset) => {
+          if (!preset.label.toLowerCase().includes(q)) return [];
+          const checked = range !== null && matchesPreset(preset, range, nowMs);
+          return (
+            <div key={preset.id} className="wgi-editor-opt">
+              <button
+                type="button"
+                className="wgi-editor-row"
+                aria-pressed={checked}
+                onClick={() => {
+                  setParam(def.key, def.encode(preset.range));
+                }}
+              >
+                <span aria-hidden="true" className="wgi-editor-tick">
+                  {checked ? <TickGlyph /> : null}
+                </span>
+                {preset.label}
+              </button>
+            </div>
+          );
+        })}
+        <div className="wgi-editor-opt">
+          <button
+            type="button"
+            className="wgi-editor-row"
+            aria-pressed={isCustomRange}
+            onClick={() => {
+              setQuery("");
+              setView("range");
+            }}
+          >
+            <span aria-hidden="true" className="wgi-editor-tick">
+              {isCustomRange ? <TickGlyph /> : null}
+            </span>
+            Custom range
+            <ChevronRightGlyph />
           </button>
         </div>
-      ) : null}
+      </div>
     </>
   );
 }

@@ -41,6 +41,9 @@ export function HomeRangeCalendar({
     from === "" ? undefined : { from: dayToDate(from), to: dayToDate(to) };
   return (
     <Calendar
+      // react-doctor-disable-next-line react-doctor/no-autofocus -- the calendar replaces the list the user just clicked in; focus moves to the picked day (or today) inside the open popover, not on page load
+      autoFocus
+      className="wgi-editor-cal"
       mode="range"
       numberOfMonths={1}
       defaultMonth={dayToDate(from) ?? dayToDate(fallbackMonth)}
