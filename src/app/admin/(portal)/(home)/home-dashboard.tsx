@@ -8,7 +8,14 @@ import { useActiveFilters } from "@/lib/portal/filters/use-filter-param";
 
 import { FilterBar } from "./filter-bar";
 import { FullRecordSheet } from "./full-record-sheet";
-import { applyFilters, BASE_SUGGESTIONS, contextSuggestion, emptyStateMessage } from "./home-line";
+import {
+  applyFilters,
+  BASE_SUGGESTIONS,
+  contextSuggestion,
+  emptyStateMessage,
+  isSuggestionActive,
+  suggestionId,
+} from "./home-line";
 import type { FilterSuggestion, HomeLine } from "./home-line";
 import { LineList } from "./line-list";
 
@@ -28,14 +35,15 @@ interface HomeDashboardProps {
 export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps) {
   const { active, setParam, clearAll } = useActiveFilters();
 
-  /* Suggestion queue: base suggestions not already active, in offer order.
-     Removing an active filter returns its suggestion to the end of the bar. */
-  const [suggestionQueue, setSuggestionQueue] = useState<readonly FilterKey[]>(() => {
-    const activeKeys = new Set(active.map((entry) => entry.key));
-    return BASE_SUGGESTIONS.flatMap((suggestion) =>
-      activeKeys.has(suggestion.key) ? [] : [suggestion.key],
-    );
-  });
+  /* Suggestion queue, by suggestion id (dimension + value, since the two
+     base ghosts share Attention): base suggestions not already active, in
+     offer order. Removing an active filter — or replacing it through the
+     other ghost — returns its suggestion to the end of the bar. */
+  const [suggestionQueue, setSuggestionQueue] = useState<readonly string[]>(() =>
+    BASE_SUGGESTIONS.flatMap((suggestion) =>
+      isSuggestionActive(suggestion, active) ? [] : [suggestionId(suggestion)],
+    ),
+  );
 
   const [openRowId, setOpenRowId] = useState<string | null>(null);
   const [sheetRowId, setSheetRowId] = useState<string | null>(null);
@@ -64,33 +72,58 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
 
   const filtered = useMemo(() => applyFilters(lines, active), [lines, active]);
 
-  /* The visible queue is derived, not synchronized: queued keys that are not
-     active, then any base suggestion the URL freed up behind our back
-     (back/forward, a pasted link) rejoining at the end. */
-  const activeKeys = new Set(active.map((entry) => entry.key));
-  const queuedKeys = new Set(suggestionQueue);
-  const visibleQueue = [
-    ...suggestionQueue.filter((key) => !activeKeys.has(key)),
-    ...BASE_SUGGESTIONS.flatMap((suggestion) =>
-      activeKeys.has(suggestion.key) || queuedKeys.has(suggestion.key) ? [] : [suggestion.key],
+  /* The visible queue is derived, not synchronized: queued suggestions whose
+     exact value is not active, then any base suggestion the URL freed up
+     behind our back (back/forward, a pasted link) rejoining at the end. */
+  const queuedIds = new Set(suggestionQueue);
+  const suggestions: FilterSuggestion[] = [
+    ...suggestionQueue.flatMap((id) => {
+      const suggestion = BASE_SUGGESTIONS.find((candidate) => suggestionId(candidate) === id);
+      return suggestion === undefined || isSuggestionActive(suggestion, active) ? [] : [suggestion];
+    }),
+    ...BASE_SUGGESTIONS.filter(
+      (suggestion) =>
+        !queuedIds.has(suggestionId(suggestion)) && !isSuggestionActive(suggestion, active),
     ),
   ];
-  const suggestions: FilterSuggestion[] = visibleQueue
-    .map((key) => BASE_SUGGESTIONS.find((suggestion) => suggestion.key === key))
-    .filter((suggestion): suggestion is FilterSuggestion => suggestion !== undefined);
-  const contextual = contextSuggestion(filtered, active, visibleQueue);
+  const contextual = contextSuggestion(
+    filtered,
+    active,
+    suggestions.map((suggestion) => suggestion.key),
+  );
   if (contextual !== null) suggestions.push(contextual);
 
+  /* The base suggestion an active filter matches exactly, if any — the ghost
+     that returns to the end of the bar when that filter goes. */
+  const ghostFor = (key: FilterKey): FilterSuggestion | null => {
+    const entry = active.find((candidate) => candidate.key === key);
+    if (entry === undefined) return null;
+    return (
+      BASE_SUGGESTIONS.find(
+        (suggestion) => suggestion.key === entry.key && suggestion.raw === entry.raw,
+      ) ?? null
+    );
+  };
+
+  const requeue = (suggestion: FilterSuggestion | null, without: string | null) => {
+    setSuggestionQueue((queue) => {
+      const kept = queue.filter(
+        (id) => id !== without && (suggestion === null || id !== suggestionId(suggestion)),
+      );
+      return suggestion === null ? kept : [...kept, suggestionId(suggestion)];
+    });
+  };
+
   const activate = (suggestion: FilterSuggestion) => {
+    const replaced = ghostFor(suggestion.key);
     setParam(suggestion.key, suggestion.raw);
-    setSuggestionQueue((queue) => queue.filter((key) => key !== suggestion.key));
+    requeue(replaced, suggestionId(suggestion));
   };
 
   const remove = (key: FilterKey) => {
+    const ghost = ghostFor(key);
     setParam(key, null);
-    if (BASE_SUGGESTIONS.some((suggestion) => suggestion.key === key)) {
-      setSuggestionQueue((queue) => (queue.includes(key) ? queue : [...queue, key]));
-    }
+    requeue(ghost, null);
   };
 
   const sheetLine =
@@ -139,7 +172,7 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
             className="wgi-empty-clear"
             onClick={() => {
               clearAll();
-              setSuggestionQueue(BASE_SUGGESTIONS.map((suggestion) => suggestion.key));
+              setSuggestionQueue(BASE_SUGGESTIONS.map(suggestionId));
             }}
           >
             Clear filters

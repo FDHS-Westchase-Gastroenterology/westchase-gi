@@ -96,11 +96,26 @@ export interface FilterSuggestion {
   readonly raw: string;
 }
 
-/** The bar opens with suggestions tuned to the job: the follow-up round, then the unworked. */
+/** The bar opens with suggestions tuned to the job: the follow-up round, then
+   the unworked. Both sit on Attention — one single-choice dimension — so the
+   two can never be active together: activating one while the other is on
+   switches the chip, and the value it replaced returns to the bar as a ghost. */
 export const BASE_SUGGESTIONS: readonly FilterSuggestion[] = [
   { key: "attention", raw: "follow_up" },
-  { key: "status", raw: "new" },
+  { key: "attention", raw: "new" },
 ];
+
+/** One ghost's identity: the dimension *and* the value, since two ghosts may share a dimension. */
+export function suggestionId(suggestion: Readonly<FilterSuggestion>): string {
+  return `${suggestion.key}:${suggestion.raw}`;
+}
+
+export function isSuggestionActive(
+  suggestion: Readonly<FilterSuggestion>,
+  active: readonly Readonly<ActiveFilter>[],
+): boolean {
+  return active.some((entry) => entry.key === suggestion.key && entry.raw === suggestion.raw);
+}
 
 /* Context-aware suggestion: with filters active and location untouched, offer
    the office most present in the filtered rows. */

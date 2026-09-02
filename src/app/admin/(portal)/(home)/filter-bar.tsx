@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
 
 import {
   datePresets,
@@ -22,12 +23,15 @@ import type {
   TextFilterParam,
 } from "@/lib/portal/filters";
 
+import { suggestionId } from "./home-line";
 import type { FilterSuggestion } from "./home-line";
+import { HomeRangeCalendar } from "./parts/calendar";
 import { HomePopover, HomePopoverContent, HomePopoverTrigger } from "./parts/popover";
 
 /* The filter bar (brief §2.2): Add Filter, then active pills in URL order,
    then suggestion pills. Every toggle applies instantly — URL, pill label,
-   and list update per click; there is no Apply button and no dirty state. */
+   and list update per click. The one exception is the Received editor's
+   custom range, which holds a draft until Apply (filter-bar brief §5.5). */
 
 interface FilterBarProps {
   readonly active: readonly ActiveFilter[];
@@ -37,6 +41,8 @@ interface FilterBarProps {
   readonly onRemove: (key: FilterKey) => void;
   readonly onActivate: (suggestion: FilterSuggestion) => void;
 }
+
+type SetParam = (key: FilterKey, raw: string | null) => void;
 
 export function FilterBar({
   active,
@@ -64,7 +70,7 @@ export function FilterBar({
         const def = filterByKey(suggestion.key);
         return (
           <button
-            key={`${suggestion.key}:${suggestion.raw}`}
+            key={suggestionId(suggestion)}
             type="button"
             className="wgi-sug"
             onClick={() => {
@@ -89,16 +95,12 @@ function AddFilterButton({
 }: Readonly<{
   active: readonly ActiveFilter[];
   nowMs: number;
-  setParam: (key: FilterKey, raw: string | null) => void;
+  setParam: SetParam;
 }>) {
   const [open, setOpen] = useState(false);
   const [viewKey, setViewKey] = useState<FilterKey | null>(null);
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
-
-  const close = () => {
-    setOpen(false);
-  };
 
   const categories = HOME_FILTERS.filter((def) => def.label.toLowerCase().includes(q));
   const viewDef = viewKey === null ? null : filterByKey(viewKey);
@@ -181,11 +183,15 @@ function AddFilterButton({
           </>
         ) : (
           <FilterEditor
+            key={viewDef.key}
             def={viewDef}
             raw={viewRaw}
             nowMs={nowMs}
             setParam={setParam}
-            close={close}
+            onBack={() => {
+              setViewKey(null);
+              setQuery("");
+            }}
           />
         )}
       </HomePopoverContent>
@@ -203,7 +209,7 @@ function ActivePill({
 }: Readonly<{
   entry: ActiveFilter;
   nowMs: number;
-  setParam: (key: FilterKey, raw: string | null) => void;
+  setParam: SetParam;
   onRemove: () => void;
 }>) {
   const def = filterByKey(entry.key);
@@ -217,15 +223,7 @@ function ActivePill({
           <span className="wgi-pill-value">{filterValueLabel(def, entry.raw, nowMs)}</span>
         </HomePopoverTrigger>
         <HomePopoverContent className="wgi-editor" aria-label={`Filter by ${def.label}`}>
-          <FilterEditor
-            def={def}
-            raw={entry.raw}
-            nowMs={nowMs}
-            setParam={setParam}
-            close={() => {
-              setOpen(false);
-            }}
-          />
+          <FilterEditor def={def} raw={entry.raw} nowMs={nowMs} setParam={setParam} />
         </HomePopoverContent>
       </HomePopover>
       <button
@@ -255,23 +253,56 @@ function ActivePill({
 
 /* ---- Editors ---- */
 
+/* An editor reached through Add filter carries `onBack`: the "<Dimension> ⌄"
+   header beside its search box returns to the category list so another
+   dimension is one click away. An editor opened from a chip has no header —
+   just the box, scoped to that chip's dimension. */
 function FilterEditor({
   def,
   raw,
   nowMs,
   setParam,
-  close,
+  onBack,
 }: Readonly<{
   def: FilterParam;
   raw: string | null;
   nowMs: number;
-  setParam: (key: FilterKey, raw: string | null) => void;
-  close: () => void;
+  setParam: SetParam;
+  onBack?: () => void;
 }>) {
   if (def.type === "text") {
-    return <TextEditor def={def} raw={raw} setParam={setParam} />;
+    return <TextEditor def={def} raw={raw} setParam={setParam} onBack={onBack} />;
   }
-  return <OptionEditor def={def} raw={raw} nowMs={nowMs} setParam={setParam} close={close} />;
+  return <OptionEditor def={def} raw={raw} nowMs={nowMs} setParam={setParam} onBack={onBack} />;
+}
+
+function EditorHead({
+  label,
+  onBack,
+  children,
+}: Readonly<{ label: string; onBack: (() => void) | undefined; children: ReactNode }>) {
+  if (onBack === undefined) return <>{children}</>;
+  return (
+    <div className="wgi-editor-head">
+      <button type="button" className="wgi-editor-dim" onClick={onBack}>
+        {label}
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {children}
+    </div>
+  );
 }
 
 function CheckGlyph() {
@@ -292,270 +323,353 @@ function CheckGlyph() {
   );
 }
 
-/* Multi-select (checkbox rows + hover `Only`/`Check`), select (single ✓),
-   and date (presets + custom range) share one shell: search input, an
-   "Any …" escape row, then the option rows. */
+function TickGlyph() {
+  return (
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+
+/* Multi-select (checkbox + label as two targets), select (single ✓), and
+   date (presets + custom range) share one shell: search box, an "Any …"
+   escape row that carries ✓ in the resting state, then the option rows. */
 function OptionEditor({
   def,
   raw,
   nowMs,
   setParam,
-  close,
+  onBack,
 }: Readonly<{
   def: MultiSelectFilterParam | SelectFilterParam | DateFilterParam;
   raw: string | null;
   nowMs: number;
-  setParam: (key: FilterKey, raw: string | null) => void;
-  close: () => void;
+  setParam: SetParam;
+  onBack: (() => void) | undefined;
 }>) {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
 
-  const range = def.type === "date" && raw !== null ? def.decode(raw) : null;
-  const presets = def.type === "date" ? datePresets(nowMs) : [];
-  const isCustomRange =
-    def.type === "date" &&
-    range !== null &&
-    !presets.some((preset) => matchesPreset(preset, range, nowMs));
+  return (
+    <>
+      <EditorHead label={def.label} onBack={onBack}>
+        <input
+          // react-doctor-disable-next-line react-doctor/no-autofocus -- focus lands in the just-opened popover's search input (a user-initiated open), not page-load focus stealing
+          autoFocus
+          aria-label="Search options"
+          className="wgi-editor-input"
+          placeholder="Filter to…"
+          value={query}
+          onChange={(event) => {
+            setQuery(event.target.value);
+          }}
+        />
+      </EditorHead>
+      <div className="wgi-editor-body">
+        {def.type === "multi-select" ? (
+          <MultiSelectRows def={def} raw={raw} q={q} setParam={setParam} />
+        ) : null}
+        {def.type === "select" ? (
+          <SelectRows def={def} raw={raw} q={q} setParam={setParam} />
+        ) : null}
+        {def.type === "date" ? (
+          <DateRows def={def} raw={raw} q={q} nowMs={nowMs} setParam={setParam} />
+        ) : null}
+      </div>
+    </>
+  );
+}
 
+function AnyRow({
+  label,
+  checked,
+  onChoose,
+}: Readonly<{ label: string; checked: boolean; onChoose: () => void }>) {
+  return (
+    <div className="wgi-editor-opt">
+      <button
+        type="button"
+        data-muted="true"
+        className="wgi-editor-row"
+        aria-pressed={checked}
+        onClick={onChoose}
+      >
+        <span aria-hidden="true" className="wgi-editor-tick">
+          {checked ? <TickGlyph /> : null}
+        </span>
+        {label}
+      </button>
+    </div>
+  );
+}
+
+/* Resting state is every value checked and no param (filter-bar brief §5.3):
+   a full set never writes a chip, and unchecking the last value restores the
+   set. Each row is two targets — the checkbox toggles one value; the label
+   isolates it (Only) or, on the sole checked value, brings all back. */
+function MultiSelectRows({
+  def,
+  raw,
+  q,
+  setParam,
+}: Readonly<{
+  def: MultiSelectFilterParam;
+  raw: string | null;
+  q: string;
+  setParam: SetParam;
+}>) {
+  const allValues = def.options.map((option) => option.value);
+  const decoded = raw === null ? null : def.decode(raw);
+  /* `selected` keeps encode order; the Set answers membership in the rows. */
+  const selected = decoded === null || decoded.length === allValues.length ? allValues : decoded;
+  const selectedSet = new Set(selected);
+  const allChecked = selected.length === allValues.length;
+
+  const commit = (next: readonly string[]) => {
+    setParam(
+      def.key,
+      next.length === 0 || next.length === allValues.length ? null : def.encode(next),
+    );
+  };
+
+  return (
+    <>
+      <AnyRow
+        label={def.anyLabel}
+        checked={allChecked}
+        onChoose={() => {
+          commit(allValues);
+        }}
+      />
+      {def.options.flatMap((option) => {
+        if (!option.label.toLowerCase().includes(q)) return [];
+        const checked = selectedSet.has(option.value);
+        const sole = checked && selected.length === 1;
+        return (
+          <div key={option.value} className="wgi-editor-opt" data-multi="true">
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={checked}
+              aria-label={`${checked ? "Uncheck" : "Check"} ${option.label}`}
+              className="wgi-editor-check"
+              onClick={() => {
+                commit(
+                  checked
+                    ? selected.filter((value) => value !== option.value)
+                    : [...selected, option.value],
+                );
+              }}
+            >
+              <span
+                aria-hidden="true"
+                className="wgi-editor-box"
+                data-checked={checked || undefined}
+              >
+                {checked ? <CheckGlyph /> : null}
+              </span>
+            </button>
+            <button
+              type="button"
+              className="wgi-editor-row"
+              aria-label={sole ? `${option.label}: Check all` : `${option.label}: Only`}
+              onClick={() => {
+                commit(sole ? allValues : [option.value]);
+              }}
+            >
+              {option.label}
+            </button>
+            <span aria-hidden="true" className="wgi-editor-quick" data-target="check">
+              {checked ? "Uncheck" : "Check"}
+            </span>
+            <span aria-hidden="true" className="wgi-editor-quick" data-target="label">
+              {sole ? "Check all" : "Only"}
+            </span>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+function SelectRows({
+  def,
+  raw,
+  q,
+  setParam,
+}: Readonly<{
+  def: SelectFilterParam;
+  raw: string | null;
+  q: string;
+  setParam: SetParam;
+}>) {
+  const current = raw === null ? null : def.decode(raw);
+  return (
+    <>
+      <AnyRow
+        label={def.anyLabel}
+        checked={current === null}
+        onChoose={() => {
+          setParam(def.key, null);
+        }}
+      />
+      {def.options.flatMap((option) => {
+        if (!option.label.toLowerCase().includes(q)) return [];
+        const checked = current === option.value;
+        return (
+          <div key={option.value} className="wgi-editor-opt">
+            <button
+              type="button"
+              className="wgi-editor-row"
+              aria-pressed={checked}
+              onClick={() => {
+                setParam(def.key, def.encode(option.value));
+              }}
+            >
+              <span aria-hidden="true" className="wgi-editor-tick">
+                {checked ? <TickGlyph /> : null}
+              </span>
+              {option.label}
+            </button>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+/* Presets apply on click, as every other toggle does. Custom range is the
+   one deliberate step in the bar: the calendar, Start, and End edit a draft,
+   and nothing — list, chip, URL — moves until Apply. */
+function DateRows({
+  def,
+  raw,
+  q,
+  nowMs,
+  setParam,
+}: Readonly<{
+  def: DateFilterParam;
+  raw: string | null;
+  q: string;
+  nowMs: number;
+  setParam: SetParam;
+}>) {
+  const range = raw === null ? null : def.decode(raw);
+  const presets = datePresets(nowMs);
+  const isCustomRange =
+    range !== null && !presets.some((preset) => matchesPreset(preset, range, nowMs));
+
+  const [rangeOpen, setRangeOpen] = useState(isCustomRange);
   const [fromDraft, setFromDraft] = useState(() =>
     range !== null && isCustomRange ? msToNyDay(range.from) : "",
   );
   const [toDraft, setToDraft] = useState(() =>
     range !== null && isCustomRange ? msToNyDay(range.to) : "",
   );
-  const [rangeOpen, setRangeOpen] = useState(isCustomRange);
 
-  const applyRange = (fromDay: string, toDay: string) => {
-    if (fromDay === "" || toDay === "") return;
-    const from = nyStartOfDayMs(fromDay);
-    const to = nyEndOfDayMs(toDay);
-    if (from !== null && to !== null && from <= to) setParam("received", `${from}-${to}`);
+  /* Day strings compare as dates (YYYY-MM-DD), so a reversed draft cannot apply. */
+  const draftValid = fromDraft !== "" && toDraft !== "" && fromDraft <= toDraft;
+
+  const apply = () => {
+    const from = nyStartOfDayMs(fromDraft);
+    const to = nyEndOfDayMs(toDraft);
+    if (from !== null && to !== null && from <= to) setParam(def.key, `${from}-${to}`);
   };
-
-  /* `selected` keeps encode order; the Set answers membership in the rows. */
-  const selected = def.type === "multi-select" && raw !== null ? (def.decode(raw) ?? []) : [];
-  const selectedSet = new Set(selected);
 
   return (
     <>
-      <input
-        // react-doctor-disable-next-line react-doctor/no-autofocus -- focus lands in the just-opened popover's search input (a user-initiated open), not page-load focus stealing
-        autoFocus
-        aria-label="Search options"
-        className="wgi-editor-input"
-        placeholder="Filter to…"
-        value={query}
-        onChange={(event) => {
-          setQuery(event.target.value);
+      <AnyRow
+        label={def.anyLabel}
+        checked={range === null}
+        onChoose={() => {
+          setRangeOpen(false);
+          setParam(def.key, null);
         }}
       />
-      <div className="wgi-editor-body">
-        <div className="wgi-editor-opt">
-          <button
-            type="button"
-            data-muted="true"
-            className="wgi-editor-row"
-            onClick={() => {
-              setParam(def.key, null);
-              close();
+      {presets.flatMap((preset) => {
+        if (!preset.label.toLowerCase().includes(q)) return [];
+        const checked = range !== null && matchesPreset(preset, range, nowMs);
+        return (
+          <div key={preset.id} className="wgi-editor-opt">
+            <button
+              type="button"
+              className="wgi-editor-row"
+              aria-pressed={checked}
+              onClick={() => {
+                setRangeOpen(false);
+                setParam(def.key, def.encode(preset.range));
+              }}
+            >
+              <span aria-hidden="true" className="wgi-editor-tick">
+                {checked ? <TickGlyph /> : null}
+              </span>
+              {preset.label}
+            </button>
+          </div>
+        );
+      })}
+      <div className="wgi-editor-opt">
+        <button
+          type="button"
+          className="wgi-editor-row"
+          aria-pressed={isCustomRange}
+          aria-expanded={rangeOpen}
+          onClick={() => {
+            setRangeOpen(true);
+          }}
+        >
+          <span aria-hidden="true" className="wgi-editor-tick">
+            {isCustomRange ? <TickGlyph /> : null}
+          </span>
+          Custom range
+        </button>
+      </div>
+      {rangeOpen ? (
+        <div className="wgi-editor-range">
+          <HomeRangeCalendar
+            from={fromDraft}
+            to={toDraft}
+            fallbackMonth={msToNyDay(nowMs)}
+            onChange={(from, to) => {
+              setFromDraft(from);
+              setToDraft(to);
             }}
-          >
-            {def.anyLabel}
+          />
+          <label>
+            Start
+            <input
+              type="date"
+              value={fromDraft}
+              onChange={(event) => {
+                setFromDraft(event.target.value);
+              }}
+            />
+          </label>
+          <label>
+            End
+            <input
+              type="date"
+              value={toDraft}
+              onChange={(event) => {
+                setToDraft(event.target.value);
+              }}
+            />
+          </label>
+          <button type="button" className="wgi-editor-apply" disabled={!draftValid} onClick={apply}>
+            Apply
           </button>
         </div>
-
-        {def.type === "multi-select"
-          ? def.options.flatMap((option) => {
-              if (!option.label.toLowerCase().includes(q)) return [];
-              const checked = selectedSet.has(option.value);
-              return (
-                <div key={option.value} className="wgi-editor-opt">
-                  <button
-                    type="button"
-                    className="wgi-editor-row"
-                    aria-pressed={checked}
-                    onClick={() => {
-                      const next = checked
-                        ? selected.filter((value) => value !== option.value)
-                        : [...selected, option.value];
-                      if (next.length === 0) {
-                        setParam(def.key, null);
-                        close();
-                        return;
-                      }
-                      setParam(def.key, def.encode(next));
-                    }}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="wgi-editor-box"
-                      data-checked={checked || undefined}
-                    >
-                      {checked ? <CheckGlyph /> : null}
-                    </span>
-                    {option.label}
-                  </button>
-                  <button
-                    type="button"
-                    className="wgi-editor-quick"
-                    aria-label={checked ? `Only ${option.label}` : `Check ${option.label}`}
-                    onClick={() => {
-                      setParam(
-                        def.key,
-                        def.encode(checked ? [option.value] : [...selected, option.value]),
-                      );
-                    }}
-                  >
-                    {checked ? "Only" : "Check"}
-                  </button>
-                </div>
-              );
-            })
-          : null}
-
-        {def.type === "select"
-          ? def.options.flatMap((option) => {
-              if (!option.label.toLowerCase().includes(q)) return [];
-              const checked = raw !== null && def.decode(raw) === option.value;
-              return (
-                <div key={option.value} className="wgi-editor-opt">
-                  <button
-                    type="button"
-                    className="wgi-editor-row"
-                    aria-pressed={checked}
-                    onClick={() => {
-                      setParam(def.key, def.encode(option.value));
-                    }}
-                  >
-                    <span aria-hidden="true" className="wgi-editor-tick">
-                      {checked ? (
-                        <svg
-                          width="13"
-                          height="13"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.6"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden="true"
-                        >
-                          <path d="M20 6 9 17l-5-5" />
-                        </svg>
-                      ) : null}
-                    </span>
-                    {option.label}
-                  </button>
-                </div>
-              );
-            })
-          : null}
-
-        {def.type === "date" ? (
-          <>
-            {presets.flatMap((preset) => {
-              if (!preset.label.toLowerCase().includes(q)) return [];
-              const checked = range !== null && matchesPreset(preset, range, nowMs);
-              return (
-                <div key={preset.id} className="wgi-editor-opt">
-                  <button
-                    type="button"
-                    className="wgi-editor-row"
-                    aria-pressed={checked}
-                    onClick={() => {
-                      setRangeOpen(false);
-                      setFromDraft("");
-                      setToDraft("");
-                      setParam(def.key, def.encode(preset.range));
-                    }}
-                  >
-                    <span aria-hidden="true" className="wgi-editor-tick">
-                      {checked ? (
-                        <svg
-                          width="13"
-                          height="13"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.6"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          aria-hidden="true"
-                        >
-                          <path d="M20 6 9 17l-5-5" />
-                        </svg>
-                      ) : null}
-                    </span>
-                    {preset.label}
-                  </button>
-                </div>
-              );
-            })}
-            <div className="wgi-editor-opt">
-              <button
-                type="button"
-                className="wgi-editor-row"
-                aria-pressed={isCustomRange}
-                onClick={() => {
-                  const seededFrom =
-                    fromDraft === "" ? msToNyDay(nowMs - 14 * 86_400_000) : fromDraft;
-                  const seededTo = toDraft === "" ? msToNyDay(nowMs) : toDraft;
-                  setFromDraft(seededFrom);
-                  setToDraft(seededTo);
-                  setRangeOpen(true);
-                  applyRange(seededFrom, seededTo);
-                }}
-              >
-                <span aria-hidden="true" className="wgi-editor-tick">
-                  {isCustomRange ? (
-                    <svg
-                      width="13"
-                      height="13"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.6"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      aria-hidden="true"
-                    >
-                      <path d="M20 6 9 17l-5-5" />
-                    </svg>
-                  ) : null}
-                </span>
-                Custom range
-              </button>
-            </div>
-            {rangeOpen || isCustomRange || fromDraft !== "" || toDraft !== "" ? (
-              <div className="wgi-editor-range">
-                <label>
-                  From
-                  <input
-                    type="date"
-                    value={fromDraft}
-                    onChange={(event) => {
-                      setFromDraft(event.target.value);
-                      applyRange(event.target.value, toDraft);
-                    }}
-                  />
-                </label>
-                <label>
-                  To
-                  <input
-                    type="date"
-                    value={toDraft}
-                    onChange={(event) => {
-                      setToDraft(event.target.value);
-                      applyRange(fromDraft, event.target.value);
-                    }}
-                  />
-                </label>
-              </div>
-            ) : null}
-          </>
-        ) : null}
-      </div>
+      ) : null}
     </>
   );
 }
@@ -564,10 +678,12 @@ function TextEditor({
   def,
   raw,
   setParam,
+  onBack,
 }: Readonly<{
   def: TextFilterParam;
   raw: string | null;
-  setParam: (key: FilterKey, raw: string | null) => void;
+  setParam: SetParam;
+  onBack: (() => void) | undefined;
 }>) {
   const [draft, setDraft] = useState(() => (raw === null ? "" : (def.decode(raw) ?? "")));
   const timer = useRef<number | null>(null);
@@ -581,22 +697,24 @@ function TextEditor({
 
   return (
     <>
-      <input
-        // react-doctor-disable-next-line react-doctor/no-autofocus -- focus lands in the just-opened popover's text input (a user-initiated open), not page-load focus stealing
-        autoFocus
-        aria-label={def.label}
-        className="wgi-editor-input"
-        placeholder={def.placeholder}
-        value={draft}
-        onChange={(event) => {
-          const value = event.target.value;
-          setDraft(value);
-          if (timer.current !== null) window.clearTimeout(timer.current);
-          timer.current = window.setTimeout(() => {
-            setParam(def.key, value.trim() === "" ? null : value.trim());
-          }, 150);
-        }}
-      />
+      <EditorHead label={def.label} onBack={onBack}>
+        <input
+          // react-doctor-disable-next-line react-doctor/no-autofocus -- focus lands in the just-opened popover's text input (a user-initiated open), not page-load focus stealing
+          autoFocus
+          aria-label={def.label}
+          className="wgi-editor-input"
+          placeholder={def.placeholder}
+          value={draft}
+          onChange={(event) => {
+            const value = event.target.value;
+            setDraft(value);
+            if (timer.current !== null) window.clearTimeout(timer.current);
+            timer.current = window.setTimeout(() => {
+              setParam(def.key, value.trim() === "" ? null : value.trim());
+            }, 150);
+          }}
+        />
+      </EditorHead>
       <p className="wgi-editor-hint">{def.hint}</p>
     </>
   );
