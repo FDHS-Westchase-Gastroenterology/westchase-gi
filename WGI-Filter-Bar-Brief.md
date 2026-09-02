@@ -12,7 +12,9 @@ Visual design is not part of this brief. The bar keeps the portal's existing des
 
 **Base branch.** All work branches off PR 224 (`portal/appointment-workflow-experience`). Test login: `admin` / `123`. Preview of the base branch: `https://westchase-gi-git-portal-appoi-dce1f5-jasongitdev-1290s-projects.vercel.app/admin`. The floating dark button on the right edge of the preview is Vercel's toolbar, not the portal; ignore it.
 
-Walk the portal yourself (the preview above, or the repo run locally) with Stagehand; section 3 describes Vercel's side. Where the text is silent, section 4's "verified fine" list means "as today".
+**Inputs.** This brief carries the decisions. Two things outside it bear on the job: the running page, for how the bar looks and behaves today, and the bar's code, for the conventions to build in. The code is `src/app/admin/(portal)/(home)/` (the bar, editors, ghost chips, empty state) and `src/lib/portal/filters/` (filter definitions and the URL contract), plus whatever those files import. Nothing else in the repo bears on this job: not git history, not the other docs, not other surfaces' code. Once you have read the brief and the bar's code and looked at the page, you have what you need; start building.
+
+**Looking at the page.** Use the Stagehand MCP server (`browserbase`) for every look at the portal: `start`, then `sign_in` with the preview origin (it holds the review credentials itself), then `navigate`, `act`, `read_page`, and `screenshot` as the walk needs, and `end` when you are done, including after a failure, or the next session is blocked. Cloud sessions need a public URL, so use the previews rather than localhost: the base-branch preview above for today's behavior, your own PR's preview for section 6. Section 3 describes Vercel's side; there is no need to visit Vercel. Where the text is silent, section 4's "verified fine" list means "as today".
 
 ---
 
