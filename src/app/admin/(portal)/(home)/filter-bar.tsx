@@ -46,11 +46,12 @@ interface FilterBarProps {
 
 type SetParam = (key: FilterKey, raw: string | null) => void;
 
-/* The Received editor swaps its whole content between list and calendar.
-   If the button that was clicked is still focused when it leaves the DOM,
-   the popover's focus manager re-homes focus to the popup a beat *after*
-   the new view's autoFocus — and wins. Parking focus on the popup first
-   means nothing focused is removed, and the new view's autoFocus stands. */
+/* The popover swaps its whole content between views (category list,
+   editor, the Received calendar). If the button that was clicked is still
+   focused when it leaves the DOM, the popover's focus manager re-homes
+   focus to the popup a beat *after* the new view's autoFocus — and wins.
+   Parking focus on the popup first means nothing focused is removed, and
+   the new view's autoFocus stands. */
 function parkFocus(event: MouseEvent<HTMLElement>): void {
   event.currentTarget.closest<HTMLElement>('[data-slot="popover-content"]')?.focus();
 }
@@ -167,7 +168,8 @@ function AddFilterButton({
                   <button
                     type="button"
                     className="wgi-editor-row"
-                    onClick={() => {
+                    onClick={(event) => {
+                      parkFocus(event);
                       setViewKey(def.key);
                       setQuery("");
                     }}
