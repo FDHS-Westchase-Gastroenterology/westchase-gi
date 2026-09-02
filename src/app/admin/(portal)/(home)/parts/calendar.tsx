@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import type { DateRange } from "react-day-picker";
 
 import { Calendar } from "@/components/stock/calendar";
@@ -13,8 +14,11 @@ import { Calendar } from "@/components/stock/calendar";
 
    The grid is the whole popover while it shows (filter-bar: the Vercel
    model), so it takes the editor's width and, on mount, the keyboard — the
-   picked start or today is the focused day (the editor parks focus on the
-   popup before the swap so the focus manager has nothing to re-home). */
+   picked start or today is the focused day. DayPicker's `autoFocus` marks
+   that day and gives it tabindex=0, but the stock DayButton never attaches
+   the ref its focus effect uses, so the frame-later focus below does the
+   actual focusing (the editor parks focus on the popup before the swap so
+   the popover's focus manager has nothing to re-home in between). */
 
 function dayToDate(day: string): Date | undefined {
   if (day === "") return undefined;
@@ -44,21 +48,34 @@ export function HomeRangeCalendar({
 }>) {
   const selected: DateRange | undefined =
     from === "" ? undefined : { from: dayToDate(from), to: dayToDate(to) };
+  const shell = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      shell.current?.querySelector<HTMLElement>('button[tabindex="0"]')?.focus();
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, []);
+
   return (
-    <Calendar
-      // react-doctor-disable-next-line react-doctor/no-autofocus -- the calendar replaces the list the user just clicked in; focus moves to the picked day (or today) inside the open popover, not on page load
-      autoFocus
-      className="wgi-editor-cal"
-      mode="range"
-      numberOfMonths={1}
-      defaultMonth={dayToDate(from) ?? dayToDate(fallbackMonth)}
-      selected={selected}
-      onSelect={(range) => {
-        onChange(
-          range?.from === undefined ? "" : dateToDay(range.from),
-          range?.to === undefined ? "" : dateToDay(range.to),
-        );
-      }}
-    />
+    <div ref={shell}>
+      <Calendar
+        // react-doctor-disable-next-line react-doctor/no-autofocus -- the calendar replaces the list the user just clicked in; focus moves to the picked day (or today) inside the open popover, not on page load
+        autoFocus
+        className="wgi-editor-cal"
+        mode="range"
+        numberOfMonths={1}
+        defaultMonth={dayToDate(from) ?? dayToDate(fallbackMonth)}
+        selected={selected}
+        onSelect={(range) => {
+          onChange(
+            range?.from === undefined ? "" : dateToDay(range.from),
+            range?.to === undefined ? "" : dateToDay(range.to),
+          );
+        }}
+      />
+    </div>
   );
 }
