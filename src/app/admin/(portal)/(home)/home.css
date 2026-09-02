@@ -716,9 +716,11 @@
 
 /* ---------- The editor popover ---------- */
 
+/* 20rem: room for the category list to breathe, and the exact width the
+   calendar fills when the Received editor turns into it. */
 .wgi-editor {
-  width: 17rem;
-  max-height: 24rem;
+  width: 20rem;
+  max-height: min(40rem, var(--available-height, 24rem));
   overflow: auto;
   padding: 0;
 }
@@ -745,12 +747,73 @@
   box-shadow: inset 0 -2px 0 var(--color-teal);
 }
 
+/* "<Dimension> ⌄" beside the search box, going up one level: the category
+   list on the Add-filter path, the preset list from the calendar. The box
+   beside it keeps the input's paint. */
+.wgi-editor-head {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.wgi-editor-head > .wgi-editor-input {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 0;
+}
+
+.wgi-editor-dim {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+  margin-inline-start: 0.6rem;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-sm);
+  background: none;
+  padding: 0.25rem 0.45rem;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 110ms ease;
+}
+
+.wgi-editor-dim:hover {
+  background: var(--color-mint);
+}
+
+.wgi-editor-dim > svg {
+  color: var(--color-muted-ink);
+}
+
+/* The calendar view's header text: the draft range in the input's slot,
+   "Start – End" filling in as days are picked. Not a field — nothing to type. */
+.wgi-editor-readout {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0.7rem 0.9rem;
+  color: var(--color-ink);
+  font-size: var(--pt-xs);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wgi-editor-readout[data-empty] {
+  color: var(--color-muted-ink);
+  font-weight: 400;
+}
+
 .wgi-editor-body {
   padding: 0.3rem;
 }
 
-/* One row = one option. The row is a real button; the quick action (`Only` /
-   `Check`) is its own button, revealed on the row's hover or focus. */
+/* One row = one option. The row is a real button; the hover hint (`Only` /
+   `Check all` on the label, `Check` / `Uncheck` on the checkbox) is a
+   passive caption revealed on the row's hover or focus. */
 .wgi-editor-opt {
   position: relative;
   display: flex;
@@ -796,6 +859,27 @@
   color: var(--color-line-3);
 }
 
+/* Checkbox rows: the box is its own target beside the label button. */
+.wgi-editor-check {
+  display: inline-flex;
+  min-height: 2.5rem;
+  flex: none;
+  align-items: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  padding: 0 0.55rem 0 0.6rem;
+  cursor: pointer;
+}
+
+.wgi-editor-check:focus-visible {
+  outline-offset: -3px;
+}
+
+.wgi-editor-check + .wgi-editor-row {
+  padding-inline-start: 0;
+}
+
 .wgi-editor-box {
   display: inline-flex;
   width: 1rem;
@@ -829,54 +913,106 @@
 .wgi-editor-quick {
   position: absolute;
   right: 0.6rem;
-  border: 0;
-  background: none;
   padding: 0.2rem 0.1rem;
   color: var(--color-teal-ink);
-  font-family: inherit;
   font-size: var(--pt-2xs);
   font-weight: 700;
-  cursor: pointer;
+  pointer-events: none;
   visibility: hidden;
 }
 
-.wgi-editor-opt:hover .wgi-editor-quick,
-.wgi-editor-opt:focus-within .wgi-editor-quick {
+/* The label's hint shows for the row; the checkbox's hint takes over while
+   the pointer or focus is on the box itself. */
+.wgi-editor-opt:hover .wgi-editor-quick[data-target="label"],
+.wgi-editor-opt:focus-within .wgi-editor-quick[data-target="label"],
+.wgi-editor-opt:has(.wgi-editor-check:hover) .wgi-editor-quick[data-target="check"],
+.wgi-editor-opt:has(.wgi-editor-check:focus-visible) .wgi-editor-quick[data-target="check"] {
   visibility: visible;
 }
 
-.wgi-editor-quick:hover {
-  text-decoration: underline;
-  text-underline-offset: 2px;
+.wgi-editor-opt:has(.wgi-editor-check:hover) .wgi-editor-quick[data-target="label"],
+.wgi-editor-opt:has(.wgi-editor-check:focus-visible) .wgi-editor-quick[data-target="label"] {
+  visibility: hidden;
 }
 
+/* The calendar view: the month grid is the popover's full width, then a
+   ruled block of Start, End, and Apply beneath it. */
 .wgi-editor-range {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  border-top: 1px solid var(--color-line);
-  margin-top: 0.3rem;
-  padding: 0.6rem 0.6rem 0.4rem;
 }
 
-.wgi-editor-range label {
+.wgi-editor-cal {
+  --cell-size: 2.4rem;
+
+  width: 100%;
+  padding: 0.6rem 0.6rem 0.5rem;
+}
+
+.wgi-editor-range-fields {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ps-2);
+  flex-direction: column;
+  gap: 0.55rem;
+  border-top: 1px solid var(--color-line);
+  padding: 0.7rem 0.6rem 0.6rem;
+}
+
+.wgi-editor-range-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
   color: var(--color-muted-ink);
   font-size: var(--pt-2xs);
   font-weight: 700;
 }
 
-.wgi-editor-range input {
+.wgi-editor-range-fields input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 2.25rem;
   border: 1px solid var(--color-line-2);
   border-radius: var(--radius-sm);
   background: white;
-  padding: 0.3rem 0.45rem;
+  padding: 0.3rem 0.6rem;
   color: var(--color-ink);
   font-family: inherit;
   font-size: var(--pt-xs);
+}
+
+/* Apply: the one deliberate commit in the bar, painted as the portal's
+   primary button (the header's Print appointments). */
+.wgi-editor-apply {
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.2rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-navy);
+  padding: 0 0.9rem;
+  color: white;
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 130ms ease,
+    transform 130ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.wgi-editor-apply:hover:enabled {
+  background: color-mix(in oklch, var(--color-navy) 88%, white);
+}
+
+.wgi-editor-apply:active:enabled {
+  transform: scale(0.97);
+}
+
+.wgi-editor-apply:disabled {
+  background: var(--color-line-2);
+  color: var(--color-muted-ink);
+  cursor: default;
 }
 
 .wgi-editor-hint {
@@ -1292,6 +1428,7 @@
 
   .wgi-add-filter:active,
   .wgi-sug:active,
+  .wgi-editor-apply:active:enabled,
   .wgi-outcome:active,
   .wgi-empty-clear:active,
   .wgi-sheet-call:active,

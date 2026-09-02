@@ -22,6 +22,7 @@ export { locationFilter } from "./location";
 export {
   datePresets,
   dateRangeLabel,
+  dayLabel,
   matchesPreset,
   msToNyDay,
   nyEndOfDayMs,
