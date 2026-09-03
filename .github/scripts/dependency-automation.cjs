@@ -9,6 +9,11 @@ const REVIEW_MARKER = "<!-- dependabot-codex-review -->";
 const ALLOWED_CHANGED_FILES = new Set(["package.json", "package-lock.json"]);
 // Supabase's preview-branch check only reports on pull requests that change
 // the database, so it is required where present rather than always required.
+// The deterministic Actions gates every pull request must clear. The merge
+// controller both verifies these on the exact head and re-attests them as
+// commit statuses, so the two lists must never drift apart.
+const PR_REQUIRED_CHECKS = ["quality", "react-doctor", "supabase-integration"];
+const PRODUCTION_REQUIRED_CHECKS = ["quality", "react-doctor", "production"];
 const CONDITIONAL_SIGNALS = ["Supabase Preview"];
 // GitHub returns these when it declines one specific merge — an unmet required
 // check, a moved head, a conflict. They are verdicts about that pull request,
@@ -298,9 +303,7 @@ function conditionalSignalPassed(checkRuns, statuses, name) {
 }
 
 function evaluateGate(checkRuns, statuses, { production = false } = {}) {
-  const requiredChecks = production
-    ? ["quality", "react-doctor", "production"]
-    : ["quality", "react-doctor", "supabase-integration"];
+  const requiredChecks = production ? PRODUCTION_REQUIRED_CHECKS : PR_REQUIRED_CHECKS;
   const missing = [];
 
   for (const name of requiredChecks) {
@@ -966,7 +969,7 @@ async function mergeNextDependabot({ github, context, core }) {
       continue;
     }
     if (current.mergeable_state === "blocked") {
-      for (const statusContext of ["quality", "react-doctor"]) {
+      for (const statusContext of PR_REQUIRED_CHECKS) {
         await github.rest.repos.createCommitStatus({
           owner,
           repo,

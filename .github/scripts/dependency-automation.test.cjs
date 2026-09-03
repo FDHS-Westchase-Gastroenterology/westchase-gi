@@ -565,7 +565,9 @@ test("queue skips a failing older PR and merges the next green sibling", async (
     [
       { sha: "green", state: "success", context: "quality" },
       { sha: "green", state: "success", context: "react-doctor" },
+      { sha: "green", state: "success", context: "supabase-integration" },
     ],
+    "every required Actions context must be re-attested, not just two of them",
   );
 });
 
@@ -761,4 +763,20 @@ test("a rejected merge blocks that PR instead of aborting the queue", async () =
     true,
     warnings.join("\n"),
   );
+});
+
+test("the gate and the re-attestation read the same required-context list", () => {
+  // Branch protection only ever saw the contexts this controller re-attests.
+  // When `supabase-integration` became required and the attestation list still
+  // named two contexts, every refreshed Dependabot head was refused with
+  // `Required status check "supabase-integration" is expected.` One constant
+  // feeds both sites now; keep it that way.
+  const source = fs.readFileSync(path.join(__dirname, "dependency-automation.cjs"), "utf8");
+  assert.match(
+    source,
+    /const PR_REQUIRED_CHECKS = \["quality", "react-doctor", "supabase-integration"\];/,
+  );
+  assert.match(source, /const requiredChecks = production \? \w+ : PR_REQUIRED_CHECKS;/);
+  assert.match(source, /for \(const statusContext of PR_REQUIRED_CHECKS\) \{/);
+  assert.equal(source.includes('for (const statusContext of ["quality", "react-doctor"])'), false);
 });
