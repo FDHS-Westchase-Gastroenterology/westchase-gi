@@ -76,3 +76,10 @@ next-env.d.ts
 /.design-sync/ds/compounds.json
 /.design-sync/ds/families.json
 /.design-sync/ds/aliases.json
+
+# Local agent/tooling directories (machine-local; never part of a PR).
+# See .claude/rules/local-only-directories.md
+/.claude/
+/.codex/skills/
+/.design-sync/
+/.impeccable/surfaces/
