@@ -6,7 +6,6 @@
 // Wider of the two offices (Tampa closes 5:00 PM, Lutz 4:30 PM), so a
 // 4:45 PM submission is never labeled after-hours while an office is open.
 const OPEN_MINUTES = 8 * 60;
-const CLOSE_MINUTES = 17 * 60;
 const PRACTICE_TZ = "America/New_York";
 const YMD_RE = /^(\d{4})-(\d{2})-(\d{2})$/;
 const WEEKDAY_INDEX = new Map<string, number>([
@@ -198,12 +197,6 @@ export function resolveAppointmentAt(
   if (!Number.isInteger(choice.hour) || choice.hour < 0 || choice.hour > 23) return null;
   if (!Number.isInteger(choice.minute) || choice.minute < 0 || choice.minute > 59) return null;
   return atPracticeLocal(choice.date, choice.hour, choice.minute);
-}
-
-export function arrivedOutsideOfficeHours(iso: string): boolean {
-  const { weekday, minutes } = nyClock(new Date(iso));
-  if (weekday === "Sat" || weekday === "Sun") return true;
-  return minutes < OPEN_MINUTES || minutes >= CLOSE_MINUTES;
 }
 
 // The instant a silent touched row becomes attention again: the most recent

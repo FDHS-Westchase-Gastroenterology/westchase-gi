@@ -46,13 +46,6 @@ export interface TextFilterParam extends FilterParamBase<string> {
 
 export type FilterParam = MultiSelectFilterParam | DateFilterParam | TextFilterParam;
 
-/** The decoded value shape a given definition produces. */
-export type FilterValue<P extends FilterParam> = P extends MultiSelectFilterParam
-  ? readonly string[]
-  : P extends DateFilterParam
-    ? DateRange
-    : string;
-
 /** One active filter as the URL carries it: param order is pill order. */
 export interface ActiveFilter {
   readonly key: FilterKey;

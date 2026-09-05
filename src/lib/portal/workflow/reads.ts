@@ -53,21 +53,8 @@ const eventRowSchema = z.object({
   created_at: z.string(),
 });
 
-const countReadSchema = z.object({
-  error: z.unknown().nullable().optional(),
-  count: z.number().nullable().optional(),
-});
-
 function presentId(id: string | null | undefined): id is string {
   return id !== null && id !== undefined && id !== "";
-}
-
-function countFrom(read: Readonly<PromiseSettledResult<unknown>>): number | null {
-  if (read.status !== "fulfilled") return null;
-  const parsed = countReadSchema.safeParse(read.value);
-  if (!parsed.success) return null;
-  if (parsed.data.error !== null && parsed.data.error !== undefined) return null;
-  return parsed.data.count === undefined ? null : parsed.data.count;
 }
 
 export async function fetchRequestWorkSurface(
@@ -243,38 +230,5 @@ export async function fetchRequestWorkSurface(
           }
         : null,
     history,
-  };
-}
-
-export async function fetchAttentionSummary(db: SupabaseClient, now: Date) {
-  const since = new Date(now.getTime() - 86400000).toISOString();
-  const reads = await Promise.allSettled([
-    db.from("requests").select("id", { count: "exact", head: true }).eq("status", "new"),
-    db
-      .from("requests")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "contacted")
-      .lte("follow_up_at", now.toISOString()),
-    db
-      .from("requests")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "contacted")
-      .is("follow_up_at", null),
-    db
-      .from("requests")
-      .select("id", { count: "exact", head: true })
-      .eq("legacy_review_required", true),
-    db
-      .from("notification_outbox")
-      .select("id", { count: "exact", head: true })
-      .in("status", ["failed", "retry_pending", "exhausted"])
-      .gte("updated_at", since),
-  ]);
-  return {
-    newCount: countFrom(reads[0]),
-    dueCallAgainCount: countFrom(reads[1]),
-    silentContactedCount: countFrom(reads[2]),
-    legacyReviewCount: countFrom(reads[3]),
-    outboxTrouble: countFrom(reads[4]),
   };
 }

@@ -11,6 +11,8 @@
 
 import { z } from "zod";
 
+import { locales } from "@/lib/site";
+
 export const ANALYTICS_EVENTS = [
   "page_view",
   "form_view",
@@ -37,10 +39,6 @@ export type AnalyticsEvent = (typeof ANALYTICS_EVENTS)[number];
 
 export const DEVICE_CLASSES = ["mobile", "tablet", "desktop"] as const;
 export type DeviceClass = (typeof DEVICE_CLASSES)[number];
-
-/** Mirrors src/lib/site.ts locales — kept local so this module stays leaf-importable. */
-export const TELEMETRY_LOCALES = ["en", "es", "vi", "ko", "ar"] as const;
-export type TelemetryLocale = (typeof TELEMETRY_LOCALES)[number];
 
 /**
  * Shared Postgres-backed telemetry throttle. Distinct HMAC domain from intake
@@ -182,8 +180,6 @@ export const TELEMETRY_ROUTE_TEMPLATES = [
   ...DOCUMENT_IDS.map((id) => `documents:${id}`),
 ] as const;
 
-export type TelemetryRouteTemplate = (typeof TELEMETRY_ROUTE_TEMPLATES)[number];
-
 const routeTemplateSet = new Set<string>(TELEMETRY_ROUTE_TEMPLATES);
 
 export const telemetryEventSchema = z.object({
@@ -194,8 +190,6 @@ export const telemetryEventSchema = z.object({
     .min(1)
     .max(160)
     .refine((value) => routeTemplateSet.has(value), "route_template_not_allowed"),
-  locale: z.enum(TELEMETRY_LOCALES),
+  locale: z.enum(locales),
   deviceClass: z.enum(DEVICE_CLASSES),
 });
-
-export type TelemetryEventInput = z.infer<typeof telemetryEventSchema>;

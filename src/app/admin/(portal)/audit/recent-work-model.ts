@@ -17,11 +17,6 @@ import { isPortalReleaseAuditAction } from "@/lib/portal/release-state";
 import type { AuditLogRow } from "@/lib/portal/rows";
 import { normalizeRequestState, parseRequestStatus } from "@/lib/portal/workflow/contracts";
 
-// The human lens over the durable audit record: plain-language, grouped by
-// Practice-local day, linked to the work — never an action code. Storage
-// Vocabulary stays in the technical table beneath. Patient names are
-// Deliberately not resolved here; the request itself is the link.
-
 /** The audit_log columns the Activity page reads. */
 export type AuditEntry = Readonly<
   Pick<AuditLogRow, "id" | "actor_email" | "action" | "entity" | "entity_id" | "detail" | "at">

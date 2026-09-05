@@ -31,10 +31,6 @@ export type RequestLocation = (typeof REQUEST_LOCATIONS)[number];
 export const REQUEST_TIMES = ["any", "morning", "afternoon"] as const;
 export type RequestTime = (typeof REQUEST_TIMES)[number];
 
-// The closure outcomes the database's close paths validate
-// ('unconverted' / 'converted').
-export type RequestClosureOutcome = "unconverted" | "converted";
-
 export const STAFF_ROLES = ["admin", "staff"] as const;
 export type StaffRole = (typeof STAFF_ROLES)[number];
 
@@ -86,16 +82,12 @@ export const requestInputSchema = z.object({
   sourcePath: z.string().trim().min(1).max(300).startsWith("/"),
 });
 
-export type RequestInput = z.infer<typeof requestInputSchema>;
-
 export const STAFF_REQUEST_SOURCE_PATH = "/admin/requests/new";
 
 export const staffRequestInputSchema = requestInputSchema.omit({
   locale: true,
   sourcePath: true,
 });
-
-export type StaffRequestInput = z.infer<typeof staffRequestInputSchema>;
 
 export const STAFF_REQUEST_FIELDS = [
   "name",

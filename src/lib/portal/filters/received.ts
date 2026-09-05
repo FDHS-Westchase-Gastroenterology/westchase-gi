@@ -48,7 +48,7 @@ export function nyEndOfDayMs(day: string): number | null {
   return nextStart === null ? start + DAY_MS - 1 : nextStart - 1;
 }
 
-export interface DatePreset {
+interface DatePreset {
   readonly id: "today" | "last7" | "last30" | "month";
   readonly label: string;
   readonly range: DateRange;
