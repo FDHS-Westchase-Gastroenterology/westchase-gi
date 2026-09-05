@@ -1,0 +1,6 @@
+#!/bin/sh
+# Blocks a commit that would add a machine-local path to the repository.
+# The list lives in local-only-paths.json; this hook keeps no copy of it.
+# Install with: npm run hooks:install   (sets core.hooksPath to .githooks)
+# Bypass deliberately with: git commit --no-verify
+node scripts/check-local-only.mjs staged || exit 1

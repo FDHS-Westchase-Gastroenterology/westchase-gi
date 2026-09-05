@@ -1,0 +1,180 @@
+{
+  "$schema": "./local-only-paths.schema.json",
+  "version": 1,
+  "documentation": [
+    "THE single source of truth for which repository paths are machine-local and must",
+    "never be committed. Three consumers read this file and none of them keeps its own",
+    "copy of the list:",
+    "  1. .githooks/pre-commit          -> node scripts/check-local-only.mjs staged",
+    "  2. .github/workflows/ci.yml      -> node scripts/check-local-only.mjs tracked",
+    "  3. .gitignore (managed block)    -> node scripts/check-local-only.mjs write",
+    "  4. .claude/rules/local-only-directories.md (managed block, same write command)",
+    "Change the list here and run `npm run local-only:write`. CI fails if the .gitignore",
+    "managed block has drifted from this file, so the copies cannot silently diverge.",
+    "",
+    "loadBearing is the other half of the guard. A path listed there is asserted to be",
+    "tracked and required. The checker refuses to run if any localOnly entry would match",
+    "a loadBearing path, which is the mistake that broke this repository on 2026-09-02:",
+    "scripts/ looks like tooling but CI invokes scripts/seed-portal.mjs and",
+    "scripts/verify-schema.mjs, so untracking it broke the supabase-integration job.",
+    "",
+    "ROOT CAUSE, measured: in every case the files were committed FIRST and the .gitignore entry was added AFTERWARDS. A .gitignore rule has no effect on a file git already tracks, so each rule looked like a fix while doing nothing. See whyItLeaked on each entry. That is why the guard checks TRACKED files rather than trusting .gitignore.",
+    "",
+    "docs/ is local-only by owner decision on 2026-09-05. It previously held three architecture decision records and a workflow specification; those were deleted on purpose and are not to be restored. They remain reachable in git history if ever needed."
+  ],
+  "localOnly": [
+    {
+      "path": ".agents/",
+      "gitignore": "/.agents/",
+      "reason": "Agent skill definitions and lesson notes. Referenced only as an exclusion in .oxlintrc.json and .oxfmtrc.json, never imported, never invoked by CI or package.json.",
+      "firstTracked": "e8a0c14 2026-07-07",
+      "ignoreRuleAdded": null,
+      "whyItLeaked": "Never given an ignore rule at all in two months. Still tracked on origin/main: 149 files."
+    },
+    {
+      "path": ".claude/",
+      "gitignore": "/.claude/",
+      "reason": "Claude Code settings, rules and agent scratch for this machine.",
+      "firstTracked": "a6d3fe7 2026-08-30",
+      "ignoreRuleAdded": "ec71662 2026-09-02",
+      "whyItLeaked": "Rule added three days after the files were tracked."
+    },
+    {
+      "path": ".codex/skills/",
+      "gitignore": "/.codex/skills/",
+      "reason": "Local Codex skill definitions.",
+      "firstTracked": null
+    },
+    {
+      "path": ".cursor/",
+      "gitignore": "/.cursor/",
+      "reason": "Local Cursor hooks and skills.",
+      "firstTracked": null
+    },
+    {
+      "path": ".design-sync/",
+      "gitignore": "/.design-sync/",
+      "reason": "Generated output of the claude.ai/design import pipeline.",
+      "firstTracked": "823b332 2026-08-30",
+      "ignoreRuleAdded": "596d410 2026-08-30 (narrow) / ec71662 2026-09-02 (broad)",
+      "whyItLeaked": "Fourteen narrow rules landed the same day but matched none of the files actually generated; a rule that worked took three more days."
+    },
+    {
+      "path": ".ds-sync/",
+      "gitignore": "/.ds-sync/",
+      "reason": "Generated design-sync staging directory.",
+      "firstTracked": null
+    },
+    {
+      "path": ".impeccable/surfaces/",
+      "gitignore": "/.impeccable/surfaces/",
+      "reason": "Generated surface inventory.",
+      "firstTracked": "4806929 2026-08-09",
+      "ignoreRuleAdded": "ec71662 2026-09-02",
+      "whyItLeaked": "Rule added three and a half weeks after the file was tracked. The longest gap measured."
+    },
+    {
+      "path": ".logs/",
+      "gitignore": "/.logs/",
+      "reason": "Dev-server output for the local QA harness. npm run dev:mission writes here.",
+      "firstTracked": null
+    },
+    {
+      "path": ".product-design-audit/",
+      "gitignore": "/.product-design-audit/",
+      "reason": "Local QA evidence: parity screenshots and screen recordings. 105 MiB of MP4 and PNG on portal/home-filter-bar as of 2026-09-05.",
+      "firstTracked": "85c1d50 2026-08-27 09:33",
+      "ignoreRuleAdded": "f5d062e 2026-08-27 18:58",
+      "whyItLeaked": "Tracked at 09:33 and the ignore rule added at 18:58 the same day - 9 hours 25 minutes too late to apply to them. 43 files, 105 MiB, still tracked on portal/home-filter-bar on 2026-09-05."
+    },
+    {
+      "path": ".vercel/",
+      "gitignore": "/.vercel/",
+      "reason": "Vercel CLI link state.",
+      "firstTracked": null
+    },
+    {
+      "path": "backend-memos/",
+      "gitignore": "/backend-memos/",
+      "reason": "Local backend coordination memos.",
+      "firstTracked": null
+    },
+    {
+      "path": "ds-bundle/",
+      "gitignore": "/ds-bundle/",
+      "reason": "Generated design-system bundle.",
+      "firstTracked": null
+    },
+    {
+      "path": "plans/",
+      "gitignore": "/plans/",
+      "reason": "Local planning notes.",
+      "firstTracked": "abf52ec 2026-08-27",
+      "ignoreRuleAdded": "528f7b1 2026-09-02",
+      "whyItLeaked": "Rule added six days after the files were tracked."
+    },
+    {
+      "path": "screenshots/",
+      "gitignore": "/screenshots/",
+      "reason": "Ad-hoc screenshot scratch directory. Present untracked in the working tree on 2026-09-05; ignored before it can be committed.",
+      "firstTracked": null
+    },
+    {
+      "path": "MEMORY.md",
+      "gitignore": "/MEMORY.md",
+      "reason": "Agent memory index. The copy on origin/main is a one-line stub.",
+      "firstTracked": null
+    },
+    {
+      "path": "docs/",
+      "gitignore": "/docs/",
+      "reason": "Local briefs, screenshots and generated component inventories. The owner deleted this tree deliberately on 2026-09-05 and does not want it restored; the architecture decision records it used to hold remain in git history and are recoverable with `git show origin/main~1:docs/adr/0001-...`.",
+      "firstTracked": "73fd00b3 2026-07-13",
+      "ignoreRuleAdded": "455fdc2b 2026-09-02",
+      "whyItLeaked": "Tracked from the first week of the project; the ignore rule arrived seven weeks later and therefore never applied."
+    }
+  ],
+  "loadBearing": [
+    {
+      "path": "scripts/",
+      "reason": "Tracked on main and required by CI. .github/workflows/supabase-dependency-integration.yml runs node scripts/seed-portal.mjs at line 197 and node scripts/verify-schema.mjs at line 200. package.json scripts ds:stock, ui:reference, dev and test:unit also invoke files here.",
+      "incident": "Untracked by commit 2b85477d on 2026-09-02, which broke the supabase-integration job; reverted the same day by 899afbdc."
+    },
+    {
+      "path": ".vscode/",
+      "reason": "Two files of shared editor configuration that wire this repo's own oxlint and oxfmt toolchain (oxc.configPath points at .oxlintrc.json). Team config, not machine-local."
+    },
+    {
+      "path": "ui-reference/",
+      "reason": "Regenerated by npm run ui:reference (scripts/capture-ui-reference.mjs) and excluded in .oxfmtrc.json. Tracked on every branch. Reviewable-noise, not a leak."
+    },
+    {
+      "path": ".github/",
+      "reason": "CI workflow definitions and the dependency-automation scripts that ci.yml tests."
+    },
+    {
+      "path": "src/",
+      "reason": "Application source."
+    },
+    {
+      "path": "e2e/",
+      "reason": "Playwright specs and the target guard that npm run test:e2e-guard executes."
+    },
+    {
+      "path": "supabase/",
+      "reason": "Database migrations."
+    },
+    {
+      "path": "tools/",
+      "reason": "The custom oxlint anti-slop plugin, tested by npm run test:unit."
+    },
+    {
+      "path": "public/",
+      "reason": "Static assets served by Next.js."
+    },
+    {
+      "path": "private/",
+      "reason": "Review-flyer PDFs and QR codes verified by scripts/verify-review-flyers.mjs."
+    }
+  ]
+}

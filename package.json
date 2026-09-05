@@ -11,8 +11,12 @@
     "lint": "oxlint",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
+    "hooks:install": "git config core.hooksPath .githooks",
+    "local-only:check": "node scripts/check-local-only.mjs tracked",
+    "local-only:verify": "node scripts/check-local-only.mjs verify-generated",
+    "local-only:write": "node scripts/check-local-only.mjs write",
     "test:e2e-guard": "node --test e2e/target-guard.test.mjs e2e/dictionary-availability.test.mjs",
-    "test:unit": "node --test src/lib/portal/*.test.mjs tools/oxlint/anti-slop/plugin.test.mjs",
+    "test:unit": "node --test scripts/check-local-only.test.mjs src/lib/portal/*.test.mjs tools/oxlint/anti-slop/plugin.test.mjs",
     "ui:reference": "node scripts/capture-ui-reference.mjs",
     "ui:reference:portal": "node --env-file-if-exists=.env.local scripts/capture-ui-reference.mjs --portal"
   },
