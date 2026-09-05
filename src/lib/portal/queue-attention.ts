@@ -1,21 +1,29 @@
 import "server-only";
 
 import { previousBusinessMorningBoundary } from "./business-time";
+import type { RequestStatus } from "./workflow/contracts";
 
 export interface QueueAttentionRow {
   id: string;
-  status: "new" | "contacted" | "scheduled" | "closed";
+  status: RequestStatus;
   created_at: string;
   follow_up_at: string | null;
 }
 
-export type AttentionBucket =
-  | "new" // Unworked
-  | "follow_up" // Contacted, follow-up due today or past
-  | "stale" // Contacted, no follow-up, silent since before the boundary
-  | "upcoming" // Contacted, follow-up in the future
-  | "scheduled" // On the practice schedule
-  | "closed";
+/**
+ * Attention buckets in queue order: unworked rows, call-agains that are due,
+ * contacted rows that went silent with no call-again day, call-agains still in
+ * the future, then the scheduled and closed tails.
+ */
+export const ATTENTION_BUCKETS = [
+  "new",
+  "follow_up",
+  "stale",
+  "upcoming",
+  "scheduled",
+  "closed",
+] as const;
+export type AttentionBucket = (typeof ATTENTION_BUCKETS)[number];
 
 export type AttentiveRow<T extends QueueAttentionRow> = T & {
   bucket: AttentionBucket;
@@ -28,15 +36,6 @@ const NY_DAY = new Intl.DateTimeFormat("en-CA", {
   dateStyle: "short",
   timeZone: PRACTICE_TZ,
 });
-
-const BUCKET_ORDER = {
-  new: 0,
-  follow_up: 1,
-  stale: 2,
-  upcoming: 3,
-  scheduled: 4,
-  closed: 5,
-} as const satisfies Record<AttentionBucket, number>;
 
 function practiceDayNumber(date: Date): number {
   return Math.round(Date.parse(`${NY_DAY.format(date)}T00:00:00Z`) / 86_400_000);
@@ -115,7 +114,7 @@ export function orderQueueRows<T extends QueueAttentionRow>(
   });
 
   attentive.sort((a, b) => {
-    const byBucket = BUCKET_ORDER[a.bucket] - BUCKET_ORDER[b.bucket];
+    const byBucket = ATTENTION_BUCKETS.indexOf(a.bucket) - ATTENTION_BUCKETS.indexOf(b.bucket);
     if (byBucket !== 0) return byBucket;
     return compareWithinBucket(a, b);
   });

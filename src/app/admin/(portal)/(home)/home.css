@@ -1,0 +1,1438 @@
+/* ---- Home dashboard: the filter bar and the flat line list ----
+   Implements `Portal Home Redesign.dc.html`. Every color arrives through the
+   brand tokens / the portal bridge; type sits on the closed --pt-* scale;
+   radii are the brand's three steps. Motion is authored fresh for this
+   surface (portal-home-redesign-brief §4.5): hover tints ride a 130ms strong
+   ease-out, popovers grow from their trigger in 160ms and leave in 120ms,
+   a recorded outcome lands as a 480ms mint fade on the row.
+
+   These rules are intentionally unlayered: they must outrank the Tailwind
+   utilities the stock-derived parts carry (same trick the design file used
+   against the bundle's @layer). */
+
+/* ---------- Filter bar ---------- */
+
+.wgi-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ps-2);
+  margin-block-start: 1.25rem;
+}
+
+.wgi-add-filter {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--color-line-2);
+  border-radius: 999px;
+  background: var(--portal-surface);
+  padding: 0 var(--ps-4);
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 130ms cubic-bezier(0.19, 1, 0.22, 1),
+    transform 130ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.wgi-add-filter:hover,
+.wgi-add-filter[data-popup-open] {
+  background: var(--color-mint);
+}
+
+.wgi-add-filter:active {
+  transform: scale(0.97);
+}
+
+.wgi-add-filter > svg {
+  flex: none;
+  opacity: 0.7;
+}
+
+/* Active pill: one bordered capsule, two buttons — the label opens the
+   editor, the × removes the filter. */
+.wgi-pill {
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--color-line-2);
+  border-radius: 999px;
+  background: var(--portal-surface);
+}
+
+.wgi-pill-label {
+  display: inline-flex;
+  min-height: calc(2.75rem - 2px);
+  align-items: center;
+  gap: 0.4rem;
+  border: 0;
+  background: none;
+  padding: 0 0.35rem 0 0.95rem;
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  cursor: pointer;
+  transition: background-color 130ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.wgi-pill-label:hover {
+  background: var(--color-mint);
+}
+
+.wgi-pill-label:active,
+.wgi-pill-label[data-popup-open] {
+  background: var(--color-mint-2);
+}
+
+.wgi-pill-key {
+  color: var(--color-muted-ink);
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.wgi-pill-value {
+  color: var(--color-ink);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.wgi-pill-remove {
+  display: inline-flex;
+  width: 2.1rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--color-muted-ink);
+  cursor: pointer;
+  transition:
+    background-color 130ms cubic-bezier(0.19, 1, 0.22, 1),
+    color 130ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.wgi-pill-remove:hover {
+  background: var(--color-mint);
+  color: var(--color-ink);
+}
+
+/* The capsule clips; outlines must sit inside it to stay visible. */
+.wgi-pill-label:focus-visible,
+.wgi-pill-remove:focus-visible {
+  outline-offset: -3px;
+}
+
+/* Suggestion pill: a complete pre-filled filter, dashed and quiet, one click
+   from active. */
+.wgi-sug {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px dashed var(--color-line-2);
+  border-radius: 999px;
+  background: transparent;
+  padding: 0 0.95rem;
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  cursor: pointer;
+  transition:
+    background-color 130ms cubic-bezier(0.19, 1, 0.22, 1),
+    border-color 130ms cubic-bezier(0.19, 1, 0.22, 1),
+    transform 130ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.wgi-sug:hover {
+  background: var(--portal-surface);
+  border-color: var(--color-line-3);
+}
+
+.wgi-sug:active {
+  transform: scale(0.97);
+}
+
+/* ---------- The housed list ---------- */
+
+.wgi-line-list {
+  margin: var(--ps-4) 0 0;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius);
+  background: var(--portal-surface);
+}
+
+.wgi-line-row {
+  display: block;
+  min-height: 3.25rem;
+  padding: 0.35rem 0.85rem;
+}
+
+.wgi-line-row + .wgi-line-row {
+  border-top: 1px solid var(--color-line);
+}
+
+/* A recorded outcome lands: the tint arrives with the settle, holds while
+   the popover closes, and exhales over 240ms once the timed clear in
+   home-dashboard.tsx removes the attribute. A transition, not a keyframe,
+   so a second outcome retargets the wash mid-flight instead of cutting it,
+   and the attribute cycling off and back on lets it replay. */
+.wgi-line-row {
+  transition: background-color 240ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.wgi-line-row[data-settled] {
+  background-color: var(--color-mint-2);
+  transition-duration: 0s;
+}
+
+/* The row-as-trigger fills the line and carries hover/press; the whole line
+   is the click target, and the phone link stops the toggle. */
+.appt-line-trigger {
+  display: block;
+  width: 100%;
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 120ms ease;
+}
+
+.appt-line-trigger:hover {
+  background: var(--color-mint);
+}
+
+.appt-line-trigger[data-popup-open] {
+  background: var(--color-mint-2);
+}
+
+.appt-line-trigger:focus-visible {
+  outline: 3px solid var(--color-amber-deep);
+  outline-offset: -3px;
+}
+
+/* The row IS a registry Item, converted flat: no border, no radius, no wrap —
+   the housed list's hairlines do the ruling. */
+.appt-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.9rem;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+}
+
+.appt-name {
+  flex: 1 1 8rem;
+  min-width: 5rem;
+  display: flex;
+  align-items: center;
+  gap: var(--ps-2);
+  min-height: 2.4rem;
+  color: var(--color-ink);
+  font-size: var(--pt-sm);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.appt-name > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appt-phone {
+  display: inline-flex;
+  width: 8.6rem;
+  flex: none;
+  min-height: 2.4rem;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--color-body);
+  font-size: var(--pt-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transition: color 120ms ease;
+}
+
+.appt-phone:hover {
+  color: var(--color-teal-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.appt-phone > svg {
+  flex: none;
+  opacity: 0.55;
+}
+
+.appt-line [data-col="status"] {
+  display: inline-flex;
+  width: 6.5rem;
+  flex: none;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.appt-line [data-col="stamp"] {
+  display: inline-flex;
+  width: 6.6rem;
+  flex: none;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.appt-line [data-col="pref"] {
+  width: 9.5rem;
+  flex: none;
+  overflow: hidden;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appt-line [data-col="received"] {
+  width: 3.6rem;
+  flex: none;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  white-space: nowrap;
+}
+
+.appt-line [data-col="avatar"] {
+  display: inline-flex;
+  width: 1.65rem;
+  height: 1.65rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--color-teal-ink);
+  font-size: var(--pt-2xs);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.appt-line [data-col="avatar"][data-worked] {
+  background: var(--color-mint-2);
+}
+
+/* Columns drop from the right as the column narrows — name, phone, status
+   and the record affordance are the load-bearing four and always hold. */
+@media (max-width: 82rem) {
+  .appt-line [data-col="received"] {
+    display: none;
+  }
+}
+
+@media (max-width: 74rem) {
+  .appt-line [data-col="pref"] {
+    display: none;
+  }
+}
+
+@media (max-width: 66rem) {
+  .appt-line [data-col="avatar"] {
+    display: none;
+  }
+}
+
+@media (min-width: 60rem) {
+  .appt-line [data-col="status"] {
+    width: 8rem;
+  }
+}
+
+/* ---------- Status badge (fresh StockBadge conversion) ---------- */
+
+.wgi-badge {
+  display: inline-flex;
+  height: 1.5rem;
+  width: fit-content;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.125rem var(--ps-2);
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.wgi-badge-new {
+  background: color-mix(in oklch, var(--color-amber-soft) 55%, white);
+  color: var(--portal-attention-ink);
+  border-color: color-mix(in oklch, var(--color-amber-deep) 42%, white);
+}
+
+.wgi-badge-contacted {
+  background: var(--color-mint);
+  color: var(--color-teal-ink);
+  border-color: color-mix(in oklch, var(--color-teal) 45%, white);
+}
+
+.wgi-badge-scheduled {
+  background: color-mix(in oklch, var(--color-navy) 12%, white);
+  color: var(--color-navy);
+  border-color: color-mix(in oklch, var(--color-navy) 32%, white);
+}
+
+.wgi-badge-closed {
+  background: transparent;
+  color: var(--color-muted-ink);
+  border-color: var(--color-line-2);
+}
+
+/* ---------- Skeleton rows (hold the exact line geometry) ---------- */
+
+@keyframes wgi-skeleton {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.wgi-skeleton-list {
+  margin: var(--ps-4) 0 0;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius);
+  background: var(--portal-surface);
+}
+
+.wgi-skeleton-list > li {
+  display: flex;
+  align-items: center;
+  gap: var(--ps-4);
+  min-height: 3.25rem;
+  padding: 0 0.85rem;
+  animation: wgi-skeleton 1.6s ease-in-out infinite;
+}
+
+.wgi-skeleton-list > li + li {
+  border-top: 1px solid var(--color-line);
+}
+
+.wgi-skeleton-list span {
+  height: 0.85rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--color-line-2) 72%, white);
+}
+
+.wgi-skeleton-list span + span {
+  height: 0.8rem;
+  background: color-mix(in oklch, var(--color-line-2) 60%, white);
+}
+
+.wgi-skeleton-list span:last-child {
+  margin-left: auto;
+  width: 3rem;
+}
+
+/* ---------- Popover shell (fresh StockPopover conversion) ---------- */
+
+.wgi-popover {
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius);
+  background: var(--portal-surface);
+  color: var(--color-body);
+  box-shadow: var(--shadow-card);
+  outline: none;
+  transform-origin: var(--transform-origin);
+  transition:
+    transform 160ms cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.wgi-popover[data-starting-style],
+.wgi-popover[data-ending-style] {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.wgi-popover[data-ending-style] {
+  transition-duration: 120ms;
+}
+
+/* ---------- The record card ---------- */
+
+.wgi-record-card {
+  width: 20rem;
+  padding: 0 0 0.35rem;
+}
+
+.wgi-record-head {
+  padding: 0.85rem 0.95rem 0.6rem;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.wgi-record-name {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: var(--pt-base);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.wgi-record-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.2rem 0 0;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-xs);
+}
+
+.wgi-record-call {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.6rem 0.95rem 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-mint);
+  color: var(--color-teal-ink);
+  font-size: var(--pt-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.wgi-record-call:hover {
+  background: var(--color-mint-2);
+  color: var(--color-teal-ink);
+}
+
+.wgi-record-call > svg {
+  flex: none;
+}
+
+.wgi-record-q {
+  margin: 0.75rem 0.95rem 0.35rem;
+  color: var(--color-ink);
+  font-size: var(--pt-xs);
+  font-weight: 700;
+}
+
+.wgi-record-outcomes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ps-1);
+  padding: 0 0.6rem;
+}
+
+.wgi-outcome {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ps-2);
+  min-height: 2.6rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  padding: 0 0.7rem;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: start;
+  transition:
+    background-color 130ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 130ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.wgi-outcome:hover {
+  background: var(--color-mint);
+}
+
+.wgi-outcome:active {
+  transform: scale(0.98);
+  background: var(--color-mint-2);
+  transition-duration: 0s;
+}
+
+.wgi-outcome:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.wgi-outcome > small {
+  flex: none;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-2xs);
+  font-weight: 400;
+}
+
+/* The booking step the domain requires: an appointment states its day and
+   wall-clock time before the hand-off is real. */
+.wgi-record-book {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.35rem 0.95rem 0.25rem;
+}
+
+.wgi-record-book label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ps-2);
+  color: var(--color-muted-ink);
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+}
+
+.wgi-record-book input,
+.wgi-record-book select {
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-sm);
+  background: white;
+  padding: 0.3rem 0.45rem;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-xs);
+}
+
+.wgi-record-book-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--ps-2);
+  margin-top: 0.2rem;
+}
+
+.wgi-mini-btn {
+  display: inline-flex;
+  min-height: 2.4rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--btn-radius);
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--color-line-2);
+  padding: 0 0.9rem;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 130ms ease,
+    transform 130ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.wgi-mini-btn:hover {
+  background: var(--color-mint);
+}
+
+.wgi-mini-btn:active {
+  transform: scale(0.97);
+}
+
+.wgi-mini-btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+  transform: none;
+}
+
+.wgi-mini-btn[data-variant="solid"] {
+  background: var(--color-navy);
+  box-shadow: none;
+  color: white;
+}
+
+.wgi-mini-btn[data-variant="solid"]:hover:not(:disabled) {
+  background: var(--color-navy-2);
+}
+
+.wgi-record-retry {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--color-teal-ink);
+  font-family: inherit;
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.wgi-record-error {
+  margin: 0.5rem 0.95rem 0.2rem;
+  color: var(--portal-attention-ink);
+  font-size: var(--pt-2xs);
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.wgi-record-foot {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.35rem;
+  border: 0;
+  border-top: 1px solid var(--color-line);
+  background: none;
+  padding: 0.7rem 0.95rem;
+  color: var(--color-teal-ink);
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wgi-record-foot:hover {
+  background: var(--color-mint);
+}
+
+.wgi-record-foot > svg {
+  flex: none;
+}
+
+/* ---------- The editor popover ---------- */
+
+/* 20rem: room for the category list to breathe, and the exact width the
+   calendar fills when the Received editor turns into it. */
+.wgi-editor {
+  width: 20rem;
+  max-height: min(40rem, var(--available-height, 24rem));
+  overflow: auto;
+  padding: 0;
+}
+
+.wgi-editor-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  border-bottom: 1px solid var(--color-line);
+  background: none;
+  padding: 0.7rem 0.9rem;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  outline: none;
+}
+
+.wgi-editor-input::placeholder {
+  color: var(--color-muted-ink);
+}
+
+.wgi-editor-input:focus-visible {
+  outline: none;
+  box-shadow: inset 0 -2px 0 var(--color-teal);
+}
+
+/* "<Dimension> ⌄" beside the search box, going up one level: the category
+   list on the Add-filter path, the preset list from the calendar. The box
+   beside it keeps the input's paint. */
+.wgi-editor-head {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.wgi-editor-head > .wgi-editor-input {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 0;
+}
+
+.wgi-editor-dim {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+  margin-inline-start: 0.6rem;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-sm);
+  background: none;
+  padding: 0.25rem 0.45rem;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 110ms ease;
+}
+
+.wgi-editor-dim:hover {
+  background: var(--color-mint);
+}
+
+.wgi-editor-dim > svg {
+  color: var(--color-muted-ink);
+}
+
+/* The calendar view's header text: the draft range in the input's slot,
+   "Start – End" filling in as days are picked. Not a field — nothing to type. */
+.wgi-editor-readout {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0.7rem 0.9rem;
+  color: var(--color-ink);
+  font-size: var(--pt-xs);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wgi-editor-readout[data-empty] {
+  color: var(--color-muted-ink);
+  font-weight: 400;
+}
+
+.wgi-editor-body {
+  padding: 0.3rem;
+}
+
+/* One row = one option. The row is a real button; the hover hint (`Only` /
+   `Check all` on the label, `Check` / `Uncheck` on the checkbox) is a
+   passive caption revealed on the row's hover or focus. */
+.wgi-editor-opt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+  transition: background-color 110ms ease;
+}
+
+.wgi-editor-opt:hover,
+.wgi-editor-opt:focus-within {
+  background: var(--color-mint);
+}
+
+.wgi-editor-row {
+  display: flex;
+  width: 100%;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: 0.55rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  padding: 0 0.6rem;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: start;
+}
+
+.wgi-editor-row:focus-visible {
+  outline-offset: -3px;
+}
+
+.wgi-editor-row[data-muted] {
+  color: var(--color-muted-ink);
+}
+
+.wgi-editor-row > svg[data-chevron] {
+  flex: none;
+  margin-left: auto;
+  color: var(--color-line-3);
+}
+
+/* Checkbox rows: the box is its own target beside the label button. */
+.wgi-editor-check {
+  display: inline-flex;
+  min-height: 2.5rem;
+  flex: none;
+  align-items: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  padding: 0 0.55rem 0 0.6rem;
+  cursor: pointer;
+}
+
+.wgi-editor-check:focus-visible {
+  outline-offset: -3px;
+}
+
+.wgi-editor-check + .wgi-editor-row {
+  padding-inline-start: 0;
+}
+
+.wgi-editor-box {
+  display: inline-flex;
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--color-line-3);
+  border-radius: 0.25rem;
+  background: transparent;
+  transition:
+    background-color 110ms ease,
+    border-color 110ms ease;
+}
+
+.wgi-editor-box[data-checked] {
+  border-color: var(--color-navy);
+  background: var(--color-navy);
+  color: white;
+}
+
+.wgi-editor-tick {
+  display: inline-flex;
+  width: 1rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-navy);
+}
+
+.wgi-editor-quick {
+  position: absolute;
+  right: 0.6rem;
+  padding: 0.2rem 0.1rem;
+  color: var(--color-teal-ink);
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/* The label's hint shows for the row; the checkbox's hint takes over while
+   the pointer or focus is on the box itself. */
+.wgi-editor-opt:hover .wgi-editor-quick[data-target="label"],
+.wgi-editor-opt:focus-within .wgi-editor-quick[data-target="label"],
+.wgi-editor-opt:has(.wgi-editor-check:hover) .wgi-editor-quick[data-target="check"],
+.wgi-editor-opt:has(.wgi-editor-check:focus-visible) .wgi-editor-quick[data-target="check"] {
+  visibility: visible;
+}
+
+.wgi-editor-opt:has(.wgi-editor-check:hover) .wgi-editor-quick[data-target="label"],
+.wgi-editor-opt:has(.wgi-editor-check:focus-visible) .wgi-editor-quick[data-target="label"] {
+  visibility: hidden;
+}
+
+/* The calendar view: the month grid is the popover's full width, then a
+   ruled block of Start, End, and Apply beneath it. */
+.wgi-editor-range {
+  display: flex;
+  flex-direction: column;
+}
+
+.wgi-editor-cal {
+  --cell-size: 2.4rem;
+
+  width: 100%;
+  padding: 0.6rem 0.6rem 0.5rem;
+}
+
+.wgi-editor-range-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  border-top: 1px solid var(--color-line);
+  padding: 0.7rem 0.6rem 0.6rem;
+}
+
+.wgi-editor-range-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+}
+
+.wgi-editor-range-fields input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 2.25rem;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-sm);
+  background: white;
+  padding: 0.3rem 0.6rem;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-xs);
+}
+
+/* Apply: the one deliberate commit in the bar, painted as the portal's
+   primary button (the header's Print appointments). */
+.wgi-editor-apply {
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.2rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-navy);
+  padding: 0 0.9rem;
+  color: white;
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 130ms ease,
+    transform 130ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.wgi-editor-apply:hover:enabled {
+  background: color-mix(in oklch, var(--color-navy) 88%, white);
+}
+
+.wgi-editor-apply:active:enabled {
+  transform: scale(0.97);
+}
+
+.wgi-editor-apply:disabled {
+  background: var(--color-line-2);
+  color: var(--color-muted-ink);
+  cursor: default;
+}
+
+.wgi-editor-hint {
+  margin: 0;
+  border-top: 1px solid var(--color-line);
+  padding: var(--ps-2) 0.9rem;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-2xs);
+}
+
+.wgi-list-note {
+  margin: var(--ps-2) 0 0;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-xs);
+}
+
+/* ---------- Empty state ---------- */
+
+.wgi-empty {
+  margin-top: var(--ps-4);
+  border-top: 1px solid var(--color-line);
+  padding: 3.5rem var(--ps-4);
+  text-align: center;
+}
+
+.wgi-empty h2 {
+  margin: 0;
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: var(--pt-base);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.wgi-empty p {
+  max-width: 44ch;
+  margin: var(--ps-2) auto 0;
+  color: var(--color-body);
+  font-size: var(--pt-sm);
+  line-height: 1.6;
+}
+
+.wgi-empty-clear {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  margin-top: var(--ps-4);
+  border: 0;
+  border-radius: var(--btn-radius);
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--color-line-2);
+  padding: 0 1.1rem;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color 130ms ease,
+    transform 130ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.wgi-empty-clear:hover {
+  background: var(--color-mint);
+}
+
+.wgi-empty-clear:active {
+  transform: scale(0.97);
+}
+
+/* ---------- Full record: the right sheet ---------- */
+
+.wgi-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgb(0 0 0 / 10%);
+  transition: opacity 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.wgi-sheet-overlay[data-starting-style],
+.wgi-sheet-overlay[data-ending-style] {
+  opacity: 0;
+}
+
+.wgi-sheet-overlay[data-ending-style] {
+  transition-duration: 150ms;
+}
+
+@supports (backdrop-filter: blur(2px)) {
+  .wgi-sheet-overlay {
+    backdrop-filter: blur(2px);
+  }
+}
+
+.wgi-sheet {
+  position: fixed;
+  inset-block: 0;
+  right: 0;
+  z-index: 50;
+  height: 100%;
+  width: 42rem;
+  max-width: 94vw;
+  background: var(--portal-surface);
+  border: 0;
+  border-left: 1px solid var(--color-line-2);
+  /* Directional spill toward the page, the sidebar's shadow mirrored. */
+  box-shadow: -24px 0 48px -28px oklch(0.28 0.05 245 / 0.5);
+  padding: 0;
+  outline: none;
+  transition:
+    transform 200ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.wgi-sheet[data-starting-style],
+.wgi-sheet[data-ending-style] {
+  opacity: 0;
+  transform: translateX(2.5rem);
+}
+
+.wgi-sheet[data-ending-style] {
+  transition-duration: 150ms;
+}
+
+.wgi-sheet-surface {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* A left-edge grip drags the panel wider — the "bring the sheet across"
+   gesture. Pointer capture keeps the drag alive off the strip. */
+.wgi-sheet-grip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.wgi-sheet-grip > span {
+  width: 4px;
+  height: 3rem;
+  border-radius: 999px;
+  background: var(--color-line-2);
+  box-shadow: -1px 0 0 rgb(255 255 255 / 60%);
+  transition:
+    background-color 130ms ease,
+    height 130ms ease;
+}
+
+.wgi-sheet-grip:hover > span,
+.wgi-sheet-grip:focus-visible > span,
+.wgi-sheet-grip[data-dragging] > span {
+  background: var(--color-teal);
+  height: 4rem;
+}
+
+.wgi-sheet-grip:focus-visible {
+  outline-offset: -3px;
+}
+
+.wgi-sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ps-4);
+  padding: 1.25rem 1.4rem var(--ps-4);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.wgi-sheet-kicker {
+  margin: 0;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.wgi-sheet-name {
+  margin: var(--ps-1) 0 0;
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: var(--pt-lg);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.wgi-sheet-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.4rem 0 0;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-xs);
+}
+
+.wgi-sheet-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.wgi-sheet-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+}
+
+.wgi-sheet-close {
+  display: inline-flex;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--btn-radius);
+  background: none;
+  color: var(--color-muted-ink);
+  cursor: pointer;
+  transition:
+    background-color 130ms ease,
+    transform 130ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.wgi-sheet-close:hover {
+  background: var(--color-mint);
+  color: var(--color-ink);
+}
+
+.wgi-sheet-close:active {
+  transform: scale(0.94);
+}
+
+.wgi-sheet-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1.25rem 1.4rem 2rem;
+}
+
+.wgi-sheet-call {
+  display: flex;
+  align-items: center;
+  gap: var(--ps-2);
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-mint);
+  color: var(--color-teal-ink);
+  font-size: var(--pt-base);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background-color 130ms ease,
+    transform 130ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.wgi-sheet-call:hover {
+  background: var(--color-mint-2);
+  color: var(--color-teal-ink);
+}
+
+.wgi-sheet-call:active {
+  transform: scale(0.98);
+}
+
+.wgi-sheet-call > svg {
+  flex: none;
+}
+
+.wgi-sheet-dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.55rem 1.25rem;
+  margin: 1.25rem 0 0;
+}
+
+.wgi-sheet-dl dt {
+  color: var(--color-muted-ink);
+  font-size: var(--pt-xs);
+}
+
+.wgi-sheet-dl dd {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: var(--pt-sm);
+}
+
+.wgi-sheet-activity-heading {
+  margin: 1.6rem 0 0.6rem;
+  color: var(--color-ink);
+  font-size: var(--pt-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.wgi-sheet-activity {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wgi-sheet-activity > li {
+  display: flex;
+  gap: var(--ps-3);
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--color-line);
+}
+
+.wgi-sheet-activity-dot {
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: 0.42rem;
+  border-radius: 999px;
+  background: var(--color-line-3);
+}
+
+.wgi-sheet-activity-what {
+  display: block;
+  color: var(--color-ink);
+  font-size: var(--pt-sm);
+  font-weight: 600;
+}
+
+.wgi-sheet-activity-when {
+  display: block;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-xs);
+}
+
+.wgi-sheet-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--color-line);
+  padding: 0.7rem 1.4rem;
+  color: var(--color-teal-ink);
+  font-size: var(--pt-xs);
+  font-weight: 700;
+  transition: background-color 130ms ease;
+}
+
+.wgi-sheet-foot:hover {
+  background: var(--color-mint);
+  color: var(--color-teal-ink);
+}
+
+/* ---------- Loading (home's own segment) ---------- */
+
+.wgi-loading-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ps-2);
+  border-bottom: 2px solid var(--color-navy);
+  padding-bottom: var(--ps-4);
+}
+
+.wgi-loading-head > span {
+  display: block;
+  height: 0.9rem;
+  width: 11rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--color-line-2) 60%, white);
+  animation: wgi-skeleton 1.6s ease-in-out infinite;
+}
+
+.wgi-loading-head > i {
+  display: block;
+  height: 1.6rem;
+  width: 18rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--color-line-2) 72%, white);
+  animation: wgi-skeleton 1.6s ease-in-out infinite;
+}
+
+/* ---------- Reduced motion: gentler, never zero comprehension ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Durations are authored in globals.css's @layer base reduced-motion
+     block — the blanket reset there is !important, and important
+     declarations outrank everything non-important regardless of layers, so
+     nothing this (unlayered) file declares can restore a duration. Only
+     the travel is dropped here. */
+  .wgi-popover[data-starting-style],
+  .wgi-popover[data-ending-style],
+  .wgi-sheet[data-starting-style],
+  .wgi-sheet[data-ending-style] {
+    transform: none;
+  }
+
+  /* The settle wash needs no override: the timed clear in
+     home-dashboard.tsx shows the mint tint for ~200ms either way, and the
+     blanket reset in globals.css @layer base already collapses the 240ms
+     exhale to an instant change. */
+
+  .wgi-add-filter:active,
+  .wgi-sug:active,
+  .wgi-editor-apply:active:enabled,
+  .wgi-outcome:active,
+  .wgi-empty-clear:active,
+  .wgi-sheet-call:active,
+  .wgi-sheet-close:active {
+    transform: none;
+  }
+}

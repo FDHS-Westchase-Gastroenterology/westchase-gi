@@ -2,11 +2,13 @@ import { jsonSchema } from "@/lib/json";
 import type { Json } from "@/lib/json";
 
 export class GitHubApiError extends Error {
-  constructor(
-    readonly status: number | null,
-    readonly kind: "provider" | "invalid_response" = "provider",
-  ) {
+  readonly status: number | null;
+  readonly kind: "provider" | "invalid_response";
+
+  constructor(status: number | null, kind: "provider" | "invalid_response" = "provider") {
     super("GitHub API request failed");
+    this.status = status;
+    this.kind = kind;
   }
 }
 

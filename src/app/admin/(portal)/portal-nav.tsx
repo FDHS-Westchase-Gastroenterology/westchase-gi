@@ -3,29 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// One task-first primary nav for every role. Home is the landing
-// Surface; the queue lives under /admin/requests; occasional tasks
-// (review flyers, website custody) are reached from Home and Settings
-// Instead of holding permanent tabs. Every destination stays visible on
-// A phone: the queue tab compacts to "Requests" below `sm` so the row
-// Never depends on unmarked horizontal scrolling.
+import { CircleHelp, ClipboardCheck, Home, Settings } from "@/components/icons";
 
-interface NavItem {
-  href: string;
-  label: string;
-  compactLabel?: string;
-}
+// The four fixed staff destinations, in the specification's fixed order.
+// Their presentation adapts from a persistent desktop rail to a mobile
+// Tab bar, but the vocabulary, order, current-location signal, and waiting
+// Count never move. Occasional utilities stay outside this primary index.
 
-const NAV_ITEMS: readonly NavItem[] = [
-  { href: "/admin", label: "Home" },
-  {
-    href: "/admin/requests",
-    label: "Appointment requests",
-    compactLabel: "Requests",
-  },
-  { href: "/admin/settings", label: "Settings" },
-  { href: "/admin/help", label: "Help" },
-];
+const NAV_ITEMS = [
+  { href: "/admin", label: "Home", icon: Home },
+  { href: "/admin/requests", label: "Appointments", icon: ClipboardCheck },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
+  { href: "/admin/help", label: "Help", icon: CircleHelp },
+] as const;
 
 function isActive(pathname: string, href: string): boolean {
   if (href === "/admin") return pathname === "/admin";
@@ -36,38 +26,31 @@ export function PortalNav({ waitingCount }: Readonly<{ waitingCount: number | nu
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Portal sections" className="-mb-px overflow-x-auto">
-      <ul className="flex min-w-max items-stretch gap-1">
+    <nav aria-label="Portal sections" className="portal-primary-nav">
+      <ul>
         {NAV_ITEMS.map((item) => {
           const active = isActive(pathname, item.href);
           const showBadge =
             item.href === "/admin/requests" && waitingCount !== null && waitingCount > 0;
+          const Icon = item.icon;
+
           return (
-            <li key={item.href} className="flex">
+            <li key={item.href}>
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-11 items-center border-b-[3px] px-2.5 text-[0.95rem] font-bold transition-colors sm:px-4 ${
-                  active
-                    ? "border-[var(--color-amber)] text-white"
-                    : "border-transparent text-[var(--color-on-dark-muted)] hover:text-white"
-                }`}
+                aria-label={showBadge ? `${item.label}, ${waitingCount} waiting` : item.label}
+                className="portal-nav-link"
               >
-                {item.compactLabel !== undefined && item.compactLabel !== "" ? (
-                  <>
-                    <span className="sm:hidden">{item.compactLabel}</span>
-                    <span className="hidden sm:inline">{item.label}</span>
-                  </>
-                ) : (
-                  item.label
-                )}
+                <Icon className="portal-nav-icon" />
+                <span>{item.label}</span>
                 {showBadge ? (
                   <span
                     data-testid="nav-waiting-badge"
-                    className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--color-amber)] px-1.5 py-0.5 text-center text-[0.72rem] font-extrabold text-[var(--color-navy-2)] tabular-nums"
+                    aria-hidden="true"
+                    className="portal-nav-count"
                   >
-                    {waitingCount}
-                    <span className="sr-only"> waiting</span>
+                    {waitingCount > 99 ? "99+" : waitingCount}
                   </span>
                 ) : null}
               </Link>

@@ -6,10 +6,15 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { confirmAuthLinkAction } from "@/app/admin/actions";
 import type { ConfirmAuthActionState } from "@/app/admin/actions";
 import { PasswordForm } from "@/app/admin/set-password/password-form";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { parsePasswordAuthFlow } from "@/lib/portal/contracts";
+import type { PasswordAuthFlow } from "@/lib/portal/contracts";
+import { cn } from "@/lib/utils";
 
 interface AuthLink {
   tokenHash: string;
-  type: "invite" | "recovery";
+  type: PasswordAuthFlow;
 }
 
 const INITIAL_STATE: ConfirmAuthActionState = { error: null };
@@ -36,11 +41,9 @@ export function ConfirmAuthForm() {
       parsedOnce.current = true;
       const params = new URLSearchParams(hash.slice(1));
       const tokenHash = params.get("token_hash")?.trim() ?? "";
-      const type = params.get("type");
+      const type = parsePasswordAuthFlow(params.get("type") ?? "");
       const parsedLink: AuthLink | "invalid" =
-        tokenHash.length >= 20 && (type === "invite" || type === "recovery")
-          ? { tokenHash, type }
-          : "invalid";
+        tokenHash.length >= 20 && type !== null ? { tokenHash, type } : "invalid";
 
       // Remove the bearer token from the address bar before any navigation.
       window.history.replaceState(null, "", window.location.pathname);
@@ -57,7 +60,9 @@ export function ConfirmAuthForm() {
   }, []);
 
   if (link === null) {
-    return <p className="mt-6 text-sm text-[var(--color-muted)]">Preparing your secure link…</p>;
+    return (
+      <p className="mt-6 text-sm text-[var(--color-muted-ink)]">Preparing your secure link…</p>
+    );
   }
 
   if (link === "invalid") {
@@ -69,7 +74,11 @@ export function ConfirmAuthForm() {
         >
           This link is incomplete or no longer valid. Request a new link to continue.
         </p>
-        <Link href="/admin/forgot-password" className="btn btn-navy mt-4 min-h-11 w-full">
+        <Link
+          href="/admin/forgot-password"
+          data-slot="button"
+          className={cn(buttonVariants(), "mt-4 min-h-11 w-full")}
+        >
           Request a new link
         </Link>
       </div>
@@ -92,13 +101,13 @@ export function ConfirmAuthForm() {
           {state.error}
         </p>
       ) : null}
-      <button
+      <Button
         type="submit"
         disabled={pending}
-        className="btn btn-navy min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
+        className="min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
       >
         {pending ? "Verifying…" : "Continue"}
-      </button>
+      </Button>
     </form>
   );
 }

@@ -4,17 +4,17 @@ import Image from "next/image";
 import { useState, useSyncExternalStore } from "react";
 
 import { ExternalLink, Facebook, Globe, MessageSquare, Phone, Star } from "@/components/icons";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { site, localeSet } from "@/lib/site";
+import type { Locale } from "@/lib/site";
+import { cn } from "@/lib/utils";
 
 // The hub speaks every language the practice serves, on one URL, without a
 // Page reload. Printed master QRs stay valid while this encoded hub URL is
-// Maintained. Strings are
-// Deliberately local to this file: the page must work standalone even before
-// (or after) the main site's locale set changes.
+// Maintained. Strings stay local to this file so the page works standalone;
+// The language set is the site's, so a new locale cannot ship without hub strings.
 
-type HubLang = "en" | "es" | "vi" | "ko" | "ar";
-
-const LANGS: { code: HubLang; native: string }[] = [
+const LANGS: { code: Locale; native: string }[] = [
   { code: "en", native: "English" },
   { code: "es", native: "Español" },
   { code: "vi", native: "Tiếng Việt" },
@@ -114,14 +114,14 @@ const STRINGS = {
     languageLabel: "اللغة",
     locations: "تامبا ولوتز، فلوريدا",
   },
-} as const satisfies Record<HubLang, Strings>;
+} as const satisfies Record<Locale, Strings>;
 
 /** Deep-link into the main site only for locales it actually serves. */
-function siteHref(lang: HubLang): string {
+function siteHref(lang: Locale): string {
   return localeSet.has(lang) ? `/${lang}` : "/en";
 }
 
-function isHubLang(value: string): value is HubLang {
+function isLocale(value: string): value is Locale {
   return Object.hasOwn(STRINGS, value);
 }
 
@@ -131,14 +131,14 @@ function isHubLang(value: string): value is HubLang {
 // Client value at hydration without a mismatch. The URL never changes within
 // A page load, so the subscription is a no-op.
 const subscribeNever = () => () => {};
-function readLangParam(): HubLang | null {
+function readLangParam(): Locale | null {
   const param = new URLSearchParams(window.location.search).get("lang");
-  return param !== null && param !== "" && isHubLang(param) ? param : null;
+  return param !== null && param !== "" && isLocale(param) ? param : null;
 }
 
 export function ReviewHub() {
   const urlLang = useSyncExternalStore(subscribeNever, readLangParam, () => null);
-  const [picked, setPicked] = useState<HubLang | null>(null);
+  const [picked, setPicked] = useState<Locale | null>(null);
   const lang = picked ?? urlLang ?? "en";
   const t = STRINGS[lang];
 
@@ -186,7 +186,7 @@ export function ReviewHub() {
       </nav>
 
       <h1 className="mt-8 text-center text-[1.9rem] leading-[1.15]">{t.heading}</h1>
-      <p className="mx-auto mt-3 max-w-[36ch] text-center text-[1.02rem] text-[var(--color-muted)]">
+      <p className="mx-auto mt-3 max-w-[36ch] text-center text-[1.02rem] text-[var(--color-muted-ink)]">
         {t.sub}
       </p>
 
@@ -199,7 +199,8 @@ export function ReviewHub() {
           href={site.links.googleReview}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn btn-amber btn-lg w-full"
+          data-slot="button"
+          className={cn(buttonVariants({ variant: "amber", size: "lg" }), "w-full")}
           title={t.googleHint}
         >
           <Star className="h-5 w-5" />
@@ -210,7 +211,8 @@ export function ReviewHub() {
           href={site.links.facebookReviews}
           target="_blank"
           rel="noopener noreferrer"
-          className="btn btn-navy btn-lg w-full"
+          data-slot="button"
+          className={cn(buttonVariants({ size: "lg" }), "w-full")}
           title={t.facebookHint}
         >
           <Facebook className="h-5 w-5" />
@@ -218,40 +220,52 @@ export function ReviewHub() {
         </a>
 
         <div className="card-lined flex items-center justify-between gap-3 px-5 py-3.5 opacity-80">
-          <span className="font-bold text-[var(--color-muted)]">Yelp</span>
+          <span className="font-bold text-[var(--color-muted-ink)]">Yelp</span>
           <span className="rounded-full bg-[var(--color-mint-2)] px-2.5 py-1 text-[0.78rem] font-bold text-[var(--color-teal-ink)]">
             {t.comingSoon}
           </span>
         </div>
       </div>
 
-      <p className="mt-9 text-center text-[0.82rem] font-extrabold tracking-[0.08em] text-[var(--color-muted)] uppercase">
+      <p className="mt-9 text-center text-[0.82rem] font-extrabold tracking-[0.08em] text-[var(--color-muted-ink)] uppercase">
         {t.moreHeading}
       </p>
 
       <div className="mt-3 grid gap-3">
-        <a href={siteHref(lang)} className="btn btn-outline w-full bg-white">
+        <a
+          href={siteHref(lang)}
+          data-slot="button"
+          className={cn(buttonVariants({ variant: "outline" }), "w-full bg-white")}
+        >
           <Globe className="h-4.5 w-4.5 text-[var(--color-teal-ink)]" />
           {t.website}
-          <ExternalLink className="h-3.5 w-3.5 text-[var(--color-muted)]" />
+          <ExternalLink className="h-3.5 w-3.5 text-[var(--color-muted-ink)]" />
         </a>
-        <a href={site.phone.href} className="btn btn-outline w-full bg-white">
+        <a
+          href={site.phone.href}
+          data-slot="button"
+          className={cn(buttonVariants({ variant: "outline" }), "w-full bg-white")}
+        >
           <Phone className="h-4.5 w-4.5 text-[var(--color-teal-ink)]" />
           {t.call}
-          <span dir="ltr" className="font-normal whitespace-nowrap text-[var(--color-muted)]">
+          <span dir="ltr" className="font-normal whitespace-nowrap text-[var(--color-muted-ink)]">
             {site.phone.display}
           </span>
         </a>
-        <a href={site.textLine.href} className="btn btn-outline w-full bg-white">
+        <a
+          href={site.textLine.href}
+          data-slot="button"
+          className={cn(buttonVariants({ variant: "outline" }), "w-full bg-white")}
+        >
           <MessageSquare className="h-4.5 w-4.5 text-[var(--color-teal-ink)]" />
           {t.text}
-          <span dir="ltr" className="font-normal whitespace-nowrap text-[var(--color-muted)]">
+          <span dir="ltr" className="font-normal whitespace-nowrap text-[var(--color-muted-ink)]">
             {site.textLine.display}
           </span>
         </a>
       </div>
 
-      <footer className="mt-auto pt-10 text-center text-[0.85rem] text-[var(--color-muted)]">
+      <footer className="mt-auto pt-10 text-center text-[0.85rem] text-[var(--color-muted-ink)]">
         <p className="font-bold text-[var(--color-body)]">{site.name}</p>
         <p className="mt-0.5">{t.locations}</p>
         <p className="mt-0.5">{site.network}</p>

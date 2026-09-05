@@ -3,7 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
+import { Button } from "@/components/ui/button";
+import type {
+  MaintainerFailureCode,
+  MaintainerManagementState,
+  MaintainerMutationResult,
+} from "@/lib/portal/maintainer-operation";
 import { getMaintainerViewState } from "@/lib/portal/maintainer-view";
+import type { MaintainerAccessModel } from "@/lib/portal/maintainer-view";
 
 // The staff-facing surface for "who can change the website". This component
 // Owns presentation and confirmation only; every decision that matters
@@ -14,66 +21,17 @@ import { getMaintainerViewState } from "@/lib/portal/maintainer-view";
 // GitHub is named is the invite field, because the username is the only
 // Credential a maintainer has.
 
-export interface Maintainer {
-  /** GitHub numeric user ID — the value revoke submits. */
-  readonly userId: number;
-  readonly login: string;
-}
-
-export interface PendingInvitation {
-  /** GitHub numeric invitation ID — the value cancel submits. */
-  readonly invitationId: number;
-  readonly login: string;
-}
-
-export type MaintainerManagementState =
-  /** Installation still covers all repositories; owner must narrow it. */
-  | "restrict_installation"
-  /** Installation lacks administration write; owner must approve it. */
-  | "permission_upgrade_required"
-  | "ready";
-
-export type MaintainerAccessModel =
-  | { state: "not_configured" }
-  | { state: "unavailable" }
-  | {
-      state: "connected";
-      ownerLogin: string;
-      management: MaintainerManagementState;
-      /** Null = this deployment cannot read the list yet (never stale data). */
-      maintainers: readonly Maintainer[] | null;
-      invitations: readonly PendingInvitation[] | null;
-    };
-
-export type MaintainerActionResult =
-  | { ok: true }
-  | {
-      ok: false;
-      code?:
-        | "invalid"
-        | "not_found"
-        | "conflict"
-        | "forbidden"
-        | "limit"
-        | "unconfirmed"
-        | "unavailable";
-    };
-
 // The exact server contract the backend pass must fulfil (three narrow
 // Commands, no permission selector, numeric IDs from rendered records).
 export interface MaintainerActions {
-  inviteMaintainer: (input: Readonly<{ username: string }>) => Promise<MaintainerActionResult>;
+  inviteMaintainer: (input: Readonly<{ username: string }>) => Promise<MaintainerMutationResult>;
   cancelMaintainerInvite: (
     input: Readonly<{
       invitationId: number;
     }>,
-  ) => Promise<MaintainerActionResult>;
-  revokeMaintainer: (input: Readonly<{ userId: number }>) => Promise<MaintainerActionResult>;
+  ) => Promise<MaintainerMutationResult>;
+  revokeMaintainer: (input: Readonly<{ userId: number }>) => Promise<MaintainerMutationResult>;
 }
-
-type MaintainerFailureCopyCode = NonNullable<
-  Extract<MaintainerActionResult, { ok: false }>["code"]
->;
 
 const FAILURE_COPY = {
   invalid: "That doesn't look like a GitHub username — check it and try again.",
@@ -86,16 +44,16 @@ const FAILURE_COPY = {
   unconfirmed:
     "We couldn't confirm whether that change went through. The list below is the latest confirmed state — check it before trying again.",
   unavailable: "Something went wrong making the change. Try again.",
-} as const satisfies Record<MaintainerFailureCopyCode, string>;
+} as const satisfies Record<MaintainerFailureCode, string>;
 
-function isMaintainerFailureCopyCode(value: string): value is MaintainerFailureCopyCode {
-  return value in FAILURE_COPY;
+function isMaintainerFailureCode(value: string): value is MaintainerFailureCode {
+  return Object.hasOwn(FAILURE_COPY, value);
 }
 
-function failureMessage(result: Readonly<MaintainerActionResult>): string {
-  if (result.ok) return "";
-  const code = result.code ?? "unavailable";
-  return isMaintainerFailureCopyCode(code) ? FAILURE_COPY[code] : FAILURE_COPY.unavailable;
+/* A string on purpose: a tab left open across a deploy can receive a code this
+   build does not know, and the safe sentence for it is the generic one. */
+function failureMessage(code: string): string {
+  return isMaintainerFailureCode(code) ? FAILURE_COPY[code] : FAILURE_COPY.unavailable;
 }
 
 const STATUS_LABEL = {
@@ -108,7 +66,7 @@ function StatusPill({ state }: Readonly<{ state: MaintainerAccessModel["state"] 
   return (
     <span
       data-testid="integration-status"
-      className="rounded-full bg-[var(--color-line)] px-2.5 py-1 text-[0.72rem] font-bold tracking-[0.05em] text-[var(--color-muted)] uppercase"
+      className="rounded-full bg-[var(--color-line)] px-2.5 py-1 text-[0.72rem] font-bold tracking-[0.05em] text-[var(--color-muted-ink)] uppercase"
     >
       {STATUS_LABEL[state]}
     </span>
@@ -177,13 +135,13 @@ export function MaintainerAccess({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  function run(action: () => Promise<MaintainerActionResult>, onSuccess: string) {
+  function run(action: () => Promise<MaintainerMutationResult>, onSuccess: string) {
     setError(null);
     setNotice(null);
     startTransition(async () => {
       const result = await action();
       if (!result.ok) {
-        setError(failureMessage(result));
+        setError(failureMessage(result.code));
         router.refresh();
         return;
       }
@@ -198,7 +156,7 @@ export function MaintainerAccess({
   return (
     <div data-testid="maintainer-access">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-[0.82rem] font-bold tracking-[0.06em] text-[var(--color-muted)] uppercase">
+        <h3 className="text-[0.82rem] font-bold tracking-[0.06em] text-[var(--color-muted-ink)] uppercase">
           Who can change the website
         </h3>
         <StatusPill state={model.state} />
@@ -222,7 +180,7 @@ export function MaintainerAccess({
 
       {model.state === "connected" && (
         <>
-          <p className="mt-2 max-w-[70ch] text-[0.9rem] leading-relaxed text-[var(--color-muted)]">
+          <p className="mt-2 max-w-[70ch] text-[0.9rem] leading-relaxed text-[var(--color-muted-ink)]">
             Everyone listed here can edit and publish the practice&rsquo;s website. Administrators
             can add a maintainer or remove one — for example, when the practice changes maintainers.
           </p>
@@ -248,7 +206,7 @@ export function MaintainerAccess({
             <li className="flex flex-wrap items-center justify-between gap-3 py-3.5">
               <div className="min-w-0">
                 <p className="truncate font-bold text-[var(--color-ink)]">Westchase GI</p>
-                <p className="truncate text-[0.85rem] text-[var(--color-muted)]">
+                <p className="truncate text-[0.85rem] text-[var(--color-muted-ink)]">
                   {`${model.ownerLogin} — the practice\u2019s own account`}
                 </p>
               </div>
@@ -265,7 +223,7 @@ export function MaintainerAccess({
                   <p className="truncate font-bold text-[var(--color-ink)]">
                     {maintainer.login === "ASTXRTYS" ? "Jason M." : maintainer.login}
                   </p>
-                  <p className="truncate text-[0.85rem] text-[var(--color-muted)]">
+                  <p className="truncate text-[0.85rem] text-[var(--color-muted-ink)]">
                     Can edit and publish the website — Write access
                   </p>
                 </div>
@@ -308,7 +266,7 @@ export function MaintainerAccess({
               >
                 <div className="min-w-0">
                   <p className="truncate font-bold text-[var(--color-ink)]">{invitation.login}</p>
-                  <p className="truncate text-[0.85rem] text-[var(--color-muted)]">
+                  <p className="truncate text-[0.85rem] text-[var(--color-muted-ink)]">
                     Invited — no access until they accept
                   </p>
                 </div>
@@ -345,18 +303,18 @@ export function MaintainerAccess({
           </ul>
 
           {model.maintainers === null && (
-            <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
+            <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted-ink)]">
               The full list of maintainers appears here once setup is complete.
             </p>
           )}
           {view.showInvitationDisclosure && (
-            <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
+            <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted-ink)]">
               Pending invitations appear here once the practice owner approves repository
               administration access.
             </p>
           )}
           {view.showEmptyState && (
-            <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
+            <p className="mt-1 text-[0.85rem] leading-relaxed text-[var(--color-muted-ink)]">
               No one besides the practice&rsquo;s own account can change the website right now.
             </p>
           )}
@@ -378,7 +336,7 @@ export function MaintainerAccess({
               }}
             >
               <h4 className="text-sm font-bold text-[var(--color-ink)]">Add a maintainer</h4>
-              <p className="mt-1 max-w-[65ch] text-[0.85rem] leading-relaxed text-[var(--color-muted)]">
+              <p className="mt-1 max-w-[65ch] text-[0.85rem] leading-relaxed text-[var(--color-muted-ink)]">
                 Ask the person for their exact GitHub username — it&rsquo;s the one account detail
                 this needs. Once they accept, Write access lets them change code and merge changes
                 that publish the website.
@@ -401,19 +359,15 @@ export function MaintainerAccess({
                     className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
                   />
                 </div>
-                <button
-                  type="submit"
-                  disabled={pending}
-                  className="btn btn-navy min-h-11 disabled:opacity-60"
-                >
+                <Button type="submit" disabled={pending} className="disabled:opacity-60">
                   {pending ? "Sending…" : "Send invitation"}
-                </button>
+                </Button>
               </div>
             </form>
           )}
 
           {!isAdmin && (
-            <p className="mt-5 border-t border-[var(--color-line)] pt-5 text-[0.9rem] text-[var(--color-muted)]">
+            <p className="mt-5 border-t border-[var(--color-line)] pt-5 text-[0.9rem] text-[var(--color-muted-ink)]">
               Adding or removing a maintainer needs an administrator.
             </p>
           )}

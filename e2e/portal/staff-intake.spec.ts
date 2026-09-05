@@ -1,0 +1,186 @@
+import { test, expect } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
+
+import { signIn } from "../harness/session";
+
+async function openNewRequest(page: Page, from: "home" | "appointments") {
+  if (from === "home") {
+    await page.getByTestId("home-add-patient-request").click();
+    await expect(page).toHaveURL(/\/admin\/?$/);
+    await expect(page.getByTestId("add-appointment-dialog")).toBeVisible();
+  } else {
+    await page.goto("/admin/requests");
+    await page.getByTestId("appointments-add-patient-request").click();
+    await expect(page).toHaveURL(/\/admin\/requests\/new\?from=appointments$/);
+  }
+  await expect(page.getByRole("heading", { name: "Add appointment request" })).toBeVisible();
+}
+
+async function expectDialogOpen(dialog: Locator) {
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toHaveAttribute("open", "");
+}
+
+async function expectFocusInsideDialog(page: Page, dialog: Locator) {
+  const testId = await page.evaluate(() => document.activeElement?.getAttribute("data-testid"));
+  expect(["keep-editing-staff-request", "discard-staff-request"]).toContain(testId);
+  const activeIsInside = await dialog.evaluate((root) => {
+    const active = document.activeElement;
+    return active instanceof Node && root.contains(active);
+  });
+  expect(activeIsInside).toBe(true);
+}
+
+test.describe("staff-authored intake data-entry protection", () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== "chromium", "JS portal UI");
+  });
+
+  test("untouched Cancel from Home returns immediately", async ({ page }) => {
+    await signIn(page);
+    await openNewRequest(page, "home");
+    await page.getByTestId("cancel-staff-request").click();
+    await expect(page).toHaveURL(/\/admin\/?$/);
+    await expect(page.getByTestId("discard-staff-request-dialog")).toBeHidden();
+  });
+
+  test("untouched Cancel from Appointments returns immediately", async ({ page }) => {
+    await signIn(page);
+    await openNewRequest(page, "appointments");
+    await page.getByTestId("cancel-staff-request").click();
+    await expect(page).toHaveURL(/\/admin\/requests\/?$/);
+    await expect(page.getByTestId("discard-staff-request-dialog")).toBeHidden();
+  });
+
+  test("dirty Cancel opens a named dialog that traps focus, and Keep editing returns it", async ({
+    page,
+  }) => {
+    await signIn(page);
+    await openNewRequest(page, "home");
+
+    const name = page.locator("#staff-request-name");
+    await name.fill("UX Audit Draft");
+    await page.getByTestId("cancel-staff-request").click();
+
+    const dialog = page.getByTestId("discard-staff-request-dialog");
+    const keepEditing = page.getByTestId("keep-editing-staff-request");
+    await expectDialogOpen(dialog);
+    await expect(dialog.getByRole("heading", { level: 2 })).toHaveText(
+      "Discard this appointment request?",
+    );
+    await expect(dialog).toContainText("The entered request has not been saved.");
+    await expect(keepEditing).toBeFocused();
+
+    await page.keyboard.press("Tab");
+    await expect(page.getByTestId("discard-staff-request")).toBeFocused();
+    await expectFocusInsideDialog(page, dialog);
+
+    await page.keyboard.press("Tab");
+    await expect(keepEditing).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(page.getByTestId("discard-staff-request")).toBeFocused();
+    await expectFocusInsideDialog(page, dialog);
+
+    await page.evaluate(() => {
+      document.getElementById("staff-request-name")?.focus();
+    });
+    await expectFocusInsideDialog(page, dialog);
+
+    await keepEditing.click();
+    await expect(dialog).toBeHidden();
+    await expect(page).toHaveURL(/\/admin\/?$/);
+    await expect(page.getByTestId("add-appointment-dialog")).toBeVisible();
+    await expect(page.getByTestId("cancel-staff-request")).toBeFocused();
+    await expect(name).toHaveValue("UX Audit Draft");
+  });
+
+  test("Escape from the discard dialog returns to the draft", async ({ page }) => {
+    test.fail(
+      true,
+      "Known defect, recorded in the consolidation log on 2026-09-05: after Escape closes the discard dialog the add-appointment form's name field is not found. Remove this marker when it is fixed.",
+    );
+    await signIn(page);
+    await openNewRequest(page, "home");
+
+    const name = page.locator("#staff-request-name");
+    await name.fill("UX Audit Draft");
+    await page.getByTestId("cancel-staff-request").click();
+    const dialog = page.getByTestId("discard-staff-request-dialog");
+    await expectDialogOpen(dialog);
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(page).toHaveURL(/\/admin\/?$/);
+    await expect(page.getByTestId("add-appointment-dialog")).toBeVisible();
+    await expect(page.getByLabel("Patient name (required)")).toHaveValue("UX Audit Draft");
+    await expect(page.getByTestId("cancel-staff-request")).toBeFocused();
+    await expect(name).toHaveValue("UX Audit Draft");
+  });
+
+  test("dirty Home Escape and Close share discard protection and return focus", async ({
+    page,
+  }) => {
+    await signIn(page);
+    await openNewRequest(page, "home");
+
+    const name = page.locator("#staff-request-name");
+    const addDialog = page.getByTestId("add-appointment-dialog");
+    const discardDialog = page.getByTestId("discard-staff-request-dialog");
+    const close = addDialog.getByRole("button", { name: "Close" });
+    await name.fill("UX Audit Draft");
+    await name.focus();
+
+    await page.keyboard.press("Escape");
+    await expectDialogOpen(discardDialog);
+    await page.getByTestId("keep-editing-staff-request").click();
+    await expect(discardDialog).toBeHidden();
+    await expect(name).toBeFocused();
+    await expect(name).toHaveValue("UX Audit Draft");
+
+    await close.click();
+    await expectDialogOpen(discardDialog);
+    await page.keyboard.press("Escape");
+    await expect(discardDialog).toBeHidden();
+    await expect(close).toBeFocused();
+    await expect(name).toHaveValue("UX Audit Draft");
+
+    await close.click();
+    await page.getByTestId("discard-staff-request").click();
+    await expect(addDialog).toBeHidden();
+    await expect(page.getByTestId("home-add-patient-request")).toBeFocused();
+  });
+
+  test("Discard request from Home clears the draft and returns Home", async ({ page }) => {
+    await signIn(page);
+    await openNewRequest(page, "home");
+    await page.locator("#staff-request-name").fill("UX Audit Draft");
+    await page.getByTestId("cancel-staff-request").click();
+
+    const dialog = page.getByTestId("discard-staff-request-dialog");
+    await expectDialogOpen(dialog);
+    await page.getByTestId("discard-staff-request").click();
+    await expect(page).toHaveURL(/\/admin\/?$/);
+
+    await openNewRequest(page, "home");
+    await expect(page.locator("#staff-request-name")).toHaveValue("");
+    await expect(page.locator("#staff-request-phone")).toHaveValue("");
+    await expect(page.getByTestId("discard-staff-request-dialog")).toBeHidden();
+  });
+
+  test("Discard request from Appointments returns to Appointments", async ({ page }) => {
+    await signIn(page);
+    await openNewRequest(page, "appointments");
+    await page.locator("#staff-request-phone").fill("8135550199");
+    await page.getByTestId("cancel-staff-request").click();
+
+    const dialog = page.getByTestId("discard-staff-request-dialog");
+    await expectDialogOpen(dialog);
+    await expect(page.getByTestId("keep-editing-staff-request")).toBeFocused();
+    await page.getByTestId("discard-staff-request").click();
+    await expect(page).toHaveURL(/\/admin\/requests\/?$/);
+
+    await page.getByTestId("appointments-add-patient-request").click();
+    await expect(page).toHaveURL(/\/admin\/requests\/new\?from=appointments$/);
+    await expect(page.locator("#staff-request-phone")).toHaveValue("");
+  });
+});

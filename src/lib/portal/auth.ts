@@ -8,7 +8,8 @@ import { redirect } from "next/navigation";
 import { cache } from "react";
 import { z } from "zod";
 
-import type { StaffRole } from "@/lib/portal/contracts";
+import { parsePasswordAuthFlow, STAFF_ROLES } from "@/lib/portal/contracts";
+import type { PasswordAuthFlow, StaffRole } from "@/lib/portal/contracts";
 import { serverClient, serviceClient, serviceRoleKey } from "@/lib/portal/server";
 
 export interface PortalSessionUser {
@@ -25,8 +26,6 @@ export type PortalStaffAuthState = Omit<PortalSessionUser, "onboardedAt"> & {
   onboardedAt: string | null;
 };
 
-export type PasswordAuthFlow = "invite" | "recovery";
-
 export interface RequireRoleOptions {
   unauthenticated?: "redirect" | "throw";
 }
@@ -41,7 +40,7 @@ export class PortalAuthorizationError extends Error {
   }
 }
 
-const staffRoleSchema = z.enum(["admin", "staff"]);
+const staffRoleSchema = z.enum(STAFF_ROLES);
 
 const PASSWORD_FLOW_COOKIE = "wgi-portal-password-flow";
 const PASSWORD_FLOW_TTL_SECONDS = 10 * 60;
@@ -147,11 +146,12 @@ export async function readPasswordAuthFlow(userId: string): Promise<PasswordAuth
   const token = cookieStore.get(PASSWORD_FLOW_COOKIE)?.value;
   if (token === undefined || token === "") return null;
 
-  const [version, flow, tokenUserId, expires, signature, ...extra] = token.split(".");
+  const [version, rawFlow, tokenUserId, expires, signature, ...extra] = token.split(".");
+  const flow = parsePasswordAuthFlow(rawFlow);
   if (
     extra.length > 0 ||
     version !== "v1" ||
-    (flow !== "invite" && flow !== "recovery") ||
+    flow === null ||
     tokenUserId !== userId ||
     expires === "" ||
     signature === ""

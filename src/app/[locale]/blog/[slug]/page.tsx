@@ -5,8 +5,8 @@ import { notFound } from "next/navigation";
 import { ArticleBody } from "@/components/ArticleBody";
 import { ArrowRight } from "@/components/icons";
 import { JsonLd } from "@/components/JsonLd";
-import { Reveal } from "@/components/Reveal";
-import { TextBand } from "@/components/TextBand";
+import { Reveal } from "@/components/patterns/Reveal";
+import { TextBand } from "@/components/patterns/TextBand";
 import { blogPosts, formatPosted, getPost } from "@/lib/content/blog";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
@@ -69,7 +69,7 @@ export default async function BlogPostPage({ params }: Readonly<PageProps>) {
             {t.backToBlog}
           </Link>
           <h1 className="h1 heading-tick mt-6">{post.title[locale]}</h1>
-          <p className="mt-4 text-[0.95rem] font-bold text-[var(--color-muted)]">
+          <p className="mt-4 text-[0.95rem] font-bold text-[var(--color-muted-ink)]">
             {t.postedLabel}: {formatPosted(post.posted, locale)}
           </p>
         </div>
@@ -91,7 +91,7 @@ export default async function BlogPostPage({ params }: Readonly<PageProps>) {
             {more.map((p) => (
               <li key={p.slug}>
                 <Link href={localePath(locale, `/blog/${p.slug}`)} className="group block">
-                  <p className="text-[0.88rem] font-bold text-[var(--color-muted)]">
+                  <p className="text-[0.88rem] font-bold text-[var(--color-muted-ink)]">
                     {formatPosted(p.posted, locale)}
                   </p>
                   <h3 className="mt-1 text-[1.15rem] leading-snug font-[var(--font-display)] text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">

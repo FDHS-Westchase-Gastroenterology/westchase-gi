@@ -1,47 +1,14 @@
 import assert from "node:assert/strict";
-import { register } from "node:module";
 import test from "node:test";
-import { pathToFileURL } from "node:url";
 
-register(
-  `data:text/javascript,${encodeURIComponent(`
-    const srcRoot = ${JSON.stringify(new URL("../../", import.meta.url).href)};
-    export async function resolve(specifier, context, nextResolve) {
-      if (specifier === "server-only") {
-        return {
-          url: "data:text/javascript,export%20{}",
-          shortCircuit: true,
-        };
-      }
-      if (specifier.startsWith("@/")) {
-        specifier = srcRoot + specifier.slice(2);
-      }
-      if (
-        (specifier.startsWith("./") ||
-          specifier.startsWith("../") ||
-          specifier.startsWith("file:")) &&
-        !/\\.(?:[cm]?[jt]s|json|mjs|cjs|tsx|jsx)$/.test(specifier)
-      ) {
-        try {
-          return await nextResolve(specifier + ".ts", context);
-        } catch {
-          // fall through
-        }
-      }
-      return nextResolve(specifier, context);
-    }
-  `)}`,
-  pathToFileURL("./"),
-);
-
-const {
+import { parsePortalReleaseEngagementRows } from "./release-engagement-model.ts";
+import {
   derivePortalReleaseState,
   isPortalReleaseAuditAction,
   parsePortalReleaseId,
   parseSupportedPortalReleaseId,
   PORTAL_RELEASE_WINDOW_MS,
-} = await import("./release-state.ts");
-const { parsePortalReleaseEngagementRows } = await import("./release-engagement-model.ts");
+} from "./release-state.ts";
 
 const FIRST_OPENED_AT = "2026-07-29T13:00:00.000Z";
 const ACKNOWLEDGED_AT = "2026-07-29T13:05:00.000Z";

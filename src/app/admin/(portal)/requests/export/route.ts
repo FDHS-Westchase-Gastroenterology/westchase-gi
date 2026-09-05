@@ -3,10 +3,11 @@ import { z } from "zod";
 
 import { recordAudit } from "@/lib/portal/audit";
 import { PortalAuthorizationError, requireRole } from "@/lib/portal/auth";
-import { AUDIT_ACTIONS, REQUEST_STATUSES } from "@/lib/portal/contracts";
-import type { RequestStatus } from "@/lib/portal/contracts";
+import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
 import { parseRequestSearch, requestSearchFilter } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
+import { parseRequestStatus } from "@/lib/portal/workflow/contracts";
+import type { RequestStatus } from "@/lib/portal/workflow/contracts";
 
 const EXPORT_CHUNK_SIZE = 1000;
 const CSV_HEADERS = [
@@ -38,7 +39,6 @@ interface CsvRow {
   readonly message: string | null;
 }
 
-const requestStatusSchema = z.enum(REQUEST_STATUSES);
 const csvRowSchema = z.object({
   id: z.string(),
   created_at: z.string(),
@@ -54,7 +54,7 @@ const csvRowSchema = z.object({
 }) satisfies z.ZodType<CsvRow>;
 
 function isRequestStatus(value: string | null): value is RequestStatus {
-  return requestStatusSchema.safeParse(value).success;
+  return value !== null && parseRequestStatus(value) !== null;
 }
 
 function csvField(raw: CsvRow[CsvColumn]): string {

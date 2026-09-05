@@ -15,6 +15,8 @@ import {
 } from "react";
 
 import { ArrowRight, ChevronDown, X } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { PORTAL_RELEASE_BRIEFING } from "@/lib/portal/release-briefing-content";
 import type { PortalReleaseViewState } from "@/lib/portal/release-briefing-content";
 
@@ -25,11 +27,10 @@ import {
   recordPortalReleaseDismissAction,
   recordPortalReleaseGuideOpenAction,
 } from "./release-briefing-actions";
-
-type ReleaseActionResult = { ok: true } | { ok: false; code: "invalid" | "unavailable" };
+import type { PortalReleaseActionResult } from "./release-briefing-actions";
 
 interface PortalNavigator {
-  push(href: string): void;
+  push: (href: string) => void;
 }
 
 interface PortalReleaseContextValue {
@@ -49,7 +50,7 @@ interface PortalReleaseContextValue {
   hide: () => void;
   toggleQuick: (animate: boolean) => void;
   dismissQuick: () => void;
-  openGuide: (navigator: PortalNavigator) => void;
+  openGuide: (navigator: Readonly<PortalNavigator>) => void;
 }
 
 const PortalReleaseContext = createContext<PortalReleaseContextValue | null>(null);
@@ -107,7 +108,7 @@ export function PortalReleaseProvider({
 
   const runAction = useCallback(
     (
-      action: () => Promise<ReleaseActionResult>,
+      action: () => Promise<PortalReleaseActionResult>,
       failureMessage = "The update is open, but the portal could not save that preference. It may appear as new again later.",
     ) => {
       setActionError(null);
@@ -216,7 +217,7 @@ export function PortalReleaseProvider({
     requestAnimationFrame(() => quickButtonRef.current?.focus());
   }, [recordDismiss]);
 
-  const openGuide = useCallback((navigator: PortalNavigator) => {
+  const openGuide = useCallback((navigator: Readonly<PortalNavigator>) => {
     setGuidePending(true);
     setActionError(null);
     startTransition(async () => {
@@ -372,12 +373,14 @@ function ReleaseSummary({
     >
       <div className="flex items-start justify-between gap-5">
         <div>
-          <p className="text-[0.8rem] font-bold text-[var(--color-amber-deep)]">Updated July 29</p>
+          <p className="text-[0.8rem] font-bold text-[var(--portal-attention-ink)]">
+            Updated August 6
+          </p>
           <h2
             id={`${id}-heading`}
             className="mt-1 text-[1.25rem] leading-snug font-black text-[var(--color-ink)]"
           >
-            A smoother way to manage appointment requests
+            Record what happened — the portal does the rest
           </h2>
         </div>
         <button
@@ -392,11 +395,17 @@ function ReleaseSummary({
 
       <dl className="mt-5 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]">
         {[
-          ["Start with the next status.", "Choose Contacted, Scheduled, or Closed."],
-          ["Save once.", "Status, call result, call-again timing, and note stay together."],
+          [
+            "Say what happened.",
+            "Pick the call's real outcome — the portal sets the status itself.",
+          ],
+          [
+            "Save once, undo for 15 minutes.",
+            "Outcome, call-again timing, and note save together. Undo restores everything.",
+          ],
           [
             "Work from the top.",
-            "New requests and due callbacks rise. Scheduled requests stay visible.",
+            "New requests and due call-agains rise. Scheduled requests stay visible.",
           ],
         ].map(([term, detail], index) => {
           const releaseRowStyle: React.CSSProperties = {};
@@ -414,7 +423,7 @@ function ReleaseSummary({
         })}
       </dl>
 
-      <p className="mt-4 text-[0.86rem] leading-relaxed text-[var(--color-muted)]">
+      <p className="mt-4 text-[0.86rem] leading-relaxed text-[var(--color-muted-ink)]">
         Also improved: language help on the patient site now appears only when useful, and the
         review invitation is simpler.
       </p>
@@ -429,20 +438,24 @@ function ReleaseSummary({
       ) : null}
 
       <div className="mt-5 flex flex-wrap items-center gap-2.5">
-        <Link href="/admin/requests" className="btn btn-amber btn-sm min-h-11">
+        <Link
+          href="/admin/requests"
+          data-slot="button"
+          className={buttonVariants({ variant: "amber" })}
+        >
           Open requests
           <ArrowRight className="h-4 w-4" />
         </Link>
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={() => {
             openGuide(router);
           }}
           disabled={guidePending}
-          className="btn btn-outline btn-sm min-h-11"
         >
           {guidePending ? "Opening guide…" : "See the 2-minute guide"}
-        </button>
+        </Button>
         <button
           type="button"
           onClick={acknowledge}
@@ -457,7 +470,7 @@ function ReleaseSummary({
         type="button"
         onClick={hide}
         disabled={actionPending}
-        className="mt-3 min-h-11 text-[0.82rem] font-bold text-[var(--color-muted)] underline underline-offset-2 disabled:cursor-wait disabled:opacity-65"
+        className="mt-3 min-h-11 text-[0.82rem] font-bold text-[var(--color-muted-ink)] underline underline-offset-2 disabled:cursor-wait disabled:opacity-65"
       >
         Hide this update now
       </button>
@@ -478,14 +491,16 @@ export function PortalReleaseHomeAnnouncement() {
       data-testid="portal-release-announcement"
       className="portal-release-home relative mt-6"
     >
-      <div className="relative z-10 flex flex-col gap-4 rounded-[var(--radius-lg)] bg-[var(--color-mint)] px-5 py-5 shadow-[var(--shadow-soft)] sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="relative z-10 flex flex-col gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line-2)] bg-[var(--color-mint)] px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div>
-          <p className="text-[0.8rem] font-bold text-[var(--color-amber-deep)]">Updated July 29</p>
+          <p className="text-[0.8rem] font-bold text-[var(--portal-attention-ink)]">
+            Updated August 6
+          </p>
           <h2
             id="portal-release-title"
             className="mt-1 text-[1.08rem] font-black text-[var(--color-ink)]"
           >
-            A smoother way to manage appointment requests is here.
+            Recording calls now starts with one question: what happened?
           </h2>
         </div>
         <button
@@ -553,7 +568,7 @@ export function PortalReleaseUtility() {
           <ReleaseSignal animate={false} resolved compact />
           <span>
             <strong className="font-black">What’s new</strong>
-            <span className="ml-2 hidden text-[0.8rem] text-[var(--color-muted)] sm:inline">
+            <span className="ml-2 hidden text-[0.8rem] text-[var(--color-muted-ink)] sm:inline">
               Opened recently
             </span>
           </span>

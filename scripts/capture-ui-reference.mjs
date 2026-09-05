@@ -169,7 +169,7 @@ const portalCaptures = [
   },
   {
     name: "desktop-portal-requests",
-    path: "/admin/requests?q=ui-reference-placeholder",
+    path: "/admin/requests?q=Sample+patient",
     viewport: { width: 1440, height: 900 },
     ready: "main h1",
   },
@@ -211,7 +211,7 @@ const portalCaptures = [
   },
   {
     name: "mobile-portal-requests",
-    path: "/admin/requests?q=ui-reference-placeholder",
+    path: "/admin/requests?q=Sample+patient",
     viewport: { width: 390, height: 844 },
     ready: "main h1",
   },
@@ -255,12 +255,27 @@ async function settle(page) {
   });
 }
 
+async function assertNoHorizontalOverflow(page, label) {
+  const dimensions = await page.evaluate(() => ({
+    clientWidth: document.documentElement.clientWidth,
+    scrollWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+  }));
+  if (dimensions.scrollWidth > dimensions.clientWidth + 1) {
+    throw new Error(
+      `${label} overflows horizontally: ${dimensions.scrollWidth}px content in a ${dimensions.clientWidth}px viewport`,
+    );
+  }
+}
+
 async function redactPortalData(page) {
   await page.addStyleTag({
     content: `
       [data-testid="recipient-list"],
       [data-testid="staff-list"],
       [data-testid="audit-table"] tbody,
+      [data-testid="release-engagement-table"] tbody,
+      [data-testid="release-engagement-cards"],
+      [data-testid="recent-work-list"],
       [data-testid="maintainer-list"] {
         filter: blur(8px);
         user-select: none;
@@ -268,12 +283,59 @@ async function redactPortalData(page) {
     `,
   });
   await page.evaluate(() => {
+    const syntheticPatientText = {
+      "patient-name": "Sample Patient",
+      "patient-contact": "(813) 555-0100",
+      "patient-message": "Fictional appointment request details.",
+    };
+    document.querySelectorAll("[data-ui-redact]").forEach((element) => {
+      const kind = element.getAttribute("data-ui-redact");
+      if (!kind || !(kind in syntheticPatientText)) return;
+      element.textContent = syntheticPatientText[kind];
+      element.removeAttribute("title");
+      if (element instanceof HTMLAnchorElement) element.removeAttribute("href");
+    });
     const sessionUser = document.querySelector('[data-testid="session-user"]');
     if (sessionUser) sessionUser.textContent = "Staff Member";
+    const sessionEmail = document.querySelector('[data-testid="session-email"]');
+    if (sessionEmail) {
+      sessionEmail.textContent = "staff@example.com";
+      sessionEmail.removeAttribute("title");
+    }
     const greeting = document.querySelector('[data-testid="home-greeting"]');
     if (greeting) greeting.textContent = "Good morning, Staff.";
-    document.querySelector('[data-testid="queue-overview-preview"]')?.remove();
+    const queueHeadline = document.querySelector('[data-testid="queue-overview-headline"]');
+    if (queueHeadline) {
+      const count = document.createElement("strong");
+      count.className = "font-black text-[var(--portal-attention-ink)]";
+      count.textContent = "3";
+      queueHeadline.replaceChildren(count, " new appointment requests are waiting.");
+    }
+    const printNewCount = document.querySelector('[data-testid="print-new-count"]');
+    if (printNewCount) printNewCount.textContent = "Print all 3";
+    const emptyPrint = document.querySelector('[data-testid="print-new-empty"]');
+    if (emptyPrint instanceof HTMLElement) {
+      emptyPrint.textContent = "Print all 3";
+      const control = emptyPrint.closest("button");
+      if (control) {
+        control.disabled = false;
+        control.classList.remove("btn-outline");
+        control.classList.add("btn-navy");
+      }
+    }
+    document.querySelector('[data-testid="nav-waiting-badge"]')?.remove();
+    document
+      .querySelectorAll(
+        '[data-testid="queue-overview-unavailable"] > :not([data-testid="queue-overview-headline"])',
+      )
+      .forEach((element) => element.remove());
+    document.querySelector('[data-testid="queue-overview-oldest"]')?.remove();
+    document.querySelector(".portal-attention-next")?.remove();
+    document.querySelector('[data-testid="no-recipients-warning"]')?.remove();
+    document.querySelector('[data-testid="delivery-failure-warning"]')?.remove();
     document.querySelector('[data-testid="portal-tour-nudge"]')?.remove();
+    document.querySelector('[data-testid="portal-release-announcement"]')?.remove();
+    document.querySelector('[data-testid="portal-release-utility"]')?.remove();
     document.querySelector("nextjs-portal")?.remove();
   });
 }
@@ -307,16 +369,27 @@ async function capturePortalReferences(browser, credentials) {
       if (capture.path === "/admin/review-flyers") {
         await page.waitForFunction(() => {
           const images = Array.from(document.querySelectorAll("[data-review-target] img"));
+          const visibleImages = images.filter((image) => {
+            const bounds = image.getBoundingClientRect();
+            return bounds.bottom > 0 && bounds.top < window.innerHeight;
+          });
           return (
-            images.length > 0 && images.every((image) => image.complete && image.naturalWidth > 0)
+            visibleImages.length > 0 &&
+            visibleImages.every((image) => image.complete && image.naturalWidth > 0)
           );
         });
       }
       await redactPortalData(page);
       await settle(page);
+      await assertNoHorizontalOverflow(page, capture.name);
       await page.screenshot({
         path: resolve(outputDirectory, `${capture.name}.png`),
       });
+      if (capture.name.startsWith("mobile-")) {
+        await page.setViewportSize({ width: 320, height: capture.viewport.height });
+        await settle(page);
+        await assertNoHorizontalOverflow(page, `${capture.name} at 320px`);
+      }
       console.log(`Captured ${capture.name}.png`);
     }
   } finally {
@@ -326,7 +399,10 @@ async function capturePortalReferences(browser, credentials) {
 
 await mkdir(outputDirectory, { recursive: true });
 console.log(`Capturing UI reference from ${origin.origin}`);
-const browser = await chromium.launch();
+const chromiumExecutablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH?.trim();
+const browser = await chromium.launch(
+  chromiumExecutablePath ? { executablePath: chromiumExecutablePath } : undefined,
+);
 
 try {
   if (!portalMode) {

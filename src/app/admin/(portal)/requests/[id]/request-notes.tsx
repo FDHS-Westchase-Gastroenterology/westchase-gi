@@ -1,9 +1,11 @@
 "use client";
 
-import { useActionState, useCallback, useRef, useState } from "react";
+import { useActionState, useCallback, useEffect, useRef, useState } from "react";
 
+import { usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { addRequestNote } from "@/app/admin/(portal)/requests/actions";
 import type { AddRequestNoteState } from "@/app/admin/(portal)/requests/actions";
+import { Button } from "@/components/ui/button";
 
 export interface RequestNoteView {
   id: string;
@@ -28,13 +30,29 @@ export function RequestNotes({
   const [draft, setDraft] = useState("");
   const [feedbackDismissed, setFeedbackDismissed] = useState(false);
   const [feedback, formAction, pending] = useActionState(addRequestNote, INITIAL_ACTION_STATE);
+  const {
+    feedback: pageFeedback,
+    publish: publishPageFeedback,
+    dismiss: dismissPageFeedback,
+  } = usePortalFeedback();
+  const currentNoteFeedback = pageFeedback?.source === "request-note" ? pageFeedback : null;
+  const [handledFeedback, setHandledFeedback] = useState(feedback);
+  if (feedback !== handledFeedback) {
+    setHandledFeedback(feedback);
+    if (feedback.status === "success") setComposerOpen(false);
+  }
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const submitWithMotionRef = useRef(false);
   const canSave = draft.trim().length > 0;
   const hiddenCount = Math.max(notes.length - INITIAL_VISIBLE_NOTES, 0);
-  const saved = feedback.status === "success" && !feedbackDismissed && !pending;
-  const composerVisible = composerOpen && !saved;
+  const saved =
+    feedback.status === "success" && !feedbackDismissed && !pending && currentNoteFeedback !== null;
+  const composerVisible = composerOpen;
+  // An actionable field error belongs to the open draft, not to the shared
+  // Page acknowledgement slot. Keep it attached to the field if staff print
+  // Or trigger another output, then retire it when they edit or close.
+  const showError = feedback.status === "error" && !feedbackDismissed && !pending;
   const focusAddButtonOnSave = useCallback(
     // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
     (feedbackElement: Readonly<HTMLParagraphElement | null>) => {
@@ -45,9 +63,19 @@ export function RequestNotes({
     [],
   );
 
+  useEffect(() => {
+    if (pending || feedbackDismissed || feedback.status === "idle") return;
+    publishPageFeedback({
+      source: "request-note",
+      tone: feedback.status === "error" ? "alert" : "status",
+      message: feedback.message,
+    });
+  }, [feedback, feedbackDismissed, pending, publishPageFeedback]);
+
   function openComposer(event: React.MouseEvent<HTMLButtonElement>) {
     setDraft("");
     setFeedbackDismissed(true);
+    dismissPageFeedback("request-note");
     setComposerMotion(event.detail > 0);
     setComposerOpen(true);
     requestAnimationFrame(() => textareaRef.current?.focus());
@@ -56,6 +84,7 @@ export function RequestNotes({
   function closeComposer(event: React.MouseEvent<HTMLButtonElement>) {
     setDraft("");
     setFeedbackDismissed(true);
+    dismissPageFeedback("request-note");
     setComposerMotion(event.detail > 0);
     setComposerOpen(false);
     requestAnimationFrame(() => addButtonRef.current?.focus());
@@ -64,15 +93,13 @@ export function RequestNotes({
   return (
     <section data-testid="request-notes" aria-labelledby="request-notes-heading">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-        <h2
-          id="request-notes-heading"
-          className="text-[1.05rem] font-black text-[var(--color-ink)]"
-        >
+        <h2 id="request-notes-heading" className="portal-record-heading">
           Appointment request notes
         </h2>
-        <button
+        <Button
           ref={addButtonRef}
           type="button"
+          variant="outline"
           aria-controls="request-note-form"
           aria-expanded={composerVisible}
           aria-hidden={composerVisible}
@@ -80,10 +107,10 @@ export function RequestNotes({
           data-animate={composerMotion}
           inert={composerVisible}
           onClick={openComposer}
-          className="request-note-add-trigger btn btn-outline btn-sm print-hide min-h-11"
+          className="request-note-add-trigger print-hide"
         >
           Add note
-        </button>
+        </Button>
       </div>
 
       {saved ? (
@@ -98,21 +125,17 @@ export function RequestNotes({
       ) : null}
 
       {notes.length === 0 ? (
-        <p data-testid="notes-empty" className="mt-4 text-[0.95rem] text-[var(--color-muted)]">
+        <p data-testid="notes-empty" className="portal-request-notes-empty">
           No notes yet.
         </p>
       ) : (
         <>
-          <ul
-            id="request-note-list"
-            data-testid="note-list"
-            className="mt-4 divide-y divide-[var(--color-line)] border-y border-[var(--color-line)]"
-          >
+          <ul id="request-note-list" data-testid="note-list" className="portal-request-note-list">
             {notes.map((note, index) => (
               <li
                 key={note.id}
-                className={`request-note-item py-4 ${
-                  index >= INITIAL_VISIBLE_NOTES && !showAll ? "hidden print:list-item" : ""
+                className={`request-note-item${
+                  index >= INITIAL_VISIBLE_NOTES && !showAll ? " hidden print:list-item" : ""
                 }`}
               >
                 <p className="text-[0.95rem] leading-relaxed whitespace-pre-wrap text-[var(--color-ink)]">
@@ -175,25 +198,27 @@ export function RequestNotes({
               maxLength={2000}
               value={draft}
               disabled={pending}
+              aria-invalid={showError ? "true" : undefined}
               aria-describedby={
-                feedback.status === "error" && !feedbackDismissed
-                  ? "request-note-guidance request-note-error"
-                  : "request-note-guidance"
+                showError ? "request-note-guidance request-note-error" : "request-note-guidance"
               }
               onChange={(event) => {
                 setDraft(event.target.value);
-                if (feedback.status === "error") setFeedbackDismissed(true);
+                if (feedback.status === "error") {
+                  setFeedbackDismissed(true);
+                  dismissPageFeedback("request-note");
+                }
               }}
               placeholder="What should the next staff member know?"
               className="mt-2 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 py-3 text-[0.95rem] text-[var(--color-ink)] transition-[border-color,box-shadow] outline-none focus:border-[var(--color-teal-ink)] focus:ring-2 focus:ring-[var(--color-teal-ink)] focus:ring-offset-2 disabled:opacity-60"
             />
             <p
               id="request-note-guidance"
-              className="mt-2 text-[0.85rem] leading-relaxed text-[var(--color-muted)]"
+              className="mt-2 text-[0.85rem] leading-relaxed text-[var(--color-muted-ink)]"
             >
               Keep medical details in the clinical record.
             </p>
-            {feedback.status === "error" && !feedbackDismissed && !pending ? (
+            {showError ? (
               <p
                 id="request-note-error"
                 role="alert"
@@ -204,24 +229,25 @@ export function RequestNotes({
               </p>
             ) : null}
             <div className="mt-4 flex flex-wrap items-center gap-3">
-              <button
+              <Button
                 type="submit"
                 disabled={!canSave || pending}
                 onClick={(event) => {
                   submitWithMotionRef.current = event.detail > 0;
                 }}
-                className="btn btn-navy min-h-11 transition-transform duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100"
+                className="transition-transform duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100"
               >
                 {pending ? "Saving…" : "Save note"}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="outline"
                 disabled={pending}
                 onClick={closeComposer}
-                className="btn btn-outline min-h-11 transition-transform duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100"
+                className="transition-transform duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none motion-reduce:active:scale-100"
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           </form>
         </div>

@@ -7,27 +7,29 @@
 // Only fetches and renders and a pagination off-by-one fails a unit test
 // Instead of reaching staff.
 //
-// Display totals come from the exact per-status SQL counts, while the open
+// Display totals come from the exact unique per-status SQL counts. The open
 // Slice is taken from the capped in-memory open fetch. Under the cap the two
 // Agree. Beyond it the open slice simply runs out and the closed tail is
-// Read from its own offset against the capped length — the totals stay exact
-// Even though the deepest pages thin out (see OPEN_CANDIDATE_LIMIT in the
-// Route's queue.ts, which would need a database view before that matters).
+// Read from its own offset against the unique closed count — the totals stay
+// Exact even though the deepest pages thin out (see OPEN_CANDIDATE_LIMIT in
+// The route's queue.ts, which would need a database view before that matters).
+//
+// Closed paging uses counts.closed, not a second unfiltered probe. A search
+// That matches one unique closed request must show 1–1 of 1 even when other
+// Closed rows exist outside the query.
 
-import type { RequestStatus } from "./contracts";
 import { REQUEST_PAGE_SIZE } from "./request-query";
+import type { RequestStatus } from "./workflow/contracts";
 
 export interface RequestPageWindowInput {
   /** The active status filter; "all" lists every status. */
   filter: RequestStatus | "all";
   /** The requested page, already parsed to a positive integer. */
   page: number;
-  /** Exact per-status row counts for the active search. */
+  /** Exact unique per-status request counts for the active search. */
   counts: Record<RequestStatus, number>;
-  /** Rows the capped attention-ordered open fetch actually returned. */
+  /** Unique rows the capped attention-ordered open fetch actually returned. */
   openRows: number;
-  /** The probed closed count; ignored unless the filter lists the tail. */
-  closedCount: number;
 }
 
 export interface RequestPageWindow {
@@ -61,17 +63,15 @@ export function requestPageWindow({
   page,
   counts,
   openRows,
-  closedCount,
 }: Readonly<RequestPageWindowInput>): RequestPageWindow {
-  const closedTotal = includesClosedTail(filter) ? closedCount : 0;
-  // Display totals are the exact SQL counts, not the capped open fetch.
-  const openSqlTotal =
+  // Unique request counts from the requests table are the only total. A
+  // Related-table fan-out never belongs here; neither does an unfiltered
+  // Closed probe that can disagree with the chips.
+  const filteredTotal =
     filter === "all"
-      ? counts.new + counts.contacted + counts.scheduled
-      : filter === "closed"
-        ? 0
-        : counts[filter];
-  const filteredTotal = openSqlTotal + closedTotal;
+      ? counts.new + counts.contacted + counts.scheduled + counts.closed
+      : counts[filter];
+  const closedTotal = includesClosedTail(filter) ? counts.closed : 0;
   const totalPages = Math.max(1, Math.ceil(filteredTotal / REQUEST_PAGE_SIZE));
   const redirectPage = page > totalPages ? totalPages : null;
 

@@ -1,5 +1,12 @@
-import type { CallOutcomeId } from "@/lib/portal/call-outcomes";
-import type { RequestLocation, RequestStatus, RequestTime } from "@/lib/portal/contracts";
+import type { RequestLocation, RequestTime } from "@/lib/portal/contracts";
+import { presentationStatus } from "@/lib/portal/workflow/contracts";
+import type {
+  ClosureReason,
+  ContactOutcome,
+  RequestState,
+  RequestStatus,
+} from "@/lib/portal/workflow/contracts";
+import { locales } from "@/lib/site";
 import type { Locale } from "@/lib/site";
 
 export const STATUS_LABELS = {
@@ -8,6 +15,48 @@ export const STATUS_LABELS = {
   scheduled: "Scheduled",
   closed: "Closed",
 } as const satisfies Record<RequestStatus, string>;
+
+/** The staff-facing word for a durable state: `booked` reads as Scheduled (spec §2). */
+export function stateLabel(state: RequestState): string {
+  return STATUS_LABELS[presentationStatus(state)];
+}
+
+/** Contact-attempt outcomes in front-desk past tense (Request history). */
+export const CONTACT_OUTCOME_LABELS = {
+  reached_follow_up: "Reached the patient — follow-up needed",
+  voicemail: "Left a voicemail",
+  no_answer: "No answer",
+} as const satisfies Record<ContactOutcome, string>;
+
+/** Typed unbooked closure reasons in front-desk language. */
+export const CLOSURE_REASON_LABELS = {
+  not_actionable: "duplicate or not actionable",
+  wont_schedule: "patient won't schedule",
+} as const satisfies Record<ClosureReason, string>;
+
+/* Phone numbers are stored as submitted, so presentation belongs here rather
+   than in each surface. Every staff surface reads a number the same way and
+   dials it the same way. */
+export function formatPhoneForDisplay(value: string): string {
+  const trimmed = value.trim();
+  const digits = trimmed.replace(/\D/gu, "");
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return trimmed;
+}
+
+/* A dialable href. Most dialers tolerate punctuation, but a phone on a staff
+   surface exists to be tapped once and connect. */
+export function telHref(phone: string): string {
+  const digits = phone.replace(/\D/gu, "");
+  if (digits.length === 10) return `tel:+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `tel:+${digits}`;
+  return `tel:${digits}`;
+}
 
 // Practice-local time: front desk staff read these in Tampa.
 const dateTime = new Intl.DateTimeFormat("en-US", {
@@ -54,6 +103,11 @@ export const LOCALE_LABELS = {
   ar: "Arabic",
 } as const satisfies Record<Locale, string>;
 
+export function localeLabel(locale: string): string {
+  const known = locales.find((value) => value === locale);
+  return known === undefined ? locale : LOCALE_LABELS[known];
+}
+
 // Call-outcome vocabulary in front-desk language. Past-tense lines for
 // Request activity, keyed by the RPC outcome ids.
 export const OUTCOME_HISTORY_LABELS = {
@@ -64,7 +118,7 @@ export const OUTCOME_HISTORY_LABELS = {
   wont_schedule: "Patient won't schedule",
   not_actionable: "Duplicate or not actionable",
   scheduled_transferred: "Finished — appointment booked",
-} as const satisfies Record<CallOutcomeId, string>;
+} as const;
 
 // A callback date in the front desk's practice-local phrasing:
 // "Friday, August 1 morning" (9:00 ET) / "Friday, August 1 afternoon" (1:00 ET).
