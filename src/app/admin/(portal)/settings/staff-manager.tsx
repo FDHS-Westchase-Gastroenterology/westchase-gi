@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import { parseStaffRole } from "@/lib/portal/contracts";
+import type { StaffRole } from "@/lib/portal/contracts";
 
 import { changeStaffRole, deactivateStaff, inviteStaff, resendStaffInvite } from "./actions";
 
@@ -16,7 +18,7 @@ export interface StaffRow {
   user_id: string;
   email: string;
   display_name: string;
-  role: "admin" | "staff";
+  role: StaffRole;
   active: boolean;
   onboarded_at: string | null;
   lastSignInAt?: string | null;
@@ -59,10 +61,6 @@ function failureMessage(result: Readonly<MutationOutcome>): string {
   return isStaffFailureCode(code) ? FAILURE_COPY[code] : FAILURE_COPY.unavailable;
 }
 
-function parseStaffRole(value: string): "admin" | "staff" | null {
-  return value === "admin" || value === "staff" ? value : null;
-}
-
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function StaffList({
   staff,
@@ -80,8 +78,8 @@ function StaffList({
   selfUserId: string;
   signInReadFailed: boolean;
   pendingKey: string | null;
-  roleDrafts: Record<string, "admin" | "staff">;
-  onRoleDraft: (userId: string, role: "admin" | "staff") => void;
+  roleDrafts: Record<string, StaffRole>;
+  onRoleDraft: (userId: string, role: StaffRole) => void;
   run: (key: string, action: () => Promise<MutationOutcome>) => void;
   resendFromRow: (person: Readonly<StaffRow>) => void;
 }>) {
@@ -423,7 +421,7 @@ export function StaffManager({
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [issued, setIssued] = useState<IssuedInvite | null>(null);
-  const [roleDrafts, setRoleDrafts] = useState<Record<string, "admin" | "staff">>({});
+  const [roleDrafts, setRoleDrafts] = useState<Record<string, StaffRole>>({});
   const [inviteErrors, setInviteErrors] = useState<InviteErrors>({});
   const inviteEmailRef = useRef<HTMLInputElement>(null);
   const inviteNameRef = useRef<HTMLInputElement>(null);

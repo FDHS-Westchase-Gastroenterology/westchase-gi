@@ -1,9 +1,9 @@
 import "server-only";
 
+import type { StaffRole } from "@/lib/portal/contracts";
+
 /** Row shapes mirrored from supabase/migrations. Narrow queries pass Pick<>
  * so the claimed type never exceeds the columns actually selected. */
-
-export type StaffRole = "admin" | "staff";
 
 export interface StaffProfileRow {
   id: string;

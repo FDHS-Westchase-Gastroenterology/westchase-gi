@@ -7,7 +7,7 @@ import { jsonObjectSchema } from "@/lib/json";
 import type { Json } from "@/lib/json";
 import { recordAudit } from "@/lib/portal/audit";
 import { requireRole } from "@/lib/portal/auth";
-import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
+import { AUDIT_ACTIONS, STAFF_ROLES } from "@/lib/portal/contracts";
 import { sendPortalEmail } from "@/lib/portal/email-provider";
 import { sendRecipientConfirmation, sendStaffSetupLink } from "@/lib/portal/management-email";
 import type { StaffSetupType } from "@/lib/portal/management-email";
@@ -49,14 +49,14 @@ const inviteStaffSchema = z.strictObject({
   // Admin-chosen staff role, written only after requireRole("admin") through
   // The server-only service client. Browser clients have no write grant.
   // react-doctor-disable-next-line react-doctor/supabase-client-owned-authz-field
-  role: z.enum(["admin", "staff"]),
+  role: z.enum(STAFF_ROLES),
 });
 
 const staffRoleSchema = z.strictObject({
   userId: z.uuid(),
   // Same admin-owned role assignment as inviteStaffSchema; not a client write.
   // react-doctor-disable-next-line react-doctor/supabase-client-owned-authz-field
-  role: z.enum(["admin", "staff"]),
+  role: z.enum(STAFF_ROLES),
 });
 
 export type UpdateRecipientLabelResult =

@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { requireRole } from "@/lib/portal/auth";
+import { STAFF_ROLES } from "@/lib/portal/contracts";
 import { serviceClient } from "@/lib/portal/server";
 import { fetchLastSignInMap } from "@/lib/portal/staff-identity";
 
@@ -20,7 +21,7 @@ const staffRowSchema = z.object({
   user_id: z.string(),
   email: z.string(),
   display_name: z.string(),
-  role: z.enum(["admin", "staff"]),
+  role: z.enum(STAFF_ROLES),
   active: z.boolean(),
   onboarded_at: z.string().nullable(),
 }) satisfies z.ZodType<StaffRow>;

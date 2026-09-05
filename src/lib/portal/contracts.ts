@@ -38,7 +38,12 @@ export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 // ('unconverted' / 'converted').
 export type RequestClosureOutcome = "unconverted" | "converted";
 
-export type StaffRole = "admin" | "staff";
+export const STAFF_ROLES = ["admin", "staff"] as const;
+export type StaffRole = (typeof STAFF_ROLES)[number];
+
+export function parseStaffRole(raw: string): StaffRole | null {
+  return STAFF_ROLES.find((role) => role === raw) ?? null;
+}
 
 export const RESET_REQUEST_MESSAGE =
   "If an active staff account exists for that email, you’ll receive a password reset link.";
