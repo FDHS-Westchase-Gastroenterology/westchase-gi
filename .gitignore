@@ -77,11 +77,24 @@ next-env.d.ts
 /.design-sync/ds/families.json
 /.design-sync/ds/aliases.json
 
-# Local agent/tooling directories (machine-local; never part of a PR).
-# See .claude/rules/local-only-directories.md
+# BEGIN generated from local-only-paths.json -- edit that file, then run `npm run local-only:write`
+# Machine-local tooling, agent scratch and generated design output. These are never
+# part of the product and only bloat review. See local-only-paths.json for why each
+# entry is here and which paths are deliberately NOT in this list.
+/.agents/
 /.claude/
 /.codex/skills/
+/.cursor/
 /.design-sync/
+/.ds-sync/
 /.impeccable/surfaces/
+/.logs/
+/.product-design-audit/
+/.vercel/
+/backend-memos/
+/ds-bundle/
 /plans/
+/screenshots/
+/MEMORY.md
 /docs/
+# END generated from local-only-paths.json

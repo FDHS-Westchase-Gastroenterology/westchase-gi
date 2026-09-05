@@ -7,6 +7,18 @@ const { appendFileSync } = require("node:fs");
 const REVIEW_STATUS = "Dependabot Auto-Merge";
 const REVIEW_MARKER = "<!-- dependabot-codex-review -->";
 const ALLOWED_CHANGED_FILES = new Set(["package.json", "package-lock.json"]);
+// Supabase's preview-branch check only reports on pull requests that change
+// the database, so it is required where present rather than always required.
+// The deterministic Actions gates every pull request must clear. The merge
+// controller both verifies these on the exact head and re-attests them as
+// commit statuses, so the two lists must never drift apart.
+const PR_REQUIRED_CHECKS = ["quality", "react-doctor", "supabase-integration"];
+const PRODUCTION_REQUIRED_CHECKS = ["quality", "react-doctor", "production"];
+const CONDITIONAL_SIGNALS = ["Supabase Preview"];
+// GitHub returns these when it declines one specific merge — an unmet required
+// check, a moved head, a conflict. They are verdicts about that pull request,
+// never controller faults, so they must not abort the whole queue.
+const MERGE_REJECTION_STATUSES = new Set([405, 409, 422]);
 const LABELS = {
   approved: {
     name: "dependencies:automation-approved",
@@ -276,10 +288,22 @@ function latestCheck(checkRuns, checkName) {
     )[0];
 }
 
+// A conditional signal that never reported on this head is not applicable, the
+// same way an always-reported gate is allowed to report a legitimate skip. Once
+// it does report, a clean result is required before the merge.
+function conditionalSignalPassed(checkRuns, statuses, name) {
+  const check = latestCheck(checkRuns, name);
+  if (check) {
+    return (
+      check.status === "completed" && ["success", "skipped", "neutral"].includes(check.conclusion)
+    );
+  }
+  const status = latestStatus(statuses, name);
+  return !status || status.state === "success";
+}
+
 function evaluateGate(checkRuns, statuses, { production = false } = {}) {
-  const requiredChecks = production
-    ? ["quality", "react-doctor", "production"]
-    : ["quality", "react-doctor", "supabase-integration"];
+  const requiredChecks = production ? PRODUCTION_REQUIRED_CHECKS : PR_REQUIRED_CHECKS;
   const missing = [];
 
   for (const name of requiredChecks) {
@@ -309,6 +333,12 @@ function evaluateGate(checkRuns, statuses, { production = false } = {}) {
     const review = latestStatus(statuses, REVIEW_STATUS);
     if (!review || review.state !== "success") {
       missing.push(`${REVIEW_STATUS}=not-successful`);
+    }
+  }
+
+  for (const name of CONDITIONAL_SIGNALS) {
+    if (!conditionalSignalPassed(checkRuns, statuses, name)) {
+      missing.push(`${name}=not-successful`);
     }
   }
 
@@ -816,6 +846,10 @@ async function recoverOneDependabotReview(github, owner, repo, pulls, mainSha, c
   return false;
 }
 
+function isMergeRejection(error) {
+  return MERGE_REJECTION_STATUSES.has(Number(error?.status));
+}
+
 async function mergeNextDependabot({ github, context, core }) {
   const { owner, repo } = context.repo;
   const { data: main } = await github.rest.repos.getBranch({
@@ -867,6 +901,7 @@ async function mergeNextDependabot({ github, context, core }) {
 
   let pull;
   let headSha;
+  let merge;
   for (const candidate of candidates) {
     const response = await github.rest.pulls.get({
       owner,
@@ -934,7 +969,7 @@ async function mergeNextDependabot({ github, context, core }) {
       continue;
     }
     if (current.mergeable_state === "blocked") {
-      for (const statusContext of ["quality", "react-doctor"]) {
+      for (const statusContext of PR_REQUIRED_CHECKS) {
         await github.rest.repos.createCommitStatus({
           owner,
           repo,
@@ -960,32 +995,42 @@ async function mergeNextDependabot({ github, context, core }) {
       continue;
     }
 
+    await ensureLabels(github, owner, repo);
+    await replaceAutomationLabels(github, owner, repo, current.number, [
+      LABELS.approved.name,
+      LABELS.pending.name,
+    ]);
+
+    try {
+      merge = await github.rest.pulls.merge({
+        owner,
+        repo,
+        pull_number: current.number,
+        sha: currentHead,
+        merge_method: "squash",
+        commit_title: `build(deps): merge Dependabot update #${current.number}`,
+        commit_message:
+          "Automated after exact-SHA policy, CI, Vercel preview, and branch-protection gates.",
+      });
+    } catch (error) {
+      if (!isMergeRejection(error)) throw error;
+      await replaceAutomationLabels(github, owner, repo, current.number, [LABELS.blocked.name]);
+      core.warning(
+        `GitHub refused to merge PR #${current.number}: ${sanitizeText(error.message, 300)}`,
+      );
+      continue;
+    }
+
     pull = current;
     headSha = currentHead;
     break;
   }
 
-  if (!pull || !headSha) {
+  if (!pull || !headSha || !merge) {
     await recoverOneDependabotReview(github, owner, repo, dependabotPulls, mainSha, core);
     return;
   }
 
-  await ensureLabels(github, owner, repo);
-  await replaceAutomationLabels(github, owner, repo, pull.number, [
-    LABELS.approved.name,
-    LABELS.pending.name,
-  ]);
-
-  const merge = await github.rest.pulls.merge({
-    owner,
-    repo,
-    pull_number: pull.number,
-    sha: headSha,
-    merge_method: "squash",
-    commit_title: `build(deps): merge Dependabot update #${pull.number}`,
-    commit_message:
-      "Automated after exact-SHA policy, CI, Vercel preview, and branch-protection gates.",
-  });
   if (!merge.data.merged) {
     await replaceAutomationLabels(github, owner, repo, pull.number, [
       LABELS.approved.name,

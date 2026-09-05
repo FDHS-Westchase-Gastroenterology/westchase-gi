@@ -565,6 +565,218 @@ test("queue skips a failing older PR and merges the next green sibling", async (
     [
       { sha: "green", state: "success", context: "quality" },
       { sha: "green", state: "success", context: "react-doctor" },
+      { sha: "green", state: "success", context: "supabase-integration" },
     ],
+    "every required Actions context must be re-attested, not just two of them",
   );
+});
+
+test("Supabase Preview gates only the heads it actually reports on", () => {
+  const checks = [
+    { name: "quality", status: "completed", conclusion: "success" },
+    { name: "react-doctor", status: "completed", conclusion: "success" },
+    {
+      name: "supabase-integration",
+      status: "completed",
+      conclusion: "success",
+    },
+  ];
+  const statuses = [
+    { context: "Vercel", state: "success" },
+    {
+      context: "React Doctor",
+      state: "success",
+      description: "Skipped — no React files changed",
+    },
+    { context: "Dependabot Auto-Merge", state: "success" },
+  ];
+
+  // Absent on manifest-only heads: the database preview does not apply.
+  assert.equal(evaluateGate(checks, statuses).passed, true);
+
+  // Reported and clean, as a check run or as a commit status.
+  for (const conclusion of ["success", "skipped", "neutral"]) {
+    assert.equal(
+      evaluateGate(
+        [...checks, { name: "Supabase Preview", status: "completed", conclusion }],
+        statuses,
+      ).passed,
+      true,
+      conclusion,
+    );
+  }
+  assert.equal(
+    evaluateGate(checks, [...statuses, { context: "Supabase Preview", state: "success" }]).passed,
+    true,
+  );
+
+  // Reported and not clean, or still running: the merge waits.
+  assert.deepEqual(
+    evaluateGate(
+      [...checks, { name: "Supabase Preview", status: "completed", conclusion: "failure" }],
+      statuses,
+    ),
+    { passed: false, missing: ["Supabase Preview=not-successful"] },
+  );
+  assert.deepEqual(
+    evaluateGate([...checks, { name: "Supabase Preview", status: "in_progress" }], statuses),
+    { passed: false, missing: ["Supabase Preview=not-successful"] },
+  );
+  assert.deepEqual(
+    evaluateGate(checks, [...statuses, { context: "Supabase Preview", state: "pending" }]),
+    { passed: false, missing: ["Supabase Preview=not-successful"] },
+  );
+});
+
+test("a rejected merge blocks that PR instead of aborting the queue", async () => {
+  const successfulChecks = [
+    { name: "quality", status: "completed", conclusion: "success" },
+    { name: "react-doctor", status: "completed", conclusion: "success" },
+    {
+      name: "supabase-integration",
+      status: "completed",
+      conclusion: "success",
+    },
+  ];
+  const successfulStatuses = [
+    { context: "Vercel", state: "success" },
+    {
+      context: "React Doctor",
+      state: "success",
+      description: "Skipped — no React files changed",
+    },
+    { context: "Dependabot Auto-Merge", state: "success" },
+  ];
+  const pulls = [
+    {
+      number: 105,
+      user: { login: "dependabot[bot]" },
+      head: { sha: "rejected", repo: { full_name: "owner/repo" } },
+      base: { ref: "main" },
+      labels: [{ name: LABELS.ready.name }],
+    },
+    {
+      number: 106,
+      user: { login: "dependabot[bot]" },
+      head: { sha: "green", repo: { full_name: "owner/repo" } },
+      base: { ref: "main" },
+      labels: [{ name: LABELS.ready.name }],
+    },
+  ];
+  const listPulls = () => {};
+  const listFiles = () => {};
+  const listLabelsForRepo = () => {};
+  const listLabelsOnIssue = () => {};
+  const merged = [];
+  const addedLabels = [];
+  const warnings = [];
+  const notices = [];
+  const github = {
+    paginate: async (method, args) => {
+      if (method === listPulls) return pulls;
+      if (method === listFiles) {
+        return [{ filename: "package.json" }, { filename: "package-lock.json" }];
+      }
+      if (method === listLabelsForRepo) {
+        return Object.values(LABELS).map(({ name }) => ({ name }));
+      }
+      if (method === listLabelsOnIssue) {
+        return pulls.find(({ number }) => number === args.issue_number).labels;
+      }
+      throw new Error("Unexpected pagination request");
+    },
+    rest: {
+      actions: { createWorkflowDispatch: async () => {} },
+      checks: {
+        listForRef: async ({ ref }) => ({
+          data: {
+            check_runs:
+              ref === "main"
+                ? [
+                    ...successfulChecks,
+                    { name: "production", status: "completed", conclusion: "success" },
+                  ]
+                : successfulChecks,
+          },
+        }),
+      },
+      issues: {
+        addLabels: async ({ issue_number: issueNumber, labels }) =>
+          addedLabels.push({ number: issueNumber, labels }),
+        createComment: async () => {},
+        createLabel: async () => {},
+        listLabelsForRepo,
+        listLabelsOnIssue,
+        removeLabel: async () => {},
+      },
+      pulls: {
+        get: async ({ pull_number: pullNumber }) => ({
+          data: {
+            ...pulls.find(({ number }) => number === pullNumber),
+            draft: false,
+            state: "open",
+            mergeable: true,
+            mergeable_state: "unstable",
+          },
+        }),
+        list: listPulls,
+        listFiles,
+        merge: async ({ pull_number: pullNumber }) => {
+          if (pullNumber === 105) {
+            const error = new Error('Required status check "Supabase Preview" is expected.');
+            error.status = 405;
+            throw error;
+          }
+          merged.push(pullNumber);
+          return { data: { merged: true, sha: "merged" } };
+        },
+        update: async () => {},
+      },
+      repos: {
+        compareCommitsWithBasehead: async () => ({ data: { ahead_by: 0 } }),
+        createCommitStatus: async () => {},
+        getBranch: async () => ({ data: { commit: { sha: "main" } } }),
+        getCombinedStatusForRef: async () => ({ data: { statuses: successfulStatuses } }),
+      },
+    },
+  };
+
+  await mergeNextDependabot({
+    github,
+    context: { repo: { owner: "owner", repo: "repo" } },
+    core: {
+      notice: (message) => notices.push(message),
+      warning: (message) => warnings.push(message),
+    },
+  });
+
+  assert.equal(merged.join(","), "106", notices.concat(warnings).join("\n"));
+  assert.deepEqual(addedLabels.filter(({ number }) => number === 105).at(-1), {
+    number: 105,
+    labels: [LABELS.blocked.name],
+  });
+  assert.equal(
+    warnings.some(
+      (message) =>
+        message.includes("#105") && message.includes('Required status check "Supabase Preview"'),
+    ),
+    true,
+    warnings.join("\n"),
+  );
+});
+
+test("the gate and the re-attestation read the same required-context list", () => {
+  // Branch protection only ever saw the contexts this controller re-attests.
+  // When `supabase-integration` became required and the attestation list still
+  // named two contexts, every refreshed Dependabot head was refused with
+  // `Required status check "supabase-integration" is expected.` One constant
+  // feeds both sites now; keep it that way.
+  const source = fs.readFileSync(path.join(__dirname, "dependency-automation.cjs"), "utf8");
+  assert.match(
+    source,
+    /const PR_REQUIRED_CHECKS = \["quality", "react-doctor", "supabase-integration"\];/,
+  );
+  assert.match(source, /const requiredChecks = production \? \w+ : PR_REQUIRED_CHECKS;/);
+  assert.match(source, /for \(const statusContext of PR_REQUIRED_CHECKS\) \{/);
+  assert.equal(source.includes('for (const statusContext of ["quality", "react-doctor"])'), false);
 });

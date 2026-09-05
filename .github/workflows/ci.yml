@@ -32,6 +32,15 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --no-audit --no-fund
 
+      # Fails the build if any machine-local path is tracked, and if the
+      # .gitignore managed block has drifted from local-only-paths.json.
+      # Runs before the heavy steps so a leak fails in seconds, not minutes.
+      - name: Verify no machine-local paths are tracked
+        run: npm run local-only:check
+
+      - name: Verify .gitignore matches local-only-paths.json
+        run: npm run local-only:verify
+
       - name: Verify dependency automation policy
         run: node --test .github/scripts/dependency-automation.test.cjs
 

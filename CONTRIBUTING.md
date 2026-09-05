@@ -206,12 +206,19 @@ locales) stays out until verified — see `PRODUCT.md` design principle 1.
 ## Merging
 
 `main` is protected and **is production**. As configured, it requires current-branch
-`quality`, `react-doctor`, and `Vercel` statuses plus resolved conversations; force pushes
-and deletion are blocked. Treat every merge as patient-facing unless the change is
-explicitly non-user-visible (tooling, governance, docs-only).
+`quality`, `react-doctor`, `Vercel`, and `supabase-integration` statuses plus resolved
+conversations; force pushes and deletion are blocked. Treat every merge as patient-facing
+unless the change is explicitly non-user-visible (tooling, governance, docs-only).
 
 Before merge, confirm `Supabase Preview` and `supabase-integration` passed on the **exact
 head**. Skipped, pending, missing, stale, or failed signals withhold the merge.
+
+`Supabase Preview` is the Supabase integration's preview-branch check and is **required only
+on PRs that change the database** — schema, migrations, or anything under `supabase/`. It
+does not report on other PRs, so it is not a required status check on `main`: making it one
+deadlocks every manifest-only or source-only PR behind a check that will never arrive.
+Where it does report, it is a merge gate like any other, and the auto-merge controller
+enforces it the same way.
 
 A green React Doctor check proves execution, not a clean result. Inspect the report and require a
 score of 100 on the exact head.
