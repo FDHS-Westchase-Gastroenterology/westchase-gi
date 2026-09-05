@@ -1029,10 +1029,11 @@ test.describe("portal management server boundaries", () => {
   test("VAL-ADMIN-020: Recent work search, work-type filters, compaction, and URL state", async () => {
     if (!adminPage) throw new Error("Admin session is unavailable");
     const token = `activity-${runId}`;
-    // Four adjacent print-packet events plus one request action, dated at the
-    // Run's own clock so a day's earlier runs cannot push them off the first
-    // Page of Recent work or the technical record.
-    const anchor = new Date();
+    // Four adjacent print-packet events plus one request action, dated an hour
+    // Ahead of the run clock: newest-first, so a day's earlier runs cannot
+    // Push them off the first page, and no other row can land between them
+    // And break the adjacent run (noon did, once the day filled up).
+    const anchor = new Date(Date.now() + 60 * 60_000);
     const { data: stagedRows, error: stageError } = await db
       .from("audit_log")
       .insert([
@@ -1111,10 +1112,10 @@ test.describe("portal management server boundaries", () => {
   test("VAL-ADMIN-021: workflow-command vocabulary, filters, adjacency, and unique search id", async () => {
     if (!adminPage) throw new Error("Admin session is unavailable");
     const token = `slice8-${runId}`;
-    // Anchored at the run's own clock: the first page of Recent work is
-    // Fifty rows, and a day's earlier runs would otherwise push fixtures
-    // Dated midday below it later in the day.
-    const anchor = new Date();
+    // Dated an hour ahead of the run clock, like VAL-ADMIN-020: at the top of
+    // The fifty-row first page whatever the day has written, with no other row
+    // Able to land between the fixtures.
+    const anchor = new Date(Date.now() + 60 * 60_000);
     const { data: staged, error: stageError } = await db
       .from("requests")
       .insert({
