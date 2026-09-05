@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import type { PasswordAuthFlow } from "@/lib/portal/contracts";
 import type { DeliveryOutcome, SendPortalEmail } from "@/lib/portal/email";
 import { RECIPIENT_CONFIRMATION_BODY } from "@/lib/portal/staff-language";
 
@@ -7,9 +8,7 @@ export type ManagementEmailDelivery =
   | { ok: true; delivery: "accepted" }
   | { ok: true; delivery: "failed"; fallbackSetupUrl: string };
 
-export type StaffSetupType = "invite" | "recovery";
-
-function staffSetupUrl(confirmationUrl: string, tokenHash: string, type: StaffSetupType): string {
+function staffSetupUrl(confirmationUrl: string, tokenHash: string, type: PasswordAuthFlow): string {
   const setupUrl = new URL(confirmationUrl);
   setupUrl.hash = new URLSearchParams({
     token_hash: tokenHash,
@@ -45,7 +44,7 @@ export async function sendStaffSetupLink(
     email: string;
     confirmationUrl: string;
     tokenHash: string;
-    type: StaffSetupType;
+    type: PasswordAuthFlow;
     userId: string;
   }>,
 ): Promise<ManagementEmailDelivery> {

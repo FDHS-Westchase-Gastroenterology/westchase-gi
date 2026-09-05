@@ -4,7 +4,13 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
+import type {
+  MaintainerFailureCode,
+  MaintainerManagementState,
+  MaintainerMutationResult,
+} from "@/lib/portal/maintainer-operation";
 import { getMaintainerViewState } from "@/lib/portal/maintainer-view";
+import type { MaintainerAccessModel } from "@/lib/portal/maintainer-view";
 
 // The staff-facing surface for "who can change the website". This component
 // Owns presentation and confirmation only; every decision that matters
@@ -15,66 +21,17 @@ import { getMaintainerViewState } from "@/lib/portal/maintainer-view";
 // GitHub is named is the invite field, because the username is the only
 // Credential a maintainer has.
 
-export interface Maintainer {
-  /** GitHub numeric user ID — the value revoke submits. */
-  readonly userId: number;
-  readonly login: string;
-}
-
-export interface PendingInvitation {
-  /** GitHub numeric invitation ID — the value cancel submits. */
-  readonly invitationId: number;
-  readonly login: string;
-}
-
-export type MaintainerManagementState =
-  /** Installation still covers all repositories; owner must narrow it. */
-  | "restrict_installation"
-  /** Installation lacks administration write; owner must approve it. */
-  | "permission_upgrade_required"
-  | "ready";
-
-export type MaintainerAccessModel =
-  | { state: "not_configured" }
-  | { state: "unavailable" }
-  | {
-      state: "connected";
-      ownerLogin: string;
-      management: MaintainerManagementState;
-      /** Null = this deployment cannot read the list yet (never stale data). */
-      maintainers: readonly Maintainer[] | null;
-      invitations: readonly PendingInvitation[] | null;
-    };
-
-export type MaintainerActionResult =
-  | { ok: true }
-  | {
-      ok: false;
-      code?:
-        | "invalid"
-        | "not_found"
-        | "conflict"
-        | "forbidden"
-        | "limit"
-        | "unconfirmed"
-        | "unavailable";
-    };
-
 // The exact server contract the backend pass must fulfil (three narrow
 // Commands, no permission selector, numeric IDs from rendered records).
 export interface MaintainerActions {
-  inviteMaintainer: (input: Readonly<{ username: string }>) => Promise<MaintainerActionResult>;
+  inviteMaintainer: (input: Readonly<{ username: string }>) => Promise<MaintainerMutationResult>;
   cancelMaintainerInvite: (
     input: Readonly<{
       invitationId: number;
     }>,
-  ) => Promise<MaintainerActionResult>;
-  revokeMaintainer: (input: Readonly<{ userId: number }>) => Promise<MaintainerActionResult>;
+  ) => Promise<MaintainerMutationResult>;
+  revokeMaintainer: (input: Readonly<{ userId: number }>) => Promise<MaintainerMutationResult>;
 }
-
-type MaintainerFailureCopyCode = NonNullable<
-  Extract<MaintainerActionResult, { ok: false }>["code"]
->;
 
 const FAILURE_COPY = {
   invalid: "That doesn't look like a GitHub username — check it and try again.",
@@ -87,16 +44,10 @@ const FAILURE_COPY = {
   unconfirmed:
     "We couldn't confirm whether that change went through. The list below is the latest confirmed state — check it before trying again.",
   unavailable: "Something went wrong making the change. Try again.",
-} as const satisfies Record<MaintainerFailureCopyCode, string>;
+} as const satisfies Record<MaintainerFailureCode, string>;
 
-function isMaintainerFailureCopyCode(value: string): value is MaintainerFailureCopyCode {
-  return value in FAILURE_COPY;
-}
-
-function failureMessage(result: Readonly<MaintainerActionResult>): string {
-  if (result.ok) return "";
-  const code = result.code ?? "unavailable";
-  return isMaintainerFailureCopyCode(code) ? FAILURE_COPY[code] : FAILURE_COPY.unavailable;
+function failureMessage(code: MaintainerFailureCode): string {
+  return FAILURE_COPY[code];
 }
 
 const STATUS_LABEL = {
@@ -178,13 +129,13 @@ export function MaintainerAccess({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  function run(action: () => Promise<MaintainerActionResult>, onSuccess: string) {
+  function run(action: () => Promise<MaintainerMutationResult>, onSuccess: string) {
     setError(null);
     setNotice(null);
     startTransition(async () => {
       const result = await action();
       if (!result.ok) {
-        setError(failureMessage(result));
+        setError(failureMessage(result.code));
         router.refresh();
         return;
       }

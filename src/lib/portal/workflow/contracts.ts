@@ -10,7 +10,8 @@
 // Staff-facing language rule (spec §2): the durable state is
 // `booked`; every staff surface renders it as **Scheduled**, never
 // "Booked". Presentation labels live with the UI (requests/format.ts);
-// This module deliberately carries only domain vocabulary.
+// This module carries the vocabulary, its parsers, and the two
+// Translations between durable state and staff-facing status.
 
 import { z } from "zod";
 

@@ -8,6 +8,7 @@ import type { SetPasswordActionState } from "@/app/admin/actions";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import type { PasswordAuthFlow } from "@/lib/portal/contracts";
 
 const INITIAL_STATE: SetPasswordActionState = {
   error: null,
@@ -18,7 +19,7 @@ export function PasswordForm({
   mode,
   recoveryTokenHash,
 }: Readonly<{
-  mode: "invite" | "recovery";
+  mode: PasswordAuthFlow;
   recoveryTokenHash?: string;
 }>) {
   const hasRecoveryToken = recoveryTokenHash !== undefined && recoveryTokenHash !== "";

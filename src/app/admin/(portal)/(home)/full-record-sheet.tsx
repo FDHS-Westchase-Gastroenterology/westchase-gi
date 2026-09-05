@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import { STATUS_WORDS } from "@/lib/portal/filters";
+import type { AttentionBucket } from "@/lib/portal/queue-attention";
 
 import type { HomeLine } from "./home-line";
 import { ChevronGlyph, CloseGlyph, PhoneGlyph } from "./parts/glyphs";
@@ -102,6 +103,9 @@ function activityOf(
   return entries;
 }
 
+/** Buckets whose next action is due now, so the sheet leads with it. */
+const ATTENTION_NOW: readonly AttentionBucket[] = ["new", "follow_up", "stale"];
+
 export function FullRecordSheet({
   line,
   onOpenChange,
@@ -109,7 +113,7 @@ export function FullRecordSheet({
   line: Readonly<HomeLine> | null;
   onOpenChange: (open: boolean) => void;
 }>) {
-  const attention = line !== null && ["new", "follow_up", "stale"].includes(line.bucket);
+  const attention = line !== null && ATTENTION_NOW.includes(line.bucket);
 
   return (
     <HomeSheet open={line !== null} onOpenChange={onOpenChange}>

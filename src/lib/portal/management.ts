@@ -8,10 +8,10 @@ import type { Json } from "@/lib/json";
 import { recordAudit } from "@/lib/portal/audit";
 import { requireRole } from "@/lib/portal/auth";
 import { AUDIT_ACTIONS, STAFF_ROLES } from "@/lib/portal/contracts";
+import type { PasswordAuthFlow } from "@/lib/portal/contracts";
 import type { DeliveryOutcome } from "@/lib/portal/email";
 import { sendPortalEmail } from "@/lib/portal/email-provider";
 import { sendRecipientConfirmation, sendStaffSetupLink } from "@/lib/portal/management-email";
-import type { StaffSetupType } from "@/lib/portal/management-email";
 import {
   addRecipientWithCompatibility,
   removeRecipientWithCompatibility,
@@ -105,7 +105,7 @@ async function deliverStaffSetupLink({
   email: string;
   confirmationUrl: string;
   tokenHash: string;
-  type: StaffSetupType;
+  type: PasswordAuthFlow;
   userId: string;
 }>): Promise<Exclude<InviteStaffResult, ManagementFailure>> {
   return sendStaffSetupLink(sendPortalEmail, {
@@ -501,7 +501,7 @@ export async function resendStaffInviteMutation(input: Json): Promise<InviteStaf
   // Confirmed. A recovery token is then the supported way to restore the
   // Interrupted password-setup session; the app still treats the active,
   // Not-onboarded profile as an invite and never accepts a role from input.
-  const type: StaffSetupType =
+  const type: PasswordAuthFlow =
     (authUser.email_confirmed_at ?? null) !== null ? "recovery" : "invite";
   const confirmationUrl = portalUrl("/admin/auth/confirm");
   if (confirmationUrl === null) {

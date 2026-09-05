@@ -8,6 +8,7 @@ import { asJsonObject, asJsonString, jsonSchema } from "@/lib/json";
 import type { HistoryEntry, RequestWorkSurface } from "./contracts";
 import {
   UNDO_WINDOW_MINUTES,
+  normalizeRequestState,
   parseClosureReason,
   parseContactOutcome,
   parseWorkflowCommandKind,
@@ -31,8 +32,8 @@ const requestWorkRowSchema = z.object({
 
 const transitionRowSchema = z.object({
   id: z.string(),
-  from_state: storedRequestStateSchema,
-  to_state: storedRequestStateSchema,
+  from_state: z.string(),
+  to_state: z.string(),
   command: z.string(),
   actor_email: z.string(),
   occurred_at: z.string(),
@@ -126,7 +127,11 @@ export async function fetchRequestWorkSurface(
     { kind: "created", origin: creationOrigin, at: requestRow.data.created_at },
   ];
   for (const row of transitionRows) {
-    const { from_state: from, to_state: to } = row;
+    /* A transition whose state fails to parse still counts as the latest row
+       and still marks the row it compensates; only its history line is skipped. */
+    const from = normalizeRequestState(row.from_state);
+    const to = normalizeRequestState(row.to_state);
+    if (from === null || to === null) continue;
     if (row.command === "undo_latest_transition")
       history.push({
         kind: "undo",

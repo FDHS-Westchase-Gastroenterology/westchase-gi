@@ -199,6 +199,7 @@ test("cancelling an invitation does not claim success after concurrent acceptanc
 test("maintainer view states keep blocked and staff controls fail closed", () => {
   const base = {
     state: "connected" as const,
+    ownerLogin: "westchase-gi",
     maintainers: [],
     invitations: [],
   };

@@ -8,11 +8,13 @@ import type { ConfirmAuthActionState } from "@/app/admin/actions";
 import { PasswordForm } from "@/app/admin/set-password/password-form";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { parsePasswordAuthFlow } from "@/lib/portal/contracts";
+import type { PasswordAuthFlow } from "@/lib/portal/contracts";
 import { cn } from "@/lib/utils";
 
 interface AuthLink {
   tokenHash: string;
-  type: "invite" | "recovery";
+  type: PasswordAuthFlow;
 }
 
 const INITIAL_STATE: ConfirmAuthActionState = { error: null };
@@ -39,11 +41,9 @@ export function ConfirmAuthForm() {
       parsedOnce.current = true;
       const params = new URLSearchParams(hash.slice(1));
       const tokenHash = params.get("token_hash")?.trim() ?? "";
-      const type = params.get("type");
+      const type = parsePasswordAuthFlow(params.get("type") ?? "");
       const parsedLink: AuthLink | "invalid" =
-        tokenHash.length >= 20 && (type === "invite" || type === "recovery")
-          ? { tokenHash, type }
-          : "invalid";
+        tokenHash.length >= 20 && type !== null ? { tokenHash, type } : "invalid";
 
       // Remove the bearer token from the address bar before any navigation.
       window.history.replaceState(null, "", window.location.pathname);

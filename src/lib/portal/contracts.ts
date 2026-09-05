@@ -42,6 +42,14 @@ export function parseStaffRole(raw: string): StaffRole | null {
   return STAFF_ROLES.find((role) => role === raw) ?? null;
 }
 
+/** The two one-time-link flows that may set a password (spec: staff onboarding and recovery). */
+export const PASSWORD_AUTH_FLOWS = ["invite", "recovery"] as const;
+export type PasswordAuthFlow = (typeof PASSWORD_AUTH_FLOWS)[number];
+
+export function parsePasswordAuthFlow(raw: string): PasswordAuthFlow | null {
+  return PASSWORD_AUTH_FLOWS.find((flow) => flow === raw) ?? null;
+}
+
 export const RESET_REQUEST_MESSAGE =
   "If an active staff account exists for that email, you’ll receive a password reset link.";
 
@@ -127,14 +135,15 @@ export type CreateStaffRequestActionState =
       fieldErrors?: Partial<Record<StaffRequestField, string>>;
     };
 
-export type IntakeFailureCode = "validation" | "rate_limited" | "unavailable";
+export const INTAKE_FAILURE_CODES = ["validation", "rate_limited", "unavailable"] as const;
+export type IntakeFailureCode = (typeof INTAKE_FAILURE_CODES)[number];
 
 /** The only response shapes POST /api/requests may produce. */
 export const intakeResponseSchema = z.union([
   z.object({ ok: z.literal(true), id: z.string() }),
   z.object({
     ok: z.literal(false),
-    code: z.enum(["validation", "rate_limited", "unavailable"]),
+    code: z.enum(INTAKE_FAILURE_CODES),
     fieldErrors: z.record(z.string(), z.string()).optional(),
   }),
 ]);
