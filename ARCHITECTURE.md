@@ -7,8 +7,7 @@ before changing code.
 For setup, verification, pull requests, and release procedure, use
 [`CONTRIBUTING.md`](CONTRIBUTING.md). Product truth lives in `PRODUCT.md`, design rules in
 `DESIGN.md`, hard agent rules in `AGENTS.md`, and custody facts in `README.md`. The staff-facing
-appointment-request states and commands are specified in
-[`docs/appointment-request-workflow-specification.md`](docs/appointment-request-workflow-specification.md).
+appointment-request states and commands are owned by `src/lib/portal/workflow/contracts.ts`.
 
 This file records intended design. Executable contracts show current behavior. If they disagree,
 treat the disagreement as a defect and fix both in the same change. Neither source is
@@ -193,9 +192,8 @@ Successful actions revalidate the affected portal routes.
 Undo appends a compensating transition and restores a saved coherent snapshot only when the
 target is still the latest eligible transition. It never deletes history.
 
-Read [`docs/appointment-request-workflow-specification.md`](docs/appointment-request-workflow-specification.md)
-before changing states, commands, queue ordering, history, Undo, staff-facing labels, or workflow
-controls.
+Read `src/lib/portal/workflow/contracts.ts` and `machine.ts` before changing states, commands,
+queue ordering, history, Undo, staff-facing labels, or workflow controls.
 
 ### Staff-authored appointment intake
 
@@ -413,8 +411,7 @@ the adapter or database. The matching change-type check matrix is
   used before route or portal code branches on untrusted data.
 - **Intake fields or persistence:** `src/lib/portal/contracts.ts` → `AppointmentForm.tsx` → both
   request handlers → `src/lib/portal/intake.ts` and `intake-notification.ts` → the owning RPC.
-- **Appointment-request workflow:** `docs/appointment-request-workflow-specification.md` →
-  `src/lib/portal/workflow/contracts.ts` and `machine.ts` → `workflow-actions.ts` →
+- **Appointment-request workflow:** `src/lib/portal/workflow/contracts.ts` and `machine.ts` → `workflow-actions.ts` →
   `workflow/commands.ts` → `portal_execute_request_command`.
 - **Portal authorization and sessions:** `src/lib/portal/auth.ts`, `server.ts`, `src/proxy.ts`,
   Auth entry routes, and `staff_profiles`.

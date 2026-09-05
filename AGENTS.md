@@ -1,25 +1,23 @@
 # AGENTS.md, Westchase GI agent guide
 
-Read this first. It has the hard rules, environment facts, and pointers to the rest. The aim is work that is right on the first pass.
+Read this first. It has the hard rules, environment facts, and pointers to the rest.
 
-Using skills is non negotioable -- even if your smart and know most things -- invoke relavent skills --- they are always of net value.
+Invoke the skill that covers the work before starting it. The skills hold repo-specific procedure that the code and these docs do not repeat.
 
 ## Rule authority and ramp-up
 
 Read in this order, as the task requires:
 
 1. This file: the domain-specific rules and invariants below are hard requirements. They outrank everything, including vendored skills and general framework advice.
-2. [`MEMORY.md`](MEMORY.md): skim for open notes that would otherwise be lost between sessions.
+2. Your own session memory, if your harness keeps one. `MEMORY.md` is machine-local and absent from a clean checkout.
 3. [`ARCHITECTURE.md`](ARCHITECTURE.md): system design, module interfaces, external systems, and the change-type → files map. Start here in an unfamiliar area.
 4. [`CONTRIBUTING.md`](CONTRIBUTING.md): setup, verification, commit/PR/merge discipline, and the path to production.
 5. Product truth: `PRODUCT.md` (patient-site brand register and staff-portal product register) plus `DESIGN.md` (design system). UI baseline: `ui-reference/README.md`.
 
 `README.md` is the user-facing overview. Cite it for the documented custody split. Do not treat it as developer documentation.
 
-`.agents/skills/` holds the committed vendor skills and project workflow skills this repository
-uses. Provenance, versions, and the update procedure are in `.agents/skills/CODEX.md`. Treat
-vendor guidance as advisory and subordinate to this file. Never hand-edit a vendored skill;
-re-copy it from upstream.
+Project and vendor skills live under `.cursor/skills/`. Vendor guidance is advisory and
+subordinate to this file. Re-copy a vendored skill from upstream instead of editing it.
 
 ### Documentation style
 
@@ -39,13 +37,11 @@ The standing gates are:
 - `npm run build` completes a production compile and typecheck with no errors. Oxlint, oxfmt, and React Doctor can all pass while this fails, so they do not replace it. Do not skip it, narrow it, or substitute `tsc --noEmit`. Use the no-credentials environment in [`CONTRIBUTING.md`](CONTRIBUTING.md#verification) when `.env.local` is absent. If the build cannot run, say so; the loop has not passed.
 - Visual evidence is in the pull-request conversation for every UI-visible change. A single-state change needs before and after screenshots. A new workflow or a feature with more than one authored step needs a video of that path. A clean lint score with no visual evidence is a failed loop.
 
-An extra linter you are asked to run, including a single oxlint rule, is added to the loop. It does not replace the standing gates. Example: you are given a rule, you fix its findings, and that rule goes quiet. You still run full `npx oxlint`, `npx oxfmt --check`, React Doctor, and `npm run build`. Passing the extra check is not a pass of the loop.
+An extra check you are asked to run, including a single oxlint rule, is added to this list and does not replace it. Run the extra check first, then the standing gates; if a gate fails, fix it and rerun everything that already passed, because a later fix can reopen an earlier one.
 
-Order: run the extra check, fix what it finds, then run the standing gates. If a standing gate fails, fix those findings and rerun every check that already passed, including the extra one. A later fix can reopen an earlier lint, undo formatting, or break the production build.
+The turn, the pull request, and the worktree merge all wait on every gate being clean.
 
-Do not finish the turn until every check in the loop is clean: the extra linters you were given, plus `npx oxlint` with zero warnings and zero errors, plus `npx oxfmt --check` with no drift, plus React Doctor at 100, plus `npm run build` with a successful compile and typecheck, plus visual evidence in the pull-request conversation when the change is UI-visible. The same bar applies before you open a pull request or merge a worktree into a branch. Formatting drift, a warning, an error, a score below 100, a failed production build, or a UI change whose PR conversation has no screenshots — or no video when the change is a workflow — is a failed gate.
-
-Local React Doctor trap: a local score is not comparable to CI. Local scans also read untracked build output (`.next/`, `.next-e2e/`). Third-party sourcemaps trip the artifact-secret rule. Hits under build directories or `node_modules` are noise. Never "fix" them by editing generated files. The 100 that counts is a clean checkout of the work you are about to share.
+Local React Doctor scores include untracked build output (`.next/`, `.next-e2e/`) and third-party sourcemaps, so hits under build directories or `node_modules` are noise. The score that counts is a clean checkout of the work you are about to share; do not edit generated files to raise it.
 
 ## Product, brand, and content rules
 
@@ -77,13 +73,12 @@ How to post it:
 - Atlas pages may be embedded from `ui-reference/` at the merge-base SHA (before) and the exact head SHA (after), the same way #227 does.
 - Request-detail and other patient-data surfaces stay out of `ui-reference/`. Host those captures on a disposable `assets/pr-<number>-ui-evidence` branch and embed them in the comment.
 - Name the before SHA and the after SHA. For a stack of UI commits, show how each commit changed the screen, not only the branch tip.
-- Do not finish the turn until the comment is posted and the images — and the video, when required — render.
+- Check that the images, and the video when required, render in the posted comment.
 
 ### shadcn/ui
 
 shadcn/ui is installed and configured through `components.json` (style `base-nova`, Base UI
-primitives, Tailwind v4 CSS variables). The `.claude/skills/shadcn` skill documents the CLI and
-component workflow; use it. The design system itself — tokens, tiers, recipes, motion, the
+primitives, Tailwind v4 CSS variables). The design system itself — tokens, tiers, recipes, motion, the
 ownership table — is [`DESIGN.md`](DESIGN.md); read its "Where does this belong?" table before
 touching any UI.
 
@@ -106,13 +101,12 @@ Components resolve every color through **semantic tokens** (`--background`, `--p
 bridge is the only place shadcn's tokens exist; the brand `@theme` block above it belongs to the
 committed palette and is hands-off for shadcn and agents alike.
 
-**The hard rule: shadcn never overwrites the brand palette.** The brand hues — navy, teal,
-amber, mint — are a DESIGN.md anchor. `shadcn init` and `shadcn apply` (and any `add` that runs
-against a preset) inject neutral OKLCH literals, a `@theme inline` block that re-declares the
-Tailwind radius scale, and `@apply` rules that hijack `html`/`body` into shadcn's defaults. On
-install day these would have turned every `rounded-lg` on the site from the brand `0.875rem` to
-`0.625rem` and repainted the page white. That must never merge. The only place shadcn's neutral
-literals may exist is the gallery's `[data-palette="stock"]` scope in `src/app/design/design.css`.
+**shadcn never overwrites the brand palette.** The brand hues — navy, teal, amber, mint — are a
+DESIGN.md anchor. `shadcn init`, `shadcn apply`, and any `add` that runs against a preset inject
+neutral OKLCH literals, a `@theme inline` block that re-declares the Tailwind radius scale, and
+`@apply` rules that reset `html`/`body` to shadcn's defaults, which would change every brand
+radius and repaint the page white. The only place shadcn's neutral literals may exist is the
+gallery's `[data-palette="stock"]` scope in `src/app/design/design.css`.
 
 Reconciliation procedure — run after **every** CLI operation that touches CSS (the stock sync
 script performs the hash check itself and fails on any change):
@@ -133,11 +127,10 @@ script performs the hash check itself and fails on any change):
 4. Rerun the full contribution loop and capture before/after screenshots — palette drift is a
    UI-visible change.
 
-Namespace collision watch: shadcn and the brand share the Tailwind `--color-*` namespace, and
-the later `@theme` block wins. This bit once already: brand `--color-muted` (secondary text ink)
-was renamed to `--color-muted-ink` because shadcn's `--color-muted` is a surface tint. Before
-adopting a component, list the semantic utilities it uses (`bg-*`, `text-*`, `border-*`) and
-check for brand-token collisions the same way.
+shadcn and the brand share the Tailwind `--color-*` namespace, and the later `@theme` block wins.
+The brand's secondary text ink is `--color-muted-ink`, not `--color-muted`, because shadcn's
+`--color-muted` is a surface tint. Before adopting a component, list the semantic utilities it
+uses (`bg-*`, `text-*`, `border-*`) and check each for a brand-token collision.
 
 Adoption pattern: `npx shadcn@latest add <component>` generates into `src/components/ui/`. Run
 `add --dry-run` / `--diff` before overwriting an existing component; local edits are merged, not
@@ -199,17 +192,9 @@ Lint, format, production-build, and visual-evidence gates for pull requests and 
 
 ## Agent skills
 
-### Issue tracker
-
-Issues live in this repo's GitHub Issues, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-The five canonical triage labels are used as-is (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context: one `CONTEXT.md` plus `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+Issues live in this repo's GitHub Issues, managed with the `gh` CLI, and use five triage labels
+as-is: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`.
+Domain context is the single `CONTEXT.md` at the repo root.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

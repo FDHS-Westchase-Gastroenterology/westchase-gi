@@ -165,9 +165,8 @@ software topology (repositories, hosting projects, asset ledgers). The jobs:
   a state machine staff use to manage, advance, and eventually close
   incoming appointment requests. The machine itself — its states, transitions,
   operations, invariants, and its boundary with the practice's real scheduling
-  system — is defined in the
-  [Appointment Request Workflow Specification](docs/appointment-request-workflow-specification.md);
-  this charter claims the job while that specification owns the mechanics.
+  system — is defined in `src/lib/portal/workflow/contracts.ts`;
+  this charter claims the job while that module owns the mechanics.
 - Reprint a review QR flyer.
 - Choose who receives new-request notification emails.
 - Manage who can sign in (invite staff, change roles, deactivate accounts).
@@ -280,8 +279,7 @@ Durable truths:
 - Deliberately not building: generic metric dashboards or vanity counts; kanban or
   bulk mutations; a CMS, flyer editor, or QR generator.
 
-Appointments workflow contract, defined in the
-[Appointment Request Workflow Specification](docs/appointment-request-workflow-specification.md):
+Appointments workflow contract, defined in `src/lib/portal/workflow/contracts.ts`:
 
 - The portal resolves appointment requests through NEW, CONTACTED, BOOKED, or CLOSED;
   contact attempts remain append-only evidence; booking handoff ends the portal's ownership
@@ -290,7 +288,7 @@ Appointments workflow contract, defined in the
   transition log, and post-commit notifications govern the build era.
 
 Committed product-slice architecture
-([ADR 0004](docs/adr/0004-portal-is-four-outcome-owned-vertical-slices.md)):
+(ADR 0004, portal is four outcome-owned vertical slices; recoverable from git history):
 
 The portal remains one `/admin` design surface and shared shell under The Line world, but it is
 not one product outcome with subordinate pages. Product ownership within it is divided among four

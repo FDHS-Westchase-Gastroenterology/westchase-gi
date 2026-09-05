@@ -17,8 +17,8 @@ external connection is in [`ARCHITECTURE.md`](ARCHITECTURE.md#external-interface
 2. Read the matching execution path, source-of-truth entry, and trust boundary. Do not infer
    authorization, atomicity, or failure behavior from the UI.
 3. For appointment-request states, commands, queue behavior, history, notifications, printing,
-   or workflow controls, also read the
-   [workflow specification](docs/appointment-request-workflow-specification.md).
+   or workflow controls, also read `src/lib/portal/workflow/contracts.ts`, which owns the state vocabulary and
+   normalization rules.
 4. For user-visible work, read `PRODUCT.md`, `DESIGN.md`, and
    [`ui-reference/README.md`](ui-reference/README.md).
 5. Use the [change-type matrix](#by-change-type) to choose the required checks before coding.
@@ -148,7 +148,7 @@ The checks below are added to the standing gates.
 | --- | --- | --- |
 | Patient copy / locale content | [Localized patient reads](ARCHITECTURE.md#localized-patient-reads) and [trust boundaries](ARCHITECTURE.md#trust-boundaries) | `test:unit`, public smoke; E2E intake-form and language-chooser when behavior shifts |
 | Intake form / API / persistence | [Patient appointment intake](ARCHITECTURE.md#patient-appointment-intake) | Focused intake Playwright specs |
-| Portal page, route, or action | [Portal identity, authorization, and reads](ARCHITECTURE.md#portal-identity-authorization-and-reads); add the [workflow specification](docs/appointment-request-workflow-specification.md) for queue work | Focused portal Playwright specs |
+| Portal page, route, or action | [Portal identity, authorization, and reads](ARCHITECTURE.md#portal-identity-authorization-and-reads); add `src/lib/portal/workflow/contracts.ts` for queue work | Focused portal Playwright specs |
 | Migration, RLS, RPC, or seed | [State and persistence](ARCHITECTURE.md#state-and-persistence) and [trust boundaries](ARCHITECTURE.md#trust-boundaries) | `verify-schema --target branch`; green `Supabase Preview` and `supabase-integration` on the exact head |
 | Email paths | [Email](ARCHITECTURE.md#email) | `npx playwright test e2e/portal-email.spec.ts` |
 | UI-visible change | `PRODUCT.md`, `DESIGN.md`, and [`ui-reference/README.md`](ui-reference/README.md) | Refresh covered `ui-reference/` images; before/after screenshots in the PR conversation; video when the change is a new workflow or has multiple authored steps |
