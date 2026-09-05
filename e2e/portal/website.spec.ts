@@ -1,10 +1,9 @@
-import { randomUUID } from "node:crypto";
-
 import { test, expect } from "@playwright/test";
 import type { Locator } from "@playwright/test";
 
 import { runId, serviceDb } from "../harness/env";
-import { signIn } from "../harness/session";
+import { createStaffFixture, signIn } from "../harness/session";
+import type { StaffFixture } from "../harness/session";
 
 const REPOSITORY_URL = "https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi";
 const GITHUB_CONFIGURATION_COUNT = [
@@ -38,9 +37,12 @@ const SECRET_MATERIAL =
   /ghp_[A-Za-z0-9]+|github_pat_[A-Za-z0-9_]+|sk_live_|sk_test_|BEGIN [A-Z ]*PRIVATE KEY|PORTAL_GITHUB_APP_PRIVATE_KEY|SUPABASE_SERVICE_ROLE_KEY|Bearer [A-Za-z0-9._-]+/;
 
 const db = serviceDb();
-const staffEmail = `website-${runId}-staff@example.test`;
-const staffPassword = `Ws-${randomUUID()}-aA1!`;
-let staffUserId: string | null = null;
+let staff: StaffFixture | null = null;
+
+function staffAccount(): StaffFixture {
+  if (staff === null) throw new Error("Website staff fixture was not created");
+  return staff;
+}
 
 async function screenDisclosureChrome(summary: Locator) {
   return summary.evaluate((el) => {
@@ -72,34 +74,14 @@ test.describe("website custody", () => {
   });
 
   test.beforeAll(async () => {
-    const created = await db.auth.admin.createUser({
-      email: staffEmail,
-      password: staffPassword,
-      email_confirm: true,
+    staff = await createStaffFixture(db, {
+      prefix: `website-${runId}`,
+      displayName: "TEST Website Staff",
     });
-    expect(created.error).toBeNull();
-    staffUserId = created.data.user?.id ?? null;
-    if (staffUserId === null || staffUserId === "") {
-      throw new Error("Staff fixture creation failed");
-    }
-
-    const profile = await db.from("staff_profiles").insert({
-      user_id: staffUserId,
-      email: staffEmail,
-      display_name: "TEST Website Staff",
-      role: "staff",
-      active: true,
-      onboarded_at: new Date().toISOString(),
-    });
-    expect(profile.error).toBeNull();
   });
 
   test.afterAll(async () => {
-    if (staffUserId === null || staffUserId === "") {
-      return;
-    }
-    await db.from("staff_profiles").delete().eq("user_id", staffUserId);
-    await db.auth.admin.deleteUser(staffUserId);
+    await staff?.dispose();
   });
 
   test("staff-first opening, unresolved items, and the website-change action precede maintainer details", async ({
@@ -176,10 +158,6 @@ test.describe("website custody", () => {
   test("maintainer disclosure expands from the keyboard and keeps unresolved warnings visible", async ({
     page,
   }) => {
-    test.fail(
-      true,
-      "Known defect, recorded in the consolidation log on 2026-09-05: pressing Enter on the focused maintainer summary opens it but focus leaves the summary. Remove this marker when it is fixed.",
-    );
     const browserProviderRequests: string[] = [];
     page.on("request", (request) => {
       const host = new URL(request.url()).hostname;
@@ -314,7 +292,7 @@ test.describe("website custody", () => {
   test("staff can open Website with the flyer task but no maintainer controls", async ({
     page,
   }) => {
-    await signIn(page, { email: staffEmail, password: staffPassword });
+    await signIn(page, staffAccount());
     await page.goto("/admin/settings/software");
 
     await expect(page.getByTestId("managed-product")).toHaveCount(1);

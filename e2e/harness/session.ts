@@ -60,7 +60,10 @@ export async function createStaffFixture(
     active: true,
     onboarded_at: new Date().toISOString(),
   });
-  expect(profile.error).toBeNull();
+  if (profile.error) {
+    await db.auth.admin.deleteUser(userId);
+    throw new Error(`Staff fixture profile failed for ${options.prefix}: ${profile.error.code}`);
+  }
   return {
     email,
     password,

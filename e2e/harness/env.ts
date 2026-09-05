@@ -38,6 +38,7 @@ export function loadLocalEnv(): void {
 }
 
 export function requiredEnv(...names: readonly string[]): string {
+  loadLocalEnv();
   for (const name of names) {
     const value = process.env[name]?.trim();
     if (value !== undefined && value !== "") return value;

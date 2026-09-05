@@ -1,11 +1,9 @@
-import { randomUUID } from "node:crypto";
-
 import { expect, test } from "@playwright/test";
 import type { BrowserContext } from "@playwright/test";
 import { PDFDocument } from "pdf-lib";
 
 import { serviceDb } from "../harness/env";
-import { signIn } from "../harness/session";
+import { createStaffFixture, signIn } from "../harness/session";
 
 const TARGETS = [
   {
@@ -107,39 +105,22 @@ test("review flyers stay closed to visitors and open to every staff member", asy
   );
   expect(signedOutAsset.status()).toBe(401);
 
-  const db = serviceDb();
-  const staffEmail = `review-flyers-${randomUUID().slice(0, 8)}@example.test`;
-  const staffPassword = `Flyers-${randomUUID()}-aA1!`;
-  const created = await db.auth.admin.createUser({
-    email: staffEmail,
-    password: staffPassword,
-    email_confirm: true,
+  const staff = await createStaffFixture(serviceDb(), {
+    prefix: "review-flyers",
+    displayName: "TEST Review Flyer Staff",
   });
-  expect(created.error).toBeNull();
-  const staffUserId = created.data.user?.id;
-  if (staffUserId === undefined || staffUserId === "") {
-    throw new Error("Review-flyer staff fixture failed");
-  }
 
   let staffContext: BrowserContext | null = null;
   try {
-    const profile = await db.from("staff_profiles").insert({
-      user_id: staffUserId,
-      email: staffEmail,
-      display_name: "TEST Review Flyer Staff",
-      role: "staff",
-      active: true,
-      onboarded_at: new Date().toISOString(),
-    });
-    expect(profile.error).toBeNull();
-
     staffContext = await browser.newContext();
     const staffPage = await staffContext.newPage();
-    await signIn(staffPage, { email: staffEmail, password: staffPassword });
+    await signIn(staffPage, staff);
     // Handing flyers to patients is a front-desk job: printing is open to
     // Every active staff member (product decision 2026-07-26), while
     // Anonymous access stays closed.
-    await expect(staffPage.getByRole("link", { name: "Review flyers", exact: true })).toBeVisible();
+    await expect(
+      staffPage.getByLabel("Portal workspace").getByRole("link", { name: "Review flyers" }),
+    ).toBeVisible();
 
     await staffPage.goto("/admin/review-flyers");
     await expect(staffPage.getByRole("heading", { name: "Print review flyers" })).toBeVisible();
@@ -153,12 +134,13 @@ test("review flyers stay closed to visitors and open to every staff member", asy
     }
   } finally {
     await staffContext?.close().catch(() => undefined);
-    await db.from("staff_profiles").delete().eq("user_id", staffUserId);
-    await db.auth.admin.deleteUser(staffUserId);
+    await staff.dispose();
   }
 
   await signIn(page);
-  await expect(page.getByRole("link", { name: "Review flyers", exact: true })).toBeVisible();
+  await expect(
+    page.getByLabel("Portal workspace").getByRole("link", { name: "Review flyers" }),
+  ).toBeVisible();
   await page.goto("/admin/review-flyers");
 
   const cards = page.locator("[data-review-target]");

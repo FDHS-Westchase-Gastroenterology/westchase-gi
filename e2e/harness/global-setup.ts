@@ -71,6 +71,27 @@ async function sweepStaleFixtures(db: ReturnType<typeof serviceDb>): Promise<voi
   if (staleError) {
     throw new Error(`Stale fixture sweep failed: ${staleError.code}`);
   }
+  // Audit rows about swept requests, and rows a fixture actor wrote, would
+  // Otherwise accumulate across runs and push a run's own rows out of the
+  // Activity page's window.
+  const staleRows = z.array(z.object({ id: z.string() })).safeParse(stale);
+  const staleIds = staleRows.success ? staleRows.data.map((row) => row.id) : [];
+  for (let index = 0; index < staleIds.length; index += 100) {
+    const { error: auditError } = await db
+      .from("audit_log")
+      .delete()
+      .in("entity_id", staleIds.slice(index, index + 100));
+    if (auditError) {
+      throw new Error(`Stale audit sweep failed: ${auditError.code}`);
+    }
+  }
+  const { error: actorAuditError } = await db
+    .from("audit_log")
+    .delete()
+    .like("actor_email", "%@example.test");
+  if (actorAuditError) {
+    throw new Error(`Stale actor audit sweep failed: ${actorAuditError.code}`);
+  }
   const { data: staleRecipients, error: recipientError } = await db
     .from("notification_recipients")
     .delete()
