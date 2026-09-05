@@ -175,7 +175,6 @@
     "react/no-unknown-property": "off",
     "react/no-unescaped-entities": "error",
     "react/no-unsafe": "off",
-    "react/react-compiler": "error",
     "react/react-in-jsx-scope": "off",
     "react/require-render-return": "error",
     "react/rules-of-hooks": "error",
