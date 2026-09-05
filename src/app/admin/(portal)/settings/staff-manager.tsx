@@ -49,7 +49,7 @@ const FAILURE_COPY = {
 } as const satisfies Record<ManagementFailureCode, string>;
 
 function isManagementFailureCode(value: string): value is ManagementFailureCode {
-  return value in FAILURE_COPY;
+  return Object.hasOwn(FAILURE_COPY, value);
 }
 
 /* A string on purpose: a tab left open across a deploy can receive a code this

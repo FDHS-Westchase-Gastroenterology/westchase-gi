@@ -190,7 +190,7 @@ const FAILURE_COPY = {
 } as const satisfies Record<PanelFailureCode, string>;
 
 function isPanelFailureCode(value: string): value is PanelFailureCode {
-  return value in FAILURE_COPY;
+  return Object.hasOwn(FAILURE_COPY, value);
 }
 
 /* Typed as a string on purpose: a tab left open across a deploy can receive

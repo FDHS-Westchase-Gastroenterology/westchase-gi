@@ -47,7 +47,7 @@ const FAILURE_COPY = {
 } as const satisfies Record<MaintainerFailureCode, string>;
 
 function isMaintainerFailureCode(value: string): value is MaintainerFailureCode {
-  return value in FAILURE_COPY;
+  return Object.hasOwn(FAILURE_COPY, value);
 }
 
 /* A string on purpose: a tab left open across a deploy can receive a code this

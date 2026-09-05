@@ -419,7 +419,8 @@ the adapter or database. The matching change-type check matrix is
   statuses, commands, rejections) and `machine.ts` → `requests/workflow-actions.ts` →
   `workflow/commands.ts` → `portal_execute_request_command`. The request work panel is
   `requests/[id]/workflow-panel-model.ts` (choices, copy, reducer), `use-workflow-panel.ts`
-  (commands and outcome handling), and `workflow-panel.tsx` with its two fieldset files.
+  (commands and outcome handling), and `workflow-panel.tsx` with its two fieldset files;
+  `request-history.ts` turns the surface's history into the ledger lines the detail page renders.
 - **Portal authorization and sessions:** `src/lib/portal/auth.ts`, `server.ts`, `src/proxy.ts`,
   Auth entry routes, and `staff_profiles`.
 - **Portal route or mutation:** the route under `src/app/admin/`, `requireRole` at the protected

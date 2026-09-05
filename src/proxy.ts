@@ -5,7 +5,7 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 
 import { INTAKE_FIELDS } from "@/lib/portal/contracts";
-import { LOCALE_COOKIE, localeSet } from "@/lib/site";
+import { LOCALE_COOKIE, localeSet, locales } from "@/lib/site";
 import type { Locale } from "@/lib/site";
 
 // Legacy URL hygiene (Next 16 proxy convention — middleware.ts is
@@ -15,7 +15,7 @@ import type { Locale } from "@/lib/site";
 // BEFORE the document — and therefore any third-party resource it
 // References — can load with those values in the URL.
 
-const LEGACY_FORM_PATH = /^\/(?:en|es|vi|ko|ar)\/(?:contact|appointment)\/?$/;
+const LEGACY_FORM_PATH = new RegExp(`^/(?:${locales.join("|")})/(?:contact|appointment)/?$`);
 
 interface PendingCookie {
   readonly name: string;
