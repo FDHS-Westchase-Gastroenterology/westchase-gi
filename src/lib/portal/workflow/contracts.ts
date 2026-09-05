@@ -143,10 +143,10 @@ export interface CurrentTruth {
  * durable moment its 15-minute correction window closes (spec §5.5).
  */
 export interface UndoWindow {
-  transitionId: string;
-  command: WorkflowCommandKind;
-  occurredAt: string;
-  expiresAt: string;
+  readonly transitionId: string;
+  readonly command: WorkflowCommandKind;
+  readonly occurredAt: string;
+  readonly expiresAt: string;
 }
 
 export interface CommandSuccess {
