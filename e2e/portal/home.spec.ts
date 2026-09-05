@@ -93,7 +93,7 @@ test.describe("portal home", () => {
     const nav = page.locator('nav[aria-label="Portal sections"]');
     await expect(nav.locator("a")).toHaveCount(4);
     await expect(nav.locator('a[aria-current="page"]')).toHaveText("Home");
-    await expect(nav.getByRole("link", { name: "Print review flyers" })).toHaveCount(0);
+    await expect(nav.getByRole("link", { name: "Review flyers" })).toHaveCount(0);
 
     // Other staff jobs: five links for every role — flyer printing is
     // Staff-wide (product decision 2026-07-26) — each a working link.

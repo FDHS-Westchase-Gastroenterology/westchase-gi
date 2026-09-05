@@ -10,6 +10,13 @@ import type { Json } from "../../src/lib/json";
 import { clientIps, requiredEnv, runId, serviceDb } from "../harness/env";
 import { assertSafeE2ETarget } from "../harness/target-guard";
 
+interface TelemetryProbe {
+  event: string;
+  routeTemplate: string;
+  locale: string;
+  deviceClass: string;
+}
+
 const rollupSchema = z.object({
   event: z.string(),
   route_template: z.string(),
@@ -169,6 +176,30 @@ test("beacon payloads never carry patient fields", async ({ page }) => {
       expect(body).not.toContain(forbidden);
     }
   }
+});
+
+test("the route rejects bad events, raw URLs, and staff templates", async ({ request }) => {
+  const base = {
+    routeTemplate: "/",
+    locale: "en",
+    deviceClass: "desktop",
+  };
+  const cases: TelemetryProbe[] = [
+    { ...base, event: "page_click" },
+    { ...base, event: "page_view", routeTemplate: "/appointment?ref=1" },
+    { ...base, event: "page_view", routeTemplate: "/admin/requests" },
+    { ...base, event: "page_view", locale: "fr" },
+    { ...base, event: "page_view", deviceClass: "watch" },
+  ];
+  for (const payload of cases) {
+    const response = await request.post("/api/telemetry", { data: payload });
+    expect(response.status()).toBe(400);
+  }
+
+  const valid = await request.post("/api/telemetry", {
+    data: { ...base, event: "page_view" },
+  });
+  expect(valid.status()).toBe(204);
 });
 
 test("chooser and banner outcomes count", async ({ browser, page }) => {

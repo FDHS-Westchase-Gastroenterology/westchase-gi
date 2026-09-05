@@ -52,11 +52,9 @@ test.describe("staff-authored intake data-entry protection", () => {
     await expect(page.getByTestId("discard-staff-request-dialog")).toBeHidden();
   });
 
-  test("dirty Cancel opens a named dialog that traps focus and restores it", async ({ page }) => {
-    test.fail(
-      true,
-      "Known defect, recorded in the consolidation log on 2026-09-05: after Escape closes the discard dialog the add-appointment form's name field is not found. Remove this marker when it is fixed.",
-    );
+  test("dirty Cancel opens a named dialog that traps focus, and Keep editing returns it", async ({
+    page,
+  }) => {
     await signIn(page);
     await openNewRequest(page, "home");
 
@@ -88,21 +86,33 @@ test.describe("staff-authored intake data-entry protection", () => {
     });
     await expectFocusInsideDialog(page, dialog);
 
+    await keepEditing.click();
+    await expect(dialog).toBeHidden();
+    await expect(page).toHaveURL(/\/admin\/?$/);
+    await expect(page.getByTestId("add-appointment-dialog")).toBeVisible();
+    await expect(page.getByTestId("cancel-staff-request")).toBeFocused();
+    await expect(name).toHaveValue("UX Audit Draft");
+  });
+
+  test("Escape from the discard dialog returns to the draft", async ({ page }) => {
+    test.fail(
+      true,
+      "Known defect, recorded in the consolidation log on 2026-09-05: after Escape closes the discard dialog the add-appointment form's name field is not found. Remove this marker when it is fixed.",
+    );
+    await signIn(page);
+    await openNewRequest(page, "home");
+
+    const name = page.locator("#staff-request-name");
+    await name.fill("UX Audit Draft");
+    await page.getByTestId("cancel-staff-request").click();
+    const dialog = page.getByTestId("discard-staff-request-dialog");
+    await expectDialogOpen(dialog);
+
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
     await expect(page).toHaveURL(/\/admin\/?$/);
     await expect(page.getByTestId("add-appointment-dialog")).toBeVisible();
     await expect(page.getByLabel("Patient name (required)")).toHaveValue("UX Audit Draft");
-    await expect(page.getByTestId("cancel-staff-request")).toBeFocused();
-    await expect(name).toHaveValue("UX Audit Draft");
-
-    await page.getByTestId("cancel-staff-request").click();
-    await expectDialogOpen(dialog);
-    await expect(keepEditing).toBeFocused();
-    await keepEditing.click();
-    await expect(dialog).toBeHidden();
-    await expect(page).toHaveURL(/\/admin\/?$/);
-    await expect(page.getByTestId("add-appointment-dialog")).toBeVisible();
     await expect(page.getByTestId("cancel-staff-request")).toBeFocused();
     await expect(name).toHaveValue("UX Audit Draft");
   });

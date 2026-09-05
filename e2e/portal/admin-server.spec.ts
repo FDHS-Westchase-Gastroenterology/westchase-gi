@@ -1111,8 +1111,10 @@ test.describe("portal management server boundaries", () => {
   test("VAL-ADMIN-021: workflow-command vocabulary, filters, adjacency, and unique search id", async () => {
     if (!adminPage) throw new Error("Admin session is unavailable");
     const token = `slice8-${runId}`;
-    const noon = new Date();
-    noon.setHours(12, 0, 0, 0);
+    // Anchored at the run's own clock: the first page of Recent work is
+    // Fifty rows, and a day's earlier runs would otherwise push fixtures
+    // Dated midday below it later in the day.
+    const anchor = new Date();
     const { data: staged, error: stageError } = await db
       .from("requests")
       .insert({
@@ -1156,7 +1158,7 @@ test.describe("portal management server boundaries", () => {
           entity: "requests",
           entity_id: requestId,
           detail: { command, from, to, resulting_version: index + 1 },
-          at: new Date(noon.getTime() - index * 1000).toISOString(),
+          at: new Date(anchor.getTime() - index * 1000).toISOString(),
         })),
         {
           actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
@@ -1164,7 +1166,7 @@ test.describe("portal management server boundaries", () => {
           entity: "requests",
           entity_id: null,
           detail: { row_count: 17 },
-          at: new Date(noon.getTime() - 20 * 60_000).toISOString(),
+          at: new Date(anchor.getTime() - 20 * 60_000).toISOString(),
         },
         {
           actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
@@ -1172,7 +1174,7 @@ test.describe("portal management server boundaries", () => {
           entity: "requests",
           entity_id: requestId,
           detail: {},
-          at: new Date(noon.getTime() - 21 * 60_000).toISOString(),
+          at: new Date(anchor.getTime() - 21 * 60_000).toISOString(),
         },
         {
           actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
@@ -1180,7 +1182,7 @@ test.describe("portal management server boundaries", () => {
           entity: "requests",
           entity_id: null,
           detail: { row_count: 17 },
-          at: new Date(noon.getTime() - 22 * 60_000).toISOString(),
+          at: new Date(anchor.getTime() - 22 * 60_000).toISOString(),
         },
         {
           actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
@@ -1188,7 +1190,7 @@ test.describe("portal management server boundaries", () => {
           entity: "notification_recipients",
           entity_id: null,
           detail: {},
-          at: new Date(noon.getTime() - 30 * 60_000).toISOString(),
+          at: new Date(anchor.getTime() - 30 * 60_000).toISOString(),
         },
         {
           actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
@@ -1196,7 +1198,7 @@ test.describe("portal management server boundaries", () => {
           entity: "maintainers",
           entity_id: null,
           detail: { target_login: `${token}-maintainer` },
-          at: new Date(noon.getTime() - 40 * 60_000).toISOString(),
+          at: new Date(anchor.getTime() - 40 * 60_000).toISOString(),
         },
       ])
       .select("id");
