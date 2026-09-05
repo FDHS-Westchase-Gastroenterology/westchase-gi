@@ -8,6 +8,7 @@ import type { Json } from "@/lib/json";
 import { recordAudit } from "@/lib/portal/audit";
 import { requireRole } from "@/lib/portal/auth";
 import { AUDIT_ACTIONS, STAFF_ROLES } from "@/lib/portal/contracts";
+import type { DeliveryOutcome } from "@/lib/portal/email";
 import { sendPortalEmail } from "@/lib/portal/email-provider";
 import { sendRecipientConfirmation, sendStaffSetupLink } from "@/lib/portal/management-email";
 import type { StaffSetupType } from "@/lib/portal/management-email";
@@ -19,6 +20,7 @@ import {
 import { recipientRpcFailureCode, runRecipientMutationTransport } from "@/lib/portal/recipient-rpc";
 import type { StaffProfileRow } from "@/lib/portal/rows";
 import { portalUrl, serviceClient } from "@/lib/portal/server";
+import type { ServiceClient } from "@/lib/portal/server";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const STAFF_BAN_DURATION = "876000h";
@@ -73,14 +75,12 @@ export interface ManagementFailure {
 
 export type MutationResult = { ok: true } | ManagementFailure;
 
-export type AddRecipientResult = { ok: true; delivery: "accepted" | "failed" } | ManagementFailure;
+export type AddRecipientResult = { ok: true; delivery: DeliveryOutcome } | ManagementFailure;
 
 export type InviteStaffResult =
   | { ok: true; delivery: "accepted" }
   | { ok: true; delivery: "failed"; fallbackSetupUrl: string }
   | ManagementFailure;
-
-type ServiceClient = ReturnType<typeof serviceClient>;
 
 function failure(code: ManagementFailureCode, error: string): ManagementFailure {
   return { ok: false, code, error };

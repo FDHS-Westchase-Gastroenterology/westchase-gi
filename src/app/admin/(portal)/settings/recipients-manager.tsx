@@ -7,6 +7,13 @@ import type { ComponentProps, KeyboardEvent as ReactKeyboardEvent, RefObject } f
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import type {
+  AddRecipientResult,
+  ManagementFailureCode,
+  MutationResult,
+  UpdateRecipientLabelResult,
+} from "@/lib/portal/management";
+import type { NotificationRecipientRow } from "@/lib/portal/rows";
 import { RECIPIENTS_INTRO } from "@/lib/portal/staff-language";
 
 import {
@@ -16,35 +23,22 @@ import {
   updateRecipientLabel,
 } from "./actions";
 
-export interface RecipientRow {
-  id: string;
-  email: string;
-  label: string | null;
-  active: boolean;
-}
+/** The notification_recipients columns the settings page reads. */
+export type RecipientRow = Readonly<
+  Pick<NotificationRecipientRow, "id" | "email" | "label" | "active">
+>;
 
-interface MutationOutcome {
-  ok: boolean;
-  code?: string;
-  delivery?: "accepted" | "failed";
-}
-
-type RecipientFailureCode = "invalid" | "conflict" | "not_found" | "unavailable";
+type RecipientMutationResult = MutationResult | AddRecipientResult | UpdateRecipientLabelResult;
 
 const FAILURE_COPY = {
   invalid: "That doesn't look like a valid email address.",
   conflict: "That address is already on the list.",
   not_found: "That recipient no longer exists — the list has been refreshed.",
   unavailable: "Something went wrong saving the change. Try again.",
-} as const satisfies Record<RecipientFailureCode, string>;
+} as const satisfies Record<ManagementFailureCode, string>;
 
-function isRecipientFailureCode(value: string): value is RecipientFailureCode {
-  return value in FAILURE_COPY;
-}
-
-function failureMessage(result: Readonly<MutationOutcome>): string {
-  const code = result.code ?? "unavailable";
-  return isRecipientFailureCode(code) ? FAILURE_COPY[code] : FAILURE_COPY.unavailable;
+function failureMessage(code: ManagementFailureCode): string {
+  return FAILURE_COPY[code];
 }
 
 function keepFocusInDialog(event: ReactKeyboardEvent<HTMLDialogElement>) {
@@ -166,7 +160,6 @@ function recipientsReducer(
   }
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework ref types that cannot be made deeply readonly
 function RemoveRecipientDialog({
   recipient,
   dialogRef,
@@ -245,7 +238,6 @@ function RemoveRecipientDialog({
   );
 }
 
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function RecipientRowItem({
   recipient,
   isAdmin,
@@ -620,15 +612,15 @@ export function RecipientsManager({
 
   function run(
     key: string,
-    action: () => Promise<MutationOutcome>,
-    onSuccess?: (result: Readonly<MutationOutcome>) => void,
+    action: () => Promise<RecipientMutationResult>,
+    onSuccess?: (result: Readonly<Extract<RecipientMutationResult, { ok: true }>>) => void,
     onFailure?: () => void,
   ) {
     dispatch({ type: "begin", key });
     startTransition(async () => {
       const result = await action();
       if (!result.ok) {
-        dispatch({ type: "failed", message: failureMessage(result) });
+        dispatch({ type: "failed", message: failureMessage(result.code) });
         onFailure?.();
         return;
       }
@@ -767,7 +759,7 @@ export function RecipientsManager({
         dispatch({
           type: "delivery",
           notice:
-            result.delivery === "accepted"
+            "delivery" in result && result.delivery === "accepted"
               ? {
                   tone: "success",
                   text: "Recipient added and confirmation email accepted for delivery.",

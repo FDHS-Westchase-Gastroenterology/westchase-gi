@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import type { SendPortalEmail } from "@/lib/portal/email";
+import type { DeliveryOutcome, SendPortalEmail } from "@/lib/portal/email";
 import { RECIPIENT_CONFIRMATION_BODY } from "@/lib/portal/staff-language";
 
 export type ManagementEmailDelivery =
@@ -21,7 +21,7 @@ function staffSetupUrl(confirmationUrl: string, tokenHash: string, type: StaffSe
 export async function sendRecipientConfirmation(
   sendEmail: SendPortalEmail,
   recipient: Readonly<{ id: string; email: string }>,
-): Promise<"accepted" | "failed"> {
+): Promise<DeliveryOutcome> {
   const outcome = await sendEmail({
     purpose: "recipient_confirmation",
     to: recipient.email,

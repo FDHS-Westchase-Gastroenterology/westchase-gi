@@ -14,6 +14,7 @@ import { asJsonBoolean, asJsonNumber, asJsonObject, asJsonString } from "@/lib/j
 import type { Json, JsonObject } from "@/lib/json";
 import { formatStatusList, parsePrintStatusSelection } from "@/lib/portal/print-selection";
 import { isPortalReleaseAuditAction } from "@/lib/portal/release-state";
+import type { AuditLogRow } from "@/lib/portal/rows";
 import { normalizeRequestState, parseRequestStatus } from "@/lib/portal/workflow/contracts";
 
 // The human lens over the durable audit record: plain-language, grouped by
@@ -21,15 +22,10 @@ import { normalizeRequestState, parseRequestStatus } from "@/lib/portal/workflow
 // Vocabulary stays in the technical table beneath. Patient names are
 // Deliberately not resolved here; the request itself is the link.
 
-export interface AuditEntry {
-  readonly id: string;
-  readonly actor_email: string;
-  readonly action: string;
-  readonly entity: string;
-  readonly entity_id: string | null;
-  readonly detail: Json;
-  readonly at: string;
-}
+/** The audit_log columns the Activity page reads. */
+export type AuditEntry = Readonly<
+  Pick<AuditLogRow, "id" | "actor_email" | "action" | "entity" | "entity_id" | "detail" | "at">
+>;
 
 export interface RecentWorkContext {
   // Email -> display name (staff identity for actors)

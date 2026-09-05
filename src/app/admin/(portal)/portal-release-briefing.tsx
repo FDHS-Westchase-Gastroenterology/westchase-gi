@@ -27,8 +27,7 @@ import {
   recordPortalReleaseDismissAction,
   recordPortalReleaseGuideOpenAction,
 } from "./release-briefing-actions";
-
-type ReleaseActionResult = { ok: true } | { ok: false; code: "invalid" | "unavailable" };
+import type { PortalReleaseActionResult } from "./release-briefing-actions";
 
 interface PortalNavigator {
   push: (href: string) => void;
@@ -109,7 +108,7 @@ export function PortalReleaseProvider({
 
   const runAction = useCallback(
     (
-      action: () => Promise<ReleaseActionResult>,
+      action: () => Promise<PortalReleaseActionResult>,
       failureMessage = "The update is open, but the portal could not save that preference. It may appear as new again later.",
     ) => {
       setActionError(null);

@@ -12,9 +12,7 @@ import {
 } from "./release-state";
 import type { PortalReleaseState } from "./release-state";
 
-export type { PortalReleaseState };
-
-type PortalReleaseMutation =
+export type PortalReleaseMutation =
   | "portal_open_staff_release"
   | "portal_acknowledge_staff_release"
   | "portal_hide_staff_release"

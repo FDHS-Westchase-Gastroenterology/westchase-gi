@@ -1,3 +1,5 @@
+import type { StaffRequestDraft } from "@/lib/portal/contracts";
+
 export const EMPTY_STAFF_REQUEST_DRAFT = {
   name: "",
   phone: "",
@@ -7,16 +9,7 @@ export const EMPTY_STAFF_REQUEST_DRAFT = {
   message: "",
 } as const;
 
-export interface StaffRequestDraftSnapshot {
-  readonly name: string;
-  readonly phone: string;
-  readonly email: string;
-  readonly location: string;
-  readonly time: string;
-  readonly message: string;
-}
-
-export function isStaffRequestDraftDirty(draft: StaffRequestDraftSnapshot): boolean {
+export function isStaffRequestDraftDirty(draft: StaffRequestDraft): boolean {
   return (
     draft.name !== EMPTY_STAFF_REQUEST_DRAFT.name ||
     draft.phone !== EMPTY_STAFF_REQUEST_DRAFT.phone ||

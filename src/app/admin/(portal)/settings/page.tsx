@@ -24,7 +24,7 @@ const staffRowSchema = z.object({
   role: z.enum(STAFF_ROLES),
   active: z.boolean(),
   onboarded_at: z.string().nullable(),
-}) satisfies z.ZodType<StaffRow>;
+}) satisfies z.ZodType<Omit<StaffRow, "lastSignInAt">>;
 
 // Default Settings sub-page: the frequent, staff-facing configuration.
 // The website custody record lives on the sibling /admin/settings/software.

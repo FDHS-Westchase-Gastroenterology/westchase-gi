@@ -11,25 +11,23 @@ import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { parseStaffRole } from "@/lib/portal/contracts";
 import type { StaffRole } from "@/lib/portal/contracts";
+import type { DeliveryOutcome } from "@/lib/portal/email";
+import type {
+  InviteStaffResult,
+  ManagementFailureCode,
+  MutationResult,
+} from "@/lib/portal/management";
+import type { StaffProfileRow } from "@/lib/portal/rows";
 
 import { changeStaffRole, deactivateStaff, inviteStaff, resendStaffInvite } from "./actions";
 
-export interface StaffRow {
-  user_id: string;
-  email: string;
-  display_name: string;
-  role: StaffRole;
-  active: boolean;
-  onboarded_at: string | null;
-  lastSignInAt?: string | null;
-}
+/** The staff_profiles columns the settings page reads, plus the Auth sign-in it looks up. */
+export type StaffRow = Pick<
+  StaffProfileRow,
+  "user_id" | "email" | "display_name" | "role" | "active" | "onboarded_at"
+> & { readonly lastSignInAt: string | null };
 
-interface MutationOutcome {
-  ok: boolean;
-  code?: string;
-  delivery?: "accepted" | "failed";
-  fallbackSetupUrl?: string;
-}
+type StaffMutationResult = MutationResult | InviteStaffResult;
 
 interface InviteErrors {
   readonly email?: string;
@@ -38,27 +36,20 @@ interface InviteErrors {
 
 interface IssuedInvite {
   readonly email: string;
-  readonly delivery: "accepted" | "failed";
+  readonly delivery: DeliveryOutcome;
   readonly fallbackSetupUrl?: string;
   readonly copied: boolean;
 }
-
-type StaffFailureCode = "invalid" | "conflict" | "not_found" | "unavailable";
 
 const FAILURE_COPY = {
   invalid: "Check the email and name — one of them isn't valid.",
   conflict: "That person already has portal access.",
   not_found: "That account no longer exists — the list has been refreshed.",
   unavailable: "Something went wrong saving the change. Try again.",
-} as const satisfies Record<StaffFailureCode, string>;
+} as const satisfies Record<ManagementFailureCode, string>;
 
-function isStaffFailureCode(value: string): value is StaffFailureCode {
-  return value in FAILURE_COPY;
-}
-
-function failureMessage(result: Readonly<MutationOutcome>): string {
-  const code = result.code ?? "unavailable";
-  return isStaffFailureCode(code) ? FAILURE_COPY[code] : FAILURE_COPY.unavailable;
+function failureMessage(code: ManagementFailureCode): string {
+  return FAILURE_COPY[code];
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
@@ -80,7 +71,7 @@ function StaffList({
   pendingKey: string | null;
   roleDrafts: Record<string, StaffRole>;
   onRoleDraft: (userId: string, role: StaffRole) => void;
-  run: (key: string, action: () => Promise<MutationOutcome>) => void;
+  run: (key: string, action: () => Promise<StaffMutationResult>) => void;
   resendFromRow: (person: Readonly<StaffRow>) => void;
 }>) {
   return (
@@ -117,9 +108,7 @@ function StaffList({
               >
                 {signInReadFailed
                   ? "Sign-in info unavailable"
-                  : person.lastSignInAt !== undefined &&
-                      person.lastSignInAt !== null &&
-                      person.lastSignInAt !== ""
+                  : person.lastSignInAt !== null && person.lastSignInAt !== ""
                     ? `Last sign in ${formatReceived(person.lastSignInAt)}`
                     : "No sign-ins yet"}
               </p>
@@ -426,7 +415,7 @@ export function StaffManager({
   const inviteEmailRef = useRef<HTMLInputElement>(null);
   const inviteNameRef = useRef<HTMLInputElement>(null);
 
-  function run(key: string, action: () => Promise<MutationOutcome>) {
+  function run(key: string, action: () => Promise<StaffMutationResult>) {
     setError(null);
     setIssued(null);
     setPendingKey(key);
@@ -434,23 +423,19 @@ export function StaffManager({
       const result = await action();
       setPendingKey(null);
       if (!result.ok) {
-        setError(failureMessage(result));
+        setError(failureMessage(result.code));
         return;
       }
       router.refresh();
     });
   }
 
-  function showInviteResult(email: string, result: Readonly<MutationOutcome>): boolean {
+  function showInviteResult(email: string, result: Readonly<InviteStaffResult>): boolean {
     if (!result.ok) {
-      setError(failureMessage(result));
+      setError(failureMessage(result.code));
       return false;
     }
-    if (
-      (result.delivery !== "accepted" && result.delivery !== "failed") ||
-      (result.delivery === "failed" &&
-        (result.fallbackSetupUrl === undefined || result.fallbackSetupUrl === ""))
-    ) {
+    if (result.delivery === "failed" && result.fallbackSetupUrl === "") {
       setError(FAILURE_COPY.unavailable);
       return false;
     }
@@ -458,7 +443,7 @@ export function StaffManager({
     setIssued({
       email,
       delivery: result.delivery,
-      fallbackSetupUrl: result.fallbackSetupUrl,
+      fallbackSetupUrl: result.delivery === "failed" ? result.fallbackSetupUrl : undefined,
       copied: false,
     });
     return true;

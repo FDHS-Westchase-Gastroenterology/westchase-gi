@@ -4,9 +4,7 @@ import { z } from "zod";
 
 import { recordAudit } from "@/lib/portal/audit";
 import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
-import type { serviceClient } from "@/lib/portal/server";
-
-type ServiceClient = ReturnType<typeof serviceClient>;
+import type { ServiceClient } from "@/lib/portal/server";
 
 export type AddRecipientCompatibilityResult =
   | { ok: true; recipientId: string }
