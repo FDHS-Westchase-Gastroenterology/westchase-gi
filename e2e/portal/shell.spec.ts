@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
 
 // VAL-ADMIN-002: the seed admin can log in and out through the UI.
 // VAL-ADMIN-014 (shell scope): no horizontal overflow at 390/1440, nav

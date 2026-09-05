@@ -4,7 +4,7 @@ import { test, expect } from "@playwright/test";
 import type { BrowserContext, Page } from "@playwright/test";
 import { z } from "zod";
 
-import { loadLocalEnv, serviceDb } from "./support";
+import { loadLocalEnv, serviceDb } from "../harness/env";
 
 loadLocalEnv();
 

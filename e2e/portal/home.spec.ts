@@ -4,9 +4,9 @@ import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { z } from "zod";
 
-import { intakeResponseSchema } from "../src/lib/portal/contracts";
-import { greetingName, signInIdentifierField } from "../src/lib/portal/staff-language";
-import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+import { intakeResponseSchema } from "../../src/lib/portal/contracts";
+import { greetingName, signInIdentifierField } from "../../src/lib/portal/staff-language";
+import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
 
 // The portal home page: staff land on a greeting and their tasks, not on
 // Software. The queue overview count is real data, paper handoff is one

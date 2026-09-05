@@ -4,8 +4,8 @@ import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { z } from "zod";
 
-import { intakeResponseSchema } from "../src/lib/portal/contracts";
-import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+import { intakeResponseSchema } from "../../src/lib/portal/contracts";
+import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
 
 // VAL-ADMIN-007: recipients are manageable from the UI and a staged
 // Appointment request attempts notification for exactly the active set.

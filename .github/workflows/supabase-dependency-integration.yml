@@ -24,7 +24,7 @@ jobs:
   integration:
     name: supabase-integration
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -199,14 +199,11 @@ jobs:
       - name: Verify Preview Branch schema, RLS, RPCs, and seed
         run: node scripts/verify-schema.mjs --target branch
 
-      - name: Verify Supabase client, SSR Auth, RLS, and PostgREST
-        run: >-
-          npx playwright test
-          e2e/supabase-dependency-contract.spec.ts
-          e2e/intake-api.spec.ts
-          e2e/portal-auth.spec.ts
-          e2e/portal-lifecycle.spec.ts
-          e2e/portal-print-packet.spec.ts
-          e2e/portal-requests.spec.ts
-          e2e/portal-scale.spec.ts
-          --project=chromium
+      # Trust boundaries first (Auth refresh, SSR sessions, closed Data API and
+      # RLS, intake throttling, field caps, lifecycle, RPC persistence), then
+      # The staff-portal journeys. Both folders need the Preview Branch.
+      - name: Verify Supabase trust boundaries
+        run: npm run test:e2e:boundaries
+
+      - name: Run staff-portal browser specs
+        run: npm run test:e2e:portal

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
-import { loadLocalEnv, requiredEnv } from "./support";
+import { loadLocalEnv, requiredEnv } from "../harness/env";
 
 loadLocalEnv();
 

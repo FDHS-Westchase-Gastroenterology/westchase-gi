@@ -61,10 +61,11 @@ jobs:
           PORTAL_BASE_URL: http://127.0.0.1:3100
         run: npm run build
 
-      - name: Install public-smoke browser
+      - name: Install browser for the public specs
         run: npx playwright install --with-deps chromium
 
-      - name: Run public smoke
-        env:
-          PLAYWRIGHT_PUBLIC_SMOKE: "1"
-        run: npx playwright test e2e/smoke.spec.ts --project=chromium
+      # The patient-site specs that need no credentials: smoke, language
+      # Chooser, leak hygiene. Everything that needs a database runs in the
+      # Supabase-integration workflow against a Preview Branch.
+      - name: Run public browser specs
+        run: npm run test:e2e:public

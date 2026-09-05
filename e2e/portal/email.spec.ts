@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-import { createEmailSender } from "../src/lib/portal/email";
-import type { PortalEmailMessage, PortalEmailTransport } from "../src/lib/portal/email";
-import { createAppointmentNotificationEvents } from "../src/lib/portal/intake-notification";
-import { sendRecipientConfirmation, sendStaffSetupLink } from "../src/lib/portal/management-email";
+import { createEmailSender } from "../../src/lib/portal/email";
+import type { PortalEmailMessage, PortalEmailTransport } from "../../src/lib/portal/email";
+import { createAppointmentNotificationEvents } from "../../src/lib/portal/intake-notification";
+import { sendRecipientConfirmation, sendStaffSetupLink } from "../../src/lib/portal/management-email";
 
 const MESSAGE: PortalEmailMessage = {
   purpose: "recipient_confirmation",

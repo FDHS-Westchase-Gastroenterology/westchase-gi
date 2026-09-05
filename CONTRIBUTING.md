@@ -81,7 +81,7 @@ NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
   SUPABASE_SERVICE_ROLE_KEY=ci-server-placeholder \
   npm run build
 npx playwright install --with-deps chromium
-PLAYWRIGHT_PUBLIC_SMOKE=1 npx playwright test e2e/smoke.spec.ts --project=chromium
+npm run test:e2e:public
 ```
 
 `npm run lint` (`oxlint` from the repository root) is the repository's sole linter command.

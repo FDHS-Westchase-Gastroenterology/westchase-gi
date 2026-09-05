@@ -2,13 +2,13 @@ import { createHash, createHmac, randomUUID } from "node:crypto";
 
 import { test, expect } from "@playwright/test";
 
-import { en } from "../src/lib/dictionaries/en";
+import { en } from "../../src/lib/dictionaries/en";
 import {
   INTAKE_RATE_LIMIT,
   REQUEST_FIELD_LIMITS,
   intakeResponseSchema,
-} from "../src/lib/portal/contracts";
-import { requiredEnv, serviceDb } from "./support";
+} from "../../src/lib/portal/contracts";
+import { requiredEnv, serviceDb } from "../harness/env";
 
 type IntakeFixture = Partial<ReturnType<typeof validPayload>> & {
   company?: string;

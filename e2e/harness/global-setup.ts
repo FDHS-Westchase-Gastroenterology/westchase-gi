@@ -3,8 +3,8 @@ import { resolve } from "node:path";
 
 import { z } from "zod";
 
-import { jsonSchema } from "../src/lib/json";
-import { serviceDb } from "./support";
+import { jsonSchema } from "../../src/lib/json";
+import { serviceDb } from "./env";
 
 const SNAPSHOT_PATH = resolve(process.cwd(), ".logs/recipients-snapshot.json");
 

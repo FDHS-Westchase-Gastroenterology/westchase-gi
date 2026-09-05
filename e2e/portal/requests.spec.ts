@@ -4,11 +4,11 @@ import { test, expect } from "@playwright/test";
 import type { Page, APIRequestContext } from "@playwright/test";
 import { z } from "zod";
 
-import { followUpWhenLabel } from "../src/app/admin/(portal)/requests/format";
-import { asJsonObject, asJsonString, jsonSchema } from "../src/lib/json";
-import { resolveFollowUpAt } from "../src/lib/portal/business-time";
-import { intakeResponseSchema } from "../src/lib/portal/contracts";
-import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+import { followUpWhenLabel } from "../../src/app/admin/(portal)/requests/format";
+import { asJsonObject, asJsonString, jsonSchema } from "../../src/lib/json";
+import { resolveFollowUpAt } from "../../src/lib/portal/business-time";
+import { intakeResponseSchema } from "../../src/lib/portal/contracts";
+import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
 
 const noteMetaSchema = z.object({
   text: z.string().optional(),

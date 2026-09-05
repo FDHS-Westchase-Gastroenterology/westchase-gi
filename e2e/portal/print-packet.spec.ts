@@ -5,8 +5,8 @@ import type { APIRequestContext, Page } from "@playwright/test";
 import { PDFDocument } from "pdf-lib";
 import { z } from "zod";
 
-import { intakeResponseSchema } from "../src/lib/portal/contracts";
-import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+import { intakeResponseSchema } from "../../src/lib/portal/contracts";
+import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
 
 // The paper handoff is a truthful snapshot of the live New queue: complete,
 // Oldest first, accountable without PHI, and entirely non-mutating.

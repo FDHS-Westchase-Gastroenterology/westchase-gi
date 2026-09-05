@@ -7,14 +7,14 @@ import { resolve } from "node:path";
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { ar } from "../src/lib/dictionaries/ar";
-import { en } from "../src/lib/dictionaries/en";
-import { es } from "../src/lib/dictionaries/es";
-import { ko } from "../src/lib/dictionaries/ko";
-import { vi } from "../src/lib/dictionaries/vi";
-import type { Dictionary } from "../src/lib/i18n";
-import type { Locale } from "../src/lib/site";
-import { serviceDb } from "./support";
+import { ar } from "../../src/lib/dictionaries/ar";
+import { en } from "../../src/lib/dictionaries/en";
+import { es } from "../../src/lib/dictionaries/es";
+import { ko } from "../../src/lib/dictionaries/ko";
+import { vi } from "../../src/lib/dictionaries/vi";
+import type { Dictionary } from "../../src/lib/i18n";
+import type { Locale } from "../../src/lib/site";
+import { serviceDb } from "../harness/env";
 
 const db = serviceDb();
 const dicts = { en, es, vi, ko, ar } as const satisfies Record<Locale, Dictionary>;

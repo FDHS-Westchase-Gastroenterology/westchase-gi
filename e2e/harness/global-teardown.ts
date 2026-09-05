@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 
 import { z } from "zod";
 
-import { serviceDb } from "./support";
+import { serviceDb } from "./env";
 
 const recipientSnapshotSchema = z.array(
   z.object({

@@ -6,10 +6,10 @@ import { resolve } from "node:path";
 import { test, expect } from "@playwright/test";
 import { z } from "zod";
 
-import { asJsonArray, jsonObjectSchema, jsonSchema } from "../src/lib/json";
-import type { Json } from "../src/lib/json";
-import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
-import { assertSafeE2ETarget } from "./target-guard";
+import { asJsonArray, jsonObjectSchema, jsonSchema } from "../../src/lib/json";
+import type { Json } from "../../src/lib/json";
+import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
+import { assertSafeE2ETarget } from "../harness/target-guard";
 
 const rollupSchema = z.object({
   event: z.string(),

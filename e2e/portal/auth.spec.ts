@@ -4,8 +4,8 @@ import { test, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
-import { signInIdentifierField } from "../src/lib/portal/staff-language";
-import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+import { signInIdentifierField } from "../../src/lib/portal/staff-language";
+import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
 
 loadLocalEnv();
 

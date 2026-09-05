@@ -1,8 +1,8 @@
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
-import { intakeResponseSchema } from "../src/lib/portal/contracts";
-import { loadLocalEnv, requiredEnv } from "./support";
+import { intakeResponseSchema } from "../../src/lib/portal/contracts";
+import { loadLocalEnv, requiredEnv } from "../harness/env";
 
 // VAL-REG-005 (revised 2026-07-26): the portal ships no assistant
 // Placeholder. The docked "coming soon" launcher was removed because a
@@ -85,6 +85,6 @@ test("VAL-REG-005: no assistant placeholder ships before the assistant works", a
   expect([404, 307]).toContain(assistantPage.status());
 
   // Cleanup the staged request.
-  const { serviceDb } = await import("./support");
+  const { serviceDb } = await import("../harness/env");
   await serviceDb().from("requests").delete().eq("id", id);
 });

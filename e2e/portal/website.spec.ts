@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { test, expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
-import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
 
 loadLocalEnv();
 

@@ -4,7 +4,7 @@ import { expect, test } from "@playwright/test";
 import type { BrowserContext, Page } from "@playwright/test";
 import { PDFDocument } from "pdf-lib";
 
-import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
 
 loadLocalEnv();
 

@@ -4,9 +4,9 @@ import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { z } from "zod";
 
-import { jsonObjectSchema } from "../src/lib/json";
-import type { JsonObject } from "../src/lib/json";
-import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+import { jsonObjectSchema } from "../../src/lib/json";
+import type { JsonObject } from "../../src/lib/json";
+import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
 
 interface LifecycleFixture {
   status?: string;

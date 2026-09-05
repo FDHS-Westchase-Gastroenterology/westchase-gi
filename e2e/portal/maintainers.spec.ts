@@ -1,15 +1,15 @@
 import { test, expect } from "@playwright/test";
 import { z } from "zod";
 
-import { jsonObjectSchema } from "../src/lib/json";
-import type { JsonObject } from "../src/lib/json";
-import { GitHubApiError, readGitHubResponse } from "../src/lib/portal/github-response";
+import { jsonObjectSchema } from "../../src/lib/json";
+import type { JsonObject } from "../../src/lib/json";
+import { GitHubApiError, readGitHubResponse } from "../../src/lib/portal/github-response";
 import {
   getMaintainerManagementState,
   invitationIsCancelled,
   runMaintainerOperation,
-} from "../src/lib/portal/maintainer-operation";
-import { getMaintainerViewState } from "../src/lib/portal/maintainer-view";
+} from "../../src/lib/portal/maintainer-operation";
+import { getMaintainerViewState } from "../../src/lib/portal/maintainer-view";
 
 test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "provider contract");

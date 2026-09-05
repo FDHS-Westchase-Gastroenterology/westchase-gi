@@ -5,9 +5,9 @@ import type { BrowserContext, Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
-import { asJsonString, jsonObjectSchema } from "../src/lib/json";
-import type { JsonObject } from "../src/lib/json";
-import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
+import { asJsonString, jsonObjectSchema } from "../../src/lib/json";
+import type { JsonObject } from "../../src/lib/json";
+import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
 
 const inviteDetailSchema = z.looseObject({
   resend: z.boolean().optional(),

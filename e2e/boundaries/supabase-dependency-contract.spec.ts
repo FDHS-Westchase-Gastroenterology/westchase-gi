@@ -7,15 +7,15 @@ import type { Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
-import { asJsonNumber, asJsonObject, jsonObjectSchema, jsonSchema } from "../src/lib/json";
-import type { Json, JsonObject } from "../src/lib/json";
+import { asJsonNumber, asJsonObject, jsonObjectSchema, jsonSchema } from "../../src/lib/json";
+import type { Json, JsonObject } from "../../src/lib/json";
 import {
   INTAKE_RATE_LIMIT,
   REQUEST_FIELD_LIMITS,
   intakeResponseSchema,
-} from "../src/lib/portal/contracts";
-import { loadLocalEnv, requiredEnv, serviceDb } from "./support";
-import { assertSafeE2ETarget } from "./target-guard";
+} from "../../src/lib/portal/contracts";
+import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
+import { assertSafeE2ETarget } from "../harness/target-guard";
 
 const lifecycleRowSchema = z.object({
   status: z.string(),
