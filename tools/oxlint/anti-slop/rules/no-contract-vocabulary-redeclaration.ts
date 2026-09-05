@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import { defineRule } from "@oxlint/plugins";
 import type { ESTree } from "@oxlint/plugins";
@@ -24,14 +25,18 @@ function membersKey(members: readonly string[]): string {
   return [...new Set(members)].sort().join("\u0000");
 }
 
-function readVocabularies(owners: readonly string[]): Map<string, Vocabulary> {
-  const found = new Map<string, Vocabulary>();
+/* Owner paths are relative to the repository root, found from this file rather
+   than from the working directory so the rule behaves the same from any cwd. */
+const REPOSITORY_ROOT = fileURLToPath(new URL("../../../../", import.meta.url));
+
+function readVocabularies(owners: readonly string[]): Map<string, Vocabulary[]> {
+  const found = new Map<string, Vocabulary[]>();
   for (const owner of owners) {
     let source: string;
     try {
-      source = readFileSync(resolve(process.cwd(), owner), "utf8");
+      source = readFileSync(resolve(REPOSITORY_ROOT, owner), "utf8");
     } catch {
-      continue;
+      throw new Error(`no-contract-vocabulary-redeclaration: owner file not found: ${owner}`);
     }
     for (const match of source.matchAll(DECLARATION)) {
       const [, name, body] = match;
@@ -40,7 +45,8 @@ function readVocabularies(owners: readonly string[]): Map<string, Vocabulary> {
         hit[1] === undefined ? [] : [hit[1]],
       );
       if (members.length < 2) continue;
-      found.set(membersKey(members), { name, owner, members });
+      const key = membersKey(members);
+      found.set(key, [...(found.get(key) ?? []), { name, owner, members }]);
     }
   }
   return found;
@@ -113,16 +119,19 @@ export const noContractVocabularyRedeclarationRule = defineRule({
     defaultOptions: [{ owners: [] }],
   },
   createOnce(context) {
-    let vocabularies: Map<string, Vocabulary> | null = null;
+    let vocabularies: Map<string, Vocabulary[]> | null = null;
     let owners: readonly string[] = [];
 
     const report = (node: ESTree.Node, members: readonly string[]) => {
-      const vocabulary = vocabularies?.get(membersKey(members));
-      if (vocabulary === undefined) return;
+      const declared = vocabularies?.get(membersKey(members));
+      if (declared === undefined) return;
       context.report({
         node,
         messageId: "redeclared",
-        data: { name: vocabulary.name, owner: vocabulary.owner },
+        data: {
+          name: declared.map((vocabulary) => vocabulary.name).join(" / "),
+          owner: [...new Set(declared.map((vocabulary) => vocabulary.owner))].join(", "),
+        },
       });
     };
 
