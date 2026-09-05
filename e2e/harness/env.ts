@@ -57,9 +57,12 @@ type PortalDb = SupabaseClient<
   "public"
 >;
 
-function client(key: string): PortalDb {
+/* The key is read only after loadLocalEnv() has applied .env.local, which is
+   why callers pass the variable names rather than a resolved value. */
+function client(...keyNames: readonly string[]): PortalDb {
   loadLocalEnv();
   assertSafeE2ETarget(process.env);
+  const key = requiredEnv(...keyNames);
   return createClient<PortalDb extends SupabaseClient<infer Schema> ? Schema : never, "public">(
     requiredEnv("NEXT_PUBLIC_SUPABASE_URL"),
     key,
@@ -75,7 +78,7 @@ function client(key: string): PortalDb {
 
 /** Service-role client against an allowlisted Preview Branch or local stack. */
 export function serviceDb(): SupabaseClient {
-  return client(requiredEnv("SUPABASE_SERVICE_ROLE_KEY"));
+  return client("SUPABASE_SERVICE_ROLE_KEY");
 }
 
 export interface Credentials {
@@ -94,9 +97,7 @@ export function seedAdmin(): Credentials {
 
 /** The browser's own client: publishable key, no service privileges, guard applied. */
 export function publishableDb(): SupabaseClient {
-  return client(
-    requiredEnv("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-  );
+  return client("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", "NEXT_PUBLIC_SUPABASE_ANON_KEY");
 }
 
 /** One short id per test process, so fixture names never collide with an earlier run's leftovers. */

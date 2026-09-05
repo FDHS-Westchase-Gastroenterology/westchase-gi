@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { asJsonString, jsonObjectSchema } from "../../src/lib/json";
 import type { JsonObject } from "../../src/lib/json";
+import type { PasswordAuthFlow } from "../../src/lib/portal/contracts";
 import { expectDenied, requireDecoded } from "../harness/assert";
 import { publishableDb, runId, seedAdmin, serviceDb } from "../harness/env";
 import { signIn } from "../harness/session";
@@ -109,7 +110,7 @@ async function mutate(page: Page, operation: string, input: JsonObject): Promise
 function fallbackSetupUrl(
   response: Readonly<MutationResponse>,
   expectedStatus = 201,
-  expectedType: "invite" | "recovery" = "invite",
+  expectedType: PasswordAuthFlow = "invite",
 ): string {
   expect(response.status).toBe(expectedStatus);
   expect(response.body.ok).toBe(true);

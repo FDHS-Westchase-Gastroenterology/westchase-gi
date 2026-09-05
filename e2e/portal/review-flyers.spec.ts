@@ -139,7 +139,7 @@ test("review flyers stay closed to visitors and open to every staff member", asy
     // Handing flyers to patients is a front-desk job: printing is open to
     // Every active staff member (product decision 2026-07-26), while
     // Anonymous access stays closed.
-    await expect(staffPage.getByRole("link", { name: "Print review flyers" })).toBeVisible();
+    await expect(staffPage.getByRole("link", { name: "Review flyers", exact: true })).toBeVisible();
 
     await staffPage.goto("/admin/review-flyers");
     await expect(staffPage.getByRole("heading", { name: "Print review flyers" })).toBeVisible();
@@ -158,7 +158,7 @@ test("review flyers stay closed to visitors and open to every staff member", asy
   }
 
   await signIn(page);
-  await expect(page.getByRole("link", { name: "Print review flyers" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Review flyers", exact: true })).toBeVisible();
   await page.goto("/admin/review-flyers");
 
   const cards = page.locator("[data-review-target]");

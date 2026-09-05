@@ -13,6 +13,7 @@ import {
   REQUEST_FIELD_LIMITS,
   intakeResponseSchema,
 } from "../../src/lib/portal/contracts";
+import { CONTACT_OUTCOMES } from "../../src/lib/portal/workflow/contracts";
 import { expectDenied, requireDecoded, requireText } from "../harness/assert";
 import { publishableDb, requiredEnv, seedAdmin, serviceDb } from "../harness/env";
 import { assertSafeE2ETarget } from "../harness/target-guard";
@@ -2672,7 +2673,7 @@ test.describe("Supabase dependency contract", () => {
       );
 
     try {
-      for (const outcome of ["reached_follow_up", "voicemail", "no_answer"] as const) {
+      for (const outcome of CONTACT_OUTCOMES) {
         const requestId = randomUUID();
         await insert({ id: requestId, name: `TEST date-less ${outcome}` });
         await expectNoWrite(requestId, () =>
@@ -2684,7 +2685,7 @@ test.describe("Supabase dependency contract", () => {
         );
       }
 
-      for (const outcome of ["reached_follow_up", "voicemail", "no_answer"] as const) {
+      for (const outcome of CONTACT_OUTCOMES) {
         const requestId = randomUUID();
         await insert({ id: requestId, name: `TEST dated ${outcome}` });
         const result = await execute(
@@ -2920,7 +2921,7 @@ test.describe("Supabase dependency contract", () => {
         );
       }
 
-      for (const outcome of ["reached_follow_up", "voicemail", "no_answer"] as const) {
+      for (const outcome of CONTACT_OUTCOMES) {
         const requestId = randomUUID();
         await insert({ id: requestId, name: `TEST overlap ${outcome}` });
         const before = await writeCounts(requestId);

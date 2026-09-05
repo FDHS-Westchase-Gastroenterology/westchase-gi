@@ -55,50 +55,21 @@ test.describe("portal home", () => {
     const greeting = page.getByTestId("home-greeting");
     await expect(greeting).toBeVisible();
     await expect(greeting).not.toContainText("Portal");
-    if (name === null) {
-      await expect(greeting).toHaveText(/Good (morning|afternoon|evening)\.$/);
-    } else {
-      await expect(greeting).toHaveText(
-        new RegExp(`^Good (morning|afternoon|evening), ${name}\\.$`),
-      );
-    }
+    // The headline is the practice-local date; the greeting is its small print.
+    const salutation = name === null ? "" : `, ${name}`;
+    await expect(greeting).toHaveText(
+      new RegExp(
+        `^Good (morning|afternoon|evening)${salutation}\\. [A-Z][a-z]+day, [A-Z][a-z]+ \\d{1,2}$`,
+      ),
+    );
 
-    // The overview count is the database's new-count, phrased as a sentence.
+    // The print chooser names the live New count.
     const { count: newCount, error: countError } = await db
       .from("requests")
       .select("id", { count: "exact", head: true })
       .eq("status", "new");
     expect(countError).toBeNull();
     expect(newCount ?? 0).toBeGreaterThanOrEqual(1);
-    const headline = page.getByTestId("queue-overview-headline");
-    await expect(headline).toHaveText(
-      new RegExp(
-        `^${newCount} new appointment request${newCount === 1 ? " is" : "s are"} waiting\\.$`,
-      ),
-    );
-
-    // Age context renders exactly when the oldest new request predates the
-    // Current practice-local calendar day (label logic is unit-tested in
-    // Src/lib/portal/business-time.test.mjs; this pins the wiring).
-    const { data: oldestNew, error: oldestError } = await db
-      .from("requests")
-      .select("created_at")
-      .eq("status", "new")
-      .order("created_at", { ascending: true })
-      .limit(1);
-    expect(oldestError).toBeNull();
-    const nyDay = (value: string | Date) =>
-      new Date(value).toLocaleDateString("en-CA", {
-        timeZone: "America/New_York",
-      });
-    const oldestCreatedAt = z.string().safeParse(oldestNew?.[0]?.created_at);
-    const oldestIsPastDay =
-      oldestCreatedAt.success && nyDay(oldestCreatedAt.data) < nyDay(new Date());
-    const oldestLine = page.getByTestId("queue-overview-oldest");
-    await expect(oldestLine).toHaveCount(oldestIsPastDay ? 1 : 0);
-    if (oldestIsPastDay) {
-      await expect(oldestLine).toHaveText(/^(Waiting|Oldest waiting) since .+\.$/);
-    }
 
     // The zero-recipients safety net appears exactly when no active
     // Notification recipient exists.
@@ -110,12 +81,12 @@ test.describe("portal home", () => {
     await expect(page.getByTestId("no-recipients-warning")).toHaveCount(
       (activeRecipients ?? 0) === 0 ? 1 : 0,
     );
-    // The staged request (the newest) appears in the preview list and its
-    // Row links to the detail page.
-    const preview = page.getByTestId("queue-overview-preview");
-    await expect(
-      preview.getByRole("link", { name: new RegExp(`TEST Home ${runId}`) }),
-    ).toHaveAttribute("href", /^\/admin\/requests\/[0-9a-f-]+$/);
+    // The staged request is a line on the day sheet, marked New.
+    const stagedLine = page
+      .getByTestId("home-line-list")
+      .locator("li", { hasText: `TEST Home ${runId}` });
+    await expect(stagedLine).toHaveCount(1);
+    await expect(stagedLine.locator("[data-col='status']")).toHaveText("New");
 
     // Primary nav is task-first: Home / queue / Settings / Help — the flyer
     // Printer holds no tab, and Home carries the current-page marker.
@@ -124,12 +95,11 @@ test.describe("portal home", () => {
     await expect(nav.locator('a[aria-current="page"]')).toHaveText("Home");
     await expect(nav.getByRole("link", { name: "Print review flyers" })).toHaveCount(0);
 
-    // Task list: five rows for every role — flyer printing is staff-wide
-    // (product decision 2026-07-26) — each a working link. Scoped to the
-    // Tasks section: the zero-recipients warning may repeat a task's name.
-    const tasks = page.locator('aside[aria-labelledby="desk-tools-heading"]');
+    // Other staff jobs: five links for every role — flyer printing is
+    // Staff-wide (product decision 2026-07-26) — each a working link.
+    const tasks = page.locator('nav[aria-label="Other staff jobs"]');
     for (const [label, href] of [
-      ["Print review flyers", "/admin/review-flyers"],
+      ["Review flyers", "/admin/review-flyers"],
       ["Notification recipients", "/admin/settings#notifications"],
       ["Staff access", "/admin/settings#staff"],
       ["Website status", "/admin/settings/software"],
@@ -195,7 +165,7 @@ test.describe("portal home", () => {
     ).toHaveAttribute("target", "_blank");
   });
 
-  test("New Appointments lists every current New request up to five", async ({ page }) => {
+  test("the day sheet lists the newest New requests as lines", async ({ page }) => {
     await signIn(page);
 
     const { data: newestNew, error: newestError } = await db
@@ -205,32 +175,24 @@ test.describe("portal home", () => {
       .order("created_at", { ascending: false })
       .limit(5);
     expect(newestError).toBeNull();
-    const previewRows = z
-      .array(z.object({ id: z.string(), name: z.string() }))
-      .parse(newestNew ?? []);
-    expect(previewRows.length).toBeGreaterThan(0);
+    const rows = z.array(z.object({ id: z.string(), name: z.string() })).parse(newestNew ?? []);
+    expect(rows.length).toBeGreaterThan(0);
 
-    const preview = page.getByTestId("queue-overview-preview");
-    await expect(page.getByRole("heading", { name: "New Appointments" })).toBeVisible();
-    await expect(preview.locator("li")).toHaveCount(previewRows.length);
-    for (const row of previewRows) {
-      await expect(preview.getByRole("link", { name: new RegExp(row.name) })).toHaveAttribute(
-        "href",
-        `/admin/requests/${row.id}`,
-      );
+    const list = page.getByTestId("home-line-list");
+    for (const row of rows) {
+      await expect(list.locator("li", { hasText: row.name })).toHaveCount(1);
     }
-    await expect(page.getByText("Start with oldest request")).toHaveCount(0);
-    await expect(
-      page.locator(".portal-work-stack-header").getByRole("link", { name: "Open Appointments" }),
-    ).toHaveCount(0);
-    await expect(page.getByTestId("home-add-patient-request")).toHaveText("Add Appointment");
+    await expect(page.getByTestId("home-add-patient-request")).toHaveText("Add appointment");
   });
 
-  test("home reports every Contacted request whose call-again day is missing", async ({ page }) => {
+  test("a Contacted request with no call-again day is on the day sheet under Call again", async ({
+    page,
+  }) => {
     const id = randomUUID();
+    const name = `TEST Home ${runId} missing call-again`;
     const { error: stageError } = await db.from("requests").insert({
       id,
-      name: `TEST Home ${runId} missing call-again`,
+      name,
       phone: "8135550199",
       email: `home-${runId}-missing-call-again@example.test`,
       location: "any",
@@ -244,25 +206,10 @@ test.describe("portal home", () => {
     expect(stageError).toBeNull();
 
     try {
-      const { count, error: countError } = await db
-        .from("requests")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "contacted")
-        .is("follow_up_at", null);
-      expect(countError).toBeNull();
-      const missingCount = count ?? 0;
-      expect(missingCount).toBeGreaterThanOrEqual(1);
-      const label =
-        missingCount === 1
-          ? "1 contacted request has no call-again day"
-          : `${missingCount} contacted requests have no call-again day`;
-
       await signIn(page);
-      const summary = page.getByTestId("attention-summary");
-      await expect(summary.getByRole("link", { name: label, exact: true })).toHaveAttribute(
-        "href",
-        "/admin/requests?status=contacted",
-      );
+      const line = page.getByTestId("home-line-list").locator("li", { hasText: name });
+      await expect(line).toHaveCount(1);
+      await expect(line.locator("[data-col='status']")).toHaveText("Call again");
     } finally {
       await db.from("requests").delete().eq("id", id);
       await db.from("audit_log").delete().eq("entity_id", id);

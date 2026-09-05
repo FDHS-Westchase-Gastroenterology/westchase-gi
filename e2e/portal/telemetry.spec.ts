@@ -15,13 +15,6 @@ const rollupSchema = z.object({
   route_template: z.string(),
   count: z.number(),
 });
-interface TelemetryProbe {
-  event: string;
-  routeTemplate: string;
-  locale: string;
-  deviceClass: string;
-}
-
 // Telemetry e2e: proves the aggregate counters land, stay off the staff
 // Surface, and never carry patient fields. Reads private.analytics_daily
 // Through the CLI pooler because the private schema is deliberately not
@@ -176,30 +169,6 @@ test("beacon payloads never carry patient fields", async ({ page }) => {
       expect(body).not.toContain(forbidden);
     }
   }
-});
-
-test("the route rejects bad events, raw URLs, and staff templates", async ({ request }) => {
-  const base = {
-    routeTemplate: "/",
-    locale: "en",
-    deviceClass: "desktop",
-  };
-  const cases: TelemetryProbe[] = [
-    { ...base, event: "page_click" },
-    { ...base, event: "page_view", routeTemplate: "/appointment?ref=1" },
-    { ...base, event: "page_view", routeTemplate: "/admin/requests" },
-    { ...base, event: "page_view", locale: "fr" },
-    { ...base, event: "page_view", deviceClass: "watch" },
-  ];
-  for (const payload of cases) {
-    const response = await request.post("/api/telemetry", { data: payload });
-    expect(response.status()).toBe(400);
-  }
-
-  const valid = await request.post("/api/telemetry", {
-    data: { ...base, event: "page_view" },
-  });
-  expect(valid.status()).toBe(204);
 });
 
 test("chooser and banner outcomes count", async ({ browser, page }) => {

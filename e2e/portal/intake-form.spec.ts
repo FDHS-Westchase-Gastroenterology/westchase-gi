@@ -12,6 +12,7 @@ import { es } from "../../src/lib/dictionaries/es";
 import { ko } from "../../src/lib/dictionaries/ko";
 import { vi } from "../../src/lib/dictionaries/vi";
 import type { Dictionary } from "../../src/lib/i18n";
+import { locales } from "../../src/lib/site";
 import type { Locale } from "../../src/lib/site";
 import { clientIps, runId, serviceDb } from "../harness/env";
 
@@ -269,7 +270,7 @@ test("VAL-INTAKE-007: no-JS native POST leaks nothing and lands on a receipt", a
   expect(data![0].source_path).toBe("/en/appointment");
 });
 
-for (const locale of ["en", "es", "vi", "ko", "ar"] as const) {
+for (const locale of locales) {
   for (const route of ["appointment", "contact"] as const) {
     test(`VAL-INTAKE-008: ${locale}/${route} renders localized and submits end-to-end`, async ({
       page,
@@ -334,7 +335,7 @@ test("VAL-INTAKE-014: PHI warning renders verbatim on all ten surfaces", async (
     "Please do not submit any Protected Health Information (PHI).",
   );
 
-  for (const locale of ["en", "es", "vi", "ko", "ar"] as const) {
+  for (const locale of locales) {
     const warning = dicts[locale].appointment.phiWarning;
     expect(warning.length).toBeGreaterThan(0);
 

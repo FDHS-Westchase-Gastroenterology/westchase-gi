@@ -8,6 +8,8 @@ import { followUpWhenLabel } from "../../src/app/admin/(portal)/requests/format"
 import { asJsonObject, asJsonString, jsonSchema } from "../../src/lib/json";
 import { resolveFollowUpAt } from "../../src/lib/portal/business-time";
 import { intakeResponseSchema } from "../../src/lib/portal/contracts";
+import { REQUEST_STATUSES, VIEW_DB_STATUSES } from "../../src/lib/portal/workflow/contracts";
+import type { RequestStatus } from "../../src/lib/portal/workflow/contracts";
 import { clientIps, runId, seedAdmin, serviceDb } from "../harness/env";
 import { signIn } from "../harness/session";
 
@@ -80,14 +82,7 @@ async function stageRequest(request: APIRequestContext, label: string): Promise<
 // The Appointments views are presentation views over durable statuses:
 // The Scheduled view reads `booked` (plus `scheduled` rows that may exist
 // Only mid-deploy). The word "scheduled" is never a durable status.
-const VIEW_DB_STATUSES = {
-  new: ["new"],
-  contacted: ["contacted"],
-  scheduled: ["booked", "scheduled"],
-  closed: ["closed"],
-} as const;
-
-async function sqlCount(view: keyof typeof VIEW_DB_STATUSES): Promise<number> {
+async function sqlCount(view: RequestStatus): Promise<number> {
   const { count, error } = await db
     .from("requests")
     .select("id", { count: "exact", head: true })
@@ -423,7 +418,7 @@ test.describe("portal requests operation", () => {
       {
         request_id: id,
         type: "notification",
-        recipient: "jason.gitdev@gmail.com",
+        recipient: `queue-${runId}-staff@example.test`,
         status: "accepted",
       },
       {
@@ -468,7 +463,7 @@ test.describe("portal requests operation", () => {
     // Address is hidden (staff addresses are operational, not PHI).
     const history = page.getByTestId("request-history");
     await expect(history).toContainText(visibleRecipient);
-    await expect(history).toContainText("jason.gitdev@gmail.com");
+    await expect(history).toContainText(`queue-${runId}-staff@example.test`);
 
     const panel = page.getByTestId("workflow-panel");
     const feedback = page.getByTestId("workflow-feedback");
@@ -881,7 +876,7 @@ test.describe("portal requests operation", () => {
     // The assertion samples until one snapshot is INTERNALLY consistent —
     // Chip count, visible rows, and SQL agree exactly at the same instant.
     // Exactness is preserved; transient churn just retries the sample.
-    for (const view of ["new", "contacted", "scheduled", "closed"] as const) {
+    for (const view of REQUEST_STATUSES) {
       await expect
         .poll(
           async () => {
