@@ -4,7 +4,7 @@ The suite has three tiers. The folder a test lives in says what it needs.
 
 | Tier | Where | Needs | Runs in | Command |
 | --- | --- | --- | --- | --- |
-| Unit | `*.test.mjs` beside the module, plus `test/`, `scripts/`, `tools/` | Node only | CI `quality`, every local change | `npm run test:unit` (about 1 s) |
+| Unit | `*.test.mjs` beside the module, plus `test/`, `scripts/`, `tools/` | Node only | CI `quality`, every local change | `npm run test:unit` (a few seconds) |
 | Public browser | `e2e/public/` | A dev server, no credentials | CI `quality` | `npm run test:e2e:public` |
 | Portal browser | `e2e/portal/` | The Supabase Preview Branch, the seed admin | CI `supabase-integration` | `npm run test:e2e:portal` |
 | Boundaries | `e2e/boundaries/` | The Preview Branch, service and publishable keys | CI `supabase-integration` | `npm run test:e2e:boundaries` |
@@ -28,7 +28,8 @@ before the first database call; `npm run test:e2e-guard` is its own test.
   (`requests/[id]/workflow-panel-model.test.mjs`), and email delivery (`email.test.mjs`).
 - Two guards also run here: `test/file-size-ratchet.test.mjs` fails when a product file outside
   `stock/`, `content/` and `dictionaries/` passes 400 lines unless it is in
-  `test/file-size-allowlist.json` at or under its recorded size, and the list may only shrink;
+  `test/file-size-allowlist.json` at or under its recorded size (a listed file may shrink but never
+  grow, and one that drops under the threshold must leave the list);
   `tools/oxlint/anti-slop/no-contract-vocabulary-redeclaration.test.mjs` proves the lint rule
   that forbids restating a contract vocabulary (`REQUEST_STATES`, `STAFF_ROLES`, …) as a union,
   an `as const` array, or a `z.enum` argument.
@@ -46,6 +47,7 @@ before the first database call; `npm run test:e2e-guard` is its own test.
 - Locally, `.env.local` targets the Preview Branch and `SUPABASE_PREVIEW_BRANCH=1` must be set
   on the command line. Never run two Playwright processes against the branch at once, and not
   while CI's integration job is running on the same pull request.
-- The specs under `e2e/boundaries` that issue raw SQL (`supabase db query`) need the branch's
-  direct Postgres URL in `POSTGRES_URL_NON_POOLING`; without it they refuse, by design, rather
+- The specs that issue raw SQL through `supabase db query` (`e2e/portal/telemetry.spec.ts`, and
+  the boundary specs that use `e2e/boundaries/support.ts` for it) need the branch's direct Postgres
+  URL in `POSTGRES_URL` or `POSTGRES_URL_NON_POOLING`; without it they refuse, by design, rather
   than run against the wrong database.
