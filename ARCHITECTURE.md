@@ -385,12 +385,16 @@ Tests pin the main contracts:
 
 | Contract | Primary proof |
 | --- | --- |
-| Dictionary parity and static route assembly | Typecheck/build, `e2e/dictionary-availability.test.mjs`, public smoke |
-| Pure workflow policy and read composition | `src/lib/portal/workflow/*.test.mjs` |
-| Route, Auth, intake, portal, email, and privacy behavior | Focused Playwright specs under `e2e/` |
-| Schema, grants, RLS, RPC signatures, and PostgREST relations | `scripts/verify-schema.mjs` and `e2e/supabase-dependency-contract.spec.ts` |
-| Destructive-test isolation from Production | `e2e/target-guard.ts` and `e2e/target-guard.test.mjs` |
-| Patient-data leak boundaries | `e2e/leak-hygiene.spec.ts` |
+| Dictionary parity and static route assembly | Typecheck/build, `test/dictionary-availability.test.mjs`, `e2e/public/` |
+| Workflow policy: legal transitions, and that the UI offers exactly what the machine accepts | `src/lib/portal/workflow/machine.test.mjs`, `legal-actions.test.mjs`, `reads.test.mjs` |
+| Intake contract (field caps, phone, mailbox, source path, response shapes) | `src/lib/portal/contracts.test.mjs` at the application layer; `e2e/boundaries/` at the database |
+| Queue order, paging, filters, print selection, labels, the work panel's choices and copy | `src/lib/portal/*.test.mjs`, `src/app/admin/(portal)/requests/[id]/workflow-panel-model.test.mjs` |
+| Email delivery and notification fan-out | `src/lib/portal/email.test.mjs` |
+| Patient-site routes, locale negotiation, and privacy hygiene | `e2e/public/` (no credentials) |
+| Staff-portal journeys: intake, contact attempt, booking handoff, call-again, settings, printing | `e2e/portal/` against the Preview Branch |
+| Schema, grants, RLS, RPC atomicity, throttling, lifecycle, and PostgREST relations | `scripts/verify-schema.mjs` and `e2e/boundaries/` |
+| Destructive-test isolation from Production | `e2e/harness/target-guard.ts` and its test (`npm run test:e2e-guard`) |
+| One declaration per contract vocabulary; product files an agent can load whole | `anti-slop/no-contract-vocabulary-redeclaration` (oxlint) and `test/file-size-ratchet.test.mjs` |
 | Review-flyer destination and byte integrity | `scripts/verify-review-flyers.mjs` |
 
 The exact command set and change-type check matrix live in
@@ -411,8 +415,11 @@ the adapter or database. The matching change-type check matrix is
   used before route or portal code branches on untrusted data.
 - **Intake fields or persistence:** `src/lib/portal/contracts.ts` → `AppointmentForm.tsx` → both
   request handlers → `src/lib/portal/intake.ts` and `intake-notification.ts` → the owning RPC.
-- **Appointment-request workflow:** `src/lib/portal/workflow/contracts.ts` and `machine.ts` → `workflow-actions.ts` →
-  `workflow/commands.ts` → `portal_execute_request_command`.
+- **Appointment-request workflow:** `src/lib/portal/workflow/contracts.ts` (states, staff-facing
+  statuses, commands, rejections) and `machine.ts` → `requests/workflow-actions.ts` →
+  `workflow/commands.ts` → `portal_execute_request_command`. The request work panel is
+  `requests/[id]/workflow-panel-model.ts` (choices, copy, reducer), `use-workflow-panel.ts`
+  (commands and outcome handling), and `workflow-panel.tsx` with its two fieldset files.
 - **Portal authorization and sessions:** `src/lib/portal/auth.ts`, `server.ts`, `src/proxy.ts`,
   Auth entry routes, and `staff_profiles`.
 - **Portal route or mutation:** the route under `src/app/admin/`, `requireRole` at the protected

@@ -110,10 +110,11 @@ on a clean checkout.
 ### How to contribute with a Supabase Preview Branch
 
 ```bash
-npx playwright test                          # full serial E2E suite (boots :3100 itself)
-npx playwright test e2e/smoke.spec.ts        # focused file
+npm run test:e2e:boundaries                   # Auth, RLS, RPC, throttling, lifecycle, PostgREST
+npm run test:e2e:portal                       # staff-portal journeys (boots :3100 itself)
+npx playwright test e2e/portal/requests.spec.ts --project=chromium   # one spec
 node scripts/verify-schema.mjs --target branch # schema, RLS, RPC, seed state
-npm run ui:reference:portal                  # staff-route UI captures
+npm run ui:reference:portal                   # staff-route UI captures
 ```
 
 Every PR gets its own hosted branch from Supabase GitHub Branching. The required
@@ -129,11 +130,12 @@ review environment has the same Git branch in GitHub, Supabase, and Vercel.
 
 For a workstation run against the PR database, export credentials from
 `supabase branches get <git-branch> --project-ref <production-ref> --output env`, map them to
-the names in `.env.example`, and set `SUPABASE_PREVIEW_BRANCH=1`. `e2e/target-guard.ts`
+the names in `.env.example`, and set `SUPABASE_PREVIEW_BRANCH=1`. `e2e/harness/target-guard.ts`
 binds the project reference to the URL, requires the hosted-branch marker, and rejects
-Production before the first database call. The suite covers the
-intake API contract, form states across all five locales, the no-JS fallback, portal auth/RLS
-boundaries, the queue lifecycle, management surfaces, Website custody, and leak hygiene.
+Production before the first database call. [`test/README.md`](test/README.md) describes the
+tiers (unit, `e2e/public`, `e2e/portal`, `e2e/boundaries`), the shared harness, and how to add
+a test. Never run two Playwright processes against the branch at once, nor one while CI's
+integration job is running on the same pull request.
 
 **Honesty rule:** if you cannot reach a Supabase project, run the credential-free set and say
 plainly that the credentialed suite did not run. "Not run" is an acceptable answer; silently
@@ -146,11 +148,11 @@ The checks below are added to the standing gates.
 
 | Change | Read first | Additional checks |
 | --- | --- | --- |
-| Patient copy / locale content | [Localized patient reads](ARCHITECTURE.md#localized-patient-reads) and [trust boundaries](ARCHITECTURE.md#trust-boundaries) | `test:unit`, public smoke; E2E intake-form and language-chooser when behavior shifts |
-| Intake form / API / persistence | [Patient appointment intake](ARCHITECTURE.md#patient-appointment-intake) | Focused intake Playwright specs |
-| Portal page, route, or action | [Portal identity, authorization, and reads](ARCHITECTURE.md#portal-identity-authorization-and-reads); add `src/lib/portal/workflow/contracts.ts` for queue work | Focused portal Playwright specs |
-| Migration, RLS, RPC, or seed | [State and persistence](ARCHITECTURE.md#state-and-persistence) and [trust boundaries](ARCHITECTURE.md#trust-boundaries) | `verify-schema --target branch`; green `Supabase Preview` and `supabase-integration` on the exact head |
-| Email paths | [Email](ARCHITECTURE.md#email) | `npx playwright test e2e/portal-email.spec.ts` |
+| Patient copy / locale content | [Localized patient reads](ARCHITECTURE.md#localized-patient-reads) and [trust boundaries](ARCHITECTURE.md#trust-boundaries) | `test:unit`, `test:e2e:public`; `e2e/portal/intake-form.spec.ts` when form behavior shifts |
+| Intake form / API / persistence | [Patient appointment intake](ARCHITECTURE.md#patient-appointment-intake) | `src/lib/portal/contracts.test.mjs`, `e2e/portal/intake-api.spec.ts`, `e2e/portal/intake-form.spec.ts` |
+| Portal page, route, or action | [Portal identity, authorization, and reads](ARCHITECTURE.md#portal-identity-authorization-and-reads); add `src/lib/portal/workflow/contracts.ts` for queue work | The unit tests beside the module, then the `e2e/portal/` spec for the route (`requests.spec.ts`, `lifecycle.spec.ts` for the work panel) |
+| Migration, RLS, RPC, or seed | [State and persistence](ARCHITECTURE.md#state-and-persistence) and [trust boundaries](ARCHITECTURE.md#trust-boundaries) | `verify-schema --target branch` and `test:e2e:boundaries`; green `Supabase Preview` and `supabase-integration` on the exact head |
+| Email paths | [Email](ARCHITECTURE.md#email) | `src/lib/portal/email.test.mjs` (in `test:unit`) |
 | UI-visible change | `PRODUCT.md`, `DESIGN.md`, and [`ui-reference/README.md`](ui-reference/README.md) | Refresh covered `ui-reference/` images; before/after screenshots in the PR conversation; video when the change is a new workflow or has multiple authored steps |
 | CI / dependency automation | [Common starting points](ARCHITECTURE.md#common-starting-points) | `node --test .github/scripts/dependency-automation.test.cjs`; policy and test change together |
 
