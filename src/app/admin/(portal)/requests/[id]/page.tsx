@@ -1,24 +1,21 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { z } from "zod";
 
 import { PortalFeedbackProvider } from "@/app/admin/(portal)/portal-feedback";
 import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import {
   CLOSURE_REASON_LABELS,
-  CONTACT_OUTCOME_LABELS,
   formatPhoneForDisplay,
   formatReceived,
-  followUpWhenLabel,
   localeLabel,
   LOCATION_LABELS,
-  stateLabel,
   telHref,
   TIME_LABELS,
 } from "@/app/admin/(portal)/requests/format";
 import {
   fetchAttentiveOpenRows,
   fetchClosedRows,
+  fetchRequestDetail,
   OPEN_CANDIDATE_LIMIT,
   OPEN_STATUSES,
 } from "@/app/admin/(portal)/requests/queue";
@@ -26,7 +23,7 @@ import { StatusBadge } from "@/app/admin/(portal)/requests/status-badge";
 import { Clock, Mail, MapPin, MessageSquare, Phone } from "@/components/icons";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { requireRole } from "@/lib/portal/auth";
-import { isMailbox, REQUEST_LOCATIONS, REQUEST_TIMES } from "@/lib/portal/contracts";
+import { isMailbox } from "@/lib/portal/contracts";
 import {
   firstSearchParam,
   parseRequestSearch,
@@ -35,7 +32,7 @@ import {
 import { serviceClient } from "@/lib/portal/server";
 import { displayNameOrEmail, fetchStaffNameMap } from "@/lib/portal/staff-identity";
 import { parseRequestStatus, presentationStatus } from "@/lib/portal/workflow/contracts";
-import type { HistoryEntry, RequestStatus } from "@/lib/portal/workflow/contracts";
+import type { RequestStatus } from "@/lib/portal/workflow/contracts";
 import { fetchRequestWorkSurface } from "@/lib/portal/workflow/reads";
 
 import {
@@ -43,138 +40,15 @@ import {
   RequestPrintFeedback,
   StaffRequestCreatedAcknowledgement,
 } from "./request-current-feedback";
+import { historyLine } from "./request-history";
+import type { HistoryLine } from "./request-history";
 import { RequestNotes } from "./request-notes";
 import type { RequestNoteView } from "./request-notes";
 import { WorkflowPanel } from "./workflow-panel";
 
-const requestDetailSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  phone: z.string(),
-  email: z.string().nullable(),
-  location: z.enum(REQUEST_LOCATIONS),
-  preferred_time: z.enum(REQUEST_TIMES),
-  message: z.string().nullable(),
-  locale: z.string(),
-  created_at: z.string(),
-});
-
 function firstParam(value: Readonly<string | string[] | undefined>): string | null {
   const first = firstSearchParam(value);
   return first === "" ? null : first;
-}
-
-// Request history keeps each evidence kind distinct (spec §6): contact
-// Attempts, lifecycle transitions, Undo evidence, the legacy-review
-// Classification, and relevant delivery outcomes. Notes keep their own
-// Staff surface above the panel; the technical audit stays on the
-// Activity log page. A RecordContactAttempt save renders once — as its
-// Contact attempt — so its self-transition row is presentation-skipped.
-interface HistoryLine {
-  id: string;
-  text: string;
-  actor: string | null;
-  at: string;
-  undone: boolean;
-  quiet: boolean;
-  attention: boolean;
-}
-
-function historyLine(entry: Readonly<HistoryEntry>): HistoryLine | null {
-  switch (entry.kind) {
-    case "created":
-      return {
-        id: "created",
-        text:
-          entry.origin === "staff"
-            ? "Appointment request added by staff"
-            : "Appointment request received from the website",
-        actor: null,
-        at: entry.at,
-        quiet: true,
-        undone: false,
-        attention: false,
-      };
-    case "contact_attempt":
-      return {
-        id: entry.id,
-        text: `${CONTACT_OUTCOME_LABELS[entry.outcome]}${
-          entry.callAgainAt !== null && entry.callAgainAt !== ""
-            ? ` — call again ${followUpWhenLabel(entry.callAgainAt)}`
-            : " — no call-again day was set"
-        }`,
-        actor: entry.actor,
-        at: entry.at,
-        quiet: false,
-        undone: false,
-        attention: false,
-      };
-    case "note":
-      // Notes render in their own surface above the work panel.
-      return null;
-    case "transition":
-      if (entry.command === "record_contact_attempt") return null;
-      return {
-        id: entry.id,
-        text:
-          entry.command === "confirm_booking_handoff"
-            ? "Marked Scheduled — appointment booked"
-            : entry.command === "close_request"
-              ? `Closed — ${entry.closureReason !== null ? CLOSURE_REASON_LABELS[entry.closureReason] : "no appointment booked"}`
-              : entry.command === "reopen_request"
-                ? `Reopened — returned to Contacted${
-                    entry.callAgainAt !== null && entry.callAgainAt !== ""
-                      ? ` — call again ${followUpWhenLabel(entry.callAgainAt)}`
-                      : " — no call-again day was set"
-                  }`
-                : entry.command === "set_call_again"
-                  ? entry.callAgainAt !== null && entry.callAgainAt !== ""
-                    ? `Call-again day set — ${followUpWhenLabel(entry.callAgainAt)}`
-                    : "Call-again day correction recorded"
-                  : `Marked ${stateLabel(entry.to)}`,
-        actor: entry.actor,
-        at: entry.at,
-        undone: entry.undone,
-        quiet: false,
-        attention: false,
-      };
-    case "undo":
-      return {
-        id: entry.id,
-        text: `Undo — restored to ${stateLabel(entry.restoredState)}`,
-        actor: entry.actor,
-        at: entry.at,
-        quiet: false,
-        undone: false,
-        attention: false,
-      };
-    case "legacy_classified":
-      return {
-        id: entry.id,
-        text:
-          entry.to === "booked"
-            ? "Record reviewed — an appointment was booked (Scheduled)"
-            : "Record reviewed — closed without an appointment",
-        actor: entry.actor,
-        at: entry.at,
-        quiet: false,
-        undone: false,
-        attention: false,
-      };
-    case "delivery":
-      return {
-        id: entry.id,
-        text: `Notification email ${
-          entry.accepted ? "accepted for delivery" : "failed"
-        } — ${entry.recipient !== "" ? entry.recipient : "recipient unavailable"}`,
-        actor: null,
-        at: entry.at,
-        quiet: entry.accepted,
-        attention: !entry.accepted,
-        undone: false,
-      };
-  }
-  return null;
 }
 
 // One protected fetch feeds one cohesive request workflow; splitting its JSX
@@ -219,19 +93,12 @@ export default async function RequestDetailPage({
   // Version for optimistic commands, Undo eligibility, and Request history.
   // A failed read throws to the error boundary — it never renders as an
   // Empty history or a workable request (spec §3).
-  const [{ data: request, error }, surface, nameMap] = await Promise.all([
-    db
-      .from("requests")
-      .select("id, name, phone, email, location, preferred_time, message, locale, created_at")
-      .eq("id", id)
-      .maybeSingle(),
+  const [row, surface, nameMap] = await Promise.all([
+    fetchRequestDetail(db, id),
     fetchRequestWorkSurface(db, id),
     fetchStaffNameMap(db),
   ]);
-
-  if (error) throw new Error("Request detail read failed");
-  const parsedRequest = requestDetailSchema.safeParse(request);
-  if (!parsedRequest.success || surface === null) notFound();
+  if (row === null || surface === null) notFound();
 
   // Previous/next within the viewer's queue scope: the same attention
   // Ordering the list renders, so staff can keep working without
@@ -261,7 +128,6 @@ export default async function RequestDetailPage({
   const nextId =
     selfIndex >= 0 && selfIndex < neighborIds.length - 1 ? neighborIds[selfIndex + 1] : null;
 
-  const row = parsedRequest.data;
   const mailbox = row.email !== null ? row.email.trim() : "";
   const safeMailbox = mailbox !== "" && isMailbox(mailbox) ? mailbox : null;
   const phoneDisplay = formatPhoneForDisplay(row.phone);

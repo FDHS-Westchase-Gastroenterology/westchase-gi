@@ -86,6 +86,49 @@ const activityRowSchema = z.object({
   actor_email: z.string().nullable(),
 });
 
+export interface RequestDetailRow {
+  id: string;
+  name: string;
+  phone: string;
+  email: string | null;
+  location: RequestLocation;
+  preferred_time: RequestTime;
+  message: string | null;
+  locale: string;
+  created_at: string;
+}
+
+const requestDetailSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  phone: z.string(),
+  email: z.string().nullable(),
+  location: z.enum(REQUEST_LOCATIONS),
+  preferred_time: z.enum(REQUEST_TIMES),
+  message: z.string().nullable(),
+  locale: z.string(),
+  created_at: z.string(),
+}) satisfies z.ZodType<RequestDetailRow>;
+
+/**
+ * The patient-facing columns of one request for the detail page. Null when
+ * the request does not exist or its row does not parse; throws on a failed
+ * read, which the error boundary handles.
+ */
+export async function fetchRequestDetail(
+  db: SupabaseClient,
+  requestId: string,
+): Promise<RequestDetailRow | null> {
+  const { data, error } = await db
+    .from("requests")
+    .select("id, name, phone, email, location, preferred_time, message, locale, created_at")
+    .eq("id", requestId)
+    .maybeSingle();
+  if (error) throw new Error("Request detail read failed");
+  const parsed = requestDetailSchema.safeParse(data);
+  return parsed.success ? parsed.data : null;
+}
+
 /**
  * The attention-ordered open set: open statuses (or one scoped status),
  * each row tagged with its attention bucket and last-activity time.

@@ -3,7 +3,7 @@
   "src/app/admin/(portal)/(home)/filter-bar.tsx": 744,
   "src/app/admin/(portal)/audit/recent-work-model.ts": 726,
   "src/app/admin/(portal)/portal-release-briefing.tsx": 586,
-  "src/app/admin/(portal)/requests/[id]/page.tsx": 555,
+  "src/app/admin/(portal)/requests/[id]/page.tsx": 421,
   "src/app/admin/(portal)/requests/new/staff-request-form.tsx": 706,
   "src/app/admin/(portal)/requests/page.tsx": 505,
   "src/app/admin/(portal)/requests/print/page.tsx": 426,
