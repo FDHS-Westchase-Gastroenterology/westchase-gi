@@ -1,6 +1,5 @@
 import { execSync, spawn } from "node:child_process";
 import type { ChildProcess } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
 import { mkdirSync, openSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -14,11 +13,10 @@ import { ko } from "../../src/lib/dictionaries/ko";
 import { vi } from "../../src/lib/dictionaries/vi";
 import type { Dictionary } from "../../src/lib/i18n";
 import type { Locale } from "../../src/lib/site";
-import { serviceDb } from "../harness/env";
+import { clientIps, runId, serviceDb } from "../harness/env";
 
 const db = serviceDb();
 const dicts = { en, es, vi, ko, ar } as const satisfies Record<Locale, Dictionary>;
-const runId = randomUUID().slice(0, 8);
 
 test.use({
   storageState: {
@@ -43,11 +41,7 @@ function emailFor(label: string): string {
   return `form-e2e-${runId}-${label}@example.test`;
 }
 
-/** Unique per-submission client so the intake rate limiter never throttles the suite. */
-function testIp(label: string): string {
-  const hex = createHash("sha256").update(`${runId}:${label}`).digest("hex");
-  return `2001:db8:${hex.slice(0, 4)}:${hex.slice(4, 8)}::2`;
-}
+const testIp = clientIps("intake-form");
 
 async function fillForm(page: Page, email: string, name: string) {
   await page.fill("#name", name);

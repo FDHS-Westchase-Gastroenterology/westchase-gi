@@ -1,12 +1,12 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import { expect, test } from "@playwright/test";
-import type { Page } from "@playwright/test";
 import { z } from "zod";
 
 import { jsonObjectSchema } from "../../src/lib/json";
 import type { JsonObject } from "../../src/lib/json";
-import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
+import { requiredEnv, runId, serviceDb } from "../harness/env";
+import { signIn } from "../harness/session";
 
 interface LifecycleFixture {
   status?: string;
@@ -21,16 +21,11 @@ interface LifecycleFixture {
   legacy_review_required?: boolean;
 }
 
-loadLocalEnv();
-
 const supabaseUrl = new URL(requiredEnv("NEXT_PUBLIC_SUPABASE_URL"));
 const isolatedTestDatabase =
   process.env.SUPABASE_PREVIEW_BRANCH === "1" ||
   (["127.0.0.1", "localhost", "[::1]"].includes(supabaseUrl.hostname) &&
     requiredEnv("SUPABASE_PROJECT_REF") === "local");
-const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
-const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
-const runId = randomUUID().slice(0, 8);
 const sourcePath = `/e2e/lifecycle/${runId}`;
 const lifecycleActor = `lifecycle-${runId}@example.test`;
 const requestIds = new Set<string>();
@@ -51,14 +46,6 @@ function count(result: JsonObject, key: string): number {
     throw new Error(`Lifecycle result is missing ${key}`);
   }
   return Number(result[key]);
-}
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto("/admin/login");
-  await page.getByLabel("Email").fill(SEED_EMAIL);
-  await page.getByLabel("Password").fill(SEED_PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/admin\/?$/);
 }
 
 async function stageRequest(

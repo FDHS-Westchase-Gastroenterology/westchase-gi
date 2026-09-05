@@ -2,12 +2,13 @@ import { randomUUID } from "node:crypto";
 
 import { expect, test } from "@playwright/test";
 import type { BrowserContext, Page } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { asJsonString, jsonObjectSchema } from "../../src/lib/json";
 import type { JsonObject } from "../../src/lib/json";
-import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
+import { expectDenied, requireDecoded } from "../harness/assert";
+import { publishableDb, runId, seedAdmin, serviceDb } from "../harness/env";
+import { signIn } from "../harness/session";
 
 const inviteDetailSchema = z.looseObject({
   resend: z.boolean().optional(),
@@ -41,15 +42,7 @@ const auditRowSchema = z.object({
   detail: z.unknown().optional(),
 });
 
-loadLocalEnv();
-
-const SUPABASE_URL = requiredEnv("NEXT_PUBLIC_SUPABASE_URL");
-const SUPABASE_KEY = requiredEnv(
-  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-);
-const SEED_ADMIN_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
-const SEED_ADMIN_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
+const { email: SEED_ADMIN_EMAIL } = seedAdmin();
 const GENERIC_LOGIN_ERROR = "Unable to sign in. Check your credentials and try again.";
 const CSV_HEADER = [
   "id",
@@ -66,7 +59,6 @@ const CSV_HEADER = [
 ] as const;
 
 const db = serviceDb();
-const runId = randomUUID().slice(0, 8);
 const staffEmail = `portal-staff-${runId}@example.test`;
 const targetEmail = `portal-target-${runId}@example.test`;
 const recipientEmail = `portal-recipient-${runId}@example.test`;
@@ -89,34 +81,11 @@ interface MutationResponse {
   body: JsonObject;
 }
 
-interface RestResult {
-  readonly error: { readonly code?: string } | null;
-  readonly status: number;
-}
-
 interface CsvFetch {
   status: number;
   contentType: string;
   contentDisposition: string;
   text: string;
-}
-
-async function signIn(page: Page, email: string, password: string) {
-  await page.goto("/admin/login");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/admin\/?$/);
-}
-
-type SafeParseResult<T> =
-  | { readonly success: true; readonly data: T }
-  | { readonly success: false; readonly error: unknown };
-
-function requireDecoded<T>(parsed: SafeParseResult<T>, message: string): T {
-  expect(parsed.success).toBe(true);
-  if (!parsed.success) throw new Error(message);
-  return parsed.data;
 }
 
 async function mutate(page: Page, operation: string, input: JsonObject): Promise<MutationResponse> {
@@ -159,13 +128,6 @@ function fallbackSetupUrl(
   expect(fragment.get("type")).toBe(expectedType);
   expect(Boolean(fragment.get("token_hash"))).toBe(true);
   return setupUrlString;
-}
-
-function expectDenied(result: Readonly<RestResult>): void {
-  expect(result.error).not.toBeNull();
-  expect(result.error?.code === "42501" || result.status === 401 || result.status === 403).toBe(
-    true,
-  );
 }
 
 function parseCsv(document: string): string[][] {
@@ -320,7 +282,7 @@ test.describe("portal management server boundaries", () => {
 
     adminContext = await browser.newContext();
     adminPage = await adminContext.newPage();
-    await signIn(adminPage, SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD);
+    await signIn(adminPage);
 
     const staffInvite = await mutate(adminPage, "staff.invite", {
       email: staffEmail,
@@ -436,7 +398,7 @@ test.describe("portal management server boundaries", () => {
 
     staffContext = await browser.newContext();
     staffPage = await staffContext.newPage();
-    await signIn(staffPage, staffEmail, staffPassword);
+    await signIn(staffPage, { email: staffEmail, password: staffPassword });
 
     const deniedAdd = await mutate(staffPage, "recipient.add", {
       email: deniedRecipientEmail,
@@ -583,13 +545,7 @@ test.describe("portal management server boundaries", () => {
     expect(recipientAfterDeniedRemove.error).toBeNull();
     expect(recipientAfterDeniedRemove.data?.active).toBe(false);
 
-    const staffRest = createClient(SUPABASE_URL, SUPABASE_KEY, {
-      auth: {
-        autoRefreshToken: false,
-        detectSessionInUrl: false,
-        persistSession: false,
-      },
-    });
+    const staffRest = publishableDb();
     const staffSignIn = await staffRest.auth.signInWithPassword({
       email: staffEmail,
       password: staffPassword,

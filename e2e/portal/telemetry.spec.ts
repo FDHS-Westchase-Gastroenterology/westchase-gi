@@ -1,5 +1,4 @@
 import { execFileSync } from "node:child_process";
-import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -8,7 +7,7 @@ import { z } from "zod";
 
 import { asJsonArray, jsonObjectSchema, jsonSchema } from "../../src/lib/json";
 import type { Json } from "../../src/lib/json";
-import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
+import { clientIps, requiredEnv, runId, serviceDb } from "../harness/env";
 import { assertSafeE2ETarget } from "../harness/target-guard";
 
 const rollupSchema = z.object({
@@ -28,9 +27,7 @@ interface TelemetryProbe {
 // Through the CLI pooler because the private schema is deliberately not
 // Exposed to PostgREST (the API only publishes `public`).
 
-loadLocalEnv();
 const db = serviceDb();
-const runId = randomUUID().slice(0, 8);
 
 function analyticsQuery(sql: string): readonly Json[] {
   assertSafeE2ETarget(process.env);
@@ -96,9 +93,7 @@ function emailFor(label: string): string {
   return `telemetry-e2e-${runId}-${label}@example.test`;
 }
 
-function testIp(label: string): string {
-  return `2001:db8:7e1e:${label.slice(0, 4).padEnd(4, "0")}::9`;
-}
+const testIp = clientIps("telemetry");
 
 test.afterAll(async () => {
   await db.from("requests").delete().like("email", `telemetry-e2e-${runId}-%`);

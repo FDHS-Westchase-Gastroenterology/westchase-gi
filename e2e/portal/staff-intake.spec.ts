@@ -1,20 +1,7 @@
 import { test, expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
-import { loadLocalEnv, requiredEnv } from "../harness/env";
-
-loadLocalEnv();
-
-const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
-const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
-
-async function signIn(page: Page) {
-  await page.goto("/admin/login");
-  await page.getByLabel("Email").fill(SEED_EMAIL);
-  await page.getByLabel("Password").fill(SEED_PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
-}
+import { signIn } from "../harness/session";
 
 async function openNewRequest(page: Page, from: "home" | "appointments") {
   if (from === "home") {

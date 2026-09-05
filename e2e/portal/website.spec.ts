@@ -1,14 +1,11 @@
 import { randomUUID } from "node:crypto";
 
 import { test, expect } from "@playwright/test";
-import type { Locator, Page } from "@playwright/test";
+import type { Locator } from "@playwright/test";
 
-import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
+import { runId, serviceDb } from "../harness/env";
+import { signIn } from "../harness/session";
 
-loadLocalEnv();
-
-const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
-const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
 const REPOSITORY_URL = "https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi";
 const GITHUB_CONFIGURATION_COUNT = [
   "PORTAL_GITHUB_APP_ID",
@@ -41,18 +38,9 @@ const SECRET_MATERIAL =
   /ghp_[A-Za-z0-9]+|github_pat_[A-Za-z0-9_]+|sk_live_|sk_test_|BEGIN [A-Z ]*PRIVATE KEY|PORTAL_GITHUB_APP_PRIVATE_KEY|SUPABASE_SERVICE_ROLE_KEY|Bearer [A-Za-z0-9._-]+/;
 
 const db = serviceDb();
-const runId = randomUUID().slice(0, 8);
 const staffEmail = `website-${runId}-staff@example.test`;
 const staffPassword = `Ws-${randomUUID()}-aA1!`;
 let staffUserId: string | null = null;
-
-async function signIn(page: Page, email: string, password: string) {
-  await page.goto("/admin/login");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
-}
 
 async function screenDisclosureChrome(summary: Locator) {
   return summary.evaluate((el) => {
@@ -117,7 +105,7 @@ test.describe("website custody", () => {
   test("staff-first opening, unresolved items, and the website-change action precede maintainer details", async ({
     page,
   }) => {
-    await signIn(page, SEED_EMAIL, SEED_PASSWORD);
+    await signIn(page);
     await page.goto("/admin/settings/software");
 
     await expect(page.getByRole("link", { name: "Website", exact: true })).toHaveAttribute(
@@ -195,7 +183,7 @@ test.describe("website custody", () => {
       }
     });
 
-    await signIn(page, SEED_EMAIL, SEED_PASSWORD);
+    await signIn(page);
     await page.goto("/admin/settings/software");
     await page.emulateMedia({ media: "screen" });
 
@@ -289,7 +277,7 @@ test.describe("website custody", () => {
   test("legacy registry redirect, flyer, help, and public-site handoffs keep working", async ({
     page,
   }) => {
-    await signIn(page, SEED_EMAIL, SEED_PASSWORD);
+    await signIn(page);
     await page.goto("/admin/settings/software");
 
     const flyerTask = page.getByRole("link", { name: "Print review flyers" });
@@ -321,7 +309,7 @@ test.describe("website custody", () => {
   test("staff can open Website with the flyer task but no maintainer controls", async ({
     page,
   }) => {
-    await signIn(page, staffEmail, staffPassword);
+    await signIn(page, { email: staffEmail, password: staffPassword });
     await page.goto("/admin/settings/software");
 
     await expect(page.getByTestId("managed-product")).toHaveCount(1);

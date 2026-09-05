@@ -1,28 +1,20 @@
-import { createHash, randomUUID } from "node:crypto";
-
 import { test, expect } from "@playwright/test";
-import type { APIRequestContext, Page } from "@playwright/test";
+import type { APIRequestContext } from "@playwright/test";
 import { PDFDocument } from "pdf-lib";
 import { z } from "zod";
 
 import { intakeResponseSchema } from "../../src/lib/portal/contracts";
-import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
+import { clientIps, runId, seedAdmin, serviceDb } from "../harness/env";
+import { signIn } from "../harness/session";
 
 // The paper handoff is a truthful snapshot of the live New queue: complete,
 // Oldest first, accountable without PHI, and entirely non-mutating.
 
-loadLocalEnv();
-
-const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
-const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
+const { email: SEED_EMAIL } = seedAdmin();
 const db = serviceDb();
-const runId = randomUUID().slice(0, 8);
 const testAuditIds: string[] = [];
 
-function testIp(label: string): string {
-  const hex = createHash("sha256").update(`${runId}:${label}`).digest("hex");
-  return `2001:db8:${hex.slice(0, 4)}:${hex.slice(4, 8)}::9`;
-}
+const testIp = clientIps("print-packet");
 
 function requestPayload(label: string) {
   const message =
@@ -53,14 +45,6 @@ async function stageRequest(request: APIRequestContext, label: "older" | "newer"
   const body = intakeResponseSchema.parse(await response.json());
   if (!body.ok) throw new Error("Expected an accepted intake response");
   return body.id;
-}
-
-async function signIn(page: Page) {
-  await page.goto("/admin/login");
-  await page.getByLabel("Email").fill(SEED_EMAIL);
-  await page.getByLabel("Password").fill(SEED_PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/admin\/?$/);
 }
 
 async function durableRequest(id: string) {

@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 import { test, expect } from "@playwright/test";
 import type { Page, APIRequestContext } from "@playwright/test";
@@ -8,7 +8,8 @@ import { followUpWhenLabel } from "../../src/app/admin/(portal)/requests/format"
 import { asJsonObject, asJsonString, jsonSchema } from "../../src/lib/json";
 import { resolveFollowUpAt } from "../../src/lib/portal/business-time";
 import { intakeResponseSchema } from "../../src/lib/portal/contracts";
-import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
+import { clientIps, runId, seedAdmin, serviceDb } from "../harness/env";
+import { signIn } from "../harness/session";
 
 const noteMetaSchema = z.object({
   text: z.string().optional(),
@@ -29,18 +30,11 @@ const createdRequestRowSchema = z.object({ id: z.uuid() });
 // VAL-ADMIN-005: detail shows all fields; the full appointment-request lifecycle persists.
 // VAL-ADMIN-006: staff notes persist with attribution and re-render.
 
-loadLocalEnv();
-
-const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
-const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
+const { email: SEED_EMAIL } = seedAdmin();
 
 const db = serviceDb();
-const runId = randomUUID().slice(0, 8);
 
-function testIp(label: string): string {
-  const hex = createHash("sha256").update(`${runId}:${label}`).digest("hex");
-  return `2001:db8:${hex.slice(0, 4)}:${hex.slice(4, 8)}::3`;
-}
+const testIp = clientIps("requests");
 
 // The portal owns the appointment calendar, so a Scheduled save must name the
 // Day and wall-clock time of the appointment before Save becomes available.
@@ -81,14 +75,6 @@ async function stageRequest(request: APIRequestContext, label: string): Promise<
   expect(body.ok).toBe(true);
   if (!body.ok) throw new Error("Expected an accepted intake response");
   return body.id;
-}
-
-async function signIn(page: Page) {
-  await page.goto("/admin/login");
-  await page.getByLabel("Email").fill(SEED_EMAIL);
-  await page.getByLabel("Password").fill(SEED_PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/admin\/?$/);
 }
 
 // The Appointments views are presentation views over durable statuses:

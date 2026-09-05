@@ -1,26 +1,16 @@
 import { randomUUID } from "node:crypto";
 
 import { test, expect } from "@playwright/test";
-import type { BrowserContext, Page } from "@playwright/test";
+import type { BrowserContext } from "@playwright/test";
 import { z } from "zod";
 
-import { loadLocalEnv, serviceDb } from "../harness/env";
-
-loadLocalEnv();
+import { runId, serviceDb } from "../harness/env";
+import { signIn } from "../harness/session";
 
 const db = serviceDb();
 const releaseId = "2026-08-06-appointment-workflow";
-const runId = randomUUID().slice(0, 8);
 const staffEmail = `release-${runId}@example.test`;
 const staffPassword = `Release-${randomUUID()}-aA1!`;
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto("/admin/login");
-  await page.getByLabel("Email").fill(staffEmail);
-  await page.getByLabel("Password").fill(staffPassword);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
-}
 
 test.describe("portal release briefing", () => {
   test.describe.configure({ mode: "serial" });
@@ -67,7 +57,7 @@ test.describe("portal release briefing", () => {
     browser,
     page,
   }) => {
-    await signIn(page);
+    await signIn(page, { email: staffEmail, password: staffPassword });
 
     const announcement = page.getByTestId("portal-release-announcement");
     const openButton = announcement.getByRole("button", {
@@ -149,7 +139,7 @@ test.describe("portal release briefing", () => {
     // The state is account-wide, rather than tied to this browser.
     secondContext = await browser.newContext();
     const secondPage = await secondContext.newPage();
-    await signIn(secondPage);
+    await signIn(secondPage, { email: staffEmail, password: staffPassword });
     await expect(secondPage.getByTestId("portal-release-announcement")).toHaveCount(0);
     await expect(secondPage.getByTestId("portal-release-utility")).toBeVisible();
 

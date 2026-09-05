@@ -1,21 +1,13 @@
 import { createHash, randomUUID } from "node:crypto";
 
 import { test, expect } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { signInIdentifierField } from "../../src/lib/portal/staff-language";
-import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
+import { expectDenied, requireDecoded, requireText } from "../harness/assert";
+import { publishableDb, seedAdmin, serviceDb } from "../harness/env";
 
-loadLocalEnv();
-
-const SUPABASE_URL = requiredEnv("NEXT_PUBLIC_SUPABASE_URL");
-const SUPABASE_KEY = requiredEnv(
-  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-);
-const SEED_ADMIN_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
-const SEED_ADMIN_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
+const { email: SEED_ADMIN_EMAIL, password: SEED_ADMIN_PASSWORD } = seedAdmin();
 const PREVIEW_USERNAME = process.env.PORTAL_PREVIEW_USERNAME ?? "";
 const PREVIEW_PASSWORD = process.env.PORTAL_PREVIEW_PASSWORD ?? "";
 const SIGN_IN_IDENTIFIER = signInIdentifierField(process.env.VERCEL_ENV !== "production");
@@ -40,39 +32,6 @@ const displayNameRowSchema = z.object({
 
 function digest(value: string): string {
   return createHash("sha256").update(value).digest("hex");
-}
-
-function requireText(value: string | null | undefined, message: string): string {
-  if (value === null || value === undefined || value === "") {
-    throw new Error(message);
-  }
-  return value;
-}
-
-type SafeParseResult<T> =
-  | { readonly success: true; readonly data: T }
-  | { readonly success: false; readonly error: unknown };
-
-function requireDecoded<T>(parsed: SafeParseResult<T>, message: string): T {
-  expect(parsed.success).toBe(true);
-  if (!parsed.success) throw new Error(message);
-  return parsed.data;
-}
-
-function browserDb() {
-  return createClient(SUPABASE_URL, SUPABASE_KEY, {
-    auth: {
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-      persistSession: false,
-    },
-  });
-}
-
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-function expectDenied(result: Readonly<RestResult>): void {
-  expect(result.error?.code).toBe("42501");
-  expect([401, 403]).toContain(result.status);
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
@@ -313,7 +272,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
 
   test("VAL-ADMIN-017: Auth denies public signup and enforces the portal password minimum", async () => {
     const db = serviceDb();
-    const signupClient = browserDb();
+    const signupClient = publishableDb();
     const squatEmail = "signup-denied-" + randomUUID().slice(0, 8) + "@example.test";
     let unexpectedSignupId: string | null = null;
 
@@ -342,7 +301,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
     expect(created.error).toBeNull();
     const userId = requireText(created.data.user?.id, "Password-policy fixture failed");
 
-    const authenticated = browserDb();
+    const authenticated = publishableDb();
     try {
       const signIn = await authenticated.auth.signInWithPassword({
         email,
@@ -847,7 +806,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
           expect(audit.data).toHaveLength(0);
         }
 
-        const loginProbe = browserDb();
+        const loginProbe = publishableDb();
         const oldPasswordStillWorks = await loginProbe.auth.signInWithPassword({
           email,
           password: originalPassword,
@@ -867,7 +826,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
 
   test("VAL-ADMIN-013: direct table and RPC access remain closed", async ({ page }) => {
     test.setTimeout(120_000);
-    const anon = browserDb();
+    const anon = publishableDb();
     const db = serviceDb();
     const tables = [
       "requests",
@@ -968,7 +927,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
     expect(staleCreateError).toBeNull();
     const staleUserId = requireText(staleUser.user?.id, "Stale-token user creation failed");
 
-    const staleClient = browserDb();
+    const staleClient = publishableDb();
     try {
       const { error: staleProfileError } = await db.from("staff_profiles").insert({
         user_id: staleUserId,
@@ -1023,7 +982,7 @@ test.describe("portal authentication and direct REST boundaries", () => {
       await db.auth.admin.deleteUser(staleUserId);
     }
 
-    const authenticated = browserDb();
+    const authenticated = publishableDb();
     const signIn = await authenticated.auth.signInWithPassword({
       email: SEED_ADMIN_EMAIL,
       password: SEED_ADMIN_PASSWORD,

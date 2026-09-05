@@ -1,33 +1,20 @@
 import { randomUUID } from "node:crypto";
 
 import { test, expect } from "@playwright/test";
-import type { Page } from "@playwright/test";
 
-import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
-
-loadLocalEnv();
+import { requiredEnv, runId, serviceDb } from "../harness/env";
+import { signIn } from "../harness/session";
 
 const supabaseUrl = new URL(requiredEnv("NEXT_PUBLIC_SUPABASE_URL"));
 const isolatedTestDatabase =
   process.env.SUPABASE_PREVIEW_BRANCH === "1" ||
   (["127.0.0.1", "localhost", "[::1]"].includes(supabaseUrl.hostname) &&
     requiredEnv("SUPABASE_PROJECT_REF") === "local");
-const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
-const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
-const runId = randomUUID().slice(0, 8);
 const searchToken = `scale-${runId}`;
 const sourcePath = `/e2e/scale/${runId}`;
 const actorEmail = `${searchToken}@example.test`;
 const punctuationName = `Literal %_* , . ( ) "quoted" \\ ${searchToken}`;
 let requestIds: string[] = [];
-
-async function signIn(page: Page) {
-  await page.goto("/admin/login");
-  await page.getByLabel("Email").fill(SEED_EMAIL);
-  await page.getByLabel("Password").fill(SEED_PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/admin\/?$/);
-}
 
 test.describe("isolated portal scale boundaries", () => {
   test.describe.configure({ mode: "serial" });

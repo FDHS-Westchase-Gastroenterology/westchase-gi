@@ -1,8 +1,7 @@
 import { test, expect } from "@playwright/test";
-import type { Page } from "@playwright/test";
 
 import { intakeResponseSchema } from "../../src/lib/portal/contracts";
-import { loadLocalEnv, requiredEnv } from "../harness/env";
+import { signIn } from "../harness/session";
 
 // VAL-REG-005 (revised 2026-07-26): the portal ships no assistant
 // Placeholder. The docked "coming soon" launcher was removed because a
@@ -10,18 +9,6 @@ import { loadLocalEnv, requiredEnv } from "../harness/env";
 // Returns only when an assistant can finish something. The seam itself
 // Is unchanged: when it lands it will be a docked widget, with no
 // Dedicated page and no nav entry.
-
-loadLocalEnv();
-
-const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
-const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
-async function signIn(page: Page) {
-  await page.goto("/admin/login");
-  await page.getByLabel("Email").fill(SEED_EMAIL);
-  await page.getByLabel("Password").fill(SEED_PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
-}
 
 const PORTAL_PAGES = [
   "/admin",

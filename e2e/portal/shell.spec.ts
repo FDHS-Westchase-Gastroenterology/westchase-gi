@@ -1,27 +1,16 @@
 import { randomUUID } from "node:crypto";
 
 import { test, expect } from "@playwright/test";
-import type { Page } from "@playwright/test";
 
-import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
+import { seedAdmin, serviceDb } from "../harness/env";
+import { signIn } from "../harness/session";
 
 // VAL-ADMIN-002: the seed admin can log in and out through the UI.
 // VAL-ADMIN-014 (shell scope): no horizontal overflow at 390/1440, nav
 // And utility targets >= 44px, and the chrome uses the repo's design tokens
 // (not ad-hoc hex).
 
-loadLocalEnv();
-
-const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
-const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
-
-async function signIn(page: Page) {
-  await page.goto("/admin/login");
-  await page.getByLabel("Email").fill(SEED_EMAIL);
-  await page.getByLabel("Password").fill(SEED_PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/admin\/?$/);
-}
+const { email: SEED_EMAIL } = seedAdmin();
 
 test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "JS portal UI");

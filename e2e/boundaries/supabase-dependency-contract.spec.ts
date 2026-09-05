@@ -4,7 +4,6 @@ import { readFileSync } from "node:fs";
 
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 import { asJsonNumber, asJsonObject, jsonObjectSchema, jsonSchema } from "../../src/lib/json";
@@ -14,7 +13,8 @@ import {
   REQUEST_FIELD_LIMITS,
   intakeResponseSchema,
 } from "../../src/lib/portal/contracts";
-import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
+import { expectDenied, requireDecoded, requireText } from "../harness/assert";
+import { publishableDb, requiredEnv, seedAdmin, serviceDb } from "../harness/env";
 import { assertSafeE2ETarget } from "../harness/target-guard";
 
 const lifecycleRowSchema = z.object({
@@ -91,23 +91,6 @@ const idRowSchema = z.object({
 });
 const nullableTimestampSchema = z.string().nullable();
 
-type SafeParseResult<T> =
-  | { readonly success: true; readonly data: T }
-  | { readonly success: false; readonly error: unknown };
-
-function requireDecoded<T>(parsed: SafeParseResult<T>, message: string): T {
-  expect(parsed.success).toBe(true);
-  if (!parsed.success) throw new Error(message);
-  return parsed.data;
-}
-
-function requireText(value: string | null | undefined, message: string): string {
-  if (value === null || value === undefined || value === "") {
-    throw new Error(message);
-  }
-  return value;
-}
-
 interface CallOutcomeAuditDetail {
   outcome: string;
   to: string;
@@ -151,15 +134,7 @@ interface WorkflowDecision {
 /** A fictional appointment far enough ahead to stay in the future as tests age. */
 const APPOINTMENT_AT = "2027-03-04T15:30:00.000Z";
 
-loadLocalEnv();
-
-const SUPABASE_URL = requiredEnv("NEXT_PUBLIC_SUPABASE_URL");
-const SUPABASE_KEY = requiredEnv(
-  "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
-  "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-);
-const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
-const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
+const { email: SEED_EMAIL, password: SEED_PASSWORD } = seedAdmin();
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PATIENT_PHONE = "8135550199";
@@ -179,27 +154,6 @@ const DROP_RECIPIENT_RPC_QUERIES = [
   )`,
   "drop function if exists public.portal_remove_notification_recipient(text, uuid)",
 ] as const;
-
-function publicClient() {
-  return createClient(SUPABASE_URL, SUPABASE_KEY, {
-    auth: {
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-      persistSession: false,
-    },
-  });
-}
-
-function expectPermissionDenied(
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-  result: Readonly<{
-    error: { code?: string } | null;
-    status: number;
-  }>,
-): void {
-  expect(result.error?.code).toBe("42501");
-  expect([401, 403]).toContain(result.status);
-}
 
 function expectUuid(value: string): void {
   expect(value).toMatch(UUID_RE);
@@ -337,7 +291,7 @@ async function insertRequest(
 
 async function expectDeniedSurface(
   // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-  client: Readonly<ReturnType<typeof publicClient>>,
+  client: Readonly<ReturnType<typeof publishableDb>>,
   opts: Readonly<{ actorEmail: string; userId: string; hashLabel: string }>,
 ) {
   const { actorEmail, userId, hashLabel } = opts;
@@ -398,7 +352,7 @@ async function expectDeniedSurface(
     () => release("portal_record_staff_release_guide_open"),
     () => release("portal_record_staff_release_dismiss"),
   ]) {
-    expectPermissionDenied(await probe());
+    expectDenied(await probe());
   }
 }
 
@@ -412,7 +366,7 @@ test.describe("Supabase dependency contract", () => {
   });
 
   test("preserves direct Auth refresh and the portal's SSR cookie session", async ({ page }) => {
-    const client = publicClient();
+    const client = publishableDb();
     const signIn = await client.auth.signInWithPassword({
       email: SEED_EMAIL,
       password: SEED_PASSWORD,
@@ -454,14 +408,14 @@ test.describe("Supabase dependency contract", () => {
   });
 
   test("keeps direct Data API access closed while the service client can read", async () => {
-    const anon = publicClient();
+    const anon = publishableDb();
     await expectDeniedSurface(anon, {
       actorEmail: "anon@example.test",
       userId: randomUUID(),
       hashLabel: "anon",
     });
 
-    const authenticated = publicClient();
+    const authenticated = publishableDb();
     const signIn = await authenticated.auth.signInWithPassword({
       email: SEED_EMAIL,
       password: SEED_PASSWORD,
@@ -474,7 +428,7 @@ test.describe("Supabase dependency contract", () => {
         userId: signIn.data.user?.id ?? randomUUID(),
         hashLabel: "authenticated",
       });
-      expectPermissionDenied(
+      expectDenied(
         await authenticated
           .from("staff_profiles")
           .update({ display_name: "TEST forbidden" })

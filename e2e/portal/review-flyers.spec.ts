@@ -1,15 +1,11 @@
 import { randomUUID } from "node:crypto";
 
 import { expect, test } from "@playwright/test";
-import type { BrowserContext, Page } from "@playwright/test";
+import type { BrowserContext } from "@playwright/test";
 import { PDFDocument } from "pdf-lib";
 
-import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
-
-loadLocalEnv();
-
-const SEED_ADMIN_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
-const SEED_ADMIN_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
+import { serviceDb } from "../harness/env";
+import { signIn } from "../harness/session";
 
 const TARGETS = [
   {
@@ -86,14 +82,6 @@ const ASSETS = TARGETS.flatMap((target) =>
   })),
 );
 
-async function signIn(page: Page, email: string, password: string) {
-  await page.goto("/admin/login");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
-}
-
 test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "Authenticated portal UI");
 });
@@ -147,7 +135,7 @@ test("review flyers stay closed to visitors and open to every staff member", asy
 
     staffContext = await browser.newContext();
     const staffPage = await staffContext.newPage();
-    await signIn(staffPage, staffEmail, staffPassword);
+    await signIn(staffPage, { email: staffEmail, password: staffPassword });
     // Handing flyers to patients is a front-desk job: printing is open to
     // Every active staff member (product decision 2026-07-26), while
     // Anonymous access stays closed.
@@ -169,7 +157,7 @@ test("review flyers stay closed to visitors and open to every staff member", asy
     await db.auth.admin.deleteUser(staffUserId);
   }
 
-  await signIn(page, SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD);
+  await signIn(page);
   await expect(page.getByRole("link", { name: "Print review flyers" })).toBeVisible();
   await page.goto("/admin/review-flyers");
 
@@ -268,7 +256,7 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
     };
   });
 
-  await signIn(page, SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD);
+  await signIn(page);
   await page.goto("/admin/review-flyers");
 
   const viewportActionSizes: {

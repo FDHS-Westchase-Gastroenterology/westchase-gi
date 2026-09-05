@@ -1,11 +1,12 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 import { test, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
 import { z } from "zod";
 
 import { intakeResponseSchema } from "../../src/lib/portal/contracts";
-import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
+import { clientIps, runId, seedAdmin, serviceDb } from "../harness/env";
+import { attemptSignIn, signIn } from "../harness/session";
 
 // VAL-ADMIN-007: recipients are manageable from the UI and a staged
 // Appointment request attempts notification for exactly the active set.
@@ -13,36 +14,15 @@ import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
 // -> login refused, across two browser contexts.
 // VAL-ADMIN-012: the help page is substantive plain English (>=400 words).
 
-loadLocalEnv();
-
-const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
-const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
+const { email: SEED_EMAIL } = seedAdmin();
 
 const db = serviceDb();
-const runId = randomUUID().slice(0, 8);
 
 // Invite/recovery URLs contain one-time bearer fragments. Never preserve them
 // In a retained-on-failure trace artifact.
 test.use({ trace: "off" });
 
-function testIp(label: string): string {
-  const hex = createHash("sha256").update(`${runId}:${label}`).digest("hex");
-  return `2001:db8:${hex.slice(0, 4)}:${hex.slice(4, 8)}::4`;
-}
-
-async function signIn(page: Page, email: string, password: string) {
-  await page.goto("/admin/login");
-  await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-}
-
-/** Successful sign-ins must settle on /admin BEFORE further navigation —
- * a goto that races the login action loses the session cookie write. */
-async function signInExpectingPortal(page: Page, email: string, password: string) {
-  await signIn(page, email, password);
-  await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
-}
+const testIp = clientIps("admin-ux");
 
 async function expectSetupLinkRejected(page: Page, setupUrl: string) {
   await page.goto(setupUrl);
@@ -106,7 +86,7 @@ test.describe("portal management UI", () => {
     expect(fixtureInsert.error).toBeNull();
 
     try {
-      await signInExpectingPortal(page, SEED_EMAIL, SEED_PASSWORD);
+      await signIn(page);
       await page.goto("/admin/settings");
 
       for (const selector of [
@@ -291,7 +271,7 @@ test.describe("portal management UI", () => {
     const emailC = `ux-${runId}-removed@example.test`;
     const emailD = `ux-${runId}-stale@example.test`;
 
-    await signInExpectingPortal(page, SEED_EMAIL, SEED_PASSWORD);
+    await signIn(page);
     await page.goto("/admin/settings");
     await expect(page.locator("#recipient-email")).toBeVisible({
       timeout: 30_000,
@@ -483,7 +463,7 @@ test.describe("portal management UI", () => {
 
     const inviteEmail = `ux-${runId}-staff@example.test`;
 
-    await signInExpectingPortal(page, SEED_EMAIL, SEED_PASSWORD);
+    await signIn(page);
     await page.goto("/admin/settings");
     await expect(page.locator("#invite-email")).toBeVisible({
       timeout: 30_000,
@@ -587,7 +567,7 @@ test.describe("portal management UI", () => {
     await expect(staffPage).toHaveURL(/\/admin\/login\/?$/);
 
     // ...and a fresh login is refused with the generic error.
-    await signIn(staffPage, inviteEmail, chosenPassword);
+    await attemptSignIn(staffPage, { email: inviteEmail, password: chosenPassword });
     await expect(staffPage).toHaveURL(/\/admin\/login\/?$/);
     await expect(staffPage.locator("#login-error")).toBeVisible();
 
@@ -595,7 +575,7 @@ test.describe("portal management UI", () => {
   });
 
   test("VAL-ADMIN-018: Settings shows last sign-in from existing Auth state", async ({ page }) => {
-    await signInExpectingPortal(page, SEED_EMAIL, SEED_PASSWORD);
+    await signIn(page);
     await page.goto("/admin/settings");
 
     // The seed admin just signed in, so their row reads as a real sign-in
@@ -608,7 +588,7 @@ test.describe("portal management UI", () => {
   });
 
   test("VAL-ADMIN-012: help page is substantive plain English", async ({ page }) => {
-    await signInExpectingPortal(page, SEED_EMAIL, SEED_PASSWORD);
+    await signIn(page);
     await page.goto("/admin/help");
     await expect(page.getByRole("heading", { name: "Help", exact: true })).toBeVisible();
 

@@ -1,38 +1,21 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 import { test, expect } from "@playwright/test";
-import type { Page } from "@playwright/test";
 import { z } from "zod";
 
 import { intakeResponseSchema } from "../../src/lib/portal/contracts";
-import { greetingName, signInIdentifierField } from "../../src/lib/portal/staff-language";
-import { loadLocalEnv, requiredEnv, serviceDb } from "../harness/env";
+import { greetingName } from "../../src/lib/portal/staff-language";
+import { clientIps, runId, seedAdmin, serviceDb } from "../harness/env";
+import { signIn } from "../harness/session";
 
 // The portal home page: staff land on a greeting and their tasks, not on
 // Software. The queue overview count is real data, paper handoff is one
 // Truthful action away, and occasional tools stay out of the primary path.
 
-loadLocalEnv();
-
-const SEED_EMAIL = requiredEnv("PORTAL_SEED_ADMIN_EMAIL");
-const SEED_PASSWORD = requiredEnv("PORTAL_SEED_ADMIN_PASSWORD");
-const SIGN_IN_IDENTIFIER = signInIdentifierField(process.env.VERCEL_ENV !== "production");
-
+const { email: SEED_EMAIL } = seedAdmin();
 const db = serviceDb();
-const runId = randomUUID().slice(0, 8);
 
-function testIp(label: string): string {
-  const hex = createHash("sha256").update(`${runId}:${label}`).digest("hex");
-  return `2001:db8:${hex.slice(0, 4)}:${hex.slice(4, 8)}::6`;
-}
-
-async function signIn(page: Page, email: string, password: string) {
-  await page.goto("/admin/login");
-  await page.getByLabel(SIGN_IN_IDENTIFIER.label).fill(email);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
-}
+const testIp = clientIps("home");
 
 test.describe("portal home", () => {
   test.beforeEach(({}, testInfo) => {
@@ -59,7 +42,7 @@ test.describe("portal home", () => {
     });
     expect(staged.status()).toBe(201);
 
-    await signIn(page, SEED_EMAIL, SEED_PASSWORD);
+    await signIn(page);
 
     // Greeting: practice-local time of day plus a human name when one exists.
     const { data: profile } = await db
@@ -213,7 +196,7 @@ test.describe("portal home", () => {
   });
 
   test("New Appointments lists every current New request up to five", async ({ page }) => {
-    await signIn(page, SEED_EMAIL, SEED_PASSWORD);
+    await signIn(page);
 
     const { data: newestNew, error: newestError } = await db
       .from("requests")
@@ -274,7 +257,7 @@ test.describe("portal home", () => {
           ? "1 contacted request has no call-again day"
           : `${missingCount} contacted requests have no call-again day`;
 
-      await signIn(page, SEED_EMAIL, SEED_PASSWORD);
+      await signIn(page);
       const summary = page.getByTestId("attention-summary");
       await expect(summary.getByRole("link", { name: label, exact: true })).toHaveAttribute(
         "href",
@@ -331,7 +314,7 @@ test.describe("portal home", () => {
       return count ?? 0;
     }
 
-    await signIn(page, SEED_EMAIL, SEED_PASSWORD);
+    await signIn(page);
 
     const expectedCount = await recentTrouble();
     expect(expectedCount).toBeGreaterThanOrEqual(1);
@@ -386,7 +369,7 @@ test.describe("portal home", () => {
         .eq("id", originalProfile!.id);
       expect(resetError).toBeNull();
 
-      await signIn(page, SEED_EMAIL, SEED_PASSWORD);
+      await signIn(page);
       const nudge = page.getByTestId("portal-tour-nudge");
       await expect(nudge).toBeVisible();
       await expect(nudge.getByRole("button", { name: "Take a quick tour" })).toBeVisible();

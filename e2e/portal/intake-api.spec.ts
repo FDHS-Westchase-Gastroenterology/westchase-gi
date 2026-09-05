@@ -8,7 +8,7 @@ import {
   REQUEST_FIELD_LIMITS,
   intakeResponseSchema,
 } from "../../src/lib/portal/contracts";
-import { requiredEnv, serviceDb } from "../harness/env";
+import { clientIps, requiredEnv, runId, serviceDb } from "../harness/env";
 
 type IntakeFixture = Partial<ReturnType<typeof validPayload>> & {
   company?: string;
@@ -16,13 +16,9 @@ type IntakeFixture = Partial<ReturnType<typeof validPayload>> & {
 
 const db = serviceDb();
 
-const runId = randomUUID().replaceAll("-", "");
 const sourcePrefix = `/e2e/intake-api/${runId}`;
 
-function testIp(label: string): string {
-  const hex = createHash("sha256").update(`${runId}:${label}`).digest("hex");
-  return `2001:db8:${hex.slice(0, 4)}:${hex.slice(4, 8)}::1`;
-}
+const testIp = clientIps("intake-api");
 
 function validPayload(sourcePath: string) {
   const token = randomUUID().slice(0, 8);
