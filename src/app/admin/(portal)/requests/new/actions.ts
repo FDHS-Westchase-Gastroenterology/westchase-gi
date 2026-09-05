@@ -5,11 +5,11 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { requireRole } from "@/lib/portal/auth";
-import { STAFF_REQUEST_FIELDS, staffRequestInputSchema } from "@/lib/portal/contracts";
+import { INTAKE_FIELDS, staffRequestInputSchema } from "@/lib/portal/contracts";
 import type {
   CreateStaffRequestActionState,
   StaffRequestDraft,
-  StaffRequestField,
+  IntakeField,
 } from "@/lib/portal/contracts";
 import { serviceClient } from "@/lib/portal/server";
 
@@ -24,7 +24,7 @@ export async function createStaffRequest(
   const session = await requireRole("staff", { unauthenticated: "throw" });
   void previousState;
 
-  const stringValue = (field: StaffRequestField): string => {
+  const stringValue = (field: IntakeField): string => {
     const value = formData.get(field);
     const parsed = stringSchema.safeParse(value);
     return parsed.success ? parsed.data : "";
@@ -41,10 +41,10 @@ export async function createStaffRequest(
   const idempotencyKey = idempotencyKeySchema.safeParse(formData.get("idempotencyKey"));
 
   if (!input.success || !idempotencyKey.success) {
-    const fieldErrors: Partial<Record<StaffRequestField, string>> = {};
+    const fieldErrors: Partial<Record<IntakeField, string>> = {};
     if (!input.success) {
       const tree = z.treeifyError(input.error);
-      for (const field of STAFF_REQUEST_FIELDS) {
+      for (const field of INTAKE_FIELDS) {
         const error = tree.properties?.[field]?.errors[0];
         if (error !== undefined) fieldErrors[field] = error;
       }

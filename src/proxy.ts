@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 
+import { INTAKE_FIELDS } from "@/lib/portal/contracts";
 import { LOCALE_COOKIE, localeSet } from "@/lib/site";
 import type { Locale } from "@/lib/site";
 
@@ -13,8 +14,6 @@ import type { Locale } from "@/lib/site";
 // And crawler caches. Any such request is redirected to the clean path
 // BEFORE the document — and therefore any third-party resource it
 // References — can load with those values in the URL.
-
-const PATIENT_PARAMS = ["name", "phone", "email", "message", "location", "time"] as const;
 
 const LEGACY_FORM_PATH = /^\/(?:en|es|vi|ko|ar)\/(?:contact|appointment)\/?$/;
 
@@ -84,11 +83,11 @@ function scrubLegacyPatientQuery(request: NextRequest): NextResponse | null {
   const { nextUrl } = request;
   if (!LEGACY_FORM_PATH.test(nextUrl.pathname)) return null;
 
-  const carriesPatientData = PATIENT_PARAMS.some((param) => nextUrl.searchParams.has(param));
+  const carriesPatientData = INTAKE_FIELDS.some((param) => nextUrl.searchParams.has(param));
   if (!carriesPatientData) return null;
 
   const clean = nextUrl.clone();
-  for (const param of PATIENT_PARAMS) {
+  for (const param of INTAKE_FIELDS) {
     clean.searchParams.delete(param);
   }
   return NextResponse.redirect(clean, 301);

@@ -1,0 +1,19 @@
+{
+  "src/app/[locale]/physicians/page.tsx": 448,
+  "src/app/admin/(portal)/(home)/filter-bar.tsx": 744,
+  "src/app/admin/(portal)/audit/recent-work-model.ts": 726,
+  "src/app/admin/(portal)/portal-release-briefing.tsx": 586,
+  "src/app/admin/(portal)/requests/[id]/page.tsx": 555,
+  "src/app/admin/(portal)/requests/new/staff-request-form.tsx": 706,
+  "src/app/admin/(portal)/requests/page.tsx": 505,
+  "src/app/admin/(portal)/requests/print/page.tsx": 426,
+  "src/app/admin/(portal)/settings/recipients-manager.tsx": 883,
+  "src/app/admin/(portal)/settings/staff-manager.tsx": 584,
+  "src/app/admin/actions.ts": 480,
+  "src/app/design/catalog.ts": 557,
+  "src/components/AppointmentForm.tsx": 464,
+  "src/components/Header.tsx": 437,
+  "src/lib/portal/integrations.ts": 419,
+  "src/lib/portal/management.ts": 704,
+  "src/lib/providers.ts": 1187
+}

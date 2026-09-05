@@ -12,11 +12,11 @@ import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
-import { REQUEST_FIELD_LIMITS, STAFF_REQUEST_FIELDS } from "@/lib/portal/contracts";
+import { REQUEST_FIELD_LIMITS, INTAKE_FIELDS } from "@/lib/portal/contracts";
 import type {
   CreateStaffRequestActionState,
   StaffRequestDraft,
-  StaffRequestField,
+  IntakeField,
 } from "@/lib/portal/contracts";
 
 import { EMPTY_STAFF_REQUEST_DRAFT, isStaffRequestDraftDirty } from "./staff-request-draft";
@@ -35,7 +35,7 @@ const FIELD_FALLBACK = {
   location: "Choose an office preference.",
   time: "Choose a time preference.",
   message: "Keep the scheduling note under 2,000 characters.",
-} as const satisfies Record<StaffRequestField, string>;
+} as const satisfies Record<IntakeField, string>;
 
 function validationCopy(code: string): string | null {
   switch (code) {
@@ -59,7 +59,7 @@ function validationCopy(code: string): string | null {
 }
 
 function errorFor(
-  field: StaffRequestField,
+  field: IntakeField,
   state: Readonly<CreateStaffRequestActionState>,
 ): string | null {
   if (state.status !== "error") return null;
@@ -84,8 +84,8 @@ function submitLabel(pending: boolean, retrying: boolean): string {
   return retrying ? "Try same appointment request again" : "Add appointment request";
 }
 
-type StaffRequestErrors = Readonly<Record<StaffRequestField, string | null>>;
-type ChangeStaffRequestField = (field: StaffRequestField, value: string) => void;
+type StaffRequestErrors = Readonly<Record<IntakeField, string | null>>;
+type ChangeStaffRequestField = (field: IntakeField, value: string) => void;
 
 function ContactDetailsSection({
   draft,
@@ -517,9 +517,7 @@ export function StaffRequestForm({
 
   useEffect(() => {
     if (state.status !== "error" || pending) return;
-    const firstInvalid = STAFF_REQUEST_FIELDS.find(
-      (field) => state.fieldErrors?.[field] !== undefined,
-    );
+    const firstInvalid = INTAKE_FIELDS.find((field) => state.fieldErrors?.[field] !== undefined);
     const control =
       firstInvalid === undefined ? null : formRef.current?.elements.namedItem(firstInvalid);
     if (control instanceof HTMLElement) {

@@ -89,16 +89,10 @@ export const staffRequestInputSchema = requestInputSchema.omit({
   sourcePath: true,
 });
 
-export const STAFF_REQUEST_FIELDS = [
-  "name",
-  "phone",
-  "email",
-  "location",
-  "time",
-  "message",
-] as const;
+/** The fields a patient or staff member fills in; also the query params a stale GET could carry. */
+export const INTAKE_FIELDS = ["name", "phone", "email", "location", "time", "message"] as const;
 
-export type StaffRequestField = (typeof STAFF_REQUEST_FIELDS)[number];
+export type IntakeField = (typeof INTAKE_FIELDS)[number];
 
 export interface StaffRequestDraft {
   readonly name: string;
@@ -124,7 +118,7 @@ export type CreateStaffRequestActionState =
       values: StaffRequestDraft;
       /** Reuse on every retry so an ambiguous response cannot duplicate work. */
       idempotencyKey: string | null;
-      fieldErrors?: Partial<Record<StaffRequestField, string>>;
+      fieldErrors?: Partial<Record<IntakeField, string>>;
     };
 
 export const INTAKE_FAILURE_CODES = ["validation", "rate_limited", "unavailable"] as const;

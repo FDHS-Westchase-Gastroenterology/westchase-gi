@@ -45,6 +45,17 @@
   "rules": {
     "anti-slop/no-chained-type-assertions": "error",
     "anti-slop/no-conditional-empty-object-spread": "error",
+    "anti-slop/no-contract-vocabulary-redeclaration": [
+      "error",
+      {
+        "owners": [
+          "src/lib/portal/workflow/contracts.ts",
+          "src/lib/portal/contracts.ts",
+          "src/lib/portal/queue-attention.ts",
+          "src/lib/site.ts"
+        ]
+      }
+    ],
     "anti-slop/no-known-value-widening": "error",
     "anti-slop/no-module-mocking": "error",
     "anti-slop/no-object-parameters": "error",

@@ -6,17 +6,15 @@ import { useState, useSyncExternalStore } from "react";
 import { ExternalLink, Facebook, Globe, MessageSquare, Phone, Star } from "@/components/icons";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { site, localeSet } from "@/lib/site";
+import type { Locale } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 // The hub speaks every language the practice serves, on one URL, without a
 // Page reload. Printed master QRs stay valid while this encoded hub URL is
-// Maintained. Strings are
-// Deliberately local to this file: the page must work standalone even before
-// (or after) the main site's locale set changes.
+// Maintained. Strings stay local to this file so the page works standalone;
+// The language set is the site's, so a new locale cannot ship without hub strings.
 
-type HubLang = "en" | "es" | "vi" | "ko" | "ar";
-
-const LANGS: { code: HubLang; native: string }[] = [
+const LANGS: { code: Locale; native: string }[] = [
   { code: "en", native: "English" },
   { code: "es", native: "Español" },
   { code: "vi", native: "Tiếng Việt" },
@@ -116,14 +114,14 @@ const STRINGS = {
     languageLabel: "اللغة",
     locations: "تامبا ولوتز، فلوريدا",
   },
-} as const satisfies Record<HubLang, Strings>;
+} as const satisfies Record<Locale, Strings>;
 
 /** Deep-link into the main site only for locales it actually serves. */
-function siteHref(lang: HubLang): string {
+function siteHref(lang: Locale): string {
   return localeSet.has(lang) ? `/${lang}` : "/en";
 }
 
-function isHubLang(value: string): value is HubLang {
+function isLocale(value: string): value is Locale {
   return Object.hasOwn(STRINGS, value);
 }
 
@@ -133,14 +131,14 @@ function isHubLang(value: string): value is HubLang {
 // Client value at hydration without a mismatch. The URL never changes within
 // A page load, so the subscription is a no-op.
 const subscribeNever = () => () => {};
-function readLangParam(): HubLang | null {
+function readLangParam(): Locale | null {
   const param = new URLSearchParams(window.location.search).get("lang");
-  return param !== null && param !== "" && isHubLang(param) ? param : null;
+  return param !== null && param !== "" && isLocale(param) ? param : null;
 }
 
 export function ReviewHub() {
   const urlLang = useSyncExternalStore(subscribeNever, readLangParam, () => null);
-  const [picked, setPicked] = useState<HubLang | null>(null);
+  const [picked, setPicked] = useState<Locale | null>(null);
   const lang = picked ?? urlLang ?? "en";
   const t = STRINGS[lang];
 
