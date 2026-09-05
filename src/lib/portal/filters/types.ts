@@ -5,7 +5,7 @@
    route (the phase-2 natural-language path) — so nothing here may touch the
    DOM, the database, or server-only modules. */
 
-export type FilterKey = "status" | "attention" | "location" | "received" | "search";
+export type FilterKey = "status" | "location" | "received" | "search";
 
 export interface FilterOption {
   readonly value: string;
@@ -33,12 +33,6 @@ export interface MultiSelectFilterParam extends FilterParamBase<readonly string[
   readonly options: readonly FilterOption[];
 }
 
-export interface SelectFilterParam extends FilterParamBase<string> {
-  readonly type: "select";
-  readonly anyLabel: string;
-  readonly options: readonly FilterOption[];
-}
-
 export interface DateFilterParam extends FilterParamBase<DateRange> {
   readonly type: "date";
   readonly anyLabel: string;
@@ -50,11 +44,7 @@ export interface TextFilterParam extends FilterParamBase<string> {
   readonly hint: string;
 }
 
-export type FilterParam =
-  | MultiSelectFilterParam
-  | SelectFilterParam
-  | DateFilterParam
-  | TextFilterParam;
+export type FilterParam = MultiSelectFilterParam | DateFilterParam | TextFilterParam;
 
 /** The decoded value shape a given definition produces. */
 export type FilterValue<P extends FilterParam> = P extends MultiSelectFilterParam

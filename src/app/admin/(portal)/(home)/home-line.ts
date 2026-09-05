@@ -25,7 +25,7 @@ export interface HomeLine {
   /** "waiting 3h" / "due today" / "back Sep 4" / "quiet 5d" / "handed off" / "closed" */
   readonly timing: string;
   /** The only amber on a line, and it always carries a word. */
-  readonly stamp: "Overdue" | "After hours" | null;
+  readonly stamp: "Overdue" | null;
   readonly receivedRel: string;
   readonly receivedFull: string;
   readonly actorName: string | null;
@@ -43,9 +43,6 @@ function passes(line: Readonly<HomeLine>, key: FilterKey, raw: string): boolean 
     const values = def.decode(raw);
     if (values === null) return true;
     return key === "location" ? values.includes(line.location) : values.includes(line.status);
-  }
-  if (def.type === "select") {
-    return def.decode(raw) === line.bucket;
   }
   if (def.type === "date") {
     const range = def.decode(raw);
@@ -96,13 +93,13 @@ export interface FilterSuggestion {
   readonly raw: string;
 }
 
-/** The bar opens with suggestions tuned to the job: the follow-up round, then
-   the unworked. Both sit on Attention — one single-choice dimension — so the
-   two can never be active together: activating one while the other is on
+/** The bar opens with suggestions tuned to the job: the unworked, then the
+   pile already called. Both sit on Status — one dimension, one URL param — so
+   the two can never be active together: activating one while the other is on
    switches the chip, and the value it replaced returns to the bar as a ghost. */
 export const BASE_SUGGESTIONS: readonly FilterSuggestion[] = [
-  { key: "attention", raw: "follow_up" },
-  { key: "attention", raw: "new" },
+  { key: "status", raw: "new" },
+  { key: "status", raw: "contacted" },
 ];
 
 /** One ghost's identity: the dimension *and* the value, since two ghosts may share a dimension. */

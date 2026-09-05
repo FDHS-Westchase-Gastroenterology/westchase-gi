@@ -1,4 +1,3 @@
-import { attentionFilter } from "./attention";
 import { locationFilter } from "./location";
 import { dateRangeLabel, datePresets, matchesPreset, receivedFilter } from "./received";
 import { searchFilter } from "./search";
@@ -14,10 +13,8 @@ export type {
   FilterParam,
   FilterValue,
   MultiSelectFilterParam,
-  SelectFilterParam,
   TextFilterParam,
 } from "./types";
-export { attentionFilter, ATTENTION_VALUES } from "./attention";
 export { locationFilter } from "./location";
 export {
   datePresets,
@@ -38,7 +35,6 @@ export { statusFilter, STATUS_WORDS } from "./status";
 /** The portal home bar, in Add-Filter menu order. */
 export const HOME_FILTERS: readonly FilterParam[] = [
   statusFilter,
-  attentionFilter,
   locationFilter,
   receivedFilter,
   searchFilter,
@@ -94,10 +90,6 @@ export function filterValueLabel(def: FilterParam, raw: string, nowMs: number): 
       (value) => def.options.find((option) => option.value === value)?.label ?? value,
     );
     return labels.length <= 2 ? labels.join(" | ") : `${labels.length} selected`;
-  }
-  if (def.type === "select") {
-    const value = def.decode(raw);
-    return def.options.find((option) => option.value === value)?.label ?? raw;
   }
   if (def.type === "date") {
     const value = def.decode(raw);

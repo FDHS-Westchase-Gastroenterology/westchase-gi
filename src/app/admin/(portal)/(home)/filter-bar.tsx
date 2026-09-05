@@ -20,7 +20,6 @@ import type {
   FilterKey,
   FilterParam,
   MultiSelectFilterParam,
-  SelectFilterParam,
   TextFilterParam,
 } from "@/lib/portal/filters";
 
@@ -374,16 +373,16 @@ function TickGlyph() {
   );
 }
 
-/* Multi-select (checkbox + label as two targets) and select (single ✓)
-   share one shell: search box, an "Any …" escape row that carries ✓ in the
-   resting state, then the option rows. */
+/* The multi-select shell (checkbox + label as two targets): search box, an
+   "Any …" escape row that carries ✓ in the resting state, then the option
+   rows. */
 function OptionEditor({
   def,
   raw,
   setParam,
   onBack,
 }: Readonly<{
-  def: MultiSelectFilterParam | SelectFilterParam;
+  def: MultiSelectFilterParam;
   raw: string | null;
   setParam: SetParam;
   onBack: (() => void) | undefined;
@@ -407,12 +406,7 @@ function OptionEditor({
         />
       </EditorHead>
       <div className="wgi-editor-body">
-        {def.type === "multi-select" ? (
-          <MultiSelectRows def={def} raw={raw} q={q} setParam={setParam} />
-        ) : null}
-        {def.type === "select" ? (
-          <SelectRows def={def} raw={raw} q={q} setParam={setParam} />
-        ) : null}
+        <MultiSelectRows def={def} raw={raw} q={q} setParam={setParam} />
       </div>
     </>
   );
@@ -523,52 +517,6 @@ function MultiSelectRows({
             <span aria-hidden="true" className="wgi-editor-quick" data-target="label">
               {sole ? "Check all" : "Only"}
             </span>
-          </div>
-        );
-      })}
-    </>
-  );
-}
-
-function SelectRows({
-  def,
-  raw,
-  q,
-  setParam,
-}: Readonly<{
-  def: SelectFilterParam;
-  raw: string | null;
-  q: string;
-  setParam: SetParam;
-}>) {
-  const current = raw === null ? null : def.decode(raw);
-  return (
-    <>
-      <AnyRow
-        label={def.anyLabel}
-        checked={current === null}
-        onChoose={() => {
-          setParam(def.key, null);
-        }}
-      />
-      {def.options.flatMap((option) => {
-        if (!option.label.toLowerCase().includes(q)) return [];
-        const checked = current === option.value;
-        return (
-          <div key={option.value} className="wgi-editor-opt">
-            <button
-              type="button"
-              className="wgi-editor-row"
-              aria-pressed={checked}
-              onClick={() => {
-                setParam(def.key, def.encode(option.value));
-              }}
-            >
-              <span aria-hidden="true" className="wgi-editor-tick">
-                {checked ? <TickGlyph /> : null}
-              </span>
-              {option.label}
-            </button>
           </div>
         );
       })}

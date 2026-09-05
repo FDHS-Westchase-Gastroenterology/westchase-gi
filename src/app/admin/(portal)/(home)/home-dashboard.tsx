@@ -36,7 +36,7 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
   const { active, setParam, clearAll } = useActiveFilters();
 
   /* Suggestion queue, by suggestion id (dimension + value, since the two
-     base ghosts share Attention): base suggestions not already active, in
+     base ghosts share Status): base suggestions not already active, in
      offer order. Removing an active filter — or replacing it through the
      other ghost — returns its suggestion to the end of the bar. */
   const [suggestionQueue, setSuggestionQueue] = useState<readonly string[]>(() =>

@@ -18,7 +18,6 @@ import {
 } from "@/app/admin/(portal)/requests/queue";
 import type { QueueRow, WorkedQueueRow } from "@/app/admin/(portal)/requests/queue";
 import { requireRole } from "@/lib/portal/auth";
-import { arrivedOutsideOfficeHours } from "@/lib/portal/business-time";
 import { availableQueueCount } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
 import { displayNameOrEmail, fetchStaffNameMap } from "@/lib/portal/staff-identity";
@@ -124,7 +123,6 @@ function lineFor(
   switch (row.bucket) {
     case "new": {
       timing = `waiting ${rel(createdMs, nowMs)}`;
-      if (arrivedOutsideOfficeHours(row.created_at)) stamp = "After hours";
       break;
     }
     case "follow_up": {
