@@ -1,40 +1,7 @@
 import assert from "node:assert/strict";
-import { register } from "node:module";
 import test from "node:test";
-import { pathToFileURL } from "node:url";
 
-register(
-  `data:text/javascript,${encodeURIComponent(`
-    const srcRoot = ${JSON.stringify(new URL("../../../", import.meta.url).href)};
-    export async function resolve(specifier, context, nextResolve) {
-      if (specifier === "server-only") {
-        return {
-          url: "data:text/javascript,export%20{}",
-          shortCircuit: true,
-        };
-      }
-      if (specifier.startsWith("@/")) {
-        specifier = srcRoot + specifier.slice(2);
-      }
-      if (
-        (specifier.startsWith("./") ||
-          specifier.startsWith("../") ||
-          specifier.startsWith("file:")) &&
-        !/\\.(?:[cm]?[jt]s|json|mjs|cjs|tsx|jsx)$/.test(specifier)
-      ) {
-        try {
-          return await nextResolve(specifier + ".ts", context);
-        } catch {
-          // fall through
-        }
-      }
-      return nextResolve(specifier, context);
-    }
-  `)}`,
-  pathToFileURL("./"),
-);
-
-const { fetchRequestWorkSurface } = await import("./reads.ts");
+import { fetchRequestWorkSurface } from "./reads.ts";
 
 const REQUEST_ID = "11111111-1111-4111-8111-111111111111";
 const REOPEN_AT = "2026-08-28T13:00:00.000Z";

@@ -1,52 +1,7 @@
 import assert from "node:assert/strict";
-import { register } from "node:module";
 import test from "node:test";
-import { pathToFileURL } from "node:url";
 
-register(
-  `data:text/javascript,${encodeURIComponent(`
-    const srcRoot = ${JSON.stringify(new URL("../../../../", import.meta.url).href)};
-    export async function resolve(specifier, context, nextResolve) {
-      if (specifier === "server-only") {
-        return {
-          url: "data:text/javascript,export%20{}",
-          shortCircuit: true,
-        };
-      }
-      // Stub the site config so the unit lens never loads review-targets
-      // JSON; only the locales list reaches this import chain.
-      if (specifier === "@/lib/site") {
-        return {
-          url:
-            "data:text/javascript," +
-            encodeURIComponent(
-              'export const locales = ["en", "es", "vi", "ko", "ar"];',
-            ),
-          shortCircuit: true,
-        };
-      }
-      if (specifier.startsWith("@/")) {
-        specifier = srcRoot + specifier.slice(2);
-      }
-      if (
-        (specifier.startsWith("./") ||
-          specifier.startsWith("../") ||
-          specifier.startsWith("file:")) &&
-        !/\\.(?:[cm]?[jt]s|json|mjs|cjs|tsx|jsx)$/.test(specifier)
-      ) {
-        try {
-          return await nextResolve(specifier + ".ts", context);
-        } catch {
-          // fall through
-        }
-      }
-      return nextResolve(specifier, context);
-    }
-  `)}`,
-  pathToFileURL("./"),
-);
-
-const {
+import {
   AUDIT_PROVIDER_PAGE_SIZE,
   classifyWorkType,
   compactRepeatedOutput,
@@ -61,7 +16,7 @@ const {
   RECENT_WORK_SEARCH_ID,
   toRecentWorkItems,
   WORK_TYPE_FILTERS,
-} = await import("./recent-work-model.ts");
+} from "./recent-work-model.ts";
 
 const NOW = new Date("2026-08-22T15:00:00.000Z");
 const ACTOR = "alex@westchasegi.test";
