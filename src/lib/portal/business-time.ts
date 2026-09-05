@@ -1,10 +1,10 @@
 // Practice-local business context for appointment-request timestamps.
 // The staff shell reads time the way the front desk does — "since
-// Yesterday", "since Friday", "after hours" — not as raw durations.
+// Yesterday", "since Friday" — not as raw durations.
 
-// Office-hours envelope: Mon–Fri 8:00 AM – 5:00 PM America/New_York, the
-// Wider of the two offices (Tampa closes 5:00 PM, Lutz 4:30 PM), so a
-// 4:45 PM submission is never labeled after-hours while an office is open.
+// The business morning starts at 8:00 AM America/New_York; a touched row
+// That has been silent since before the previous business morning is
+// Attention again.
 const OPEN_MINUTES = 8 * 60;
 const PRACTICE_TZ = "America/New_York";
 const YMD_RE = /^(\d{4})-(\d{2})-(\d{2})$/;

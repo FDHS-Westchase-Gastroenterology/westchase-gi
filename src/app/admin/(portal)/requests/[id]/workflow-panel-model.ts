@@ -144,25 +144,23 @@ export function successCopy(
   intent: Readonly<PanelIntent>,
   outcome: Readonly<{ state: RequestState; callAgainAt: string | null }>,
 ): string {
-  const callAgain =
-    outcome.callAgainAt !== null && outcome.callAgainAt !== ""
-      ? followUpWhenLabel(outcome.callAgainAt)
-      : null;
+  const hasCallAgain = outcome.callAgainAt !== null && outcome.callAgainAt !== "";
+  const callAgain = () => followUpWhenLabel(outcome.callAgainAt ?? "");
   switch (intent.kind) {
     case "attempt":
-      return callAgain === null
-        ? "Saved — marked Contacted."
-        : `Saved — marked Contacted. It will resurface ${callAgain}.`;
+      return hasCallAgain
+        ? `Saved — marked Contacted. It will resurface ${callAgain()}.`
+        : "Saved — marked Contacted.";
     case "booked":
       return "Saved — marked Scheduled. It stays on the Scheduled view if you need it.";
     case "close":
       return "Saved — the request is closed.";
     case "reopen":
-      return callAgain === null
-        ? "Reopened — back to Contacted for more work."
-        : `Reopened — back to Contacted. Call again ${callAgain}.`;
+      return hasCallAgain
+        ? `Reopened — back to Contacted. Call again ${callAgain()}.`
+        : "Reopened — back to Contacted for more work.";
     case "set_call_again":
-      return callAgain === null ? "Saved." : `Saved — call again ${callAgain}.`;
+      return hasCallAgain ? `Saved — call again ${callAgain()}.` : "Saved.";
     case "classify":
       return outcome.state === "booked"
         ? "Record finished — marked Scheduled."
@@ -191,8 +189,15 @@ const FAILURE_COPY = {
     "Something went wrong saving that. Nothing may have been recorded — check Request history before repeating anything.",
 } as const satisfies Record<PanelFailureCode, string>;
 
-export function failureCopy(code: PanelFailureCode): string {
-  return FAILURE_COPY[code];
+function isPanelFailureCode(value: string): value is PanelFailureCode {
+  return value in FAILURE_COPY;
+}
+
+/* Typed as a string on purpose: a tab left open across a deploy can receive
+   a rejection this build does not know, and the safe sentence for anything
+   unknown is the one that says nothing may have been recorded. */
+export function failureCopy(code: string): string {
+  return isPanelFailureCode(code) ? FAILURE_COPY[code] : FAILURE_COPY.unavailable;
 }
 
 export function staleVersionCopy(current: Readonly<{ state: RequestState }> | undefined): string {

@@ -131,3 +131,7 @@ test("a call-again choice is complete only when its chip, and its day if custom,
   const today = practiceLocalDay(0);
   assert.deepEqual(followUpChoice("day", today), { kind: "day", date: today });
 });
+
+test("a rejection code this build does not know reads as the ambiguous-save sentence", () => {
+  assert.equal(failureCopy("rejection_from_a_newer_deploy"), failureCopy("unavailable"));
+});

@@ -37,8 +37,14 @@ const FAILURE_COPY = {
   unavailable: "Something went wrong saving the change. Try again.",
 } as const satisfies Record<ManagementFailureCode, string>;
 
-function failureMessage(code: ManagementFailureCode): string {
-  return FAILURE_COPY[code];
+function isManagementFailureCode(value: string): value is ManagementFailureCode {
+  return value in FAILURE_COPY;
+}
+
+/* A string on purpose: a tab left open across a deploy can receive a code this
+   build does not know, and the safe sentence for it is the generic one. */
+function failureMessage(code: string): string {
+  return isManagementFailureCode(code) ? FAILURE_COPY[code] : FAILURE_COPY.unavailable;
 }
 
 function keepFocusInDialog(event: ReactKeyboardEvent<HTMLDialogElement>) {

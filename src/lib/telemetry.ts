@@ -7,7 +7,7 @@
 // Route templates are explicit path strings derived from the static patient
 // Routes, content-index slugs (preps / education / blog), and documents.ts
 // Ids — listed here rather than imported so this module stays lean for the
-// Client beacon and importable under node:test.
+// Client beacon. Locales come from src/lib/site.ts, the one list.
 
 import { z } from "zod";
 

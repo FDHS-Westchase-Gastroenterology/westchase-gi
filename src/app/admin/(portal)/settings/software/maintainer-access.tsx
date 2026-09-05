@@ -46,8 +46,14 @@ const FAILURE_COPY = {
   unavailable: "Something went wrong making the change. Try again.",
 } as const satisfies Record<MaintainerFailureCode, string>;
 
-function failureMessage(code: MaintainerFailureCode): string {
-  return FAILURE_COPY[code];
+function isMaintainerFailureCode(value: string): value is MaintainerFailureCode {
+  return value in FAILURE_COPY;
+}
+
+/* A string on purpose: a tab left open across a deploy can receive a code this
+   build does not know, and the safe sentence for it is the generic one. */
+function failureMessage(code: string): string {
+  return isMaintainerFailureCode(code) ? FAILURE_COPY[code] : FAILURE_COPY.unavailable;
 }
 
 const STATUS_LABEL = {

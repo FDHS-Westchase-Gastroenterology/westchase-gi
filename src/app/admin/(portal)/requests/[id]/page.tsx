@@ -522,7 +522,13 @@ export default async function RequestDetailPage({
         <aside className="portal-workflow-shell" aria-label="Record request outcome">
           <WorkflowPanel
             requestId={row.id}
-            truth={surface}
+            truth={{
+              state: surface.state,
+              version: surface.version,
+              legacyReviewRequired: surface.legacyReviewRequired,
+              callAgainAt: surface.callAgainAt,
+              undo: surface.undo,
+            }}
             nextHref={nextId !== null && nextId !== "" ? continuityHref(nextId) : null}
           />
         </aside>
