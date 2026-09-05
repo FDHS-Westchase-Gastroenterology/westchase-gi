@@ -18,8 +18,8 @@
 // That matches one unique closed request must show 1–1 of 1 even when other
 // Closed rows exist outside the query.
 
-import type { RequestStatus } from "./contracts";
 import { REQUEST_PAGE_SIZE } from "./request-query";
+import type { RequestStatus } from "./workflow/contracts";
 
 export interface RequestPageWindowInput {
   /** The active status filter; "all" lists every status. */

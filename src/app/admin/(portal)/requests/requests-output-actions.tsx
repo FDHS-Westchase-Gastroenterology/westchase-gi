@@ -3,7 +3,7 @@
 import { PortalFeedbackMessage, usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { Download } from "@/components/icons";
 import { useOutputGuard } from "@/components/output-feedback";
-import type { RequestStatus } from "@/lib/portal/contracts";
+import type { StatusCounts } from "@/lib/portal/workflow/contracts";
 
 import { PrintChooser } from "./print-chooser";
 
@@ -17,7 +17,7 @@ interface RequestsOutputActionsProps {
   readonly filteredTotal: number;
   readonly filterLabel: string;
   readonly hasSearch: boolean;
-  readonly statusCounts: Readonly<Partial<Record<RequestStatus, number | null>>>;
+  readonly statusCounts: StatusCounts;
 }
 
 function RequestsOutputActionsBody({

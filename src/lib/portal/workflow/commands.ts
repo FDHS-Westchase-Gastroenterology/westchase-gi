@@ -9,8 +9,8 @@ import type { CommandOutcome } from "./contracts";
 import {
   COMMAND_REJECTIONS,
   WORKFLOW_COMMAND_KINDS,
-  normalizeRequestState,
   parseClosureReason,
+  storedRequestStateSchema,
 } from "./contracts";
 import { decide } from "./machine";
 import type { RequestSnapshot, WorkflowCommand } from "./machine";
@@ -33,7 +33,7 @@ const receiptRowSchema = z.object({
 });
 
 const requestCommandRowSchema = z.object({
-  status: z.string(),
+  status: storedRequestStateSchema,
   version: versionSchema,
   follow_up_at: z.string().nullable(),
   record_handoff_at: z.string().nullable(),
@@ -48,7 +48,7 @@ const requestCommandRowSchema = z.object({
    the correct value to restore for them. Requiring it would make every in-flight
    request un-undoable the moment this deploys. */
 const restoreSnapshotSchema = z.object({
-  state: z.string(),
+  state: storedRequestStateSchema,
   callAgainAt: z.string().nullable(),
   bookingConfirmedAt: z.string().nullable(),
   appointmentAt: z.string().nullable().optional(),
@@ -66,7 +66,7 @@ const undoWindowSchema = z.object({
 
 const commandSuccessSchema = z.object({
   ok: z.literal(true),
-  state: z.string(),
+  state: storedRequestStateSchema,
   version: versionSchema,
   callAgainAt: z.string().nullable(),
   appointmentAt: z.string().nullable().optional(),
@@ -78,7 +78,7 @@ const commandFailureSchema = z.object({
   code: z.enum(COMMAND_REJECTIONS),
   current: z
     .object({
-      state: z.string(),
+      state: storedRequestStateSchema,
       version: versionSchema,
     })
     .optional(),
@@ -98,12 +98,11 @@ function commandOutcomeFromRow(
   row: Readonly<CommandSuccessRow> | Readonly<CommandFailureRow>,
 ): CommandOutcome | null {
   if (row.ok) {
-    const state = normalizeRequestState(row.state);
     const version = finiteNumber(row.version);
-    if (state === null || version === null) return null;
+    if (version === null) return null;
     return {
       ok: true,
-      state,
+      state: row.state,
       version,
       callAgainAt: row.callAgainAt,
       appointmentAt: row.appointmentAt ?? null,
@@ -112,20 +111,18 @@ function commandOutcomeFromRow(
   }
   const current = row.current;
   if (current === undefined) return { ok: false, code: row.code };
-  const state = normalizeRequestState(current.state);
   const version = finiteNumber(current.version);
-  if (state === null || version === null) return null;
-  return { ok: false, code: row.code, current: { state, version } };
+  if (version === null) return null;
+  return { ok: false, code: row.code, current: { state: current.state, version } };
 }
 
 function requestSnapshotFromRow(row: Readonly<RequestCommandRow>): RequestSnapshot | null {
-  const state = normalizeRequestState(row.status);
   const version = finiteNumber(row.version);
-  if (state === null || version === null) return null;
+  if (version === null) return null;
   const closureReason = row.closure_reason === null ? null : parseClosureReason(row.closure_reason);
   if (row.closure_reason !== null && closureReason === null) return null;
   return {
-    state,
+    state: row.status,
     version,
     callAgainAt: row.follow_up_at,
     bookingConfirmedAt: row.record_handoff_at,
@@ -139,12 +136,10 @@ function requestSnapshotFromRow(row: Readonly<RequestCommandRow>): RequestSnapsh
 function restoreSnapshotFromRow(
   row: Readonly<RestoreSnapshotRow>,
 ): Omit<RequestSnapshot, "version"> | null {
-  const state = normalizeRequestState(row.state);
-  if (state === null) return null;
   const closureReason = row.closureReason === null ? null : parseClosureReason(row.closureReason);
   if (row.closureReason !== null && closureReason === null) return null;
   return {
-    state,
+    state: row.state,
     callAgainAt: row.callAgainAt,
     bookingConfirmedAt: row.bookingConfirmedAt,
     appointmentAt: row.appointmentAt ?? null,

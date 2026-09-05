@@ -1,16 +1,15 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { z } from "zod";
 
 import { PortalFeedbackProvider } from "@/app/admin/(portal)/portal-feedback";
 import { ChevronRight } from "@/components/icons";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { requireRole } from "@/lib/portal/auth";
 import { waitingSince } from "@/lib/portal/business-time";
-import { REQUEST_STATUSES, STAFF_REQUEST_SOURCE_PATH } from "@/lib/portal/contracts";
-import type { RequestStatus } from "@/lib/portal/contracts";
+import { STAFF_REQUEST_SOURCE_PATH } from "@/lib/portal/contracts";
 import type { AttentionBucket } from "@/lib/portal/queue-attention";
 import {
+  firstSearchParam,
   parsePage,
   parseRequestSearch,
   requestSearchFilter,
@@ -18,6 +17,12 @@ import {
 } from "@/lib/portal/request-query";
 import { requestPageWindow } from "@/lib/portal/request-window";
 import { serviceClient } from "@/lib/portal/server";
+import {
+  parseRequestStatus,
+  REQUEST_STATUSES,
+  VIEW_DB_STATUSES,
+} from "@/lib/portal/workflow/contracts";
+import type { RequestStatus } from "@/lib/portal/workflow/contracts";
 import { cn } from "@/lib/utils";
 
 import {
@@ -27,7 +32,7 @@ import {
   STATUS_LABELS,
   TIME_LABELS,
 } from "./format";
-import { fetchAttentiveOpenRows, fetchClosedRows, OPEN_STATUSES, VIEW_DB_STATUSES } from "./queue";
+import { fetchAttentiveOpenRows, fetchClosedRows, OPEN_STATUSES } from "./queue";
 import type { QueueRow } from "./queue";
 import { RequestSearchForm } from "./request-search-form";
 import { RequestsOutputActions, RequestsOutputFeedback } from "./requests-output-actions";
@@ -39,13 +44,8 @@ type SearchParams = Promise<{
   status?: string | string[];
 }>;
 
-const requestStatusSchema = z.enum(REQUEST_STATUSES);
-
 function activeFilter(raw: Readonly<string | string[] | undefined>): RequestStatus | "all" {
-  const parsed = Array.isArray(raw)
-    ? requestStatusSchema.safeParse(raw.at(0))
-    : requestStatusSchema.safeParse(raw);
-  return parsed.success ? parsed.data : "all";
+  return parseRequestStatus(firstSearchParam(raw)) ?? "all";
 }
 
 function detailHref({

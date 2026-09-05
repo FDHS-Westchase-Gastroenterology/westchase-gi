@@ -1,21 +1,9 @@
-import type { RequestStatus } from "./contracts";
+import { parseRequestStatus } from "./workflow/contracts";
+import type { RequestStatus, StatusCounts } from "./workflow/contracts";
 
 export const NEW_PRINT_PACKET_HREF = "/admin/requests/print";
-const PRINTABLE_STATUSES = [
-  "new",
-  "contacted",
-  "scheduled",
-  "closed",
-] as const satisfies readonly RequestStatus[];
 
 export type PrintStatusSelection = readonly RequestStatus[] | "default" | "invalid";
-
-function asRequestStatus(value: string): RequestStatus | null {
-  for (const status of PRINTABLE_STATUSES) {
-    if (status === value) return status;
-  }
-  return null;
-}
 
 function isStatusTokenList(raw: string | readonly string[]): raw is readonly string[] {
   return Array.isArray(raw);
@@ -35,7 +23,7 @@ export function parsePrintStatusSelection(
   const seen = new Set<RequestStatus>();
   for (const token of tokens) {
     if (token === "") continue;
-    const status = asRequestStatus(token);
+    const status = parseRequestStatus(token);
     if (status === null) return "invalid";
     if (seen.has(status)) continue;
     seen.add(status);
@@ -73,7 +61,7 @@ export function formatStatusList(
 
 export function knownSelectionCount(
   statuses: readonly RequestStatus[],
-  counts: Readonly<Partial<Record<RequestStatus, number | null>>>,
+  counts: StatusCounts,
 ): number | null {
   let total = 0;
   for (const status of statuses) {
@@ -86,7 +74,7 @@ export function knownSelectionCount(
 
 export function printSelectionIsAvailable(
   statuses: readonly RequestStatus[],
-  counts: Readonly<Partial<Record<RequestStatus, number | null>>>,
+  counts: StatusCounts,
 ): boolean {
   if (statuses.length === 0) return false;
   if (statuses.length === 1 && counts[statuses[0]] === null) return false;

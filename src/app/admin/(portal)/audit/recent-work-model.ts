@@ -8,12 +8,13 @@ import {
   OUTCOME_HISTORY_LABELS,
   STATUS_LABELS,
   followUpShortLabel,
+  stateLabel,
 } from "@/app/admin/(portal)/requests/format";
 import { asJsonBoolean, asJsonNumber, asJsonObject, asJsonString } from "@/lib/json";
 import type { Json, JsonObject } from "@/lib/json";
-import type { RequestStatus } from "@/lib/portal/contracts";
 import { formatStatusList, parsePrintStatusSelection } from "@/lib/portal/print-selection";
 import { isPortalReleaseAuditAction } from "@/lib/portal/release-state";
+import { normalizeRequestState, parseRequestStatus } from "@/lib/portal/workflow/contracts";
 
 // The human lens over the durable audit record: plain-language, grouped by
 // Practice-local day, linked to the work — never an action code. Storage
@@ -147,19 +148,9 @@ function profileLabel(namesByProfileId: ReadonlyMap<string, string>, id: string 
   return namesByProfileId.get(id) ?? "a colleague";
 }
 
-const STATUS_WORDS = {
-  new: "New",
-  contacted: "Contacted",
-  scheduled: "Scheduled",
-  closed: "Closed",
-} as const satisfies Record<RequestStatus, string>;
-
 function staffStateWord(raw: string): string | null {
-  if (raw === "new") return STATUS_WORDS.new;
-  if (raw === "contacted") return STATUS_WORDS.contacted;
-  if (raw === "booked" || raw === "scheduled") return STATUS_WORDS.scheduled;
-  if (raw === "closed") return STATUS_WORDS.closed;
-  return null;
+  const state = normalizeRequestState(raw);
+  return state === null ? null : stateLabel(state);
 }
 
 interface ActionDescription {
@@ -181,12 +172,9 @@ function describeAction(
       if (to === "closed" && detail.legacy_unclassified_close === true) {
         return { sentence: "closed a request without an outcome", technical: false };
       }
+      const status = parseRequestStatus(to);
       return {
-        sentence: `marked a request ${
-          to === "new" || to === "contacted" || to === "scheduled" || to === "closed"
-            ? STATUS_WORDS[to]
-            : to
-        }`,
+        sentence: `marked a request ${status === null ? to : STATUS_LABELS[status]}`,
         technical: false,
       };
     }

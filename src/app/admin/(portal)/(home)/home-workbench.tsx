@@ -8,7 +8,7 @@ import {
 } from "@/app/admin/(portal)/portal-feedback";
 import { PrintChooser } from "@/app/admin/(portal)/requests/print-chooser";
 import { buttonVariants } from "@/components/ui/button-variants";
-import type { RequestStatus } from "@/lib/portal/contracts";
+import type { StatusCounts } from "@/lib/portal/workflow/contracts";
 import { cn } from "@/lib/utils";
 
 import { HomeDashboard } from "./home-dashboard";
@@ -60,7 +60,7 @@ export function HomeWorkbench({
   /** One server clock for every relative label on the page. */
   nowMs: number;
   closedCapped: boolean;
-  statusCounts: Readonly<Partial<Record<RequestStatus, number | null>>>;
+  statusCounts: StatusCounts;
   noActiveRecipients: boolean;
   deliveryFailureCount: number | null;
   announcements?: ReactNode;

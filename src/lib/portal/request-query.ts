@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { RequestStatus } from "./contracts";
+import type { RequestStatus } from "./workflow/contracts";
 
 export const REQUEST_PAGE_SIZE = 50;
 export const REQUEST_SEARCH_MAX_LENGTH = 100;
@@ -13,7 +13,7 @@ const MAX_PAGE = 10_000;
 
 type SearchParam = string | string[] | undefined;
 
-function first(value: Readonly<SearchParam>): string {
+export function firstSearchParam(value: Readonly<SearchParam>): string {
   const parsed = z.union([z.string(), z.array(z.string())]).safeParse(value);
   if (!parsed.success) return "";
   if (Array.isArray(parsed.data)) return parsed.data[0] ?? "";
@@ -21,12 +21,12 @@ function first(value: Readonly<SearchParam>): string {
 }
 
 export function parsePage(value: Readonly<SearchParam>): number {
-  const parsed = Number(first(value));
+  const parsed = Number(firstSearchParam(value));
   return Number.isSafeInteger(parsed) && parsed > 0 ? Math.min(parsed, MAX_PAGE) : 1;
 }
 
 export function parseRequestSearch(value: Readonly<SearchParam>): string {
-  return first(value)
+  return firstSearchParam(value)
     .replace(/\p{Cc}+/gu, " ")
     .trim()
     .replace(/\s+/g, " ")

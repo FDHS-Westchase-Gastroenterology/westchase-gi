@@ -10,13 +10,13 @@ import { Printer } from "@/components/icons";
 import { useOutputGuard } from "@/components/output-feedback";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
-import type { RequestStatus } from "@/lib/portal/contracts";
 import {
   formatStatusList,
   knownSelectionCount,
   printPacketHref,
   printSelectionIsAvailable,
 } from "@/lib/portal/print-selection";
+import type { RequestStatus, StatusCounts } from "@/lib/portal/workflow/contracts";
 import { cn } from "@/lib/utils";
 
 /* Printing exists to hand paper to staff, so the menu offers the two statuses
@@ -46,10 +46,7 @@ function keepFocusInDialog(event: KeyboardEvent<HTMLDialogElement>) {
   }
 }
 
-function selectionSummary(
-  statuses: readonly RequestStatus[],
-  counts: Readonly<Partial<Record<RequestStatus, number | null>>>,
-): string {
+function selectionSummary(statuses: readonly RequestStatus[], counts: StatusCounts): string {
   if (statuses.length === 0) return "Choose one or more statuses.";
   if (!printSelectionIsAvailable(statuses, counts)) {
     if (statuses.length === 1 && counts[statuses[0]] === null) {
@@ -69,7 +66,7 @@ export function PrintChooser({
   triggerClassName,
   triggerLabel = "Print",
 }: Readonly<{
-  statusCounts: Readonly<Partial<Record<RequestStatus, number | null>>>;
+  statusCounts: StatusCounts;
   triggerClassName: string;
   triggerLabel?: string;
 }>) {

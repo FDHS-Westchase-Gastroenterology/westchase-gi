@@ -17,7 +17,6 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { recordAudit } from "@/lib/portal/audit";
 import { requireRole } from "@/lib/portal/auth";
 import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
-import type { RequestStatus } from "@/lib/portal/contracts";
 import {
   formatStatusList,
   isNewOnlyPrintSelection,
@@ -30,6 +29,7 @@ import {
 } from "@/lib/portal/request-print";
 import type { NewRequestPrintRow } from "@/lib/portal/request-print";
 import { serviceClient } from "@/lib/portal/server";
+import type { RequestStatus } from "@/lib/portal/workflow/contracts";
 
 import { PrintPacketControls } from "./print-controls";
 

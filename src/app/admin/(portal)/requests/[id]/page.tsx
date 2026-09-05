@@ -12,8 +12,7 @@ import {
   followUpWhenLabel,
   localeLabel,
   LOCATION_LABELS,
-  presentationStatus,
-  STATE_LABELS,
+  stateLabel,
   telHref,
   TIME_LABELS,
 } from "@/app/admin/(portal)/requests/format";
@@ -27,12 +26,16 @@ import { StatusBadge } from "@/app/admin/(portal)/requests/status-badge";
 import { Clock, Mail, MapPin, MessageSquare, Phone } from "@/components/icons";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { requireRole } from "@/lib/portal/auth";
-import { isMailbox, REQUEST_STATUSES } from "@/lib/portal/contracts";
-import type { RequestStatus } from "@/lib/portal/contracts";
-import { parseRequestSearch, requestSearchFilter } from "@/lib/portal/request-query";
+import { isMailbox, REQUEST_LOCATIONS, REQUEST_TIMES } from "@/lib/portal/contracts";
+import {
+  firstSearchParam,
+  parseRequestSearch,
+  requestSearchFilter,
+} from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
 import { displayNameOrEmail, fetchStaffNameMap } from "@/lib/portal/staff-identity";
-import type { HistoryEntry } from "@/lib/portal/workflow/contracts";
+import { parseRequestStatus, presentationStatus } from "@/lib/portal/workflow/contracts";
+import type { HistoryEntry, RequestStatus } from "@/lib/portal/workflow/contracts";
 import { fetchRequestWorkSurface } from "@/lib/portal/workflow/reads";
 
 import {
@@ -44,28 +47,21 @@ import { RequestNotes } from "./request-notes";
 import type { RequestNoteView } from "./request-notes";
 import { WorkflowPanel } from "./workflow-panel";
 
-const requestStatusSchema = z.enum(REQUEST_STATUSES);
-
 const requestDetailSchema = z.object({
   id: z.string(),
   name: z.string(),
   phone: z.string(),
   email: z.string().nullable(),
-  location: z.enum(["any", "tampa", "lutz"]),
-  preferred_time: z.enum(["any", "morning", "afternoon"]),
+  location: z.enum(REQUEST_LOCATIONS),
+  preferred_time: z.enum(REQUEST_TIMES),
   message: z.string().nullable(),
   locale: z.string(),
   created_at: z.string(),
 });
 
 function firstParam(value: Readonly<string | string[] | undefined>): string | null {
-  const parsed = z.union([z.string(), z.array(z.string())]).safeParse(value);
-  if (!parsed.success) return null;
-  if (Array.isArray(parsed.data)) {
-    const first = parsed.data.at(0);
-    return first !== undefined && first !== "" ? first : null;
-  }
-  return parsed.data !== "" ? parsed.data : null;
+  const first = firstSearchParam(value);
+  return first === "" ? null : first;
 }
 
 // Request history keeps each evidence kind distinct (spec §6): contact
@@ -135,7 +131,7 @@ function historyLine(entry: Readonly<HistoryEntry>): HistoryLine | null {
                   ? entry.callAgainAt !== null && entry.callAgainAt !== ""
                     ? `Call-again day set — ${followUpWhenLabel(entry.callAgainAt)}`
                     : "Call-again day correction recorded"
-                  : `Marked ${STATE_LABELS[entry.to]}`,
+                  : `Marked ${stateLabel(entry.to)}`,
         actor: entry.actor,
         at: entry.at,
         undone: entry.undone,
@@ -145,7 +141,7 @@ function historyLine(entry: Readonly<HistoryEntry>): HistoryLine | null {
     case "undo":
       return {
         id: entry.id,
-        text: `Undo — restored to ${STATE_LABELS[entry.restoredState]}`,
+        text: `Undo — restored to ${stateLabel(entry.restoredState)}`,
         actor: entry.actor,
         at: entry.at,
         quiet: false,
@@ -241,11 +237,8 @@ export default async function RequestDetailPage({
   // Ordering the list renders, so staff can keep working without
   // Returning to the list each time. A request outside the current scope
   // (e.g. an old closed row beyond the tail window) simply shows no chain.
-  const scopedStatus = requestStatusSchema.safeParse(statusParam);
   const scoped: RequestStatus | null =
-    statusParam !== null && statusParam !== "" && statusParam !== "all" && scopedStatus.success
-      ? scopedStatus.data
-      : null;
+    statusParam === null ? null : parseRequestStatus(statusParam);
   const neighborIds: string[] = [];
   if (scoped !== "closed") {
     const openStatuses = scoped ? [scoped] : [...OPEN_STATUSES];

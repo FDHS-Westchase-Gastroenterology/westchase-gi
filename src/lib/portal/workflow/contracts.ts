@@ -12,6 +12,8 @@
 // "Booked". Presentation labels live with the UI (requests/format.ts);
 // This module deliberately carries only domain vocabulary.
 
+import { z } from "zod";
+
 /** Durable request states. `SCHEDULED` is not a state (spec §4.1). */
 export const REQUEST_STATES = ["new", "contacted", "booked", "closed"] as const;
 export type RequestState = (typeof REQUEST_STATES)[number];
@@ -33,9 +35,60 @@ export function normalizeRequestState(raw: string): RequestState | null {
   return included(REQUEST_STATES, raw);
 }
 
+/**
+ * A stored `status` column parsed into the durable state. Every row reader
+ * decodes through this, so no reader spells the legacy alias itself.
+ */
+export const storedRequestStateSchema = z.string().transform((raw, ctx) => {
+  const state = normalizeRequestState(raw);
+  if (state === null) {
+    ctx.addIssue({ code: "custom", message: `Unknown request state: ${raw}` });
+    return z.NEVER;
+  }
+  return state;
+});
+
+// ---------------------------------------------------------------------------
+// Staff-facing status (spec §2–§3). Staff views, URL filters, print
+// Selections and the CSV export address requests by status, in which the
+// Durable `booked` reads as `scheduled`. A status is never stored:
+// `presentationStatus` is the one translation out of a state, and
+// `VIEW_DB_STATUSES` the one translation back into stored values for a query.
+// ---------------------------------------------------------------------------
+
+export const REQUEST_STATUSES = ["new", "contacted", "scheduled", "closed"] as const;
+export type RequestStatus = (typeof REQUEST_STATUSES)[number];
+
+export function parseRequestStatus(raw: string): RequestStatus | null {
+  return included(REQUEST_STATUSES, raw);
+}
+
+export function presentationStatus(state: RequestState): RequestStatus {
+  return state === "booked" ? "scheduled" : state;
+}
+
+/**
+ * The stored `status` values a staff-facing status selects. Scheduled also
+ * reads any retained legacy `scheduled` row (spec §14), the query-side twin
+ * of `normalizeRequestState`.
+ */
+export const VIEW_DB_STATUSES = {
+  new: ["new"],
+  contacted: ["contacted"],
+  scheduled: ["booked", "scheduled"],
+  closed: ["closed"],
+} as const satisfies Record<RequestStatus, readonly string[]>;
+
+/** Per-status request counts for a staff surface; null marks a count whose read failed. */
+export type StatusCounts = Readonly<Partial<Record<RequestStatus, number | null>>>;
+
 /** Contact-attempt outcomes (spec §5.1). */
-const CONTACT_OUTCOMES = ["reached_follow_up", "voicemail", "no_answer"] as const;
+export const CONTACT_OUTCOMES = ["reached_follow_up", "voicemail", "no_answer"] as const;
 export type ContactOutcome = (typeof CONTACT_OUTCOMES)[number];
+
+export function parseContactOutcome(raw: string): ContactOutcome | null {
+  return included(CONTACT_OUTCOMES, raw);
+}
 
 /** Typed unbooked closure reasons (spec §5.3). */
 export const CLOSURE_REASONS = ["not_actionable", "wont_schedule"] as const;

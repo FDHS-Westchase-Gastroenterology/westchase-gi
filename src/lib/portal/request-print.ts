@@ -3,7 +3,14 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
-import type { RequestStatus } from "./contracts";
+import { REQUEST_LOCATIONS, REQUEST_TIMES } from "./contracts";
+import type { RequestLocation, RequestTime } from "./contracts";
+import {
+  presentationStatus,
+  storedRequestStateSchema,
+  VIEW_DB_STATUSES,
+} from "./workflow/contracts";
+import type { RequestStatus } from "./workflow/contracts";
 
 const RPC_NAME = "portal_prepare_new_request_print_packet";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -15,8 +22,8 @@ export interface NewRequestPrintRow {
   name: string;
   phone: string;
   email: string | null;
-  location: "any" | "tampa" | "lutz";
-  preferredTime: "any" | "morning" | "afternoon";
+  location: RequestLocation;
+  preferredTime: RequestTime;
   message: string | null;
   locale: string;
   sourcePath: string;
@@ -57,11 +64,11 @@ const printRowSchema = z.strictObject({
   email: z.string().nullable(),
   id: z.string().regex(UUID_RE),
   locale: z.string().min(1),
-  location: z.enum(["any", "tampa", "lutz"]),
+  location: z.enum(REQUEST_LOCATIONS),
   message: z.string().nullable(),
   name: z.string().min(1),
   phone: z.string().min(1),
-  preferred_time: z.enum(["any", "morning", "afternoon"]),
+  preferred_time: z.enum(REQUEST_TIMES),
   source_path: z.string().min(1),
 });
 
@@ -75,24 +82,9 @@ const rpcEnvelopeSchema = z.object({
   error: z.unknown().nullable().optional(),
 });
 
-const storedPrintStatusSchema = z.enum(["new", "contacted", "scheduled", "booked", "closed"]);
-
 const statusPrintRowSchema = printRowSchema.extend({
-  status: storedPrintStatusSchema,
+  status: storedRequestStateSchema,
 });
-
-// Presentation Scheduled is durable `booked`, plus leftover `scheduled`
-// Rows from the deploy-overlap window. Same mapping as the queue chips.
-const PRINT_VIEW_DB_STATUSES = {
-  new: ["new"],
-  contacted: ["contacted"],
-  scheduled: ["booked", "scheduled"],
-  closed: ["closed"],
-} as const satisfies Record<RequestStatus, readonly string[]>;
-
-function presentationPrintStatus(status: z.infer<typeof storedPrintStatusSchema>): RequestStatus {
-  return status === "booked" ? "scheduled" : status;
-}
 
 function toPrintRow(
   row: z.infer<typeof printRowSchema>,
@@ -175,9 +167,7 @@ export async function prepareStatusRequestPrintPacket(
   if (input.statuses.length === 0) return { ok: false };
 
   try {
-    const dbStatuses = [
-      ...new Set(input.statuses.flatMap((status) => PRINT_VIEW_DB_STATUSES[status])),
-    ];
+    const dbStatuses = [...new Set(input.statuses.flatMap((status) => VIEW_DB_STATUSES[status]))];
     const query = input.db
       .from("requests")
       .select(
@@ -193,7 +183,7 @@ export async function prepareStatusRequestPrintPacket(
     if (!parsed.success) return { ok: false };
 
     const requests = collectOrderedRows(
-      parsed.data.map((row) => toPrintRow(row, presentationPrintStatus(row.status))),
+      parsed.data.map((row) => toPrintRow(row, presentationStatus(row.status))),
     );
     if (requests === null) return { ok: false };
 

@@ -1,10 +1,11 @@
 import "server-only";
 
 import { previousBusinessMorningBoundary } from "./business-time";
+import type { RequestStatus } from "./workflow/contracts";
 
 export interface QueueAttentionRow {
   id: string;
-  status: "new" | "contacted" | "scheduled" | "closed";
+  status: RequestStatus;
   created_at: string;
   follow_up_at: string | null;
 }

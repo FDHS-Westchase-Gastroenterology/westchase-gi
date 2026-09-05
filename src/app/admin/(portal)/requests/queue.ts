@@ -3,10 +3,17 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
-import type { RequestStatus } from "@/lib/portal/contracts";
+import { REQUEST_LOCATIONS, REQUEST_TIMES } from "@/lib/portal/contracts";
+import type { RequestLocation, RequestTime } from "@/lib/portal/contracts";
 import { orderQueueRows } from "@/lib/portal/queue-attention";
 import type { AttentiveRow } from "@/lib/portal/queue-attention";
 import { uniqueByRequestId } from "@/lib/portal/request-query";
+import {
+  presentationStatus,
+  storedRequestStateSchema,
+  VIEW_DB_STATUSES,
+} from "@/lib/portal/workflow/contracts";
+import type { RequestStatus } from "@/lib/portal/workflow/contracts";
 
 // Shared queue reads for the requests list and the detail page's
 // Previous/next continuity: one attention derivation, one fetch shape.
@@ -15,8 +22,8 @@ export interface QueueRow {
   id: string;
   name: string;
   phone: string;
-  location: "any" | "tampa" | "lutz";
-  preferred_time: "any" | "morning" | "afternoon";
+  location: RequestLocation;
+  preferred_time: RequestTime;
   locale: string;
   /** Deploy-overlap presentation shape: durable `booked` normalizes to legacy UI `scheduled`. */
   status: RequestStatus;
@@ -42,31 +49,21 @@ const COLUMNS =
 // Ordering column instead of widening it.
 export const OPEN_CANDIDATE_LIMIT = 500;
 
-// The five staff views are presentation vocabulary (spec §3);
-// Scheduled is a label over durable `booked` (spec §2). Each view queries
-// Its durable statuses here — including legacy `scheduled` rows during
-// The compatibility window (spec §14) — and every row
-// Normalizes back to presentation vocabulary before rendering.
-export const VIEW_DB_STATUSES = {
-  new: ["new"],
-  contacted: ["contacted"],
-  scheduled: ["booked", "scheduled"],
-  closed: ["closed"],
-} as const satisfies Record<RequestStatus, readonly string[]>;
-
-export const OPEN_STATUSES = ["new", "contacted", "scheduled"] as const;
-export type OpenStatus = (typeof OPEN_STATUSES)[number];
-
-const storedStatusSchema = z.enum(["new", "contacted", "scheduled", "booked", "closed"]);
+export type OpenStatus = Exclude<RequestStatus, "closed">;
+export const OPEN_STATUSES = [
+  "new",
+  "contacted",
+  "scheduled",
+] as const satisfies readonly OpenStatus[];
 
 const storedQueueRowSchema = z.object({
   id: z.string(),
   name: z.string(),
   phone: z.string(),
-  location: z.enum(["any", "tampa", "lutz"]),
-  preferred_time: z.enum(["any", "morning", "afternoon"]),
+  location: z.enum(REQUEST_LOCATIONS),
+  preferred_time: z.enum(REQUEST_TIMES),
   locale: z.string(),
-  status: storedStatusSchema,
+  status: storedRequestStateSchema,
   created_at: z.string(),
   follow_up_at: z.string().nullable(),
   legacy_review_required: z.boolean(),
@@ -78,7 +75,7 @@ const storedQueueRowSchema = z.object({
 function toQueueRow(row: z.infer<typeof storedQueueRowSchema>): QueueRow {
   return {
     ...row,
-    status: row.status === "booked" ? "scheduled" : row.status,
+    status: presentationStatus(row.status),
     version: Number(row.version),
   };
 }

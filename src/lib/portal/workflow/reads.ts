@@ -6,13 +6,19 @@ import { z } from "zod";
 import { asJsonObject, asJsonString, jsonSchema } from "@/lib/json";
 
 import type { HistoryEntry, RequestWorkSurface } from "./contracts";
-import { UNDO_WINDOW_MINUTES, normalizeRequestState, parseWorkflowCommandKind } from "./contracts";
+import {
+  UNDO_WINDOW_MINUTES,
+  parseClosureReason,
+  parseContactOutcome,
+  parseWorkflowCommandKind,
+  storedRequestStateSchema,
+} from "./contracts";
 
 const versionSchema = z.union([z.number(), z.string()]);
 
 const requestWorkRowSchema = z.object({
   id: z.string(),
-  status: z.string(),
+  status: storedRequestStateSchema,
   version: versionSchema,
   follow_up_at: z.string().nullable(),
   record_handoff_at: z.string().nullable(),
@@ -25,8 +31,8 @@ const requestWorkRowSchema = z.object({
 
 const transitionRowSchema = z.object({
   id: z.string(),
-  from_state: z.string(),
-  to_state: z.string(),
+  from_state: storedRequestStateSchema,
+  to_state: storedRequestStateSchema,
   command: z.string(),
   actor_email: z.string(),
   occurred_at: z.string(),
@@ -93,8 +99,7 @@ export async function fetchRequestWorkSurface(
   if (request.data === null) return null;
   const requestRow = requestWorkRowSchema.safeParse(request.data);
   if (!requestRow.success) throw new Error("Invalid request state");
-  const state = normalizeRequestState(requestRow.data.status);
-  if (state === null) throw new Error("Invalid request state");
+  const state = requestRow.data.status;
 
   const rawTransitions = z.array(z.unknown()).safeParse(transitions.data);
   const transitionRows: z.infer<typeof transitionRowSchema>[] = [];
@@ -121,9 +126,7 @@ export async function fetchRequestWorkSurface(
     { kind: "created", origin: creationOrigin, at: requestRow.data.created_at },
   ];
   for (const row of transitionRows) {
-    const from = normalizeRequestState(row.from_state);
-    const to = normalizeRequestState(row.to_state);
-    if (from === null || to === null) continue;
+    const { from_state: from, to_state: to } = row;
     if (row.command === "undo_latest_transition")
       history.push({
         kind: "undo",
@@ -150,9 +153,9 @@ export async function fetchRequestWorkSurface(
         from,
         to,
         closureReason:
-          row.reason_code === "not_actionable" || row.reason_code === "wont_schedule"
-            ? row.reason_code
-            : null,
+          row.reason_code === null || row.reason_code === undefined
+            ? null
+            : parseClosureReason(row.reason_code),
         callAgainAt: row.call_again_at ?? null,
         appointmentAt: row.appointment_at ?? null,
         undone: compensated.has(row.id),
@@ -175,8 +178,9 @@ export async function fetchRequestWorkSurface(
         at: event.created_at,
       });
     else if (event.type === "contact_attempt" || event.type === "call_outcome") {
-      const outcome = record === null ? null : asJsonString(record.outcome);
-      if (outcome === "reached_follow_up" || outcome === "voicemail" || outcome === "no_answer")
+      const rawOutcome = record === null ? null : asJsonString(record.outcome);
+      const outcome = rawOutcome === null ? null : parseContactOutcome(rawOutcome);
+      if (outcome !== null)
         history.push({
           kind: "contact_attempt",
           id: event.id,
@@ -205,10 +209,9 @@ export async function fetchRequestWorkSurface(
       : new Date(new Date(latest.occurred_at).getTime() + UNDO_WINDOW_MINUTES * 60000);
   const latestCommand = latest === undefined ? null : parseWorkflowCommandKind(latest.command);
   const closureReason =
-    requestRow.data.closure_reason === "not_actionable" ||
-    requestRow.data.closure_reason === "wont_schedule"
-      ? requestRow.data.closure_reason
-      : null;
+    requestRow.data.closure_reason === null
+      ? null
+      : parseClosureReason(requestRow.data.closure_reason);
   return {
     id: requestId,
     state,

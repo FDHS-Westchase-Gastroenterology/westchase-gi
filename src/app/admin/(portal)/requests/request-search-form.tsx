@@ -7,7 +7,6 @@ import { useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import type { RequestStatus } from "@/lib/portal/contracts";
 import {
   REQUEST_SEARCH_INPUT_ID,
   REQUEST_SEARCH_MAX_LENGTH,
@@ -17,6 +16,7 @@ import {
   requestSearchStatus,
   requestsHref,
 } from "@/lib/portal/request-query";
+import type { RequestStatus } from "@/lib/portal/workflow/contracts";
 
 const MAX_FOCUS_ATTEMPTS = 20;
 const FOCUS_RETRY_MS = 50;

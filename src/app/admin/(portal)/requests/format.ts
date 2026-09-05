@@ -1,5 +1,11 @@
-import type { RequestLocation, RequestStatus, RequestTime } from "@/lib/portal/contracts";
-import type { ClosureReason, ContactOutcome, RequestState } from "@/lib/portal/workflow/contracts";
+import type { RequestLocation, RequestTime } from "@/lib/portal/contracts";
+import { presentationStatus } from "@/lib/portal/workflow/contracts";
+import type {
+  ClosureReason,
+  ContactOutcome,
+  RequestState,
+  RequestStatus,
+} from "@/lib/portal/workflow/contracts";
 import { locales } from "@/lib/site";
 import type { Locale } from "@/lib/site";
 
@@ -10,19 +16,10 @@ export const STATUS_LABELS = {
   closed: "Closed",
 } as const satisfies Record<RequestStatus, string>;
 
-// Spec §2: the durable `booked` state always renders as **Scheduled** on
-// Staff surfaces. This is the one place that translation happens for
-// Presentation; nothing translates the label back into a stored state.
-export function presentationStatus(state: RequestState): RequestStatus {
-  return state === "booked" ? "scheduled" : state;
+/** The staff-facing word for a durable state: `booked` reads as Scheduled (spec §2). */
+export function stateLabel(state: RequestState): string {
+  return STATUS_LABELS[presentationStatus(state)];
 }
-
-export const STATE_LABELS = {
-  new: "New",
-  contacted: "Contacted",
-  booked: "Scheduled",
-  closed: "Closed",
-} as const satisfies Record<RequestState, string>;
 
 /** Contact-attempt outcomes in front-desk past tense (Request history). */
 export const CONTACT_OUTCOME_LABELS = {

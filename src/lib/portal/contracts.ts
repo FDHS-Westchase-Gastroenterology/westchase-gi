@@ -25,14 +25,11 @@ export const REQUEST_FIELD_LIMITS = {
   message: 2000,
 } as const;
 
-const REQUEST_LOCATIONS = ["any", "tampa", "lutz"] as const;
+export const REQUEST_LOCATIONS = ["any", "tampa", "lutz"] as const;
 export type RequestLocation = (typeof REQUEST_LOCATIONS)[number];
 
-const REQUEST_TIMES = ["any", "morning", "afternoon"] as const;
+export const REQUEST_TIMES = ["any", "morning", "afternoon"] as const;
 export type RequestTime = (typeof REQUEST_TIMES)[number];
-
-export const REQUEST_STATUSES = ["new", "contacted", "scheduled", "closed"] as const;
-export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 
 // The closure outcomes the database's close paths validate
 // ('unconverted' / 'converted').

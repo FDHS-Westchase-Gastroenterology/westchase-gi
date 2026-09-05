@@ -12,7 +12,7 @@ import {
   isValidCustomCallAgainDay,
   practiceLocalDay,
 } from "@/app/admin/(portal)/requests/appointment-input";
-import { followUpWhenLabel, STATE_LABELS } from "@/app/admin/(portal)/requests/format";
+import { followUpWhenLabel, stateLabel } from "@/app/admin/(portal)/requests/format";
 import {
   classifyLegacyClosure,
   closeRequest,
@@ -770,7 +770,7 @@ export function WorkflowPanel({
       freshKey();
       const text =
         intent.kind === "undo"
-          ? `Undone — this request is ${STATE_LABELS[result.state]} again.`
+          ? `Undone — this request is ${stateLabel(result.state)} again.`
           : successCopy(intent, result);
       dispatch({
         type: "succeeded",
@@ -794,7 +794,7 @@ export function WorkflowPanel({
       }
       freshKey();
       const text = `Someone else worked this request just now — it is currently ${
-        result.current ? STATE_LABELS[result.current.state] : "changed"
+        result.current ? stateLabel(result.current.state) : "changed"
       }. Nothing was saved, and this page has been brought up to date.`;
       dispatch({
         type: "failed",
@@ -1219,7 +1219,7 @@ function WorkflowPanelBody({
         data-testid="workflow-current-state"
         className="mt-1.5 text-sm font-bold text-[var(--color-body)]"
       >
-        Current status: {STATE_LABELS[truth.state]}
+        Current status: {stateLabel(truth.state)}
         {truth.state === "contacted" && truth.callAgainAt !== null && truth.callAgainAt !== ""
           ? ` — call again ${followUpWhenLabel(truth.callAgainAt)}`
           : truth.state === "contacted"

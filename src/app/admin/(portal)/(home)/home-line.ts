@@ -1,9 +1,10 @@
-import type { RequestLocation, RequestStatus } from "@/lib/portal/contracts";
+import type { RequestLocation } from "@/lib/portal/contracts";
 import { filterByKey, filterValueLabel } from "@/lib/portal/filters";
 import type { ActiveFilter, FilterKey } from "@/lib/portal/filters";
 /* Type-only import: erased at compile time, so the server-only module never
    enters the client graph. */
 import type { AttentionBucket } from "@/lib/portal/queue-attention";
+import type { RequestStatus } from "@/lib/portal/workflow/contracts";
 
 /* One line of the flat list. Every display string is precomputed on the
    server against one `now`, so SSR and hydration read the same text; the raw

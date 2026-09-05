@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import type { RequestStatus } from "@/lib/portal/contracts";
+import type { RequestStatus } from "@/lib/portal/workflow/contracts";
 
 import { STATUS_LABELS } from "./format";
 
