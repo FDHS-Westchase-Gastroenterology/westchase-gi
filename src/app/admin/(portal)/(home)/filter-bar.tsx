@@ -615,7 +615,7 @@ function DateEditor({
   const apply = () => {
     const from = nyStartOfDayMs(fromDraft);
     const to = nyEndOfDayMs(toDraft);
-    if (from !== null && to !== null && from <= to) setParam(def.key, `${from}-${to}`);
+    if (from !== null && to !== null && from <= to) setParam(def.key, def.encode({ from, to }));
   };
 
   if (view === "range") {
