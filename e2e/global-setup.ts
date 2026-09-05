@@ -79,7 +79,7 @@ async function sweepStaleFixtures(db: ReturnType<typeof serviceDb>): Promise<voi
   if (recipientError) {
     throw new Error(`Stale recipient sweep failed: ${recipientError.code}`);
   }
-  const count = (stale?.length ?? 0) + (staleRecipients?.length ?? 0);
+  const count = stale.length + staleRecipients.length;
   if (count > 0) {
     console.log(`[e2e] swept ${count} stale fixture rows left by an earlier run`);
   }
