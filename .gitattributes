@@ -1,0 +1,12 @@
+
+# Vendored and machine-generated. Verify by regenerating, not by reading:
+#   src/components/stock  ->  npm run ds:stock
+#   ui-reference          ->  npm run ui:reference
+# This only collapses them in review. The files still ship, install and build.
+src/components/stock/** linguist-generated=true
+package-lock.json linguist-generated=true
+ui-reference/** linguist-generated=true
+
+# Exception: the admin home calendar imports this one directly, so it ships in a
+# product surface and must stay visible in review.
+src/components/stock/calendar.tsx linguist-generated=false
