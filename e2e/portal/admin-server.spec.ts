@@ -1029,10 +1029,10 @@ test.describe("portal management server boundaries", () => {
   test("VAL-ADMIN-020: Recent work search, work-type filters, compaction, and URL state", async () => {
     if (!adminPage) throw new Error("Admin session is unavailable");
     const token = `activity-${runId}`;
-    // Four adjacent print-packet events inside one practice day (anchored to
-    // Local noon so the run never crosses midnight) plus one request action.
-    const noon = new Date();
-    noon.setHours(12, 0, 0, 0);
+    // Four adjacent print-packet events plus one request action, dated at the
+    // Run's own clock so a day's earlier runs cannot push them off the first
+    // Page of Recent work or the technical record.
+    const anchor = new Date();
     const { data: stagedRows, error: stageError } = await db
       .from("audit_log")
       .insert([
@@ -1042,7 +1042,7 @@ test.describe("portal management server boundaries", () => {
           entity: "requests",
           entity_id: null,
           detail: { row_count: 3 },
-          at: new Date(noon.getTime() - index * 60_000).toISOString(),
+          at: new Date(anchor.getTime() - index * 60_000).toISOString(),
         })),
         {
           actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
@@ -1050,7 +1050,7 @@ test.describe("portal management server boundaries", () => {
           entity: "requests",
           entity_id: null,
           detail: {},
-          at: new Date(noon.getTime() - 10 * 60_000).toISOString(),
+          at: new Date(anchor.getTime() - 10 * 60_000).toISOString(),
         },
       ])
       .select("id");

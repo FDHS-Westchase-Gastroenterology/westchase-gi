@@ -58,7 +58,7 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-public-placeholder
           SUPABASE_SERVICE_ROLE_KEY: ci-server-placeholder
-          PORTAL_BASE_URL: http://127.0.0.1:3100
+          PORTAL_BASE_URL: http://localhost:3100
         run: npm run build
 
       - name: Install browser for the public specs

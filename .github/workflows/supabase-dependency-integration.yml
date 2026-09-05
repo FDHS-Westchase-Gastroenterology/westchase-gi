@@ -28,7 +28,10 @@ jobs:
     env:
       BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
       HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      PORTAL_BASE_URL: http://127.0.0.1:3100
+      # Must match the origin Playwright drives (baseURL http://localhost:3100):
+      # Next dev serves its client chunks only to origins it knows, so a setup
+      # Link on 127.0.0.1 opens a page that never hydrates.
+      PORTAL_BASE_URL: http://localhost:3100
       PORTAL_SEED_ADMIN_EMAIL: ${{ secrets.PORTAL_PREVIEW_ADMIN_EMAIL }}
       PORTAL_SEED_ADMIN_PASSWORD: ${{ secrets.PORTAL_PREVIEW_ADMIN_PASSWORD }}
       SUPABASE_PARENT_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_ID }}
