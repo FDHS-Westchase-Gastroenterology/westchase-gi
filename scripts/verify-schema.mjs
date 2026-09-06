@@ -44,6 +44,8 @@ try {
 }
 
 const TABLES = [
+  "appointment_types",
+  "appointments",
   "audit_log",
   "notification_outbox",
   "notification_recipients",
@@ -52,10 +54,16 @@ const TABLES = [
   "patient_revisions",
   "patients",
   "portal_release_states",
+  "provider_hours",
+  "provider_time_exceptions",
   "request_command_receipts",
   "request_events",
   "request_transitions",
   "requests",
+  "scheduling_changes",
+  "scheduling_command_receipts",
+  "scheduling_locations",
+  "scheduling_providers",
   "staff_profiles",
   "staff_request_receipts",
 ];
@@ -86,6 +94,23 @@ const RPC_SIGNATURES = {
     "p_actor_id uuid, p_query text, p_archived boolean, p_limit integer, p_after_name text, p_after_id uuid",
   portal_read_patient:
     "p_actor_id uuid, p_patient_id uuid, p_history_before bigint, p_links_after uuid",
+  portal_preserve_appointment_patient: "",
+  portal_schedule_allows:
+    "p_location_id uuid, p_start timestamp with time zone, p_end timestamp with time zone, p_hours jsonb, p_exceptions jsonb",
+  portal_provider_schedule: "p_provider_id uuid",
+  portal_save_scheduling_config:
+    "p_actor_id uuid, p_idempotency_key uuid, p_fingerprint text, p_command jsonb",
+  portal_execute_appointment_command:
+    "p_actor_id uuid, p_idempotency_key uuid, p_fingerprint text, p_command jsonb",
+  portal_scheduling_catalog:
+    "p_actor_id uuid, p_entity text, p_query text, p_active boolean, p_limit integer, p_after_name text, p_after_id uuid",
+  portal_read_scheduling_config:
+    "p_actor_id uuid, p_entity text, p_id uuid, p_history_before bigint",
+  portal_list_appointments:
+    "p_actor_id uuid, p_from timestamp with time zone, p_to timestamp with time zone, p_patient_id uuid, p_provider_id uuid, p_location_id uuid, p_statuses text[], p_limit integer, p_after_start timestamp with time zone, p_after_id uuid",
+  portal_read_appointment: "p_actor_id uuid, p_id uuid, p_history_before bigint",
+  portal_available_appointment_slots:
+    "p_actor_id uuid, p_provider_id uuid, p_location_id uuid, p_date date, p_appointment_type_id uuid, p_patient_id uuid, p_appointment_id uuid, p_interval_minutes integer",
   portal_log_call_outcome:
     "p_actor_email text, p_request_id uuid, p_outcome text, p_note text, p_follow_up_at timestamp with time zone",
   portal_undo_call_outcome: "p_actor_email text, p_request_id uuid, p_event_id uuid",
@@ -148,6 +173,16 @@ const RPC_RESULTS = {
   portal_execute_patient_command: "jsonb",
   portal_search_patients: "jsonb",
   portal_read_patient: "jsonb",
+  portal_preserve_appointment_patient: "trigger",
+  portal_schedule_allows: "boolean",
+  portal_provider_schedule: "jsonb",
+  portal_save_scheduling_config: "jsonb",
+  portal_execute_appointment_command: "jsonb",
+  portal_scheduling_catalog: "jsonb",
+  portal_read_scheduling_config: "jsonb",
+  portal_list_appointments: "jsonb",
+  portal_read_appointment: "jsonb",
+  portal_available_appointment_slots: "jsonb",
   portal_log_call_outcome: "uuid",
   portal_undo_call_outcome: "jsonb",
   portal_hide_staff_release: "boolean",
@@ -175,6 +210,8 @@ const AUDIT_RPC_SOURCES = {
   portal_delete_request_early: "staff",
   portal_execute_request_command: "staff",
   portal_execute_patient_command: "staff",
+  portal_save_scheduling_config: "staff",
+  portal_execute_appointment_command: "staff",
   portal_log_call_outcome: "staff",
   portal_undo_call_outcome: "staff",
   portal_hide_staff_release: "staff",
@@ -780,6 +817,13 @@ async function main() {
         row.version === "20260906214913" && row.name === "patient_registry_and_request_links",
     ),
     "Patient registry and request-link migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === "20260906222923" && row.name === "scheduling_providers_and_appointments",
+    ),
+    "Provider availability and appointment migration is not applied",
   );
   assert(
     migrationRows.some(
@@ -1515,9 +1559,13 @@ async function main() {
       `The authenticated role has portal table access on ${row.table_name}`,
     );
     if (
-      ["staff_request_receipts", "patient_command_receipts", "patient_revisions"].includes(
-        row.table_name,
-      )
+      [
+        "staff_request_receipts",
+        "patient_command_receipts",
+        "patient_revisions",
+        "scheduling_changes",
+        "scheduling_command_receipts",
+      ].includes(row.table_name)
     ) {
       assert(
         row.service_select && row.service_insert && !row.service_update && !row.service_delete,
@@ -1535,6 +1583,48 @@ async function main() {
       );
     }
   }
+
+  const appointmentConstraints = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `select conname, contype, pg_get_constraintdef(oid) as definition
+      from pg_constraint where conrelid = 'public.appointments'::regclass;`,
+  });
+  for (const [name, owner, start, end] of [
+    ["appointments_provider_no_overlap", "provider_id", "reserved_from", "reserved_until"],
+    ["appointments_patient_no_overlap", "patient_id", "starts_at", "ends_at"],
+  ]) {
+    const constraint = appointmentConstraints.find((row) => row.conname === name);
+    assert(
+      constraint?.contype === "x" &&
+        constraint.definition.includes(`${owner} WITH =`) &&
+        constraint.definition.includes(`tstzrange(${start}, ${end}, '[)'::text) WITH &&`) &&
+        constraint.definition.includes("status <> 'cancelled'::text"),
+      `${name} must reject overlaps in every non-cancelled appointment`,
+    );
+  }
+  assert(
+    appointmentConstraints.some(
+      (row) =>
+        row.contype === "f" &&
+        row.definition.includes("FOREIGN KEY (source_request_id, patient_id)") &&
+        row.definition.includes("REFERENCES patient_request_links(request_id, patient_id)") &&
+        row.definition.includes("ON DELETE SET NULL (source_request_id)"),
+    ),
+    "Intake cleanup must remove only the source link, preserving the appointment and patient",
+  );
+  const ownershipTriggers = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `select pg_get_triggerdef(oid) as definition from pg_trigger
+      where tgrelid = 'public.appointments'::regclass and tgname = 'appointments_preserve_patient' and tgenabled <> 'D';`,
+  });
+  assert(
+    ownershipTriggers.length === 1 &&
+      ownershipTriggers[0].definition.includes("BEFORE UPDATE OF patient_id") &&
+      ownershipTriggers[0].definition.includes("portal_preserve_appointment_patient()"),
+    "Appointment patient ownership must remain immutable",
+  );
 
   const rpcRows = await queryDatabase({
     accessToken,

@@ -249,6 +249,51 @@ Intake cleanup removes its link without deleting the patient or revision history
 increment the patient's version. The request lifecycle scheduler does not delete registered
 patients; a patient retention policy and any destructive cleanup require a separate contract.
 
+### Appointment scheduling
+
+`POST /api/admin/scheduling` exposes the staff scheduling contract in
+`src/lib/portal/scheduling/contracts.ts`. Administrators maintain scheduling providers, locations,
+appointment types, recurring hours, and dated exceptions. These records are independent of the
+approved provider biographies and location copy on the patient website. No hours or providers
+are inferred from public content.
+
+Active, onboarded staff can book, reschedule, cancel, check in, complete, or mark an appointment
+as a no-show. Each appointment permanently belongs to one registered patient. Clinical and billing
+records are optional. A source request must already be linked to that patient; removing the intake
+link preserves the appointment. Booking through this API does not yet update the older request
+workflow's booked state. The frontend must not treat the two commands as one atomic handoff.
+
+Appointment types supply duration and provider preparation time. Each booking saves those values;
+later type edits leave existing reservations unchanged. Rescheduling keeps the saved values unless
+staff explicitly select a type and its current version. The database rejects provider overlaps
+across locations, including preparation time, and patient overlaps across providers. Cancelled
+appointments release capacity. Completed and no-show appointments retain their historical slots.
+
+Recurring hours use America/New_York. One-off availability can extend those hours; an overlapping
+unavailable exception takes precedence. The entire provider reservation must fit an available
+window. Provider edits cannot invalidate future scheduled or checked-in appointments. Bookings
+serialize with schedule edits and with the patient's other bookings; database exclusion constraints
+provide a final conflict check. The server accepts absolute local dates and minute times, rejecting
+missing or repeated daylight-saving times. A new booking or reschedule must start in the future.
+
+The availability action returns every matching start for one day, using a selected 5, 10, 15, 30,
+or 60-minute display interval. It applies hours, exceptions, buffers, provider reservations, and
+the selected patient's appointments. A rescheduling query can exclude the appointment being moved
+and preserve its duration. Availability is a read at a stated time; saving checks it again.
+
+Commands bind the live staff identity, expected record version, and a durable retry receipt.
+Each accepted command writes one protected change and one audit containing metadata only. Undo
+compensates the latest appointment command within 15 minutes and rechecks any reservation it
+restores. Check-in requires the appointment's practice date; completion requires check-in;
+no-show requires the start time to have passed. Failed commands leave no partial history or receipt.
+
+Catalogs, calendar ranges, patient appointment lists, and history have complete counts and
+continuation cursors. Calendar ranges are limited to 93 days; a patient history can span all dates.
+Calendar filtering uses interval overlap, including appointments that begin before the visible
+range. Requests and responses remain private and uncached. Browser database roles have no direct
+access. The request cleanup scheduler does not delete appointments or scheduling configuration;
+their retention and any production promotion require separate decisions.
+
 ## State and persistence
 
 ### Sources of truth
@@ -262,6 +307,9 @@ patients; a patient retention policy and any destructive cleanup require a separ
 | Appointment requests | `public.requests` | Server-only reads and atomic RPCs |
 | Patient identity and request ownership | `public.patients`, `public.patient_request_links` | Protected patient API and atomic commands |
 | Patient revisions and replay results | `public.patient_revisions`, `public.patient_command_receipts` | Patient command and read RPCs |
+| Appointment ownership and reservations | `public.appointments` | Protected scheduling API and atomic commands |
+| Provider availability and appointment types | `public.scheduling_providers`, `public.scheduling_locations`, `public.provider_hours`, `public.provider_time_exceptions`, `public.appointment_types` | Administrator scheduling commands and staff availability reads |
+| Scheduling history and replay results | `public.scheduling_changes`, `public.scheduling_command_receipts` | Scheduling command and read RPCs |
 | Workflow history | `public.request_transitions` | Workflow command and read modules |
 | Notes, receipts, and notification evidence | `public.request_events` | Intake, request-note, and read modules |
 | Intended notification delivery | `public.notification_outbox` | Intake RPC and delivery updates |
