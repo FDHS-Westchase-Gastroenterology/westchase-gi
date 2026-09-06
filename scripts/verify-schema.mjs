@@ -47,6 +47,10 @@ const TABLES = [
   "audit_log",
   "notification_outbox",
   "notification_recipients",
+  "patient_command_receipts",
+  "patient_request_links",
+  "patient_revisions",
+  "patients",
   "portal_release_states",
   "request_command_receipts",
   "request_events",
@@ -76,6 +80,12 @@ const RPC_SIGNATURES = {
   portal_delete_request_early: "p_actor_email text, p_request_id uuid, p_authorization_ref text",
   portal_execute_request_command:
     "p_actor_email text, p_request_id uuid, p_expected_version bigint, p_idempotency_key uuid, p_fingerprint text, p_decision jsonb, p_note text, p_transition_id uuid",
+  portal_execute_patient_command:
+    "p_actor_id uuid, p_idempotency_key uuid, p_fingerprint text, p_command jsonb",
+  portal_search_patients:
+    "p_actor_id uuid, p_query text, p_archived boolean, p_limit integer, p_after_name text, p_after_id uuid",
+  portal_read_patient:
+    "p_actor_id uuid, p_patient_id uuid, p_history_before bigint, p_links_after uuid",
   portal_log_call_outcome:
     "p_actor_email text, p_request_id uuid, p_outcome text, p_note text, p_follow_up_at timestamp with time zone",
   portal_undo_call_outcome: "p_actor_email text, p_request_id uuid, p_event_id uuid",
@@ -135,6 +145,9 @@ const RPC_RESULTS = {
   portal_create_request_with_outbox: "uuid",
   portal_delete_request_early: "boolean",
   portal_execute_request_command: "jsonb",
+  portal_execute_patient_command: "jsonb",
+  portal_search_patients: "jsonb",
+  portal_read_patient: "jsonb",
   portal_log_call_outcome: "uuid",
   portal_undo_call_outcome: "jsonb",
   portal_hide_staff_release: "boolean",
@@ -161,6 +174,7 @@ const AUDIT_RPC_SOURCES = {
   portal_create_staff_request: "staff",
   portal_delete_request_early: "staff",
   portal_execute_request_command: "staff",
+  portal_execute_patient_command: "staff",
   portal_log_call_outcome: "staff",
   portal_undo_call_outcome: "staff",
   portal_hide_staff_release: "staff",
@@ -760,6 +774,13 @@ async function main() {
       order by version;
     `,
   });
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === "20260906214913" && row.name === "patient_registry_and_request_links",
+    ),
+    "Patient registry and request-link migration is not applied",
+  );
   assert(
     migrationRows.some(
       (row) => row.version === PHASE_C_MIGRATION.version && row.name === PHASE_C_MIGRATION.name,
@@ -1493,10 +1514,19 @@ async function main() {
         !row.authenticated_delete,
       `The authenticated role has portal table access on ${row.table_name}`,
     );
-    if (row.table_name === "staff_request_receipts") {
+    if (
+      ["staff_request_receipts", "patient_command_receipts", "patient_revisions"].includes(
+        row.table_name,
+      )
+    ) {
       assert(
         row.service_select && row.service_insert && !row.service_update && !row.service_delete,
-        "staff_request_receipts must expose only append-only service access",
+        `${row.table_name} must expose only append-only service access`,
+      );
+    } else if (row.table_name === "patient_request_links") {
+      assert(
+        row.service_select && row.service_insert && !row.service_update && row.service_delete,
+        "Patient request links must be explicitly removed before a different patient can be chosen",
       );
     } else {
       assert(

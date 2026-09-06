@@ -219,6 +219,36 @@ mutation.
 This path does not create notification outbox work because staff already created the queue record.
 It does not create a separate Patient or Appointment entity.
 
+### Patient registry
+
+`public.patients` gives a patient a stable identity independent of an intake request. A name is
+required; birth date, phone, and email are optional. Registration never requires an appointment,
+clinical entry, or bill. The existing intake paths continue to create requests independently.
+
+`POST /api/admin/patients` accepts the strict command contract in
+`src/lib/portal/patients/contracts.ts`. Active, onboarded staff can register patients, update
+demographics, and explicitly link or unlink a request. Only administrators can archive or restore
+a patient. Archiving preserves history and blocks demographic edits and new request links.
+An update sends the complete demographic fields; omitted optional fields become null.
+
+The command RPC locks the staff profile, replay key, request when present, and patient in that
+order. It verifies the actor, expected patient version, and request ownership before changing
+anything. Each accepted command appends one protected revision, one metadata-only audit, and one
+durable replay receipt. The server fingerprints normalized intent with the workflow HMAC key.
+Exact retries return the saved result; changed intent conflicts. A request belongs to at most one
+patient. Staff must explicitly unlink it before choosing a different patient. Registration never
+automatically merges identities or changes the intake's submitted details.
+
+`POST /api/admin/patients/search` keeps identifying search terms and name cursors out of URLs.
+The database filters and pages by name and ID with a complete match count. `GET
+/api/admin/patients/:id` returns the patient, up to 50 revisions, and up to 50 linked requests,
+with totals and separate continuation cursors. All patient responses are private and uncached.
+Browser database roles cannot read these tables or execute their RPCs directly.
+
+Intake cleanup removes its link without deleting the patient or revision history. It does not
+increment the patient's version. The request lifecycle scheduler does not delete registered
+patients; a patient retention policy and any destructive cleanup require a separate contract.
+
 ## State and persistence
 
 ### Sources of truth
@@ -230,6 +260,8 @@ It does not create a separate Patient or Appointment entity.
 | Staff identity | Supabase Auth | Cookie-bound Supabase server client |
 | Staff authorization | `public.staff_profiles` | `auth.ts` through the service client |
 | Appointment requests | `public.requests` | Server-only reads and atomic RPCs |
+| Patient identity and request ownership | `public.patients`, `public.patient_request_links` | Protected patient API and atomic commands |
+| Patient revisions and replay results | `public.patient_revisions`, `public.patient_command_receipts` | Patient command and read RPCs |
 | Workflow history | `public.request_transitions` | Workflow command and read modules |
 | Notes, receipts, and notification evidence | `public.request_events` | Intake, request-note, and read modules |
 | Intended notification delivery | `public.notification_outbox` | Intake RPC and delivery updates |
