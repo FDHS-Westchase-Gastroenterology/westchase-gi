@@ -218,8 +218,11 @@ they actually face, in the order they face it: nobody picked up, we talked, or i
 booked. Outcome wording, order, and color come from one source shared by every surface,
 so the line and the request record can differ in density without drifting in vocabulary.
 
-**Every contact schedules its own return.** No path may leave a contacted request without
-a call-again day. The day is prefilled from what happened and stays adjustable.
+**Every open contact schedules its own return.** A contact that needs another call has a
+call-again day, prefilled from what happened and adjustable by staff. Choosing **No call**
+records the contact result and finishes the request together. It never leaves an open
+Contacted request with no return day, and it does not claim that the patient declined an
+appointment.
 
 ### Evidence
 

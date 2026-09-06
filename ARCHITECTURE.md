@@ -195,6 +195,19 @@ target is still the latest eligible transition. It never deletes history.
 Read `src/lib/portal/workflow/contracts.ts` and `machine.ts` before changing states, commands,
 queue ordering, history, Undo, staff-facing labels, or workflow controls.
 
+Contact completion uses the explicit `recordContactAndClose` Server Action. It accepts a request
+ID, expected version, idempotency key, contact result (`reached`, `voicemail`, or `no_answer`),
+and an optional note. It is legal from New and Contacted. The database saves the contact fact,
+closes the request with `no_further_contact`, clears its callback, and appends history, audit,
+and a replay receipt in one transaction. It increments the request version once. Undo restores
+the full prior state within the existing correction window and preserves the original evidence.
+
+`No call` is this explicit completion intent. A missing callback on `recordContactAttempt`
+remains invalid; it never implicitly closes a request. A changed save against a stale version
+is rejected. Concurrent copies of the same save return the same durable receipt after taking
+the request lock. The completion reason is not available through ordinary close or legacy
+classification commands, since those commands do not record the required contact fact.
+
 ### Staff-authored appointment intake
 
 `/admin/requests/new` uses the patient field contract but has a separate atomic write path.

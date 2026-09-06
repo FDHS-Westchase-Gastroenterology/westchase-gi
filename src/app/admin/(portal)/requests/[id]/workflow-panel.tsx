@@ -4,7 +4,10 @@ import Link from "next/link";
 
 import { followUpWhenLabel, stateLabel } from "@/app/admin/(portal)/requests/format";
 import { Button } from "@/components/ui/button";
-import type { ClosureReason, UndoWindow } from "@/lib/portal/workflow/contracts";
+import type {
+  ManualClosureReason as ClosureReason,
+  UndoWindow,
+} from "@/lib/portal/workflow/contracts";
 
 import { ReturnTimeAction } from "./call-again-fieldset";
 import { DecisionRow, OutcomeChoiceList } from "./outcome-choice-list";

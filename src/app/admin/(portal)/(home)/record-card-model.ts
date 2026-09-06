@@ -3,7 +3,7 @@ import type { AppointmentChoice } from "@/app/admin/(portal)/requests/workflow-a
 import type { FollowUpChoice } from "@/lib/portal/business-time";
 import { legalActionsFor } from "@/lib/portal/workflow/contracts";
 import type {
-  ClosureReason,
+  ManualClosureReason as ClosureReason,
   CommandRejection,
   ContactOutcome,
   RequestState,

@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { asJsonObject, asJsonString, jsonSchema } from "@/lib/json";
 
+import { CONTACT_COMPLETION_REASON, parseContactCompletionResult } from "./contact-completion";
 import type { HistoryEntry, RequestWorkSurface } from "./contracts";
 import {
   UNDO_WINDOW_MINUTES,
@@ -135,7 +136,22 @@ export async function fetchRequestWorkSurface(
         actor: row.actor_email,
         at: row.occurred_at,
       });
-    else {
+    else if (row.command === "record_contact_and_close") {
+      const outcome = parseContactCompletionResult(row.reason_code);
+      if (outcome === null || to !== "closed" || (from !== "new" && from !== "contacted"))
+        throw new Error("Invalid contact completion history");
+      history.push({
+        kind: "contact_completed",
+        id: row.id,
+        outcome,
+        closureReason: CONTACT_COMPLETION_REASON,
+        from,
+        to,
+        undone: compensated.has(row.id),
+        actor: row.actor_email,
+        at: row.occurred_at,
+      });
+    } else {
       const command = parseWorkflowCommandKind(row.command);
       if (command === null) continue;
       history.push({

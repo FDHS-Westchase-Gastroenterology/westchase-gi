@@ -1,4 +1,5 @@
 import type { RequestLocation, RequestTime } from "@/lib/portal/contracts";
+import type { ContactCompletionResult } from "@/lib/portal/workflow/contact-completion";
 import { presentationStatus } from "@/lib/portal/workflow/contracts";
 import type {
   ClosureReason,
@@ -28,10 +29,17 @@ export const CONTACT_OUTCOME_LABELS = {
   no_answer: "No answer",
 } as const satisfies Record<ContactOutcome, string>;
 
+export const CONTACT_COMPLETION_LABELS = {
+  reached: "Reached the patient",
+  voicemail: "Left a voicemail",
+  no_answer: "No answer",
+} as const satisfies Record<ContactCompletionResult, string>;
+
 /** Typed unbooked closure reasons in front-desk language. */
 export const CLOSURE_REASON_LABELS = {
   not_actionable: "duplicate or not actionable",
   wont_schedule: "patient won't schedule",
+  no_further_contact: "no further contact needed",
 } as const satisfies Record<ClosureReason, string>;
 
 /* Phone numbers are stored as submitted, so presentation belongs here rather

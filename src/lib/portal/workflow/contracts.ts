@@ -15,6 +15,9 @@
 
 import { z } from "zod";
 
+import { CONTACT_COMPLETION_REASON } from "./contact-completion";
+import type { ContactCompletionResult } from "./contact-completion";
+
 /** Durable request states. `SCHEDULED` is not a state (spec §4.1). */
 export const REQUEST_STATES = ["new", "contacted", "booked", "closed"] as const;
 export type RequestState = (typeof REQUEST_STATES)[number];
@@ -92,8 +95,20 @@ export function parseContactOutcome(raw: string): ContactOutcome | null {
 }
 
 /** Typed unbooked closure reasons (spec §5.3). */
-export const CLOSURE_REASONS = ["not_actionable", "wont_schedule"] as const;
+export const CLOSURE_REASONS = [
+  "not_actionable",
+  "wont_schedule",
+  CONTACT_COMPLETION_REASON,
+] as const;
 export type ClosureReason = (typeof CLOSURE_REASONS)[number];
+/** Finishing contact requires its contact fact; it is not a standalone close choice. */
+export type ManualClosureReason = Exclude<ClosureReason, typeof CONTACT_COMPLETION_REASON>;
+const manualClosureReasonSchema = z.enum(CLOSURE_REASONS).exclude([CONTACT_COMPLETION_REASON]);
+
+export function parseManualClosureReason(raw: string): ManualClosureReason | null {
+  const parsed = manualClosureReasonSchema.safeParse(raw);
+  return parsed.success ? parsed.data : null;
+}
 
 export function parseClosureReason(raw: string): ClosureReason | null {
   return included(CLOSURE_REASONS, raw);
@@ -102,6 +117,7 @@ export function parseClosureReason(raw: string): ClosureReason | null {
 /** Semantic staff lifecycle commands (spec §5). */
 export const WORKFLOW_COMMAND_KINDS = [
   "record_contact_attempt",
+  "record_contact_and_close",
   "confirm_booking_handoff",
   "close_request",
   "reopen_request",
@@ -177,9 +193,10 @@ export type CommandOutcome = CommandSuccess | CommandFailure;
  */
 export interface LegalActions {
   recordContactAttempt: boolean;
+  recordContactAndClose: boolean;
   confirmBookingHandoff: boolean;
   /** Closure reasons legal from this state (empty when close is illegal). */
-  closeReasons: readonly ClosureReason[];
+  closeReasons: readonly ManualClosureReason[];
   reopenRequest: boolean;
   /** Repair path for a legacy Contacted row whose call-again day is missing. */
   setCallAgain: boolean;
@@ -199,6 +216,7 @@ export function legalActionsFor(
   if (state === "closed" && legacyReviewRequired) {
     return {
       recordContactAttempt: false,
+      recordContactAndClose: false,
       confirmBookingHandoff: false,
       closeReasons: [],
       reopenRequest: false,
@@ -210,6 +228,7 @@ export function legalActionsFor(
     case "new":
       return {
         recordContactAttempt: true,
+        recordContactAndClose: true,
         confirmBookingHandoff: true,
         closeReasons: ["not_actionable"],
         reopenRequest: false,
@@ -219,6 +238,7 @@ export function legalActionsFor(
     case "contacted":
       return {
         recordContactAttempt: true,
+        recordContactAndClose: true,
         confirmBookingHandoff: true,
         closeReasons: ["not_actionable", "wont_schedule"],
         reopenRequest: false,
@@ -229,6 +249,7 @@ export function legalActionsFor(
     case "closed":
       return {
         recordContactAttempt: false,
+        recordContactAndClose: false,
         confirmBookingHandoff: false,
         closeReasons: [],
         reopenRequest: true,
@@ -238,6 +259,7 @@ export function legalActionsFor(
     default:
       return {
         recordContactAttempt: false,
+        recordContactAndClose: false,
         confirmBookingHandoff: false,
         closeReasons: [],
         reopenRequest: false,
@@ -263,6 +285,17 @@ export const UNDO_WINDOW_MINUTES = 15;
  */
 export type HistoryEntry =
   | { kind: "created"; origin: "staff" | "website"; at: string }
+  | {
+      kind: "contact_completed";
+      id: string;
+      outcome: ContactCompletionResult;
+      closureReason: typeof CONTACT_COMPLETION_REASON;
+      from: RequestState;
+      to: "closed";
+      undone: boolean;
+      actor: string;
+      at: string;
+    }
   | {
       kind: "contact_attempt";
       id: string;

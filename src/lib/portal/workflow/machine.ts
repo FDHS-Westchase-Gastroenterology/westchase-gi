@@ -1,6 +1,9 @@
 import { z } from "zod";
 
-import type { ClosureReason, ContactOutcome, RequestState } from "./contracts";
+import { CONTACT_COMPLETION_REASON, parseContactCompletionResult } from "./contact-completion";
+import type { ContactCompletionResult } from "./contact-completion";
+import type { ClosureReason, ContactOutcome, ManualClosureReason, RequestState } from "./contracts";
+import { parseManualClosureReason } from "./contracts";
 
 export interface RequestSnapshot {
   readonly state: RequestState;
@@ -22,14 +25,15 @@ export type WorkflowCommand =
       readonly outcome: ContactOutcome;
       readonly callAgainAt: string;
     }
+  | { readonly kind: "record_contact_and_close"; readonly outcome: ContactCompletionResult }
   | { readonly kind: "confirm_booking_handoff"; readonly appointmentAt: string }
-  | { readonly kind: "close_request"; readonly reason: ClosureReason }
+  | { readonly kind: "close_request"; readonly reason: ManualClosureReason }
   | { readonly kind: "reopen_request"; readonly callAgainAt: string }
   | { readonly kind: "set_call_again"; readonly callAgainAt: string }
   | { readonly kind: "undo_latest_transition"; readonly restore: Omit<RequestSnapshot, "version"> }
   | {
       readonly kind: "classify_legacy_closure";
-      readonly resolution: "booked" | { readonly reason: ClosureReason };
+      readonly resolution: "booked" | { readonly reason: ManualClosureReason };
     };
 
 export interface DomainFact {
@@ -122,11 +126,11 @@ export function decide(
 ): Decision {
   const next = (
     patch: Readonly<Partial<RequestSnapshot>>,
-    fact: Readonly<DomainFact>,
+    ...facts: readonly Readonly<DomainFact>[]
   ): Decision => ({
     accepted: true,
     next: { ...current, ...patch, version: current.version + 1 },
-    facts: [fact],
+    facts,
   });
   switch (command.kind) {
     case "record_contact_attempt": {
@@ -146,6 +150,23 @@ export function decide(
         { type: "ContactAttemptRecorded", code: command.outcome },
       );
     }
+    case "record_contact_and_close":
+      if (current.state !== "new" && current.state !== "contacted")
+        return reject("illegal_transition");
+      if (parseContactCompletionResult(command.outcome) === null) return reject("invalid_command");
+      return next(
+        {
+          state: "closed",
+          callAgainAt: null,
+          bookingConfirmedAt: null,
+          appointmentAt: null,
+          closedAt: now.toISOString(),
+          closureReason: CONTACT_COMPLETION_REASON,
+          legacyReviewRequired: false,
+        },
+        { type: "ContactAttemptRecorded", code: command.outcome },
+        { type: "AppointmentRequestClosed", code: CONTACT_COMPLETION_REASON },
+      );
     case "confirm_booking_handoff":
       if (current.state !== "new" && current.state !== "contacted")
         return reject("illegal_transition");
@@ -163,6 +184,7 @@ export function decide(
         { type: "BookingHandoffConfirmed" },
       );
     case "close_request":
+      if (parseManualClosureReason(command.reason) === null) return reject("invalid_command");
       if (current.state !== "new" && current.state !== "contacted")
         return reject("illegal_transition");
       if (current.state === "new" && command.reason !== "not_actionable")
@@ -211,6 +233,11 @@ export function decide(
     case "classify_legacy_closure":
       if (current.state !== "closed" || !current.legacyReviewRequired)
         return reject("illegal_transition");
+      if (
+        command.resolution !== "booked" &&
+        parseManualClosureReason(command.resolution.reason) === null
+      )
+        return reject("invalid_command");
       /* A reclassified legacy closure is booked with no recoverable appointment
          time. Inventing one would be worse than admitting the gap, so this is
          the one booking path that stays null. */

@@ -1325,8 +1325,9 @@ async function main() {
   });
   assert(
     transitionCommandRows.length === 1 &&
-      transitionCommandRows[0].definition.toLowerCase().includes("set_call_again"),
-    "request_transitions command vocabulary must include set_call_again",
+      transitionCommandRows[0].definition.toLowerCase().includes("set_call_again") &&
+      transitionCommandRows[0].definition.toLowerCase().includes("record_contact_and_close"),
+    "request_transitions command vocabulary must include call-again repair and contact completion",
   );
 
   const intakeLimitRows = await queryDatabase({
@@ -1628,6 +1629,9 @@ async function main() {
           definition.includes("interval '15 minutes'") &&
           definition.includes("request.workflow_command") &&
           definition.includes("record_contact_attempt") &&
+          definition.includes("record_contact_and_close") &&
+          definition.includes("contact_completed") &&
+          definition.includes("no_further_contact") &&
           definition.includes("reopen_request") &&
           definition.includes("set_call_again") &&
           definition.includes("next_call_again_at is null") &&

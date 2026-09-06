@@ -1,5 +1,6 @@
 import {
   CLOSURE_REASON_LABELS,
+  CONTACT_COMPLETION_LABELS,
   CONTACT_OUTCOME_LABELS,
   followUpWhenLabel,
   stateLabel,
@@ -35,6 +36,16 @@ export function historyLine(entry: Readonly<HistoryEntry>): HistoryLine | null {
         at: entry.at,
         quiet: true,
         undone: false,
+        attention: false,
+      };
+    case "contact_completed":
+      return {
+        id: entry.id,
+        text: `${CONTACT_COMPLETION_LABELS[entry.outcome]} — request closed; no further contact needed`,
+        actor: entry.actor,
+        at: entry.at,
+        quiet: false,
+        undone: entry.undone,
         attention: false,
       };
     case "contact_attempt":

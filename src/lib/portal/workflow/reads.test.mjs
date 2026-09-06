@@ -92,6 +92,90 @@ function reopenTransition() {
   };
 }
 
+test("contact completion history carries one neutral contact-and-close entry and its Undo state", async () => {
+  const completedAt = new Date().toISOString();
+  const completed = {
+    ...reopenTransition(),
+    from_state: "contacted",
+    to_state: "closed",
+    command: "record_contact_and_close",
+    occurred_at: completedAt,
+    reason_code: "reached",
+    call_again_at: null,
+  };
+  for (const undone of [false, true]) {
+    const transitions = [completed];
+    if (undone)
+      transitions.unshift({
+        ...completed,
+        id: "44444444-4444-4444-8444-444444444444",
+        from_state: "closed",
+        to_state: "contacted",
+        command: "undo_latest_transition",
+        reason_code: null,
+        compensates_transition_id: completed.id,
+      });
+    const client = workSurfaceClient(
+      {
+        ...bookedRequest(),
+        status: undone ? "contacted" : "closed",
+        record_handoff_at: null,
+        closed_at: undone ? null : completedAt,
+        closure_reason: undone ? null : "no_further_contact",
+      },
+      transitions,
+      [
+        {
+          id: "55555555-5555-4555-8555-555555555555",
+          type: "contact_completed",
+          status: "recorded",
+          created_at: completedAt,
+          meta: {
+            outcome: "reached",
+            closure_reason: "no_further_contact",
+            author_email: completed.actor_email,
+          },
+        },
+      ],
+    );
+    const surface = await fetchRequestWorkSurface(client, REQUEST_ID);
+    const entries = surface.history.filter((entry) => entry.kind === "contact_completed");
+    assert.deepEqual(entries, [
+      {
+        kind: "contact_completed",
+        id: completed.id,
+        outcome: "reached",
+        closureReason: "no_further_contact",
+        from: "contacted",
+        to: "closed",
+        undone,
+        actor: completed.actor_email,
+        at: completedAt,
+      },
+    ]);
+    assert.equal(surface.history.filter((entry) => entry.kind === "contact_attempt").length, 0);
+    assert.equal(surface.history.filter((entry) => entry.kind === "transition").length, 0);
+    if (undone) assert.equal(surface.undo, null);
+    else assert.equal(surface.undo.command, "record_contact_and_close");
+  }
+});
+
+test("a malformed contact completion cannot silently disappear from request history", async () => {
+  const client = workSurfaceClient(bookedRequest(), [
+    {
+      ...reopenTransition(),
+      from_state: "new",
+      to_state: "closed",
+      command: "record_contact_and_close",
+      reason_code: null,
+    },
+  ]);
+  await assert.rejects(
+    fetchRequestWorkSurface(client, REQUEST_ID),
+    /Invalid contact completion history/,
+  );
+});
+
 test("Request history reads the immutable reopen call-again time from the transition", async () => {
   const client = workSurfaceClient(bookedRequest(), [
     {

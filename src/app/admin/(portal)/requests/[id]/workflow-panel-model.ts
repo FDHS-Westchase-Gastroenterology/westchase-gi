@@ -2,7 +2,7 @@ import { isValidCustomCallAgainDay } from "@/app/admin/(portal)/requests/appoint
 import { followUpWhenLabel, stateLabel } from "@/app/admin/(portal)/requests/format";
 import type { FollowUpChoice } from "@/lib/portal/business-time";
 import type {
-  ClosureReason,
+  ManualClosureReason as ClosureReason,
   CommandRejection,
   ContactOutcome,
   LegalActions,
