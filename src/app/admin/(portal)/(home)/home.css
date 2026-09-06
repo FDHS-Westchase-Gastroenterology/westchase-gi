@@ -491,9 +491,24 @@
 
 /* ---------- The record card ---------- */
 
+/* 20rem: the editor popover's width, so the calendar the two share is the
+   same calendar. Tall content (answers, calendar, Save) scrolls inside the
+   space the positioner reports rather than clipping at the viewport. */
 .wgi-record-card {
   width: 20rem;
+  max-height: var(--available-height, 40rem);
+  overflow: auto;
   padding: 0 0 0.35rem;
+}
+
+/* Below the sidebar breakpoint the primary nav docks along the bottom edge
+   above the popover layer (portal-workbench.css). A card opening downward
+   stops short of the dock by its 5rem height plus a breath, so the pinned
+   Save is never underneath it. */
+@media (max-width: 59.99rem) {
+  .wgi-record-card[data-side="bottom"] {
+    max-height: calc(var(--available-height, 40rem) - 5.5rem);
+  }
 }
 
 .wgi-record-head {
@@ -557,41 +572,99 @@
   padding: 0 0.6rem;
 }
 
+/* One row = one answer, a native radio inside a whole-row label (the
+   request detail's decision rows, at the card's density). Checked paints
+   the row the way the open line paints its trigger — mint-2 — and fills the
+   indicator navy; the trailing hint reads the presumption until the row is
+   chosen, then the live draft. */
 .wgi-outcome {
   display: flex;
   width: 100%;
   align-items: center;
-  justify-content: space-between;
   gap: var(--ps-2);
-  min-height: 2.6rem;
-  border: 0;
+  min-height: 2.4rem;
   border-radius: var(--radius-sm);
-  background: none;
   padding: 0 0.7rem;
   color: var(--color-ink);
-  font-family: inherit;
   font-size: var(--pt-xs);
   font-weight: 600;
   cursor: pointer;
   text-align: start;
   transition:
-    background-color 130ms cubic-bezier(0.23, 1, 0.32, 1),
-    transform 130ms cubic-bezier(0.23, 1, 0.32, 1);
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    transform var(--motion-micro-duration) var(--motion-exit);
 }
 
-.wgi-outcome:hover {
+.wgi-outcome[data-closes] {
+  margin-top: 0.3rem;
+  border-top: 1px solid var(--color-line);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+.wgi-outcome[data-closes] + .wgi-outcome[data-closes] {
+  margin-top: 0;
+  border-top: 0;
+  border-radius: var(--radius-sm);
+}
+
+.wgi-outcome:has(input:enabled):hover {
   background: var(--color-mint);
 }
 
-.wgi-outcome:active {
+.wgi-outcome:has(input:enabled):active {
   transform: scale(0.98);
   background: var(--color-mint-2);
   transition-duration: 0s;
 }
 
-.wgi-outcome:disabled {
+.wgi-outcome:has(input:checked) {
+  background: var(--color-mint-2);
+}
+
+.wgi-outcome:has(input:focus-visible) {
+  outline: 3px solid var(--color-amber-deep);
+  outline-offset: -3px;
+}
+
+.wgi-outcome:has(input:disabled) {
   cursor: default;
   opacity: 0.55;
+}
+
+.wgi-outcome-mark {
+  display: grid;
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  place-items: center;
+  border: 1.5px solid var(--color-line-3);
+  border-radius: 999px;
+  background: white;
+  color: white;
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    border-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-outcome:has(input:checked) .wgi-outcome-mark {
+  border-color: var(--color-navy);
+  background: var(--color-navy);
+}
+
+.wgi-outcome-check {
+  width: 0.6rem;
+  height: 0.6rem;
+  opacity: 0;
+  transition: opacity var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-outcome:has(input:checked) .wgi-outcome-check {
+  opacity: 1;
+}
+
+.wgi-outcome-label {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .wgi-outcome > small {
@@ -601,85 +674,68 @@
   font-weight: 400;
 }
 
-/* The booking step the domain requires: an appointment states its day and
-   wall-clock time before the hand-off is real. */
-.wgi-record-book {
+/* The return day: the editor's calendar (same class, same width, same
+   cells) under a hairline, with the appointment's wall-clock time beneath
+   it when the answer is a booking. */
+.wgi-record-when {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.35rem 0.95rem 0.25rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--color-line);
 }
 
-.wgi-record-book label {
+/* The editor's calendar at the registry's own cell size: the card is the
+   editor's width but stacks the answers above the month, so the month sits
+   at 2rem cells to keep the whole card, Save included, under one screen. */
+.wgi-record-when .wgi-editor-cal {
+  --cell-size: 2rem;
+
+  padding: 0.45rem 0.6rem 0.3rem;
+}
+
+.wgi-record-time {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--ps-2);
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.2rem 0.6rem 0.1rem;
   color: var(--color-muted-ink);
   font-size: var(--pt-2xs);
   font-weight: 700;
 }
 
-.wgi-record-book input,
-.wgi-record-book select {
+.wgi-record-time select {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 2.25rem;
   border: 1px solid var(--color-line-2);
   border-radius: var(--radius-sm);
   background: white;
-  padding: 0.3rem 0.45rem;
+  padding: 0.3rem 0.6rem;
   color: var(--color-ink);
   font-family: inherit;
   font-size: var(--pt-xs);
 }
 
-.wgi-record-book-actions {
+/* Save: the card's one commit, painted as the editor's Apply. Pinned to
+   the card's lower edge while a tall card scrolls, on the popover's own
+   surface, so the commit is in view whatever month is showing. */
+.wgi-record-commit {
+  position: sticky;
+  bottom: 0;
   display: flex;
-  justify-content: space-between;
-  gap: var(--ps-2);
-  margin-top: 0.2rem;
+  flex-direction: column;
+  border-top: 1px solid var(--color-line);
+  background: var(--portal-surface);
+  padding: 0.6rem 0.6rem 0.35rem;
 }
 
-.wgi-mini-btn {
-  display: inline-flex;
-  min-height: 2.4rem;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: var(--btn-radius);
-  background: none;
-  box-shadow: inset 0 0 0 1.5px var(--color-line-2);
-  padding: 0 0.9rem;
-  color: var(--color-ink);
-  font-family: inherit;
+/* Scheduled and closed lines have nothing to answer; the sentence points
+   at the full record, where reopening lives. */
+.wgi-record-note {
+  margin: 0.75rem 0.95rem 0.4rem;
+  color: var(--color-body);
   font-size: var(--pt-xs);
-  font-weight: 700;
-  cursor: pointer;
-  transition:
-    background-color 130ms ease,
-    transform 130ms cubic-bezier(0.19, 1, 0.22, 1);
-}
-
-.wgi-mini-btn:hover {
-  background: var(--color-mint);
-}
-
-.wgi-mini-btn:active {
-  transform: scale(0.97);
-}
-
-.wgi-mini-btn:disabled {
-  cursor: default;
-  opacity: 0.55;
-  transform: none;
-}
-
-.wgi-mini-btn[data-variant="solid"] {
-  background: var(--color-navy);
-  box-shadow: none;
-  color: white;
-}
-
-.wgi-mini-btn[data-variant="solid"]:hover:not(:disabled) {
-  background: var(--color-navy-2);
+  line-height: 1.45;
 }
 
 .wgi-record-retry {
@@ -1443,7 +1499,7 @@
   .wgi-add-filter:active,
   .wgi-sug:active,
   .wgi-editor-apply:active:enabled,
-  .wgi-outcome:active,
+  .wgi-outcome:has(input:enabled):active,
   .wgi-empty-clear:active,
   .wgi-sheet-call:active,
   .wgi-sheet-close:active {

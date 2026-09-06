@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DateRange } from "react-day-picker";
 
 import { Calendar } from "@/components/stock/calendar";
@@ -20,12 +20,15 @@ import { Calendar } from "@/components/stock/calendar";
    actual focusing (the editor parks focus on the popup before the swap so
    the popover's focus manager has nothing to re-home in between). */
 
-function dayToDate(day: string): Date | undefined {
-  if (day === "") return undefined;
+function parseDay(day: string): Date {
   const year = Number(day.slice(0, 4));
   const month = Number(day.slice(5, 7));
   const date = Number(day.slice(8, 10));
   return new Date(year, month - 1, date);
+}
+
+function dayToDate(day: string): Date | undefined {
+  return day === "" ? undefined : parseDay(day);
 }
 
 function dateToDay(date: Date): string {
@@ -77,5 +80,54 @@ export function HomeRangeCalendar({
         }}
       />
     </div>
+  );
+}
+
+/* The same registry Calendar in single-day mode for the record card: the
+   day a decision comes back on. No autoFocus — focus stays on the answer
+   the staff member just picked — and `required`, because a return day is
+   never optional. The month follows the day the answer prefills (a Friday
+   in the next month opens that month), and otherwise stays where staff
+   navigated it; that sync is a during-render derivation, not an effect. */
+export function HomeDayCalendar({
+  day,
+  min,
+  max,
+  disabled,
+  onChange,
+}: Readonly<{
+  day: string;
+  /** Inclusive practice-local bounds (YYYY-MM-DD); days outside are disabled. */
+  min: string;
+  max: string;
+  disabled: boolean;
+  onChange: (day: string) => void;
+}>) {
+  const selected = dayToDate(day);
+  const first = parseDay(min);
+  const last = parseDay(max);
+  const [month, setMonth] = useState(() => selected ?? first);
+  const [followedDay, setFollowedDay] = useState(day);
+  if (day !== followedDay) {
+    setFollowedDay(day);
+    if (selected !== undefined) setMonth(selected);
+  }
+
+  return (
+    <Calendar
+      className="wgi-editor-cal"
+      mode="single"
+      required
+      numberOfMonths={1}
+      month={month}
+      onMonthChange={setMonth}
+      startMonth={first}
+      endMonth={last}
+      disabled={disabled ? true : { before: first, after: last }}
+      selected={selected}
+      onSelect={(date) => {
+        onChange(dateToDay(date));
+      }}
+    />
   );
 }

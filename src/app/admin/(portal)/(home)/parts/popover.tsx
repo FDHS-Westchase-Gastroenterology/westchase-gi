@@ -37,6 +37,11 @@ function HomePopoverContent({
         side={side}
         sideOffset={sideOffset}
         collisionPadding={8}
+        /* Stay on the row's axis: a tall card flips above the row when the
+           space below runs out, and scrolls inside `--available-height`
+           when neither side fits. The positioner's default would fall back
+           to the row's left or right, where the sidebar is. */
+        collisionAvoidance={{ fallbackAxisSide: "none" }}
         className="isolate z-50"
       >
         <PopoverPrimitive.Popup
