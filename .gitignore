@@ -61,22 +61,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# design-sync (claude.ai/design import)
-/.ds-sync/
-/ds-bundle/
-/.design-sync/.cache/
-/.design-sync/learnings/
-/.design-sync/node_modules
-/.design-sync/ds/types/
-/.design-sync/ds/styles.css
-/.design-sync/ds/fonts/
-/.design-sync/ds/DESIGN.md
-/.design-sync/ds/component-tiers.md
-/.design-sync/ds/docs/
-/.design-sync/ds/compounds.json
-/.design-sync/ds/families.json
-/.design-sync/ds/aliases.json
-
 # BEGIN generated from local-only-paths.json -- edit that file, then run `npm run local-only:write`
 # Machine-local tooling, agent scratch and generated design output. These are never
 # part of the product and only bloat review. See local-only-paths.json for why each

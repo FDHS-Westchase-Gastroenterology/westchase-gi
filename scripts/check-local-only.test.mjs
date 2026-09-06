@@ -38,6 +38,9 @@ const VIOLATING = [
   ".claude/rules/local-only-directories.md",
   ".codex/skills/review.md",
   ".cursor/hooks/pre.js",
+  ".design-sync/config.json",
+  ".design-sync/ds/build-ds.mjs",
+  ".design-sync/component-metadata.json",
   ".design-sync/ds/styles.css",
   ".design-sync/node_modules/pkg/index.js",
   ".ds-sync/manifest.json",
@@ -69,7 +72,6 @@ const CLEAN = [
   // The 2026-09-02 incident, encoded by name.
   "scripts/seed-portal.mjs",
   "scripts/verify-schema.mjs",
-  "scripts/design-system/sync-stock.mjs",
   "scripts/capture-ui-reference.mjs",
   "scripts/dev-patients.mjs",
   "scripts/verify-no-secrets.mjs",

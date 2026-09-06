@@ -46,14 +46,16 @@ Where a component lives: `stock/` (the registry, untouched), `ui/` (brand recipe
 `patterns/` (brand compositions), domain (colocated with its route).
 
 **Stock**:
-A shadcn registry item exactly as `shadcn add` generates it, vendored in
-`src/components/stock/`. The before.
-_Avoid_: default, vanilla
+Registry source and examples retained in `src/components/stock/` as Claude Design bundle inputs.
+New product consumers use approved `ui/` recipes; the existing staff home calendar is a current
+stock consumer.
 
-**The gallery**:
-`http://localhost:3000/design` — tokens rendered live and every registry item shown stock,
-bridged, and brand-adapted. A top-level route (not under `/admin`); local and Preview only.
-_Avoid_: storybook, styleguide
+**Claude Design project**:
+The canonical design system. Components and appearance changes are reviewed there first, then
+synced into repository recipes and consumed by product surfaces. The repository converges on
+that project. `.ds-sync/` is the local toolchain, `.design-sync/` is its project-specific source,
+and `ds-bundle/` is generated output. All three are local-only under `local-only-paths.json`;
+regeneration commands live in `DESIGN.md` "Local bundle pipeline".
 
 ### Appointments
 

@@ -1,37 +1,22 @@
-# The stock tier
+# Registry bundle inputs
 
-Every shadcn/ui registry item (Base UI variant, style `base-nova`) exactly as `shadcn add`
-generates it, plus the registry's own example demos. This directory is the **before**;
-`src/components/ui/` is the **after**. The design gallery at `/design` renders the two side by
-side so a stock/brand difference is always something you can see and press, never something you
-have to remember.
+This directory supplies shadcn Base UI source and examples to the Claude Design bundle.
+The Claude Design project is canonical; repository product components converge on its approved
+designs. Review and sync instructions are in the root `DESIGN.md`.
 
-## Rules
+- `*.tsx` contains registry components; `examples/` contains the source demos used by the local
+  preview converter; `hooks/use-mobile.ts` supports Sidebar.
+- `MANIFEST.json` records the registry version, source date, and included items. Preserve this
+  provenance when updating inputs through the Claude Design workflow.
+- These upstream inputs retain their vendor lint, format, and React Doctor exclusions. They
+  still participate in the application typecheck and the separate bundle build.
+- New product consumers use approved recipes in `src/components/ui/`. The staff home calendar
+  currently imports `stock/calendar.tsx`, so that file remains visible in code review.
+- Dependencies used by these files remain required by bundle generation, including `cmdk`,
+  `embla-carousel-react`, `input-otp`, `next-themes`, `react-resizable-panels`, `recharts`, and
+  `sonner`. `react-day-picker` also serves the staff calendar. Do not remove a dependency based
+  solely on the absence of a product importer.
 
-- **Never hand-edit a file here.** Regenerate the whole tier with `npm run ds:stock`
-  (`scripts/design-system/sync-stock.mjs`). `MANIFEST.json` records the registry version, the
-  date, and what landed.
-- **Nothing in a product surface imports from `stock/`.** Only the gallery
-  (`src/app/design/`) may. A product surface that wants a registry component adopts it into
-  `ui/` through the workflow in `DESIGN.md` "Adoption".
-- **Vendored means exempt.** `stock/**` is excluded from oxlint, oxfmt, and React Doctor's
-  project rules the same way `.agents/**` is: the code is upstream's, not ours, and rewriting it
-  to our lint bar would make it stop being the before. It still typechecks in `npm run build`.
-- **The bridge is untouched.** The sync script hashes `src/app/globals.css` before and after and
-  fails if the CLI changed it.
-
-## What is here
-
-- `*.tsx` — 62 registry `ui` items. `form` is listed by the registry but has no Base UI file.
-- `examples/*-example.tsx` — 60 registry demos, imports re-pointed at this tier. `example.tsx` is
-  the registry's demo frame. The five chat-family examples that need the Vercel AI SDK are not
-  vendored (`MANIFEST.json` → `excludedExamples`); the components themselves are.
-- `hooks/use-mobile.ts` — the registry hook Sidebar needs.
-
-## Dependencies this tier owns
-
-`@shadcn/react`, `cmdk`, `date-fns`, `embla-carousel-react`, `input-otp`, `lucide-react`,
-`next-themes`, `react-day-picker`, `react-resizable-panels`, `recharts`, `sonner`. Production
-routes never import them; Next bundles per route, so they cost install time, not page weight.
-When a `ui/` adaptation adopts one of them for real, it moves from "stock owns it" to "the
-product owns it" in `DESIGN.md`.
+The local pipeline derives exports, component families, and documentation from these inputs.
+Regenerate with the commands in `DESIGN.md` "Local bundle pipeline"; the pipeline source and
+output stay untracked under `local-only-paths.json`.

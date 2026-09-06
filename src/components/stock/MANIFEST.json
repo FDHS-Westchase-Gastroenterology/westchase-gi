@@ -1,5 +1,4 @@
 {
-  "generatedBy": "scripts/design-system/sync-stock.mjs",
   "shadcn": "4.19.0",
   "style": "base-nova",
   "syncedAt": "2026-08-30",
@@ -139,5 +138,6 @@
   "skippedUi": [
     "form"
   ],
-  "failedExamples": []
+  "failedExamples": [],
+  "purpose": "Registry source and examples retained as Claude Design bundle inputs."
 }

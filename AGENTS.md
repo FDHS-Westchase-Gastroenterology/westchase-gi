@@ -82,19 +82,23 @@ primitives, Tailwind v4 CSS variables). The design system itself — tokens, tie
 ownership table — is [`DESIGN.md`](DESIGN.md); read its "Where does this belong?" table before
 touching any UI.
 
-**Three tiers, one direction.** `src/components/stock/` is the entire registry vendored byte-exact
-(the before); `src/components/ui/` is the brand-adapted recipe (the after);
-`src/components/patterns/` composes on `ui/`. Product surfaces never import from `stock/`; only
-the gallery at `/design` does. `stock/**` is exempt from oxlint, oxfmt, and React Doctor's project
-rules as vendored upstream code — the same standing as `.agents/**` — and is regenerated only by
-`npm run ds:stock` (`scripts/design-system/sync-stock.mjs`), never hand-edited. The gallery
-(`src/app/design/`) is project code and meets the full lint bar.
+**Claude Design is canonical.** Review a component or appearance change in the Claude Design
+project first, then sync the approved implementation into `src/components/ui/` and compose it
+in `src/components/patterns/` or product surfaces. The repository converges on the project.
+`DESIGN.md` "Adoption" owns the review workflow and "Local bundle pipeline" owns regeneration.
 
-**The gallery is the first stop.** Before adopting or adapting a component, open
-`http://localhost:3000/design/<component>` with `npm run dev` running (a top-level route, not
-under `/admin`; also on Vercel Preview; a 404 in Production) and look at
-stock, stock-through-the-bridge, and brand. A brand adaptation is not finished until its
-example exists in `src/app/design/brand/` and is registered in `src/app/design/brand/index.ts`.
+`src/components/stock/` retains registry source and examples as inputs to that bundle. Its
+vendor exclusions remain because the toolchain consumes upstream code. New product consumers
+use approved `ui/` recipes. The staff home calendar currently imports `stock/calendar.tsx`;
+preserve that behavior until its approved replacement is synced. `MANIFEST.json` records source
+provenance. Do not treat the registry defaults as approved brand design.
+
+`.ds-sync/` is the machine-local toolchain; `.design-sync/` holds project-specific pipeline
+source and previews; `ds-bundle/` is generated output. `local-only-paths.json` governs all three.
+Run `npm run local-only:write` after changing their reasons. First run
+`node .design-sync/ds/build-ds.mjs`, then regenerate the bundle with
+`node .ds-sync/package-build.mjs --config .design-sync/config.json --node-modules node_modules --entry .design-sync/ds/entry.ts --out ds-bundle`,
+then `node .design-sync/ds/copy-assets.mjs`.
 
 Components resolve every color through **semantic tokens** (`--background`, `--primary`,
 `--muted`, …) that are bridged onto the committed brand palette in `src/app/globals.css`. The
@@ -105,11 +109,10 @@ committed palette and is hands-off for shadcn and agents alike.
 DESIGN.md anchor. `shadcn init`, `shadcn apply`, and any `add` that runs against a preset inject
 neutral OKLCH literals, a `@theme inline` block that re-declares the Tailwind radius scale, and
 `@apply` rules that reset `html`/`body` to shadcn's defaults, which would change every brand
-radius and repaint the page white. The only place shadcn's neutral literals may exist is the
-gallery's `[data-palette="stock"]` scope in `src/app/design/design.css`.
+radius and repaint the page white. Registry defaults may be explored in Claude Design; neutral
+preset literals must not replace the repository's semantic brand mappings.
 
-Reconciliation procedure — run after **every** CLI operation that touches CSS (the stock sync
-script performs the hash check itself and fails on any change):
+Reconciliation procedure — run after **every** CLI operation that touches CSS:
 
 1. Commit or stash a clean checkpoint of `src/app/globals.css` **before** running the command.
 2. Run the command, then `git diff src/app/globals.css` and reject or rewrite anything that:
@@ -132,15 +135,11 @@ The brand's secondary text ink is `--color-muted-ink`, not `--color-muted`, beca
 `--color-muted` is a surface tint. Before adopting a component, list the semantic utilities it
 uses (`bg-*`, `text-*`, `border-*`) and check each for a brand-token collision.
 
-Adoption pattern: `npx shadcn@latest add <component>` generates into `src/components/ui/`. Run
-`add --dry-run` / `--diff` before overwriting an existing component; local edits are merged, not
-clobbered, but verify. Generated files are project-owned the moment they land: bring them up to
-the repo's lint bar (top-level type-only imports, the documented disable-comment convention for
-framework-typed props) and restyle through the recipe's axes or `className` for layout — not
-by editing token values. Add a component only when something renders it; React Doctor fails the
-loop on unused generated files and unused dependencies. The registry dependencies the stock tier
-carries (`recharts`, `cmdk`, `react-day-picker`, …) are owned by `stock/` until a `ui/`
-adaptation adopts one for real (`src/components/stock/README.md`).
+Adoption follows the approved Claude Design component. If a shadcn CLI command is needed to
+supply its behavior, run `add --dry-run` / `--diff` before touching an existing recipe. Review
+all generated changes, meet the repo lint bar, and preserve the token mappings. Add a product
+component when a real surface consumes it. The dependencies of `stock/` remain required by
+the bundle even when they have no product importer; see `src/components/stock/README.md`.
 
 Motion: two engines, one registry. CSS reads the `--motion-*` tokens; `motion/react` reads the
 presets in `src/lib/motion.ts`, which are the same temperaments. Use whichever fits the job.

@@ -12,10 +12,11 @@ were made once, below, and the parts carry them.
 Read in this order: the ownership table answers "where does this go"; the vocabulary makes the
 rest legible; the sections after it are the rules, one concern each.
 
-The rendered evidence for everything here is **the gallery**: run `npm run dev` and open
-**`http://localhost:3000/design`** (also on every Vercel Preview; a 404 in Production). Every
-token live, every registry component before and after. Note the URL — it is a top-level route,
-not under `/admin`.
+**The Claude Design project is the single source of truth for the design system.** This
+repository converges on that project. The tokens, components, and rules below document the
+current implementation; they do not override an approved design in Claude Design. Review new
+components and appearance changes there, sync the approved implementation into this repo, and
+verify it on the product surfaces that consume it.
 
 ---
 
@@ -35,7 +36,7 @@ not under `/admin`.
 | Interaction state (open, pending, selected)                      | The component that owns the element: React state in a client component, or a `data-*` attribute the CSS reads.                    |
 | Durable state (a request's status, a note)                       | Not the design system. Server actions and the workflow in `src/lib/portal/` (`ARCHITECTURE.md`).                                   |
 | Motion written in JavaScript (a gesture, a spring, a layout move, orchestration) | `motion/react` with the presets in `src/lib/motion.ts` — the same temperaments as the CSS tokens. Either engine is fine; both read the registry. |
-| A stock shadcn component you want to look at                     | It is already in `src/components/stock/`; open `/design/<name>`. Adopting it into `ui/` is the workflow in "Adoption".            |
+| A stock shadcn component you want to look at                     | Review it in Claude Design; `src/components/stock/` supplies registry inputs to the bundle. Follow "Adoption" for product use.            |
 | Global CSS                                                       | Only what "Global CSS" below permits. If it names a component, it wants a recipe instead.                                        |
 
 ---
@@ -70,8 +71,8 @@ not under `/admin`.
 - **The Line** — the staff portal's world: one patient's request is one line on a sheet.
 - **The bridge** — the `@theme inline` + `:root` block at the end of `globals.css` that maps
   semantic tokens onto brand tokens. The only place shadcn's tokens exist.
-- **The gallery** — `/design`. Tokens rendered live; every registry item stock, bridged, and
-  brand-adapted.
+- **Claude Design project** — the canonical design system, with component review and approved
+  appearance decisions. `ds-bundle/` is the generated exchange bundle.
 
 ---
 
@@ -129,7 +130,7 @@ class for every call site.
    needs a different feel it needs a temperament or a scope knob.
 
 Scoped CSS is the fourth mechanism and the last resort: a route may ship a stylesheet
-(`src/app/admin/portal-workbench.css`, `src/app/design/design.css`) for surface composition
+(`src/app/admin/portal-workbench.css`) for surface composition
 that utilities and recipes cannot express — print layouts, `::backdrop`, `@starting-style`
 entrances, a windowed group cut in row units. Every rule in a scoped sheet reads tokens. A rule
 that carries a literal color, a raw `rem` step, or a component's look is drift; the roadmap at
@@ -225,9 +226,8 @@ redefines a brand token. Dark mode is not a shipped surface; the `.dark` mapping
 an accidental `dark:` utility lands on brand darks. A real dark theme is a practice decision
 under anchor 1.
 
-The gallery's stock palette (`[data-palette="stock"]` in `src/app/design/design.css`) is the one
-place shadcn's neutral literals exist, so the before is the true before. It never reaches
-`globals.css`.
+Registry defaults are available in Claude Design for component exploration. They do not
+redefine the brand tokens in `globals.css`.
 
 ---
 
@@ -337,7 +337,7 @@ for lifted cards. The portal prefers hairlines to shadows everywhere but the mod
 
 ### Deciding whether and how to animate
 
-1. **How often will a person see it?** Hundreds of times a day (keyboard actions, the gallery
+1. **How often will a person see it?** Hundreds of times a day (keyboard actions, component
    switch, list navigation): no animation. Occasionally (modals, sheets): the registry.
    First-time or rare (a tour, a celebration): delight is allowed.
 2. **What is it for?** Spatial consistency, state indication, feedback, or preventing a jarring
@@ -378,18 +378,18 @@ temperament is a design-partner consultation, not a commit.
 ## Component tiers
 
 ```text
-src/components/stock/       the registry, byte-exact (the before)     never edited, regenerated
-src/components/ui/          brand recipes (the after)               shadcn-generated, then adapted
+src/components/stock/       registry bundle inputs                  retained for Claude Design
+src/components/ui/          approved brand recipes                  synced from Claude Design
 src/components/patterns/  brand compositions                        authored on ui/ + tokens
 src/app/**/                 domain components                         colocated with their route
 ```
 
-- **`stock/`** — every shadcn item and its example, vendored by `npm run ds:stock`
-  (`scripts/design-system/sync-stock.mjs`), exempt from the project lint bar as upstream code,
-  imported only by the gallery. Its `README.md` and `MANIFEST.json` are the contract.
-- **`ui/`** — the design system's components. The CLI generates them; the project owns them the
-  moment they land, and every one is brand-adapted before its first merge (recipe axes, brand
-  defaults, consumer maps, the repo's lint bar).
+- **`stock/`** — retained registry source and examples used by the local bundle pipeline.
+  `MANIFEST.json` records their provenance. Existing vendor exclusions apply to these inputs;
+  they are not evidence of approved product design. The staff home calendar currently consumes
+  `stock/calendar.tsx`; preserve its behavior when converging it on an approved `ui/` recipe.
+- **`ui/`** — approved components synced into the repository. The project owns their recipes,
+  defaults, consumer maps, and compliance with repository checks.
 - **`patterns/`** — reusables composed from `ui/` and tokens with no registry counterpart:
   heroes, text bands, reveals, stamps-with-words, timestamps.
 - **Domain** — stays with the route that owns it. A domain component that gains a second consumer
@@ -414,9 +414,9 @@ change its color or type — the tell that a variant is missing.
 
 ### Defaults are scaffolding, not design
 
-shadcn supplies behavior, accessibility, and velocity; this document supplies appearance. A
-component shipped at its registry defaults is an unfinished adoption. The gallery's "Stock
-through the bridge" view shows exactly what an unfinished adoption looks like.
+shadcn supplies component behavior and accessibility primitives. Claude Design owns appearance
+decisions. A component is ready for product use when its implementation matches the approved
+component and meets the repository's accessibility and verification requirements.
 
 ---
 
@@ -488,18 +488,17 @@ src/app/<surface>/*.css        route-scoped composition, imported only by that s
 src/lib/utils.ts               cn()
 src/lib/motion.ts              motion.dev presets bound to the registry
 src/lib/fonts.ts               next/font loaders → --font-* variables
-src/components/stock/          registry, vendored          ← imported only by src/app/design
+src/components/stock/          registry inputs            ← local Claude Design bundle pipeline
 src/components/ui/             brand recipes             ← may import ui/, lib/; never app/
 src/components/patterns/     brand compositions          ← may import ui/, lib/; never app/
 src/components/*.tsx           patient-site shared components (the pre-tier layer; see Roadmap)
 src/app/**/                    routes and their domain components ← may import anything above
-src/app/design/                the gallery ← the only consumer of stock/
 ```
 
 - Imports use the `@/` alias; relative parent imports (`../`) are a lint error.
 - Lower tiers never import higher ones: `ui/` and `patterns/` never reach into `src/app`.
-- `stock/` is a leaf from the product's point of view. A product surface importing it is a
-  review-blocking finding.
+- New product consumers use approved `ui/` recipes. The existing staff home calendar import
+  from `stock/calendar.tsx` remains until its approved replacement is synced.
 - A route-scoped stylesheet is imported once, by the surface's root layout, and scoped by a class
   on `<body>`.
 - Generated files are project-owned on landing: top-level type-only imports, the documented
@@ -517,32 +516,40 @@ path). On top of those, by tier:
 | Change                                   | Also required                                                                                                      |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | A brand token value                      | Contrast re-verified for every pair that uses it (note the ratio in the token comment); `ui-reference/` refreshed. |
-| A recipe (new variant, axis, default)  | The gallery page for that component updated (`src/app/design/brand/<slug>.tsx`); parity diff if restructuring.     |
-| A new `ui/` adoption                     | A gallery brand example; consumer map comments; the reconciliation diff on `globals.css` is clean.                 |
+| A recipe (new variant, axis, default)  | Approved component updated in Claude Design; implementation parity checked if restructuring.     |
+| A new `ui/` adoption                     | Claude Design review; consumer map comments; the reconciliation diff on `globals.css` is clean.                 |
 | Motion                                   | `review-animations` pass; reduced-motion state captured; frequency justified in the PR.                            |
-| A primitive                              | Two consumers named; rendered in the gallery if it has variants.                                                   |
+| A primitive                              | Two consumers named; variants reviewed in Claude Design.                                                   |
 | A portal workflow surface                | The Playwright specs under `e2e/` for that path; the `ui-reference` portal atlas refreshed with the seed identity.  |
-| The stock tier                           | Regenerated only by `npm run ds:stock`; `MANIFEST.json` in the diff; `globals.css` unchanged.                      |
+| The stock tier                           | Bundle regeneration passes; source provenance recorded in `MANIFEST.json`; product behavior preserved.                      |
 
-The gallery doubles as the visual regression surface for the system itself: a token change is
-visible on `/design` before it is visible anywhere else.
+## Local bundle pipeline
 
----
+`.ds-sync/` contains the local build, validation, and capture toolchain. `.design-sync/`
+contains this project's configuration, build scripts, browser shims, component metadata, and
+previews. `ds-bundle/` is generated output used to exchange the implementation with Claude
+Design. All three paths are machine-local and governed by `local-only-paths.json`; they must
+remain untracked. After changing their one-line reasons, run `npm run local-only:write`.
 
-## The gallery
+From the repository root, regenerate the bundle and copy its public assets:
 
-**`http://localhost:3000/design`** with `npm run dev` running (and on every Vercel Preview
-deployment; a 404 in Production). A top-level route beside the patient site, the portal, and the
-review hub — not under `/admin`.
+```bash
+node .design-sync/ds/build-ds.mjs
+node .ds-sync/package-build.mjs --config .design-sync/config.json --node-modules node_modules --entry .design-sync/ds/entry.ts --out ds-bundle
+node .design-sync/ds/copy-assets.mjs
+```
 
-- **Foundations** — color with the semantic bridge table, both type scales, the space scale,
-  radii and shadows, the motion registry with a CSS-versus-motion.dev demo.
-- **Components** — one page per registry item with a three-way switch: **Stock** (shadcn's own
-  neutral palette), **Stock through the bridge** (what `shadcn add` produces here untouched), and
-  **Brand** (the `ui/` recipe). The stamp on each row is its standing: brand-adapted, stock
-  through the bridge, fit-checked and kept out, or no product need — with the finding behind it.
-- Adding a brand adaptation means adding its example to `src/app/design/brand/` so the
-  before/after exists from the first merge. The catalog is `src/app/design/catalog.ts`.
+The first command derives exports, prop declarations,
+styles, and component documentation from the repository without depending on an application
+preview route. Registry source and examples in `src/components/stock/` remain bundle inputs.
+On a machine without the local pipeline, provision it before syncing; the application build
+and CI do not require these directories. Keep the pipeline's `node_modules` link pointed at
+`../.ds-sync/node_modules` for its converter dependencies.
+
+Bundle generation exports the current implementation; it does not apply remote project edits.
+Review the approved Claude Design component, bring its implementation into `src/components/ui/`
+and the relevant tokens or patterns, then regenerate the bundle to verify convergence. Upload
+and remote review are separate from a successful local build.
 
 ---
 
@@ -564,16 +571,16 @@ new appearance decision always gets one.
 
 ### Workflow
 
-1. Open `/design/<component>` and look at stock, bridged, and (if any) brand.
-2. Design-partner consultation, as above.
-3. `npx shadcn@latest add <component>` only when a real consumer is ready to render it; React
-   Doctor fails the loop on unused generated files. Run `add --dry-run` / `--diff` first when the
-   file already exists.
-4. Reconciliation diff on `src/app/globals.css` (procedure in `AGENTS.md` "shadcn/ui"). Nothing
-   the CLI writes to the bridge merges.
-5. Brand adaptation pass: axes decoupled, variants mapped onto the color law, sizes onto the
-   scales, motion onto the registry, consumer maps written, lint bar met.
-6. A brand example in the gallery; standing gates; before/after evidence.
+1. Open the component in the Claude Design project. Review its current design and the product
+   need; propose new components or appearance changes there first.
+2. Follow the design-partner consultation above. The approved project design governs the repo.
+3. Sync the approved component implementation into `src/components/ui/`, with reusable
+   compositions in `src/components/patterns/`. Product surfaces consume those components.
+4. Reconcile any token or generated CSS changes using `AGENTS.md` "shadcn/ui". Preserve brand
+   anchors, map semantic tokens through the bridge, and keep motion on the shared registry.
+5. Regenerate `ds-bundle/` through the local toolchain and review the component and its states
+   against Claude Design. Resolve implementation differences in this repo.
+6. Run the standing gates and capture evidence on each affected product surface.
 
 ### Standing findings
 
