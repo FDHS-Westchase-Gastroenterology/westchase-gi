@@ -1,0 +1,57 @@
+{
+  "beforeSha": "13c2d4c93564a435a46885f9c467bc260115a9c2",
+  "uiCommit": "3ab21eea2533bfa8134c65683a40ab4611c3298c",
+  "afterSha": "3d6710e81809e0ad0c635835be281358f2382c52",
+  "viewports": {
+    "desktop": {
+      "width": 1440,
+      "height": 900
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844
+    }
+  },
+  "capture": "Full-page Browserbase screenshots; scrollbar width and document height vary by state",
+  "identity": "Fictional TEST Morgan Reed; account email redacted browser-side",
+  "scope": "Combined history rendering and existing Undo; the Home No call card integration is pending",
+  "fixture": "Backend command created the completed state. Undo was pressed in the portal and checked after a fresh page load and database read. The fixture was removed after capture.",
+  "images": [
+    {
+      "file": "after-desktop-history.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "e032823e05174fda282f764ab65dd1e89d7a55d1d095edf308f38a95ae78835d"
+    },
+    {
+      "file": "after-mobile-history.png",
+      "width": 375,
+      "height": 1539,
+      "sha256": "7bdc96e0689da5da0d4dff9141cca4b6f3c2f7d390d670705ac369f6866102a6"
+    },
+    {
+      "file": "after-undo-desktop.png",
+      "width": 1425,
+      "height": 986,
+      "sha256": "a16a43344141d52f171a35713b3963dd17d03cbf913e2bb35dca570ba467f4fa"
+    },
+    {
+      "file": "after-undo-mobile.png",
+      "width": 375,
+      "height": 1910,
+      "sha256": "246373e122dab518e1ee2c0d7c43a6905af5ecf4b5b21b056269a6e75ae87972"
+    },
+    {
+      "file": "before-desktop-history.png",
+      "width": 1425,
+      "height": 986,
+      "sha256": "2e5f23798fd4dcc81427ae908da22866a3260f996cc7be828d496b036bc5f199"
+    },
+    {
+      "file": "before-mobile-history.png",
+      "width": 375,
+      "height": 1757,
+      "sha256": "d1465b6fb77cad0d22c9a2a7f4569e282a96df88d50599e83373eefa8a3fb2ad"
+    }
+  ]
+}
