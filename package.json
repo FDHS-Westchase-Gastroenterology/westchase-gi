@@ -45,7 +45,7 @@
     "oxlint-tsgolint": "^7.0.2001",
     "pdf-lib": "^1.17.1",
     "pngjs": "^7.0.0",
-    "react-doctor": "^0.9.12",
+    "react-doctor": "^0.9.13",
     "tailwindcss": "^4",
     "typescript": "^6"
   }
