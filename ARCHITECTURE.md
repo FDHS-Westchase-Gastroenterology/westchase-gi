@@ -249,6 +249,36 @@ Intake cleanup removes its link without deleting the patient or revision history
 increment the patient's version. The request lifecycle scheduler does not delete registered
 patients; a patient retention policy and any destructive cleanup require a separate contract.
 
+### Patient billing
+
+`POST /api/admin/billing` exposes the strict contract in `src/lib/portal/billing/contracts.ts`.
+It records charges and payments already handled by the practice, in integer USD cents. It does
+not process payments or store card credentials. A patient can be registered, linked to an intake
+request, and scheduled without a billing account. Reading a patient with no ledger returns a zero
+balance, version zero, and empty history without creating records.
+
+Every ledger entry belongs to one patient. Optional appointment links and references to earlier
+entries use composite foreign keys containing that patient ID, so a charge, refund, or correction
+cannot attach to another patient's record. Staff can record charges and payments; refunds,
+signed adjustments, and reversals require an active, onboarded administrator. An archived
+patient's balance can still be settled.
+
+Billing commands serialize on the patient account and require its current version, independent
+of patient and appointment versions. A successful command appends one entry, updates the balance,
+writes metadata-only audit history, and saves an actor-bound HMAC retry receipt in one transaction.
+The API never edits or deletes a recorded entry. A reversal appends the opposite amount and names
+the original entry. A payment can only be refunded up to its unrefunded amount; its outstanding
+refunds must be corrected before the payment itself can be reversed. Current staff authority is
+checked again when a prior command is retried.
+
+Reads return the balance and up to 100 entries, newest account version first, with a cursor for
+older entries and an exact total. Responses use `no-store`; patient identifiers, descriptions,
+and filters stay in the private request body. Anonymous and signed-in browser database roles
+have no access to the tables or RPCs. The intake cleanup scheduler does not remove billing
+records. The migration rollback refuses a ledger containing recorded entries. Frontend billing
+controls compose this API; payment processing, insurance claims, imported balances, and billing
+retention require their own contracts.
+
 ### Appointment scheduling
 
 `POST /api/admin/scheduling` exposes the staff scheduling contract in
@@ -310,6 +340,7 @@ their retention and any production promotion require separate decisions.
 | Appointment ownership and reservations | `public.appointments` | Protected scheduling API and atomic commands |
 | Provider availability and appointment types | `public.scheduling_providers`, `public.scheduling_locations`, `public.provider_hours`, `public.provider_time_exceptions`, `public.appointment_types` | Administrator scheduling commands and staff availability reads |
 | Scheduling history and replay results | `public.scheduling_changes`, `public.scheduling_command_receipts` | Scheduling command and read RPCs |
+| Patient balances and permanent billing entries | `public.patient_billing_accounts`, `public.patient_billing_entries`, `public.patient_billing_receipts` | Protected billing API and atomic commands |
 | Workflow history | `public.request_transitions` | Workflow command and read modules |
 | Notes, receipts, and notification evidence | `public.request_events` | Intake, request-note, and read modules |
 | Intended notification delivery | `public.notification_outbox` | Intake RPC and delivery updates |

@@ -49,6 +49,9 @@ const TABLES = [
   "audit_log",
   "notification_outbox",
   "notification_recipients",
+  "patient_billing_accounts",
+  "patient_billing_entries",
+  "patient_billing_receipts",
   "patient_command_receipts",
   "patient_request_links",
   "patient_revisions",
@@ -90,6 +93,9 @@ const RPC_SIGNATURES = {
     "p_actor_email text, p_request_id uuid, p_expected_version bigint, p_idempotency_key uuid, p_fingerprint text, p_decision jsonb, p_note text, p_transition_id uuid",
   portal_execute_patient_command:
     "p_actor_id uuid, p_idempotency_key uuid, p_fingerprint text, p_command jsonb",
+  portal_execute_billing_command:
+    "p_actor_id uuid, p_idempotency_key uuid, p_fingerprint text, p_command jsonb",
+  portal_read_patient_billing: "p_actor_id uuid, p_patient_id uuid, p_before_version bigint",
   portal_search_patients:
     "p_actor_id uuid, p_query text, p_archived boolean, p_limit integer, p_after_name text, p_after_id uuid",
   portal_read_patient:
@@ -171,6 +177,8 @@ const RPC_RESULTS = {
   portal_delete_request_early: "boolean",
   portal_execute_request_command: "jsonb",
   portal_execute_patient_command: "jsonb",
+  portal_execute_billing_command: "jsonb",
+  portal_read_patient_billing: "jsonb",
   portal_search_patients: "jsonb",
   portal_read_patient: "jsonb",
   portal_preserve_appointment_patient: "trigger",
@@ -210,6 +218,7 @@ const AUDIT_RPC_SOURCES = {
   portal_delete_request_early: "staff",
   portal_execute_request_command: "staff",
   portal_execute_patient_command: "staff",
+  portal_execute_billing_command: "staff",
   portal_save_scheduling_config: "staff",
   portal_execute_appointment_command: "staff",
   portal_log_call_outcome: "staff",
@@ -824,6 +833,12 @@ async function main() {
         row.version === "20260906222923" && row.name === "scheduling_providers_and_appointments",
     ),
     "Provider availability and appointment migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) => row.version === "20260906231144" && row.name === "patient_billing_ledger",
+    ),
+    "Patient billing ledger migration is not applied",
   );
   assert(
     migrationRows.some(
@@ -1562,6 +1577,8 @@ async function main() {
       [
         "staff_request_receipts",
         "patient_command_receipts",
+        "patient_billing_entries",
+        "patient_billing_receipts",
         "patient_revisions",
         "scheduling_changes",
         "scheduling_command_receipts",
@@ -1624,6 +1641,33 @@ async function main() {
       ownershipTriggers[0].definition.includes("BEFORE UPDATE OF patient_id") &&
       ownershipTriggers[0].definition.includes("portal_preserve_appointment_patient()"),
     "Appointment patient ownership must remain immutable",
+  );
+
+  const billingConstraints = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `select contype, pg_get_constraintdef(oid) as definition
+      from pg_constraint where conrelid = 'public.patient_billing_entries'::regclass;`,
+  });
+  for (const [column, target] of [
+    ["appointment_id", "appointments(id, patient_id)"],
+    ["source_entry_id", "patient_billing_entries(id, patient_id)"],
+  ]) {
+    assert(
+      billingConstraints.some(
+        (row) =>
+          row.contype === "f" &&
+          row.definition.includes(`FOREIGN KEY (${column}, patient_id)`) &&
+          row.definition.includes(`REFERENCES ${target}`),
+      ),
+      `Billing ${column} must belong to the ledger patient`,
+    );
+  }
+  assert(
+    billingConstraints.some(
+      (row) => row.contype === "u" && row.definition.includes("UNIQUE (patient_id, version)"),
+    ),
+    "Billing entries must have one permanent entry per patient account version",
   );
 
   const rpcRows = await queryDatabase({
