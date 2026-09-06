@@ -2,7 +2,6 @@
 
 import { useEffect, useRef } from "react";
 
-import { Button } from "@/components/ui/button";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import type { NotificationRecipientRow } from "@/lib/portal/rows";

@@ -1772,6 +1772,17 @@ async function main() {
         "portal_run_data_lifecycle must serialize runs, lock candidates, exclude holds, and audit deletion",
       );
     }
+    if (
+      rpc.proname === "portal_preview_data_lifecycle" ||
+      rpc.proname === "portal_run_data_lifecycle"
+    ) {
+      const definition = rpc.definition.toLowerCase();
+      assert(
+        definition.includes("record_handoff_at <= p_now - interval '1 year'") &&
+          definition.includes("appointment_at <= p_now - interval '1 year'"),
+        "Lifecycle preview and deletion must retain bookings until both confirmation and known appointment times are at least one year old",
+      );
+    }
   }
 
   const retiredRpcRows = await queryDatabase({

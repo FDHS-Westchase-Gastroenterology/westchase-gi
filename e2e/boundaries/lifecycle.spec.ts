@@ -55,6 +55,7 @@ test.describe("Data lifecycle boundaries", () => {
       name: "TEST lifecycle booked",
       status: "booked",
       record_handoff_at: oldYear,
+      appointment_at: oldYear,
     });
     await insertRequest(db, {
       id: legacyReview,
@@ -144,6 +145,104 @@ test.describe("Data lifecycle boundaries", () => {
         .from("notification_recipients")
         .delete()
         .in("id", [recipientId, survivingRecipientId]);
+      await db.from("audit_log").delete().in("entity_id", requestIds);
+    }
+  });
+
+  test("retains future, recent, unknown, and held appointments after the booking record ages out", async () => {
+    const db = serviceDb();
+    const now = new Date();
+    const oldBooking = new Date(now.getTime() - 400 * 86_400_000).toISOString();
+    const recentAppointment = new Date(now.getTime() - 30 * 86_400_000).toISOString();
+    const futureAppointment = new Date(now.getTime() + 34 * 86_400_000).toISOString();
+    const pastCutoff = new Date(now);
+    pastCutoff.setUTCFullYear(pastCutoff.getUTCFullYear() - 1);
+    // Match Postgres's February cutoff in a leap year.
+    if (now.getUTCMonth() === 1 && now.getUTCDate() === 29) {
+      pastCutoff.setUTCDate(0);
+    }
+    const justInsideRetention = new Date(pastCutoff.getTime() + 1).toISOString();
+    const cases = [
+      { label: "future", booking: oldBooking, appointment: futureAppointment, survives: true },
+      { label: "recent", booking: oldBooking, appointment: recentAppointment, survives: true },
+      { label: "unknown", booking: oldBooking, appointment: null, survives: true },
+      {
+        label: "recent booking",
+        booking: now.toISOString(),
+        appointment: oldBooking,
+        survives: true,
+      },
+      {
+        label: "just inside cutoff",
+        booking: oldBooking,
+        appointment: justInsideRetention,
+        survives: true,
+      },
+      {
+        label: "exact cutoff",
+        booking: oldBooking,
+        appointment: pastCutoff.toISOString(),
+        survives: false,
+      },
+      { label: "expired", booking: oldBooking, appointment: oldBooking, survives: false },
+      { label: "held", booking: oldBooking, appointment: oldBooking, survives: true, held: true },
+    ].map((item) => ({ ...item, id: randomUUID() }));
+    const requestIds = cases.map(({ id }) => id);
+    const before = await db.rpc("portal_preview_data_lifecycle", { p_now: now.toISOString() });
+    expect(before.error).toBeNull();
+    const previewSchema = z.object({ converted_requests: z.number() });
+    const baseline = requireDecoded(
+      previewSchema.safeParse(before.data),
+      "Lifecycle baseline was invalid",
+    );
+    try {
+      for (const item of cases) {
+        await insertRequest(db, {
+          id: item.id,
+          name: `TEST appointment retention ${item.label}`,
+          status: "booked",
+          record_handoff_at: item.booking,
+          appointment_at: item.appointment,
+          retention_hold_at: item.held === true ? oldBooking : null,
+          retention_hold_by: item.held === true ? "retention-test@example.test" : null,
+          retention_hold_reason: item.held === true ? "TEST legal hold" : null,
+        });
+      }
+      const preview = await db.rpc("portal_preview_data_lifecycle", { p_now: now.toISOString() });
+      expect(preview.error).toBeNull();
+      expect(
+        requireDecoded(previewSchema.safeParse(preview.data), "Lifecycle preview was invalid")
+          .converted_requests,
+      ).toBe(baseline.converted_requests + 2);
+      const run = await db.rpc("portal_run_data_lifecycle", {
+        p_actor_email: "retention-test@example.test",
+        p_now: now.toISOString(),
+      });
+      expect(run.error).toBeNull();
+      const remaining = await db.from("requests").select("id").in("id", requestIds);
+      expect(remaining.error).toBeNull();
+      const survivors = requireDecoded(
+        z.array(idRowSchema).safeParse(remaining.data),
+        "Survivors were invalid",
+      );
+      expect(survivors.map(({ id }) => id).sort()).toEqual(
+        cases
+          .filter(({ survives }) => survives)
+          .map(({ id }) => id)
+          .sort(),
+      );
+      const audits = await db
+        .from("audit_log")
+        .select("entity_id,detail")
+        .eq("action", "request.retention_delete")
+        .in("entity_id", requestIds);
+      expect(audits.error).toBeNull();
+      expect(audits.data).toHaveLength(2);
+      for (const item of audits.data ?? []) {
+        expect(item.detail).toMatchObject({ policy: "workflow_calendar_v3", state: "booked" });
+      }
+    } finally {
+      await db.from("requests").delete().in("id", requestIds);
       await db.from("audit_log").delete().in("entity_id", requestIds);
     }
   });

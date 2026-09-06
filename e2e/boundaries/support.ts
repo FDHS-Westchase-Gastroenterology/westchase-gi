@@ -102,6 +102,7 @@ export interface RequestInsert {
   closure_disposition?: string | null;
   closed_at?: string | null;
   record_handoff_at?: string | null;
+  appointment_at?: string | null;
   closure_reason?: string | null;
   closure_provenance?: string | null;
   email?: string | null;

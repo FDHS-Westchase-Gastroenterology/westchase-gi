@@ -336,7 +336,7 @@ sensitive even though the form asks patients not to submit medical details.
 | --- | --- |
 | Legitimately open request | No automatic deletion |
 | Closed without an appointment (`unconverted`) | 180 days after classified closure |
-| Closed after booking (`converted`) | 12 months after record handoff and classified closure |
+| Booked request (`converted`) | One year after both the booking confirmation and the scheduled appointment time; unknown appointment times stay protected |
 | Request notes and notification or receipt events | Follow the parent request |
 | Receipt-token hash | One hour; the receipt is valid for 15 minutes |
 | Expired throttle buckets | Next hourly lifecycle run |
