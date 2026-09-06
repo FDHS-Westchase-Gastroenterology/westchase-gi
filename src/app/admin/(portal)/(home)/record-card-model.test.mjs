@@ -32,11 +32,11 @@ test("a contacted line offers the same four answers; won't schedule lives under 
     "booked",
     "not_actionable",
   ]);
-  assert.deepEqual(followUpsFor("contacted", "contacted"), ["call", "none"]);
-  assert.deepEqual(followUpsFor("contacted", "new"), ["call"], "a first contact cannot close");
-  assert.deepEqual(followUpsFor("no_answer", "contacted"), ["call"], "no workflow home yet");
-  assert.deepEqual(followUpsFor("booked", "contacted"), []);
-  assert.deepEqual(followUpsFor(null, "new"), []);
+  assert.deepEqual(followUpsFor("contacted"), ["call", "none"]);
+  assert.deepEqual(followUpsFor("no_answer"), ["call", "none"], "the same pair on every line");
+  assert.deepEqual(followUpsFor("booked"), []);
+  assert.deepEqual(followUpsFor("not_actionable"), []);
+  assert.deepEqual(followUpsFor(null), []);
 });
 
 test("a contact answer presumes Call again; No call quiets the calendar and closes", () => {
@@ -172,6 +172,12 @@ test("a saveable draft maps to exactly one server command", () => {
   });
   const sameDay = cardReducer(noAnswer, { type: "day", day: TODAY });
   assert.deepEqual(commandFor(sameDay, TODAY).callAgain, { kind: "this_afternoon" });
+  const noCall = cardReducer(noAnswer, { type: "followUp", followUp: "none" });
+  assert.deepEqual(
+    commandFor(noCall, TODAY),
+    { kind: "attempt", outcome: "no_answer", callAgain: null },
+    "No call after No answer records the attempt with no call-again",
+  );
   const contacted = cardReducer(INITIAL_DRAFT, {
     type: "answer",
     answer: "contacted",

@@ -52,14 +52,22 @@ async function run(
   return result;
 }
 
-function resolveCallAgainAt(choice: Readonly<FollowUpChoice>): string | null {
+function resolveCallAgainAt(choice: Readonly<FollowUpChoice> | null): string | null {
   const parsed = followUpChoiceSchema.safeParse(choice);
   return parsed.success ? resolveFollowUpAt(parsed.data) : null;
 }
 
 export async function recordContactAttempt(
   input: Readonly<
-    Common & { outcome: ContactOutcome; callAgain: Readonly<FollowUpChoice>; note?: string }
+    Common & {
+      outcome: ContactOutcome;
+      /** Null asks for an attempt with no call-again (the home card's No
+         call). The domain command does not carry that yet, so it is
+         rejected as invalid_command until record_contact_attempt allows a
+         null callAgainAt. */
+      callAgain: Readonly<FollowUpChoice> | null;
+      note?: string;
+    }
   >,
 ): Promise<CommandOutcome> {
   // The staff quick picks ("This afternoon", "Tomorrow morning", …) resolve

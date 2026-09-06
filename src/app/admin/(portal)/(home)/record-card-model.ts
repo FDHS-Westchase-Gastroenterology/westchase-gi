@@ -80,21 +80,12 @@ export function cardRowsFor(status: RequestStatus): readonly CardAnswer[] {
   });
 }
 
-/** The follow-ups an answer offers on a line. Call again wherever a
-   contact is recorded, since every attempt the workflow accepts carries a
-   call-again. No call where the workflow has a home for it: after
-   Contacted, on a line already contacted, it closes the request as won't
-   schedule. An unanswered call with no follow-up is not a command the
-   workflow has yet, so No answer offers Call again alone. */
-export function followUpsFor(
-  answer: CardAnswer | null,
-  status: RequestStatus,
-): readonly FollowUp[] {
-  if (answer === null || contactOutcomeFor(answer) === null) return [];
-  const legal = legalActionsFor(stateOf(status));
-  return answer === "contacted" && legal.closeReasons.includes("wont_schedule")
-    ? FOLLOW_UPS
-    : ["call"];
+/** The follow-ups a contact answer offers: Call again or No call, on every
+   line. No call after Contacted closes the request as won't schedule;
+   No call after No answer records the attempt with no call-again. The
+   card asks the whole question; the server decides what it accepts. */
+export function followUpsFor(answer: CardAnswer | null): readonly FollowUp[] {
+  return answer !== null && contactOutcomeFor(answer) !== null ? FOLLOW_UPS : [];
 }
 
 /** The sentence a line with no rows shows instead of the question. */
@@ -239,7 +230,8 @@ export type CardCommand =
   | {
       readonly kind: "attempt";
       readonly outcome: ContactOutcome;
-      readonly callAgain: Readonly<FollowUpChoice>;
+      /** Null is No call: the attempt is recorded and nobody calls back. */
+      readonly callAgain: Readonly<FollowUpChoice> | null;
     }
   | { readonly kind: "close"; readonly reason: ClosureReason }
   | { readonly kind: "book"; readonly appointment: Readonly<AppointmentChoice> };
@@ -251,7 +243,11 @@ export function commandFor(draft: Readonly<CardDraft>, today: string): CardComma
   if (reason !== null) return { kind: "close", reason };
   const outcome = contactOutcomeFor(draft.answer);
   if (outcome !== null)
-    return { kind: "attempt", outcome, callAgain: followUpFor(draft.day, today) };
+    return {
+      kind: "attempt",
+      outcome,
+      callAgain: draft.followUp === "none" ? null : followUpFor(draft.day, today),
+    };
   return {
     kind: "book",
     appointment: {

@@ -352,7 +352,7 @@ export function RecordCard({
             </div>
             <SecondRow
               draft={draft}
-              options={followUpsFor(answer, line.status)}
+              options={followUpsFor(answer)}
               locked={locked}
               dispatch={dispatch}
             />
