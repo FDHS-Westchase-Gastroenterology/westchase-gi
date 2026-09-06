@@ -1066,11 +1066,15 @@ test.describe("portal management server boundaries", () => {
       await adminPage.goto(`/admin/audit?q=${encodeURIComponent("print packet")}`);
       const summary = adminPage.getByTestId("recent-work-summary");
       await expect(summary).toContainText("print packet");
-      const group = adminPage.getByTestId("recent-work-group");
+      // The staged future-dated group is first; earlier runs can add other groups.
+      const group = adminPage.getByTestId("recent-work-group").first();
       await expect(group).toContainText(/4 times between/);
 
       // Expansion reaches the exact underlying entries.
       await group.getByText("Show all 4").click();
+      await expect(
+        group.getByTestId("recent-work-group-details").getByRole("listitem"),
+      ).toHaveCount(4);
       await expect(group).toContainText("prepared the New-request print packet (3 requests)");
 
       // The exact technical record keeps every underlying event.
