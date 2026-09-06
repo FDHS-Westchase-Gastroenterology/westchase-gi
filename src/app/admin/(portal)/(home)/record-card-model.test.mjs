@@ -8,12 +8,11 @@ import {
   cardReducer,
   cardRowsFor,
   comingFriday,
+  dayHorizon,
   commandFor,
   failureFor,
-  dayLabel,
   followUpFor,
   INITIAL_DRAFT,
-  rowHint,
   savedMessage,
 } from "./record-card-model.ts";
 
@@ -74,8 +73,18 @@ test("booking keeps whatever day is already on the calendar and asks for a time"
   assert.equal(canSave(booked, TODAY), false);
   const timed = cardReducer(booked, { type: "time", time: "09:30" });
   assert.equal(canSave(timed, TODAY), true);
-  assert.equal(rowHint("booked", booked, TODAY), "Friday · pick a time");
-  assert.equal(rowHint("booked", timed, TODAY), "Friday · 9:30 AM");
+});
+
+test("the calendar reaches 400 days until an answer narrows it, and a day past a call-again's reach gives way", () => {
+  assert.equal(dayHorizon(null), 400);
+  assert.equal(dayHorizon("booked"), 400);
+  assert.equal(dayHorizon("no_answer"), 90);
+  const far = cardReducer(INITIAL_DRAFT, { type: "day", day: addDays(TODAY, 200) });
+  const booked = cardReducer(far, { type: "answer", answer: "booked", today: TODAY });
+  assert.equal(booked.day, addDays(TODAY, 200), "a booking can reach the picked day");
+  const noAnswer = cardReducer(far, { type: "answer", answer: "no_answer", today: TODAY });
+  assert.equal(noAnswer.day, "2026-09-09", "a call-again cannot, so tomorrow takes over");
+  assert.equal(noAnswer.dayTouched, false, "and the calendar follows the next answer again");
 });
 
 test("Save waits for a complete, in-bounds decision", () => {
@@ -103,28 +112,6 @@ test("Save waits for a complete, in-bounds decision", () => {
 test("today means this afternoon; any other day is that day's morning", () => {
   assert.deepEqual(followUpFor(TODAY, TODAY), { kind: "this_afternoon" });
   assert.deepEqual(followUpFor("2026-09-09", TODAY), { kind: "day", date: "2026-09-09" });
-});
-
-test("row hints read as the presumption until chosen, then as the draft", () => {
-  assert.equal(rowHint("no_answer", INITIAL_DRAFT, TODAY), "call again tomorrow");
-  assert.equal(rowHint("contacted", INITIAL_DRAFT, TODAY), "call again Friday");
-  const contacted = cardReducer(INITIAL_DRAFT, {
-    type: "answer",
-    answer: "contacted",
-    today: TODAY,
-  });
-  assert.equal(rowHint("contacted", contacted, TODAY), "call again Friday");
-  const moved = cardReducer(contacted, { type: "day", day: "2026-09-22" });
-  assert.equal(rowHint("contacted", moved, TODAY), "call again Sep 22");
-  assert.equal(rowHint("no_answer", moved, TODAY), "call again tomorrow");
-});
-
-test("day labels use the queue's relative words", () => {
-  assert.equal(dayLabel(TODAY, TODAY), "today");
-  assert.equal(dayLabel("2026-09-09", TODAY), "tomorrow");
-  assert.equal(dayLabel("2026-09-11", TODAY), "Friday");
-  assert.equal(dayLabel("2026-09-14", TODAY), "Monday");
-  assert.equal(dayLabel("2026-09-15", TODAY), "Sep 15");
 });
 
 test("the saved line names the outcome and the return", () => {

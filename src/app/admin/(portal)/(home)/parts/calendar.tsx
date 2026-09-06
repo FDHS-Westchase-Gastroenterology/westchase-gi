@@ -86,9 +86,11 @@ export function HomeRangeCalendar({
 /* The same registry Calendar in single-day mode for the record card: the
    day a decision comes back on. No autoFocus — focus stays on the answer
    the staff member just picked — and `required`, because a return day is
-   never optional. The month follows the day the answer prefills (a Friday
-   in the next month opens that month), and otherwise stays where staff
-   navigated it; that sync is a during-render derivation, not an effect. */
+   never optional. `fixedWeeks` keeps every month six rows tall, so the
+   card is the same height whatever month is showing. The month follows the
+   day the answer prefills (a Friday in the next month opens that month),
+   and otherwise stays where staff navigated it; that sync is a
+   during-render derivation, not an effect. */
 export function HomeDayCalendar({
   day,
   min,
@@ -118,6 +120,7 @@ export function HomeDayCalendar({
       className="wgi-editor-cal"
       mode="single"
       required
+      fixedWeeks
       numberOfMonths={1}
       month={month}
       onMonthChange={setMonth}

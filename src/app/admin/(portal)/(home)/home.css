@@ -491,29 +491,91 @@
 
 /* ---------- The record card ---------- */
 
-/* 20rem: the editor popover's width, so the calendar the two share is the
-   same calendar. Tall content (answers, calendar, Save) scrolls inside the
-   space the positioner reports rather than clipping at the viewport. */
+/* The registry's "date picker with presets" shape: the editor's 20rem
+   calendar (so the two share one calendar) with a 13.5rem column beside
+   it for who, how to reach them, what happened, and Save. The month is
+   six weeks tall whatever it shows, so the card is one fixed height that
+   stands above or below any row of a 900px screen; the max-height is a
+   safety net for a shorter viewport, not a mode. */
 .wgi-record-card {
-  width: 20rem;
+  display: grid;
+  width: 33.5rem;
   max-height: var(--available-height, 40rem);
   overflow: auto;
-  padding: 0 0 0.35rem;
+  padding: 0;
+  grid-template-columns: 13.5rem minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "side main"
+    "commit main";
 }
 
-/* Below the sidebar breakpoint the primary nav docks along the bottom edge
-   above the popover layer (portal-workbench.css). A card opening downward
-   stops short of the dock by its 5rem height plus a breath, so the pinned
-   Save is never underneath it. */
+/* A scheduled or closed line has nothing to answer and no day to pick:
+   the card is the column alone, at the editor's width, the way into the
+   full record beneath it. */
+.wgi-record-card:has(.wgi-record-note) {
+  width: 20rem;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "side"
+    "main";
+}
+
+.wgi-record-side {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  grid-area: side;
+}
+
+.wgi-record-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-left: 1px solid var(--color-line);
+  grid-area: main;
+}
+
+.wgi-record-card:has(.wgi-record-note) .wgi-record-main {
+  border-left: 0;
+}
+
+/* Below the sidebar breakpoint the column stacks above the month at the
+   editor's width and the card scrolls inside the space the positioner
+   reports, Save pinned along its lower edge. The primary nav docks along
+   the bottom edge above the popover layer (portal-workbench.css), so a
+   card opening downward stops short of the dock by its 5rem height plus
+   a breath. */
 @media (max-width: 59.99rem) {
+  .wgi-record-card {
+    width: 20rem;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    grid-template-areas:
+      "side"
+      "main"
+      "commit";
+  }
+
   .wgi-record-card[data-side="bottom"] {
     max-height: calc(var(--available-height, 40rem) - 5.5rem);
+  }
+
+  .wgi-record-main {
+    border-top: 1px solid var(--color-line);
+    border-left: 0;
+  }
+
+  .wgi-record-commit {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    background: var(--portal-surface);
   }
 }
 
 .wgi-record-head {
-  padding: 0.85rem 0.95rem 0.6rem;
-  border-bottom: 1px solid var(--color-line);
+  padding: 0.8rem 0.9rem 0.55rem;
 }
 
 .wgi-record-name {
@@ -522,13 +584,14 @@
   font-size: var(--pt-base);
   font-weight: 700;
   letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
 }
 
 .wgi-record-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   margin: 0.2rem 0 0;
   color: var(--color-body); /* 11.1:1 on the surface; muted-ink read as haze at 13px/400 */
   font-size: var(--pt-xs);
@@ -538,8 +601,8 @@
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  margin: 0.6rem 0.95rem 0;
-  padding: 0.55rem 0.75rem;
+  margin: 0 0.9rem;
+  padding: 0.5rem 0.7rem;
   border-radius: var(--radius-sm);
   background: var(--color-mint);
   /* the primary action is printed ink (8.1:1 on mint); teal is for hover */
@@ -558,33 +621,28 @@
   flex: none;
 }
 
-.wgi-record-q {
-  margin: 0.75rem 0.95rem 0.35rem;
-  color: var(--color-ink);
-  font-size: var(--pt-xs);
-  font-weight: 700;
-}
-
-.wgi-record-outcomes {
+/* The answers: what happened, in the queue's own words and nothing after
+   them — the calendar beside them is the readout. */
+.wgi-record-answers {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: var(--ps-1);
-  padding: 0 0.6rem;
+  padding: 0.65rem 0.5rem 0.4rem;
 }
 
 /* One row = one answer, a native radio inside a whole-row label (the
    request detail's decision rows, at the card's density). Checked paints
-   the row the way the open line paints its trigger — mint-2 — and fills the
-   indicator navy; the trailing hint reads the presumption until the row is
-   chosen, then the live draft. */
-.wgi-outcome {
+   the row the way the open line paints its trigger — mint-2 — and fills
+   the indicator navy. */
+.wgi-answer {
   display: flex;
   width: 100%;
   align-items: center;
   gap: var(--ps-2);
-  min-height: 2.4rem;
+  min-height: 2.2rem;
   border-radius: var(--radius-sm);
-  padding: 0 0.7rem;
+  padding: 0 0.5rem;
   color: var(--color-ink);
   font-size: var(--pt-xs);
   font-weight: 600;
@@ -595,43 +653,43 @@
     transform var(--motion-micro-duration) var(--motion-exit);
 }
 
-.wgi-outcome[data-closes] {
+.wgi-answer[data-closes] {
   margin-top: 0.3rem;
   border-top: 1px solid var(--color-line);
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
 }
 
-.wgi-outcome[data-closes] + .wgi-outcome[data-closes] {
+.wgi-answer[data-closes] + .wgi-answer[data-closes] {
   margin-top: 0;
   border-top: 0;
   border-radius: var(--radius-sm);
 }
 
-.wgi-outcome:has(input:enabled):hover {
+.wgi-answer:has(input:enabled):hover {
   background: var(--color-mint);
 }
 
-.wgi-outcome:has(input:enabled):active {
+.wgi-answer:has(input:enabled):active {
   transform: scale(0.98);
   background: var(--color-mint-2);
   transition-duration: 0s;
 }
 
-.wgi-outcome:has(input:checked) {
+.wgi-answer:has(input:checked) {
   background: var(--color-mint-2);
 }
 
-.wgi-outcome:has(input:focus-visible) {
+.wgi-answer:has(input:focus-visible) {
   outline: 3px solid var(--color-amber-deep);
   outline-offset: -3px;
 }
 
-.wgi-outcome:has(input:disabled) {
+.wgi-answer:has(input:disabled) {
   cursor: default;
   opacity: 0.55;
 }
 
-.wgi-outcome-mark {
+.wgi-answer-mark {
   display: grid;
   flex: none;
   width: 1rem;
@@ -646,93 +704,81 @@
     border-color var(--motion-micro-duration) var(--motion-exit);
 }
 
-.wgi-outcome:has(input:checked) .wgi-outcome-mark {
+.wgi-answer:has(input:checked) .wgi-answer-mark {
   border-color: var(--color-navy);
   background: var(--color-navy);
 }
 
-.wgi-outcome-check {
+.wgi-answer-check {
   width: 0.6rem;
   height: 0.6rem;
   opacity: 0;
   transition: opacity var(--motion-micro-duration) var(--motion-exit);
 }
 
-.wgi-outcome:has(input:checked) .wgi-outcome-check {
+.wgi-answer:has(input:checked) .wgi-answer-check {
   opacity: 1;
 }
 
-.wgi-outcome-label {
+/* The surface: the editor's calendar (same class, same width, same cells)
+   at the card's density — weeks a quarter-rem apart instead of a half —
+   six weeks tall whatever the month. A closing answer leaves it in place
+   but quiet: the card keeps its shape and the eye keeps its map. */
+.wgi-record-cal {
   flex: 1 1 auto;
-  min-width: 0;
+  transition: opacity var(--motion-micro-duration) var(--motion-exit);
 }
 
-.wgi-outcome > small {
-  flex: none;
-  color: var(--color-body); /* 11.1:1; 11px regular needs the darker ink to hold its stroke */
-  font-size: var(--pt-2xs);
-  font-weight: 400;
+.wgi-record-cal .wgi-editor-cal {
+  padding: 0.5rem 0.6rem 0.2rem;
 }
 
-/* The return day: the editor's calendar (same class, same width, same
-   cells) under a hairline, with the appointment's wall-clock time beneath
-   it when the answer is a booking. */
-.wgi-record-when {
+.wgi-record-cal .rdp-month {
+  gap: 0.75rem;
+}
+
+.wgi-record-cal .rdp-week {
+  margin-top: 0.25rem;
+}
+
+.wgi-record-cal[data-idle] {
+  opacity: 0.45;
+}
+
+/* Save: the card's one commit, painted as the editor's Apply, along the
+   column's lower edge. A booking's time takes the space beside it; the
+   row is the same height either way. */
+.wgi-record-commit {
   display: flex;
-  flex-direction: column;
-  margin-top: 0.5rem;
+  gap: 0.4rem;
   border-top: 1px solid var(--color-line);
+  padding: 0.55rem 0.5rem 0.6rem;
+  grid-area: commit;
 }
 
-/* The editor's calendar at the registry's own cell size: the card is the
-   editor's width but stacks the answers above the month, so the month sits
-   at 2rem cells to keep the whole card, Save included, under one screen. */
-.wgi-record-when .wgi-editor-cal {
-  --cell-size: 2rem;
-
-  padding: 0.45rem 0.6rem 0.3rem;
+.wgi-record-commit > .wgi-editor-apply {
+  flex: 1 1 0;
+  margin-top: 0;
 }
 
 .wgi-record-time {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-  padding: 0.2rem 0.6rem 0.1rem;
-  color: var(--color-muted-ink);
-  font-size: var(--pt-2xs);
-  font-weight: 700;
-}
-
-.wgi-record-time select {
-  width: 100%;
+  flex: 1.4 1 0;
+  min-width: 0;
   box-sizing: border-box;
   min-height: 2.25rem;
   border: 1px solid var(--color-line-2);
   border-radius: var(--radius-sm);
   background: white;
-  padding: 0.3rem 0.6rem;
+  padding: 0.3rem 0.5rem;
   color: var(--color-ink);
   font-family: inherit;
   font-size: var(--pt-xs);
 }
 
-/* Save: the card's one commit, painted as the editor's Apply. Pinned to
-   the card's lower edge while a tall card scrolls, on the popover's own
-   surface, so the commit is in view whatever month is showing. */
-.wgi-record-commit {
-  position: sticky;
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  border-top: 1px solid var(--color-line);
-  background: var(--portal-surface);
-  padding: 0.6rem 0.6rem 0.35rem;
-}
-
 /* Scheduled and closed lines have nothing to answer; the sentence points
    at the full record, where reopening lives. */
 .wgi-record-note {
-  margin: 0.75rem 0.95rem 0.4rem;
+  margin: 0.75rem 0.9rem 0.4rem;
   color: var(--color-body);
   font-size: var(--pt-xs);
   line-height: 1.45;
@@ -752,23 +798,25 @@
 }
 
 .wgi-record-error {
-  margin: 0.5rem 0.95rem 0.2rem;
+  margin: 0 0.9rem 0.5rem;
   color: var(--portal-attention-ink);
   font-size: var(--pt-2xs);
   font-weight: 600;
   line-height: 1.45;
 }
 
+/* The way into the full record: the strip along the calendar's lower
+   edge, the earlier card's foot at its own density. */
 .wgi-record-foot {
   display: flex;
   width: 100%;
   align-items: center;
   justify-content: space-between;
-  margin-top: 0.35rem;
+  margin-top: auto;
   border: 0;
   border-top: 1px solid var(--color-line);
   background: none;
-  padding: 0.7rem 0.95rem;
+  padding: 0.55rem 0.9rem;
   color: var(--color-navy); /* 9.0:1 on the surface; an action, so navy, not teal */
   font-family: inherit;
   font-size: var(--pt-xs);
@@ -1499,7 +1547,7 @@
   .wgi-add-filter:active,
   .wgi-sug:active,
   .wgi-editor-apply:active:enabled,
-  .wgi-outcome:has(input:enabled):active,
+  .wgi-answer:has(input:enabled):active,
   .wgi-empty-clear:active,
   .wgi-sheet-call:active,
   .wgi-sheet-close:active {

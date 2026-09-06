@@ -10,14 +10,15 @@ import type {
   RequestStatus,
 } from "@/lib/portal/workflow/contracts";
 
-/* The record card's decision model: one question, one calendar, one Save.
-   A staff member picks what happened; the answer prefills the day the
-   practice usually means (no answer → tomorrow, contacted → the coming
-   Friday), the calendar keeps that day adjustable, and nothing is recorded
-   until Save — the same commit model as the Received range editor. The
-   card's markup calls these functions; nothing here touches React, so the
-   rules are checked by a plain unit test. Day strings are practice-local
-   YYYY-MM-DD, the vocabulary of every picker on the portal. */
+/* The record card's decision model: the calendar is the surface, the
+   answers sit on it, Save commits. A staff member picks what happened; the
+   answer prefills the day the practice usually means (no answer → tomorrow,
+   contacted → the coming Friday), the calendar keeps that day adjustable in
+   either order, and nothing is recorded until Save — the same commit model
+   as the Received range editor. The card's markup calls these functions;
+   nothing here touches React, so the rules are checked by a plain unit
+   test. Day strings are practice-local YYYY-MM-DD, the vocabulary of every
+   picker on the portal. */
 
 export const CARD_ANSWERS = [
   "no_answer",
@@ -28,13 +29,15 @@ export const CARD_ANSWERS = [
 ] as const;
 export type CardAnswer = (typeof CARD_ANSWERS)[number];
 
-export const ANSWER_ROWS = {
-  no_answer: { label: "No answer", hint: "call again tomorrow" },
-  contacted: { label: "Contacted", hint: "call again Friday" },
-  booked: { label: "Appointment scheduled", hint: "pick day & time" },
-  wont_schedule: { label: "Won't schedule", hint: "do not call again" },
-  not_actionable: { label: "Not actionable", hint: "closes the request" },
-} as const satisfies Record<CardAnswer, { label: string; hint: string }>;
+/** The answers in the queue's words, and nothing more: the calendar shows
+   the day, so no answer carries a hint. */
+export const ANSWER_LABELS = {
+  no_answer: "No answer",
+  contacted: "Contacted",
+  booked: "Appointment scheduled",
+  wont_schedule: "Won't schedule",
+  not_actionable: "Not actionable",
+} as const satisfies Record<CardAnswer, string>;
 
 const CONTACT_OUTCOME = {
   no_answer: "no_answer",
@@ -110,9 +113,11 @@ export function needsTime(answer: CardAnswer | null): boolean {
   return answer === "booked";
 }
 
-/** How far out the calendar reaches: a call-again 90 days, an appointment 400. */
+/** How far out the calendar reaches: a call-again 90 days, an appointment
+   400 — and the full 400 while no answer is chosen, so a day picked first
+   is never refused before the answer says what it is for. */
 export function dayHorizon(answer: CardAnswer | null): number {
-  return answer === "booked" ? 400 : 90;
+  return answer === "no_answer" || answer === "contacted" ? 90 : 400;
 }
 
 const DAY_MS = 86_400_000;
@@ -139,14 +144,28 @@ export function prefillDay(answer: CardAnswer, today: string, current: string): 
   return current;
 }
 
+const YMD = /^\d{4}-\d{2}-\d{2}$/;
+
+function withinHorizon(day: string, today: string, horizon: number): boolean {
+  if (!YMD.test(day) || !Number.isFinite(dayNumber(day))) return false;
+  return day >= today && day <= addDays(today, horizon);
+}
+
 export function cardReducer(draft: Readonly<CardDraft>, event: Readonly<CardEvent>): CardDraft {
   switch (event.type) {
-    case "answer":
+    case "answer": {
+      /* A hand-picked day survives a change of answer while the new answer
+         can still reach it; a day past a call-again's horizon gives way to
+         the answer's own presumption. */
+      const keep =
+        draft.dayTouched && withinHorizon(draft.day, event.today, dayHorizon(event.answer));
       return {
         ...draft,
         answer: event.answer,
-        day: draft.dayTouched ? draft.day : prefillDay(event.answer, event.today, draft.day),
+        dayTouched: keep,
+        day: keep ? draft.day : prefillDay(event.answer, event.today, draft.day),
       };
+    }
     case "day":
       return { ...draft, day: event.day, dayTouched: true };
     case "time":
@@ -154,13 +173,6 @@ export function cardReducer(draft: Readonly<CardDraft>, event: Readonly<CardEven
     default:
       return draft;
   }
-}
-
-const YMD = /^\d{4}-\d{2}-\d{2}$/;
-
-function withinHorizon(day: string, today: string, horizon: number): boolean {
-  if (!YMD.test(day) || !Number.isFinite(dayNumber(day))) return false;
-  return day >= today && day <= addDays(today, horizon);
 }
 
 /** Save is enabled only for a complete, in-bounds decision. */
@@ -192,36 +204,7 @@ export const TIME_OPTIONS: readonly { value: string; label: string }[] = Array.f
   },
 );
 
-/* ---- Readouts ---- */
-
-const WEEKDAY = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: "UTC" });
-const MONTH_DAY = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  day: "numeric",
-  timeZone: "UTC",
-});
-
-/** "today", "tomorrow", a weekday inside the week, else "Sep 11" — the
-   queue's own relative vocabulary (format.ts followUpShortLabel). */
-export function dayLabel(day: string, today: string): string {
-  const diff = dayNumber(day) - dayNumber(today);
-  if (diff === 0) return "today";
-  if (diff === 1) return "tomorrow";
-  const date = new Date(`${day}T00:00:00Z`);
-  if (diff > 1 && diff <= 6) return WEEKDAY.format(date);
-  return MONTH_DAY.format(date);
-}
-
-/** The row's trailing hint: the presumption while unselected, the live draft once chosen. */
-export function rowHint(answer: CardAnswer, draft: Readonly<CardDraft>, today: string): string {
-  if (draft.answer !== answer) return ANSWER_ROWS[answer].hint;
-  if (!needsDay(answer)) return ANSWER_ROWS[answer].hint;
-  if (draft.day === "") return answer === "booked" ? "pick a day" : "pick a day to call";
-  const when = dayLabel(draft.day, today);
-  if (!needsTime(answer)) return `call again ${when}`;
-  const time = TIME_OPTIONS.find((option) => option.value === draft.time);
-  return time === undefined ? `${when} · pick a time` : `${when} · ${time.label}`;
-}
+/* ---- The saved line ---- */
 
 /** The feedback line after a save, in the queue's words. */
 export function savedMessage(
@@ -232,7 +215,7 @@ export function savedMessage(
 ): string {
   if (answer === "booked") return `${name} is Scheduled.`;
   if (closureReasonFor(answer) !== null) return `${name} is Closed.`;
-  const label = ANSWER_ROWS[answer].label;
+  const label = ANSWER_LABELS[answer];
   return callAgainAt === null
     ? `${label} recorded for ${name}.`
     : `${label} recorded for ${name} — back ${followUpShortLabel(callAgainAt, now)}.`;
