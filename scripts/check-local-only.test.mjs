@@ -34,8 +34,6 @@ const VIOLATING = [
   ".agents/skills/CODEX.md",
   ".agents/lessons/release-metaphors.md",
   ".agents/setup",
-  ".claude/settings.json",
-  ".claude/rules/local-only-directories.md",
   ".codex/skills/review.md",
   ".cursor/hooks/pre.js",
   ".design-sync/config.json",
@@ -69,6 +67,9 @@ const VIOLATING = [
  * import statement depends on, plus the near-miss lookalikes.
  */
 const CLEAN = [
+  ".claude/launch.json",
+  ".claude/rules/local-only-directories.md",
+  ".claude/skills",
   // The 2026-09-02 incident, encoded by name.
   "scripts/seed-portal.mjs",
   "scripts/verify-schema.mjs",

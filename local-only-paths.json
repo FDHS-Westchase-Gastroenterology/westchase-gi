@@ -32,14 +32,6 @@
       "whyItLeaked": "Never given an ignore rule at all in two months. Still tracked on origin/main: 149 files."
     },
     {
-      "path": ".claude/",
-      "gitignore": "/.claude/",
-      "reason": "Claude Code settings, rules and agent scratch for this machine.",
-      "firstTracked": "a6d3fe7 2026-08-30",
-      "ignoreRuleAdded": "ec71662 2026-09-02",
-      "whyItLeaked": "Rule added three days after the files were tracked."
-    },
-    {
       "path": ".codex/skills/",
       "gitignore": "/.codex/skills/",
       "reason": "Local Codex skill definitions.",
@@ -175,6 +167,10 @@
     {
       "path": "private/",
       "reason": "Review-flyer PDFs and QR codes verified by scripts/verify-review-flyers.mjs."
+    },
+    {
+      "path": ".claude/",
+      "reason": "Shared Claude Code launch configuration, repository rules, and skills symlink are tracked by owner instruction."
     }
   ]
 }
