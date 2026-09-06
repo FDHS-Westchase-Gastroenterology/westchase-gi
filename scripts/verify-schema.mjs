@@ -1858,12 +1858,7 @@ async function main() {
         anonKey: config.anonKey,
         accessToken: session.accessToken,
         table,
-        query:
-          table === "portal_release_states"
-            ? "select=staff_user_id&limit=1"
-            : table === "staff_request_receipts"
-              ? "select=idempotency_key&limit=1"
-              : "select=id&limit=1",
+        query: "select=*&limit=1",
       }),
     ),
   );
