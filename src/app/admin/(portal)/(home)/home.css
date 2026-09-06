@@ -461,9 +461,14 @@
   box-shadow: var(--shadow-card);
   outline: none;
   transform-origin: var(--transform-origin);
+  /* A small popover, so it arrives on the registry's exit temperament
+     (160ms, strong ease-out) rather than the 440ms spring the modals ride;
+     design-eng.md caps small popovers at 125–200ms. The exit is a faster
+     version of the same curve. Both read the --pm-* registry, never an
+     inlined bezier. */
   transition:
-    transform 160ms cubic-bezier(0.23, 1, 0.32, 1),
-    opacity 160ms cubic-bezier(0.23, 1, 0.32, 1);
+    transform var(--pm-exit-duration) var(--pm-exit),
+    opacity var(--pm-exit-duration) var(--pm-exit);
 }
 
 .wgi-popover[data-starting-style],
@@ -474,6 +479,14 @@
 
 .wgi-popover[data-ending-style] {
   transition-duration: 120ms;
+}
+
+/* Keyboard-initiated actions never animate. Base UI marks the popup
+   data-instant="click" when Enter/Space opened it, "dismiss" on Escape or
+   an outside click, and "focus" when focus left; every one of those skips
+   the transition. */
+.wgi-popover[data-instant] {
+  transition-duration: 0ms;
 }
 
 /* ---------- The record card ---------- */

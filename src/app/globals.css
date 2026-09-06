@@ -248,8 +248,10 @@
        surfaces register here: the record popover and the full-record sheet
        keep the charter's cross-fade (their travel is already dropped by
        home.css's transform: none rules), and the loading shimmer keeps a
-       slowed pulse instead of freezing mid-frame. */
-    .wgi-popover,
+       slowed pulse instead of freezing mid-frame. The popover's keyboard
+       and dismiss states (Base UI's data-instant) stay excluded: keyboard-
+       initiated actions never animate, reduced motion or not. */
+    .wgi-popover:not([data-instant]),
     .wgi-sheet,
     .wgi-sheet-overlay {
       transition-duration: var(--pm-reduced-duration, 120ms) !important;
