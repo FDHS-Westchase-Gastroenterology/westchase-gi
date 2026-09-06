@@ -14,6 +14,7 @@ interface LifecycleFixture {
   closure_provenance?: string;
   closed_at?: string;
   record_handoff_at?: string;
+  appointment_at?: string;
   retention_hold_at?: string;
   retention_hold_by?: string;
   retention_hold_reason?: string;
@@ -276,8 +277,8 @@ test.describe("isolated appointment-request lifecycle", () => {
   test("exact boundaries, holds, secrets, cascades, and repeat runs are safe", async () => {
     // Closed retention runs on typed/provenance-backed closures (the
     // Workflow shape constraint forbids the old bare `closed` rows), and
-    // Converted requests are durable `booked` rows whose retention clock is
-    // The booking-handoff time (spec §14.1).
+    // Booked retention requires both an old confirmation and an old known
+    // Appointment. A future or unknown appointment remains protected.
     const unconvertedBefore = await stageRequest("unconverted-before", {
       status: "closed",
       closure_disposition: "unconverted",
@@ -293,10 +294,26 @@ test.describe("isolated appointment-request lifecycle", () => {
     const convertedBefore = await stageRequest("converted-before", {
       status: "booked",
       record_handoff_at: shifted(CONVERTED_CUTOFF, 1),
+      appointment_at: CONVERTED_CUTOFF.toISOString(),
     });
     const convertedExact = await stageRequest("converted-exact", {
       status: "booked",
       record_handoff_at: CONVERTED_CUTOFF.toISOString(),
+      appointment_at: CONVERTED_CUTOFF.toISOString(),
+    });
+    const appointmentBefore = await stageRequest("appointment-before", {
+      status: "booked",
+      record_handoff_at: CONVERTED_CUTOFF.toISOString(),
+      appointment_at: shifted(CONVERTED_CUTOFF, 1),
+    });
+    const appointmentUnknown = await stageRequest("appointment-unknown", {
+      status: "booked",
+      record_handoff_at: CONVERTED_CUTOFF.toISOString(),
+    });
+    const appointmentFuture = await stageRequest("appointment-future", {
+      status: "booked",
+      record_handoff_at: CONVERTED_CUTOFF.toISOString(),
+      appointment_at: shifted(CLOCK, 34 * 24 * 60 * 60 * 1000),
     });
     const heldExpired = await stageRequest("held-expired", {
       status: "closed",
@@ -417,6 +434,9 @@ test.describe("isolated appointment-request lifecycle", () => {
         unconvertedExact,
         convertedBefore,
         convertedExact,
+        appointmentBefore,
+        appointmentUnknown,
+        appointmentFuture,
         heldExpired,
         legacyClosed,
         openOld,
@@ -429,9 +449,16 @@ test.describe("isolated appointment-request lifecycle", () => {
         .map(({ id }) => id)
         .sort((left, right) => left.localeCompare(right)),
     ).toEqual(
-      [unconvertedBefore, convertedBefore, heldExpired, legacyClosed, openOld].sort((left, right) =>
-        left.localeCompare(right),
-      ),
+      [
+        unconvertedBefore,
+        convertedBefore,
+        appointmentBefore,
+        appointmentUnknown,
+        appointmentFuture,
+        heldExpired,
+        legacyClosed,
+        openOld,
+      ].sort((left, right) => left.localeCompare(right)),
     );
 
     const cascadedEvent = await db
