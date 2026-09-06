@@ -201,7 +201,7 @@ Type: `--font-display` (Trocchi; Aleo / Noto Serif KR / Noto Naskh Arabic by loc
 `--step-hero`, `--step-1`…`--step-3`, `--step-lead`. Portal fixed steps `--pt-2xs`…`--pt-xl`.
 
 Space: `--ps-1`…`--ps-12` (portal). Shape: `--radius-sm`, `--radius`, `--radius-lg`. Elevation:
-`--shadow-soft`, `--shadow-card`. Motion: `--motion-spring` + duration, `--motion-exit` +
+`--shadow-soft`, `--shadow-card`, `--shadow-popover`. Motion: `--motion-spring` + duration, `--motion-exit` +
 duration, `--motion-micro-duration`, `--ease-out-quint`, `--ease-out-quart`; portal aliases
 `--pm-spring`, `--pm-exit`, `--pm-reduced-duration`, `--pm-fade-duration`,
 `--pm-scrim-duration`. Stacking: `--z-header` 50, `--z-dropdown` 60, `--z-overlay` 70,

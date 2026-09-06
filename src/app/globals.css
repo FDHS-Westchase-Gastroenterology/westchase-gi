@@ -52,6 +52,11 @@
   /* Elevation — one soft shadow, never paired with a visible border */
   --shadow-soft: 0 12px 32px -20px oklch(0.3 0.05 245 / 0.5);
   --shadow-card: 0 22px 48px -28px oklch(0.28 0.05 245 / 0.55);
+  /* A popover floating over a same-white list: the -28px spread on shadow-card
+     tucks it inside the card's own footprint, so a floating surface needs a
+     contact line plus a short ambient throw that clears the edge. */
+  --shadow-popover:
+    0 1px 2px oklch(0.28 0.05 245 / 0.12), 0 10px 28px -6px oklch(0.28 0.05 245 / 0.32);
 
   /* Motion — one vocabulary, per-register temperaments */
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);

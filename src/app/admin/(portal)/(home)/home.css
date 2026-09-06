@@ -458,7 +458,7 @@
   border-radius: var(--radius);
   background: var(--portal-surface);
   color: var(--color-body);
-  box-shadow: var(--shadow-card);
+  box-shadow: var(--shadow-popover);
   outline: none;
   transform-origin: var(--transform-origin);
   /* A small popover, so it arrives on the registry's exit temperament
@@ -515,7 +515,7 @@
   align-items: center;
   gap: 0.4rem;
   margin: 0.2rem 0 0;
-  color: var(--color-muted-ink);
+  color: var(--color-body); /* 11.1:1 on the surface; muted-ink read as haze at 13px/400 */
   font-size: var(--pt-xs);
 }
 
@@ -527,7 +527,8 @@
   padding: 0.55rem 0.75rem;
   border-radius: var(--radius-sm);
   background: var(--color-mint);
-  color: var(--color-teal-ink);
+  /* the primary action is printed ink (8.1:1 on mint); teal is for hover */
+  color: var(--color-navy);
   font-size: var(--pt-sm);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -595,7 +596,7 @@
 
 .wgi-outcome > small {
   flex: none;
-  color: var(--color-muted-ink);
+  color: var(--color-body); /* 11.1:1; 11px regular needs the darker ink to hold its stroke */
   font-size: var(--pt-2xs);
   font-weight: 400;
 }
@@ -712,7 +713,7 @@
   border-top: 1px solid var(--color-line);
   background: none;
   padding: 0.7rem 0.95rem;
-  color: var(--color-teal-ink);
+  color: var(--color-navy); /* 9.0:1 on the surface; an action, so navy, not teal */
   font-family: inherit;
   font-size: var(--pt-xs);
   font-weight: 700;
