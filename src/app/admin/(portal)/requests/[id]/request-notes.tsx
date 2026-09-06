@@ -16,6 +16,60 @@ export interface RequestNoteView {
 const INITIAL_VISIBLE_NOTES = 3;
 const INITIAL_ACTION_STATE: AddRequestNoteState = { status: "idle" };
 
+function RequestNoteList({
+  notes,
+  showAll,
+  onToggle,
+}: Readonly<{
+  notes: readonly Readonly<RequestNoteView>[];
+  showAll: boolean;
+  onToggle: () => void;
+}>) {
+  const hiddenCount = Math.max(notes.length - INITIAL_VISIBLE_NOTES, 0);
+  return (
+    <>
+      {notes.length === 0 ? (
+        <p data-testid="notes-empty" className="portal-request-notes-empty">
+          No notes yet.
+        </p>
+      ) : (
+        <>
+          <ul id="request-note-list" data-testid="note-list" className="portal-request-note-list">
+            {notes.map((note, index) => (
+              <li
+                key={note.id}
+                className={`request-note-item${
+                  index >= INITIAL_VISIBLE_NOTES && !showAll ? " hidden print:list-item" : ""
+                }`}
+              >
+                <p className="text-[0.95rem] leading-relaxed whitespace-pre-wrap text-[var(--color-ink)]">
+                  {note.text}
+                </p>
+                <p className="mt-2 text-[0.8rem] font-bold text-[var(--color-teal-ink)]">
+                  {note.byline}
+                </p>
+              </li>
+            ))}
+          </ul>
+          {hiddenCount > 0 ? (
+            <button
+              type="button"
+              aria-controls="request-note-list"
+              aria-expanded={showAll}
+              onClick={onToggle}
+              className="print-hide mt-3 min-h-11 py-2 text-[0.9rem] font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
+            >
+              {showAll
+                ? "Show fewer notes"
+                : `Show ${hiddenCount} earlier ${hiddenCount === 1 ? "note" : "notes"}`}
+            </button>
+          ) : null}
+        </>
+      )}
+    </>
+  );
+}
+
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 export function RequestNotes({
   requestId,
@@ -45,7 +99,6 @@ export function RequestNotes({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const submitWithMotionRef = useRef(false);
   const canSave = draft.trim().length > 0;
-  const hiddenCount = Math.max(notes.length - INITIAL_VISIBLE_NOTES, 0);
   const saved =
     feedback.status === "success" && !feedbackDismissed && !pending && currentNoteFeedback !== null;
   const composerVisible = composerOpen;
@@ -124,46 +177,13 @@ export function RequestNotes({
         </p>
       ) : null}
 
-      {notes.length === 0 ? (
-        <p data-testid="notes-empty" className="portal-request-notes-empty">
-          No notes yet.
-        </p>
-      ) : (
-        <>
-          <ul id="request-note-list" data-testid="note-list" className="portal-request-note-list">
-            {notes.map((note, index) => (
-              <li
-                key={note.id}
-                className={`request-note-item${
-                  index >= INITIAL_VISIBLE_NOTES && !showAll ? " hidden print:list-item" : ""
-                }`}
-              >
-                <p className="text-[0.95rem] leading-relaxed whitespace-pre-wrap text-[var(--color-ink)]">
-                  {note.text}
-                </p>
-                <p className="mt-2 text-[0.8rem] font-bold text-[var(--color-teal-ink)]">
-                  {note.byline}
-                </p>
-              </li>
-            ))}
-          </ul>
-          {hiddenCount > 0 ? (
-            <button
-              type="button"
-              aria-controls="request-note-list"
-              aria-expanded={showAll}
-              onClick={() => {
-                setShowAll((visible) => !visible);
-              }}
-              className="print-hide mt-3 min-h-11 py-2 text-[0.9rem] font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
-            >
-              {showAll
-                ? "Show fewer notes"
-                : `Show ${hiddenCount} earlier ${hiddenCount === 1 ? "note" : "notes"}`}
-            </button>
-          ) : null}
-        </>
-      )}
+      <RequestNoteList
+        notes={notes}
+        showAll={showAll}
+        onToggle={() => {
+          setShowAll((visible) => !visible);
+        }}
+      />
 
       <div
         aria-hidden={!composerVisible}

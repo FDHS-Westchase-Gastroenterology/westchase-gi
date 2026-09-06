@@ -1,8 +1,7 @@
 "use client";
 
+import { cn } from "cn";
 import type { ComponentProps } from "react";
-
-import { cn } from "@/lib/utils";
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function Label({ className, ...props }: ComponentProps<"label">) {

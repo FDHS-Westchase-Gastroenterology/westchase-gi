@@ -1,7 +1,6 @@
 import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
-
-import { cn } from "@/lib/utils";
+import { cn } from "cn";
 
 /* Fresh conversion of the stock registry Item for the home dashboard
    (portal-home-redesign-brief §4.5). The row IS an Item, converted flat: the

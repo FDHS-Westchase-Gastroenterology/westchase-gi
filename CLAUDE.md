@@ -1,5 +1,23 @@
 # Working in this repo
 
+@AGENTS.md
+
+AGENTS.md holds the hard rules and the ramp-up order. Claude Code reads CLAUDE.md only,
+so it is imported here rather than duplicated.
+
+## Frontend ownership
+
+Claude Code handles all frontend work for the patient site and staff portal: components,
+layout, styling, motion, interactions, accessibility, frontend dependencies, and visual checks.
+Codex handles the backend. Follow AGENTS.md "Agent responsibilities" for shared work and
+explicit assignments. Implement the approved Claude Design system under the existing
+`DESIGN.md` adoption workflow.
+
+For conditional classes, use `import { cn } from "cn";`. The local `@/lib/utils` module is a
+compatibility re-export. Follow AGENTS.md "Class-name helper" and CONTRIBUTING.md
+"Class-name helper updates" when syncing or migrating registry code; keep the brand palette
+and existing component behavior intact.
+
 ## Browser: use the in-app Browser pane
 
 For anything that needs a page on screen (checking the portal, measuring computed

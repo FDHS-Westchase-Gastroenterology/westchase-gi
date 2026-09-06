@@ -1,8 +1,9 @@
+import { cn } from "cn";
+
 import { buttonVariants } from "@/components/ui/button-variants";
 import type { Dictionary } from "@/lib/i18n";
 import { site, directionsUrl, formatOfficeHours } from "@/lib/site";
 import type { Locale } from "@/lib/site";
-import { cn } from "@/lib/utils";
 
 import { Clock, Mail, MapPin, MessageSquare, Phone, Printer } from "./icons";
 

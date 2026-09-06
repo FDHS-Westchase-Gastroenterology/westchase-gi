@@ -1,6 +1,5 @@
+import { cn } from "cn";
 import type { ComponentProps } from "react";
-
-import { cn } from "@/lib/utils";
 
 /* Brand adaptation of the shadcn Table (DESIGN.md "Component system"):
  * the portal's audit recipe — line-bordered rows, uppercase muted

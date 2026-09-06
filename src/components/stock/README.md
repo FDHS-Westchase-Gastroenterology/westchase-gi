@@ -8,6 +8,9 @@ designs. Review and sync instructions are in the root `DESIGN.md`.
   preview converter; `hooks/use-mobile.ts` supports Sidebar.
 - `MANIFEST.json` records the registry version, source date, and included items. Preserve this
   provenance when updating inputs through the Claude Design workflow.
+- Components and examples import `cn` from the `cn` package. Record mechanical source
+  transformations separately in `MANIFEST.json`; a helper migration does not change the
+  original registry version or imply a fresh component sync.
 - These upstream inputs retain their vendor lint, format, and React Doctor exclusions. They
   still participate in the application typecheck and the separate bundle build.
 - New product consumers use approved recipes in `src/components/ui/`. The staff home calendar

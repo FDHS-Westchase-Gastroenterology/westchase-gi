@@ -1,8 +1,8 @@
+import { cn } from "cn";
 import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button-variants";
 import { RECENT_WORK_INTRO } from "@/lib/portal/staff-language";
-import { cn } from "@/lib/utils";
 
 import { RecentWorkControls } from "./recent-work-controls";
 import { RecentWorkFocusLink } from "./recent-work-focus-link";

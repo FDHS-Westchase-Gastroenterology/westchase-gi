@@ -139,5 +139,14 @@
     "form"
   ],
   "failedExamples": [],
-  "purpose": "Registry source and examples retained as Claude Design bundle inputs."
+  "purpose": "Registry source and examples retained as Claude Design bundle inputs.",
+  "sourceTransforms": [
+    {
+      "name": "cn-package-imports",
+      "appliedAt": "2026-09-06",
+      "migrationCli": "shadcn@4.21.0",
+      "dependency": "cn@0.2.6",
+      "scope": "cn imports in registry components and examples; source bodies and registry provenance preserved."
+    }
+  ]
 }

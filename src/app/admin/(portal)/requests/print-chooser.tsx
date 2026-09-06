@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "cn";
 import Link from "next/link";
 import { useId, useRef, useState } from "react";
 import type { KeyboardEvent, MouseEvent } from "react";
@@ -17,7 +18,6 @@ import {
   printSelectionIsAvailable,
 } from "@/lib/portal/print-selection";
 import type { RequestStatus, StatusCounts } from "@/lib/portal/workflow/contracts";
-import { cn } from "@/lib/utils";
 
 /* Printing exists to hand paper to staff, so the menu offers the two statuses
    that get handed out: New requests nobody has called, and Contacted requests

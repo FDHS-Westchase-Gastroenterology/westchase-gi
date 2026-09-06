@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "cn";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -10,7 +11,6 @@ import type { Dictionary } from "@/lib/i18n";
 import { LANGUAGE_TRIGGER_ID, rememberLocale } from "@/lib/locale-preference";
 import { site, localePath, locales, localeNames, pathInLocale } from "@/lib/site";
 import type { Locale } from "@/lib/site";
-import { cn } from "@/lib/utils";
 
 import { Check, ChevronDown, ExternalLink, Globe, Menu, MessageSquare, Phone, X } from "./icons";
 

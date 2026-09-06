@@ -10,6 +10,10 @@ Product truth lives in `PRODUCT.md` (patient-site and staff-portal registers) an
 Repository custody facts are summarized in [`README.md`](README.md); the design of every
 external connection is in [`ARCHITECTURE.md`](ARCHITECTURE.md#external-interfaces).
 
+Jason uses Codex for backend work and Claude Code for all frontend work. The responsibility
+split and how to handle shared changes are in [AGENTS.md](AGENTS.md#agent-responsibilities).
+Claude Code implements and verifies the frontend against the approved Claude Design project.
+
 ## Before editing
 
 1. Find the change in the architecture
@@ -230,6 +234,46 @@ same verification evidence a PR would (CI green, live spot-check, rollback noted
 changes never request a bypass.
 
 ## Dependency updates
+
+### Class-name helper updates
+
+Components import `cn` directly from the `cn` package. `src/lib/utils.ts` re-exports it for
+compatibility, and `components.json` retains its utils alias. See the upstream
+[cn changelog](https://ui.shadcn.com/docs/changelog#september-2026---cn) and
+[migration reference](https://ui.shadcn.com/docs/cli#migrate-cn).
+
+When bringing older source into this convention, run from the repository root:
+
+```bash
+npx shadcn@latest migrate cn
+```
+
+Review the actual diff. The command replaces the old helper, rewrites supported package
+imports, installs `cn`, and removes unused direct dependencies. Verify component imports
+as well: code should use `from "cn"`, with `@/lib/utils` retained as a compatibility entry.
+Scoped runs preserve old dependencies because unselected files may still need them.
+Unsupported patterns require manual review; do not remove a package while source uses it.
+
+This is a Tailwind v4 helper migration. It does not call for `init`, `apply`, a preset change,
+or a component redesign. Preserve CSS, component recipes, variants, and server/client
+boundaries. If class merging changes the rendered result, investigate it and satisfy the
+visual-evidence gate for any resulting UI change.
+
+Check both product source and `src/components/stock/`, since the latter supplies the design
+bundle and the staff calendar. Keep its registry provenance and record the import migration
+separately in `MANIFEST.json`. Regenerate the local bundle using
+[DESIGN.md](DESIGN.md#local-bundle-pipeline); generated declarations and copied guidelines
+must follow the updated source. Verify representative class combinations, including brand
+colors, type utilities, variants, and caller overrides, against the previous helper. Run
+the standing gates and report any unverified bundle or runtime behavior.
+
+Remove `clsx` and `tailwind-merge` from direct dependencies once application and bundle
+source no longer import them. They may remain as dependencies of packages such as
+`class-variance-authority`; leave npm to maintain those lockfile entries. Commit the manifest
+and lockfile together. A frontend dependency change still follows the normal PR checks;
+it does not require a database migration or Production configuration change.
+
+### Automated dependency updates
 
 Dependabot PRs travel a guarded automatic lane with three independent boundaries:
 

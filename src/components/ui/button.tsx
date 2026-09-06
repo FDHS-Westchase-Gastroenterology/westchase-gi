@@ -1,8 +1,8 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import type { VariantProps } from "class-variance-authority";
+import { cn } from "cn";
 
 import { buttonVariants } from "@/components/ui/button-variants";
-import { cn } from "@/lib/utils";
 
 /* Brand adaptation of the shadcn Button; the recipe itself lives in
    button-variants.ts so zero-JS anchors can wear it without this client

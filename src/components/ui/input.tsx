@@ -1,9 +1,8 @@
 import { Input as InputPrimitive } from "@base-ui/react/input";
 import { cva } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
+import { cn } from "cn";
 import type { ComponentProps } from "react";
-
-import { cn } from "@/lib/utils";
 
 /*
  * Brand adaptation of the shadcn Input: the committed field recipe.

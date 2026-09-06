@@ -76,6 +76,36 @@ function externalAuditSummary(detail: Json): ExternalAuditSummary | null {
   return { target, outcome };
 }
 
+function parseAuditEntries(rows: Json): AuditEntry[] {
+  const parsed = z.array(auditEntrySchema).safeParse(rows);
+  if (!parsed.success) {
+    throw new Error("Audit read failed: invalid");
+  }
+  return parsed.data;
+}
+
+function profileNameMap(rows: readonly Json[]): ReadonlyMap<string, string> {
+  const namesByProfileId = new Map<string, string>();
+  for (const row of rows) {
+    const parsed = profileNameSchema.safeParse(row);
+    if (!parsed.success) continue;
+    const name = parsed.data.display_name.trim();
+    if (name.length === 0) continue;
+    namesByProfileId.set(parsed.data.id, name);
+  }
+  return namesByProfileId;
+}
+
+function recipientEmailMap(rows: readonly Json[]): ReadonlyMap<string, string> {
+  const recipientsById = new Map<string, string>();
+  for (const row of rows) {
+    const parsed = recipientEmailSchema.safeParse(row);
+    if (!parsed.success) continue;
+    recipientsById.set(parsed.data.id, parsed.data.email);
+  }
+  return recipientsById;
+}
+
 export default async function AdminAuditPage({
   searchParams,
 }: Readonly<{
@@ -134,30 +164,10 @@ export default async function AdminAuditPage({
     throw new Error(`Audit read failed: ${error?.code ?? lensWindow.error?.code}`);
   }
 
-  const parsedEntries = z.array(auditEntrySchema).safeParse(rows);
-  if (!parsedEntries.success) {
-    throw new Error("Audit read failed: invalid");
-  }
-  const entries = parsedEntries.data;
-  const parsedLensEntries = z.array(auditEntrySchema).safeParse(lensWindow.rows);
-  if (!parsedLensEntries.success) {
-    throw new Error("Audit read failed: invalid");
-  }
-  const lensEntries = parsedLensEntries.data;
-  const namesByProfileId = new Map<string, string>();
-  for (const row of profileRows.data ?? []) {
-    const parsed = profileNameSchema.safeParse(row);
-    if (!parsed.success) continue;
-    const name = parsed.data.display_name.trim();
-    if (name.length === 0) continue;
-    namesByProfileId.set(parsed.data.id, name);
-  }
-  const recipientsById = new Map<string, string>();
-  for (const row of recipientRows.data ?? []) {
-    const parsed = recipientEmailSchema.safeParse(row);
-    if (!parsed.success) continue;
-    recipientsById.set(parsed.data.id, parsed.data.email);
-  }
+  const entries = parseAuditEntries(rows);
+  const lensEntries = parseAuditEntries(lensWindow.rows);
+  const namesByProfileId = profileNameMap(profileRows.data ?? []);
+  const recipientsById = recipientEmailMap(recipientRows.data ?? []);
   const recentItems = toRecentWorkItems(lensEntries, {
     namesByEmail: nameMap,
     namesByProfileId,

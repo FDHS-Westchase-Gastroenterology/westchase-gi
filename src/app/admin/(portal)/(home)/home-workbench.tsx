@@ -1,3 +1,4 @@
+import { cn } from "cn";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -9,7 +10,6 @@ import {
 import { PrintChooser } from "@/app/admin/(portal)/requests/print-chooser";
 import { buttonVariants } from "@/components/ui/button-variants";
 import type { StatusCounts } from "@/lib/portal/workflow/contracts";
-import { cn } from "@/lib/utils";
 
 import { HomeDashboard } from "./home-dashboard";
 import type { HomeLine } from "./home-line";

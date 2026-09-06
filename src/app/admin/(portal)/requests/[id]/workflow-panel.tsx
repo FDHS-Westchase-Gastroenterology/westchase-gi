@@ -178,6 +178,75 @@ function LegacyReviewForm({
   );
 }
 
+function WorkflowStatus({
+  truth,
+  classifyLegacyClosure,
+}: Readonly<{
+  truth: RequestTruth;
+  classifyLegacyClosure: boolean;
+}>) {
+  return (
+    <>
+      <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
+        {classifyLegacyClosure
+          ? "Finish this request's record"
+          : truth.state === "new" || truth.state === "contacted"
+            ? "Record what happened"
+            : "This request is resolved"}
+      </h2>
+
+      <p
+        id="workflow-current-state"
+        data-testid="workflow-current-state"
+        className="mt-1.5 text-sm font-bold text-[var(--color-body)]"
+      >
+        Current status: {stateLabel(truth.state)}
+        {truth.state === "contacted" && truth.callAgainAt !== null && truth.callAgainAt !== ""
+          ? ` — call again ${followUpWhenLabel(truth.callAgainAt)}`
+          : truth.state === "contacted"
+            ? " — call-again day missing"
+            : ""}
+      </p>
+    </>
+  );
+}
+
+function WorkflowSaveControls({
+  hasSelection,
+  saveDisabled,
+  pending,
+  inFlight,
+  onSave,
+}: Readonly<{
+  hasSelection: boolean;
+  saveDisabled: boolean;
+  pending: boolean;
+  inFlight: InFlight | null;
+  onSave: () => void;
+}>) {
+  return (
+    <div
+      className={`mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 ${
+        hasSelection ? "portal-commit-shelf" : ""
+      }`}
+    >
+      <Button
+        type="button"
+        variant={!saveDisabled || (pending && inFlight === "save") ? "default" : "outline"}
+        data-testid="save-workflow"
+        disabled={saveDisabled}
+        onClick={onSave}
+        className="disabled:opacity-60"
+      >
+        {pending && inFlight === "save" ? "Saving…" : "Save"}
+      </Button>
+      <p className="text-sm text-[var(--color-muted-ink)]">
+        Save records one entry in Request history. You can undo for 15 minutes.
+      </p>
+    </div>
+  );
+}
+
 export function WorkflowPanel({
   requestId,
   truth: serverTruth,
@@ -210,26 +279,7 @@ export function WorkflowPanel({
       data-testid="workflow-panel"
       className="print-hide mt-7 border-t border-[var(--color-line)] pt-7"
     >
-      <h2 className="text-[1.05rem] font-black text-[var(--color-ink)]">
-        {legal.classifyLegacyClosure
-          ? "Finish this request's record"
-          : truth.state === "new" || truth.state === "contacted"
-            ? "Record what happened"
-            : "This request is resolved"}
-      </h2>
-
-      <p
-        id="workflow-current-state"
-        data-testid="workflow-current-state"
-        className="mt-1.5 text-sm font-bold text-[var(--color-body)]"
-      >
-        Current status: {stateLabel(truth.state)}
-        {truth.state === "contacted" && truth.callAgainAt !== null && truth.callAgainAt !== ""
-          ? ` — call again ${followUpWhenLabel(truth.callAgainAt)}`
-          : truth.state === "contacted"
-            ? " — call-again day missing"
-            : ""}
-      </p>
+      <WorkflowStatus truth={truth} classifyLegacyClosure={legal.classifyLegacyClosure} />
 
       <PanelFeedback feedback={showFeedback ? panel.feedback : null} nextHref={nextHref} />
 
@@ -283,25 +333,13 @@ export function WorkflowPanel({
             }}
           />
 
-          <div
-            className={`mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 ${
-              panel.selected !== null ? "portal-commit-shelf" : ""
-            }`}
-          >
-            <Button
-              type="button"
-              variant={!saveDisabled || (pending && inFlight === "save") ? "default" : "outline"}
-              data-testid="save-workflow"
-              disabled={saveDisabled}
-              onClick={save}
-              className="disabled:opacity-60"
-            >
-              {pending && inFlight === "save" ? "Saving…" : "Save"}
-            </Button>
-            <p className="text-sm text-[var(--color-muted-ink)]">
-              Save records one entry in Request history. You can undo for 15 minutes.
-            </p>
-          </div>
+          <WorkflowSaveControls
+            hasSelection={panel.selected !== null}
+            saveDisabled={saveDisabled}
+            pending={pending}
+            inFlight={inFlight}
+            onSave={save}
+          />
         </>
       ) : (
         <div className="mt-4">

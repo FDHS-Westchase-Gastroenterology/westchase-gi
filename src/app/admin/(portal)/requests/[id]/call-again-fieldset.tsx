@@ -134,6 +134,26 @@ export function CallAgainFieldset({
   );
 }
 
+const RETURN_TIME_LABELS = {
+  reopen: {
+    heading: "Reopen for more work",
+    name: "reopen-call-again",
+    legend: "When should this request return?",
+    description:
+      "Choose a return time before reopening. Cancel leaves the resolved request and its history unchanged.",
+    submit: "Reopen request",
+    pending: "Reopening…",
+  },
+  set_call_again: {
+    heading: "Set a call-again day",
+    name: "correction-call-again",
+    legend: "When should staff call again?",
+    description: "A return choice is required. No date will be guessed for this request.",
+    submit: "Set call-again day",
+    pending: "Saving…",
+  },
+};
+
 /** Reopen a resolved request, or set the missing call-again day on a Contacted one. */
 export function ReturnTimeAction({
   kind,
@@ -156,6 +176,7 @@ export function ReturnTimeAction({
   const choice = followUpChoice(followUpKind, followUpDay);
   const isCorrection = kind === "set_call_again";
   const headingId = `${kind}-heading`;
+  const labels = RETURN_TIME_LABELS[kind];
 
   useEffect(() => {
     if (
@@ -211,7 +232,7 @@ export function ReturnTimeAction({
       }
     >
       <h3 id={headingId} className="text-[0.95rem] font-black text-[var(--color-ink)]">
-        {isCorrection ? "Set a call-again day" : "Reopen for more work"}
+        {labels.heading}
       </h3>
       {isCorrection ? (
         <p className="mt-1 max-w-[68ch] text-sm leading-relaxed text-[var(--color-body)]">
@@ -220,13 +241,9 @@ export function ReturnTimeAction({
         </p>
       ) : null}
       <CallAgainFieldset
-        name={isCorrection ? "correction-call-again" : "reopen-call-again"}
-        legend={isCorrection ? "When should staff call again?" : "When should this request return?"}
-        description={
-          isCorrection
-            ? "A return choice is required. No date will be guessed for this request."
-            : "Choose a return time before reopening. Cancel leaves the resolved request and its history unchanged."
-        }
+        name={labels.name}
+        legend={labels.legend}
+        description={labels.description}
         followUpKind={followUpKind}
         followUpDay={followUpDay}
         pending={pending}
@@ -244,13 +261,7 @@ export function ReturnTimeAction({
           }}
           className="disabled:opacity-60"
         >
-          {pending && inFlight === kind
-            ? isCorrection
-              ? "Saving…"
-              : "Reopening…"
-            : isCorrection
-              ? "Set call-again day"
-              : "Reopen request"}
+          {pending && inFlight === kind ? labels.pending : labels.submit}
         </Button>
         {isCorrection ? (
           <p className="text-sm text-[var(--color-body)]">

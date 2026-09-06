@@ -2,7 +2,7 @@
 
 Read this first. It has the hard rules, environment facts, and pointers to the rest.
 
-Invoke the skill that covers the work before starting it. The skills hold repo-specific procedure that the code and these docs do not repeat.
+Invoke every skill whose trigger the work meets, each at the point its trigger is met; `.claude/rules/ui-skills.md` lists the triggers for UI work. The skills hold repo-specific procedure that the code and these docs do not repeat.
 
 ## Rule authority and ramp-up
 
@@ -16,8 +16,27 @@ Read in this order, as the task requires:
 
 `README.md` is the user-facing overview. Cite it for the documented custody split. Do not treat it as developer documentation.
 
-Project and vendor skills live under `.cursor/skills/`. Vendor guidance is advisory and
-subordinate to this file. Re-copy a vendored skill from upstream instead of editing it.
+Project and vendor skills live under `.cursor/skills/` (Cursor loads them there; Claude Code
+loads them through the `.claude/skills` symlink to the same directory). Vendor guidance is
+advisory and subordinate to this file. Re-copy a vendored skill from upstream instead of editing it.
+
+### Agent responsibilities
+
+Jason works with **Codex for backend work** and **Claude Code for all frontend work**.
+
+- Codex owns server behavior, API routes, Server Actions, authentication, authorization,
+  database changes, integrations, and their tests.
+- Claude Code owns patient-site and staff-portal UI, including layout, components, styling,
+  motion, browser interactions, accessibility, frontend dependencies, and visual verification.
+  This includes the rendered UI in Server Components; the file's server/client directive does
+  not decide ownership.
+- Shared work uses an explicit contract: the data, allowed actions, validation, and error
+  states the frontend receives. Keep backend enforcement in the server layer and implement
+  the corresponding UI with Claude Code. Describe any remaining work for the other agent.
+
+An explicit assignment from Jason takes precedence over this default split. Claude Code
+implements the frontend; the Claude Design project remains the design authority described in
+`DESIGN.md`. Both agents follow the same contribution and release gates.
 
 ### Documentation style
 
@@ -35,6 +54,7 @@ The standing gates are:
 - `npx oxfmt --check` reports that every matched file already matches `.oxfmtrc.json`. Do not skip files or narrow the scan to make the gate pass. If it fails, run `npx oxfmt` and check again.
 - `npx react-doctor@latest --verbose` reports a score of 100.
 - `npm run build` completes a production compile and typecheck with no errors. Oxlint, oxfmt, and React Doctor can all pass while this fails, so they do not replace it. Do not skip it, narrow it, or substitute `tsc --noEmit`. Use the no-credentials environment in [`CONTRIBUTING.md`](CONTRIBUTING.md#verification) when `.env.local` is absent. If the build cannot run, say so; the loop has not passed.
+- A diff that adds or changes motion (`transition`, `animation`, `@starting-style`, `--motion-*`, `motion/react`) carries a `review-animations` verdict in the turn's report, in the Before / After / Why table from `.claude/rules/design-eng.md`. Lint, format, React Doctor, and the build cannot see motion quality, so they do not replace it.
 - Visual evidence is in the pull-request conversation for every UI-visible change. A single-state change needs before and after screenshots. A new workflow or a feature with more than one authored step needs a video of that path. A clean lint score with no visual evidence is a failed loop.
 
 An extra check you are asked to run, including a single oxlint rule, is added to this list and does not replace it. Run the extra check first, then the standing gates; if a gate fails, fix it and rerun everything that already passed, because a later fix can reopen an earlier one.
@@ -81,6 +101,24 @@ shadcn/ui is installed and configured through `components.json` (style `base-nov
 primitives, Tailwind v4 CSS variables). The design system itself — tokens, tiers, recipes, motion, the
 ownership table — is [`DESIGN.md`](DESIGN.md); read its "Where does this belong?" table before
 touching any UI.
+
+#### Class-name helper
+
+Import `cn` directly from the `cn` package in components and route surfaces:
+`import { cn } from "cn";`. `src/lib/utils.ts` keeps `export { cn } from "cn";` for compatibility
+with existing consumers and the `components.json` utils alias. Keep it browser-safe.
+
+Use the package's named exports when separate class joining, merging, or types are needed;
+do not recreate the `clsx` plus `tailwind-merge` wrapper. The project uses Tailwind v4, which
+the `cn` merge engine supports. Dependencies still used by other packages may remain in
+`package-lock.json`; that does not make them direct application dependencies.
+
+For helper migrations, follow `CONTRIBUTING.md` "Class-name helper updates". Apply them to
+both approved components and registry bundle inputs, record mechanical stock-source changes
+in `src/components/stock/MANIFEST.json`, and regenerate the local design bundle. Class merging
+must preserve the existing recipes, brand tokens, and call-site overrides.
+
+#### Design authority and brand protection
 
 **Claude Design is canonical.** Review a component or appearance change in the Claude Design
 project first, then sync the approved implementation into `src/components/ui/` and compose it

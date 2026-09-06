@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "cn";
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
 
@@ -10,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { parsePasswordAuthFlow } from "@/lib/portal/contracts";
 import type { PasswordAuthFlow } from "@/lib/portal/contracts";
-import { cn } from "@/lib/utils";
 
 interface AuthLink {
   tokenHash: string;

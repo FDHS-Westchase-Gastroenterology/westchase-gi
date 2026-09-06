@@ -18,6 +18,10 @@ current implementation; they do not override an approved design in Claude Design
 components and appearance changes there, sync the approved implementation into this repo, and
 verify it on the product surfaces that consume it.
 
+Claude Code owns frontend implementation and visual verification. Codex owns backend work;
+see [AGENTS.md](AGENTS.md#agent-responsibilities) for the shared-work contract and assignment
+rules. The implementation tool does not change the design authority above.
+
 ---
 
 ## Where does this belong?
@@ -65,7 +69,8 @@ verify it on the product surfaces that consume it.
   (`.portal-scope`, `.review-flyer-screen`). A scope assigns; it never redefines a brand token.
 - **Knob** — a per-scope override a recipe reads with a fallback (`--btn-lift`, `--btn-radius`).
   Knobs let a scope change a recipe's feel without fighting utility classes.
-- **Tier** — where a component lives and what that implies: `stock/` (upstream, untouched),
+- **Tier** — where a component lives and what that implies: `stock/` (registry inputs with
+  recorded mechanical source transformations),
   `ui/` (brand recipes), `patterns/` (brand compositions), domain (colocated with a route).
 - **Stamp** — a Badge. A stamp always carries words beside its color.
 - **The Line** — the staff portal's world: one patient's request is one line on a sheet.
@@ -485,7 +490,8 @@ Floors for both products; the patient site's older, multilingual audience sets t
 ```text
 src/app/globals.css            tokens, base, layout helpers, bridge — imported by every root layout
 src/app/<surface>/*.css        route-scoped composition, imported only by that surface's layout
-src/lib/utils.ts               cn()
+cn (package)                   class joining and Tailwind v4 conflict resolution
+src/lib/utils.ts               compatibility re-export of cn
 src/lib/motion.ts              motion.dev presets bound to the registry
 src/lib/fonts.ts               next/font loaders → --font-* variables
 src/components/stock/          registry inputs            ← local Claude Design bundle pipeline
@@ -495,7 +501,13 @@ src/components/*.tsx           patient-site shared components (the pre-tier laye
 src/app/**/                    routes and their domain components ← may import anything above
 ```
 
-- Imports use the `@/` alias; relative parent imports (`../`) are a lint error.
+- Internal imports use the `@/` alias; relative parent imports (`../`) are a lint error.
+- Class-name helpers come directly from the package: `import { cn } from "cn";`.
+  `src/lib/utils.ts` remains a compatibility re-export for older consumers and the shadcn
+  utils alias. Use `cn` for conditional classes and caller overrides; keep recipe definitions
+  in `class-variance-authority`. Do not rebuild a local `clsx` / `tailwind-merge` wrapper.
+  Helper migrations preserve class behavior and follow `CONTRIBUTING.md` "Class-name helper
+  updates", including registry inputs and local bundle regeneration.
 - Lower tiers never import higher ones: `ui/` and `patterns/` never reach into `src/app`.
 - New product consumers use approved `ui/` recipes. The existing staff home calendar import
   from `stock/calendar.tsx` remains until its approved replacement is synced.

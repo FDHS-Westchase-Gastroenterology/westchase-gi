@@ -1,6 +1,7 @@
+import { cn } from "cn";
+
 import { STATUS_WORDS } from "@/lib/portal/filters";
 import type { RequestStatus } from "@/lib/portal/workflow/contracts";
-import { cn } from "@/lib/utils";
 
 /* Fresh conversion of the stock registry Badge for the home dashboard
    (portal-home-redesign-brief §4.5): the shadcn `outline` shell repainted

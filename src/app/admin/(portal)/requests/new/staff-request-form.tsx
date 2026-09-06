@@ -20,6 +20,7 @@ import type {
 } from "@/lib/portal/contracts";
 
 import { EMPTY_STAFF_REQUEST_DRAFT, isStaffRequestDraftDirty } from "./staff-request-draft";
+import { StaffRequestError } from "./staff-request-error";
 
 const INITIAL_STATE = { status: "idle" } as const satisfies CreateStaffRequestActionState;
 const EMPTY_DRAFT = EMPTY_STAFF_REQUEST_DRAFT satisfies StaffRequestDraft;
@@ -629,33 +630,7 @@ export function StaffRequestForm({
           </p>
         </div>
 
-        {showFailure ? (
-          <div
-            ref={alertRef}
-            role="alert"
-            tabIndex={-1}
-            data-testid="staff-request-error"
-            className="portal-request-form-alert"
-          >
-            <strong>
-              {state.code === "validation"
-                ? "Check the highlighted fields."
-                : conflicted
-                  ? "These details do not match the first save attempt."
-                  : "The portal could not confirm whether this request was added."}
-            </strong>
-            <p>
-              {state.code === "validation"
-                ? "Your other entries are still here. Correct the first highlighted field and try again."
-                : conflicted
-                  ? "Check New requests for this patient before starting a fresh form."
-                  : "Try again with these same details. To change anything, check New requests first."}
-            </p>
-            {state.code === "validation" ? null : (
-              <Link href="/admin/requests?status=new">Check New requests</Link>
-            )}
-          </div>
-        ) : null}
+        {showFailure ? <StaffRequestError code={state.code} alertRef={alertRef} /> : null}
 
         <ContactDetailsSection
           draft={draft}

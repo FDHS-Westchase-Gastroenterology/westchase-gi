@@ -1,3 +1,4 @@
+import { cn } from "cn";
 import type { Metadata } from "next";
 
 import { DocumentList } from "@/components/DocumentList";
@@ -11,7 +12,6 @@ import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
 import { site } from "@/lib/site";
 import type { Locale } from "@/lib/site";
-import { cn } from "@/lib/utils";
 
 interface PageProps {
   params: Promise<{ locale: string }>;

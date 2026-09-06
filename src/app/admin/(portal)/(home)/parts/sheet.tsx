@@ -1,8 +1,7 @@
 "use client";
 
 import { Dialog as SheetPrimitive } from "@base-ui/react/dialog";
-
-import { cn } from "@/lib/utils";
+import { cn } from "cn";
 
 /* Fresh conversion of the stock registry Sheet for the home dashboard
    (portal-home-redesign-brief §4.5): the Base UI dialog skeleton, right side

@@ -1,6 +1,5 @@
+import { cn } from "cn";
 import type { ComponentProps } from "react";
-
-import { cn } from "@/lib/utils";
 
 /* Upstream shadcn Card (base-nova), adapted only to the repo's import and
    lint conventions. Colors resolve through the semantic token bridge in

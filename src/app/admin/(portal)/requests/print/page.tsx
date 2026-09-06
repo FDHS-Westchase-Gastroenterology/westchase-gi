@@ -214,6 +214,19 @@ function RequestWorksheet({
   );
 }
 
+function PacketQueueLink({ newOnly }: Readonly<{ newOnly: boolean }>) {
+  return (
+    <Link
+      href={newOnly ? "/admin/requests?status=new" : "/admin/requests"}
+      data-slot="button"
+      className={buttonVariants({ variant: "outline" })}
+    >
+      {newOnly ? "Open New requests" : "Open Appointments"}
+      <ArrowRight className="h-4 w-4" />
+    </Link>
+  );
+}
+
 export default async function PrintNewRequestsPage({
   searchParams,
 }: Readonly<{
@@ -318,14 +331,7 @@ export default async function PrintNewRequestsPage({
             >
               Try again
             </Link>
-            <Link
-              href={newOnly ? "/admin/requests?status=new" : "/admin/requests"}
-              data-slot="button"
-              className={buttonVariants({ variant: "outline" })}
-            >
-              {newOnly ? "Open New requests" : "Open Appointments"}
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            <PacketQueueLink newOnly={newOnly} />
           </div>
         </section>
       </>
@@ -412,14 +418,7 @@ export default async function PrintNewRequestsPage({
           Finished printing? Close this packet window, then return to the live queue before staff
           begin work. Paper notes do not update the portal.
         </p>
-        <Link
-          href={newOnly ? "/admin/requests?status=new" : "/admin/requests"}
-          data-slot="button"
-          className={buttonVariants({ variant: "outline" })}
-        >
-          {newOnly ? "Open New requests" : "Open Appointments"}
-          <ArrowRight className="h-4 w-4" />
-        </Link>
+        <PacketQueueLink newOnly={newOnly} />
       </div>
     </PortalFeedbackProvider>
   );

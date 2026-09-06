@@ -1,8 +1,7 @@
 "use client";
 
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
-
-import { cn } from "@/lib/utils";
+import { cn } from "cn";
 
 /* Fresh conversion of the stock registry Popover for the home dashboard
    (portal-home-redesign-brief §4.5): the same Base UI skeleton, repainted

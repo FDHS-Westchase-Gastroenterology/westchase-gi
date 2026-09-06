@@ -15,6 +15,38 @@ const INITIAL_STATE: SetPasswordActionState = {
   changeCommitted: false,
 };
 
+function PasswordField({
+  id,
+  name,
+  label,
+  pending,
+  hasError,
+}: Readonly<{
+  id: string;
+  name: string;
+  label: string;
+  pending: boolean;
+  hasError: boolean;
+}>) {
+  return (
+    <Field data-disabled={pending || undefined}>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      <Input
+        id={id}
+        name={name}
+        type="password"
+        autoComplete="new-password"
+        minLength={12}
+        maxLength={1024}
+        required
+        disabled={pending}
+        aria-invalid={hasError ? true : undefined}
+        aria-describedby={hasError ? "password-policy password-error" : "password-policy"}
+      />
+    </Field>
+  );
+}
+
 export function PasswordForm({
   mode,
   recoveryTokenHash,
@@ -45,36 +77,20 @@ export function PasswordForm({
         <FieldDescription id="password-policy">
           Use at least 12 characters. Password managers and pasted passwords are supported.
         </FieldDescription>
-        <Field data-disabled={pending || undefined}>
-          <FieldLabel htmlFor="new-password">New password</FieldLabel>
-          <Input
-            id="new-password"
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            minLength={12}
-            maxLength={1024}
-            required
-            disabled={pending}
-            aria-invalid={hasError ? true : undefined}
-            aria-describedby={hasError ? "password-policy password-error" : "password-policy"}
-          />
-        </Field>
-        <Field data-disabled={pending || undefined}>
-          <FieldLabel htmlFor="confirm-password">Confirm password</FieldLabel>
-          <Input
-            id="confirm-password"
-            name="passwordConfirmation"
-            type="password"
-            autoComplete="new-password"
-            minLength={12}
-            maxLength={1024}
-            required
-            disabled={pending}
-            aria-invalid={hasError ? true : undefined}
-            aria-describedby={hasError ? "password-policy password-error" : "password-policy"}
-          />
-        </Field>
+        <PasswordField
+          id="new-password"
+          name="password"
+          label="New password"
+          pending={pending}
+          hasError={hasError}
+        />
+        <PasswordField
+          id="confirm-password"
+          name="passwordConfirmation"
+          label="Confirm password"
+          pending={pending}
+          hasError={hasError}
+        />
         {hasError ? (
           <p
             id="password-error"

@@ -1,3 +1,4 @@
+import { cn } from "cn";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -23,7 +24,6 @@ import {
   VIEW_DB_STATUSES,
 } from "@/lib/portal/workflow/contracts";
 import type { RequestStatus } from "@/lib/portal/workflow/contracts";
-import { cn } from "@/lib/utils";
 
 import {
   followUpShortLabel,
@@ -34,6 +34,8 @@ import {
 } from "./format";
 import { fetchAttentiveOpenRows, fetchClosedRows, OPEN_STATUSES } from "./queue";
 import type { QueueRow } from "./queue";
+import { QueuePagination } from "./request-pagination";
+import { EmptyQueue } from "./request-queue-empty";
 import { RequestSearchForm } from "./request-search-form";
 import { RequestsOutputActions, RequestsOutputFeedback } from "./requests-output-actions";
 import { StatusBadge } from "./status-badge";
@@ -317,7 +319,7 @@ export default async function AdminRequestsPage({
   if (pageWindow.redirectPage !== null) {
     redirect(requestsHref({ page: pageWindow.redirectPage, search, status: filter }));
   }
-  const { filteredTotal, totalPages, firstShown, lastShown } = pageWindow;
+  const { filteredTotal } = pageWindow;
 
   // The page window: open rows first (attention-ordered), then the closed
   // Tail (newest first) fetched from its own offset.
@@ -391,48 +393,7 @@ export default async function AdminRequestsPage({
         <FilterChips filters={filters} active={filter} search={search} />
 
         {requests.length === 0 ? (
-          <div className="portal-queue-empty">
-            <h2>
-              {page > 1
-                ? "No requests are available on this page"
-                : search
-                  ? "No appointment requests match that search"
-                  : filter === "all"
-                    ? "No appointment requests yet"
-                    : `Nothing marked ${STATUS_LABELS[filter].toLowerCase()}`}
-            </h2>
-            <p>
-              {page > 1
-                ? "Go back to the previous page to continue reviewing requests."
-                : search
-                  ? "Try a name, phone number, or email address."
-                  : filter === "all"
-                    ? "When a patient submits the appointment form on the website, the appointment request appears here instantly and everyone on the notification list gets a notification email."
-                    : "Requests reach this view as staff work them from their request page — open one from another view to record what happened."}
-            </p>
-            {page === 1 && !search && filter === "all" ? (
-              <Link
-                href={`${STAFF_REQUEST_SOURCE_PATH}?from=appointments`}
-                className="portal-inline-link"
-              >
-                Add an appointment request from a call or visit
-              </Link>
-            ) : page === 1 && search ? (
-              <Link
-                href={requestsHref({ page: 1, search: "", status: filter })}
-                className="portal-inline-link"
-              >
-                Clear search
-              </Link>
-            ) : page === 1 && filter !== "all" ? (
-              <Link
-                href={requestsHref({ page: 1, search, status: "all" })}
-                className="portal-inline-link"
-              >
-                View all requests
-              </Link>
-            ) : null}
-          </div>
+          <EmptyQueue page={page} search={search} filter={filter} />
         ) : (
           <ul data-testid="request-list" className="portal-ledger-list">
             {requests.map((request) => {
@@ -453,50 +414,13 @@ export default async function AdminRequestsPage({
           </ul>
         )}
 
-        {filteredTotal > 0 && (requests.length > 0 || page > 1) ? (
-          <div className="portal-queue-pagination">
-            {requests.length > 0 ? (
-              <p data-testid="request-page-summary">
-                Showing {firstShown}–{lastShown} of {filteredTotal}
-              </p>
-            ) : null}
-            {totalPages > 1 ? (
-              <nav aria-label="Appointment request pages" className="portal-page-nav">
-                {page > 1 ? (
-                  <Link
-                    href={requestsHref({
-                      page: page - 1,
-                      search,
-                      status: filter,
-                    })}
-                    rel="prev"
-                    data-slot="button"
-                    className={buttonVariants({ variant: "outline" })}
-                  >
-                    Previous
-                  </Link>
-                ) : null}
-                <span>
-                  Page {page} of {totalPages}
-                </span>
-                {requests.length > 0 && page < totalPages ? (
-                  <Link
-                    href={requestsHref({
-                      page: page + 1,
-                      search,
-                      status: filter,
-                    })}
-                    rel="next"
-                    data-slot="button"
-                    className={buttonVariants({ variant: "outline" })}
-                  >
-                    Next
-                  </Link>
-                ) : null}
-              </nav>
-            ) : null}
-          </div>
-        ) : null}
+        <QueuePagination
+          pageWindow={pageWindow}
+          requestCount={requests.length}
+          page={page}
+          search={search}
+          filter={filter}
+        />
       </section>
     </section>
   );

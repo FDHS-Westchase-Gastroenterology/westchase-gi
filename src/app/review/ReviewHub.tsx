@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "cn";
 import Image from "next/image";
 import { useState, useSyncExternalStore } from "react";
 
@@ -7,7 +8,6 @@ import { ExternalLink, Facebook, Globe, MessageSquare, Phone, Star } from "@/com
 import { buttonVariants } from "@/components/ui/button-variants";
 import { site, localeSet } from "@/lib/site";
 import type { Locale } from "@/lib/site";
-import { cn } from "@/lib/utils";
 
 // The hub speaks every language the practice serves, on one URL, without a
 // Page reload. Printed master QRs stay valid while this encoded hub URL is

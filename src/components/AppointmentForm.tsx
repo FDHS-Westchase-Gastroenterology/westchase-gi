@@ -169,6 +169,10 @@ function AppointmentFields({
   locale: Locale;
   errors: Readonly<FieldErrors>;
 }>) {
+  const hasNameError = errors.name !== undefined && errors.name !== "";
+  const hasPhoneError = errors.phone !== undefined && errors.phone !== "";
+  const hasEmailError = errors.email !== undefined && errors.email !== "";
+
   return (
     <div className="grid gap-5 sm:grid-cols-2">
       <Field className="sm:col-span-2">
@@ -185,14 +189,10 @@ function AppointmentFields({
           autoComplete="name"
           required
           maxLength={REQUEST_FIELD_LIMITS.name}
-          aria-invalid={errors.name !== undefined && errors.name !== "" ? "true" : undefined}
-          aria-describedby={
-            errors.name !== undefined && errors.name !== "" ? "err-name" : undefined
-          }
+          aria-invalid={hasNameError ? "true" : undefined}
+          aria-describedby={hasNameError ? "err-name" : undefined}
         />
-        {errors.name !== undefined && errors.name !== "" && (
-          <FieldError id="err-name">{errors.name}</FieldError>
-        )}
+        {hasNameError && <FieldError id="err-name">{errors.name}</FieldError>}
       </Field>
       <Field>
         <FieldLabel htmlFor="phone">
@@ -209,14 +209,10 @@ function AppointmentFields({
           autoComplete="tel"
           required
           maxLength={REQUEST_FIELD_LIMITS.phone}
-          aria-invalid={errors.phone !== undefined && errors.phone !== "" ? "true" : undefined}
-          aria-describedby={
-            errors.phone !== undefined && errors.phone !== "" ? "err-phone" : undefined
-          }
+          aria-invalid={hasPhoneError ? "true" : undefined}
+          aria-describedby={hasPhoneError ? "err-phone" : undefined}
         />
-        {errors.phone !== undefined && errors.phone !== "" && (
-          <FieldError id="err-phone">{errors.phone}</FieldError>
-        )}
+        {hasPhoneError && <FieldError id="err-phone">{errors.phone}</FieldError>}
       </Field>
       <Field>
         <FieldLabel htmlFor="email">
@@ -229,14 +225,10 @@ function AppointmentFields({
           type="email"
           autoComplete="email"
           maxLength={REQUEST_FIELD_LIMITS.email}
-          aria-invalid={errors.email !== undefined && errors.email !== "" ? "true" : undefined}
-          aria-describedby={
-            errors.email !== undefined && errors.email !== "" ? "err-email" : undefined
-          }
+          aria-invalid={hasEmailError ? "true" : undefined}
+          aria-describedby={hasEmailError ? "err-email" : undefined}
         />
-        {errors.email !== undefined && errors.email !== "" && (
-          <FieldError id="err-email">{errors.email}</FieldError>
-        )}
+        {hasEmailError && <FieldError id="err-email">{errors.email}</FieldError>}
       </Field>
       <Field>
         <FieldLabel htmlFor="location">{f.location}</FieldLabel>

@@ -2,10 +2,10 @@ import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { cva } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
+import { cn } from "cn";
 import type { ComponentProps } from "react";
 
 import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
 
 /* Upstream shadcn Item (base-nova), adapted only to the repo's import and
    lint conventions. Colors resolve through the semantic token bridge in

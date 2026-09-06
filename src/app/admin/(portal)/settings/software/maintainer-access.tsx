@@ -118,6 +118,32 @@ function SetupNotice({ management }: Readonly<{ management: MaintainerManagement
   );
 }
 
+function MaintainerFeedback({
+  error,
+  notice,
+}: Readonly<{ error: string | null; notice: string | null }>) {
+  return (
+    <>
+      {error !== null && error !== "" && (
+        <p
+          role="alert"
+          className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
+        >
+          {error}
+        </p>
+      )}
+      {notice !== null && notice !== "" && (
+        <p
+          role="status"
+          className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
+        >
+          {notice}
+        </p>
+      )}
+    </>
+  );
+}
+
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 export function MaintainerAccess({
   model,
@@ -185,22 +211,7 @@ export function MaintainerAccess({
             can add a maintainer or remove one — for example, when the practice changes maintainers.
           </p>
 
-          {error !== null && error !== "" && (
-            <p
-              role="alert"
-              className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-amber-soft)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
-            >
-              {error}
-            </p>
-          )}
-          {notice !== null && notice !== "" && (
-            <p
-              role="status"
-              className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-4 py-3 text-sm font-bold text-[var(--color-ink)]"
-            >
-              {notice}
-            </p>
-          )}
+          <MaintainerFeedback error={error} notice={notice} />
 
           <ul data-testid="maintainer-list" className="mt-4 divide-y divide-[var(--color-line)]">
             <li className="flex flex-wrap items-center justify-between gap-3 py-3.5">

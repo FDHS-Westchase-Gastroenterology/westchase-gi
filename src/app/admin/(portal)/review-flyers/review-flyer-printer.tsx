@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "cn";
 import Image from "next/image";
 import { useEffect } from "react";
 
@@ -13,7 +14,6 @@ import { Check } from "@/components/icons";
 import { useOutputGuard } from "@/components/output-feedback";
 import { buttonVariants } from "@/components/ui/button-variants";
 import type { ReviewFlyer, ReviewTargetKey } from "@/lib/review-flyers";
-import { cn } from "@/lib/utils";
 
 const DOWNLOAD_ACTIONS = [
   ["pdf", "Flyer PDF"],

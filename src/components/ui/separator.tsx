@@ -1,8 +1,7 @@
 "use client";
 
 import { Separator as SeparatorPrimitive } from "@base-ui/react/separator";
-
-import { cn } from "@/lib/utils";
+import { cn } from "cn";
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function Separator({ className, orientation = "horizontal", ...props }: SeparatorPrimitive.Props) {

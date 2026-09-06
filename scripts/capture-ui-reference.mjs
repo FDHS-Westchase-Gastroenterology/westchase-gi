@@ -384,6 +384,7 @@ async function capturePortalReferences(browser, credentials) {
       await assertNoHorizontalOverflow(page, capture.name);
       await page.screenshot({
         path: resolve(outputDirectory, `${capture.name}.png`),
+        style: "nextjs-portal { display: none !important; }",
       });
       if (capture.name.startsWith("mobile-")) {
         await page.setViewportSize({ width: 320, height: capture.viewport.height });
@@ -437,6 +438,7 @@ try {
         await settle(page);
         await page.screenshot({
           path: resolve(outputDirectory, `${capture.name}.png`),
+          style: "nextjs-portal { display: none !important; }",
         });
         console.log(`Captured ${capture.name}.png`);
       } finally {

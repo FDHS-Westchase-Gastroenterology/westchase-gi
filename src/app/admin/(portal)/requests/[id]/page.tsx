@@ -1,17 +1,10 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PortalFeedbackProvider } from "@/app/admin/(portal)/portal-feedback";
 import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
-import {
-  CLOSURE_REASON_LABELS,
-  formatPhoneForDisplay,
-  formatReceived,
-  localeLabel,
-  LOCATION_LABELS,
-  telHref,
-  TIME_LABELS,
-} from "@/app/admin/(portal)/requests/format";
+import { CLOSURE_REASON_LABELS, formatReceived } from "@/app/admin/(portal)/requests/format";
 import {
   fetchAttentiveOpenRows,
   fetchClosedRows,
@@ -20,10 +13,8 @@ import {
   OPEN_STATUSES,
 } from "@/app/admin/(portal)/requests/queue";
 import { StatusBadge } from "@/app/admin/(portal)/requests/status-badge";
-import { Clock, Mail, MapPin, MessageSquare, Phone } from "@/components/icons";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { requireRole } from "@/lib/portal/auth";
-import { isMailbox } from "@/lib/portal/contracts";
 import {
   firstSearchParam,
   parseRequestSearch,
@@ -32,9 +23,14 @@ import {
 import { serviceClient } from "@/lib/portal/server";
 import { displayNameOrEmail, fetchStaffNameMap } from "@/lib/portal/staff-identity";
 import { parseRequestStatus, presentationStatus } from "@/lib/portal/workflow/contracts";
-import type { RequestStatus } from "@/lib/portal/workflow/contracts";
+import type {
+  HistoryEntry,
+  RequestStatus,
+  RequestWorkSurface,
+} from "@/lib/portal/workflow/contracts";
 import { fetchRequestWorkSurface } from "@/lib/portal/workflow/reads";
 
+import { RequestContactDetails } from "./request-contact-details";
 import {
   RequestPrintButton,
   RequestPrintFeedback,
@@ -51,33 +47,10 @@ function firstParam(value: Readonly<string | string[] | undefined>): string | nu
   return first === "" ? null : first;
 }
 
-// One protected fetch feeds one cohesive request workflow; splitting its JSX
-// Would add patient-data prop surfaces without isolating reusable behavior.
-// react-doctor-disable-next-line react-doctor/no-giant-component
-export default async function RequestDetailPage({
-  params,
-  searchParams,
-}: Readonly<{
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{
-    status?: string | string[];
-    q?: string | string[];
-    page?: string | string[];
-    created?: string | string[];
-  }>;
-}>) {
-  await requireRole("staff");
-  const { id } = await params;
-  const continuity = await searchParams;
-  const statusParam = firstParam(continuity.status);
-  const search = parseRequestSearch(continuity.q);
-  const searchFilter = search ? requestSearchFilter(search) : "";
-  const justCreated = firstParam(continuity.created) === "1";
-
+function requestNavigation(statusParam: string | null, search: string, pageParam: string | null) {
   const queueParams = new URLSearchParams();
   if (statusParam !== null && statusParam !== "") queueParams.set("status", statusParam);
   if (search !== "") queueParams.set("q", search);
-  const pageParam = firstParam(continuity.page);
   if (pageParam !== null && pageParam !== "") queueParams.set("page", pageParam);
   const queueQuery = queueParams.toString();
   const queueHref = `/admin/requests${queueQuery !== "" ? `?${queueQuery}` : ""}`;
@@ -87,19 +60,15 @@ export default async function RequestDetailPage({
   const continuityQuery = continuityParams.toString();
   const continuityHref = (requestId: string): string =>
     `/admin/requests/${requestId}${continuityQuery ? `?${continuityQuery}` : ""}`;
+  return { queueHref, continuityHref };
+}
 
-  const db = serviceClient();
-  // The work surface is the single workflow read (spec §6): durable state,
-  // Version for optimistic commands, Undo eligibility, and Request history.
-  // A failed read throws to the error boundary — it never renders as an
-  // Empty history or a workable request (spec §3).
-  const [row, surface, nameMap] = await Promise.all([
-    fetchRequestDetail(db, id),
-    fetchRequestWorkSurface(db, id),
-    fetchStaffNameMap(db),
-  ]);
-  if (row === null || surface === null) notFound();
-
+async function requestNeighbors(
+  db: SupabaseClient,
+  id: string,
+  statusParam: string | null,
+  searchFilter: string,
+) {
   // Previous/next within the viewer's queue scope: the same attention
   // Ordering the list renders, so staff can keep working without
   // Returning to the list each time. A request outside the current scope
@@ -127,20 +96,18 @@ export default async function RequestDetailPage({
   const prevId = selfIndex > 0 ? neighborIds[selfIndex - 1] : null;
   const nextId =
     selfIndex >= 0 && selfIndex < neighborIds.length - 1 ? neighborIds[selfIndex + 1] : null;
+  return { prevId, nextId };
+}
 
-  const mailbox = row.email !== null ? row.email.trim() : "";
-  const safeMailbox = mailbox !== "" && isMailbox(mailbox) ? mailbox : null;
-  const phoneDisplay = formatPhoneForDisplay(row.phone);
-  const formLanguage = localeLabel(row.locale);
-  const patientMessage = row.message !== null ? row.message.trim() : "";
-  const staffCreated = surface.history.some(
-    (entry) => entry.kind === "created" && entry.origin === "staff",
-  );
+function requestHistoryViews(
+  history: readonly Readonly<HistoryEntry>[],
+  nameMap: ReadonlyMap<string, string>,
+) {
   // Notes and history come from one composed read. Notes keep their own
   // Surface; every other evidence kind renders in Request history.
   const noteViews: RequestNoteView[] = [];
   const historyLines: HistoryLine[] = [];
-  for (const entry of surface.history) {
+  for (const entry of history) {
     if (entry.kind === "note") {
       noteViews.push({
         id: entry.id,
@@ -152,6 +119,134 @@ export default async function RequestDetailPage({
     const line = historyLine(entry);
     if (line !== null) historyLines.push(line);
   }
+  return { noteViews, historyLines };
+}
+
+function requestLifecycleSummary(
+  surface: Readonly<
+    Pick<
+      RequestWorkSurface,
+      "state" | "closedAt" | "closureReason" | "legacyReviewRequired" | "bookingConfirmedAt"
+    >
+  >,
+) {
+  return surface.state === "closed" && surface.closedAt !== null && surface.closedAt !== "" ? (
+    <span data-testid="request-lifecycle-summary">
+      Closed {formatReceived(surface.closedAt, true)}
+      {surface.closureReason !== null
+        ? ` — ${CLOSURE_REASON_LABELS[surface.closureReason]}`
+        : " — no appointment booked"}
+      .
+    </span>
+  ) : surface.state === "closed" && surface.legacyReviewRequired ? (
+    <span data-testid="request-lifecycle-summary">
+      Closed before outcomes were recorded — how it ended still needs review.
+    </span>
+  ) : surface.state === "booked" &&
+    surface.bookingConfirmedAt !== null &&
+    surface.bookingConfirmedAt !== "" ? (
+    <span data-testid="request-lifecycle-summary">
+      Marked Scheduled {formatReceived(surface.bookingConfirmedAt, true)} — the appointment lives in
+      the practice scheduling system.
+    </span>
+  ) : undefined;
+}
+
+function RequestHistorySection({
+  historyLines,
+  nameMap,
+}: Readonly<{
+  historyLines: readonly Readonly<HistoryLine>[];
+  nameMap: ReadonlyMap<string, string>;
+}>) {
+  return (
+    <section
+      className="request-print-card portal-request-history"
+      data-short={historyLines.length <= 1 ? "true" : undefined}
+    >
+      <h2 className="portal-record-heading">Request history</h2>
+      <p className="portal-request-section-description">
+        Everything recorded about this request, newest first — contact attempts, status changes,
+        undo corrections, and notification outcomes.
+      </p>
+      {historyLines.length === 0 ? (
+        <p className="portal-request-history-empty">Nothing recorded yet.</p>
+      ) : (
+        <ul data-testid="request-history" className="portal-request-ledger">
+          {historyLines.map((line) => (
+            <li key={line.id} className="request-activity-item">
+              <p
+                className={`portal-request-ledger-event ${
+                  line.undone
+                    ? "portal-request-ledger-event--undone"
+                    : line.attention
+                      ? "portal-request-ledger-event--attention"
+                      : line.quiet
+                        ? "portal-request-ledger-event--quiet"
+                        : ""
+                }`}
+              >
+                {line.text}
+              </p>
+              <p className="portal-request-ledger-meta">
+                {line.actor !== null && line.actor !== ""
+                  ? `${displayNameOrEmail(nameMap, line.actor)} · `
+                  : ""}
+                {formatReceived(line.at, true)}
+                {line.undone ? " · later undone" : ""}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+export default async function RequestDetailPage({
+  params,
+  searchParams,
+}: Readonly<{
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{
+    status?: string | string[];
+    q?: string | string[];
+    page?: string | string[];
+    created?: string | string[];
+  }>;
+}>) {
+  await requireRole("staff");
+  const { id } = await params;
+  const continuity = await searchParams;
+  const statusParam = firstParam(continuity.status);
+  const search = parseRequestSearch(continuity.q);
+  const searchFilter = search ? requestSearchFilter(search) : "";
+  const justCreated = firstParam(continuity.created) === "1";
+
+  const { queueHref, continuityHref } = requestNavigation(
+    statusParam,
+    search,
+    firstParam(continuity.page),
+  );
+
+  const db = serviceClient();
+  // The work surface is the single workflow read (spec §6): durable state,
+  // Version for optimistic commands, Undo eligibility, and Request history.
+  // A failed read throws to the error boundary — it never renders as an
+  // Empty history or a workable request (spec §3).
+  const [row, surface, nameMap] = await Promise.all([
+    fetchRequestDetail(db, id),
+    fetchRequestWorkSurface(db, id),
+    fetchStaffNameMap(db),
+  ]);
+  if (row === null || surface === null) notFound();
+
+  const { prevId, nextId } = await requestNeighbors(db, id, statusParam, searchFilter);
+
+  const staffCreated = surface.history.some(
+    (entry) => entry.kind === "created" && entry.origin === "staff",
+  );
+  const { noteViews, historyLines } = requestHistoryViews(surface.history, nameMap);
 
   const content = (
     <section aria-labelledby="request-heading" className="request-detail-print">
@@ -171,28 +266,7 @@ export default async function RequestDetailPage({
             {row.name}
           </span>
         }
-        description={
-          surface.state === "closed" && surface.closedAt !== null && surface.closedAt !== "" ? (
-            <span data-testid="request-lifecycle-summary">
-              Closed {formatReceived(surface.closedAt, true)}
-              {surface.closureReason !== null
-                ? ` — ${CLOSURE_REASON_LABELS[surface.closureReason]}`
-                : " — no appointment booked"}
-              .
-            </span>
-          ) : surface.state === "closed" && surface.legacyReviewRequired ? (
-            <span data-testid="request-lifecycle-summary">
-              Closed before outcomes were recorded — how it ended still needs review.
-            </span>
-          ) : surface.state === "booked" &&
-            surface.bookingConfirmedAt !== null &&
-            surface.bookingConfirmedAt !== "" ? (
-            <span data-testid="request-lifecycle-summary">
-              Marked Scheduled {formatReceived(surface.bookingConfirmedAt, true)} — the appointment
-              lives in the practice scheduling system.
-            </span>
-          ) : undefined
-        }
+        description={requestLifecycleSummary(surface)}
         actions={
           <>
             {prevId !== null && prevId !== "" ? (
@@ -233,108 +307,7 @@ export default async function RequestDetailPage({
 
       <div className="portal-request-layout">
         <div className="portal-request-record">
-          <section
-            className="request-print-card portal-request-details"
-            aria-labelledby="request-details-heading"
-          >
-            <header className="portal-request-details-header">
-              <h2 id="request-details-heading">Contact and request</h2>
-              <p data-testid="request-intake-meta">
-                <span>
-                  Received{" "}
-                  <time dateTime={row.created_at}>{formatReceived(row.created_at, true)}</time>
-                </span>
-                <span>{staffCreated ? "Added by staff" : `${formLanguage} form`}</span>
-              </p>
-            </header>
-            <div
-              className="portal-request-contact"
-              role="group"
-              aria-label="Patient contact options"
-            >
-              <a
-                href={telHref(row.phone)}
-                data-testid="request-phone-link"
-                className="portal-request-contact-action"
-              >
-                <Phone className="portal-request-contact-icon" />
-                <span className="portal-request-contact-copy">
-                  <span className="portal-request-contact-label">Call patient</span>
-                  <strong
-                    className="portal-request-contact-value portal-request-contact-value--phone"
-                    data-ui-redact="patient-contact"
-                  >
-                    {phoneDisplay}
-                  </strong>
-                </span>
-              </a>
-              {safeMailbox !== null && safeMailbox !== "" ? (
-                <a
-                  href={`mailto:${safeMailbox}`}
-                  data-testid="request-email-link"
-                  className="portal-request-contact-email"
-                >
-                  <Mail className="portal-request-contact-icon" />
-                  <span className="portal-request-contact-copy">
-                    <span className="portal-request-contact-label">Email patient</span>
-                    <strong
-                      className="portal-request-contact-value"
-                      data-ui-redact="patient-contact"
-                    >
-                      {safeMailbox}
-                    </strong>
-                  </span>
-                </a>
-              ) : (
-                <p
-                  data-testid="request-email-unavailable"
-                  className="portal-request-contact-unavailable"
-                >
-                  No email provided
-                </p>
-              )}
-            </div>
-            <div
-              className="portal-request-context"
-              data-empty={patientMessage === "" ? "true" : undefined}
-            >
-              <div className="portal-request-message">
-                <h3>
-                  <MessageSquare />
-                  Patient note
-                </h3>
-                <blockquote
-                  data-testid="request-message"
-                  data-ui-redact={patientMessage !== "" ? "patient-message" : undefined}
-                  data-empty={patientMessage !== "" ? undefined : "true"}
-                >
-                  {patientMessage !== ""
-                    ? patientMessage
-                    : "No note was included with this request."}
-                </blockquote>
-              </div>
-              <dl
-                className="portal-request-preferences"
-                data-testid="request-preferences"
-                aria-label="Appointment preferences"
-              >
-                <div>
-                  <dt>
-                    <MapPin />
-                    Preferred office
-                  </dt>
-                  <dd>{LOCATION_LABELS[row.location]}</dd>
-                </div>
-                <div>
-                  <dt>
-                    <Clock />
-                    Preferred time
-                  </dt>
-                  <dd>{TIME_LABELS[row.preferred_time]}</dd>
-                </div>
-              </dl>
-            </div>
-          </section>
+          <RequestContactDetails row={row} staffCreated={staffCreated} />
 
           <section
             className="request-print-card portal-request-notes"
@@ -343,46 +316,7 @@ export default async function RequestDetailPage({
             <RequestNotes requestId={row.id} notes={noteViews} />
           </section>
 
-          <section
-            className="request-print-card portal-request-history"
-            data-short={historyLines.length <= 1 ? "true" : undefined}
-          >
-            <h2 className="portal-record-heading">Request history</h2>
-            <p className="portal-request-section-description">
-              Everything recorded about this request, newest first — contact attempts, status
-              changes, undo corrections, and notification outcomes.
-            </p>
-            {historyLines.length === 0 ? (
-              <p className="portal-request-history-empty">Nothing recorded yet.</p>
-            ) : (
-              <ul data-testid="request-history" className="portal-request-ledger">
-                {historyLines.map((line) => (
-                  <li key={line.id} className="request-activity-item">
-                    <p
-                      className={`portal-request-ledger-event ${
-                        line.undone
-                          ? "portal-request-ledger-event--undone"
-                          : line.attention
-                            ? "portal-request-ledger-event--attention"
-                            : line.quiet
-                              ? "portal-request-ledger-event--quiet"
-                              : ""
-                      }`}
-                    >
-                      {line.text}
-                    </p>
-                    <p className="portal-request-ledger-meta">
-                      {line.actor !== null && line.actor !== ""
-                        ? `${displayNameOrEmail(nameMap, line.actor)} · `
-                        : ""}
-                      {formatReceived(line.at, true)}
-                      {line.undone ? " · later undone" : ""}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+          <RequestHistorySection historyLines={historyLines} nameMap={nameMap} />
         </div>
 
         <aside className="portal-workflow-shell" aria-label="Record request outcome">

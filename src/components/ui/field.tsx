@@ -2,12 +2,12 @@
 
 import { cva } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
+import { cn } from "cn";
 import { useMemo } from "react";
 import type { ComponentProps, ReactNode } from "react";
 
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { cn } from "@/lib/utils";
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function FieldSet({ className, ...props }: ComponentProps<"fieldset">) {
