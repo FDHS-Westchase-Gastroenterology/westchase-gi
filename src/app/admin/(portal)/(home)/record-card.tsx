@@ -10,7 +10,11 @@ import {
   confirmBookingHandoff,
   recordContactAttempt,
 } from "@/app/admin/(portal)/requests/workflow-actions";
-import { Check } from "@/components/icons";
+import { Clock, Phone, PhoneOff } from "@/components/icons";
+import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/stock/input-group";
+import { RadioGroup, RadioGroupItem } from "@/components/stock/radio-group";
+import { ToggleGroup, ToggleGroupItem } from "@/components/stock/toggle-group";
+import { Field, FieldLabel } from "@/components/ui/field";
 import type { CommandOutcome } from "@/lib/portal/workflow/contracts";
 
 import type { HomeLine } from "./home-line";
@@ -18,18 +22,24 @@ import { HomeDayCalendar } from "./parts/calendar";
 import { ChevronGlyph, PhoneGlyph } from "./parts/glyphs";
 import {
   ANSWER_LABELS,
+  CARD_ANSWERS,
   cardNoteFor,
   cardReducer,
   cardRowsFor,
-  closureReasonFor,
+  closureFor,
   commandFor,
   dayHorizon,
   failureFor,
+  FOLLOW_UP_LABELS,
+  FOLLOW_UPS,
+  followUpsFor,
   INITIAL_DRAFT,
   needsDay,
   needsTime,
   savedMessage,
-  TIME_OPTIONS,
+  TIME_MAX,
+  TIME_MIN,
+  TIME_STEP_SECONDS,
 } from "./record-card-model";
 import type {
   CardAnswer,
@@ -37,21 +47,22 @@ import type {
   CardDraft,
   CardEvent,
   CardFailure,
+  FollowUp,
 } from "./record-card-model";
 
 /* ---- The record card: the calendar is the surface ----
-   The registry calendar the Received editor uses fills the card — always
-   showing, six weeks tall, never scrolling — with a narrow column beside
-   it: who, how to reach them, what happened, Save. The registry's own
-   "date picker with presets" shape, in the portal's words. An answer
-   prefills the day the practice usually means and the calendar keeps it
-   adjustable in either order; the calendar itself is the readout, so no
-   answer carries a hint. Nothing is recorded until Save, as nothing is
-   filtered until Apply. Under the sidebar breakpoint the column stacks
-   above the month and the card scrolls with Save pinned along its lower
-   edge. The rules live in record-card-model.ts. */
+   The registry's "date picker with presets" shape, in the portal's words:
+   the registry calendar fills the card, six weeks tall, never scrolling,
+   with the registry radio group beside it for what happened and a row
+   along the month's lower edge for the second question. A contact answer
+   puts Call again and No call there; a booking puts the time there. The
+   answer prefills the day the practice usually means and the calendar
+   keeps it adjustable in either order. Nothing is recorded until Save,
+   as nothing is filtered until Apply. Under the sidebar breakpoint the
+   column stacks above the month and the card scrolls with Save pinned
+   along its lower edge. The rules live in record-card-model.ts. */
 
-/* The commit: which server action the answer means, the feedback line it
+/* The commit: which server action the draft means, the feedback line it
    earns, and the three ways a save can fail. Optimistic concurrency and an
    idempotency key ride every attempt, mirroring the request detail panel;
    `retry` re-runs the last attempt under the same key when the portal could
@@ -86,13 +97,13 @@ function useRecordCommit(line: Readonly<HomeLine>, onSaved: () => void) {
   }
 
   // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- CommandOutcome carries domain member types that cannot be made readonly
-  function settle(result: Readonly<CommandOutcome>, answer: CardAnswer) {
+  function settle(result: Readonly<CommandOutcome>, command: Readonly<CardCommand>) {
     if (result.ok) {
       keyRef.current = null;
       publish({
         source: "requests-output",
         tone: "status",
-        message: savedMessage(answer, line.name, result.callAgainAt),
+        message: savedMessage(command, line.name, result.callAgainAt),
       });
       onSaved();
       router.refresh();
@@ -104,12 +115,12 @@ function useRecordCommit(line: Readonly<HomeLine>, onSaved: () => void) {
     if (next.refresh) router.refresh();
   }
 
-  function save(answer: CardAnswer, command: Readonly<CardCommand>) {
+  function save(command: Readonly<CardCommand>) {
     const attempt = () => {
       if (pending) return;
       setFailure(null);
       startTransition(async () => {
-        settle(await dispatchCommand(command), answer);
+        settle(await dispatchCommand(command), command);
       });
     };
     lastRun.current = attempt;
@@ -127,9 +138,9 @@ function useRecordCommit(line: Readonly<HomeLine>, onSaved: () => void) {
   };
 }
 
-/* The answers: one native radio per row inside a whole-row label (the
-   request detail's decision rows at the card's density), the closing rows
-   ruled off beneath the continuing ones, nothing after the words. */
+/* The answers: the registry radio group, one whole-row label per answer
+   (the request detail's decision rows at the card's density), the closing
+   row ruled off beneath the others. */
 function AnswerRows({
   rows,
   answer,
@@ -141,83 +152,102 @@ function AnswerRows({
   locked: boolean;
   onPick: (answer: CardAnswer) => void;
 }>) {
-  const groupName = useId();
   return (
-    <div role="radiogroup" aria-label="What happened" className="wgi-record-answers">
+    <RadioGroup
+      aria-label="What happened"
+      className="wgi-record-answers"
+      value={answer}
+      disabled={locked}
+      onValueChange={(value) => {
+        const picked = CARD_ANSWERS.find((row) => row === value);
+        if (picked !== undefined) onPick(picked);
+      }}
+    >
       {rows.map((row) => (
-        <label
+        <FieldLabel
           key={row}
           className="wgi-answer"
-          data-closes={closureReasonFor(row) === null ? undefined : "true"}
+          data-closes={closureFor(row, null) === null ? undefined : "true"}
         >
-          <input
-            type="radio"
-            name={groupName}
-            value={row}
-            className="sr-only"
-            checked={answer === row}
-            disabled={locked}
-            onChange={() => {
-              onPick(row);
-            }}
-          />
-          <span aria-hidden="true" className="wgi-answer-mark">
-            <Check className="wgi-answer-check" />
-          </span>
+          <RadioGroupItem value={row} />
           {ANSWER_LABELS[row]}
-        </label>
+        </FieldLabel>
       ))}
-    </div>
+    </RadioGroup>
   );
 }
 
-/* The commit row: the appointment's wall-clock time beside Save when the
-   answer is a booking, Save alone otherwise — the same height either way. */
-function CommitRow({
+/* The second question, along the month's lower edge. A contact answer:
+   the registry toggle group, Call again or No call, the pressed one in
+   the portal's checked tint. A booking: the registry time field. Any other
+   state leaves the strip empty at its height, so the card never jumps. */
+function SecondRow({
   draft,
-  command,
+  options,
   locked,
-  pending,
   dispatch,
-  onSave,
 }: Readonly<{
   draft: Readonly<CardDraft>;
-  command: Readonly<CardCommand> | null;
+  options: readonly FollowUp[];
   locked: boolean;
-  pending: boolean;
   dispatch: (event: Readonly<CardEvent>) => void;
-  onSave: (command: Readonly<CardCommand>) => void;
 }>) {
+  const timeId = useId();
+  if (needsTime(draft.answer)) {
+    return (
+      <div className="wgi-record-second">
+        <Field orientation="horizontal" className="wgi-record-when">
+          <FieldLabel htmlFor={timeId}>Time</FieldLabel>
+          <InputGroup>
+            <InputGroupInput
+              id={timeId}
+              type="time"
+              min={TIME_MIN}
+              max={TIME_MAX}
+              step={TIME_STEP_SECONDS}
+              value={draft.time}
+              disabled={locked}
+              onChange={(event) => {
+                dispatch({ type: "time", time: event.target.value });
+              }}
+            />
+            <InputGroupAddon align="inline-end">
+              <Clock />
+            </InputGroupAddon>
+          </InputGroup>
+        </Field>
+      </div>
+    );
+  }
   return (
-    <div className="wgi-record-commit">
-      {needsTime(draft.answer) ? (
-        <select
-          className="wgi-record-time"
-          aria-label="Appointment time"
-          value={draft.time}
+    <div className="wgi-record-second">
+      {options.length === 0 ? null : (
+        <ToggleGroup
+          aria-label="Follow-up"
+          className="wgi-record-follow"
+          variant="outline"
+          size="sm"
+          value={draft.followUp === null ? [] : [draft.followUp]}
           disabled={locked}
-          onChange={(event) => {
-            dispatch({ type: "time", time: event.target.value });
+          onValueChange={(value) => {
+            /* One of the two is always chosen: pressing the pressed one
+               again is not a way to choose neither. */
+            const next = FOLLOW_UPS.find((followUp) => followUp === value[0]);
+            if (next !== undefined) dispatch({ type: "followUp", followUp: next });
           }}
         >
-          <option value="">Pick a time</option>
-          {TIME_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
+          {options.map((followUp) => (
+            <ToggleGroupItem key={followUp} value={followUp}>
+              {followUp === "call" ? (
+                <Phone data-icon="inline-start" />
+              ) : (
+                <PhoneOff data-icon="inline-start" />
+              )}
+              {FOLLOW_UP_LABELS[followUp]}
+            </ToggleGroupItem>
           ))}
-        </select>
-      ) : null}
-      <button
-        type="button"
-        className="wgi-editor-apply"
-        disabled={locked || command === null}
-        onClick={() => {
-          if (command !== null) onSave(command);
-        }}
-      >
-        {pending ? "Saving…" : "Save"}
-      </button>
+        </ToggleGroup>
+      )}
     </div>
   );
 }
@@ -263,9 +293,10 @@ export function RecordCard({
   const locked = commit.pending || commit.failure?.uncertain === true;
   const command = commandFor(draft, today);
   const answer = draft.answer;
-  /* A closing answer has no return day: the calendar stays in place but
-     goes quiet, and shows no day, so the picked day cannot read as a plan. */
-  const idle = answer !== null && !needsDay(answer);
+  /* No day to pick — nothing chosen yet, No call, or a close — leaves the
+     calendar in place but quiet, and shows no day, so a day that is not a
+     plan never reads as one. */
+  const idle = !needsDay(answer, draft.followUp);
 
   return (
     <>
@@ -307,17 +338,25 @@ export function RecordCard({
 
       <div className="wgi-record-main">
         {note === null ? (
-          <div className="wgi-record-cal" data-idle={idle || undefined}>
-            <HomeDayCalendar
-              day={idle ? "" : draft.day}
-              min={today}
-              max={practiceLocalDay(dayHorizon(answer))}
-              disabled={locked || idle}
-              onChange={(day) => {
-                dispatch({ type: "day", day });
-              }}
+          <>
+            <div className="wgi-record-cal" data-idle={idle || undefined}>
+              <HomeDayCalendar
+                day={idle ? "" : draft.day}
+                min={today}
+                max={practiceLocalDay(dayHorizon(answer))}
+                disabled={locked || idle}
+                onChange={(day) => {
+                  dispatch({ type: "day", day });
+                }}
+              />
+            </div>
+            <SecondRow
+              draft={draft}
+              options={followUpsFor(answer, line.status)}
+              locked={locked}
+              dispatch={dispatch}
             />
-          </div>
+          </>
         ) : null}
         <button type="button" className="wgi-record-foot" onClick={onOpenFull}>
           Open full record
@@ -326,16 +365,18 @@ export function RecordCard({
       </div>
 
       {note === null ? (
-        <CommitRow
-          draft={draft}
-          command={command}
-          locked={locked}
-          pending={commit.pending}
-          dispatch={dispatch}
-          onSave={(next) => {
-            if (answer !== null) commit.save(answer, next);
-          }}
-        />
+        <div className="wgi-record-commit">
+          <button
+            type="button"
+            className="wgi-editor-apply"
+            disabled={locked || command === null}
+            onClick={() => {
+              if (command !== null) commit.save(command);
+            }}
+          >
+            {commit.pending ? "Saving…" : "Save"}
+          </button>
+        </div>
       ) : null}
     </>
   );

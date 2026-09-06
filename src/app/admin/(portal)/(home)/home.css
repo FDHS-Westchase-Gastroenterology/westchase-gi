@@ -631,18 +631,21 @@
   padding: 0.65rem 0.5rem 0.4rem;
 }
 
-/* One row = one answer, a native radio inside a whole-row label (the
+/* One row = one answer: the registry radio inside a whole-row label (the
    request detail's decision rows, at the card's density). Checked paints
-   the row the way the open line paints its trigger — mint-2 — and fills
-   the indicator navy. */
+   the row the way the open line paints its trigger — mint-2; the radio
+   itself is the registry's, navy when checked. The registry's own row
+   utilities sit in the utilities layer, so these unlayered rules win. */
 .wgi-answer {
   display: flex;
   width: 100%;
   align-items: center;
   gap: var(--ps-2);
   min-height: 2.2rem;
+  border: 0;
   border-radius: var(--radius-sm);
   padding: 0 0.5rem;
+  background: none;
   color: var(--color-ink);
   font-size: var(--pt-xs);
   font-weight: 600;
@@ -659,65 +662,34 @@
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
 }
 
-.wgi-answer[data-closes] + .wgi-answer[data-closes] {
-  margin-top: 0;
-  border-top: 0;
-  border-radius: var(--radius-sm);
-}
-
-.wgi-answer:has(input:enabled):hover {
+.wgi-answer:has([data-slot="radio-group-item"]:enabled):hover {
   background: var(--color-mint);
 }
 
-.wgi-answer:has(input:enabled):active {
+.wgi-answer:has([data-slot="radio-group-item"]:enabled):active {
   transform: scale(0.98);
   background: var(--color-mint-2);
   transition-duration: 0s;
 }
 
-.wgi-answer:has(input:checked) {
+.wgi-answer:has([data-checked]) {
   background: var(--color-mint-2);
 }
 
-.wgi-answer:has(input:focus-visible) {
+.wgi-answer:has([data-slot="radio-group-item"]:focus-visible) {
   outline: 3px solid var(--color-amber-deep);
   outline-offset: -3px;
 }
 
-.wgi-answer:has(input:disabled) {
+.wgi-answer:has([data-slot="radio-group-item"]:disabled) {
   cursor: default;
   opacity: 0.55;
 }
 
-.wgi-answer-mark {
-  display: grid;
-  flex: none;
-  width: 1rem;
-  height: 1rem;
-  place-items: center;
-  border: 1.5px solid var(--color-line-3);
-  border-radius: 999px;
-  background: white;
-  color: white;
-  transition:
-    background-color var(--motion-micro-duration) var(--motion-exit),
-    border-color var(--motion-micro-duration) var(--motion-exit);
-}
-
-.wgi-answer:has(input:checked) .wgi-answer-mark {
-  border-color: var(--color-navy);
-  background: var(--color-navy);
-}
-
-.wgi-answer-check {
-  width: 0.6rem;
-  height: 0.6rem;
-  opacity: 0;
-  transition: opacity var(--motion-micro-duration) var(--motion-exit);
-}
-
-.wgi-answer:has(input:checked) .wgi-answer-check {
-  opacity: 1;
+/* The registry radio's ring is the card's amber row outline instead. */
+.wgi-answer [data-slot="radio-group-item"] {
+  --tw-ring-shadow: 0 0 #0000;
+  box-shadow: none;
 }
 
 /* The surface: the editor's calendar (same class, same width, same cells)
@@ -745,12 +717,88 @@
   opacity: 0.45;
 }
 
+/* The second question, along the month's lower edge, one strip tall in
+   every state so the card never jumps: a contact answer's Call again and
+   No call (the registry toggle group, outline, small), a booking's time
+   (the registry input group), or nothing. */
+.wgi-record-second {
+  display: flex;
+  align-items: center;
+  min-height: 3rem;
+  border-top: 1px solid var(--color-line);
+  padding: 0.45rem 0.6rem;
+}
+
+/* The pressed toggle takes the portal's checked tint, the same mint-2 as
+   the chosen answer and the open line, so the pair reads as one choice. */
+.wgi-record-follow {
+  width: 100%;
+}
+
+.wgi-record-follow > [data-slot="toggle-group-item"] {
+  flex: 1 1 0;
+  color: var(--color-ink);
+  font-size: var(--pt-xs);
+  font-weight: 600;
+  /* The registry ships transition-all on Tailwind's ease; name the
+     properties and read the registry curve, the button recipe's way. */
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    border-color var(--motion-micro-duration) var(--motion-exit),
+    color var(--motion-micro-duration) var(--motion-exit),
+    transform var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-record-follow > [data-slot="toggle-group-item"]:hover {
+  background: var(--color-mint);
+}
+
+.wgi-record-follow > [data-slot="toggle-group-item"][data-pressed] {
+  border-color: var(--color-teal-ink);
+  background: var(--color-mint-2);
+  color: var(--color-navy);
+}
+
+.wgi-record-follow > [data-slot="toggle-group-item"]:active:enabled {
+  transform: scale(0.98);
+  transition-duration: 0s;
+}
+
+/* The time field's focus edge on the registry curve, not Tailwind's. */
+.wgi-record-when > [data-slot="input-group"] {
+  transition:
+    border-color var(--motion-micro-duration) var(--motion-exit),
+    box-shadow var(--motion-micro-duration) var(--motion-exit);
+}
+
+/* The time beside its word, the native clock hidden so the field's own
+   clock is the only one. */
+.wgi-record-when {
+  width: 100%;
+  align-items: center;
+  gap: var(--ps-2);
+}
+
+.wgi-record-when > [data-slot="field-label"] {
+  flex: none;
+  color: var(--color-ink);
+  font-size: var(--pt-xs);
+  font-weight: 600;
+}
+
+.wgi-record-when input[type="time"] {
+  font-size: var(--pt-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.wgi-record-when input[type="time"]::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
 /* Save: the card's one commit, painted as the editor's Apply, along the
-   column's lower edge. A booking's time takes the space beside it; the
-   row is the same height either way. */
+   column's lower edge. */
 .wgi-record-commit {
   display: flex;
-  gap: 0.4rem;
   border-top: 1px solid var(--color-line);
   padding: 0.55rem 0.5rem 0.6rem;
   grid-area: commit;
@@ -759,20 +807,6 @@
 .wgi-record-commit > .wgi-editor-apply {
   flex: 1 1 0;
   margin-top: 0;
-}
-
-.wgi-record-time {
-  flex: 1.4 1 0;
-  min-width: 0;
-  box-sizing: border-box;
-  min-height: 2.25rem;
-  border: 1px solid var(--color-line-2);
-  border-radius: var(--radius-sm);
-  background: white;
-  padding: 0.3rem 0.5rem;
-  color: var(--color-ink);
-  font-family: inherit;
-  font-size: var(--pt-xs);
 }
 
 /* Scheduled and closed lines have nothing to answer; the sentence points
@@ -1547,7 +1581,8 @@
   .wgi-add-filter:active,
   .wgi-sug:active,
   .wgi-editor-apply:active:enabled,
-  .wgi-answer:has(input:enabled):active,
+  .wgi-answer:has([data-slot="radio-group-item"]:enabled):active,
+  .wgi-record-follow > [data-slot="toggle-group-item"]:active:enabled,
   .wgi-empty-clear:active,
   .wgi-sheet-call:active,
   .wgi-sheet-close:active {

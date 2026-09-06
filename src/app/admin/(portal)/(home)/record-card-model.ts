@@ -11,58 +11,58 @@ import type {
 } from "@/lib/portal/workflow/contracts";
 
 /* The record card's decision model: the calendar is the surface, the
-   answers sit on it, Save commits. A staff member picks what happened; the
-   answer prefills the day the practice usually means (no answer → tomorrow,
-   contacted → the coming Friday), the calendar keeps that day adjustable in
-   either order, and nothing is recorded until Save — the same commit model
-   as the Received range editor. The card's markup calls these functions;
-   nothing here touches React, so the rules are checked by a plain unit
-   test. Day strings are practice-local YYYY-MM-DD, the vocabulary of every
-   picker on the portal. */
+   answers sit beside it, the follow-up sits beneath it, Save commits. A
+   staff member picks what happened; a contact answer presumes a call-again
+   (no answer → tomorrow, contacted → the coming Friday) and offers No call
+   where the workflow has a home for it; a booking asks for the day and
+   its time. The calendar keeps the day adjustable in either order, and
+   nothing is recorded until Save — the same commit model as the Received
+   range editor. The card's markup calls these functions; nothing here
+   touches React, so the rules are checked by a plain unit test. Day
+   strings are practice-local YYYY-MM-DD and times are HH:MM, the
+   vocabulary of every picker on the portal. */
 
-export const CARD_ANSWERS = [
-  "no_answer",
-  "contacted",
-  "booked",
-  "wont_schedule",
-  "not_actionable",
-] as const;
+export const CARD_ANSWERS = ["no_answer", "contacted", "booked", "not_actionable"] as const;
 export type CardAnswer = (typeof CARD_ANSWERS)[number];
 
-/** The answers in the queue's words, and nothing more: the calendar shows
-   the day, so no answer carries a hint. */
+/** The answers in the queue's words, and nothing more: the calendar and
+   the follow-up row say the rest. */
 export const ANSWER_LABELS = {
   no_answer: "No answer",
   contacted: "Contacted",
   booked: "Appointment scheduled",
-  wont_schedule: "Won't schedule",
-  not_actionable: "Not actionable",
+  not_actionable: "Close request",
 } as const satisfies Record<CardAnswer, string>;
+
+/** The second question a contact answer asks: whether the practice calls
+   back. Two words each, on the calendar's lower edge. */
+export const FOLLOW_UPS = ["call", "none"] as const;
+export type FollowUp = (typeof FOLLOW_UPS)[number];
+
+export const FOLLOW_UP_LABELS = {
+  call: "Call again",
+  none: "No call",
+} as const satisfies Record<FollowUp, string>;
 
 const CONTACT_OUTCOME = {
   no_answer: "no_answer",
   contacted: "reached_follow_up",
   booked: null,
-  wont_schedule: null,
   not_actionable: null,
 } as const satisfies Record<CardAnswer, ContactOutcome | null>;
-
-const CLOSURE = {
-  no_answer: null,
-  contacted: null,
-  booked: null,
-  wont_schedule: "wont_schedule",
-  not_actionable: "not_actionable",
-} as const satisfies Record<CardAnswer, ClosureReason | null>;
 
 /** The contact attempt an answer records, or null when it records something else. */
 export function contactOutcomeFor(answer: CardAnswer): ContactOutcome | null {
   return CONTACT_OUTCOME[answer];
 }
 
-/** The closure an answer records, or null when the request stays open. */
-export function closureReasonFor(answer: CardAnswer): ClosureReason | null {
-  return CLOSURE[answer];
+/** The closure an answer and its follow-up record, or null when the
+   request stays open: Close request always closes; Contacted with No call
+   closes as won't schedule, which is what the patient said. */
+export function closureFor(answer: CardAnswer, followUp: FollowUp | null): ClosureReason | null {
+  if (answer === "not_actionable") return "not_actionable";
+  if (answer === "contacted" && followUp === "none") return "wont_schedule";
+  return null;
 }
 
 function stateOf(status: RequestStatus): RequestState {
@@ -74,11 +74,27 @@ function stateOf(status: RequestStatus): RequestState {
 export function cardRowsFor(status: RequestStatus): readonly CardAnswer[] {
   const legal = legalActionsFor(stateOf(status));
   return CARD_ANSWERS.filter((answer) => {
-    const reason = closureReasonFor(answer);
-    if (reason !== null) return legal.closeReasons.includes(reason);
+    if (answer === "not_actionable") return legal.closeReasons.includes("not_actionable");
     if (answer === "booked") return legal.confirmBookingHandoff;
     return legal.recordContactAttempt;
   });
+}
+
+/** The follow-ups an answer offers on a line. Call again wherever a
+   contact is recorded, since every attempt the workflow accepts carries a
+   call-again. No call where the workflow has a home for it: after
+   Contacted, on a line already contacted, it closes the request as won't
+   schedule. An unanswered call with no follow-up is not a command the
+   workflow has yet, so No answer offers Call again alone. */
+export function followUpsFor(
+  answer: CardAnswer | null,
+  status: RequestStatus,
+): readonly FollowUp[] {
+  if (answer === null || contactOutcomeFor(answer) === null) return [];
+  const legal = legalActionsFor(stateOf(status));
+  return answer === "contacted" && legal.closeReasons.includes("wont_schedule")
+    ? FOLLOW_UPS
+    : ["call"];
 }
 
 /** The sentence a line with no rows shows instead of the question. */
@@ -92,21 +108,32 @@ export function cardNoteFor(status: RequestStatus): string | null {
 
 export interface CardDraft {
   readonly answer: CardAnswer | null;
+  readonly followUp: FollowUp | null;
   readonly day: string;
   readonly time: string;
   /** Once staff pick a day by hand, no later answer overwrites it. */
   readonly dayTouched: boolean;
 }
 
-export const INITIAL_DRAFT: CardDraft = { answer: null, day: "", time: "", dayTouched: false };
+export const INITIAL_DRAFT: CardDraft = {
+  answer: null,
+  followUp: null,
+  day: "",
+  time: "",
+  dayTouched: false,
+};
 
 export type CardEvent =
   | { readonly type: "answer"; readonly answer: CardAnswer; readonly today: string }
+  | { readonly type: "followUp"; readonly followUp: FollowUp }
   | { readonly type: "day"; readonly day: string }
   | { readonly type: "time"; readonly time: string };
 
-export function needsDay(answer: CardAnswer | null): boolean {
-  return answer === "no_answer" || answer === "contacted" || answer === "booked";
+/** Whether the calendar is live: a booking always, a contact only while
+   the practice means to call again. */
+export function needsDay(answer: CardAnswer | null, followUp: FollowUp | null): boolean {
+  if (answer === "booked") return true;
+  return answer !== null && contactOutcomeFor(answer) !== null && followUp === "call";
 }
 
 export function needsTime(answer: CardAnswer | null): boolean {
@@ -156,16 +183,20 @@ export function cardReducer(draft: Readonly<CardDraft>, event: Readonly<CardEven
     case "answer": {
       /* A hand-picked day survives a change of answer while the new answer
          can still reach it; a day past a call-again's horizon gives way to
-         the answer's own presumption. */
+         the answer's own presumption. A contact answer presumes Call again,
+         the practice's usual meaning; No call is one press away. */
       const keep =
         draft.dayTouched && withinHorizon(draft.day, event.today, dayHorizon(event.answer));
       return {
         ...draft,
         answer: event.answer,
+        followUp: contactOutcomeFor(event.answer) === null ? null : "call",
         dayTouched: keep,
         day: keep ? draft.day : prefillDay(event.answer, event.today, draft.day),
       };
     }
+    case "followUp":
+      return { ...draft, followUp: event.followUp };
     case "day":
       return { ...draft, day: event.day, dayTouched: true };
     case "time":
@@ -175,50 +206,31 @@ export function cardReducer(draft: Readonly<CardDraft>, event: Readonly<CardEven
   }
 }
 
+/* ---- Wall-clock times: the practice day, in quarter hours ---- */
+
+export const TIME_MIN = "08:00";
+export const TIME_MAX = "16:30";
+export const TIME_STEP_SECONDS = 900;
+
+const HM = /^\d{2}:\d{2}$/;
+
+/** A time the practice day contains; zero-padded HH:MM compares as text. */
+export function timeWithinDay(time: string): boolean {
+  return HM.test(time) && time >= TIME_MIN && time <= TIME_MAX;
+}
+
 /** Save is enabled only for a complete, in-bounds decision. */
 export function canSave(draft: Readonly<CardDraft>, today: string): boolean {
   if (draft.answer === null) return false;
-  if (!needsDay(draft.answer)) return true;
+  if (contactOutcomeFor(draft.answer) !== null && draft.followUp === null) return false;
+  if (!needsDay(draft.answer, draft.followUp)) return true;
   if (!withinHorizon(draft.day, today, dayHorizon(draft.answer))) return false;
-  return !needsTime(draft.answer) || TIME_OPTIONS.some((option) => option.value === draft.time);
+  return !needsTime(draft.answer) || timeWithinDay(draft.time);
 }
 
 /** The call-again the chosen day means: today is this afternoon, any other day its morning. */
 export function followUpFor(day: string, today: string): FollowUpChoice {
   return day === today ? { kind: "this_afternoon" } : { kind: "day", date: day };
-}
-
-/* ---- Wall-clock times: half hours across the practice day ---- */
-
-export const TIME_OPTIONS: readonly { value: string; label: string }[] = Array.from(
-  { length: 18 },
-  (_, index) => {
-    const hour = 8 + Math.floor(index / 2);
-    const minute = index % 2 === 0 ? 0 : 30;
-    const meridiem = hour < 12 ? "AM" : "PM";
-    const clockHour = hour % 12 === 0 ? 12 : hour % 12;
-    return {
-      value: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
-      label: `${clockHour}:${String(minute).padStart(2, "0")} ${meridiem}`,
-    };
-  },
-);
-
-/* ---- The saved line ---- */
-
-/** The feedback line after a save, in the queue's words. */
-export function savedMessage(
-  answer: CardAnswer,
-  name: string,
-  callAgainAt: string | null,
-  now: Date = new Date(),
-): string {
-  if (answer === "booked") return `${name} is Scheduled.`;
-  if (closureReasonFor(answer) !== null) return `${name} is Closed.`;
-  const label = ANSWER_LABELS[answer];
-  return callAgainAt === null
-    ? `${label} recorded for ${name}.`
-    : `${label} recorded for ${name} — back ${followUpShortLabel(callAgainAt, now)}.`;
 }
 
 /* ---- The command a complete draft means, and the ways a save can fail ---- */
@@ -235,11 +247,11 @@ export type CardCommand =
 /** The server action a saveable draft calls, or null while the draft is incomplete. */
 export function commandFor(draft: Readonly<CardDraft>, today: string): CardCommand | null {
   if (draft.answer === null || !canSave(draft, today)) return null;
+  const reason = closureFor(draft.answer, draft.followUp);
+  if (reason !== null) return { kind: "close", reason };
   const outcome = contactOutcomeFor(draft.answer);
   if (outcome !== null)
     return { kind: "attempt", outcome, callAgain: followUpFor(draft.day, today) };
-  const reason = closureReasonFor(draft.answer);
-  if (reason !== null) return { kind: "close", reason };
   return {
     kind: "book",
     appointment: {
@@ -250,6 +262,23 @@ export function commandFor(draft: Readonly<CardDraft>, today: string): CardComma
   };
 }
 
+/* ---- The saved line ---- */
+
+/** The feedback line after a save, in the queue's words. */
+export function savedMessage(
+  command: Readonly<CardCommand>,
+  name: string,
+  callAgainAt: string | null,
+  now: Date = new Date(),
+): string {
+  if (command.kind === "book") return `${name} is Scheduled.`;
+  if (command.kind === "close") return `${name} is Closed.`;
+  const label = command.outcome === "no_answer" ? ANSWER_LABELS.no_answer : ANSWER_LABELS.contacted;
+  return callAgainAt === null
+    ? `${label} recorded for ${name}.`
+    : `${label} recorded for ${name} — back ${followUpShortLabel(callAgainAt, now)}.`;
+}
+
 export interface CardFailure {
   readonly message: string;
   /** The portal could not confirm the outcome: keep the idempotency key and offer Try again. */
@@ -257,7 +286,6 @@ export interface CardFailure {
   /** Someone else moved the request: nothing saved, the line refreshes. */
   readonly refresh: boolean;
 }
-
 export function failureFor(code: CommandRejection): CardFailure {
   if (code === "unavailable") {
     return {
