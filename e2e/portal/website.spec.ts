@@ -179,9 +179,9 @@ test.describe("website custody", () => {
     const closedChrome = await screenDisclosureChrome(summary);
     expect(closedChrome.screen).toBe(true);
     expect(closedChrome.print).toBe(false);
-    await summary.focus();
-    await expect(summary).toBeFocused();
-    await page.keyboard.press("Enter");
+    // Focus and press on the same resolved control; streamed navigation may
+    // Replace a server-rendered node between separate focus and keyboard calls.
+    await summary.press("Enter");
     await expect(details).toHaveJSProperty("open", true);
     await expect(summary).toBeFocused();
     await expect(summary).toContainText("Maintainer details");

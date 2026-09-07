@@ -5,6 +5,8 @@ import { createHmac } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
+import { resolveRequestCommand } from "./command-intent";
+import type { RequestCommandInput } from "./command-intent";
 import type { CommandOutcome } from "./contracts";
 import {
   COMMAND_REJECTIONS,
@@ -13,13 +15,13 @@ import {
   storedRequestStateSchema,
 } from "./contracts";
 import { decide } from "./machine";
-import type { RequestSnapshot, WorkflowCommand } from "./machine";
+import type { RequestSnapshot } from "./machine";
 
 interface ExecuteInput {
   readonly requestId: string;
   readonly expectedVersion: number;
   readonly idempotencyKey: string;
-  readonly command: WorkflowCommand;
+  readonly command: RequestCommandInput;
   readonly actorEmail: string;
   readonly note?: string;
   readonly transitionId?: string;
@@ -217,7 +219,10 @@ export async function executeRequestCommand(
       code: "stale_version",
       current: { state: current.state, version: current.version },
     };
-  let command = input.command;
+  // The fingerprint records the staff's choice. A retry after midnight must
+  // Replay the original save before "Tomorrow morning" resolves to a new day.
+  let command = resolveRequestCommand(input.command, now);
+  if (command === null) return { ok: false, code: "invalid_command" };
   if (command.kind === "undo_latest_transition") {
     const transition = await db
       .from("request_transitions")
