@@ -1339,10 +1339,19 @@ test.describe("portal management server boundaries", () => {
       }
       expect(fixtureIds).toHaveLength(1260);
 
+      const { count: auditCount, error: auditCountError } = await db
+        .from("audit_log")
+        .select("id", { count: "exact", head: true });
+      expect(auditCountError).toBeNull();
+      if (auditCount === null) throw new Error("Audit count is unavailable");
+
       await adminPage.goto(`/admin/audit?q=${encodeURIComponent(actor)}`);
       const summary = adminPage.getByTestId("recent-work-summary");
       await expect(summary).toHaveText(`Showing 1–50 of 1260 entries for “${actor}”.`);
-      await expect(adminPage.getByText(/Search and filters cover the/)).toHaveCount(0);
+      // The notice describes the whole audit window, including unrelated Preview events.
+      await expect(adminPage.getByText(/Search and filters cover the/)).toHaveCount(
+        auditCount > 2000 ? 1 : 0,
+      );
 
       await adminPage.goto(`/admin/audit?q=${encodeURIComponent(oldestId)}`);
       await expect(adminPage.getByTestId("recent-work-summary")).toContainText("1–1 of 1");

@@ -83,7 +83,7 @@ test("deep request pages, previous/next navigation, and private worklist reads u
           data: body,
         })
       ).status(),
-    ).toBe(403);
+    ).toBe(401);
   } finally {
     await fixture.dispose();
     await staff.dispose();

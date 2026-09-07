@@ -47,11 +47,15 @@ const TABLES = [
   "appointment_types",
   "appointments",
   "audit_log",
+  "clinical_command_receipts",
+  "clinical_signers",
   "notification_outbox",
   "notification_recipients",
   "patient_billing_accounts",
   "patient_billing_entries",
   "patient_billing_receipts",
+  "patient_clinical_records",
+  "patient_clinical_revisions",
   "patient_command_receipts",
   "patient_request_links",
   "patient_revisions",
@@ -96,6 +100,13 @@ const RPC_SIGNATURES = {
   portal_execute_billing_command:
     "p_actor_id uuid, p_idempotency_key uuid, p_fingerprint text, p_command jsonb",
   portal_read_patient_billing: "p_actor_id uuid, p_patient_id uuid, p_before_version bigint",
+  portal_execute_clinical_command:
+    "p_actor_id uuid, p_idempotency_key uuid, p_fingerprint text, p_command jsonb",
+  portal_preserve_clinical_record: "",
+  portal_read_clinical_record: "p_actor_id uuid, p_record_id uuid, p_before_version bigint",
+  portal_list_patient_clinical_records:
+    "p_actor_id uuid, p_patient_id uuid, p_query text, p_status text, p_record_kind text, p_limit integer, p_after_created_at timestamp with time zone, p_after_id uuid",
+  portal_list_clinical_signers: "p_actor_id uuid, p_after_user_id uuid, p_limit integer",
   portal_read_request_worklist: "p_actor_id uuid, p_filter jsonb",
   portal_request_worklist_rows:
     "p_query text, p_location text, p_received_from timestamp with time zone, p_received_to timestamp with time zone, p_now timestamp with time zone",
@@ -182,6 +193,11 @@ const RPC_RESULTS = {
   portal_execute_patient_command: "jsonb",
   portal_execute_billing_command: "jsonb",
   portal_read_patient_billing: "jsonb",
+  portal_execute_clinical_command: "jsonb",
+  portal_preserve_clinical_record: "trigger",
+  portal_read_clinical_record: "jsonb",
+  portal_list_patient_clinical_records: "jsonb",
+  portal_list_clinical_signers: "jsonb",
   portal_read_request_worklist: "jsonb",
   portal_request_worklist_rows:
     "TABLE(id uuid, name text, phone text, location text, preferred_time text, locale text, status text, created_at timestamp with time zone, follow_up_at timestamp with time zone, legacy_review_required boolean, version bigint, last_activity_at timestamp with time zone, last_activity_by text, bucket text, bucket_order integer, ascending_time timestamp with time zone, descending_time timestamp with time zone)",
@@ -225,6 +241,7 @@ const AUDIT_RPC_SOURCES = {
   portal_execute_request_command: "staff",
   portal_execute_patient_command: "staff",
   portal_execute_billing_command: "staff",
+  portal_execute_clinical_command: "staff",
   portal_save_scheduling_config: "staff",
   portal_execute_appointment_command: "staff",
   portal_log_call_outcome: "staff",
@@ -851,6 +868,12 @@ async function main() {
       (row) => row.version === "20260907000133" && row.name === "complete_request_worklists",
     ),
     "Complete request worklist migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) => row.version === "20260907003004" && row.name === "optional_patient_clinical_records",
+    ),
+    "Optional patient clinical record migration is not applied",
   );
   assert(
     migrationRows.some(
@@ -1591,6 +1614,8 @@ async function main() {
         "patient_command_receipts",
         "patient_billing_entries",
         "patient_billing_receipts",
+        "patient_clinical_revisions",
+        "clinical_command_receipts",
         "patient_revisions",
         "scheduling_changes",
         "scheduling_command_receipts",
@@ -1680,6 +1705,41 @@ async function main() {
       (row) => row.contype === "u" && row.definition.includes("UNIQUE (patient_id, version)"),
     ),
     "Billing entries must have one permanent entry per patient account version",
+  );
+
+  const clinicalConstraints = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `select contype, pg_get_constraintdef(oid) as definition
+      from pg_constraint where conrelid = 'public.patient_clinical_records'::regclass;`,
+  });
+  for (const [column, target] of [
+    ["appointment_id", "appointments(id, patient_id)"],
+    ["amends_id", "patient_clinical_records(id, patient_id)"],
+  ]) {
+    assert(
+      clinicalConstraints.some(
+        (row) =>
+          row.contype === "f" &&
+          row.definition.includes(`FOREIGN KEY (${column}, patient_id)`) &&
+          row.definition.includes(`REFERENCES ${target}`) &&
+          row.definition.includes("ON DELETE RESTRICT"),
+      ),
+      `Clinical ${column} must preserve its patient relationship`,
+    );
+  }
+  const clinicalTriggers = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `select pg_get_triggerdef(oid) as definition from pg_trigger
+      where tgrelid = 'public.patient_clinical_records'::regclass
+      and tgname = 'patient_clinical_records_preserve' and tgenabled <> 'D';`,
+  });
+  assert(
+    clinicalTriggers.length === 1 &&
+      clinicalTriggers[0].definition.includes("BEFORE UPDATE") &&
+      clinicalTriggers[0].definition.includes("portal_preserve_clinical_record()"),
+    "Clinical ownership and signed content must remain protected",
   );
 
   const rpcRows = await queryDatabase({

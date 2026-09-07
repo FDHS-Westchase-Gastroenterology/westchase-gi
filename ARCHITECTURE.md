@@ -296,6 +296,40 @@ records. The migration rollback refuses a ledger containing recorded entries. Fr
 controls compose this API; payment processing, insurance claims, imported balances, and billing
 retention require their own contracts.
 
+### Optional clinical records
+
+`POST /api/admin/clinical` exposes `src/lib/portal/clinical/contracts.ts` to active, onboarded
+staff through same-origin JSON requests and private, uncached responses. A registered patient
+can have no clinical records. A record permanently belongs to its patient; an optional appointment
+and any amended record must belong to that same patient. Intake cleanup never deletes clinical
+records, their corrections, or their protected history.
+
+The module stores notes and external document references. A reference names the source system,
+its document identifier, and an optional supplied SHA-256 value. It does not fetch an arbitrary
+URL, provide public document access, or establish that a source document has been copied or
+verified. Document access and import/reconciliation require their own verified contracts.
+
+An author edits a draft using its current version. Only an explicitly enabled clinical signer
+can sign their own draft. Administrator access does not imply signing authority; administrators
+assign or revoke that permission for an active, onboarded staff member. The command records the
+assignment and serializes signing against permission changes.
+
+Signing preserves the content, author, and signature. Corrections create a new draft amendment
+whose source version and patient remain fixed. Only one non-erroneous direct amendment can exist
+for a record; subsequent amendments follow the signed correction. Entering a record in error
+retains its content and prior signature with an explicit reason. Authors may correct their own
+drafts; signed records require the author's signing permission or an administrator's explicit
+entered-in-error action. No API deletes a clinical record or erases a revision.
+
+Each command commits its record or permission change, history, minimized audit evidence, and
+actor-bound HMAC retry receipt together. Stale versions are rejected. Database triggers preserve
+patient ownership and signed content even if another server writer bypasses the command API.
+Patient lists return up to 100 summaries without note text. Detail history pages contain up to
+20 revisions to bound large clinical-text responses, with a cursor for all older revisions.
+Browser database roles cannot read or write the clinical tables or execute their RPCs. The
+rollback refuses populated records or signer permissions. Clinical retention, source-document
+custody, practice adoption, and Production rollout remain explicit operational decisions.
+
 ### Appointment scheduling
 
 `POST /api/admin/scheduling` exposes the staff scheduling contract in
@@ -357,6 +391,7 @@ their retention and any production promotion require separate decisions.
 | Appointment ownership and reservations | `public.appointments` | Protected scheduling API and atomic commands |
 | Provider availability and appointment types | `public.scheduling_providers`, `public.scheduling_locations`, `public.provider_hours`, `public.provider_time_exceptions`, `public.appointment_types` | Administrator scheduling commands and staff availability reads |
 | Scheduling history and replay results | `public.scheduling_changes`, `public.scheduling_command_receipts` | Scheduling command and read RPCs |
+| Clinical records, revisions, and signing permissions | `public.patient_clinical_records`, `public.patient_clinical_revisions`, `public.clinical_signers`, `public.clinical_command_receipts` | Protected clinical API and atomic commands |
 | Patient balances and permanent billing entries | `public.patient_billing_accounts`, `public.patient_billing_entries`, `public.patient_billing_receipts` | Protected billing API and atomic commands |
 | Workflow history | `public.request_transitions` | Workflow command and read modules |
 | Notes, receipts, and notification evidence | `public.request_events` | Intake, request-note, and read modules |
@@ -409,12 +444,12 @@ Preview Branch procedure, seed commands, verification, and Production promotion 
   Never authorize from user-editable metadata.
 - **RLS is closed to clients.** Application tables have no anonymous access and no authenticated
   writes. Privileged data access stays in server-only service-role code.
-- **Patient data stays inside the queue.** Patient fields never enter notification emails, URLs,
+- **Patient data stays inside protected portal records.** Patient fields never enter notification emails, URLs,
   logs, audit metadata, analytics, GitHub, or provider diagnostics.
 - **Success follows durable persistence.** Intake and portal actions never present a saved state
   before the database confirms it. Failure and unknown remain distinct.
 - **Staff work is accountable.** Staff-initiated state changes write metadata-only audit evidence.
-  Patient text belongs to the request and its history, not `audit_log`.
+  Patient text belongs to protected request, patient, clinical, or billing records and their history, not `audit_log`.
 - **Secrets remain server-only.** Only the Supabase URL and publishable key may use
   `NEXT_PUBLIC_*`. Service-role, email, workflow-HMAC, GitHub App, and operator credentials must
   not reach client modules.
@@ -469,9 +504,11 @@ regenerate an approved PDF as a routine edit.
 
 ## Patient-request data lifecycle
 
-The portal is a temporary intake and operations system, not FDHS's authoritative patient
-record. Names, contact details, patient-supplied reasons, and staff notes are treated as
-sensitive even though the form asks patients not to submit medical details.
+Website submissions create temporary intake records. Registered patients, appointments, and
+optional clinical and billing records have separate lifecycles; the intake scheduler never
+deletes them. Clinic adoption of those records as its authoritative system is a separate
+operational and cutover decision. Names, contact details, patient-supplied reasons, and staff
+notes remain sensitive even though the public form asks patients not to submit medical details.
 
 | Data | Retention rule |
 | --- | --- |
@@ -562,6 +599,7 @@ the adapter or database. The matching change-type check matrix is
   `requests/[id]/workflow-panel-model.ts` (choices, copy, reducer), `use-workflow-panel.ts`
   (commands and outcome handling), and `workflow-panel.tsx` with its two fieldset files;
   `request-history.ts` turns the surface's history into the ledger lines the detail page renders.
+- **Clinical notes and document references:** `src/lib/portal/clinical/` and `/api/admin/clinical` → patient-owned clinical records, revisions, signer permissions, and command receipts.
 - **Portal authorization and sessions:** `src/lib/portal/auth.ts`, `server.ts`, `src/proxy.ts`,
   Auth entry routes, and `staff_profiles`.
 - **Portal route or mutation:** the route under `src/app/admin/`, `requireRole` at the protected
