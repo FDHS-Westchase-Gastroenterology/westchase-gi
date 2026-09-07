@@ -2175,54 +2175,19 @@
     justify-content: center;
   }
 
+  /* The status list is the Field recipe's checkbox group: the choice cards,
+     their checked tint, focus ring and spacing come from ui/field.tsx and
+     ui/checkbox.tsx. Only the group's distance from the primary action and
+     the trailing count are authored here. */
   .portal-print-chooser-statuses {
     margin-top: 1.1rem;
-    border: 0;
-    padding: 0;
   }
 
-  .portal-print-chooser-statuses legend {
-    color: var(--color-ink);
-    font-size: 0.82rem;
-    font-weight: 850;
-  }
-
-  .portal-print-chooser-status {
-    display: grid;
-    min-height: 2.75rem;
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 0.65rem;
-    margin-top: 0.35rem;
-    border: 1px solid var(--color-line-2);
-    border-radius: var(--radius-sm);
-    padding-inline: 0.75rem;
-    color: var(--color-ink);
-    font-size: 0.9rem;
-    font-weight: 700;
-  }
-
-  .portal-print-chooser-status[data-selected="true"] {
-    border-color: var(--color-teal-ink);
-    background: var(--color-mint);
-    color: var(--color-teal-ink);
-  }
-
-  .portal-print-chooser-status input {
-    width: 1.05rem;
-    height: 1.05rem;
-    accent-color: var(--color-teal-ink);
-  }
-
-  .portal-print-chooser-status small {
+  .portal-print-chooser-count {
     color: var(--color-muted-ink);
-    font-size: 0.78rem;
+    font-size: var(--pt-xs);
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
-    font-weight: 750;
-  }
-
-  .portal-print-chooser-status[data-selected="true"] small {
-    color: var(--color-teal-ink);
   }
 
   /* The portal's one modal grammar. Every dialog arrives the same way: it

@@ -11,6 +11,15 @@ import { Printer } from "@/components/icons";
 import { useOutputGuard } from "@/components/output-feedback";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Field,
+  FieldGroup,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+  FieldTitle,
+} from "@/components/ui/field";
 import {
   formatStatusList,
   knownSelectionCount,
@@ -29,9 +38,11 @@ const PRINTABLE_STATUSES = ["new", "contacted"] as const satisfies readonly Requ
 function keepFocusInDialog(event: KeyboardEvent<HTMLDialogElement>) {
   if (event.key !== "Tab") return;
   const dialog = event.currentTarget;
+  /* Base UI's checkbox keeps a hidden native input at tabindex -1 beside
+     its role="checkbox" control; only the control is a tab stop. */
   const focusable = Array.from(
     dialog.querySelectorAll<HTMLElement>(
-      'a[href], button:not(:disabled), input:not(:disabled), [tabindex]:not([tabindex="-1"])',
+      'a[href], button:not(:disabled), input:not(:disabled):not([tabindex="-1"]), [tabindex]:not([tabindex="-1"])',
     ),
   ).filter((element) => element.getAttribute("aria-disabled") !== "true");
   const first = focusable.at(0);
@@ -72,6 +83,7 @@ export function PrintChooser({
 }>) {
   const titleId = useId();
   const summaryId = useId();
+  const statusIdBase = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
@@ -94,7 +106,7 @@ export function PrintChooser({
        the keyboard user would be left on Close. */
     dialog
       ?.querySelector<HTMLElement>(
-        ".portal-print-chooser-primary a[href], .portal-print-chooser-primary button:not(:disabled), .portal-print-chooser-status input",
+        ".portal-print-chooser-primary a[href], .portal-print-chooser-primary button:not(:disabled), .portal-print-chooser-statuses [role=checkbox]",
       )
       ?.focus();
   }
@@ -103,10 +115,11 @@ export function PrintChooser({
     dialogRef.current?.close();
   }
 
-  function toggleStatus(status: RequestStatus) {
-    setSelected((current) =>
-      current.includes(status) ? current.filter((value) => value !== status) : [...current, status],
-    );
+  function setStatusChecked(status: RequestStatus, checked: boolean) {
+    setSelected((current) => {
+      const without = current.filter((value) => value !== status);
+      return checked ? [...without, status] : without;
+    });
   }
 
   function beginCustomPrint(event: MouseEvent<HTMLAnchorElement>) {
@@ -204,31 +217,33 @@ export function PrintChooser({
               </Button>
             )}
           </div>
-          <fieldset className="portal-print-chooser-statuses">
-            <legend>Custom list</legend>
-            {PRINTABLE_STATUSES.map((status) => {
-              const count = statusCounts[status];
-              const checked = selected.includes(status);
-              return (
-                <label
-                  key={status}
-                  data-selected={checked ? "true" : "false"}
-                  className="portal-print-chooser-status"
-                >
-                  <input
-                    type="checkbox"
-                    data-testid={`print-status-${status}`}
-                    checked={checked}
-                    onChange={() => {
-                      toggleStatus(status);
-                    }}
-                  />
-                  <span>{STATUS_LABELS[status]}</span>
-                  {count !== null && count !== undefined ? <small>{count}</small> : null}
-                </label>
-              );
-            })}
-          </fieldset>
+          <FieldSet className="portal-print-chooser-statuses">
+            <FieldLegend variant="label">Custom list</FieldLegend>
+            <FieldGroup data-slot="checkbox-group">
+              {PRINTABLE_STATUSES.map((status) => {
+                const count = statusCounts[status];
+                const id = `${statusIdBase}-${status}`;
+                return (
+                  <FieldLabel key={status} htmlFor={id}>
+                    <Field orientation="horizontal" className="min-h-11">
+                      <Checkbox
+                        id={id}
+                        data-testid={`print-status-${status}`}
+                        checked={selected.includes(status)}
+                        onCheckedChange={(checked) => {
+                          setStatusChecked(status, checked);
+                        }}
+                      />
+                      <FieldTitle>{STATUS_LABELS[status]}</FieldTitle>
+                      {count !== null && count !== undefined ? (
+                        <span className="portal-print-chooser-count">{count}</span>
+                      ) : null}
+                    </Field>
+                  </FieldLabel>
+                );
+              })}
+            </FieldGroup>
+          </FieldSet>
           <p id={summaryId} data-testid="print-chooser-summary">
             {selectionSummary(selected, statusCounts)}
           </p>
