@@ -34,7 +34,9 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
   const [demoted, setDemoted] = useState<readonly string[]>([]);
 
   const [openRowId, setOpenRowId] = useState<string | null>(null);
-  const [sheetRowId, setSheetRowId] = useState<string | null>(null);
+  /* The full-record sheet: which line, and whether the keyboard opened it
+     (a keyboard-initiated open shows the sheet without motion). */
+  const [sheet, setSheet] = useState<{ id: string; instant: boolean } | null>(null);
   const [settledId, setSettledId] = useState<string | null>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -92,8 +94,7 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
     setParam(key, null);
   };
 
-  const sheetLine =
-    sheetRowId === null ? null : (lines.find((line) => line.id === sheetRowId) ?? null);
+  const sheetLine = sheet === null ? null : (lines.find((line) => line.id === sheet.id) ?? null);
   const showClosedNote =
     closedCapped &&
     active.some((entry) => entry.key === "status" && entry.raw.split(",").includes("closed"));
@@ -116,8 +117,8 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
             openRowId={openRowId}
             settledId={settledId}
             onOpenRow={setOpenRowId}
-            onOpenFull={(id) => {
-              setSheetRowId(id);
+            onOpenFull={(id, instant) => {
+              setSheet({ id, instant });
               setOpenRowId(null);
             }}
             onSettled={markSettled}
@@ -156,8 +157,9 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
 
       <FullRecordSheet
         line={sheetLine}
+        instant={sheet?.instant ?? false}
         onOpenChange={(open) => {
-          if (!open) setSheetRowId(null);
+          if (!open) setSheet(null);
         }}
       />
     </>

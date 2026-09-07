@@ -17,7 +17,7 @@ interface LineListProps {
   readonly openRowId: string | null;
   readonly settledId: string | null;
   readonly onOpenRow: (id: string | null) => void;
-  readonly onOpenFull: (id: string) => void;
+  readonly onOpenFull: (id: string, instant: boolean) => void;
   readonly onSettled: (id: string) => void;
 }
 
@@ -40,8 +40,8 @@ export function LineList({
           onOpenChange={(open) => {
             onOpenRow(open ? line.id : null);
           }}
-          onOpenFull={() => {
-            onOpenFull(line.id);
+          onOpenFull={(instant) => {
+            onOpenFull(line.id, instant);
           }}
           onSettled={onSettled}
         />
@@ -66,7 +66,7 @@ function LineRow({
   open: boolean;
   settled: boolean;
   onOpenChange: (open: boolean) => void;
-  onOpenFull: () => void;
+  onOpenFull: (instant: boolean) => void;
   onSettled: (id: string) => void;
 }>) {
   return (

@@ -1246,12 +1246,15 @@
 
 /* ---------- Full record: the right sheet ---------- */
 
+/* The scrim fades in on the registry's scrim beat, a touch slower than
+   the exit, so the dim reads as room tone under the arriving paper; it
+   leaves on the exit beat with the sheet. */
 .wgi-sheet-overlay {
   position: fixed;
   inset: 0;
   z-index: 50;
   background: rgb(0 0 0 / 10%);
-  transition: opacity 200ms cubic-bezier(0.32, 0.72, 0, 1);
+  transition: opacity var(--pm-scrim-duration) var(--pm-exit);
 }
 
 .wgi-sheet-overlay[data-starting-style],
@@ -1260,7 +1263,7 @@
 }
 
 .wgi-sheet-overlay[data-ending-style] {
-  transition-duration: 150ms;
+  transition-duration: var(--pm-exit-duration);
 }
 
 @supports (backdrop-filter: blur(2px)) {
@@ -1269,34 +1272,66 @@
   }
 }
 
+/* The sheet arrives the way the portal's modals do: the travel rides the
+   registry spring (one 4.6% overshoot, settled inside half a second) and
+   the fade rides the exit curve, which finishes "it's here" while the
+   spring settles the slide. It leaves faster than it came, along a shorter
+   version of the same path. Transitions rather than keyframes, so a close
+   during the entrance reverses from wherever the sheet is.
+   The box bleeds half a rem past the viewport's right edge: the spring's
+   overshoot carries the sheet that far past its resting place, and the
+   bleed keeps the edge covered instead of flashing a hairline of page.
+   The widths below are the visible sheet; the bleed is added on top, and
+   the resize code measures it rather than repeating the number. */
 .wgi-sheet {
+  --wgi-sheet-bleed: 0.5rem;
   position: fixed;
   inset-block: 0;
-  right: 0;
+  right: calc(-1 * var(--wgi-sheet-bleed));
   z-index: 50;
+  box-sizing: border-box;
   height: 100%;
-  width: 42rem;
-  max-width: 94vw;
+  width: calc(42rem + var(--wgi-sheet-bleed));
+  /* The sidebar is the wall: never past its edge, and never the whole
+     viewport when there is no sidebar column to stop at. */
+  max-width: calc(94vw + var(--wgi-sheet-bleed));
   background: var(--portal-surface);
   border: 0;
   border-left: 1px solid var(--color-line-2);
   /* Directional spill toward the page, the sidebar's shadow mirrored. */
   box-shadow: -24px 0 48px -28px oklch(0.28 0.05 245 / 0.5);
-  padding: 0;
+  padding: 0 var(--wgi-sheet-bleed) 0 0;
   outline: none;
   transition:
-    transform 200ms cubic-bezier(0.32, 0.72, 0, 1),
-    opacity 200ms cubic-bezier(0.32, 0.72, 0, 1);
+    transform var(--pm-spring-duration) var(--pm-spring),
+    opacity var(--pm-exit-duration) var(--pm-exit);
 }
 
-.wgi-sheet[data-starting-style],
-.wgi-sheet[data-ending-style] {
+@media (min-width: 60rem) {
+  .wgi-sheet {
+    max-width: calc(min(94vw, 100vw - 17rem) + var(--wgi-sheet-bleed));
+  }
+}
+
+.wgi-sheet[data-starting-style] {
   opacity: 0;
   transform: translateX(2.5rem);
 }
 
 .wgi-sheet[data-ending-style] {
-  transition-duration: 150ms;
+  opacity: 0;
+  transform: translateX(1.25rem);
+  transition:
+    transform var(--pm-exit-duration) var(--pm-exit),
+    opacity var(--pm-exit-duration) var(--pm-exit);
+}
+
+/* Keyboard-initiated actions never animate: the sheet marks itself and
+   its scrim data-instant for an open or close that came from the keyboard,
+   the attribute Base UI's popovers set on their own. */
+.wgi-sheet[data-instant],
+.wgi-sheet-overlay[data-instant] {
+  transition-duration: 0ms;
 }
 
 .wgi-sheet-surface {
@@ -1326,6 +1361,8 @@
   touch-action: none;
 }
 
+/* The pill lengthens a third on hover, focus and drag: a transform, so the
+   stretch composites instead of relaying the strip. */
 .wgi-sheet-grip > span {
   width: 4px;
   height: 3rem;
@@ -1333,15 +1370,15 @@
   background: var(--color-line-2);
   box-shadow: -1px 0 0 rgb(255 255 255 / 60%);
   transition:
-    background-color 130ms ease,
-    height 130ms ease;
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    transform var(--motion-micro-duration) var(--motion-exit);
 }
 
 .wgi-sheet-grip:hover > span,
 .wgi-sheet-grip:focus-visible > span,
 .wgi-sheet-grip[data-dragging] > span {
   background: var(--color-teal);
-  height: 4rem;
+  transform: scaleY(1.333);
 }
 
 .wgi-sheet-grip:focus-visible {
@@ -1411,8 +1448,8 @@
   color: var(--color-muted-ink);
   cursor: pointer;
   transition:
-    background-color 130ms ease,
-    transform 130ms cubic-bezier(0.23, 1, 0.32, 1);
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    transform var(--motion-micro-duration) var(--motion-exit);
 }
 
 .wgi-sheet-close:hover {
@@ -1421,7 +1458,7 @@
 }
 
 .wgi-sheet-close:active {
-  transform: scale(0.94);
+  transform: scale(0.96);
 }
 
 .wgi-sheet-body {
@@ -1443,8 +1480,8 @@
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   transition:
-    background-color 130ms ease,
-    transform 130ms cubic-bezier(0.23, 1, 0.32, 1);
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    transform var(--motion-micro-duration) var(--motion-exit);
 }
 
 .wgi-sheet-call:hover {
@@ -1531,12 +1568,18 @@
   color: var(--color-teal-ink);
   font-size: var(--pt-xs);
   font-weight: 700;
-  transition: background-color 130ms ease;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
 }
 
 .wgi-sheet-foot:hover {
   background: var(--color-mint);
   color: var(--color-teal-ink);
+}
+
+/* Pressed: the bar spans the sheet, so the press is a deeper tint rather
+   than a scale that would open gaps at its ends. */
+.wgi-sheet-foot:active {
+  background: var(--color-mint-2);
 }
 
 /* ---------- Loading (home's own segment) ---------- */
@@ -1579,6 +1622,13 @@
   .wgi-popover[data-ending-style],
   .wgi-sheet[data-starting-style],
   .wgi-sheet[data-ending-style] {
+    transform: none;
+  }
+
+  /* The grip's stretch is travel too; the tint alone says "live". */
+  .wgi-sheet-grip:hover > span,
+  .wgi-sheet-grip:focus-visible > span,
+  .wgi-sheet-grip[data-dragging] > span {
     transform: none;
   }
 

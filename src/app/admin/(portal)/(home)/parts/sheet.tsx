@@ -5,10 +5,14 @@ import { cn } from "cn";
 
 /* Fresh conversion of the stock registry Sheet for the home dashboard
    (portal-home-redesign-brief §4.5): the Base UI dialog skeleton, right side
-   only, repainted through the portal bridge. Enter/exit ride the 200ms
-   drawer slide; the resize grip is the surface's own affordance and lives
-   with the full-record component. Paint lives in home.css under
-   `.wgi-sheet*`. */
+   only, repainted through the portal bridge. Enter/exit ride the registry's
+   spring and exit temperaments in home.css; `instant` marks the popup and
+   its scrim `data-instant` (the attribute Base UI's popovers set on their
+   own) for a keyboard-initiated open or close, which never animates. The
+   resize grip is the surface's own affordance and lives with the
+   full-record component. Paint lives in home.css under `.wgi-sheet*`. */
+
+type HomeSheetChangeDetails = SheetPrimitive.Root.ChangeEventDetails;
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function HomeSheet(props: SheetPrimitive.Root.Props) {
@@ -26,13 +30,24 @@ function HomeSheetClose(props: SheetPrimitive.Close.Props) {
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-function HomeSheetContent({ className, children, ...props }: SheetPrimitive.Popup.Props) {
+function HomeSheetContent({
+  className,
+  children,
+  instant = false,
+  ...props
+}: SheetPrimitive.Popup.Props & { readonly instant?: boolean }) {
+  const instantAttr = instant ? "keyboard" : undefined;
   return (
     <SheetPrimitive.Portal>
-      <SheetPrimitive.Backdrop data-slot="sheet-overlay" className="wgi-sheet-overlay" />
+      <SheetPrimitive.Backdrop
+        data-slot="sheet-overlay"
+        data-instant={instantAttr}
+        className="wgi-sheet-overlay"
+      />
       <SheetPrimitive.Popup
         data-slot="sheet-content"
         data-side="right"
+        data-instant={instantAttr}
         className={cn("wgi-sheet", className)}
         {...props}
       >
@@ -43,3 +58,4 @@ function HomeSheetContent({ className, children, ...props }: SheetPrimitive.Popu
 }
 
 export { HomeSheet, HomeSheetClose, HomeSheetContent, HomeSheetTitle };
+export type { HomeSheetChangeDetails };

@@ -277,7 +277,8 @@ export function RecordCard({
 }: Readonly<{
   line: Readonly<HomeLine>;
   onClose: () => void;
-  onOpenFull: () => void;
+  /** `instant` when the press came from the keyboard: the sheet then opens without motion. */
+  onOpenFull: (instant: boolean) => void;
   onSettled: (id: string) => void;
 }>) {
   const [draft, dispatch] = useReducer(cardReducer, INITIAL_DRAFT);
@@ -358,7 +359,14 @@ export function RecordCard({
             />
           </>
         ) : null}
-        <button type="button" className="wgi-record-foot" onClick={onOpenFull}>
+        <button
+          type="button"
+          className="wgi-record-foot"
+          onClick={(event) => {
+            /* A click with no pointer behind it (Enter or Space) has detail 0. */
+            onOpenFull(event.detail === 0);
+          }}
+        >
           Open full record
           <ChevronGlyph size={14} />
         </button>
