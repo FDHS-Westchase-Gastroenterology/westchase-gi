@@ -219,7 +219,7 @@ booked. Outcome wording, order, and color come from one source shared by every s
 so the line and the request record can differ in density without drifting in vocabulary.
 
 **Every open contact schedules its own return.** A contact that needs another call has a
-call-again day, prefilled from what happened and adjustable by staff. Choosing **No call**
+call-again day that staff pick on the calendar; nothing is presumed for them. Choosing **No call**
 records the contact result and finishes the request together. It never leaves an open
 Contacted request with no return day, and it does not claim that the patient declined an
 appointment.

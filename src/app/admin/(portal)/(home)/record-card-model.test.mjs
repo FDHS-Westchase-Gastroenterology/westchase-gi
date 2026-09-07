@@ -7,7 +7,6 @@ import {
   cardNoteFor,
   cardReducer,
   cardRowsFor,
-  comingFriday,
   dayHorizon,
   commandFor,
   failureFor,
@@ -47,7 +46,8 @@ test("a contact answer presumes Call again; No call quiets the calendar and clos
   });
   assert.equal(contacted.followUp, "call");
   assert.equal(needsDay(contacted.answer, contacted.followUp), true);
-  const noCall = cardReducer(contacted, { type: "followUp", followUp: "none" });
+  const picked = cardReducer(contacted, { type: "day", day: "2026-09-11" });
+  const noCall = cardReducer(picked, { type: "followUp", followUp: "none" });
   assert.equal(needsDay(noCall.answer, noCall.followUp), false);
   assert.equal(noCall.day, "2026-09-11", "the day waits in case they change their mind");
   assert.deepEqual(commandFor(noCall, TODAY), { kind: "close", reason: "wont_schedule" });
@@ -64,24 +64,21 @@ test("scheduled and closed lines get a sentence instead of rows", () => {
   assert.equal(cardNoteFor("new"), null);
 });
 
-test("the coming Friday is never today", () => {
-  assert.equal(comingFriday("2026-09-08"), "2026-09-11");
-  assert.equal(comingFriday("2026-09-11"), "2026-09-18");
-  assert.equal(comingFriday("2026-09-12"), "2026-09-18");
+test("days add across a year boundary", () => {
   assert.equal(addDays("2026-12-31", 1), "2027-01-01");
 });
 
-test("no answer prefills tomorrow and contacted prefills Friday; the day stays adjustable", () => {
+test("no answer presumes nothing: the calendar stays blank until staff pick, and a picked day survives a change of answer", () => {
   const noAnswer = cardReducer(INITIAL_DRAFT, {
     type: "answer",
     answer: "no_answer",
     today: TODAY,
   });
-  assert.equal(noAnswer.day, "2026-09-09");
+  assert.equal(noAnswer.day, "", "no tomorrow is presumed");
   const contacted = cardReducer(noAnswer, { type: "answer", answer: "contacted", today: TODAY });
-  assert.equal(contacted.day, "2026-09-11");
+  assert.equal(contacted.day, "", "no Friday is presumed either");
   const moved = cardReducer(contacted, { type: "day", day: "2026-09-15" });
-  assert.equal(moved.dayTouched, true);
+  assert.equal(moved.day, "2026-09-15");
   const back = cardReducer(moved, { type: "answer", answer: "no_answer", today: TODAY });
   assert.equal(back.day, "2026-09-15", "a hand-picked day survives a change of answer");
 });
@@ -92,7 +89,8 @@ test("booking keeps whatever day is already on the calendar and asks for a time"
     answer: "contacted",
     today: TODAY,
   });
-  const booked = cardReducer(contacted, { type: "answer", answer: "booked", today: TODAY });
+  const picked = cardReducer(contacted, { type: "day", day: "2026-09-11" });
+  const booked = cardReducer(picked, { type: "answer", answer: "booked", today: TODAY });
   assert.equal(booked.day, "2026-09-11");
   assert.equal(canSave(booked, TODAY), false);
   const timed = cardReducer(booked, { type: "time", time: "09:30" });
@@ -110,17 +108,18 @@ test("the calendar reaches 400 days until an answer narrows it, and a day past a
   const booked = cardReducer(far, { type: "answer", answer: "booked", today: TODAY });
   assert.equal(booked.day, addDays(TODAY, 200), "a booking can reach the picked day");
   const noAnswer = cardReducer(far, { type: "answer", answer: "no_answer", today: TODAY });
-  assert.equal(noAnswer.day, "2026-09-09", "a call-again cannot, so tomorrow takes over");
-  assert.equal(noAnswer.dayTouched, false, "and the calendar follows the next answer again");
+  assert.equal(noAnswer.day, "", "a call-again cannot, so the calendar goes blank again");
 });
 
 test("Save waits for a complete, in-bounds decision", () => {
   assert.equal(canSave(INITIAL_DRAFT, TODAY), false);
-  const noAnswer = cardReducer(INITIAL_DRAFT, {
+  const blank = cardReducer(INITIAL_DRAFT, {
     type: "answer",
     answer: "no_answer",
     today: TODAY,
   });
+  assert.equal(canSave(blank, TODAY), false, "a call-again with no day picked yet");
+  const noAnswer = cardReducer(blank, { type: "day", day: "2026-09-09" });
   assert.equal(canSave(noAnswer, TODAY), true);
   const past = cardReducer(noAnswer, { type: "day", day: "2026-09-07" });
   assert.equal(canSave(past, TODAY), false);
@@ -160,11 +159,13 @@ test("the saved line names the outcome and the return", () => {
 
 test("a saveable draft maps to exactly one server command", () => {
   assert.equal(commandFor(INITIAL_DRAFT, TODAY), null);
-  const noAnswer = cardReducer(INITIAL_DRAFT, {
+  const blank = cardReducer(INITIAL_DRAFT, {
     type: "answer",
     answer: "no_answer",
     today: TODAY,
   });
+  assert.equal(commandFor(blank, TODAY), null, "Call again waits for a day");
+  const noAnswer = cardReducer(blank, { type: "day", day: "2026-09-09" });
   assert.deepEqual(commandFor(noAnswer, TODAY), {
     kind: "attempt",
     outcome: "no_answer",
@@ -178,11 +179,12 @@ test("a saveable draft maps to exactly one server command", () => {
     { kind: "attempt", outcome: "no_answer", callAgain: null },
     "No call after No answer records the attempt with no call-again",
   );
-  const contacted = cardReducer(INITIAL_DRAFT, {
+  const reached = cardReducer(INITIAL_DRAFT, {
     type: "answer",
     answer: "contacted",
     today: TODAY,
   });
+  const contacted = cardReducer(reached, { type: "day", day: "2026-09-11" });
   assert.equal(commandFor(contacted, TODAY).outcome, "reached_follow_up");
   const close = cardReducer(INITIAL_DRAFT, {
     type: "answer",

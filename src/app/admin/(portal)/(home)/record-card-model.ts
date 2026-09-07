@@ -13,11 +13,11 @@ import type {
 /* The record card's decision model: the calendar is the surface, the
    answers sit beside it, the follow-up sits beneath it, Save commits. A
    staff member picks what happened; a contact answer presumes a call-again
-   (no answer → tomorrow, contacted → the coming Friday) and offers No call
-   where the workflow has a home for it; a booking asks for the day and
-   its time. The calendar keeps the day adjustable in either order, and
-   nothing is recorded until Save — the same commit model as the Received
-   range editor. The card's markup calls these functions; nothing here
+   and offers No call where the workflow has a home for it; a booking asks
+   for the day and its time. The calendar never presumes a day: it opens
+   blank and shows only what staff click, in either order, and nothing is
+   recorded until Save — the same commit model as the Received range
+   editor. The card's markup calls these functions; nothing here
    touches React, so the rules are checked by a plain unit test. Day
    strings are practice-local YYYY-MM-DD and times are HH:MM, the
    vocabulary of every picker on the portal. */
@@ -100,10 +100,9 @@ export function cardNoteFor(status: RequestStatus): string | null {
 export interface CardDraft {
   readonly answer: CardAnswer | null;
   readonly followUp: FollowUp | null;
+  /** The day staff clicked, or "" while the calendar is still blank. */
   readonly day: string;
   readonly time: string;
-  /** Once staff pick a day by hand, no later answer overwrites it. */
-  readonly dayTouched: boolean;
 }
 
 export const INITIAL_DRAFT: CardDraft = {
@@ -111,7 +110,6 @@ export const INITIAL_DRAFT: CardDraft = {
   followUp: null,
   day: "",
   time: "",
-  dayTouched: false,
 };
 
 export type CardEvent =
@@ -148,20 +146,6 @@ export function addDays(day: string, count: number): string {
   return new Date((dayNumber(day) + count) * DAY_MS).toISOString().slice(0, 10);
 }
 
-/** The coming Friday: never today, so a Friday call rolls to next week. */
-export function comingFriday(today: string): string {
-  const weekday = new Date(`${today}T00:00:00Z`).getUTCDay();
-  const delta = (5 - weekday + 7) % 7;
-  return addDays(today, delta === 0 ? 7 : delta);
-}
-
-/** The day an answer usually means, or the draft's day when the answer has no presumption. */
-export function prefillDay(answer: CardAnswer, today: string, current: string): string {
-  if (answer === "no_answer") return addDays(today, 1);
-  if (answer === "contacted") return comingFriday(today);
-  return current;
-}
-
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 
 function withinHorizon(day: string, today: string, horizon: number): boolean {
@@ -172,24 +156,23 @@ function withinHorizon(day: string, today: string, horizon: number): boolean {
 export function cardReducer(draft: Readonly<CardDraft>, event: Readonly<CardEvent>): CardDraft {
   switch (event.type) {
     case "answer": {
-      /* A hand-picked day survives a change of answer while the new answer
-         can still reach it; a day past a call-again's horizon gives way to
-         the answer's own presumption. A contact answer presumes Call again,
-         the practice's usual meaning; No call is one press away. */
-      const keep =
-        draft.dayTouched && withinHorizon(draft.day, event.today, dayHorizon(event.answer));
+      /* A picked day survives a change of answer while the new answer can
+         still reach it; a day past a call-again's horizon clears, and the
+         calendar goes blank until staff pick again. No answer ever supplies
+         a day of its own. A contact answer presumes Call again, the
+         practice's usual meaning; No call is one press away. */
+      const keep = withinHorizon(draft.day, event.today, dayHorizon(event.answer));
       return {
         ...draft,
         answer: event.answer,
         followUp: contactOutcomeFor(event.answer) === null ? null : "call",
-        dayTouched: keep,
-        day: keep ? draft.day : prefillDay(event.answer, event.today, draft.day),
+        day: keep ? draft.day : "",
       };
     }
     case "followUp":
       return { ...draft, followUp: event.followUp };
     case "day":
-      return { ...draft, day: event.day, dayTouched: true };
+      return { ...draft, day: event.day };
     case "time":
       return { ...draft, time: event.time };
     default:

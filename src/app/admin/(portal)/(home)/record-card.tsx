@@ -56,8 +56,8 @@ import type {
    with the registry radio group beside it for what happened and a row
    along the month's lower edge for the second question. A contact answer
    puts Call again and No call there; a booking puts the time there. The
-   answer prefills the day the practice usually means and the calendar
-   keeps it adjustable in either order. Nothing is recorded until Save,
+   calendar opens blank — no presumed day, no today tint — and shows only
+   the day staff click, in either order. Nothing is recorded until Save,
    as nothing is filtered until Apply. Under the sidebar breakpoint the
    column stacks above the month and the card scrolls with Save pinned
    along its lower edge. The rules live in record-card-model.ts. */
@@ -286,8 +286,8 @@ export function RecordCard({
     onClose();
   });
 
-  /* Practice-local today, read once per render so the bounds, the prefill
-     and the calendar agree even across midnight. */
+  /* Practice-local today, read once per render so the bounds, the horizon
+     check and the calendar agree even across midnight. */
   const today = practiceLocalDay(0);
   const note = cardNoteFor(line.status);
   const locked = commit.pending || commit.failure?.uncertain === true;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { getDefaultClassNames } from "react-day-picker";
 import type { DateRange } from "react-day-picker";
 
 import { Calendar } from "@/components/stock/calendar";
@@ -87,10 +88,13 @@ export function HomeRangeCalendar({
    day a decision comes back on. No autoFocus — focus stays on the answer
    the staff member just picked — and `required`, because a return day is
    never optional. `fixedWeeks` keeps every month six rows tall, so the
-   card is the same height whatever month is showing. The month follows the
-   day the answer prefills (a Friday in the next month opens that month),
-   and otherwise stays where staff navigated it; that sync is a
-   during-render derivation, not an effect. */
+   card is the same height whatever month is showing. The grid opens
+   blank: no day is presumed, and today loses the stock calendar's tint
+   (its `rdp-today` marker stays for assistive tech), so the only shaded
+   cell is the one staff clicked. The month follows a picked day (an
+   outside day at the grid's edge opens its month) and otherwise stays
+   where staff navigated it; that sync is a during-render derivation, not
+   an effect. */
 export function HomeDayCalendar({
   day,
   min,
@@ -118,6 +122,7 @@ export function HomeDayCalendar({
   return (
     <Calendar
       className="wgi-editor-cal"
+      classNames={{ today: getDefaultClassNames().today }}
       mode="single"
       required
       fixedWeeks
