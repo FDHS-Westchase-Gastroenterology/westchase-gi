@@ -88,12 +88,15 @@ export function PrintChooser({
     const dialog = dialogRef.current;
     dialog?.showModal();
     setOpen(true);
-    window.requestAnimationFrame(() => {
-      const first = dialog?.querySelector<HTMLElement>(
+    /* The dialog's own focusing steps have just landed on the first
+       focusable control, which is Close. Move to the primary action in the
+       same task: a frame callback never runs while the tab is hidden, and
+       the keyboard user would be left on Close. */
+    dialog
+      ?.querySelector<HTMLElement>(
         ".portal-print-chooser-primary a[href], .portal-print-chooser-primary button:not(:disabled), .portal-print-chooser-status input",
-      );
-      first?.focus();
-    });
+      )
+      ?.focus();
   }
 
   function closeChooser() {
