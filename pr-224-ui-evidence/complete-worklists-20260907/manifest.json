@@ -1,0 +1,73 @@
+{
+  "before": "6db69db1e23c4e2d90c9f3acec52e0504bb8815e",
+  "after": "8c26d2874d9250be2c18e07412218950c3268979",
+  "projectRef": "gqzwcvwyhykscuidcmlh",
+  "fictionalDataset": {
+    "count": 534,
+    "query": "TEST Worklist 5b1187"
+  },
+  "beforeSession": "86198e39-9322-44f2-8155-c613d16c28a4",
+  "afterSession": "20fdee7b-2159-463d-af41-c3bfc8883449",
+  "desktop": {
+    "width": 1440,
+    "height": 900
+  },
+  "mobile": {
+    "width": 390,
+    "height": 844
+  },
+  "redacted": [
+    "session-user",
+    "session-email"
+  ],
+  "files": [
+    {
+      "file": "before-desktop-home.png",
+      "sha256": "05e24b1f1cc657d2397bd09b9a289022f5b77a38cf50dac941a54e4f3efc3c30"
+    },
+    {
+      "file": "before-desktop-requests-page11.png",
+      "sha256": "6c837fa46830fd0e6a45704239169c8aa62b779f43ef8de1319ff04433751088"
+    },
+    {
+      "file": "before-desktop-detail.png",
+      "sha256": "739edb41be0ae5734f3847dd1a4f3864039b43da8e80034c3b4c804e7a32772f"
+    },
+    {
+      "file": "before-mobile-home.png",
+      "sha256": "b72a84072bf308219e9d516d462470b184baf041b4ca1bfacf01170098ceb1aa"
+    },
+    {
+      "file": "before-mobile-requests-page11.png",
+      "sha256": "22803720708264976aa3505a74af80504bee044de543b3bd356c7698e9f232bf"
+    },
+    {
+      "file": "before-mobile-detail.png",
+      "sha256": "5e246a70df78505a67c8f0cc77d959c216443a55f3ecf6bca73672bc1778731e"
+    },
+    {
+      "file": "after-desktop-home.png",
+      "sha256": "06bd5c4cfdfe69c8a0befa67f7465a4a00c22b877905e6a8315875e85437e127"
+    },
+    {
+      "file": "after-desktop-requests-page11.png",
+      "sha256": "9762fe8e0487df340c0e53a6d9e6b0d3d39a5534d279dbb070549eee30c4f86e"
+    },
+    {
+      "file": "after-desktop-detail.png",
+      "sha256": "fe69485af26391923686c8204b6a347eeb35668f7f9c7331fcfa337b1b2083a2"
+    },
+    {
+      "file": "after-mobile-home.png",
+      "sha256": "55fd3d094a203a77fc5fe131c5cc602f7876950c79877be656db9e80b773ebaa"
+    },
+    {
+      "file": "after-mobile-requests-page11.png",
+      "sha256": "1c5109231d27e808ec462104ba1a1d368df5bf9ffe22aad1be60bac712ec148a"
+    },
+    {
+      "file": "after-mobile-detail.png",
+      "sha256": "c3186b032ad70e6e63c362a903af1d7002c651fd8fe77d7a30b77d933de2928f"
+    }
+  ]
+}
