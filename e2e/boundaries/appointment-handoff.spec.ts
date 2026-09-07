@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
 
 import { expect, test } from "@playwright/test";
+import { z } from "zod";
 
-import { appointmentReadDatabaseSchema } from "../../src/lib/portal/scheduling/rows";
 import { serviceDb } from "../harness/env";
 import { createHandoffFixture, readHandoffRequest } from "../harness/handoff";
 import { schedulingFixtureDate } from "../harness/scheduling";
@@ -135,16 +135,28 @@ test("rescheduling, cancellation, and Undo coordinate request state while old re
       p_id: booked.id,
     });
     expect(read.error).toBeNull();
-    const detail = appointmentReadDatabaseSchema.parse(read.data);
-    if (!detail.ok) throw new Error("Appointment read failed");
-    expect(detail.appointment.requestWorkflowManaged).toBe(true);
-    expect(detail.history.items[0].requestChange).toMatchObject({
-      requestId: fixture.requestId,
-      afterVersion: 5,
-      before: { state: "booked" },
+    expect(read.data).toMatchObject({
+      ok: true,
+      appointment: { request_workflow_managed: true },
+      history: {
+        items: expect.arrayContaining([
+          expect.objectContaining({
+            version: 4,
+            request_id: fixture.requestId,
+            request_after_version: 5,
+            request_before: expect.objectContaining({ state: "booked" }),
+          }),
+        ]),
+      },
     });
-    const transitionId = detail.history.items[0].requestChange?.transitionId;
-    expect(transitionId).toBeTruthy();
+    const transition = await db
+      .from("request_transitions")
+      .select("id")
+      .eq("request_id", fixture.requestId)
+      .eq("resulting_version", 5)
+      .single();
+    expect(transition.error).toBeNull();
+    const transitionId = z.object({ id: z.uuid() }).parse(transition.data).id;
     const separateUndo = await db.rpc("portal_execute_request_command", {
       p_actor_email: fixture.staff.email,
       p_request_id: fixture.requestId,
@@ -208,7 +220,7 @@ test("a newer request edit prevents a coupled Undo and intake cleanup preserves 
       p_id: booked.id,
     });
     expect(read.error).toBeNull();
-    expect(appointmentReadDatabaseSchema.parse(read.data)).toMatchObject({
+    expect(read.data).toMatchObject({
       ok: true,
       undo: null,
       request: { version: 3 },

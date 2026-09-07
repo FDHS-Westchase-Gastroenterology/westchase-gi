@@ -5,6 +5,7 @@ import type { Page } from "@playwright/test";
 
 import { schedulingCommandOutcomeSchema } from "../../src/lib/portal/scheduling/contracts";
 import type { SchedulingInput } from "../../src/lib/portal/scheduling/contracts";
+import { appointmentReadOutcomeSchema } from "../../src/lib/portal/scheduling/read-contracts";
 import { serviceDb } from "../harness/env";
 import { createHandoffFixture, readHandoffRequest } from "../harness/handoff";
 import { schedulingFixtureDate } from "../harness/scheduling";
@@ -90,6 +91,26 @@ test("staff cookies book, reschedule, cancel, and undo a request and appointment
       ok: true,
       version: 3,
       request: { state: "contacted", version: 4, appointmentAt: null },
+    });
+    const detail = await page.evaluate(async (appointmentId) => {
+      const response = await fetch("/api/admin/scheduling", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "read_appointment", id: appointmentId }),
+      });
+      return response.text();
+    }, id);
+    const current = appointmentReadOutcomeSchema.parse(JSON.parse(detail));
+    expect(current).toMatchObject({
+      ok: true,
+      appointment: { requestWorkflowManaged: true },
+      request: { id: fixture.requestId, version: 4, state: "contacted" },
+    });
+    if (!current.ok) throw new Error("Appointment detail failed");
+    expect(current.history.items[0].requestChange).toMatchObject({
+      requestId: fixture.requestId,
+      afterVersion: 4,
+      before: { state: "booked" },
     });
     expect(await readHandoffRequest(db, fixture.requestId)).toMatchObject({
       status: "contacted",
