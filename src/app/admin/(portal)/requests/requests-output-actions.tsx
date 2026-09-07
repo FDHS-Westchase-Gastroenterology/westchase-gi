@@ -58,7 +58,7 @@ function RequestsOutputActionsBody({
         }}
         className={REQUESTS_OUTPUT_UTILITY_CLASS}
       >
-        <Download className="h-4 w-4" />
+        <Download data-icon="inline-start" />
         Export CSV
       </a>
       <span id="request-export-scope" className="sr-only">

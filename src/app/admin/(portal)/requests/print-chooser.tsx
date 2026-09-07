@@ -133,7 +133,7 @@ export function PrintChooser({
         aria-expanded={open}
         className={triggerClassName}
       >
-        <Printer className="h-4 w-4" />
+        <Printer data-icon="inline-start" />
         {triggerLabel}
       </button>
       <dialog
@@ -191,12 +191,12 @@ export function PrintChooser({
                   "aria-disabled:pointer-events-none aria-disabled:opacity-60",
                 )}
               >
-                <Printer className="h-4 w-4" />
+                <Printer data-icon="inline-start" />
                 <span data-testid="print-new-count">Print all New ({newCount})</span>
               </Link>
             ) : (
               <Button type="button" disabled>
-                <Printer className="h-4 w-4" />
+                <Printer data-icon="inline-start" />
                 {newCount === null ? "New is unavailable" : "No New requests"}
               </Button>
             )}
@@ -246,12 +246,12 @@ export function PrintChooser({
                 "aria-disabled:pointer-events-none aria-disabled:opacity-60",
               )}
             >
-              <Printer className="h-4 w-4" />
+              <Printer data-icon="inline-start" />
               Print selected
             </Link>
           ) : (
             <Button type="button" variant="outline" disabled>
-              <Printer className="h-4 w-4" />
+              <Printer data-icon="inline-start" />
               Print selected
             </Button>
           )}
