@@ -2168,10 +2168,6 @@
     margin-block-start: var(--ps-3);
   }
 
-  .portal-print-chooser {
-    width: min(92vw, 26rem);
-  }
-
   .portal-print-chooser-primary {
     margin-top: 1rem;
   }
