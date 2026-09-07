@@ -2156,11 +2156,12 @@
   }
 
   /* A form needs more room than a confirmation, and a tall day needs the sheet
-     to scroll inside the dialog rather than push the page. */
-  .portal-add-appointment {
+     to scroll inside the dialog rather than push the page. The compound
+     selector outranks the .portal-confirm-dialog grammar declared further
+     down at equal specificity; a bare class loses to it. */
+  .portal-confirm-dialog.portal-add-appointment {
     width: min(94vw, 40rem);
-    max-height: min(90vh, 46rem);
-    overflow-y: auto;
+    max-height: min(90dvh, 46rem);
   }
 
   .portal-add-appointment .portal-request-form-sheet {
