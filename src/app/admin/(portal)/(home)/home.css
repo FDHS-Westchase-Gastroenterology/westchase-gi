@@ -157,6 +157,15 @@
   transform: scale(0.97);
 }
 
+/* The count a ghost would show: quiet numerals after the value, so a glance
+   says whether the click is worth it. */
+.wgi-sug-count {
+  color: var(--color-muted-ink);
+  font-size: var(--pt-2xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
 /* ---------- The housed list ---------- */
 
 .wgi-line-list {

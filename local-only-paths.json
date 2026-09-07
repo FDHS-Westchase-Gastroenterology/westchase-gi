@@ -8,7 +8,7 @@
     "  1. .githooks/pre-commit          -> node scripts/check-local-only.mjs staged",
     "  2. .github/workflows/ci.yml      -> node scripts/check-local-only.mjs tracked",
     "  3. .gitignore (managed block)    -> node scripts/check-local-only.mjs write",
-    "  4. .claude/rules/local-only-directories.md (managed block, same write command)",
+    "  4. .claude/rules/local-only-directories.md (managed block, same write command; .claude/ itself is tracked by owner decision on 2026-09-06)",
     "Change the list here and run `npm run local-only:write`. CI fails if the .gitignore",
     "managed block has drifted from this file, so the copies cannot silently diverge.",
     "",

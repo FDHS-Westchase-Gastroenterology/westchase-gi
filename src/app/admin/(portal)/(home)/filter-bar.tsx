@@ -27,6 +27,7 @@ import { suggestionId } from "./home-line";
 import type { FilterSuggestion } from "./home-line";
 import { HomeRangeCalendar } from "./parts/calendar";
 import { HomePopover, HomePopoverContent, HomePopoverTrigger } from "./parts/popover";
+import { SuggestionPill } from "./suggestion-pill";
 
 /* The filter bar (brief §2.2): Add Filter, then active pills in URL order,
    then suggestion pills. Every toggle applies instantly — URL, pill label,
@@ -77,22 +78,14 @@ export function FilterBar({
           }}
         />
       ))}
-      {suggestions.map((suggestion) => {
-        const def = filterByKey(suggestion.key);
-        return (
-          <button
-            key={suggestionId(suggestion)}
-            type="button"
-            className="wgi-sug"
-            onClick={() => {
-              onActivate(suggestion);
-            }}
-          >
-            <span className="wgi-pill-key">{def.label}</span>
-            <span className="wgi-pill-value">{filterValueLabel(def, suggestion.raw, nowMs)}</span>
-          </button>
-        );
-      })}
+      {suggestions.map((suggestion) => (
+        <SuggestionPill
+          key={suggestionId(suggestion)}
+          suggestion={suggestion}
+          nowMs={nowMs}
+          onActivate={onActivate}
+        />
+      ))}
     </div>
   );
 }

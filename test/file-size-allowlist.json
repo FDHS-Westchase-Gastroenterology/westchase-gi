@@ -1,6 +1,6 @@
 {
   "src/app/[locale]/physicians/page.tsx": 448,
-  "src/app/admin/(portal)/(home)/filter-bar.tsx": 744,
+  "src/app/admin/(portal)/(home)/filter-bar.tsx": 737,
   "src/app/admin/(portal)/audit/recent-work-model.ts": 726,
   "src/app/admin/(portal)/portal-release-briefing.tsx": 586,
   "src/app/admin/(portal)/requests/new/staff-request-form.tsx": 679,

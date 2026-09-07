@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useActiveFilters } from "@/lib/portal/filters/use-filter-param";
 
 import { FilterBar } from "./filter-bar";
-import { BASE_SUGGESTIONS } from "./home-line";
+import { PLACEHOLDER_SUGGESTIONS } from "./home-line";
 
 import "./home.css";
 
@@ -26,7 +26,7 @@ const SKELETON_WIDTHS: readonly { name: string; second: string }[] = [
 export default function HomeLoading() {
   const { active, setParam } = useActiveFilters();
   const [nowMs] = useState(() => Date.now());
-  const suggestions = BASE_SUGGESTIONS.filter(
+  const suggestions = PLACEHOLDER_SUGGESTIONS.filter(
     (suggestion) => !active.some((entry) => entry.key === suggestion.key),
   );
 

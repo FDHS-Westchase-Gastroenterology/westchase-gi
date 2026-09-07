@@ -25,10 +25,13 @@ register(
       const relative =
         specifier.startsWith("./") || specifier.startsWith("../") || specifier.startsWith("file:");
       if (relative && !/\\.(?:[cm]?[jt]sx?|json)$/.test(specifier)) {
-        try {
-          return await nextResolve(specifier + ".ts", context);
-        } catch {
-          // Not a .ts module; fall through to the default resolution.
+        // A .ts module, then a directory barrel, then the default resolution.
+        for (const suffix of [".ts", "/index.ts"]) {
+          try {
+            return await nextResolve(specifier + suffix, context);
+          } catch {
+            // Not this shape; try the next.
+          }
         }
       }
       return nextResolve(specifier, context);
