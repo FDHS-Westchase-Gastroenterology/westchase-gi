@@ -38,6 +38,10 @@ An explicit assignment from Jason takes precedence over this default split. Clau
 implements the frontend; the Claude Design project remains the design authority described in
 `DESIGN.md`. Both agents follow the same contribution and release gates.
 
+Staff-portal integration starts with [FRONTEND-HANDOFF.md](FRONTEND-HANDOFF.md). It maps the
+implemented backend contracts to the remaining frontend controls, error handling, and acceptance
+paths. Keep its checklist current as those paths are connected and verified.
+
 ### Documentation style
 
 Write living instructions as the current operating model: name the workflow, its invariants, and

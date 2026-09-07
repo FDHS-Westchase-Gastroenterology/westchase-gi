@@ -9,6 +9,9 @@ For setup, verification, pull requests, and release procedure, use
 `DESIGN.md`, hard agent rules in `AGENTS.md`, and custody facts in `README.md`. The staff-facing
 appointment-request states and commands are owned by `src/lib/portal/workflow/contracts.ts`.
 
+For staff-portal frontend integration, use [FRONTEND-HANDOFF.md](FRONTEND-HANDOFF.md). It connects
+the contracts below to staff controls, error handling, and the remaining UI acceptance work.
+
 This file records intended design. Executable contracts show current behavior. If they disagree,
 treat the disagreement as a defect and fix both in the same change. Neither source is
 automatically right.
