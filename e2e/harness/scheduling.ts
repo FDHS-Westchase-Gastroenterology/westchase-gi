@@ -28,6 +28,13 @@ export async function saveScheduling(
     const startsAt = resolveAppointmentStart(start);
     if (startsAt === null) throw new Error("Invalid fixture time");
     command = { ...fields, startsAt };
+  } else if (parsed.command.kind === "cancel") {
+    const { callAgainOn, ...fields } = parsed.command;
+    command = {
+      ...fields,
+      callAgainAt:
+        callAgainOn === null ? null : resolveAppointmentStart({ date: callAgainOn, time: "08:00" }),
+    };
   } else command = parsed.command;
   const result = await db.rpc(
     parsed.action === "configure"

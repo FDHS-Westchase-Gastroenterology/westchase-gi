@@ -95,6 +95,9 @@ const RPC_SIGNATURES = {
   portal_delete_request_early: "p_actor_email text, p_request_id uuid, p_authorization_ref text",
   portal_execute_request_command:
     "p_actor_email text, p_request_id uuid, p_expected_version bigint, p_idempotency_key uuid, p_fingerprint text, p_decision jsonb, p_note text, p_transition_id uuid",
+  portal_apply_request_command:
+    "p_actor_email text, p_request_id uuid, p_expected_version bigint, p_idempotency_key uuid, p_fingerprint text, p_decision jsonb, p_note text, p_transition_id uuid",
+  portal_check_request_appointment: "",
   portal_execute_patient_command:
     "p_actor_id uuid, p_idempotency_key uuid, p_fingerprint text, p_command jsonb",
   portal_execute_billing_command:
@@ -190,6 +193,8 @@ const RPC_RESULTS = {
   portal_create_request_with_outbox: "uuid",
   portal_delete_request_early: "boolean",
   portal_execute_request_command: "jsonb",
+  portal_apply_request_command: "jsonb",
+  portal_check_request_appointment: "trigger",
   portal_execute_patient_command: "jsonb",
   portal_execute_billing_command: "jsonb",
   portal_read_patient_billing: "jsonb",
@@ -238,7 +243,7 @@ const AUDIT_RPC_SOURCES = {
   portal_complete_staff_onboarding: "staff",
   portal_create_staff_request: "staff",
   portal_delete_request_early: "staff",
-  portal_execute_request_command: "staff",
+  portal_apply_request_command: "staff",
   portal_execute_patient_command: "staff",
   portal_execute_billing_command: "staff",
   portal_execute_clinical_command: "staff",
@@ -874,6 +879,13 @@ async function main() {
       (row) => row.version === "20260907003004" && row.name === "optional_patient_clinical_records",
     ),
     "Optional patient clinical record migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) =>
+        row.version === "20260907010143" && row.name === "coordinate_requests_and_appointments",
+    ),
+    "Coordinated request and appointment migration is not applied",
   );
   assert(
     migrationRows.some(
@@ -1676,8 +1688,26 @@ async function main() {
   assert(
     ownershipTriggers.length === 1 &&
       ownershipTriggers[0].definition.includes("BEFORE UPDATE OF patient_id") &&
+      ownershipTriggers[0].definition.includes("request_workflow_managed") &&
       ownershipTriggers[0].definition.includes("portal_preserve_appointment_patient()"),
     "Appointment patient ownership must remain immutable",
+  );
+  const coordinationTriggers = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `select tgname,tgdeferrable,tginitdeferred,pg_get_triggerdef(oid) as definition from pg_trigger
+      where tgname in ('requests_appointment_consistent','appointments_request_consistent')
+      and tgrelid in ('public.requests'::regclass,'public.appointments'::regclass) and tgenabled<>'D';`,
+  });
+  assert(
+    coordinationTriggers.length === 2 &&
+      coordinationTriggers.every(
+        (row) =>
+          row.tgdeferrable &&
+          row.tginitdeferred &&
+          row.definition.includes("portal_check_request_appointment()"),
+      ),
+    "Request and appointment consistency must be checked at transaction end on both tables",
   );
 
   const billingConstraints = await queryDatabase({
@@ -1854,7 +1884,7 @@ async function main() {
         "portal_log_call_outcome must lock the request, require dates for Contacted outcomes, audit once, preserve all seven outcomes, and snapshot lifecycle state",
       );
     }
-    if (rpc.proname === "portal_execute_request_command") {
+    if (rpc.proname === "portal_apply_request_command") {
       const definition = rpc.definition.toLowerCase();
       assert(
         definition.includes("for update") &&
@@ -1874,7 +1904,18 @@ async function main() {
           definition.includes("v.follow_up_at is not null") &&
           definition.includes("t.prior_snapshot") &&
           definition.includes("migration_unconverted"),
-        "portal_execute_request_command must serialize versions, require coherent call-again commands, restore stored snapshots, persist idempotency evidence, constrain undo, and audit each accepted workflow command",
+        "portal_apply_request_command must serialize versions, require coherent call-again commands, restore stored snapshots, persist idempotency evidence, constrain undo, and audit each accepted workflow command",
+      );
+    }
+    if (rpc.proname === "portal_execute_request_command") {
+      const definition = rpc.definition.toLowerCase();
+      assert(
+        definition.includes("for update") &&
+          definition.includes("request_command_receipts") &&
+          definition.includes("request_workflow_managed") &&
+          definition.includes("request_transition_id=p_transition_id") &&
+          definition.includes("portal_apply_request_command"),
+        "The request command entry point must preserve replay and guard coordinated appointment changes",
       );
     }
     if (rpc.proname === "portal_create_request_with_outbox") {

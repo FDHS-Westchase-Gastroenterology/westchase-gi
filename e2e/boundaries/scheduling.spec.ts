@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { z } from "zod";
 
-import { appointmentAvailabilityOutcomeSchema } from "../../src/lib/portal/scheduling/contracts";
+import { appointmentAvailabilityOutcomeSchema } from "../../src/lib/portal/scheduling/read-contracts";
 import { resolveAppointmentStart } from "../../src/lib/portal/scheduling/time";
 import { expectDenied } from "../harness/assert";
 import { publishableDb, serviceDb } from "../harness/env";
@@ -342,7 +342,7 @@ test("scheduling authorizes live staff, restricts configuration, and preserves a
     const booking = fixture.booking();
     const sourceBooking = {
       ...booking,
-      command: { ...booking.command, sourceRequestId: requestId },
+      command: { ...booking.command, sourceRequestId: requestId, requestVersion: 1 },
     };
     const created = await fixture.save(sourceBooking);
     if (!created.ok) throw new Error("Linked booking failed");

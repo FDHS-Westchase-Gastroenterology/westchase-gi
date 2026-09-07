@@ -3,13 +3,13 @@ import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
+import { schedulingCommandOutcomeSchema } from "../../src/lib/portal/scheduling/contracts";
+import type { SchedulingInput } from "../../src/lib/portal/scheduling/contracts";
 import {
   appointmentAvailabilityOutcomeSchema,
   appointmentListOutcomeSchema,
   appointmentReadOutcomeSchema,
-  schedulingCommandOutcomeSchema,
-} from "../../src/lib/portal/scheduling/contracts";
-import type { SchedulingInput } from "../../src/lib/portal/scheduling/contracts";
+} from "../../src/lib/portal/scheduling/read-contracts";
 import { serviceDb } from "../harness/env";
 import { createSchedulingFixture, schedulingFixtureDate } from "../harness/scheduling";
 import { signIn } from "../harness/session";

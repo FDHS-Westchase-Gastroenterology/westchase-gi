@@ -4,12 +4,9 @@ import { createHmac } from "node:crypto";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import {
-  appointmentAvailabilityOutcomeSchema,
-  schedulingCommandOutcomeSchema,
-  schedulingInputSchema,
-} from "./contracts";
+import { schedulingCommandOutcomeSchema, schedulingInputSchema } from "./contracts";
 import type { SchedulingInput, SchedulingOutcome } from "./contracts";
+import { appointmentAvailabilityOutcomeSchema } from "./read-contracts";
 import {
   appointmentListDatabaseSchema,
   appointmentReadDatabaseSchema,
@@ -34,9 +31,16 @@ export async function executeSchedulingOperation(
         : process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
     if (key === undefined || key === "") return { ok: false, code: "unavailable" };
     // Hash the validated intent before resolving a date; retries keep their original meaning.
+    // Omitted coordination fields retain the fingerprint used before this contract existed.
+    const intent = Object.fromEntries(
+      Object.entries(operation.command).filter(
+        ([field, value]) =>
+          value !== null || (field !== "requestVersion" && field !== "callAgainOn"),
+      ),
+    );
     const fingerprint = createHmac("sha256", key)
       .update("wgi:scheduling-command:v1\0")
-      .update(JSON.stringify({ actorId, action: operation.action, command: operation.command }))
+      .update(JSON.stringify({ actorId, action: operation.action, command: intent }))
       .digest("hex");
     let command;
     if (operation.command.kind === "book" || operation.command.kind === "reschedule") {
@@ -44,6 +48,13 @@ export async function executeSchedulingOperation(
       const startsAt = resolveAppointmentStart(start);
       if (startsAt === null) return { ok: false, code: "invalid_local_time" };
       command = { ...fields, startsAt };
+    } else if (operation.command.kind === "cancel") {
+      const { callAgainOn, ...fields } = operation.command;
+      const callAgainAt =
+        callAgainOn === null ? null : resolveAppointmentStart({ date: callAgainOn, time: "08:00" });
+      if (callAgainOn !== null && callAgainAt === null)
+        return { ok: false, code: "invalid_local_time" };
+      command = { ...fields, callAgainAt };
     } else command = operation.command;
     const result = await db
       .rpc(

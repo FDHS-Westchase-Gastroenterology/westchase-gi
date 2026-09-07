@@ -341,8 +341,23 @@ are inferred from public content.
 Active, onboarded staff can book, reschedule, cancel, check in, complete, or mark an appointment
 as a no-show. Each appointment permanently belongs to one registered patient. Clinical and billing
 records are optional. A source request must already be linked to that patient; removing the intake
-link preserves the appointment. Booking through this API does not yet update the older request
-workflow's booked state. The frontend must not treat the two commands as one atomic handoff.
+link preserves the appointment. A new booking with a source request also requires its reviewed
+version. The command reserves the appointment and marks the request Booked in one transaction.
+Existing historical source associations keep their prior behavior; the migration does not infer
+missing appointments or rewrite legacy requests.
+
+For a coordinated booking, rescheduling updates both appointment times and request versions.
+Cancellation requires an explicit Call again day and returns the request to Contacted at 8 a.m.
+practice time. Undo restores both records only while the paired request change remains current.
+The appointment read returns the current request version and the corresponding change evidence.
+Arrival and visit outcomes leave the completed intake handoff intact. Intake cleanup removes
+source links without deleting an appointment or restoring an expired request through Undo.
+
+The request command entry point preserves existing retries and rejects separate workflow changes
+that would split an active coordinated appointment. Deferred database constraints also enforce
+Booked state and matching appointment time at transaction end, covering older server writers.
+Request and appointment changes lock the request before the patient and appointment. Rejected
+request transitions, reservation conflicts, and audit failures roll back the entire operation.
 
 Appointment types supply duration and provider preparation time. Each booking saves those values;
 later type edits leave existing reservations unchanged. Rescheduling keeps the saved values unless
