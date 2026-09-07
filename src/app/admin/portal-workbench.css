@@ -678,13 +678,6 @@
     gap: var(--ps-2);
   }
 
-  .portal-sheet-print,
-  .portal-sheet-add {
-    min-height: 2.75rem;
-    font-size: var(--pt-sm);
-    font-weight: 600;
-  }
-
   /* A ruled group. Space carries the grouping: generous above the heading,
      tight below it, and no gap between rows — the hairline is the ruling. */
   .portal-sheet-group {

@@ -83,12 +83,12 @@ export function HomeWorkbench({
           <div className="portal-sheet-commands print-hide">
             <PrintChooser
               statusCounts={statusCounts}
-              triggerClassName={cn(buttonVariants(), "portal-sheet-print")}
+              triggerClassName={buttonVariants()}
               triggerLabel="Print appointments"
             />
             <AddAppointmentDialog
               idempotencyKey={addRequestKey}
-              triggerClassName={cn(buttonVariants({ variant: "outline" }), "portal-sheet-add")}
+              triggerClassName={buttonVariants({ variant: "outline" })}
             />
           </div>
         </header>
