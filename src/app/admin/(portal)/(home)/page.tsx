@@ -206,7 +206,7 @@ export default async function AdminHomePage({
     recipientsRead,
     outboxRead,
   ] = await Promise.allSettled([
-    fetchAttentiveOpenRows(db, { now }),
+    fetchAttentiveOpenRows(db, { actorId: session.id, now }),
     fetchClosedRows(db, { from: 0, limit: CLOSED_WINDOW }),
     fetchStaffNameMap(db),
     db.from("requests").select("id", { count: "exact", head: true }).eq("status", "new"),

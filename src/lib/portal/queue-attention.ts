@@ -1,7 +1,12 @@
 import "server-only";
 
 import { previousBusinessMorningBoundary } from "./business-time";
+import { ATTENTION_BUCKETS } from "./queue-attention-contracts";
+import type { AttentionBucket } from "./queue-attention-contracts";
 import type { RequestStatus } from "./workflow/contracts";
+
+export { ATTENTION_BUCKETS } from "./queue-attention-contracts";
+export type { AttentionBucket } from "./queue-attention-contracts";
 
 export interface QueueAttentionRow {
   id: string;
@@ -15,16 +20,6 @@ export interface QueueAttentionRow {
  * contacted rows that went silent with no call-again day, call-agains still in
  * the future, then the scheduled and closed tails.
  */
-export const ATTENTION_BUCKETS = [
-  "new",
-  "follow_up",
-  "stale",
-  "upcoming",
-  "scheduled",
-  "closed",
-] as const;
-export type AttentionBucket = (typeof ATTENTION_BUCKETS)[number];
-
 export type AttentiveRow<T extends QueueAttentionRow> = T & {
   bucket: AttentionBucket;
   lastActivityAt: string | null; // Newest staff-work audit time for the row, if any

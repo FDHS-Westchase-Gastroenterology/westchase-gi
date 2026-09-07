@@ -168,6 +168,20 @@ branches on them. Read models such as `fetchRequestWorkSurface` combine current 
 append-only transitions, notes, notification evidence, and Undo eligibility into one UI-facing
 result. A failed read stays distinct from an empty queue or empty history.
 
+Request worklists use `portal_read_request_worklist`. It returns a bounded page, exact status
+counts, and matching Previous/Next neighbors from one database snapshot. Search is a literal,
+case-insensitive match against name, phone, and email. Status, attention group, location, and
+received-time filters apply before paging; equal sort times use the request ID as a stable tie
+breaker. Index-backed reads select the latest request activity and latest named actor directly,
+so long audit histories do not truncate either value.
+
+`/api/admin/request-worklist` exposes the same read to active onboarded staff through private,
+uncached, same-origin POST requests. The Appointments list fetches only its 50-row page. Detail
+navigation uses the complete filtered set. The current Home interface loads the entire open
+set through bounded 200-row reads because its filters operate on already-loaded rows; its
+closed tail remains a 60-row working window, with the complete archive on Appointments. A
+frontend that adds server paging can use the same API without changing ordering rules.
+
 ### Appointment-request commands
 
 The staff workflow has a read side and a command side:
@@ -177,9 +191,9 @@ workflow/contracts.ts ─► legal controls rendered by the UI
 
 Server Action
   └─► requireRole()
-      └─► parse staff input and practice-local time
-          └─► workflow/machine.ts decide()              pure policy
-              └─► workflow/commands.ts                  idempotency and concurrency shell
+      └─► workflow/commands.ts                         durable retry lookup
+          └─► resolve the staff's date choice           one operation clock
+              └─► workflow/machine.ts decide()          pure policy
                   └─► portal_execute_request_command    atomic database boundary
 ```
 
@@ -188,6 +202,9 @@ expected version, idempotency key, and payload fingerprint. The RPC locks the cu
 rechecks version and command semantics, updates the request, appends immutable transition
 evidence, writes any note and audit effects, and stores the replayable result as one transaction.
 Successful actions revalidate the affected portal routes.
+Date choices are fingerprinted before resolution. A retry after midnight or after an explicit
+date passes replays its original stored result instead of choosing a new date or rejecting a
+save that already succeeded.
 
 Undo appends a compensating transition and restores a saved coherent snapshot only when the
 target is still the latest eligible transition. It never deletes history.

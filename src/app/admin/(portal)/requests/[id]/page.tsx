@@ -1,33 +1,19 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PortalFeedbackProvider } from "@/app/admin/(portal)/portal-feedback";
 import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import { CLOSURE_REASON_LABELS, formatReceived } from "@/app/admin/(portal)/requests/format";
-import {
-  fetchAttentiveOpenRows,
-  fetchClosedRows,
-  fetchRequestDetail,
-  OPEN_CANDIDATE_LIMIT,
-  OPEN_STATUSES,
-} from "@/app/admin/(portal)/requests/queue";
+import { fetchRequestDetail } from "@/app/admin/(portal)/requests/queue";
 import { StatusBadge } from "@/app/admin/(portal)/requests/status-badge";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { requireRole } from "@/lib/portal/auth";
-import {
-  firstSearchParam,
-  parseRequestSearch,
-  requestSearchFilter,
-} from "@/lib/portal/request-query";
+import { firstSearchParam, parseRequestSearch } from "@/lib/portal/request-query";
+import { readRequestWorklist } from "@/lib/portal/request-worklist/service";
 import { serviceClient } from "@/lib/portal/server";
 import { displayNameOrEmail, fetchStaffNameMap } from "@/lib/portal/staff-identity";
 import { parseRequestStatus, presentationStatus } from "@/lib/portal/workflow/contracts";
-import type {
-  HistoryEntry,
-  RequestStatus,
-  RequestWorkSurface,
-} from "@/lib/portal/workflow/contracts";
+import type { HistoryEntry, RequestWorkSurface } from "@/lib/portal/workflow/contracts";
 import { fetchRequestWorkSurface } from "@/lib/portal/workflow/reads";
 
 import { RequestContactDetails } from "./request-contact-details";
@@ -61,42 +47,6 @@ function requestNavigation(statusParam: string | null, search: string, pageParam
   const continuityHref = (requestId: string): string =>
     `/admin/requests/${requestId}${continuityQuery ? `?${continuityQuery}` : ""}`;
   return { queueHref, continuityHref };
-}
-
-async function requestNeighbors(
-  db: SupabaseClient,
-  id: string,
-  statusParam: string | null,
-  searchFilter: string,
-) {
-  // Previous/next within the viewer's queue scope: the same attention
-  // Ordering the list renders, so staff can keep working without
-  // Returning to the list each time. A request outside the current scope
-  // (e.g. an old closed row beyond the tail window) simply shows no chain.
-  const scoped: RequestStatus | null =
-    statusParam === null ? null : parseRequestStatus(statusParam);
-  const neighborIds: string[] = [];
-  if (scoped !== "closed") {
-    const openStatuses = scoped ? [scoped] : [...OPEN_STATUSES];
-    const openRows = await fetchAttentiveOpenRows(db, {
-      statuses: openStatuses,
-      searchFilter,
-    });
-    neighborIds.push(...openRows.map((row) => row.id));
-  }
-  if (scoped === null || scoped === "closed") {
-    const closedRows = await fetchClosedRows(db, {
-      from: 0,
-      limit: OPEN_CANDIDATE_LIMIT,
-      searchFilter,
-    });
-    neighborIds.push(...closedRows.map((row) => row.id));
-  }
-  const selfIndex = neighborIds.indexOf(id);
-  const prevId = selfIndex > 0 ? neighborIds[selfIndex - 1] : null;
-  const nextId =
-    selfIndex >= 0 && selfIndex < neighborIds.length - 1 ? neighborIds[selfIndex + 1] : null;
-  return { prevId, nextId };
 }
 
 function requestHistoryViews(
@@ -215,12 +165,11 @@ export default async function RequestDetailPage({
     created?: string | string[];
   }>;
 }>) {
-  await requireRole("staff");
+  const session = await requireRole("staff");
   const { id } = await params;
   const continuity = await searchParams;
   const statusParam = firstParam(continuity.status);
   const search = parseRequestSearch(continuity.q);
-  const searchFilter = search ? requestSearchFilter(search) : "";
   const justCreated = firstParam(continuity.created) === "1";
 
   const { queueHref, continuityHref } = requestNavigation(
@@ -234,14 +183,22 @@ export default async function RequestDetailPage({
   // Version for optimistic commands, Undo eligibility, and Request history.
   // A failed read throws to the error boundary — it never renders as an
   // Empty history or a workable request (spec §3).
-  const [row, surface, nameMap] = await Promise.all([
+  const status = statusParam === null ? null : parseRequestStatus(statusParam);
+  const [row, surface, nameMap, neighbors] = await Promise.all([
     fetchRequestDetail(db, id),
     fetchRequestWorkSurface(db, id),
     fetchStaffNameMap(db),
+    readRequestWorklist(db, session.id, {
+      action: "neighbors",
+      requestId: id,
+      query: search,
+      statuses: status === null ? null : [status],
+    }),
   ]);
   if (row === null || surface === null) notFound();
 
-  const { prevId, nextId } = await requestNeighbors(db, id, statusParam, searchFilter);
+  if (!neighbors.ok) throw new Error(`Queue read failed: ${neighbors.code}`);
+  const { prevId, nextId } = neighbors.neighbors;
 
   const staffCreated = surface.history.some(
     (entry) => entry.kind === "created" && entry.origin === "staff",

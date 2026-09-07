@@ -96,6 +96,9 @@ const RPC_SIGNATURES = {
   portal_execute_billing_command:
     "p_actor_id uuid, p_idempotency_key uuid, p_fingerprint text, p_command jsonb",
   portal_read_patient_billing: "p_actor_id uuid, p_patient_id uuid, p_before_version bigint",
+  portal_read_request_worklist: "p_actor_id uuid, p_filter jsonb",
+  portal_request_worklist_rows:
+    "p_query text, p_location text, p_received_from timestamp with time zone, p_received_to timestamp with time zone, p_now timestamp with time zone",
   portal_search_patients:
     "p_actor_id uuid, p_query text, p_archived boolean, p_limit integer, p_after_name text, p_after_id uuid",
   portal_read_patient:
@@ -179,6 +182,9 @@ const RPC_RESULTS = {
   portal_execute_patient_command: "jsonb",
   portal_execute_billing_command: "jsonb",
   portal_read_patient_billing: "jsonb",
+  portal_read_request_worklist: "jsonb",
+  portal_request_worklist_rows:
+    "TABLE(id uuid, name text, phone text, location text, preferred_time text, locale text, status text, created_at timestamp with time zone, follow_up_at timestamp with time zone, legacy_review_required boolean, version bigint, last_activity_at timestamp with time zone, last_activity_by text, bucket text, bucket_order integer, ascending_time timestamp with time zone, descending_time timestamp with time zone)",
   portal_search_patients: "jsonb",
   portal_read_patient: "jsonb",
   portal_preserve_appointment_patient: "trigger",
@@ -839,6 +845,12 @@ async function main() {
       (row) => row.version === "20260906231144" && row.name === "patient_billing_ledger",
     ),
     "Patient billing ledger migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) => row.version === "20260907000133" && row.name === "complete_request_worklists",
+    ),
+    "Complete request worklist migration is not applied",
   );
   assert(
     migrationRows.some(

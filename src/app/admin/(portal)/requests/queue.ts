@@ -5,14 +5,9 @@ import { z } from "zod";
 
 import { REQUEST_LOCATIONS, REQUEST_TIMES } from "@/lib/portal/contracts";
 import type { RequestLocation, RequestTime } from "@/lib/portal/contracts";
-import { orderQueueRows } from "@/lib/portal/queue-attention";
 import type { AttentiveRow } from "@/lib/portal/queue-attention";
-import { uniqueByRequestId } from "@/lib/portal/request-query";
-import {
-  presentationStatus,
-  storedRequestStateSchema,
-  VIEW_DB_STATUSES,
-} from "@/lib/portal/workflow/contracts";
+import { readRequestWorklist } from "@/lib/portal/request-worklist/service";
+import { presentationStatus, storedRequestStateSchema } from "@/lib/portal/workflow/contracts";
 import type { RequestStatus } from "@/lib/portal/workflow/contracts";
 
 // Shared queue reads for the requests list and the detail page's
@@ -42,12 +37,6 @@ export type WorkedQueueRow = AttentiveQueueRow & { lastActivityBy: string | null
 
 const COLUMNS =
   "id, name, phone, location, preferred_time, locale, status, created_at, follow_up_at, legacy_review_required, version";
-
-// Open-queue candidates are bounded well past any realistic front-desk
-// Backlog; beyond this the attention ordering would need a database view.
-// ponytail: if open rows ever approach the cap, revisit with a computed
-// Ordering column instead of widening it.
-export const OPEN_CANDIDATE_LIMIT = 500;
 
 export type OpenStatus = Exclude<RequestStatus, "closed">;
 export const OPEN_STATUSES = [
@@ -79,12 +68,6 @@ function toQueueRow(row: z.infer<typeof storedQueueRowSchema>): QueueRow {
     version: Number(row.version),
   };
 }
-
-const activityRowSchema = z.object({
-  entity_id: z.string().nullable(),
-  at: z.string(),
-  actor_email: z.string().nullable(),
-});
 
 export interface RequestDetailRow {
   id: string;
@@ -137,76 +120,37 @@ export async function fetchRequestDetail(
 export async function fetchAttentiveOpenRows(
   db: SupabaseClient,
   {
+    actorId,
     statuses = [...OPEN_STATUSES],
-    searchFilter = "",
     now = new Date(),
   }: Readonly<{
+    actorId: string;
     statuses?: readonly OpenStatus[];
-    searchFilter?: string;
     now?: Date;
-  }> = {},
+  }>,
 ): Promise<WorkedQueueRow[]> {
-  const dbStatuses = statuses.flatMap((view) => VIEW_DB_STATUSES[view]);
-  let query = db
-    .from("requests")
-    .select(COLUMNS)
-    .in("status", dbStatuses)
-    .order("created_at", { ascending: false })
-    .limit(OPEN_CANDIDATE_LIMIT);
-  if (searchFilter) query = query.or(searchFilter);
-  const { data, error } = await query;
-  if (error) throw new Error(`Queue read failed: ${error.code}`);
-  const parsedRows = z.array(storedQueueRowSchema).safeParse(data);
-  if (!parsedRows.success) throw new Error("Queue read failed: invalid");
-  // Unique at the request, not the related-row fan-out. Counts on the
-  // Page use the same unique `requests` rows, so chips, range, and list
-  // Cannot disagree because notes or events matched more than once.
-  const rows = uniqueByRequestId(parsedRows.data.map(toQueueRow));
-
-  const activityById = new Map<string, string>();
-  // "Last worked by": the newest audit row that names a staff actor. Tracked
-  // With its own timestamp so row order inside a chunk cannot change the answer.
-  const actorById = new Map<string, { at: string; email: string }>();
-  const ids = rows.map((row) => row.id);
-  // PostgREST URL limits reject long `in` lists (a 500-row candidate set is
-  // ~18KB of UUIDs), so the activity map is fetched in parallel chunks.
-  const ACTIVITY_ID_CHUNK = 100;
-  const activityChunks = await Promise.all(
-    Array.from({ length: Math.ceil(ids.length / ACTIVITY_ID_CHUNK) }, (_, chunkIndex) =>
-      db
-        .from("audit_log")
-        .select("entity_id, at, actor_email")
-        .eq("entity", "requests")
-        .in(
-          "entity_id",
-          ids.slice(chunkIndex * ACTIVITY_ID_CHUNK, (chunkIndex + 1) * ACTIVITY_ID_CHUNK),
-        ),
-    ),
-  );
-  for (const chunk of activityChunks) {
-    if (chunk.error) {
-      throw new Error(`Queue read failed: ${chunk.error.code}`);
-    }
-    for (const row of chunk.data) {
-      const parsed = activityRowSchema.safeParse(row);
-      if (!parsed.success) continue;
-      const { entity_id: id, at, actor_email: actor } = parsed.data;
-      if (id === null || id === "") continue;
-      const current = activityById.get(id);
-      if (current === undefined || current === "" || at > current) {
-        activityById.set(id, at);
-      }
-      if (actor !== null && actor !== "") {
-        const knownActor = actorById.get(id);
-        if (knownActor === undefined || at > knownActor.at) actorById.set(id, { at, email: actor });
-      }
-    }
+  const rows: WorkedQueueRow[] = [];
+  let offset = 0;
+  // The existing Home filters need the full open set. Fetch bounded pages;
+  // Consumers with their own paging use the same read operation directly.
+  for (;;) {
+    const page = await readRequestWorklist(
+      db,
+      actorId,
+      {
+        action: "page",
+        statuses,
+        offset,
+        limit: 200,
+      },
+      now,
+    );
+    if (!page.ok) throw new Error(`Queue read failed: ${page.code}`);
+    rows.push(...page.items);
+    if (page.nextOffset === null) return rows;
+    if (page.nextOffset <= offset) throw new Error("Queue read failed: invalid page");
+    offset = page.nextOffset;
   }
-
-  return orderQueueRows(rows, activityById, now).map((row) => ({
-    ...row,
-    lastActivityBy: actorById.get(row.id)?.email ?? null,
-  }));
 }
 
 /**
@@ -230,6 +174,7 @@ export async function fetchClosedRows(
     .select(COLUMNS)
     .eq("status", "closed")
     .order("created_at", { ascending: false })
+    .order("id", { ascending: true })
     .range(from, from + limit - 1);
   if (searchFilter) query = query.or(searchFilter);
   const { data, error } = await query;

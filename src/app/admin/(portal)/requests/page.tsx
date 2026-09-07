@@ -13,16 +13,13 @@ import {
   firstSearchParam,
   parsePage,
   parseRequestSearch,
-  requestSearchFilter,
   requestsHref,
+  REQUEST_PAGE_SIZE,
 } from "@/lib/portal/request-query";
 import { requestPageWindow } from "@/lib/portal/request-window";
+import { readRequestWorklist } from "@/lib/portal/request-worklist/service";
 import { serviceClient } from "@/lib/portal/server";
-import {
-  parseRequestStatus,
-  REQUEST_STATUSES,
-  VIEW_DB_STATUSES,
-} from "@/lib/portal/workflow/contracts";
+import { parseRequestStatus, REQUEST_STATUSES } from "@/lib/portal/workflow/contracts";
 import type { RequestStatus } from "@/lib/portal/workflow/contracts";
 
 import {
@@ -32,7 +29,6 @@ import {
   STATUS_LABELS,
   TIME_LABELS,
 } from "./format";
-import { fetchAttentiveOpenRows, fetchClosedRows, OPEN_STATUSES } from "./queue";
 import type { QueueRow } from "./queue";
 import { QueuePagination } from "./request-pagination";
 import { EmptyQueue } from "./request-queue-empty";
@@ -264,78 +260,41 @@ function QueueRowLink({
 export default async function AdminRequestsPage({
   searchParams,
 }: Readonly<{ searchParams: SearchParams }>) {
-  await requireRole("staff");
+  const session = await requireRole("staff");
   const params = await searchParams;
   const filter = activeFilter(params.status);
   const page = parsePage(params.page);
   const search = parseRequestSearch(params.q);
-  const searchFilter = search ? requestSearchFilter(search) : "";
   const now = new Date();
 
   const db = serviceClient();
 
-  // Unique per-status counts stay on the requests table so related-row
-  // Matches cannot inflate chips or the summary. The open set is small
-  // Enough to order by attention in memory.
-  const countQueries = REQUEST_STATUSES.map((status) => {
-    let countQuery = db
-      .from("requests")
-      .select("id", { count: "exact", head: true })
-      .in("status", [...VIEW_DB_STATUSES[status]]);
-    if (searchFilter) countQuery = countQuery.or(searchFilter);
-    return countQuery;
-  });
-
-  const openStatuses = filter === "all" ? OPEN_STATUSES : filter === "closed" ? [] : [filter];
-  const [orderedOpen, ...countResults] = await Promise.all([
-    openStatuses.length > 0
-      ? fetchAttentiveOpenRows(db, { statuses: openStatuses, searchFilter, now })
-      : Promise.resolve([]),
-    ...countQueries,
-  ]);
-
-  const countError = countResults.find((result) => result.error)?.error;
-  if (countError) {
-    throw new Error(`Queue read failed: ${countError.code}`);
-  }
-  const counts = {
-    new: countResults[0].count ?? 0,
-    contacted: countResults[1].count ?? 0,
-    scheduled: countResults[2].count ?? 0,
-    closed: countResults[3].count ?? 0,
-  } as const satisfies Record<RequestStatus, number>;
+  const result = await readRequestWorklist(
+    db,
+    session.id,
+    {
+      action: "page",
+      query: search,
+      statuses: filter === "all" ? null : [filter],
+      offset: (page - 1) * REQUEST_PAGE_SIZE,
+      limit: REQUEST_PAGE_SIZE,
+    },
+    now,
+  );
+  if (!result.ok) throw new Error(`Queue read failed: ${result.code}`);
+  const { counts, items: requests } = result;
   const total = REQUEST_STATUSES.reduce((sum, status) => sum + counts[status], 0);
-
-  // The page window — open slice, closed-tail range, display totals, and the
-  // Past-the-end redirect — is pure math, unit-tested in request-window.
-  // Unique per-status SQL counts are the only total; there is no second
-  // Unfiltered closed probe that can disagree with the chips and rows.
-  const pageWindow = requestPageWindow({
-    filter,
-    page,
-    counts,
-    openRows: orderedOpen.length,
-  });
+  const openRows =
+    filter === "closed"
+      ? 0
+      : filter === "all"
+        ? counts.new + counts.contacted + counts.scheduled
+        : counts[filter];
+  const pageWindow = requestPageWindow({ filter, page, counts, openRows });
   if (pageWindow.redirectPage !== null) {
     redirect(requestsHref({ page: pageWindow.redirectPage, search, status: filter }));
   }
   const { filteredTotal } = pageWindow;
-
-  // The page window: open rows first (attention-ordered), then the closed
-  // Tail (newest first) fetched from its own offset.
-  const openSlice = orderedOpen.slice(pageWindow.openFrom, pageWindow.openTo);
-  let closedSlice: QueueRow[] = [];
-  if (pageWindow.closedLimit > 0) {
-    closedSlice = await fetchClosedRows(db, {
-      from: pageWindow.closedFrom,
-      limit: pageWindow.closedLimit,
-      searchFilter,
-    });
-  }
-
-  const openBuckets = new Map(openSlice.map((row) => [row.id, row]));
-  const requests = [...openSlice, ...closedSlice];
-
   const filters: { key: RequestStatus | "all"; label: string; count: number }[] = [
     { key: "all", label: "All", count: total },
     ...REQUEST_STATUSES.map((status) => ({
@@ -396,21 +355,18 @@ export default async function AdminRequestsPage({
           <EmptyQueue page={page} search={search} filter={filter} />
         ) : (
           <ul data-testid="request-list" className="portal-ledger-list">
-            {requests.map((request) => {
-              const derived = openBuckets.get(request.id);
-              return (
-                <QueueRowLink
-                  key={request.id}
-                  request={request}
-                  bucket={derived?.bucket ?? "closed"}
-                  lastActivityAt={derived?.lastActivityAt ?? null}
-                  page={page}
-                  search={search}
-                  filter={filter}
-                  now={now}
-                />
-              );
-            })}
+            {requests.map((request) => (
+              <QueueRowLink
+                key={request.id}
+                request={request}
+                bucket={request.bucket}
+                lastActivityAt={request.status === "closed" ? null : request.lastActivityAt}
+                page={page}
+                search={search}
+                filter={filter}
+                now={now}
+              />
+            ))}
           </ul>
         )}
 

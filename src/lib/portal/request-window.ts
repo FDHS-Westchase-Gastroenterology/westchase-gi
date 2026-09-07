@@ -8,11 +8,8 @@
 // Instead of reaching staff.
 //
 // Display totals come from the exact unique per-status SQL counts. The open
-// Slice is taken from the capped in-memory open fetch. Under the cap the two
-// Agree. Beyond it the open slice simply runs out and the closed tail is
-// Read from its own offset against the unique closed count — the totals stay
-// Exact even though the deepest pages thin out (see OPEN_CANDIDATE_LIMIT in
-// The route's queue.ts, which would need a database view before that matters).
+// And open-row count come from the same complete database read as the page.
+// The window therefore describes all matching requests, including deep pages.
 //
 // Closed paging uses counts.closed, not a second unfiltered probe. A search
 // That matches one unique closed request must show 1–1 of 1 even when other
@@ -28,7 +25,7 @@ export interface RequestPageWindowInput {
   page: number;
   /** Exact unique per-status request counts for the active search. */
   counts: Record<RequestStatus, number>;
-  /** Unique rows the capped attention-ordered open fetch actually returned. */
+  /** Complete count of open requests matching the active filter and search. */
   openRows: number;
 }
 

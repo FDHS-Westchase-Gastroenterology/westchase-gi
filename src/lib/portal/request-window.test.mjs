@@ -157,26 +157,23 @@ const cases = [
     },
   },
   {
-    // The open fetch caps at OPEN_CANDIDATE_LIMIT (500); the SQL counts stay
-    // Exact. The window follows the capped fetch, so deep pages thin out
-    // Instead of inventing rows the fetch never returned.
-    name: "past the open-fetch cap the totals stay exact while the window follows the capped fetch",
+    name: "the eleventh page includes older open requests before the closed tail",
     input: {
       filter: "all",
       page: 11,
       counts: counts({ new: 500, contacted: 100, closed: 10 }),
-      openRows: 500,
+      openRows: 600,
     },
     expected: {
       filteredTotal: 610,
       totalPages: 13,
       redirectPage: null,
       openFrom: 500,
-      openTo: 500,
+      openTo: 550,
       closedFrom: 0,
-      closedLimit: 50,
+      closedLimit: 0,
       firstShown: 501,
-      lastShown: 510,
+      lastShown: 550,
     },
   },
   {
