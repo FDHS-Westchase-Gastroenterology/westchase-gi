@@ -122,13 +122,12 @@ test.describe("isolated portal scale boundaries", () => {
   });
 
   test("paginates Activity beyond the first 100 rows", async ({ page }) => {
+    const technicalRows = page.getByTestId("audit-table").getByRole("row").filter({
+      hasText: actorEmail,
+    });
     await signIn(page);
     await page.goto("/admin/audit");
-    await expect(
-      page.getByTestId("audit-table").getByRole("row").filter({
-        hasText: actorEmail,
-      }),
-    ).toHaveCount(100);
+    await expect(technicalRows).toHaveCount(100);
 
     await page
       .getByRole("navigation", { name: "Activity log pages" })
@@ -136,14 +135,20 @@ test.describe("isolated portal scale boundaries", () => {
       .click();
     await expect(page).toHaveURL(/\/admin\/audit\?page=2#audit-page-summary$/);
     await expect(page.getByTestId("audit-page-summary")).toBeFocused();
-    await expect(
-      page.getByTestId("audit-table").getByRole("row").filter({
-        hasText: actorEmail,
-      }),
-    ).toHaveCount(1);
+    await expect(technicalRows).toHaveCount(1);
 
     const technicalSummary = page.getByTestId("audit-page-summary");
-    const technicalPageTwoSummary = await technicalSummary.innerText();
+    // Activity can grow between reads; keep the page while showing the new records.
+    const { error: appendedActivityError } = await db.from("audit_log").insert(
+      Array.from({ length: 2 }, (_, index) => ({
+        actor_email: actorEmail,
+        action: "test.scale",
+        entity: "requests",
+        detail: {},
+        at: new Date(Date.UTC(2041, 0, 1) + (101 + index) * 1000).toISOString(),
+      })),
+    );
+    expect(appendedActivityError).toBeNull();
     await page.getByLabel("Search recent work").fill(actorEmail);
     await page.getByRole("button", { name: "Search", exact: true }).click();
     await expect(page).toHaveURL(
@@ -161,7 +166,8 @@ test.describe("isolated portal scale boundaries", () => {
         !url.searchParams.has("type") &&
         !url.searchParams.has("rw"),
     );
-    await expect(technicalSummary).toHaveText(technicalPageTwoSummary);
+    await expect(technicalSummary).toHaveText(/^Showing 101–\d+ of \d+$/);
+    await expect(technicalRows).toHaveCount(3);
     await expect(page.getByLabel("Search recent work")).toBeFocused();
   });
 });
