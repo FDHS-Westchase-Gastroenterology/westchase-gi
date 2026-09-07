@@ -244,7 +244,7 @@ export function PrintChooser({
               })}
             </FieldGroup>
           </FieldSet>
-          <p id={summaryId} data-testid="print-chooser-summary">
+          <p id={summaryId} aria-live="polite" data-testid="print-chooser-summary">
             {selectionSummary(selected, statusCounts)}
           </p>
         </div>
