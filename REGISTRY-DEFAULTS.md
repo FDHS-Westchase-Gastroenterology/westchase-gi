@@ -68,4 +68,10 @@ registry installation, Preview measurements, and human review. Measurement repor
 - Verify the combined branch after resolving concurrent changes from #224.
 - Prove registry installation and independence from Westchase during extraction.
 
-This setup commit changes no component, motion value, application behavior, or database schema.
+The active iteration is Accordion on the staff Help page. Stock behavior is preserved at
+`5e26ae1726b3e9b25c79b6ca0a3548e37ee21f8b`; the first critically damped spring candidate is
+`7bbee27af7679a8b8a5ed342ed5e8ee91fe0a90c`. Both versions package reusable source through
+`registry.json` and install it into the application's `ui/` directory. The candidate keeps the
+same Help content and grouping. Review the exact Preview reports in
+[component-evidence/accordion](component-evidence/accordion) before approving another behavior
+change or proceeding to another component. Neither version changes the database schema.
