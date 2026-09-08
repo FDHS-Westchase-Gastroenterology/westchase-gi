@@ -1,0 +1,81 @@
+[
+  {
+    "action": "normal-open",
+    "distinctHeights": 58,
+    "intermediateSamples": 63,
+    "minHeight": 0,
+    "maxHeight": 133.515625
+  },
+  {
+    "action": "open-before-live-reduce",
+    "distinctHeights": 16,
+    "intermediateSamples": 15,
+    "minHeight": 0,
+    "maxHeight": 131.515625
+  },
+  {
+    "action": "request-live-reduce",
+    "distinctHeights": 5,
+    "intermediateSamples": 4,
+    "minHeight": 132.203125,
+    "maxHeight": 133.515625
+  },
+  {
+    "action": "reduced-close",
+    "distinctHeights": 2,
+    "intermediateSamples": 0,
+    "minHeight": 0,
+    "maxHeight": 133.515625
+  },
+  {
+    "action": "reduced-open",
+    "distinctHeights": 2,
+    "intermediateSamples": 0,
+    "minHeight": 0,
+    "maxHeight": 133.515625
+  },
+  {
+    "action": "normal-restored-close",
+    "distinctHeights": 29,
+    "intermediateSamples": 28,
+    "minHeight": 0,
+    "maxHeight": 133.515625
+  },
+  {
+    "action": "normal-restored-open",
+    "distinctHeights": 31,
+    "intermediateSamples": 33,
+    "minHeight": 0,
+    "maxHeight": 133.515625
+  },
+  {
+    "action": "keyboard-close",
+    "distinctHeights": 2,
+    "intermediateSamples": 0,
+    "minHeight": 0,
+    "maxHeight": 133.515625
+  },
+  {
+    "action": "keyboard-open",
+    "distinctHeights": 2,
+    "intermediateSamples": 0,
+    "minHeight": 0,
+    "maxHeight": 133.515625
+  },
+  {
+    "liveChangeBefore": {
+      "time": 13282.800000000003,
+      "height": 133.09375,
+      "target": 133.515625,
+      "reduced": false,
+      "hidden": null
+    },
+    "liveChangeAfter": {
+      "time": 13335.800000000003,
+      "height": 133.515625,
+      "target": 133.515625,
+      "reduced": true,
+      "hidden": null
+    }
+  }
+]
