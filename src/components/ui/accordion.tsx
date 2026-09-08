@@ -1,15 +1,42 @@
+"use client";
+
 import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
 import { cn } from "cn";
 import { ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { useContext, useMemo, useRef } from "react";
+
+import { AccordionMotionContext, AccordionSpringPanel } from "./accordion/motion";
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- Base UI props include React refs and DOM event types; the wrapper does not mutate them.
-function Accordion({ className, ...props }: Readonly<AccordionPrimitive.Root.Props>) {
+function Accordion({
+  className,
+  keepMounted = false,
+  hiddenUntilFound = false,
+  onValueChange,
+  ...props
+}: Readonly<AccordionPrimitive.Root.Props>) {
+  const activation = useRef({ sequence: 0, instant: true });
+  const context = useMemo(
+    () => ({ keepMounted, hiddenUntilFound, activation }),
+    [keepMounted, hiddenUntilFound],
+  );
   return (
-    <AccordionPrimitive.Root
-      data-slot="accordion"
-      className={cn("flex w-full flex-col", className)}
-      {...props}
-    />
+    <AccordionMotionContext value={context}>
+      <AccordionPrimitive.Root
+        data-slot="accordion"
+        onValueChange={(value, details) => {
+          const event = details.event;
+          activation.current = {
+            sequence: activation.current.sequence + 1,
+            instant: !(event instanceof MouseEvent && event.detail > 0),
+          };
+          onValueChange?.(value, details);
+          if (details.isCanceled) activation.current.instant = true;
+        }}
+        className={cn("flex w-full flex-col", className)}
+        {...props}
+      />
+    </AccordionMotionContext>
   );
 }
 
@@ -35,7 +62,7 @@ function AccordionTrigger({
       <AccordionPrimitive.Trigger
         data-slot="accordion-trigger"
         className={cn(
-          "group/accordion-trigger relative flex flex-1 items-start justify-between rounded-lg border border-transparent py-2.5 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:after:border-ring aria-disabled:pointer-events-none aria-disabled:opacity-50 **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:size-4 **:data-[slot=accordion-trigger-icon]:text-muted-foreground",
+          "group/accordion-trigger relative flex flex-1 items-start justify-between rounded-lg border border-transparent py-2.5 text-left text-sm font-medium transition-[color,box-shadow] duration-150 outline-none hover:underline focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:after:border-ring aria-disabled:pointer-events-none aria-disabled:opacity-50 **:data-[slot=accordion-trigger-icon]:ml-auto **:data-[slot=accordion-trigger-icon]:size-4 **:data-[slot=accordion-trigger-icon]:text-muted-foreground",
           className,
         )}
         {...props}
@@ -58,17 +85,32 @@ function AccordionTrigger({
 function AccordionContent({
   className,
   children,
+  render,
+  keepMounted,
+  hiddenUntilFound,
   ...props
 }: Readonly<AccordionPrimitive.Panel.Props>) {
+  const context = useContext(AccordionMotionContext);
   return (
     <AccordionPrimitive.Panel
       data-slot="accordion-content"
-      className="overflow-hidden text-sm data-open:animate-accordion-down data-closed:animate-accordion-up"
+      className="overflow-hidden text-sm"
       {...props}
+      keepMounted
+      hiddenUntilFound={false}
+      render={(elementProps, state) => (
+        <AccordionSpringPanel
+          elementProps={elementProps}
+          state={state}
+          render={render}
+          keepMounted={keepMounted ?? context.keepMounted}
+          hiddenUntilFound={hiddenUntilFound ?? context.hiddenUntilFound}
+        />
+      )}
     >
       <div
         className={cn(
-          "h-(--accordion-panel-height) pt-0 pb-2.5 data-ending-style:h-0 data-starting-style:h-0 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4",
+          "pt-0 pb-2.5 [&_a]:underline [&_a]:underline-offset-3 [&_a]:hover:text-foreground [&_p:not(:last-child)]:mb-4",
           className,
         )}
       >

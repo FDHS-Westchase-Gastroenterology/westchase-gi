@@ -7,13 +7,18 @@
       "name": "accordion",
       "type": "registry:ui",
       "title": "Accordion",
-      "description": "Base UI Accordion from shadcn base-nova. The first version preserves upstream behavior for comparison in the staff Help page.",
-      "dependencies": ["@base-ui/react", "cn", "lucide-react"],
+      "description": "Accessible Accordion with a critically damped, interruptible panel spring and immediate keyboard and reduced-motion updates.",
+      "dependencies": ["@base-ui/react", "cn", "lucide-react", "motion"],
       "files": [
         {
           "path": "src/components/stock/accordion.tsx",
           "type": "registry:ui",
           "target": "src/components/ui/accordion.tsx"
+        },
+        {
+          "path": "src/components/stock/accordion/motion.tsx",
+          "type": "registry:ui",
+          "target": "src/components/ui/accordion/motion.tsx"
         }
       ]
     }

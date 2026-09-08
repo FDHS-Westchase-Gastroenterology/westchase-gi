@@ -59,3 +59,59 @@ test("Existing help links reveal their answers on arrival and during same-page n
     page.getByRole("button", { name: "If something looks wrong", exact: true }),
   ).toHaveAttribute("aria-expanded", "true");
 });
+
+test("Reduced motion reveals a complete answer within the next rendered frames", async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/admin/help");
+  const queue = page.getByRole("button", {
+    name: "What the appointment request queue is",
+    exact: true,
+  });
+  const measurement = await queue.evaluate(async (trigger) => {
+    trigger.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }));
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          resolve();
+        });
+      });
+    });
+    const panel = trigger
+      .closest('[data-slot="accordion-item"]')
+      ?.querySelector('[data-slot="accordion-content"]');
+    if (!panel?.firstElementChild) throw new Error("Expected the revealed answer");
+    return {
+      expanded: trigger.getAttribute("aria-expanded"),
+      height: panel.getBoundingClientRect().height,
+      contentHeight: panel.firstElementChild.getBoundingClientRect().height,
+    };
+  });
+  expect(measurement.expanded).toBe("true");
+  expect(Math.abs(measurement.height - measurement.contentHeight)).toBeLessThanOrEqual(1);
+});
+
+test("Browser find reveals a closed answer and its height follows a narrower viewport", async ({
+  page,
+}) => {
+  await page.goto("/admin/help");
+  const item = page.locator("#website-changes");
+  const panel = item.locator('[data-slot="accordion-content"]');
+  await expect(panel).toHaveAttribute("hidden", "until-found");
+  await expect(panel).not.toHaveAttribute("inert");
+  await panel.dispatchEvent("beforematch");
+  await expect(item.getByRole("button")).toHaveAttribute("aria-expanded", "true");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect
+    .poll(async () =>
+      panel.evaluate((element) => {
+        if (!element.firstElementChild) throw new Error("Expected answer content");
+        return Math.abs(
+          element.getBoundingClientRect().height -
+            element.firstElementChild.getBoundingClientRect().height,
+        );
+      }),
+    )
+    .toBeLessThanOrEqual(1);
+});
