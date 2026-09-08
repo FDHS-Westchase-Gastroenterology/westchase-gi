@@ -156,7 +156,7 @@
     {
       "name": "accordion-critical-spring",
       "appliedAt": "2026-09-08",
-      "scope": "Accordion panel uses the reusable accordion/motion adapter with a critically damped spring, velocity-preserving retargeting, immediate keyboard/reduced-motion changes, native find support, and measured content height. Trigger transitions are limited to color and focus shadow. The Help application installs both files through registry.json."
+      "scope": "Accordion panel uses the reusable accordion/motion adapter with a critically damped spring, velocity-preserving retargeting, immediate keyboard/reduced-motion changes, native find support, server-rendered hidden panels and live reduced-motion preference changes, and measured content height. Trigger transitions are limited to color and focus shadow. The Help application installs both files through registry.json."
     }
   ]
 }

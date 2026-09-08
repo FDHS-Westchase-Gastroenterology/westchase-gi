@@ -2,8 +2,15 @@
 
 import type { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
 import { useRender } from "@base-ui/react/use-render";
-import { animate, useMotionValue, useMotionValueEvent, useReducedMotion } from "motion/react";
-import { createContext, useContext, useLayoutEffect, useRef, useState } from "react";
+import { animate, useMotionValue, useMotionValueEvent } from "motion/react";
+import {
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type { ComponentPropsWithRef } from "react";
 
 // A critically damped spring. Response is a physical tuning parameter, not a duration.
@@ -16,6 +23,17 @@ const panelSpring = {
   restDelta: 0.1,
   restSpeed: 0.1,
 } as const;
+
+const reducedMotionQuery = "(prefers-reduced-motion: reduce)";
+const getReducedMotion = () => window.matchMedia(reducedMotionQuery).matches;
+const getServerReducedMotion = () => false;
+const subscribeReducedMotion = (onChange: () => void) => {
+  const preference = window.matchMedia(reducedMotionQuery);
+  preference.addEventListener("change", onChange);
+  return () => {
+    preference.removeEventListener("change", onChange);
+  };
+};
 
 export const AccordionMotionContext = createContext({
   keepMounted: false,
@@ -41,7 +59,11 @@ export function AccordionSpringPanel({
   hiddenUntilFound,
 }: SpringPanelProps) {
   const { activation } = useContext(AccordionMotionContext);
-  const reducedMotion = useReducedMotion();
+  const reducedMotion = useSyncExternalStore(
+    subscribeReducedMotion,
+    getReducedMotion,
+    getServerReducedMotion,
+  );
   const lastActivation = useRef(0);
   const instantInput = useRef(true);
   useLayoutEffect(() => {
@@ -73,7 +95,7 @@ export function AccordionSpringPanel({
     }
     const content = panel.firstElementChild;
     if (!content) return undefined;
-    const instant = (reducedMotion ?? false) || instantInput.current;
+    const instant = reducedMotion || instantInput.current;
     let animation: ReturnType<typeof animate> | undefined;
     let target = -1;
     const retarget = () => {
@@ -115,7 +137,7 @@ export function AccordionSpringPanel({
     enabled: present,
     props: {
       ...props,
-      hidden: closed && !open && !hiddenUntilFound,
+      hidden: closed && !open,
       "aria-hidden": !open || undefined,
       inert: (!open && !(closed && hiddenUntilFound)) || undefined,
       style: { ...style, height: initialOpen ? "auto" : 0 },

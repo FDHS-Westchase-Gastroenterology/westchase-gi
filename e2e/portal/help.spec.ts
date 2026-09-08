@@ -60,16 +60,53 @@ test("Existing help links reveal their answers on arrival and during same-page n
   ).toHaveAttribute("aria-expanded", "true");
 });
 
-test("Reduced motion reveals a complete answer within the next rendered frames", async ({
-  page,
-}) => {
-  await page.emulateMedia({ reducedMotion: "reduce" });
+for (const preferenceTiming of ["before loading", "while Help is open"] as const) {
+  test(`Reduced motion ${preferenceTiming} reveals a complete answer within the next rendered frames`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    if (preferenceTiming === "before loading") await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/admin/help");
+    await expect(page.getByRole("heading", { name: "Help", exact: true })).toBeVisible();
+    if (preferenceTiming === "while Help is open")
+      await page.emulateMedia({ reducedMotion: "reduce" });
+    const queue = page.getByRole("button", {
+      name: "What the appointment request queue is",
+      exact: true,
+    });
+    const measurement = await queue.evaluate(async (trigger) => {
+      trigger.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }));
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            resolve();
+          });
+        });
+      });
+      const panel = trigger
+        .closest('[data-slot="accordion-item"]')
+        ?.querySelector('[data-slot="accordion-content"]');
+      if (!panel?.firstElementChild) throw new Error("Expected the revealed answer");
+      return {
+        expanded: trigger.getAttribute("aria-expanded"),
+        height: panel.getBoundingClientRect().height,
+        contentHeight: panel.firstElementChild.getBoundingClientRect().height,
+      };
+    });
+    expect(measurement.expanded).toBe("true");
+    expect(Math.abs(measurement.height - measurement.contentHeight)).toBeLessThanOrEqual(1);
+  });
+}
+
+test("Enabling reduced motion finishes a spring already in progress", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   await page.goto("/admin/help");
   const queue = page.getByRole("button", {
     name: "What the appointment request queue is",
     exact: true,
   });
-  const measurement = await queue.evaluate(async (trigger) => {
+  await expect(queue).toBeVisible();
+  const initialDistance = await queue.evaluate(async (trigger) => {
     trigger.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }));
     await new Promise<void>((resolve) => {
       requestAnimationFrame(() => {
@@ -81,15 +118,30 @@ test("Reduced motion reveals a complete answer within the next rendered frames",
     const panel = trigger
       .closest('[data-slot="accordion-item"]')
       ?.querySelector('[data-slot="accordion-content"]');
-    if (!panel?.firstElementChild) throw new Error("Expected the revealed answer");
-    return {
-      expanded: trigger.getAttribute("aria-expanded"),
-      height: panel.getBoundingClientRect().height,
-      contentHeight: panel.firstElementChild.getBoundingClientRect().height,
-    };
+    if (!panel?.firstElementChild) throw new Error("Expected the moving answer");
+    return Math.abs(
+      panel.getBoundingClientRect().height - panel.firstElementChild.getBoundingClientRect().height,
+    );
   });
-  expect(measurement.expanded).toBe("true");
-  expect(Math.abs(measurement.height - measurement.contentHeight)).toBeLessThanOrEqual(1);
+  expect(initialDistance).toBeGreaterThan(1);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const remainingDistance = await queue.evaluate(async (trigger) => {
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          resolve();
+        });
+      });
+    });
+    const panel = trigger
+      .closest('[data-slot="accordion-item"]')
+      ?.querySelector('[data-slot="accordion-content"]');
+    if (!panel?.firstElementChild) throw new Error("Expected the revealed answer");
+    return Math.abs(
+      panel.getBoundingClientRect().height - panel.firstElementChild.getBoundingClientRect().height,
+    );
+  });
+  expect(remainingDistance).toBeLessThanOrEqual(1);
 });
 
 test("Browser find reveals a closed answer and its height follows a narrower viewport", async ({
@@ -114,4 +166,37 @@ test("Browser find reveals a closed answer and its height follows a narrower vie
       }),
     )
     .toBeLessThanOrEqual(1);
+});
+
+test("Help answer markup preserves disclosure state before hydration", async ({
+  page,
+  browser,
+}) => {
+  const context = await browser.newContext({
+    javaScriptEnabled: false,
+    storageState: await page.context().storageState(),
+  });
+  try {
+    const initialPage = await context.newPage();
+    await initialPage.goto(new URL("/admin/help", page.url()).href);
+    const closedAnswer = initialPage.locator("#website-changes");
+    await expect(closedAnswer.getByRole("button", { includeHidden: true })).toHaveAttribute(
+      "aria-expanded",
+      "false",
+    );
+    await expect(closedAnswer.locator('[data-slot="accordion-content"]')).toHaveAttribute(
+      "hidden",
+      "",
+    );
+    const openAnswer = initialPage.locator("#appointment-workflow-guide");
+    await expect(openAnswer.getByRole("button", { includeHidden: true })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+    await expect(openAnswer.locator('[data-slot="accordion-content"]')).not.toHaveAttribute(
+      "hidden",
+    );
+  } finally {
+    await context.close();
+  }
 });

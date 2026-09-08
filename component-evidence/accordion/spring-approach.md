@@ -1,6 +1,6 @@
 # Accordion spring candidate
 
-This version changes the panel movement while keeping the stock Help content and layout. It is
+This version changes the panel movement while keeping the stock Help content and grouping. It is
 an experiment for comparison with the stock implementation at
 `5e26ae1726b3e9b25c79b6ca0a3548e37ee21f8b`. It does not claim a measured improvement before its
 Preview report and Jason's review.
@@ -21,14 +21,17 @@ produce identical curves. Response is not the measured settling duration.
 On pointer activation, the panel retargets its current Motion value and velocity. Text remains at
 its natural scale. A ResizeObserver measures the content wrapper so wrapping and content changes
 can update the destination height. Keyboard, assistive activation, programmatic disclosure, and
-reduced-motion updates set the final height immediately. Initial open content is visible without
+reduced-motion updates set the final height immediately. A subscribed media-query store follows
+preference changes while the page is open, including during an active spring. Initial open content is visible without
 an entrance animation.
 
 Base UI retains button activation, controlled/uncontrolled values, multiple-open behavior,
 identifiers, region semantics, disabled states, and browser-find disclosure. The adapter owns
 animated presence because Base UI's CSS-animation lifecycle cannot observe a JavaScript spring.
 Closed answers become unavailable to focus immediately; `hidden="until-found"` answers remain
-searchable after closing. The public custom-render and ref interfaces are forwarded.
+searchable after closing. Closed panels carry a native `hidden` attribute in the initial HTML;
+a layout effect upgrades it to `hidden="until-found"` after hydration because React serializes
+`hidden` as a boolean. The public custom-render and ref interfaces are forwarded.
 
 This first spring hypothesis does not introduce an icon rotation or a new press-scale treatment.
 Those would be separate behavior decisions and commits.
