@@ -77,16 +77,18 @@ async function setOpen(trigger, open) {
 // This function runs in the page. All timestamps share performance.now()'s clock.
 function observePanel(config) {
   const trigger = document.querySelectorAll('[data-slot="accordion-trigger"]')[config.index];
-  const panel = () => document.getElementById(trigger.getAttribute("aria-controls"));
+  const item = trigger.closest('[data-slot="accordion-item"]');
+  const panel = () => item.querySelector('[data-slot="accordion-content"]');
   const read = () => {
     const element = panel();
     return {
       height: element?.getBoundingClientRect().height ?? 0,
       opacity: element ? Number(getComputedStyle(element).opacity) : 0,
-      activeAnimations:
-        element
-          ?.getAnimations({ subtree: true })
-          .filter((animation) => animation.playState === "running").length ?? 0,
+      activeAnimations: element?.hasAttribute("hidden")
+        ? 0
+        : (element
+            ?.getAnimations({ subtree: true })
+            .filter((animation) => animation.playState === "running").length ?? 0),
       expanded: trigger.getAttribute("aria-expanded"),
       focused: document.activeElement === trigger,
     };
@@ -153,8 +155,17 @@ function observePanel(config) {
     else requestAnimationFrame(sample);
   }
   if (config.synthetic) {
-    trigger.click();
-    setTimeout(() => trigger.click(), 70);
+    const activate = () =>
+      trigger.dispatchEvent(
+        new MouseEvent("click", {
+          bubbles: true,
+          cancelable: true,
+          detail: 1,
+          view: window,
+        }),
+      );
+    activate();
+    setTimeout(activate, 70);
   }
 }
 
