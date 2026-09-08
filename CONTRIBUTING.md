@@ -122,25 +122,54 @@ node scripts/verify-schema.mjs --target branch # schema, RLS, RPC, seed state
 npm run ui:reference:portal                   # staff-route UI captures
 ```
 
-Every PR gets its own hosted branch from Supabase GitHub Branching. The required
-`Supabase Preview` check proves its configuration, migrations, and SQL seed deployed; the
-required `supabase-integration` job then fetches that branch's ephemeral credentials, creates
-the fictional portal Auth fixture, runs `verify-schema --target branch`, and exercises the
-credentialed portal contract. The hosted branch is the PR's database for schema iteration,
-application review, and destructive contract testing.
+Choose the database before publishing a new remote branch. Record the Git branch, intended
+merge destination, database-owning integration branch, Supabase project reference (never its
+credentials), and setup evidence in the PR or tracked handoff.
 
-The Supabase Vercel integration is anchored to the Production parent project. When a PR opens,
-Supabase assigns the matching branch credentials to that Vercel Preview and redeploys it. A valid
-review environment has the same Git branch in GitHub, Supabase, and Vercel.
+- A branch merging into another working branch inherits that branch's existing Preview database
+  and migration baseline. The active portal integration branch is PR #224,
+  `portal/appointment-workflow-experience`; all branches feeding it use its database.
+- A new independent integration branch establishes a Preview database from its intended schema
+  baseline. Record that baseline explicitly; do not assume Production contains unmerged work.
+- `Supabase Preview` is required only during new remote branch setup. For a newly provisioned
+  database, retain its successful configuration/migration/seed deployment evidence. For an
+  inherited database, retain the owner's setup evidence and verify the new branch's connection.
+  Neither child PR creation nor later commits require another database or another provisioning
+  check. Creating or reconnecting a database requires fresh readiness verification.
 
-For a workstation run against the PR database, export credentials from
-`supabase branches get <git-branch> --project-ref <production-ref> --output env`, map them to
-the names in `.env.example`, and set `SUPABASE_PREVIEW_BRANCH=1`. `e2e/harness/target-guard.ts`
-binds the project reference to the URL, requires the hosted-branch marker, and rejects
-Production before the first database call. [`test/README.md`](test/README.md) describes the
-tiers (unit, `e2e/public`, `e2e/portal`, `e2e/boundaries`), the shared harness, and how to add
-a test. Never run two Playwright processes against the branch at once, nor one while CI's
-integration job is running on the same pull request.
+The Vercel deployment must use the selected database's project reference and the intended Git
+commit. Different Git branches may use the same Preview database. Verify that relationship
+explicitly; matching Git branch names alone do not prove a valid environment.
+
+For a workstation run, export credentials from
+`supabase branches get <database-owning-git-branch> --project-ref <production-ref> --output env`,
+map them to the names in `.env.example`, and set `SUPABASE_PREVIEW_BRANCH=1`.
+`e2e/harness/target-guard.ts` binds the project reference to the URL, requires the hosted-branch
+marker, and rejects Production before the first database call. [`test/README.md`](test/README.md)
+describes the test tiers and shared harness.
+
+Coordinate use of the database across the entire branch stack. Never run two Playwright
+processes, fixture resets, or conflicting migrations against it concurrently, including CI jobs
+from different PRs. Sequence schema changes with the integration branch owner and preserve
+compatibility with other branches still using that database. Only fictional fixtures belong there.
+
+### Automation alignment
+
+The branch-selection policy above is the operating requirement. The checked-in automation still
+needs these changes before it implements inheritance:
+
+- `.github/workflows/supabase-dependency-integration.yml` listens for PRs targeting `main`, waits
+  for `Supabase Preview` on each exact head, fetches credentials by the head Git branch name,
+  and serializes runs by PR/ref. It must resolve the database owner for stacked PRs, reuse setup
+  evidence, and serialize destructive work by database project reference.
+- `.github/scripts/dependency-automation.cjs` treats any reported `Supabase Preview` status as a
+  merge gate. It must distinguish setup readiness from checks for subsequent commits.
+- Verify and align the hosted Supabase GitHub/Vercel integration and GitHub branch protection.
+  Do not assume they inherit a database because the PR base changed. Keep automatic Production
+  deployment disabled. Report a mismatch without bypassing protection or creating a redundant
+  database merely to satisfy the old workflow.
+
+Documentation changes do not perform these automation or hosted-configuration changes.
 
 **Honesty rule:** if you cannot reach a Supabase project, run the credential-free set and say
 plainly that the credentialed suite did not run. "Not run" is an acceptable answer; silently
@@ -156,23 +185,22 @@ The checks below are added to the standing gates.
 | Patient copy / locale content | [Localized patient reads](ARCHITECTURE.md#localized-patient-reads) and [trust boundaries](ARCHITECTURE.md#trust-boundaries) | `test:unit`, `test:e2e:public`; `e2e/portal/intake-form.spec.ts` when form behavior shifts |
 | Intake form / API / persistence | [Patient appointment intake](ARCHITECTURE.md#patient-appointment-intake) | `src/lib/portal/contracts.test.mjs`, `e2e/portal/intake-api.spec.ts`, `e2e/portal/intake-form.spec.ts` |
 | Portal page, route, or action | [Portal identity, authorization, and reads](ARCHITECTURE.md#portal-identity-authorization-and-reads); add `src/lib/portal/workflow/contracts.ts` for queue work | The unit tests beside the module, then the `e2e/portal/` spec for the route (`requests.spec.ts`, `lifecycle.spec.ts` for the work panel) |
-| Migration, RLS, RPC, or seed | [State and persistence](ARCHITECTURE.md#state-and-persistence) and [trust boundaries](ARCHITECTURE.md#trust-boundaries) | `verify-schema --target branch` and `test:e2e:boundaries`; green `Supabase Preview` and `supabase-integration` on the exact head |
+| Migration, RLS, RPC, or seed | [State and persistence](ARCHITECTURE.md#state-and-persistence) and [trust boundaries](ARCHITECTURE.md#trust-boundaries) | `verify-schema --target branch` and `test:e2e:boundaries`; documented migration deployment to the selected database and green `supabase-integration` on the exact head |
 | Email paths | [Email](ARCHITECTURE.md#email) | `src/lib/portal/email.test.mjs` (in `test:unit`) |
 | UI-visible change | `PRODUCT.md`, `DESIGN.md`, and [`ui-reference/README.md`](ui-reference/README.md) | Refresh covered `ui-reference/` images; before/after screenshots in the PR conversation; video when the change is a new workflow or has multiple authored steps |
 | CI / dependency automation | [Common starting points](ARCHITECTURE.md#common-starting-points) | `node --test .github/scripts/dependency-automation.test.cjs`; policy and test change together |
 
-Every PR reports both `Supabase Preview` and `supabase-integration`. Automatic branching applies
-to every PR, and **Supabase changes only** remains disabled, so application and schema changes are
-reviewed against the same isolated database. The integration job receives only branch-scoped
-database credentials after the Supabase deployment succeeds; the parent access token exists only
-in the credential-fetch step. It checks Auth refresh, SSR cookie sessions, closed Data API/RLS
-boundaries, shared intake throttling, field caps, appointment-request-lifecycle boundaries, and
-PostgREST persistence/relationships.
+`supabase-integration` remains the current-head database/application gate. It uses only the
+selected Preview database's credentials, verifies schema/RLS/RPCs, and exercises Auth refresh,
+SSR sessions, closed Data API boundaries, shared throttling, field caps, lifecycle boundaries,
+and PostgREST persistence/relationships. A successful setup check does not replace these tests.
+For schema changes, also record the migration versions applied to that database; a setup check
+from an earlier commit cannot establish that a later migration was applied.
 
 Preview Branches apply only migration files they have not recorded yet. Prefer a new forward
-corrective migration after a pushed migration changes. If a pre-merge migration truly must be
-rewritten, close and reopen the PR to recreate the branch and replay the complete lineage;
-never hand-patch the hosted branch into an unreproducible state.
+corrective migration after a pushed migration changes. If an unmerged migration must be rewritten,
+coordinate a clean replay and verification with everyone using the database. Do not recreate a
+shared database by closing/reopening a child PR, or hand-patch it into an unreproducible state.
 
 ### UI changes
 
@@ -212,20 +240,17 @@ locales) stays out until verified — see `PRODUCT.md` design principle 1.
 
 ## Merging
 
-`main` is protected and **is production**. As configured, it requires current-branch
-`quality`, `react-doctor`, `Vercel`, and `supabase-integration` statuses plus resolved
-conversations; force pushes and deletion are blocked. Treat every merge as patient-facing
-unless the change is explicitly non-user-visible (tooling, governance, docs-only).
+`main` is protected and **is production**. The merge policy requires current-head `quality`,
+`react-doctor`, `Vercel`, and `supabase-integration` statuses plus resolved conversations; force
+pushes and deletion remain blocked. Verify actual protection before merging and report policy
+mismatches without requesting a bypass. Treat every merge as patient-facing unless the change
+is explicitly non-user-visible (tooling, governance, docs-only).
 
-Before merge, confirm `Supabase Preview` and `supabase-integration` passed on the **exact
-head**. Skipped, pending, missing, stale, or failed signals withhold the merge.
-
-`Supabase Preview` is the Supabase integration's preview-branch check and is **required only
-on PRs that change the database** — schema, migrations, or anything under `supabase/`. It
-does not report on other PRs, so it is not a required status check on `main`: making it one
-deadlocks every manifest-only or source-only PR behind a check that will never arrive.
-Where it does report, it is a merge gate like any other, and the auto-merge controller
-enforces it the same way.
+Before merge, confirm those checks passed on the **exact head** against the selected Preview
+database, and retain the branch-setup record described above. Skipped, pending, missing, stale,
+or failed required checks withhold the merge. `Supabase Preview` is required only for establishing
+the remote branch's database setup, with inherited setup evidence for branches sharing an
+integration database. It is not a recurring current-head or database-change-only requirement.
 
 A green React Doctor check proves execution, not a clean result. Inspect the report and require a
 score of 100 on the exact head.

@@ -354,8 +354,11 @@ For each completed frontend path:
    the PR conversation. Use fictional identity, redact account labels, and start videos after
    sign-in. Request-detail evidence stays outside the atlas. Name the source commits and verify
    the posted media renders, following [AGENTS.md](AGENTS.md#visual-evidence).
-6. Verify quality, React Doctor, Vercel, Supabase Preview, and supabase-integration on the exact
-   head being shared. Update this checklist and link the frontend evidence in the PR conversation.
+6. Verify quality, React Doctor, Vercel, and supabase-integration on the exact head being shared.
+   Retain the branch-setup evidence and verify the selected database reference under
+   [the Preview Branch workflow](CONTRIBUTING.md#how-to-contribute-with-a-supabase-preview-branch);
+   branches feeding PR #224 inherit its database. Update this checklist and link the frontend
+   evidence in the PR conversation.
 
 ## Practice setup and rollout work
 

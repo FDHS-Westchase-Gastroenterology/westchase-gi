@@ -17,12 +17,15 @@ These need no credentials and mirror the required CI checks. Run all of them:
 - [ ] `npm run doctor` — local React Doctor standard is 100; inspect the report, not just the status
 - [ ] `npm run test:e2e:public`
 
-These run automatically against this PR's hosted Supabase Preview Branch. State the real
-outcome — “not run” is acceptable before CI reports, silently implying a pass is not:
+Record the selected Preview database and actual verification outcome. Follow CONTRIBUTING.md
+for shared database setup and automation limitations. “Not run” is acceptable before checks
+complete; silently implying a pass is not:
 
-- [ ] `Supabase Preview` — configuration/migrations/seed passed on the exact head:
-- [ ] `supabase-integration` — hosted branch schema + credentialed E2E passed:
-- [ ] `Vercel` — Preview uses the matching Supabase branch reference:
+- Database owner / project reference / intended merge destination:
+- Branch setup: new database setup evidence or inherited owner setup evidence (link):
+- `Supabase Preview` — required only for new remote branch setup; inherited / already established / result:
+- [ ] `supabase-integration` — selected database schema + credentialed E2E passed on the exact head:
+- [ ] `Vercel` — exact-head Preview uses the selected database project reference:
 - [ ] `node scripts/verify-schema.mjs --target branch` — included in the hosted gate; manual rerun / N/A:
 
 <!-- Paste command output, CI links, or manual checks that back the boxes above. -->

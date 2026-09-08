@@ -202,25 +202,34 @@ Never weaken the [trust boundaries](ARCHITECTURE.md#trust-boundaries), [main exe
 Use the project-authored `wgi-supabase-branching` skill first, then the committed `supabase` and
 `supabase-postgres-best-practices` vendor skills for database, Auth, and RLS work.
 
-Every PR receives an isolated hosted Supabase Preview Branch and reports two database checks:
-`Supabase Preview` deploys configuration, migrations, and fictional SQL seed data;
-`supabase-integration` fetches only that branch's credentials, creates the fictional Auth
-fixture, verifies schema/RLS/RPCs, and exercises Auth/SSR sessions, permission boundaries,
-intake persistence, shared throttling, lifecycle boundaries, and PostgREST relationships.
-Together, these checks are the database release gate for the exact PR head.
+Choose the Preview database from the branch's intended merge destination. A child Git branch
+inherits its integration branch's Supabase Preview database. PR #224
+(`portal/appointment-workflow-experience`) is the integration branch for the active portal work;
+branches merging into it use its existing database and migration baseline. Opening a child PR
+does not require a separate database.
 
-Automatic branching stays enabled for every PR; "Supabase changes only" and "Deploy to
-production" stay disabled. Preview Branches contain no Production rows and may receive
-destructive test writes. A PR merge never authorizes or performs a Production migration;
-Production promotion and scheduler activation remain separate explicit actions.
+`Supabase Preview` is a setup check, required only when establishing a new remote branch. During
+setup, record whether the branch establishes a Preview database or inherits an existing one,
+and verify that database's readiness and the branch's Vercel connection. An inherited database
+uses its existing setup evidence; do not require a new provisioning check for the child or a new
+check on every commit. `supabase-integration` and change-specific schema/application tests still
+verify the exact code being shared against the selected database.
+
+Shared Preview databases contain fictional data. Coordinate migrations, fixture resets, and
+destructive tests across every branch using the database; never run them concurrently. Production
+promotion and scheduler activation require separate explicit authorization.
+[`CONTRIBUTING.md`](CONTRIBUTING.md#how-to-contribute-with-a-supabase-preview-branch) defines the
+setup record, verification workflow, and outstanding automation alignment.
 
 ## GitHub conventions
 
 ### Branch protection
 
-GitHub `main` requires the current-head `quality`, `react-doctor`, `Vercel`, `Supabase Preview`,
-and `supabase-integration` statuses, plus resolved conversations. Force pushes and deletions
-are blocked. A skipped database check is not a passing signal.
+The merge policy requires current-head `quality`, `react-doctor`, `Vercel`, and
+`supabase-integration`, plus resolved conversations. `Supabase Preview` supplies branch-setup
+evidence, not a required status on every commit. A skipped integration check is not a passing
+signal. Verify actual GitHub protection before merging; report any mismatch with this policy
+instead of bypassing it. Force pushes and deletions remain blocked.
 
 ## Release and operational truth
 
