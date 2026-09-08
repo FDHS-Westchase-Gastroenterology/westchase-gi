@@ -51,9 +51,9 @@ New product consumers use approved `ui/` recipes; the existing staff home calend
 stock consumer.
 
 **Claude Design project**:
-The canonical design system. Components and appearance changes are reviewed there first, then
-synced into repository recipes and consumed by product surfaces. The repository converges on
-that project. `.ds-sync/` is the local toolchain, `.design-sync/` is its project-specific source,
+An optional design exploration and exchange workspace. Repository tokens and components define
+the design system; component and appearance changes do not require Claude Design approval.
+`.ds-sync/` is the local toolchain, `.design-sync/` is its project-specific source,
 and `ds-bundle/` is generated output. All three are local-only under `local-only-paths.json`;
 regeneration commands live in `DESIGN.md` "Local bundle pipeline".
 

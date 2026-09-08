@@ -12,15 +12,15 @@ were made once, below, and the parts carry them.
 Read in this order: the ownership table answers "where does this go"; the vocabulary makes the
 rest legible; the sections after it are the rules, one concern each.
 
-**The Claude Design project is the single source of truth for the design system.** This
-repository converges on that project. The tokens, components, and rules below document the
-current implementation; they do not override an approved design in Claude Design. Review new
-components and appearance changes there, sync the approved implementation into this repo, and
-verify it on the product surfaces that consume it.
+**The repository's tokens, components, and rules define the design system.** Reuse existing
+components first, then adapt shadcn registry source when needed. Review component provenance,
+brand consistency, accessibility, and rendered behavior on the product surfaces that consume
+the change. Claude Design is an optional design and exploration tool; approval there is not
+an implementation or merge requirement.
 
 Claude Code owns frontend implementation and visual verification. Codex owns backend work;
 see [AGENTS.md](AGENTS.md#agent-responsibilities) for the shared-work contract and assignment
-rules. The implementation tool does not change the design authority above.
+rules. The same design system applies regardless of the implementation tool.
 
 ---
 
@@ -40,7 +40,7 @@ rules. The implementation tool does not change the design authority above.
 | Interaction state (open, pending, selected)                      | The component that owns the element: React state in a client component, or a `data-*` attribute the CSS reads.                    |
 | Durable state (a request's status, a note)                       | Not the design system. Server actions and the workflow in `src/lib/portal/` (`ARCHITECTURE.md`).                                   |
 | Motion written in JavaScript (a gesture, a spring, a layout move, orchestration) | `motion/react` with the presets in `src/lib/motion.ts` — the same temperaments as the CSS tokens. Either engine is fine; both read the registry. |
-| A stock shadcn component you want to look at                     | Review it in Claude Design; `src/components/stock/` supplies registry inputs to the bundle. Follow "Adoption" for product use.            |
+| A stock shadcn component you want to look at                     | Inspect its registry source and provenance in `src/components/stock/`. Follow "Adoption" for product use.            |
 | Global CSS                                                       | Only what "Global CSS" below permits. If it names a component, it wants a recipe instead.                                        |
 
 ---
@@ -76,8 +76,8 @@ rules. The implementation tool does not change the design authority above.
 - **The Line** — the staff portal's world: one patient's request is one line on a sheet.
 - **The bridge** — the `@theme inline` + `:root` block at the end of `globals.css` that maps
   semantic tokens onto brand tokens. The only place shadcn's tokens exist.
-- **Claude Design project** — the canonical design system, with component review and approved
-  appearance decisions. `ds-bundle/` is the generated exchange bundle.
+- **Claude Design project** — an optional workspace for design exploration and exchange.
+  `ds-bundle/` is the generated exchange bundle; using it does not require remote approval.
 
 ---
 
@@ -375,8 +375,8 @@ for lifted cards. The portal prefers hairlines to shadows everywhere but the mod
   is a real button and focus returns to the line.
 - **Transitions over keyframes** for anything that can be re-triggered mid-flight.
 
-Motion in a diff is reviewed against these rules with the `review-animations` skill; a new
-temperament is a design-partner consultation, not a commit.
+Motion in a diff is reviewed against these rules with the `review-animations` skill. Discuss
+a new temperament with Jason before adding it to the shared registry; Claude Design is optional.
 
 ---
 
@@ -384,7 +384,7 @@ temperament is a design-partner consultation, not a commit.
 
 ```text
 src/components/stock/       registry bundle inputs                  retained for Claude Design
-src/components/ui/          approved brand recipes                  synced from Claude Design
+src/components/ui/          brand recipes                           adapted from registry or authored locally
 src/components/patterns/  brand compositions                        authored on ui/ + tokens
 src/app/**/                 domain components                         colocated with their route
 ```
@@ -419,9 +419,9 @@ change its color or type — the tell that a variant is missing.
 
 ### Defaults are scaffolding, not design
 
-shadcn supplies component behavior and accessibility primitives. Claude Design owns appearance
-decisions. A component is ready for product use when its implementation matches the approved
-component and meets the repository's accessibility and verification requirements.
+shadcn supplies component behavior and accessibility primitives. Repository recipes and tokens
+provide the brand appearance. A component is ready for product use when its source is recorded,
+its adaptations preserve the brand, and it meets the accessibility and verification requirements.
 
 ---
 
@@ -528,10 +528,10 @@ path). On top of those, by tier:
 | Change                                   | Also required                                                                                                      |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | A brand token value                      | Contrast re-verified for every pair that uses it (note the ratio in the token comment); `ui-reference/` refreshed. |
-| A recipe (new variant, axis, default)  | Approved component updated in Claude Design; implementation parity checked if restructuring.     |
-| A new `ui/` adoption                     | Claude Design review; consumer map comments; the reconciliation diff on `globals.css` is clean.                 |
+| A recipe (new variant, axis, default)  | Existing recipe or registry source identified; adaptations explained; behavior parity checked if restructuring.     |
+| A new `ui/` adoption                     | Source provenance and consumer map comments; the reconciliation diff on `globals.css` is clean.                 |
 | Motion                                   | `review-animations` pass; reduced-motion state captured; frequency justified in the PR.                            |
-| A primitive                              | Two consumers named; variants reviewed in Claude Design.                                                   |
+| A primitive                              | Two consumers named; variants reviewed against existing recipes and brand tokens.                                                   |
 | A portal workflow surface                | The Playwright specs under `e2e/` for that path; the `ui-reference` portal atlas refreshed with the seed identity.  |
 | The stock tier                           | Bundle regeneration passes; source provenance recorded in `MANIFEST.json`; product behavior preserved.                      |
 
@@ -559,39 +559,36 @@ and CI do not require these directories. Keep the pipeline's `node_modules` link
 `../.ds-sync/node_modules` for its converter dependencies.
 
 Bundle generation exports the current implementation; it does not apply remote project edits.
-Review the approved Claude Design component, bring its implementation into `src/components/ui/`
-and the relevant tokens or patterns, then regenerate the bundle to verify convergence. Upload
-and remote review are separate from a successful local build.
+When using Claude Design, reconcile any selected design with repository components and tokens,
+then regenerate the bundle to exchange the updated implementation. Upload and remote review
+are optional and do not gate product changes.
 
 ---
 
 ## Adoption
 
-### The design-partner protocol
+### Component selection and review
 
-Design decisions are made with the human director, not for them. Before adopting a registry
-component, meaningfully adapting an existing one, or composing a new surface, an agent brings:
+Start with the repository's existing components. When a new component is needed, check the
+shadcn registry before building it from scratch. The review identifies the source, explains
+the adaptations, and distinguishes reused behavior from custom behavior. A local wrapper or
+brand styling does not make registry-based behavior a hand-rolled implementation.
 
-1. What the system already has that fits ("the registry spring and the shared dialog treatment
-   exist — this modal rides them").
-2. The reasoned directions the adaptation could take: motion, size, variants, recipe.
-3. Its own recommendation, with the reasoning.
-4. An honest "nothing we have fits" when that is true.
-
-Mechanical call-site migrations onto an already-decided adaptation need no new consultation; a
-new appearance decision always gets one.
+Make routine choices within the assigned scope using the existing brand and interaction
+rules. Bring changes to product behavior or brand anchors to Jason. A separate Claude Design
+approval is not required.
 
 ### Workflow
 
-1. Open the component in the Claude Design project. Review its current design and the product
-   need; propose new components or appearance changes there first.
-2. Follow the design-partner consultation above. The approved project design governs the repo.
-3. Sync the approved component implementation into `src/components/ui/`, with reusable
+1. Inspect existing `ui/` components and the product need before adding another component.
+2. If none fits, inspect shadcn registry source and its provenance. Explain why any custom
+   implementation is necessary and which behavior it owns.
+3. Adapt the component implementation into `src/components/ui/`, with reusable
    compositions in `src/components/patterns/`. Product surfaces consume those components.
 4. Reconcile any token or generated CSS changes using `AGENTS.md` "shadcn/ui". Preserve brand
    anchors, map semantic tokens through the bridge, and keep motion on the shared registry.
-5. Regenerate `ds-bundle/` through the local toolchain and review the component and its states
-   against Claude Design. Resolve implementation differences in this repo.
+5. Regenerate `ds-bundle/` when changing its inputs. Review the component and its states in
+   the product; Claude Design may be used for exploration or exchange.
 6. Run the standing gates and capture evidence on each affected product surface.
 
 ### Standing findings
@@ -608,7 +605,7 @@ new appearance decision always gets one.
 
 ## Roadmap — the extraction queue
 
-Ranked by the reuse it unlocks. Each is a session of its own with the design-partner protocol.
+Ranked by the reuse it unlocks. Each follows the component selection and review process above.
 
 1. **Card surfaces → the Card recipe.** `.card` / `.card-lined` (globals.css) become `variant`
    values on `ui/card.tsx`; the patient site's nine call sites migrate.

@@ -3,8 +3,8 @@
 The backend supports patient registration, appointment scheduling, contact completion, complete
 worklists, optional billing, and optional clinical records. Claude Code connects these capabilities
 to staff controls and verifies the complete screen interactions. Codex owns changes to the server
-contracts and enforcement. Follow [AGENTS.md](AGENTS.md#agent-responsibilities) and the approved
-[Claude Design workflow](DESIGN.md#adoption) when implementing the frontend.
+contracts and enforcement. Follow [AGENTS.md](AGENTS.md#agent-responsibilities) and the
+[component adoption workflow](DESIGN.md#adoption) when implementing the frontend.
 
 This is the shared integration checklist. Keep it current when a frontend path is connected and
 verified. The linked source files define exact fields and results; [ARCHITECTURE.md](ARCHITECTURE.md)

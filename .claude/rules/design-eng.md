@@ -4,7 +4,7 @@ The craft itself lives in the global skills (apple-design, review-animations, im
 
 ## Where the values live
 
-The registry owns every curve and duration. Do not define an easing token, inline a bezier, or tune a spring by hand. A temperament the registry lacks is a design-partner consultation, not a commit (DESIGN.md "Motion"); once approved it is added to the registry and referenced from there.
+The registry owns every curve and duration. Do not define an easing token, inline a bezier, or tune a spring by hand. Discuss a temperament the registry lacks with Jason (DESIGN.md "Motion"); once agreed, add it to the registry and reference it from there. Claude Design approval is not required.
 
 - CSS: the brand `@theme` block in `src/app/globals.css`. Curves: `--motion-spring` (a `linear()` sampling of a ζ≈0.7 spring), `--motion-exit`, and for the patient site `--ease-out-quint` and `--ease-out-quart`. Durations: `--motion-spring-duration`, `--motion-exit-duration`, `--motion-micro-duration`. The portal modal reads the same values through its `--pm-*` aliases; the button recipe reads `--btn-ease`.
 - JavaScript: `src/lib/motion.ts` exports the same temperaments for `motion/react`: `arrive`, `leave`, `micro`, `crossfade`, and `transitionFor(kind, reducedMotion)`.

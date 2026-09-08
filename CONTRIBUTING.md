@@ -12,7 +12,8 @@ external connection is in [`ARCHITECTURE.md`](ARCHITECTURE.md#external-interface
 
 Jason uses Codex for backend work and Claude Code for all frontend work. The responsibility
 split and how to handle shared changes are in [AGENTS.md](AGENTS.md#agent-responsibilities).
-Claude Code implements and verifies the frontend against the approved Claude Design project.
+Claude Code implements and verifies the frontend against repository components and brand tokens.
+Claude Design is optional; approval there is not a contribution or merge requirement.
 
 ## Before editing
 

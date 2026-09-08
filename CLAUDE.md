@@ -10,8 +10,9 @@ so it is imported here rather than duplicated.
 Claude Code handles all frontend work for the patient site and staff portal: components,
 layout, styling, motion, interactions, accessibility, frontend dependencies, and visual checks.
 Codex handles the backend. Follow AGENTS.md "Agent responsibilities" for shared work and
-explicit assignments. Implement the approved Claude Design system under the existing
-`DESIGN.md` adoption workflow.
+explicit assignments. Follow the repository's `DESIGN.md` adoption workflow: reuse existing
+components, inspect shadcn registry provenance, and verify adaptations in the product.
+Claude Design approval is not required.
 
 Before connecting staff-portal controls, read [FRONTEND-HANDOFF.md](FRONTEND-HANDOFF.md). It names
 the available backend actions, required inputs, failure behavior, and frontend acceptance paths

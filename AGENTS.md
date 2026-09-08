@@ -35,8 +35,8 @@ Jason works with **Codex for backend work** and **Claude Code for all frontend w
   the corresponding UI with Claude Code. Describe any remaining work for the other agent.
 
 An explicit assignment from Jason takes precedence over this default split. Claude Code
-implements the frontend; the Claude Design project remains the design authority described in
-`DESIGN.md`. Both agents follow the same contribution and release gates.
+implements the frontend using the repository's design system in `DESIGN.md`. Both agents
+follow the same contribution and release gates.
 
 Staff-portal integration starts with [FRONTEND-HANDOFF.md](FRONTEND-HANDOFF.md). It maps the
 implemented backend contracts to the remaining frontend controls, error handling, and acceptance
@@ -124,9 +124,10 @@ must preserve the existing recipes, brand tokens, and call-site overrides.
 
 #### Design authority and brand protection
 
-**Claude Design is canonical.** Review a component or appearance change in the Claude Design
-project first, then sync the approved implementation into `src/components/ui/` and compose it
-in `src/components/patterns/` or product surfaces. The repository converges on the project.
+**The repository's tokens and components define the design system.** Reuse existing `ui/`
+components first, then adapt shadcn registry components when needed. Record their source and
+explain custom behavior or styling. Claude Design is an optional design tool; approval there
+is not required to implement, review, or merge a component or appearance change.
 `DESIGN.md` "Adoption" owns the review workflow and "Local bundle pipeline" owns regeneration.
 
 `src/components/stock/` retains registry source and examples as inputs to that bundle. Its
@@ -177,7 +178,7 @@ The brand's secondary text ink is `--color-muted-ink`, not `--color-muted`, beca
 `--color-muted` is a surface tint. Before adopting a component, list the semantic utilities it
 uses (`bg-*`, `text-*`, `border-*`) and check each for a brand-token collision.
 
-Adoption follows the approved Claude Design component. If a shadcn CLI command is needed to
+Adoption starts with existing repository components and shadcn registry source. If a CLI command is needed to
 supply its behavior, run `add --dry-run` / `--diff` before touching an existing recipe. Review
 all generated changes, meet the repo lint bar, and preserve the token mappings. Add a product
 component when a real surface consumes it. The dependencies of `stock/` remain required by
