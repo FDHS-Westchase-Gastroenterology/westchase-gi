@@ -147,6 +147,11 @@
       "migrationCli": "shadcn@4.21.0",
       "dependency": "cn@0.2.6",
       "scope": "cn imports in registry components and examples; source bodies and registry provenance preserved."
+    },
+    {
+      "name": "accordion-readonly-props",
+      "appliedAt": "2026-09-08",
+      "scope": "Accordion props marked Readonly with framework-ref lint explanations; runtime markup, classes, and behavior remain upstream."
     }
   ]
 }

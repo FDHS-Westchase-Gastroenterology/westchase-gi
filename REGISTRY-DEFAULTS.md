@@ -52,6 +52,12 @@ approved and merged into #224, extract the components and required utilities int
 repository at `/Users/Jason/design`. Add installation definitions and verify a clean consumer can
 change its visual identity while retaining the approved behavior before publishing that registry.
 
+## Iteration workflow
+
+Follow [COMPONENT-ITERATION.md](COMPONENT-ITERATION.md) for stock baselines, component commits,
+registry installation, Preview measurements, and human review. Measurement reports live in
+`component-evidence/`; link the exact implementation commit in each report.
+
 ## Acceptance
 
 - Agree the shared behavior profile and record component coverage.

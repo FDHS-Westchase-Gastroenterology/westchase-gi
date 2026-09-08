@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry.json",
+  "name": "shared-interaction-defaults",
+  "homepage": "https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi",
+  "items": [
+    {
+      "name": "accordion",
+      "type": "registry:ui",
+      "title": "Accordion",
+      "description": "Base UI Accordion from shadcn base-nova. The first version preserves upstream behavior for comparison in the staff Help page.",
+      "dependencies": ["@base-ui/react", "cn", "lucide-react"],
+      "files": [
+        {
+          "path": "src/components/stock/accordion.tsx",
+          "type": "registry:ui",
+          "target": "src/components/ui/accordion.tsx"
+        }
+      ]
+    }
+  ]
+}
