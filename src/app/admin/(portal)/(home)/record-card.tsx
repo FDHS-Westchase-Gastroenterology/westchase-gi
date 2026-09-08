@@ -10,8 +10,7 @@ import {
   confirmBookingHandoff,
   recordContactAttempt,
 } from "@/app/admin/(portal)/requests/workflow-actions";
-import { Clock, Phone, PhoneOff } from "@/components/icons";
-import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/stock/input-group";
+import { Phone, PhoneOff } from "@/components/icons";
 import { RadioGroup, RadioGroupItem } from "@/components/stock/radio-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/stock/toggle-group";
 import { Field, FieldLabel } from "@/components/ui/field";
@@ -20,6 +19,7 @@ import type { CommandOutcome } from "@/lib/portal/workflow/contracts";
 import type { HomeLine } from "./home-line";
 import { HomeDayCalendar } from "./parts/calendar";
 import { ChevronGlyph, PhoneGlyph } from "./parts/glyphs";
+import { TimePicker } from "./parts/time-picker";
 import {
   ANSWER_LABELS,
   CARD_ANSWERS,
@@ -37,9 +37,6 @@ import {
   needsDay,
   needsTime,
   savedMessage,
-  TIME_MAX,
-  TIME_MIN,
-  TIME_STEP_SECONDS,
 } from "./record-card-model";
 import type {
   CardAnswer,
@@ -198,23 +195,14 @@ function SecondRow({
       <div className="wgi-record-second">
         <Field orientation="horizontal" className="wgi-record-when">
           <FieldLabel htmlFor={timeId}>Time</FieldLabel>
-          <InputGroup>
-            <InputGroupInput
-              id={timeId}
-              type="time"
-              min={TIME_MIN}
-              max={TIME_MAX}
-              step={TIME_STEP_SECONDS}
-              value={draft.time}
-              disabled={locked}
-              onChange={(event) => {
-                dispatch({ type: "time", time: event.target.value });
-              }}
-            />
-            <InputGroupAddon align="inline-end">
-              <Clock />
-            </InputGroupAddon>
-          </InputGroup>
+          <TimePicker
+            id={timeId}
+            time={draft.time}
+            disabled={locked}
+            onPick={(time) => {
+              dispatch({ type: "time", time });
+            }}
+          />
         </Field>
       </div>
     );

@@ -773,15 +773,9 @@
   transition-duration: 0s;
 }
 
-/* The time field's focus edge on the registry curve, not Tailwind's. */
-.wgi-record-when > [data-slot="input-group"] {
-  transition:
-    border-color var(--motion-micro-duration) var(--motion-exit),
-    box-shadow var(--motion-micro-duration) var(--motion-exit);
-}
-
-/* The time beside its word, the native clock hidden so the field's own
-   clock is the only one. */
+/* The time beside its word: three registry selects, the hour, the minute
+   and the half of the day, so a time is spoken into the card rather than
+   found in one long column. */
 .wgi-record-when {
   width: 100%;
   align-items: center;
@@ -795,13 +789,72 @@
   font-weight: 600;
 }
 
-.wgi-record-when input[type="time"] {
-  font-size: var(--pt-xs);
-  font-variant-numeric: tabular-nums;
+/* The three fields share the strip evenly; the tighter trigger padding is
+   what keeps AM/PM whole at that width. */
+.wgi-record-time-parts {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: var(--ps-1);
 }
 
-.wgi-record-when input[type="time"]::-webkit-calendar-picker-indicator {
-  display: none;
+/* The triggers fill the strip and take their focus edge on the registry
+   curve, not Tailwind's. */
+.wgi-record-time-parts > [data-slot="select-trigger"] {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  padding-right: 0.35rem;
+  padding-left: 0.4rem;
+  color: var(--color-ink);
+  font-size: var(--pt-xs);
+  font-variant-numeric: tabular-nums;
+  transition:
+    border-color var(--motion-micro-duration) var(--motion-exit),
+    box-shadow var(--motion-micro-duration) var(--motion-exit),
+    transform var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-record-time-parts > [data-slot="select-trigger"]:active:enabled {
+  transform: scale(0.98);
+  transition-duration: 0s;
+}
+
+/* The list is portalled to the body, so it is named rather than nested.
+   It arrives on the popover shell's temperament — the registry ships
+   Tailwind keyframes on Tailwind's own ease, which the --pm-* registry
+   replaces here as it does for .wgi-popover. */
+.wgi-record-times {
+  animation: none;
+  min-width: 0;
+  transform-origin: var(--transform-origin);
+  font-variant-numeric: tabular-nums;
+  transition:
+    transform var(--pm-exit-duration) var(--pm-exit),
+    opacity var(--pm-exit-duration) var(--pm-exit);
+}
+
+.wgi-record-times[data-starting-style],
+.wgi-record-times[data-ending-style] {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.wgi-record-times[data-ending-style] {
+  transition-duration: 120ms;
+}
+
+.wgi-record-times[data-instant] {
+  transition-duration: 0ms;
+}
+
+.wgi-record-times [data-slot="select-item"] {
+  color: var(--color-ink);
+  font-size: var(--pt-xs);
+}
+
+.wgi-record-times [data-slot="select-item"][data-selected] {
+  background: var(--color-mint-2);
 }
 
 /* Save: the card's one commit, painted as the editor's Apply, along the
@@ -1620,6 +1673,8 @@
      the travel is dropped here. */
   .wgi-popover[data-starting-style],
   .wgi-popover[data-ending-style],
+  .wgi-record-times[data-starting-style],
+  .wgi-record-times[data-ending-style],
   .wgi-sheet[data-starting-style],
   .wgi-sheet[data-ending-style] {
     transform: none;
