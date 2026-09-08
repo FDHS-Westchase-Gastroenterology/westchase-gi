@@ -22,15 +22,27 @@ or a measured settling duration.
 1. Adopt the unchanged stock behavior in the real application. Complete the intended content
    grouping and layout before measuring. Record upstream source/version and any visual adaptation.
    Commit this as the stock behavior baseline and deploy its exact commit to Preview.
-2. Hand the immutable Preview URL and commit to the measurement agent. Capture the baseline
-   before changing behavior. Keep this deployment available for comparison.
+2. Capture a short baseline check and keep its immutable Preview URL and commit available.
+   Reuse an existing baseline when its relevant source, content, and measurement conditions
+   match. Extended baseline measurements may continue on that fixed deployment while the
+   implementation agent works on the candidate.
 3. Change the reusable registry source for one coherent behavioral hypothesis. Rebuild or package
-   the component, then install/update the application copy through a repeatable path. Commit the
-   source and its consumed application version together so the deployed version is unambiguous.
-4. Deploy that exact commit. The measurement agent runs the same protocol and reports changes
-   against both stock and the last reviewed version.
-5. Jason reviews the real Help page and the concise comparison report. Refine in a new commit;
-   preserve reviewed commit IDs. Do not rewrite measured history to add later results.
+   the component, then install/update the application copy through a repeatable path. Keep the
+   source and its consumed application version together in the same diff.
+4. Run focused correctness checks before repeated measurements: ordinary activation, keyboard
+   and focus behavior, interruption, relevant anchors, and resizing. For authored motion, check
+   reduced motion before load, after a live preference change, and during movement. For hidden
+   content, check the initial server-rendered state as well as the state after JavaScript loads.
+   Fix failures and record the required motion-review verdict before committing. Commit the
+   reusable source and consumed application copy together as the fixed candidate version.
+5. Deploy that exact commit. Use the same short comparison protocol for stock and candidate,
+   then present the component review checkpoint from AGENTS.md. Jason reviews the real application
+   and concise comparison. Keep extended results separate and pending unless explicitly required
+   before this review.
+6. Refine in a new commit after the review decision. Preserve reviewed commit IDs; do not rewrite
+   measured history to add results. Record the current component, agreed behavior difference,
+   source/installed-copy paths, version, review links, pending evidence, and next decision in its
+   tracked component-evidence record. Continue from that record instead of rediscovering setup.
 
 The root registry.json packages reusable stock source. Run npm run registry:install:accordion
 to build the local item, install it into src/components/ui/accordion.tsx with the shadcn CLI, and
@@ -88,10 +100,29 @@ Report:
 - Correctness: no clipped content, lost focus, inaccessible answers, or broken anchors; keyboard
   and reduced-motion behavior match the contract.
 
-Start with one warmup and ten measured repetitions per case. Define settling as within one CSS
-pixel of the target for three sampled frames with no continuing movement; retain the full
-trajectory to detect slow residual motion. Report median, spread, and sample count. Establish normal baseline variation
-before labeling a small difference a regression. Do not collapse feel into a single score or treat
+Start with one correctness and measurement-method pass through each distinct case. Check that
+the measured element remains observable throughout opening and closing, and that failures are
+reported correctly. Use a short identical before/after sample for the initial review; label it
+preliminary and report its sample count. It does not establish a full benchmark result.
+
+Before a repeated run, time the pilot, estimate the full runtime, and state the decision the
+additional samples will support. Reserve one warmup and ten measured repetitions per case for
+extended comparisons requested by Jason or needed to resolve a specific regression or uncertainty.
+Do not silently reduce an agreed full protocol and report it as complete. Once a correctness
+failure is confirmed, preserve it and stop that candidate's extended run unless the remaining
+cases answer a separate, stated question.
+
+The existing scripts/accordion-measurement.mjs is a frozen full-matrix runner with ten measured
+repetitions per case and no supported resume option. Use focused Browserbase checks for the
+short review pass; do not invent shorter-run flags or alter the frozen script to relabel old
+results. Routine long comparisons need bounded execution and supported resumption. Track missing
+runner capabilities as separate tooling work; do not expand a component iteration to build them.
+Preserve saved samples and the original error on failure. Resume only with matching cases and
+conditions, documenting every session break.
+
+Define settling as within one CSS pixel of the target for three sampled frames with no continuing
+movement; retain the full trajectory. Report median, spread, and sample count for repeated runs.
+Establish normal baseline variation before labeling a small difference a regression. Do not treat
 a faster settling time as automatically better. Jason's interactive review remains required.
 
 Measure using browser timestamps, never elapsed tool-call time. Precise synthetic reversal
@@ -120,9 +151,11 @@ independent work. It does not edit component source or change its acceptance cri
 better result. Shared database writes, fixture resets, and migrations require coordination.
 
 Each handoff names baseline and candidate SHAs and URLs, the protocol version, expected change,
-approved exceptions, and artifact destination. Reports state completed, failed, or unavailable
-measurements; absent evidence is not a pass. Return a short report to the main agent, keeping raw
-traces accessible without filling the main conversation with logs.
+approved exceptions, artifact destination, expected runtime, and stopping condition. Name one
+owner for browser-session cleanup and one for evidence publishing. Reports state completed,
+failed, or unavailable measurements; absent evidence is not a pass. Return a compact result,
+failure, or requested decision. The main agent continues independent authorized work instead of
+polling for percentages. Keep raw traces accessible outside the main conversation.
 
 Keep report summaries in tracked repository files and link them in the PR conversation. Large
 videos/traces use an approved artifact destination, with stable links and no credentials. A report
@@ -131,9 +164,10 @@ must identify the implementation SHA it measured even when the report is committ
 ## Review and release
 
 Present Jason with stock and candidate Preview links, a short interaction video, the behavior
-change in plain language, and a compact measurement comparison with limitations. A candidate is
-reviewable while clearly labeled incomplete; it is not accepted or merge-ready until the standing
-repository checks, required visual evidence, and relevant behavior checks pass.
+change in plain language, and a compact measurement comparison with limitations as soon as the
+component review checkpoint in AGENTS.md is met. Use that file's definitions of ready for component
+review, accepted for the registry, and ready to merge. Pending extended measurements and attachment
+processing remain explicit; they do not silently become prerequisites for the first review.
 
 This workflow uses bounded subagent runs during active work. It does not create a recurring
 automation or promise that an agent continues indefinitely after the task ends. Production

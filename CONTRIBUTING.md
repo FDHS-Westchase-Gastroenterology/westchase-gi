@@ -55,7 +55,8 @@ reads that field and would take Production off the version chosen in Project Set
 
 ### Standing gates
 
-Every change must pass these repository-wide checks:
+Completed source changes must pass these repository-wide checks.
+[AGENTS.md](AGENTS.md#contribution-loop) defines check reuse and component review checkpoints:
 
 ```bash
 npx oxlint
@@ -67,7 +68,8 @@ npm run build
 Oxlint must report zero warnings and errors, oxfmt must report no drift, React Doctor must score
 100 on a clean checkout, and the production build must compile and typecheck. A focused check
 adds coverage for the changed behavior; it does not replace these gates. UI-visible changes also
-require the [visual evidence](#ui-changes) described below.
+require the [visual evidence](#ui-changes) described below before acceptance. A component review
+checkpoint may report pending standing gates; it does not claim completed validation.
 
 ### What to run — without credentials
 
@@ -184,7 +186,8 @@ against Production.
 UI-visible work also has to satisfy the [visual evidence](AGENTS.md#visual-evidence) gate:
 before and after screenshots in the pull-request conversation, or a video of the authored
 path when the change is a new workflow or has more than one step. Committed atlas images
-alone do not pass the gate.
+alone do not pass the gate. The component review checkpoint in AGENTS.md allows an accessible
+local or linked comparison while final PR publication remains pending.
 
 ## Commit messages
 
@@ -199,6 +202,8 @@ subjects).
 ## Pull requests
 
 **The review-ready PR is the default path for all normal source, content, and UI changes.**
+Component exploration may use a draft PR to deploy a candidate and collect Jason's feedback.
+Keep pending validation and evidence explicit; this does not mark the PR ready for normal review.
 The template (`.github/PULL_REQUEST_TEMPLATE.md`) is the contract: summary/why, scope,
 verification with evidence (paste output or CI links; check only what actually ran), UI
 screenshots — or a workflow video — in the PR conversation for visible changes (or an
