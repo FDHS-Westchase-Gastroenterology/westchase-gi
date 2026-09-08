@@ -538,6 +538,7 @@
 }
 
 .wgi-record-main {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -773,9 +774,9 @@
   transition-duration: 0s;
 }
 
-/* The time beside its word: three registry selects, the hour, the minute
-   and the half of the day, so a time is spoken into the card rather than
-   found in one long column. */
+/* The time beside its word: one trigger on the strip, and the wheels the
+   trigger raises over the month. The strip stays one line tall whatever
+   the card is asked, so choosing a time never moves the calendar. */
 .wgi-record-when {
   width: 100%;
   align-items: center;
@@ -789,72 +790,125 @@
   font-weight: 600;
 }
 
-/* The three fields share the strip evenly; the tighter trigger padding is
-   what keeps AM/PM whole at that width. */
-.wgi-record-time-parts {
+/* The trigger wears the field's hairline and the card's checked tint
+   while its sheet is up, so the open surface is traceable to the control
+   that opened it. */
+.wgi-time-trigger {
   display: flex;
   flex: 1 1 auto;
   min-width: 0;
-  gap: var(--ps-1);
-}
-
-/* The triggers fill the strip and take their focus edge on the registry
-   curve, not Tailwind's. */
-.wgi-record-time-parts > [data-slot="select-trigger"] {
-  flex: 1 1 0;
-  min-width: 0;
-  width: auto;
-  padding-right: 0.35rem;
-  padding-left: 0.4rem;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.2rem;
+  border: 1.5px solid var(--color-line-2);
+  border-radius: var(--radius-sm);
+  padding: 0 0.6rem;
+  background: white;
   color: var(--color-ink);
   font-size: var(--pt-xs);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+  cursor: pointer;
   transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
     border-color var(--motion-micro-duration) var(--motion-exit),
-    box-shadow var(--motion-micro-duration) var(--motion-exit),
     transform var(--motion-micro-duration) var(--motion-exit);
 }
 
-.wgi-record-time-parts > [data-slot="select-trigger"]:active:enabled {
+/* 11.1:1 on the surface: an unfilled field reads as a prompt, not as ink. */
+.wgi-time-trigger[data-empty] {
+  color: var(--color-body);
+}
+
+.wgi-time-trigger > svg {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  color: var(--color-teal-ink);
+}
+
+.wgi-time-trigger:hover:enabled {
+  background: var(--color-mint);
+}
+
+.wgi-time-trigger:active:enabled {
   transform: scale(0.98);
   transition-duration: 0s;
 }
 
-/* The list is portalled to the body, so it is named rather than nested.
-   It arrives on the popover shell's temperament — the registry ships
-   Tailwind keyframes on Tailwind's own ease, which the --pm-* registry
-   replaces here as it does for .wgi-popover. */
-.wgi-record-times {
-  animation: none;
-  min-width: 0;
-  transform-origin: var(--transform-origin);
-  font-variant-numeric: tabular-nums;
-  transition:
-    transform var(--pm-exit-duration) var(--pm-exit),
-    opacity var(--pm-exit-duration) var(--pm-exit);
+.wgi-time-trigger:focus-visible {
+  outline: 3px solid var(--color-amber-deep);
+  outline-offset: -3px;
 }
 
-.wgi-record-times[data-starting-style],
-.wgi-record-times[data-ending-style] {
-  opacity: 0;
-  transform: scale(0.95);
-}
-
-.wgi-record-times[data-ending-style] {
-  transition-duration: 120ms;
-}
-
-.wgi-record-times[data-instant] {
-  transition-duration: 0ms;
-}
-
-.wgi-record-times [data-slot="select-item"] {
-  color: var(--color-ink);
-  font-size: var(--pt-xs);
-}
-
-.wgi-record-times [data-slot="select-item"][data-selected] {
+.wgi-time-trigger[aria-expanded="true"] {
+  border-color: var(--color-teal-ink);
   background: var(--color-mint-2);
+}
+
+.wgi-time-trigger:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* The month behind the sheet is context, not a control: the scrim quiets
+   it and dismisses the sheet without committing. The stock calendar paints
+   its day buttons at z-index 10 in this same stacking context, so the scrim
+   and the sheet sit above that rather than at 1 and 2. */
+.wgi-time-scrim {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: color-mix(in oklch, var(--color-navy) 24%, transparent);
+  cursor: default;
+}
+
+/* The sheet rises from the strip's own edge and leaves the same way
+   (DESIGN.md "Motion", spatial consistency). Its arrival, its exit and
+   its reduced-motion temperament are the motion.dev presets in
+   src/lib/motion.ts — the same registry the --motion-* tokens carry. */
+.wgi-time-sheet {
+  position: absolute;
+  z-index: 21;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid var(--color-line);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 0.7rem 0.75rem 0.75rem;
+  background: var(--portal-surface);
+  box-shadow: var(--shadow-card);
+}
+
+/* A transformed descendant still counts toward an ancestor's scrollable
+   overflow, so for as long as the sheet is riding in on translateY(100%)
+   it hands the card — which is overflow: auto — a sheet's worth of scroll
+   range that exists only for the length of one spring. The reveal that
+   runs on mount scrolls into that window, and when the range collapses
+   behind the settling sheet scrollTop is clamped back, so the month lurches
+   and slams back. Clipping main for the life of the sheet removes the
+   phantom range; the card already clipped the travel at its own padding
+   box, so nothing that was visible stops being visible. */
+.wgi-record-main:has(.wgi-time-sheet) {
+  overflow: clip;
+}
+
+.wgi-time-title {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: var(--pt-sm);
+  font-weight: 700;
+  text-align: center;
+}
+
+.wgi-time-done {
+  width: 100%;
 }
 
 /* Save: the card's one commit, painted as the editor's Apply, along the
@@ -1673,8 +1727,6 @@
      the travel is dropped here. */
   .wgi-popover[data-starting-style],
   .wgi-popover[data-ending-style],
-  .wgi-record-times[data-starting-style],
-  .wgi-record-times[data-ending-style],
   .wgi-sheet[data-starting-style],
   .wgi-sheet[data-ending-style] {
     transform: none;
@@ -1695,6 +1747,7 @@
   .wgi-add-filter:active,
   .wgi-sug:active,
   .wgi-editor-apply:active:enabled,
+  .wgi-time-trigger:active:enabled,
   .wgi-answer:has([data-slot="radio-group-item"]:enabled):active,
   .wgi-record-follow > [data-slot="toggle-group-item"]:active:enabled,
   .wgi-empty-clear:active,

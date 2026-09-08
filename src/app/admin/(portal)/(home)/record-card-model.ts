@@ -180,15 +180,17 @@ export function cardReducer(draft: Readonly<CardDraft>, event: Readonly<CardEven
   }
 }
 
-/* ---- Wall-clock times: the practice day, in quarter hours ---- */
+/* ---- Wall-clock times: the whole clock, to the minute ---- */
 
-export const TIME_MIN = "08:00";
-export const TIME_MAX = "16:30";
-export const TIME_STEP_SECONDS = 900;
+/* The whole clock, not the hours the practice usually keeps: an early
+   arrival is a real booking, and the server refuses on its own terms. */
+export const TIME_MIN = "00:00";
+export const TIME_MAX = "23:59";
+export const TIME_STEP_SECONDS = 60;
 
 const HM = /^\d{2}:\d{2}$/;
 
-/** A time the practice day contains; zero-padded HH:MM compares as text. */
+/** A time on the clock; zero-padded HH:MM compares as text. */
 export function timeWithinDay(time: string): boolean {
   return HM.test(time) && time >= TIME_MIN && time <= TIME_MAX;
 }
@@ -227,13 +229,13 @@ interface TimeSlot {
   readonly label: string;
 }
 
-/** Every quarter hour the practice books, the picker's whole list. */
+/** Every minute of the day, the picker's whole list. */
 export const TIME_SLOTS = slots();
 
 /* The picker asks for the three the staff say out loud — the hour, the
    minute, then the half of the day — so each list is short enough to read
-   at a glance. Every list is still cut from TIME_SLOTS, so the practice
-   day stays the one source. */
+   at a glance. Every list is still cut from TIME_SLOTS, so the clock
+   stays the one source. */
 export interface TimeParts {
   readonly hour: string;
   readonly minute: string;
@@ -270,13 +272,13 @@ export function timeParts(time: string): TimeParts {
   return timeWithinDay(time) ? partsOf(time) : NO_TIME_PARTS;
 }
 
-/** Both halves of the practice day, in the order the day runs. */
+/** Both halves of the day, in the order the day runs. */
 export const MERIDIEMS = collect(
   (parts) => parts.meridiem,
   () => true,
 );
 
-/** The hours the practice books, narrowed once a half of the day is chosen. */
+/** The hours on the clock, narrowed once a half of the day is chosen. */
 export function hourOptions(meridiem: string): readonly string[] {
   return collect(
     (parts) => parts.hour,
@@ -284,7 +286,7 @@ export function hourOptions(meridiem: string): readonly string[] {
   );
 }
 
-/** The minutes the practice books inside the chosen hour. */
+/** The minutes inside the chosen hour. */
 export function minuteOptions(meridiem: string, hour: string): readonly string[] {
   return collect(
     (parts) => parts.minute,
