@@ -5,7 +5,7 @@
    route (the phase-2 natural-language path) — so nothing here may touch the
    DOM, the database, or server-only modules. */
 
-export type FilterKey = "status" | "location" | "received" | "search";
+export type FilterKey = "status" | "followup" | "location" | "received" | "search";
 
 export interface FilterOption {
   readonly value: string;

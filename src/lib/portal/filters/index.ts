@@ -1,3 +1,4 @@
+import { followUpFilter } from "./follow-up";
 import { locationFilter } from "./location";
 import { dateRangeLabel, datePresets, matchesPreset, receivedFilter } from "./received";
 import { searchFilter } from "./search";
@@ -20,6 +21,8 @@ export {
   nyEndOfDayMs,
   nyStartOfDayMs,
 } from "./received";
+export { FOLLOW_UP_WORDS } from "./follow-up";
+export type { FollowUpValue } from "./follow-up";
 export { STATUS_WORDS } from "./status";
 /* The client hooks live in ./use-filter-param ("use client"); import them
    directly so this barrel stays importable from server code. */
@@ -27,6 +30,7 @@ export { STATUS_WORDS } from "./status";
 /** The portal home bar, in Add-Filter menu order. */
 export const HOME_FILTERS: readonly FilterParam[] = [
   statusFilter,
+  followUpFilter,
   locationFilter,
   receivedFilter,
   searchFilter,

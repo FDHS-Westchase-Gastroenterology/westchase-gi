@@ -116,6 +116,7 @@ function lineFor(
   const createdMs = Date.parse(row.created_at);
   let timing: string;
   let stamp: HomeLine["stamp"] = null;
+  let followUp: HomeLine["followUp"] = null;
 
   switch (row.bucket) {
     case "new": {
@@ -127,14 +128,17 @@ function lineFor(
       const overdue = practiceDayNumber(due) < practiceDayNumber(now);
       timing = overdue ? `due ${NY_MONTH_DAY.format(due)}` : "due today";
       if (overdue) stamp = "Overdue";
+      followUp = overdue ? "overdue" : "due_today";
       break;
     }
     case "upcoming": {
       timing = `back ${NY_MONTH_DAY.format(new Date(row.follow_up_at ?? row.created_at))}`;
+      followUp = "upcoming";
       break;
     }
     case "stale": {
       timing = `quiet ${rel(Date.parse(row.lastActivityAt ?? row.created_at), nowMs)}`;
+      followUp = "needs_date";
       break;
     }
     case "scheduled": {
@@ -164,6 +168,7 @@ function lineFor(
     pref: `${LOCATION_LABELS[row.location]} · ${TIME_LABELS[row.preferred_time]}`,
     timing,
     stamp,
+    followUp,
     receivedRel: rel(createdMs, nowMs),
     receivedFull: formatReceived(row.created_at),
     actorName,

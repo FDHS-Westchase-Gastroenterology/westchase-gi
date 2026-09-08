@@ -28,10 +28,11 @@ interface HomeDashboardProps {
 export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps) {
   const { active, setParam: writeParam, clearAll } = useActiveFilters();
 
-  /* Ghosts the user removed, by suggestion id, in removal order. A removed
-     filter returns to the bar as a ghost at the end, so the eye finds it
-     where it went; the ranking in `suggestFilters` owns everything else. */
-  const [demoted, setDemoted] = useState<readonly string[]>([]);
+  /* Filters the user removed, in removal order. A removed filter returns to
+     the bar as a ghost at the end, so the eye finds it where it went, and it
+     is the one kind of ghost allowed to swap the rows out rather than narrow
+     them; the ranking in `suggestFilters` owns everything else. */
+  const [demoted, setDemoted] = useState<readonly ActiveFilter[]>([]);
 
   const [openRowId, setOpenRowId] = useState<string | null>(null);
   /* The full-record sheet: which line, and whether the keyboard opened it
@@ -71,14 +72,18 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
   const demote = (entry: Readonly<ActiveFilter>) => {
     if (entry.key === "search") return;
     const id = suggestionId(entry);
-    setDemoted((queue) => [...queue.filter((candidate) => candidate !== id), id]);
+    setDemoted((queue) => [
+      ...queue.filter((candidate) => suggestionId(candidate) !== id),
+      { key: entry.key, raw: entry.raw },
+    ]);
   };
 
   const activate = (suggestion: FilterSuggestion) => {
     /* The pill this ghost replaces, if any, comes back as a ghost at the end. */
     const replaced = active.find((entry) => entry.key === suggestion.key);
     writeParam(suggestion.key, suggestion.raw);
-    setDemoted((queue) => queue.filter((id) => id !== suggestionId(suggestion)));
+    const id = suggestionId(suggestion);
+    setDemoted((queue) => queue.filter((candidate) => suggestionId(candidate) !== id));
     if (replaced !== undefined) demote(replaced);
   };
 

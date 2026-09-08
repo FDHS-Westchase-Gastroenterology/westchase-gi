@@ -1,6 +1,6 @@
 import type { RequestLocation } from "@/lib/portal/contracts";
 import { datePresets, filterByKey, filterValueLabel } from "@/lib/portal/filters";
-import type { ActiveFilter, FilterKey } from "@/lib/portal/filters";
+import type { ActiveFilter, FilterKey, FollowUpValue } from "@/lib/portal/filters";
 /* Type-only import: erased at compile time, so the server-only module never
    enters the client graph. */
 import type { AttentionBucket } from "@/lib/portal/queue-attention";
@@ -27,6 +27,8 @@ export interface HomeLine {
   readonly timing: string;
   /** The only amber on a line, and it always carries a word. */
   readonly stamp: "Overdue" | null;
+  /** Where a Call again row stands against its call-again date; null on every other status. */
+  readonly followUp: FollowUpValue | null;
   readonly receivedRel: string;
   readonly receivedFull: string;
   readonly actorName: string | null;
@@ -43,7 +45,9 @@ function passes(line: Readonly<HomeLine>, key: FilterKey, raw: string): boolean 
   if (def.type === "multi-select") {
     const values = def.decode(raw);
     if (values === null) return true;
-    return key === "location" ? values.includes(line.location) : values.includes(line.status);
+    if (key === "location") return values.includes(line.location);
+    if (key === "followup") return line.followUp !== null && values.includes(line.followUp);
+    return values.includes(line.status);
   }
   if (def.type === "date") {
     const range = def.decode(raw);
@@ -159,6 +163,20 @@ export function withSuggestion(
   return [...others, { key: suggestion.key, raw: suggestion.raw }];
 }
 
+/* A refinement narrows what is on screen: every row it shows is already
+   visible, and at least one visible row drops. That is the whole test for a
+   ranked ghost. A ghost that swaps the rows out instead — the sibling
+   status, the other office — is a pivot, and the bar offers a pivot only as
+   the way back to a pill the user just removed. */
+function narrows(
+  shown: readonly Readonly<HomeLine>[],
+  filtered: readonly Readonly<HomeLine>[],
+): boolean {
+  if (shown.length === 0 || shown.length >= filtered.length) return false;
+  const visible = new Set(filtered);
+  return shown.every((line) => visible.has(line));
+}
+
 /* The office most present in the rows on screen, when the rows split
    between offices at all. "Either office" never leads: it is not a place to
    narrow to. */
@@ -185,50 +203,114 @@ function leadingLocation(filtered: readonly Readonly<HomeLine>[]): string | null
   return tied ? null : top;
 }
 
-/** Candidate ghosts in offer order: the job first (the unworked, then the
-   pile already called), then today's arrivals, then the office the visible
-   rows lean toward, then the booked tail. */
-function candidates(
-  filtered: readonly Readonly<HomeLine>[],
-  nowMs: number,
-): readonly Pick<FilterSuggestion, "key" | "raw">[] {
-  const today = datePresets(nowMs).find((preset) => preset.id === "today");
+type Candidate = Pick<FilterSuggestion, "key" | "raw">;
+
+/** The values a multi-select pill carries, or null when that dimension has no pill. */
+function pillValues(
+  active: readonly Readonly<ActiveFilter>[],
+  key: FilterKey,
+): readonly string[] | null {
+  const entry = active.find((candidate) => candidate.key === key);
+  if (entry === undefined) return null;
+  const def = filterByKey(key);
+  return def.type === "multi-select" ? def.decode(entry.raw) : null;
+}
+
+/** Received, from the tightest preset out: Today, then Last 7 days, then Last 30 days. */
+function receivedCandidates(nowMs: number): Candidate[] {
   const received = filterByKey("received");
-  const location = leadingLocation(filtered);
-  return [
-    { key: "status", raw: "new" },
-    { key: "status", raw: "contacted" },
-    ...(today === undefined || received.type !== "date"
+  if (received.type !== "date") return [];
+  const presets = datePresets(nowMs);
+  return (["today", "last7", "last30"] as const).flatMap((id) => {
+    const preset = presets.find((candidate) => candidate.id === id);
+    return preset === undefined
       ? []
-      : [{ key: "received" as const, raw: received.encode(today.range) }]),
-    ...(location === null ? [] : [{ key: "location" as const, raw: location }]),
-    { key: "status", raw: "scheduled" },
+      : [{ key: "received" as const, raw: received.encode(preset.range) }];
+  });
+}
+
+/* Candidate ghosts in offer order, as groups: a group yields its first
+   candidate that narrows the visible rows, so Received offers one preset,
+   not three. Each dimension is offered only where it means something:
+
+   - Status names the job, so it is offered while no status pill is up.
+   - Follow-up is where a Call again row stands against its call-again date,
+     so it is offered on the empty bar and under a pill that is exactly Call
+     again. Under New | Call again it would drop the New rows unannounced.
+   - Received is arrival time, which cuts the inbox: no status pill, or a
+     pill that includes New. A Call again pile is cut by Follow-up instead.
+   - Location is the preferred office and applies everywhere.
+
+   The rank puts the job first, then the calls the desk is behind on, then
+   today's arrivals, then the rest of the follow-up pile, then the office;
+   Upcoming and the booked tail close, where the cap usually drops them. */
+function candidateGroups(
+  filtered: readonly Readonly<HomeLine>[],
+  active: readonly Readonly<ActiveFilter>[],
+  nowMs: number,
+): readonly (readonly Candidate[])[] {
+  const statuses = pillValues(active, "status");
+  const statusOffered = statuses === null;
+  const followUpOffered =
+    statuses === null || (statuses.length === 1 && statuses[0] === "contacted");
+  const receivedOffered = statuses === null || statuses.includes("new");
+  const location = leadingLocation(filtered);
+
+  const status = (raw: string): readonly Candidate[] =>
+    statusOffered ? [{ key: "status", raw }] : [];
+  const followUp = (raw: FollowUpValue): readonly Candidate[] =>
+    followUpOffered ? [{ key: "followup", raw }] : [];
+
+  return [
+    status("new"),
+    status("contacted"),
+    followUp("overdue"),
+    receivedOffered ? receivedCandidates(nowMs) : [],
+    followUp("due_today"),
+    followUp("needs_date"),
+    location === null ? [] : [{ key: "location", raw: location }],
+    followUp("upcoming"),
+    status("scheduled"),
   ];
 }
 
 /** The ghosts worth offering right now, ranked, each with the count it would
-   show. A ghost that is already the active pill, that would empty the list,
-   or that would change nothing (every visible row already matches) is noise
-   and stays out. `demoted` holds ids the user just removed, which take the
-   end of the bar in removal order so the eye finds them where they went. */
+   show. A ranked ghost narrows the visible rows; one that is already the
+   active pill, that would empty the list, or that would swap the rows out is
+   noise and stays out. `demoted` holds the filters the user just removed, in
+   removal order: each returns at the end of the bar as the way back, even
+   when it swaps rather than narrows, and the cap makes room for it by
+   dropping the lowest-ranked refinement first. */
 export function suggestFilters(
   lines: readonly Readonly<HomeLine>[],
   active: readonly Readonly<ActiveFilter>[],
   nowMs: number,
-  demoted: readonly string[] = [],
+  demoted: readonly Readonly<ActiveFilter>[] = [],
 ): (FilterSuggestion & { readonly count: number })[] {
   const filtered = applyFilters(lines, active);
+  const demotedIds = new Set(demoted.map(suggestionId));
+
   const ranked: (FilterSuggestion & { readonly count: number })[] = [];
-  for (const candidate of candidates(filtered, nowMs)) {
-    if (isSuggestionActive(candidate, active, nowMs)) continue;
+  for (const group of candidateGroups(filtered, active, nowMs)) {
+    for (const candidate of group) {
+      if (isSuggestionActive(candidate, active, nowMs) || demotedIds.has(suggestionId(candidate))) {
+        continue;
+      }
+      const shown = applyFilters(lines, withSuggestion(active, candidate));
+      if (!narrows(shown, filtered)) continue;
+      ranked.push({ ...candidate, count: shown.length });
+      break;
+    }
+  }
+
+  const wayBack: (FilterSuggestion & { readonly count: number })[] = [];
+  for (const candidate of demoted) {
+    if (candidate.key === "search" || isSuggestionActive(candidate, active, nowMs)) continue;
     const shown = applyFilters(lines, withSuggestion(active, candidate));
     if (shown.length === 0 || sameRows(shown, filtered)) continue;
-    ranked.push({ ...candidate, count: shown.length });
+    wayBack.push({ key: candidate.key, raw: candidate.raw, count: shown.length });
   }
-  /* Membership is decided by rank alone; demotion only reorders what made
-     the cut, so removing a pill never knocks its ghost off the bar. Sort is
-     stable, so the undemoted (index -1) keep their rank order up front. */
-  return ranked
-    .slice(0, SUGGESTION_LIMIT)
-    .sort((a, b) => demoted.indexOf(suggestionId(a)) - demoted.indexOf(suggestionId(b)));
+
+  const room = Math.max(0, SUGGESTION_LIMIT - wayBack.length);
+  return [...ranked.slice(0, room), ...wayBack.slice(0, SUGGESTION_LIMIT)];
 }
