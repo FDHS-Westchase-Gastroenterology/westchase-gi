@@ -70,8 +70,10 @@ registry installation, Preview measurements, and human review. Measurement repor
 
 The active iteration is Accordion on the staff Help page. Stock behavior is preserved at
 `5e26ae1726b3e9b25c79b6ca0a3548e37ee21f8b`; the first critically damped spring candidate is
-`7bbee27af7679a8b8a5ed342ed5e8ee91fe0a90c`. Both versions package reusable source through
+`7bbee27af7679a8b8a5ed342ed5e8ee91fe0a90c`. The current implementation at
+`aeefa5c4625bc38b33ae24316b59351b8f685d29` corrects live reduced-motion preference handling and
+initial hidden-panel markup without changing that spring's parameters. Each version packages reusable source through
 `registry.json` and install it into the application's `ui/` directory. The candidate keeps the
 same Help content and grouping. Review the exact Preview reports in
 [component-evidence/accordion](component-evidence/accordion) before approving another behavior
-change or proceeding to another component. Neither version changes the database schema.
+change or proceeding to another component. These versions do not change the database schema.

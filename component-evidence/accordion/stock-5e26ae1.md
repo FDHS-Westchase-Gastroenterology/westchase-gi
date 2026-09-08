@@ -9,7 +9,7 @@ Stock opening and closing generally reach their final height in about 200ms unde
 - Application Git SHA: `5e26ae1726b3e9b25c79b6ca0a3548e37ee21f8b`.
 - Vercel deployment: `dpl_7e95Phoa4FR9GeSdmtkvrjj6ohPZ`, READY Preview verified by the implementation agent; its Preview environment endpoint also returned this exact Git SHA.
 - [Immutable Preview Help page](https://westchase-cbm4wz0w1-jasongitdev-1290s-projects.vercel.app/admin/help).
-- Browserbase session: `a03b08ed-ad82-4744-ba37-39fb8f4cf8ea`. The runner attached through CDP and disconnected when complete; it did not end the MCP-owned session.
+- Browserbase session: `a03b08ed-ad82-4744-ba37-39fb8f4cf8ea`. The runner attached through CDP and called `browser.close()` on teardown. Provider session reuse after that call is not guaranteed; session cleanup belongs to the session owner.
 - Browser: Linux Chromium 152, visible page, en-US, device scale 1, two reported logical CPUs, zero touch points. Viewports: 1440×900 and 390×844. Median observed frame cadence across the run was approximately 16.7ms. Mobile results are viewport emulation, not physical-phone measurements.
 - Same exact answer labels throughout: “What the appointment request queue is” (short) and “Work an appointment request” (tall).
 - Expanded heights: desktop 141.516px / 1462.641px; mobile 265.031px / 2459.359px. Heights match between ordinary and reduced motion runs.
@@ -66,4 +66,4 @@ An initial run was rejected because its observer resolved the panel through the 
 
 ## Review status
 
-**Baseline measurement complete; candidate comparison and visual judgment pending.** This report does not replace the separate post-authentication workflow video, desktop/mobile screenshots, functional checks, Apple Design-led motion review, or full repository contribution gates. No recording was exported or published by this measurement run. Instrumentation reads layout every frame and adds overhead; compare the same frozen harness and verify the final feel without instrumentation. Differences smaller than the run-to-run variation remain inconclusive.
+**Baseline measurement complete; [candidate comparison](spring-7bbee27.md) and [corrected-head verification](correction-aeefa5c.md) are recorded separately. Human adoption review remains pending.** This report does not replace the separate post-authentication workflow video, desktop/mobile screenshots, functional checks, Apple Design-led motion review, or full repository contribution gates. No recording was exported or published by this measurement run. Instrumentation reads layout every frame and adds overhead; compare the same frozen harness and verify the final feel without instrumentation. Differences smaller than the run-to-run variation remain inconclusive.

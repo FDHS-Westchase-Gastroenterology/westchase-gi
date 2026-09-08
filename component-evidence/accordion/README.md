@@ -4,6 +4,12 @@ Each version is measured on the Help page of its immutable Vercel Preview deploy
 
 The measurement agent owns the script and records. The implementation agent owns the component and import. Run measurements sequentially in one dedicated Browserbase session; another agent can prepare the next commit while the previous immutable deployment is measured.
 
+## Recorded versions
+
+- [Stock baseline, 5e26ae1](stock-5e26ae1.md): 400 measured interactions in one completed run.
+- [First spring candidate, 7bbee27](spring-7bbee27.md): 393 primary plus seven separately recorded supplemental measurements; live reduced-motion failure retained.
+- [Corrected implementation, aeefa5c](correction-aeefa5c.md): focused hosted correctness checks, functional checks, and visual evidence; not a repeated full matrix.
+
 ## Prepare the run
 
 1. Inspect the exact deployment with Vercel MCP, or use authenticated Vercel CLI inspection when the connector is unavailable. Record which verification method succeeded. Verify it is a ready **Preview**, its Git SHA matches the version being reviewed, and its URL is the deployment's unique URL rather than the moving branch alias. Save the verified values in `deployment.json` outside the source tree. The script validates the manifest's shape; it does not authenticate its claims with Vercel itself. Production and local origins are rejected.
@@ -101,4 +107,4 @@ Long Animation Frames detect rendering updates delayed beyond 50ms in supported 
 
 The instrumentation itself reads layout once per frame and can add overhead. Use the same harness for both versions and confirm the visible result without sampling. Browserbase host load can vary; record browser/environment and rerun both versions together when differences are small or noisy. No CPU/network throttling or physical-device claim is made. The 1.2-second window bounds a run; a slower or continuously moving component must be reported as unsettled, not given a made-up duration.
 
-The runner collects measurements only. It does not upload recordings, post PR comments, run the contribution gates, judge accessibility exhaustively, or certify the source/artifact digests. Finish the Browserbase session with the established session-owner tool and export the separately captured visual evidence. The parent task remains responsible for the full contribution loop and PR evidence.
+The runner collects measurements only. It does not upload recordings, post PR comments, run the contribution gates, judge accessibility exhaustively, or certify the source/artifact digests. The frozen runner calls `browser.close()` during teardown; a managed provider may invalidate that session, so do not assume it can be reused. Confirm cleanup with the established session-owner tool and start a fresh authenticated session if further browser checks need one. Export the separately captured visual evidence. The parent task remains responsible for the full contribution loop and PR evidence.
