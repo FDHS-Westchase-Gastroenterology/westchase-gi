@@ -24,7 +24,7 @@ test("a new line offers the two contact outcomes, booking, and the not-actionabl
   assert.deepEqual(cardRowsFor("new"), ["no_answer", "contacted", "booked", "not_actionable"]);
 });
 
-test("a contacted line offers the same four answers; won't schedule lives under Contacted as No call", () => {
+test("a contacted line offers the same four answers and both follow-up choices", () => {
   assert.deepEqual(cardRowsFor("contacted"), [
     "no_answer",
     "contacted",
@@ -50,7 +50,7 @@ test("a contact answer presumes Call again; No call quiets the calendar and clos
   const noCall = cardReducer(picked, { type: "followUp", followUp: "none" });
   assert.equal(needsDay(noCall.answer, noCall.followUp), false);
   assert.equal(noCall.day, "2026-09-11", "the day waits in case they change their mind");
-  assert.deepEqual(commandFor(noCall, TODAY), { kind: "close", reason: "wont_schedule" });
+  assert.deepEqual(commandFor(noCall, TODAY), { kind: "complete_contact", outcome: "reached" });
   const close = cardReducer(noCall, { type: "answer", answer: "not_actionable", today: TODAY });
   assert.equal(close.followUp, null);
   assert.equal(needsDay(null, null), false);
@@ -154,6 +154,15 @@ test("the saved line names the outcome and the return", () => {
     savedMessage(attempt, "Sample Patient", "2026-09-09T13:00:00.000Z", now),
     "No answer recorded for Sample Patient — back tomorrow morning.",
   );
+  for (const [outcome, label] of [
+    ["no_answer", "No answer"],
+    ["reached", "Contacted"],
+  ]) {
+    assert.equal(
+      savedMessage({ kind: "complete_contact", outcome }, "Sample Patient", null, now),
+      `${label} recorded for Sample Patient. Request closed.`,
+    );
+  }
   const book = { kind: "book", appointment: { date: "2026-09-11", hour: 9, minute: 0 } };
   assert.equal(savedMessage(book, "Sample Patient", null, now), "Sample Patient is Scheduled.");
   const close = { kind: "close", reason: "wont_schedule" };
@@ -179,8 +188,8 @@ test("a saveable draft maps to exactly one server command", () => {
   const noCall = cardReducer(noAnswer, { type: "followUp", followUp: "none" });
   assert.deepEqual(
     commandFor(noCall, TODAY),
-    { kind: "attempt", outcome: "no_answer", callAgain: null },
-    "No call after No answer records the attempt with no call-again",
+    { kind: "complete_contact", outcome: "no_answer" },
+    "No call after No answer completes contact without a callback",
   );
   const reached = cardReducer(INITIAL_DRAFT, {
     type: "answer",

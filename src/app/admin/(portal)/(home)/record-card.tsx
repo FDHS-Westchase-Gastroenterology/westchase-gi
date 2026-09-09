@@ -9,6 +9,7 @@ import {
   closeRequest,
   confirmBookingHandoff,
   recordContactAttempt,
+  recordContactAndClose,
 } from "@/app/admin/(portal)/requests/workflow-actions";
 import { Phone, PhoneOff } from "@/components/icons";
 import { RadioGroup, RadioGroupItem } from "@/components/stock/radio-group";
@@ -46,6 +47,7 @@ import type {
   CardFailure,
   FollowUp,
 } from "./record-card-model";
+import { saveCardCommand } from "./record-card-save";
 
 /* ---- The record card: the calendar is the surface ----
    The registry's "date picker with presets" shape, in the portal's words:
@@ -81,18 +83,6 @@ function useRecordCommit(line: Readonly<HomeLine>, onSaved: () => void) {
     };
   }
 
-  async function dispatchCommand(command: Readonly<CardCommand>): Promise<CommandOutcome> {
-    if (command.kind === "attempt") {
-      return recordContactAttempt({
-        ...common(),
-        outcome: command.outcome,
-        callAgain: command.callAgain,
-      });
-    }
-    if (command.kind === "close") return closeRequest({ ...common(), reason: command.reason });
-    return confirmBookingHandoff({ ...common(), appointment: command.appointment });
-  }
-
   // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- CommandOutcome carries domain member types that cannot be made readonly
   function settle(result: Readonly<CommandOutcome>, command: Readonly<CardCommand>) {
     if (result.ok) {
@@ -117,7 +107,15 @@ function useRecordCommit(line: Readonly<HomeLine>, onSaved: () => void) {
       if (pending) return;
       setFailure(null);
       startTransition(async () => {
-        settle(await dispatchCommand(command), command);
+        settle(
+          await saveCardCommand(command, common(), {
+            recordContactAttempt,
+            recordContactAndClose,
+            closeRequest,
+            confirmBookingHandoff,
+          }),
+          command,
+        );
       });
     };
     lastRun.current = attempt;
@@ -164,7 +162,7 @@ function AnswerRows({
         <FieldLabel
           key={row}
           className="wgi-answer"
-          data-closes={closureFor(row, null) === null ? undefined : "true"}
+          data-closes={closureFor(row) === null ? undefined : "true"}
         >
           <RadioGroupItem value={row} />
           {ANSWER_LABELS[row]}

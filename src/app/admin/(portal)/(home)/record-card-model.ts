@@ -1,6 +1,7 @@
 import { followUpShortLabel } from "@/app/admin/(portal)/requests/format";
 import type { AppointmentChoice } from "@/app/admin/(portal)/requests/workflow-actions";
 import type { FollowUpChoice } from "@/lib/portal/business-time";
+import type { ContactCompletionResult } from "@/lib/portal/workflow/contact-completion";
 import { legalActionsFor } from "@/lib/portal/workflow/contracts";
 import type {
   ManualClosureReason as ClosureReason,
@@ -10,17 +11,10 @@ import type {
   RequestStatus,
 } from "@/lib/portal/workflow/contracts";
 
-/* The record card's decision model: the calendar is the surface, the
-   answers sit beside it, the follow-up sits beneath it, Save commits. A
-   staff member picks what happened; a contact answer presumes a call-again
-   and offers No call where the workflow has a home for it; a booking asks
-   for the day and its time. The calendar never presumes a day: it opens
-   blank and shows only what staff click, in either order, and nothing is
-   recorded until Save — the same commit model as the Received range
-   editor. The card's markup calls these functions; nothing here
-   touches React, so the rules are checked by a plain unit test. Day
-   strings are practice-local YYYY-MM-DD and times are HH:MM, the
-   vocabulary of every picker on the portal. */
+/* The card records nothing until Save. Contact answers offer an explicit
+   callback or No call, which records the contact result and closes the request.
+   The calendar starts blank and preserves days staff picked while switching
+   choices. Days are practice-local YYYY-MM-DD; times are HH:MM. */
 
 export const CARD_ANSWERS = ["no_answer", "contacted", "booked", "not_actionable"] as const;
 export type CardAnswer = (typeof CARD_ANSWERS)[number];
@@ -56,13 +50,9 @@ export function contactOutcomeFor(answer: CardAnswer): ContactOutcome | null {
   return CONTACT_OUTCOME[answer];
 }
 
-/** The closure an answer and its follow-up record, or null when the
-   request stays open: Close request always closes; Contacted with No call
-   closes as won't schedule, which is what the patient said. */
-export function closureFor(answer: CardAnswer, followUp: FollowUp | null): ClosureReason | null {
-  if (answer === "not_actionable") return "not_actionable";
-  if (answer === "contacted" && followUp === "none") return "wont_schedule";
-  return null;
+/** Ordinary closure is a separate staff choice from completing contact. */
+export function closureFor(answer: CardAnswer): ClosureReason | null {
+  return answer === "not_actionable" ? "not_actionable" : null;
 }
 
 function stateOf(status: RequestStatus): RequestState {
@@ -80,10 +70,8 @@ export function cardRowsFor(status: RequestStatus): readonly CardAnswer[] {
   });
 }
 
-/** The follow-ups a contact answer offers: Call again or No call, on every
-   line. No call after Contacted closes the request as won't schedule;
-   No call after No answer records the attempt with no call-again. The
-   card asks the whole question; the server decides what it accepts. */
+/** No call records the contact result and closes with no further contact.
+   Call again records an attempt with an explicit callback. */
 export function followUpsFor(answer: CardAnswer | null): readonly FollowUp[] {
   return answer !== null && contactOutcomeFor(answer) !== null ? FOLLOW_UPS : [];
 }
@@ -323,24 +311,31 @@ export type CardCommand =
   | {
       readonly kind: "attempt";
       readonly outcome: ContactOutcome;
-      /** Null is No call: the attempt is recorded and nobody calls back. */
-      readonly callAgain: Readonly<FollowUpChoice> | null;
+      readonly callAgain: Readonly<FollowUpChoice>;
     }
+  | { readonly kind: "complete_contact"; readonly outcome: ContactCompletionResult }
   | { readonly kind: "close"; readonly reason: ClosureReason }
   | { readonly kind: "book"; readonly appointment: Readonly<AppointmentChoice> };
 
 /** The server action a saveable draft calls, or null while the draft is incomplete. */
 export function commandFor(draft: Readonly<CardDraft>, today: string): CardCommand | null {
   if (draft.answer === null || !canSave(draft, today)) return null;
-  const reason = closureFor(draft.answer, draft.followUp);
+  const reason = closureFor(draft.answer);
   if (reason !== null) return { kind: "close", reason };
   const outcome = contactOutcomeFor(draft.answer);
-  if (outcome !== null)
+  if (outcome !== null) {
+    if (draft.followUp === "none") {
+      return {
+        kind: "complete_contact",
+        outcome: draft.answer === "no_answer" ? "no_answer" : "reached",
+      };
+    }
     return {
       kind: "attempt",
       outcome,
-      callAgain: draft.followUp === "none" ? null : followUpFor(draft.day, today),
+      callAgain: followUpFor(draft.day, today),
     };
+  }
   return {
     kind: "book",
     appointment: {
@@ -363,6 +358,7 @@ export function savedMessage(
   if (command.kind === "book") return `${name} is Scheduled.`;
   if (command.kind === "close") return `${name} is Closed.`;
   const label = command.outcome === "no_answer" ? ANSWER_LABELS.no_answer : ANSWER_LABELS.contacted;
+  if (command.kind === "complete_contact") return `${label} recorded for ${name}. Request closed.`;
   return callAgainAt === null
     ? `${label} recorded for ${name}.`
     : `${label} recorded for ${name} — back ${followUpShortLabel(callAgainAt, now)}.`;
