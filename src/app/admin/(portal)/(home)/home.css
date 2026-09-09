@@ -2,8 +2,8 @@
    Implements `Portal Home Redesign.dc.html`. Every color arrives through the
    brand tokens / the portal bridge; type sits on the closed --pt-* scale;
    radii are the brand's three steps. Motion is authored fresh for this
-   surface (portal-home-redesign-brief §4.5): hover tints ride a 130ms strong
-   ease-out, popovers grow from their trigger in 160ms and leave in 120ms,
+   surface (portal-home-redesign-brief §4.5): filter controls respond immediately,
+   other hover tints ride a 130ms strong ease-out, popovers grow from their trigger in 160ms and leave in 120ms,
    a recorded outcome lands as a 480ms mint fade on the row.
 
    These rules are intentionally unlayered: they must outrank the Tailwind
@@ -34,18 +34,11 @@
   font-size: var(--pt-xs);
   font-weight: 700;
   cursor: pointer;
-  transition:
-    background-color 130ms cubic-bezier(0.19, 1, 0.22, 1),
-    transform 130ms cubic-bezier(0.19, 1, 0.22, 1);
+  transition: none;
 }
 
-.wgi-add-filter:hover,
 .wgi-add-filter[data-popup-open] {
   background: var(--color-mint);
-}
-
-.wgi-add-filter:active {
-  transform: scale(0.97);
 }
 
 .wgi-add-filter > svg {
@@ -75,11 +68,7 @@
   font-family: inherit;
   font-size: var(--pt-xs);
   cursor: pointer;
-  transition: background-color 130ms cubic-bezier(0.19, 1, 0.22, 1);
-}
-
-.wgi-pill-label:hover {
-  background: var(--color-mint);
+  transition: none;
 }
 
 .wgi-pill-label:active,
@@ -112,14 +101,7 @@
   padding: 0;
   color: var(--color-muted-ink);
   cursor: pointer;
-  transition:
-    background-color 130ms cubic-bezier(0.19, 1, 0.22, 1),
-    color 130ms cubic-bezier(0.19, 1, 0.22, 1);
-}
-
-.wgi-pill-remove:hover {
-  background: var(--color-mint);
-  color: var(--color-ink);
+  transition: none;
 }
 
 /* The capsule clips; outlines must sit inside it to stay visible. */
@@ -142,19 +124,29 @@
   font-family: inherit;
   font-size: var(--pt-xs);
   cursor: pointer;
-  transition:
-    background-color 130ms cubic-bezier(0.19, 1, 0.22, 1),
-    border-color 130ms cubic-bezier(0.19, 1, 0.22, 1),
-    transform 130ms cubic-bezier(0.19, 1, 0.22, 1);
+  transition: none;
 }
 
-.wgi-sug:hover {
-  background: var(--portal-surface);
-  border-color: var(--color-line-3);
+.wgi-pill-remove:active {
+  background: var(--color-mint-2);
+  color: var(--color-ink);
 }
 
-.wgi-sug:active {
-  transform: scale(0.97);
+@media (hover: hover) and (pointer: fine) {
+  .wgi-add-filter:hover,
+  .wgi-pill-label:hover:not(:active):not([data-popup-open]),
+  .wgi-pill-remove:hover:not(:active) {
+    background: var(--color-mint);
+  }
+
+  .wgi-pill-remove:hover {
+    color: var(--color-ink);
+  }
+
+  .wgi-sug:hover {
+    background: var(--portal-surface);
+    border-color: var(--color-line-3);
+  }
 }
 
 /* The count a ghost would show: quiet numerals after the value, so a glance
@@ -1637,8 +1629,6 @@
      blanket reset in globals.css @layer base already collapses the 240ms
      exhale to an instant change. */
 
-  .wgi-add-filter:active,
-  .wgi-sug:active,
   .wgi-editor-apply:active:enabled,
   .wgi-answer:has([data-slot="radio-group-item"]:enabled):active,
   .wgi-record-follow > [data-slot="toggle-group-item"]:active:enabled,

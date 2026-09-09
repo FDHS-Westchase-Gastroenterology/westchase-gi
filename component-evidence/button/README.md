@@ -16,7 +16,7 @@ Ordinary actions and button-style links use the approved custom recipe across Ho
 
 | Controls | Existing behavior retained | Source |
 | --- | --- | --- |
-| Add filter, filter pills and remove buttons, suggestions, filter choices and Apply | Authored press/tint timing and selection states | `(home)/filter-bar.tsx`, `suggestion-pill.tsx`, `home.css` |
+| Filter editor choices and Apply | Existing editor selection states and Apply timing | `(home)/filter-bar.tsx`, `home.css` |
 | Home empty-state Clear filters | Authored 130ms press response | `(home)/home-dashboard.tsx`, `home.css` |
 | Home record Save and Open full record | Existing press response; pointer/keyboard distinction for opening the panel | `(home)/record-card.tsx` |
 | Full-record resize grip, Close, and Call link | Drag/keyboard resizing and authored press response | `(home)/full-record-sheet.tsx`, `home.css` |
@@ -42,3 +42,15 @@ All source paths above are relative to `src/app/admin/(portal)/` except the auth
 ## Verification and release boundary
 
 The registry installs both source files. Focused browser checks use the installed component with compiled portal CSS and cover press/release, popup triggers, disabled state, keyboard activation and focus, repeated activation, and initial/live reduced-motion preferences. This is an isolated component check, not a full authenticated workflow test. Standing gate and Preview deployment results are recorded in the PR conversation. No merge or Production release is authorized.
+
+## Home filter integration — September 9
+
+Jason approved adapting the custom default to Home filters. Add filter and suggestion pills now use the shared Button with their existing shape, border, labels, and counts. Their former local timed compression is removed. Active filter capsules retain separate edit/remove controls with immediate background feedback; the remove control has an explicit pressed tint. Mouse/trackpad hover styling is gated separately from pressed/open states. Open editor tints persist, and reduced motion retains the shared opacity cue on standalone pills without movement.
+
+| Before | After | Why |
+| --- | --- | --- |
+| Standalone pills animate compression over 130ms | Shared immediate compression and opacity | Match the approved default for repeated actions |
+| Capsule edit/remove colors transition over 130ms | Immediate colors; explicit remove press tint | Preserve the split control and feedback without movement |
+| Ungated filter hover styles | Fine-pointer hover only | Avoid mouse-only hover feedback on touch |
+
+Motion verdict: **Approve** for this bounded change. The editor, Apply, calendar, and popover animation remain outside it. Focused checks use installed Button markup with compiled portal CSS plus Home CSS, covering press/release, keyboard, disabled state, reduced-motion changes, split-control tint, and coarse-pointer hover exclusion. They do not constitute a full live portal workflow audit. Captures remain waived for this iteration.

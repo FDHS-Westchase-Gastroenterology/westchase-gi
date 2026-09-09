@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 
+import { Button } from "@/components/ui/registry-button";
 import {
   datePresets,
   dayLabel,
@@ -29,11 +30,9 @@ import { HomeRangeCalendar } from "./parts/calendar";
 import { HomePopover, HomePopoverContent, HomePopoverTrigger } from "./parts/popover";
 import { SuggestionPill } from "./suggestion-pill";
 
-/* The filter bar (brief §2.2): Add Filter, then active pills in URL order,
-   then suggestion pills. Every toggle applies instantly — URL, pill label,
-   and list update per click. The one exception is the Received editor's
-   custom range, which takes over the popover and holds a draft until Apply
-   (filter-bar brief §5.5). */
+/* Filters update the URL, pill label, and list immediately. Only the
+   Received custom range holds a draft until Apply. Standalone pills use
+   the shared Button; active capsules keep separate edit/remove controls. */
 
 interface FilterBarProps {
   readonly active: readonly ActiveFilter[];
@@ -122,7 +121,7 @@ function AddFilterButton({
         }
       }}
     >
-      <HomePopoverTrigger render={<button type="button" className="wgi-add-filter" />}>
+      <HomePopoverTrigger render={<Button variant="ghost" className="wgi-add-filter" />}>
         <svg
           width="15"
           height="15"
