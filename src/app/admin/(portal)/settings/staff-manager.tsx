@@ -130,7 +130,8 @@ function StaffList({
                   </span>
                   {isAdmin && !isSelf && (
                     <>
-                      <button
+                      <Button
+                        variant="ghost"
                         type="button"
                         data-action="resend-invite"
                         disabled={rowPending}
@@ -146,8 +147,9 @@ function StaffList({
                         className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
                       >
                         Resend invite
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="ghost"
                         type="button"
                         data-action="deactivate"
                         disabled={rowPending}
@@ -162,10 +164,10 @@ function StaffList({
                             );
                           }
                         }}
-                        className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+                        className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] hover:border-[var(--color-amber-deep)] disabled:opacity-60"
                       >
                         Deactivate
-                      </button>
+                      </Button>
                     </>
                   )}
                 </>
@@ -188,7 +190,8 @@ function StaffList({
                     <option value="admin">Admin</option>
                   </select>
                   {draft !== person.role && (
-                    <button
+                    <Button
+                      variant="ghost"
                       type="button"
                       data-action="apply-role"
                       disabled={rowPending}
@@ -203,9 +206,10 @@ function StaffList({
                       className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
                     >
                       Apply
-                    </button>
+                    </Button>
                   )}
-                  <button
+                  <Button
+                    variant="ghost"
                     type="button"
                     data-action="deactivate"
                     disabled={rowPending}
@@ -220,10 +224,10 @@ function StaffList({
                         );
                       }
                     }}
-                    className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+                    className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] hover:border-[var(--color-amber-deep)] disabled:opacity-60"
                   >
                     Deactivate
-                  </button>
+                  </Button>
                 </>
               ) : (
                 <span className="flex min-h-10 items-center rounded-full bg-[var(--color-mint)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] capitalize">
@@ -283,21 +287,23 @@ function InviteResultPanel({
       )}
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {hasFallbackLink && (
-          <button
+          <Button
+            variant="ghost"
             type="button"
             onClick={onCopy}
             className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)]"
           >
             {issued.copied ? "Copied" : "Copy setup link"}
-          </button>
+          </Button>
         )}
-        <button
+        <Button
+          variant="ghost"
           type="button"
           onClick={onDismiss}
           className="flex min-h-11 items-center rounded-[var(--radius-sm)] px-3.5 text-[0.85rem] font-bold text-[var(--color-muted-ink)]"
         >
           Dismiss
-        </button>
+        </Button>
       </div>
     </div>
   );

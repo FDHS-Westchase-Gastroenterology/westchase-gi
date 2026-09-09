@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { logoutAction } from "@/app/admin/actions";
 import { Activity, ExternalLink, FileText, LogOut, Users } from "@/components/icons";
+import { Button } from "@/components/ui/registry-button";
 import { getSessionUser } from "@/lib/portal/auth";
 import { getPortalReleaseState } from "@/lib/portal/release-briefing";
 import {
@@ -95,10 +96,10 @@ export default async function PortalLayout({
                 View website
               </Link>
               <form action={logoutAction}>
-                <button type="submit">
+                <Button variant="ghost" type="submit">
                   <LogOut className="h-4 w-4" />
                   Sign out
-                </button>
+                </Button>
               </form>
             </div>
           </div>
@@ -122,7 +123,9 @@ export default async function PortalLayout({
                 <Link href="/admin/audit">Activity log</Link>
                 <Link href="/">View website</Link>
                 <form action={logoutAction}>
-                  <button type="submit">Sign out</button>
+                  <Button variant="ghost" type="submit">
+                    Sign out
+                  </Button>
                 </form>
               </div>
             </details>

@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { PortalFeedbackProvider } from "@/app/admin/(portal)/portal-feedback";
 import { ChevronRight } from "@/components/icons";
-import { buttonVariants } from "@/components/ui/button-variants";
+import { buttonVariants } from "@/components/ui/registry-button-variants";
 import { requireRole } from "@/lib/portal/auth";
 import { waitingSince } from "@/lib/portal/business-time";
 import { STAFF_REQUEST_SOURCE_PATH } from "@/lib/portal/contracts";

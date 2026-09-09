@@ -12,7 +12,8 @@ import {
 import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import { Check } from "@/components/icons";
 import { useOutputGuard } from "@/components/output-feedback";
-import { buttonVariants } from "@/components/ui/button-variants";
+import { Button } from "@/components/ui/registry-button";
+import { buttonVariants } from "@/components/ui/registry-button-variants";
 import type { ReviewFlyer, ReviewTargetKey } from "@/lib/review-flyers";
 
 const DOWNLOAD_ACTIONS = [
@@ -46,7 +47,8 @@ function FlyerPrintButton({
   const { begin, locked } = useOutputGuard({ releaseOnAfterPrint: true });
 
   return (
-    <button
+    <Button
+      variant="ghost"
       type="button"
       aria-disabled={locked || undefined}
       data-slot="button"
@@ -60,7 +62,7 @@ function FlyerPrintButton({
       }}
     >
       {label}
-    </button>
+    </Button>
   );
 }
 
@@ -248,7 +250,7 @@ function ReviewFlyerPrinterBody({ flyers }: Readonly<{ flyers: ReviewFlyer[] }>)
                   </p>
                   <div className="mt-4 flex flex-wrap items-center gap-2.5">
                     <FlyerPrintButton
-                      className={buttonVariants({ variant: "amber" })}
+                      className={buttonVariants({ variant: "default" })}
                       label="Print flyer"
                       message={`Print dialog is opening for ${flyer.title}.`}
                       target={flyer.key}

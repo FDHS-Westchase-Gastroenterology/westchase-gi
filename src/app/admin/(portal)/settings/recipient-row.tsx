@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/registry-button";
 import type { NotificationRecipientRow } from "@/lib/portal/rows";
 
 /** The notification_recipients columns the settings page reads. */
@@ -107,7 +108,8 @@ export function RecipientRowItem({
                 className="text-[0.85rem]"
               />
             </Field>
-            <button
+            <Button
+              variant="ghost"
               type="button"
               data-action="save-label"
               disabled={labelPending}
@@ -115,8 +117,9 @@ export function RecipientRowItem({
               className="min-h-11 rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
             >
               {labelPending ? "Saving…" : "Save"}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
               type="button"
               disabled={labelPending}
               onClick={() => {
@@ -126,12 +129,13 @@ export function RecipientRowItem({
               className="min-h-11 px-2 text-[0.85rem] font-bold text-[var(--color-muted-ink)] disabled:opacity-60"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         ) : (
           <p className="text-[0.85rem] text-[var(--color-muted-ink)]">
             {hasLabel ? label : "No label"}
-            <button
+            <Button
+              variant="ghost"
               ref={editButtonRef}
               type="button"
               data-action="edit-label"
@@ -139,7 +143,7 @@ export function RecipientRowItem({
               className="ml-2 min-h-11 align-baseline font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
             >
               {hasLabel ? "Edit label" : "Add a label"}
-            </button>
+            </Button>
           </p>
         )}
       </div>
@@ -151,7 +155,8 @@ export function RecipientRowItem({
         >
           {recipient.active ? "Active" : "Paused"}
         </span>
-        <button
+        <Button
+          variant="ghost"
           id={`recipient-toggle-${recipient.id}`}
           ref={toggleButtonRef}
           type="button"
@@ -163,21 +168,22 @@ export function RecipientRowItem({
             restoreToggleFocusRef.current = true;
             onToggle();
           }}
-          className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] transition-colors disabled:opacity-60"
+          className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
         >
           {togglePending ? "Saving…" : toggleLabel}
-        </button>
+        </Button>
         {isAdmin && (
-          <button
+          <Button
+            variant="ghost"
             id={`remove-recipient-${recipient.id}`}
             type="button"
             data-action="remove"
             disabled={removePending}
             onClick={onRemove}
-            className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+            className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] hover:border-[var(--color-amber-deep)] disabled:opacity-60"
           >
             {removePending ? "Removing…" : "Remove"}
-          </button>
+          </Button>
         )}
       </div>
     </li>

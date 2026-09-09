@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useId, useRef, useState } from "react";
 
+import { Button } from "@/components/ui/registry-button";
+
 import { usePortalFeedback } from "./portal-feedback";
 import { StaffRequestForm } from "./requests/new/staff-request-form";
 import type { StaffRequestFormHandle } from "./requests/new/staff-request-form";
@@ -54,7 +56,8 @@ export function AddAppointmentDialog({
 
   return (
     <>
-      <button
+      <Button
+        variant="ghost"
         ref={triggerRef}
         type="button"
         data-testid="home-add-patient-request"
@@ -67,7 +70,7 @@ export function AddAppointmentDialog({
         }}
       >
         Add appointment
-      </button>
+      </Button>
       <dialog
         ref={dialogRef}
         aria-modal="true"
@@ -90,9 +93,14 @@ export function AddAppointmentDialog({
             <h2 id={titleId} className="portal-confirm-dialog-title">
               Add appointment request
             </h2>
-            <button type="button" onClick={requestClose} className="portal-confirm-dialog-close">
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={requestClose}
+              className="portal-confirm-dialog-close"
+            >
               Close
-            </button>
+            </Button>
           </div>
           <p>
             For a call, a walk-in, or a message that needs appointment follow-up. It joins the line

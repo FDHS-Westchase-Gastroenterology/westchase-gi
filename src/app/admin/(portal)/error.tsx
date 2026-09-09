@@ -3,8 +3,8 @@
 import Link from "next/link";
 
 import { Activity } from "@/components/icons";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { Button } from "@/components/ui/registry-button";
+import { buttonVariants } from "@/components/ui/registry-button-variants";
 
 import { PortalPageHeader } from "./portal-page-header";
 

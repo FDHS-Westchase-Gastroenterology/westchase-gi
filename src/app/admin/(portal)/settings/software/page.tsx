@@ -6,7 +6,7 @@ import {
   revokeMaintainer,
 } from "@/app/admin/(portal)/settings/actions";
 import { Check } from "@/components/icons";
-import { buttonVariants } from "@/components/ui/button-variants";
+import { buttonVariants } from "@/components/ui/registry-button-variants";
 import { requireRole } from "@/lib/portal/auth";
 import { getMaintainerAccessModel } from "@/lib/portal/maintainers";
 import {

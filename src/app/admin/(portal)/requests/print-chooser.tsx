@@ -9,7 +9,6 @@ import { usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { STATUS_LABELS } from "@/app/admin/(portal)/requests/format";
 import { Printer } from "@/components/icons";
 import { useOutputGuard } from "@/components/output-feedback";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Field,
@@ -20,6 +19,7 @@ import {
   FieldTitle,
 } from "@/components/ui/field";
 import { Button } from "@/components/ui/registry-button";
+import { buttonVariants } from "@/components/ui/registry-button-variants";
 import {
   formatStatusList,
   knownSelectionCount,
@@ -173,9 +173,14 @@ export function PrintChooser({
             <h2 id={titleId} className="portal-confirm-dialog-title">
               Print appointments
             </h2>
-            <button type="button" onClick={closeChooser} className="portal-confirm-dialog-close">
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={closeChooser}
+              className="portal-confirm-dialog-close"
+            >
               Close
-            </button>
+            </Button>
           </div>
           <p>Choose all New requests, or build a list by status.</p>
           <div className="portal-print-chooser-primary">
@@ -273,13 +278,14 @@ export function PrintChooser({
               Print selected
             </Button>
           )}
-          <button
+          <Button
+            variant="ghost"
             type="button"
             onClick={closeChooser}
             className="portal-confirm-dialog-discard min-h-11"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </dialog>
     </>

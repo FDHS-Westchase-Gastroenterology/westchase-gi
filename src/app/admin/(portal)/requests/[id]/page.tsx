@@ -6,7 +6,7 @@ import { PortalPageHeader } from "@/app/admin/(portal)/portal-page-header";
 import { CLOSURE_REASON_LABELS, formatReceived } from "@/app/admin/(portal)/requests/format";
 import { fetchRequestDetail } from "@/app/admin/(portal)/requests/queue";
 import { StatusBadge } from "@/app/admin/(portal)/requests/status-badge";
-import { buttonVariants } from "@/components/ui/button-variants";
+import { buttonVariants } from "@/components/ui/registry-button-variants";
 import { requireRole } from "@/lib/portal/auth";
 import { firstSearchParam, parseRequestSearch } from "@/lib/portal/request-query";
 import { readRequestWorklist } from "@/lib/portal/request-worklist/service";

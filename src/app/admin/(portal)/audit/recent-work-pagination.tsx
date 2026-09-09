@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-import { buttonVariants } from "@/components/ui/button-variants";
+import { buttonVariants } from "@/components/ui/registry-button-variants";
 
 import { requestFocusAfterNavigate } from "./recent-work-focus";
 import { recentWorkHref } from "./recent-work-model";

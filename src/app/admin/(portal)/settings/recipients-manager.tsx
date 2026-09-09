@@ -201,7 +201,8 @@ function RemoveRecipientDialog({
           <h2 id="remove-recipient-title" className="portal-confirm-dialog-title">
             Remove {recipient.email}?
           </h2>
-          <button
+          <Button
+            variant="ghost"
             type="button"
             disabled={pending}
             data-testid="close-remove-recipient-dialog"
@@ -209,7 +210,7 @@ function RemoveRecipientDialog({
             className="portal-confirm-dialog-close"
           >
             Close
-          </button>
+          </Button>
         </div>
         <p id="remove-recipient-copy">
           Notification emails will stop for {recipient.email}. Removing this address does not remove
@@ -228,7 +229,8 @@ function RemoveRecipientDialog({
         >
           Cancel
         </Button>
-        <button
+        <Button
+          variant="ghost"
           type="button"
           disabled={pending}
           data-testid="confirm-remove-recipient"
@@ -236,7 +238,7 @@ function RemoveRecipientDialog({
           className="portal-confirm-dialog-destructive min-h-11 disabled:opacity-60"
         >
           {pending ? "Removing recipient…" : "Remove recipient"}
-        </button>
+        </Button>
       </div>
     </dialog>
   );
@@ -289,7 +291,8 @@ function RecipientNotices({
           <span className="font-bold">
             Notifications {undo.restoredActive ? "paused" : "resumed"} for {undo.email}.
           </span>
-          <button
+          <Button
+            variant="ghost"
             type="button"
             data-action="undo-toggle"
             disabled={pendingKey === `toggle:${undo.recipientId}`}
@@ -297,14 +300,15 @@ function RecipientNotices({
             className="min-h-11 font-bold text-[var(--color-teal-ink)] underline underline-offset-2 disabled:opacity-60"
           >
             Undo
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             type="button"
             onClick={onDismissUndo}
             className="min-h-11 font-bold text-[var(--color-muted-ink)]"
           >
             Dismiss
-          </button>
+          </Button>
         </p>
       )}
 

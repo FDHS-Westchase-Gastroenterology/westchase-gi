@@ -15,8 +15,8 @@ import {
 } from "react";
 
 import { ArrowRight, ChevronDown, X } from "@/components/icons";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { Button } from "@/components/ui/registry-button";
+import { buttonVariants } from "@/components/ui/registry-button-variants";
 import { PORTAL_RELEASE_BRIEFING } from "@/lib/portal/release-briefing-content";
 import type { PortalReleaseViewState } from "@/lib/portal/release-briefing-content";
 
@@ -441,7 +441,7 @@ function ReleaseSummary({
         <Link
           href="/admin/requests"
           data-slot="button"
-          className={buttonVariants({ variant: "amber" })}
+          className={buttonVariants({ variant: "default" })}
         >
           Open requests
           <ArrowRight className="h-4 w-4" />
@@ -456,24 +456,26 @@ function ReleaseSummary({
         >
           {guidePending ? "Opening guide…" : "See the 2-minute guide"}
         </Button>
-        <button
+        <Button
+          variant="ghost"
           type="button"
           onClick={acknowledge}
           disabled={actionPending}
           className="min-h-11 rounded-[var(--radius-sm)] px-3 text-[0.9rem] font-bold text-[var(--color-teal-ink)] underline-offset-2 hover:underline disabled:cursor-wait disabled:opacity-65"
         >
           {actionPending ? "Saving…" : "Got it"}
-        </button>
+        </Button>
       </div>
 
-      <button
+      <Button
+        variant="ghost"
         type="button"
         onClick={hide}
         disabled={actionPending}
         className="mt-3 min-h-11 text-[0.82rem] font-bold text-[var(--color-muted-ink)] underline underline-offset-2 disabled:cursor-wait disabled:opacity-65"
       >
         Hide this update now
-      </button>
+      </Button>
     </section>
   );
 }

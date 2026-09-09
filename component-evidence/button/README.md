@@ -1,36 +1,44 @@
-# Button review candidate
+# Approved Button default
 
-Jason requested the proposed stock-button diff in custom source, installed into the prescribed PR #281 worktree for his Preview review. Before/after captures are explicitly waived for this iteration. No screenshots, recordings, or extended measurements are prerequisites for this checkpoint.
+Jason tested the PR Preview and approved general staff-portal adoption on September 9, 2026, while asking that controls with their own interaction behavior be preserved. Before/after capture remains explicitly waived for this iteration.
 
-## Behavior
+## Behavior and packaging
 
-Immediate pressed feedback: transform scale(0.97) and opacity 0.8, with no timed transition. Reduced motion removes the transform and retains opacity feedback. Popup triggers share the pressed state; disabled and aria-disabled controls are excluded. Activation handlers remain with Base UI and the existing consumer.
+Enabled buttons immediately compress to 0.97 and use 0.8 opacity while pressed, with no timed transition. Reduced motion removes compression and retains opacity feedback. Disabled and aria-disabled controls are excluded.
 
-Shared source: `/Users/Jason/Desktop/design/custom/ui/button.tsx`. WGI reusable source: `src/components/registry/button.tsx`. Installed copy: `src/components/ui/registry-button.tsx`. `npm run registry:install:button` builds the registry and installs the component through shadcn. Source and installed copy match. Shared source retains the buttonVariants export required by its existing registry consumers; WGI keeps that helper private to satisfy React Doctor. This is the only source adaptation.
+Reusable source: `src/components/registry/button.tsx` and `registry-button-variants.ts`. Installed source: `src/components/ui/registry-button.tsx` and `registry-button-variants.ts`. The separate helper lets server-rendered links share the recipe without importing a client component. Both files are registered and installed through `npm run registry:install:button`. Shared Desktop source retains its existing combined file and helper export; behavior is identical. Stock sources remain unchanged.
 
-Stock `base-nova/` is unchanged. Jason explicitly requested preparing custom/ before his portal review; this is an unapproved candidate, not a promoted default.
+## Portal adoption
 
-## Review surfaces
+Ordinary actions and button-style links use the approved custom recipe across Home, Appointments, request entry and detail, printing, review flyers, recent work, settings, software access, help, the tour, error recovery, and password setup/recovery. Local layout and color overrides remain where needed. Former amber recipe calls use the custom primary variant.
 
-Fourteen portal modules import the candidate: request search, request creation, workflow actions, call-again actions, request notes, current feedback, print chooser, print controls, activity filters, recipient settings, staff settings, software access, release-briefing action, and error recovery.
+## Preserved controls
 
-The candidate uses the custom registry's stock-derived geometry and paint, resolved through the portal's existing semantic theme. The existing patient Button and tour-specific amber variant remain separate. Plain links, disclosure controls, and other specialized controls are outside this candidate.
+| Controls | Existing behavior retained | Source |
+| --- | --- | --- |
+| Add filter, filter pills and remove buttons, suggestions, filter choices and Apply | Authored press/tint timing and selection states | `(home)/filter-bar.tsx`, `suggestion-pill.tsx`, `home.css` |
+| Home empty-state Clear filters | Authored 130ms press response | `(home)/home-dashboard.tsx`, `home.css` |
+| Home record Save and Open full record | Existing press response; pointer/keyboard distinction for opening the panel | `(home)/record-card.tsx` |
+| Full-record resize grip, Close, and Call link | Drag/keyboard resizing and authored press response | `(home)/full-record-sheet.tsx`, `home.css` |
+| Calendar days/navigation, outcome choices, checkbox and radio controls | Specialized selection and focus behavior | Home controls and shared calendar/selection components |
+| Recent-work type filters | Selected pill styling and 150ms color transition | `audit/recent-work-controls.tsx` |
+| See what changed, What's new, and release-summary Close | Existing opening/closing choreography | `portal-release-briefing.tsx` |
+| Add note trigger | Existing reveal/focus choreography already layered on the custom Button | `requests/[id]/request-notes.tsx`, `portal-workbench.css` |
+| Appointments utility Print trigger and Export CSV link | Existing quiet-link color response; Home Print receives the custom recipe through its supplied classes | `requests/print-chooser.tsx`, `portal-workbench.css` |
+| Sign in and Forgot password? | Held pending press for Sign in; dedicated 150ms press for Forgot password | `login/login-form.tsx` |
+
+All source paths above are relative to `src/app/admin/(portal)/` except the authentication path, which is relative to `src/app/admin/`. Navigation tabs and plain text links retain their navigation styling.
 
 ## Motion review
 
 | Before | After | Why |
 | --- | --- | --- |
-| Stock transition-all, shared across focus and press states | transition-none | Immediate keyboard/focus feedback; no unintended animated properties |
-| Press translates down 1px, excluding popup triggers | Immediate 0.97 compression and 0.8 opacity on enabled controls | Consistent press acknowledgement, including popup triggers |
-| No local reduced-motion exception | Compression only under no-preference; opacity in both modes | Keep feedback without movement when reduction is requested |
+| Ordinary actions mixed the old shared transition with separate native buttons | Approved instant compression and opacity response | Consistent acknowledgement without waiting for an animation |
+| Button-style links used the old shared recipe | Same approved recipe as action buttons | Consistent behavior for the same visual control |
+| Specialized controls have authored interaction behavior | Preserved | Honor Jason's exception boundary |
 
-Source review: **Approve** for the requested immediate-state candidate. No new animation duration, easing, spring, event handler, or dependency. Jason's visual judgment is pending; opacity 0.8 is a proposed value, not a contrast certification.
+**Verdict: Approve.** No new timings, curves, springs, or activation handlers. Reduced-motion feedback remains immediate and stationary.
 
-## Verification
+## Verification and release boundary
 
-- Registry build and actual shadcn installation passed.
-- Headless installed Chrome exercised server-rendered installed Button markup with the compiled portal stylesheet. Normal and popup press/release, native disabled state, Enter/Space activation, visible keyboard focus, five rapid clicks, initial reduced-motion load, and live preference changes while held passed. No animation was running during the sampled press states.
-- This was an isolated component correctness check with the actual stylesheet, not an authenticated portal workflow test or physical-device test.
-- Standing gate results and exact deployment are recorded in the PR checkpoint comment after push.
-
-Next decision: Jason reviews the button in PR #281's Preview. No merge or Production release is authorized. Full credentialed portal journeys and physical-device interaction remain unverified.
+The registry installs both source files. Focused browser checks use the installed component with compiled portal CSS and cover press/release, popup triggers, disabled state, keyboard activation and focus, repeated activation, and initial/live reduced-motion preferences. This is an isolated component check, not a full authenticated workflow test. Standing gate and Preview deployment results are recorded in the PR conversation. No merge or Production release is authorized.

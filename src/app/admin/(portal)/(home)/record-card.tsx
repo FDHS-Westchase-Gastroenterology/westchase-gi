@@ -15,6 +15,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/stock
 import { RadioGroup, RadioGroupItem } from "@/components/stock/radio-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/stock/toggle-group";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { Button } from "@/components/ui/registry-button";
 import type { CommandOutcome } from "@/lib/portal/workflow/contracts";
 
 import type { HomeLine } from "./home-line";
@@ -261,9 +262,15 @@ function CardAlert({
     <p role="alert" className="wgi-record-error">
       {failure.message}{" "}
       {failure.uncertain ? (
-        <button type="button" className="wgi-record-retry" disabled={pending} onClick={onRetry}>
+        <Button
+          variant="ghost"
+          type="button"
+          className="wgi-record-retry"
+          disabled={pending}
+          onClick={onRetry}
+        >
           Try again
-        </button>
+        </Button>
       ) : null}
     </p>
   );

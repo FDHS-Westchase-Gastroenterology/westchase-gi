@@ -33,6 +33,11 @@
           "path": "src/components/registry/button.tsx",
           "type": "registry:ui",
           "target": "src/components/ui/registry-button.tsx"
+        },
+        {
+          "path": "src/components/registry/registry-button-variants.ts",
+          "type": "registry:ui",
+          "target": "src/components/ui/registry-button-variants.ts"
         }
       ]
     }

@@ -52,7 +52,8 @@ function RequestNoteList({
             ))}
           </ul>
           {hiddenCount > 0 ? (
-            <button
+            <Button
+              variant="ghost"
               type="button"
               aria-controls="request-note-list"
               aria-expanded={showAll}
@@ -62,7 +63,7 @@ function RequestNoteList({
               {showAll
                 ? "Show fewer notes"
                 : `Show ${hiddenCount} earlier ${hiddenCount === 1 ? "note" : "notes"}`}
-            </button>
+            </Button>
           ) : null}
         </>
       )}
