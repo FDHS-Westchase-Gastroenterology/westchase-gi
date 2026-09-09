@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/registry-button";
 import type {
   MaintainerFailureCode,
   MaintainerManagementState,

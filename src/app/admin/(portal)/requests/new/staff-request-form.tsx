@@ -6,11 +6,11 @@ import { useActionState, useEffect, useImperativeHandle, useRef, useState } from
 import type { KeyboardEvent, MouseEvent, Ref, RefObject } from "react";
 
 import { createStaffRequest } from "@/app/admin/(portal)/requests/new/actions";
-import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Button } from "@/components/ui/registry-button";
 import { Textarea } from "@/components/ui/textarea";
 import { REQUEST_FIELD_LIMITS, INTAKE_FIELDS } from "@/lib/portal/contracts";
 import type {

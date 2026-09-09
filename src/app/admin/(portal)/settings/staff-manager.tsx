@@ -5,10 +5,10 @@ import { useRef, useState, useTransition } from "react";
 import type { ComponentProps, RefObject } from "react";
 
 import { formatReceived } from "@/app/admin/(portal)/requests/format";
-import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Button } from "@/components/ui/registry-button";
 import { parseStaffRole } from "@/lib/portal/contracts";
 import type { StaffRole } from "@/lib/portal/contracts";
 import type { DeliveryOutcome } from "@/lib/portal/email";

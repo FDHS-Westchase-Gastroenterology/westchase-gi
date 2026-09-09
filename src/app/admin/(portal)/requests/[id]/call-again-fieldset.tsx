@@ -6,7 +6,7 @@ import {
   isValidCustomCallAgainDay,
   practiceLocalDay,
 } from "@/app/admin/(portal)/requests/appointment-input";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/registry-button";
 import type { FollowUpChoice } from "@/lib/portal/business-time";
 
 import { FOLLOW_UP_KINDS, followUpChoice } from "./workflow-panel-model";

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/registry-button";
 
 import { requestFocusAfterNavigate, useFocusAfterNavigate } from "./recent-work-focus";
 import {

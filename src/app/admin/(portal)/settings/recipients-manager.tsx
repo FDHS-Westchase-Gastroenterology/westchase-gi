@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useReducer, useRef, useState, useTransition } from "react";
 import type { ComponentProps, KeyboardEvent as ReactKeyboardEvent, RefObject } from "react";
 
-import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/registry-button";
 import type {
   AddRecipientResult,
   ManagementFailureCode,

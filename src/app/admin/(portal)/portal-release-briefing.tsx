@@ -15,8 +15,8 @@ import {
 } from "react";
 
 import { ArrowRight, ChevronDown, X } from "@/components/icons";
-import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { Button } from "@/components/ui/registry-button";
 import { PORTAL_RELEASE_BRIEFING } from "@/lib/portal/release-briefing-content";
 import type { PortalReleaseViewState } from "@/lib/portal/release-briefing-content";
 

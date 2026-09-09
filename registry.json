@@ -21,6 +21,20 @@
           "target": "src/components/ui/accordion/motion.tsx"
         }
       ]
+    },
+    {
+      "name": "button",
+      "type": "registry:ui",
+      "title": "Button",
+      "description": "Immediate pressed feedback with reduced-motion support.",
+      "dependencies": ["@base-ui/react", "class-variance-authority", "cn"],
+      "files": [
+        {
+          "path": "src/components/registry/button.tsx",
+          "type": "registry:ui",
+          "target": "src/components/ui/registry-button.tsx"
+        }
+      ]
     }
   ]
 }

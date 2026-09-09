@@ -9,7 +9,6 @@ import { usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { STATUS_LABELS } from "@/app/admin/(portal)/requests/format";
 import { Printer } from "@/components/icons";
 import { useOutputGuard } from "@/components/output-feedback";
-import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -20,6 +19,7 @@ import {
   FieldSet,
   FieldTitle,
 } from "@/components/ui/field";
+import { Button } from "@/components/ui/registry-button";
 import {
   formatStatusList,
   knownSelectionCount,
