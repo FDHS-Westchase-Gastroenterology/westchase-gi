@@ -12,7 +12,7 @@ import { attemptSignIn, signIn } from "../harness/session";
 // Appointment request attempts notification for exactly the active set.
 // VAL-ADMIN-008: invite -> one-time setup link -> own password -> deactivate
 // -> login refused, across two browser contexts.
-// VAL-ADMIN-012: the help page is substantive plain English (>=400 words).
+// Help-page coverage lives in help.spec.ts.
 
 const { email: SEED_EMAIL } = seedAdmin();
 
@@ -587,24 +587,5 @@ test.describe("portal management UI", () => {
       .locator("li")
       .filter({ hasText: SEED_EMAIL.toLowerCase() });
     await expect(ownRow.getByTestId("staff-last-sign-in")).toContainText("Last sign in");
-  });
-
-  test("VAL-ADMIN-012: help page is substantive plain English", async ({ page }) => {
-    await signIn(page);
-    await page.goto("/admin/help");
-    await expect(page.getByRole("heading", { name: "Help", exact: true })).toBeVisible();
-
-    const text = (await page.locator("main").innerText()).trim();
-    const words = text.split(/\s+/).filter(Boolean);
-    expect(words.length).toBeGreaterThanOrEqual(400);
-
-    for (const heading of [
-      "Work an appointment request",
-      "Notification emails",
-      "Staff access",
-      "Getting website changes made",
-    ]) {
-      await expect(page.getByRole("heading", { name: heading })).toBeVisible();
-    }
   });
 });

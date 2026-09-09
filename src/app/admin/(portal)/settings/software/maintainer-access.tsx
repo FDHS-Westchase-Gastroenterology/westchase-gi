@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/registry-button";
 import type {
   MaintainerFailureCode,
   MaintainerManagementState,
@@ -241,7 +241,8 @@ export function MaintainerAccess({
                 <div className="flex flex-wrap items-center gap-2">
                   <RolePill tone="maintainer">Maintainer</RolePill>
                   {canManage && actions && (
-                    <button
+                    <Button
+                      variant="ghost"
                       type="button"
                       data-action="revoke-maintainer"
                       disabled={pending}
@@ -260,10 +261,10 @@ export function MaintainerAccess({
                           );
                         }
                       }}
-                      className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+                      className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] hover:border-[var(--color-amber-deep)] disabled:opacity-60"
                     >
                       Remove access
-                    </button>
+                    </Button>
                   )}
                 </div>
               </li>
@@ -284,7 +285,8 @@ export function MaintainerAccess({
                 <div className="flex flex-wrap items-center gap-2">
                   <RolePill tone="invited">Invitation sent</RolePill>
                   {canManage && actions && (
-                    <button
+                    <Button
+                      variant="ghost"
                       type="button"
                       data-action="cancel-invitation"
                       disabled={pending}
@@ -303,10 +305,10 @@ export function MaintainerAccess({
                           );
                         }
                       }}
-                      className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+                      className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] hover:border-[var(--color-amber-deep)] disabled:opacity-60"
                     >
                       Cancel invitation
-                    </button>
+                    </Button>
                   )}
                 </div>
               </li>
@@ -367,7 +369,7 @@ export function MaintainerAccess({
                     spellCheck={false}
                     placeholder="GitHub username"
                     disabled={pending}
-                    className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] transition-colors outline-none focus:border-[var(--color-teal-ink)]"
+                    className="min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] text-[var(--color-ink)] outline-none focus:border-[var(--color-teal-ink)]"
                   />
                 </div>
                 <Button type="submit" disabled={pending} className="disabled:opacity-60">

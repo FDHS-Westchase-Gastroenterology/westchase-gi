@@ -5,9 +5,9 @@ import { useActionState, useEffect, useRef, useState } from "react";
 
 import { requestPasswordResetAction } from "@/app/admin/actions";
 import type { ResetRequestActionState } from "@/app/admin/actions";
-import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/registry-button";
 import {
   PASSWORD_RESET_RESEND_COOLDOWN_SECONDS,
   RESET_REQUEST_MESSAGE,
@@ -143,9 +143,14 @@ export function ResetRequestForm({
         </p>
         <div className="mt-3 text-center">
           {onBack ? (
-            <button type="button" onClick={backToSignIn} className={textActionClassName}>
+            <Button
+              variant="link"
+              type="button"
+              onClick={backToSignIn}
+              className={textActionClassName}
+            >
               Back to sign in
-            </button>
+            </Button>
           ) : (
             <Link href="/admin/login" className={textActionClassName}>
               Back to sign in
@@ -205,9 +210,14 @@ export function ResetRequestForm({
       </form>
       <div className="mt-3 text-center">
         {onBack ? (
-          <button type="button" onClick={backToSignIn} className={textActionClassName}>
+          <Button
+            variant="link"
+            type="button"
+            onClick={backToSignIn}
+            className={textActionClassName}
+          >
             Back to sign in
-          </button>
+          </Button>
         ) : (
           <Link href="/admin/login" className={textActionClassName}>
             Back to sign in

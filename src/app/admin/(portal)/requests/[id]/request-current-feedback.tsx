@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { PortalFeedbackMessage, usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { Check, Printer } from "@/components/icons";
 import { useOutputGuard } from "@/components/output-feedback";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/registry-button";
 
 export function StaffRequestCreatedAcknowledgement() {
   const { feedback } = usePortalFeedback();

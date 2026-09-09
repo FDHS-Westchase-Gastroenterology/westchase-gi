@@ -52,7 +52,8 @@ records; operational docs stay present-tense and self-sufficient.
 
 Commits on a worktree are allowed. Use them while you work.
 
-The standing gates are:
+The standing gates below establish completed work. Component review checkpoints follow the
+separate rule below; they do not establish acceptance or merge readiness.
 
 - `npx oxlint` reports zero warnings and zero errors under the repository's configured rules. Do not skip rules or narrow the scan to make the gate pass.
 - `npx oxfmt --check` reports that every matched file already matches `.oxfmtrc.json`. Do not skip files or narrow the scan to make the gate pass. If it fails, run `npx oxfmt` and check again.
@@ -61,9 +62,40 @@ The standing gates are:
 - A diff that adds or changes motion (`transition`, `animation`, `@starting-style`, `--motion-*`, `motion/react`) carries a `review-animations` verdict in the turn's report, in the Before / After / Why table from `.claude/rules/design-eng.md`. Lint, format, React Doctor, and the build cannot see motion quality, so they do not replace it.
 - Visual evidence is in the pull-request conversation for every UI-visible change. A single-state change needs before and after screenshots. A new workflow or a feature with more than one authored step needs a video of that path. A clean lint score with no visual evidence is a failed loop.
 
-An extra check you are asked to run, including a single oxlint rule, is added to this list and does not replace it. Run the extra check first, then the standing gates; if a gate fails, fix it and rerun everything that already passed, because a later fix can reopen an earlier one.
+Run focused behavior checks before the standing gates and extended measurements. An extra
+requested check adds coverage; it does not replace a standing gate.
 
-The turn, the pull request, and the worktree merge all wait on every gate being clean.
+After a failure, fix it and rerun the failed check. Rerun previously passing checks when the fix
+changes their inputs. Application source, dependencies, build configuration, shared styles,
+runtime assets/content, and generated application code require the full standing source checks
+before the version is accepted. Changes limited to documentation, report links, or evidence files
+that are not build/runtime inputs require formatting, applicable repository-policy checks, and
+verification of the changed evidence. They do not require rebuilding unchanged application code.
+Record the tested commit and subsequent changed paths when reusing a result. Required hosted checks still need to pass on the final merge head.
+
+### Component review checkpoints
+
+For component-registry work, use the global `component-iteration` skill at
+`/Users/Jason/.codex/skills/component-iteration/SKILL.md`. It owns the worktree/PR scope and
+portal-to-shared-default workflow. Use these states:
+
+- **Ready for component review:** the agreed change is visible in the real application, focused
+  behavior checks pass, the required motion review is recorded, and the exact Preview plus an
+  accessible before/after image or video is available. State pending checks and measurements.
+- **Accepted for the registry:** Jason approves the behavior and the component's required checks
+  and evidence are complete.
+- **Ready to merge:** all standing gates, required PR evidence, and integration checks pass for
+  the code being merged. Component approval alone does not establish this state.
+
+Present the component review checkpoint as soon as its conditions are met. A turn may end there
+with pending work explicitly recorded; it need not wait for extended measurements or PR attachment
+processing unless Jason made them prerequisites for this review. Keep the PR in draft until its
+normal review requirements pass. Known correctness defects prevent a ready-for-review claim.
+This checkpoint does not replace acceptance, merge, or production authorization requirements.
+
+Batch independent reads and lightweight checks. Serialize local production builds, design-bundle
+generation, and browser suites when they compete for the same machine resources or build output.
+Follow the existing disk-space rules before generating more artifacts.
 
 Local React Doctor scores include untracked build output (`.next/`, `.next-e2e/`) and third-party sourcemaps, so hits under build directories or `node_modules` are noise. The score that counts is a clean checkout of the work you are about to share; do not edit generated files to raise it.
 
@@ -83,7 +115,13 @@ The atlas includes the seven top-level staff routes. Refresh them only with the 
 
 ### Visual evidence
 
-This gate sits beside oxlint, oxfmt, React Doctor, and `npm run build`. An agent that changes a visible UI surface does not finish, open a pull request, or merge a worktree until the pull-request conversation contains visual evidence of that change.
+This gate sits beside oxlint, oxfmt, React Doctor, and `npm run build`. Completed UI work and
+PRs ready for normal review or merge require visual evidence in the pull-request conversation.
+A component review checkpoint may use verified local or accessible linked evidence while the PR
+remains a draft. The capture, privacy, and final publication requirements below still apply.
+If publishing is blocked by a known permission or missing capability, preserve the artifact and
+state the missing step once. Retry after that state changes or a supported alternative becomes
+available; do not repeatedly attempt the same blocked route.
 
 What to post:
 

@@ -5,9 +5,9 @@ import { useActionState, useLayoutEffect } from "react";
 
 import { recoverPasswordAction, setPasswordAction } from "@/app/admin/actions";
 import type { SetPasswordActionState } from "@/app/admin/actions";
-import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/registry-button";
 import type { PasswordAuthFlow } from "@/lib/portal/contracts";
 
 const INITIAL_STATE: SetPasswordActionState = {

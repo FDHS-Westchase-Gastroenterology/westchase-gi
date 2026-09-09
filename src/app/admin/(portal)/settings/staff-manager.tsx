@@ -5,10 +5,10 @@ import { useRef, useState, useTransition } from "react";
 import type { ComponentProps, RefObject } from "react";
 
 import { formatReceived } from "@/app/admin/(portal)/requests/format";
-import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Button } from "@/components/ui/registry-button";
 import { parseStaffRole } from "@/lib/portal/contracts";
 import type { StaffRole } from "@/lib/portal/contracts";
 import type { DeliveryOutcome } from "@/lib/portal/email";
@@ -130,8 +130,8 @@ function StaffList({
                   </span>
                   {isAdmin && !isSelf && (
                     <>
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
                         data-action="resend-invite"
                         disabled={rowPending}
                         onClick={() => {
@@ -146,9 +146,9 @@ function StaffList({
                         className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
                       >
                         Resend invite
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        variant="ghost"
                         data-action="deactivate"
                         disabled={rowPending}
                         onClick={() => {
@@ -162,10 +162,10 @@ function StaffList({
                             );
                           }
                         }}
-                        className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+                        className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] hover:border-[var(--color-amber-deep)] disabled:opacity-60"
                       >
                         Deactivate
-                      </button>
+                      </Button>
                     </>
                   )}
                 </>
@@ -188,8 +188,8 @@ function StaffList({
                     <option value="admin">Admin</option>
                   </select>
                   {draft !== person.role && (
-                    <button
-                      type="button"
+                    <Button
+                      variant="ghost"
                       data-action="apply-role"
                       disabled={rowPending}
                       onClick={() => {
@@ -203,10 +203,10 @@ function StaffList({
                       className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] disabled:opacity-60"
                     >
                       Apply
-                    </button>
+                    </Button>
                   )}
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
                     data-action="deactivate"
                     disabled={rowPending}
                     onClick={() => {
@@ -220,10 +220,10 @@ function StaffList({
                         );
                       }
                     }}
-                    className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] transition-colors hover:border-[var(--color-amber-deep)] disabled:opacity-60"
+                    className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-line-2)] px-3.5 text-[0.85rem] font-bold text-[var(--color-body)] hover:border-[var(--color-amber-deep)] disabled:opacity-60"
                   >
                     Deactivate
-                  </button>
+                  </Button>
                 </>
               ) : (
                 <span className="flex min-h-10 items-center rounded-full bg-[var(--color-mint)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)] capitalize">
@@ -283,21 +283,21 @@ function InviteResultPanel({
       )}
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {hasFallbackLink && (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             onClick={onCopy}
             className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)]"
           >
             {issued.copied ? "Copied" : "Copy setup link"}
-          </button>
+          </Button>
         )}
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={onDismiss}
           className="flex min-h-11 items-center rounded-[var(--radius-sm)] px-3.5 text-[0.85rem] font-bold text-[var(--color-muted-ink)]"
         >
           Dismiss
-        </button>
+        </Button>
       </div>
     </div>
   );

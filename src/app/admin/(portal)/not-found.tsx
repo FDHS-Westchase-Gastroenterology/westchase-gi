@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { CircleHelp } from "@/components/icons";
-import { buttonVariants } from "@/components/ui/button-variants";
+import { buttonVariants } from "@/components/ui/registry-button-variants";
 
 import { PortalPageHeader } from "./portal-page-header";
 

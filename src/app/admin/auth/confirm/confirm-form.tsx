@@ -7,8 +7,8 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { confirmAuthLinkAction } from "@/app/admin/actions";
 import type { ConfirmAuthActionState } from "@/app/admin/actions";
 import { PasswordForm } from "@/app/admin/set-password/password-form";
-import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button-variants";
+import { Button } from "@/components/ui/registry-button";
+import { buttonVariants } from "@/components/ui/registry-button-variants";
 import { parsePasswordAuthFlow } from "@/lib/portal/contracts";
 import type { PasswordAuthFlow } from "@/lib/portal/contracts";
 

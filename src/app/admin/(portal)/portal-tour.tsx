@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 
 import { X } from "@/components/icons";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/registry-button";
 
 import { dismissPortalTourAction, finishPortalTourAction } from "./tour-actions";
 
@@ -81,12 +81,13 @@ export function PortalTour() {
             Take a quick tour
           </Button>
           <form action={dismissPortalTourAction}>
-            <button
+            <Button
+              variant="ghost"
               type="submit"
               className="min-h-11 rounded-[var(--radius-sm)] px-3 text-[0.9rem] font-bold text-[var(--color-teal-ink)] underline-offset-2 hover:underline"
             >
               Not now
-            </button>
+            </Button>
           </form>
         </div>
       </aside>
@@ -107,15 +108,16 @@ export function PortalTour() {
           <p className="text-[0.8rem] font-extrabold tracking-[0.08em] text-[var(--color-on-dark-muted)] uppercase">
             Portal tour
           </p>
-          <button
+          <Button
+            variant="ghost"
             ref={closeRef}
             type="button"
             aria-label="Close the portal tour"
             onClick={closeTour}
-            className="grid min-h-11 min-w-11 place-items-center rounded-[var(--radius-sm)] text-[var(--color-on-dark-muted)] transition-colors hover:bg-white/10 hover:text-white"
+            className="grid min-h-11 min-w-11 place-items-center rounded-[var(--radius-sm)] text-[var(--color-on-dark-muted)] hover:bg-white/10 hover:text-white"
           >
             <X className="h-5 w-5" aria-hidden="true" />
-          </button>
+          </Button>
         </div>
 
         <div className="px-5 py-6 sm:px-8 sm:py-8">
@@ -138,7 +140,8 @@ export function PortalTour() {
           </div>
 
           <div className="mt-7 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--color-line)] pt-5">
-            <button
+            <Button
+              variant="ghost"
               type="button"
               onClick={() => {
                 setStep((value) => Math.max(0, value - 1));
@@ -147,7 +150,7 @@ export function PortalTour() {
               className="min-h-11 rounded-[var(--radius-sm)] px-3 text-[0.9rem] font-bold text-[var(--color-teal-ink)] disabled:invisible"
             >
               Back
-            </button>
+            </Button>
 
             <form
               action={finishPortalTourAction.bind(null, {
@@ -160,7 +163,7 @@ export function PortalTour() {
                 setStep((value) => Math.min(STEPS.length - 1, value + 1));
               }}
             >
-              <Button type="submit" variant={finalStep ? "amber" : "default"}>
+              <Button type="submit" variant="default">
                 {finalStep ? "Finish tour" : "Next"}
               </Button>
             </form>

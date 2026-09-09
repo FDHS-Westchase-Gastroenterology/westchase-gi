@@ -5,7 +5,7 @@ import { useActionState, useCallback, useEffect, useRef, useState } from "react"
 import { usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { addRequestNote } from "@/app/admin/(portal)/requests/actions";
 import type { AddRequestNoteState } from "@/app/admin/(portal)/requests/actions";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/registry-button";
 
 export interface RequestNoteView {
   id: string;
@@ -52,7 +52,8 @@ function RequestNoteList({
             ))}
           </ul>
           {hiddenCount > 0 ? (
-            <button
+            <Button
+              variant="ghost"
               type="button"
               aria-controls="request-note-list"
               aria-expanded={showAll}
@@ -62,7 +63,7 @@ function RequestNoteList({
               {showAll
                 ? "Show fewer notes"
                 : `Show ${hiddenCount} earlier ${hiddenCount === 1 ? "note" : "notes"}`}
-            </button>
+            </Button>
           ) : null}
         </>
       )}

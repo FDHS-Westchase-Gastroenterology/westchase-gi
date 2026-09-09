@@ -147,6 +147,16 @@
       "migrationCli": "shadcn@4.21.0",
       "dependency": "cn@0.2.6",
       "scope": "cn imports in registry components and examples; source bodies and registry provenance preserved."
+    },
+    {
+      "name": "accordion-readonly-props",
+      "appliedAt": "2026-09-08",
+      "scope": "Accordion props marked Readonly with framework-ref lint explanations; runtime markup, classes, and behavior remain upstream."
+    },
+    {
+      "name": "accordion-critical-spring",
+      "appliedAt": "2026-09-08",
+      "scope": "Accordion panel uses the reusable accordion/motion adapter with a critically damped spring, velocity-preserving retargeting, immediate keyboard/reduced-motion changes, native find support, server-rendered hidden panels and live reduced-motion preference changes, and measured content height. Trigger transitions are limited to color and focus shadow. The Help application installs both files through registry.json."
     }
   ]
 }

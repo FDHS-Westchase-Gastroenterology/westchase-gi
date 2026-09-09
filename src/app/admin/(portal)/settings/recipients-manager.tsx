@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useReducer, useRef, useState, useTransition } from "react";
 import type { ComponentProps, KeyboardEvent as ReactKeyboardEvent, RefObject } from "react";
 
-import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/registry-button";
 import type {
   AddRecipientResult,
   ManagementFailureCode,
@@ -201,15 +201,15 @@ function RemoveRecipientDialog({
           <h2 id="remove-recipient-title" className="portal-confirm-dialog-title">
             Remove {recipient.email}?
           </h2>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             disabled={pending}
             data-testid="close-remove-recipient-dialog"
             onClick={onCancel}
             className="portal-confirm-dialog-close"
           >
             Close
-          </button>
+          </Button>
         </div>
         <p id="remove-recipient-copy">
           Notification emails will stop for {recipient.email}. Removing this address does not remove
@@ -219,7 +219,6 @@ function RemoveRecipientDialog({
       <div className="portal-confirm-dialog-actions">
         <Button
           ref={cancelRef}
-          type="button"
           autoFocus
           disabled={pending}
           data-testid="cancel-remove-recipient"
@@ -228,15 +227,15 @@ function RemoveRecipientDialog({
         >
           Cancel
         </Button>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           disabled={pending}
           data-testid="confirm-remove-recipient"
           onClick={onConfirm}
           className="portal-confirm-dialog-destructive min-h-11 disabled:opacity-60"
         >
           {pending ? "Removing recipient…" : "Remove recipient"}
-        </button>
+        </Button>
       </div>
     </dialog>
   );
@@ -289,22 +288,22 @@ function RecipientNotices({
           <span className="font-bold">
             Notifications {undo.restoredActive ? "paused" : "resumed"} for {undo.email}.
           </span>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             data-action="undo-toggle"
             disabled={pendingKey === `toggle:${undo.recipientId}`}
             onClick={onUndo}
             className="min-h-11 font-bold text-[var(--color-teal-ink)] underline underline-offset-2 disabled:opacity-60"
           >
             Undo
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="ghost"
             onClick={onDismissUndo}
             className="min-h-11 font-bold text-[var(--color-muted-ink)]"
           >
             Dismiss
-          </button>
+          </Button>
         </p>
       )}
 

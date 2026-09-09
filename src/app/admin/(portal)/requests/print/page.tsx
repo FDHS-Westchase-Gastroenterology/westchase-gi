@@ -13,7 +13,7 @@ import {
   TIME_LABELS,
 } from "@/app/admin/(portal)/requests/format";
 import { ArrowRight, Printer } from "@/components/icons";
-import { buttonVariants } from "@/components/ui/button-variants";
+import { buttonVariants } from "@/components/ui/registry-button-variants";
 import { recordAudit } from "@/lib/portal/audit";
 import { requireRole } from "@/lib/portal/auth";
 import { AUDIT_ACTIONS } from "@/lib/portal/contracts";

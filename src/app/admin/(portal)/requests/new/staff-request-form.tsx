@@ -6,11 +6,11 @@ import { useActionState, useEffect, useImperativeHandle, useRef, useState } from
 import type { KeyboardEvent, MouseEvent, Ref, RefObject } from "react";
 
 import { createStaffRequest } from "@/app/admin/(portal)/requests/new/actions";
-import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Button } from "@/components/ui/registry-button";
+import { buttonVariants } from "@/components/ui/registry-button-variants";
 import { Textarea } from "@/components/ui/textarea";
 import { REQUEST_FIELD_LIMITS, INTAKE_FIELDS } from "@/lib/portal/contracts";
 import type {
@@ -443,21 +443,20 @@ function DiscardStaffRequestDialog({
       <div className="portal-confirm-dialog-actions">
         <Button
           ref={keepEditingRef}
-          type="button"
           autoFocus
           data-testid="keep-editing-staff-request"
           onClick={onKeepEditing}
         >
           Keep editing
         </Button>
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           data-testid="discard-staff-request"
           onClick={onDiscard}
           className="portal-confirm-dialog-discard min-h-11"
         >
           Discard request
-        </button>
+        </Button>
       </div>
     </dialog>
   );

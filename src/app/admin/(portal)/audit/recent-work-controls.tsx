@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/registry-button";
 
 import { requestFocusAfterNavigate, useFocusAfterNavigate } from "./recent-work-focus";
 import {
@@ -116,7 +116,8 @@ export function RecentWorkControls({
         ))}
       </div>
       {active ? (
-        <button
+        <Button
+          variant="ghost"
           type="button"
           data-testid="recent-work-clear"
           onClick={() => {
@@ -126,7 +127,7 @@ export function RecentWorkControls({
           className="mt-2 min-h-11 font-bold text-[var(--color-teal-ink)] underline underline-offset-2"
         >
           Clear search and filters
-        </button>
+        </Button>
       ) : null}
     </form>
   );

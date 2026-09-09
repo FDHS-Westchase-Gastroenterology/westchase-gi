@@ -8,7 +8,7 @@ import {
   PortalFeedbackProvider,
 } from "@/app/admin/(portal)/portal-feedback";
 import { PrintChooser } from "@/app/admin/(portal)/requests/print-chooser";
-import { buttonVariants } from "@/components/ui/button-variants";
+import { buttonVariants } from "@/components/ui/registry-button-variants";
 import type { StatusCounts } from "@/lib/portal/workflow/contracts";
 
 import { HomeDashboard } from "./home-dashboard";

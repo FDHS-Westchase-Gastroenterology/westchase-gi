@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { buttonVariants } from "@/components/ui/button-variants";
+import { buttonVariants } from "@/components/ui/registry-button-variants";
 import { requestsHref } from "@/lib/portal/request-query";
 import type { RequestPageWindow } from "@/lib/portal/request-window";
 import type { RequestStatus } from "@/lib/portal/workflow/contracts";

@@ -1,7 +1,7 @@
 import { cn } from "cn";
 import Link from "next/link";
 
-import { buttonVariants } from "@/components/ui/button-variants";
+import { buttonVariants } from "@/components/ui/registry-button-variants";
 import { RECENT_WORK_INTRO } from "@/lib/portal/staff-language";
 
 import { RecentWorkControls } from "./recent-work-controls";

@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 import { followUpWhenLabel, stateLabel } from "@/app/admin/(portal)/requests/format";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/ui/registry-button";
 import type {
   ManualClosureReason as ClosureReason,
   UndoWindow,
