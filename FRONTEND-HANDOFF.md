@@ -19,7 +19,7 @@ contracts are not yet on `main`.
 
 | Staff work | Backend available | Frontend work to complete | Contract |
 | --- | --- | --- | --- |
-| Finish a contact without another call | One contact-and-close save, combined history, and Undo | Connect both Home card No call choices and verify the full interaction | [Contact completion](#contact-completion) |
+| Finish a contact without another call | One contact-and-close save, combined history, and Undo | Connected: both Home No call choices use completion; regression coverage includes history, replay, stale input, reload, and Undo | [Contact completion](#contact-completion) |
 | Manage patients | Registration, search, demographics, reviewed request links, archive/restore, and history | Patient search, registration, detail, identity review, and administrator controls | [Patients](#patients) |
 | Set up scheduling | Providers, locations, appointment types, hours, exceptions, and preparation buffers | Administrator configuration screens with complete reads and validation | [Scheduling](#scheduling) |
 | Book and manage appointments | Availability, conflict checks, booking, rescheduling, cancellation, arrival/outcomes, and Undo | Staff scheduling controls and appointment detail/history | [Scheduling](#scheduling) |
@@ -28,7 +28,7 @@ contracts are not yet on `main`.
 | Record billing, when used | Patient-owned charges, payments recorded elsewhere, refunds, adjustments, and corrections | Optional ledger screens, role-aware actions, and reconciliation | [Billing](#billing) |
 | Keep clinical records, when used | Notes, external document references, drafts, signing, amendments, and corrections | Optional clinical screens, signer administration, and protected record history | [Clinical records](#clinical-records) |
 
-Start with contact completion, patient selection/registration, scheduling configuration, and the
+Continue with patient selection/registration, scheduling configuration, and the
 request-to-appointment path. Billing and clinical records remain optional: intake, patient
 registration, and booking must work when neither module contains records. An intake request can
 exist without a registered patient. A new appointment requires an explicitly selected patient.
@@ -72,7 +72,7 @@ Entry point: [workflow-actions.ts](src/app/admin/(portal)/requests/workflow-acti
 Read [workflow contracts](src/lib/portal/workflow/contracts.ts) and the
 [completion input schema](src/lib/portal/workflow/contact-completion.ts).
 
-The Home card needs this mapping from both New and Contacted requests:
+The Home card uses this mapping from both New and Contacted requests:
 
 | Card choice | Action |
 | --- | --- |
@@ -91,10 +91,12 @@ contains one `contact_completed` decision with the contact result and finished s
 evidence remains after Undo, which restores the prior state and callback within 15 minutes.
 This operation does not create, cancel, or change an appointment.
 
-Acceptance: exercise all four combinations of request state and contact result, then No call,
-history, repeated save, stale input, Undo, and reload. The existing
-[history evidence](https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi/pull/224#issuecomment-5562381689)
-does not establish that the Home card is connected.
+The [Home completion browser regression](e2e/portal/home-contact-completion.spec.ts) exercises
+both contact outcomes from New and Contacted, including the disabled calendar, persisted closure
+and callback, one completion history decision, identical replay, stale input, reload, and Undo.
+[Card save tests](src/app/admin/(portal)/(home)/record-card-save.test.mjs) also retain both explicit
+callback mappings and the separate ordinary Close request action. Undo remains available from the
+full request record after the Home card closes.
 
 ## Patients
 

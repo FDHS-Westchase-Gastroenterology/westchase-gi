@@ -70,7 +70,7 @@ for (const status of ["new", "contacted"] as const) {
           "Home must send a contact completion without a callback or closure reason",
         );
         expect(payload[0]).toMatchObject({ requestId: id, expectedVersion: 1, outcome });
-        await expect(page.getByRole("status")).toContainText("Request closed.");
+        await expect(page.getByTestId("home-output-feedback")).toContainText("Request closed.");
 
         const current = async () =>
           db
