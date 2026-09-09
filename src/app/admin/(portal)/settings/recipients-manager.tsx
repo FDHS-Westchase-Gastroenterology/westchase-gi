@@ -203,7 +203,6 @@ function RemoveRecipientDialog({
           </h2>
           <Button
             variant="ghost"
-            type="button"
             disabled={pending}
             data-testid="close-remove-recipient-dialog"
             onClick={onCancel}
@@ -220,7 +219,6 @@ function RemoveRecipientDialog({
       <div className="portal-confirm-dialog-actions">
         <Button
           ref={cancelRef}
-          type="button"
           autoFocus
           disabled={pending}
           data-testid="cancel-remove-recipient"
@@ -231,7 +229,6 @@ function RemoveRecipientDialog({
         </Button>
         <Button
           variant="ghost"
-          type="button"
           disabled={pending}
           data-testid="confirm-remove-recipient"
           onClick={onConfirm}
@@ -293,7 +290,6 @@ function RecipientNotices({
           </span>
           <Button
             variant="ghost"
-            type="button"
             data-action="undo-toggle"
             disabled={pendingKey === `toggle:${undo.recipientId}`}
             onClick={onUndo}
@@ -303,7 +299,6 @@ function RecipientNotices({
           </Button>
           <Button
             variant="ghost"
-            type="button"
             onClick={onDismissUndo}
             className="min-h-11 font-bold text-[var(--color-muted-ink)]"
           >

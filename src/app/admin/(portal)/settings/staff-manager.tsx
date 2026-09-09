@@ -132,7 +132,6 @@ function StaffList({
                     <>
                       <Button
                         variant="ghost"
-                        type="button"
                         data-action="resend-invite"
                         disabled={rowPending}
                         onClick={() => {
@@ -150,7 +149,6 @@ function StaffList({
                       </Button>
                       <Button
                         variant="ghost"
-                        type="button"
                         data-action="deactivate"
                         disabled={rowPending}
                         onClick={() => {
@@ -192,7 +190,6 @@ function StaffList({
                   {draft !== person.role && (
                     <Button
                       variant="ghost"
-                      type="button"
                       data-action="apply-role"
                       disabled={rowPending}
                       onClick={() => {
@@ -210,7 +207,6 @@ function StaffList({
                   )}
                   <Button
                     variant="ghost"
-                    type="button"
                     data-action="deactivate"
                     disabled={rowPending}
                     onClick={() => {
@@ -289,7 +285,6 @@ function InviteResultPanel({
         {hasFallbackLink && (
           <Button
             variant="ghost"
-            type="button"
             onClick={onCopy}
             className="flex min-h-11 items-center rounded-[var(--radius-sm)] border border-[var(--color-teal-ink)] px-3.5 text-[0.85rem] font-bold text-[var(--color-teal-ink)]"
           >
@@ -298,7 +293,6 @@ function InviteResultPanel({
         )}
         <Button
           variant="ghost"
-          type="button"
           onClick={onDismiss}
           className="flex min-h-11 items-center rounded-[var(--radius-sm)] px-3.5 text-[0.85rem] font-bold text-[var(--color-muted-ink)]"
         >

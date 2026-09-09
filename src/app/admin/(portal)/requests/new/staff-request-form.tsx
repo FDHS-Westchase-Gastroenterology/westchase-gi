@@ -443,7 +443,6 @@ function DiscardStaffRequestDialog({
       <div className="portal-confirm-dialog-actions">
         <Button
           ref={keepEditingRef}
-          type="button"
           autoFocus
           data-testid="keep-editing-staff-request"
           onClick={onKeepEditing}
@@ -452,7 +451,6 @@ function DiscardStaffRequestDialog({
         </Button>
         <Button
           variant="ghost"
-          type="button"
           data-testid="discard-staff-request"
           onClick={onDiscard}
           className="portal-confirm-dialog-discard min-h-11"

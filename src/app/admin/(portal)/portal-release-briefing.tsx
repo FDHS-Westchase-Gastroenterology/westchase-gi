@@ -447,7 +447,6 @@ function ReleaseSummary({
           <ArrowRight className="h-4 w-4" />
         </Link>
         <Button
-          type="button"
           variant="outline"
           onClick={() => {
             openGuide(router);
@@ -458,7 +457,6 @@ function ReleaseSummary({
         </Button>
         <Button
           variant="ghost"
-          type="button"
           onClick={acknowledge}
           disabled={actionPending}
           className="min-h-11 rounded-[var(--radius-sm)] px-3 text-[0.9rem] font-bold text-[var(--color-teal-ink)] underline-offset-2 hover:underline disabled:cursor-wait disabled:opacity-65"
@@ -469,7 +467,6 @@ function ReleaseSummary({
 
       <Button
         variant="ghost"
-        type="button"
         onClick={hide}
         disabled={actionPending}
         className="mt-3 min-h-11 text-[0.82rem] font-bold text-[var(--color-muted-ink)] underline underline-offset-2 disabled:cursor-wait disabled:opacity-65"
