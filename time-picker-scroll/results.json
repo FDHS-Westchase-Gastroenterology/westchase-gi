@@ -1,0 +1,122 @@
+[
+  {
+    "name": "desktop",
+    "before": {
+      "windowY": 0,
+      "cardY": 255,
+      "cardScroll": 0
+    },
+    "after": {
+      "windowY": 0,
+      "cardY": 255,
+      "cardScroll": 0
+    },
+    "ranges": {
+      "windowY": [
+        0,
+        0
+      ],
+      "cardY": [
+        255,
+        255
+      ],
+      "cardScroll": [
+        0,
+        0
+      ]
+    },
+    "focus": "listbox",
+    "visible": true,
+    "doneAndEscape": "passed"
+  },
+  {
+    "name": "mobile",
+    "before": {
+      "windowY": 0,
+      "cardY": 8,
+      "cardScroll": 352
+    },
+    "after": {
+      "windowY": 0,
+      "cardY": 8,
+      "cardScroll": 352
+    },
+    "ranges": {
+      "windowY": [
+        0,
+        0
+      ],
+      "cardY": [
+        8,
+        8
+      ],
+      "cardScroll": [
+        352,
+        352
+      ]
+    },
+    "focus": "listbox",
+    "visible": true,
+    "doneAndEscape": "passed"
+  },
+  {
+    "name": "desktop-reduced",
+    "before": {
+      "windowY": 0,
+      "cardY": 255,
+      "cardScroll": 0
+    },
+    "after": {
+      "windowY": 0,
+      "cardY": 255,
+      "cardScroll": 0
+    },
+    "ranges": {
+      "windowY": [
+        0,
+        0
+      ],
+      "cardY": [
+        255,
+        255
+      ],
+      "cardScroll": [
+        0,
+        0
+      ]
+    },
+    "focus": "listbox",
+    "visible": true,
+    "doneAndEscape": "passed"
+  },
+  {
+    "name": "mobile-reduced",
+    "before": {
+      "windowY": 255,
+      "cardY": 249,
+      "cardScroll": 295
+    },
+    "after": {
+      "windowY": 255,
+      "cardY": 249,
+      "cardScroll": 295
+    },
+    "ranges": {
+      "windowY": [
+        255,
+        255
+      ],
+      "cardY": [
+        249,
+        249
+      ],
+      "cardScroll": [
+        295,
+        295
+      ]
+    },
+    "focus": "listbox",
+    "visible": true,
+    "doneAndEscape": "passed"
+  }
+]
