@@ -75,7 +75,9 @@ Record the tested commit and subsequent changed paths when reusing a result. Req
 
 ### Component review checkpoints
 
-For component-registry work, follow [COMPONENT-ITERATION.md](COMPONENT-ITERATION.md). Use these states:
+For component-registry work, use the global `component-iteration` skill at
+`/Users/Jason/.codex/skills/component-iteration/SKILL.md`. It owns the worktree/PR scope and
+portal-to-shared-default workflow. Use these states:
 
 - **Ready for component review:** the agreed change is visible in the real application, focused
   behavior checks pass, the required motion review is recorded, and the exact Preview plus an

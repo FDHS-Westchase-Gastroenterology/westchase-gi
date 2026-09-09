@@ -47,16 +47,17 @@ cover feedback, entry and exit, interruption, appropriate spring behavior, gestu
 motion. Every catalog component needs an intentional coverage decision; not every component needs
 movement. Do not settle new timing or spring values before Jason reviews the behavior profile.
 
-Keep reusable source independent of Westchase routes, data access, and portal-only helpers. Once
-approved and merged into #224, extract the components and required utilities into an independent
-repository at `/Users/Jason/design`. Add installation definitions and verify a clean consumer can
-change its visual identity while retaining the approved behavior before publishing that registry.
+Keep reusable source independent of Westchase routes, data access, and portal-only helpers.
+After the approved version is applied and verified in the portal, promote the same component and
+required utilities to `/Users/Jason/Desktop/design/custom/`, preserving `base-nova/` as stock.
+Follow the global `component-iteration` skill for the required worktree, PR, and promotion checks.
+Registry publication and production release remain separate decisions.
 
 ## Iteration workflow
 
-Follow [COMPONENT-ITERATION.md](COMPONENT-ITERATION.md) for stock baselines, component commits,
-registry installation, Preview measurements, and human review. Measurement reports live in
-`component-evidence/`; link the exact implementation commit in each report.
+Use the global `component-iteration` skill at
+`/Users/Jason/.codex/skills/component-iteration/SKILL.md` for the iteration workflow.
+Measurement reports live in `component-evidence/`; link the exact implementation commit in each report.
 
 ## Acceptance
 
