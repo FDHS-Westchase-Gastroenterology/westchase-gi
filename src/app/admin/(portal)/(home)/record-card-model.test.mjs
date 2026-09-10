@@ -10,6 +10,7 @@ import {
   cardRowsFor,
   dayHorizon,
   commandFor,
+  failedToast,
   failureFor,
   followUpFor,
   followUpsFor,
@@ -17,7 +18,8 @@ import {
   joinTime,
   MERIDIEMS,
   needsDay,
-  savedMessage,
+  savedToast,
+  savingToast,
   TIME_HOURS,
   TIME_MINUTES,
   timeParts,
@@ -183,30 +185,57 @@ test("today means this afternoon; any other day is that day's morning", () => {
   assert.deepEqual(followUpFor("2026-09-09", TODAY), { kind: "day", date: "2026-09-09" });
 });
 
-test("the saved line names the outcome and the return", () => {
+test("the toast title carries the outcome; the description carries only the name", () => {
   const now = new Date("2026-09-08T14:00:00Z");
   const attempt = {
     kind: "attempt",
     outcome: "no_answer",
     callAgain: { kind: "day", date: "2026-09-09" },
   };
-  assert.equal(
-    savedMessage(attempt, "Sample Patient", "2026-09-09T13:00:00.000Z", now),
-    "No answer recorded for Sample Patient — back tomorrow morning.",
-  );
+  assert.deepEqual(savingToast(attempt, "Sample Patient"), {
+    title: "Recording the call…",
+    description: "Sample Patient",
+    data: { redact: "patient-name" },
+  });
+  assert.deepEqual(savedToast(attempt, "Sample Patient", "2026-09-09T13:00:00.000Z", now), {
+    title: "No answer recorded — call again tomorrow morning",
+    description: "Sample Patient",
+    data: { redact: "patient-name" },
+  });
+  /* The bug this replaced: a call-again and a closed request read the same
+     for their first eleven characters. The two titles must differ early. */
   for (const [outcome, label] of [
     ["no_answer", "No answer"],
     ["reached", "Contacted"],
   ]) {
-    assert.equal(
-      savedMessage({ kind: "complete_contact", outcome }, "Sample Patient", null, now),
-      `${label} recorded for Sample Patient. Request closed.`,
+    assert.deepEqual(
+      savedToast({ kind: "complete_contact", outcome }, "Sample Patient", null, now),
+      {
+        title: `${label} recorded — request closed`,
+        description: "Sample Patient",
+        data: { redact: "patient-name" },
+      },
     );
   }
   const book = { kind: "book", appointment: { date: "2026-09-11", hour: 9, minute: 0 } };
-  assert.equal(savedMessage(book, "Sample Patient", null, now), "Sample Patient is Scheduled.");
+  assert.equal(savedToast(book, "Sample Patient", null, now).title, "Appointment scheduled");
   const close = { kind: "close", reason: "wont_schedule" };
-  assert.equal(savedMessage(close, "Sample Patient", null, now), "Sample Patient is Closed.");
+  assert.equal(savedToast(close, "Sample Patient", null, now).title, "Request closed");
+});
+
+test("a failed save keeps the toast's shape and names the state it is in", () => {
+  /* The description carries the name, so every card toast carries the hook
+     the capture script redacts by — a toast outlives the row it speaks about. */
+  assert.deepEqual(failedToast(failureFor("unavailable"), "Sample Patient"), {
+    title: "Could not confirm the save",
+    description: "Sample Patient",
+    data: { redact: "patient-name" },
+  });
+  assert.equal(
+    failedToast(failureFor("stale_version"), "Sample Patient").title,
+    "Someone else worked this request",
+  );
+  assert.equal(failedToast(failureFor("not_found"), "Sample Patient").title, "Not saved");
 });
 
 test("a saveable draft maps to exactly one server command", () => {

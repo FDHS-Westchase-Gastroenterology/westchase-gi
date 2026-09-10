@@ -163,8 +163,8 @@ test.describe("new appointment-request print packet", () => {
       link.click();
     });
     const printPage = await popupPromise;
-    await expect(page.getByTestId("home-output-feedback")).toHaveText(
-      "Print dialog is opening in a new tab for the New-request packet.",
+    await expect(page.getByTestId("portal-toast")).toContainText(
+      "Print dialog opening in a new tabNew-request packet",
     );
     await expect(page.getByTestId("print-chooser-trigger")).toBeFocused();
     await expect.poll(() => packetPopupCount).toBe(1);

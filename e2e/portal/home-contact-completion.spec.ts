@@ -72,7 +72,11 @@ for (const status of ["new", "contacted"] as const) {
           "Home must send a contact completion without a callback or closure reason",
         );
         expect(payload[0]).toMatchObject({ requestId: id, expectedVersion: 1, outcome });
-        await expect(page.getByTestId("home-output-feedback")).toContainText("Request closed.");
+        /* The acknowledgement is the toast now, and the title is what makes
+           a completed contact distinguishable from a call-again at a glance. */
+        await expect(page.getByTestId("portal-toast")).toContainText(
+          `${answer} recorded — request closed`,
+        );
 
         const current = async () =>
           db
@@ -128,7 +132,7 @@ for (const status of ["new", "contacted"] as const) {
         await expect(history).toContainText("no further contact needed");
         await expect(page.getByTestId("undo-latest")).toBeVisible();
         await page.getByTestId("undo-latest").click();
-        await expect(page.getByTestId("workflow-feedback")).toContainText("Undone");
+        await expect(page.getByTestId("portal-toast").filter({ hasText: "Undone" })).toBeVisible();
         const restored = await current();
         expect(restored.error).toBeNull();
         expect(restored.data).toMatchObject({

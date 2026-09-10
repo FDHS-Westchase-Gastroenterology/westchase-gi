@@ -286,6 +286,7 @@ async function redactPortalData(page) {
     const syntheticPatientText = {
       "patient-name": "Sample Patient",
       "patient-contact": "(813) 555-0100",
+      "patient-email": "sample.patient@example.com",
       "patient-message": "Fictional appointment request details.",
     };
     document.querySelectorAll("[data-ui-redact]").forEach((element) => {

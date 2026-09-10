@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useId, useReducer, useRef, useState, useTransition } from "react";
 
-import { usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { practiceLocalDay } from "@/app/admin/(portal)/requests/appointment-input";
 import {
   closeRequest,
@@ -15,7 +14,8 @@ import { Phone, PhoneOff } from "@/components/icons";
 import { RadioGroup, RadioGroupItem } from "@/components/stock/radio-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/stock/toggle-group";
 import { Field, FieldLabel } from "@/components/ui/field";
-import type { CommandOutcome } from "@/lib/portal/workflow/contracts";
+import { toast } from "@/components/ui/toast-manager";
+import type { CommandSuccess } from "@/lib/portal/workflow/contracts";
 
 import type { HomeLine } from "./home-line";
 import { HomeDayCalendar } from "./parts/calendar";
@@ -30,6 +30,7 @@ import {
   closureFor,
   commandFor,
   dayHorizon,
+  failedToast,
   failureFor,
   FOLLOW_UP_LABELS,
   FOLLOW_UPS,
@@ -37,7 +38,8 @@ import {
   INITIAL_DRAFT,
   needsDay,
   needsTime,
-  savedMessage,
+  savedToast,
+  savingToast,
 } from "./record-card-model";
 import type {
   CardAnswer,
@@ -49,26 +51,30 @@ import type {
 } from "./record-card-model";
 import { saveCardCommand } from "./record-card-save";
 
-/* ---- The record card: the calendar is the surface ----
-   The registry's "date picker with presets" shape, in the portal's words:
-   the registry calendar fills the card, six weeks tall, never scrolling,
-   with the registry radio group beside it for what happened and a row
-   along the month's lower edge for the second question. A contact answer
-   puts Call again and No call there; a booking puts the time there. The
-   calendar opens blank — no presumed day, no today tint — and shows only
-   the day staff click, in either order. Nothing is recorded until Save,
-   as nothing is filtered until Apply. Under the sidebar breakpoint the
-   column stacks above the month and the card scrolls with Save pinned
-   along its lower edge. The rules live in record-card-model.ts. */
+/* `toast.promise` reads a rejection, and only a rejection, as failure. The
+   workflow actions resolve with `{ ok: false, code }` rather than throwing,
+   so the refusal becomes a rejection here — at the single seam between the
+   command contract and the acknowledgement — and nowhere else. */
+class SaveRejected extends Error {
+  readonly failure: CardFailure;
 
-/* The commit: which server action the draft means, the feedback line it
-   earns, and the three ways a save can fail. Optimistic concurrency and an
-   idempotency key ride every attempt, mirroring the request detail panel;
-   `retry` re-runs the last attempt under the same key when the portal could
-   not confirm the outcome. */
+  constructor(failure: Readonly<CardFailure>) {
+    super(failure.message);
+    this.name = "SaveRejected";
+    this.failure = failure;
+  }
+}
+
+/* A rejection that is not ours is a transport failure: treat it the way the
+   contract treats `unavailable`, so an unknown fault still keeps the
+   idempotency key and still offers Try again. */
+function failureOf(rejection: Readonly<Error>): CardFailure {
+  return rejection instanceof SaveRejected ? rejection.failure : failureFor("unavailable");
+}
+
+// An uncertain save may have committed; Retry must reuse its idempotency key.
 function useRecordCommit(line: Readonly<HomeLine>, onSaved: () => void) {
   const router = useRouter();
-  const { publish } = usePortalFeedback();
   const [pending, startTransition] = useTransition();
   const [failure, setFailure] = useState<CardFailure | null>(null);
   const keyRef = useRef<string | null>(null);
@@ -83,23 +89,15 @@ function useRecordCommit(line: Readonly<HomeLine>, onSaved: () => void) {
     };
   }
 
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- CommandOutcome carries domain member types that cannot be made readonly
-  function settle(result: Readonly<CommandOutcome>, command: Readonly<CardCommand>) {
-    if (result.ok) {
-      keyRef.current = null;
-      publish({
-        source: "requests-output",
-        tone: "status",
-        message: savedMessage(command, line.name, result.callAgainAt),
-      });
-      onSaved();
-      router.refresh();
-      return;
-    }
-    const next = failureFor(result.code);
-    if (!next.uncertain) keyRef.current = null;
-    setFailure(next);
-    if (next.refresh) router.refresh();
+  async function dispatch(command: Readonly<CardCommand>): Promise<CommandSuccess> {
+    const result = await saveCardCommand(command, common(), {
+      recordContactAttempt,
+      recordContactAndClose,
+      closeRequest,
+      confirmBookingHandoff,
+    });
+    if (result.ok) return result;
+    throw new SaveRejected(failureFor(result.code));
   }
 
   function save(command: Readonly<CardCommand>) {
@@ -107,15 +105,29 @@ function useRecordCommit(line: Readonly<HomeLine>, onSaved: () => void) {
       if (pending) return;
       setFailure(null);
       startTransition(async () => {
-        settle(
-          await saveCardCommand(command, common(), {
-            recordContactAttempt,
-            recordContactAndClose,
-            closeRequest,
-            confirmBookingHandoff,
-          }),
-          command,
-        );
+        /* One toast carries the save the whole way: it opens as a spinner
+           the instant Save is pressed — the card is already closing, so the
+           acknowledgement is the only thing left holding the work — and the
+           same object turns into the check or the warning in place. The card
+           never publishes a second message about the same save. */
+        const settled = toast.promise(dispatch(command), {
+          loading: savingToast(command, line.name),
+          success: (result: Readonly<CommandSuccess>) =>
+            savedToast(command, line.name, result.callAgainAt),
+          error: (rejection: Readonly<Error>) => failedToast(failureOf(rejection), line.name),
+        });
+        try {
+          await settled;
+          keyRef.current = null;
+          onSaved();
+          router.refresh();
+        } catch (rejection) {
+          const next =
+            rejection instanceof Error ? failureOf(rejection) : failureFor("unavailable");
+          if (!next.uncertain) keyRef.current = null;
+          setFailure(next);
+          if (next.refresh) router.refresh();
+        }
       });
     };
     lastRun.current = attempt;

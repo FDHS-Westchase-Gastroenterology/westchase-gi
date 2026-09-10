@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useId, useRef, useState } from "react";
 import type { KeyboardEvent, MouseEvent } from "react";
 
-import { usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { STATUS_LABELS } from "@/app/admin/(portal)/requests/format";
 import { Printer } from "@/components/icons";
 import { useOutputGuard } from "@/components/output-feedback";
@@ -20,6 +19,7 @@ import {
   FieldSet,
   FieldTitle,
 } from "@/components/ui/field";
+import { toast } from "@/components/ui/toast-manager";
 import {
   formatStatusList,
   knownSelectionCount,
@@ -34,6 +34,10 @@ import type { RequestStatus, StatusCounts } from "@/lib/portal/workflow/contract
    printable from Appointments — the packet route parses any status from the
    URL — they just are not questions worth asking at this moment. */
 const PRINTABLE_STATUSES = ["new", "contacted"] as const satisfies readonly RequestStatus[];
+
+/* Both print paths say the same thing, so they say it in the same words. */
+const PRINT_TITLE = "Print dialog opening in a new tab";
+const NEW_PACKET = "New-request packet";
 
 function keepFocusInDialog(event: KeyboardEvent<HTMLDialogElement>) {
   if (event.key !== "Tab") return;
@@ -88,7 +92,6 @@ export function PrintChooser({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<RequestStatus[]>([]);
-  const { publish } = usePortalFeedback();
   const guard = useOutputGuard();
   const newCount = statusCounts.new;
   const canPrintAllNew = newCount !== null && newCount !== undefined && newCount > 0;
@@ -124,13 +127,15 @@ export function PrintChooser({
       event.preventDefault();
       return;
     }
-    publish({
-      source: "requests-output",
-      tone: "status",
-      message:
+    /* The packet opens in a tab the staff member is not looking at yet, so
+       the acknowledgement has to happen here: the title says where it went,
+       the description says what is in it (src/components/ui/toast.tsx). */
+    toast.add({
+      title: PRINT_TITLE,
+      description:
         selected.length === 1 && selected[0] === "new"
-          ? "Print dialog is opening in a new tab for the New-request packet."
-          : `Print dialog is opening in a new tab for ${formatStatusList(selected, STATUS_LABELS)}.`,
+          ? NEW_PACKET
+          : formatStatusList(selected, STATUS_LABELS),
     });
     closeChooser();
   }
@@ -191,11 +196,7 @@ export function PrintChooser({
                     event.preventDefault();
                     return;
                   }
-                  publish({
-                    source: "requests-output",
-                    tone: "status",
-                    message: "Print dialog is opening in a new tab for the New-request packet.",
-                  });
+                  toast.add({ title: PRINT_TITLE, description: NEW_PACKET });
                   closeChooser();
                 }}
                 data-slot="button"

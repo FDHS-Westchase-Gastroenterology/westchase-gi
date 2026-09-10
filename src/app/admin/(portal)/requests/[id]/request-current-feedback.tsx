@@ -3,10 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-import { PortalFeedbackMessage, usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
+import { usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { Check, Printer } from "@/components/icons";
 import { useOutputGuard } from "@/components/output-feedback";
 import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/toast-manager";
 
 export function StaffRequestCreatedAcknowledgement() {
   const { feedback } = usePortalFeedback();
@@ -37,33 +38,45 @@ export function StaffRequestCreatedAcknowledgement() {
   );
 }
 
-export function RequestPrintButton() {
-  const { publish } = usePortalFeedback();
+/* Printing, without the button around it. Both surfaces that can print a
+   request — the request page's header and Home's full-record sheet — need
+   the same guard against a double press and the same acknowledgement, and
+   neither should have to borrow the other's chrome to get it. The packet
+   itself is authored in the print block of globals.css. */
+export function useRequestPrint(patientName: string) {
   const { begin, locked } = useOutputGuard({ releaseOnAfterPrint: true });
+
+  const print = () => {
+    if (!begin()) return;
+    /* No type, so no glyph: nothing has succeeded or failed yet. This is the
+       portal saying "yes, that press landed" while the browser's own dialog
+       takes over the screen, and it leaves on its own. */
+    toast.add({
+      title: "Print dialog is opening",
+      description: patientName,
+      // The description names a patient; the capture script redacts by this.
+      data: { redact: "patient-name" },
+    });
+    window.requestAnimationFrame(() => {
+      window.print();
+    });
+  };
+
+  return { locked, print };
+}
+
+export function RequestPrintButton({ patientName }: Readonly<{ patientName: string }>) {
+  const { locked, print } = useRequestPrint(patientName);
 
   return (
     <Button
       type="button"
       aria-disabled={locked || undefined}
       data-testid="print-request"
-      onClick={() => {
-        if (!begin()) return;
-        publish({
-          source: "request-print",
-          tone: "status",
-          message: "Print dialog is opening for this request.",
-        });
-        window.requestAnimationFrame(() => {
-          window.print();
-        });
-      }}
+      onClick={print}
       className="print-hide aria-disabled:pointer-events-none aria-disabled:opacity-60"
     >
       <Printer className="h-4.5 w-4.5" /> Print request
     </Button>
   );
-}
-
-export function RequestPrintFeedback() {
-  return <PortalFeedbackMessage source="request-print" testId="request-print-feedback" />;
 }

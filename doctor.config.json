@@ -4,6 +4,7 @@
     "files": [
       ".next-e2e/**",
       ".next-verify/**",
+      ".product-design-audit/**",
       "ds-bundle/**",
       "src/components/stock/**",
       "tools/oxlint/anti-slop/**"

@@ -1,7 +1,6 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useReducer, useRef, useState, useTransition } from "react";
 
-import { usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { appointmentChoice } from "@/app/admin/(portal)/requests/appointment-input";
 import {
   classifyLegacyClosure,
@@ -12,6 +11,7 @@ import {
   setCallAgain,
   undoLatestTransition,
 } from "@/app/admin/(portal)/requests/workflow-actions";
+import { toast } from "@/components/ui/toast-manager";
 import type { FollowUpChoice } from "@/lib/portal/business-time";
 import { legalActionsFor } from "@/lib/portal/workflow/contracts";
 import type { CommandOutcome } from "@/lib/portal/workflow/contracts";
@@ -25,13 +25,31 @@ import {
   INITIAL_PANEL,
   panelReducer,
   staleVersionCopy,
-  successCopy,
+  successTitle,
 } from "./workflow-panel-model";
 import type { InFlight, PanelIntent, RequestTruth } from "./workflow-panel-model";
 
 /* The panel's controller: the truth it acts on, the staff member's
    in-progress choice, and the five commands that turn a choice into a
-   server action and the outcome back into truth, copy and navigation. */
+   server action and the outcome back into truth, copy and navigation.
+
+   The panel is mounted twice — inside Home's full-record sheet and on the
+   request page — so it owns no page furniture: every acknowledgement it
+   publishes is a toast, and the only thing it keeps on screen is a failure
+   staff still have to act on. That is also what makes it portable: it needs
+   no provider above it. */
+
+/** Who the acknowledgement is about, and where the work goes once it lands. */
+export interface PanelAcknowledgement {
+  /** The patient. The toast's title carries the outcome; this carries who. */
+  readonly patientName: string;
+  /** The next request to work, when this one is finished. Null in the sheet: the list is behind it. */
+  readonly nextHref?: string | null;
+  /** Server truth moved. A host holding its own copy of the record re-reads on it. */
+  readonly onSaved?: (() => void) | undefined;
+  /** The host surface is done with this request — the sheet closes on it. */
+  readonly onSettled?: (() => void) | undefined;
+}
 
 /* The undo window closing is a fact of time, not of data: a slow tick retires
    the affordance while the page sits open. Null until the first tick, so the
@@ -49,7 +67,11 @@ function useMinuteClock(): number | null {
   return nowMs;
 }
 
-export function useWorkflowPanel(requestId: string, serverTruth: RequestTruth) {
+export function useWorkflowPanel(
+  requestId: string,
+  serverTruth: RequestTruth,
+  ack: Readonly<PanelAcknowledgement>,
+) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   // `pending` alone cannot label buttons: it also covers the router.refresh()
@@ -58,12 +80,6 @@ export function useWorkflowPanel(requestId: string, serverTruth: RequestTruth) {
   const [inFlight, setInFlight] = useState<InFlight | null>(null);
   const [panel, dispatch] = useReducer(panelReducer, INITIAL_PANEL);
   const [truth, setTruth] = useState<RequestTruth>(serverTruth);
-  const {
-    feedback: pageFeedback,
-    publish: publishPageFeedback,
-    dismiss: dismissPageFeedback,
-  } = usePortalFeedback();
-  const currentWorkflowFeedback = pageFeedback?.source === "request-workflow" ? pageFeedback : null;
   // One idempotency key per staff attempt: a retry after an ambiguous
   // Failure replays the same command; changing the input mints a new one.
   const keyRef = useRef<string | null>(null);
@@ -78,9 +94,8 @@ export function useWorkflowPanel(requestId: string, serverTruth: RequestTruth) {
 
   const nowMs = useMinuteClock();
 
-  useEffect(() => {
-    if (panel.feedback === null) dismissPageFeedback("request-workflow");
-  }, [dismissPageFeedback, panel.feedback]);
+  const nextHref = ack.nextHref ?? "";
+  const hasNext = nextHref !== "";
 
   const legal = legalActionsFor(truth.state, {
     legacyReviewRequired: truth.legacyReviewRequired,
@@ -98,9 +113,10 @@ export function useWorkflowPanel(requestId: string, serverTruth: RequestTruth) {
     keyRef.current = crypto.randomUUID();
   }
 
+  /* A refusal stays on the panel, next to the control that caused it, for as
+     long as it takes to read. It does not also toast: one save, one message. */
   function fail(text: string) {
     dispatch({ type: "failed", text });
-    publishPageFeedback({ source: "request-workflow", tone: "alert", message: text });
   }
 
   function applyOutcome(
@@ -119,14 +135,33 @@ export function useWorkflowPanel(requestId: string, serverTruth: RequestTruth) {
         undo: result.undo,
       });
       freshKey();
-      const text = successCopy(intent, result);
-      dispatch({
-        type: "succeeded",
-        text,
-        closedOrBooked:
-          intent.kind !== "undo" && (result.state === "booked" || result.state === "closed"),
+      dispatch({ type: "succeeded" });
+      const settled =
+        intent.kind !== "undo" && (result.state === "booked" || result.state === "closed");
+      /* The acknowledgement carries the next step when there is one: after a
+         close or a booking there is nothing left to do here, and the toast is
+         the only thing still on screen that can say where the work continues
+         (apple-design §8 — hint in the direction the gesture was going). */
+      const next = settled && hasNext ? nextHref : null;
+      const openNext =
+        next === null
+          ? undefined
+          : {
+              children: "Open next request",
+              onClick: () => {
+                router.push(next);
+              },
+            };
+      toast.add({
+        type: "success",
+        title: successTitle(intent, result),
+        description: ack.patientName,
+        actionProps: openNext,
+        // The description names a patient; the capture script redacts by this.
+        data: { redact: "patient-name" },
       });
-      publishPageFeedback({ source: "request-workflow", tone: "status", message: text });
+      ack.onSaved?.();
+      if (settled) ack.onSettled?.();
       router.refresh();
       return;
     }
@@ -264,7 +299,6 @@ export function useWorkflowPanel(requestId: string, serverTruth: RequestTruth) {
     inFlight,
     undoOpen,
     saveDisabled,
-    showFeedback: panel.feedback?.tone === "error" || currentWorkflowFeedback !== null,
     save,
     reopen,
     correctCallAgain,

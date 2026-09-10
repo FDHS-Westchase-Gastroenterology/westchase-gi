@@ -1452,6 +1452,19 @@
   outline-offset: -3px;
 }
 
+/* No grip where there is nothing to drag. Below 28rem the sheet's ceiling
+   (94vw, the max-width above) sits less than a tenth above its floor (24rem,
+   MIN_WIDTH_PX in use-sheet-resize.ts), so the handle can only stretch the
+   rubber band and let it go — a control that answers every drag by returning
+   to where it started is a control that lies about what it does. Hiding it
+   also takes it out of the tab order, which is right: the arrow keys have
+   nothing to step through here either. */
+@media (max-width: 28rem) {
+  .wgi-sheet-grip {
+    display: none;
+  }
+}
+
 .wgi-sheet-head {
   display: flex;
   align-items: flex-start;
@@ -1528,6 +1541,61 @@
   transform: scale(0.96);
 }
 
+/* The two things you can do to the whole record, as one group at one size:
+   print it, or close it. Print is a glyph rather than a labelled button
+   because the sheet's head is the patient's name and status, and a word
+   there would compete with them. */
+.wgi-sheet-head-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.wgi-sheet-print {
+  display: inline-flex;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--btn-radius);
+  background: none;
+  color: var(--color-muted-ink);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    transform var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-sheet-print:hover:enabled {
+  background: var(--color-mint);
+  color: var(--color-ink);
+}
+
+.wgi-sheet-print:active:enabled {
+  transform: scale(0.96);
+}
+
+/* Dimmed while the record is still travelling, and again while the print
+   dialog owns the window: there is nothing to print in either moment. */
+.wgi-sheet-print:disabled,
+.wgi-sheet-print[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* How the request ended, in the request page's own sentence. Only a finished
+   request has one, so it sits under the meta line rather than in it. */
+.wgi-sheet-lifecycle {
+  margin: 0.4rem 0 0;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-xs);
+  line-height: 1.5;
+}
+
 .wgi-sheet-body {
   flex: 1;
   min-height: 0;
@@ -1564,88 +1632,88 @@
   flex: none;
 }
 
-.wgi-sheet-dl {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.55rem 1.25rem;
+/* The record itself: the request page's own sections, stacked in one
+   column. They arrive with their own margins and radii from
+   portal-workbench.css, so Home and the request page keep a single rhythm
+   and there is no second opinion about what a record looks like. It opens
+   the body now that the dial strip stands down when the record lands, so
+   its top spacing is the body's padding and nothing else. */
+
+/* What stands in while the record travels. The bars are the shape of what is
+   coming — contact card, outcome panel, ledger — so the sheet does not
+   resize under the reader when it lands. They breathe on Home's own loading
+   temperament (.wgi-loading-head), because a surface should have one way of
+   saying "not yet", not two. That holds under prefers-reduced-motion too:
+   .wgi-sheet-skeleton is registered beside its siblings in the opt-out in
+   globals.css @layer base, so it slows to the same 3.2s pulse rather than
+   freezing on the keyframe's full opacity, which would read as a filled
+   block and not as a placeholder. */
+.wgi-sheet-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-top: 1.25rem;
+}
+
+.wgi-sheet-skeleton {
+  background: color-mix(in oklch, var(--color-line-2) 60%, white);
+  animation: wgi-skeleton 1.6s ease-in-out infinite;
+}
+
+/* A read that failed. Amber ink on the sheet's own paper — the voice the
+   workflow panel uses for a refusal — because the request is fine and only
+   the reading of it is not. */
+.wgi-sheet-problem {
+  max-width: 60ch;
   margin: 1.25rem 0 0;
-}
-
-.wgi-sheet-dl dt {
-  color: var(--color-muted-ink);
-  font-size: var(--pt-xs);
-}
-
-.wgi-sheet-dl dd {
-  margin: 0;
-  color: var(--color-ink);
-  font-size: var(--pt-sm);
-}
-
-.wgi-sheet-activity-heading {
-  margin: 1.6rem 0 0.6rem;
-  color: var(--color-ink);
-  font-size: var(--pt-xs);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.wgi-sheet-activity {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.wgi-sheet-activity > li {
-  display: flex;
-  gap: var(--ps-3);
-  padding: 0.6rem 0;
-  border-top: 1px solid var(--color-line);
-}
-
-.wgi-sheet-activity-dot {
-  flex: none;
-  width: 0.5rem;
-  height: 0.5rem;
-  margin-top: 0.42rem;
-  border-radius: 999px;
-  background: var(--color-line-3);
-}
-
-.wgi-sheet-activity-what {
-  display: block;
-  color: var(--color-ink);
-  font-size: var(--pt-sm);
+  color: var(--portal-attention-ink);
+  font-size: 0.9rem;
   font-weight: 600;
+  line-height: 1.55;
 }
 
-.wgi-sheet-activity-when {
-  display: block;
-  color: var(--color-muted-ink);
-  font-size: var(--pt-xs);
+.wgi-sheet-retry {
+  margin-left: 0.35rem;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  cursor: pointer;
 }
 
-.wgi-sheet-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-top: 1px solid var(--color-line);
-  padding: 0.7rem 1.4rem;
-  color: var(--color-teal-ink);
-  font-size: var(--pt-xs);
-  font-weight: 700;
-  transition: background-color var(--motion-micro-duration) var(--motion-exit);
-}
+/* Printing from Home. The packet is authored once, in globals.css, off
+   .request-detail-print — @page request-detail and the .request-print-card
+   rules — so the paper that comes out of the sheet is the paper that comes
+   out of the request page. All that is needed here is to take the sheet out
+   of its fixed, resized, scrolling frame and hide the workspace behind it. */
+@media print {
+  body.portal-scope:has(.wgi-sheet .request-detail-print) .portal-workspace,
+  body.portal-scope:has(.wgi-sheet .request-detail-print) .wgi-sheet-overlay {
+    display: none !important;
+  }
 
-.wgi-sheet-foot:hover {
-  background: var(--color-mint);
-  color: var(--color-teal-ink);
-}
+  .wgi-sheet:has(.request-detail-print) {
+    position: static !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    border: 0 !important;
+    background: white !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 
-/* Scaling would expose gaps at the ends of this full-width link. */
-.wgi-sheet-foot:active {
-  background: var(--color-mint-2);
+  .wgi-sheet .wgi-sheet-surface,
+  .wgi-sheet .wgi-sheet-body {
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
 }
 
 /* ---------- Loading (home's own segment) ---------- */
@@ -1710,7 +1778,8 @@
   .wgi-record-follow > [data-slot="toggle-group-item"]:active:enabled,
   .wgi-empty-clear:active,
   .wgi-sheet-call:active,
-  .wgi-sheet-close:active {
+  .wgi-sheet-close:active,
+  .wgi-sheet-print:active:enabled {
     transform: none;
   }
 }

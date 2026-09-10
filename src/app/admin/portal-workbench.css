@@ -3108,6 +3108,20 @@
     padding: 1.15rem;
   }
 
+  /* What a refusal leaves on the panel. The success it sits in place of went
+     to the toast, so this is the only message the panel still keeps, and it
+     is amber ink on the panel's own paper rather than a tinted block: a
+     sentence staff have to act on should read as the panel talking, not as a
+     second surface arriving. */
+  .portal-panel-failure {
+    max-width: 68ch;
+    margin: 0.9rem 0 0;
+    color: var(--portal-attention-ink);
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1.55;
+  }
+
   /* The outcome decision list: one ruled sheet of compact full-width rows,
      not a matrix of equal cards. Segment captions separate the three
      decision kinds inside the single radio group; the indicator sits at

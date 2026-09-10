@@ -12,7 +12,7 @@ import {
   INITIAL_PANEL,
   panelReducer,
   staleVersionCopy,
-  successCopy,
+  successTitle,
 } from "./workflow-panel-model.ts";
 
 function idsFor(state, options) {
@@ -58,53 +58,58 @@ test("moving between contact attempts keeps the chosen return time; moving to a 
   assert.equal(booking.followUpDay, "");
 });
 
-test("a saved outcome clears the form and keeps only the success feedback", () => {
+test("a saved outcome empties the panel; only a refusal stays on it", () => {
   const filled = panelReducer(panelReducer(INITIAL_PANEL, { type: "select", id: "booked" }), {
     type: "set_appointment_day",
     day: "2026-10-01",
   });
-  const saved = panelReducer(filled, { type: "succeeded", text: "Saved.", closedOrBooked: true });
-  assert.deepEqual(saved, {
-    ...INITIAL_PANEL,
-    feedback: { tone: "success", text: "Saved.", closedOrBooked: true },
-  });
+  // Success is the toast's to say, so the panel keeps nothing of it.
+  assert.deepEqual(panelReducer(filled, { type: "succeeded" }), INITIAL_PANEL);
   const failed = panelReducer(filled, { type: "failed", text: "No." });
   assert.equal(failed.selected, "booked");
-  assert.deepEqual(failed.feedback, { tone: "error", text: "No." });
+  assert.deepEqual(failed.feedback, { text: "No." });
 });
 
-test("success copy names the staff-facing result, never Booked", () => {
+test("a success title names the staff-facing result in a toast's worth of words", () => {
   const contacted = { state: "contacted", callAgainAt: "2026-09-08T13:00:00.000Z" };
+  // A toast title is read at a glance: no sentence, no terminal period.
   assert.match(
-    successCopy({ kind: "attempt", outcome: "voicemail" }, contacted),
-    /^Saved — marked Contacted\. It will resurface /,
+    successTitle({ kind: "attempt", outcome: "voicemail" }, contacted),
+    /^Contacted — call again /,
   );
   assert.equal(
-    successCopy(
+    successTitle(
       { kind: "attempt", outcome: "voicemail" },
       { state: "contacted", callAgainAt: null },
     ),
-    "Saved — marked Contacted.",
+    "Contacted",
   );
-  assert.match(
-    successCopy({ kind: "booked" }, { state: "booked", callAgainAt: null }),
-    /Scheduled/,
+  assert.equal(
+    successTitle({ kind: "booked" }, { state: "booked", callAgainAt: null }),
+    "Appointment scheduled",
   );
   assert.doesNotMatch(
-    successCopy({ kind: "booked" }, { state: "booked", callAgainAt: null }),
+    successTitle({ kind: "booked" }, { state: "booked", callAgainAt: null }),
     /Booked/,
   );
   assert.equal(
-    successCopy({ kind: "reopen" }, { state: "contacted", callAgainAt: null }),
-    "Reopened — back to Contacted for more work.",
+    successTitle(
+      { kind: "close", reason: "wont_schedule" },
+      { state: "closed", callAgainAt: null },
+    ),
+    "Request closed",
   );
   assert.equal(
-    successCopy({ kind: "classify" }, { state: "booked", callAgainAt: null }),
-    "Record finished — marked Scheduled.",
+    successTitle({ kind: "reopen" }, { state: "contacted", callAgainAt: null }),
+    "Reopened — back to Contacted",
   );
   assert.equal(
-    successCopy({ kind: "undo" }, { state: "new", callAgainAt: null }),
-    "Undone — this request is New again.",
+    successTitle({ kind: "classify" }, { state: "booked", callAgainAt: null }),
+    "Record finished — marked Scheduled",
+  );
+  assert.equal(
+    successTitle({ kind: "undo" }, { state: "new", callAgainAt: null }),
+    "Undone — this request is New again",
   );
 });
 

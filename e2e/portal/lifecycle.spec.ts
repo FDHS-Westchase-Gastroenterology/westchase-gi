@@ -123,7 +123,9 @@ test.describe("isolated appointment-request lifecycle", () => {
     await expect(page.getByTestId("save-workflow")).toHaveCount(0);
     await panel.getByText("An appointment was booked", { exact: true }).click();
     await page.getByTestId("classify-legacy").click();
-    await expect(page.getByTestId("workflow-feedback")).toContainText("marked Scheduled");
+    await expect(
+      page.getByTestId("portal-toast").filter({ hasText: "Record finished — marked Scheduled" }),
+    ).toBeVisible();
 
     const bookedRow = await db
       .from("requests")
@@ -152,7 +154,9 @@ test.describe("isolated appointment-request lifecycle", () => {
       })
       .click();
     await page.getByTestId("classify-legacy").click();
-    await expect(page.getByTestId("workflow-feedback")).toContainText("stays closed");
+    await expect(
+      page.getByTestId("portal-toast").filter({ hasText: "stays closed" }),
+    ).toBeVisible();
 
     const unbookedRow = await db
       .from("requests")

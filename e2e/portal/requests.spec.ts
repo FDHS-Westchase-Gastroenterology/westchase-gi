@@ -259,9 +259,9 @@ test.describe("portal requests operation", () => {
       });
       const requestPrint = page.getByRole("button", { name: "Print request" });
       await requestPrint.click();
-      await expect(page.getByTestId("request-print-feedback")).toHaveText(
-        "Print dialog is opening for this request.",
-      );
+      await expect(
+        page.getByTestId("portal-toast").filter({ hasText: "Print dialog is opening" }),
+      ).toBeVisible();
       await expect(requestPrint).toBeFocused();
       await expect(noteError).toContainText("Your note is still here");
       await expect(noteField).toHaveAttribute("aria-describedby", /request-note-error/);
@@ -270,7 +270,10 @@ test.describe("portal requests operation", () => {
       await expect(noteError).toHaveCount(0);
       await expect(noteField).not.toHaveAttribute("aria-describedby", /request-note-error/);
       await notesSection.getByRole("button", { name: "Save note" }).click();
-      await expect(notesSection.getByTestId("request-note-feedback")).toHaveText("Note added.");
+      await expect(
+        page.getByTestId("portal-toast").filter({ hasText: "Note added." }),
+      ).toBeVisible();
+      await expect(notesSection.getByTestId("request-note-feedback")).toHaveCount(0);
       await expect(notesSection.getByRole("button", { name: "Add note" })).toBeFocused();
       await expect(page.getByTestId("staff-request-created")).toHaveCount(0);
       await expect(page).toHaveURL(
@@ -304,8 +307,13 @@ test.describe("portal requests operation", () => {
       await workflowPanel.getByText("Left a voicemail — call again", { exact: true }).click();
       await workflowPanel.getByText("Tomorrow morning", { exact: true }).click();
       await page.getByTestId("save-workflow").click();
-      await expect(page.getByTestId("workflow-feedback")).toContainText("Saved");
-      await expect(page.getByTestId("workflow-feedback")).not.toBeFocused();
+      const contactedToast = page
+        .getByTestId("portal-toast")
+        .filter({ hasText: "Contacted — call again" });
+      await expect(contactedToast).toBeVisible();
+      // An acknowledgement announces; it never takes the caret off the work.
+      await expect(contactedToast).not.toBeFocused();
+      await expect(page.getByTestId("workflow-feedback")).toHaveCount(0);
       await expect(notesSection.getByTestId("request-note-feedback")).toHaveCount(0);
       await expect(page.getByTestId("staff-request-created")).toHaveCount(0);
       await expect(notesSection.getByLabel("Note", { exact: true })).toBeHidden();
@@ -328,9 +336,9 @@ test.describe("portal requests operation", () => {
       ).toBeVisible();
 
       await page.getByTestId("undo-latest").click();
-      await expect(page.getByTestId("workflow-feedback")).toContainText(
-        "Undone — this request is New again.",
-      );
+      await expect(
+        page.getByTestId("portal-toast").filter({ hasText: "Undone — this request is New again" }),
+      ).toBeVisible();
       await expect(notesSection.getByTestId("request-note-feedback")).toHaveCount(0);
       await expect(page.getByTestId("staff-request-created")).toHaveCount(0);
 
@@ -466,7 +474,15 @@ test.describe("portal requests operation", () => {
     await expect(history).toContainText(`queue-${runId}-staff@example.test`);
 
     const panel = page.getByTestId("workflow-panel");
-    const feedback = page.getByTestId("workflow-feedback");
+    /* Success is a toast now, and a toast is transient: assert it, then
+       dismiss it, so no later assertion can be satisfied by an earlier
+       save's acknowledgement and the stack never sits over the panel. */
+    async function acknowledged(title: string) {
+      const acknowledgement = page.getByTestId("portal-toast").filter({ hasText: title });
+      await expect(acknowledgement).toBeVisible();
+      await acknowledgement.getByRole("button", { name: "Dismiss" }).click();
+      await expect(acknowledgement).toHaveCount(0);
+    }
     async function statusOf() {
       const { data, error } = await db
         .from("requests")
@@ -518,7 +534,7 @@ test.describe("portal requests operation", () => {
     await expect(page.getByTestId("save-workflow")).toBeEnabled();
     await expect(customDay).not.toHaveAttribute("aria-invalid", "true");
     await page.getByTestId("save-workflow").click();
-    await expect(feedback).toContainText("resurface");
+    await acknowledged("Contacted — call again");
     const afterReached = await statusOf();
     expect(afterReached?.status).toBe("contacted");
     expect(afterReached?.follow_up_at).toBeTruthy();
@@ -532,7 +548,7 @@ test.describe("portal requests operation", () => {
       await panel.getByText("Reached the patient — follow-up needed", { exact: true }).click();
       await panel.getByText(preset, { exact: true }).click();
       await page.getByTestId("save-workflow").click();
-      await expect(feedback).toContainText("resurface");
+      await acknowledged("Contacted — call again");
     }
 
     // The daily success path: booked in the practice system, presented as
@@ -545,7 +561,7 @@ test.describe("portal requests operation", () => {
     await nameTheAppointment(page, 7);
     await expect(page.getByTestId("save-workflow")).toBeEnabled();
     await page.getByTestId("save-workflow").click();
-    await expect(feedback).toContainText("marked Scheduled");
+    await acknowledged("Appointment scheduled");
     const afterBooked = await statusOf();
     expect(afterBooked?.status).toBe("booked");
     expect(afterBooked?.record_handoff_at).toBeTruthy();
@@ -580,7 +596,7 @@ test.describe("portal requests operation", () => {
       .getByText("Tomorrow morning", { exact: true })
       .click();
     await page.getByTestId("confirm-reopen").click();
-    await expect(feedback).toContainText("Reopened — back to Contacted");
+    await acknowledged("Reopened — call again");
     const reopened = await statusOf();
     expect(reopened?.status).toBe("contacted");
     expect(reopened?.record_handoff_at).toBeNull();
@@ -595,7 +611,7 @@ test.describe("portal requests operation", () => {
     // Handoff clock and cleared call-again/closure fields. The original
     // Reopen remains visible as later-undone evidence.
     await page.getByTestId("undo-latest").click();
-    await expect(feedback).toContainText("Undone — this request is Scheduled again.");
+    await acknowledged("Undone — this request is Scheduled again");
     expect(await statusOf()).toEqual(afterBooked);
     await expect(page.getByTestId("request-history")).toContainText("later undone");
 
@@ -604,7 +620,7 @@ test.describe("portal requests operation", () => {
     await page.getByTestId("reopen-request").click();
     await page.getByTestId("reopen-controls").getByText("Friday", { exact: true }).click();
     await page.getByTestId("confirm-reopen").click();
-    await expect(feedback).toContainText("Reopened — back to Contacted");
+    await acknowledged("Reopened — call again");
     await expect(page.getByTestId("request-history").locator("li").first()).toContainText(
       expectedReopenHistoryLine("friday"),
     );
@@ -612,7 +628,7 @@ test.describe("portal requests operation", () => {
     // Closing records the concrete reason the database needs.
     await panel.getByText("Patient won't schedule", { exact: true }).click();
     await page.getByTestId("save-workflow").click();
-    await expect(feedback).toContainText("closed");
+    await acknowledged("Request closed");
     const closed = await statusOf();
     expect(closed?.status).toBe("closed");
     expect(closed?.closure_reason).toBe("wont_schedule");
@@ -1282,7 +1298,9 @@ test.describe("portal requests operation", () => {
       );
       await correction.getByText("Tomorrow morning", { exact: true }).click();
       await page.getByTestId("set-call-again-submit").click();
-      await expect(page.getByTestId("workflow-feedback")).toContainText("Saved — call again");
+      await expect(
+        page.getByTestId("portal-toast").filter({ hasText: "Call again" }),
+      ).toBeVisible();
       const corrected = await db
         .from("requests")
         .select("status, follow_up_at")
@@ -1296,9 +1314,11 @@ test.describe("portal requests operation", () => {
       // The correction is reversible to the exact legacy null snapshot;
       // Both the original missing evidence and its correction stay in history.
       await page.getByTestId("undo-latest").click();
-      await expect(page.getByTestId("workflow-feedback")).toContainText(
-        "Undone — this request is Contacted again.",
-      );
+      await expect(
+        page
+          .getByTestId("portal-toast")
+          .filter({ hasText: "Undone — this request is Contacted again" }),
+      ).toBeVisible();
       const restoredLegacy = await db
         .from("requests")
         .select("status, follow_up_at")
@@ -1322,20 +1342,27 @@ test.describe("portal requests operation", () => {
       // Current state. One save books it; continuation appears only after
       // A confirmed success.
       const panel = page.getByTestId("workflow-panel");
-      const feedback = page.getByTestId("workflow-feedback");
+      const scheduledToast = page
+        .getByTestId("portal-toast")
+        .filter({ hasText: "Appointment scheduled" });
+      const openNext = page.getByRole("button", { name: "Open next request" });
       await expect(page.getByTestId("save-workflow")).toHaveText("Save");
       await expect(page.getByTestId("save-workflow")).toBeDisabled();
-      await expect(page.getByTestId("open-next-request")).toHaveCount(0);
+      await expect(openNext).toHaveCount(0);
       await panel.getByText("Appointment booked", { exact: true }).click();
       await nameTheAppointment(page, 9);
       await page.getByTestId("save-workflow").click();
-      await expect(feedback).toContainText("marked Scheduled");
+      await expect(scheduledToast).toBeVisible();
       await expect(page.getByTestId("undo-latest")).toHaveText("Undo");
 
       // Undo is a real atomic reversal — a compensating transition that
       // Restores the prior snapshot — not a local form reset.
       await page.getByTestId("undo-latest").click();
-      await expect(feedback).toContainText("Undone — this request is Contacted again.");
+      await expect(
+        page
+          .getByTestId("portal-toast")
+          .filter({ hasText: "Undone — this request is Contacted again" }),
+      ).toBeVisible();
       const { data: undoneRow, error: undoneRowError } = await db
         .from("requests")
         .select("status, follow_up_at")
@@ -1355,8 +1382,8 @@ test.describe("portal requests operation", () => {
       await panel.getByText("Appointment booked", { exact: true }).click();
       await nameTheAppointment(page, 9);
       await page.getByTestId("save-workflow").click();
-      await expect(feedback).toContainText("marked Scheduled");
-      await page.getByTestId("open-next-request").click();
+      await expect(scheduledToast).toBeVisible();
+      await openNext.click();
       await expect(page).toHaveURL(new RegExp(`/admin/requests/${idsByKey.get("stale")}`));
 
       const { data: savedRow, error: savedRowError } = await db
@@ -1418,7 +1445,7 @@ test.describe("portal requests operation", () => {
     await expect(notesSection.getByRole("button", { name: "Save note" })).toBeDisabled();
     await noteField.fill(noteText);
     await notesSection.getByRole("button", { name: "Save note" }).click();
-    await expect(notesSection.getByTestId("request-note-feedback")).toContainText("Note added.");
+    await expect(page.getByTestId("portal-toast").filter({ hasText: "Note added." })).toBeVisible();
 
     const notes = page.getByTestId("note-list");
     await expect(notes).toContainText(noteText);
@@ -1436,7 +1463,9 @@ test.describe("portal requests operation", () => {
     await panel.getByText("Left a voicemail — call again", { exact: true }).click();
     await panel.getByText("Tomorrow morning", { exact: true }).click();
     await page.getByTestId("save-workflow").click();
-    await expect(page.getByTestId("workflow-feedback")).toContainText("Saved");
+    await expect(
+      page.getByTestId("portal-toast").filter({ hasText: "Contacted — call again" }),
+    ).toBeVisible();
 
     const { data: authorProfile } = await db
       .from("staff_profiles")
@@ -1502,9 +1531,9 @@ test.describe("portal requests operation", () => {
       button.click();
     });
     await expect(page.locator("html")).toHaveAttribute("data-test-request-print-calls", "1");
-    await expect(page.getByTestId("request-print-feedback")).toHaveText(
-      "Print dialog is opening for this request.",
-    );
+    await expect(
+      page.getByTestId("portal-toast").filter({ hasText: "Print dialog is opening" }),
+    ).toHaveCount(1);
     await expect(printRequest).toBeFocused();
     await expect(printRequest).toHaveAttribute("aria-disabled", "true");
     await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));

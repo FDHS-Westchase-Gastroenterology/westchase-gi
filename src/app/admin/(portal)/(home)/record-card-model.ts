@@ -11,11 +11,6 @@ import type {
   RequestStatus,
 } from "@/lib/portal/workflow/contracts";
 
-/* The card records nothing until Save. Contact answers offer an explicit
-   callback or No call, which records the contact result and closes the request.
-   The calendar starts blank and preserves days staff picked while switching
-   choices. Days are practice-local YYYY-MM-DD; times are HH:MM. */
-
 export const CARD_ANSWERS = ["no_answer", "contacted", "booked", "not_actionable"] as const;
 export type CardAnswer = (typeof CARD_ANSWERS)[number];
 
@@ -86,8 +81,9 @@ export function cardNoteFor(status: RequestStatus): string | null {
 export interface CardDraft {
   readonly answer: CardAnswer | null;
   readonly followUp: FollowUp | null;
-  /** The day staff clicked, or "" while the calendar is still blank. */
+  /** Practice-local YYYY-MM-DD, or "" until staff pick a day. */
   readonly day: string;
+  /** HH:MM, or "" until Done commits the picker draft. */
   readonly time: string;
 }
 
@@ -263,20 +259,72 @@ export function commandFor(draft: Readonly<CardDraft>, today: string): CardComma
   };
 }
 
-/** The feedback line after a save, in the queue's words. */
-export function savedMessage(
+/* The acknowledgement, split for the toast (src/components/ui/toast.tsx).
+
+   The banner this replaces put outcome and patient in one sentence, and the
+   two contact outcomes then opened with the same eleven characters — "No
+   answer recorded for …" — so a call-again and a closed request were
+   indistinguishable at a glance, which is the bug that started this work.
+   The split fixes it structurally: the title is what changed, and it is the
+   only place the two outcomes are ever compared; the description is who it
+   changed for, and nothing else. Hierarchy does the disambiguating, so the
+   copy never has to. */
+export interface CardToast {
+  /** What changed. Read first, and the only line that distinguishes outcomes. */
+  readonly title: string;
+  /** Who it changed for. The patient's name alone, never more. */
+  readonly description: string;
+  /** So the capture script redacts the name here as it does in the row. */
+  readonly data: { readonly redact: "patient-name" };
+}
+
+/* Every card toast names the same person in the same place, so the hook is
+   written once rather than repeated in each builder below. */
+const NAMES_A_PATIENT = { redact: "patient-name" } as const;
+
+/** The line while the save is in flight: the verb, in the present. */
+export function savingToast(command: Readonly<CardCommand>, name: string): CardToast {
+  const title =
+    command.kind === "book"
+      ? "Scheduling…"
+      : command.kind === "close"
+        ? "Closing the request…"
+        : command.kind === "complete_contact"
+          ? "Recording and closing…"
+          : "Recording the call…";
+  return { title, description: name, data: NAMES_A_PATIENT };
+}
+
+/** The line once it lands, in the queue's words. */
+export function savedToast(
   command: Readonly<CardCommand>,
   name: string,
   callAgainAt: string | null,
   now: Date = new Date(),
-): string {
-  if (command.kind === "book") return `${name} is Scheduled.`;
-  if (command.kind === "close") return `${name} is Closed.`;
+): CardToast {
+  return { title: savedTitle(command, callAgainAt, now), description: name, data: NAMES_A_PATIENT };
+}
+
+function savedTitle(command: Readonly<CardCommand>, callAgainAt: string | null, now: Date): string {
+  if (command.kind === "book") return "Appointment scheduled";
+  if (command.kind === "close") return "Request closed";
   const label = command.outcome === "no_answer" ? ANSWER_LABELS.no_answer : ANSWER_LABELS.contacted;
-  if (command.kind === "complete_contact") return `${label} recorded for ${name}. Request closed.`;
+  if (command.kind === "complete_contact") return `${label} recorded — request closed`;
   return callAgainAt === null
-    ? `${label} recorded for ${name}.`
-    : `${label} recorded for ${name} — back ${followUpShortLabel(callAgainAt, now)}.`;
+    ? `${label} recorded — call again set`
+    : `${label} recorded — call again ${followUpShortLabel(callAgainAt, now)}`;
+}
+
+/* A refusal in the same two lines as a success, so the toast never changes
+   shape mid-flight: the title names the state the save is in, the card's own
+   alert carries the sentence that says what to do about it. */
+export function failedToast(failure: Readonly<CardFailure>, name: string): CardToast {
+  const title = failure.uncertain
+    ? "Could not confirm the save"
+    : failure.refresh
+      ? "Someone else worked this request"
+      : "Not saved";
+  return { title, description: name, data: NAMES_A_PATIENT };
 }
 
 export interface CardFailure {

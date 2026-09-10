@@ -35,3 +35,14 @@ export function rubberband(overshoot: number, dimension: number): number {
   const constant = 0.55;
   return (overshoot * dimension * constant) / (dimension + constant * Math.abs(overshoot));
 }
+
+/* Where a flick is going, the exponential-decay projection scroll views use
+   (apple-design §6). The deceleration rate is the registry's third gesture
+   constant, beside rubberband's: 0.998 is a scroll view's long glide, which
+   over a bounded surface like the record sheet overshoots by most of a
+   screen; 0.99 lands a fast flick about a tenth of its velocity away, which
+   is decisive without being a throw. Pixels per second in, pixels out. */
+export function projectMomentum(velocity: number): number {
+  const deceleration = 0.99;
+  return ((velocity / 1000) * deceleration) / (1 - deceleration);
+}

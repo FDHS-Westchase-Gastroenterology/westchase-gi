@@ -3,10 +3,6 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { AddAppointmentDialog } from "@/app/admin/(portal)/add-appointment-dialog";
-import {
-  PortalFeedbackMessage,
-  PortalFeedbackProvider,
-} from "@/app/admin/(portal)/portal-feedback";
 import { PrintChooser } from "@/app/admin/(portal)/requests/print-chooser";
 import { buttonVariants } from "@/components/ui/button-variants";
 import type { StatusCounts } from "@/lib/portal/workflow/contracts";
@@ -66,84 +62,80 @@ export function HomeWorkbench({
   announcements?: ReactNode;
 }>) {
   return (
-    <PortalFeedbackProvider>
-      <section aria-labelledby="home-heading" className="portal-sheet">
-        <header className="portal-sheet-head">
-          <div>
-            <h1
-              id="home-heading"
-              data-testid="home-greeting"
-              tabIndex={-1}
-              className="portal-sheet-title"
-            >
-              <span className="portal-sheet-greeting">{greeting}</span>{" "}
-              <span className="portal-sheet-day">{date}</span>
-            </h1>
-          </div>
-          <div className="portal-sheet-commands print-hide">
-            <PrintChooser
-              statusCounts={statusCounts}
-              triggerClassName={buttonVariants()}
-              triggerLabel="Print appointments"
-            />
-            <AddAppointmentDialog
-              idempotencyKey={addRequestKey}
-              triggerClassName={buttonVariants({ variant: "outline" })}
-            />
-          </div>
-        </header>
+    <section aria-labelledby="home-heading" className="portal-sheet">
+      <header className="portal-sheet-head">
+        <div>
+          <h1
+            id="home-heading"
+            data-testid="home-greeting"
+            tabIndex={-1}
+            className="portal-sheet-title"
+          >
+            <span className="portal-sheet-greeting">{greeting}</span>{" "}
+            <span className="portal-sheet-day">{date}</span>
+          </h1>
+        </div>
+        <div className="portal-sheet-commands print-hide">
+          <PrintChooser
+            statusCounts={statusCounts}
+            triggerClassName={buttonVariants()}
+            triggerLabel="Print appointments"
+          />
+          <AddAppointmentDialog
+            idempotencyKey={addRequestKey}
+            triggerClassName={buttonVariants({ variant: "outline" })}
+          />
+        </div>
+      </header>
 
-        {announcements}
+      {announcements}
 
-        <PortalFeedbackMessage source="requests-output" testId="home-output-feedback" />
-
-        {lines === null ? (
-          <div data-testid="queue-overview-unavailable" className="portal-sheet-notice">
-            <h2>Today&rsquo;s calls could not load.</h2>
-            <p>
-              This is not an empty day. Open Appointments to read the live queue, then print from a
-              current view.
-            </p>
-            <Link
-              href="/admin/requests"
-              data-slot="button"
-              className={cn(buttonVariants(), "portal-sheet-notice-action")}
-            >
-              Open Appointments
-            </Link>
-          </div>
-        ) : (
-          <HomeDashboard lines={lines} nowMs={nowMs} closedCapped={closedCapped} />
-        )}
-
-        {noActiveRecipients ? (
-          <p data-testid="no-recipients-warning" className="portal-sheet-alert">
-            <strong>Notification emails are paused.</strong> Requests still land here, but no email
-            goes out when one arrives.{" "}
-            <Link href="/admin/settings#notifications">Manage recipients</Link>
+      {lines === null ? (
+        <div data-testid="queue-overview-unavailable" className="portal-sheet-notice">
+          <h2>Today&rsquo;s calls could not load.</h2>
+          <p>
+            This is not an empty day. Open Appointments to read the live queue, then print from a
+            current view.
           </p>
-        ) : null}
+          <Link
+            href="/admin/requests"
+            data-slot="button"
+            className={cn(buttonVariants(), "portal-sheet-notice-action")}
+          >
+            Open Appointments
+          </Link>
+        </div>
+      ) : (
+        <HomeDashboard lines={lines} nowMs={nowMs} closedCapped={closedCapped} />
+      )}
 
-        {deliveryFailureCount !== null ? (
-          <p data-testid="delivery-failure-warning" className="portal-sheet-alert">
-            <strong>
-              {deliveryFailureCount === 1
-                ? "A notification email had trouble sending in the last 24 hours."
-                : `${deliveryFailureCount} notification emails had trouble sending in the last 24 hours.`}
-            </strong>{" "}
-            The queue remains the system of record.{" "}
-            <Link href="/admin/help#something-wrong">See what to check</Link>
-          </p>
-        ) : null}
+      {noActiveRecipients ? (
+        <p data-testid="no-recipients-warning" className="portal-sheet-alert">
+          <strong>Notification emails are paused.</strong> Requests still land here, but no email
+          goes out when one arrives.{" "}
+          <Link href="/admin/settings#notifications">Manage recipients</Link>
+        </p>
+      ) : null}
 
-        <nav aria-label="Other staff jobs" className="portal-sheet-elsewhere print-hide">
-          {ELSEWHERE.map((item) => (
-            <Link key={item.href} href={item.href}>
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-      </section>
-    </PortalFeedbackProvider>
+      {deliveryFailureCount !== null ? (
+        <p data-testid="delivery-failure-warning" className="portal-sheet-alert">
+          <strong>
+            {deliveryFailureCount === 1
+              ? "A notification email had trouble sending in the last 24 hours."
+              : `${deliveryFailureCount} notification emails had trouble sending in the last 24 hours.`}
+          </strong>{" "}
+          The queue remains the system of record.{" "}
+          <Link href="/admin/help#something-wrong">See what to check</Link>
+        </p>
+      ) : null}
+
+      <nav aria-label="Other staff jobs" className="portal-sheet-elsewhere print-hide">
+        {ELSEWHERE.map((item) => (
+          <Link key={item.href} href={item.href}>
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+    </section>
   );
 }

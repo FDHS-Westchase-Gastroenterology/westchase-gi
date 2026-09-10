@@ -263,9 +263,25 @@
       transition-duration: var(--pm-reduced-duration, 120ms) !important;
     }
 
+    /* The acknowledgement toast (src/components/ui/toast.tsx) keeps the same
+       cross-fade. Its travel — the rise from below the viewport edge — is
+       already dropped by the recipe, whose two travel rules are motion-safe:,
+       and the recipe authors the opacity the preference gets instead. This is
+       the duration that opacity runs at. */
+    .portal-toast,
+    .portal-toast [data-slot="toast-content"] {
+      transition-duration: var(--pm-reduced-duration, 120ms) !important;
+    }
+
+    /* Every skeleton on Home, including the full-record sheet's. They share
+       one keyframe pair, so they share one reduced-motion answer: a slowed
+       pulse. Leaving one of them to the blanket reset above would strand it
+       on the keyframe's 100% — full opacity, a filled block rather than a
+       placeholder — while the others beside it went on breathing. */
     .wgi-skeleton-list > li,
     .wgi-loading-head > span,
-    .wgi-loading-head > i {
+    .wgi-loading-head > i,
+    .wgi-sheet-skeleton {
       animation-duration: 3.2s !important;
       animation-iteration-count: infinite !important;
     }

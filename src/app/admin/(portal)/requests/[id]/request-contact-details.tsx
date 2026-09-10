@@ -62,7 +62,7 @@ export function RequestContactDetails({
             <Mail className="portal-request-contact-icon" />
             <span className="portal-request-contact-copy">
               <span className="portal-request-contact-label">Email patient</span>
-              <strong className="portal-request-contact-value" data-ui-redact="patient-contact">
+              <strong className="portal-request-contact-value" data-ui-redact="patient-email">
                 {safeMailbox}
               </strong>
             </span>

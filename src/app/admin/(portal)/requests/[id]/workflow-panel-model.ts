@@ -124,9 +124,10 @@ export function followUpChoice(
 }
 
 // ---------------------------------------------------------------------------
-// Copy. Success names the staff-facing result (Scheduled, never Booked);
-// Failure names what is and is not known to have been saved (spec §7:
-// Never report false success; `unavailable` may or may not have written).
+// Copy. Success names the staff-facing result (Scheduled, never Booked) as a
+// Toast title; failure names what is and is not known to have been saved
+// (spec §7: never report false success; `unavailable` may or may not have
+// Written) as a sentence the panel keeps on screen.
 // ---------------------------------------------------------------------------
 
 /** What staff set out to do; the success sentence and the next-step link derive from it. */
@@ -140,7 +141,12 @@ export type PanelIntent =
 /** Which control started the in-flight command, so only that button wears the working verb. */
 export type InFlight = Exclude<PanelIntent["kind"], "attempt" | "booked" | "close"> | "save";
 
-export function successCopy(
+/* The acknowledgement's title. Every one of these saved, so "Saved" is not
+   the first word — it would be the same eleven characters on every outcome,
+   which is what made the banner it replaces unreadable at a glance. The
+   title carries the distinguishing fact and the patient's name is the
+   toast's description (src/components/ui/toast.tsx). */
+export function successTitle(
   intent: Readonly<PanelIntent>,
   outcome: Readonly<{ state: RequestState; callAgainAt: string | null }>,
 ): string {
@@ -148,27 +154,23 @@ export function successCopy(
   const callAgain = () => followUpWhenLabel(outcome.callAgainAt ?? "");
   switch (intent.kind) {
     case "attempt":
-      return hasCallAgain
-        ? `Saved — marked Contacted. It will resurface ${callAgain()}.`
-        : "Saved — marked Contacted.";
+      return hasCallAgain ? `Contacted — call again ${callAgain()}` : "Contacted";
     case "booked":
-      return "Saved — marked Scheduled. It stays on the Scheduled view if you need it.";
+      return "Appointment scheduled";
     case "close":
-      return "Saved — the request is closed.";
+      return "Request closed";
     case "reopen":
-      return hasCallAgain
-        ? `Reopened — back to Contacted. Call again ${callAgain()}.`
-        : "Reopened — back to Contacted for more work.";
+      return hasCallAgain ? `Reopened — call again ${callAgain()}` : "Reopened — back to Contacted";
     case "set_call_again":
-      return hasCallAgain ? `Saved — call again ${callAgain()}.` : "Saved.";
+      return hasCallAgain ? `Call again ${callAgain()}` : "Call again set";
     case "classify":
       return outcome.state === "booked"
-        ? "Record finished — marked Scheduled."
-        : "Record finished — the request stays closed.";
+        ? "Record finished — marked Scheduled"
+        : "Record finished — the request stays closed";
     case "undo":
-      return `Undone — this request is ${stateLabel(outcome.state)} again.`;
+      return `Undone — this request is ${stateLabel(outcome.state)} again`;
   }
-  return "Saved.";
+  return "Saved";
 }
 
 /** Rejections the panel reports with a fixed sentence; the other two carry the request's new truth. */
@@ -213,9 +215,13 @@ export const ILLEGAL_TRANSITION_COPY =
 // Panel state: the staff member's in-progress choice and the last result.
 // ---------------------------------------------------------------------------
 
-export type Feedback =
-  | { readonly tone: "success"; readonly text: string; readonly closedOrBooked: boolean }
-  | { readonly tone: "error"; readonly text: string };
+/* Only a failure stays on the panel. A success is a fact about work that
+   just finished and belongs in the toast; a failure is an instruction —
+   "check Request history before repeating anything" — and an instruction
+   that auto-dismisses is worse than no instruction at all. */
+export interface Feedback {
+  readonly text: string;
+}
 
 export interface PanelState {
   readonly selected: ChoiceId | null;
@@ -236,7 +242,7 @@ export type PanelAction =
   | { readonly type: "set_appointment_day"; readonly day: string }
   | { readonly type: "set_appointment_time"; readonly time: string }
   | { readonly type: "select_review"; readonly resolution: "booked" | ClosureReason }
-  | { readonly type: "succeeded"; readonly text: string; readonly closedOrBooked: boolean }
+  | { readonly type: "succeeded" }
   | { readonly type: "failed"; readonly text: string };
 
 export const INITIAL_PANEL: PanelState = {
@@ -278,12 +284,9 @@ export function panelReducer(
     case "select_review":
       return { ...state, reviewResolution: action.resolution, feedback: null };
     case "succeeded":
-      return {
-        ...INITIAL_PANEL,
-        feedback: { tone: "success", text: action.text, closedOrBooked: action.closedOrBooked },
-      };
+      return INITIAL_PANEL;
     case "failed":
-      return { ...state, feedback: { tone: "error", text: action.text } };
+      return { ...state, feedback: { text: action.text } };
   }
   return state;
 }

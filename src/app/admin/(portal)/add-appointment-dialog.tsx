@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useId, useRef, useState } from "react";
 
-import { usePortalFeedback } from "./portal-feedback";
+import { toast } from "@/components/ui/toast-manager";
+
 import { StaffRequestForm } from "./requests/new/staff-request-form";
 import type { StaffRequestFormHandle } from "./requests/new/staff-request-form";
 
@@ -29,7 +30,6 @@ export function AddAppointmentDialog({
   const formHandleRef = useRef<StaffRequestFormHandle>(null);
   const [open, setOpen] = useState(false);
   const router = useRouter();
-  const { publish } = usePortalFeedback();
 
   const close = useCallback(() => {
     dialogRef.current?.close();
@@ -42,14 +42,21 @@ export function AddAppointmentDialog({
   const created = useCallback(
     (name: string) => {
       close();
-      publish({
-        source: "requests-output",
-        tone: "status",
-        message: `${name} is on the line under New.`,
+      /* The dialog is already gone by the time this lands, so the toast is
+         the only thing that says the request exists: the title is the fact,
+         the description is who it is about (src/components/ui/toast.tsx). */
+      toast.add({
+        type: "success",
+        title: "Added to the line under New",
+        description: name,
+        /* The description is a patient's name, and a toast outlives the
+           surface it speaks about: without this the capture script would
+           redact the page and leave the name floating over it. */
+        data: { redact: "patient-name" },
       });
       router.refresh();
     },
-    [close, publish, router],
+    [close, router],
   );
 
   return (

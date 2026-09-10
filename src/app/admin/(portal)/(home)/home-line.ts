@@ -189,9 +189,9 @@ function leadingLocation(filtered: readonly Readonly<HomeLine>[]): string | null
 type Candidate = Pick<FilterSuggestion, "key" | "raw">;
 
 function receivedCandidates(nowMs: number): Candidate[] {
-  return datePresets(nowMs)
-    .filter((preset) => preset.id !== "month")
-    .map((preset) => ({ key: "received", raw: receivedFilter.encode(preset.range) }));
+  return datePresets(nowMs).flatMap((preset) =>
+    preset.id === "month" ? [] : [{ key: "received", raw: receivedFilter.encode(preset.range) }],
+  );
 }
 
 /* Offer Follow-up only for an unfiltered status or Call again alone;

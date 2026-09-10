@@ -156,6 +156,7 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
         onOpenChange={(open) => {
           if (!open) setSheet(null);
         }}
+        onSettled={markSettled}
       />
     </>
   );

@@ -304,3 +304,33 @@ export function LogOut(p: IconProps) {
     </svg>
   );
 }
+
+/* The three toast states (src/components/ui/toast.tsx). Drawn here rather
+   than pulled from lucide-react so an approved recipe keeps the module's
+   single stroke weight; lucide stays a stock/ dependency. */
+export function LoaderCircle(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+    </svg>
+  );
+}
+
+export function CircleCheck(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+export function TriangleAlert(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
+      <path d="M12 9v4" />
+      <path d="M12 17h.01" />
+    </svg>
+  );
+}
