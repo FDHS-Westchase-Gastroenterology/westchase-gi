@@ -157,8 +157,6 @@
   transform: scale(0.97);
 }
 
-/* The count a ghost would show: quiet numerals after the value, so a glance
-   says whether the click is worth it. */
 .wgi-sug-count {
   color: var(--color-muted-ink);
   font-size: var(--pt-2xs);
@@ -774,9 +772,6 @@
   transition-duration: 0s;
 }
 
-/* The time beside its word: one trigger on the strip, and the wheels the
-   trigger raises over the month. The strip stays one line tall whatever
-   the card is asked, so choosing a time never moves the calendar. */
 .wgi-record-when {
   width: 100%;
   align-items: center;
@@ -790,9 +785,6 @@
   font-weight: 600;
 }
 
-/* The trigger wears the field's hairline and the card's checked tint
-   while its sheet is up, so the open surface is traceable to the control
-   that opened it. */
 .wgi-time-trigger {
   display: flex;
   flex: 1 1 auto;
@@ -851,10 +843,7 @@
   opacity: 0.55;
 }
 
-/* The month behind the sheet is context, not a control: the scrim quiets
-   it and dismisses the sheet without committing. The stock calendar paints
-   its day buttons at z-index 10 in this same stacking context, so the scrim
-   and the sheet sit above that rather than at 1 and 2. */
+/* The stock calendar's day buttons use z-index 10 in this stacking context. */
 .wgi-time-scrim {
   position: absolute;
   z-index: 20;
@@ -866,10 +855,6 @@
   cursor: default;
 }
 
-/* The sheet rises from the strip's own edge and leaves the same way
-   (DESIGN.md "Motion", spatial consistency). Its arrival, its exit and
-   its reduced-motion temperament are the motion.dev presets in
-   src/lib/motion.ts — the same registry the --motion-* tokens carry. */
 .wgi-time-sheet {
   position: absolute;
   z-index: 21;
@@ -886,15 +871,8 @@
   box-shadow: var(--shadow-card);
 }
 
-/* A transformed descendant still counts toward an ancestor's scrollable
-   overflow, so for as long as the sheet is riding in on translateY(100%)
-   it hands the card — which is overflow: auto — a sheet's worth of scroll
-   range that exists only for the length of one spring. The reveal that
-   runs on mount scrolls into that window, and when the range collapses
-   behind the settling sheet scrollTop is clamped back, so the month lurches
-   and slams back. Clipping main for the life of the sheet removes the
-   phantom range; the card already clipped the travel at its own padding
-   box, so nothing that was visible stops being visible. */
+/* Clip the sheet's translated entrance so it cannot add temporary scroll
+   range to the record card. */
 .wgi-record-main:has(.wgi-time-sheet) {
   overflow: clip;
 }
@@ -1353,9 +1331,6 @@
 
 /* ---------- Full record: the right sheet ---------- */
 
-/* The scrim fades in on the registry's scrim beat, a touch slower than
-   the exit, so the dim reads as room tone under the arriving paper; it
-   leaves on the exit beat with the sheet. */
 .wgi-sheet-overlay {
   position: fixed;
   inset: 0;
@@ -1379,17 +1354,8 @@
   }
 }
 
-/* The sheet arrives the way the portal's modals do: the travel rides the
-   registry spring (one 4.6% overshoot, settled inside half a second) and
-   the fade rides the exit curve, which finishes "it's here" while the
-   spring settles the slide. It leaves faster than it came, along a shorter
-   version of the same path. Transitions rather than keyframes, so a close
-   during the entrance reverses from wherever the sheet is.
-   The box bleeds half a rem past the viewport's right edge: the spring's
-   overshoot carries the sheet that far past its resting place, and the
-   bleed keeps the edge covered instead of flashing a hairline of page.
-   The widths below are the visible sheet; the bleed is added on top, and
-   the resize code measures it rather than repeating the number. */
+/* The off-screen bleed covers the right edge during spring overshoot.
+   Resize bounds include it using layout measurements. */
 .wgi-sheet {
   --wgi-sheet-bleed: 0.5rem;
   position: fixed;
@@ -1399,8 +1365,7 @@
   box-sizing: border-box;
   height: 100%;
   width: calc(42rem + var(--wgi-sheet-bleed));
-  /* The sidebar is the wall: never past its edge, and never the whole
-     viewport when there is no sidebar column to stop at. */
+
   max-width: calc(94vw + var(--wgi-sheet-bleed));
   background: var(--portal-surface);
   border: 0;
@@ -1433,9 +1398,6 @@
     opacity var(--pm-exit-duration) var(--pm-exit);
 }
 
-/* Keyboard-initiated actions never animate: the sheet marks itself and
-   its scrim data-instant for an open or close that came from the keyboard,
-   the attribute Base UI's popovers set on their own. */
 .wgi-sheet[data-instant],
 .wgi-sheet-overlay[data-instant] {
   transition-duration: 0ms;
@@ -1468,8 +1430,6 @@
   touch-action: none;
 }
 
-/* The pill lengthens a third on hover, focus and drag: a transform, so the
-   stretch composites instead of relaying the strip. */
 .wgi-sheet-grip > span {
   width: 4px;
   height: 3rem;
@@ -1683,8 +1643,7 @@
   color: var(--color-teal-ink);
 }
 
-/* Pressed: the bar spans the sheet, so the press is a deeper tint rather
-   than a scale that would open gaps at its ends. */
+/* Scaling would expose gaps at the ends of this full-width link. */
 .wgi-sheet-foot:active {
   background: var(--color-mint-2);
 }
@@ -1732,7 +1691,6 @@
     transform: none;
   }
 
-  /* The grip's stretch is travel too; the tint alone says "live". */
   .wgi-sheet-grip:hover > span,
   .wgi-sheet-grip:focus-visible > span,
   .wgi-sheet-grip[data-dragging] > span {

@@ -84,17 +84,9 @@ export function HomeRangeCalendar({
   );
 }
 
-/* The same registry Calendar in single-day mode for the record card: the
-   day a decision comes back on. No autoFocus — focus stays on the answer
-   the staff member just picked — and `required`, because a return day is
-   never optional. `fixedWeeks` keeps every month six rows tall, so the
-   card is the same height whatever month is showing. The grid opens
-   blank: no day is presumed, and today loses the stock calendar's tint
-   (its `rdp-today` marker stays for assistive tech), so the only shaded
-   cell is the one staff clicked. The month follows a picked day (an
-   outside day at the grid's edge opens its month) and otherwise stays
-   where staff navigated it; that sync is a during-render derivation, not
-   an effect. */
+/* Keep focus on the answer and open with no selected day. Only a picked
+   date is tinted; the stock today marker remains for assistive technology.
+   fixedWeeks prevents month changes from resizing the record card. */
 export function HomeDayCalendar({
   day,
   min,

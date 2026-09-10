@@ -83,6 +83,7 @@ export const clinicalInputSchema = z.discriminatedUnion("action", [
   }),
 ]);
 export type ClinicalInput = z.input<typeof clinicalInputSchema>;
+export type ClinicalOperation = z.output<typeof clinicalInputSchema>;
 
 export const CLINICAL_FAILURE_CODES = [
   "invalid_command",

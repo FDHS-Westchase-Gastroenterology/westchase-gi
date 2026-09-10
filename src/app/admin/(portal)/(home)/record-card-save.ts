@@ -15,7 +15,6 @@ interface CardActions {
   readonly confirmBookingHandoff: typeof confirmBookingHandoff;
 }
 
-/** Dispatch one decision, preserving the version and retry identity supplied by the card. */
 export async function saveCardCommand(
   command: Readonly<CardCommand>,
   common: Readonly<{ requestId: string; expectedVersion: number; idempotencyKey: string }>,

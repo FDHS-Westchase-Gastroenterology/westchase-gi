@@ -217,11 +217,13 @@ test("scheduling decodes complete appointment history and fails visibly on damag
     observedAt: at,
     appointment: {
       ...row,
+      request_workflow_managed: false,
       patient_name: "TEST Patient",
       provider_name: "TEST Provider",
       location_name: "TEST Location",
       appointment_type_name: "TEST Visit",
     },
+    request: null,
     undo: { changeId: key, expiresAt: at },
     history: {
       total: 1,
@@ -238,6 +240,10 @@ test("scheduling decodes complete appointment history and fails visibly on damag
           actor_id: otherId,
           actor_email: "staff@example.test",
           occurred_at: at,
+          request_id: null,
+          request_before: null,
+          request_after_version: null,
+          request_transition_id: null,
         },
       ],
     },
@@ -245,8 +251,54 @@ test("scheduling decodes complete appointment history and fails visibly on damag
   const decoded = appointmentReadDatabaseSchema.parse(response);
   assert.equal(decoded.appointment.patientId, id);
   assert.equal(decoded.appointment.patientName, "TEST Patient");
+  assert.equal(decoded.appointment.requestWorkflowManaged, false);
   assert.equal("created_by" in decoded.appointment, false);
   assert.equal(decoded.history.items[0].after.appointmentTypeId, id);
+  assert.equal(decoded.history.items[0].after.requestWorkflowManaged, false);
+  assert.equal(
+    appointmentReadDatabaseSchema.safeParse({ ...response, request: undefined }).success,
+    false,
+  );
+  assert.equal(
+    appointmentReadDatabaseSchema.safeParse({
+      ...response,
+      appointment: { ...response.appointment, request_workflow_managed: undefined },
+    }).success,
+    false,
+  );
+  for (const field of [
+    "request_id",
+    "request_before",
+    "request_after_version",
+    "request_transition_id",
+  ]) {
+    assert.equal(
+      appointmentReadDatabaseSchema.safeParse({
+        ...response,
+        history: {
+          ...response.history,
+          items: [{ ...response.history.items[0], [field]: undefined }],
+        },
+      }).success,
+      false,
+    );
+  }
+  assert.equal(
+    appointmentReadDatabaseSchema.safeParse({
+      ...response,
+      history: {
+        ...response.history,
+        items: [
+          {
+            ...response.history.items[0],
+            request_before: { state: "new", callAgainAt: null, appointmentAt: null },
+            request_after_version: null,
+          },
+        ],
+      },
+    }).success,
+    false,
+  );
   assert.equal(
     appointmentReadDatabaseSchema.safeParse({
       ...response,

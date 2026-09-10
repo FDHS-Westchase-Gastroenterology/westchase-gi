@@ -65,8 +65,10 @@ for (const status of ["new", "contacted"] as const) {
         );
         await page.getByRole("button", { name: "Save", exact: true }).click();
         const sent = await sending;
+        const body = sent.postData();
+        if (body === null) throw new Error("Home completion request has no body");
         const payload = requireDecoded(
-          completionPayload.safeParse(JSON.parse(sent.postData() ?? "null")),
+          completionPayload.safeParse(JSON.parse(body)),
           "Home must send a contact completion without a callback or closure reason",
         );
         expect(payload[0]).toMatchObject({ requestId: id, expectedVersion: 1, outcome });
@@ -102,7 +104,7 @@ for (const status of ["new", "contacted"] as const) {
         const headers = sent.headers();
         const replay = await page.request.post(sent.url(), {
           headers,
-          data: sent.postData() ?? "",
+          data: body,
         });
         expect(replay.ok()).toBe(true);
         expect((await events()).data).toEqual(completedEvents.data);
@@ -147,8 +149,8 @@ for (const status of ["new", "contacted"] as const) {
         await expect(history).toContainText("no further contact needed");
         await expect(page.getByTestId("undo-latest")).toHaveCount(0);
       } finally {
-        await db.from("requests").delete().eq("id", id);
-        await db.from("audit_log").delete().eq("entity_id", id);
+        expect((await db.from("requests").delete().eq("id", id)).error).toBeNull();
+        expect((await db.from("audit_log").delete().eq("entity_id", id)).error).toBeNull();
       }
     });
   }

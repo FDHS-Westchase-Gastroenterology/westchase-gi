@@ -28,15 +28,11 @@ interface HomeDashboardProps {
 export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps) {
   const { active, setParam: writeParam, clearAll } = useActiveFilters();
 
-  /* Filters the user removed, in removal order. A removed filter returns to
-     the bar as a ghost at the end, so the eye finds it where it went, and it
-     is the one kind of ghost allowed to swap the rows out rather than narrow
-     them; the ranking in `suggestFilters` owns everything else. */
+  // Removed filters return at the end of the suggestions, in removal order.
   const [demoted, setDemoted] = useState<readonly ActiveFilter[]>([]);
 
   const [openRowId, setOpenRowId] = useState<string | null>(null);
-  /* The full-record sheet: which line, and whether the keyboard opened it
-     (a keyboard-initiated open shows the sheet without motion). */
+
   const [sheet, setSheet] = useState<{ id: string; instant: boolean } | null>(null);
   const [settledId, setSettledId] = useState<string | null>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -68,7 +64,6 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
     [lines, active, nowMs, demoted],
   );
 
-  /* A search pill is never a ghost, so there is nothing to remember for it. */
   const demote = (entry: Readonly<ActiveFilter>) => {
     if (entry.key === "search") return;
     const id = suggestionId(entry);
@@ -79,7 +74,6 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
   };
 
   const activate = (suggestion: FilterSuggestion) => {
-    /* The pill this ghost replaces, if any, comes back as a ghost at the end. */
     const replaced = active.find((entry) => entry.key === suggestion.key);
     writeParam(suggestion.key, suggestion.raw);
     const id = suggestionId(suggestion);
@@ -87,16 +81,10 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
     if (replaced !== undefined) demote(replaced);
   };
 
-  /* Every path that clears a pill demotes it: the x button, an editor's Any
-     row, an emptied search. The ghost lands at the end either way. */
   const setParam = (key: FilterKey, raw: string | null) => {
     const entry = raw === null ? active.find((candidate) => candidate.key === key) : undefined;
     writeParam(key, raw);
     if (entry !== undefined) demote(entry);
-  };
-
-  const remove = (key: FilterKey) => {
-    setParam(key, null);
   };
 
   const sheetLine = sheet === null ? null : (lines.find((line) => line.id === sheet.id) ?? null);
@@ -111,7 +99,9 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
         suggestions={suggestions}
         nowMs={nowMs}
         setParam={setParam}
-        onRemove={remove}
+        onRemove={(key) => {
+          setParam(key, null);
+        }}
         onActivate={activate}
       />
 

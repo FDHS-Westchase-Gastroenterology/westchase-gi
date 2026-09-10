@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { createHmac } from "node:crypto";
 import test from "node:test";
 
 import { schedulingInputSchema } from "./contracts.ts";
@@ -71,11 +70,11 @@ test("unlinked bookings keep their previous receipt fingerprint and callback day
       idempotencyKey: key,
       command: book,
     });
-    const fingerprint = createHmac("sha256", "TEST handoff fingerprint")
-      .update("wgi:scheduling-command:v1\0")
-      .update(JSON.stringify({ actorId: id, action: "command", command: book }))
-      .digest("hex");
-    assert.equal(calls[0].args.p_fingerprint, fingerprint);
+    // Receipt fingerprint for the unlinked booking contract before request coordination.
+    assert.equal(
+      calls[0].args.p_fingerprint,
+      "ae1d8c223bc23559df3dac8d72cd931fcc365fb40e073be08eab67274fe34cc1",
+    );
     const cancel = {
       action: "command",
       idempotencyKey: key,

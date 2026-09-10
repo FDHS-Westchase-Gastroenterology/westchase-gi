@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   addDays,
   canSave,
+  clockLabel,
   cardNoteFor,
   cardReducer,
   cardRowsFor,
@@ -13,8 +14,13 @@ import {
   followUpFor,
   followUpsFor,
   INITIAL_DRAFT,
+  joinTime,
+  MERIDIEMS,
   needsDay,
   savedMessage,
+  TIME_HOURS,
+  TIME_MINUTES,
+  timeParts,
   timeWithinDay,
 } from "./record-card-model.ts";
 
@@ -101,6 +107,40 @@ test("booking keeps whatever day is already on the calendar and asks for a time"
   assert.equal(canSave({ ...timed, time: "23:59" }, TODAY), true, "the last minute of the day");
   assert.equal(timeWithinDay("24:00"), false, "no hour past the clock");
   assert.equal(timeWithinDay("9:30"), false, "the field's own zero-padded form only");
+});
+
+test("time wheels cover the full clock and preserve midnight, noon, and the last minute", () => {
+  assert.deepEqual(TIME_HOURS, ["12", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11"]);
+  assert.equal(TIME_MINUTES.length, 60);
+  assert.equal(new Set(TIME_MINUTES).size, 60);
+  assert.ok(TIME_MINUTES.every((minute) => /^[0-5]\d$/.test(minute)));
+  assert.deepEqual(MERIDIEMS, ["AM", "PM"]);
+  for (const [time, parts, label] of [
+    ["00:00", { hour: "12", minute: "00", meridiem: "AM" }, "12:00 AM"],
+    ["09:07", { hour: "9", minute: "07", meridiem: "AM" }, "9:07 AM"],
+    ["12:00", { hour: "12", minute: "00", meridiem: "PM" }, "12:00 PM"],
+    ["23:59", { hour: "11", minute: "59", meridiem: "PM" }, "11:59 PM"],
+  ]) {
+    assert.deepEqual(timeParts(time), parts);
+    assert.equal(joinTime(parts), time);
+    assert.equal(clockLabel(time), label);
+  }
+});
+
+test("invalid times fail instead of producing a blank label or a different selection", () => {
+  for (const time of ["", "9:30", "09:60", "12:99", "24:00"]) {
+    assert.equal(timeWithinDay(time), false);
+    assert.throws(() => timeParts(time), RangeError);
+    assert.throws(() => clockLabel(time), RangeError);
+  }
+  for (const parts of [
+    { hour: "", minute: "", meridiem: "" },
+    { hour: "13", minute: "00", meridiem: "AM" },
+    { hour: "9", minute: "60", meridiem: "AM" },
+    { hour: "9", minute: "00", meridiem: "morning" },
+  ]) {
+    assert.throws(() => joinTime(parts), RangeError);
+  }
 });
 
 test("the calendar reaches 400 days until an answer narrows it, and a day past a call-again's reach gives way", () => {

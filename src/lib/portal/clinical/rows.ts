@@ -81,9 +81,7 @@ const recordDatabaseSchema = summaryFields
 const revisionDatabaseSchema = clinicalRevisionSchema
   .pick({ id: true, version: true, command: true })
   .extend({
-    id: z.uuid(),
     record_id: z.uuid(),
-    version: z.number(),
     before_record: recordDatabaseSchema.nullable(),
     after_record: recordDatabaseSchema,
     actor_id: z.uuid(),

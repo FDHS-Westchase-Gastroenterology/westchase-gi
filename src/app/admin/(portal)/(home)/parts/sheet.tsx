@@ -3,14 +3,9 @@
 import { Dialog as SheetPrimitive } from "@base-ui/react/dialog";
 import { cn } from "cn";
 
-/* Fresh conversion of the stock registry Sheet for the home dashboard
-   (portal-home-redesign-brief §4.5): the Base UI dialog skeleton, right side
-   only, repainted through the portal bridge. Enter/exit ride the registry's
-   spring and exit temperaments in home.css; `instant` marks the popup and
-   its scrim `data-instant` (the attribute Base UI's popovers set on their
-   own) for a keyboard-initiated open or close, which never animates. The
-   resize grip is the surface's own affordance and lives with the
-   full-record component. Paint lives in home.css under `.wgi-sheet*`. */
+/* Stock Sheet adapted for the Home record panel. home.css owns its paint
+   and motion; data-instant disables both panel and scrim transitions for
+   keyboard actions. The record surface owns resizing. */
 
 type HomeSheetChangeDetails = SheetPrimitive.Root.ChangeEventDetails;
 

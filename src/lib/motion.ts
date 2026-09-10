@@ -29,3 +29,9 @@ const temperaments = { arrive, leave, micro } satisfies Record<MotionTemperament
 export function transitionFor(kind: MotionTemperament, reducedMotion: boolean): Transition {
   return reducedMotion ? crossfade : temperaments[kind];
 }
+
+/** Shared edge resistance for the record sheet and time wheels; distances are in pixels. */
+export function rubberband(overshoot: number, dimension: number): number {
+  const constant = 0.55;
+  return (overshoot * dimension * constant) / (dimension + constant * Math.abs(overshoot));
+}

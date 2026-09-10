@@ -1,17 +1,8 @@
 import { cva } from "class-variance-authority";
 
-/*
- * The TimePicker recipes, kept apart from time-picker.tsx the way
- * button-variants.ts is kept apart from button.tsx: a component file that
- * exports only components lets Fast Refresh preserve wheel state, and a
- * surface that only needs the frame's classes can wear them without
- * pulling in the client component.
- *
- * Three recipes, one per part: the frame that draws the band, the wheel
- * that scrolls under it, and the row. Axes are decoupled (DESIGN.md
- * "Component API rules") — `size` is geometry, `motion` is temperament,
- * and the base strings carry no motion at all.
- */
+/* The record card uses size="sm"; default keeps a larger five-row window.
+   Size controls geometry. Motion defaults to the registry spring and micro
+   transitions; "none" disables both. Recipes stay separate for Fast Refresh. */
 const timePickerVariants = cva(
   [
     // Geometry: the wheels side by side inside one window
@@ -57,11 +48,8 @@ const timePickerColumnVariants = cva(
   {
     variants: {
       motion: {
-        /* The wheel's own travel is the registry spring, driven in
-           JavaScript so it can carry the hand's velocity and be caught
-           mid-flight, which no scroll behavior can do. Nothing is left
-           for the user agent to time, so `scroll-behavior` stays out of
-           the recipe: it would only compete for the same scroll offset. */
+        /* The record-card wheel uses a JS spring; native smooth scrolling would
+           compete for the same offset. */
         wgi: "scroll-auto",
         /* No settle: every move lands on the row it was asked for. */
         none: "scroll-auto",
@@ -84,11 +72,8 @@ const timePickerOptionVariants = cva(
   {
     variants: {
       motion: {
-        /* The registry micro beat as a row takes the band, and the
-           portal's press depth when it is clicked into place. */
-        /* The press depth is travel, and the portal drops travel rather
-           than duration under reduced motion (home.css's :active group),
-           so the row still tints but no longer sinks. */
+        /* Record-card selection and press feedback. */
+        /* Reduced motion keeps the tint and drops the press scale. */
         wgi: "transition-[color,transform] duration-[var(--motion-micro-duration)] ease-[var(--motion-exit)] active:scale-[0.98] active:duration-0 motion-reduce:active:scale-100",
         /* No transitions at all. */
         none: "transition-none",

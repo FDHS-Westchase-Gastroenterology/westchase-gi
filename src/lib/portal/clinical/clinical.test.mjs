@@ -128,13 +128,17 @@ test("clinical command fingerprints bind the actor and complete validated conten
     },
   };
   try {
-    await executeClinicalOperation(db, actor, create);
-    await executeClinicalOperation(db, actor, create);
+    const operation = clinicalInputSchema.parse(create);
+    await executeClinicalOperation(db, actor, operation);
+    await executeClinicalOperation(db, actor, operation);
     await executeClinicalOperation(db, actor, {
-      ...create,
-      command: { ...create.command, content: { ...content, noteText: "TEST changed text" } },
+      ...operation,
+      command: {
+        ...operation.command,
+        content: { ...operation.command.content, noteText: "TEST changed text" },
+      },
     });
-    await executeClinicalOperation(db, recordId, create);
+    await executeClinicalOperation(db, recordId, operation);
     assert.equal(calls[0].p_fingerprint, calls[1].p_fingerprint);
     assert.notEqual(calls[0].p_fingerprint, calls[2].p_fingerprint);
     assert.notEqual(calls[0].p_fingerprint, calls[3].p_fingerprint);

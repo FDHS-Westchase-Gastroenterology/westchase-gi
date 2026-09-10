@@ -4,8 +4,8 @@ import { createHmac } from "node:crypto";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { clinicalCommandOutcomeSchema, clinicalInputSchema } from "./contracts";
-import type { ClinicalInput, ClinicalOutcome } from "./contracts";
+import { clinicalCommandOutcomeSchema } from "./contracts";
+import type { ClinicalOperation, ClinicalOutcome } from "./contracts";
 import {
   clinicalListDatabaseSchema,
   clinicalReadDatabaseSchema,
@@ -15,11 +15,8 @@ import {
 export async function executeClinicalOperation(
   db: SupabaseClient,
   actorId: string,
-  input: Readonly<ClinicalInput>,
+  operation: Readonly<ClinicalOperation>,
 ): Promise<ClinicalOutcome> {
-  const parsed = clinicalInputSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, code: "invalid_command" };
-  const operation = parsed.data;
   switch (operation.action) {
     case "command": {
       const configuredKey = process.env.WORKFLOW_COMMAND_HMAC_KEY?.trim();
@@ -85,6 +82,7 @@ export async function executeClinicalOperation(
       const outcome = clinicalSignersDatabaseSchema.safeParse(result.data);
       return outcome.success ? outcome.data : { ok: false, code: "unavailable" };
     }
+    default:
+      throw new Error("Unknown clinical operation");
   }
-  return { ok: false, code: "invalid_command" };
 }

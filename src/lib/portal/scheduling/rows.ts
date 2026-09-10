@@ -62,6 +62,7 @@ const appointmentRow = z.object({
   location_id: z.uuid(),
   appointment_type_id: z.uuid(),
   source_request_id: z.uuid().nullable(),
+  // Append-only snapshots written before request coordination lack this field.
   request_workflow_managed: z.boolean().default(false),
   starts_at: schedulingTimestampSchema,
   ends_at: schedulingTimestampSchema,
@@ -102,6 +103,7 @@ function appointment(row: Readonly<z.infer<typeof appointmentRow>>) {
 const appointmentDatabaseSchema = appointmentRow.transform(appointment);
 const namedAppointmentDatabaseSchema = appointmentRow
   .extend({
+    request_workflow_managed: z.boolean(),
     patient_name: z.string(),
     provider_name: z.string(),
     location_name: z.string(),
@@ -122,13 +124,10 @@ const changeFields = {
   actor_id: z.uuid(),
   actor_email: z.string(),
   occurred_at: schedulingTimestampSchema,
-  request_id: z.uuid().nullable().default(null),
-  request_before: schedulingRequestSchema
-    .omit({ id: true, version: true })
-    .nullable()
-    .default(null),
-  request_after_version: schedulingVersionSchema.nullable().default(null),
-  request_transition_id: z.uuid().nullable().default(null),
+  request_id: z.uuid().nullable(),
+  request_before: schedulingRequestSchema.omit({ id: true, version: true }).nullable(),
+  request_after_version: schedulingVersionSchema.nullable(),
+  request_transition_id: z.uuid().nullable(),
 };
 const changeDatabaseSchema = z
   .discriminatedUnion("entity", [
@@ -167,7 +166,7 @@ const changeDatabaseSchema = z
     actor: { id: row.actor_id, email: row.actor_email },
     occurredAt: row.occurred_at,
     requestChange:
-      row.request_before !== null && row.request_after_version !== null
+      row.request_before !== null
         ? {
             requestId: row.request_id,
             before: row.request_before,
@@ -242,7 +241,7 @@ export const appointmentReadDatabaseSchema = z
       ok: z.literal(true),
       observedAt: schedulingTimestampSchema,
       appointment: namedAppointmentDatabaseSchema,
-      request: schedulingRequestSchema.nullable().default(null),
+      request: schedulingRequestSchema.nullable(),
       history: historyDatabaseSchema,
       undo: z.object({ changeId: z.uuid(), expiresAt: schedulingTimestampSchema }).nullable(),
     }),

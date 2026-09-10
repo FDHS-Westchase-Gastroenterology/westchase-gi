@@ -5,10 +5,6 @@ import { filterByKey, filterValueLabel } from "@/lib/portal/filters";
 import { suggestionLabel } from "./home-line";
 import type { FilterSuggestion } from "./home-line";
 
-/* A ghost: one complete, pre-filled filter a click from active, with the
-   count it would show. The accessible name carries the count as a phrase
-   ("Status New, 2 requests") where the eye reads bare numerals. */
-
 interface SuggestionPillProps {
   readonly suggestion: FilterSuggestion;
   readonly nowMs: number;
