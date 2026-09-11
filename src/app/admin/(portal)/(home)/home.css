@@ -1,0 +1,1758 @@
+/* ---- Home dashboard: the filter bar and the flat line list ----
+   Implements `Portal Home Redesign.dc.html`. Every color arrives through the
+   brand tokens / the portal bridge; type sits on the closed --pt-* scale;
+   radii are the brand's three steps. Motion is authored fresh for this
+   surface (portal-home-redesign-brief §4.5): hover tints ride a 130ms strong
+   ease-out, popovers grow from their trigger in 160ms and leave in 120ms,
+   a recorded outcome lands as a 480ms mint fade on the row.
+
+   These rules are intentionally unlayered: they must outrank the Tailwind
+   utilities the stock-derived parts carry (same trick the design file used
+   against the bundle's @layer). */
+
+/* ---------- Filter bar ---------- */
+
+.wgi-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ps-2);
+  margin-block-start: 1.25rem;
+}
+
+.wgi-add-filter {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--color-line-2);
+  border-radius: 999px;
+  background: var(--portal-surface);
+  padding: 0 var(--ps-4);
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    transform var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-add-filter:hover,
+.wgi-add-filter[data-popup-open] {
+  background: var(--color-mint);
+}
+
+.wgi-add-filter:active {
+  transform: scale(0.97);
+}
+
+.wgi-add-filter > svg {
+  flex: none;
+  opacity: 0.7;
+}
+
+/* Active pill: one bordered capsule, two buttons — the label opens the
+   editor, the × removes the filter. */
+.wgi-pill {
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--color-line-2);
+  border-radius: 999px;
+  background: var(--portal-surface);
+}
+
+.wgi-pill-label {
+  display: inline-flex;
+  min-height: calc(2.75rem - 2px);
+  align-items: center;
+  gap: 0.4rem;
+  border: 0;
+  background: none;
+  padding: 0 0.35rem 0 0.95rem;
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  cursor: pointer;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-pill-label:hover {
+  background: var(--color-mint);
+}
+
+.wgi-pill-label:active,
+.wgi-pill-label[data-popup-open] {
+  background: var(--color-mint-2);
+}
+
+.wgi-pill-key {
+  color: var(--color-muted-ink);
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.wgi-pill-value {
+  color: var(--color-ink);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.wgi-pill-remove {
+  display: inline-flex;
+  width: 2.1rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--color-muted-ink);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-pill-remove:hover {
+  background: var(--color-mint);
+  color: var(--color-ink);
+}
+
+/* The capsule clips; outlines must sit inside it to stay visible. */
+.wgi-pill-label:focus-visible,
+.wgi-pill-remove:focus-visible {
+  outline-offset: -3px;
+}
+
+/* Suggestion pill: a complete pre-filled filter, dashed and quiet, one click
+   from active. */
+.wgi-sug {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px dashed var(--color-line-2);
+  border-radius: 999px;
+  background: transparent;
+  padding: 0 0.95rem;
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    border-color var(--motion-micro-duration) var(--motion-exit),
+    transform var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-sug:hover {
+  background: var(--portal-surface);
+  border-color: var(--color-line-3);
+}
+
+.wgi-sug:active {
+  transform: scale(0.97);
+}
+
+/* The count a ghost would show: quiet numerals after the value, so a glance
+   says whether the click is worth it. */
+.wgi-sug-count {
+  color: var(--color-muted-ink);
+  font-size: var(--pt-2xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* ---------- The housed list ---------- */
+
+.wgi-line-list {
+  margin: var(--ps-4) 0 0;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius);
+  background: var(--portal-surface);
+}
+
+.wgi-line-row {
+  display: block;
+  min-height: 3.25rem;
+  padding: 0.35rem 0.85rem;
+}
+
+.wgi-line-row + .wgi-line-row {
+  border-top: 1px solid var(--color-line);
+}
+
+/* A recorded outcome lands: the tint arrives with the settle, holds while
+   the popover closes, and exhales over 240ms once the timed clear in
+   home-dashboard.tsx removes the attribute. A transition, not a keyframe,
+   so a second outcome retargets the wash mid-flight instead of cutting it,
+   and the attribute cycling off and back on lets it replay. */
+.wgi-line-row {
+  transition: background-color 240ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.wgi-line-row[data-settled] {
+  background-color: var(--color-mint-2);
+  transition-duration: 0s;
+}
+
+/* The row-as-trigger fills the line and carries hover/press; the whole line
+   is the click target, and the phone link stops the toggle. */
+.appt-line-trigger {
+  display: block;
+  width: 100%;
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.appt-line-trigger:hover {
+  background: var(--color-mint);
+}
+
+.appt-line-trigger[data-popup-open] {
+  background: var(--color-mint-2);
+}
+
+.appt-line-trigger:focus-visible {
+  outline: 3px solid var(--color-amber-deep);
+  outline-offset: -3px;
+}
+
+/* The row IS a registry Item, converted flat: no border, no radius, no wrap —
+   the housed list's hairlines do the ruling. */
+.appt-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.9rem;
+  width: 100%;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+}
+
+.appt-name {
+  flex: 1 1 8rem;
+  min-width: 5rem;
+  display: flex;
+  align-items: center;
+  gap: var(--ps-2);
+  min-height: 2.4rem;
+  color: var(--color-ink);
+  font-size: var(--pt-sm);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.appt-name > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appt-phone {
+  display: inline-flex;
+  width: 8.6rem;
+  flex: none;
+  min-height: 2.4rem;
+  align-items: center;
+  gap: 0.3rem;
+  color: var(--color-body);
+  font-size: var(--pt-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  transition: color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.appt-phone:hover {
+  color: var(--color-teal-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.appt-phone > svg {
+  flex: none;
+  opacity: 0.55;
+}
+
+.appt-line [data-col="status"] {
+  display: inline-flex;
+  width: 6.5rem;
+  flex: none;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.appt-line [data-col="stamp"] {
+  display: inline-flex;
+  width: 6.6rem;
+  flex: none;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.appt-line [data-col="pref"] {
+  width: 9.5rem;
+  flex: none;
+  overflow: hidden;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.appt-line [data-col="received"] {
+  width: 3.6rem;
+  flex: none;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-xs);
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+  white-space: nowrap;
+}
+
+.appt-line [data-col="avatar"] {
+  display: inline-flex;
+  width: 1.65rem;
+  height: 1.65rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--color-teal-ink);
+  font-size: var(--pt-2xs);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.appt-line [data-col="avatar"][data-worked] {
+  background: var(--color-mint-2);
+}
+
+/* Columns drop from the right as the column narrows — name, phone, status
+   and the record affordance are the load-bearing four and always hold. */
+@media (max-width: 82rem) {
+  .appt-line [data-col="received"] {
+    display: none;
+  }
+}
+
+@media (max-width: 74rem) {
+  .appt-line [data-col="pref"] {
+    display: none;
+  }
+}
+
+@media (max-width: 66rem) {
+  .appt-line [data-col="avatar"] {
+    display: none;
+  }
+}
+
+@media (min-width: 60rem) {
+  .appt-line [data-col="status"] {
+    width: 8rem;
+  }
+}
+
+/* ---------- Status badge (fresh StockBadge conversion) ---------- */
+
+.wgi-badge {
+  display: inline-flex;
+  height: 1.5rem;
+  width: fit-content;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  padding: 0.125rem var(--ps-2);
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.wgi-badge-new {
+  background: color-mix(in oklch, var(--color-amber-soft) 55%, white);
+  color: var(--portal-attention-ink);
+  border-color: color-mix(in oklch, var(--color-amber-deep) 42%, white);
+}
+
+.wgi-badge-contacted {
+  background: var(--color-mint);
+  color: var(--color-teal-ink);
+  border-color: color-mix(in oklch, var(--color-teal) 45%, white);
+}
+
+.wgi-badge-scheduled {
+  background: color-mix(in oklch, var(--color-navy) 12%, white);
+  color: var(--color-navy);
+  border-color: color-mix(in oklch, var(--color-navy) 32%, white);
+}
+
+.wgi-badge-closed {
+  background: transparent;
+  color: var(--color-muted-ink);
+  border-color: var(--color-line-2);
+}
+
+/* ---------- Skeleton rows (hold the exact line geometry) ---------- */
+
+@keyframes wgi-skeleton {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.wgi-skeleton-list {
+  margin: var(--ps-4) 0 0;
+  padding: 0;
+  list-style: none;
+  overflow: hidden;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius);
+  background: var(--portal-surface);
+}
+
+.wgi-skeleton-list > li {
+  display: flex;
+  align-items: center;
+  gap: var(--ps-4);
+  min-height: 3.25rem;
+  padding: 0 0.85rem;
+  animation: wgi-skeleton 1.6s ease-in-out infinite;
+}
+
+.wgi-skeleton-list > li + li {
+  border-top: 1px solid var(--color-line);
+}
+
+.wgi-skeleton-list span {
+  height: 0.85rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--color-line-2) 72%, white);
+}
+
+.wgi-skeleton-list span + span {
+  height: 0.8rem;
+  background: color-mix(in oklch, var(--color-line-2) 60%, white);
+}
+
+.wgi-skeleton-list span:last-child {
+  margin-left: auto;
+  width: 3rem;
+}
+
+/* ---------- Popover shell (fresh StockPopover conversion) ---------- */
+
+.wgi-popover {
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius);
+  background: var(--portal-surface);
+  color: var(--color-body);
+  box-shadow: var(--shadow-popover);
+  outline: none;
+  transform-origin: var(--transform-origin);
+  /* A small popover, so it arrives on the registry's exit temperament
+     (160ms, strong ease-out) rather than the 440ms spring the modals ride;
+     design-eng.md caps small popovers at 125–200ms. The exit is a faster
+     version of the same curve. Both read the --pm-* registry, never an
+     inlined bezier. */
+  transition:
+    transform var(--pm-exit-duration) var(--pm-exit),
+    opacity var(--pm-exit-duration) var(--pm-exit);
+}
+
+.wgi-popover[data-starting-style],
+.wgi-popover[data-ending-style] {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.wgi-popover[data-ending-style] {
+  transition-duration: 120ms;
+}
+
+/* Keyboard-initiated actions never animate. Base UI marks the popup
+   data-instant="click" when Enter/Space opened it, "dismiss" on Escape or
+   an outside click, and "focus" when focus left; every one of those skips
+   the transition. */
+.wgi-popover[data-instant] {
+  transition-duration: 0ms;
+}
+
+/* ---------- The record card ---------- */
+
+/* The registry's "date picker with presets" shape: the editor's 20rem
+   calendar (so the two share one calendar) with a 13.5rem column beside
+   it for who, how to reach them, what happened, and Save. The month is
+   six weeks tall whatever it shows, so the card is one fixed height that
+   stands above or below any row of a 900px screen; the max-height is a
+   safety net for a shorter viewport, not a mode. */
+.wgi-record-card {
+  display: grid;
+  width: 33.5rem;
+  max-height: var(--available-height, 40rem);
+  overflow: auto;
+  padding: 0;
+  grid-template-columns: 13.5rem minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "side main"
+    "commit main";
+}
+
+/* A scheduled or closed line has nothing to answer and no day to pick:
+   the card is the column alone, at the editor's width, the way into the
+   full record beneath it. */
+.wgi-record-card:has(.wgi-record-note) {
+  width: 20rem;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "side"
+    "main";
+}
+
+.wgi-record-side {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  grid-area: side;
+}
+
+.wgi-record-main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-left: 1px solid var(--color-line);
+  grid-area: main;
+}
+
+.wgi-record-card:has(.wgi-record-note) .wgi-record-main {
+  border-left: 0;
+}
+
+/* Below the sidebar breakpoint the column stacks above the month at the
+   editor's width and the card scrolls inside the space the positioner
+   reports, Save pinned along its lower edge. The primary nav docks along
+   the bottom edge above the popover layer (portal-workbench.css), so a
+   card opening downward stops short of the dock by its 5rem height plus
+   a breath. */
+@media (max-width: 59.99rem) {
+  .wgi-record-card {
+    width: 20rem;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    grid-template-areas:
+      "side"
+      "main"
+      "commit";
+  }
+
+  .wgi-record-card[data-side="bottom"] {
+    max-height: calc(var(--available-height, 40rem) - 5.5rem);
+  }
+
+  .wgi-record-main {
+    border-top: 1px solid var(--color-line);
+    border-left: 0;
+  }
+
+  .wgi-record-commit {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    background: var(--portal-surface);
+  }
+}
+
+.wgi-record-head {
+  padding: 0.8rem 0.9rem 0.55rem;
+}
+
+.wgi-record-name {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: var(--pt-base);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.wgi-record-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.2rem 0 0;
+  color: var(--color-body); /* 11.1:1 on the surface; muted-ink read as haze at 13px/400 */
+  font-size: var(--pt-xs);
+}
+
+.wgi-record-call {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0.9rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-mint);
+  /* the primary action is printed ink (8.1:1 on mint); teal is for hover */
+  color: var(--color-navy);
+  font-size: var(--pt-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.wgi-record-call:hover {
+  background: var(--color-mint-2);
+  color: var(--color-teal-ink);
+}
+
+.wgi-record-call > svg {
+  flex: none;
+}
+
+/* The answers: what happened, in the queue's own words and nothing after
+   them — the calendar beside them is the readout. */
+.wgi-record-answers {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--ps-1);
+  padding: 0.65rem 0.5rem 0.4rem;
+}
+
+/* One row = one answer: the registry radio inside a whole-row label (the
+   request detail's decision rows, at the card's density). Checked paints
+   the row the way the open line paints its trigger — mint-2; the radio
+   itself is the registry's, navy when checked. The registry's own row
+   utilities sit in the utilities layer, so these unlayered rules win. */
+.wgi-answer {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--ps-2);
+  min-height: 2.2rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 0 0.5rem;
+  background: none;
+  color: var(--color-ink);
+  font-size: var(--pt-xs);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: start;
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    transform var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-answer[data-closes] {
+  margin-top: 0.3rem;
+  border-top: 1px solid var(--color-line);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+.wgi-answer:has([data-slot="radio-group-item"]:enabled):hover {
+  background: var(--color-mint);
+}
+
+.wgi-answer:has([data-slot="radio-group-item"]:enabled):active {
+  transform: scale(0.98);
+  background: var(--color-mint-2);
+  transition-duration: 0s;
+}
+
+.wgi-answer:has([data-checked]) {
+  background: var(--color-mint-2);
+}
+
+.wgi-answer:has([data-slot="radio-group-item"]:focus-visible) {
+  outline: 3px solid var(--color-amber-deep);
+  outline-offset: -3px;
+}
+
+.wgi-answer:has([data-slot="radio-group-item"]:disabled) {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* The registry radio's ring is the card's amber row outline instead. */
+.wgi-answer [data-slot="radio-group-item"] {
+  --tw-ring-shadow: 0 0 #0000;
+  box-shadow: none;
+}
+
+/* The surface: the editor's calendar (same class, same width, same cells)
+   at the card's density — weeks a quarter-rem apart instead of a half —
+   six weeks tall whatever the month. A closing answer leaves it in place
+   but quiet: the card keeps its shape and the eye keeps its map. */
+.wgi-record-cal {
+  flex: 1 1 auto;
+  transition: opacity var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-record-cal .wgi-editor-cal {
+  padding: 0.5rem 0.6rem 0.2rem;
+}
+
+.wgi-record-cal .rdp-month {
+  gap: 0.75rem;
+}
+
+.wgi-record-cal .rdp-week {
+  margin-top: 0.25rem;
+}
+
+.wgi-record-cal[data-idle] {
+  opacity: 0.45;
+}
+
+/* The second question, along the month's lower edge, one strip tall in
+   every state so the card never jumps: a contact answer's Call again and
+   No call (the registry toggle group, outline, small), a booking's time
+   (the registry input group), or nothing. */
+.wgi-record-second {
+  display: flex;
+  align-items: center;
+  min-height: 3rem;
+  border-top: 1px solid var(--color-line);
+  padding: 0.45rem 0.6rem;
+}
+
+/* The pressed toggle takes the portal's checked tint, the same mint-2 as
+   the chosen answer and the open line, so the pair reads as one choice. */
+.wgi-record-follow {
+  width: 100%;
+}
+
+.wgi-record-follow > [data-slot="toggle-group-item"] {
+  flex: 1 1 0;
+  color: var(--color-ink);
+  font-size: var(--pt-xs);
+  font-weight: 600;
+  /* The registry ships transition-all on Tailwind's ease; name the
+     properties and read the registry curve, the button recipe's way. */
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    border-color var(--motion-micro-duration) var(--motion-exit),
+    color var(--motion-micro-duration) var(--motion-exit),
+    transform var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-record-follow > [data-slot="toggle-group-item"]:hover {
+  background: var(--color-mint);
+}
+
+.wgi-record-follow > [data-slot="toggle-group-item"][data-pressed] {
+  border-color: var(--color-teal-ink);
+  background: var(--color-mint-2);
+  color: var(--color-navy);
+}
+
+.wgi-record-follow > [data-slot="toggle-group-item"]:active:enabled {
+  transform: scale(0.98);
+  transition-duration: 0s;
+}
+
+/* The time beside its word: one trigger on the strip, and the wheels the
+   trigger raises over the month. The strip stays one line tall whatever
+   the card is asked, so choosing a time never moves the calendar. */
+.wgi-record-when {
+  width: 100%;
+  align-items: center;
+  gap: var(--ps-2);
+}
+
+.wgi-record-when > [data-slot="field-label"] {
+  flex: none;
+  color: var(--color-ink);
+  font-size: var(--pt-xs);
+  font-weight: 600;
+}
+
+/* The trigger wears the field's hairline and the card's checked tint
+   while its sheet is up, so the open surface is traceable to the control
+   that opened it. */
+.wgi-time-trigger {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.2rem;
+  border: 1.5px solid var(--color-line-2);
+  border-radius: var(--radius-sm);
+  padding: 0 0.6rem;
+  background: white;
+  color: var(--color-ink);
+  font-size: var(--pt-xs);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    border-color var(--motion-micro-duration) var(--motion-exit),
+    transform var(--motion-micro-duration) var(--motion-exit);
+}
+
+/* 11.1:1 on the surface: an unfilled field reads as a prompt, not as ink. */
+.wgi-time-trigger[data-empty] {
+  color: var(--color-body);
+}
+
+.wgi-time-trigger > svg {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  color: var(--color-teal-ink);
+}
+
+.wgi-time-trigger:hover:enabled {
+  background: var(--color-mint);
+}
+
+.wgi-time-trigger:active:enabled {
+  transform: scale(0.98);
+  transition-duration: 0s;
+}
+
+.wgi-time-trigger:focus-visible {
+  outline: 3px solid var(--color-amber-deep);
+  outline-offset: -3px;
+}
+
+.wgi-time-trigger[aria-expanded="true"] {
+  border-color: var(--color-teal-ink);
+  background: var(--color-mint-2);
+}
+
+.wgi-time-trigger:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* The month behind the sheet is context, not a control: the scrim quiets
+   it and dismisses the sheet without committing. The stock calendar paints
+   its day buttons at z-index 10 in this same stacking context, so the scrim
+   and the sheet sit above that rather than at 1 and 2. */
+.wgi-time-scrim {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: color-mix(in oklch, var(--color-navy) 24%, transparent);
+  cursor: default;
+}
+
+/* The sheet rises from the strip's own edge and leaves the same way
+   (DESIGN.md "Motion", spatial consistency). Its arrival, its exit and
+   its reduced-motion temperament are the motion.dev presets in
+   src/lib/motion.ts — the same registry the --motion-* tokens carry. */
+.wgi-time-sheet {
+  position: absolute;
+  z-index: 21;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid var(--color-line);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: 0.7rem 0.75rem 0.75rem;
+  background: var(--portal-surface);
+  box-shadow: var(--shadow-card);
+}
+
+/* A transformed descendant still counts toward an ancestor's scrollable
+   overflow, so for as long as the sheet is riding in on translateY(100%)
+   it hands the card — which is overflow: auto — a sheet's worth of scroll
+   range that exists only for the length of one spring. The reveal that
+   runs on mount scrolls into that window, and when the range collapses
+   behind the settling sheet scrollTop is clamped back, so the month lurches
+   and slams back. Clipping main for the life of the sheet removes the
+   phantom range; the card already clipped the travel at its own padding
+   box, so nothing that was visible stops being visible. */
+.wgi-record-main:has(.wgi-time-sheet) {
+  overflow: clip;
+}
+
+.wgi-time-title {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: var(--pt-sm);
+  font-weight: 700;
+  text-align: center;
+}
+
+.wgi-time-done {
+  width: 100%;
+}
+
+/* Save: the card's one commit, painted as the editor's Apply, along the
+   column's lower edge. */
+.wgi-record-commit {
+  display: flex;
+  border-top: 1px solid var(--color-line);
+  padding: 0.55rem 0.5rem 0.6rem;
+  grid-area: commit;
+}
+
+.wgi-record-commit > .wgi-editor-apply {
+  flex: 1 1 0;
+  margin-top: 0;
+}
+
+/* Scheduled and closed lines have nothing to answer; the sentence points
+   at the full record, where reopening lives. */
+.wgi-record-note {
+  margin: 0.75rem 0.9rem 0.4rem;
+  color: var(--color-body);
+  font-size: var(--pt-xs);
+  line-height: 1.45;
+}
+
+.wgi-record-retry {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--color-teal-ink);
+  font-family: inherit;
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.wgi-record-error {
+  margin: 0 0.9rem 0.5rem;
+  color: var(--portal-attention-ink);
+  font-size: var(--pt-2xs);
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+/* The way into the full record: the strip along the calendar's lower
+   edge, the earlier card's foot at its own density. */
+.wgi-record-foot {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  border: 0;
+  border-top: 1px solid var(--color-line);
+  background: none;
+  padding: 0.55rem 0.9rem;
+  color: var(--color-navy); /* 9.0:1 on the surface; an action, so navy, not teal */
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wgi-record-foot:hover {
+  background: var(--color-mint);
+}
+
+.wgi-record-foot > svg {
+  flex: none;
+}
+
+/* ---------- The editor popover ---------- */
+
+/* 20rem: room for the category list to breathe, and the exact width the
+   calendar fills when the Received editor turns into it. */
+.wgi-editor {
+  width: 20rem;
+  max-height: min(40rem, var(--available-height, 24rem));
+  overflow: auto;
+  padding: 0;
+}
+
+.wgi-editor-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  border-bottom: 1px solid var(--color-line);
+  background: none;
+  padding: 0.7rem 0.9rem;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  outline: none;
+}
+
+.wgi-editor-input::placeholder {
+  color: var(--color-muted-ink);
+}
+
+.wgi-editor-input:focus-visible {
+  outline: none;
+  box-shadow: inset 0 -2px 0 var(--color-teal);
+}
+
+/* "<Dimension> ⌄" beside the search box, going up one level: the category
+   list on the Add-filter path, the preset list from the calendar. The box
+   beside it keeps the input's paint. */
+.wgi-editor-head {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.wgi-editor-head > .wgi-editor-input {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 0;
+}
+
+.wgi-editor-dim {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+  margin-inline-start: 0.6rem;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-sm);
+  background: none;
+  padding: 0.25rem 0.45rem;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-editor-dim:hover {
+  background: var(--color-mint);
+}
+
+.wgi-editor-dim > svg {
+  color: var(--color-muted-ink);
+}
+
+/* The calendar view's header text: the draft range in the input's slot,
+   "Start – End" filling in as days are picked. Not a field — nothing to type. */
+.wgi-editor-readout {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0.7rem 0.9rem;
+  color: var(--color-ink);
+  font-size: var(--pt-xs);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wgi-editor-readout[data-empty] {
+  color: var(--color-muted-ink);
+  font-weight: 400;
+}
+
+.wgi-editor-body {
+  padding: 0.3rem;
+}
+
+/* One row = one option. The row is a real button; the hover hint (`Only` /
+   `Check all` on the label, `Check` / `Uncheck` on the checkbox) is a
+   passive caption revealed on the row's hover or focus. */
+.wgi-editor-opt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-editor-opt:hover,
+.wgi-editor-opt:focus-within {
+  background: var(--color-mint);
+}
+
+.wgi-editor-row {
+  display: flex;
+  width: 100%;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: 0.55rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  padding: 0 0.6rem;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: start;
+}
+
+.wgi-editor-row:focus-visible {
+  outline-offset: -3px;
+}
+
+.wgi-editor-row[data-muted] {
+  color: var(--color-muted-ink);
+}
+
+.wgi-editor-row > svg[data-chevron] {
+  flex: none;
+  margin-left: auto;
+  color: var(--color-line-3);
+}
+
+/* Checkbox rows: the box is its own target beside the label button. */
+.wgi-editor-check {
+  display: inline-flex;
+  min-height: 2.5rem;
+  flex: none;
+  align-items: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  padding: 0 0.55rem 0 0.6rem;
+  cursor: pointer;
+}
+
+.wgi-editor-check:focus-visible {
+  outline-offset: -3px;
+}
+
+.wgi-editor-check + .wgi-editor-row {
+  padding-inline-start: 0;
+}
+
+.wgi-editor-box {
+  display: inline-flex;
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--color-line-3);
+  border-radius: 0.25rem;
+  background: transparent;
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    border-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-editor-box[data-checked] {
+  border-color: var(--color-navy);
+  background: var(--color-navy);
+  color: white;
+}
+
+.wgi-editor-tick {
+  display: inline-flex;
+  width: 1rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-navy);
+}
+
+.wgi-editor-quick {
+  position: absolute;
+  right: 0.6rem;
+  padding: 0.2rem 0.1rem;
+  color: var(--color-teal-ink);
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/* The label's hint shows for the row; the checkbox's hint takes over while
+   the pointer or focus is on the box itself. */
+.wgi-editor-opt:hover .wgi-editor-quick[data-target="label"],
+.wgi-editor-opt:focus-within .wgi-editor-quick[data-target="label"],
+.wgi-editor-opt:has(.wgi-editor-check:hover) .wgi-editor-quick[data-target="check"],
+.wgi-editor-opt:has(.wgi-editor-check:focus-visible) .wgi-editor-quick[data-target="check"] {
+  visibility: visible;
+}
+
+.wgi-editor-opt:has(.wgi-editor-check:hover) .wgi-editor-quick[data-target="label"],
+.wgi-editor-opt:has(.wgi-editor-check:focus-visible) .wgi-editor-quick[data-target="label"] {
+  visibility: hidden;
+}
+
+/* The calendar view: the month grid is the popover's full width, then a
+   ruled block of Start, End, and Apply beneath it. */
+.wgi-editor-range {
+  display: flex;
+  flex-direction: column;
+}
+
+.wgi-editor-cal {
+  --cell-size: 2.4rem;
+
+  width: 100%;
+  padding: 0.6rem 0.6rem 0.5rem;
+}
+
+.wgi-editor-range-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  border-top: 1px solid var(--color-line);
+  padding: 0.7rem 0.6rem 0.6rem;
+}
+
+.wgi-editor-range-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+}
+
+.wgi-editor-range-fields input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 2.25rem;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-sm);
+  background: white;
+  padding: 0.3rem 0.6rem;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-xs);
+}
+
+/* Apply: the one deliberate commit in the bar, painted as the portal's
+   primary button (the header's Print appointments). */
+.wgi-editor-apply {
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.2rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-navy);
+  padding: 0 0.9rem;
+  color: white;
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    transform var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-editor-apply:hover:enabled {
+  background: color-mix(in oklch, var(--color-navy) 88%, white);
+}
+
+.wgi-editor-apply:active:enabled {
+  transform: scale(0.97);
+}
+
+.wgi-editor-apply:disabled {
+  background: var(--color-line-2);
+  color: var(--color-muted-ink);
+  cursor: default;
+}
+
+.wgi-editor-hint {
+  margin: 0;
+  border-top: 1px solid var(--color-line);
+  padding: var(--ps-2) 0.9rem;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-2xs);
+}
+
+.wgi-list-note {
+  margin: var(--ps-2) 0 0;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-xs);
+}
+
+/* ---------- Empty state ---------- */
+
+.wgi-empty {
+  margin-top: var(--ps-4);
+  border-top: 1px solid var(--color-line);
+  padding: 3.5rem var(--ps-4);
+  text-align: center;
+}
+
+.wgi-empty h2 {
+  margin: 0;
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: var(--pt-base);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.wgi-empty p {
+  max-width: 44ch;
+  margin: var(--ps-2) auto 0;
+  color: var(--color-body);
+  font-size: var(--pt-sm);
+  line-height: 1.6;
+}
+
+.wgi-empty-clear {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  margin-top: var(--ps-4);
+  border: 0;
+  border-radius: var(--btn-radius);
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--color-line-2);
+  padding: 0 1.1rem;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    transform var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-empty-clear:hover {
+  background: var(--color-mint);
+}
+
+.wgi-empty-clear:active {
+  transform: scale(0.97);
+}
+
+/* ---------- Full record: the right sheet ---------- */
+
+/* The scrim fades in on the registry's scrim beat, a touch slower than
+   the exit, so the dim reads as room tone under the arriving paper; it
+   leaves on the exit beat with the sheet. */
+.wgi-sheet-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgb(0 0 0 / 10%);
+  transition: opacity var(--pm-scrim-duration) var(--pm-exit);
+}
+
+.wgi-sheet-overlay[data-starting-style],
+.wgi-sheet-overlay[data-ending-style] {
+  opacity: 0;
+}
+
+.wgi-sheet-overlay[data-ending-style] {
+  transition-duration: var(--pm-exit-duration);
+}
+
+@supports (backdrop-filter: blur(2px)) {
+  .wgi-sheet-overlay {
+    backdrop-filter: blur(2px);
+  }
+}
+
+/* The sheet arrives the way the portal's modals do: the travel rides the
+   registry spring (one 4.6% overshoot, settled inside half a second) and
+   the fade rides the exit curve, which finishes "it's here" while the
+   spring settles the slide. It leaves faster than it came, along a shorter
+   version of the same path. Transitions rather than keyframes, so a close
+   during the entrance reverses from wherever the sheet is.
+   The box bleeds half a rem past the viewport's right edge: the spring's
+   overshoot carries the sheet that far past its resting place, and the
+   bleed keeps the edge covered instead of flashing a hairline of page.
+   The widths below are the visible sheet; the bleed is added on top, and
+   the resize code measures it rather than repeating the number. */
+.wgi-sheet {
+  --wgi-sheet-bleed: 0.5rem;
+  position: fixed;
+  inset-block: 0;
+  right: calc(-1 * var(--wgi-sheet-bleed));
+  z-index: 50;
+  box-sizing: border-box;
+  height: 100%;
+  width: calc(42rem + var(--wgi-sheet-bleed));
+  /* The sidebar is the wall: never past its edge, and never the whole
+     viewport when there is no sidebar column to stop at. */
+  max-width: calc(94vw + var(--wgi-sheet-bleed));
+  background: var(--portal-surface);
+  border: 0;
+  border-left: 1px solid var(--color-line-2);
+  /* Directional spill toward the page, the sidebar's shadow mirrored. */
+  box-shadow: -24px 0 48px -28px oklch(0.28 0.05 245 / 0.5);
+  padding: 0 var(--wgi-sheet-bleed) 0 0;
+  outline: none;
+  transition:
+    transform var(--pm-spring-duration) var(--pm-spring),
+    opacity var(--pm-exit-duration) var(--pm-exit);
+}
+
+@media (min-width: 60rem) {
+  .wgi-sheet {
+    max-width: calc(min(94vw, 100vw - 17rem) + var(--wgi-sheet-bleed));
+  }
+}
+
+.wgi-sheet[data-starting-style] {
+  opacity: 0;
+  transform: translateX(2.5rem);
+}
+
+.wgi-sheet[data-ending-style] {
+  opacity: 0;
+  transform: translateX(1.25rem);
+  transition:
+    transform var(--pm-exit-duration) var(--pm-exit),
+    opacity var(--pm-exit-duration) var(--pm-exit);
+}
+
+/* Keyboard-initiated actions never animate: the sheet marks itself and
+   its scrim data-instant for an open or close that came from the keyboard,
+   the attribute Base UI's popovers set on their own. */
+.wgi-sheet[data-instant],
+.wgi-sheet-overlay[data-instant] {
+  transition-duration: 0ms;
+}
+
+.wgi-sheet-surface {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* A left-edge grip drags the panel wider — the "bring the sheet across"
+   gesture. Pointer capture keeps the drag alive off the strip. */
+.wgi-sheet-grip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+/* The pill lengthens a third on hover, focus and drag: a transform, so the
+   stretch composites instead of relaying the strip. */
+.wgi-sheet-grip > span {
+  width: 4px;
+  height: 3rem;
+  border-radius: 999px;
+  background: var(--color-line-2);
+  box-shadow: -1px 0 0 rgb(255 255 255 / 60%);
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    transform var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-sheet-grip:hover > span,
+.wgi-sheet-grip:focus-visible > span,
+.wgi-sheet-grip[data-dragging] > span {
+  background: var(--color-teal);
+  transform: scaleY(1.333);
+}
+
+.wgi-sheet-grip:focus-visible {
+  outline-offset: -3px;
+}
+
+.wgi-sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ps-4);
+  padding: 1.25rem 1.4rem var(--ps-4);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.wgi-sheet-kicker {
+  margin: 0;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.wgi-sheet-name {
+  margin: var(--ps-1) 0 0;
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: var(--pt-lg);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.wgi-sheet-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.4rem 0 0;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-xs);
+}
+
+.wgi-sheet-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.wgi-sheet-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+}
+
+.wgi-sheet-close {
+  display: inline-flex;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--btn-radius);
+  background: none;
+  color: var(--color-muted-ink);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    transform var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-sheet-close:hover {
+  background: var(--color-mint);
+  color: var(--color-ink);
+}
+
+.wgi-sheet-close:active {
+  transform: scale(0.96);
+}
+
+.wgi-sheet-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1.25rem 1.4rem 2rem;
+}
+
+.wgi-sheet-call {
+  display: flex;
+  align-items: center;
+  gap: var(--ps-2);
+  padding: 0.7rem 0.9rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-mint);
+  color: var(--color-teal-ink);
+  font-size: var(--pt-base);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    transform var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-sheet-call:hover {
+  background: var(--color-mint-2);
+  color: var(--color-teal-ink);
+}
+
+.wgi-sheet-call:active {
+  transform: scale(0.98);
+}
+
+.wgi-sheet-call > svg {
+  flex: none;
+}
+
+.wgi-sheet-dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.55rem 1.25rem;
+  margin: 1.25rem 0 0;
+}
+
+.wgi-sheet-dl dt {
+  color: var(--color-muted-ink);
+  font-size: var(--pt-xs);
+}
+
+.wgi-sheet-dl dd {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: var(--pt-sm);
+}
+
+.wgi-sheet-activity-heading {
+  margin: 1.6rem 0 0.6rem;
+  color: var(--color-ink);
+  font-size: var(--pt-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.wgi-sheet-activity {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wgi-sheet-activity > li {
+  display: flex;
+  gap: var(--ps-3);
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--color-line);
+}
+
+.wgi-sheet-activity-dot {
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-top: 0.42rem;
+  border-radius: 999px;
+  background: var(--color-line-3);
+}
+
+.wgi-sheet-activity-what {
+  display: block;
+  color: var(--color-ink);
+  font-size: var(--pt-sm);
+  font-weight: 600;
+}
+
+.wgi-sheet-activity-when {
+  display: block;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-xs);
+}
+
+.wgi-sheet-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid var(--color-line);
+  padding: 0.7rem 1.4rem;
+  color: var(--color-teal-ink);
+  font-size: var(--pt-xs);
+  font-weight: 700;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-sheet-foot:hover {
+  background: var(--color-mint);
+  color: var(--color-teal-ink);
+}
+
+/* Pressed: the bar spans the sheet, so the press is a deeper tint rather
+   than a scale that would open gaps at its ends. */
+.wgi-sheet-foot:active {
+  background: var(--color-mint-2);
+}
+
+/* ---------- Loading (home's own segment) ---------- */
+
+.wgi-loading-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ps-2);
+  border-bottom: 2px solid var(--color-navy);
+  padding-bottom: var(--ps-4);
+}
+
+.wgi-loading-head > span {
+  display: block;
+  height: 0.9rem;
+  width: 11rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--color-line-2) 60%, white);
+  animation: wgi-skeleton 1.6s ease-in-out infinite;
+}
+
+.wgi-loading-head > i {
+  display: block;
+  height: 1.6rem;
+  width: 18rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--color-line-2) 72%, white);
+  animation: wgi-skeleton 1.6s ease-in-out infinite;
+}
+
+/* ---------- Reduced motion: gentler, never zero comprehension ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Durations are authored in globals.css's @layer base reduced-motion
+     block — the blanket reset there is !important, and important
+     declarations outrank everything non-important regardless of layers, so
+     nothing this (unlayered) file declares can restore a duration. Only
+     the travel is dropped here. */
+  .wgi-popover[data-starting-style],
+  .wgi-popover[data-ending-style],
+  .wgi-sheet[data-starting-style],
+  .wgi-sheet[data-ending-style] {
+    transform: none;
+  }
+
+  /* The grip's stretch is travel too; the tint alone says "live". */
+  .wgi-sheet-grip:hover > span,
+  .wgi-sheet-grip:focus-visible > span,
+  .wgi-sheet-grip[data-dragging] > span {
+    transform: none;
+  }
+
+  /* The settle wash needs no override: the timed clear in
+     home-dashboard.tsx shows the mint tint for ~200ms either way, and the
+     blanket reset in globals.css @layer base already collapses the 240ms
+     exhale to an instant change. */
+
+  .wgi-add-filter:active,
+  .wgi-sug:active,
+  .wgi-editor-apply:active:enabled,
+  .wgi-time-trigger:active:enabled,
+  .wgi-answer:has([data-slot="radio-group-item"]:enabled):active,
+  .wgi-record-follow > [data-slot="toggle-group-item"]:active:enabled,
+  .wgi-empty-clear:active,
+  .wgi-sheet-call:active,
+  .wgi-sheet-close:active {
+    transform: none;
+  }
+}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 
 import { Check, MessageSquare, Phone } from "@/components/icons";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { consumeRequestReceipt } from "@/lib/portal/intake";
 import { site } from "@/lib/site";
@@ -85,11 +86,15 @@ export default async function RequestReceiptPage(props: Readonly<PageProps>) {
           <p className="lead measure-sm mt-4 text-[var(--color-body)]">{body}</p>
           <p className="mt-7 font-bold text-[var(--color-ink)]">{receipt.contactLine}</p>
           <div className="mt-4 flex flex-wrap justify-center gap-3">
-            <a href={site.phone.href} className="btn btn-navy">
+            <a href={site.phone.href} data-slot="button" className={buttonVariants()}>
               <Phone className="h-4 w-4" />
               {dict.common.callUs}
             </a>
-            <a href={site.textLine.href} className="btn btn-outline">
+            <a
+              href={site.textLine.href}
+              data-slot="button"
+              className={buttonVariants({ variant: "outline" })}
+            >
               <MessageSquare className="h-4 w-4" />
               {dict.common.textUs}
             </a>

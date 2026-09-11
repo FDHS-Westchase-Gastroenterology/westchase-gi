@@ -17,6 +17,46 @@ The authenticated tool where practice staff do their web-adjacent jobs, centered
 appointment-request queue.
 _Avoid_: dashboard
 
+### Design system
+
+**Token**:
+A named CSS custom property holding one design decision (`--color-navy`,
+`--motion-exit-duration`). Brand tokens live in the `@theme` block of `src/app/globals.css`.
+_Avoid_: variable, theme value
+
+**Recipe**:
+A component's complete appearance vocabulary as a `cva` definition with decoupled axes —
+`variant` (paint), `size` (geometry), `motion` (temperament). Lives in `src/components/ui/`.
+_Avoid_: styles, theme, register (that word is the product voice — see below)
+
+**Temperament**:
+A named motion physics on a recipe's `motion` axis: `wgi` (the brand's), `commit`, `shadcn`
+(stock, verbatim), `none`.
+
+**Scope**:
+A class on an ancestor that assigns the brand for a product surface (`.portal-scope`) through
+knobs and aliases. A scope never redefines a brand token.
+
+**The bridge**:
+The block at the end of `globals.css` that maps shadcn's semantic tokens (`--primary`,
+`--muted`) onto brand tokens. The only place shadcn's tokens exist.
+
+**Tier**:
+Where a component lives: `stock/` (the registry, untouched), `ui/` (brand recipes),
+`patterns/` (brand compositions), domain (colocated with its route).
+
+**Stock**:
+Registry source and examples retained in `src/components/stock/` as Claude Design bundle inputs.
+New product consumers use approved `ui/` recipes; the existing staff home calendar is a current
+stock consumer.
+
+**Claude Design project**:
+An optional design exploration and exchange workspace. Repository tokens and components define
+the design system; component and appearance changes do not require Claude Design approval.
+`.ds-sync/` is the local toolchain, `.design-sync/` is its project-specific source,
+and `ds-bundle/` is generated output. All three are local-only under `local-only-paths.json`;
+regeneration commands live in `DESIGN.md` "Local bundle pipeline".
+
 ### Appointments
 
 **Appointment request**:
@@ -167,6 +207,13 @@ bounded window with per-person engagement state.
 **Review flyer**:
 An approved printable page carrying a review QR code for one destination. Printing one is
 front-desk work; changing the artwork is not portal work.
+
+**New-request print packet**:
+An oldest-first paper snapshot of every appointment request that is durably NEW when the packet
+is prepared. It supports a manager's physical handoff, carries patient data, and must stay inside
+the clinic. Preparing or printing it records metadata-only audit evidence but never changes
+request status, attention, version, or Request history; staff record every outcome in the portal.
+_Avoid_: export, batch update, assignment queue
 
 ### Design
 

@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 
 import { JsonLd } from "@/components/JsonLd";
-import { PageHero } from "@/components/PageHero";
+import { PageHero } from "@/components/patterns/PageHero";
+import { Reveal } from "@/components/patterns/Reveal";
+import { TextBand } from "@/components/patterns/TextBand";
 import { ProfileCardViewer } from "@/components/ProfileCardViewer";
-import { Reveal } from "@/components/Reveal";
-import { TextBand } from "@/components/TextBand";
 import type { Dictionary } from "@/lib/dictionaries/en";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
@@ -412,7 +412,7 @@ export default async function PhysiciansPage({ params }: Readonly<PageProps>) {
                   </tbody>
                 </table>
               </div>
-              <p className="mt-3 text-[0.92rem] text-[var(--color-muted)]">
+              <p className="mt-3 text-[0.92rem] text-[var(--color-muted-ink)]">
                 {inf.biologics.note[locale]}
               </p>
             </section>

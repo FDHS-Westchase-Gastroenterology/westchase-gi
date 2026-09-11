@@ -15,21 +15,26 @@ These need no credentials and mirror the required CI checks. Run all of them:
 - [ ] `npm run test:e2e-guard`
 - [ ] `npm run build`
 - [ ] `npm run doctor` — local React Doctor standard is 100; inspect the report, not just the status
-- [ ] `PLAYWRIGHT_PUBLIC_SMOKE=1 npx playwright test e2e/smoke.spec.ts --project=chromium`
+- [ ] `npm run test:e2e:public`
 
-These need a development Supabase project via `.env.local`. State the real outcome — "not run" is
-an acceptable answer, silently implying a pass is not:
+Record the selected Preview database and actual verification outcome. Follow CONTRIBUTING.md
+for shared database setup and automation limitations. “Not run” is acceptable before checks
+complete; silently implying a pass is not:
 
-- [ ] `npx playwright test` — passed / not run:
-- [ ] `node scripts/verify-schema.mjs --target dev` — required when migrations changed; N/A:
+- Database owner / project reference / intended merge destination:
+- Branch setup: new database setup evidence or inherited owner setup evidence (link):
+- `Supabase Preview` — required only for new remote branch setup; inherited / already established / result:
+- [ ] `supabase-integration` — selected database schema + credentialed E2E passed on the exact head:
+- [ ] `Vercel` — exact-head Preview uses the selected database project reference:
+- [ ] `node scripts/verify-schema.mjs --target branch` — included in the hosted gate; manual rerun / N/A:
 
 <!-- Paste command output, CI links, or manual checks that back the boxes above. -->
 
 ## UI screenshots
 
-<!-- Required for visible changes. Before/after or annotated captures, with viewport and locale
-coverage noted. Refresh ui-reference/ images when a covered surface changed. N/A for non-UI
-work — say so explicitly. -->
+<!-- Required for visible changes. Post before/after evidence in the PR conversation, not only
+here. A new workflow or multi-step feature needs a video of the authored path. Refresh
+ui-reference/ when a covered surface changed. N/A for non-UI work — say so explicitly. -->
 
 ## Medical / content provenance
 

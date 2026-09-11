@@ -15,11 +15,8 @@ export function SettingsTabs() {
   const pathname = usePathname();
 
   return (
-    <nav
-      aria-label="Settings sections"
-      className="mt-5 overflow-x-auto border-b border-[var(--color-line)]"
-    >
-      <ul className="-mb-px flex min-w-max items-stretch gap-x-5">
+    <nav aria-label="Settings sections" className="mt-5 border-b border-[var(--color-line-2)]">
+      <ul className="-mb-px flex items-stretch gap-x-6">
         {TABS.map((tab) => {
           const active = pathname === tab.href;
           return (
@@ -27,10 +24,10 @@ export function SettingsTabs() {
               <Link
                 href={tab.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-11 items-center border-b-2 text-[0.92rem] transition-[color,border-color,transform] duration-150 active:scale-[0.98] ${
+                className={`flex min-h-11 items-center border-b-2 text-[0.92rem] transition-[color,border-color,transform] duration-150 active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 ${
                   active
                     ? "border-[var(--color-navy)] font-bold text-[var(--color-ink)]"
-                    : "border-transparent font-bold text-[var(--color-muted)] hover:text-[var(--color-ink)]"
+                    : "border-transparent font-bold text-[var(--color-muted-ink)] hover:text-[var(--color-ink)]"
                 }`}
               >
                 {tab.label}

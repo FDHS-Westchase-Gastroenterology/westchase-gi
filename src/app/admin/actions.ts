@@ -14,7 +14,8 @@ import {
   requireRole,
   resolveStaffAuthState,
 } from "@/lib/portal/auth";
-import type { PasswordAuthFlow, PortalStaffAuthState } from "@/lib/portal/auth";
+import type { PortalStaffAuthState } from "@/lib/portal/auth";
+import type { PasswordAuthFlow } from "@/lib/portal/contracts";
 import { portalUrl, serverClient, serviceClient } from "@/lib/portal/server";
 
 export interface LoginActionState {
@@ -65,7 +66,7 @@ function previewLoginCredentials(
   submittedEmail: string,
   submittedPassword: string,
 ): { email: string; password: string } | null {
-  if (process.env.VERCEL_ENV !== "preview") return null;
+  if (process.env.VERCEL_ENV === "production") return null;
 
   const username = process.env.PORTAL_PREVIEW_USERNAME?.trim();
   const password = process.env.PORTAL_PREVIEW_PASSWORD;
@@ -96,7 +97,7 @@ function credential(formData: FormData, name: string, trim = true): string {
 }
 
 async function passwordUpdatedIncomplete(
-  flow: "invite" | "recovery",
+  flow: PasswordAuthFlow,
   automaticSignInFailed = false,
 ): Promise<SetPasswordActionState> {
   try {

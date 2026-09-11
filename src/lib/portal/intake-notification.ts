@@ -1,4 +1,4 @@
-import type { PortalEmailOutcome, SendPortalEmail } from "@/lib/portal/email";
+import type { DeliveryOutcome, PortalEmailOutcome, SendPortalEmail } from "@/lib/portal/email";
 
 export type NotificationRecipient = Readonly<{
   id: string;
@@ -10,7 +10,7 @@ export interface NotificationEvent {
   readonly type: "notification";
   readonly recipient: string;
   readonly provider_message_id: string | null;
-  readonly status: "accepted" | "failed";
+  readonly status: DeliveryOutcome;
   readonly meta:
     | { readonly provider: string }
     | {

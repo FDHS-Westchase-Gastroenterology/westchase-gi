@@ -16,7 +16,7 @@ export function HoursTable({ locale, dict }: Readonly<HoursTableProps>) {
         <h3 className="text-base font-[var(--font-body)] font-extrabold text-[var(--color-ink)]">
           {c.hours.heading}
         </h3>
-        <p className="text-[0.9rem] text-[var(--color-muted)]">{c.hours.subheading}</p>
+        <p className="text-[0.9rem] text-[var(--color-muted-ink)]">{c.hours.subheading}</p>
       </div>
       <div className="grid divide-y divide-[var(--color-line)] md:grid-cols-2 md:divide-x md:divide-y-0">
         {site.locations.map((loc) => (
@@ -33,7 +33,7 @@ export function HoursTable({ locale, dict }: Readonly<HoursTableProps>) {
                     className="flex items-baseline justify-between gap-4 border-b border-[var(--color-line)] py-2.5 last:border-b-0"
                   >
                     <dt className="font-semibold text-[var(--color-ink)]">{day}</dt>
-                    <dd className={open ? "font-semibold" : "text-[var(--color-muted)]"}>
+                    <dd className={open ? "font-semibold" : "text-[var(--color-muted-ink)]"}>
                       {open ? formatOfficeHours(locale, loc.hours) : c.hours.closed}
                     </dd>
                   </div>

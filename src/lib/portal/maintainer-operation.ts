@@ -11,9 +11,20 @@ export type MaintainerFailureCode =
 
 export type MaintainerMutationResult = { ok: true } | { ok: false; code: MaintainerFailureCode };
 
+/** The administration permission the practice's GitHub installation grants the portal. */
+export type InstallationAdministration = "none" | "read" | "write";
+
+/** How far that installation lets the portal manage maintainers. */
+export type MaintainerManagementState =
+  /** Installation still covers all repositories; owner must narrow it. */
+  | "restrict_installation"
+  /** Installation lacks administration write; owner must approve it. */
+  | "permission_upgrade_required"
+  | "ready";
+
 export function getMaintainerManagementState(
-  administration: "none" | "read" | "write",
-): "permission_upgrade_required" | "ready" {
+  administration: InstallationAdministration,
+): Exclude<MaintainerManagementState, "restrict_installation"> {
   return administration === "write" ? "ready" : "permission_upgrade_required";
 }
 

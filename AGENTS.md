@@ -1,22 +1,52 @@
 # AGENTS.md, Westchase GI agent guide
 
-Read this first. It has the hard rules, environment facts, and pointers to the rest. The aim is work that is right on the first pass.
+Read this first. It has the hard rules, environment facts, and pointers to the rest.
 
-[`MEMORY.md`](MEMORY.md) is scratch memory: short notes that are not (or not yet) durable product or architecture truth. Glance at it early. Append sparingly. Promote or delete when settled. Each entry: a `##` heading with the local date and time, a line `HEAD` plus the short SHA from `git log -1 --format=%h` at write time, then the note body.
+Invoke every skill whose trigger the work meets, each at the point its trigger is met; `.claude/rules/ui-skills.md` lists the triggers for UI work. The skills hold repo-specific procedure that the code and these docs do not repeat.
 
 ## Rule authority and ramp-up
 
 Read in this order, as the task requires:
 
 1. This file: the domain-specific rules and invariants below are hard requirements. They outrank everything, including vendored skills and general framework advice.
-2. [`MEMORY.md`](MEMORY.md): skim for open notes that would otherwise be lost between sessions.
+2. Your own session memory, if your harness keeps one. `MEMORY.md` is machine-local and absent from a clean checkout.
 3. [`ARCHITECTURE.md`](ARCHITECTURE.md): system design, module interfaces, external systems, and the change-type → files map. Start here in an unfamiliar area.
 4. [`CONTRIBUTING.md`](CONTRIBUTING.md): setup, verification, commit/PR/merge discipline, and the path to production.
 5. Product truth: `PRODUCT.md` (patient-site brand register and staff-portal product register) plus `DESIGN.md` (design system). UI baseline: `ui-reference/README.md`.
 
 `README.md` is the user-facing overview. Cite it for the documented custody split. Do not treat it as developer documentation.
 
-`.agents/skills/` holds the committed, vendor-authored skills this project uses. Provenance, versions, and the update procedure are in `.agents/skills/CODEX.md`. Treat them as advisory and subordinate to this file. Never hand-edit a vendored skill; re-copy it from upstream.
+Project and vendor skills live under `.cursor/skills/` (Cursor loads them there; Claude Code
+loads them through the `.claude/skills` symlink to the same directory). Vendor guidance is
+advisory and subordinate to this file. Re-copy a vendored skill from upstream instead of editing it.
+
+### Agent responsibilities
+
+Jason works with **Codex for backend work** and **Claude Code for all frontend work**.
+
+- Codex owns server behavior, API routes, Server Actions, authentication, authorization,
+  database changes, integrations, and their tests.
+- Claude Code owns patient-site and staff-portal UI, including layout, components, styling,
+  motion, browser interactions, accessibility, frontend dependencies, and visual verification.
+  This includes the rendered UI in Server Components; the file's server/client directive does
+  not decide ownership.
+- Shared work uses an explicit contract: the data, allowed actions, validation, and error
+  states the frontend receives. Keep backend enforcement in the server layer and implement
+  the corresponding UI with Claude Code. Describe any remaining work for the other agent.
+
+An explicit assignment from Jason takes precedence over this default split. Claude Code
+implements the frontend using the repository's design system in `DESIGN.md`. Both agents
+follow the same contribution and release gates.
+
+Staff-portal integration starts with [FRONTEND-HANDOFF.md](FRONTEND-HANDOFF.md). It maps the
+implemented backend contracts to the remaining frontend controls, error handling, and acceptance
+paths. Keep its checklist current as those paths are connected and verified.
+
+### Documentation style
+
+Write living instructions as the current operating model: name the workflow, its invariants, and
+the steps an agent performs. Historical rationale and chronology belong in dated evidence
+records; operational docs stay present-tense and self-sufficient.
 
 ## Contribution loop
 
@@ -27,14 +57,15 @@ The standing gates are:
 - `npx oxlint` reports zero warnings and zero errors under the repository's configured rules. Do not skip rules or narrow the scan to make the gate pass.
 - `npx oxfmt --check` reports that every matched file already matches `.oxfmtrc.json`. Do not skip files or narrow the scan to make the gate pass. If it fails, run `npx oxfmt` and check again.
 - `npx react-doctor@latest --verbose` reports a score of 100.
+- `npm run build` completes a production compile and typecheck with no errors. Oxlint, oxfmt, and React Doctor can all pass while this fails, so they do not replace it. Do not skip it, narrow it, or substitute `tsc --noEmit`. Use the no-credentials environment in [`CONTRIBUTING.md`](CONTRIBUTING.md#verification) when `.env.local` is absent. If the build cannot run, say so; the loop has not passed.
+- A diff that adds or changes motion (`transition`, `animation`, `@starting-style`, `--motion-*`, `motion/react`) carries a `review-animations` verdict in the turn's report, in the Before / After / Why table from `.claude/rules/design-eng.md`. Lint, format, React Doctor, and the build cannot see motion quality, so they do not replace it.
+- Visual evidence is in the pull-request conversation for every UI-visible change. A single-state change needs before and after screenshots. A new workflow or a feature with more than one authored step needs a video of that path. A clean lint score with no visual evidence is a failed loop.
 
-An extra linter you are asked to run, including a single oxlint rule, is added to the loop. It does not replace the standing gates. Example: you are given a rule, you fix its findings, and that rule goes quiet. You still run full `npx oxlint`, `npx oxfmt --check`, and React Doctor. Passing the extra check is not a pass of the loop.
+An extra check you are asked to run, including a single oxlint rule, is added to this list and does not replace it. Run the extra check first, then the standing gates; if a gate fails, fix it and rerun everything that already passed, because a later fix can reopen an earlier one.
 
-Order: run the extra check, fix what it finds, then run the standing gates. If a standing gate fails, fix those findings and rerun every check that already passed, including the extra one. A later fix can reopen an earlier lint or undo formatting.
+The turn, the pull request, and the worktree merge all wait on every gate being clean.
 
-Do not finish the turn until every check in the loop is clean: the extra linters you were given, plus `npx oxlint` with zero warnings and zero errors, plus `npx oxfmt --check` with no drift, plus React Doctor at 100. The same bar applies before you open a pull request or merge a worktree into a branch. Formatting drift, a warning, an error, or a score below 100 is a failed gate.
-
-Local React Doctor trap: a local score is not comparable to CI. Local scans also read untracked build output (`.next/`, `.next-e2e/`). Third-party sourcemaps trip the artifact-secret rule. Hits under build directories or `node_modules` are noise. Never "fix" them by editing generated files. The 100 that counts is a clean checkout of the work you are about to share.
+Local React Doctor scores include untracked build output (`.next/`, `.next-e2e/`) and third-party sourcemaps, so hits under build directories or `node_modules` are noise. The score that counts is a clean checkout of the work you are about to share; do not edit generated files to raise it.
 
 ## Product, brand, and content rules
 
@@ -48,29 +79,157 @@ The visual baseline is required. Before working on the frontend UI, open `ui-ref
 
 Refresh the affected images against the matching local or Preview origin before committing. After deployment, use the default live-origin capture for public pages.
 
-The atlas includes the seven top-level staff routes. Refresh them only with the Development/Preview seed identity, keep the browser-side redaction, and never include an individual request or Production data.
+The atlas includes the seven top-level staff routes. Refresh them only with the Preview Branch seed identity, keep the browser-side redaction, and never include an individual request or Production data.
+
+### Visual evidence
+
+This gate sits beside oxlint, oxfmt, React Doctor, and `npm run build`. An agent that changes a visible UI surface does not finish, open a pull request, or merge a worktree until the pull-request conversation contains visual evidence of that change.
+
+What to post:
+
+- **Still change** — one screen, one state, or a copy/layout/color shift: before and after screenshots of every affected surface at the viewports the change is authored for. Desktop is 1440×900 and mobile is 390×844 when both apply.
+- **Workflow or multi-step feature** — a new path, a handoff, or any change whose meaning is the sequence of steps: a video of the authored path. Screenshots may sit beside the video; they do not replace it.
+
+How to post it:
+
+- Put the evidence in a pull-request conversation comment, not only the PR body and not only the committed `ui-reference/` atlas.
+- Capture from a local or Preview origin with fictional identity. Never Production. Never real patient or staff data. Never record the sign-in form; start a workflow video after the session exists.
+- Atlas pages may be embedded from `ui-reference/` at the merge-base SHA (before) and the exact head SHA (after), the same way #227 does.
+- Request-detail and other patient-data surfaces stay out of `ui-reference/`. Host those captures on a disposable `assets/pr-<number>-ui-evidence` branch and embed them in the comment.
+- Name the before SHA and the after SHA. For a stack of UI commits, show how each commit changed the screen, not only the branch tip.
+- Check that the images, and the video when required, render in the posted comment.
+
+### shadcn/ui
+
+shadcn/ui is installed and configured through `components.json` (style `base-nova`, Base UI
+primitives, Tailwind v4 CSS variables). The design system itself — tokens, tiers, recipes, motion, the
+ownership table — is [`DESIGN.md`](DESIGN.md); read its "Where does this belong?" table before
+touching any UI.
+
+#### Class-name helper
+
+Import `cn` directly from the `cn` package in components and route surfaces:
+`import { cn } from "cn";`. `src/lib/utils.ts` keeps `export { cn } from "cn";` for compatibility
+with existing consumers and the `components.json` utils alias. Keep it browser-safe.
+
+Use the package's named exports when separate class joining, merging, or types are needed;
+do not recreate the `clsx` plus `tailwind-merge` wrapper. The project uses Tailwind v4, which
+the `cn` merge engine supports. Dependencies still used by other packages may remain in
+`package-lock.json`; that does not make them direct application dependencies.
+
+For helper migrations, follow `CONTRIBUTING.md` "Class-name helper updates". Apply them to
+both approved components and registry bundle inputs, record mechanical stock-source changes
+in `src/components/stock/MANIFEST.json`, and regenerate the local design bundle. Class merging
+must preserve the existing recipes, brand tokens, and call-site overrides.
+
+#### Design authority and brand protection
+
+**The repository's tokens and components define the design system.** Reuse existing `ui/`
+components first, then adapt shadcn registry components when needed. Record their source and
+explain custom behavior or styling. Claude Design is an optional design tool; approval there
+is not required to implement, review, or merge a component or appearance change.
+`DESIGN.md` "Adoption" owns the review workflow and "Local bundle pipeline" owns regeneration.
+
+`src/components/stock/` retains registry source and examples as inputs to that bundle. Its
+vendor exclusions remain because the toolchain consumes upstream code. New product consumers
+use approved `ui/` recipes. The staff home calendar currently imports `stock/calendar.tsx`;
+preserve that behavior until its approved replacement is synced. `MANIFEST.json` records source
+provenance. Do not treat the registry defaults as approved brand design.
+
+`.ds-sync/` is the machine-local toolchain; `.design-sync/` holds project-specific pipeline
+source and previews; `ds-bundle/` is generated output. `local-only-paths.json` governs all three.
+Run `npm run local-only:write` after changing their reasons. First run
+`node .design-sync/ds/build-ds.mjs`, then regenerate the bundle with
+`node .ds-sync/package-build.mjs --config .design-sync/config.json --node-modules node_modules --entry .design-sync/ds/entry.ts --out ds-bundle`,
+then `node .design-sync/ds/copy-assets.mjs`.
+
+Components resolve every color through **semantic tokens** (`--background`, `--primary`,
+`--muted`, …) that are bridged onto the committed brand palette in `src/app/globals.css`. The
+bridge is the only place shadcn's tokens exist; the brand `@theme` block above it belongs to the
+committed palette and is hands-off for shadcn and agents alike.
+
+**shadcn never overwrites the brand palette.** The brand hues — navy, teal, amber, mint — are a
+DESIGN.md anchor. `shadcn init`, `shadcn apply`, and any `add` that runs against a preset inject
+neutral OKLCH literals, a `@theme inline` block that re-declares the Tailwind radius scale, and
+`@apply` rules that reset `html`/`body` to shadcn's defaults, which would change every brand
+radius and repaint the page white. Registry defaults may be explored in Claude Design; neutral
+preset literals must not replace the repository's semantic brand mappings.
+
+Reconciliation procedure — run after **every** CLI operation that touches CSS:
+
+1. Commit or stash a clean checkpoint of `src/app/globals.css` **before** running the command.
+2. Run the command, then `git diff src/app/globals.css` and reject or rewrite anything that:
+   - adds OKLCH color literals to the semantic `:root` / `.dark` blocks — every semantic token
+     must reference a brand `--color-*` token. The single permitted literal is `--destructive`
+     (destructive actions have no brand hue by design);
+   - touches the brand `@theme` block, its comment header, or any brand token value;
+   - re-declares `--radius-*` inside the bridge's `@theme inline` block — the brand `@theme`
+     owns the radius namespace (`--radius` 0.625rem, sm 0.375rem, lg 0.875rem);
+   - injects `@apply` into the base layer (`border-border`, `outline-ring/50`, `font-sans`,
+     `bg-background text-foreground`) — the existing base rules already carry brand values;
+   - changes the font mappings — `--font-sans`/`--font-heading` resolve to the body sans (Lato).
+3. New semantic tokens a component introduces get mapped onto brand tokens in the bridge, with a
+   comment naming the brand pair.
+4. Rerun the full contribution loop and capture before/after screenshots — palette drift is a
+   UI-visible change.
+
+shadcn and the brand share the Tailwind `--color-*` namespace, and the later `@theme` block wins.
+The brand's secondary text ink is `--color-muted-ink`, not `--color-muted`, because shadcn's
+`--color-muted` is a surface tint. Before adopting a component, list the semantic utilities it
+uses (`bg-*`, `text-*`, `border-*`) and check each for a brand-token collision.
+
+Adoption starts with existing repository components and shadcn registry source. If a CLI command is needed to
+supply its behavior, run `add --dry-run` / `--diff` before touching an existing recipe. Review
+all generated changes, meet the repo lint bar, and preserve the token mappings. Add a product
+component when a real surface consumes it. The dependencies of `stock/` remain required by
+the bundle even when they have no product importer; see `src/components/stock/README.md`.
+
+Motion: two engines, one registry. CSS reads the `--motion-*` tokens; `motion/react` reads the
+presets in `src/lib/motion.ts`, which are the same temperaments. Use whichever fits the job.
+Neither engine invents a curve or duration — DESIGN.md "Motion".
+
+`apply --preset` / `init --preset <code>` overwrite preset-driven CSS wholesale. Do not run one
+without the reconciliation review above, and never let a preset's palette reach a commit.
 
 ## Backend development
 
 ### Intake, privacy, and portal security
 
-Never weaken the [architectural invariants](ARCHITECTURE.md#architectural-invariants), [critical flows](ARCHITECTURE.md#critical-flows), [patient-data lifecycle](ARCHITECTURE.md#patient-request-data-lifecycle), or [external interfaces](ARCHITECTURE.md#external-interfaces). The executable sources are `src/lib/portal/intake.ts`, `src/lib/portal/contracts.ts`, and `src/lib/portal/auth.ts`.
+Never weaken the [trust boundaries](ARCHITECTURE.md#trust-boundaries), [main execution paths](ARCHITECTURE.md#main-execution-paths), [patient-data lifecycle](ARCHITECTURE.md#patient-request-data-lifecycle), or [external interfaces](ARCHITECTURE.md#external-interfaces). The executable sources are `src/lib/portal/intake.ts`, `src/lib/portal/contracts.ts`, and `src/lib/portal/auth.ts`.
 
 ### Supabase guidance and dependency contract
 
-Use the committed `supabase` and `supabase-postgres-best-practices` skills for database, Auth, and RLS work.
+Use the project-authored `wgi-supabase-branching` skill first, then the committed `supabase` and
+`supabase-postgres-best-practices` vendor skills for database, Auth, and RLS work.
 
-Every PR reports the `supabase-integration` gate. A database-adjacent change, including a package change, runs `e2e/supabase-dependency-contract.spec.ts` in a separate GitHub-hosted Ubuntu job. That job starts a disposable Docker Supabase stack, replays committed migrations, seeds local-only fixtures, checks Auth/SSR sessions, permission boundaries, intake persistence, shared throttling, lifecycle boundaries, and PostgREST relationships, then stops the stack even on failure.
+Choose the Preview database from the branch's intended merge destination. A child Git branch
+inherits its integration branch's Supabase Preview database. PR #224
+(`portal/appointment-workflow-experience`) is the integration branch for the active portal work;
+branches merging into it use its existing database and migration baseline. Opening a child PR
+does not require a separate database.
 
-The disposable job receives no hosted Supabase, Vercel, or repository secrets. It never runs on Jason's Mac and has no path that applies migrations or test writes to Development or Production. After merge, Production verification only checks the matching Vercel deployment and does a read-only canonical-site smoke request.
+`Supabase Preview` is a setup check, required only when establishing a new remote branch. During
+setup, record whether the branch establishes a Preview database or inherits an existing one,
+and verify that database's readiness and the branch's Vercel connection. An inherited database
+uses its existing setup evidence; do not require a new provisioning check for the child or a new
+check on every commit. `supabase-integration` and change-specific schema/application tests still
+verify the exact code being shared against the selected database.
+
+Shared Preview databases contain fictional data. Coordinate migrations, fixture resets, and
+destructive tests across every branch using the database; never run them concurrently. Production
+promotion and scheduler activation require separate explicit authorization.
+[`CONTRIBUTING.md`](CONTRIBUTING.md#how-to-contribute-with-a-supabase-preview-branch) defines the
+setup record, verification workflow, and outstanding automation alignment.
 
 ## GitHub conventions
 
 ### Branch protection
 
-GitHub `main` requires the current-branch `quality`, `react-doctor`, and `Vercel` statuses, plus resolved conversations. Force pushes and deletions are blocked.
-
-The detector may skip the disposable suite only when the diff is not database-adjacent. The always-reported gate must still pass on the exact head.
+The merge policy requires current-head `quality`, `react-doctor`, `Vercel`, and
+`supabase-integration`, plus resolved conversations. `Supabase Preview` supplies branch-setup
+evidence, not a required status on every commit. A skipped integration check is not a passing
+signal. Verify actual GitHub protection before merging; report any mismatch with this policy
+instead of bypassing it. Force pushes and deletions remain blocked.
 
 ## Release and operational truth
 
@@ -78,20 +237,22 @@ Distinguish code merged, code deployed, and operational. Before you finish, name
 
 ## Verification
 
-Commands, credential split, honesty rules, and the change-type → checks map live in [`CONTRIBUTING.md`](CONTRIBUTING.md#verification). [`ARCHITECTURE.md`](ARCHITECTURE.md#where-logic-lives) owns the change-type → files map.
+Commands, credential split, honesty rules, and the change-type → checks map live in [`CONTRIBUTING.md`](CONTRIBUTING.md#verification). [`ARCHITECTURE.md`](ARCHITECTURE.md#common-starting-points) owns the change-type → files map.
 
-Lint and format gates for pull requests and worktree merges live in [Contribution loop](#contribution-loop).
+Lint, format, production-build, and visual-evidence gates for pull requests and worktree merges live in [Contribution loop](#contribution-loop).
 
 ## Agent skills
 
-### Issue tracker
+Issues live in this repo's GitHub Issues, managed with the `gh` CLI, and use five triage labels
+as-is: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`.
+Domain context is the single `CONTEXT.md` at the repo root.
 
-Issues live in this repo's GitHub Issues, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+<!-- BEGIN:nextjs-agent-rules -->
 
-### Triage labels
+# This is NOT the Next.js you know
 
-The five canonical triage labels are used as-is (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
 
-### Domain docs
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
-Single-context: one `CONTEXT.md` plus `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+<!-- END:nextjs-agent-rules -->

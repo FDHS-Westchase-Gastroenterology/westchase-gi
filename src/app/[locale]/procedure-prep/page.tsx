@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ArrowRight, MessageSquare } from "@/components/icons";
-import { PageHero } from "@/components/PageHero";
-import { Reveal } from "@/components/Reveal";
-import { revealDelay } from "@/components/reveal-delay";
-import type { RevealDelay } from "@/components/reveal-delay";
-import { TextBand } from "@/components/TextBand";
+import { PageHero } from "@/components/patterns/PageHero";
+import { Reveal } from "@/components/patterns/Reveal";
+import { revealDelay } from "@/components/patterns/reveal-delay";
+import type { RevealDelay } from "@/components/patterns/reveal-delay";
+import { TextBand } from "@/components/patterns/TextBand";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { prepGroups } from "@/lib/content/preps";
 import type { PrepDoc, PrepGroup } from "@/lib/content/preps";
 import { getDictionary, isLocale } from "@/lib/i18n";
@@ -95,7 +96,7 @@ export default async function ProcedurePrepPage({ params }: Readonly<PageProps>)
             </h2>
             <p className="measure mt-1 text-[0.95rem] text-[var(--color-body)]">{t.unsureBody}</p>
           </div>
-          <a href={site.textLine.href} className="btn btn-navy">
+          <a href={site.textLine.href} data-slot="button" className={buttonVariants()}>
             <MessageSquare className="h-4.5 w-4.5" /> {dict.common.textUs}
           </a>
         </div>

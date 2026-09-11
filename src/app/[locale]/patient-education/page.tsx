@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ArrowRight } from "@/components/icons";
-import { PageHero } from "@/components/PageHero";
-import { Reveal } from "@/components/Reveal";
-import { TextBand } from "@/components/TextBand";
+import { PageHero } from "@/components/patterns/PageHero";
+import { Reveal } from "@/components/patterns/Reveal";
+import { TextBand } from "@/components/patterns/TextBand";
 import { educationByGroup } from "@/lib/content/education";
 import type { EducationTopic } from "@/lib/content/types";
 import { getDictionary, isLocale } from "@/lib/i18n";

@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { buttonVariants } from "@/components/ui/button-variants";
 import type { Dictionary } from "@/lib/i18n";
 import { site, localePath, directionsUrl, formatOfficeHours } from "@/lib/site";
 import type { Locale } from "@/lib/site";
@@ -203,7 +204,8 @@ export function Footer({ locale, dict }: Readonly<FooterProps>) {
               href={site.links.googleReview}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn btn-amber btn-sm"
+              data-slot="button"
+              className={buttonVariants({ variant: "amber", size: "sm" })}
             >
               <Star className="h-4 w-4" /> {c.footer.reviewGoogle}
             </a>
@@ -211,7 +213,8 @@ export function Footer({ locale, dict }: Readonly<FooterProps>) {
               href={site.links.facebookReviews}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn btn-ghost-light btn-sm"
+              data-slot="button"
+              className={buttonVariants({ variant: "ghost-light", size: "sm" })}
             >
               <Facebook className="h-4 w-4" /> {c.footer.reviewFacebook}
             </a>

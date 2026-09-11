@@ -68,7 +68,7 @@ export function NoticeBanner({
           type="button"
           onClick={dismiss}
           aria-label={dismissLabel}
-          className="absolute end-3 mt-0.5 rounded-md p-1.5 text-[var(--color-muted)] transition-colors hover:bg-[color-mix(in_oklch,var(--color-amber)_25%,transparent)] hover:text-[var(--color-ink)] sm:static sm:ms-auto"
+          className="absolute end-3 mt-0.5 rounded-md p-1.5 text-[var(--color-muted-ink)] transition-colors hover:bg-[color-mix(in_oklch,var(--color-amber)_25%,transparent)] hover:text-[var(--color-ink)] sm:static sm:ms-auto"
         >
           <X className="h-4.5 w-4.5" />
         </button>

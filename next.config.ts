@@ -113,6 +113,10 @@ const legacyEducation: [string, string][] = [
 ];
 
 const nextConfig: NextConfig = {
+  // Dev-only: lets a phone on the home LAN load the dev server (and its
+  // /_next assets and Server Actions) via the Mac's local IP. Ignored in
+  // Production builds.
+  allowedDevOrigins: ["192.168.4.122", "192.168.4.*"],
   // E2E build-dir isolation: a second dev server (broken-DB failure tests)
   // Boots with NEXT_DIST_DIR=.next-e2e so concurrent instances never share
   // A Turbopack build directory.

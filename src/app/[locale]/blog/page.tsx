@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { ArrowRight, MessageSquare } from "@/components/icons";
-import { PageHero } from "@/components/PageHero";
-import { Reveal } from "@/components/Reveal";
-import { TextBand } from "@/components/TextBand";
+import { PageHero } from "@/components/patterns/PageHero";
+import { Reveal } from "@/components/patterns/Reveal";
+import { TextBand } from "@/components/patterns/TextBand";
 import { blogPosts, formatPosted } from "@/lib/content/blog";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
@@ -41,7 +41,7 @@ export default async function BlogPage({ params }: Readonly<PageProps>) {
               href={localePath(locale, `/blog/${latest.slug}`)}
               className="card group block p-7 transition-transform duration-300 ease-[var(--ease-out-quint)] hover:-translate-y-1 sm:p-9"
             >
-              <p className="text-[0.92rem] font-bold text-[var(--color-muted)]">
+              <p className="text-[0.92rem] font-bold text-[var(--color-muted-ink)]">
                 {t.postedLabel}: {formatPosted(latest.posted, locale)}
               </p>
               <h2 className="h2 mt-2 font-[var(--font-display)] text-[var(--color-ink)]">
@@ -66,7 +66,7 @@ export default async function BlogPage({ params }: Readonly<PageProps>) {
                   href={localePath(locale, `/blog/${post.slug}`)}
                   className="group grid gap-x-10 gap-y-1.5 py-6 transition-colors sm:grid-cols-[11rem_1fr] sm:py-7"
                 >
-                  <p className="text-[0.92rem] font-bold text-[var(--color-muted)]">
+                  <p className="text-[0.92rem] font-bold text-[var(--color-muted-ink)]">
                     {formatPosted(post.posted, locale)}
                   </p>
                   <div>
@@ -85,7 +85,7 @@ export default async function BlogPage({ params }: Readonly<PageProps>) {
             ))}
           </ul>
 
-          <p className="mt-8 flex flex-wrap items-center gap-2 text-[0.95rem] text-[var(--color-muted)]">
+          <p className="mt-8 flex flex-wrap items-center gap-2 text-[0.95rem] text-[var(--color-muted-ink)]">
             <MessageSquare className="h-4 w-4 flex-none text-[var(--color-teal-ink)]" />
             {t.archiveNote}{" "}
             <a href={site.textLine.href} className="link-plain">

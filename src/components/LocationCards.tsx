@@ -1,3 +1,6 @@
+import { cn } from "cn";
+
+import { buttonVariants } from "@/components/ui/button-variants";
 import type { Dictionary } from "@/lib/i18n";
 import { site, directionsUrl, formatOfficeHours } from "@/lib/site";
 import type { Locale } from "@/lib/site";
@@ -45,7 +48,7 @@ export function LocationCards({ locale, dict }: Readonly<LocationCardsProps>) {
                   {c.textLine}:{" "}
                   <span className="bidi-ltr whitespace-nowrap">{site.textLine.display}</span>
                 </a>
-                <span className="block text-[0.9rem] text-[var(--color-muted)]">
+                <span className="block text-[0.9rem] text-[var(--color-muted-ink)]">
                   {c.textLineHuman}
                 </span>
               </span>
@@ -74,7 +77,8 @@ export function LocationCards({ locale, dict }: Readonly<LocationCardsProps>) {
             href={directionsUrl(loc.mapsQuery)}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn btn-navy mt-6 w-full sm:w-auto"
+            data-slot="button"
+            className={cn(buttonVariants(), "mt-6 w-full sm:w-auto")}
           >
             {c.getDirections}
           </a>

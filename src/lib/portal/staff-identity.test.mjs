@@ -1,27 +1,7 @@
 import assert from "node:assert/strict";
-import { register } from "node:module";
 import test from "node:test";
-import { pathToFileURL } from "node:url";
 
-// Staff-identity is server-only. Node's test runner needs a resolve hook;
-// Next's bundler supplies the real guard at build time.
-register(
-  `data:text/javascript,${encodeURIComponent(`
-    export async function resolve(specifier, context, nextResolve) {
-      if (specifier === "server-only") {
-        return {
-          shortCircuit: true,
-          url: "data:text/javascript,export {}",
-          format: "module",
-        };
-      }
-      return nextResolve(specifier, context);
-    }
-  `)}`,
-  pathToFileURL("./"),
-);
-
-const { displayNameOrEmail } = await import("./staff-identity.ts");
+import { displayNameOrEmail } from "./staff-identity.ts";
 
 test("displayNameOrEmail returns the known display name", () => {
   const nameMap = new Map([["juliet@example.com", "Juliet Oliva"]]);

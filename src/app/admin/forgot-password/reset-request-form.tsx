@@ -5,6 +5,9 @@ import { useActionState, useEffect, useRef, useState } from "react";
 
 import { requestPasswordResetAction } from "@/app/admin/actions";
 import type { ResetRequestActionState } from "@/app/admin/actions";
+import { Button } from "@/components/ui/button";
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import {
   PASSWORD_RESET_RESEND_COOLDOWN_SECONDS,
   RESET_REQUEST_MESSAGE,
@@ -15,8 +18,6 @@ const INITIAL_STATE: ResetRequestActionState = {
   email: "",
   requestKey: 0,
 };
-const inputClassName =
-  "mt-2 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 py-3 text-base text-[var(--color-ink)] outline-none transition-colors focus:border-[var(--color-teal-ink)]";
 const textActionClassName =
   "inline-flex min-h-11 items-center justify-center py-2 text-sm font-bold text-[var(--color-teal-ink)] underline underline-offset-2";
 
@@ -44,17 +45,17 @@ function ResendControl({
   return (
     <form action={action}>
       <input type="hidden" name="email" value={email} />
-      <button
+      <Button
         type="submit"
         disabled={pending || secondsRemaining > 0}
-        className="btn btn-navy min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
+        className="min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
       >
         {pending
           ? "Requesting…"
           : secondsRemaining > 0
             ? `Resend in ${secondsRemaining}s`
             : "Resend link"}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -116,7 +117,7 @@ export function ResetRequestForm({
             This only repeats what you entered; it does not confirm an account or inbox delivery.
           </p>
         ) : null}
-        <div className="mt-4 space-y-2 text-sm text-[var(--color-muted)]">
+        <div className="mt-4 space-y-2 text-sm text-[var(--color-muted-ink)]">
           <p>Delivery can take a few minutes. Check your Inbox and Spam or Junk folders.</p>
           <p>
             The one-time link expires in one hour. Use the newest message if you requested more than
@@ -125,9 +126,9 @@ export function ResetRequestForm({
         </div>
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <button type="button" onClick={changeEmail} className="btn btn-outline min-h-11 w-full">
+          <Button type="button" variant="outline" onClick={changeEmail} className="min-h-11 w-full">
             Change email
-          </button>
+          </Button>
           <ResendControl
             key={state.requestKey}
             action={formAction}
@@ -136,7 +137,7 @@ export function ResetRequestForm({
           />
         </div>
 
-        <p className="mt-5 text-sm text-[var(--color-muted)]">
+        <p className="mt-5 text-sm text-[var(--color-muted-ink)]">
           Still no message? Ask your portal administrator to confirm your expected staff email and
           active status. They should never ask for your password or reset link.
         </p>
@@ -160,48 +161,47 @@ export function ResetRequestForm({
       {inline ? (
         <div className="mb-5">
           <h2 className="text-xl text-[var(--color-ink)]">Reset your password</h2>
-          <p className="mt-1.5 text-sm text-[var(--color-muted)]">
+          <p className="mt-1.5 text-sm text-[var(--color-muted-ink)]">
             Enter your staff email and we’ll send a secure reset link if the account is eligible.
           </p>
         </div>
       ) : null}
       <form
         action={formAction}
-        className={inline ? "space-y-5" : "mt-7 space-y-5"}
+        className={inline ? undefined : "mt-7"}
         onSubmit={() => {
           setEditing(false);
         }}
       >
-        <div>
-          <label htmlFor="reset-email" className="block text-sm font-bold text-[var(--color-ink)]">
-            Email
-          </label>
-          <input
-            ref={emailRef}
-            id="reset-email"
-            name="email"
-            type="email"
-            inputMode="email"
-            autoComplete="email"
-            autoCapitalize="none"
-            spellCheck={false}
-            required
-            maxLength={254}
+        <FieldGroup>
+          <Field data-disabled={pending || undefined}>
+            <FieldLabel htmlFor="reset-email">Email</FieldLabel>
+            <Input
+              ref={emailRef}
+              id="reset-email"
+              name="email"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              required
+              maxLength={254}
+              disabled={pending}
+              value={email}
+              onChange={(event) => {
+                updateEmail(event.target.value);
+              }}
+            />
+          </Field>
+          <Button
+            type="submit"
             disabled={pending}
-            value={email}
-            onChange={(event) => {
-              updateEmail(event.target.value);
-            }}
-            className={inputClassName}
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={pending}
-          className="btn btn-navy min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
-        >
-          {pending ? "Sending…" : "Send reset link"}
-        </button>
+            className="min-h-11 w-full disabled:cursor-wait disabled:opacity-65"
+          >
+            {pending ? "Sending…" : "Send reset link"}
+          </Button>
+        </FieldGroup>
       </form>
       <div className="mt-3 text-center">
         {onBack ? (

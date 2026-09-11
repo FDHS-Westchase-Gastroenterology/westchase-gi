@@ -1,20 +1,26 @@
+import { cn } from "cn";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { z } from "zod";
 
+import { PortalFeedbackProvider } from "@/app/admin/(portal)/portal-feedback";
+import { ChevronRight } from "@/components/icons";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { requireRole } from "@/lib/portal/auth";
 import { waitingSince } from "@/lib/portal/business-time";
-import { REQUEST_STATUSES } from "@/lib/portal/contracts";
-import type { RequestStatus } from "@/lib/portal/contracts";
+import { STAFF_REQUEST_SOURCE_PATH } from "@/lib/portal/contracts";
 import type { AttentionBucket } from "@/lib/portal/queue-attention";
 import {
+  firstSearchParam,
   parsePage,
   parseRequestSearch,
-  requestSearchFilter,
-  REQUEST_SEARCH_MAX_LENGTH,
+  requestsHref,
+  REQUEST_PAGE_SIZE,
 } from "@/lib/portal/request-query";
 import { requestPageWindow } from "@/lib/portal/request-window";
+import { readRequestWorklist } from "@/lib/portal/request-worklist/service";
 import { serviceClient } from "@/lib/portal/server";
+import { parseRequestStatus, REQUEST_STATUSES } from "@/lib/portal/workflow/contracts";
+import type { RequestStatus } from "@/lib/portal/workflow/contracts";
 
 import {
   followUpShortLabel,
@@ -23,8 +29,11 @@ import {
   STATUS_LABELS,
   TIME_LABELS,
 } from "./format";
-import { fetchAttentiveOpenRows, fetchClosedRows, OPEN_STATUSES } from "./queue";
 import type { QueueRow } from "./queue";
+import { QueuePagination } from "./request-pagination";
+import { EmptyQueue } from "./request-queue-empty";
+import { RequestSearchForm } from "./request-search-form";
+import { RequestsOutputActions, RequestsOutputFeedback } from "./requests-output-actions";
 import { StatusBadge } from "./status-badge";
 
 type SearchParams = Promise<{
@@ -33,40 +42,18 @@ type SearchParams = Promise<{
   status?: string | string[];
 }>;
 
-const requestStatusSchema = z.enum(REQUEST_STATUSES);
-
 function activeFilter(raw: Readonly<string | string[] | undefined>): RequestStatus | "all" {
-  const parsed = Array.isArray(raw)
-    ? requestStatusSchema.safeParse(raw.at(0))
-    : requestStatusSchema.safeParse(raw);
-  return parsed.success ? parsed.data : "all";
-}
-
-function requestsHref({
-  page = 1,
-  path = "/admin/requests",
-  search,
-  status,
-}: Readonly<{
-  page?: number;
-  path?: string;
-  search: string;
-  status: RequestStatus | "all";
-}>): string {
-  const params = new URLSearchParams();
-  if (status !== "all") params.set("status", status);
-  if (search) params.set("q", search);
-  if (page > 1) params.set("page", String(page));
-  const query = params.toString();
-  return `${path}${query ? `?${query}` : ""}`;
+  return parseRequestStatus(firstSearchParam(raw)) ?? "all";
 }
 
 function detailHref({
+  focusCallAgain = false,
   id,
   page,
   search,
   status,
 }: Readonly<{
+  focusCallAgain?: boolean;
   id: string;
   page: number;
   search: string;
@@ -77,12 +64,12 @@ function detailHref({
   if (search) params.set("q", search);
   if (page > 1) params.set("page", String(page));
   const query = params.toString();
-  return `/admin/requests/${id}${query ? `?${query}` : ""}`;
+  return `/admin/requests/${id}${query ? `?${query}` : ""}${focusCallAgain ? "#set-call-again" : ""}`;
 }
 
 // Next-action language per attention bucket. The queue leads with what to
 // Work next: unworked rows by age, call-again rows whose time arrived,
-// Touched rows that went silent with no callback date set.
+// Touched rows that went silent with no call-again day set.
 function nextActionHint({
   bucket,
   followUpAt,
@@ -107,14 +94,14 @@ function nextActionHint({
     case "stale": {
       const since = waitingSince(lastActivityAt ?? createdAt, now);
       return {
-        text: `Silent${since !== null && since !== "" ? ` since ${since}` : " since before today"} — set a call-again day`,
+        text: `Set a call-again day${since !== null && since !== "" ? ` — silent since ${since}` : ""}`,
         attention: true,
       };
     }
     case "upcoming":
       return followUpAt !== null && followUpAt !== ""
         ? { text: `Call again ${followUpShortLabel(followUpAt, now)}`, attention: false }
-        : null;
+        : { text: "Set a call-again day", attention: true };
     case "scheduled":
       return { text: "On the schedule", attention: false };
     case "new":
@@ -141,8 +128,8 @@ function FilterChips({
   search: string;
 }>) {
   return (
-    <nav aria-label="Filter by status" className="mt-6 overflow-x-auto">
-      <ul className="flex min-w-max gap-2">
+    <nav aria-label="Filter by status" className="portal-filter-tabs">
+      <ul>
         {filters.map((item) => {
           const isActive = active === item.key;
           const href = requestsHref({
@@ -155,24 +142,12 @@ function FilterChips({
                 href={href}
                 aria-current={isActive ? "page" : undefined}
                 data-filter={item.key}
-                className={`flex min-h-10 items-center gap-x-2 rounded-full border px-3.5 text-[0.9rem] font-bold transition-colors ${
-                  isActive
-                    ? "border-[var(--color-navy)] bg-[var(--color-navy)] text-[var(--color-on-dark)]"
-                    : item.count === 0
-                      ? "border-[var(--color-line)] bg-white text-[var(--color-muted)] hover:border-[var(--color-navy)]"
-                      : "border-[var(--color-line-2)] bg-white text-[var(--color-body)] hover:border-[var(--color-navy)]"
-                }`}
+                className="portal-filter-tab"
               >
                 {item.label}
                 <span
                   data-filter-count={item.key}
-                  className={`rounded-full px-1.5 text-[0.75rem] tabular-nums ${
-                    isActive
-                      ? "bg-white/15"
-                      : item.count === 0
-                        ? "text-[var(--color-muted)]"
-                        : "bg-[var(--color-mint)] text-[var(--color-teal-ink)]"
-                  }`}
+                  data-empty={item.count === 0 ? "true" : undefined}
                 >
                   {item.count}
                 </span>
@@ -211,60 +186,72 @@ function QueueRowLink({
     now,
   });
   const waiting = request.status === "new" ? waitingSince(request.created_at, now) : null;
+  const needsCallAgain =
+    request.status === "contacted" &&
+    (request.follow_up_at === null || request.follow_up_at === "");
+  const nextAction =
+    hint ??
+    (request.status === "new"
+      ? { text: "Make first contact", attention: true }
+      : request.status === "closed"
+        ? { text: "No further action", attention: false }
+        : null);
+  // The action column is the queue's comparison axis: the next step first,
+  // Then its operational reason or timing, then scheduling context. The
+  // Status pill and received time stay available in the quiet meta column.
   return (
     <li>
       <Link
         href={detailHref({
+          focusCallAgain: needsCallAgain,
           id: request.id,
           page,
           search,
           status: filter,
         })}
         data-testid="request-row"
-        className="grid gap-x-6 gap-y-2 rounded-[var(--radius)] border border-[var(--color-line)] bg-white px-5 py-4 transition-colors hover:border-[var(--color-teal)] sm:grid-cols-[1.4fr_1fr_auto] sm:items-center"
+        className="portal-ledger-row"
       >
-        <span className="min-w-0">
-          <span
-            data-testid="request-name"
-            className="block truncate font-bold text-[var(--color-ink)]"
-          >
+        <span className="portal-ledger-person">
+          <span data-testid="request-name" data-ui-redact="patient-name">
             {request.name}
           </span>
-          <span className="mt-0.5 block text-[0.9rem] text-[var(--color-muted)]">
-            {request.phone}
-          </span>
+          <span data-ui-redact="patient-contact">{request.phone}</span>
         </span>
-        <span className="text-[0.9rem] text-[var(--color-body)]">
-          <span className="block">
-            {LOCATION_LABELS[request.location]} · {TIME_LABELS[request.preferred_time]}
-          </span>
-          <span className="mt-0.5 block text-[var(--color-muted)]">
-            Received {formatReceived(request.created_at)}
-          </span>
-          {waiting !== null && waiting !== "" ? (
-            <span
-              data-testid="request-waiting"
-              className="mt-0.5 block text-[0.85rem] font-bold text-[var(--color-amber-deep)]"
-            >
-              Waiting since {waiting}
-            </span>
-          ) : null}
-          {hint ? (
-            <span
+        <span className="portal-ledger-next">
+          {nextAction ? (
+            <strong
               data-testid="request-next-action"
-              className={`mt-0.5 block text-[0.85rem] ${
-                hint.attention
-                  ? "font-bold text-[var(--color-amber-deep)]"
-                  : "text-[var(--color-muted)]"
-              }`}
+              data-attention={nextAction.attention ? "true" : undefined}
+              aria-label={nextAction.attention ? `Needs attention: ${nextAction.text}` : undefined}
             >
-              {hint.text}
-            </span>
+              {nextAction.text}
+            </strong>
           ) : null}
+          <span className="portal-ledger-context">
+            {waiting !== null && waiting !== "" ? (
+              <>
+                <span data-testid="request-waiting">Waiting since {waiting}</span>
+                <span className="portal-ledger-sep"> · </span>
+              </>
+            ) : null}
+            <span>
+              {LOCATION_LABELS[request.location]} · {TIME_LABELS[request.preferred_time]}
+            </span>
+          </span>
         </span>
-        <span className="justify-self-start sm:justify-self-end">
-          <StatusBadge status={request.status} />
+        <span className="portal-ledger-meta">
+          <span className="portal-ledger-meta-status">
+            <StatusBadge status={request.status} />
+            {request.legacy_review_required ? (
+              <span data-testid="legacy-review-tag" className="portal-review-tag">
+                Needs review
+              </span>
+            ) : null}
+          </span>
+          <small>Received {formatReceived(request.created_at)}</small>
         </span>
+        <ChevronRight className="portal-ledger-disclosure h-4 w-4" />
       </Link>
     </li>
   );
@@ -272,85 +259,42 @@ function QueueRowLink({
 
 export default async function AdminRequestsPage({
   searchParams,
-}: Readonly<{
-  searchParams: SearchParams;
-}>) {
-  await requireRole("staff");
+}: Readonly<{ searchParams: SearchParams }>) {
+  const session = await requireRole("staff");
   const params = await searchParams;
   const filter = activeFilter(params.status);
   const page = parsePage(params.page);
   const search = parseRequestSearch(params.q);
-  const searchFilter = search ? requestSearchFilter(search) : "";
   const now = new Date();
 
   const db = serviceClient();
 
-  // Chip counts and the closed tail stay database-paged exactly as before;
-  // The open set is small enough to order by attention in memory.
-  const countQueries = REQUEST_STATUSES.map((status) => {
-    let countQuery = db
-      .from("requests")
-      .select("id", { count: "exact", head: true })
-      .eq("status", status);
-    if (searchFilter) countQuery = countQuery.or(searchFilter);
-    return countQuery;
-  });
-
-  const wantsClosed = filter === "all" || filter === "closed";
-  const openStatuses = filter === "all" ? OPEN_STATUSES : filter === "closed" ? [] : [filter];
-  const [orderedOpen, closedCountProbe, ...countResults] = await Promise.all([
-    openStatuses.length > 0
-      ? fetchAttentiveOpenRows(db, { statuses: openStatuses, searchFilter, now })
-      : Promise.resolve([]),
-    // Closed rows join the default view after the open set; their own window
-    // Is computed once the open size is known.
-    wantsClosed
-      ? db.from("requests").select("id", { count: "exact", head: true }).eq("status", "closed")
-      : Promise.resolve({ count: 0, error: null }),
-    ...countQueries,
-  ]);
-
-  const countError = countResults.find((result) => result.error)?.error ?? closedCountProbe.error;
-  if (countError) {
-    throw new Error(`Queue read failed: ${countError.code}`);
-  }
-  const counts = {
-    new: countResults[0].count ?? 0,
-    contacted: countResults[1].count ?? 0,
-    scheduled: countResults[2].count ?? 0,
-    closed: countResults[3].count ?? 0,
-  } as const satisfies Record<RequestStatus, number>;
+  const result = await readRequestWorklist(
+    db,
+    session.id,
+    {
+      action: "page",
+      query: search,
+      statuses: filter === "all" ? null : [filter],
+      offset: (page - 1) * REQUEST_PAGE_SIZE,
+      limit: REQUEST_PAGE_SIZE,
+    },
+    now,
+  );
+  if (!result.ok) throw new Error(`Queue read failed: ${result.code}`);
+  const { counts, items: requests } = result;
   const total = REQUEST_STATUSES.reduce((sum, status) => sum + counts[status], 0);
-
-  // The page window — open slice, closed-tail range, display totals, and the
-  // Past-the-end redirect — is pure math, unit-tested in request-window.
-  const pageWindow = requestPageWindow({
-    filter,
-    page,
-    counts,
-    openRows: orderedOpen.length,
-    closedCount: closedCountProbe.count ?? 0,
-  });
+  const openRows =
+    filter === "closed"
+      ? 0
+      : filter === "all"
+        ? counts.new + counts.contacted + counts.scheduled
+        : counts[filter];
+  const pageWindow = requestPageWindow({ filter, page, counts, openRows });
   if (pageWindow.redirectPage !== null) {
     redirect(requestsHref({ page: pageWindow.redirectPage, search, status: filter }));
   }
-  const { filteredTotal, totalPages, firstShown, lastShown } = pageWindow;
-
-  // The page window: open rows first (attention-ordered), then the closed
-  // Tail (newest first) fetched from its own offset.
-  const openSlice = orderedOpen.slice(pageWindow.openFrom, pageWindow.openTo);
-  let closedSlice: QueueRow[] = [];
-  if (pageWindow.closedLimit > 0) {
-    closedSlice = await fetchClosedRows(db, {
-      from: pageWindow.closedFrom,
-      limit: pageWindow.closedLimit,
-      searchFilter,
-    });
-  }
-
-  const openBuckets = new Map(openSlice.map((row) => [row.id, row]));
-  const requests = [...openSlice, ...closedSlice];
-
+  const { filteredTotal } = pageWindow;
   const filters: { key: RequestStatus | "all"; label: string; count: number }[] = [
     { key: "all", label: "All", count: total },
     ...REQUEST_STATUSES.map((status) => ({
@@ -360,141 +304,82 @@ export default async function AdminRequestsPage({
     })),
   ];
 
-  return (
+  const content = (
     <section aria-labelledby="requests-heading">
-      <div className="flex flex-wrap items-end justify-between gap-4">
+      {/* One-line masthead in the Home grammar: identity, one true
+          Sentence, and the page commands. Opening a request is the
+          Recurring task, so Print and Export sit in a quiet utility group
+          Beside Add instead of competing as page actions. */}
+      <header className="portal-queue-masthead">
         <div>
-          <h1 id="requests-heading" className="portal-title">
-            Appointment requests
+          <h1 id="requests-heading" className="portal-queue-title">
+            Appointments
           </h1>
-          <p className="mt-1.5 max-w-[60ch] text-[0.95rem] text-[var(--color-muted)]">
-            What needs attention first, then the rest.
+          <p className="portal-queue-lede">
+            Every appointment request, ordered by what needs attention first.
           </p>
         </div>
-        <a
-          href={requestsHref({
-            path: "/admin/requests/export",
-            search,
-            status: filter,
-          })}
-          data-testid="export-csv"
-          className="btn btn-outline"
-        >
-          Export CSV
-        </a>
-      </div>
-
-      <form
-        action="/admin/requests"
-        method="get"
-        role="search"
-        className="mt-6 flex max-w-2xl flex-wrap items-end gap-3"
-      >
-        {filter !== "all" ? <input type="hidden" name="status" value={filter} /> : null}
-        <label
-          htmlFor="request-search"
-          className="min-w-64 flex-1 text-sm font-bold text-[var(--color-ink)]"
-        >
-          Search requests
-          <input
-            id="request-search"
-            name="q"
-            type="search"
-            defaultValue={search}
-            maxLength={REQUEST_SEARCH_MAX_LENGTH}
-            placeholder="Name, phone, or email"
-            className="mt-2 min-h-11 w-full rounded-[var(--radius)] border border-[var(--color-line-2)] bg-white px-3.5 text-[0.95rem] font-normal transition-colors outline-none focus:border-[var(--color-teal-ink)]"
-          />
-        </label>
-        <button type="submit" className="btn btn-navy">
-          Search
-        </button>
-        {search ? (
-          <Link href={requestsHref({ search: "", status: filter })} className="btn btn-outline">
-            Clear
+        <div className="portal-queue-masthead-actions print-hide">
+          <Link
+            href={`${STAFF_REQUEST_SOURCE_PATH}?from=appointments`}
+            data-testid="appointments-add-patient-request"
+            data-slot="button"
+            className={cn(buttonVariants({ variant: "outline" }), "portal-queue-add")}
+          >
+            Add appointment request
           </Link>
-        ) : null}
-      </form>
-
-      <FilterChips filters={filters} active={filter} search={search} />
-
-      {requests.length === 0 ? (
-        <div className="mt-8 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-8 text-center sm:p-12">
-          <h2 className="text-[1.1rem] font-black text-[var(--color-ink)]">
-            {search
-              ? "No appointment requests match that search"
-              : filter === "all"
-                ? "No appointment requests yet"
-                : `Nothing marked ${STATUS_LABELS[filter].toLowerCase()}`}
-          </h2>
-          <p className="mx-auto mt-2 max-w-[52ch] text-[0.95rem] leading-relaxed text-[var(--color-body)]">
-            {search
-              ? "Try a name, phone number, or email address."
-              : filter === "all"
-                ? "When a patient submits the appointment form on the website, the appointment request appears here instantly and everyone on the notification list gets a notification email."
-                : "Appointment requests move between statuses from their detail page — open one from another filter to triage it."}
-          </p>
+          <span className="portal-utility-group">
+            <RequestsOutputActions
+              exportHref={requestsHref({
+                path: "/admin/requests/export",
+                search,
+                status: filter,
+              })}
+              filteredTotal={filteredTotal}
+              filterLabel={filter === "all" ? "All" : STATUS_LABELS[filter]}
+              hasSearch={search !== ""}
+              statusCounts={counts}
+            />
+          </span>
         </div>
-      ) : (
-        <ul data-testid="request-list" className="mt-8 space-y-3">
-          {requests.map((request) => {
-            const derived = openBuckets.get(request.id);
-            return (
+      </header>
+
+      <RequestsOutputFeedback />
+
+      <section className="portal-queue-workbench" aria-label="Appointment request queue">
+        <RequestSearchForm filter={filter} filteredTotal={filteredTotal} search={search} />
+
+        <FilterChips filters={filters} active={filter} search={search} />
+
+        {requests.length === 0 ? (
+          <EmptyQueue page={page} search={search} filter={filter} />
+        ) : (
+          <ul data-testid="request-list" className="portal-ledger-list">
+            {requests.map((request) => (
               <QueueRowLink
                 key={request.id}
                 request={request}
-                bucket={derived?.bucket ?? "closed"}
-                lastActivityAt={derived?.lastActivityAt ?? null}
+                bucket={request.bucket}
+                lastActivityAt={request.status === "closed" ? null : request.lastActivityAt}
                 page={page}
                 search={search}
                 filter={filter}
                 now={now}
               />
-            );
-          })}
-        </ul>
-      )}
+            ))}
+          </ul>
+        )}
 
-      {filteredTotal > 0 ? (
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-          <p data-testid="request-page-summary" className="text-[0.9rem] text-[var(--color-muted)]">
-            Showing {firstShown}–{lastShown} of {filteredTotal}
-          </p>
-          {totalPages > 1 ? (
-            <nav aria-label="Appointment request pages" className="flex items-center gap-3">
-              {page > 1 ? (
-                <Link
-                  href={requestsHref({
-                    page: page - 1,
-                    search,
-                    status: filter,
-                  })}
-                  rel="prev"
-                  className="btn btn-outline"
-                >
-                  Previous
-                </Link>
-              ) : null}
-              <span className="text-[0.9rem] font-bold text-[var(--color-body)]">
-                Page {page} of {totalPages}
-              </span>
-              {page < totalPages ? (
-                <Link
-                  href={requestsHref({
-                    page: page + 1,
-                    search,
-                    status: filter,
-                  })}
-                  rel="next"
-                  className="btn btn-outline"
-                >
-                  Next
-                </Link>
-              ) : null}
-            </nav>
-          ) : null}
-        </div>
-      ) : null}
+        <QueuePagination
+          pageWindow={pageWindow}
+          requestCount={requests.length}
+          page={page}
+          search={search}
+          filter={filter}
+        />
+      </section>
     </section>
   );
+
+  return <PortalFeedbackProvider>{content}</PortalFeedbackProvider>;
 }

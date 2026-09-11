@@ -768,9 +768,9 @@ test("a rejected merge blocks that PR instead of aborting the queue", async () =
 test("the gate and the re-attestation read the same required-context list", () => {
   // Branch protection only ever saw the contexts this controller re-attests.
   // When `supabase-integration` became required and the attestation list still
-  // named two contexts, every refreshed Dependabot head was refused with
+  // Named two contexts, every refreshed Dependabot head was refused with
   // `Required status check "supabase-integration" is expected.` One constant
-  // feeds both sites now; keep it that way.
+  // Feeds both sites now; keep it that way.
   const source = fs.readFileSync(path.join(__dirname, "dependency-automation.cjs"), "utf8");
   assert.match(
     source,

@@ -3,9 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { MessageSquare, Phone } from "@/components/icons";
+import { TextBand } from "@/components/patterns/TextBand";
 import { PrepBody } from "@/components/PrepBody";
 import { PrintButton } from "@/components/PrintButton";
-import { TextBand } from "@/components/TextBand";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { getPrep, prepDocs } from "@/lib/content/preps";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
@@ -89,7 +90,7 @@ export default async function PrepDetailPage({ params }: Readonly<PageProps>) {
           <p className="lead measure mt-4 text-[var(--color-body)]">{doc.regimen[locale]}</p>
           <div className="print-hide mt-6 flex flex-wrap items-center gap-x-6 gap-y-4">
             <PrintButton label={t.print} />
-            <p className="measure-sm text-[0.9rem] text-[var(--color-muted)]">{t.blanksHint}</p>
+            <p className="measure-sm text-[0.9rem] text-[var(--color-muted-ink)]">{t.blanksHint}</p>
           </div>
         </div>
       </section>
@@ -108,10 +109,14 @@ export default async function PrepDetailPage({ params }: Readonly<PageProps>) {
               {t.questionsBody}
             </p>
             <div className="mt-5 flex flex-wrap gap-3">
-              <a href={site.textLine.href} className="btn btn-navy">
+              <a href={site.textLine.href} data-slot="button" className={buttonVariants()}>
                 <MessageSquare className="h-4.5 w-4.5" /> {dict.common.textUs}
               </a>
-              <a href={site.phone.href} className="btn btn-outline">
+              <a
+                href={site.phone.href}
+                data-slot="button"
+                className={buttonVariants({ variant: "outline" })}
+              >
                 <Phone className="h-4.5 w-4.5" /> {dict.common.callUs}
               </a>
             </div>

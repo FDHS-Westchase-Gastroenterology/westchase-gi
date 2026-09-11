@@ -1,3 +1,4 @@
+import { buttonVariants } from "@/components/ui/button-variants";
 import type { Dictionary } from "@/lib/i18n";
 import { site, directionsUrl, mapEmbedUrl } from "@/lib/site";
 import type { Locale } from "@/lib/site";
@@ -43,7 +44,7 @@ export function LocationMaps({ locale, dict }: Readonly<LocationMapsProps>) {
                 <span className="block font-extrabold text-[var(--color-ink)]">
                   {loc.name[locale]}
                 </span>
-                <span className="block text-[0.95rem] text-[var(--color-muted)]">
+                <span className="block text-[0.95rem] text-[var(--color-muted-ink)]">
                   {loc.street}, {loc.city}, {loc.region} {loc.postal}
                 </span>
               </span>
@@ -52,7 +53,8 @@ export function LocationMaps({ locale, dict }: Readonly<LocationMapsProps>) {
               href={directionsUrl(loc.mapsQuery)}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn btn-navy btn-sm"
+              data-slot="button"
+              className={buttonVariants({ size: "sm" })}
             >
               {c.getDirections}
             </a>
