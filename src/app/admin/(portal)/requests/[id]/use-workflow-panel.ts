@@ -49,7 +49,11 @@ function useMinuteClock(): number | null {
   return nowMs;
 }
 
-export function useWorkflowPanel(requestId: string, serverTruth: RequestTruth) {
+export function useWorkflowPanel(
+  requestId: string,
+  serverTruth: RequestTruth,
+  nextHref: string | null = null,
+) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   // `pending` alone cannot label buttons: it also covers the router.refresh()
@@ -120,11 +124,17 @@ export function useWorkflowPanel(requestId: string, serverTruth: RequestTruth) {
       });
       freshKey();
       const text = successCopy(intent, result);
+      const closedOrBooked =
+        intent.kind !== "undo" && (result.state === "booked" || result.state === "closed");
+      // The continuation is the neighbor this request had when the staff
+      // Member acted. The refresh below recomputes the page's neighbors for
+      // A row that is no longer in the open set, so the prop cannot be read
+      // Later: whichever landed first, the click or the refresh, would win.
       dispatch({
         type: "succeeded",
         text,
-        closedOrBooked:
-          intent.kind !== "undo" && (result.state === "booked" || result.state === "closed"),
+        closedOrBooked,
+        nextHref: closedOrBooked ? nextHref : null,
       });
       publishPageFeedback({ source: "request-workflow", tone: "status", message: text });
       router.refresh();

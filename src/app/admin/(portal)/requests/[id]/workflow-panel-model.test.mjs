@@ -63,10 +63,20 @@ test("a saved outcome clears the form and keeps only the success feedback", () =
     type: "set_appointment_day",
     day: "2026-10-01",
   });
-  const saved = panelReducer(filled, { type: "succeeded", text: "Saved.", closedOrBooked: true });
+  const saved = panelReducer(filled, {
+    type: "succeeded",
+    text: "Saved.",
+    closedOrBooked: true,
+    nextHref: "/admin/requests/next?q=queue",
+  });
   assert.deepEqual(saved, {
     ...INITIAL_PANEL,
-    feedback: { tone: "success", text: "Saved.", closedOrBooked: true },
+    feedback: {
+      tone: "success",
+      text: "Saved.",
+      closedOrBooked: true,
+      nextHref: "/admin/requests/next?q=queue",
+    },
   });
   const failed = panelReducer(filled, { type: "failed", text: "No." });
   assert.equal(failed.selected, "booked");

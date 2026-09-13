@@ -28,13 +28,7 @@ const NY_CLOCK = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
 });
 
-function PanelFeedback({
-  feedback,
-  nextHref,
-}: Readonly<{
-  feedback: Feedback | null;
-  nextHref: string | null;
-}>) {
+function PanelFeedback({ feedback }: Readonly<{ feedback: Feedback | null }>) {
   if (feedback === null) return null;
   return (
     <p
@@ -47,9 +41,9 @@ function PanelFeedback({
     >
       {feedback.text}{" "}
       {feedback.tone === "success" && feedback.closedOrBooked ? (
-        nextHref !== null && nextHref !== "" ? (
+        feedback.nextHref !== null && feedback.nextHref !== "" ? (
           <Link
-            href={nextHref}
+            href={feedback.nextHref}
             data-testid="open-next-request"
             className="inline-flex min-h-11 items-center underline underline-offset-2"
           >
@@ -275,7 +269,7 @@ export function WorkflowPanel({
     correctCallAgain,
     classify,
     undoLatest,
-  } = useWorkflowPanel(requestId, serverTruth);
+  } = useWorkflowPanel(requestId, serverTruth, nextHref);
 
   return (
     <section
@@ -284,7 +278,7 @@ export function WorkflowPanel({
     >
       <WorkflowStatus truth={truth} classifyLegacyClosure={legal.classifyLegacyClosure} />
 
-      <PanelFeedback feedback={showFeedback ? panel.feedback : null} nextHref={nextHref} />
+      <PanelFeedback feedback={showFeedback ? panel.feedback : null} />
 
       {undoOpen !== null ? (
         <UndoAffordance undo={undoOpen} pending={pending} inFlight={inFlight} onUndo={undoLatest} />
