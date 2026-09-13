@@ -135,14 +135,13 @@ export function LineList({
   }, [count]);
 
   /* A committed filter change starts the new result set at the top of the
-     surface; the page does not move and focus stays where it was. Skipped on
-     mount, where the viewport is already at the top. */
-  const mounted = useRef(false);
+     surface; the page does not move and focus stays where it was. The key is
+     compared, not a mounted flag: Strict Mode runs a mount effect twice, and
+     a flag would reset a scroll made before hydration on the second pass. */
+  const appliedKey = useRef(resetKey);
   useLayoutEffect(() => {
-    if (!mounted.current) {
-      mounted.current = true;
-      return;
-    }
+    if (appliedKey.current === resetKey) return;
+    appliedKey.current = resetKey;
     const viewport = viewportRef.current;
     if (viewport !== null) viewport.scrollTop = 0;
   }, [resetKey]);
