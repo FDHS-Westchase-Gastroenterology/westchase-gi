@@ -303,6 +303,11 @@ inline padding) and `.container-tight` (48rem for prose).
   (`calc()` on the row height plus its hairline), and scroll within it. The half-cut row is the
   whole affordance. The heading's count always states the true total; rendering caps at forty
   lines and the remainder is a link ("6 more in Appointments"). Print renders every line.
+- **The staff home request list is sized to the viewport, not to a row count.** It is one
+  floating surface (Card → Table under a sticky column-label row → count footer) whose rows
+  scroll inside a named, focusable ScrollArea viewport while the header, actions and filters
+  stay in view. Its affordance is the drawn inset rail and the footer's "first–last of total"
+  range, not a half-cut row; on a roomy desktop about twelve rows show. Print renders every line.
 
 ---
 
@@ -364,7 +369,10 @@ for lifted cards. The portal prefers hairlines to shadows everywhere but the mod
 - **A modal that must fetch still opens on the spring's schedule** and shimmers a skeleton while
   it waits. The surface is never late, only its facts.
 - **Scroll has mass, not decoration.** Windowed groups are nested overflow boxes with
-  `overscroll-behavior: contain`. No rail, no progress fill.
+  `overscroll-behavior: contain`. No rail, no progress fill. The one drawn rail is the staff
+  home list's inset ScrollArea scrollbar: a resting track and thumb whenever the rows overflow,
+  stronger ink on a fine-pointer hover and the strongest while held, each at the micro duration;
+  the thumb's transform and height never transition, and scroll position never animates.
 - **Micro state changes stay micro.** Hover tints, pressed ink, and focus rings keep the 150ms
   ease-out; the spring and exit govern surfaces that move.
 - **Buttons feel pressed.** Every pressable element has an `:active` state (the portal's 0.98
@@ -597,7 +605,11 @@ approval is not required.
 - The portal modal keeps the native `<dialog>` top layer (Motion, "one modal").
 - The authored skeletons are structured shapes with one sweep; a generic pulse is a downgrade.
 - The hero is static; Carousel is not a fit. The testimonial rail is scroll-snap.
-- Windowed groups keep the platform scrollbar; ScrollArea is not a fit.
+- Windowed groups keep the platform scrollbar. ScrollArea is adopted for one surface, the
+  staff home request list (`ui/scroll-area.tsx`, from the registry source in
+  `stock/scroll-area.tsx`): the viewport is exposed as its own part so the list can name it,
+  focus it and reset it, and `ScrollBar` adds a local `data-held` flag Base UI does not
+  publish. Elsewhere it is still not a fit.
 - Sonner is Radix-era; Base UI projects use Toast.
 - The chat family has no product need: the practice's differentiator is a staffed human line.
 

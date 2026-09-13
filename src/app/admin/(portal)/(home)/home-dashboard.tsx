@@ -115,50 +115,52 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
         onActivate={activate}
       />
 
-      {filtered.length > 0 ? (
-        <>
-          <LineList
-            lines={filtered}
-            openRowId={openRowId}
-            settledId={settledId}
-            onOpenRow={setOpenRowId}
-            onOpenFull={(id, instant) => {
-              setSheet({ id, instant });
-              setOpenRowId(null);
-            }}
-            onSettled={markSettled}
-          />
-          {showClosedNote ? (
-            <p className="wgi-list-note">
+      <LineList
+        lines={filtered}
+        resetKey={active.map((entry) => `${entry.key}=${entry.raw}`).join("&")}
+        openRowId={openRowId}
+        settledId={settledId}
+        onOpenRow={setOpenRowId}
+        onOpenFull={(id, instant) => {
+          setSheet({ id, instant });
+          setOpenRowId(null);
+        }}
+        onSettled={markSettled}
+        note={
+          showClosedNote ? (
+            <span className="wgi-list-note">
               Showing the latest closed requests —{" "}
               <Link href="/admin/requests?status=closed">older ones live in Appointments</Link>.
-            </p>
-          ) : null}
-        </>
-      ) : active.length > 0 ? (
-        <div className="wgi-empty" data-testid="home-no-results">
-          <h2>No results</h2>
-          <p>{emptyStateMessage(lines, active, nowMs)}</p>
-          <button
-            type="button"
-            className="wgi-empty-clear"
-            onClick={() => {
-              clearAll();
-              setDemoted([]);
-            }}
-          >
-            Clear filters
-          </button>
-        </div>
-      ) : (
-        <div className="wgi-empty" data-testid="sheet-empty">
-          <h2>No requests yet.</h2>
-          <p>
-            A website request lands here the moment a patient submits the form, and a contacted
-            request comes back on the day staff set for it.
-          </p>
-        </div>
-      )}
+            </span>
+          ) : null
+        }
+        empty={
+          active.length > 0 ? (
+            <div className="wgi-empty" data-testid="home-no-results">
+              <h2>No results</h2>
+              <p>{emptyStateMessage(lines, active, nowMs)}</p>
+              <button
+                type="button"
+                className="wgi-empty-clear"
+                onClick={() => {
+                  clearAll();
+                  setDemoted([]);
+                }}
+              >
+                Clear filters
+              </button>
+            </div>
+          ) : (
+            <div className="wgi-empty" data-testid="sheet-empty">
+              <h2>No requests yet.</h2>
+              <p>
+                A website request lands here the moment a patient submits the form, and a contacted
+                request comes back on the day staff set for it.
+              </p>
+            </div>
+          )
+        }
+      />
 
       <FullRecordSheet
         line={sheetLine}

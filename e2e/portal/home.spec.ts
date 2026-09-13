@@ -84,7 +84,7 @@ test.describe("portal home", () => {
     // The staged request is a line on the day sheet, marked New.
     const stagedLine = page
       .getByTestId("home-line-list")
-      .locator("li", { hasText: `TEST Home ${runId}` });
+      .locator("tr", { hasText: `TEST Home ${runId}` });
     await expect(stagedLine).toHaveCount(1);
     await expect(stagedLine.locator("[data-col='status']")).toHaveText("New");
 
@@ -180,7 +180,7 @@ test.describe("portal home", () => {
 
     const list = page.getByTestId("home-line-list");
     for (const row of rows) {
-      await expect(list.locator("li", { hasText: row.name })).toHaveCount(1);
+      await expect(list.locator("tr", { hasText: row.name })).toHaveCount(1);
     }
     await expect(page.getByTestId("home-add-patient-request")).toHaveText("Add appointment");
   });
@@ -207,7 +207,7 @@ test.describe("portal home", () => {
 
     try {
       await signIn(page);
-      const line = page.getByTestId("home-line-list").locator("li", { hasText: name });
+      const line = page.getByTestId("home-line-list").locator("tr", { hasText: name });
       await expect(line).toHaveCount(1);
       await expect(line.locator("[data-col='status']")).toHaveText("Call again");
     } finally {
