@@ -75,12 +75,12 @@ export function HomeWorkbench({
           <div className="portal-sheet-commands print-hide">
             <PrintChooser
               statusCounts={statusCounts}
-              triggerClassName={cn(buttonVariants(), "wgi-cmd-print")}
+              triggerClassName={cn(buttonVariants({ variant: "outline" }), "wgi-cmd")}
               triggerLabel="Print requests"
             />
             <AddAppointmentDialog
               idempotencyKey={addRequestKey}
-              triggerClassName={cn(buttonVariants({ variant: "outline" }), "wgi-cmd-add")}
+              triggerClassName={cn(buttonVariants({ variant: "outline" }), "wgi-cmd")}
             />
           </div>
         </header>

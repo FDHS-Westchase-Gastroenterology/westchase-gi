@@ -226,9 +226,9 @@
   --wgi-track: #e3e8f0;
   --wgi-thumb: #9ca8ba;
   --wgi-chip-stroke: #c4d5e5;
-  --wgi-print-fill: #1b334a;
-  --wgi-print-stroke: #adc6da;
-  --wgi-print-ink: #dbe5ef;
+  --wgi-cmd-fill: #f8f9fb;
+  --wgi-cmd-stroke: #ccd3dd;
+  --wgi-cmd-shadow: 0 2px 6px rgba(27, 51, 74, 0.08);
   --wgi-badge-new-fill: #fff0dc;
   --wgi-badge-new-stroke: #ffcb89;
   --wgi-badge-new-ink: #a15a19;
@@ -270,28 +270,24 @@
   line-height: 1.1;
 }
 
-/* The two commands as the frame paints them: Print is the sidebar's navy
-   with a pale ring and pale ink; Add is inked on nothing but a ring. The
-   Button recipe keeps the geometry, press and focus; only paint is set here,
-   so its hover has to be restated (this file outranks its utilities). */
-.wgi-cmd-print {
-  background: var(--wgi-print-fill);
-  box-shadow: inset 0 0 0 1.4px var(--wgi-print-stroke);
-  color: var(--wgi-print-ink);
+/* Both commands are quiet, as the approved treatment paints them (#285):
+   a near-white fill, a fine cool stroke, a low shadow and the page ink, so
+   neither outranks the day or the list. The Button recipe keeps the
+   geometry, press and focus; only paint is set here, so the outline hover
+   has to be restated (this file outranks its utilities). */
+.wgi-cmd {
+  background: var(--wgi-cmd-fill);
+  box-shadow:
+    inset 0 0 0 1px var(--wgi-cmd-stroke),
+    var(--wgi-cmd-shadow);
+  color: var(--color-ink);
 }
 
-.wgi-cmd-print:hover {
-  background: color-mix(in oklch, var(--wgi-print-fill) 86%, white);
-}
-
-.wgi-cmd-add {
-  box-shadow: inset 0 0 0 1.4px var(--wgi-chip-stroke);
-  color: var(--wgi-name-ink);
-}
-
-.wgi-cmd-add:hover {
-  background: color-mix(in oklch, var(--color-navy) 5%, transparent);
-  box-shadow: inset 0 0 0 1.4px var(--color-navy);
+.wgi-cmd:hover {
+  background: var(--wgi-surface);
+  box-shadow:
+    inset 0 0 0 1px var(--wgi-muted-ink),
+    var(--wgi-cmd-shadow);
 }
 
 /* Filters sit 26px under the header, 11px apart; the Add filter capsule is
