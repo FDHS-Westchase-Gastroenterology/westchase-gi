@@ -174,9 +174,11 @@
 .portal-content:has(> .wgi-home) {
   display: flex;
   flex-direction: column;
-  /* The mobile header is sticky above the content until the sidebar docks. */
+  /* The mobile header is sticky above the content until the sidebar docks,
+     and the shell's bottom padding stays: it is what clears the docked
+     mobile navigation when the page is scrolled to its end. */
   min-height: calc(100dvh - 3.6rem);
-  padding-block: 1.25rem 1.5rem;
+  padding-block-start: 1.25rem;
 }
 
 @media (min-width: 60rem) {
