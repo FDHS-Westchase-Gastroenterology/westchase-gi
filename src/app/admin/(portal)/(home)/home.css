@@ -231,10 +231,18 @@
   --wgi-cmd-fill: #f8f9fb;
   --wgi-cmd-stroke: #ccd3dd;
   --wgi-cmd-shadow: 0 2px 6px rgba(27, 51, 74, 0.08);
-  --wgi-badge-new-fill: #fff0dc;
+  /* Status badges are glass (issue #300): a 65% fill that lands on the
+     frame's paint over the surface (#fff0dc, #e7f3f8) and lets each row band
+     show through, the frame's 1.3px stroke, 7.5px corners. The New ink is
+     the frame's #a15a19 taken 0.02 down in oklch lightness, same hue and
+     chroma, because the translucent fill sits darker on the open tint:
+     5.08 on the surface, 4.87 on the band, 4.72 on the open tint (the
+     frame's ink reads 4.34 there). Call again ink is 8.5+ everywhere. */
+  --wgi-badge-radius: 7.5px;
+  --wgi-badge-new-fill: rgb(255 232 201 / 0.65);
   --wgi-badge-new-stroke: #ffcb89;
-  --wgi-badge-new-ink: #a15a19;
-  --wgi-badge-contacted-fill: #e7f3f8;
+  --wgi-badge-new-ink: #9b5410;
+  --wgi-badge-contacted-fill: rgb(218 236 244 / 0.65);
   --wgi-badge-contacted-stroke: #adc6da;
   --wgi-badge-contacted-ink: #28435d;
 }
@@ -548,7 +556,10 @@
   color: var(--wgi-muted-ink);
   font-size: var(--wgi-phone-size);
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  /* The frame sets the number in Lato SemiBold. The site loads Lato 400,
+     700 and 900 only (src/lib/fonts.ts), so 600 rendered as 700 and the
+     number sat as heavy as the name. Regular keeps it a step under. */
+  font-weight: 400;
   white-space: nowrap;
 }
 
@@ -595,7 +606,8 @@ a.appt-phone:hover {
   color: var(--wgi-muted-ink);
   font-size: 1rem;
   font-variant-numeric: tabular-nums;
-  font-weight: 500;
+  /* Lato Medium in the frame; 400 is the weight that is loaded. */
+  font-weight: 400;
   text-overflow: ellipsis;
 }
 
@@ -608,7 +620,10 @@ a.appt-phone:hover {
 }
 
 /* The row-opening affordance: a chevron button at the right edge. The row
-   itself is the wider target; this is the one the keyboard reaches. */
+   itself is the wider target; this is the one the keyboard reaches. At rest
+   it is a control boundary, not text: the frame draws it in its light slate,
+   and the brand's control ink is that value (3.86 on the surface, 3.15 on
+   the open tint, over the 3:1 floor); it darkens to the page ink on hover. */
 .appt-line-trigger {
   display: inline-flex;
   width: 2rem;
@@ -619,7 +634,7 @@ a.appt-phone:hover {
   border-radius: var(--radius-sm);
   background: transparent;
   padding: 0;
-  color: var(--color-muted-ink);
+  color: var(--color-line-3);
   cursor: pointer;
   outline: none;
   -webkit-tap-highlight-color: transparent;
@@ -905,9 +920,15 @@ a.appt-phone:hover {
 }
 
 /* ---------- Status badge (fresh StockBadge conversion) ----------
-   30px tall pills, 15px bold, a 1.3px stroke; New and Call again carry the
-   frame's paints (New ink is 4.70 on its fill), the others keep the
-   portal's. */
+   The frame's badge: 30px tall, 7.5px corners, 15px bold, a 1.3px stroke,
+   14px sides. One glass recipe for every status (issue #300): a translucent
+   fill so the row band shows through, the status stroke, and a 1px white
+   highlight along the top edge that reads as the pane. Nothing is blurred:
+   a row band is a flat tint, so there is nothing for a backdrop filter to
+   soften and 57 filters would cost a compositor layer each. Every status
+   stays a badge; none is text alone. Each ink's floor is on the open tint
+   (the darkest band): New 4.72, Call again 8.3, Scheduled 6.2, Closed 4.9
+   in the row's own muted ink. */
 
 .wgi-badge {
   display: inline-flex;
@@ -918,8 +939,9 @@ a.appt-phone:hover {
   justify-content: center;
   overflow: hidden;
   border: 1.3px solid transparent;
-  border-radius: 999px;
-  padding: 0 0.75rem;
+  border-radius: var(--wgi-badge-radius);
+  padding: 0 0.875rem;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6);
   font-size: var(--pt-sm);
   font-weight: 700;
   letter-spacing: 0;
@@ -939,15 +961,16 @@ a.appt-phone:hover {
   border-color: var(--wgi-badge-contacted-stroke);
 }
 
+/* The portal's own statuses on the same glass, from the brand tokens. */
 .wgi-badge-scheduled {
-  background: color-mix(in oklch, var(--color-navy) 12%, white);
+  background: color-mix(in srgb, var(--color-navy) 12%, transparent);
   color: var(--color-navy);
-  border-color: color-mix(in oklch, var(--color-navy) 32%, white);
+  border-color: color-mix(in srgb, var(--color-navy) 32%, transparent);
 }
 
 .wgi-badge-closed {
-  background: transparent;
-  color: var(--color-muted-ink);
+  background: rgb(255 255 255 / 0.35);
+  color: var(--wgi-muted-ink);
   border-color: var(--color-line-2);
 }
 
