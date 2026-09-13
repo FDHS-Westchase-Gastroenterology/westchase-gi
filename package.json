@@ -34,7 +34,7 @@
   },
   "devDependencies": {
     "@oxlint/plugins": "1.82.0",
-    "@playwright/test": "1.62.1",
+    "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^26",
     "@types/react": "^19",
