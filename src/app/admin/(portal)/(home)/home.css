@@ -475,10 +475,21 @@
   font-variant-numeric: tabular-nums;
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* On a desk the number is text: one click selects the whole of it to copy
+   into the phone system, and nothing lights up under the cursor. */
+span.appt-phone {
+  cursor: text;
+  user-select: all;
+}
+
+/* On a touch screen it is a dial, and the link says so on hover. */
+a.appt-phone {
   transition: color var(--motion-micro-duration) var(--motion-exit);
 }
 
-.appt-phone:hover {
+a.appt-phone:hover {
   color: var(--color-teal-ink);
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -724,6 +735,56 @@
   .wgi-home {
     --wgi-row-h: 3.5rem;
     --wgi-gutter: 2rem;
+    --wgi-day-size: 1.75rem;
+  }
+
+  /* The header on a phone: the day on one line, the two commands side by
+     side on the next, and the filters one row deep that scrolls sideways,
+     so the first request is on screen without a scroll. */
+  .wgi-home > .portal-sheet-head {
+    gap: var(--ps-3);
+  }
+
+  .wgi-home > .portal-sheet-head .portal-sheet-commands {
+    flex-wrap: nowrap;
+  }
+
+  .wgi-home > .portal-sheet-head .portal-sheet-commands > * {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 0.75rem;
+    font-size: var(--pt-xs);
+  }
+
+  .wgi-home .wgi-filter-bar {
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    margin-block: 0.75rem -0.5rem;
+    margin-inline: -1rem;
+    overflow-x: auto;
+    padding-block: 0.5rem;
+    padding-inline: 1rem;
+    scrollbar-width: none;
+  }
+
+  .wgi-home .wgi-filter-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .wgi-home .wgi-filter-bar > * {
+    flex: none;
+  }
+
+  .wgi-home .wgi-add-filter,
+  .wgi-home .wgi-sug {
+    min-height: 2.75rem;
+    padding-inline: 0.875rem;
+    font-size: var(--pt-xs);
+  }
+
+  .wgi-home .wgi-pill-label {
+    min-height: calc(2.75rem - 2px);
+    font-size: var(--pt-xs);
   }
 
   .wgi-list-card {
