@@ -67,7 +67,7 @@ export function HomeWorkbench({
 }>) {
   return (
     <PortalFeedbackProvider>
-      <section aria-labelledby="home-heading" className="portal-sheet">
+      <section aria-labelledby="home-heading" className="portal-sheet wgi-home">
         <header className="portal-sheet-head">
           <div>
             <h1

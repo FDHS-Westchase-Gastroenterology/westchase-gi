@@ -263,7 +263,7 @@
       transition-duration: var(--pm-reduced-duration, 120ms) !important;
     }
 
-    .wgi-skeleton-list > li,
+    .wgi-list-skeleton td > span,
     .wgi-loading-head > span,
     .wgi-loading-head > i {
       animation-duration: 3.2s !important;

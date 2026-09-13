@@ -26,12 +26,20 @@ function HomePopoverContent({
   align = "start",
   side = "bottom",
   sideOffset = 8,
+  anchor,
   ...props
 }: PopoverPrimitive.Popup.Props &
-  Pick<PopoverPrimitive.Positioner.Props, "align" | "alignOffset" | "side" | "sideOffset">) {
+  Pick<
+    PopoverPrimitive.Positioner.Props,
+    "align" | "alignOffset" | "anchor" | "side" | "sideOffset"
+  >) {
   return (
     <PopoverPrimitive.Portal>
       <PopoverPrimitive.Positioner
+        /* The list row anchors the card when the trigger is only the
+           chevron at the row's end; without an anchor the popup positions
+           against the trigger. */
+        anchor={anchor}
         align={align}
         side={side}
         sideOffset={sideOffset}

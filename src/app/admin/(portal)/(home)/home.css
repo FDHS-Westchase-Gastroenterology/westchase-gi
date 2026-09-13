@@ -89,10 +89,7 @@
 
 .wgi-pill-key {
   color: var(--color-muted-ink);
-  font-size: var(--pt-2xs);
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-weight: 400;
   white-space: nowrap;
 }
 
@@ -166,110 +163,317 @@
   font-weight: 700;
 }
 
-/* ---------- The housed list ---------- */
+/* ---------- The page (issue #282) ----------
+   Figma "Westchase GI · Staff portal" (node 3:46) is drawn at 3056×1918 for
+   a 1528×959 CSS viewport: one Figma unit is 0.5 CSS px, and every length
+   below is that frame's measurement halved. The home column becomes a flex
+   column that fills the viewport, so the list surface can take whatever
+   height the header, the filters and the "Other staff jobs" row leave; the
+   rows scroll inside the surface and the page does not move. */
 
-.wgi-line-list {
-  margin: var(--ps-4) 0 0;
-  padding: 0;
-  list-style: none;
+.portal-content:has(> .wgi-home) {
+  display: flex;
+  flex-direction: column;
+  /* The mobile header is sticky above the content until the sidebar docks. */
+  min-height: calc(100dvh - 3.6rem);
+  padding-block: 1.25rem 1.5rem;
+}
+
+@media (min-width: 60rem) {
+  .portal-content:has(> .wgi-home) {
+    min-height: 100dvh;
+    padding-block: 2.25rem 1.5rem;
+  }
+}
+
+.wgi-home {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  max-width: 76rem;
+  /* Row 46.5px, heading row 36px, right gutter 39px (rows to card edge),
+     day 38px black, name 18.5px, phone 15.5px, heading 14.5px. The four
+     type sizes sit between the closed --pt-* steps; they are scoped here,
+     derived once from the approved frame, and used nowhere else. */
+  --wgi-row-h: 2.9rem;
+  --wgi-head-h: 2.25rem;
+  --wgi-gutter: 2.4375rem;
+  --wgi-day-size: 2.375rem;
+  --wgi-name-size: 1.156rem;
+  --wgi-phone-size: 0.969rem;
+  --wgi-label-size: 0.906rem;
+}
+
+/* The header loses its navy rule: the surface below closes the header now.
+   Greeting 17px bold in the muted ink, the day 38px black in the page ink. */
+.wgi-home > .portal-sheet-head {
+  border-block-end: 0;
+  padding-block-end: 0;
+}
+
+.wgi-home .portal-sheet-greeting {
+  font-family: var(--font-body), Arial, sans-serif;
+  font-size: var(--pt-base);
+  font-weight: 700;
+}
+
+/* The day is set in the body sans (Lato) as the frame draws it, not the
+   display serif the portal's heading base rule would give an h1. */
+.wgi-home .portal-sheet-day {
+  font-family: var(--font-body), Arial, sans-serif;
+  font-size: var(--wgi-day-size);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+/* Filters sit 26px under the header, 11px apart; the Add filter capsule is
+   49px tall with a fine border and the same soft shadow as the surface;
+   the suggestions keep their dashed outline at a 12.5px corner. */
+.wgi-home .wgi-filter-bar {
+  gap: 0.6875rem;
+  margin-block-start: 1.625rem;
+}
+
+.wgi-home .wgi-add-filter {
+  min-height: 3.0625rem;
+  border-width: 1.5px;
+  padding-inline: 1.125rem;
+  box-shadow: 0 4px 12px -8px oklch(0.28 0.05 245 / 0.35);
+  font-size: var(--pt-sm);
+}
+
+.wgi-home .wgi-sug {
+  min-height: 3.0625rem;
+  border-width: 1.2px;
+  border-radius: 0.75rem;
+  padding-inline: 1.125rem;
+  font-size: var(--pt-sm);
+}
+
+.wgi-home .wgi-pill {
+  border-radius: 0.75rem;
+}
+
+.wgi-home .wgi-pill-label {
+  min-height: calc(3.0625rem - 2px);
+  font-size: var(--pt-sm);
+}
+
+/* The in-page index of other jobs keeps its place under the surface, on a
+   tighter leash so the surface's bottom edge stays in the viewport. */
+.wgi-home > .portal-sheet-elsewhere {
+  flex: none;
+  margin-block-start: var(--ps-4);
+}
+
+/* ---------- The list surface ----------
+   One Card: 23px corner, 23px of paper above the column labels, the rows
+   scrolling inside, a count footer that never moves. The Tailwind strings
+   the Card and Table recipes carry (spacing, ring, hairlines, uppercase
+   labels) are overridden here; this file is unlayered for that reason. */
+
+.wgi-list-card {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  /* Never shorter than the labels, six and a half rows and the footer:
+     a short window scrolls the page rather than crushing the list. */
+  min-height: calc(var(--wgi-head-h) + 6.5 * var(--wgi-row-h) + 5.5rem);
+  margin-block-start: 1.5rem;
+  gap: 0;
   overflow: hidden;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius);
+  border-radius: 1.4375rem;
   background: var(--portal-surface);
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--color-line) 85%, transparent),
+    var(--shadow-card);
+  padding: 1.4375rem 0 0;
+  color: var(--color-body);
+  font-size: var(--pt-sm);
 }
 
-.wgi-line-row {
-  display: block;
-  min-height: 3.25rem;
-  padding: 0.35rem 0.85rem;
+.wgi-list-body {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
 }
 
-.wgi-line-row + .wgi-line-row {
-  border-top: 1px solid var(--color-line);
+.wgi-list-scroll {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 var(--wgi-gutter) 0 1.4375rem;
 }
 
-/* A recorded outcome lands: the tint arrives with the settle, holds while
-   the popover closes, and exhales over 240ms once the timed clear in
-   home-dashboard.tsx removes the attribute. A transition, not a keyframe,
-   so a second outcome retargets the wash mid-flight instead of cutting it,
-   and the attribute cycling off and back on lets it replay. */
-.wgi-line-row {
-  transition: background-color 240ms cubic-bezier(0.19, 1, 0.22, 1);
+/* The real scrolling element. `overscroll-behavior` keeps a wheel at either
+   end from moving the page; `scroll-behavior: auto` keeps every keyboard
+   and script scroll instant, so nothing ever chases the thumb. */
+.wgi-list-viewport {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scroll-behavior: auto;
+  border-radius: 0;
 }
 
-.wgi-line-row[data-settled] {
-  background-color: var(--color-mint-2);
-  transition-duration: 0s;
-}
-
-/* The row-as-trigger fills the line and carries hover/press; the whole line
-   is the click target, and the phone link stops the toggle. */
-.appt-line-trigger {
-  display: block;
-  width: 100%;
-  cursor: pointer;
-  outline: none;
-  -webkit-tap-highlight-color: transparent;
-  transition: background-color var(--motion-micro-duration) var(--motion-exit);
-}
-
-.appt-line-trigger:hover {
-  background: var(--color-mint);
-}
-
-.appt-line-trigger[data-popup-open] {
-  background: var(--color-mint-2);
-}
-
-.appt-line-trigger:focus-visible {
+.wgi-list-viewport:focus-visible {
   outline: 3px solid var(--color-amber-deep);
   outline-offset: -3px;
+  box-shadow: none;
 }
 
-/* The row IS a registry Item, converted flat: no border, no radius, no wrap —
-   the housed list's hairlines do the ruling. */
-.appt-line {
-  display: flex;
-  align-items: center;
-  flex-wrap: nowrap;
-  gap: 0.9rem;
+.wgi-list-table {
   width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Column widths from the frame (240 / 216 / 243 / 265 / 109 / 24 of 1097). */
+.wgi-list-table [data-cell="patient"] {
+  width: 22%;
+}
+
+.wgi-list-table [data-cell="phone"] {
+  width: 20%;
+}
+
+.wgi-list-table [data-cell="status"] {
+  width: 22%;
+}
+
+.wgi-list-table [data-cell="pref"] {
+  width: 24%;
+}
+
+.wgi-list-table [data-cell="received"] {
+  width: 10%;
+}
+
+.wgi-list-table [data-cell="open"] {
+  width: 2.5rem;
+}
+
+/* Column labels: 36px tall, title case, bold muted ink, a hairline below.
+   Sticky inside the viewport, painted so rows pass beneath, not through. */
+.wgi-list-head th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: var(--wgi-head-h);
   border: 0;
-  border-radius: 0;
-  background: transparent;
-  padding: 0;
+  border-bottom: 1px solid var(--color-line);
+  background: var(--portal-surface);
+  padding: 0 1rem;
+  color: var(--color-muted-ink);
+  font-size: var(--wgi-label-size);
+  font-weight: 700;
+  letter-spacing: 0;
   text-align: left;
+  text-transform: none;
+  vertical-align: middle;
+}
+
+.wgi-list-head tr {
+  border: 0;
+}
+
+/* Rows: 46.5px, 16px in from the left and 18px from the right, no rule
+   between them. Every second row is a quiet band on the canvas tint with
+   6px corners; the band is painted on the cells because a row box cannot
+   hold a radius. */
+.wgi-list-row {
+  height: var(--wgi-row-h);
+  border: 0;
+}
+
+.wgi-list-row > td {
+  height: var(--wgi-row-h);
+  padding: 0 1rem;
+  vertical-align: middle;
+  white-space: nowrap;
+  /* Two paints on one cell, on two beats. The band, hover and open tints
+     are the cell's background on the micro beat. A recorded outcome lands
+     as an inset shadow over that background: the tint arrives with the
+     settle, holds while the popover closes, and exhales over 240ms once the
+     timed clear in home-dashboard.tsx removes the attribute. A transition,
+     not a keyframe, so a second outcome retargets the wash mid-flight
+     instead of cutting it, and the attribute cycling off and back on
+     replays it. */
+  box-shadow: inset 0 0 0 100vmax transparent;
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    box-shadow 240ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.wgi-list-row > td:first-child {
+  border-start-start-radius: 6px;
+  border-end-start-radius: 6px;
+}
+
+.wgi-list-row > td:last-child {
+  border-start-end-radius: 6px;
+  border-end-end-radius: 6px;
+  padding-inline-end: 0.75rem;
+}
+
+.wgi-list-row:nth-child(even) > td {
+  background-color: var(--portal-canvas);
+}
+
+/* The whole row opens the record (line-list.tsx); the mint says so on
+   hover, the deeper mint while its record is open. */
+@media (hover: hover) {
+  .wgi-list-row:hover > td {
+    background-color: var(--color-mint);
+  }
+}
+
+.wgi-list-row[data-open] > td,
+.wgi-list-row[data-open]:hover > td {
+  background-color: var(--color-mint-2);
+}
+
+.wgi-list-row[data-settled] > td {
+  box-shadow: inset 0 0 0 100vmax var(--color-mint-2);
+  transition: none;
+}
+
+.wgi-list-row {
+  cursor: pointer;
+}
+
+/* A focused control scrolls in beneath the sticky labels, never under them. */
+.wgi-list-row a,
+.wgi-list-row button {
+  scroll-margin-block-start: calc(var(--wgi-head-h) + 0.25rem);
 }
 
 .appt-name {
-  flex: 1 1 8rem;
-  min-width: 5rem;
-  display: flex;
-  align-items: center;
-  gap: var(--ps-2);
-  min-height: 2.4rem;
-  color: var(--color-ink);
-  font-size: var(--pt-sm);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.appt-name > span {
+  display: block;
   overflow: hidden;
+  color: var(--color-ink);
+  font-size: var(--wgi-name-size);
+  font-weight: 700;
+  letter-spacing: -0.01em;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .appt-phone {
   display: inline-flex;
-  width: 8.6rem;
-  flex: none;
-  min-height: 2.4rem;
   align-items: center;
-  gap: 0.3rem;
-  color: var(--color-body);
-  font-size: var(--pt-xs);
+  gap: 0.5rem;
+  color: var(--color-muted-ink);
+  font-size: var(--wgi-phone-size);
   font-variant-numeric: tabular-nums;
+  font-weight: 600;
   white-space: nowrap;
   transition: color var(--motion-micro-duration) var(--motion-exit);
 }
@@ -282,105 +486,296 @@
 
 .appt-phone > svg {
   flex: none;
-  opacity: 0.55;
 }
 
-.appt-line [data-col="status"] {
+/* The phone under the name only once the Phone column has gone. */
+.appt-phone-stack {
+  display: none;
+}
+
+.appt-status {
   display: inline-flex;
-  width: 6.5rem;
-  flex: none;
   align-items: center;
-  white-space: nowrap;
+  gap: 0.5rem;
 }
 
-.appt-line [data-col="stamp"] {
-  display: inline-flex;
-  width: 6.6rem;
-  flex: none;
-  align-items: center;
-  gap: 0.3rem;
-}
-
-.appt-line [data-col="pref"] {
-  width: 9.5rem;
-  flex: none;
+.wgi-list-row [data-col="pref"],
+.wgi-list-row [data-col="received"] {
+  display: block;
   overflow: hidden;
   color: var(--color-muted-ink);
-  font-size: var(--pt-xs);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.appt-line [data-col="received"] {
-  width: 3.6rem;
-  flex: none;
-  color: var(--color-muted-ink);
-  font-size: var(--pt-xs);
+  font-size: 1rem;
   font-variant-numeric: tabular-nums;
-  text-align: end;
-  white-space: nowrap;
+  font-weight: 500;
+  text-overflow: ellipsis;
 }
 
-.appt-line [data-col="avatar"] {
+/* The row-opening affordance: a chevron button at the right edge. The row
+   itself is the wider target; this is the one the keyboard reaches. */
+.appt-line-trigger {
   display: inline-flex;
-  width: 1.65rem;
-  height: 1.65rem;
-  flex: none;
+  width: 2rem;
+  height: 2rem;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  color: var(--color-teal-ink);
-  font-size: var(--pt-2xs);
-  font-weight: 800;
-  letter-spacing: 0.02em;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  padding: 0;
+  color: var(--color-muted-ink);
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    color var(--motion-micro-duration) var(--motion-exit);
 }
 
-.appt-line [data-col="avatar"][data-worked] {
+.appt-line-trigger:hover,
+.appt-line-trigger[data-popup-open] {
   background: var(--color-mint-2);
+  color: var(--color-ink);
 }
 
-/* Columns drop from the right as the column narrows — name, phone, status
-   and the record affordance are the load-bearing four and always hold. */
+.appt-line-trigger:focus-visible {
+  outline: 3px solid var(--color-amber-deep);
+  outline-offset: -2px;
+}
+
+/* ---------- The rail ----------
+   Track 11px wide, inset 26px from the surface's right edge, from the foot
+   of the column labels to the bottom of the rows; thumb 10px in the track,
+   6px corners. Base UI sizes and moves the thumb; nothing here transitions
+   its transform or height — only ink, on the micro beat. */
+.wgi-list-rail {
+  /* Base UI positions the rail inline (top: 0; inset-inline-end: 0), so the
+     offsets below the column labels and in from the gutter are margins. */
+  margin-block-start: var(--wgi-head-h);
+  margin-inline-end: 0.8125rem;
+  width: 0.6875rem;
+  height: auto;
+  border-radius: 6px;
+  background: var(--color-line);
+  padding: 0;
+}
+
+.wgi-list-rail[data-orientation="vertical"] {
+  height: auto;
+}
+
+.wgi-list-thumb {
+  position: relative;
+  width: 100%;
+  flex: none;
+  border-radius: 6px;
+  background: color-mix(in oklch, var(--color-line-3) 55%, var(--color-line-2));
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+/* A 40px-wide hit area around an 11px track, inside the gutter; the drawn
+   thumb keeps its measured size. */
+.wgi-list-thumb::before {
+  content: "";
+  position: absolute;
+  inset: 0 -1rem;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wgi-list-rail[data-hovering] .wgi-list-thumb,
+  .wgi-list-thumb:hover {
+    background: var(--color-line-3);
+    cursor: grab;
+  }
+}
+
+/* Held wins over hover: the strongest ink the instant the button goes
+   down, released with it (data-held is the recipe's own flag). */
+.wgi-list-rail[data-held] .wgi-list-thumb,
+.wgi-list-rail[data-held] .wgi-list-thumb:hover {
+  background: var(--color-muted-ink);
+  cursor: grabbing;
+}
+
+/* Touch: the gutter widens so a 44px hit area fits without a mouse. */
+@media (pointer: coarse) {
+  .wgi-home {
+    --wgi-gutter: 2.75rem;
+  }
+
+  .wgi-list-thumb::before {
+    inset: 0 -1.0625rem;
+  }
+}
+
+@media (forced-colors: active) {
+  .wgi-list-rail {
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
+
+  .wgi-list-thumb {
+    background: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .wgi-list-head th {
+    border-bottom-color: CanvasText;
+  }
+}
+
+/* ---------- The footer ----------
+   Count at the left, range at the right, 16px bold muted, tabular; on
+   the surface's own paper, no rule above it. */
+.wgi-list-foot {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  min-height: 1.5625rem;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 0.75rem var(--wgi-gutter) 1.375rem 1.875rem;
+  color: var(--color-muted-ink);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.wgi-list-range {
+  margin-inline-start: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.wgi-list-note {
+  margin: 0;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-xs);
+  font-weight: 400;
+}
+
+/* Columns leave from the right as the surface narrows; the name, the
+   status and the affordance always hold, and the phone tucks under the
+   name once its column is gone. */
 @media (max-width: 82rem) {
-  .appt-line [data-col="received"] {
+  .wgi-list-table [data-cell="received"] {
     display: none;
+  }
+
+  .wgi-list-table [data-cell="patient"] {
+    width: 26%;
+  }
+
+  .wgi-list-table [data-cell="phone"] {
+    width: 22%;
+  }
+
+  .wgi-list-table [data-cell="status"] {
+    width: 24%;
+  }
+
+  .wgi-list-table [data-cell="pref"] {
+    width: 28%;
   }
 }
 
 @media (max-width: 74rem) {
-  .appt-line [data-col="pref"] {
+  .wgi-list-table [data-cell="pref"] {
     display: none;
   }
+
+  .wgi-list-table [data-cell="patient"] {
+    width: 36%;
+  }
+
+  .wgi-list-table [data-cell="phone"] {
+    width: 30%;
+  }
+
+  .wgi-list-table [data-cell="status"] {
+    width: 34%;
+  }
 }
 
-@media (max-width: 66rem) {
-  .appt-line [data-col="avatar"] {
+@media (max-width: 48rem) {
+  .wgi-list-table [data-cell="phone"] {
     display: none;
   }
-}
 
-@media (min-width: 60rem) {
-  .appt-line [data-col="status"] {
-    width: 8rem;
+  .wgi-list-table [data-cell="patient"] {
+    width: 54%;
+  }
+
+  .wgi-list-table [data-cell="status"] {
+    width: 46%;
+  }
+
+  .appt-phone-stack {
+    display: block;
+    margin-block-start: 0.125rem;
+  }
+
+  .appt-phone-stack .appt-phone {
+    font-size: var(--pt-xs);
+  }
+
+  .wgi-home {
+    --wgi-row-h: 3.5rem;
+    --wgi-gutter: 2rem;
+  }
+
+  .wgi-list-card {
+    border-radius: var(--radius-lg);
+    padding-top: 1rem;
+  }
+
+  .wgi-list-scroll {
+    padding-inline-start: 0.75rem;
+  }
+
+  .wgi-list-rail {
+    margin-inline-end: 0.75rem;
+  }
+
+  .wgi-list-foot {
+    padding: 0.625rem 1rem 1rem;
+    font-size: var(--pt-xs);
+  }
+
+  .wgi-list-row > td {
+    padding-inline: 0.625rem;
+  }
+
+  .wgi-list-head th {
+    padding-inline: 0.625rem;
+  }
+
+  .appt-name {
+    font-size: var(--pt-sm);
   }
 }
 
-/* ---------- Status badge (fresh StockBadge conversion) ---------- */
+/* ---------- Status badge (fresh StockBadge conversion) ----------
+   30px tall, 7.5px corner, 15px bold; the meanings and their paints are
+   unchanged from the line the surface replaces. */
 
 .wgi-badge {
   display: inline-flex;
-  height: 1.5rem;
+  height: 1.875rem;
   width: fit-content;
   flex: none;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   border: 1px solid transparent;
-  border-radius: 999px;
-  padding: 0.125rem var(--ps-2);
-  font-size: var(--pt-2xs);
+  border-radius: 0.469rem;
+  padding: 0 0.75rem;
+  font-size: var(--pt-sm);
   font-weight: 700;
   letter-spacing: 0;
+  line-height: 1;
   white-space: nowrap;
 }
 
@@ -408,7 +803,14 @@
   border-color: var(--color-line-2);
 }
 
-/* ---------- Skeleton rows (hold the exact line geometry) ---------- */
+/* Overdue: the sheet's amber stamp, at the badge's size. */
+.wgi-badge-overdue {
+  background: color-mix(in oklch, var(--color-amber-soft) 55%, white);
+  color: var(--portal-attention-ink);
+  border-color: color-mix(in oklch, var(--color-amber-deep) 45%, white);
+}
+
+/* ---------- Skeleton rows (hold the exact surface geometry) ---------- */
 
 @keyframes wgi-skeleton {
   0%,
@@ -421,43 +823,52 @@
   }
 }
 
-.wgi-skeleton-list {
-  margin: var(--ps-4) 0 0;
-  padding: 0;
-  list-style: none;
+.wgi-list-skeleton .wgi-list-viewport {
   overflow: hidden;
-  border: 1px solid var(--color-line);
-  border-radius: var(--radius);
-  background: var(--portal-surface);
 }
 
-.wgi-skeleton-list > li {
-  display: flex;
-  align-items: center;
-  gap: var(--ps-4);
-  min-height: 3.25rem;
-  padding: 0 0.85rem;
+.wgi-list-skeleton td > span {
+  display: block;
+  height: 0.85rem;
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--color-line-2) 72%, white);
   animation: wgi-skeleton 1.6s ease-in-out infinite;
 }
 
-.wgi-skeleton-list > li + li {
-  border-top: 1px solid var(--color-line);
-}
+/* ---------- Print: paper has no scroll ---------- */
 
-.wgi-skeleton-list span {
-  height: 0.85rem;
-  border-radius: var(--radius-sm);
-  background: color-mix(in oklch, var(--color-line-2) 72%, white);
-}
+@media print {
+  .portal-content:has(> .wgi-home) {
+    display: block;
+    min-height: 0;
+  }
 
-.wgi-skeleton-list span + span {
-  height: 0.8rem;
-  background: color-mix(in oklch, var(--color-line-2) 60%, white);
-}
+  .wgi-list-card {
+    display: block;
+    min-height: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+  }
 
-.wgi-skeleton-list span:last-child {
-  margin-left: auto;
-  width: 3rem;
+  .wgi-list-scroll {
+    display: block;
+    padding: 0;
+  }
+
+  .wgi-list-viewport {
+    height: auto;
+    overflow: visible !important;
+  }
+
+  .wgi-list-rail {
+    display: none;
+  }
+
+  .wgi-list-head th {
+    position: static;
+  }
 }
 
 /* ---------- Popover shell (fresh StockPopover conversion) ---------- */
@@ -1306,6 +1717,14 @@
   text-align: center;
 }
 
+/* Inside the list surface the empty state is the surface's whole body:
+   centered in the room the rows would have taken, no rule above it. */
+.wgi-list-card .wgi-empty {
+  margin: auto;
+  border-top: 0;
+  padding-block: 3rem 3.5rem;
+}
+
 .wgi-empty h2 {
   margin: 0;
   color: var(--color-ink);
@@ -1695,8 +2114,6 @@
   display: flex;
   flex-direction: column;
   gap: var(--ps-2);
-  border-bottom: 2px solid var(--color-navy);
-  padding-bottom: var(--ps-4);
 }
 
 .wgi-loading-head > span {
@@ -1710,7 +2127,7 @@
 
 .wgi-loading-head > i {
   display: block;
-  height: 1.6rem;
+  height: 2.5rem;
   width: 18rem;
   border-radius: var(--radius-sm);
   background: color-mix(in oklch, var(--color-line-2) 72%, white);
