@@ -19,6 +19,8 @@ before the first database call; `npm run test:e2e-guard` is its own test.
   imports the module as `./module.ts`; `test/register.mjs` (registered once by the script)
   resolves `@/` to `src/`, extensionless relative imports to `.ts`, JSON imports, and stubs
   `server-only` and `client-only`. Do not write a resolve hook in a test.
+  A module under `src/components/` keeps its test in `test/` instead, because that tree is
+  browser-only by lint and may not import `node:test` (`test/scroll-area-physics.test.mjs`).
 - Name each test as the domain sentence it protects ("a new request offers the three contact
   attempts, booking, and the not-actionable close"), so a failure reads as what broke.
 - One file: `node --import ./test/register.mjs --test src/lib/portal/workflow/machine.test.mjs`.

@@ -657,13 +657,18 @@ a.appt-phone:hover {
 /* ---------- The rail ----------
    Track 11px wide, inset 26px from the surface's right edge, from the foot
    of the column labels to the bottom of the rows; thumb 10px in the track,
-   6px corners. Base UI sizes and moves the thumb; nothing here transitions
-   its transform or height — only ink, on the micro beat. */
+   6px corners. Base UI sizes and moves the thumb, and nothing here
+   transitions its transform or height. The paint sits on the ink layer
+   the recipe draws inside the thumb, which tints on the micro beat and,
+   under the recipe's own control, flexes when a gesture pushes past
+   either end and recoils on the registry's `recoil` spring (issue #302).
+   This file owns the ink's color; the recipe owns its transform. */
 .wgi-list-rail {
   /* Base UI positions the rail inline (top: 0; inset-inline-end: 0), so the
      offsets below the column labels and in from the gutter are margins. */
+  --wgi-rail-gap: 0.8125rem;
   margin-block-start: var(--wgi-head-h);
-  margin-inline-end: 0.8125rem;
+  margin-inline-end: var(--wgi-rail-gap);
   width: 0.6875rem;
   height: auto;
   border-radius: 6px;
@@ -680,42 +685,67 @@ a.appt-phone:hover {
   width: 100%;
   flex: none;
   border-radius: 6px;
+}
+
+.wgi-list-thumb > [data-slot="scroll-area-thumb-ink"] {
   background: var(--wgi-thumb);
   transition: background-color var(--motion-micro-duration) var(--motion-exit);
 }
 
-/* A 40px-wide hit area around an 11px track, inside the gutter; the drawn
-   thumb keeps its measured size. */
+/* A 44px-wide hit area around an 11px track, inside the gutter; the drawn
+   thumb keeps its measured size, and the pseudo-element belongs to the
+   thumb, so Base UI reads a press on it as a grab rather than a track
+   jump. The card clips at its edge, `--wgi-rail-gap` past the rail, so
+   the area reaches exactly that far right and takes the rest of its 44px
+   (33px less the gap) on the left, over the gutter. */
 .wgi-list-thumb::before {
   content: "";
   position: absolute;
-  inset: 0 -1rem;
+  inset: 0 calc(-1 * var(--wgi-rail-gap)) 0 calc(var(--wgi-rail-gap) - 2.0625rem);
+}
+
+/* Emphasis while the rows are moving (Base UI's data-scrolling, held for
+   500ms past the last scroll) and, with a mouse, while the rail is
+   hovered: the same tint, on the ink alone. */
+.wgi-list-rail[data-scrolling] .wgi-list-thumb > [data-slot="scroll-area-thumb-ink"] {
+  background: var(--color-line-3);
 }
 
 @media (hover: hover) and (pointer: fine) {
+  .wgi-list-rail[data-hovering] .wgi-list-thumb > [data-slot="scroll-area-thumb-ink"],
+  .wgi-list-thumb:hover > [data-slot="scroll-area-thumb-ink"] {
+    background: var(--color-line-3);
+  }
+
   .wgi-list-rail[data-hovering] .wgi-list-thumb,
   .wgi-list-thumb:hover {
-    background: var(--color-line-3);
     cursor: grab;
   }
 }
 
-/* Held wins over hover: the strongest ink the instant the button goes
-   down, released with it (data-held is the recipe's own flag). */
+/* Held wins over scrolling and hover: the strongest ink the instant the
+   button goes down, released with it (data-held is the recipe's own
+   flag). */
+.wgi-list-rail[data-held] .wgi-list-thumb > [data-slot="scroll-area-thumb-ink"],
+.wgi-list-rail[data-held] .wgi-list-thumb:hover > [data-slot="scroll-area-thumb-ink"] {
+  background: var(--color-muted-ink);
+}
+
 .wgi-list-rail[data-held] .wgi-list-thumb,
 .wgi-list-rail[data-held] .wgi-list-thumb:hover {
-  background: var(--color-muted-ink);
   cursor: grabbing;
 }
 
-/* Touch: the gutter widens so a 44px hit area fits without a mouse. */
+/* Touch: the gutter widens so the 44px-wide hit area sits over the gutter
+   rather than the rows, and the area also reaches 14px above and below
+   the thumb so the 16px shortest thumb still offers 44px to a finger. */
 @media (pointer: coarse) {
   .wgi-home {
     --wgi-gutter: 2.75rem;
   }
 
   .wgi-list-thumb::before {
-    inset: 0 -1.0625rem;
+    inset: -0.875rem calc(-1 * var(--wgi-rail-gap)) -0.875rem calc(var(--wgi-rail-gap) - 2.0625rem);
   }
 }
 
@@ -725,7 +755,7 @@ a.appt-phone:hover {
     background: Canvas;
   }
 
-  .wgi-list-thumb {
+  .wgi-list-thumb > [data-slot="scroll-area-thumb-ink"] {
     background: CanvasText;
     forced-color-adjust: none;
   }
@@ -898,7 +928,7 @@ a.appt-phone:hover {
   }
 
   .wgi-list-rail {
-    margin-inline-end: 0.75rem;
+    --wgi-rail-gap: 0.75rem;
   }
 
   .wgi-list-foot {
@@ -2319,6 +2349,12 @@ a.appt-phone:hover {
   .wgi-sheet-grip[data-dragging] > span {
     transform: none;
   }
+
+  /* The list thumb's elastic flex needs no rule here: the recipe's
+     controller (scroll-area-elastic.ts) reads the same media query, draws
+     nothing while it matches, and clears a deformation or recoil already
+     in flight the moment it starts to match. A CSS reset could not do
+     that, because the drawing is an inline transform written per frame. */
 
   /* The settle wash needs no override: the timed clear in
      home-dashboard.tsx shows the mint tint for ~200ms either way, and the

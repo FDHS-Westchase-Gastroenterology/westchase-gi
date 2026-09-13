@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { test, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { z } from "zod";
 
 import { intakeResponseSchema } from "../../src/lib/portal/contracts";
@@ -16,6 +17,39 @@ const { email: SEED_EMAIL } = seedAdmin();
 const db = serviceDb();
 
 const testIp = clientIps("home");
+
+interface InkFrame {
+  readonly scaleY: number;
+  readonly origin: string;
+}
+
+/**
+ * Watches the thumb's ink layer for `ms` on the page's own frame clock and
+ * returns one sample per frame: the drawn vertical scale (1 at rest) and
+ * the end it is anchored to. Runs alongside the input that follows it.
+ */
+async function observeInk(page: Page, ms: number): Promise<InkFrame[]> {
+  return page.evaluate(async (duration) => {
+    const ink = document.querySelector<HTMLElement>(
+      '.wgi-list-thumb > [data-slot="scroll-area-thumb-ink"]',
+    );
+    const frames: { scaleY: number; origin: string }[] = [];
+    const started = performance.now();
+    await new Promise<void>((resolve) => {
+      const tick = () => {
+        const match = /scale\([^,]+, ([^)]+)\)/.exec(ink?.style.transform ?? "");
+        frames.push({
+          scaleY: match ? Number(match[1]) : 1,
+          origin: ink?.style.transformOrigin ?? "",
+        });
+        if (performance.now() - started < duration) requestAnimationFrame(tick);
+        else resolve();
+      };
+      requestAnimationFrame(tick);
+    });
+    return frames;
+  }, ms);
+}
 
 test.describe("portal home", () => {
   test.beforeEach(({}, testInfo) => {
@@ -520,5 +554,167 @@ test.describe("portal home", () => {
         await db.from("audit_log").delete().in("id", completionIdsToClean);
       }
     }
+  });
+
+  /* The rail's thumb carries an elastic ink layer (issue #302): a wheel or
+     a drag pushed past either end compresses it toward that end, bounded,
+     and it recoils on its own when the push lets go. The rows never leave
+     their range, keys never deform it, reduced motion withholds it, and a
+     day sheet that fits has no rail at all. */
+  test("the day sheet thumb flexes at either end of a push and recoils when it lets go", async ({
+    page,
+  }) => {
+    // Enough lines to overflow the 1440×900 day sheet whatever the branch holds.
+    for (let i = 0; i < 14; i += 1) {
+      const staged = await page.request.post("/api/requests", {
+        data: {
+          name: `TEST Home ${runId} elastic ${i}`,
+          phone: "8135550199",
+          email: `home-${runId}-elastic-${i}@example.test`,
+          location: "any",
+          time: "any",
+          locale: "en",
+          sourcePath: "/en/appointment",
+        },
+        headers: { "X-Forwarded-For": testIp(`elastic-${i}`) },
+      });
+      expect(staged.status()).toBe(201);
+    }
+
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await signIn(page);
+    await expect(page.getByTestId("home-line-list")).toBeVisible();
+    const viewport = page.getByRole("region", { name: "Appointment requests" });
+    const rail = page.locator(".wgi-list-rail");
+    const thumb = page.locator(".wgi-list-thumb");
+    const ink = thumb.locator('> [data-slot="scroll-area-thumb-ink"]');
+    const inlineTransform = async () => ink.evaluate((element) => element.style.transform);
+    const range = async () =>
+      viewport.evaluate((element) => ({
+        top: element.scrollTop,
+        max: element.scrollHeight - element.clientHeight,
+      }));
+    expect((await range()).max).toBeGreaterThan(0);
+    await expect(rail).toHaveCount(1);
+    expect(await inlineTransform()).toBe("");
+
+    const rows = await viewport.boundingBox();
+    if (rows === null) throw new Error("The day sheet has no box");
+    await page.mouse.move(rows.x + rows.width / 2, rows.y + rows.height / 2);
+
+    // Past the end: compressed toward the bottom, never below the cap, and
+    // Back to its measured shape by itself once the wheel goes quiet.
+    await viewport.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await expect.poll(async () => (await range()).max - (await range()).top).toBeLessThan(1);
+    const pastEnd = observeInk(page, 1200);
+    for (let i = 0; i < 6; i += 1) {
+      await page.mouse.wheel(0, 200);
+      await page.waitForTimeout(16);
+    }
+    const endFrames = await pastEnd;
+    const endDeepest = Math.min(...endFrames.map((frame) => frame.scaleY));
+    expect(endDeepest).toBeLessThan(0.95);
+    expect(endDeepest).toBeGreaterThanOrEqual(0.7);
+    expect(endFrames.find((frame) => frame.scaleY < 1)?.origin).toBe("50% 100%");
+    expect(endFrames.at(-1)?.scaleY).toBe(1);
+    await expect.poll(inlineTransform).toBe("");
+    const afterEnd = await range();
+    expect(afterEnd.top).toBeLessThanOrEqual(afterEnd.max);
+
+    // A wheel over the rail at the end presses the same drawing and still
+    // Never reaches the page.
+    const railBox = await rail.boundingBox();
+    if (railBox === null) throw new Error("The rail has no box");
+    await page.mouse.move(railBox.x + railBox.width / 2, railBox.y + 12);
+    const overRail = observeInk(page, 1200);
+    for (let i = 0; i < 6; i += 1) {
+      await page.mouse.wheel(0, 200);
+      await page.waitForTimeout(16);
+    }
+    const railFrames = await overRail;
+    expect(Math.min(...railFrames.map((frame) => frame.scaleY))).toBeLessThan(0.95);
+    expect(await page.evaluate(() => window.scrollY)).toBe(0);
+    await expect.poll(inlineTransform).toBe("");
+
+    // Past the start: the same drawing anchored at the top.
+    await page.mouse.move(rows.x + rows.width / 2, rows.y + rows.height / 2);
+    await viewport.evaluate((element) => {
+      element.scrollTop = 0;
+    });
+    await expect.poll(async () => (await range()).top).toBe(0);
+    const pastStart = observeInk(page, 1200);
+    for (let i = 0; i < 6; i += 1) {
+      await page.mouse.wheel(0, -200);
+      await page.waitForTimeout(16);
+    }
+    const startFrames = await pastStart;
+    expect(Math.min(...startFrames.map((frame) => frame.scaleY))).toBeLessThan(0.95);
+    expect(startFrames.find((frame) => frame.scaleY < 1)?.origin).toBe("50% 0%");
+    await expect.poll(inlineTransform).toBe("");
+
+    // A wheel inside the range moves the rows and draws nothing.
+    const inRange = observeInk(page, 300);
+    await page.mouse.wheel(0, 200);
+    expect((await inRange).every((frame) => frame.scaleY === 1)).toBe(true);
+    expect((await range()).top).toBeGreaterThan(0);
+
+    // A thumb drag past the end: held ink the moment the button is down,
+    // Compression while the pointer is past the end, recoil on release.
+    await viewport.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await expect.poll(async () => (await range()).max - (await range()).top).toBeLessThan(1);
+    const grab = await thumb.boundingBox();
+    if (grab === null) throw new Error("The thumb has no box");
+    const grabX = grab.x + grab.width / 2;
+    const grabY = grab.y + grab.height / 2;
+    await page.mouse.move(grabX, grabY);
+    await page.mouse.down();
+    await expect(rail).toHaveAttribute("data-held", "true");
+    await page.mouse.move(grabX, grabY + 200, { steps: 10 });
+    await expect.poll(inlineTransform).toMatch(/^scale\(1\.\d+, 0\.\d+\)$/);
+    expect(await ink.evaluate((element) => element.style.transformOrigin)).toBe("50% 100%");
+    const heldRange = await range();
+    expect(heldRange.top).toBeLessThanOrEqual(heldRange.max);
+    await page.mouse.up();
+    await expect(rail).not.toHaveAttribute("data-held", "true");
+    await expect.poll(inlineTransform).toBe("");
+
+    // Keys scroll the rows and never touch the drawing.
+    await viewport.focus();
+    const keyed = observeInk(page, 900);
+    await page.keyboard.press("Home");
+    await page.waitForTimeout(300);
+    await page.keyboard.press("End");
+    await page.waitForTimeout(300);
+    await page.keyboard.press("ArrowDown");
+    expect((await keyed).every((frame) => frame.scaleY === 1)).toBe(true);
+    await expect.poll(async () => (await range()).max - (await range()).top).toBeLessThan(1);
+
+    // Reduced motion withholds the drawing; the rows still stop at the end.
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.mouse.move(rows.x + rows.width / 2, rows.y + rows.height / 2);
+    const reduced = observeInk(page, 400);
+    for (let i = 0; i < 6; i += 1) {
+      await page.mouse.wheel(0, 200);
+      await page.waitForTimeout(16);
+    }
+    expect((await reduced).every((frame) => frame.scaleY === 1)).toBe(true);
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+
+    // When the day sheet fits, the rail goes and the columns stay put.
+    const firstHeader = page.getByTestId("home-line-list").locator("thead th").first();
+    const columnBefore = await firstHeader.boundingBox();
+    await page.setViewportSize({ width: 1440, height: 6000 });
+    await expect
+      .poll(async () => {
+        const fits = (await range()).max <= 0;
+        return { fits, rails: await rail.count() };
+      })
+      .toEqual({ fits: true, rails: 0 });
+    const columnAfter = await firstHeader.boundingBox();
+    expect(columnAfter?.x).toBe(columnBefore?.x);
   });
 });
