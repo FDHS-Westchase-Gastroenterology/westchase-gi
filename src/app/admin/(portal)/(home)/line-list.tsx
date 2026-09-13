@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
 
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
@@ -70,6 +70,23 @@ function visibleRange(viewport: HTMLElement, table: HTMLTableElement): readonly 
   return [first, last];
 }
 
+/** True on a touch screen, where the row's phone number is a dial. False on
+   the server and through hydration, so the first paint is the desktop text. */
+function useCoarsePointer(): boolean {
+  const subscribe = useCallback((onChange: () => void) => {
+    const media = window.matchMedia("(pointer: coarse)");
+    media.addEventListener("change", onChange);
+    return () => {
+      media.removeEventListener("change", onChange);
+    };
+  }, []);
+  return useSyncExternalStore(
+    subscribe,
+    () => window.matchMedia("(pointer: coarse)").matches,
+    () => false,
+  );
+}
+
 export function LineList({
   lines,
   resetKey,
@@ -81,6 +98,7 @@ export function LineList({
   empty,
   note,
 }: LineListProps) {
+  const dial = useCoarsePointer();
   const viewportRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
   const rangeRef = useRef<HTMLSpanElement>(null);
@@ -167,6 +185,7 @@ export function LineList({
                     <LineRow
                       key={line.id}
                       line={line}
+                      dial={dial}
                       open={openRowId === line.id}
                       settled={settledId === line.id}
                       onOpenChange={(open) => {
@@ -209,8 +228,17 @@ function onControl(event: ReactMouseEvent<HTMLTableRowElement>): boolean {
   return event.target instanceof Element && event.target.closest("a, button") !== null;
 }
 
+/** True when the click ends a text selection inside the row: staff copying
+   a phone number, not opening the record. */
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM nodes carry platform member types that cannot be made readonly
+function selecting(row: HTMLTableRowElement): boolean {
+  const selection = window.getSelection();
+  return selection !== null && !selection.isCollapsed && selection.containsNode(row, true);
+}
+
 function LineRow({
   line,
+  dial,
   open,
   settled,
   onOpenChange,
@@ -218,6 +246,8 @@ function LineRow({
   onSettled,
 }: Readonly<{
   line: Readonly<HomeLine>;
+  /** Render the phone as a dial link (touch) or as copyable text (desktop). */
+  dial: boolean;
   open: boolean;
   settled: boolean;
   onOpenChange: (open: boolean) => void;
@@ -225,7 +255,11 @@ function LineRow({
   onSettled: (id: string) => void;
 }>) {
   const rowRef = useRef<HTMLTableRowElement>(null);
-  const phone = (
+  /* Staff work at a desk with a phone in hand: the number is text to read
+     and copy (one click selects all of it), not a link that would open a
+     softphone. On a touch screen it is a dial. The record card keeps its own
+     call link either way. */
+  const phone = dial ? (
     <a
       href={line.tel}
       className="appt-phone"
@@ -238,6 +272,11 @@ function LineRow({
       <PhoneGlyph size={18} />
       {line.phoneDisplay}
     </a>
+  ) : (
+    <span className="appt-phone" data-ui-redact="patient-contact">
+      <PhoneGlyph size={18} />
+      {line.phoneDisplay}
+    </span>
   );
   return (
     <TableRow
@@ -247,9 +286,10 @@ function LineRow({
       data-settled={settled || undefined}
       className="wgi-list-row"
       onClick={(event) => {
-        /* The whole row opens the record; its phone link stays a dial and
-           its chevron is the trigger itself. */
-        if (onControl(event)) return;
+        /* The whole row opens the record; its phone link stays a dial, its
+           chevron is the trigger itself, and a click that selected text
+           (the phone number, to copy) is a selection, not an open. */
+        if (onControl(event) || selecting(event.currentTarget)) return;
         onOpenChange(!open);
       }}
     >
