@@ -1,0 +1,61 @@
+{
+  "engine": "webkit",
+  "version": "26.5",
+  "results": [
+    {
+      "name": "mobile media: pointer coarse",
+      "ok": true,
+      "detail": "{\"coarse\":true,\"hover\":false}"
+    },
+    {
+      "name": "list overflows inside the surface",
+      "ok": true,
+      "detail": "{\"sh\":5804,\"ch\":427}"
+    },
+    {
+      "name": "narrow screen: the page scrolls to reach the list and the list still scrolls internally",
+      "ok": true,
+      "detail": "{\"cardBottom\":1066,\"docScroll\":1203,\"cardH\":488}"
+    },
+    {
+      "name": "phone column collapses into the patient cell",
+      "ok": true,
+      "detail": "{\"phoneCol\":\"none\",\"stack\":\"block\"}"
+    },
+    {
+      "name": "thumb touch hit area >= 44px",
+      "ok": true,
+      "detail": "{\"hit\":45}"
+    },
+    {
+      "name": "rail clear of the card's right edge",
+      "ok": true,
+      "detail": "{\"rail\":{\"x\":351,\"y\":630,\"w\":11,\"h\":391,\"r\":362,\"b\":1022},\"card\":{\"x\":16,\"y\":578,\"w\":358,\"h\":488,\"r\":374,\"b\":1066}}"
+    },
+    {
+      "name": "list viewport visible on screen before the swipe",
+      "ok": true,
+      "detail": "{\"vpY\":284,\"vpB\":712,\"pageY\":310}"
+    },
+    {
+      "name": "tap on a row opens its record card",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Escape closes it",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Print and Add controls present",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "no console errors",
+      "ok": true,
+      "detail": "[]"
+    }
+  ]
+}

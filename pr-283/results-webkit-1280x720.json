@@ -1,0 +1,434 @@
+{
+  "engine": "webkit",
+  "version": "26.5",
+  "W": 1280,
+  "H": 720,
+  "results": [
+    {
+      "name": "list overflows inside the surface",
+      "ok": true,
+      "detail": "{\"sh\":4768,\"ch\":346}"
+    },
+    {
+      "name": "viewport is a named focusable region",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "viewport scroll css",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "card bottom edge inside the viewport",
+      "ok": true,
+      "detail": "{\"cardBottom\":628.484375,\"H\":720}"
+    },
+    {
+      "name": "rail sits under the labels, inside the gutter",
+      "ok": true,
+      "detail": "{\"rail\":{\"x\":1204.8125,\"y\":261.890625,\"w\":11,\"h\":309.75,\"b\":571.640625,\"r\":1215.8125},\"vpRight\":1189.8125,\"cardRight\":1228.8125}"
+    },
+    {
+      "name": "thumb touch-action none on rail only",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "thumb hit area >= 40px",
+      "ok": true,
+      "detail": "{\"w\":43}"
+    },
+    {
+      "name": "no thumb transform/height transition",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "range matches the rows fully in view",
+      "ok": true,
+      "detail": "{\"shown\":\"1–6 of 102\",\"expected\":\"1–6 of 102\"}"
+    },
+    {
+      "name": "no per-row will-change",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "wheel scrolls the list, not the page",
+      "ok": true,
+      "detail": "{\"st\":300,\"pageY\":0}"
+    },
+    {
+      "name": "range updates after wheel",
+      "ok": true,
+      "detail": "{\"range\":\"8–13 of 102\"}"
+    },
+    {
+      "name": "range holds between row boundaries",
+      "ok": true,
+      "detail": "8–13 of 102"
+    },
+    {
+      "name": "range steps at a row boundary",
+      "ok": true,
+      "detail": "9–14 of 102"
+    },
+    {
+      "name": "wheel up over the rail at the top moves nothing",
+      "ok": true,
+      "detail": "{\"st\":0,\"pageY\":0}"
+    },
+    {
+      "name": "wheel down over the rail scrolls the list",
+      "ok": true,
+      "detail": "{\"st\":400}"
+    },
+    {
+      "name": "wheel down over the rail at the bottom does not move the page",
+      "ok": true,
+      "detail": "{\"st\":4422,\"pageY\":0,\"docH\":721,\"H\":720}"
+    },
+    {
+      "name": "wheel down over the list at the bottom does not move the page",
+      "ok": true,
+      "detail": "{\"st\":4422,\"pageY\":0}"
+    },
+    {
+      "name": "range at the bottom ends on the last row",
+      "ok": true,
+      "detail": "97–102 of 102"
+    },
+    {
+      "name": "keyboard: Arrow/Page/End/Home/Space move the list",
+      "ok": true,
+      "detail": "{\"kb1\":40,\"kb2\":346,\"kb3\":4422,\"kb4\":0,\"kb5\":306,\"kb6\":0,\"arrowPresses\":2}"
+    },
+    {
+      "name": "keyboard: page did not move",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "keyboard: focus ring on the viewport",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Tab leaves the viewport to the first row control, visible below the header",
+      "ok": true,
+      "detail": "{\"cls\":\"appt-line-trigger\",\"inList\":true,\"below\":true,\"visible\":true}"
+    },
+    {
+      "name": "tabbing on keeps the focused control visible under the sticky header",
+      "ok": true,
+      "detail": "{\"cls\":\"appt-line-trigger\",\"row\":3,\"below\":true,\"visible\":true}"
+    },
+    {
+      "name": "Shift+Tab returns to the viewport",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "thumb hover: grab cursor and stronger ink",
+      "ok": true,
+      "detail": "{\"cursor\":\"grab\",\"bg\":\"lab(53.659698 -4.53016 -7.71227)\",\"rest\":\"oklab(0.6 -0.014339 -0.020479)\"}"
+    },
+    {
+      "name": "press: held state and grabbing cursor at once",
+      "ok": true,
+      "detail": "{\"held\":true,\"cursor\":\"grabbing\",\"bg\":\"oklab(0.486805 -0.012738 -0.021499)\"}"
+    },
+    {
+      "name": "drag: thumb follows, grab point preserved",
+      "ok": true,
+      "detail": "{\"st\":1842,\"thumbY\":381.6515197753906,\"pointerY\":393.1328125,\"grabOffset\":11.2421875}"
+    },
+    {
+      "name": "drag: pointer captured on the rail",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "drag continues off the rail (capture)",
+      "ok": true,
+      "detail": "{\"st\":3070,\"thumbY\":461.49212646484375}"
+    },
+    {
+      "name": "release ends held",
+      "ok": true,
+      "detail": "{\"held\":false,\"cursor\":\"grab\"}"
+    },
+    {
+      "name": "held ended on release, hover still where the pointer is",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "held on second press",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "window blur ends held",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "pointercancel ends held",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "track press jumps toward the pressed position",
+      "ok": true,
+      "detail": "{\"st\":4270,\"ch\":346}"
+    },
+    {
+      "name": "held cleared after the track click",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "chevron opens the record card",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "popover open: list position kept",
+      "ok": true,
+      "detail": "{\"st\":400,\"stBefore\":400}"
+    },
+    {
+      "name": "card is anchored to its row",
+      "ok": true,
+      "detail": "{\"cardTop\":8,\"cardLeft\":338,\"rowBottom\":464.96875,\"rowTop\":418.578125,\"rowLeft\":338.1875,\"cardBottom\":410.578125}"
+    },
+    {
+      "name": "popover transition reads the registry",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Escape closes and returns focus to the chevron",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "close: list position and page kept",
+      "ok": true,
+      "detail": "{\"st\":400}"
+    },
+    {
+      "name": "row click opens the card",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "second row click closes it",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "row toggle kept the list position",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "outside press closes the card",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "outside press kept the list position",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sheet opens from the card",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sheet: card closed behind it",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sheet motion reads the registry",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sheet closes and returns focus to the row's chevron",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sheet round trip kept the list position",
+      "ok": true,
+      "detail": "{\"st\":400}"
+    },
+    {
+      "name": "keyboard-opened sheet is instant",
+      "ok": true,
+      "detail": "instant attr or no transition"
+    },
+    {
+      "name": "Escape closes the sheet back to the chevron",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "settle wash: the row acknowledges the saved outcome",
+      "ok": true,
+      "detail": "{\"fixtureId\":\"37c191c3-0fb4-49fa-b10a-b7eb63705858\"}"
+    },
+    {
+      "name": "settle wash: card closed after save",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "settle wash: cells carry the tint transition",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "committed filter starts the new set at the top",
+      "ok": true,
+      "detail": "{\"st\":0}"
+    },
+    {
+      "name": "filter change: page did not move",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "filter change: focus not stolen by the list",
+      "ok": true,
+      "detail": "portal-scope min-h-dvh bg-[var(--color-paper)] text-[var(--color-body)]"
+    },
+    {
+      "name": "filter change: URL carries the state",
+      "ok": true,
+      "detail": "http://localhost:3100/admin?status=new"
+    },
+    {
+      "name": "filter change: count and range are the filtered set",
+      "ok": true,
+      "detail": "19 requests1–6 of 19"
+    },
+    {
+      "name": "active pill shown, dashed suggestions remain",
+      "ok": true,
+      "detail": "StatusNew19"
+    },
+    {
+      "name": "pill remove clears the filter from the URL",
+      "ok": true,
+      "detail": "http://localhost:3100/admin"
+    },
+    {
+      "name": "empty state renders inside the surface",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Clear filters restores the list",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "phone link dials",
+      "ok": true,
+      "detail": "tel:+18135550110"
+    },
+    {
+      "name": "phone click does not open the record",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "print chooser opens with a packet link",
+      "ok": true,
+      "detail": "/admin/requests/print?auto=1"
+    },
+    {
+      "name": "print chooser closes back to its trigger",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "print packet renders the New records (count on page vs list)",
+      "ok": true,
+      "detail": "{\"printed\":77,\"listNew\":19}"
+    },
+    {
+      "name": "print media: paper has no scroll, every row laid out, rail hidden",
+      "ok": true,
+      "detail": "{\"ov\":\"visible\",\"allLaidOut\":true,\"docH\":720,\"rail\":\"none\"}"
+    },
+    {
+      "name": "Add appointment dialog opens",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Add appointment: empty submit is refused",
+      "ok": true,
+      "detail": "{\"invalid\":5}"
+    },
+    {
+      "name": "Add appointment: saved and on the line",
+      "ok": true,
+      "detail": "{\"added\":1}"
+    },
+    {
+      "name": "Add appointment: focus back on the trigger",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sidebar nav and account controls",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "greeting and day from app logic",
+      "ok": true,
+      "detail": "Good morning. Sunday, September 13"
+    },
+    {
+      "name": "heading set in Lato",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "tabular numerals on phone/received/footer",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "alternating bands on even rows",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "status badges keep their words",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "scroll performance: no long frames during an 80-event wheel storm",
+      "ok": true,
+      "detail": "{\"frames\":178,\"avg\":17,\"p95\":27,\"max\":38,\"over50\":0}"
+    },
+    {
+      "name": "no console errors",
+      "ok": true,
+      "detail": "[]"
+    }
+  ],
+  "errors": []
+}
