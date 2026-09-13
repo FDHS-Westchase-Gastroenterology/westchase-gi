@@ -214,7 +214,15 @@ export const ILLEGAL_TRANSITION_COPY =
 // ---------------------------------------------------------------------------
 
 export type Feedback =
-  | { readonly tone: "success"; readonly text: string; readonly closedOrBooked: boolean }
+  | {
+      readonly tone: "success";
+      readonly text: string;
+      readonly closedOrBooked: boolean;
+      /** The queue neighbor to continue to, fixed at the moment the outcome
+          was accepted. The page's own next link is recomputed on refresh, and
+          a row that just left the open set has different neighbors then. */
+      readonly nextHref: string | null;
+    }
   | { readonly tone: "error"; readonly text: string };
 
 export interface PanelState {
@@ -236,7 +244,12 @@ export type PanelAction =
   | { readonly type: "set_appointment_day"; readonly day: string }
   | { readonly type: "set_appointment_time"; readonly time: string }
   | { readonly type: "select_review"; readonly resolution: "booked" | ClosureReason }
-  | { readonly type: "succeeded"; readonly text: string; readonly closedOrBooked: boolean }
+  | {
+      readonly type: "succeeded";
+      readonly text: string;
+      readonly closedOrBooked: boolean;
+      readonly nextHref: string | null;
+    }
   | { readonly type: "failed"; readonly text: string };
 
 export const INITIAL_PANEL: PanelState = {
@@ -280,7 +293,12 @@ export function panelReducer(
     case "succeeded":
       return {
         ...INITIAL_PANEL,
-        feedback: { tone: "success", text: action.text, closedOrBooked: action.closedOrBooked },
+        feedback: {
+          tone: "success",
+          text: action.text,
+          closedOrBooked: action.closedOrBooked,
+          nextHref: action.nextHref,
+        },
       };
     case "failed":
       return { ...state, feedback: { tone: "error", text: action.text } };
