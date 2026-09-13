@@ -8,16 +8,16 @@ const REVIEW_STATUS = "Dependabot Auto-Merge";
 const REVIEW_MARKER = "<!-- dependabot-codex-review -->";
 const ALLOWED_CHANGED_FILES = new Set(["package.json", "package-lock.json"]);
 // Supabase's preview-branch check only reports on pull requests that change
-// the database, so it is required where present rather than always required.
+// The database, so it is required where present rather than always required.
 // The deterministic Actions gates every pull request must clear. The merge
-// controller both verifies these on the exact head and re-attests them as
-// commit statuses, so the two lists must never drift apart.
+// Controller both verifies these on the exact head and re-attests them as
+// Commit statuses, so the two lists must never drift apart.
 const PR_REQUIRED_CHECKS = ["quality", "react-doctor", "supabase-integration"];
 const PRODUCTION_REQUIRED_CHECKS = ["quality", "react-doctor", "production"];
 const CONDITIONAL_SIGNALS = ["Supabase Preview"];
 // GitHub returns these when it declines one specific merge — an unmet required
-// check, a moved head, a conflict. They are verdicts about that pull request,
-// never controller faults, so they must not abort the whole queue.
+// Check, a moved head, a conflict. They are verdicts about that pull request,
+// Never controller faults, so they must not abort the whole queue.
 const MERGE_REJECTION_STATUSES = new Set([405, 409, 422]);
 const LABELS = {
   approved: {
@@ -289,8 +289,8 @@ function latestCheck(checkRuns, checkName) {
 }
 
 // A conditional signal that never reported on this head is not applicable, the
-// same way an always-reported gate is allowed to report a legitimate skip. Once
-// it does report, a clean result is required before the merge.
+// Same way an always-reported gate is allowed to report a legitimate skip. Once
+// It does report, a clean result is required before the merge.
 function conditionalSignalPassed(checkRuns, statuses, name) {
   const check = latestCheck(checkRuns, name);
   if (check) {

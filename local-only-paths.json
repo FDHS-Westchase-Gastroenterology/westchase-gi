@@ -8,7 +8,7 @@
     "  1. .githooks/pre-commit          -> node scripts/check-local-only.mjs staged",
     "  2. .github/workflows/ci.yml      -> node scripts/check-local-only.mjs tracked",
     "  3. .gitignore (managed block)    -> node scripts/check-local-only.mjs write",
-    "  4. .claude/rules/local-only-directories.md (managed block, same write command)",
+    "  4. .claude/rules/local-only-directories.md (managed block, same write command; .claude/ itself is tracked by owner decision on 2026-09-06)",
     "Change the list here and run `npm run local-only:write`. CI fails if the .gitignore",
     "managed block has drifted from this file, so the copies cannot silently diverge.",
     "",
@@ -32,14 +32,6 @@
       "whyItLeaked": "Never given an ignore rule at all in two months. Still tracked on origin/main: 149 files."
     },
     {
-      "path": ".claude/",
-      "gitignore": "/.claude/",
-      "reason": "Claude Code settings, rules and agent scratch for this machine.",
-      "firstTracked": "a6d3fe7 2026-08-30",
-      "ignoreRuleAdded": "ec71662 2026-09-02",
-      "whyItLeaked": "Rule added three days after the files were tracked."
-    },
-    {
       "path": ".codex/skills/",
       "gitignore": "/.codex/skills/",
       "reason": "Local Codex skill definitions.",
@@ -54,7 +46,7 @@
     {
       "path": ".design-sync/",
       "gitignore": "/.design-sync/",
-      "reason": "Generated output of the claude.ai/design import pipeline.",
+      "reason": "Machine-local Claude Design pipeline source, configuration, component metadata, previews, and build output.",
       "firstTracked": "823b332 2026-08-30",
       "ignoreRuleAdded": "596d410 2026-08-30 (narrow) / ec71662 2026-09-02 (broad)",
       "whyItLeaked": "Fourteen narrow rules landed the same day but matched none of the files actually generated; a rule that worked took three more days."
@@ -62,7 +54,7 @@
     {
       "path": ".ds-sync/",
       "gitignore": "/.ds-sync/",
-      "reason": "Generated design-sync staging directory.",
+      "reason": "Machine-local toolchain that builds, validates, and captures the Claude Design bundle.",
       "firstTracked": null
     },
     {
@@ -102,7 +94,7 @@
     {
       "path": "ds-bundle/",
       "gitignore": "/ds-bundle/",
-      "reason": "Generated design-system bundle.",
+      "reason": "Generated Claude Design bundle for review and sync; rebuilt from the local pipeline and repository components.",
       "firstTracked": null
     },
     {
@@ -137,7 +129,7 @@
   "loadBearing": [
     {
       "path": "scripts/",
-      "reason": "Tracked on main and required by CI. .github/workflows/supabase-dependency-integration.yml runs node scripts/seed-portal.mjs at line 197 and node scripts/verify-schema.mjs at line 200. package.json scripts ds:stock, ui:reference, dev and test:unit also invoke files here.",
+      "reason": "Tracked on main and required by CI. .github/workflows/supabase-dependency-integration.yml runs node scripts/seed-portal.mjs at line 197 and node scripts/verify-schema.mjs at line 200. package.json scripts ui:reference, dev and test:unit also invoke files here.",
       "incident": "Untracked by commit 2b85477d on 2026-09-02, which broke the supabase-integration job; reverted the same day by 899afbdc."
     },
     {
@@ -175,6 +167,10 @@
     {
       "path": "private/",
       "reason": "Review-flyer PDFs and QR codes verified by scripts/verify-review-flyers.mjs."
+    },
+    {
+      "path": ".claude/",
+      "reason": "Shared Claude Code launch configuration, repository rules, and skills symlink are tracked by owner instruction."
     }
   ]
 }

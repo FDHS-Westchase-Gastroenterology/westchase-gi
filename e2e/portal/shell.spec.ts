@@ -1,0 +1,388 @@
+import { randomUUID } from "node:crypto";
+
+import { test, expect } from "@playwright/test";
+
+import { intakeResponseSchema } from "../../src/lib/portal/contracts";
+import { seedAdmin, serviceDb } from "../harness/env";
+import { signIn } from "../harness/session";
+
+// VAL-ADMIN-002: the seed admin can log in and out through the UI.
+// VAL-ADMIN-014 (shell scope): no horizontal overflow at 390/1440, nav
+// And utility targets >= 44px, and the chrome uses the repo's design tokens
+// (not ad-hoc hex).
+
+const { email: SEED_EMAIL } = seedAdmin();
+
+test.beforeEach(({}, testInfo) => {
+  test.skip(testInfo.project.name !== "chromium", "JS portal UI");
+});
+
+test("VAL-ADMIN-002: seed admin logs in and out through the UI", async ({ page }) => {
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/\/admin\/login\/?$/);
+
+  await signIn(page);
+  const { data: profile } = await serviceDb()
+    .from("staff_profiles")
+    .select("display_name")
+    .eq("email", SEED_EMAIL.toLowerCase())
+    .single();
+  await expect(page.getByTestId("session-user")).toHaveText(String(profile?.display_name ?? ""));
+
+  await page.reload();
+  await expect(page).toHaveURL(/\/admin\/?$/);
+  await expect(page.getByTestId("session-user")).toBeVisible();
+
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/admin\/login\/?$/);
+
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/\/admin\/login\/?$/);
+});
+
+const VIEWPORTS = [
+  { name: "390", width: 390, height: 844 },
+  { name: "1440", width: 1440, height: 900 },
+] as const;
+
+const PORTAL_PAGES = [
+  { name: "home", path: "/admin" },
+  { name: "queue", path: "/admin/requests" },
+  { name: "review-flyers", path: "/admin/review-flyers" },
+  { name: "settings", path: "/admin/settings" },
+  { name: "settings-software", path: "/admin/settings/software" },
+  { name: "audit", path: "/admin/audit" },
+  { name: "help", path: "/admin/help" },
+] as const;
+
+test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", async ({ page }) => {
+  test.setTimeout(120_000);
+  await signIn(page);
+
+  for (const viewport of VIEWPORTS) {
+    await page.setViewportSize({
+      width: viewport.width,
+      height: viewport.height,
+    });
+
+    // Login page (fresh context not needed: measure it logged out later).
+    for (const portalPage of PORTAL_PAGES) {
+      await page.goto(portalPage.path);
+      await expect(page).toHaveURL(new RegExp(`${portalPage.path}/?$`));
+
+      const overflow = await page.evaluate(() => {
+        const el = document.documentElement;
+        return el.scrollWidth - el.clientWidth;
+      });
+      expect(
+        overflow,
+        `${portalPage.path} horizontal overflow at ${viewport.name}`,
+      ).toBeLessThanOrEqual(0);
+
+      // Every primary destination is a real 44px target AND fully on
+      // Screen — reachability must never depend on unmarked horizontal
+      // Scrolling (a destination that starts offscreen does not exist
+      // For staff who don't know to swipe a nav bar).
+      const navBoxes = await page
+        .locator('nav[aria-label="Portal sections"] a')
+        .evaluateAll((links) =>
+          links.map((link) => {
+            const rect = link.getBoundingClientRect();
+            return { height: rect.height, left: rect.left, right: rect.right };
+          }),
+        );
+      expect(navBoxes).toHaveLength(4);
+      for (const box of navBoxes) {
+        expect(box.height, "nav target height").toBeGreaterThanOrEqual(44);
+        expect(box.left, "nav item starts on screen").toBeGreaterThanOrEqual(0);
+        expect(box.right, `nav item fully visible at ${viewport.name}`).toBeLessThanOrEqual(
+          viewport.width,
+        );
+      }
+
+      if (viewport.width < 960) {
+        await page.getByRole("button", { name: "Open account menu" }).click();
+      }
+
+      const websiteLink = page.getByRole("link", { name: "View website" });
+      await expect(websiteLink).toBeVisible();
+      await expect(websiteLink).toHaveAttribute("href", "/");
+      expect((await websiteLink.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+
+      const signOutBox = await page.getByRole("button", { name: "Sign out" }).boundingBox();
+      expect(signOutBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+
+      const utilityCollision = await page.evaluate(() => {
+        const website = Array.from(document.querySelectorAll("a"))
+          .find((link) => link.textContent.trim() === "View website")
+          ?.getBoundingClientRect();
+        const signOut = Array.from(
+          document.querySelectorAll<HTMLButtonElement>('button[type="submit"]'),
+        )
+          .map((button) => button.getBoundingClientRect())
+          .find((rect) => rect.width > 0 && rect.height > 0);
+        const identity = document
+          .querySelector('[data-testid="session-user"]')
+          ?.parentElement?.getBoundingClientRect();
+        const overlaps = (a: Readonly<DOMRect>, b: Readonly<DOMRect>) =>
+          a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+        return {
+          signOut: Boolean(website && signOut && overlaps(website, signOut)),
+          identity: Boolean(
+            website &&
+            identity &&
+            identity.width > 0 &&
+            identity.height > 0 &&
+            overlaps(website, identity),
+          ),
+        };
+      });
+      expect(utilityCollision).toEqual({ signOut: false, identity: false });
+
+      if (viewport.width < 960) {
+        await page.getByRole("button", { name: "Open account menu" }).click();
+
+        const bottomClearance = await page.evaluate(() => {
+          document.documentElement.style.scrollBehavior = "auto";
+          window.scrollTo(0, document.documentElement.scrollHeight);
+          const navigation = document.querySelector(".portal-sidebar");
+          const lastContent = document.querySelector(".portal-content")?.lastElementChild;
+          if (!(navigation instanceof HTMLElement) || !(lastContent instanceof HTMLElement)) {
+            return null;
+          }
+          return (
+            navigation.getBoundingClientRect().top - lastContent.getBoundingClientRect().bottom
+          );
+        });
+        expect(
+          bottomClearance,
+          `${portalPage.path} final content clears mobile navigation`,
+        ).not.toBeNull();
+        expect(
+          bottomClearance ?? -1,
+          `${portalPage.path} final content clears mobile navigation`,
+        ).toBeGreaterThanOrEqual(0);
+      }
+
+      // Settings is active on both of its sub-pages.
+      if (portalPage.path.startsWith("/admin/settings")) {
+        await expect(
+          page.locator('nav[aria-label="Portal sections"] a[aria-current="page"]'),
+        ).toHaveText("Settings");
+      }
+    }
+
+    // Token discipline: the task rail carries navy and the active location
+    // Carries teal. Amber remains reserved for requests that need attention.
+    await page.goto("/admin");
+    const tokenCheck = await page.evaluate(() => {
+      const probe = document.createElement("div");
+      probe.style.backgroundColor = "var(--color-navy-2)";
+      probe.style.borderColor = "var(--color-teal)";
+      document.body.appendChild(probe);
+      const probeStyles = getComputedStyle(probe);
+      const expectedNavy = probeStyles.backgroundColor;
+      const expectedAmber = probeStyles.borderColor;
+      probe.remove();
+
+      const rail = document.querySelector(".portal-sidebar");
+      const active = document.querySelector(
+        'nav[aria-label="Portal sections"] a[aria-current="page"]',
+      );
+      return {
+        expectedNavy,
+        expectedAmber,
+        railBg: rail ? getComputedStyle(rail).backgroundColor : null,
+        activeIndicator: active ? getComputedStyle(active, "::before").backgroundColor : null,
+      };
+    });
+    expect(tokenCheck.railBg).toBe(tokenCheck.expectedNavy);
+    expect(tokenCheck.activeIndicator).toBe(tokenCheck.expectedAmber);
+  }
+
+  // Logged-out login page measurements.
+  await page.getByRole("button", { name: "Sign out" }).click();
+  await expect(page).toHaveURL(/\/admin\/login\/?$/);
+  for (const viewport of VIEWPORTS) {
+    await page.setViewportSize({
+      width: viewport.width,
+      height: viewport.height,
+    });
+    await page.goto("/admin/login");
+    const overflow = await page.evaluate(() => {
+      const el = document.documentElement;
+      return el.scrollWidth - el.clientWidth;
+    });
+    expect(overflow, `login overflow at ${viewport.name}`).toBeLessThanOrEqual(0);
+
+    await page.getByLabel("Email").fill("recovery-layout@example.test");
+    const forgotButton = page.getByRole("button", {
+      name: "Forgot password?",
+    });
+    expect((await forgotButton.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+    await forgotButton.click();
+    await expect(page.getByLabel("Email")).toBeFocused();
+    await expect(page.getByLabel("Email")).toHaveValue("recovery-layout@example.test");
+    const recoveryOverflow = await page.evaluate(() => {
+      const el = document.documentElement;
+      return el.scrollWidth - el.clientWidth;
+    });
+    expect(recoveryOverflow, `recovery overflow at ${viewport.name}`).toBeLessThanOrEqual(0);
+    for (const control of [
+      page.getByRole("button", { name: "Send reset link" }),
+      page.getByRole("button", { name: "Back to sign in" }),
+    ]) {
+      expect((await control.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+    }
+    await page.getByRole("button", { name: "Back to sign in" }).click();
+    await expect(page.getByLabel("Email")).toHaveValue("recovery-layout@example.test");
+  }
+});
+
+test("VAL-ADMIN-016: the waiting count rides on the Requests nav item", async ({
+  page,
+  request,
+}) => {
+  const marker = `navbadge-${randomUUID().slice(0, 8)}@example.test`;
+  const staged = await request.post("/api/requests", {
+    data: {
+      name: "TEST Nav Badge",
+      phone: "8135550122",
+      email: marker,
+      location: "tampa",
+      time: "morning",
+      message: "TEST staged for the nav badge check.",
+      locale: "en",
+      sourcePath: "/en/appointment",
+    },
+  });
+  expect(staged.status()).toBe(201);
+  const db = serviceDb();
+
+  try {
+    await signIn(page);
+    await page.goto("/admin/settings");
+
+    // Other specs on the same Preview Branch can add or remove
+    // New requests mid-run; accept the badge once it matches the SQL count
+    // At the same instant (and is gone only when that count is zero).
+    await expect
+      .poll(
+        async () => {
+          await page.reload();
+          const badge = page.getByTestId("nav-waiting-badge");
+          const shown = (await badge.count()) > 0;
+          const text = shown ? Number((await badge.textContent())?.replace(/\D+/g, "")) : null;
+          const { count, error } = await db
+            .from("requests")
+            .select("id", { count: "exact", head: true })
+            .eq("status", "new");
+          expect(error).toBeNull();
+          if ((count ?? 0) === 0) return shown ? "badge-shown-at-zero" : "consistent";
+          return shown && text === count ? "consistent" : `badge=${text} sql=${count}`;
+        },
+        { timeout: 30_000, intervals: [500, 1_000, 2_000] },
+      )
+      .toBe("consistent");
+  } finally {
+    await db.from("requests").delete().eq("email", marker);
+  }
+});
+
+test("staff can view the locale-negotiated website and return with their session", async ({
+  page,
+}) => {
+  await page.context().addCookies([
+    {
+      name: "wgi-locale",
+      value: "es",
+      url: "http://localhost:3100",
+      sameSite: "Lax",
+    },
+  ]);
+  await signIn(page);
+
+  const wordmark = page.getByRole("link", {
+    name: "Westchase Gastroenterology",
+  });
+  await expect(wordmark).toHaveAttribute("href", "/admin");
+  const websiteLink = page.getByRole("link", { name: "View website" });
+  await wordmark.focus();
+  await page.keyboard.press("Tab");
+  const homeLink = page
+    .locator('nav[aria-label="Portal sections"]')
+    .getByRole("link", { name: "Home", exact: true });
+  await expect(homeLink).toBeFocused();
+  expect(await homeLink.evaluate((link) => getComputedStyle(link).outlineStyle)).not.toBe("none");
+  await websiteLink.click();
+  await expect(page).toHaveURL(/\/es\/?$/);
+
+  await page.goto("/admin");
+  await expect(page).toHaveURL(/\/admin\/?$/);
+  await expect(page.getByTestId("session-user")).toBeVisible();
+});
+
+// VAL-REG-005 (revised 2026-07-26): the portal ships no assistant placeholder.
+// A floating control that completes no job obstructs real work; when an
+// Assistant lands it will be a docked widget with no page and no nav entry
+// (PRODUCT.md, "The assistant seam is reserved, not occupied").
+const ASSISTANT_SEAM_PAGES = [
+  "/admin",
+  "/admin/settings",
+  "/admin/settings/software",
+  "/admin/audit",
+  "/admin/help",
+];
+
+test("VAL-REG-005: no assistant placeholder ships before the assistant works", async ({ page }) => {
+  test.setTimeout(120_000);
+  await signIn(page);
+
+  // Stage one request so a detail page exists for the portal-wide check.
+  const response = await page.request.post("/api/requests", {
+    data: {
+      name: "TEST Assistant Widget",
+      phone: "8135550188",
+      email: "assistant-widget@example.test",
+      location: "any",
+      time: "any",
+      locale: "en",
+      sourcePath: "/en/appointment",
+    },
+    headers: { "X-Forwarded-For": "2001:db8:5ea3:1::5" },
+  });
+  expect(response.status()).toBe(201);
+  const body = intakeResponseSchema.parse(await response.json());
+  if (!body.ok) throw new Error("Expected an accepted intake response");
+  const { id } = body;
+
+  // No floating placeholder covers content on any portal page.
+  const everyPage = [...ASSISTANT_SEAM_PAGES, `/admin/requests/${id}`];
+  for (const path of everyPage) {
+    await page.goto(path);
+    await expect(page.locator("main")).toBeVisible();
+    await expect(
+      page.getByTestId("assistant-launcher"),
+      `placeholder launcher present on ${path}`,
+    ).toHaveCount(0);
+    await expect(
+      page.getByTestId("assistant-panel"),
+      `placeholder panel present on ${path}`,
+    ).toHaveCount(0);
+  }
+
+  // No dedicated assistant page or nav entry exists.
+  await page.goto("/admin");
+  await expect(
+    page.locator('nav[aria-label="Portal sections"] a', {
+      hasText: "Assistant",
+    }),
+  ).toHaveCount(0);
+  const assistantPage = await page.request.get("/admin/assistant", {
+    maxRedirects: 0,
+  });
+  expect([404, 307]).toContain(assistantPage.status());
+
+  // Cleanup the staged request.
+  await serviceDb().from("requests").delete().eq("id", id);
+});

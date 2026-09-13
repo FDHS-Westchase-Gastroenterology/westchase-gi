@@ -2,19 +2,13 @@
 
 import { requireRole } from "@/lib/portal/auth";
 import { mutatePortalReleaseState } from "@/lib/portal/release-briefing";
+import type { PortalReleaseMutation } from "@/lib/portal/release-briefing";
 import { PORTAL_RELEASE_BRIEFING } from "@/lib/portal/release-briefing-content";
 import { parseSupportedPortalReleaseId } from "@/lib/portal/release-state";
 
 export type PortalReleaseActionResult =
   | { ok: true }
   | { ok: false; code: "invalid" | "unavailable" };
-
-type PortalReleaseMutation =
-  | "portal_open_staff_release"
-  | "portal_acknowledge_staff_release"
-  | "portal_hide_staff_release"
-  | "portal_record_staff_release_guide_open"
-  | "portal_record_staff_release_dismiss";
 
 async function runPortalReleaseAction(
   mutation: PortalReleaseMutation,

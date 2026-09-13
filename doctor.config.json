@@ -1,6 +1,12 @@
 {
   "$schema": "https://react.doctor/schema/config.json",
   "ignore": {
-    "files": ["tools/oxlint/anti-slop/**"]
+    "files": [
+      ".next-e2e/**",
+      ".next-verify/**",
+      "ds-bundle/**",
+      "src/components/stock/**",
+      "tools/oxlint/anti-slop/**"
+    ]
   }
 }

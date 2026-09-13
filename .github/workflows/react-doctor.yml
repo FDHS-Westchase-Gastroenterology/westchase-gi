@@ -45,7 +45,7 @@ jobs:
         # status and refuses an auto-merge if a PR-scoped scan reports errors.
         with:
           blocking: none
-          version: "0.9.1"
+          version: "0.9.13"
         # Full reference and optional inputs: https://www.react.doctor/ci
         #   scope: full              # On PRs, scan the whole project instead of just changed files
         #   comment: false           # Disable the sticky PR summary comment
