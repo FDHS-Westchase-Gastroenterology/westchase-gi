@@ -313,7 +313,7 @@ export default async function AdminRequestsPage({
       <header className="portal-queue-masthead">
         <div>
           <h1 id="requests-heading" className="portal-queue-title">
-            Appointments
+            Requests
           </h1>
           <p className="portal-queue-lede">
             Every appointment request, ordered by what needs attention first.

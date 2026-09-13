@@ -12,7 +12,7 @@ import { CircleHelp, ClipboardCheck, Home, Settings } from "@/components/icons";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Home", icon: Home },
-  { href: "/admin/requests", label: "Appointments", icon: ClipboardCheck },
+  { href: "/admin/requests", label: "Requests", icon: ClipboardCheck },
   { href: "/admin/settings", label: "Settings", icon: Settings },
   { href: "/admin/help", label: "Help", icon: CircleHelp },
 ] as const;

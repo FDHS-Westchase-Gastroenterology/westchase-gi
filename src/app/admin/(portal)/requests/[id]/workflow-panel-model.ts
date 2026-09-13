@@ -178,7 +178,7 @@ const FAILURE_COPY = {
   invalid_command:
     "Something about that didn't check out. Nothing was recorded — review and try again.",
   not_found:
-    "This request no longer exists — it may have been removed. Open Appointments to see the current list.",
+    "This request no longer exists — it may have been removed. Open Requests to see the current list.",
   idempotency_conflict:
     "That save was already recorded differently. The page has been brought up to date — check Request history.",
   undo_unavailable:

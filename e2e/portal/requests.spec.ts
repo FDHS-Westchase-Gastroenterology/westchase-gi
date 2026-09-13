@@ -435,7 +435,7 @@ test.describe("portal requests operation", () => {
 
     await expect(page.getByTestId("request-detail-name")).toHaveText(staged.name);
     // The detail workspace preserves a clear return path to the same queue.
-    await expect(page.getByRole("link", { name: "Back to Appointments" })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Back to Requests" })).toHaveAttribute(
       "href",
       "/admin/requests",
     );
@@ -1525,7 +1525,7 @@ test.describe("portal requests operation", () => {
     await expect(page.getByTestId("note-list")).toContainText(handoffText);
     await expect(page.getByTestId("request-history")).toContainText("Left a voicemail");
     await expect(page.getByTestId("workflow-panel")).toBeHidden();
-    await expect(page.getByRole("link", { name: "Back to Appointments" })).toBeHidden();
+    await expect(page.getByRole("link", { name: "Back to Requests" })).toBeHidden();
     expect(
       await page
         .locator(".request-detail-print")

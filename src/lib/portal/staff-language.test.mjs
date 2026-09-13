@@ -112,7 +112,7 @@ test("Help, email, and activity copy drop unsupported absolute claims", () => {
 
 test("Help links still name their destinations", () => {
   assert.equal(HELP_LINKS.appointments.href, "/admin/requests");
-  assert.equal(HELP_LINKS.appointments.label, "Appointments");
+  assert.equal(HELP_LINKS.appointments.label, "Requests");
   assert.equal(HELP_LINKS.printPacket.href, "/admin/requests/print");
   assert.equal(HELP_LINKS.openAppointments.href, "/admin/requests");
   assert.equal(HELP_LINKS.home.href, "/admin");

@@ -24,7 +24,7 @@ export default function PortalError({ reset }: Readonly<{ reset: () => void }>) 
         <h2>Your work is still in the portal</h2>
         <p>
           No appointment request was changed by this failed page load. If retrying does not work,
-          open Appointments and confirm the live queue before continuing from paper or email.
+          open Requests and confirm the live queue before continuing from paper or email.
         </p>
         <div>
           <Button type="button" onClick={reset}>
@@ -35,7 +35,7 @@ export default function PortalError({ reset }: Readonly<{ reset: () => void }>) 
             data-slot="button"
             className={buttonVariants({ variant: "outline" })}
           >
-            Open Appointments
+            Open Requests
           </Link>
           <Link href="/admin/help#something-wrong" className="portal-inline-link">
             Get help

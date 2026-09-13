@@ -130,7 +130,7 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
           showClosedNote ? (
             <span className="wgi-list-note">
               Showing the latest closed requests —{" "}
-              <Link href="/admin/requests?status=closed">older ones live in Appointments</Link>.
+              <Link href="/admin/requests?status=closed">older ones live in Requests</Link>.
             </span>
           ) : null
         }

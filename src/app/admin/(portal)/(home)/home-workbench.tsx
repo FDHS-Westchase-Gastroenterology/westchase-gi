@@ -17,8 +17,8 @@ import type { HomeLine } from "./home-line";
 import "./home.css";
 
 /* THESIS: Home is a working list under the header it already has. The header
-   — greeting as small print, the date as the headline, Print appointments
-   and Add appointment opposite, the rule beneath — is kept verbatim; below
+   — greeting as small print, the date as the headline, Print requests
+   and Add request opposite, the rule beneath — is kept verbatim; below
    the rule sits the filter bar, then one flat, attention-ordered list whose
    whole state lives in the URL (portal-home-redesign-brief §1, §3.3).
 
@@ -30,14 +30,6 @@ import "./home.css";
    OWN-WORLD: the reference's bones — density, one-line rows, the filter bar
    — painted entirely with the portal's tokens through the bridge. Amber only
    as a stamp, teal only as working ink, mint the only tint. */
-
-const ELSEWHERE = [
-  { href: "/admin/review-flyers", label: "Review flyers" },
-  { href: "/admin/settings#notifications", label: "Notification recipients" },
-  { href: "/admin/settings#staff", label: "Staff access" },
-  { href: "/admin/settings/software", label: "Website status" },
-  { href: "/admin/help#website-changes", label: "Request a website change" },
-];
 
 export function HomeWorkbench({
   greeting,
@@ -83,25 +75,22 @@ export function HomeWorkbench({
           <div className="portal-sheet-commands print-hide">
             <PrintChooser
               statusCounts={statusCounts}
-              triggerClassName={buttonVariants()}
-              triggerLabel="Print appointments"
+              triggerClassName={cn(buttonVariants(), "wgi-cmd-print")}
+              triggerLabel="Print requests"
             />
             <AddAppointmentDialog
               idempotencyKey={addRequestKey}
-              triggerClassName={buttonVariants({ variant: "outline" })}
+              triggerClassName={cn(buttonVariants({ variant: "outline" }), "wgi-cmd-add")}
             />
           </div>
         </header>
-
         {announcements}
-
         <PortalFeedbackMessage source="requests-output" testId="home-output-feedback" />
-
         {lines === null ? (
           <div data-testid="queue-overview-unavailable" className="portal-sheet-notice">
             <h2>Today&rsquo;s calls could not load.</h2>
             <p>
-              This is not an empty day. Open Appointments to read the live queue, then print from a
+              This is not an empty day. Open Requests to read the live queue, then print from a
               current view.
             </p>
             <Link
@@ -109,13 +98,12 @@ export function HomeWorkbench({
               data-slot="button"
               className={cn(buttonVariants(), "portal-sheet-notice-action")}
             >
-              Open Appointments
+              Open Requests
             </Link>
           </div>
         ) : (
           <HomeDashboard lines={lines} nowMs={nowMs} closedCapped={closedCapped} />
         )}
-
         {noActiveRecipients ? (
           <p data-testid="no-recipients-warning" className="portal-sheet-alert">
             <strong>Notification emails are paused.</strong> Requests still land here, but no email
@@ -123,7 +111,6 @@ export function HomeWorkbench({
             <Link href="/admin/settings#notifications">Manage recipients</Link>
           </p>
         ) : null}
-
         {deliveryFailureCount !== null ? (
           <p data-testid="delivery-failure-warning" className="portal-sheet-alert">
             <strong>
@@ -134,15 +121,7 @@ export function HomeWorkbench({
             The queue remains the system of record.{" "}
             <Link href="/admin/help#something-wrong">See what to check</Link>
           </p>
-        ) : null}
-
-        <nav aria-label="Other staff jobs" className="portal-sheet-elsewhere print-hide">
-          {ELSEWHERE.map((item) => (
-            <Link key={item.href} href={item.href}>
-              {item.label}
-            </Link>
-          ))}
-        </nav>
+        ) : null}{" "}
       </section>
     </PortalFeedbackProvider>
   );

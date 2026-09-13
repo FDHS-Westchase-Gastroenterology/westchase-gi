@@ -60,7 +60,7 @@ function PanelFeedback({
             href="/admin/requests"
             className="inline-flex min-h-11 items-center underline underline-offset-2"
           >
-            Back to Appointments
+            Back to Requests
           </Link>
         )
       ) : null}
