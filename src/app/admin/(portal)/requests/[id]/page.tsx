@@ -213,7 +213,7 @@ export default async function RequestDetailPage({
       </div>
 
       <PortalPageHeader
-        back={{ href: queueHref, label: "Back to Appointments" }}
+        back={{ href: queueHref, label: "Back to Requests" }}
         title={
           <span
             id="request-heading"

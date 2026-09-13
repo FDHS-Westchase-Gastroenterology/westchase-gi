@@ -10,7 +10,7 @@ import type { StaffRequestFormHandle } from "./requests/new/staff-request-form";
 /* Adding a walk-in or a phoned-in request used to cost two navigations: out to
    a page and back again. Coming to the portal is already an interruption to the
    day, and going pages deeper compounds it, so the form opens over the line the
-   way Print appointments does and closes back onto it. The route still exists
+   way Print requests does and closes back onto it. The route still exists
    for deep links and still lands on the new record; only this entry point stays.
 
    The form is mounted on open and unmounted on close, so a dismissed draft
@@ -66,7 +66,7 @@ export function AddAppointmentDialog({
           setOpen(true);
         }}
       >
-        Add appointment
+        Add request
       </button>
       <dialog
         ref={dialogRef}

@@ -16,12 +16,12 @@ export default function PortalNotFound() {
         <CircleHelp className="h-8 w-8" aria-hidden="true" />
         <h2>Return to the live work stack</h2>
         <p>
-          Open Appointments to find the current request and its recorded status. Do not use an old
-          paper copy as the final record.
+          Open Requests to find the current request and its recorded status. Do not use an old paper
+          copy as the final record.
         </p>
         <div>
           <Link href="/admin/requests" data-slot="button" className={buttonVariants()}>
-            Open Appointments
+            Open Requests
           </Link>
           <Link href="/admin" data-slot="button" className={buttonVariants({ variant: "outline" })}>
             Return Home

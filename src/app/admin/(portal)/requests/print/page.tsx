@@ -221,7 +221,7 @@ function PacketQueueLink({ newOnly }: Readonly<{ newOnly: boolean }>) {
       data-slot="button"
       className={buttonVariants({ variant: "outline" })}
     >
-      {newOnly ? "Open New requests" : "Open Appointments"}
+      {newOnly ? "Open New requests" : "Open Requests"}
       <ArrowRight className="h-4 w-4" />
     </Link>
   );
@@ -245,7 +245,7 @@ export default async function PrintNewRequestsPage({
         />
         <section className="portal-empty-state" role="alert">
           <h2>Choose statuses again</h2>
-          <p>Use Print on Home or Appointments and pick one or more request statuses.</p>
+          <p>Use Print on Home or Requests and pick one or more request statuses.</p>
           <div>
             <Link href="/admin" data-slot="button" className={buttonVariants()}>
               Back to Home
@@ -293,7 +293,7 @@ export default async function PrintNewRequestsPage({
             <h2>Try preparing the packet again</h2>
             <p>
               The secure print service did not prepare a packet. Try again once. If it still fails,
-              continue from Appointments so work is not blocked, then report the printing problem.
+              continue from Requests so work is not blocked, then report the printing problem.
             </p>
             <div>
               <Link href="/admin" data-slot="button" className={buttonVariants()}>
@@ -320,7 +320,7 @@ export default async function PrintNewRequestsPage({
           <h2>Try preparing the packet again</h2>
           <p>
             The secure print service did not prepare a packet. Try again once. If it still fails,
-            continue from Appointments so work is not blocked, then report the printing problem.
+            continue from Requests so work is not blocked, then report the printing problem.
           </p>
           <div>
             <Link
@@ -351,7 +351,7 @@ export default async function PrintNewRequestsPage({
           <h2>There is no {statusList} work to hand off</h2>
           <p>
             The live queue may have changed since you opened this window. Return to Home for the
-            next task, or open Appointments to review the current queue.
+            next task, or open Requests to review the current queue.
           </p>
           <div>
             <Link href="/admin" data-slot="button" className={buttonVariants()}>
@@ -362,7 +362,7 @@ export default async function PrintNewRequestsPage({
               data-slot="button"
               className={buttonVariants({ variant: "outline" })}
             >
-              Open Appointments
+              Open Requests
             </Link>
           </div>
         </section>

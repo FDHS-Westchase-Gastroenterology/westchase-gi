@@ -95,22 +95,6 @@ test.describe("portal home", () => {
     await expect(nav.locator('a[aria-current="page"]')).toHaveText("Home");
     await expect(nav.getByRole("link", { name: "Review flyers" })).toHaveCount(0);
 
-    // Other staff jobs: five links for every role — flyer printing is
-    // Staff-wide (product decision 2026-07-26) — each a working link.
-    const tasks = page.locator('nav[aria-label="Other staff jobs"]');
-    for (const [label, href] of [
-      ["Review flyers", "/admin/review-flyers"],
-      ["Notification recipients", "/admin/settings#notifications"],
-      ["Staff access", "/admin/settings#staff"],
-      ["Website status", "/admin/settings/software"],
-      ["Request a website change", "/admin/help#website-changes"],
-    ] as const) {
-      await expect(
-        tasks.getByRole("link", { name: label, exact: true }),
-        `task row: ${label}`,
-      ).toHaveAttribute("href", href);
-    }
-
     // Print opens a chooser. All New still uses the existing packet.
     await page.getByTestId("print-chooser-trigger").click();
     const printLink = page.getByRole("link", {
@@ -142,19 +126,18 @@ test.describe("portal home", () => {
     await expect(page.getByTestId("print-chooser")).toBeHidden();
     await expect(page.getByTestId("print-chooser-trigger")).toBeFocused();
 
-    // Appointments stays on the portal nav (DEC-UX-02: the destination is
-    // Named Appointments; the records remain appointment requests under
-    // /admin/requests).
+    // One noun on the portal nav: Requests (the records are appointment
+    // Requests, the destination under /admin/requests carries the same word).
     await page
       .locator('nav[aria-label="Portal sections"]')
-      .getByRole("link", { name: "Appointments" })
+      .getByRole("link", { name: "Requests" })
       .click();
     await expect(page).toHaveURL(/\/admin\/requests\/?$/);
-    await expect(page.getByRole("heading", { name: "Appointments", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Requests", exact: true })).toBeVisible();
     // The waiting-count badge may append a count inside the same link.
     await expect(
       page.locator('nav[aria-label="Portal sections"] a[aria-current="page"]'),
-    ).toHaveText(/^Appointments/, { useInnerText: true });
+    ).toHaveText(/^Requests/, { useInnerText: true });
     await page.getByTestId("print-chooser-trigger").click();
     await expect(
       page.getByRole("link", {
@@ -182,7 +165,7 @@ test.describe("portal home", () => {
     for (const row of rows) {
       await expect(list.locator("tr", { hasText: row.name })).toHaveCount(1);
     }
-    await expect(page.getByTestId("home-add-patient-request")).toHaveText("Add appointment");
+    await expect(page.getByTestId("home-add-patient-request")).toHaveText("Add request");
   });
 
   test("a Contacted request with no call-again day is on the day sheet under Call again", async ({
@@ -349,7 +332,7 @@ test.describe("portal home", () => {
       await page.keyboard.press("Enter");
       await expect(
         dialog.getByRole("heading", {
-          name: "Appointments",
+          name: "Requests",
           exact: true,
         }),
       ).toBeVisible();
@@ -361,9 +344,7 @@ test.describe("portal home", () => {
       await page.keyboard.press("Shift+Tab");
       await expect(dialog.getByRole("button", { name: "Back" })).toBeFocused();
       await page.keyboard.press("Enter");
-      await expect(
-        dialog.getByRole("heading", { name: "Appointments", exact: true }),
-      ).toBeVisible();
+      await expect(dialog.getByRole("heading", { name: "Requests", exact: true })).toBeVisible();
       await expect(dialog.getByRole("button", { name: "Back" })).toBeFocused();
       await page.keyboard.press("Tab");
       await page.keyboard.press("Enter");

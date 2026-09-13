@@ -203,6 +203,46 @@
   --wgi-name-size: 1.156rem;
   --wgi-phone-size: 0.969rem;
   --wgi-label-size: 0.906rem;
+  /* Figma parity (file GrBLYZSAxioZ8syWPHChlb, frame 3:46; D1 is 23:2745):
+     the mockup's paints, read from the frame and scoped to Home so the brand
+     @theme stays untouched. Three of its inks failed AA and were darkened
+     along their own hue until they pass on every row band: --wgi-muted-ink
+     (#7284a0 -> #576883, 4.54 on the open tint), --wgi-label-ink-canvas
+     (#647493 -> #5a6a89, 4.93 on the canvas); the label ink itself is only
+     used on the surface, where #647493 clears 4.5. The phone glyph is
+     decorative and keeps the frame's #94a8c3. */
+  --wgi-surface: #fcfdfe;
+  --wgi-card-shadow: 0 7px 20px rgba(36, 68, 94, 0.18);
+  --wgi-rule: #dfe6ef;
+  --wgi-band: #eaf1f7;
+  --wgi-hover: #e3efed;
+  --wgi-open: #dbe9ea;
+  --wgi-row-radius: 12px;
+  --wgi-name-ink: #10143a;
+  --wgi-label-ink: #647493;
+  --wgi-label-ink-canvas: #5a6a89;
+  --wgi-muted-ink: #576883;
+  --wgi-icon-ink: #94a8c3;
+  --wgi-track: #e3e8f0;
+  --wgi-thumb: #9ca8ba;
+  --wgi-chip-stroke: #c4d5e5;
+  --wgi-print-fill: #1b334a;
+  --wgi-print-stroke: #adc6da;
+  --wgi-print-ink: #dbe5ef;
+  --wgi-badge-new-fill: #fff0dc;
+  --wgi-badge-new-stroke: #ffcb89;
+  --wgi-badge-new-ink: #a15a19;
+  --wgi-badge-contacted-fill: #e7f3f8;
+  --wgi-badge-contacted-stroke: #adc6da;
+  --wgi-badge-contacted-ink: #28435d;
+}
+
+/* The page behind Home is the frame's cooler canvas, so the card's shadow
+   reads as a lift instead of a hairline. The workspace and the main element
+   both paint --portal-canvas, so the property is re-pointed for this
+   subtree; :has keeps the other portal pages on the brand canvas. */
+.portal-workspace:has(.wgi-home) {
+  --portal-canvas: #e8f6fc;
 }
 
 /* The header loses its navy rule: the surface below closes the header now.
@@ -213,6 +253,7 @@
 }
 
 .wgi-home .portal-sheet-greeting {
+  color: var(--wgi-label-ink-canvas);
   font-family: var(--font-body), Arial, sans-serif;
   font-size: var(--pt-base);
   font-weight: 700;
@@ -221,6 +262,7 @@
 /* The day is set in the body sans (Lato) as the frame draws it, not the
    display serif the portal's heading base rule would give an h1. */
 .wgi-home .portal-sheet-day {
+  color: var(--wgi-name-ink);
   font-family: var(--font-body), Arial, sans-serif;
   font-size: var(--wgi-day-size);
   font-weight: 900;
@@ -228,9 +270,33 @@
   line-height: 1.1;
 }
 
+/* The two commands as the frame paints them: Print is the sidebar's navy
+   with a pale ring and pale ink; Add is inked on nothing but a ring. The
+   Button recipe keeps the geometry, press and focus; only paint is set here,
+   so its hover has to be restated (this file outranks its utilities). */
+.wgi-cmd-print {
+  background: var(--wgi-print-fill);
+  box-shadow: inset 0 0 0 1.4px var(--wgi-print-stroke);
+  color: var(--wgi-print-ink);
+}
+
+.wgi-cmd-print:hover {
+  background: color-mix(in oklch, var(--wgi-print-fill) 86%, white);
+}
+
+.wgi-cmd-add {
+  box-shadow: inset 0 0 0 1.4px var(--wgi-chip-stroke);
+  color: var(--wgi-name-ink);
+}
+
+.wgi-cmd-add:hover {
+  background: color-mix(in oklch, var(--color-navy) 5%, transparent);
+  box-shadow: inset 0 0 0 1.4px var(--color-navy);
+}
+
 /* Filters sit 26px under the header, 11px apart; the Add filter capsule is
-   49px tall with a fine border and the same soft shadow as the surface;
-   the suggestions keep their dashed outline at a 12.5px corner. */
+   49px tall with a fine border and a 9px shadow; the suggestions keep their
+   dashed outline, on the frame's pale stroke, as pills. */
 .wgi-home .wgi-filter-bar {
   gap: 0.6875rem;
   margin-block-start: 1.625rem;
@@ -239,33 +305,45 @@
 .wgi-home .wgi-add-filter {
   min-height: 3.0625rem;
   border-width: 1.5px;
+  border-color: var(--wgi-chip-stroke);
   padding-inline: 1.125rem;
-  box-shadow: 0 4px 12px -8px oklch(0.28 0.05 245 / 0.35);
+  background: var(--wgi-surface);
+  box-shadow: 0 3px 9px rgba(27, 51, 74, 0.05);
+  color: var(--wgi-name-ink);
   font-size: var(--pt-sm);
 }
 
 .wgi-home .wgi-sug {
   min-height: 3.0625rem;
   border-width: 1.2px;
-  border-radius: 0.75rem;
+  border-color: var(--wgi-chip-stroke);
   padding-inline: 1.125rem;
   font-size: var(--pt-sm);
 }
 
+.wgi-home .wgi-sug:hover {
+  background: var(--wgi-surface);
+  border-color: var(--wgi-muted-ink);
+}
+
 .wgi-home .wgi-pill {
-  border-radius: 0.75rem;
+  border-color: var(--wgi-chip-stroke);
+  background: var(--wgi-surface);
+}
+
+.wgi-home .wgi-pill-key,
+.wgi-home .wgi-sug-count,
+.wgi-home .wgi-pill-remove {
+  color: var(--wgi-muted-ink);
+}
+
+.wgi-home .wgi-pill-value {
+  color: var(--wgi-name-ink);
 }
 
 .wgi-home .wgi-pill-label {
   min-height: calc(3.0625rem - 2px);
   font-size: var(--pt-sm);
-}
-
-/* The in-page index of other jobs keeps its place under the surface, on a
-   tighter leash so the surface's bottom edge stays in the viewport. */
-.wgi-home > .portal-sheet-elsewhere {
-  flex: none;
-  margin-block-start: var(--ps-4);
 }
 
 /* ---------- The list surface ----------
@@ -285,10 +363,9 @@
   gap: 0;
   overflow: hidden;
   border-radius: 1.4375rem;
-  background: var(--portal-surface);
-  box-shadow:
-    0 0 0 1px color-mix(in oklch, var(--color-line) 85%, transparent),
-    var(--shadow-card);
+  background: var(--wgi-surface);
+  /* The frame's one soft shadow and no stroke: the lift is the edge. */
+  box-shadow: var(--wgi-card-shadow);
   padding: 1.4375rem 0 0;
   color: var(--color-body);
   font-size: var(--pt-sm);
@@ -361,7 +438,7 @@
   width: 2.5rem;
 }
 
-/* Column labels: 36px tall, title case, bold muted ink, a hairline below.
+/* Column labels: 36px tall, title case, bold label ink, a hairline below.
    Sticky inside the viewport, painted so rows pass beneath, not through. */
 .wgi-list-head th {
   position: sticky;
@@ -369,10 +446,10 @@
   z-index: 1;
   height: var(--wgi-head-h);
   border: 0;
-  border-bottom: 1px solid var(--color-line);
-  background: var(--portal-surface);
+  border-bottom: 1px solid var(--wgi-rule);
+  background: var(--wgi-surface);
   padding: 0 1rem;
-  color: var(--color-muted-ink);
+  color: var(--wgi-label-ink);
   font-size: var(--wgi-label-size);
   font-weight: 700;
   letter-spacing: 0;
@@ -386,8 +463,8 @@
 }
 
 /* Rows: 46.5px, 16px in from the left and 18px from the right, no rule
-   between them. Every second row is a quiet band on the canvas tint with
-   6px corners; the band is painted on the cells because a row box cannot
+   between them. Every second row is a quiet band on the frame's tint with
+   12px corners; the band is painted on the cells because a row box cannot
    hold a radius. */
 .wgi-list-row {
   height: var(--wgi-row-h);
@@ -414,35 +491,35 @@
 }
 
 .wgi-list-row > td:first-child {
-  border-start-start-radius: 6px;
-  border-end-start-radius: 6px;
+  border-start-start-radius: var(--wgi-row-radius);
+  border-end-start-radius: var(--wgi-row-radius);
 }
 
 .wgi-list-row > td:last-child {
-  border-start-end-radius: 6px;
-  border-end-end-radius: 6px;
+  border-start-end-radius: var(--wgi-row-radius);
+  border-end-end-radius: var(--wgi-row-radius);
   padding-inline-end: 0.75rem;
 }
 
 .wgi-list-row:nth-child(even) > td {
-  background-color: var(--portal-canvas);
+  background-color: var(--wgi-band);
 }
 
 /* The whole row opens the record (line-list.tsx); the mint says so on
    hover, the deeper mint while its record is open. */
 @media (hover: hover) {
   .wgi-list-row:hover > td {
-    background-color: var(--color-mint);
+    background-color: var(--wgi-hover);
   }
 }
 
 .wgi-list-row[data-open] > td,
 .wgi-list-row[data-open]:hover > td {
-  background-color: var(--color-mint-2);
+  background-color: var(--wgi-open);
 }
 
 .wgi-list-row[data-settled] > td {
-  box-shadow: inset 0 0 0 100vmax var(--color-mint-2);
+  box-shadow: inset 0 0 0 100vmax var(--wgi-open);
   transition: none;
 }
 
@@ -459,7 +536,7 @@
 .appt-name {
   display: block;
   overflow: hidden;
-  color: var(--color-ink);
+  color: var(--wgi-name-ink);
   font-size: var(--wgi-name-size);
   font-weight: 700;
   letter-spacing: -0.01em;
@@ -470,7 +547,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--color-muted-ink);
+  color: var(--wgi-muted-ink);
   font-size: var(--wgi-phone-size);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
@@ -495,8 +572,11 @@ a.appt-phone:hover {
   text-underline-offset: 3px;
 }
 
+/* The glyph is decorative (the number beside it is the text), so it may
+   sit lighter than AA, as the frame draws it. */
 .appt-phone > svg {
   flex: none;
+  color: var(--wgi-icon-ink);
 }
 
 /* The phone under the name only once the Phone column has gone. */
@@ -514,11 +594,19 @@ a.appt-phone:hover {
 .wgi-list-row [data-col="received"] {
   display: block;
   overflow: hidden;
-  color: var(--color-muted-ink);
+  color: var(--wgi-muted-ink);
   font-size: 1rem;
   font-variant-numeric: tabular-nums;
   font-weight: 500;
   text-overflow: ellipsis;
+}
+
+/* An overdue line has no second badge: its age is the attention ink, bold
+   (5.40 on the band, 4.94 on the open tint), and line-list.tsx keeps the
+   word for a screen reader. */
+.wgi-list-row [data-col="received"][data-overdue] {
+  color: var(--portal-attention-ink);
+  font-weight: 700;
 }
 
 /* The row-opening affordance: a chevron button at the right edge. The row
@@ -566,7 +654,7 @@ a.appt-phone:hover {
   width: 0.6875rem;
   height: auto;
   border-radius: 6px;
-  background: var(--color-line);
+  background: var(--wgi-track);
   padding: 0;
 }
 
@@ -579,7 +667,7 @@ a.appt-phone:hover {
   width: 100%;
   flex: none;
   border-radius: 6px;
-  background: color-mix(in oklch, var(--color-line-3) 55%, var(--color-line-2));
+  background: var(--wgi-thumb);
   transition: background-color var(--motion-micro-duration) var(--motion-exit);
 }
 
@@ -649,7 +737,7 @@ a.appt-phone:hover {
   border-radius: 0;
   background: transparent;
   padding: 0.75rem var(--wgi-gutter) 1.375rem 1.875rem;
-  color: var(--color-muted-ink);
+  color: var(--wgi-label-ink);
   font-size: 1rem;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
@@ -819,8 +907,9 @@ a.appt-phone:hover {
 }
 
 /* ---------- Status badge (fresh StockBadge conversion) ----------
-   30px tall, 7.5px corner, 15px bold; the meanings and their paints are
-   unchanged from the line the surface replaces. */
+   30px tall pills, 15px bold, a 1.3px stroke; New and Call again carry the
+   frame's paints (New ink is 4.70 on its fill), the others keep the
+   portal's. */
 
 .wgi-badge {
   display: inline-flex;
@@ -830,8 +919,8 @@ a.appt-phone:hover {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border: 1px solid transparent;
-  border-radius: 0.469rem;
+  border: 1.3px solid transparent;
+  border-radius: 999px;
   padding: 0 0.75rem;
   font-size: var(--pt-sm);
   font-weight: 700;
@@ -841,15 +930,15 @@ a.appt-phone:hover {
 }
 
 .wgi-badge-new {
-  background: color-mix(in oklch, var(--color-amber-soft) 55%, white);
-  color: var(--portal-attention-ink);
-  border-color: color-mix(in oklch, var(--color-amber-deep) 42%, white);
+  background: var(--wgi-badge-new-fill);
+  color: var(--wgi-badge-new-ink);
+  border-color: var(--wgi-badge-new-stroke);
 }
 
 .wgi-badge-contacted {
-  background: var(--color-mint);
-  color: var(--color-teal-ink);
-  border-color: color-mix(in oklch, var(--color-teal) 45%, white);
+  background: var(--wgi-badge-contacted-fill);
+  color: var(--wgi-badge-contacted-ink);
+  border-color: var(--wgi-badge-contacted-stroke);
 }
 
 .wgi-badge-scheduled {
@@ -862,13 +951,6 @@ a.appt-phone:hover {
   background: transparent;
   color: var(--color-muted-ink);
   border-color: var(--color-line-2);
-}
-
-/* Overdue: the sheet's amber stamp, at the badge's size. */
-.wgi-badge-overdue {
-  background: color-mix(in oklch, var(--color-amber-soft) 55%, white);
-  color: var(--portal-attention-ink);
-  border-color: color-mix(in oklch, var(--color-amber-deep) 45%, white);
 }
 
 /* ---------- Skeleton rows (hold the exact surface geometry) ---------- */
@@ -1720,7 +1802,7 @@ a.appt-phone:hover {
 }
 
 /* Apply: the one deliberate commit in the bar, painted as the portal's
-   primary button (the header's Print appointments). */
+   primary button (the header's Print requests). */
 .wgi-editor-apply {
   display: inline-flex;
   min-height: 2.25rem;

@@ -78,12 +78,12 @@ export function oldestNewRequestAction(input: {
 }
 
 export const HELP_LINKS = {
-  appointments: { href: "/admin/requests", label: "Appointments" },
+  appointments: { href: "/admin/requests", label: "Requests" },
   printPacket: {
     href: "/admin/requests/print",
     label: "Prepare the current New-request packet",
   },
-  openAppointments: { href: "/admin/requests", label: "Open Appointments" },
+  openAppointments: { href: "/admin/requests", label: "Open Requests" },
   home: { href: "/admin", label: "Return to Home" },
   settings: { href: "/admin/settings", label: "Settings" },
   activity: { href: "/admin/audit", label: "Activity log" },

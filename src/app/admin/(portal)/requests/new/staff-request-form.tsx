@@ -356,7 +356,7 @@ function StaffRequestFormFooter({
     <footer className="portal-request-form-footer">
       <p>
         <strong>What happens next</strong>
-        This creates a New request in Appointments. It does not create a patient chart or send a
+        This creates a New request in Requests. It does not create a patient chart or send a
         notification email.
       </p>
       <div>

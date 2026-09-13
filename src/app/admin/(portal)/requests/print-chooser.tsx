@@ -171,7 +171,7 @@ export function PrintChooser({
         <div className="portal-confirm-dialog-body">
           <div className="portal-confirm-dialog-heading">
             <h2 id={titleId} className="portal-confirm-dialog-title">
-              Print appointments
+              Print requests
             </h2>
             <button type="button" onClick={closeChooser} className="portal-confirm-dialog-close">
               Close

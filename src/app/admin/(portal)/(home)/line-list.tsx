@@ -305,19 +305,21 @@ function LineRow({
           <span data-col="status">
             <LineStatusBadge status={line.status} />
           </span>
-          {line.stamp === null ? null : (
-            <span data-col="stamp" className="wgi-badge wgi-badge-overdue">
-              {line.stamp}
-            </span>
-          )}
         </span>
       </TableCell>
       <TableCell data-cell="pref">
         <span data-col="pref">{line.pref}</span>
       </TableCell>
       <TableCell data-cell="received">
-        <span data-col="received" title={`Received ${line.receivedFull}`}>
+        {/* An overdue line carries no second badge: its age turns the attention
+            ink and bold (D4, 2026-09-13), and the word stays for a screen reader. */}
+        <span
+          data-col="received"
+          data-overdue={line.stamp === null ? undefined : true}
+          title={`Received ${line.receivedFull}`}
+        >
           {line.receivedRel}
+          {line.stamp === null ? null : <span className="sr-only">, {line.stamp}</span>}
         </span>
       </TableCell>
       <TableCell data-cell="open">

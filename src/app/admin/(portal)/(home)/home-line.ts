@@ -25,7 +25,7 @@ export interface HomeLine {
   readonly pref: string;
   /** "waiting 3h" / "due today" / "back Sep 4" / "quiet 5d" / "handed off" / "closed" */
   readonly timing: string;
-  /** The only amber on a line, and it always carries a word. */
+  /** The only amber on a line: it tints the age on the list and is a word on the card. */
   readonly stamp: "Overdue" | null;
   /** Where a Call again row stands against its call-again date; null on every other status. */
   readonly followUp: FollowUpValue | null;

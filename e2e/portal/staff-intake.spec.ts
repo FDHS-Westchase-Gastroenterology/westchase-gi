@@ -44,7 +44,7 @@ test.describe("staff-authored intake data-entry protection", () => {
     await expect(page.getByTestId("discard-staff-request-dialog")).toBeHidden();
   });
 
-  test("untouched Cancel from Appointments returns immediately", async ({ page }) => {
+  test("untouched Cancel from Requests returns immediately", async ({ page }) => {
     await signIn(page);
     await openNewRequest(page, "appointments");
     await page.getByTestId("cancel-staff-request").click();
@@ -167,7 +167,7 @@ test.describe("staff-authored intake data-entry protection", () => {
     await expect(page.getByTestId("discard-staff-request-dialog")).toBeHidden();
   });
 
-  test("Discard request from Appointments returns to Appointments", async ({ page }) => {
+  test("Discard request from Requests returns to Requests", async ({ page }) => {
     await signIn(page);
     await openNewRequest(page, "appointments");
     await page.locator("#staff-request-phone").fill("8135550199");

@@ -42,8 +42,8 @@ export default async function AdminHelpPage() {
         <div className="portal-help-section portal-help-tour">
           <h2 className={SECTION_HEADING}>Portal tour</h2>
           <p className={SECTION_BODY}>
-            Reopen the short introduction to Home, Appointments, and Settings whenever a refresher
-            would help. This takes you back to Home, where you can choose when to start it.
+            Reopen the short introduction to Home, Requests, and Settings whenever a refresher would
+            help. This takes you back to Home, where you can choose when to start it.
           </p>
           <form action={restartPortalTourAction} className="mt-4">
             <button type="submit" data-slot="button" className={buttonVariants()}>
@@ -73,8 +73,8 @@ export default async function AdminHelpPage() {
             list by status. It prepares one work sheet per request, oldest first, so a manager can
             hand the pages to staff. The packet is a time-stamped snapshot: printing does not assign
             a request, mark it contacted, or change its history. After a call, open the live request
-            in Appointments and record what happened so everyone sees the durable result. If a
-            packet has sat unattended, check the live queue before distributing it.
+            in Requests and record what happened so everyone sees the durable result. If a packet
+            has sat unattended, check the live queue before distributing it.
           </p>
           <Link
             href={HELP_LINKS.printPacket.href}

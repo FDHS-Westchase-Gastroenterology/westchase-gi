@@ -13,7 +13,7 @@ const STEPS = [
     body: "Start here to see what needs contact now. When New appointment requests are waiting, a manager can print the complete paper handoff here without changing their status.",
   },
   {
-    title: "Appointments",
+    title: "Requests",
     body: "Open a request, call the patient, and record what happened on the call. The queue is the practice’s complete list even if a notification email is missed.",
   },
   {
