@@ -2268,6 +2268,14 @@
     }
   }
 
+  /* Set before opening or in click capture before a descendant closes the
+     dialog. Removing the transition properties also skips the backdrop and
+     stays instant when reduced-motion rules override transition-duration. */
+  .portal-confirm-dialog[data-instant],
+  .portal-confirm-dialog[data-instant]::backdrop {
+    transition: none;
+  }
+
   .portal-confirm-dialog-body {
     padding: 1.5rem 1.5rem 1.15rem;
   }

@@ -61,7 +61,8 @@ export function AddAppointmentDialog({
         aria-haspopup="dialog"
         aria-expanded={open}
         className={triggerClassName}
-        onClick={() => {
+        onClick={(event) => {
+          dialogRef.current?.toggleAttribute("data-instant", event.detail === 0);
           dialogRef.current?.showModal();
           setOpen(true);
         }}
@@ -73,9 +74,13 @@ export function AddAppointmentDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         data-testid="add-appointment-dialog"
+        onClickCapture={(event) => {
+          event.currentTarget.toggleAttribute("data-instant", event.detail === 0);
+        }}
         onCancel={(event) => {
           if (event.target !== event.currentTarget) return;
           event.preventDefault();
+          event.currentTarget.toggleAttribute("data-instant", true);
           requestClose();
         }}
         onClose={(event) => {

@@ -95,9 +95,10 @@ export function PrintChooser({
   const canPrintSelected = printSelectionIsAvailable(selected, statusCounts);
   const selectedHref = canPrintSelected ? printPacketHref(selected) : null;
 
-  function openChooser() {
+  function openChooser(event: MouseEvent<HTMLButtonElement>) {
     setSelected([]);
     const dialog = dialogRef.current;
+    dialog?.toggleAttribute("data-instant", event.detail === 0);
     dialog?.showModal();
     setOpen(true);
     /* The dialog's own focusing steps have just landed on the first
@@ -157,8 +158,12 @@ export function PrintChooser({
         aria-modal="true"
         aria-labelledby={titleId}
         data-testid="print-chooser"
+        onClickCapture={(event) => {
+          event.currentTarget.toggleAttribute("data-instant", event.detail === 0);
+        }}
         onCancel={(event) => {
           event.preventDefault();
+          event.currentTarget.toggleAttribute("data-instant", true);
           closeChooser();
         }}
         onClose={() => {
