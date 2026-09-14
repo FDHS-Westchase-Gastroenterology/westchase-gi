@@ -1,0 +1,236 @@
+{
+  "label": "before",
+  "states": {
+    "rest": {
+      "thumb": {
+        "transform": "translate3d(0px, 0px, 0px)",
+        "height": 151.125,
+        "width": 11,
+        "children": 1,
+        "childTransform": "",
+        "bg": "rgb(156, 168, 186)"
+      },
+      "rail": {
+        "height": 578.765625,
+        "width": 11,
+        "scrolling": false,
+        "held": false
+      },
+      "range": {
+        "top": 0,
+        "max": 1741,
+        "client": 615,
+        "scroll": 2356
+      }
+    },
+    "restEnd": {
+      "thumb": {
+        "transform": "translate3d(0px, 427.86px, 0px)",
+        "height": 151.125,
+        "width": 11,
+        "children": 1,
+        "childTransform": "",
+        "bg": "rgb(156, 168, 186)"
+      },
+      "rail": {
+        "height": 578.765625,
+        "width": 11,
+        "scrolling": false,
+        "held": false
+      },
+      "range": {
+        "top": 1741,
+        "max": 1741,
+        "client": 615,
+        "scroll": 2356
+      }
+    },
+    "heldPastEnd": {
+      "thumb": {
+        "transform": "translate3d(0px, 427.86px, 0px)",
+        "height": 151.125,
+        "width": 11,
+        "children": 1,
+        "childTransform": "scale(1.08157, 0.836858)",
+        "bg": "lab(38.5451 -3.80115 -8.10769)"
+      },
+      "rail": {
+        "height": 578.765625,
+        "width": 11,
+        "scrolling": true,
+        "held": true
+      },
+      "range": {
+        "top": 1741,
+        "max": 1741,
+        "client": 615,
+        "scroll": 2356
+      }
+    },
+    "releaseFrames": {
+      "count": 43,
+      "distinctThumb": [
+        "translate3d(0px, 427.86px, 0px)"
+      ],
+      "distinctInk": 26,
+      "sample": [
+        {
+          "t": 4,
+          "thumb": "translate3d(0px, 427.86px, 0px)",
+          "ink": "scale(1.08157, 0.836858)"
+        },
+        {
+          "t": 87,
+          "thumb": "translate3d(0px, 427.86px, 0px)",
+          "ink": "scale(1.06389, 0.872218)"
+        },
+        {
+          "t": 170,
+          "thumb": "translate3d(0px, 427.86px, 0px)",
+          "ink": "scale(1.01258, 0.974839)"
+        },
+        {
+          "t": 254,
+          "thumb": "translate3d(0px, 427.86px, 0px)",
+          "ink": "scale(0.996501, 1.007)"
+        },
+        {
+          "t": 337,
+          "thumb": "translate3d(0px, 427.86px, 0px)",
+          "ink": "scale(0.997946, 1.00411)"
+        },
+        {
+          "t": 421,
+          "thumb": "translate3d(0px, 427.86px, 0px)",
+          "ink": "scale(0.999881, 1.00024)"
+        },
+        {
+          "t": 504,
+          "thumb": "translate3d(0px, 427.86px, 0px)",
+          "ink": ""
+        },
+        {
+          "t": 589,
+          "thumb": "translate3d(0px, 427.86px, 0px)",
+          "ink": ""
+        },
+        {
+          "t": 672,
+          "thumb": "translate3d(0px, 427.86px, 0px)",
+          "ink": ""
+        }
+      ]
+    },
+    "wheelMidPush": {
+      "thumb": {
+        "transform": "translate3d(0px, 427.86px, 0px)",
+        "height": 151.125,
+        "width": 11,
+        "children": 1,
+        "childTransform": "scale(1.05916, 0.881684)",
+        "bg": "lab(53.6597 -4.53016 -7.71227)"
+      },
+      "rail": {
+        "height": 578.765625,
+        "width": 11,
+        "scrolling": false,
+        "held": false
+      },
+      "range": {
+        "top": 1741,
+        "max": 1741,
+        "client": 615,
+        "scroll": 2356
+      }
+    },
+    "afterWheel": {
+      "thumb": {
+        "transform": "translate3d(0px, 427.86px, 0px)",
+        "height": 151.125,
+        "width": 11,
+        "children": 1,
+        "childTransform": "",
+        "bg": "lab(53.6597 -4.53016 -7.71227)"
+      },
+      "rail": {
+        "height": 578.765625,
+        "width": 11,
+        "scrolling": false,
+        "held": false
+      },
+      "range": {
+        "top": 1741,
+        "max": 1741,
+        "client": 615,
+        "scroll": 2356
+      }
+    },
+    "forcedColorsHeld": {
+      "thumb": {
+        "transform": "translate3d(0px, 427.86px, 0px)",
+        "height": 151.125,
+        "width": 9,
+        "children": 1,
+        "childTransform": "scale(1.08157, 0.836858)",
+        "bg": "lab(38.5451 -3.80115 -8.10769)"
+      },
+      "rail": {
+        "height": 578.765625,
+        "width": 11,
+        "scrolling": true,
+        "held": true
+      },
+      "range": {
+        "top": 1741,
+        "max": 1741,
+        "client": 615,
+        "scroll": 2356
+      }
+    },
+    "mobileRest": {
+      "thumb": {
+        "transform": "translate3d(0px, 0px, 0px)",
+        "height": 62.671875,
+        "width": 11,
+        "children": 1,
+        "childTransform": "",
+        "bg": "rgb(156, 168, 186)"
+      },
+      "rail": {
+        "height": 403.921875,
+        "width": 11,
+        "scrolling": false,
+        "held": false
+      },
+      "range": {
+        "top": 0,
+        "max": 2396,
+        "client": 440,
+        "scroll": 2836
+      }
+    },
+    "mobileHeldPastEnd": {
+      "thumb": {
+        "transform": "translate3d(0px, 341.32px, 0px)",
+        "height": 62.671875,
+        "width": 11,
+        "children": 1,
+        "childTransform": "scale(1.11111, 0.777778)",
+        "bg": "lab(38.5451 -3.80115 -8.10769)"
+      },
+      "rail": {
+        "height": 403.921875,
+        "width": 11,
+        "scrolling": true,
+        "held": true
+      },
+      "range": {
+        "top": 2396,
+        "max": 2396,
+        "client": 440,
+        "scroll": 2836
+      }
+    }
+  },
+  "video": "/private/tmp/claude-502/-Users-Jason-studio-tampa-clinics-westchase-gi--claude-worktrees-staff-home-scrollbar-physics-72444c/c7adef8b-a204-426c-a2ea-70c0393f6170/scratchpad/evidence/before/page@d3df754ccaffd64d46f59e0a48848ff6.webm"
+}
