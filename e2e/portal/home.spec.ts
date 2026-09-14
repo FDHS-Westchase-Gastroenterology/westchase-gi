@@ -18,37 +18,38 @@ const db = serviceDb();
 
 const testIp = clientIps("home");
 
-interface InkFrame {
-  readonly scaleY: number;
-  readonly origin: string;
+interface ThumbFrame {
+  readonly transform: string;
+  readonly height: number;
 }
 
+/* One string per distinct thumb, so a set of frames dedupes by value. */
+const frameKey = (frame: ThumbFrame) => `${frame.transform} @ ${frame.height}`;
+
 /**
- * Watches the thumb's ink layer for `ms` on the page's own frame clock and
- * returns one sample per frame: the drawn vertical scale (1 at rest) and
- * the end it is anchored to. Runs alongside the input that follows it.
+ * Samples the rail's thumb once per frame for `ms` on the page's own frame
+ * clock: the inline transform Base UI wrote and the measured height, keyed
+ * by value. Runs alongside the input that follows it, so the set holds
+ * exactly one member when the thumb never moved and more when it did.
  */
-async function observeInk(page: Page, ms: number): Promise<InkFrame[]> {
-  return page.evaluate(async (duration) => {
-    const ink = document.querySelector<HTMLElement>(
-      '.wgi-list-thumb > [data-slot="scroll-area-thumb-ink"]',
-    );
-    const frames: { scaleY: number; origin: string }[] = [];
+async function watchThumb(page: Page, ms: number): Promise<Set<string>> {
+  const frames = await page.evaluate(async (duration) => {
+    const thumb = document.querySelector<HTMLElement>(".wgi-list-thumb");
+    const seen: string[] = [];
     const started = performance.now();
     await new Promise<void>((resolve) => {
       const tick = () => {
-        const match = /scale\([^,]+, ([^)]+)\)/.exec(ink?.style.transform ?? "");
-        frames.push({
-          scaleY: match ? Number(match[1]) : 1,
-          origin: ink?.style.transformOrigin ?? "",
-        });
+        seen.push(
+          `${thumb?.style.transform ?? ""} @ ${thumb?.getBoundingClientRect().height ?? 0}`,
+        );
         if (performance.now() - started < duration) requestAnimationFrame(tick);
         else resolve();
       };
       requestAnimationFrame(tick);
     });
-    return frames;
+    return seen;
   }, ms);
+  return new Set(frames);
 }
 
 test.describe("portal home", () => {
@@ -556,27 +557,29 @@ test.describe("portal home", () => {
     }
   });
 
-  /* The rail's thumb carries an elastic ink layer (issue #302): a wheel or
-     a drag pushed past either end compresses it toward that end, bounded,
-     and it recoils on its own when the push lets go. The rows never leave
-     their range, keys never deform it, reduced motion withholds it, and a
-     day sheet that fits has no rail at all. */
-  test("the day sheet thumb flexes at either end of a push and recoils when it lets go", async ({
-    page,
-  }) => {
-    // Enough lines to overflow the 1440×900 day sheet whatever the branch holds.
-    for (let i = 0; i < 14; i += 1) {
+  /* The rail's thumb is a pure function of the scroll position (issue
+     #302): Base UI measures and moves it on every scroll event, nothing in
+     script gives it a body, a spring, or a clock, and the browser owns
+     overscroll. A push past either end leaves it exactly where the rows
+     stopped, a wheel over the rail never reaches the page, keys and a
+     committed filter move it with the rows, reduced motion and forced
+     colors change its paint and never its geometry, and a day sheet that
+     fits has no rail at all. */
+  test("the day sheet thumb is the scroll position", async ({ page }) => {
+    /* Enough lines to overflow the 1440×900 day sheet whatever the branch
+       holds, and still overflow once a filter narrows it to Either office. */
+    for (let i = 0; i < 20; i += 1) {
       const staged = await page.request.post("/api/requests", {
         data: {
-          name: `TEST Home ${runId} elastic ${i}`,
+          name: `TEST Home ${runId} thumb ${i}`,
           phone: "8135550199",
-          email: `home-${runId}-elastic-${i}@example.test`,
+          email: `home-${runId}-thumb-${i}@example.test`,
           location: "any",
           time: "any",
           locale: "en",
           sourcePath: "/en/appointment",
         },
-        headers: { "X-Forwarded-For": testIp(`elastic-${i}`) },
+        headers: { "X-Forwarded-For": testIp(`thumb-${i}`) },
       });
       expect(staged.status()).toBe(201);
     }
@@ -586,123 +589,179 @@ test.describe("portal home", () => {
     await expect(page.getByTestId("home-line-list")).toBeVisible();
     const viewport = page.getByRole("region", { name: "Appointment requests" });
     const rail = page.locator(".wgi-list-rail");
-    const thumb = page.locator(".wgi-list-thumb");
-    const ink = thumb.locator('> [data-slot="scroll-area-thumb-ink"]');
-    const inlineTransform = async () => ink.evaluate((element) => element.style.transform);
     const range = async () =>
       viewport.evaluate((element) => ({
         top: element.scrollTop,
         max: element.scrollHeight - element.clientHeight,
       }));
+
+    /* Everything the thumb is: what Base UI wrote on it and what the boxes
+       measure, beside the position and size the scroll offset calls for. */
+    const measure = async () =>
+      page.evaluate(() => {
+        const rows = document.querySelector<HTMLElement>(".wgi-list-viewport");
+        const track = document.querySelector<HTMLElement>(".wgi-list-rail");
+        const knob = document.querySelector<HTMLElement>(".wgi-list-thumb");
+        if (rows === null || track === null || knob === null) {
+          throw new Error("The day sheet has no rail");
+        }
+        const written = /^translate3d\(0px, (-?[\d.]+)px, 0px\)$/.exec(knob.style.transform);
+        const railHeight = Math.min(track.offsetHeight, rows.clientHeight);
+        const expectedHeight = Math.max(16, (railHeight * rows.clientHeight) / rows.scrollHeight);
+        const max = rows.scrollHeight - rows.clientHeight;
+        return {
+          top: rows.scrollTop,
+          max,
+          transform: knob.style.transform,
+          y: written === null ? Number.NaN : Number(written[1]),
+          expectedY: max === 0 ? 0 : (rows.scrollTop / max) * (railHeight - expectedHeight),
+          height: knob.getBoundingClientRect().height,
+          expectedHeight,
+          width: knob.offsetWidth,
+          railWidth: track.clientWidth,
+          children: knob.children.length,
+          background: getComputedStyle(knob).backgroundColor,
+        };
+      });
+    const settledAt = async (fraction: number) => {
+      await viewport.evaluate((element, share) => {
+        element.scrollTop = Math.round((element.scrollHeight - element.clientHeight) * share);
+      }, fraction);
+      await expect
+        .poll(async () => {
+          const now = await measure();
+          return {
+            at: Math.abs(now.top - now.max * fraction) <= 1,
+            y: Math.abs(now.y - now.expectedY) < 1,
+            height: Math.abs(now.height - now.expectedHeight) < 1,
+          };
+        })
+        .toEqual({ at: true, y: true, height: true });
+      return measure();
+    };
+    /* The geometry Base UI owns. The thumb's width is the rail's content
+       width (asserted where it matters), which forced colors narrow by the
+       rail's own high-contrast border. */
+    const placement = (state: Readonly<{ transform: string; height: number }>) => ({
+      transform: state.transform,
+      height: state.height,
+    });
+
     expect((await range()).max).toBeGreaterThan(0);
     await expect(rail).toHaveCount(1);
-    expect(await inlineTransform()).toBe("");
 
+    // Pure function: every scroll offset has exactly one thumb.
+    for (const fraction of [0, 1 / 3, 1 / 2, 1]) {
+      const at = await settledAt(fraction);
+      expect(at.children).toBe(0);
+      expect(at.width).toBe(at.railWidth);
+      expect(Number.isNaN(at.y)).toBe(false);
+    }
+
+    // Past the end: the rows stop at the end, and the thumb stops with them
+    // In every frame, no second body, no other transform, no widening.
     const rows = await viewport.boundingBox();
     if (rows === null) throw new Error("The day sheet has no box");
     await page.mouse.move(rows.x + rows.width / 2, rows.y + rows.height / 2);
-
-    // Past the end: compressed toward the bottom, never below the cap, and
-    // Back to its measured shape by itself once the wheel goes quiet.
-    await viewport.evaluate((element) => {
-      element.scrollTop = element.scrollHeight;
-    });
-    await expect.poll(async () => (await range()).max - (await range()).top).toBeLessThan(1);
-    const pastEnd = observeInk(page, 1200);
+    const atEnd = await settledAt(1);
+    const pastEnd = watchThumb(page, 700);
     for (let i = 0; i < 6; i += 1) {
       await page.mouse.wheel(0, 200);
       await page.waitForTimeout(16);
     }
-    const endFrames = await pastEnd;
-    const endDeepest = Math.min(...endFrames.map((frame) => frame.scaleY));
-    expect(endDeepest).toBeLessThan(0.95);
-    expect(endDeepest).toBeGreaterThanOrEqual(0.7);
-    expect(endFrames.find((frame) => frame.scaleY < 1)?.origin).toBe("50% 100%");
-    expect(endFrames.at(-1)?.scaleY).toBe(1);
-    await expect.poll(inlineTransform).toBe("");
-    const afterEnd = await range();
-    expect(afterEnd.top).toBeLessThanOrEqual(afterEnd.max);
+    expect(await pastEnd).toEqual(new Set([frameKey(atEnd)]));
+    await expect.poll(range).toEqual({ top: atEnd.max, max: atEnd.max });
+    const afterEnd = await measure();
+    expect(placement(afterEnd)).toEqual(placement(atEnd));
+    expect(afterEnd.children).toBe(0);
+    expect(afterEnd.width).toBe(afterEnd.railWidth);
 
-    // A wheel over the rail at the end presses the same drawing and still
-    // Never reaches the page.
+    // A wheel over the rail at the end presses nothing and never reaches
+    // The page.
     const railBox = await rail.boundingBox();
     if (railBox === null) throw new Error("The rail has no box");
     await page.mouse.move(railBox.x + railBox.width / 2, railBox.y + 12);
-    const overRail = observeInk(page, 1200);
+    const overRail = watchThumb(page, 700);
     for (let i = 0; i < 6; i += 1) {
       await page.mouse.wheel(0, 200);
       await page.waitForTimeout(16);
     }
-    const railFrames = await overRail;
-    expect(Math.min(...railFrames.map((frame) => frame.scaleY))).toBeLessThan(0.95);
+    expect(await overRail).toEqual(new Set([frameKey(atEnd)]));
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
-    await expect.poll(inlineTransform).toBe("");
+    expect(placement(await measure())).toEqual(placement(atEnd));
 
-    // Past the start: the same drawing anchored at the top.
+    // Past the start: the same stillness at the top.
     await page.mouse.move(rows.x + rows.width / 2, rows.y + rows.height / 2);
-    await viewport.evaluate((element) => {
-      element.scrollTop = 0;
-    });
-    await expect.poll(async () => (await range()).top).toBe(0);
-    const pastStart = observeInk(page, 1200);
+    const atStart = await settledAt(0);
+    const pastStart = watchThumb(page, 700);
     for (let i = 0; i < 6; i += 1) {
       await page.mouse.wheel(0, -200);
       await page.waitForTimeout(16);
     }
-    const startFrames = await pastStart;
-    expect(Math.min(...startFrames.map((frame) => frame.scaleY))).toBeLessThan(0.95);
-    expect(startFrames.find((frame) => frame.scaleY < 1)?.origin).toBe("50% 0%");
-    await expect.poll(inlineTransform).toBe("");
+    expect(await pastStart).toEqual(new Set([frameKey(atStart)]));
+    await expect.poll(range).toEqual({ top: 0, max: atStart.max });
+    expect(placement(await measure())).toEqual(placement(atStart));
 
-    // A wheel inside the range moves the rows and draws nothing.
-    const inRange = observeInk(page, 300);
-    await page.mouse.wheel(0, 200);
-    expect((await inRange).every((frame) => frame.scaleY === 1)).toBe(true);
-    expect((await range()).top).toBeGreaterThan(0);
-
-    // A thumb drag past the end: held ink the moment the button is down,
-    // Compression while the pointer is past the end, recoil on release.
-    await viewport.evaluate((element) => {
-      element.scrollTop = element.scrollHeight;
-    });
-    await expect.poll(async () => (await range()).max - (await range()).top).toBeLessThan(1);
-    const grab = await thumb.boundingBox();
-    if (grab === null) throw new Error("The thumb has no box");
-    const grabX = grab.x + grab.width / 2;
-    const grabY = grab.y + grab.height / 2;
-    await page.mouse.move(grabX, grabY);
-    await page.mouse.down();
-    await expect(rail).toHaveAttribute("data-held", "true");
-    await page.mouse.move(grabX, grabY + 200, { steps: 10 });
-    await expect.poll(inlineTransform).toMatch(/^scale\(1\.\d+, 0\.\d+\)$/);
-    expect(await ink.evaluate((element) => element.style.transformOrigin)).toBe("50% 100%");
-    const heldRange = await range();
-    expect(heldRange.top).toBeLessThanOrEqual(heldRange.max);
-    await page.mouse.up();
-    await expect(rail).not.toHaveAttribute("data-held", "true");
-    await expect.poll(inlineTransform).toBe("");
-
-    // Keys scroll the rows and never touch the drawing.
+    // Keys move the rows, and the thumb is wherever they stop.
     await viewport.focus();
-    const keyed = observeInk(page, 900);
-    await page.keyboard.press("Home");
-    await page.waitForTimeout(300);
     await page.keyboard.press("End");
-    await page.waitForTimeout(300);
-    await page.keyboard.press("ArrowDown");
-    expect((await keyed).every((frame) => frame.scaleY === 1)).toBe(true);
-    await expect.poll(async () => (await range()).max - (await range()).top).toBeLessThan(1);
+    await expect
+      .poll(async () => {
+        const now = await measure();
+        return { top: now.top === now.max, y: Math.abs(now.y - now.expectedY) < 1 };
+      })
+      .toEqual({ top: true, y: true });
+    await page.keyboard.press("Home");
+    await expect
+      .poll(async () => {
+        const now = await measure();
+        return { top: now.top, y: now.y };
+      })
+      .toEqual({ top: 0, y: 0 });
 
-    // Reduced motion withholds the drawing; the rows still stop at the end.
+    // A committed filter starts the new rows at the top, thumb included.
+    await settledAt(1);
+    await page.getByRole("button", { name: "Add filter" }).click();
+    const editor = page.getByLabel("Add filter", { exact: true });
+    await editor.getByRole("button", { name: "Location", exact: true }).click();
+    await editor.getByRole("button", { name: "Either office: Only" }).click();
+    await expect(page).toHaveURL(/[?&]location=any(?:&|$)/);
+    await page.keyboard.press("Escape");
+    await expect(rail).toHaveCount(1);
+    await expect
+      .poll(async () => {
+        const now = await measure();
+        return { top: now.top, y: now.y };
+      })
+      .toEqual({ top: 0, y: 0 });
+
+    // Reduced motion and forced colors change the paint, never the geometry.
+    const resting = await settledAt(1 / 2);
     await page.emulateMedia({ reducedMotion: "reduce" });
-    await page.mouse.move(rows.x + rows.width / 2, rows.y + rows.height / 2);
-    const reduced = observeInk(page, 400);
-    for (let i = 0; i < 6; i += 1) {
-      await page.mouse.wheel(0, 200);
-      await page.waitForTimeout(16);
-    }
-    expect((await reduced).every((frame) => frame.scaleY === 1)).toBe(true);
-    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.waitForTimeout(100);
+    expect(placement(await measure())).toEqual(placement(resting));
+    await page.emulateMedia({ reducedMotion: "no-preference", forcedColors: "active" });
+    // Chromium serializes system colors as rgb(), so read CanvasText off a probe.
+    const canvasText = await page.evaluate(() => {
+      const probe = document.createElement("div");
+      probe.style.cssText = "background: CanvasText; forced-color-adjust: none";
+      document.body.append(probe);
+      const painted = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return painted;
+    });
+    expect(canvasText).not.toBe(resting.background);
+    await expect
+      .poll(async () => {
+        const now = await measure();
+        return {
+          ...placement(now),
+          fills: now.width === now.railWidth,
+          background: now.background,
+        };
+      })
+      .toEqual({ ...placement(resting), fills: true, background: canvasText });
+    await page.emulateMedia({ forcedColors: "none" });
 
     // When the day sheet fits, the rail goes and the columns stay put.
     const firstHeader = page.getByTestId("home-line-list").locator("thead th").first();

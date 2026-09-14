@@ -17,12 +17,11 @@ The registry owns every curve and duration. Do not define an easing token, inlin
 | Surfaces entering (modals, drawers, sheets) | `--motion-spring` over `--motion-spring-duration` | `arrive` | 440ms spring, `{ type: "spring", duration: 0.44, bounce: 0.3 }`: lands in about 110ms, one 4.6% overshoot, no second bounce |
 | Surfaces leaving | `--motion-exit` over `--motion-exit-duration` | `leave` | 160ms, `cubic-bezier(0.23, 1, 0.32, 1)`. Exits are faster than entrances. |
 | Micro states (hover tint, pressed ink, focus ring) | `--motion-micro-duration` with an ease-out (`--motion-exit` in the button recipe) | `micro` | 150ms |
-| Gesture recoil (a drawing the hand pushed past an end and let go of: the home list's elastic thumb ink) | none; JS only | `recoil` | `{ type: "spring", stiffness: 400, damping: 28, mass: 1 }`: the same ζ≈0.7 as `arrive` in physics form so it starts from the gesture's measured velocity; ω₀ 20 rad/s, visibly home in about 180ms and settled inside 300ms from rest, one overshoot. Withheld under reduced motion rather than cross-faded. |
 | Reduced motion | the blanket reset in `@layer base` | `crossfade` | 120ms opacity-only cross-fade, no travel |
 
 - Press feedback: every pressable element has an `:active` state. Portal: `scale(0.98)` at the micro duration. Patient site: lift-then-settle (DESIGN.md "Buttons feel pressed"). The scale stays within 0.95–0.98.
 - Entrances start at `scale(0.95)` to `scale(0.97)` with opacity, never `scale(0)`.
-- Bounce is `arrive`'s and no more. More bounce is for drag-to-dismiss and playful interactions only. `recoil` keeps the same damping ratio; what it adds is the gesture's own velocity, not extra bounce.
+- Bounce is `arrive`'s and no more. More bounce is for drag-to-dismiss and playful interactions only.
 
 ```css
 .button {

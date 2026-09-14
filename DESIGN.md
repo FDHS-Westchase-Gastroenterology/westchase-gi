@@ -332,13 +332,12 @@ for lifted cards. The portal prefers hairlines to shadows everywhere but the mod
   hovered paint belongs to `variant`, the journey there to `motion`.
 - **Two engines, one registry.** CSS (`@starting-style`, `transition` with `allow-discrete`,
   hover, press, focus rings) reads the `--motion-*` tokens; `motion/react` reads the presets in
-  `src/lib/motion.ts` (`arrive`, `leave`, `micro`, `crossfade`, `recoil`, `transitionFor`). They
-  are the same temperaments, so a surface may use either — or both — without changing character.
-  Pick by fit, not by rule: CSS runs off the main thread and keeps moving while a page loads;
-  motion.dev keeps velocity when a physics spring (`recoil`, written as stiffness / damping /
-  mass) is retargeted or handed a gesture's measured velocity — a duration / bounce spring such
-  as `arrive` starts every run from rest — and it handles gestures, layout and shared-element
-  moves, and orchestration (`AnimatePresence`, `useSpring`, `useScroll`) that CSS cannot express.
+  `src/lib/motion.ts` (`arrive`, `leave`, `micro`, `crossfade`, `transitionFor`). They are the
+  same temperaments, so a surface may use either — or both — without changing character. Pick
+  by fit, not by rule: CSS runs off the main thread and keeps moving while a page loads;
+  motion.dev keeps velocity when a spring is retargeted mid-flight and handles gestures, layout
+  and shared-element moves, and orchestration (`AnimatePresence`, `useSpring`, `useScroll`) that
+  CSS cannot express.
   When using motion.dev, animate `transform`/`opacity` strings rather than the `x`/`y` shorthands
   so the work stays hardware-accelerated.
 - **Reduced motion is a temperament, not a switch.** Nothing is withheld, only the physics:
@@ -374,16 +373,13 @@ for lifted cards. The portal prefers hairlines to shadows everywhere but the mod
   `overscroll-behavior: contain`. No rail, no progress fill. The one drawn rail is the staff
   home list's inset ScrollArea scrollbar: a resting track and thumb whenever the rows overflow,
   stronger ink while the rows move or on a fine-pointer hover and the strongest while held, each
-  at the micro duration; the thumb Base UI measures and moves never transitions its transform or
-  height, and scroll position never animates. The thumb's paint is a separately drawn ink layer
-  inside that box, and it alone has give: when a gesture pushes past either end of the rows (a
-  thumb drag, a wheel over the rows or the rail) the ink compresses toward that end with
-  diminishing returns, up to 30% of its height, and recoils on `recoil` from wherever it is and
-  however fast it was moving when the push let go. The drawing is feedback only: it never writes
-  the scroll position, never slows the rows, never suggests more records, and stands down whenever
-  the browser rubber-bands the content itself (Safari) so one gesture gets one elastic drawing.
-  Under reduced motion it is withheld entirely, in flight included. Keyboard and programmatic
-  scrolling never deform it (issue #302).
+  at the micro duration. The thumb Base UI measures and moves is a pure function of the scroll
+  position, read on every scroll event: its height is the visible share of the rows, its offset
+  is the scroll offset, and it never transitions its transform or height. The browser owns
+  overscroll. Where it reports its own rubber-band through the scroll offset (Safari), the thumb
+  shortens against the pushed end in lockstep with the rows; where it clamps (Chromium), the thumb
+  stays put. Scroll position never animates, and no script draws overscroll: nothing gives the
+  thumb a body, a spring, or a clock (issue #302).
 - **Micro state changes stay micro.** Hover tints, pressed ink, and focus rings keep the 150ms
   ease-out; the spring and exit govern surfaces that move.
 - **Buttons feel pressed.** Every pressable element has an `:active` state (the portal's 0.98

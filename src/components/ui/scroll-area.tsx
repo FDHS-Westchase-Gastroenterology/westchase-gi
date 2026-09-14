@@ -2,10 +2,8 @@
 
 import { ScrollArea as ScrollAreaPrimitive } from "@base-ui/react/scroll-area";
 import { cn } from "cn";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { ComponentProps, PointerEvent as ReactPointerEvent } from "react";
-
-import { attachElasticThumb } from "@/components/ui/scroll-area-elastic";
 
 /*
  * Brand adoption of the shadcn ScrollArea (base-nova, registry source in
@@ -29,14 +27,15 @@ import { attachElasticThumb } from "@/components/ui/scroll-area-elastic";
  * either end of the range, where Base UI would let it chain to the page,
  * so the rail behaves like the viewport's `overscroll-behavior: contain`.
  *
- * The thumb is two layers. The element Base UI measures, translates, and
- * captures the pointer on never transitions its transform or height; that
- * is the hit target and the measured geometry. Inside it, `ScrollAreaThumb`
- * draws an ink layer (`data-slot="scroll-area-thumb-ink"`) that carries the
- * paint, and scroll-area-elastic.ts flexes that layer alone when a gesture
- * pushes past either end of the list, recoiling on the registry's `recoil`
- * spring (issue #302). The consumer's CSS owns the ink's color and its
- * micro-beat tint transition; the recipe owns the ink's transform.
+ * The thumb is Base UI's box and nothing more: its height is the measured
+ * share of the content, its transform is the scroll position, and the paint
+ * sits on that box. Nothing in script gives it a body, a spring, or a clock,
+ * and nothing transitions its geometry, so it is a pure function of the
+ * viewport's scroll offset on every scroll event. The browser owns
+ * overscroll: where it reports its rubber-band through `scrollTop` (Safari)
+ * Base UI shortens the thumb against the pushed end in lockstep with the
+ * rows; where it clamps (Chromium) the thumb stays put. The consumer's CSS
+ * owns the thumb's color and its micro-beat tint transition (issue #302).
  *
  * Sole importer today: src/app/admin/(portal)/(home)/line-list.tsx.
  */
@@ -77,14 +76,19 @@ function ScrollAreaViewport({
    `overscroll-behavior: contain` contains one over the rows: Base UI moves
    the viewport while it can and lets the event chain to the page at either
    end; this listener keeps the page still there too. Native and non-passive,
-   because React registers wheel passively. The recipe owns the rail's ref
-   for it and for the elastic drawing, so `ScrollBar` takes none. */
+   because React registers wheel passively, which is why it is the rail's
+   ref callback rather than an `onWheel` prop: the recipe owns the rail's
+   ref for it, so `ScrollBar` takes none, and the returned cleanup runs
+   whenever the rail unmounts, which Base UI does the moment the list stops
+   overflowing. */
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM nodes carry platform member types that cannot be made readonly
 function preventChaining(event: WheelEvent): void {
   if (!event.ctrlKey) event.preventDefault();
 }
 
-function containWheel(rail: HTMLElement): () => void {
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM nodes carry platform member types that cannot be made readonly
+function containWheel(rail: HTMLDivElement | null): (() => void) | undefined {
+  if (rail === null) return undefined;
   rail.addEventListener("wheel", preventChaining, { passive: false });
   return () => {
     rail.removeEventListener("wheel", preventChaining);
@@ -123,30 +127,12 @@ function ScrollBar({
     };
   }, [held]);
 
-  /* A ref callback rather than an effect so the listeners are in place
-     before Base UI's own effect-registered wheel listener on the same
-     element: the elastic drawing reads `scrollTop` before Base UI moves
-     it. The callback's cleanup runs whenever the rail unmounts, which
-     Base UI does the moment the list stops overflowing. */
-  const bindRail = useCallback(
-    (rail: HTMLElement | null) => {
-      if (rail === null) return undefined;
-      const releaseWheel = containWheel(rail);
-      const detachElastic = orientation === "vertical" ? attachElasticThumb(rail) : undefined;
-      return () => {
-        releaseWheel();
-        detachElastic?.();
-      };
-    },
-    [orientation],
-  );
-
   return (
     <ScrollAreaPrimitive.Scrollbar
       data-slot="scroll-area-scrollbar"
       data-orientation={orientation}
       data-held={held || undefined}
-      ref={bindRail}
+      ref={containWheel}
       orientation={orientation}
       className={cn(
         "flex touch-none select-none data-horizontal:h-2.5 data-horizontal:flex-col data-vertical:h-full data-vertical:w-2.5",
@@ -180,28 +166,20 @@ function ScrollBar({
   );
 }
 
-/* The thumb's box is Base UI's: its height is the measured share of the
-   content and its transform is the scroll position. The ink inside it is
-   the drawn layer, filling the box at rest and flexing at an end, so the
-   hit target and the measurement never change with the drawing. */
+/* The thumb is Base UI's box: its height is the measured share of the
+   content, its transform is the scroll position, and the paint is on the
+   box itself. Nothing transitions its geometry. */
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function ScrollAreaThumb({
   className,
-  children,
   ...props
 }: ComponentProps<typeof ScrollAreaPrimitive.Thumb>) {
   return (
     <ScrollAreaPrimitive.Thumb
       data-slot="scroll-area-thumb"
-      className={cn("relative flex-1 rounded-full", className)}
+      className={cn("relative flex-1 rounded-full bg-border", className)}
       {...props}
-    >
-      <span
-        data-slot="scroll-area-thumb-ink"
-        className="pointer-events-none absolute inset-0 rounded-[inherit] bg-border"
-      />
-      {children}
-    </ScrollAreaPrimitive.Thumb>
+    />
   );
 }
 

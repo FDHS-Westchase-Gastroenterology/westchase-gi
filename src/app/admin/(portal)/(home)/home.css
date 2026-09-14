@@ -657,12 +657,11 @@ a.appt-phone:hover {
 /* ---------- The rail ----------
    Track 11px wide, inset 26px from the surface's right edge, from the foot
    of the column labels to the bottom of the rows; thumb 10px in the track,
-   6px corners. Base UI sizes and moves the thumb, and nothing here
-   transitions its transform or height. The paint sits on the ink layer
-   the recipe draws inside the thumb, which tints on the micro beat and,
-   under the recipe's own control, flexes when a gesture pushes past
-   either end and recoils on the registry's `recoil` spring (issue #302).
-   This file owns the ink's color; the recipe owns its transform. */
+   6px corners. Base UI sizes and moves the thumb as a pure function of
+   the scroll position, and nothing here transitions its transform or
+   height: only its ink tints, on the micro beat. The browser owns
+   overscroll (the viewport's `overscroll-behavior-y: contain`), and no
+   script draws it (issue #302). */
 .wgi-list-rail {
   /* Base UI positions the rail inline (top: 0; inset-inline-end: 0), so the
      offsets below the column labels and in from the gutter are margins. */
@@ -685,9 +684,6 @@ a.appt-phone:hover {
   width: 100%;
   flex: none;
   border-radius: 6px;
-}
-
-.wgi-list-thumb > [data-slot="scroll-area-thumb-ink"] {
   background: var(--wgi-thumb);
   transition: background-color var(--motion-micro-duration) var(--motion-exit);
 }
@@ -706,14 +702,14 @@ a.appt-phone:hover {
 
 /* Emphasis while the rows are moving (Base UI's data-scrolling, held for
    500ms past the last scroll) and, with a mouse, while the rail is
-   hovered: the same tint, on the ink alone. */
-.wgi-list-rail[data-scrolling] .wgi-list-thumb > [data-slot="scroll-area-thumb-ink"] {
+   hovered: the same tint. */
+.wgi-list-rail[data-scrolling] .wgi-list-thumb {
   background: var(--color-line-3);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .wgi-list-rail[data-hovering] .wgi-list-thumb > [data-slot="scroll-area-thumb-ink"],
-  .wgi-list-thumb:hover > [data-slot="scroll-area-thumb-ink"] {
+  .wgi-list-rail[data-hovering] .wgi-list-thumb,
+  .wgi-list-thumb:hover {
     background: var(--color-line-3);
   }
 
@@ -726,8 +722,8 @@ a.appt-phone:hover {
 /* Held wins over scrolling and hover: the strongest ink the instant the
    button goes down, released with it (data-held is the recipe's own
    flag). */
-.wgi-list-rail[data-held] .wgi-list-thumb > [data-slot="scroll-area-thumb-ink"],
-.wgi-list-rail[data-held] .wgi-list-thumb:hover > [data-slot="scroll-area-thumb-ink"] {
+.wgi-list-rail[data-held] .wgi-list-thumb,
+.wgi-list-rail[data-held] .wgi-list-thumb:hover {
   background: var(--color-muted-ink);
 }
 
@@ -755,7 +751,14 @@ a.appt-phone:hover {
     background: Canvas;
   }
 
-  .wgi-list-thumb > [data-slot="scroll-area-thumb-ink"] {
+  /* Every tint state above, each at its own specificity and later in
+     source, so high contrast paints the thumb one ink in all of them. */
+  .wgi-list-rail .wgi-list-thumb,
+  .wgi-list-rail[data-scrolling] .wgi-list-thumb,
+  .wgi-list-rail[data-hovering] .wgi-list-thumb,
+  .wgi-list-rail[data-held] .wgi-list-thumb,
+  .wgi-list-rail .wgi-list-thumb:hover,
+  .wgi-list-rail[data-held] .wgi-list-thumb:hover {
     background: CanvasText;
     forced-color-adjust: none;
   }
@@ -2349,12 +2352,6 @@ a.appt-phone:hover {
   .wgi-sheet-grip[data-dragging] > span {
     transform: none;
   }
-
-  /* The list thumb's elastic flex needs no rule here: the recipe's
-     controller (scroll-area-elastic.ts) reads the same media query, draws
-     nothing while it matches, and clears a deformation or recoil already
-     in flight the moment it starts to match. A CSS reset could not do
-     that, because the drawing is an inline transform written per frame. */
 
   /* The settle wash needs no override: the timed clear in
      home-dashboard.tsx shows the mint tint for ~200ms either way, and the
