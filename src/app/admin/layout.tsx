@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 
-import { fontVariables } from "@/lib/fonts";
+import { portalFontVariables } from "@/lib/portal-fonts";
 
 import "@/app/globals.css";
 import "./portal-workbench.css";
@@ -21,7 +21,7 @@ export const viewport: Viewport = {
 
 export default function AdminLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={fontVariables} data-scroll-behavior="smooth">
+    <html lang="en" className={portalFontVariables} data-scroll-behavior="smooth">
       <body className="portal-scope min-h-dvh bg-[var(--color-paper)] text-[var(--color-body)]">
         <template
           data-design-contract="admin-front-desk-ledger"

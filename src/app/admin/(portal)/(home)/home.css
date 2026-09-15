@@ -32,7 +32,7 @@
   color: var(--color-ink);
   font-family: inherit;
   font-size: var(--pt-xs);
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   transition:
     background-color var(--motion-micro-duration) var(--motion-exit),
@@ -95,7 +95,7 @@
 
 .wgi-pill-value {
   color: var(--color-ink);
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -160,7 +160,7 @@
   color: var(--color-muted-ink);
   font-size: var(--pt-2xs);
   font-variant-numeric: tabular-nums;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* ---------- The page (issue #282) ----------
@@ -195,13 +195,13 @@
   min-height: 0;
   max-width: 76rem;
   /* Row 46.5px, heading row 36px, right gutter 39px (rows to card edge),
-     day 38px black, name 18.5px, phone 15.5px, heading 14.5px. The four
+     day 36px bold, name 18.5px, phone 15.5px, heading 14.5px. The four
      type sizes sit between the closed --pt-* steps; they are scoped here,
      derived once from the approved frame, and used nowhere else. */
   --wgi-row-h: 2.9rem;
   --wgi-head-h: 2.25rem;
   --wgi-gutter: 2.4375rem;
-  --wgi-day-size: 2.375rem;
+  --wgi-day-size: 2.25rem;
   --wgi-name-size: 1.156rem;
   --wgi-phone-size: 0.969rem;
   --wgi-label-size: 0.906rem;
@@ -256,7 +256,7 @@
 }
 
 /* The header loses its navy rule: the surface below closes the header now.
-   Greeting 17px bold in the muted ink, the day 38px black in the page ink. */
+   Greeting 17px medium in the muted ink, the day 36px bold in the page ink. */
 .wgi-home > .portal-sheet-head {
   border-block-end: 0;
   padding-block-end: 0;
@@ -266,7 +266,7 @@
   color: var(--wgi-label-ink-canvas);
   font-family: var(--font-body), Arial, sans-serif;
   font-size: var(--pt-base);
-  font-weight: 700;
+  font-weight: 500;
 }
 
 /* The day is set in the body sans (Lato) as the frame draws it, not the
@@ -275,8 +275,8 @@
   color: var(--wgi-name-ink);
   font-family: var(--font-body), Arial, sans-serif;
   font-size: var(--wgi-day-size);
-  font-weight: 900;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   line-height: 1.1;
 }
 
@@ -286,6 +286,7 @@
    geometry, press and focus; only paint is set here, so the outline hover
    has to be restated (this file outranks its utilities). */
 .wgi-cmd {
+  font-weight: 600;
   background: var(--wgi-cmd-fill);
   box-shadow:
     inset 0 0 0 1px var(--wgi-cmd-stroke),
@@ -457,7 +458,7 @@
   padding: 0 1rem;
   color: var(--wgi-label-ink);
   font-size: var(--wgi-label-size);
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0;
   text-align: left;
   text-transform: none;
@@ -544,8 +545,8 @@
   overflow: hidden;
   color: var(--wgi-name-ink);
   font-size: var(--wgi-name-size);
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  letter-spacing: 0;
   text-overflow: ellipsis;
 }
 
@@ -556,9 +557,7 @@
   color: var(--wgi-muted-ink);
   font-size: var(--wgi-phone-size);
   font-variant-numeric: tabular-nums;
-  /* The frame sets the number in Lato SemiBold. The site loads Lato 400,
-     700 and 900 only (src/lib/fonts.ts), so 600 rendered as 700 and the
-     number sat as heavy as the name. Regular keeps it a step under. */
+  /* Supporting data stays regular beneath the semibold patient name. */
   font-weight: 400;
   white-space: nowrap;
 }
@@ -606,7 +605,7 @@ a.appt-phone:hover {
   color: var(--wgi-muted-ink);
   font-size: 1rem;
   font-variant-numeric: tabular-nums;
-  /* Lato Medium in the frame; 400 is the weight that is loaded. */
+  /* The selected calmer Lato treatment keeps supporting data regular. */
   font-weight: 400;
   text-overflow: ellipsis;
 }
@@ -616,7 +615,7 @@ a.appt-phone:hover {
    word for a screen reader. */
 .wgi-list-row [data-col="received"][data-overdue] {
   color: var(--portal-attention-ink);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* The row-opening affordance: a chevron button at the right edge. The row
@@ -786,7 +785,7 @@ a.appt-phone:hover {
   color: var(--wgi-label-ink);
   font-size: 1rem;
   font-variant-numeric: tabular-nums;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .wgi-list-range {
@@ -976,7 +975,7 @@ a.appt-phone:hover {
   padding: 0 0.875rem;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6);
   font-size: var(--pt-sm);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 1;
   white-space: nowrap;
