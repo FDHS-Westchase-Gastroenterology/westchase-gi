@@ -1,6 +1,10 @@
 @layer components {
   /* The Front Desk Ledger shell: a persistent desktop index that becomes the
      same four thumb-reachable destinations on narrow screens. */
+  .portal-scope {
+    font-synthesis: none;
+  }
+
   .portal-scope ::selection {
     background: var(--color-amber-soft);
     color: var(--color-navy-2);
@@ -79,7 +83,7 @@
     padding: 0.45rem 0.2rem max(0.45rem, env(safe-area-inset-bottom));
     color: var(--color-on-dark-muted);
     font-size: 0.7rem;
-    font-weight: 760;
+    font-weight: 600;
     line-height: 1;
     letter-spacing: -0.01em;
     transition:
@@ -430,14 +434,14 @@
 
     .portal-sidebar-brand strong {
       font-size: 0.98rem;
-      font-weight: 850;
+      font-weight: 600;
       letter-spacing: -0.015em;
     }
 
     .portal-sidebar-brand small {
       color: var(--color-on-dark-muted);
       font-size: 0.72rem;
-      font-weight: 720;
+      font-weight: 600;
       letter-spacing: 0.04em;
     }
 
@@ -492,7 +496,7 @@
       margin: 0 0 0.45rem 0.75rem;
       color: rgb(226 239 240 / 58%);
       font-size: 0.66rem;
-      font-weight: 800;
+      font-weight: 600;
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
@@ -506,7 +510,7 @@
       padding-inline: 0.8rem;
       color: var(--color-on-dark-muted);
       font-size: 0.82rem;
-      font-weight: 700;
+      font-weight: 600;
     }
 
     .portal-sidebar-tools a:hover {
@@ -532,7 +536,7 @@
     .portal-sidebar-person > span {
       color: white;
       font-size: 0.85rem;
-      font-weight: 780;
+      font-weight: 600;
     }
 
     .portal-sidebar-person small {
@@ -579,7 +583,7 @@
       border-radius: 0.55rem;
       color: var(--color-on-dark-muted);
       font-size: 0.75rem;
-      font-weight: 750;
+      font-weight: 400;
     }
 
     .portal-sidebar-account-actions a:hover,

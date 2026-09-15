@@ -302,7 +302,7 @@ async function redactPortalData(page) {
       sessionEmail.textContent = "staff@example.com";
       sessionEmail.removeAttribute("title");
     }
-    const greeting = document.querySelector('[data-testid="home-greeting"]');
+    const greeting = document.querySelector('[data-testid="home-greeting"] .portal-sheet-greeting');
     if (greeting) greeting.textContent = "Good morning, Staff.";
     const queueHeadline = document.querySelector('[data-testid="queue-overview-headline"]');
     if (queueHeadline) {
