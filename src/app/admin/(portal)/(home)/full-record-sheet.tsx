@@ -1,185 +1,47 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { STATUS_WORDS } from "@/lib/portal/filters";
-import type { AttentionBucket } from "@/lib/portal/queue-attention";
+import { presentationStatus } from "@/lib/portal/workflow/contracts";
 
+import { SheetBody, StandsLine } from "./full-record-sheet-body";
+import { useSheetResize } from "./full-record-sheet-geometry";
 import type { HomeLine } from "./home-line";
-import { ChevronGlyph, CloseGlyph, PhoneGlyph } from "./parts/glyphs";
+import { LineStatusBadge } from "./parts/badge";
+import { ChevronGlyph, CloseGlyph } from "./parts/glyphs";
 import { HomeSheet, HomeSheetClose, HomeSheetContent, HomeSheetTitle } from "./parts/sheet";
-import type { HomeSheetChangeDetails } from "./parts/sheet";
+import { CARD_BUTTON, closedByKeyboard, focusWithin, OPEN_CARD } from "./sheet-coexistence";
+import { useRecordRead } from "./use-record-read";
 
-/* Full record: a right sheet the user widens on the x-axis. A left-edge grip
-   drags the panel wider (pointer capture keeps the drag alive off the
-   strip; arrow keys do the same without a pointer). The sidebar is the
-   wall: the sheet's left edge stops where the sidebar ends and never
-   passes under it. Past the narrow end the sheet gives with rising
-   resistance and springs back on release, the way a scroll view says
-   "nothing more here". Enter and exit ride the registry's spring and exit
-   temperaments authored in home.css; a keyboard-initiated open or close
-   is instant, as everywhere in the portal. The width staff settle on is
-   kept for the next record they open. */
+/* Full record: a right sheet that runs non-modal beside the record card
+   (plans/full-record-sheet-decisions.md, Phase 0). Staff work the phone
+   with both in view: the card records what happened, the sheet shows the
+   whole request — contact, the request as submitted, the patient's
+   message, staff notes, and the recorded history. It reads its record
+   through the request-record server function on open and shows an
+   authored skeleton while it waits; the name, status, and phone come from
+   the list's line first, so the header is never late, only its facts.
+   Focus moves freely between list, card, and sheet; Escape closes the
+   surface that holds focus, and with focus in neither, the sheet.
+   The sheet scales in from the card's "Open full record" button and
+   leaves toward the same point (the origin is measured in
+   full-record-sheet-geometry.ts and the motion is authored in home.css);
+   a keyboard-initiated open or close is instant, as everywhere in the
+   portal. A left-edge grip drags the panel wider (pointer capture keeps
+   the drag alive off the strip; arrow keys do the same without a
+   pointer). The sidebar is the wall: the sheet's left edge stops where
+   the sidebar ends and never passes under it. Past the narrow end the
+   sheet gives with rising resistance and springs back on release, the
+   way a scroll view says "nothing more here". The width staff settle on
+   is kept for the next record they open; beside an open card it opens no
+   wider than the room that clears the card.
 
-const MIN_WIDTH_PX = 384;
-const KEY_STEP_PX = 32;
-/** The widest the sheet goes when nothing walls it: a sliver of page stays. */
-const VIEWPORT_SHARE = 0.94;
-
-/* The bounds of a resize, in the sheet's own box width. That box carries
-   the off-screen bleed home.css authors past the viewport edge (so the
-   arrival spring's overshoot never opens a gap there), measured here
-   rather than repeated as a constant. The measure is the layout box, not
-   the painted one: on its first frame the popup still wears the arrival
-   travel, and a bound read off a transformed rect would drift by it. On
-   the wide layout the sidebar is a fixed column above the sheet, so the
-   wall is its right edge; below that breakpoint the sidebar is a bottom
-   bar and the sheet keeps the viewport share. */
-interface SheetBounds {
-  readonly min: number;
-  readonly max: number;
-}
-
-function boundsFor(sheet: HTMLElement): SheetBounds {
-  const bleed = Math.max(0, sheet.offsetLeft + sheet.offsetWidth - window.innerWidth);
-  const side = document.querySelector(".portal-sidebar")?.getBoundingClientRect();
-  const wall = side !== undefined && side.width < window.innerWidth ? side.right : 0;
-  const widest = Math.min(window.innerWidth * VIEWPORT_SHARE, window.innerWidth - wall);
-  return { min: MIN_WIDTH_PX + bleed, max: Math.max(MIN_WIDTH_PX, widest) + bleed };
-}
-
-/* Apple's rubber band: the further past the bound, the less the sheet
-   follows, so it slows before it stops instead of freezing. */
-function rubberband(overshoot: number, dimension: number, constant = 0.55): number {
-  return (overshoot * dimension * constant) / (dimension + constant * Math.abs(overshoot));
-}
-
-function useSheetResize() {
-  const remembered = useRef<number | null>(null);
-  const popup = useRef<HTMLDivElement | null>(null);
-
-  /* Stable, so React runs it once per mount: the popup remounts on every
-     open, and the width staff chose last time comes back clamped to the
-     bounds of this viewport. */
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM nodes carry platform member types that cannot be made readonly
-  const mount = useCallback((node: HTMLDivElement | null) => {
-    popup.current = node;
-    if (node === null || remembered.current === null) return;
-    const { min, max } = boundsFor(node);
-    node.style.width = `${Math.min(max, Math.max(min, remembered.current))}px`;
-  }, []);
-
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM event objects carry platform member types that cannot be made readonly
-  function beginResize(event: React.PointerEvent<HTMLButtonElement>): void {
-    const grip = event.currentTarget;
-    if (grip.dataset.dragging === "true") return; // One pointer owns the drag
-    const sheet = grip.closest<HTMLElement>('[data-slot="sheet-content"]');
-    if (sheet === null) return;
-    event.preventDefault();
-    grip.setPointerCapture(event.pointerId);
-    grip.dataset.dragging = "true";
-    const pointerId = event.pointerId;
-    const startX = event.clientX;
-    const startWidth = sheet.getBoundingClientRect().width;
-    const { min, max } = boundsFor(sheet);
-    /* 1:1 with the pointer: nothing eases while a finger is on it. */
-    sheet.style.transition = "none";
-
-    // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM event objects carry platform member types that cannot be made readonly
-    const move = (moveEvent: PointerEvent) => {
-      if (moveEvent.pointerId !== pointerId) return;
-      const wanted = startWidth - (moveEvent.clientX - startX);
-      const width = Math.min(max, Math.max(min, wanted));
-      sheet.style.width = `${width}px`;
-      remembered.current = width;
-      /* Past the narrow end the sheet slides toward the edge with rising
-         resistance. The wide end is the sidebar: a wall, so a hard stop. */
-      const past = min - wanted;
-      sheet.style.transform = past > 0 ? `translateX(${rubberband(past, min)}px)` : "";
-    };
-    // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM event objects carry platform member types that cannot be made readonly
-    const up = (upEvent: PointerEvent) => {
-      if (upEvent.pointerId !== pointerId) return;
-      delete grip.dataset.dragging;
-      /* Let go together, so the rubber band springs home on the sheet's own
-         arrival temperament. */
-      sheet.style.transition = "";
-      sheet.style.transform = "";
-      grip.removeEventListener("pointermove", move);
-      grip.removeEventListener("pointerup", up);
-      grip.removeEventListener("pointercancel", up);
-    };
-    grip.addEventListener("pointermove", move);
-    grip.addEventListener("pointerup", up);
-    grip.addEventListener("pointercancel", up);
-  }
-
-  function resizeByKey(event: React.KeyboardEvent<HTMLButtonElement>): void {
-    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-    const sheet = event.currentTarget.closest<HTMLElement>('[data-slot="sheet-content"]');
-    if (sheet === null) return;
-    event.preventDefault();
-    const { min, max } = boundsFor(sheet);
-    const step = event.key === "ArrowLeft" ? KEY_STEP_PX : -KEY_STEP_PX; // Left widens: the sheet grows across
-    const width = Math.min(max, Math.max(min, sheet.getBoundingClientRect().width + step));
-    sheet.style.width = `${width}px`;
-    remembered.current = width;
-  }
-
-  return { popup, mount, beginResize, resizeByKey };
-}
-
-/* A close is keyboard-initiated on Escape, or when the close button was
-   pressed with Enter or Space (a click with no pointer behind it). */
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- Base UI event details carry platform event types that cannot be made readonly
-function closedByKeyboard(details: HomeSheetChangeDetails): boolean {
-  if (details.reason === "escape-key") return true;
-  if (details.reason !== "close-press") return false;
-  const { event } = details;
-  return event instanceof KeyboardEvent || (event instanceof MouseEvent && event.detail === 0);
-}
-
-const DOT_COLOR = {
-  new: "var(--color-amber-deep)",
-  contacted: "var(--color-teal)",
-  scheduled: "var(--color-navy)",
-  closed: "var(--color-line-3)",
-} as const;
-
-function activityOf(
-  line: Readonly<HomeLine>,
-): readonly { what: string; when: string; who: string }[] {
-  const worked = line.actorName ?? "Front desk";
-  const workedWhen = line.lastActivityRel === null ? "—" : `${line.lastActivityRel} ago`;
-  const entries: { what: string; when: string; who: string }[] = [];
-  if (line.status === "scheduled") {
-    entries.push({
-      what: "Appointment scheduled — handed to front desk",
-      when: workedWhen,
-      who: worked,
-    });
-  }
-  if (line.status === "contacted") {
-    entries.push({
-      what: line.followUpSet ? "Contact attempt — call again set" : "Contact attempt — no answer",
-      when: workedWhen,
-      who: worked,
-    });
-  }
-  if (line.status === "closed") {
-    entries.push({ what: "Request closed", when: workedWhen, who: worked });
-  }
-  entries.push({
-    what: "Request received from website form",
-    when: line.receivedFull,
-    who: "System",
-  });
-  return entries;
-}
-
-/** Buckets whose next action is due now, so the sheet leads with it. */
-const ATTENTION_NOW: readonly AttentionBucket[] = ["new", "follow_up", "stale"];
+   This file is the composition: the read, the dismissal policy, and the
+   header and footer. The sections are in full-record-sheet-body.tsx,
+   what they say in full-record-sheet-model.ts, the panel's box in
+   full-record-sheet-geometry.ts, and the rules this sheet and the record
+   card share in sheet-coexistence.ts. */
 
 export function FullRecordSheet({
   line,
@@ -198,13 +60,39 @@ export function FullRecordSheet({
   if (line !== null && line !== shown) setShown(line);
   const [arrived, setArrived] = useState(false);
   const [leavingByKey, setLeavingByKey] = useState(false);
-  const resize = useSheetResize();
-  const attention = shown !== null && ATTENTION_NOW.includes(shown.bucket);
+  const { popup, mount, refit, beginResize, resizeByKey } = useSheetResize();
+
+  const shownId = shown?.id ?? null;
+  const { outcome, record, retry, release } = useRecordRead(line, shownId);
+
+  /* A retarget (another row's card opened while the sheet was up) keeps
+     the popup mounted, so the mount-time fit does not run again: fit and
+     aim once the new card has taken its place, a frame later. */
+  const fittedFor = useRef<string | null>(null);
+  useEffect(() => {
+    const previous = fittedFor.current;
+    fittedFor.current = shownId;
+    if (shownId === null || previous === null || previous === shownId) return undefined;
+    const frame = requestAnimationFrame(() => {
+      refit(popup.current);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, [shownId, refit, popup]);
 
   return (
     <HomeSheet
       open={line !== null}
+      modal={false}
+      disablePointerDismissal
       onOpenChange={(open, details) => {
+        /* Escape closes the surface that holds focus (Phase 0): with focus
+           in the card, the card takes the key and the sheet stays. */
+        if (!open && details.reason === "escape-key" && focusWithin(OPEN_CARD)) {
+          details.cancel();
+          return;
+        }
         if (!open) setLeavingByKey(closedByKeyboard(details));
         onOpenChange(open);
       }}
@@ -213,18 +101,22 @@ export function FullRecordSheet({
         if (!open) {
           setLeavingByKey(false);
           setShown(null);
+          release();
         }
       }}
     >
       {shown === null ? null : (
         <HomeSheetContent
-          ref={resize.mount}
+          ref={mount}
           /* Focus lands on the sheet itself, which reads its title, not on
              the resize grip that happens to come first in the tab order. */
-          initialFocus={resize.popup}
-          /* The control that opened the sheet lives in the record card,
-             which closed behind it, so focus goes back to the patient's line. */
+          initialFocus={popup}
+          /* Focus goes back to the card's "Open full record" button while
+             that card is still open beside the sheet, otherwise to the
+             patient's line. The card is asked at close time, not at
+             render: the dashboard has already let go of the sheet by then. */
           finalFocus={() =>
+            document.querySelector<HTMLElement>(CARD_BUTTON) ??
             document.querySelector<HTMLElement>(`[data-row="${shown.id}"] .appt-line-trigger`)
           }
           instant={(instant && !arrived) || leavingByKey}
@@ -235,8 +127,8 @@ export function FullRecordSheet({
               className="wgi-sheet-grip"
               aria-label="Resize the full record panel"
               title="Drag, or press the arrow keys, to resize"
-              onPointerDown={resize.beginResize}
-              onKeyDown={resize.resizeByKey}
+              onPointerDown={beginResize}
+              onKeyDown={resizeByKey}
             >
               <span aria-hidden="true" />
             </button>
@@ -246,27 +138,14 @@ export function FullRecordSheet({
                 {/* Base UI's Title renders an <h2> itself — no render element,
                     so the heading and its content stay in one JSX node. */}
                 <HomeSheetTitle className="wgi-sheet-name" data-ui-redact="patient-name">
-                  {shown.name}
+                  {record?.name ?? shown.name}
                 </HomeSheetTitle>
                 <p className="wgi-sheet-meta">
-                  <span className="wgi-sheet-status">
-                    <span
-                      aria-hidden="true"
-                      className="wgi-sheet-dot"
-                      style={
-                        attention
-                          ? { background: DOT_COLOR[shown.status] }
-                          : {
-                              background: "transparent",
-                              boxShadow: `inset 0 0 0 1.5px ${DOT_COLOR[shown.status]}`,
-                            }
-                      }
-                    />
-                    {STATUS_WORDS[shown.status]}
-                  </span>
-                  <span aria-hidden="true">·</span>
-                  <span>{shown.pref}</span>
+                  <LineStatusBadge
+                    status={record === null ? shown.status : presentationStatus(record.state)}
+                  />
                 </p>
+                <StandsLine record={record} loading={outcome === null} />
               </div>
               <HomeSheetClose
                 render={
@@ -281,32 +160,7 @@ export function FullRecordSheet({
               </HomeSheetClose>
             </header>
             <div className="wgi-sheet-body">
-              <a href={shown.tel} className="wgi-sheet-call" data-ui-redact="patient-contact">
-                <PhoneGlyph size={16} />
-                {shown.phoneDisplay}
-              </a>
-              <dl className="wgi-sheet-dl">
-                <dt>Received</dt>
-                <dd>{shown.receivedFull}</dd>
-                <dt>Preference</dt>
-                <dd>{shown.pref}</dd>
-                <dt>Last worked</dt>
-                <dd>{shown.actorName ?? "No staff action yet"}</dd>
-              </dl>
-              <p className="wgi-sheet-activity-heading">Activity</p>
-              <ul className="wgi-sheet-activity">
-                {activityOf(shown).map((entry) => (
-                  <li key={entry.what}>
-                    <span aria-hidden="true" className="wgi-sheet-activity-dot" />
-                    <span>
-                      <span className="wgi-sheet-activity-what">{entry.what}</span>
-                      <span className="wgi-sheet-activity-when">
-                        {entry.when} · {entry.who}
-                      </span>
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <SheetBody line={shown} outcome={outcome} onRetry={retry} />
             </div>
             <Link href={shown.detailHref} className="wgi-sheet-foot">
               Open request page

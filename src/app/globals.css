@@ -258,14 +258,23 @@
        sheet's keyboard open and close (its own data-instant): keyboard-
        initiated actions never animate, reduced motion or not. */
     .wgi-popover:not([data-instant]),
-    .wgi-sheet:not([data-instant]),
-    .wgi-sheet-overlay:not([data-instant]) {
+    .wgi-sheet:not([data-instant]) {
       transition-duration: var(--pm-reduced-duration, 120ms) !important;
+    }
+
+    /* The save toast (ui/toaster.tsx, on Sonner) keeps the cross-fade and
+       gives up its rise: per-property against the recipe's
+       `transform, opacity, height` list. Sonner's own reduced-motion rule
+       is unlayered, which the cascade ranks below a layered !important. */
+    [data-sonner-toast] {
+      transition-duration: 0s, var(--pm-reduced-duration, 120ms), 0s !important;
     }
 
     .wgi-list-skeleton td > span,
     .wgi-loading-head > span,
-    .wgi-loading-head > i {
+    .wgi-loading-head > i,
+    .wgi-sheet-skeleton > i,
+    .wgi-sheet-placeholder {
       animation-duration: 3.2s !important;
       animation-iteration-count: infinite !important;
     }
@@ -1206,9 +1215,10 @@
     --portal-attention-ink: oklch(0.5 0.11 70);
 
     /* The Line type scale: fixed rem steps, a 1.2 ratio on a 15px body
-       floor. Hierarchy comes from size and space; three weights (400/600/800)
-       carry the rest. Never fluid — a clamp()ed heading in product UI is what
-       let a count sentence outrank the page title. */
+       floor. Hierarchy comes from size and space; the portal loads real
+       regular, medium, semibold and bold faces (400/500/600/700). Never fluid —
+       a clamp()ed heading in product UI is what let a count sentence
+       outrank the page title. */
     --pt-2xs: 0.6875rem;
     --pt-xs: 0.8125rem;
     --pt-sm: 0.9375rem;

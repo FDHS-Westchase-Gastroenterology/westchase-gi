@@ -5,12 +5,15 @@ import { cn } from "cn";
 
 /* Fresh conversion of the stock registry Sheet for the home dashboard
    (portal-home-redesign-brief §4.5): the Base UI dialog skeleton, right side
-   only, repainted through the portal bridge. Enter/exit ride the registry's
-   spring and exit temperaments in home.css; `instant` marks the popup and
-   its scrim `data-instant` (the attribute Base UI's popovers set on their
-   own) for a keyboard-initiated open or close, which never animates. The
-   resize grip is the surface's own affordance and lives with the
-   full-record component. Paint lives in home.css under `.wgi-sheet*`. */
+   only, repainted through the portal bridge. The sheet runs non-modal beside
+   the record card (plans/full-record-sheet-decisions.md, Phase 0), so the
+   stock Overlay part is left out rather than hidden: no scrim, no scroll
+   lock, nothing inert behind it. Enter/exit ride the registry's spring and
+   exit temperaments in home.css; `instant` marks the popup `data-instant`
+   (the attribute Base UI's popovers set on their own) for a
+   keyboard-initiated open or close, which never animates. The resize grip is
+   the surface's own affordance and lives with the full-record component.
+   Paint lives in home.css under `.wgi-sheet*`. */
 
 type HomeSheetChangeDetails = SheetPrimitive.Root.ChangeEventDetails;
 
@@ -36,18 +39,12 @@ function HomeSheetContent({
   instant = false,
   ...props
 }: SheetPrimitive.Popup.Props & { readonly instant?: boolean }) {
-  const instantAttr = instant ? "keyboard" : undefined;
   return (
     <SheetPrimitive.Portal>
-      <SheetPrimitive.Backdrop
-        data-slot="sheet-overlay"
-        data-instant={instantAttr}
-        className="wgi-sheet-overlay"
-      />
       <SheetPrimitive.Popup
         data-slot="sheet-content"
         data-side="right"
-        data-instant={instantAttr}
+        data-instant={instant ? "keyboard" : undefined}
         className={cn("wgi-sheet", className)}
         {...props}
       >

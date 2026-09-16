@@ -32,7 +32,7 @@
   color: var(--color-ink);
   font-family: inherit;
   font-size: var(--pt-xs);
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
   transition:
     background-color var(--motion-micro-duration) var(--motion-exit),
@@ -95,7 +95,7 @@
 
 .wgi-pill-value {
   color: var(--color-ink);
-  font-weight: 700;
+  font-weight: 600;
   white-space: nowrap;
 }
 
@@ -160,7 +160,7 @@
   color: var(--color-muted-ink);
   font-size: var(--pt-2xs);
   font-variant-numeric: tabular-nums;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* ---------- The page (issue #282) ----------
@@ -195,13 +195,13 @@
   min-height: 0;
   max-width: 76rem;
   /* Row 46.5px, heading row 36px, right gutter 39px (rows to card edge),
-     day 38px black, name 18.5px, phone 15.5px, heading 14.5px. The four
+     day 36px bold, name 18.5px, phone 15.5px, heading 14.5px. The four
      type sizes sit between the closed --pt-* steps; they are scoped here,
      derived once from the approved frame, and used nowhere else. */
   --wgi-row-h: 2.9rem;
   --wgi-head-h: 2.25rem;
   --wgi-gutter: 2.4375rem;
-  --wgi-day-size: 2.375rem;
+  --wgi-day-size: 2.25rem;
   --wgi-name-size: 1.156rem;
   --wgi-phone-size: 0.969rem;
   --wgi-label-size: 0.906rem;
@@ -256,7 +256,7 @@
 }
 
 /* The header loses its navy rule: the surface below closes the header now.
-   Greeting 17px bold in the muted ink, the day 38px black in the page ink. */
+   Greeting 17px medium in the muted ink, the day 36px bold in the page ink. */
 .wgi-home > .portal-sheet-head {
   border-block-end: 0;
   padding-block-end: 0;
@@ -266,7 +266,7 @@
   color: var(--wgi-label-ink-canvas);
   font-family: var(--font-body), Arial, sans-serif;
   font-size: var(--pt-base);
-  font-weight: 700;
+  font-weight: 500;
 }
 
 /* The day is set in the body sans (Lato) as the frame draws it, not the
@@ -275,8 +275,8 @@
   color: var(--wgi-name-ink);
   font-family: var(--font-body), Arial, sans-serif;
   font-size: var(--wgi-day-size);
-  font-weight: 900;
-  letter-spacing: -0.01em;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   line-height: 1.1;
 }
 
@@ -286,6 +286,7 @@
    geometry, press and focus; only paint is set here, so the outline hover
    has to be restated (this file outranks its utilities). */
 .wgi-cmd {
+  font-weight: 600;
   background: var(--wgi-cmd-fill);
   box-shadow:
     inset 0 0 0 1px var(--wgi-cmd-stroke),
@@ -457,7 +458,7 @@
   padding: 0 1rem;
   color: var(--wgi-label-ink);
   font-size: var(--wgi-label-size);
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0;
   text-align: left;
   text-transform: none;
@@ -544,8 +545,8 @@
   overflow: hidden;
   color: var(--wgi-name-ink);
   font-size: var(--wgi-name-size);
-  font-weight: 700;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  letter-spacing: 0;
   text-overflow: ellipsis;
 }
 
@@ -556,9 +557,7 @@
   color: var(--wgi-muted-ink);
   font-size: var(--wgi-phone-size);
   font-variant-numeric: tabular-nums;
-  /* The frame sets the number in Lato SemiBold. The site loads Lato 400,
-     700 and 900 only (src/lib/fonts.ts), so 600 rendered as 700 and the
-     number sat as heavy as the name. Regular keeps it a step under. */
+  /* Supporting data stays regular beneath the semibold patient name. */
   font-weight: 400;
   white-space: nowrap;
 }
@@ -606,7 +605,7 @@ a.appt-phone:hover {
   color: var(--wgi-muted-ink);
   font-size: 1rem;
   font-variant-numeric: tabular-nums;
-  /* Lato Medium in the frame; 400 is the weight that is loaded. */
+  /* The selected calmer Lato treatment keeps supporting data regular. */
   font-weight: 400;
   text-overflow: ellipsis;
 }
@@ -616,7 +615,7 @@ a.appt-phone:hover {
    word for a screen reader. */
 .wgi-list-row [data-col="received"][data-overdue] {
   color: var(--portal-attention-ink);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 /* The row-opening affordance: a chevron button at the right edge. The row
@@ -786,7 +785,7 @@ a.appt-phone:hover {
   color: var(--wgi-label-ink);
   font-size: 1rem;
   font-variant-numeric: tabular-nums;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .wgi-list-range {
@@ -976,7 +975,7 @@ a.appt-phone:hover {
   padding: 0 0.875rem;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6);
   font-size: var(--pt-sm);
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0;
   line-height: 1;
   white-space: nowrap;
@@ -1542,27 +1541,6 @@ a.appt-phone:hover {
   line-height: 1.45;
 }
 
-.wgi-record-retry {
-  border: 0;
-  background: none;
-  padding: 0;
-  color: var(--color-teal-ink);
-  font-family: inherit;
-  font-size: var(--pt-2xs);
-  font-weight: 700;
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.wgi-record-error {
-  margin: 0 0.9rem 0.5rem;
-  color: var(--portal-attention-ink);
-  font-size: var(--pt-2xs);
-  font-weight: 600;
-  line-height: 1.45;
-}
-
 /* The way into the full record: the strip along the calendar's lower
    edge, the earlier card's foot at its own density. */
 .wgi-record-foot {
@@ -1969,45 +1947,28 @@ a.appt-phone:hover {
 
 /* ---------- Full record: the right sheet ---------- */
 
-/* The scrim fades in on the registry's scrim beat, a touch slower than
-   the exit, so the dim reads as room tone under the arriving paper; it
-   leaves on the exit beat with the sheet. */
-.wgi-sheet-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  background: rgb(0 0 0 / 10%);
-  transition: opacity var(--pm-scrim-duration) var(--pm-exit);
-}
-
-.wgi-sheet-overlay[data-starting-style],
-.wgi-sheet-overlay[data-ending-style] {
-  opacity: 0;
-}
-
-.wgi-sheet-overlay[data-ending-style] {
-  transition-duration: var(--pm-exit-duration);
-}
-
-@supports (backdrop-filter: blur(2px)) {
-  .wgi-sheet-overlay {
-    backdrop-filter: blur(2px);
-  }
-}
-
-/* The sheet arrives the way the portal's modals do: the travel rides the
-   registry spring (one 4.6% overshoot, settled inside half a second) and
-   the fade rides the exit curve, which finishes "it's here" while the
-   spring settles the slide. It leaves faster than it came, along a shorter
-   version of the same path. Transitions rather than keyframes, so a close
-   during the entrance reverses from wherever the sheet is.
-   The box bleeds half a rem past the viewport's right edge: the spring's
-   overshoot carries the sheet that far past its resting place, and the
-   bleed keeps the edge covered instead of flashing a hairline of page.
-   The widths below are the visible sheet; the bleed is added on top, and
-   the resize code measures it rather than repeating the number. */
+/* The sheet runs non-modal beside the record card
+   (plans/full-record-sheet-decisions.md, Phase 0): no scrim, no scroll
+   lock, nothing inert behind it. It arrives from the card: the popup's
+   transform-origin is the card's "Open full record" button, which
+   full-record-sheet.tsx sets as --wgi-sheet-origin-x/y from that button's
+   rect, clamped into the sheet's own box — so when the card ends before
+   the sheet begins, the origin sits on the sheet's left edge at the
+   button's height. From there the sheet scales in from 0.96 with a fade:
+   the registry's entrance start, one 4.6% overshoot on the spring, settled
+   inside half a second. The fade rides the exit curve, which finishes
+   "it's here" while the spring settles the scale. It leaves faster than it
+   came, toward the same point. Transitions rather than keyframes, so a
+   close during the entrance reverses from wherever the sheet is. With no
+   card the origin falls back to the left edge, centred.
+   The box bleeds 4vw past the viewport's right edge: a scale from a
+   left-edge origin pulls the right edge in by 4% of the box, the widest
+   sheet is 94vw, and the bleed keeps the viewport edge covered instead of
+   flashing a strip of page while the spring lands. The widths below are
+   the visible sheet; the bleed is added on top, and the resize code
+   measures it rather than repeating the number. */
 .wgi-sheet {
-  --wgi-sheet-bleed: 0.5rem;
+  --wgi-sheet-bleed: 4vw;
   position: fixed;
   inset-block: 0;
   right: calc(-1 * var(--wgi-sheet-bleed));
@@ -2025,35 +1986,42 @@ a.appt-phone:hover {
   box-shadow: -24px 0 48px -28px oklch(0.28 0.05 245 / 0.5);
   padding: 0 var(--wgi-sheet-bleed) 0 0;
   outline: none;
+  transform-origin: var(--wgi-sheet-origin-x, 0%) var(--wgi-sheet-origin-y, 50%);
   transition:
     transform var(--pm-spring-duration) var(--pm-spring),
     opacity var(--pm-exit-duration) var(--pm-exit);
 }
 
+/* At the sidebar breakpoint the sheet sits above the record card (the
+   popover's positioner is z 50): a sheet widened over the card keeps its
+   grip reachable. `--z-drawer` is the registry's drawer layer in the brand
+   @theme; nothing else reads it yet, so the fallback repeats its value in
+   case the token is not emitted. Below the breakpoint the sheet keeps 50
+   (mobile unchanged). */
 @media (min-width: 60rem) {
   .wgi-sheet {
+    z-index: var(--z-drawer, 80);
     max-width: calc(min(94vw, 100vw - 17rem) + var(--wgi-sheet-bleed));
   }
 }
 
 .wgi-sheet[data-starting-style] {
   opacity: 0;
-  transform: translateX(2.5rem);
+  transform: scale(0.96);
 }
 
 .wgi-sheet[data-ending-style] {
   opacity: 0;
-  transform: translateX(1.25rem);
+  transform: scale(0.97);
   transition:
     transform var(--pm-exit-duration) var(--pm-exit),
     opacity var(--pm-exit-duration) var(--pm-exit);
 }
 
-/* Keyboard-initiated actions never animate: the sheet marks itself and
-   its scrim data-instant for an open or close that came from the keyboard,
-   the attribute Base UI's popovers set on their own. */
-.wgi-sheet[data-instant],
-.wgi-sheet-overlay[data-instant] {
+/* Keyboard-initiated actions never animate: the sheet marks itself
+   data-instant for an open or close that came from the keyboard, the
+   attribute Base UI's popovers set on their own. */
+.wgi-sheet[data-instant] {
   transition-duration: 0ms;
 }
 
@@ -2145,17 +2113,28 @@ a.appt-phone:hover {
   font-size: var(--pt-xs);
 }
 
-.wgi-sheet-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
+/* Where it stands: one sentence of the record's own facts under the
+   badge, information rather than a control
+   (plans/full-record-sheet-decisions.md, Content answers). Until the read
+   lands, a placeholder bar holds the line on the list skeleton's sweep, so
+   the header keeps its height; the email line in Contact waits the same
+   way. */
+.wgi-sheet-stands {
+  margin: 0.55rem 0 0;
+  color: var(--color-ink);
+  font-size: var(--pt-sm);
+  line-height: 1.45;
 }
 
-.wgi-sheet-dot {
-  display: inline-block;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 999px;
+.wgi-sheet-placeholder {
+  display: block;
+  height: 0.85rem;
+  width: 14rem;
+  max-width: 100%;
+  margin: 0.7rem 0 0.15rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--color-line-2) 72%, white);
+  animation: wgi-skeleton 1.6s ease-in-out infinite;
 }
 
 .wgi-sheet-close {
@@ -2224,7 +2203,7 @@ a.appt-phone:hover {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 0.55rem 1.25rem;
-  margin: 1.25rem 0 0;
+  margin: 0;
 }
 
 .wgi-sheet-dl dt {
@@ -2238,8 +2217,12 @@ a.appt-phone:hover {
   font-size: var(--pt-sm);
 }
 
-.wgi-sheet-activity-heading {
-  margin: 1.6rem 0 0.6rem;
+/* Section headings inside the body, one per section, on the recipe the
+   activity heading used to carry. The rule between sections is the ui
+   Separator (`bg-border` paints --color-line through the bridge); its
+   margins carry the body's 1.25rem rhythm. */
+.wgi-sheet-section {
+  margin: 0 0 0.6rem;
   color: var(--color-ink);
   font-size: var(--pt-xs);
   font-weight: 700;
@@ -2247,39 +2230,143 @@ a.appt-phone:hover {
   text-transform: uppercase;
 }
 
-.wgi-sheet-activity {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.wgi-sheet-rule {
+  margin: 1.25rem 0;
 }
 
-.wgi-sheet-activity > li {
+.wgi-sheet-contact {
   display: flex;
-  gap: var(--ps-3);
-  padding: 0.6rem 0;
-  border-top: 1px solid var(--color-line);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
 }
 
-.wgi-sheet-activity-dot {
-  flex: none;
-  width: 0.5rem;
-  height: 0.5rem;
-  margin-top: 0.42rem;
-  border-radius: 999px;
-  background: var(--color-line-3);
+.wgi-sheet-contact > .wgi-sheet-call {
+  align-self: stretch;
 }
 
-.wgi-sheet-activity-what {
-  display: block;
+.wgi-sheet-contact > .wgi-sheet-placeholder {
+  width: 11rem;
+  margin: 0.2rem 0 0;
+}
+
+.wgi-sheet-email {
+  color: var(--color-teal-ink);
+  font-size: var(--pt-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-decoration-color: var(--color-line-3);
+  text-underline-offset: 0.15em;
+  transition: text-decoration-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.wgi-sheet-email:hover {
+  color: var(--color-teal-ink);
+  text-decoration-color: currentColor;
+}
+
+/* The patient's own words, as submitted: line breaks kept. */
+.wgi-sheet-message {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: var(--pt-sm);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.wgi-sheet-empty {
+  margin: 0;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-sm);
+}
+
+/* Notes and history are the ui Item recipe (base-nova source, see
+   src/components/stock/MANIFEST.json), size xs, styled by slot the way the
+   record card styles its toggle group. The item's own inline padding is
+   pulled back to the body's edge by the group's negative margin in the
+   JSX. */
+.wgi-sheet-items [data-slot="item-title"] {
   color: var(--color-ink);
   font-size: var(--pt-sm);
   font-weight: 600;
 }
 
-.wgi-sheet-activity-when {
-  display: block;
-  color: var(--color-muted-ink);
+.wgi-sheet-items [data-slot="item-description"] {
   font-size: var(--pt-xs);
+}
+
+.wgi-sheet-items [data-slot="item"][data-undone] [data-slot="item-title"] {
+  color: var(--color-muted-ink);
+  text-decoration: line-through;
+}
+
+.wgi-sheet-items [data-slot="item"][data-attention] [data-slot="item-title"] {
+  color: var(--color-amber-deep);
+}
+
+.wgi-sheet-items [data-slot="item"][data-quiet] [data-slot="item-title"] {
+  color: var(--color-muted-ink);
+  font-weight: 500;
+}
+
+/* The record's skeleton: the sections' own shapes on the list skeleton's
+   one sweep (DESIGN.md keeps the authored shape; a generic pulse is a
+   downgrade). */
+.wgi-sheet-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.wgi-sheet-skeleton > i {
+  display: block;
+  height: 0.85rem;
+  width: 100%;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--color-line-2) 72%, white);
+  animation: wgi-skeleton 1.6s ease-in-out infinite;
+}
+
+.wgi-sheet-skeleton > i[data-stands-for="section-title"] {
+  width: 5.5rem;
+  height: 0.7rem;
+  margin-top: 0.65rem;
+}
+
+.wgi-sheet-skeleton > i[data-stands-for="section-title"]:first-of-type {
+  margin-top: 0;
+}
+
+.wgi-sheet-skeleton > i[data-stands-for="detail-row"] {
+  width: 70%;
+}
+
+.wgi-sheet-skeleton > i[data-stands-for="detail-value"] {
+  width: 45%;
+}
+
+/* A record that no longer exists, and a read that failed: two lines in
+   the body, in place of the sections. */
+.wgi-sheet-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.wgi-sheet-state-title {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: var(--pt-sm);
+  font-weight: 700;
+}
+
+.wgi-sheet-state-note {
+  margin: 0;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-sm);
 }
 
 .wgi-sheet-foot {

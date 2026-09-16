@@ -3,6 +3,7 @@ import { followUpWhenLabel, stateLabel } from "@/app/admin/(portal)/requests/for
 import type { FollowUpChoice } from "@/lib/portal/business-time";
 import type {
   ManualClosureReason as ClosureReason,
+  CommandFailure,
   CommandRejection,
   ContactOutcome,
   LegalActions,
@@ -209,21 +210,33 @@ export function staleVersionCopy(current: Readonly<{ state: RequestState }> | un
 export const ILLEGAL_TRANSITION_COPY =
   "That action is no longer available for this request — it changed since this page loaded. This page has been brought up to date.";
 
+/** The sentence a refused command earns: the two truth-carrying rejections
+    read the truth; every other code has its fixed sentence. */
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- CommandFailure carries domain member types that cannot be made readonly
+export function rejectionCopy(failure: Readonly<CommandFailure>): string {
+  if (failure.code === "stale_version") return staleVersionCopy(failure.current);
+  if (failure.code === "illegal_transition") return ILLEGAL_TRANSITION_COPY;
+  return failureCopy(failure.code);
+}
+
+/** The verb the toast wears while a command is on its way; the same one the
+    button that started it wears. */
+export function workingCopy(intent: Readonly<PanelIntent>): string {
+  if (intent.kind === "reopen") return "Reopening…";
+  if (intent.kind === "undo") return "Undoing…";
+  return "Saving…";
+}
+
 // ---------------------------------------------------------------------------
 // Panel state: the staff member's in-progress choice and the last result.
 // ---------------------------------------------------------------------------
 
-export type Feedback =
-  | {
-      readonly tone: "success";
-      readonly text: string;
-      readonly closedOrBooked: boolean;
-      /** The queue neighbor to continue to, fixed at the moment the outcome
-          was accepted. The page's own next link is recomputed on refresh, and
-          a row that just left the open set has different neighbors then. */
-      readonly nextHref: string | null;
-    }
-  | { readonly tone: "error"; readonly text: string };
+/** The last result, remembered so the next input retires it. The sentence
+    itself is said by the toast; the continuation rides the toast too. */
+export interface Feedback {
+  readonly tone: "success" | "error";
+  readonly text: string;
+}
 
 export interface PanelState {
   readonly selected: ChoiceId | null;
@@ -244,12 +257,7 @@ export type PanelAction =
   | { readonly type: "set_appointment_day"; readonly day: string }
   | { readonly type: "set_appointment_time"; readonly time: string }
   | { readonly type: "select_review"; readonly resolution: "booked" | ClosureReason }
-  | {
-      readonly type: "succeeded";
-      readonly text: string;
-      readonly closedOrBooked: boolean;
-      readonly nextHref: string | null;
-    }
+  | { readonly type: "succeeded"; readonly text: string }
   | { readonly type: "failed"; readonly text: string };
 
 export const INITIAL_PANEL: PanelState = {
@@ -291,15 +299,7 @@ export function panelReducer(
     case "select_review":
       return { ...state, reviewResolution: action.resolution, feedback: null };
     case "succeeded":
-      return {
-        ...INITIAL_PANEL,
-        feedback: {
-          tone: "success",
-          text: action.text,
-          closedOrBooked: action.closedOrBooked,
-          nextHref: action.nextHref,
-        },
-      };
+      return { ...INITIAL_PANEL, feedback: { tone: "success", text: action.text } };
     case "failed":
       return { ...state, feedback: { tone: "error", text: action.text } };
   }

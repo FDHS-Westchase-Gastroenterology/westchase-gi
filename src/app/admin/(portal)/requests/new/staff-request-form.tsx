@@ -19,6 +19,7 @@ import type {
   IntakeField,
 } from "@/lib/portal/contracts";
 
+import { attemptKey, followCreation } from "./created-toast";
 import { EMPTY_STAFF_REQUEST_DRAFT, isStaffRequestDraftDirty } from "./staff-request-draft";
 import { StaffRequestError } from "./staff-request-error";
 
@@ -476,8 +477,8 @@ export function StaffRequestForm({
   permalink: string;
   returnHref: string;
   returnLabel: string;
-  /** Present when a dialog hosts the form: the caller stays put and is told the name. */
-  onCreated?: (name: string) => void;
+  /** Present when a dialog hosts the form: the caller stays put and closes once the request exists; the toast (created-toast.ts) carries the name. */
+  onCreated?: () => void;
   /** Present when a dialog hosts the form: cancelling closes it instead of navigating. */
   onDismiss?: () => void;
   /** Lets the host route Close and Escape through this form's draft protection. */
@@ -485,14 +486,17 @@ export function StaffRequestForm({
 }>) {
   const router = useRouter();
   const hosted = onCreated !== undefined && onDismiss !== undefined;
+  const [initialIdempotencyKey] = useState(idempotencyKey);
   /* A hosted form tells its dialog about the new request from inside the
      action, not from an effect watching the result: the host learns at the
-     moment the fact exists rather than a render later. The unhosted route keeps
-     the bare server action so the form still posts without JavaScript. */
+     moment the fact exists, and the toast (created-toast.ts) follows the same
+     attempt. The unhosted route keeps the bare server action for no-JS posts. */
   const action = hosted
     ? async (previous: Readonly<CreateStaffRequestActionState>, formData: FormData) => {
-        const next = await createStaffRequest(previous, formData);
-        if (next.status === "created") onCreated(next.name);
+        const attempt = createStaffRequest(previous, formData);
+        followCreation(attempt, attemptKey(previous, initialIdempotencyKey));
+        const next = await attempt;
+        if (next.status === "created") onCreated();
         return next;
       }
     : createStaffRequest;
@@ -500,7 +504,6 @@ export function StaffRequestForm({
   const [draft, setDraft] = useState<StaffRequestDraft>(() =>
     state.status === "error" ? state.values : EMPTY_DRAFT,
   );
-  const [initialIdempotencyKey] = useState(idempotencyKey);
   const formRef = useRef<HTMLFormElement>(null);
   const alertRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLAnchorElement>(null);
@@ -508,10 +511,7 @@ export function StaffRequestForm({
   const keepEditingRef = useRef<HTMLButtonElement>(null);
   const discardReturnFocusRef = useRef<HTMLElement | null>(null);
   const discardIntentRef = useRef(false);
-  const retryKey =
-    state.status === "error" && state.idempotencyKey !== null
-      ? state.idempotencyKey
-      : initialIdempotencyKey;
+  const retryKey = attemptKey(state, initialIdempotencyKey);
   const unavailable = state.status === "error" && state.code === "unavailable";
   const conflicted = state.status === "error" && state.code === "conflict";
   const draftLocked = unavailable || conflicted;

@@ -5,10 +5,11 @@ import {
   cardReducer,
   cardRowsFor,
   commandFor,
+  failureFor,
   INITIAL_DRAFT,
   needsDay,
 } from "./record-card-model.ts";
-import { saveCardCommand } from "./record-card-save.ts";
+import { CardSaveError, failureOf, followSave, saveCardCommand } from "./record-card-save.ts";
 
 const TODAY = "2026-09-09";
 const COMMON = {
@@ -100,4 +101,40 @@ test("an uncertain completion can retry the exact same input and stale rejection
   assert.deepEqual(calls[1], calls[0]);
   const stale = { ok: false, code: "stale_version" };
   assert.equal(await saveCardCommand(command, COMMON, recorder(stale).actions), stale);
+});
+
+test("followSave resolves only a confirmed save, with the outcome intact", async () => {
+  const result = { ok: true, state: "closed", callAgainAt: null, undo: { transitionId: "x" } };
+  assert.equal(await followSave(async () => result), result);
+});
+
+test("followSave rejects a server rejection with the card's failure for that code", async () => {
+  for (const code of ["stale_version", "illegal_transition", "unavailable", "not_found"]) {
+    await assert.rejects(
+      followSave(async () => ({ ok: false, code })),
+      (error) => {
+        assert.ok(error instanceof CardSaveError);
+        assert.deepEqual(error.failure, failureFor(code));
+        assert.deepEqual(failureOf(error), failureFor(code));
+        return true;
+      },
+    );
+  }
+});
+
+test("a thrown action is an uncertain outcome, never a confirmed failure or success", async () => {
+  const network = new Error("fetch failed");
+  await assert.rejects(
+    followSave(async () => {
+      throw network;
+    }),
+    (error) => {
+      assert.ok(error instanceof CardSaveError);
+      assert.equal(error.failure.uncertain, true);
+      assert.equal(error.cause, network);
+      return true;
+    },
+  );
+  assert.equal(failureOf(network).uncertain, true);
+  assert.equal(failureOf("not an error").uncertain, true);
 });

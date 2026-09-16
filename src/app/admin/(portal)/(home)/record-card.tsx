@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useId, useReducer, useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 
-import { usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { practiceLocalDay } from "@/app/admin/(portal)/requests/appointment-input";
 import {
   closeRequest,
@@ -11,11 +11,11 @@ import {
   recordContactAttempt,
   recordContactAndClose,
 } from "@/app/admin/(portal)/requests/workflow-actions";
+import { SETTLED_TOAST } from "@/app/admin/(portal)/toast-follow";
 import { Phone, PhoneOff } from "@/components/icons";
 import { RadioGroup, RadioGroupItem } from "@/components/stock/radio-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/stock/toggle-group";
 import { Field, FieldLabel } from "@/components/ui/field";
-import type { CommandOutcome } from "@/lib/portal/workflow/contracts";
 
 import type { HomeLine } from "./home-line";
 import { HomeDayCalendar } from "./parts/calendar";
@@ -30,7 +30,6 @@ import {
   closureFor,
   commandFor,
   dayHorizon,
-  failureFor,
   FOLLOW_UP_LABELS,
   FOLLOW_UPS,
   followUpsFor,
@@ -47,7 +46,7 @@ import type {
   CardFailure,
   FollowUp,
 } from "./record-card-model";
-import { saveCardCommand } from "./record-card-save";
+import { failureOf, followSave, saveCardCommand } from "./record-card-save";
 
 /* ---- The record card: the calendar is the surface ----
    The registry's "date picker with presets" shape, in the portal's words:
@@ -62,13 +61,20 @@ import { saveCardCommand } from "./record-card-save";
    along its lower edge. The rules live in record-card-model.ts. */
 
 /* The commit: which server action the draft means, the feedback line it
-   earns, and the three ways a save can fail. Optimistic concurrency and an
-   idempotency key ride every attempt, mirroring the request detail panel;
-   `retry` re-runs the last attempt under the same key when the portal could
-   not confirm the outcome. */
+   earns, and the three ways a save can fail. The save is one promise the
+   toast follows (ui/toaster.tsx on Sonner, mounted in the portal layout so
+   the result outlives this card): "Saving…" while the action runs, the
+   saved line once the server confirmed it, the failure otherwise. An
+   uncertain failure keeps its toast open with Try again, which re-runs the
+   same attempt under the same idempotency key and updates the same toast,
+   mirroring the request detail panel; closing that toast instead is the
+   same choice as closing the card: the lock lifts and the next Save is a
+   new attempt, which the version check keeps honest. Optimistic
+   concurrency rides every attempt. */
+const SAVE_TOAST_TEST_ID = "home-save-toast";
+
 function useRecordCommit(line: Readonly<HomeLine>, onSaved: () => void) {
   const router = useRouter();
-  const { publish } = usePortalFeedback();
   const [pending, startTransition] = useTransition();
   const [failure, setFailure] = useState<CardFailure | null>(null);
   const keyRef = useRef<string | null>(null);
@@ -83,39 +89,71 @@ function useRecordCommit(line: Readonly<HomeLine>, onSaved: () => void) {
     };
   }
 
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- CommandOutcome carries domain member types that cannot be made readonly
-  function settle(result: Readonly<CommandOutcome>, command: Readonly<CardCommand>) {
-    if (result.ok) {
-      keyRef.current = null;
-      publish({
-        source: "requests-output",
-        tone: "status",
-        message: savedMessage(command, line.name, result.callAgainAt),
-      });
-      onSaved();
-      router.refresh();
-      return;
-    }
-    const next = failureFor(result.code);
-    if (!next.uncertain) keyRef.current = null;
-    setFailure(next);
-    if (next.refresh) router.refresh();
-  }
-
   function save(command: Readonly<CardCommand>) {
     const attempt = () => {
       if (pending) return;
       setFailure(null);
+      const input = common();
+      const outcome = followSave(async () =>
+        saveCardCommand(command, input, {
+          recordContactAttempt,
+          recordContactAndClose,
+          closeRequest,
+          confirmBookingHandoff,
+        }),
+      );
+
+      /* One toast per attempt, keyed by the attempt's identity: Try again
+         updates it in place instead of stacking a second. Sonner merges an
+         update over the toast it replaces, so the open-ended state an
+         uncertain failure set (no timeout, a close button, Try again) is
+         reset by name when the retry starts and when it lands. */
+      toast.promise(outcome, {
+        id: `${SAVE_TOAST_TEST_ID}:${input.idempotencyKey}`,
+        testId: SAVE_TOAST_TEST_ID,
+        ...SETTLED_TOAST,
+        loading: "Saving…",
+        success: (result) => ({
+          message: savedMessage(command, line.name, result.callAgainAt),
+          ...SETTLED_TOAST,
+        }),
+        error: (cause: unknown) => {
+          const next = failureOf(cause);
+          if (!next.uncertain) return { message: next.message, ...SETTLED_TOAST };
+          return {
+            message: next.message,
+            duration: Number.POSITIVE_INFINITY,
+            closeButton: true,
+            action: {
+              label: "Try again",
+              onClick: (event) => {
+                /* Sonner dismisses a toast on its action press; this one
+                   stays, and the retry updates it. */
+                event.preventDefault();
+                lastRun.current?.();
+              },
+            },
+            onDismiss: () => {
+              keyRef.current = null;
+              setFailure(null);
+            },
+          };
+        },
+      });
+
       startTransition(async () => {
-        settle(
-          await saveCardCommand(command, common(), {
-            recordContactAttempt,
-            recordContactAndClose,
-            closeRequest,
-            confirmBookingHandoff,
-          }),
-          command,
-        );
+        try {
+          await outcome;
+        } catch (cause) {
+          const next = failureOf(cause);
+          if (!next.uncertain) keyRef.current = null;
+          setFailure(next);
+          if (next.refresh) router.refresh();
+          return;
+        }
+        keyRef.current = null;
+        onSaved();
+        router.refresh();
       });
     };
     lastRun.current = attempt;
@@ -129,7 +167,6 @@ function useRecordCommit(line: Readonly<HomeLine>, onSaved: () => void) {
       setFailure(null);
     },
     save,
-    retry: () => lastRun.current?.(),
   };
 }
 
@@ -238,23 +275,6 @@ function SecondRow({
   );
 }
 
-function CardAlert({
-  failure,
-  pending,
-  onRetry,
-}: Readonly<{ failure: Readonly<CardFailure>; pending: boolean; onRetry: () => void }>) {
-  return (
-    <p role="alert" className="wgi-record-error">
-      {failure.message}{" "}
-      {failure.uncertain ? (
-        <button type="button" className="wgi-record-retry" disabled={pending} onClick={onRetry}>
-          Try again
-        </button>
-      ) : null}
-    </p>
-  );
-}
-
 export function RecordCard({
   line,
   onClose,
@@ -316,10 +336,6 @@ export function RecordCard({
           />
         ) : (
           <p className="wgi-record-note">{note}</p>
-        )}
-
-        {commit.failure === null ? null : (
-          <CardAlert failure={commit.failure} pending={commit.pending} onRetry={commit.retry} />
         )}
       </div>
 
