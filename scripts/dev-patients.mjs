@@ -74,11 +74,11 @@ export const PATIENT_NAMES = [
 
 const DEFAULT_COUNTS = {
   new: 10,
-  callAgain: 3,
+  callAgain: 10,
   stale: 1,
   upcoming: 1,
-  booked: 0,
-  closed: 0,
+  booked: 5,
+  closed: 5,
 };
 
 export function patientEmail(first, last) {
@@ -147,6 +147,7 @@ export function generatePatients(counts, now, rng) {
       created_at: createdAt,
       follow_up_at: null,
       record_handoff_at: null,
+      appointment_at: null,
       closed_at: null,
       closure_reason: null,
       legacy_review_required: false,
@@ -158,10 +159,19 @@ export function generatePatients(counts, now, rng) {
       row.follow_up_at = hoursAgo(now, -36);
     } else if (role === "booked") {
       row.record_handoff_at = hoursAgo(now, 24);
+      row.appointment_at = hoursAgo(now, -24 * (1 + (index % 5)));
     } else if (role === "closed") {
       row.closed_at = hoursAgo(now, 20);
       row.closure_reason = index % 2 === 0 ? "not_actionable" : "wont_schedule";
     }
+
+    events.push({
+      request_id: id,
+      type: "created",
+      status: "recorded",
+      meta: {},
+      created_at: createdAt,
+    });
 
     if (role === "callAgain" || role === "stale" || role === "upcoming") {
       events.push({
@@ -171,6 +181,7 @@ export function generatePatients(counts, now, rng) {
         meta: {
           outcome: role === "stale" ? "voicemail" : "no_answer",
           author_email: "seed.staff@example.test",
+          follow_up_at: row.follow_up_at,
         },
         created_at: hoursAgo(now, createdHours - 6),
       });

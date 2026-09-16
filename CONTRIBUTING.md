@@ -40,9 +40,15 @@ npm run dev:mission          # the E2E stack's server on :3100
 ```
 
 `npm run dev` replaces the `/seed` appointment-request rows with a random mix from
-the name pool in `scripts/dev-patients.mjs` (15 patients: 10 new, 3 call-again
-today, 1 stale, 1 later). `DEV_SEED=0` skips it. `npm run dev:mission` does not
-seed, so E2E stays on `supabase/seed.sql`. Production targets are refused.
+the name pool in `scripts/dev-patients.mjs` (32 patients: 10 New, 10 call-again
+due, 1 stale Contacted, 1 later callback, 5 Scheduled, and 5 Closed). Scheduled
+stores `booked`; the callback and stale groups store `contacted`. Each request
+gets a matching creation event, contact attempts carry their callback date, and
+Scheduled requests have a future appointment time. Only `/seed` requests and
+their cascading child records are replaced; other requests are preserved.
+`DEV_SEED=0` skips it; use `DEV_SEED=1 npm run dev:patients` for an explicit
+refresh when automatic seeding is disabled. `npm run dev:mission` does not seed,
+so E2E stays on `supabase/seed.sql`. Production targets are refused.
 
 `.env.local` may point the default environment at the Git branch's ephemeral **Supabase
 Preview Branch**; Production values live under the `_PROD`-suffixed names and in Vercel.
