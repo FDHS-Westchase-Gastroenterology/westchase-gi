@@ -360,9 +360,8 @@
   }
 
   /* Buttons live in the component system now: the recipe is
-     src/components/ui/button-variants.ts, and scopes assign their
-     temperament through the --btn-* knobs (see .portal-scope and
-     .review-flyer-screen). */
+     src/components/ui/button-variants.ts, and a scope assigns its
+     temperament through the --btn-* knobs (see .portal-scope). */
 
   /* Latin-order islands inside RTL text (phone numbers, the practice's
      Latin-script name): keep internal character order + ellipsis side. */
@@ -1233,9 +1232,6 @@
        cross-fade with no travel at all. Read by the reduced-motion opt-out in
        @layer base, which is the only place that can outrank the blanket
        reset; the value belongs here with the rest of the registry.
-       --pm-fade-duration — an opacity-only fade that rides alongside a spring
-       (the working band's unfold, the scrim's cousin). Longer than the exit,
-       shorter than the scrim, because the fold is already carrying the motion.
        Micro state changes (hover tints, pressed ink) keep their own 150ms
        ease-out inline; these tokens govern surfaces that move. */
     --pm-spring: var(--motion-spring);
@@ -1243,7 +1239,6 @@
     --pm-exit: var(--motion-exit);
     --pm-exit-duration: var(--motion-exit-duration);
     --pm-reduced-duration: 120ms;
-    --pm-fade-duration: 200ms;
     --pm-scrim-duration: 220ms;
 
     background: var(--portal-canvas);
@@ -1277,7 +1272,7 @@
     --btn-lift: 0px;
     --btn-hover-shadow: 0 0 #0000;
     --btn-active-scale: 0.98;
-    --btn-duration: 160ms;
+    --btn-duration: var(--motion-exit-duration);
     --btn-ease: var(--motion-exit);
   }
 
@@ -2089,19 +2084,6 @@
  * ------------------------------------------------------------------ */
 .review-flyer {
   display: none;
-}
-
-/* The flyer screen's Button temperament through the recipe knobs:
-   calmer 160ms timing, a 0.98 press, and no hover lift on touch. */
-.review-flyer-screen {
-  --btn-duration: 160ms;
-  --btn-active-scale: 0.98;
-}
-
-@media (hover: none) {
-  .review-flyer-screen {
-    --btn-lift: 0px;
-  }
 }
 
 @page review-flyer {

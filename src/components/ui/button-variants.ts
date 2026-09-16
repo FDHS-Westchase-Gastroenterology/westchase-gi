@@ -21,9 +21,9 @@ import { cva } from "class-variance-authority";
  *
  * Temperament knobs: the `wgi` motion resolves through --btn-*
  * variables with patient-site defaults; a scope assigns its own
- * (.portal-scope flattens the lift into a 0.98 press and tightens the
- * geometry; .review-flyer-screen calms the timing) without fighting
- * the utility cascade.
+ * (.portal-scope flattens the lift into a 0.98 press, calms the timing
+ * to the exit curve and tightens the geometry) without fighting the
+ * utility cascade.
  *
  * Long class strings are arrays, one line per job, so each line can be
  * read (and commented) on its own; cva joins them back into one string.
