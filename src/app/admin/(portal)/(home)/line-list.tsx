@@ -25,6 +25,7 @@ import { LineStatusBadge } from "./parts/badge";
 import { ChevronGlyph, PhoneGlyph } from "./parts/glyphs";
 import { HomePopover, HomePopoverContent, HomePopoverTrigger } from "./parts/popover";
 import { RecordCard } from "./record-card";
+import { cardStaysOpen } from "./sheet-coexistence";
 
 /* The request list (issue #282): one thin floating surface — column labels,
    rows, the inset scrollbar and a count footer — whose rows scroll inside it
@@ -329,15 +330,11 @@ function LineRow({
         <HomePopover
           open={open}
           onOpenChange={(next, details) => {
-            /* A press on the open row is the row's own toggle (the click
-               above closes it); Base UI would otherwise close on the
-               pointerdown and the click would reopen it. */
-            if (
-              !next &&
-              details.reason === "outside-press" &&
-              details.event.target instanceof Node &&
-              rowRef.current?.contains(details.event.target) === true
-            ) {
+            /* The card declines a close that belongs to a surface it shares
+               the screen with — its own row, the save toast, or the
+               full-record sheet beside it. `cardStaysOpen` holds the rules
+               and the sheet's half of the Escape rule with them. */
+            if (!next && cardStaysOpen(details, rowRef.current)) {
               details.cancel();
               return;
             }

@@ -120,10 +120,21 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
         resetKey={active.map((entry) => `${entry.key}=${entry.raw}`).join("&")}
         openRowId={openRowId}
         settledId={settledId}
-        onOpenRow={setOpenRowId}
+        onOpenRow={(id) => {
+          setOpenRowId(id);
+          /* The sheet follows the most recently opened card: another row's
+             card retargets an open sheet to that record without re-entering
+             (plans/full-record-sheet-decisions.md, Phase 0). */
+          if (id !== null) {
+            setSheet((current) =>
+              current === null || current.id === id ? current : { id, instant: current.instant },
+            );
+          }
+        }}
         onOpenFull={(id, instant) => {
+          /* The card stays open beside the sheet: staff work the phone with
+             both in view (Phase 0). */
           setSheet({ id, instant });
-          setOpenRowId(null);
         }}
         onSettled={markSettled}
         note={

@@ -258,14 +258,23 @@
        sheet's keyboard open and close (its own data-instant): keyboard-
        initiated actions never animate, reduced motion or not. */
     .wgi-popover:not([data-instant]),
-    .wgi-sheet:not([data-instant]),
-    .wgi-sheet-overlay:not([data-instant]) {
+    .wgi-sheet:not([data-instant]) {
       transition-duration: var(--pm-reduced-duration, 120ms) !important;
+    }
+
+    /* The save toast (ui/toaster.tsx, on Sonner) keeps the cross-fade and
+       gives up its rise: per-property against the recipe's
+       `transform, opacity, height` list. Sonner's own reduced-motion rule
+       is unlayered, which the cascade ranks below a layered !important. */
+    [data-sonner-toast] {
+      transition-duration: 0s, var(--pm-reduced-duration, 120ms), 0s !important;
     }
 
     .wgi-list-skeleton td > span,
     .wgi-loading-head > span,
-    .wgi-loading-head > i {
+    .wgi-loading-head > i,
+    .wgi-sheet-skeleton > i,
+    .wgi-sheet-placeholder {
       animation-duration: 3.2s !important;
       animation-iteration-count: infinite !important;
     }
