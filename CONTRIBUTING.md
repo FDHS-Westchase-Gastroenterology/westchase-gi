@@ -130,6 +130,67 @@ disagreement. These prove CLI orchestration and transport handling, not live SQL
 or foreign-key behavior. The disposable `supabase-integration` gate remains the
 database integration authority; never run that Docker suite on Jason's Mac.
 
+### Fresh local staff-portal browser proof
+
+Use this workflow when a task explicitly asks for an independent browser reproduction against
+the exact uncommitted checkout. It proves the local server, seeded staff authentication, an
+existing synthetic request, the request popover, its companion full-record sheet, and an inspected
+capture. Keep it read-only: do not choose an outcome, save a request, submit a form, regenerate
+fixtures, or change application source.
+
+Choose the provider from the target. Use the registered `mcp__stagehand_local__*` tools for a
+localhost checkout; they launch an isolated Chrome profile and can own the worktree's development
+server. Use `mcp__browserbase__*` only for a hosted Westchase GI Preview or another public URL.
+Browserbase cannot prove uncommitted local source, and localhost must not be exposed to make it fit.
+The owner-oriented `CLAUDE.md` route assumes an already running server and an authenticated Claude
+Browser pane. It remains useful for ordinary frontend work; this fresh Stagehand route applies only
+when the reproduction is explicitly authorized.
+
+1. Call `mcp__stagehand_local__start` with the absolute checkout path in `worktree` and the
+   authored viewport (normally `desktop`). Let it run the default `dev` script; do not shell a
+   second server. Use the returned `appOrigin`, because its loopback port is allocated per session.
+   An `audit` and absolute `evidenceDir` are optional for durable evidence.
+2. Navigate to `${appOrigin}/admin` using `localhost` and confirm with `read_page` that the fresh
+   session reaches `/admin/login`. Call `sign_in({ origin: appOrigin })` with no credentials in
+   the arguments. The helper reads `PORTAL_SEED_ADMIN_EMAIL` / `PORTAL_SEED_ADMIN_PASSWORD` from
+   its MCP environment, Keychain, or the worktree `.env.local`; never copy, print, or pass them.
+   Read the authenticated page again and confirm the queue is visible.
+3. Inspect the current page with `snapshot` or DOM-only `evaluate`. If session health reports
+   `modelConfigured: false`, natural-language `act`, `observe`, and `extract` are unavailable;
+   use page-derived deterministic `act.action` objects instead. An action's `success: true` means
+   that the tool dispatched the action, not that the page reached the intended state.
+4. Choose one visible queue control whose current aria-label starts with `Open request for `. Use
+   its observed exact selector and a state-based wait, then confirm the popover with `read_page` or
+   `evaluate`. Keep the selected name as a local comparison value rather than hardcoding a patient
+   or phone number into the recipe.
+5. Inspect for a visible `button.wgi-record-foot` in that popover. This selector is the one
+   established by the local readiness proof. Replay a deterministic click action with
+   `method: "click"` and `arguments: []`, waiting for a non-empty sheet name, for example:
+
+   ```text
+   document.querySelector(".wgi-sheet-name")?.textContent?.trim().length > 0
+   ```
+
+   Re-read the page and verify that `.wgi-sheet-name` identifies the same selected request and
+   that the popover and sheet are visible together. If a click reports success but the sheet is
+   absent, inspect the current DOM and wait condition once before reporting the observed tool/UI
+   boundary; do not guess at a new selector or call it a product defect from the tool result alone.
+6. Capture with `mcp__stagehand_local__screenshot`, using an absolute `saveTo` path and browser-side
+   `redact` selectors for the staff account or other non-synthetic identity. Screenshot results are
+   metadata-only. Inspect the actual image through `evidence_get({ id, inline: true })` or the saved
+   path with an image viewer, and record whether both surfaces are visible. Confirm dimensions when
+   useful (desktop is 1440 × 900). Keep individual request evidence outside the checked-in UI atlas
+   unless the task specifically authorizes that location.
+7. Always call `mcp__stagehand_local__end`, including after a failure. Confirm `active: false`,
+   `closed: true`, `devServerStopped: true`, and an empty `cleanupErrors` list. A listener check or
+   failed request to the dynamic port can corroborate that the server is off. Do not leave Chrome
+   or the managed development server running.
+
+Known, evidence-backed recovery is small: after `LOCAL_MODEL`, switch to deterministic actions;
+after a stale or completed session, end it and start fresh; after a successful click with no visible
+state change, re-read and inspect once. Never install a model key, reseed, weaken authentication,
+expose localhost, or edit application code as a workaround for this proof.
+
 `.env.local` may point the default environment at the Git branch's ephemeral **Supabase
 Preview Branch**; Production values live under the `_PROD`-suffixed names and in Vercel.
 Never point local tests at Production — the E2E target guard requires an explicit Preview
