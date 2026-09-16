@@ -624,6 +624,7 @@ the adapter or database. The matching change-type check matrix is
   interface, its colocated action, the matching `src/lib/portal/` service, and an atomic RPC when
   records must agree.
 - **Portal reads and queue attention:** `src/lib/portal/workflow/reads.ts`,
+  `src/lib/portal/request-record/reads.ts` (whole record for read-only surfaces),
   `src/lib/portal/request-query.ts`, and `src/app/admin/(portal)/requests/queue.ts`.
 - **Table, column, RLS policy, RPC, or fixture:** a timestamped migration and rollback sibling,
   `scripts/verify-schema.mjs`, seed files when fixtures change, and every reader or writer of the

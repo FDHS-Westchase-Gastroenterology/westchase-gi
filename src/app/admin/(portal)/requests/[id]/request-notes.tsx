@@ -1,10 +1,12 @@
 "use client";
 
-import { useActionState, useCallback, useEffect, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { addRequestNote } from "@/app/admin/(portal)/requests/actions";
 import type { AddRequestNoteState } from "@/app/admin/(portal)/requests/actions";
+import { followed } from "@/app/admin/(portal)/toast-follow";
 import { Button } from "@/components/ui/button";
 
 export interface RequestNoteView {
@@ -15,6 +17,19 @@ export interface RequestNoteView {
 
 const INITIAL_VISIBLE_NOTES = 3;
 const INITIAL_ACTION_STATE: AddRequestNoteState = { status: "idle" };
+
+/* The result is a toast (ui/toaster.tsx), the same one the home record card
+   uses: "Saving note…" while the action runs, "Note added." once the server
+   confirmed it, which is when the composer closes. A failed attempt gives the
+   toast no error branch: the working toast leaves and the error stays on the
+   field, beside the draft it belongs to. */
+const NOTE_TOAST_TEST_ID = "request-note-toast";
+
+function noteAdded(
+  state: Readonly<AddRequestNoteState>,
+): state is Extract<AddRequestNoteState, { status: "success" }> {
+  return state.status === "success";
+}
 
 function RequestNoteList({
   notes,
@@ -78,43 +93,53 @@ export function RequestNotes({
   requestId: string;
   notes: RequestNoteView[];
 }>) {
-  const [composerOpen, setComposerOpen] = useState(false);
+  /* Closing after a confirmed save is its own state: the Add note button is
+     inert while the composer is open, so focus returns to it only once the
+     closed composer has rendered. */
+  const [composer, setComposer] = useState<"closed" | "open" | "closed-after-save">("closed");
   const [composerMotion, setComposerMotion] = useState(true);
   const [showAll, setShowAll] = useState(false);
   const [draft, setDraft] = useState("");
   const [feedbackDismissed, setFeedbackDismissed] = useState(false);
-  const [feedback, formAction, pending] = useActionState(addRequestNote, INITIAL_ACTION_STATE);
-  const {
-    feedback: pageFeedback,
-    publish: publishPageFeedback,
-    dismiss: dismissPageFeedback,
-  } = usePortalFeedback();
-  const currentNoteFeedback = pageFeedback?.source === "request-note" ? pageFeedback : null;
-  const [handledFeedback, setHandledFeedback] = useState(feedback);
-  if (feedback !== handledFeedback) {
-    setHandledFeedback(feedback);
-    if (feedback.status === "success") setComposerOpen(false);
-  }
+  const [feedback, formAction, pending] = useActionState(
+    async (previous: Readonly<AddRequestNoteState>, formData: FormData) => {
+      const attempt = addRequestNote(previous, formData);
+      /* One toast per request: the next note updates it in place. */
+      toast.promise(followed(attempt, noteAdded), {
+        id: `${NOTE_TOAST_TEST_ID}:${requestId}`,
+        testId: NOTE_TOAST_TEST_ID,
+        loading: "Saving note…",
+        success: (result) => result.message,
+      });
+      return attempt;
+    },
+    INITIAL_ACTION_STATE,
+  );
+  const { publish: publishPageFeedback, dismiss: dismissPageFeedback } = usePortalFeedback();
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const submitWithMotionRef = useRef(false);
+  const [handledFeedback, setHandledFeedback] = useState(feedback);
+  if (feedback !== handledFeedback) {
+    setHandledFeedback(feedback);
+    if (feedback.status === "success") setComposer("closed-after-save");
+  }
   const canSave = draft.trim().length > 0;
-  const saved =
-    feedback.status === "success" && !feedbackDismissed && !pending && currentNoteFeedback !== null;
-  const composerVisible = composerOpen;
+  const composerVisible = composer === "open";
   // An actionable field error belongs to the open draft, not to the shared
   // Page acknowledgement slot. Keep it attached to the field if staff print
   // Or trigger another output, then retire it when they edit or close.
   const showError = feedback.status === "error" && !feedbackDismissed && !pending;
-  const focusAddButtonOnSave = useCallback(
-    // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-    (feedbackElement: Readonly<HTMLParagraphElement | null>) => {
-      if (feedbackElement) {
-        requestAnimationFrame(() => addButtonRef.current?.focus());
-      }
-    },
-    [],
-  );
+
+  useEffect(() => {
+    const frame =
+      composer === "closed-after-save"
+        ? requestAnimationFrame(() => addButtonRef.current?.focus())
+        : null;
+    return () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+    };
+  }, [composer]);
 
   useEffect(() => {
     if (pending || feedbackDismissed || feedback.status === "idle") return;
@@ -130,7 +155,7 @@ export function RequestNotes({
     setFeedbackDismissed(true);
     dismissPageFeedback("request-note");
     setComposerMotion(event.detail > 0);
-    setComposerOpen(true);
+    setComposer("open");
     requestAnimationFrame(() => textareaRef.current?.focus());
   }
 
@@ -139,7 +164,7 @@ export function RequestNotes({
     setFeedbackDismissed(true);
     dismissPageFeedback("request-note");
     setComposerMotion(event.detail > 0);
-    setComposerOpen(false);
+    setComposer("closed");
     requestAnimationFrame(() => addButtonRef.current?.focus());
   }
 
@@ -165,17 +190,6 @@ export function RequestNotes({
           Add note
         </Button>
       </div>
-
-      {saved ? (
-        <p
-          ref={focusAddButtonOnSave}
-          role="status"
-          data-testid="request-note-feedback"
-          className="print-hide mt-4 rounded-[var(--radius-sm)] bg-[var(--color-mint)] px-4 py-3 text-[0.9rem] leading-relaxed font-bold text-[var(--color-ink)]"
-        >
-          {feedback.message}
-        </p>
-      ) : null}
 
       <RequestNoteList
         notes={notes}

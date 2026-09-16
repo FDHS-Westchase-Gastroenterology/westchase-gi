@@ -623,7 +623,13 @@ approval is not required.
   `stock/scroll-area.tsx`): the viewport is exposed as its own part so the list can name it,
   focus it and reset it, and `ScrollBar` adds a local `data-held` flag Base UI does not
   publish. Elsewhere it is still not a fit.
-- Sonner is Radix-era; Base UI projects use Toast.
+- Sonner is Radix-era; the registry's Base UI Toast is its base-nova counterpart. On the
+  project owner's explicit decision (2026-09-15) Sonner is adopted for the staff portal's
+  save feedback wherever a save has a pending beat and then a confirmation: the home record
+  card, the add-request dialog, the note composer and the request work panel.
+  `ui/toaster.tsx`, from the registry source in `stock/sonner.tsx`, is mounted once in the
+  portal layout so a result outlives the card, dialog or page that earned it, with
+  `toast.promise` following the save itself. The Base UI Toast stays unadopted.
 - The chat family has no product need: the practice's differentiator is a staffed human line.
 
 ---
