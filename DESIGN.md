@@ -332,13 +332,18 @@ for lifted cards. The portal prefers hairlines to shadows everywhere but the mod
 - **The registry owns every curve and duration.** `--motion-spring` (440ms, a ζ≈0.7 spring
   sampled into `linear()`: lands in ~110ms, overshoots 4.6% once, settles without a second
   bounce), `--motion-exit` (160ms, a strong ease-out), `--motion-micro-duration` (150ms). The
-  patient site also uses `--ease-out-quint` / `--ease-out-quart` for its lift and underline.
+  staff home's temperament is `--motion-standard` (`cubic-bezier(0.32, 0.72, 0, 1)`) over three
+  beats: `--motion-fast-duration` (140ms, hover tint and press), `--motion-base-duration` (240ms,
+  a popover arriving, a sheet leaving, content settling), `--motion-sheet-duration` (420ms, the
+  full-record sheet arriving). The patient site also uses `--ease-out-quint` / `--ease-out-quart`
+  for its lift and underline.
 - **A recipe's `motion` axis owns a component's motion.** The base string carries none.
   Temperaments are named; the default is the brand's. `hover:` is a trigger, not motion: the
   hovered paint belongs to `variant`, the journey there to `motion`.
 - **Two engines, one registry.** CSS (`@starting-style`, `transition` with `allow-discrete`,
   hover, press, focus rings) reads the `--motion-*` tokens; `motion/react` reads the presets in
-  `src/lib/motion.ts` (`arrive`, `leave`, `micro`, `crossfade`, `transitionFor`). They are the
+  `src/lib/motion.ts` (`arrive`, `leave`, `micro`, `fast`, `base`, `sheet`, `crossfade`,
+  `transitionFor`). They are the
   same temperaments, so a surface may use either — or both — without changing character. Pick
   by fit, not by rule: CSS runs off the main thread and keeps moving while a page loads;
   motion.dev keeps velocity when a spring is retargeted mid-flight and handles gestures, layout
@@ -373,6 +378,15 @@ for lifted cards. The portal prefers hairlines to shadows everywhere but the mod
   the surface is; a dialog can grow from the control that opened it (`--pm-origin-x/y`); dialogs
   nest. A portalled Dialog cannot transition the `overlay` property or style `::backdrop`, so the
   shadcn Dialog stays unadopted for it — a fit-checked keep, not a debt.
+- **Companion surfaces on the staff home.** The record card is a popover that detaches into a
+  companion panel when the full record opens: it stays anchored to its row, stays on top, and its
+  footer becomes the sheet's toggle ("Open full record" ↔ "Hide full record"). The full-record
+  sheet is an undimmed, non-modal inspector of the selected request — no scrim, because dimming
+  means modal — and the card is never covered: it is the wall the sheet resizes against. Escape
+  closes the surface holding focus, else the sheet; the selected row holds its tint while either
+  is open. (Apple HIG Popovers on detachable popovers, Panels on the inspector, and
+  `UISheetPresentationController.largestUndimmedDetentIdentifier` — an undimmed sheet is the
+  nonmodal one.)
 - **A modal that must fetch still opens on the spring's schedule** and shimmers a skeleton while
   it waits. The surface is never late, only its facts.
 - **Scroll has mass, not decoration.** Windowed groups are nested overflow boxes with
