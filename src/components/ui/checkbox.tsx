@@ -8,20 +8,21 @@ import { cn } from "cn";
 import { Check } from "@/components/icons";
 
 /*
- * Brand adaptation of the shadcn Checkbox: a provisional recipe synced from
+ * Brand adaptation of the shadcn Checkbox, adopted from
  * src/components/stock/checkbox.tsx for the print chooser's status list
- * (DESIGN.md roadmap item 3), pending confirmation in Claude Design. Base
- * UI renders a `role="checkbox"` control with a hidden native input beside
- * it, so a wrapping FieldLabel and Playwright's `.check()` both work.
+ * (requests/print-chooser.tsx). Base UI renders a `role="checkbox"` control
+ * with a hidden native input beside it, so a wrapping FieldLabel and
+ * Playwright's `.check()` both work.
  *
  * Every color is a semantic token resolved by the bridge: `border-input`
  * is line-3, `bg-primary` / `text-primary-foreground` are navy and on-dark
  * (the fill the portal's hand-rolled choice indicator already uses),
  * `ring-ring` is teal-ink, and `destructive` is the one permitted literal.
  * The 4px corner is the registry's; the brand radius ramp has no step this
- * small, and it is one of the questions for the design review. Dark mode is
- * not a shipped surface (globals.css, the `.dark` block), so the registry's
- * `dark:` overrides are dropped here as in every other approved recipe.
+ * small, an open decision recorded with the radius ramp in DESIGN.md
+ * "Roadmap — the extraction queue". Dark mode is not a shipped surface
+ * (globals.css, the `.dark` block), so the registry's `dark:` overrides are
+ * dropped here as in every other approved recipe.
  *
  * Motion is decoupled onto its own axis (DESIGN.md "Component API
  * rules"): the base string carries none. `wgi` (default) paints the

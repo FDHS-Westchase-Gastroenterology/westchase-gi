@@ -28,7 +28,7 @@ rules. The same design system applies regardless of the implementation tool.
 
 | You are adding…                                                  | It belongs in                                                                                                                      |
 | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| A color, radius, shadow, font family, easing curve, or duration  | The brand `@theme` block in `src/app/globals.css`. Nowhere else may declare one.                                                   |
+| A color, radius, shadow, font family, easing curve, or duration  | The brand `@theme` block in `src/app/globals.css`. Nowhere else may declare one; the staff home's `--wgi-*` block is the recorded exception (Token hierarchy). |
 | A type step or spacing step for the portal                       | The `.portal-scope` token block in `globals.css` (`--pt-*`, `--ps-*`). The scale is closed; a new step is a design decision.       |
 | How a shadcn component gets brand colors                         | The semantic bridge at the bottom of `globals.css` — map the semantic token onto a brand token, never a literal.                   |
 | A button, field, stamp, table… appearance or a new variant of one | The component's recipe in `src/components/ui/` (the cva file). Variants are named for meaning.                                  |
@@ -134,12 +134,12 @@ class for every call site.
    type, radius, or motion; if a surface needs a different paint it needs a variant, and if it
    needs a different feel it needs a temperament or a scope knob.
 
-Scoped CSS is the fourth mechanism and the last resort: a route may ship a stylesheet
-(`src/app/admin/portal-workbench.css`) for surface composition
-that utilities and recipes cannot express — print layouts, `::backdrop`, `@starting-style`
-entrances, a windowed group cut in row units. Every rule in a scoped sheet reads tokens. A rule
-that carries a literal color, a raw `rem` step, or a component's look is drift; the roadmap at
-the end of this file lists what is being extracted.
+Scoped CSS is the fourth mechanism and the last resort: a surface may ship a stylesheet for
+composition that utilities and recipes cannot express — print layouts, `::backdrop`,
+`@starting-style` entrances, a primitive's state attributes. The portal's is
+`src/app/admin/portal-workbench.css`; the staff home's is `home.css` beside its route. Every
+rule in a scoped sheet reads tokens. A rule that carries a literal color, a raw `rem` step, or
+a component's look is drift; the roadmap at the end of this file lists what is being extracted.
 
 ### Global CSS
 
@@ -155,7 +155,7 @@ the end of this file lists what is being extracted.
 | The semantic bridge                      | `@theme inline` mapping `--color-*` onto semantic names, then `:root` / `.dark` mapping semantic names onto brand tokens. The one literal is `--destructive`. |
 
 A new rule in `globals.css` must answer "which block, and why not a recipe?". A rule named
-after a component (`.card`, `.btn`, `.field-*`) is a recipe that has not been extracted yet.
+after a component (`.card`, `.card-lined`) is a recipe that has not been extracted yet.
 
 ---
 
@@ -178,21 +178,26 @@ Three levels. Each level may only reference the level above it.
 Rules:
 
 - **Literals live at level 1.** A `#hex`, `oklch()`, raw `rem`, or `ms` in a register scope or
-  the bridge is drift. (`--destructive` and the portal surface tints `--portal-canvas`,
-  `--portal-surface` are the recorded exceptions; the roadmap closes the latter.)
+  the bridge is drift. The recorded exceptions are `--destructive`; the portal surface tints
+  `--portal-canvas` and `--portal-surface` in `.portal-scope` (roadmap item 10); and the staff
+  home's `home.css`: its `--wgi-*` block, the approved Figma frame's sizes, paints, shadows and
+  radii scoped to `.wgi-home` with each ink's contrast noted beside it, and the `#e8f6fc` canvas
+  it assigns to `--portal-canvas` under Home.
 - **Names describe role, not value.** `--color-teal-ink` (teal as text on light), not
   `--color-teal-dark`. `--pt-base` (the datum on a line), not `--font-size-17`.
 - **Namespaces are owned.** The brand owns `--color-*`, `--radius-*`, `--shadow-*`, `--font-*`,
   `--motion-*`, `--ease-*`, `--z-*`, `--step-*`. The portal owns `--pt-*`, `--ps-*`, `--pm-*`,
-  `--portal-*`. Recipes own their knob prefix (`--btn-*`). shadcn owns the semantic names and
-  nothing else — the bridge re-declares no radius, no font, no color literal.
+  `--portal-*`; the staff home owns `--wgi-*`. Recipes own their knob prefix (`--btn-*`). shadcn
+  owns the semantic names and nothing else — the bridge re-declares no radius, no font, no color
+  literal.
 - **Collisions are checked before adoption.** shadcn's `--color-muted` (a surface) collided with
   the brand's secondary ink, now `--color-muted-ink`. Before adopting a component, list its
   `bg-*`/`text-*`/`border-*` utilities and check them against the brand `@theme`.
 - **Radius is a known gap.** The brand declares `--radius-sm` 0.375, `--radius` 0.625, and
   `--radius-lg` 0.875rem; Tailwind's defaults fill `md` (0.375) and `xl` (0.75), so `rounded-xl`
   is smaller than `rounded-lg`. Recipes use `rounded-sm`, `rounded-[var(--radius)]`, and
-  `rounded-lg` until the ramp is completed (Roadmap).
+  `rounded-lg` until the ramp is completed (roadmap item 8). Two recipes still sit off that set:
+  Card's `rounded-xl` and Checkbox's registry `rounded-[4px]`.
 
 ### Reference: the tokens
 
@@ -223,7 +228,7 @@ There is one theme — light, the practice's palette — and several **registers
 | Patient site        | the root (no class)                    | Display serif on headings, fluid type, section rhythm, the button lift.                                     |
 | Staff portal        | `.portal-scope` on `<body>`            | Lato-only, fixed type and space scales, `--pm-*` motion aliases, flattened button knobs (no lift, 0.98 press). |
 | Review flyer screen | `.review-flyer-screen`                 | Calmer button timing.                                                                                       |
-| Print               | `@media print` / `@page`               | Paper: windowed groups unscrolled, ink-only palette.                                                        |
+| Print               | `@media print` / `@page`               | Paper: scrolled regions print every line; backgrounds drop to white.                                        |
 | Locale              | `:lang(vi|ko|ar)`                      | Font families, leading, tracking; Arabic is RTL through `dir`.                                              |
 
 A register **assigns**: it sets knobs and aliases and may set its own scale tokens. It never
@@ -301,14 +306,9 @@ inline padding) and `.container-tight` (48rem for prose).
 - Patient page: `Header` → `PageHero` → alternating `.section` bands (some on mint) → `TextBand`
   call-to-action → `Footer`. One clear action per section; a short path to phone, forms, portal,
   directions.
-- Portal page: a persistent 17rem task index (Home, Appointments, Settings, Help) beside a working
+- Portal page: a persistent 17rem task index (Home, Requests, Settings, Help) beside a working
   canvas (`--portal-canvas`); at narrow widths the same four destinations become a fixed bottom
   index. Work sits on white paper (`--portal-surface`) as lines divided by hairlines.
-- **Groups window, they do not grow.** Five lines or fewer stand open. Taller groups hold a
-  fixed window — four and a half rows on desktop, three and a half on mobile — cut in row units
-  (`calc()` on the row height plus its hairline), and scroll within it. The half-cut row is the
-  whole affordance. The heading's count always states the true total; rendering caps at forty
-  lines and the remainder is a link ("6 more in Appointments"). Print renders every line.
 - **The staff home request list is sized to the viewport, not to a row count.** It is one
   floating surface (Card → Table under a sticky column-label row → count footer) whose rows
   scroll inside a named, focusable ScrollArea viewport while the header, actions and filters
@@ -365,19 +365,23 @@ for lifted cards. The portal prefers hairlines to shadows everywhere but the mod
 2. **What is it for?** Spatial consistency, state indication, feedback, or preventing a jarring
    change. "It looks nice" is not a reason on a surface staff see all day.
 3. **Which curve?** Entering or exiting → the registry spring / exit. Moving on screen →
-   ease-in-out. Tinting → `ease` at the micro duration. Constant motion → linear. Never ease-in.
+   ease-in-out. Tinting → an ease-out (`--motion-exit`) at the micro duration. Constant motion →
+   linear. Never ease-in.
 4. **How fast?** Press feedback 100–160ms; tooltips and small popovers 125–200ms; dropdowns
    150–250ms; modals and drawers 200–500ms (ours: 440 in, 160 out). Exits are faster than
    entrances.
 
 ### Rules of use
 
-- **Every modal is one modal.** Dialogs render through the shared dialog primitive
-  (`PortalModal` on the native `<dialog>`) and the shared dialog class: rise 12px, grow from 97%,
-  on the registry spring; leave on the registry exit; a close mid-entrance reverses from wherever
-  the surface is; a dialog can grow from the control that opened it (`--pm-origin-x/y`); dialogs
-  nest. A portalled Dialog cannot transition the `overlay` property or style `::backdrop`, so the
-  shadcn Dialog stays unadopted for it — a fit-checked keep, not a debt.
+- **Every modal is one modal.** A blocking decision or form in the portal is a native `<dialog>`
+  opened with `showModal()` and wearing the shared `.portal-confirm-dialog` parts
+  (`src/app/admin/portal-workbench.css`): it rises 0.75rem from 97% on the registry spring,
+  leaves on the registry exit, stays centered, and a close mid-entrance reverses from wherever
+  the surface is. Dialogs nest (the add-appointment dialog's form opens its discard
+  confirmation). A dialog opened from the keyboard or dismissed with Escape sets `data-instant`
+  and skips the transition (the add-appointment dialog, the print chooser). The native top layer
+  supplies `::backdrop` and the `overlay` transition a portalled Dialog cannot, so the shadcn
+  Dialog stays unadopted for modals — a fit-checked keep, not a debt.
 - **Companion surfaces on the staff home.** The record card is a popover that detaches into a
   companion panel when the full record opens: it stays anchored to its row, stays on top, and its
   footer becomes the sheet's toggle ("Open full record" ↔ "Hide full record"). The full-record
@@ -386,16 +390,18 @@ for lifted cards. The portal prefers hairlines to shadows everywhere but the mod
   closes the surface holding focus, else the sheet; the selected row holds its tint while either
   is open. (Apple HIG Popovers on detachable popovers, Panels on the inspector, and
   `UISheetPresentationController.largestUndimmedDetentIdentifier` — an undimmed sheet is the
-  nonmodal one.)
-- **A modal that must fetch still opens on the spring's schedule** and shimmers a skeleton while
-  it waits. The surface is never late, only its facts.
-- **Scroll has mass, not decoration.** Windowed groups are nested overflow boxes with
-  `overscroll-behavior: contain`. No rail, no progress fill. The one drawn rail is the staff
-  home list's inset ScrollArea scrollbar: a resting track and thumb whenever the rows overflow,
-  stronger ink while the rows move or on a fine-pointer hover and the strongest while held, each
-  at the micro duration. The thumb Base UI measures and moves is a pure function of the scroll
-  position, read on every scroll event: its height is the visible share of the rows, its offset
-  is the scroll offset, and it never transitions its transform or height. The browser owns
+  nonmodal one.) The sheet is a non-modal Base UI Dialog
+  (`HomeSheet` in `(home)/parts/sheet.tsx`): no scroll lock, nothing inert behind it.
+- **A surface that must fetch still opens on its own schedule** and holds a skeleton in its
+  sections' shapes while it waits (the full-record sheet). The surface is never late, only its
+  facts.
+- **Scroll has mass, not decoration.** Scroll regions keep the platform scrollbar and draw no
+  rail or progress fill. The one drawn rail is the staff home list's inset ScrollArea scrollbar:
+  a resting track and thumb whenever the rows overflow, stronger ink while the rows move or on a
+  fine-pointer hover and the strongest while held, each at the micro duration. The thumb Base UI
+  measures and moves is a pure function of the scroll position, read on every scroll event: its
+  height is the visible share of the rows, its offset is the scroll offset, and it never
+  transitions its transform or height. The browser owns
   overscroll. Where it reports its own rubber-band through the scroll offset (Safari), the thumb
   shortens against the pushed end in lockstep with the rows; where it clamps (Chromium), the thumb
   stays put. Scroll position never animates, and no script draws overscroll: nothing gives the
@@ -418,7 +424,7 @@ a new temperament with Jason before adding it to the shared registry; Claude Des
 ## Component tiers
 
 ```text
-src/components/stock/       registry bundle inputs                  retained for Claude Design
+src/components/stock/       registry bundle inputs                  retained for the local bundle
 src/components/ui/          brand recipes                           adapted from registry or authored locally
 src/components/patterns/  brand compositions                        authored on ui/ + tokens
 src/app/**/                 domain components                         colocated with their route
@@ -426,10 +432,12 @@ src/app/**/                 domain components                         colocated 
 
 - **`stock/`** — retained registry source and examples used by the local bundle pipeline.
   `MANIFEST.json` records their provenance. Existing vendor exclusions apply to these inputs;
-  they are not evidence of approved product design. The staff home calendar currently consumes
-  `stock/calendar.tsx`; preserve its behavior when converging it on an approved `ui/` recipe.
-- **`ui/`** — approved components synced into the repository. The project owns their recipes,
-  defaults, consumer maps, and compliance with repository checks.
+  they are not evidence of approved product design. The staff home imports three of them
+  directly — Calendar, RadioGroup and ToggleGroup — as bounded exceptions ("Folder and import
+  boundaries"); preserve their behavior when converging them on approved `ui/` recipes.
+- **`ui/`** — the project's approved components, adapted from registry source or authored
+  locally. The project owns their recipes, defaults, consumer maps, and compliance with
+  repository checks.
 - **`patterns/`** — reusables composed from `ui/` and tokens with no registry counterpart:
   heroes, text bands, reveals, stamps-with-words, timestamps.
 - **Domain** — stays with the route that owns it. A domain component that gains a second consumer
@@ -448,7 +456,7 @@ A pattern moves **up a tier** when all of these hold:
 4. **It fits the recipe** — variants map onto the color law, sizes onto the scales, motion onto
    the registry. If it cannot, it is a scope or a domain component, not a primitive.
 
-A CSS block moves **into a recipe** when it names a component (`.card`, `.field-*`), when the
+A CSS block moves **into a recipe** when it names a component (`.card`, `.card-lined`), when the
 same declarations appear under two class names, or when a surface reaches for `className` to
 change its color or type — the tell that a variant is missing.
 
@@ -486,7 +494,9 @@ its adaptations preserve the brand, and it meets the accessibility and verificat
   can style composition (`has-data-[slot=card-footer]:pb-0`) without extra props.
 - **Base UI conventions.** Custom triggers use `render`, not `asChild`. Items live inside their
   Group. Dialogs, sheets, and drawers always carry a title (`sr-only` if hidden). Buttons have no
-  `isLoading`; compose `Spinner` + `data-icon` + `disabled`.
+  `isLoading`: a pending Button is `disabled` and names its state in its label ("Signing in…"),
+  `motion="commit"` holds its press while `data-pending` is set, and a staff-portal save reports
+  its pending beat and result through `toast.promise` (`ui/toaster.tsx`).
 - **Forms compose `FieldGroup` + `Field`.** Labels, descriptions, errors are slots; `data-invalid`
   on the Field, `aria-invalid` on the control. Patient-facing selects stay native.
 - **`className` is for layout.** Never a component's own color, type, radius, or motion.
@@ -501,8 +511,10 @@ Floors for both products; the patient site's older, multilingual audience sets t
 
 - WCAG 2.1 AA everywhere; every text/background pair verified (the token comments carry the
   ratios). Body text ≥ 17px on the patient site; 15px floor in the portal.
-- **Targets:** 44px minimum, including dismiss controls and every Button size; icon buttons are
-  `size-11`.
+- **Targets:** 44px minimum, including dismiss controls. Button's `default` (`min-h-11`), `lg`
+  (`min-h-13`) and `icon` (`size-11`) sizes meet it; `sm` is `min-h-9` (36px), an open decision
+  until its two consumers (the full-record sheet's Retry, the time picker's Done) are measured
+  in place (roadmap item 11).
 - **Focus:** visible everywhere (`:focus-visible` outline in teal-ink; recipes carry a ring).
   Async outcomes move focus to the outcome — success, failure, unknown — never leaving a keyboard
   user on a detached control. A modal returns focus to the line that opened it.
@@ -510,8 +522,8 @@ Floors for both products; the patient site's older, multilingual audience sets t
   the row press target is a real `button`; groups are `role="group"`; a status line is
   `role="status"`, an error `role="alert"`; landmarks and a skip link on every page.
 - **Language:** every locale sets `lang`; Arabic sets `dir="rtl"` and layout holds; Latin-order
-  islands (phone numbers) use `.bidi-ltr`. Adopted Base UI overlays render inside the `Direction`
-  provider when they reach an RTL locale.
+  islands (phone numbers) use `.bidi-ltr`. No Base UI overlay reaches a translated locale today;
+  one that does renders inside Base UI's `DirectionProvider`.
 - **Motion:** full reduced-motion alternatives (see Motion). No autoplay, no auto-rotation.
 - **Color never carries meaning alone.** Stamps carry words; errors carry text; charts carry
   labels.
@@ -528,8 +540,9 @@ src/app/<surface>/*.css        route-scoped composition, imported only by that s
 cn (package)                   class joining and Tailwind v4 conflict resolution
 src/lib/utils.ts               compatibility re-export of cn
 src/lib/motion.ts              motion.dev presets bound to the registry
-src/lib/fonts.ts               next/font loaders → --font-* variables
-src/components/stock/          registry inputs            ← local Claude Design bundle pipeline
+src/lib/fonts.ts               patient-site next/font loaders → --font-* variables
+src/lib/portal-fonts.ts        staff-portal local Lato 400/500/600/700 and Trocchi → --font-lato, --font-trocchi
+src/components/stock/          registry inputs            ← local design bundle pipeline
 src/components/ui/             brand recipes             ← may import ui/, lib/; never app/
 src/components/patterns/     brand compositions          ← may import ui/, lib/; never app/
 src/components/*.tsx           patient-site shared components (the pre-tier layer; see Roadmap)
@@ -544,10 +557,13 @@ src/app/**/                    routes and their domain components ← may import
   Helper migrations preserve class behavior and follow `CONTRIBUTING.md` "Class-name helper
   updates", including registry inputs and local bundle regeneration.
 - Lower tiers never import higher ones: `ui/` and `patterns/` never reach into `src/app`.
-- New product consumers use approved `ui/` recipes. The existing staff home calendar import
-  from `stock/calendar.tsx` remains until its approved replacement is synced.
+- New product consumers use approved `ui/` recipes. The staff home's three `stock/` imports
+  (`calendar.tsx` in `(home)/parts/calendar.tsx`; `radio-group.tsx` and `toggle-group.tsx` in
+  `(home)/record-card.tsx`) are bounded exceptions that keep their behavior until approved `ui/`
+  recipes replace them (roadmap items 3 and 6).
 - A route-scoped stylesheet is imported once, by the surface's root layout, and scoped by a class
-  on `<body>`.
+  on `<body>`. The staff home's `home.css` is the exception: its workbench and loading state
+  import it and `.wgi-home` scopes it.
 - Generated files are project-owned on landing: top-level type-only imports, the documented
   disable-comment convention for framework-typed props, block comments for paragraphs.
 
@@ -629,10 +645,12 @@ approval is not required.
 ### Standing findings
 
 - Route navigation keeps `nav` + `aria-current`; shadcn Tabs serves in-page panel switching only.
-- The portal modal keeps the native `<dialog>` top layer (Motion, "one modal").
-- The authored skeletons are structured shapes with one sweep; a generic pulse is a downgrade.
+- Modals keep the native `<dialog>` top layer (Motion, "Every modal is one modal").
+- The authored skeletons hold their surface's own shapes (the staff home list's rows, the
+  full-record sheet's sections) and breathe together on one shared opacity loop
+  (`wgi-skeleton`); the registry Skeleton's generic block is a downgrade.
 - The hero is static; Carousel is not a fit. The testimonial rail is scroll-snap.
-- Windowed groups keep the platform scrollbar. ScrollArea is adopted for one surface, the
+- Scroll regions keep the platform scrollbar. ScrollArea is adopted for one surface, the
   staff home request list (`ui/scroll-area.tsx`, from the registry source in
   `stock/scroll-area.tsx`): the viewport is exposed as its own part so the list can name it,
   focus it and reset it, and `ScrollBar` adds a local `data-held` flag Base UI does not
@@ -640,7 +658,8 @@ approval is not required.
 - Sonner is Radix-era; the registry's Base UI Toast is its base-nova counterpart. On the
   project owner's explicit decision (2026-09-15) Sonner is adopted for the staff portal's
   save feedback wherever a save has a pending beat and then a confirmation: the home record
-  card, the add-request dialog, the note composer and the request work panel.
+  card, the staff request form (in the add-appointment dialog and on the new-request page), the
+  note composer and the request work panel.
   `ui/toaster.tsx`, from the registry source in `stock/sonner.tsx`, is mounted once in the
   portal layout so a result outlives the card, dialog or page that earned it, with
   `toast.promise` following the save itself. The Base UI Toast stays unadopted.
@@ -653,23 +672,39 @@ approval is not required.
 Ranked by the reuse it unlocks. Each follows the component selection and review process above.
 
 1. **Card surfaces → the Card recipe.** `.card` / `.card-lined` (globals.css) become `variant`
-   values on `ui/card.tsx`; the patient site's nine call sites migrate.
-2. **`portal-workbench.css` tokenization.** 238 spacing declarations use raw `rem` against 65 on
-   `--ps-*`; 98 of 135 font sizes bypass `--pt-*`; ~50 color values are literals or `color-mix`.
-   Mechanical, measurable, and it turns the sheet into something a recipe can absorb.
-3. **Choice lists → RadioGroup / Checkbox.** `.portal-choice-*` and the print chooser hand-roll
-   the checked indicator.
-4. **The task index → Sidebar.** `.portal-sidebar-*` / `.portal-nav-*` (~37 selectors); the bridge
-   already maps the sidebar tokens onto navy.
+   values on `ui/card.tsx`; their 14 call sites in 13 patient-site and review-hub files migrate.
+   The staff sign-in's `AuthCard` (`src/app/admin/auth-card.tsx`) restyles Card's radius, paint,
+   type, shadow and ring through `className`; that appearance becomes a named variant too.
+2. **`portal-workbench.css` tokenization.** Measured at `72059e3`: 235 of 332 spacing
+   declarations use a raw `rem` and 69 read `--ps-*` alone; 97 of 132 font sizes bypass `--pt-*`;
+   46 color values are literals and 30 are `color-mix()`. These are measurements, not a defect
+   list: a declaration moves onto a token once its surface is checked.
+3. **Choice lists → RadioGroup and ToggleGroup.** `.portal-choice-*` (the request detail's
+   `outcome-choice-list.tsx` and `workflow-panel.tsx`) hand-roll a radio row and its checked
+   indicator, and the staff home's record card imports `stock/radio-group.tsx` and
+   `stock/toggle-group.tsx` directly. Adopting both into `ui/` serves the two surfaces and ends
+   the stock imports.
+4. **The task index → Sidebar.** `.portal-sidebar-*` / `.portal-nav-*` (34 rules at `72059e3`);
+   the bridge already maps the sidebar tokens onto navy.
 5. **Empty states → Empty; callouts → Alert; pagers → Pagination.**
-6. **The calendar.** `portal-calendar.tsx` versus a `react-day-picker` adoption that keeps the
-   month turn and the day-pick settle.
+6. **The calendar.** The staff home's Received range editor imports `stock/calendar.tsx`
+   through `(home)/parts/calendar.tsx`; adopt Calendar into `ui/` with the editor's current
+   behavior and paint.
 7. **The patient-site shared layer** (`src/components/*.tsx`) sorted into `patterns/` and
    domain; then the patient site's own re-charter (`PRODUCT.md`, issue #202).
-8. **The radius ramp** completed in the brand `@theme` so `md` and `xl` sit in order.
-9. **A modal pattern API.** `PortalModal` stays native; it gains a documented recipe (size,
-    origin, skeleton) and the confirm/day/line modal classes collapse into it.
-
-Descriptive census: [`docs/COMPONENT-INVENTORY.md`](docs/COMPONENT-INVENTORY.md); importer
-paths: [`docs/COMPONENT-REFERENCE.md`](docs/COMPONENT-REFERENCE.md). Regenerate them as tiers
-fill rather than letting them drift.
+8. **The radius ramp** completed in the brand `@theme` so `md` and `xl` sit in order; Card's
+   `rounded-xl` and Checkbox's registry `rounded-[4px]` then resolve onto named steps.
+9. **A native dialog component.** Four portal dialogs wear `.portal-confirm-dialog` and repeat
+   its wiring by hand: `showModal()`, the body and title parts, and focus return
+   (`add-appointment-dialog.tsx`, `requests/print-chooser.tsx`,
+   `settings/recipients-manager.tsx`, and the discard confirmation in
+   `requests/new/staff-request-form.tsx`). Three also wrap Tab inside the dialog and two set
+   `data-instant`. A shared component owns that wiring and each consumer keeps its body and
+   actions. The patient site's language and provider-card dialogs and the portal tour keep their
+   own styling.
+10. **Portal surface tints → the brand `@theme`.** `--portal-canvas` and `--portal-surface` are
+    literals in `.portal-scope`, and Home assigns its own `#e8f6fc` canvas; each becomes a named
+    brand token.
+11. **Button `sm` targets.** `min-h-9` (36px) sits under the 44px floor. Measure its two
+    consumers in place (`(home)/full-record-sheet-body.tsx` Retry, `(home)/parts/time-picker.tsx`
+    Done), then raise the size or record the exception with its measured hit area.

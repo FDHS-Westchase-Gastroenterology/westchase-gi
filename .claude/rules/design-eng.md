@@ -38,7 +38,7 @@ The registry owns every curve and duration. Do not define an easing token, inlin
 - Entry is `@starting-style` with `transition-behavior: allow-discrete`. Do not add a `useEffect` mounted-flag fallback unless a browser in the project's support list lacks it.
 - Base UI state attributes drive enter, exit, and instant states in CSS: `[data-starting-style]`, `[data-ending-style]`, and `[data-instant]` for a tooltip that opens while a sibling is already open.
 - Popovers grow from their trigger through Base UI's `var(--transform-origin)`; modals stay centered.
-- Dialogs render through the shared `PortalModal` primitive on the native `<dialog>`, on the `--pm-*` registry aliases, with `--pm-origin-x/y` to grow from the opening control. The shadcn Dialog stays unadopted (DESIGN.md "Every modal is one modal").
+- Modal dialogs are native `<dialog>` elements wearing the `.portal-confirm-dialog` parts, on the `--pm-*` registry aliases, and they stay centered. The add-appointment and print-chooser dialogs set `data-instant` when the keyboard opens or closes them, which removes the transition. The shadcn Dialog stays unadopted for modals (DESIGN.md "Every modal is one modal"); the staff home's full-record sheet is the one Base UI Dialog, and it runs non-modal beside the record card.
 - With `motion/react`, animate `transform` and `opacity` strings rather than the `x`/`y` shorthands so the work stays hardware-accelerated.
 - Reduced motion is a temperament, not a switch. The blanket reset in `@layer base` of `globals.css` is the default; a surface with an authored reduced-motion temperament opts out there, next to the reset, because nowhere else can outrank it. In JS, `transitionFor` collapses every temperament to `crossfade`.
 

@@ -2312,8 +2312,8 @@ a.appt-phone:hover {
 }
 
 /* The record's skeleton: the sections' own shapes on the list skeleton's
-   one sweep (DESIGN.md keeps the authored shape; a generic pulse is a
-   downgrade). */
+   shared opacity loop (DESIGN.md keeps the authored shape; a generic block
+   is a downgrade). */
 .wgi-sheet-skeleton {
   display: flex;
   flex-direction: column;

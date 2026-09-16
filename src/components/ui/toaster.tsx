@@ -17,10 +17,11 @@ import type { ToasterProps } from "sonner";
  * is the project owner's explicit choice for this surface (DESIGN.md
  * "Standing findings"); the registry's Base UI Toast stays unadopted. Every
  * consumer follows one save with `toast.promise`: the staff home record card
- * (record-card.tsx), the add-request sheet (staff-request-form.tsx), the
- * note composer (request-notes.tsx) and the request work panel
- * (use-workflow-panel.ts). The portal layout mounts this once, so a result
- * outlives the popover, dialog or page that earned it.
+ * (record-card.tsx), the staff request form in the add-appointment dialog
+ * and on the new-request page (staff-request-form.tsx, through
+ * created-toast.ts), the note composer (request-notes.tsx) and the request
+ * work panel (use-workflow-panel.ts). The portal layout mounts this once, so
+ * a result outlives the popover, dialog or page that earned it.
  *
  * Kept from the registry recipe: the lucide icon set with the loader
  * spinning, the `toaster group` / `cn-toast` class hooks, and Sonner's four
