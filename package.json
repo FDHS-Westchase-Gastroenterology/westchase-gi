@@ -3,8 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node scripts/dev-patients.mjs && next dev",
-    "dev:patients": "node scripts/dev-patients.mjs",
+    "dev": "next dev",
+    "dev:patients": "node --import ./test/register.mjs scripts/dev-patients-cli.mjs",
     "dev:mission": "mkdir -p .logs; lsof -ti tcp:3100 | xargs -r kill -9; exec next dev -p 3100",
     "build": "next build",
     "start": "next start",

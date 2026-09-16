@@ -9,7 +9,6 @@ import {
   countsFromEnv,
   generatePatients,
   patientEmail,
-  resolveDevTarget,
 } from "./dev-patients.mjs";
 
 function rngFrom(seed) {
@@ -139,48 +138,4 @@ test("default fixtures fill the real queue buckets with coherent lifecycle and e
       assert.equal(row.closure_reason, null);
     }
   }
-});
-
-test("resolveDevTarget refuses Production and accepts a marked Preview Branch", () => {
-  assert.equal(resolveDevTarget({}), null);
-  assert.throws(
-    () =>
-      resolveDevTarget({
-        NEXT_PUBLIC_SUPABASE_URL: "https://prod.supabase.co",
-        SUPABASE_SERVICE_ROLE_KEY: "test-key",
-        SUPABASE_PROJECT_REF: "prod-ref",
-        SUPABASE_PROJECT_REF_PROD: "prod-ref",
-        SUPABASE_PREVIEW_BRANCH: "1",
-      }),
-    /Production/,
-  );
-  assert.throws(
-    () =>
-      resolveDevTarget({
-        NEXT_PUBLIC_SUPABASE_URL: "https://branch.supabase.co",
-        SUPABASE_SERVICE_ROLE_KEY: "test-key",
-        SUPABASE_PREVIEW_BRANCH: "0",
-      }),
-    /Preview Branch/,
-  );
-  assert.deepEqual(
-    resolveDevTarget({
-      NEXT_PUBLIC_SUPABASE_URL: "https://branch.supabase.co/",
-      SUPABASE_SERVICE_ROLE_KEY: "test-key",
-      SUPABASE_PREVIEW_BRANCH: "1",
-      SUPABASE_PROJECT_REF: "branch-ref",
-      SUPABASE_PROJECT_REF_PROD: "prod-ref",
-    }),
-    { url: "https://branch.supabase.co", serviceKey: "test-key" },
-  );
-  assert.equal(
-    resolveDevTarget({
-      NEXT_PUBLIC_SUPABASE_URL: "https://branch.supabase.co",
-      SUPABASE_SERVICE_ROLE_KEY: "test-key",
-      SUPABASE_PREVIEW_BRANCH: "codex/local-board",
-      SUPABASE_PROJECT_REF: "branch-ref",
-      SUPABASE_PROJECT_REF_PROD: "prod-ref",
-    })?.url,
-    "https://branch.supabase.co",
-  );
 });

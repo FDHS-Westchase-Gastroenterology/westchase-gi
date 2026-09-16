@@ -34,21 +34,101 @@ Claude Design is optional; approval there is not a contribution or merge require
 npm ci
 cp .env.example .env.local   # fill in real values; this is the variable inventory
 npx playwright install chromium
-npm run dev                  # refresh fictional patients, then serve :3000
-npm run dev:patients         # refresh the fictional queue without starting Next
+npm run dev                  # serve :3000; never refreshes the database
+npm run dev:patients -- inspect  # read-only fixture plan for this checkout
 npm run dev:mission          # the E2E stack's server on :3100
 ```
 
-`npm run dev` replaces the `/seed` appointment-request rows with a random mix from
-the name pool in `scripts/dev-patients.mjs` (32 patients: 10 New, 10 call-again
-due, 1 stale Contacted, 1 later callback, 5 Scheduled, and 5 Closed). Scheduled
-stores `booked`; the callback and stale groups store `contacted`. Each request
-gets a matching creation event, contact attempts carry their callback date, and
-Scheduled requests have a future appointment time. Only `/seed` requests and
-their cascading child records are replaced; other requests are preserved.
-`DEV_SEED=0` skips it; use `DEV_SEED=1 npm run dev:patients` for an explicit
-refresh when automatic seeding is disabled. `npm run dev:mission` does not seed,
-so E2E stays on `supabase/seed.sql`. Production targets are refused.
+`npm run dev` and `npm run dev:mission` never seed. `DEV_SEED` is retained only as
+an inspection hint for older environments: neither `DEV_SEED=1` nor an unset value
+triggers seeding, and `DEV_SEED=0` does not disable an explicit regeneration command.
+E2E remains on `supabase/seed.sql`.
+
+### Development appointment fixtures
+
+The CLI defaults to read-only `inspect`. Run it from the checkout serving the app;
+it reports the checkout, branch, commit, selected `.env.local` (or `--env-file`),
+environment precedence, validated target, current and planned stored/UI counts,
+related-record counts, replacement boundary, and any recovery journal. Process
+environment overrides the selected file. Output omits patient fields and credentials.
+
+The `portal-review` profile always creates 32 fictional requests: 10 New, 12 Call
+Again (10 due, one stale without a date, one future callback), five Scheduled, and
+five Closed. Scheduled stores `booked`; Call Again stores `contacted`. Each request
+has a creation event; contacted requests have a matching callback history entry;
+scheduled requests have a future appointment. `--profile custom` uses the
+`DEV_SEED_*` count overrides in `.env.example`. `--seed` and `--now` reproduce
+content, dates, and scenarios using the app's queue/state contracts. Database IDs
+are fresh for every replacement so both batches can coexist safely during staging.
+Use the same reference clock when verifying a reproduced scenario; without `--now`,
+the clock is the current time and callbacks naturally move between attention buckets.
+
+```bash
+npm run dev:patients -- inspect --profile portal-review
+npm run dev:patients -- verify --profile portal-review
+
+# After inspecting and coordinating a shared Preview with other users and CI:
+npm run dev:patients -- regenerate --profile portal-review --confirm-target "$SUPABASE_BRANCH_PROJECT_REF" --shared-preview-ready
+
+# For an intentionally configured loopback development database:
+npm run dev:patients -- regenerate --profile portal-review --confirm-target local
+
+# Reproduce a scenario; use the same seed/clock for inspect, regenerate, and verify:
+npm run dev:patients -- inspect --profile portal-review --seed review-1 --now 2026-09-16T19:45:13.000Z
+
+# If a run was interrupted, inspect first, then recover against that same target:
+npm run dev:patients -- recover --confirm-target "$SUPABASE_BRANCH_PROJECT_REF" --shared-preview-ready
+
+# Optional authenticated HTTP proof using an existing session (no sign-in):
+npm run dev:patients -- verify --app-url http://localhost:3000 --storage-state /path/to/existing-playwright-state.json
+```
+
+Replace `$SUPABASE_BRANCH_PROJECT_REF` with the literal ref printed by `inspect`
+if it is only in `.env.local` and not exported in the shell. Hosted targets require a
+matching HTTPS Supabase URL, Preview branch marker/ref, explicit allowlist
+(`DEV_SEED_ALLOWED_PROJECT_REF`, falling back to `PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF`),
+and distinct Production refs/URLs. Both configured Supabase URLs must agree. CI
+regeneration and Production targets are refused. The branch ref takes precedence
+over the legacy `SUPABASE_PROJECT_REF` alias. `--confirm-target` is required for
+regenerate/recover; hosted writes also require `--shared-preview-ready`.
+
+Replacement is recoverable, not a database transaction. It validates the existing
+scope and app read first, saves a private journal, inserts and verifies the complete
+new batch and events, then deletes only the recorded old `/seed` IDs. Insert failure
+rolls back only the staged batch, leaving the previous requests available. An
+interrupted retirement keeps the complete new batch; `recover` finishes retirement
+or rolls back incomplete staging according to the journal. A changed or protected
+record stops automatic recovery for review. Do not delete the journal or edit
+records while recovering. The journal is mode `0600` under the repository's common
+Git directory; it contains only the synthetic scope and a digest of the preserved
+scope. Successful verification removes it and leaves a counts-only receipt.
+
+The boundary requires `/seed`, a known fictional name, its matching `mock.com`
+address, and an `81355501xx` phone. Retention holds, patient/appointment links, or
+retained audit history block replacement. Verification checks the selected profile,
+creation/callback history, lifecycle fields, removal of old related records, and
+unchanged non-seed requests plus their related records. A standalone `verify` cannot
+prove historical preservation; that proof is recorded during regeneration/recovery.
+Every verification exercises the app's `readRequestWorklist` service against the
+target using an existing active, onboarded `PORTAL_SEED_ADMIN_EMAIL` identity.
+It never signs in. HTTP verification is reported separately and requires the two
+optional arguments shown above.
+
+Keep other users and CI idle through completion: both batches can be visible briefly,
+and the target lock coordinates only this repository's checkouts on this host. It
+does not fence writers on other machines. For a future need to reset an actively used
+shared Preview without this coordination, add a transactional fixture-replacement
+RPC and test concurrent writers in the disposable GitHub Supabase suite. Acceptance
+criteria: no externally visible partial/duplicate batch, unchanged protected and
+non-seed records under concurrent commands, and rollback of every child-write failure.
+That migration and deployment are outside this CLI change.
+
+The workflow tests use an in-process loopback HTTP database stand-in and the actual
+app parsing/read service. They challenge insertion/cleanup failures, interrupted
+retirement, concurrent edits, protected records, truncated reads, and app response
+disagreement. These prove CLI orchestration and transport handling, not live SQL/RLS
+or foreign-key behavior. The disposable `supabase-integration` gate remains the
+database integration authority; never run that Docker suite on Jason's Mac.
 
 `.env.local` may point the default environment at the Git branch's ephemeral **Supabase
 Preview Branch**; Production values live under the `_PROD`-suffixed names and in Vercel.
