@@ -162,6 +162,7 @@ export function RecentWorkSection({
           <RecentWorkFocusLink
             href={empty.href}
             focusId={RECENT_WORK_SEARCH_ID}
+            data-slot="button"
             className={cn(buttonVariants({ variant: "outline" }), "mt-4")}
           >
             {empty.actionLabel}

@@ -60,10 +60,14 @@ function requireKnownIntakeStatus(response: Response) {
 function ContactActions({ dict }: Readonly<{ dict: Dictionary }>) {
   return (
     <>
-      <a href={site.phone.href} className={buttonVariants()}>
+      <a href={site.phone.href} data-slot="button" className={buttonVariants()}>
         <Phone className="h-4 w-4" /> {dict.common.callUs}
       </a>
-      <a href={site.textLine.href} className={buttonVariants({ variant: "outline" })}>
+      <a
+        href={site.textLine.href}
+        data-slot="button"
+        className={buttonVariants({ variant: "outline" })}
+      >
         <MessageSquare className="h-4 w-4" /> {dict.common.textUs}
       </a>
     </>
