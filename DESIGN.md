@@ -6,8 +6,7 @@ is drawn. The promise is that the system may be deep while using it stays shallo
 composes from named parts with named defaults, so adding a button, a field or a modal never
 decides a color, a duration or a radius.
 
-This page is the map: where a change belongs, what the practice owns, and the floors both products
-meet. Each guide below owns one concern and is self-sufficient.
+This page is the map; each guide below owns one concern and is self-sufficient.
 
 ## The guides
 
@@ -16,6 +15,7 @@ meet. Each guide below owns one concern and is self-sufficient.
 - [Color](design-system/color.md) — the palette, ink pairs, status colors, focus.
 - [Typography](design-system/typography.md) — the two families, the steps, the loaded weights.
 - [Layout](design-system/layout.md) — page structures, spacing scales, shape and elevation.
+- [Patient site](design-system/patient-site.md) — the route contract, the content classes, the rhythm.
 - [Components](design-system/components.md) — the tiers, the recipe API, what earns extraction.
 - [Buttons](design-system/buttons.md) — variants, sizes, motion, icons, disabled and pending.
 - [Forms](design-system/forms.md) — fields, controls, choices, dates, time, saving.

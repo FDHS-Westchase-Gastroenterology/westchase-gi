@@ -70,9 +70,10 @@ under `.wgi-*`. They are route-owned: nothing outside the staff home imports the
 
 | Component | When | Real uses |
 | --- | --- | --- |
-| `PageHero` | The opening band of a patient-site page | `about/page.tsx`, `contact/page.tsx` |
-| `TextBand` | A full-width statement band with its call to action | `about/page.tsx` |
-| `Reveal` `revealDelay` | Content that rises in on scroll, staggered by `revealDelay` ([motion.md](motion.md)) | `procedure-prep/page.tsx` |
+| `PageHero` | The band that opens a patient-site page; 11 routes wear it | `about/page.tsx`, `contact/page.tsx`, `services/page.tsx` |
+| `TextBand` | The statement band that closes a patient-site page, with its call to action; 14 routes wear it | `about/page.tsx`, `services/page.tsx`, `resources/page.tsx` |
+| `Reveal` | Content that rises in on scroll: `variant` `up` (default), `fade` or `right`, `delay` 0-4 for a 90ms-per-step stagger ([motion.md](motion.md)); 12 routes wear it | `procedure-prep/page.tsx`, `physicians/page.tsx`, `contact/page.tsx` |
+| `revealDelay` in `patterns/reveal-delay.ts` | Clamps a computed index to the four `Reveal` steps, so a long list stops staggering rather than running late | `office-gallery/page.tsx`, `procedure-prep/page.tsx` |
 
 ## What qualifies for extraction
 

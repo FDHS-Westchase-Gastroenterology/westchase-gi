@@ -4,8 +4,12 @@ A surface is the paper the content sits on: a card, a table, a list of rows, the
 scrollbars between them. The portal's surfaces are white on the workbench tint; the patient
 site's are the section bands in [layout.md](layout.md#page-structures).
 
+Every branch of the tree below is a `ui/` recipe only the staff portal consumes, so the tree
+answers a portal question. A patient page picks from the `.card` class and the content classes in
+[patient-site.md](patient-site.md) instead.
+
 ```
-Which surface?
+Which portal surface?
 ├── Records with the same fields, compared down columns → Table
 ├── Entries read one after another, each a title and a line of detail → Item in an ItemGroup
 ├── One block of content that needs a heading, a body and actions → Card

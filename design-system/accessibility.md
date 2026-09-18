@@ -1,6 +1,6 @@
 # Accessibility
 
-Two audiences, two floors. The patient site is read by older patients in six languages, often on a
+Two audiences, two floors. The patient site is read by older patients in five languages, often on a
 phone; the staff portal is worked all day by a few people on a desktop keyboard. A change that
 meets one floor still has to meet the other's.
 

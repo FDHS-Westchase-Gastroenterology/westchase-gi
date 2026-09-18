@@ -43,6 +43,10 @@ reset, `.portal-scope :where(h2, h3, h4, h5)`, covers h2 to h5, so a portal `h1`
 | `--step-3` | `clamp(1.3rem, 1.12rem + 0.8vw, 1.6rem)` | `.h3` |
 | `--step-lead` | `clamp(1.1rem, 1.02rem + 0.4vw, 1.28rem)` | `.lead` (line-height 1.6) |
 
+`.h1`, `.h2` and `.h3` carry a size and nothing else; the family, weight, leading and tracking
+come from the base `h1, h2, h3` rule, so the outline level and the size are separate choices
+([patient-site.md](patient-site.md#level-and-size-are-chosen-separately)).
+
 Body text is 1.0625rem / 1.65 on `body`, a 17px floor for an older audience. `.measure` (68ch)
 and `.measure-sm` (54ch) cap line length. Print shrinks `.h1` to 20pt and `.lead` to 11.5pt.
 
