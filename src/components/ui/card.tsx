@@ -1,10 +1,20 @@
 import { cn } from "cn";
 import type { ComponentProps } from "react";
 
-/* Upstream shadcn Card (base-nova), adapted only to the repo's import and
-   lint conventions. Colors resolve through the semantic token bridge in
-   globals.css; brand surfaces restyle through className, never by editing
-   token values here. */
+/*
+ * Upstream shadcn Card (base-nova, registry source in
+ * src/components/stock/card.tsx). Adopted verbatim: every class string here
+ * matches the registry, including the `size` axis, whose `sm` value tightens
+ * the padding; only the repo's import and lint conventions differ.
+ *
+ * Colors resolve through the semantic token bridge in globals.css; brand
+ * surfaces restyle through className, never by editing token values here.
+ *
+ * Consumers: the staff home's list card (line-list.tsx) and its loading
+ * fallback, and the signed-out shell (auth-card.tsx), which resets the
+ * padding, radius and shadow through className
+ * (design-system/surfaces.md "Cards").
+ */
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function Card({

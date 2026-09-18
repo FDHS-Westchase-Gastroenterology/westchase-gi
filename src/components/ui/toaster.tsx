@@ -14,8 +14,8 @@ import type { ToasterProps } from "sonner";
 /*
  * Brand adoption of the shadcn Sonner toaster (base-nova, registry source in
  * src/components/stock/sonner.tsx): the staff portal's save feedback. Sonner
- * is the project owner's explicit choice for this surface (DESIGN.md
- * "Standing findings"); the registry's Base UI Toast stays unadopted. Every
+ * is the project owner's explicit choice for this surface
+ * (design-system/adoption.md "Standing findings"); the registry's Base UI Toast stays unadopted. Every
  * consumer follows one save with `toast.promise`: the staff home record card
  * (record-card.tsx), the staff request form in the add-appointment dialog
  * and on the new-request page (staff-request-form.tsx, through

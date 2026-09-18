@@ -1,7 +1,8 @@
 import { cva } from "class-variance-authority";
 
 /*
- * The Button recipe, server-safe (DESIGN.md "Component system").
+ * The Button recipe, server-safe (design-system/components.md
+ * "Component tiers").
  * Lives apart from button.tsx so zero-JS surfaces (patient-site anchor
  * CTAs) can wear the recipe through className without importing the
  * client component.
@@ -10,7 +11,9 @@ import { cva } from "class-variance-authority";
  * - `variant` is color and surface only. Navy is the primary ink, amber
  *   the warm call to action, outline the quiet secondary, ghost-light
  *   the on-navy ghost.
- * - `size` is geometry; every size keeps the 44px minimum target.
+ * - `size` is geometry. `default`, `lg` and `icon` hold the 44px minimum
+ *   target; `sm` renders 36px, an open decision recorded in
+ *   design-system/roadmap.md "11. Button sm targets".
  * - `motion` is animation temperament. The default, `wgi`, is the
  *   authored .btn physics (200ms quint journey, the -2px hover lift,
  *   an instant 0.98 press) — defaults produce the brand, so no call
@@ -28,9 +31,9 @@ import { cva } from "class-variance-authority";
  * Long class strings are arrays, one line per job, so each line can be
  * read (and commented) on its own; cva joins them back into one string.
  *
- * Consumer maps below are crutches: file paths only (line numbers rot),
- * refreshed with docs/COMPONENT-INVENTORY.md. Full lists regenerate
- * with: rg -l 'variant="NAME"' src
+ * The consumer notes below are orientation, not a census: file paths only,
+ * because line numbers rot. design-system/buttons.md "Variants" carries the
+ * counts and keeps them dated.
  */
 export const buttonVariants = cva(
   [
@@ -100,7 +103,7 @@ export const buttonVariants = cva(
       variant: {
         /* Navy primary — every <Button> without a variant prop: portal
            save/search/sign-in controls, patient AppointmentForm submit.
-           Census: docs/COMPONENT-INVENTORY.md "Component system". */
+           36 files: design-system/buttons.md "Variants". */
         default: [
           // Resting paint
           "bg-primary text-primary-foreground",
@@ -110,17 +113,18 @@ export const buttonVariants = cva(
         /* Warm CTA — patient home + appointment heroes (src/app/[locale]/page.tsx,
            appointment/page.tsx), Header, Footer, TextBand, AppointmentForm,
            ReviewHub, portal help/page.tsx, portal-release-briefing,
-           review-flyer-printer. */
+           review-flyer-printer, and PortalTour on its last step. */
         amber: [
           // Resting paint
           "bg-amber text-navy-2",
           // Hovered paint: amber warms toward white
           "hover:bg-[color-mix(in_oklch,var(--color-amber)_90%,white)] hover:shadow-[var(--btn-hover-shadow,var(--shadow-soft))]",
         ],
-        /* Quiet secondary — the widest-worn variant (~24 files): portal
+        /* Quiet secondary — the widest-worn variant (26 files, and four
+           more that switch between default and outline): portal
            cancels/undo (workflow-panel, request-notes, print-chooser),
            pagination, error/not-found, patient back-links, Header,
-           ReviewHub. Full list: rg -l 'variant="outline"' src */
+           ReviewHub. Full list: design-system/buttons.md "Variants". */
         outline: [
           // Resting paint: transparent, inked, inset hairline
           "bg-transparent text-ink shadow-[inset_0_0_0_1.5px_var(--color-line-2)]",

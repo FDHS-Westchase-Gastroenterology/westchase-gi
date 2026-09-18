@@ -1,7 +1,8 @@
 import { cn } from "cn";
 import type { ComponentProps } from "react";
 
-/* Brand adaptation of the shadcn Table (DESIGN.md "Component system"):
+/* Brand adaptation of the shadcn Table (design-system/components.md
+ * "Component tiers"):
  * the portal's audit recipe — line-bordered rows, uppercase muted
  * headers, px-5 rhythm — baked into the slots. Server-safe on purpose
  * (plain elements, no client hooks). The generated version wrapped the

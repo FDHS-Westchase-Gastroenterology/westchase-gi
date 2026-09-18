@@ -159,7 +159,8 @@ function TimeSheet({
         aria-label="Choose a start time"
         className="wgi-time-sheet"
         /* Reduced motion keeps the arrival and drops the travel: the
-           sheet cross-fades in place (DESIGN.md "Reduced motion"). */
+           sheet cross-fades in place
+           (design-system/motion.md "Reduced motion"). */
         initial={reduced ? { opacity: 0 } : { opacity: 0, transform: "translateY(100%)" }}
         animate={{ opacity: 1, transform: "translateY(0%)" }}
         exit={{

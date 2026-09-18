@@ -12,7 +12,7 @@ import type { ComponentProps, PointerEvent as ReactPointerEvent } from "react";
  * viewport as its own part with its props and ref, because the staff home
  * list needs the real scrolling element: an accessible name, keyboard focus,
  * a scroll listener for its count/range footer, and `scrollTop` resets on a
- * filter change (DESIGN.md "Adoption", issue #282).
+ * filter change (design-system/adoption.md "Standing findings", issue #282).
  *
  * Reused from Base UI, unchanged: overflow measurement, thumb sizing and
  * translation, the track's jump-to-position press, pointer capture during a

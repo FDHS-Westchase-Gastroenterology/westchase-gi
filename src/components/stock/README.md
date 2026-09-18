@@ -1,8 +1,8 @@
 # Registry bundle inputs
 
 This directory supplies shadcn Base UI source and examples as inputs to the local design bundle.
-These files are not approved product design: the recipes in `src/components/ui/` are, and the
-root `DESIGN.md` "Adoption" section owns their review.
+These files are not approved product design: the recipes in `src/components/ui/` are, and
+`design-system/adoption.md` "Workflow" owns their review.
 
 - `*.tsx` contains registry components; `examples/` contains the source demos used by the local
   preview converter; `hooks/use-mobile.ts` supports Sidebar.
@@ -22,5 +22,5 @@ root `DESIGN.md` "Adoption" section owns their review.
   solely on the absence of a product importer.
 
 The local pipeline derives exports, component families, and documentation from these inputs.
-Regenerate with the commands in `DESIGN.md` "Local bundle pipeline"; the pipeline source and
+Regenerate with the commands in `design-system/adoption.md` "Local bundle pipeline"; the pipeline source and
 output stay untracked under `local-only-paths.json`.

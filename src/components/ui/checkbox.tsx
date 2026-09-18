@@ -19,13 +19,13 @@ import { Check } from "@/components/icons";
  * (the fill the portal's hand-rolled choice indicator already uses),
  * `ring-ring` is teal-ink, and `destructive` is the one permitted literal.
  * The 4px corner is the registry's; the brand radius ramp has no step this
- * small, an open decision recorded with the radius ramp in DESIGN.md
- * "Roadmap — the extraction queue". Dark mode is not a shipped surface
+ * small, an open decision recorded with the radius ramp in
+ * design-system/roadmap.md "8. The radius ramp". Dark mode is not a shipped surface
  * (globals.css, the `.dark` block), so the registry's `dark:` overrides are
  * dropped here as in every other approved recipe.
  *
- * Motion is decoupled onto its own axis (DESIGN.md "Component API
- * rules"): the base string carries none. `wgi` (default) paints the
+ * Motion is decoupled onto its own axis (design-system/components.md
+ * "Component API rules"): the base string carries none. `wgi` (default) paints the
  * checked and focus states at the registry micro temperament,
  * --motion-micro-duration on --motion-exit, the same beat as the button
  * recipe's hover tint. `shadcn` is the upstream registry's stock

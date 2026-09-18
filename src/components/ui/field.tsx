@@ -9,6 +9,25 @@ import type { ComponentProps, ReactNode } from "react";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 
+/*
+ * Upstream shadcn Field family (base-nova, registry source in
+ * src/components/stock/field.tsx). Reused unchanged: the orientation axis,
+ * the `data-invalid` and `data-disabled` wiring every part reads, the
+ * de-duplication of repeated messages in `FieldError`, and each part's
+ * layout.
+ *
+ * The adoption repoints `FieldLabel` and `FieldSeparator` at the brand
+ * `Label` and `Separator` in ui/, drops the registry's two `dark:` checked
+ * variants because neither product ships a dark theme, and gives
+ * `FieldError` the label's `font-semibold` so a refusal reads at the weight
+ * of the control it belongs to.
+ *
+ * Consumers: every form in both products — the staff request form and the
+ * request search, the record card's start time, the print chooser, the three
+ * settings managers, the three auth forms, and the patient site's
+ * AppointmentForm (design-system/forms.md "Fields").
+ */
+
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function FieldSet({ className, ...props }: ComponentProps<"fieldset">) {
   return (

@@ -4,13 +4,13 @@ import { cn } from "cn";
 import type { ComponentProps } from "react";
 
 /*
- * Project-authored primitive, not a registry component (DESIGN.md
- * "Component system"): patient-facing selects keep the native element —
+ * Project-authored primitive, not a registry component
+ * (design-system/components.md "Component tiers"): patient-facing selects keep the native element —
  * the OS picker on mobile is better for patients than a scripted listbox —
  * and wear the committed field recipe.
  *
- * Motion is decoupled onto its own axis (DESIGN.md "Component API
- * rules"), mirroring Input: `wgi` (default) is the authored .field-input
+ * Motion is decoupled onto its own axis (design-system/components.md
+ * "Component API rules"), mirroring Input: `wgi` (default) is the authored .field-input
  * physics; `shadcn` is the stock Input transition-colors, verbatim.
  */
 const nativeSelectVariants = cva(

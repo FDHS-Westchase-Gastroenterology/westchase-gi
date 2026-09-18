@@ -25,7 +25,7 @@ const temperaments = { arrive, leave, micro } satisfies Record<MotionTemperament
 
 /* Reduced motion withholds the physics, never the change: every temperament
    collapses to the cross-fade, and the caller drops its travel the same way
-   the CSS registry does (DESIGN.md "Reduced motion"). */
+   the CSS registry does (design-system/motion.md "Reduced motion"). */
 export function transitionFor(kind: MotionTemperament, reducedMotion: boolean): Transition {
   return reducedMotion ? crossfade : temperaments[kind];
 }

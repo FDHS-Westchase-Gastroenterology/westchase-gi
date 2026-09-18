@@ -6,9 +6,9 @@ The craft itself lives in the global skills (apple-design, review-animations, im
 
 The registry owns every curve and duration. Do not define an easing token, inline a bezier, or tune a spring by hand. Discuss a temperament the registry lacks with Jason (DESIGN.md "Motion"); once agreed, add it to the registry and reference it from there. Claude Design approval is not required.
 
-- CSS: the brand `@theme` block in `src/app/globals.css`. Curves: `--motion-spring` (a `linear()` sampling of a ζ≈0.7 spring), `--motion-exit`, `--motion-standard` (the staff home's curve), and for the patient site `--ease-out-quint` and `--ease-out-quart`. Durations: `--motion-spring-duration`, `--motion-exit-duration`, `--motion-micro-duration`, and the standard curve's three beats `--motion-fast-duration`, `--motion-base-duration`, `--motion-sheet-duration`. The portal modal reads the same values through its `--pm-*` aliases; the button recipe reads `--btn-ease`.
-- JavaScript: `src/lib/motion.ts` exports the same temperaments for `motion/react`: `arrive`, `leave`, `micro`, `fast`, `base`, `sheet`, `crossfade`, and `transitionFor(kind, reducedMotion)`.
-- DESIGN.md "Where does this belong?" says where a component's motion is declared (the `motion` axis of its recipe in `src/components/ui/`; base strings carry none), and DESIGN.md "Motion" says which engine and temperament governs what.
+- CSS: the brand `@theme` block in `src/app/globals.css`. Curves: `--motion-spring` (a `linear()` sampling of a ζ≈0.7 spring), `--motion-exit`, and for the patient site `--ease-out-quint` and `--ease-out-quart`. Durations: `--motion-spring-duration`, `--motion-exit-duration` and `--motion-micro-duration`. The portal modal reads the same values through its `--pm-*` aliases; the button recipe reads `--btn-duration` and `--btn-ease`.
+- JavaScript: `src/lib/motion.ts` exports the same temperaments for `motion/react`: `arrive`, `leave`, `micro`, `crossfade`, and `transitionFor(kind, reducedMotion)`.
+- design-system/components.md "Component API rules" says where a component's motion is declared (the `motion` axis of its recipe in `src/components/ui/`; base strings carry none), and design-system/motion.md "The registry" says which engine and temperament governs what, with the full table of what wears each.
 
 ## Chosen values
 
@@ -16,11 +16,11 @@ The registry owns every curve and duration. Do not define an easing token, inlin
 | --- | --- | --- | --- |
 | Surfaces entering (modals, drawers, sheets) | `--motion-spring` over `--motion-spring-duration` | `arrive` | 440ms spring, `{ type: "spring", duration: 0.44, bounce: 0.3 }`: lands in about 110ms, one 4.6% overshoot, no second bounce |
 | Surfaces leaving | `--motion-exit` over `--motion-exit-duration` | `leave` | 160ms, `cubic-bezier(0.23, 1, 0.32, 1)`. Exits are faster than entrances. |
-| Micro states (hover tint, pressed ink, focus ring) | `--motion-micro-duration` with an ease-out (`--motion-exit` in the button recipe) | `micro` | 150ms |
-| Staff home (hover/press, popover, full-record sheet) | `--motion-standard` over `--motion-fast-duration` / `--motion-base-duration` / `--motion-sheet-duration` | `fast` / `base` / `sheet` | `cubic-bezier(0.32, 0.72, 0, 1)` at 140 / 240 / 420ms: feedback, a surface moving (popover in, sheet out, content settling), the sheet sliding in. Small buttons press to `scale(0.98)`; rows press as a deeper tint. |
+| Micro states (hover tint, pressed ink, checked paint) | `--motion-micro-duration` with an ease-out (`--motion-exit` in the button recipe) | `micro` | 150ms |
 | Reduced motion | the blanket reset in `@layer base` | `crossfade` | 120ms opacity-only cross-fade, no travel |
 
-- Press feedback: every pressable element has an `:active` state. Portal: `scale(0.98)` at the micro duration. Patient site: lift-then-settle (DESIGN.md "Buttons feel pressed"). The scale stays within 0.95–0.98.
+- A staff home temperament — `cubic-bezier(0.32, 0.72, 0, 1)` at 140 / 240 / 420ms for feedback, a surface moving, and the sheet sliding in — is proposed rather than chosen: no token, preset or rule carries it yet, and the staff home wears the temperaments above. It lands through design-system/roadmap.md "14. The staff home temperament and companion surfaces".
+- Press feedback: every pressable element has an `:active` state. Portal: `scale(0.98)` at the micro duration. Patient site: lift-then-settle (design-system/motion.md "Buttons feel pressed"). The scale stays within 0.95–0.98.
 - Entrances start at `scale(0.95)` to `scale(0.97)` with opacity, never `scale(0)`.
 - Bounce is `arrive`'s and no more. More bounce is for drag-to-dismiss and playful interactions only.
 
@@ -36,9 +36,9 @@ The registry owns every curve and duration. Do not define an easing token, inlin
 ## Mechanisms the code uses
 
 - Entry is `@starting-style` with `transition-behavior: allow-discrete`. Do not add a `useEffect` mounted-flag fallback unless a browser in the project's support list lacks it.
-- Base UI state attributes drive enter, exit, and instant states in CSS: `[data-starting-style]`, `[data-ending-style]`, and `[data-instant]` for a tooltip that opens while a sibling is already open.
+- Base UI state attributes drive enter, exit, and instant states in CSS: `[data-starting-style]`, `[data-ending-style]`, and `[data-instant]`, which an overlay sets when the keyboard opened or closed it so the transition is skipped.
 - Popovers grow from their trigger through Base UI's `var(--transform-origin)`; modals stay centered.
-- Modal dialogs are native `<dialog>` elements wearing the `.portal-confirm-dialog` parts, on the `--pm-*` registry aliases, and they stay centered. The add-appointment and print-chooser dialogs set `data-instant` when the keyboard opens or closes them, which removes the transition. The shadcn Dialog stays unadopted for modals (DESIGN.md "Every modal is one modal"); the staff home's full-record sheet is the one Base UI Dialog, and it runs non-modal beside the record card.
+- Modal dialogs are native `<dialog>` elements wearing the `.portal-confirm-dialog` parts, on the `--pm-*` registry aliases, and they stay centered. The add-appointment and print-chooser dialogs set `data-instant` when the keyboard opens or closes them, which removes the transition. The shadcn Dialog stays unadopted for modals (design-system/overlays.md "Modal dialogs"); the staff home's full-record sheet is the one Base UI Dialog, and it runs non-modal beside the record card.
 - With `motion/react`, animate `transform` and `opacity` strings rather than the `x`/`y` shorthands so the work stays hardware-accelerated.
 - Reduced motion is a temperament, not a switch. The blanket reset in `@layer base` of `globals.css` is the default; a surface with an authored reduced-motion temperament opts out there, next to the reset, because nowhere else can outrank it. In JS, `transitionFor` collapses every temperament to `crossfade`.
 

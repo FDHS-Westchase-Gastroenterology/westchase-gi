@@ -1,0 +1,123 @@
+# Tokens
+
+A token is a CSS custom property that holds one design decision. This guide says which block may
+declare a token, who owns each namespace, and which literals outside the brand `@theme` stay and
+why. What the families mean is in [color.md](color.md), [typography.md](typography.md),
+[layout.md](layout.md) and [motion.md](motion.md); how recipes and stylesheets use tokens is in
+[styling.md](styling.md).
+
+## Token hierarchy
+
+Values enter in one block. Scopes and the semantic bridge name brand tokens and never each other,
+so tuning a brand token reaches every register at once.
+
+```text
+Brand @theme                   first block of src/app/globals.css
+│   --color-* hues, --font-display, --font-body, --radius-*, --shadow-*,
+│   --ease-*, --motion-*, --z-*, --step-*
+├── Scopes                     re-tune the brand for one register or surface
+│   ├── .portal-scope          --portal-*, --pt-*, --ps-*, --pm-*, and the --btn-* knobs
+│   └── .wgi-home              --wgi-* (home.css)
+└── Semantic bridge            last blocks of src/app/globals.css
+        @theme inline          --color-primary: var(--primary) …, --font-sans, --font-heading
+        :root, .dark           --primary: var(--color-navy) …
+```
+
+Recipes, scoped stylesheets and call sites sit below the hierarchy. They name tokens and declare
+nothing but a recipe's own knobs.
+
+## Rules
+
+**Literals live in the brand `@theme`.** Every color, font stack, radius, shadow, easing,
+duration, z-index and fluid type step is written there once, so tuning one is a one-line change.
+A scope writes numbers only for its own scale steps and for knob geometry (`--pt-base: 1.0625rem`,
+`--ps-4: 1rem`, `--btn-px: 1.2rem`, `--btn-active-scale: 0.98`) and names a brand token for
+everything else (`--pm-exit: var(--motion-exit)`). The bridge names a brand token for every role.
+Any other literal is drift unless [Recorded exceptions](#recorded-exceptions) lists it.
+
+**A name never states its value.** A token is named for its job (`--color-teal-ink`, teal tuned
+for text on light surfaces) or its rank in a family (`--color-line-2`, `--pt-lg`, `--ps-4`). A name
+like `--font-size-17` stops being true the first time the value is tuned.
+
+**Each namespace has one owner.** A declaration outside the owner's block is drift.
+
+| Namespace | Owner, and where it is declared |
+| --- | --- |
+| `--color-*` hues, `--font-display`, `--font-body`, `--radius-*`, `--shadow-*`, `--ease-*`, `--motion-*`, `--z-*`, `--step-*` | Brand: the `@theme` block |
+| `--background`, `--primary`, `--ring`, `--chart-*`, `--sidebar-*` and the other roles | shadcn: `:root` and `.dark` in the bridge |
+| `--color-*` role utilities (`--color-primary`), `--font-sans`, `--font-heading` | shadcn: `@theme inline` in the bridge |
+| `--font-lato`, `--font-trocchi` and the locale face variables | next/font: `src/lib/fonts.ts` (patient site, review hub), `src/lib/portal-fonts.ts` (portal) |
+| `--portal-*`, `--pt-*`, `--ps-*`, `--pm-*` | Staff portal: `.portal-scope` in `globals.css` |
+| `--wgi-*` | Staff home: `.wgi-home` in `home.css` |
+| `--btn-*` | Button recipe knobs: read with fallbacks in `button-variants.ts`, assigned by `.portal-scope` |
+| `--tp-row`, `--tp-rows`, `--card-spacing` | TimePicker and Card recipes: set by their own sizes |
+| `--overlay-rise`, `--overlay-scale` | The `overlay-rise` keyframes in `@layer components`: set per legacy dialog |
+| `--release-row` | The release briefing's stagger index: set inline per row |
+| `--normal-bg`, `--normal-text`, `--normal-border`, `--border-radius`, `--width`, `--cell-size`, `--tw-ring-shadow` | Third-party names: Sonner in `toaster.tsx`, the calendar, Tailwind's ring shadow |
+
+A scope never assigns a brand name; the `:lang()` blocks are the one exception, recorded below.
+
+**Check the shared `--color-*` namespace before adopting.** shadcn and the brand both declare
+`--color-*`, and the later `@theme` block wins without a warning. `--color-muted` is shadcn's
+surface tint; the brand's secondary text ink is `--color-muted-ink`. List every `bg-*`, `text-*`
+and `border-*` utility a stock component uses and check each name against the brand block first.
+
+**Radius is a known gap.** The brand declares three radii: `--radius-sm` 0.375rem,
+`--radius` 0.625rem and `--radius-lg` 0.875rem. Tailwind's defaults still supply `rounded-md`
+(0.375rem) and `rounded-xl` (0.75rem), so `rounded-xl` is smaller than `rounded-lg`. Use the three
+brand steps ([layout.md](layout.md#shape-and-elevation)); the bridge never re-declares a radius.
+[Roadmap item 8](roadmap.md#8-the-radius-ramp) orders the ramp.
+
+## Recorded exceptions
+
+Each literal or assignment below breaks a rule above on purpose or waits on a roadmap item. A
+departure missing from this table is drift.
+
+| Where | What | Disposition |
+| --- | --- | --- |
+| Bridge `:root` and `.dark` | `--destructive` is an OKLCH literal | Stays: destructive actions have no brand hue by design. |
+| `:lang(vi)`, `:lang(ko)`, `:lang(ar)` | Re-point `--font-display` and `--font-body` | Stays: an island in another language (the review hub shows five on one page) must switch faces, which one class on `<html>` cannot do. |
+| Bridge `@theme inline` | `--font-sans` and `--font-heading` repeat the Lato stack | Stays: `--font-sans` is Tailwind's default family and the Toaster's font. `--font-heading` has no rendered consumer. |
+| `.portal-scope`; `.portal-workspace` in `portal-workbench.css` | `--portal-canvas`, `--portal-surface`, `--portal-attention-ink`, `--portal-surface-muted` are OKLCH literals | Move into the brand `@theme`: [roadmap item 10](roadmap.md#10-portal-surface-tints). |
+| `.wgi-home` and `.portal-workspace:has(.wgi-home)` in `home.css` | `--wgi-*` paints, shadows, radii and type sizes; the Home canvas re-points `--portal-canvas` | Stays: the values come from the approved Home frame, stay scoped to Home, and carry their contrast measurements beside them. A `--wgi-*` name is never read outside Home. |
+| `.portal-scope` | `--pm-reduced-duration: 120ms`, `--pm-scrim-duration: 220ms` | Stays until the registry names a reduced-motion cross-fade and a scrim fade: [motion.md](motion.md#recorded-motion-literals). |
+| `.portal-scope` | `--btn-radius: 0.5rem` sits off the radius set | [Roadmap item 8](roadmap.md#8-the-radius-ramp). |
+| `.portal-scope`; `.wgi-answer` in `home.css` | `--btn-hover-shadow: 0 0 #0000`, `--tw-ring-shadow: 0 0 #0000` | Stays: Tailwind's empty shadow. `none` would invalidate the comma-separated shadow list Tailwind composes. |
+| `button-variants.ts` | `wgi` and `commit` knob fallbacks: durations, the -2px lift, press scales, the press inset | The knob pattern stays; the fallback durations are off the registry: [motion.md](motion.md#recorded-motion-literals). |
+| The review flyer's `@media print` block in `globals.css` | Hex inks: navy, amber and teal written as hex beside four print-only inks | Stays: the block reproduces the approved EN/ES flyer on letter paper. A screen surface never copies these values. |
+| `time-picker-variants.ts`, `toaster.tsx` | `--tp-row` rem heights; Sonner's `--width: 26rem` | Stay: recipe geometry, set once by the component that owns it. |
+
+## Theme model
+
+There is one theme, light, in the practice's palette. Each register assigns it through a scope.
+
+| Register | Scope | What it assigns |
+| --- | --- | --- |
+| Patient site | the root, no class (`src/app/[locale]/layout.tsx`) | Display serif headings, the fluid `--step-*` type, section rhythm, the button lift. |
+| Staff portal | `.portal-scope` on `<body>` (`src/app/admin/layout.tsx`) | Lato only, the closed `--pt-*` and `--ps-*` scales, `--pm-*` motion aliases, the flattened button knobs. |
+| Staff home | `.wgi-home` on the home section (`home.css`) | The approved Home frame's `--wgi-*` sizes and paints and its canvas. |
+| Print | `@page` and `@media print` | Paper: screen chrome hides, scrolled regions open to print every line, backgrounds drop to white. The request detail, the request packet and the review flyer each name their own `@page`. |
+| Locale | `:lang(vi)`, `:lang(ko)`, `:lang(ar)` | Font faces, leading, tracking; Arabic reads right to left through `dir`. |
+
+Dark mode is not a shipped surface. The `.dark` mapping exists only so a stray `dark:` utility lands
+on brand darks; a real dark theme is a practice decision.
+
+## Reference
+
+- **Color** (`--color-*`): `paper`, `mint`, `mint-2` (surfaces); `navy`, `navy-2`; `teal`,
+  `teal-ink`; `amber`, `amber-soft`, `amber-deep`; `ink`, `body`, `muted-ink`, `on-dark`,
+  `on-dark-muted` (ink); `line`, `line-2`, `line-3`, `line-dark`. Portal surfaces: `--portal-canvas`,
+  `--portal-surface`, `--portal-surface-muted`, `--portal-attention-ink`.
+- **Type**: `--font-display`, `--font-body`; patient fluid steps `--step-hero`, `--step-1` to
+  `--step-3`, `--step-lead`; portal steps `--pt-2xs`, `--pt-xs`, `--pt-sm`, `--pt-base`, `--pt-lg`,
+  `--pt-xl`.
+- **Space**: `--ps-1`, `--ps-2`, `--ps-3`, `--ps-4`, `--ps-6`, `--ps-8`, `--ps-12` (portal).
+- **Shape and elevation**: `--radius-sm`, `--radius`, `--radius-lg`; `--shadow-soft`,
+  `--shadow-card`, `--shadow-popover`.
+- **Motion**: `--motion-spring`, `--motion-spring-duration`, `--motion-exit`,
+  `--motion-exit-duration`, `--motion-micro-duration`, `--ease-out-quint`, `--ease-out-quart`;
+  portal aliases `--pm-spring`, `--pm-spring-duration`, `--pm-exit`, `--pm-exit-duration`,
+  `--pm-reduced-duration`, `--pm-scrim-duration`.
+- **Stacking**: `--z-header` 50, `--z-dropdown` 60, `--z-overlay` 70, `--z-drawer` 80.
+- **Staff home**: the `--wgi-*` block at the top of `.wgi-home` in `home.css`, each value with its
+  source and contrast note.
