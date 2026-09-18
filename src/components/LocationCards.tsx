@@ -19,7 +19,7 @@ export function LocationCards({ locale, dict }: Readonly<LocationCardsProps>) {
     <div className="grid gap-6 md:grid-cols-2">
       {site.locations.map((loc) => (
         <article key={loc.id} className="card p-7 sm:p-8">
-          <h3 className="h3 font-[var(--font-display)]">{loc.name[locale]}</h3>
+          <h3 className="h3">{loc.name[locale]}</h3>
           <address className="mt-5 grid gap-3 not-italic">
             <p className="flex items-start gap-3">
               <MapPin className="mt-1 h-4.5 w-4.5 flex-none text-[var(--color-teal-ink)]" />

@@ -63,12 +63,20 @@ correct while the type matches the band it sits in.
 <h2 className="h3 heading-tick">{t.insuranceHeading}</h2>
 ```
 
-A literal type utility at the call site is not the way to reach the same place. The base rule
-already set the display family, so this repeats it and will outlive any change to the token:
+A literal type utility at the call site does not reach the same place; it reaches nowhere.
+Tailwind v4 reads an un-hinted `var()` in the `font-*` namespace as a **weight**, so both lines
+below compile to `font-weight: <a font stack>`, which is invalid at computed-value time and
+silently falls back to the inherited weight:
 
 ```tsx incorrect
 <h2 className="h3 font-[var(--font-display)]">{t.missionHeading}</h2>
+<h2 className="text-base font-[var(--font-body)] font-extrabold">{t.stepsHeading}</h2>
 ```
+
+Neither line ever set a family. On `h1`–`h3` the base rule supplies the display serif regardless,
+so the first is inert; the second asks for the body sans on a heading and gets the serif anyway.
+`font-display` and `font-body` are the theme's own utilities and do compile to `font-family` —
+they are the only way to name a face at a call site.
 
 ## Content classes
 
@@ -118,4 +126,5 @@ a shadow the portal does not use ([surfaces.md](surfaces.md)).
 | Drift | Evidence | Disposition |
 | --- | --- | --- |
 | A second body size no token names: `text-[0.95rem]`, 15.2px, under the 17px floor [typography.md](typography.md) states | 32 uses in 16 files, every one of them secondary — a sentence under a heading, card meta, a back link, footer copy, a `dd` value | Documentation behind code: one consistent value used as a step, not an accident. It needs a `--step-*` token and a name before it can be enforced, which is a brand call, not a fix. |
+| `font-extrabold` on a heading asks for 800 from a serif loaded only at 400 | 14 `h2`/`h3` across ten files, from `src/app/[locale]/services/page.tsx#L76` to the three `src/components/Footer.tsx` column heads. The patient site leaves `font-synthesis` at its default, so the browser fakes the weight rather than substituting a loaded one: at 17px a measured line widened from 203.61px to 204.73px, with visibly thicker stems. The identical class on the two `h4` outside the base rule (`src/components/HoursTable.tsx#L24`, `src/app/[locale]/physicians/page.tsx#L301`) reaches Lato and its real 900 face, 164.27px to 169.82px | Jason decides: one authored weight, two rendered results. Loading a heavier display face, dropping the weight, and moving those headings to `font-body` each repaint patient pages, so bring rendered comparisons rather than a change. |
 | Three `.heading-tick` headings inside one band | `src/app/[locale]/new-patients/page.tsx#L105`, `#L109` and `#L113` are the three columns of the `lg:grid-cols-3` band opened at `#L103` | Code against the rule its own CSS comment states. Narrow: one band in one file out of 26 uses. Dropping the three ticks is a visible change and needs before/after evidence. |

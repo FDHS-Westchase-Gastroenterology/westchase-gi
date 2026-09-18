@@ -85,7 +85,7 @@ export default async function BlogPostPage({ params }: Readonly<PageProps>) {
       <section className="border-t border-[var(--color-line)] bg-[var(--color-mint)]">
         <div className="container-x section-sm">
           <Reveal>
-            <h2 className="h3 font-[var(--font-display)]">{t.moreHeading}</h2>
+            <h2 className="h3">{t.moreHeading}</h2>
           </Reveal>
           <ul className="mt-6 grid gap-x-10 gap-y-5 sm:grid-cols-2 lg:grid-cols-3">
             {more.map((p) => (
@@ -94,7 +94,7 @@ export default async function BlogPostPage({ params }: Readonly<PageProps>) {
                   <p className="text-[0.88rem] font-bold text-[var(--color-muted-ink)]">
                     {formatPosted(p.posted, locale)}
                   </p>
-                  <h3 className="mt-1 text-[1.15rem] leading-snug font-[var(--font-display)] text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
+                  <h3 className="mt-1 text-[1.15rem] leading-snug text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
                     {p.title[locale]}
                   </h3>
                   <span className="link-line mt-2 inline-flex text-[0.92rem]">

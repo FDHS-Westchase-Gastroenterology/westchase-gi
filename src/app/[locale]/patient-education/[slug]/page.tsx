@@ -77,7 +77,7 @@ export default async function EducationTopicPage({ params }: Readonly<PageProps>
               <div className="flex min-w-0 items-start gap-3">
                 <FileText className="mt-1 h-5 w-5 flex-none text-[var(--color-teal-ink)]" />
                 <div>
-                  <h2 className="text-base font-[var(--font-body)] font-extrabold text-[var(--color-ink)]">
+                  <h2 className="text-base font-extrabold text-[var(--color-ink)]">
                     {t.sheetHeading}
                   </h2>
                   <p className="measure-sm mt-1 text-[0.95rem] text-[var(--color-body)]">
@@ -105,7 +105,7 @@ export default async function EducationTopicPage({ params }: Readonly<PageProps>
 
           {/* General-education disclaimer + the human channel. */}
           <div className="mt-10 border-t border-[var(--color-line)] pt-7">
-            <h2 className="text-base font-[var(--font-body)] font-extrabold text-[var(--color-ink)]">
+            <h2 className="text-base font-extrabold text-[var(--color-ink)]">
               {t.questionsHeading}
             </h2>
             <p className="measure mt-2 text-[0.98rem] text-[var(--color-body)]">

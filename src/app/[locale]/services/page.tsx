@@ -73,9 +73,7 @@ export default async function ServicesPage({ params }: Readonly<PageProps>) {
             </ul>
             <div className="card-lined mt-10 flex flex-wrap items-center justify-between gap-4 bg-[var(--color-mint)] p-6">
               <div>
-                <h3 className="text-base font-[var(--font-body)] font-extrabold text-[var(--color-ink)]">
-                  {t.prepNote}
-                </h3>
+                <h3 className="text-base font-extrabold text-[var(--color-ink)]">{t.prepNote}</h3>
                 <p className="mt-1 text-[0.95rem] text-[var(--color-body)]">{t.prepNoteBody}</p>
               </div>
               <Link

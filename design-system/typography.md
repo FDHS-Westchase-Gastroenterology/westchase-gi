@@ -24,7 +24,7 @@ Is the text inside .portal-scope (every /admin page)?
 │         The serif appears only in the brand mark (Recorded exceptions)
 └── No, a patient-site page
     ├── h1–h3, .display → --font-display at 400 (the element defaults set both)
-    └── everything else → --font-body
+    └── everything else → --font-body, reached with the font-body utility
 ```
 
 **The portal is Lato only.** Operational content never wears the display serif. The portal's heading
@@ -72,7 +72,9 @@ tokens in `home.css`, read nowhere else.
 
 **Request only a loaded face.** `.portal-scope` sets `font-synthesis: none`, so the browser never
 fakes a weight: it substitutes the nearest loaded face, and the number in the stylesheet stops
-describing the screen.
+describing the screen. The patient site sets no `font-synthesis`, so it fakes instead of
+substituting: `font-extrabold` on a heading draws a synthetic bold of Trocchi 400
+([patient-site.md](patient-site.md#recorded-drift)).
 
 | Register | Loaded faces | Loaded by |
 | --- | --- | --- |

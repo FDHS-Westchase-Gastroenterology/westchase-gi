@@ -93,7 +93,7 @@ function SuccessCard({
       <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-mint)] text-[var(--color-teal-ink)]">
         <Check className="h-7 w-7" />
       </span>
-      <h2 className="h3 mt-5 font-[var(--font-display)]">{f.doneHeading}</h2>
+      <h2 className="h3 mt-5">{f.doneHeading}</h2>
       <p className="mt-3 max-w-md text-[var(--color-body)]">{f.doneBody}</p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         <ContactActions dict={dict} />

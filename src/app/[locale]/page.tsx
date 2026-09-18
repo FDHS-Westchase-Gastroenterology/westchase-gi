@@ -86,9 +86,7 @@ export default async function HomePage({ params }: Readonly<PageProps>) {
               <Heart className="h-4.5 w-4.5" />
               {t.heroKicker}
             </p>
-            <h1 className="display mt-4 font-[var(--font-display)] text-[var(--color-on-dark)]">
-              {t.heroTitle}
-            </h1>
+            <h1 className="display mt-4 text-[var(--color-on-dark)]">{t.heroTitle}</h1>
             <p className="lead mt-5 max-w-xl text-[var(--color-on-dark-muted)]">{t.heroLead}</p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link
@@ -233,7 +231,7 @@ export default async function HomePage({ params }: Readonly<PageProps>) {
                       className="aspect-[7/8] w-full object-cover object-top"
                     />
                     <span className="block px-6 pt-5 pb-5">
-                      <span className="block text-xl font-[var(--font-display)] text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
+                      <span className="block text-xl text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
                         {doc.name}, {doc.credentials}
                       </span>
                       <span className="mt-1 block text-[0.95rem] font-semibold text-[var(--color-teal-ink)]">
