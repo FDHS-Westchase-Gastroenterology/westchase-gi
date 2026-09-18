@@ -53,6 +53,8 @@ below.
 | `StatusBadge` | A request's status in the queue and on its detail page ([surfaces.md](surfaces.md#badges)) | `requests/page.tsx`, `[id]/page.tsx` |
 | `PrintChooser` | Choosing what to print, from the staff home and the requests output actions ([overlays.md](overlays.md#modal-dialogs)) | `home-workbench.tsx`, `requests-output-actions.tsx` |
 | `followed` | The promise a save toast follows ([forms.md](forms.md#saving)) | `created-toast.ts`, `request-notes.tsx`, `use-workflow-panel.ts` |
+| `PortalPageHeader` | Every portal page's title block, shared from the route group's root ([layout.md](layout.md#page-structures)) | `settings/layout.tsx`, `audit/page.tsx`, `requests/new/page.tsx` |
+| `PortalFeedbackProvider` `PortalFeedbackMessage` | The one current result on a page, where a toast cannot reach ([forms.md](forms.md#reporting-a-result)) | `home-workbench.tsx`, `requests-output-actions.tsx`, `print-controls.tsx` |
 
 The staff home keeps its converted registry parts in `(home)/parts/`, repainted in `home.css`
 under `.wgi-*`. They are route-owned: nothing outside the staff home imports them.

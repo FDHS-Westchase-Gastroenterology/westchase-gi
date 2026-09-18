@@ -43,6 +43,16 @@ Settings, Help) sits beside the work; narrower, the same four destinations becom
 the bottom of the screen. Work sits in `.portal-content`, 92rem wide at most, as paper
 (`--portal-surface`) on `--portal-canvas`, divided by hairlines.
 
+**Every portal page opens with a heading block.** `PortalPageHeader`
+(`src/app/admin/(portal)/portal-page-header.tsx`) is the shared one: `title` renders the `<h1>`,
+while `description`, `meta`, `actions` and `back` (`{ href, label }`) each render only when
+passed. It is the only file that writes `.portal-page-header`, `.portal-page-title`,
+`.portal-page-description`, `.portal-page-meta` and `.portal-page-actions`, and it marks the back
+link and the action group `print-hide`. Thirteen call sites wear it, `settings/layout.tsx` and
+`audit/page.tsx` among them. Three headings stay route-owned because they are a masthead rather
+than a title over a body: the staff home's `.portal-sheet-title` greeting, the queue's
+`.portal-queue-title`, and `AuthCard`'s `.portal-auth-title` on the signed-out screens.
+
 **The staff home request list is sized to the viewport, not to a row count.** On Home the content
 column fills the viewport, and `line-list.tsx` composes one floating surface: `Card` →
 `ScrollArea`, whose `ScrollAreaViewport` is a named, focusable region → `Table` under a sticky

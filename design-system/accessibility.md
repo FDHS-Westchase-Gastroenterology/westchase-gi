@@ -52,9 +52,16 @@ whose `<main>` carries `tabIndex={-1}` so the jump lands somewhere focusable.
 
 Focus moves with the work:
 
-- An overlay traps Tab while it is open and returns focus to the control that opened it —
-  `add-appointment-dialog.tsx`, `print-chooser.tsx`, `portal-tour.tsx`, and the day editor in
-  `call-again-fieldset.tsx` all do.
+- A modal dialog confines Tab by itself: `showModal()` makes the rest of the page inert, and on
+  close it returns focus to the control that opened it. `AddAppointmentDialog`, `LanguageChooser`
+  and `ProfileCardViewer` rest on that alone. `print-chooser.tsx`, `portal-tour.tsx`,
+  `recipients-manager.tsx` and the request form's discard confirmation wrap Tab by hand as well,
+  and no two agree on what counts as focusable. Copy `print-chooser.tsx`: it alone skips Base UI's
+  hidden `tabindex="-1"` input and anything `aria-disabled`. Converging the four is
+  [roadmap item 9](roadmap.md#9-a-native-dialog-component).
+- The day editor in `call-again-fieldset.tsx` is not an overlay and traps nothing. It expands in
+  place, sends focus to the corrected day on open and back to its trigger on close, and lets Tab
+  carry on into the page behind it.
 - A refused submit sends focus to the first invalid control, or to the error summary when the
   failure belongs to the form ([staff-request-form.tsx](../src/app/admin/(portal)/requests/new/staff-request-form.tsx)).
 - A finished inline edit hands focus back to the control that started it, as `request-notes.tsx`

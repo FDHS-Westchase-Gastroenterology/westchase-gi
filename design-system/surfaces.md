@@ -125,3 +125,20 @@ rather than choosing a variant itself.
 // Incorrect: no variant, and a dot that leaves the color carrying the meaning
 <Badge><span className="size-2 rounded-full bg-amber-500" /></Badge>
 ```
+
+## Empty states
+
+Nothing to show is still a surface, and which one depends on how much is empty. All four are
+hand-built classes today; `Empty` (`stock/empty.tsx`) replaces them under
+[roadmap item 5](roadmap.md#5-empty-states-callouts-and-pagers).
+
+| Class | What it is | Where |
+| --- | --- | --- |
+| `.portal-empty-state` | The whole route has nothing: 19rem tall, start-aligned between hairlines, an optional teal icon, an `h2`, a 58ch line and a row of actions | `error.tsx`, `not-found.tsx`, four states in `requests/print/page.tsx` |
+| `.portal-queue-empty` | A list panel came back empty: 18rem, centered, an `h2`, a 52ch line and one `.portal-inline-link` | `request-queue-empty.tsx` |
+| `.portal-empty` | Hairlines on a `mint` ground and nothing else; the call site brings its own padding and centering | `audit/page.tsx`, `recent-work.tsx` |
+| `.portal-request-notes-empty` `.portal-request-history-empty` | One muted 0.9rem line inside a section that is already open, with no box around it | `[id]/page.tsx`, `request-notes.tsx` |
+
+An emptiness that is a refusal rather than a resting state also carries `role="alert"`: four of
+the six `.portal-empty-state` uses do, because the packet route was asked for something it cannot
+print ([accessibility.md](accessibility.md#announcements)).

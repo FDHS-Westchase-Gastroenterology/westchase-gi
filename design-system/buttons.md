@@ -65,7 +65,14 @@ Which variant?
 
 `sm` sits below the [44px target floor](accessibility.md#targets). Its six consumers stay as
 they render until [roadmap item 11](roadmap.md#11-button-sm-targets) decides; a new compact
-button uses `default` and gives up padding through the knobs instead.
+button keeps `default` and takes its padding back through the knobs.
+
+`--btn-px` and `--btn-py` are custom properties the `default` size reads with its own values as
+fallbacks, so anything that sets them retunes padding without touching the recipe. `.portal-scope`
+is the only thing that does (`src/app/globals.css#L1270`), which is why every portal button is
+already tighter than a patient-site one. A compact area retunes the same way, by setting the pair
+on the container that owns it. No call site overrides them on a single button, so there is no
+example of that narrower move.
 
 ## Motion
 

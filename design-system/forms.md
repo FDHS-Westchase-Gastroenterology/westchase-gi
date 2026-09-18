@@ -120,3 +120,25 @@ void createStaffRequestAction(input);
 A form that can show its own failure beside the fields gives the toast no error branch; a surface
 with nothing to point at, like the request work panel, reads the failure off the rejection. The
 home record card keeps its own follower, `record-card-save.ts`.
+
+## Reporting a result
+
+The portal answers an action in two places, and they are not interchangeable.
+
+| Mechanism | When | Real uses |
+| --- | --- | --- |
+| `toast.promise` | A save with a promise to follow, in the portal's one toast region | `created-toast.ts`, `request-notes.tsx`, `use-workflow-panel.ts` |
+| `PortalFeedbackMessage` | A result with no promise to follow, or one that has to outlive a toast | `requests-output-actions.tsx`, `print-controls.tsx`, `request-current-feedback.tsx` |
+
+`PortalFeedbackProvider` (`portal-feedback.tsx`) holds a single current result per page, so a
+later note, workflow command or output handoff replaces the banner instead of stacking a second
+one. Five surfaces mount it: the staff home, the requests queue, a request's detail page, the
+print packet and the review-flyer printer. An island calls `publish({ source, tone, message })`; a
+`PortalFeedbackMessage` renders only while the current result carries its own `source`, and
+`dismiss(source)` clears only its own. `tone` is `status` or `alert`, and it is both the element's
+`role` and its paint: mint on a teal hairline, or `amber-soft` on amber.
+
+An export, print or other handoff has no promise, so it publishes instead of toasting. A save that
+already toasts still publishes, because the toast leaves and the banner is what staff come back
+to: `request-notes.tsx` and `use-workflow-panel.ts` do both, and clear the banner when the
+composer or the panel reopens.
