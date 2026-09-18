@@ -118,7 +118,7 @@ export default async function ProcedurePrepPage({ params }: Readonly<PageProps>)
         </div>
       </section>
 
-      <TextBand locale={locale} dict={dict} />
+      <TextBand dict={dict} />
     </>
   );
 }

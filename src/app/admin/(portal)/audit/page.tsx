@@ -253,10 +253,10 @@ export default async function AdminAuditPage({
               <Table data-testid="audit-table" className="min-w-[640px]">
                 <TableHeader>
                   <TableRow>
-                    <TableHead scope="col">When</TableHead>
-                    <TableHead scope="col">Who</TableHead>
-                    <TableHead scope="col">Action</TableHead>
-                    <TableHead scope="col">Entity</TableHead>
+                    <TableHead>When</TableHead>
+                    <TableHead>Who</TableHead>
+                    <TableHead>Action</TableHead>
+                    <TableHead>Entity</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>

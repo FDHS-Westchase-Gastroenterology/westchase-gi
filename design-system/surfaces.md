@@ -46,8 +46,9 @@ the padding; a call site adds layout only. The staff home's list card and the si
 | `Table` `TableHeader` `TableBody` `TableRow` | The grid itself | `line-list.tsx`, `audit/page.tsx`, `release-engagement.tsx` |
 | `TableHead` `TableCell` | A column heading; a cell | `line-list.tsx`, `audit/page.tsx`, `release-engagement.tsx` |
 
-- **Every column heading is a `TableHead` with `scope="col"`.** The audit tables set it; the staff
-  home's list sets `data-cell` instead and names its columns in `home.css`.
+- **Every column heading is a `TableHead`, and the recipe supplies `scope="col"`.** A call site
+  passes `scope` only for a header that labels a row. The staff home's list adds `data-cell` as
+  well, which names its columns in `home.css`.
 - **A pressable row holds a button.** `TableRow` is not the control; the staff home's open action
   is a button inside the row's cell ([accessibility.md](accessibility.md#targets)).
 - **`TableCaption` and `TableFooter` have no consumer today.** A table that needs a summary row

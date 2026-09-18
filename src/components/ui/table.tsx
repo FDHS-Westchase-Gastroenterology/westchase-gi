@@ -9,7 +9,9 @@ import type { ComponentProps } from "react";
  * table in an overflow container; consumers here own their scroll
  * wrappers (a focusable region with an aria label scrolls better than a
  * bare div), and one toggles `hidden md:table` on the element itself,
- * so the container was dropped rather than doubled. */
+ * so the container was dropped rather than doubled. `TableHead` defaults
+ * to `scope="col"` because every header in both products labels a
+ * column; a row header passes `scope="row"`. */
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function Table({ className, ...props }: ComponentProps<"table">) {
@@ -64,10 +66,11 @@ function TableRow({ className, ...props }: ComponentProps<"tr">) {
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-function TableHead({ className, ...props }: ComponentProps<"th">) {
+function TableHead({ className, scope = "col", ...props }: ComponentProps<"th">) {
   return (
     <th
       data-slot="table-head"
+      scope={scope}
       className={cn("px-5 py-3.5 align-middle font-bold whitespace-nowrap", className)}
       {...props}
     />

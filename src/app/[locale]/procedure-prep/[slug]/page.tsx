@@ -133,7 +133,7 @@ export default async function PrepDetailPage({ params }: Readonly<PageProps>) {
         </div>
       </article>
 
-      <TextBand locale={locale} dict={dict} />
+      <TextBand dict={dict} />
     </>
   );
 }

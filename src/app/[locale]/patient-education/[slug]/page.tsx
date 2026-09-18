@@ -123,7 +123,7 @@ export default async function EducationTopicPage({ params }: Readonly<PageProps>
         </div>
       </article>
 
-      <TextBand locale={locale} dict={dict} />
+      <TextBand dict={dict} />
     </>
   );
 }

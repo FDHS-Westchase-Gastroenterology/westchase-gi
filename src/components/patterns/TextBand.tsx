@@ -2,10 +2,8 @@ import { MessageSquare, Phone } from "@/components/icons";
 import { buttonVariants } from "@/components/ui/button-variants";
 import type { Dictionary } from "@/lib/i18n";
 import { site } from "@/lib/site";
-import type { Locale } from "@/lib/site";
 
 interface TextBandProps {
-  locale: Locale;
   dict: Dictionary;
 }
 

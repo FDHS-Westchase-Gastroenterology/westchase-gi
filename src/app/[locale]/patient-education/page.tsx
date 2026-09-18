@@ -79,7 +79,7 @@ export default async function PatientEducationPage({ params }: Readonly<PageProp
         </div>
       </section>
 
-      <TextBand locale={locale} dict={dict} />
+      <TextBand dict={dict} />
     </>
   );
 }
