@@ -2,11 +2,9 @@
 
 The design system for the two products in this repository: the five-language patient site and the
 staff portal at `/admin`. Product truth is [`PRODUCT.md`](PRODUCT.md); this file is how that truth
-is drawn. The promise is that the system may be deep while using it stays shallow — a surface
-composes from named parts with named defaults, so adding a button, a field or a modal never
-decides a color, a duration or a radius.
-
-This page is the map; each guide below owns one concern and is self-sufficient.
+is drawn, and a map: each guide below owns one concern and is self-sufficient. The system may be
+deep while using it stays shallow — a surface composes from named parts with named defaults, so
+adding a button, a field or a modal never decides a color, a duration or a radius.
 
 ## The guides
 
@@ -17,6 +15,7 @@ This page is the map; each guide below owns one concern and is self-sufficient.
 - [Layout](design-system/layout.md) — page structures, spacing scales, shape and elevation.
 - [Patient site](design-system/patient-site.md) — the route contract, the content classes, the rhythm.
 - [Components](design-system/components.md) — the tiers, the recipe API, what earns extraction.
+- [Modules](design-system/modules.md) — import specifiers, the locale pair, the portal route contract.
 - [Buttons](design-system/buttons.md) — variants, sizes, motion, icons, disabled and pending.
 - [Forms](design-system/forms.md) — fields, controls, choices, dates, time, saving.
 - [Surfaces](design-system/surfaces.md) — cards, tables, lists, rules, scrolling, badges.

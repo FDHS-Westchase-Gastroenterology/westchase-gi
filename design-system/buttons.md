@@ -11,7 +11,8 @@ geometry, `motion` sets the temperament.
 What does pressing it do?
 ├── Submits, toggles, opens or runs something on this page → <Button> with an explicit type
 ├── Goes to another URL → Link wearing buttonVariants(), with data-slot="button"
-└── Runs a form action from a server component → <button> wearing buttonVariants(), with data-slot="button"
+├── Runs a form action from a server component → <button> wearing buttonVariants(), with data-slot="button"
+└── Hands a file to the browser → <a href download>, never Link and never Button
 ```
 
 - **A link stays a link.** Base UI's button renders a native `<button>`; asked to render an
@@ -31,6 +32,29 @@ What does pressing it do?
 ```tsx incorrect
 // Incorrect: a link rendered through Button announces itself as a button
 <Button render={<Link href={returnHref} />} nativeButton={false} variant="outline">
+```
+
+## Outputs: print and download
+
+A download has a URL, so it is a plain `<a href download>`: `Link` is for route transitions, and a
+`Button` with an `onClick` throws away middle-click and save-as. Printing runs on this page, so it
+stays a `Button` calling `window.print()` (`print-controls.tsx`). An output that is occasional
+rather than the screen's work wears `REQUESTS_OUTPUT_UTILITY_CLASS` instead of a variant:
+`.portal-utility-link` paints a quiet `--pt-xs` weight-600 label on `--color-body` that turns teal
+on hover, with its own 1rem leading icon, and `min-h-11` adds the target floor the class omits. It
+takes no `data-slot`; the export anchor and the `PrintChooser` trigger both wear it.
+
+- **`useOutputGuard()`** (`output-feedback.ts`) locks 1.5 seconds against a double press:
+  `begin()` returns false while locked, the call site shows that as `aria-disabled`, and an anchor
+  calls `event.preventDefault()`. `releaseOnAfterPrint` lifts a print's lock when its dialog
+  closes.
+- **An `sr-only` span** named by `aria-describedby` says which rows the file actually covers.
+- **`publish()`** puts the result in the page's one `PortalFeedbackMessage`, read out by its tone.
+
+```tsx
+// Correct (requests-output-actions.tsx): an anchor, guarded, described and announced
+<a href={exportHref} download aria-describedby="request-export-scope"
+   aria-disabled={exportGuard.locked || undefined} className={REQUESTS_OUTPUT_UTILITY_CLASS}>
 ```
 
 ## Variants

@@ -11,7 +11,7 @@ that renders it. The per-component guides are [buttons.md](buttons.md), [forms.m
 | --- | --- | --- |
 | `src/components/stock/` | Registry source and examples kept as inputs to the local design bundle. Provenance is `MANIFEST.json`. Not approved design. | Its own packages |
 | `src/components/ui/` | Approved components: one recipe per component, brand defaults, consumer maps in the recipe comments. | `cn`, Base UI, `src/lib/` |
-| `src/components/patterns/` | Compositions of `ui/` parts that two or more routes render. | `ui/` |
+| `src/components/patterns/` | Compositions of `ui/` parts that two or more routes render. | `ui/`, `src/lib/` |
 | Beside the route in `src/app/` | Compositions one route renders, or one workflow's routes share. | `ui/`, `patterns/` |
 
 A tier never imports a tier above it in this table, and nothing imports `stock/` except the three
@@ -73,9 +73,15 @@ under `.wgi-*`. They are route-owned: nothing outside the staff home imports the
 | Component | When | Real uses |
 | --- | --- | --- |
 | `PageHero` | The band that opens a patient-site page; 11 routes wear it | `about/page.tsx`, `contact/page.tsx`, `services/page.tsx` |
-| `TextBand` | The statement band that closes a patient-site page, with its call to action; 14 routes wear it | `about/page.tsx`, `services/page.tsx`, `resources/page.tsx` |
-| `Reveal` | Content that rises in on scroll: `variant` `up` (default), `fade` or `right`, `delay` 0-4 for a 90ms-per-step stagger ([motion.md](motion.md)); 12 routes wear it | `procedure-prep/page.tsx`, `physicians/page.tsx`, `contact/page.tsx` |
-| `revealDelay` in `patterns/reveal-delay.ts` | Clamps a computed index to the four `Reveal` steps, so a long list stops staggering rather than running late | `office-gallery/page.tsx`, `procedure-prep/page.tsx` |
+| `TextBand` | The navy statement band that closes a patient-site page; 14 routes wear it. Its two actions are the practice's own text line and phone, read from `site`, so no route chooses them | `about/page.tsx`, `services/page.tsx`, `resources/page.tsx` |
+| `Reveal` | Content that rises in on scroll: `variant` `up` (default), `fade` or `right`; `delay` `0` (default, no attribute) through `4`, 90ms a step ([motion.md](motion.md)); 12 routes wear it | `procedure-prep/page.tsx`, `physicians/page.tsx`, `contact/page.tsx` |
+| `revealDelay` in `patterns/reveal-delay.ts` | Narrows a computed index to `RevealDelay`. Every call site already bounds its own index (`i % 4`, `Math.min(i + 1, 4)`), so this is the type guard, not the policy | `office-gallery/page.tsx`, `procedure-prep/page.tsx` |
+
+Props, in full: `PageHero` takes `title`, an optional `lead` and `children`; `TextBand` takes
+`dict` and nothing else; `Reveal` takes `children`, `as`, `className`, `delay` and `variant`. None
+of the three is a recipe — `Reveal`'s `variant` names an entrance direction and lands as
+`data-reveal` for `globals.css` to read, and `as` plus `className` let a `Reveal` be the grid child
+and wear `.card` itself (`new-patients/page.tsx`) rather than wrapping one.
 
 ## What qualifies for extraction
 

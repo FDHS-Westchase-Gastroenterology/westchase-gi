@@ -55,10 +55,17 @@ Variants: `attention`, `current`, `settled`, `quiet`. Nothing else exists — an
 a bug, not an option. `variant` is required: there is no default, because a stamp without a
 meaning is not a stamp.
 
-- `attention` — `amber-soft` under `ink`. New requests.
-- `current` — `mint-2` under `teal-ink`. Contacted requests, being worked.
-- `settled` — `navy` under `on-dark`. Scheduled requests.
-- `quiet` — `line` under `muted-ink`. Closed requests.
+Four lowercase `RequestStatus` keys drive it — `new`, `contacted`, `scheduled`, `closed`
+(`workflow/contracts.ts`). `STATUS_VARIANTS` maps each to a variant and `STATUS_LABELS`
+(`requests/format.ts`) supplies the capitalized word, so no call site writes either; a durable
+`RequestState` of `booked` becomes `scheduled` first, through `presentationStatus`.
+
+| Status | Variant | Paint | Words |
+| --- | --- | --- | --- |
+| `new` | `attention` | `amber-soft` under `ink` | New |
+| `contacted` | `current` | `mint-2` under `teal-ink` | Contacted |
+| `scheduled` | `settled` | `navy` under `on-dark` | Scheduled |
+| `closed` | `quiet` | `line` under `muted-ink` | Closed |
 
 ```tsx
 // Correct: the status picks the paint; the label is the words

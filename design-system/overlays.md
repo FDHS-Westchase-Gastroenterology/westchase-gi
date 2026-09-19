@@ -27,12 +27,13 @@ layer supplies the backdrop, inertness and Escape's `cancel` event; CSS animates
 The shadcn Dialog stays unadopted ([a standing finding](adoption.md#standing-findings)); a wrapper
 component is [roadmap item 9](roadmap.md#9-a-native-dialog-component).
 
-- **Parts.** `-body` holds the `-title`, or a `-heading` pairing it with a `-close` button, and the
-  copy; `-actions` stacks full-width buttons, then a right-aligned row from 40rem. The dialog is
-  `min(92vw, 28rem)` by at most `min(90dvh, 32rem)`; `portal-add-appointment` is 40rem by 46rem.
+- **Parts.** `-body` and `-actions` are siblings, never nested. `-body` holds the `-title`, or a
+  `-heading` pairing it with a `-close` button, and the copy; `-actions` stacks full-width
+  buttons, then a right-aligned row from 40rem. The dialog is `min(92vw, 28rem)` by at most
+  `min(90dvh, 32rem)`; `portal-add-appointment` is 40rem by 46rem.
 - **Actions.** The safe answer is a `Button`. Beside it sits at most one text action:
   `-destructive` (amber, bordered) to remove something, or `-discard` (teal text) to cancel a
-  choice or abandon a draft.
+  choice or abandon a draft. Neither class sets a height, so every call site adds `min-h-11`.
 - **Motion.** It rises 0.75rem from `scale(0.97)` and closes toward 0.4rem and `scale(0.985)`,
   transform on arriving and the rest on leaving, over a plain `rgba(20, 32, 45, 0.48)` scrim that
   fades in over 220ms. Modals stay centered: they answer the whole page, not one trigger.
@@ -49,13 +50,12 @@ inside the dialog. On close, focus returns to the trigger, or to the list that c
 **Only Escape and the dialog's own controls close it.** A press on the scrim does nothing. Escape
 takes the safe answer: a dialog that can refuse (a removal in flight, a dirty draft) calls
 `preventDefault()` in `onCancel` and runs its Close path, and the discard confirmation lets Escape
-close it, which keeps editing. A dialog may open another: the add-appointment form hosts the
-discard confirmation.
+keep editing. A dialog may open another: the add-appointment form hosts the discard confirmation.
 
-`PrintChooser` follows every rule above; copy it. `RemoveRecipientDialog` and the discard
-confirmation do not set `data-instant`, and `AddAppointmentDialog` does not wrap Tab: roadmap
-item 9. `PortalTour` is a native dialog on the legacy `overlay-rise` keyframes:
-[roadmap item 7](roadmap.md#7-the-legacy-feature-blocks).
+`PrintChooser` follows every rule above; copy it, except that a dialog built for one chosen target
+opens from an effect keyed on it (`recipients-manager.tsx`). `RemoveRecipientDialog` and the
+discard confirmation do not set `data-instant`, `AddAppointmentDialog` does not wrap Tab: roadmap
+item 9. `PortalTour` runs on legacy `overlay-rise` keyframes: roadmap item 7.
 
 ```tsx
 // Correct (print-chooser.tsx, shortened): instant from the keyboard, Escape through Close
@@ -87,10 +87,10 @@ beside it: a press on its own row or a toast, a press or focus move into the ful
 and an Escape meant for the sheet. In a table the popover lives in the row's last cell, because
 its portal leaves focus-guard spans beside the trigger.
 
-`.wgi-popover` grows from `var(--transform-origin)` and `scale(0.95)` over leaving's 160ms and
-closes in 120ms ([roadmap item 14](roadmap.md#14-the-staff-home-temperament-and-companion-surfaces)).
-Base UI's `data-instant` makes a keyboard press on the trigger, Escape or focus leaving instant;
-an outside press still animates.
+`.wgi-popover` grows from `var(--transform-origin)` and `scale(0.95)` over leaving's 160ms,
+closing in 120ms ([item 14](roadmap.md#14-the-staff-home-temperament-and-companion-surfaces)).
+Base UI's `data-instant` makes a keyboard press, Escape or focus leaving instant; an outside press
+animates.
 
 ```tsx
 // Correct (filter-bar.tsx, shortened): the route's popover, dressed by its class

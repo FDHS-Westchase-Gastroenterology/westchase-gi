@@ -53,6 +53,11 @@ the padding; a call site adds layout only. The staff home's list card and the si
   is a button inside the row's cell ([accessibility.md](accessibility.md#targets)).
 - **`TableCaption` and `TableFooter` have no consumer today.** A table that needs a summary row
   uses `CardFooter` under it, as the staff home does.
+- **A wide table brings its own scroll container.** `Table` sets no width and no overflow. A table
+  too wide for its column sits in a `div` with `overflow-x-auto` plus `role="region"`,
+  `aria-labelledby` and `tabIndex={0}`, so a keyboard can reach and scroll it: `audit/page.tsx`
+  wraps a `min-w-[640px]` table that way. `release-engagement.tsx` answers the same width the
+  other way, hiding its table below `md` and repeating the rows as a list.
 
 Eleven audit cells set their own ink and size through `className`
 ([styling.md](styling.md#recorded-call-site-restyles)); those looks wait on

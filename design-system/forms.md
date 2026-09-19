@@ -95,14 +95,16 @@ from `ui/` the same way; the wrapper stays the staff home's.
 
 A portal save shows its progress in one toast that follows the save's promise: the working verb
 while it runs, the saved sentence only once the server confirmed. `Toaster` (Sonner, from
-`stock/sonner.tsx`) is mounted once, in the portal layout; the patient site has no toasts.
+`src/components/ui/toaster.tsx`) is mounted once, in the portal layout; the patient site has none.
+`followed` (`(portal)/toast-follow.ts`) narrows that promise on a **type guard**, not a value; its
+module and full signature are in [modules.md](modules.md#portal-modules).
 
 | Component | When | Real uses |
 | --- | --- | --- |
 | `Toaster` | The one toast region for the portal | `(portal)/layout.tsx` |
 
 ```ts
-// Correct (created-toast.ts): toast.promise follows the attempt through followed()
+// Correct (new/created-toast.ts): `created` is that file's own guard on the result
 toast.promise(followed(attempt, created), {
   id: `${CREATED_TOAST_TEST_ID}:${key}`,
   testId: CREATED_TOAST_TEST_ID,

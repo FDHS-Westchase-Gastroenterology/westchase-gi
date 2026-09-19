@@ -135,8 +135,8 @@ What does the portal text do?
 ## Recorded drift
 
 Measured on commit e7734a4 with the compiled stylesheet in headless Chromium at 1440 and 390 wide,
-and by counting `font-weight` values and `font-[NNN]`, `font-extrabold` and `font-black` classes
-under `src/app/admin`. Each row waits on
+and by counting `font-weight` values and the bracketed-numeric, `font-extrabold` and `font-black`
+weight utilities under `src/app/admin`. Each row waits on
 [roadmap item 12](roadmap.md#12-portal-type-weights-and-heading-family).
 
 | Where | Measured | Consequence |

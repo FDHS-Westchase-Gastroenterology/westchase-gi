@@ -60,7 +60,8 @@ should read at the third size wears `.h3`, and the outline a screen reader annou
 correct while the type matches the band it sits in.
 
 ```tsx
-<h2 className="h3 heading-tick">{t.insuranceHeading}</h2>
+// Correct (blog/[slug]/page.tsx): an <h2> in the outline, reading at the third size
+<h2 className="h3">{t.moreHeading}</h2>
 ```
 
 A literal type utility at the call site does not reach the same place; it reaches nowhere.
@@ -77,6 +78,10 @@ Neither line ever set a family. On `h1`–`h3` the base rule supplies the displa
 so the first is inert; the second asks for the body sans on a heading and gets the serif anyway.
 `font-display` and `font-body` are the theme's own utilities and do compile to `font-family` —
 they are the only way to name a face at a call site.
+
+Outside `h1`–`h3` the base rule is not in force and the body sans is: a `dt` or an `h4` inherits
+Lato, where `font-extrabold` resolves to the real 900 face the family loads. That is why four
+patient `<dt>`s carry the weight without the synthesis the drift table records for `h2` and `h3`.
 
 ## Content classes
 
@@ -102,6 +107,12 @@ Global classes in `src/app/globals.css`, available on any patient markup with no
 `.heading-tick` is the one with a rule attached to it: the CSS comment above it reserves the tick
 for major section starts, "never as an every-block eyebrow".
 
+`.list-check` sets no type: it is a grid with a 0.7rem gap and a masked navy check on each
+`li::before`, which is why a call site adds `sm:grid-cols-2`, `lg:grid-cols-3` or its own
+`gap-x-*` straight onto the `ul`. Five of the six uses add `font-semibold` and
+`text-[var(--color-ink)]` too — four on each `li`, `physicians/page.tsx` once on the `ul`; the
+sixth is the `--amber` twin on navy, which sets `text-[0.97rem]` and on-dark muted ink, no weight.
+
 ## `.card` is a class, the `Card` is a component
 
 They do not overlap and neither is the other's shorthand. `.card` is the patient site's white
@@ -110,6 +121,12 @@ is the shadcn recipe and has three consumers, all in the portal: the home list, 
 skeleton, and `AuthCard`. A patient surface that reaches for `Card` gets portal geometry and the
 semantic token bridge instead of the brand panel; a portal surface that reaches for `.card` gets
 a shadow the portal does not use ([surfaces.md](surfaces.md)).
+
+A third white panel exists and is not a class: the home page's wayfinding tiles and physician
+cards hand-write the same white and `--radius-lg` with `--shadow-soft` and a 300ms hover lift
+(`page.tsx` lines 147 and 224). That is the approved Home styling
+([tokens.md](tokens.md#recorded-exceptions)), not a fourth option — a new patient panel takes
+`.card` or `.card-lined`.
 
 ## What the patient site does not have
 

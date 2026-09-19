@@ -34,9 +34,24 @@ Print collapses `.section` and `.section-sm` to 0.75rem of block padding.
 
 ## Page structures
 
-**Patient page.** `Header` → `PageHero` → `.section` bands, some on `mint` → a `TextBand` call to
-action → `Footer`. Every section offers one clear action and a short path to the phone, the forms,
-the portal and directions ([PRODUCT.md](../PRODUCT.md)).
+**Patient page.** `Header` → `PageHero` → `.section` bands, some on `mint` → `TextBand`, which
+brings its own text-line and phone actions → `Footer`. Every section offers one clear action and a
+short path to the phone, the forms, the portal and directions ([PRODUCT.md](../PRODUCT.md)).
+
+**A band paints; the `div` inside it spaces.** A patient-site band is a `<section>` carrying
+`bg-[var(--color-mint)]` and a `--color-line` hairline edge to edge, wrapping one `div` that
+carries `container-x` (or `container-tight` for prose) plus `.section` or `.section-sm`. Fifteen
+bands are built this way, `PageHero` among them — it is a mint band with an `h1` in it, not a
+separate structure. The hairline marks a seam with a white band and only there: `border-b` under
+the navy hero or `Header`, `border-t` above `TextBand`, `border-y` between two white bands, one
+line per seam. `appointment/received/page.tsx` is the exception: it fills the viewport and wears
+`section` on the `<section>` itself, with no hairline.
+
+```tsx
+// Correct (PageHero.tsx): the section paints edge to edge, the div sets width and padding
+<section className="border-b border-[var(--color-line)] bg-[var(--color-mint)]">
+  <div className="container-x section-sm">
+```
 
 **Portal page.** At 60rem and wider, a 17rem task index (`.portal-sidebar`: Home, Requests,
 Settings, Help) sits beside the work; narrower, the same four destinations become a bar fixed to
@@ -87,7 +102,7 @@ the `rounded-sm` corner under a name the brand does not own, and `rounded-xl`, a
 the brand does not have.
 
 ```tsx
-// Correct: a brand step by name; the shadow is the card's edge
+// Correct: a brand step by name; the shadow is the card's edge. On a patient page this trio is .card
 <div className="rounded-[var(--radius-lg)] bg-white shadow-[var(--shadow-card)]" />
 ```
 

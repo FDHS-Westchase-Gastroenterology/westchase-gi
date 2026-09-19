@@ -22,6 +22,13 @@ produces a class for every call site and paint that no recipe owns.
    `home.css` beside its route. A rule that carries a literal color, a raw `rem` step, or a
    component's look is drift; [roadmap.md](roadmap.md) lists what is being extracted.
 
+Point 3 governs a `className` on a `ui/` component instance. A plain element a route owns has no
+recipe to contradict, so its type is its own: the three `tabular-nums` spans in
+`audit/recent-work.tsx` follow [typography.md](typography.md#numerals-and-tracking) rather than
+breaking the rule, and `ProfileCardViewer.tsx` does the same for its zoom readout. Numerals are
+also the one type decision a recipe takes for a call site — `ui/time-picker-variants.ts` sets
+`tabular-nums` in its base string.
+
 ## What a recipe or scoped rule may name
 
 Literals live only in the brand `@theme`. A recipe or a scoped rule names a token for every
@@ -34,6 +41,12 @@ color, radius, shadow, font family, easing and duration. Two kinds of token util
 The `ui/` recipes use both. `text-muted-foreground` is the semantic text ink; `bg-muted` is a
 surface tint, not text, because shadcn owns `--color-muted` and the brand's secondary ink is
 `--color-muted-ink`. Check every semantic utility a stock component brings for that collision.
+
+Both of those forms are the **recipe** register. A route or a route-owned component writes the
+same token the long way, `bg-[var(--color-navy)]`, and the split is absolute: counted over tracked
+sources with `git grep -oE`, `src/components/ui/` holds 32 short brand utilities and no bracketed
+one, while `src/app/[locale]`, `src/components/` outside `ui/` and `stock/`, and `src/app/admin`
+hold 683 bracketed ones and not one short. Write the register the file you are in already uses.
 
 Geometry that has no token is written once, in the recipe that owns it: `border-[1.5px]` on
 fields, a component's own type size such as the Button `sm` size's `text-[0.9rem]`. White is the
