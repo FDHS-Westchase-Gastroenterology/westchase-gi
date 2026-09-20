@@ -40,7 +40,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "jsqr": "^1.4.0",
-    "oxfmt": "^0.67.0",
+    "oxfmt": "^0.68.0",
     "oxlint": "1.83.0",
     "oxlint-tsgolint": "^7.0.2001",
     "pdf-lib": "^1.17.1",
