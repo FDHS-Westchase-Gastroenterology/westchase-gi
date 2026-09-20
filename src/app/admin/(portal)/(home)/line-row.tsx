@@ -71,7 +71,7 @@ export function LineRow({
   onOpenChange: (open: boolean) => void;
   onOpenFull: (instant: boolean) => void;
   onSettled: (id: string) => void;
-  /** The card's panel state, up to the list's veil. */
+  /** The card's panel state, up to the list's blur. */
   onDetachChange: (detached: boolean) => void;
 }>) {
   const rowRef = useRef<HTMLTableRowElement>(null);
@@ -105,6 +105,7 @@ export function LineRow({
       ref={rowRef}
       data-row={line.id}
       data-selected={selected || undefined}
+      data-open={open || undefined}
       data-settled={settled || undefined}
       className="wgi-list-row"
       onClick={(event) => {

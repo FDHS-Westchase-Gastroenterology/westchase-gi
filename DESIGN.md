@@ -384,11 +384,11 @@ for lifted cards. The portal prefers hairlines to shadows everywhere but the mod
   sheet is an undimmed, non-modal inspector of the selected request — no scrim, because dimming
   means modal — and the card is never covered: it is the wall the sheet resizes against. Escape
   closes the surface holding focus, else the sheet; the selected row holds its tint while either
-  is open. While the card is attached, the list under it is a blurred, inert veil that leaves the
-  anchor row sharp — a popover should not cover the element that revealed it, and a nonmodal
+  is open. While the card is attached, every element of the list under it but the anchor row is
+  blurred and inert — a popover should not cover the element that revealed it, and a nonmodal
   popover closes on an outside click — and the positioner shifts the card into view rather than
   shrinking it, because a popover is only big enough for its contents. Dragged by its header, the
-  card detaches into a floating panel: the anchor freezes, the veil lifts, outside presses and
+  card detaches into a floating panel: the anchor freezes, the blur lifts, outside presses and
   focus moves stop dismissing it, the head grows a close button, and the sheet no longer resizes
   against it. (Apple HIG Popovers on macOS detachable popovers, Panels on the inspector, and
   `UISheetPresentationController.largestUndimmedDetentIdentifier` — an undimmed sheet is the

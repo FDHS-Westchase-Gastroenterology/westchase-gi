@@ -31,16 +31,18 @@ import { LineRow } from "./line-row";
    wheel, the keyboard and the thumb all move the same box. Geometry and paint
    live in home.css under `.wgi-list*` and `.appt-*`.
 
-   Under an open record card the surface is veiled (Figma node 76:781): two
-   backdrop-blur panes cover everything but the anchor row, which stays
-   sharp in the gap between them — a popover should not cover the element
-   that revealed it, and a press on a pane is the outside press that closes
-   it (HIG Popovers). The panes carry no tint, because dimming means modal.
-   The gap's geometry is measured onto the veil's own node below — a style
-   write per resize, no React render — and holds while the card leaves, so
-   the fade-out plays over the row it was opened from. A card dragged into
-   a panel lifts the veil (use-card-detach.ts): the panel floats free of
-   the list, so the list is no longer "under" it. */
+   Under an open record card the surface is blurred and inert (Figma node
+   76:781, the surface's softening): every element on it but the anchor
+   row — the column labels, the other rows, the footer, the scroll rail —
+   takes a blur as its own paint, and the body answers no presses, so a
+   press anywhere on it is the outside press that closes the card (HIG
+   Popovers) and the rail cannot be dragged. Nothing is tinted, because
+   dimming means modal; the blur alone softens. Nothing is measured
+   either: the card's data-veiled flag is the whole mechanism, and the
+   open row stays sharp because the blur is never painted on it — a
+   popover should not cover the element that revealed it. A card dragged
+   into a panel lifts the blur (use-card-detach.ts): the panel floats
+   free of the list, so the list is no longer "under" it. */
 
 interface LineListProps {
   readonly lines: readonly Readonly<HomeLine>[];
@@ -117,12 +119,10 @@ export function LineList({
   const viewportRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
   const rangeRef = useRef<HTMLSpanElement>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
-  const veilRef = useRef<HTMLDivElement>(null);
   const count = lines.length;
 
   /* The open card's panel state, reported up from its row: a detached card
-     floats free of the list, so the veil lifts while it is one. The flag
+     floats free of the list, so the blur lifts while it is one. The flag
      resets when the open row changes — another row's card starts attached
      — and a render-phase reset keeps it in step without a painted frame
      in the wrong state. */
@@ -170,40 +170,6 @@ export function LineList({
     };
   }, [count]);
 
-  /* The veil's gap is the open row's box in the surface's own coordinates,
-     written straight onto the veil node — a style write, not a render, so
-     a resize or a scroll costs a paint and nothing more. It re-measures
-     when the open row changes, when the surface resizes, on a window
-     resize, and as the viewport scrolls — a keyboard scroll moves the row
-     under an attached card, and the gap has to move with it. When no row
-     is open the vars are left alone: the fade-out plays over the last
-     geometry rather than over a collapsed gap. */
-  useLayoutEffect(() => {
-    if (openRowId === null) return undefined;
-    const card = cardRef.current;
-    const veil = veilRef.current;
-    const viewport = viewportRef.current;
-    if (card === null || veil === null) return undefined;
-    const measure = () => {
-      const row = card.querySelector<HTMLElement>(`[data-row="${openRowId}"]`);
-      if (row === null) return;
-      const rowRect = row.getBoundingClientRect();
-      const cardRect = card.getBoundingClientRect();
-      veil.style.setProperty("--wgi-veil-top", `${rowRect.top - cardRect.top}px`);
-      veil.style.setProperty("--wgi-veil-bottom", `${rowRect.bottom - cardRect.top}px`);
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(card);
-    window.addEventListener("resize", measure);
-    viewport?.addEventListener("scroll", measure, { passive: true });
-    return () => {
-      observer.disconnect();
-      window.removeEventListener("resize", measure);
-      viewport?.removeEventListener("scroll", measure);
-    };
-  }, [openRowId]);
-
   /* A committed filter change starts the new result set at the top of the
      surface; the page does not move and focus stays where it was. The key is
      compared, not a mounted flag: Strict Mode runs a mount effect twice, and
@@ -217,7 +183,11 @@ export function LineList({
   }, [resetKey]);
 
   return (
-    <Card ref={cardRef} className="wgi-list-card" data-testid="home-list-surface">
+    <Card
+      className="wgi-list-card"
+      data-testid="home-list-surface"
+      data-veiled={veiled || undefined}
+    >
       <CardContent className="wgi-list-body">
         {count === 0 ? (
           empty
@@ -291,13 +261,6 @@ export function LineList({
           <span className="wgi-list-range" data-testid="home-list-range" ref={rangeRef} />
         </CardFooter>
       )}
-      {/* The veil paints last: above the sticky labels and the scroll rail,
-          under nothing the card owns. Two panes — one over the rows above
-          the anchor, one over everything below it. */}
-      <div ref={veilRef} className="wgi-list-veil" aria-hidden="true" data-on={veiled || undefined}>
-        <span />
-        <span />
-      </div>
     </Card>
   );
 }

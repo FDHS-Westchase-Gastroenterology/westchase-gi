@@ -12,7 +12,7 @@ import type { ComponentProps, PointerEvent as ReactPointerEvent, RefObject } fro
    transition animates and it stays untouched — with no easing and no
    momentum on release, because a reposition drag is damping 1.0, not a
    flick surface. While detached the card is a panel, not a popover: the
-   veil lifts, outside presses and focus moves no longer dismiss it
+   blur lifts, outside presses and focus moves no longer dismiss it
    (sheet-coexistence.ts), the sheet stops treating it as a wall
    (full-record-sheet-geometry.ts), and the head grows a close button.
    Below the sidebar breakpoint none of this engages — the head's
@@ -57,7 +57,7 @@ export function useCardDetach({
   readonly open: boolean;
   /** The row the card anchors to, frozen into a virtual element on detach. */
   readonly row: RefObject<HTMLTableRowElement | null>;
-  /** Reports the panel state up to the list, which lifts the veil. */
+  /** Reports the panel state up to the list, which lifts the blur. */
   readonly onDetachChange: (detached: boolean) => void;
 }): CardDetach {
   const [detached, setDetached] = useState(false);

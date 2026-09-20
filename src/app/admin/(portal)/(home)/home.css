@@ -493,57 +493,36 @@
   padding: 1.4375rem 0 0;
 }
 
-/* The veil under an open record card (Figma node 76:781, the surface's
-   softening): two panes of backdrop blur cover the whole surface except
-   the anchor row, which stays sharp in the gap between them — a popover
-   should not cover the element that revealed it, and a press on a pane is
-   the outside press that closes the card (HIG Popovers). The panes carry
-   no tint, because dimming means modal; the blur alone softens. Painted
-   last inside the card, they sit above the sticky labels and the scroll
-   rail and take the presses the blurred rows no longer answer — hover
-   tints included. The gap is measured onto the veil's own vars in
-   line-list.tsx; with the vars unset the first pane covers all and the
-   second covers nothing, which is also what the fade-out plays over. */
-.wgi-list-veil {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
+/* The blur under an open record card (Figma node 76:781, the surface's
+   softening): every element on the surface but the anchor row — the
+   column labels, the other rows, the footer, the scroll rail — takes the
+   blur as its own paint, and the body answers no presses, so a press
+   anywhere on it is the outside press that closes the card (HIG
+   Popovers) and the rail cannot be dragged. The elements carry no tint,
+   because dimming means modal; the blur alone softens. Nothing is
+   measured: the card's data-veiled flag is the whole mechanism, and the
+   open row stays sharp because the blur is never painted on it. The
+   popover portals out of the body, so the card itself is untouched. */
+.wgi-list-card[data-veiled] .wgi-list-body {
   pointer-events: none;
 }
 
-.wgi-list-veil > span {
-  position: absolute;
-  left: 0;
-  right: 0;
-  opacity: 0;
-  /* Unprefixed only: the build's prefixer emits the -webkit- twin itself,
-     and a hand-written pair makes it drop the standard property. */
-  backdrop-filter: blur(4px);
-  transition: opacity var(--motion-base-duration) var(--motion-standard);
+.wgi-list-card[data-veiled] .wgi-list-row:not([data-open]),
+.wgi-list-card[data-veiled] .wgi-list-head th,
+.wgi-list-card[data-veiled] .wgi-list-foot,
+.wgi-list-card[data-veiled] .wgi-list-rail {
+  filter: blur(4px);
 }
 
-.wgi-list-veil > span:first-child {
-  top: 0;
-  height: var(--wgi-veil-top, 100%);
-}
-
-.wgi-list-veil > span:last-child {
-  top: var(--wgi-veil-bottom, 100%);
-  bottom: 0;
-}
-
-.wgi-list-veil[data-on] > span {
-  opacity: 1;
-  pointer-events: auto;
-  cursor: default;
-}
-
-/* Reduced transparency: the blur is the softening, so a flat wash of the
-   surface's own paint stands in for it. */
+/* Reduced transparency: the blur is the softening, so each element fades
+   to the 12% the old 88% surface wash left showing. */
 @media (prefers-reduced-transparency: reduce) {
-  .wgi-list-veil > span {
-    backdrop-filter: none;
-    background: color-mix(in oklch, var(--wgi-surface) 88%, transparent);
+  .wgi-list-card[data-veiled] .wgi-list-row:not([data-open]),
+  .wgi-list-card[data-veiled] .wgi-list-head th,
+  .wgi-list-card[data-veiled] .wgi-list-foot,
+  .wgi-list-card[data-veiled] .wgi-list-rail {
+    filter: none;
+    opacity: 0.12;
   }
 }
 
@@ -635,6 +614,7 @@
   text-align: left;
   text-transform: none;
   vertical-align: middle;
+  transition: filter var(--motion-base-duration) var(--motion-standard);
 }
 
 .wgi-list-head tr {
@@ -648,6 +628,9 @@
 .wgi-list-row {
   height: var(--wgi-row-h);
   border: 0;
+  /* The blur lands on the row, not the cells — the filter is the tr's own
+     paint, so the band and its radii soften as one piece. */
+  transition: filter var(--motion-base-duration) var(--motion-standard);
 }
 
 .wgi-list-row > td {
@@ -864,6 +847,7 @@ a.appt-phone {
   border-radius: 6px;
   background: var(--wgi-track);
   padding: 0;
+  transition: filter var(--motion-base-duration) var(--motion-standard);
 }
 
 .wgi-list-rail[data-orientation="vertical"] {
@@ -976,6 +960,7 @@ a.appt-phone {
   border-top: 1px solid var(--wgi-rule);
   border-radius: 0;
   background: transparent;
+  transition: filter var(--motion-base-duration) var(--motion-standard);
   padding: 0.75rem 0 1.375rem 0.4375rem;
   color: var(--wgi-name-ink);
   font-size: 1rem;
