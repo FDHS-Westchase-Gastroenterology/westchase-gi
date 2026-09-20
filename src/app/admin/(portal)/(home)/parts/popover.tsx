@@ -44,12 +44,15 @@ function HomePopoverContent({
         side={side}
         sideOffset={sideOffset}
         collisionPadding={8}
-        /* Stay on the row's axis: a tall card flips above the row when the
-           space below runs out, and scrolls inside `--available-height`
-           when neither side fits. The positioner's default would fall back
-           to the row's left or right, where the sidebar is. */
-        collisionAvoidance={{ fallbackAxisSide: "none" }}
-        className="isolate z-50"
+        /* The row supplies the side — the roomier of above and below, in
+           line-row.tsx — and the positioner only shifts the card into the
+           viewport when it overflows, never flips the side and never
+           shrinks it: a popover is only as big as its contents, so the
+           card slides over its anchor row instead of crushing a column.
+           The perpendicular fallback stays off, so the card never lands
+           beside the row where the sidebar is. */
+        collisionAvoidance={{ side: "shift", align: "shift", fallbackAxisSide: "none" }}
+        className="wgi-popover-positioner isolate z-50"
       >
         <PopoverPrimitive.Popup
           data-slot="popover-content"

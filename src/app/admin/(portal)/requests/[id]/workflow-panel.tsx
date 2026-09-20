@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 import { followUpWhenLabel, stateLabel } from "@/app/admin/(portal)/requests/format";
 import { Button } from "@/components/ui/button";
 import type {
@@ -12,12 +10,11 @@ import type {
 import { ReturnTimeAction } from "./call-again-fieldset";
 import { DecisionRow, OutcomeChoiceList } from "./outcome-choice-list";
 import { useWorkflowPanel } from "./use-workflow-panel";
-import type { Feedback, InFlight, RequestTruth } from "./workflow-panel-model";
+import type { InFlight, RequestTruth } from "./workflow-panel-model";
 
 /* The request work panel. The model (choices, copy, reducer) is in
    workflow-panel-model.ts and the controller in use-workflow-panel.ts; this
-   file is the surface: the current state line, feedback, the undo
-   affordance, and one of three bodies — the outcome list for an open
+   file is the surface: the current state line, the undo affordance, and one of three bodies — the outcome list for an open
    request, the legacy-review form for a closed row that predates outcomes,
    or the resolved notice with its reopen control. */
 
@@ -27,40 +24,6 @@ const NY_CLOCK = new Intl.DateTimeFormat("en-US", {
   hour12: true,
   timeZone: "America/New_York",
 });
-
-function PanelFeedback({ feedback }: Readonly<{ feedback: Feedback | null }>) {
-  if (feedback === null) return null;
-  return (
-    <p
-      role={feedback.tone === "success" ? "status" : "alert"}
-      aria-atomic="true"
-      data-testid="workflow-feedback"
-      className={`mt-4 rounded-[var(--radius-sm)] px-4 py-3 text-[0.92rem] leading-relaxed font-bold text-[var(--color-ink)] ${
-        feedback.tone === "success" ? "bg-[var(--color-mint)]" : "bg-[var(--color-amber-soft)]"
-      }`}
-    >
-      {feedback.text}{" "}
-      {feedback.tone === "success" && feedback.closedOrBooked ? (
-        feedback.nextHref !== null && feedback.nextHref !== "" ? (
-          <Link
-            href={feedback.nextHref}
-            data-testid="open-next-request"
-            className="inline-flex min-h-11 items-center underline underline-offset-2"
-          >
-            Open next appointment request
-          </Link>
-        ) : (
-          <Link
-            href="/admin/requests"
-            className="inline-flex min-h-11 items-center underline underline-offset-2"
-          >
-            Back to Requests
-          </Link>
-        )
-      ) : null}
-    </p>
-  );
-}
 
 function UndoAffordance({
   undo,
@@ -263,7 +226,6 @@ export function WorkflowPanel({
     inFlight,
     undoOpen,
     saveDisabled,
-    showFeedback,
     save,
     reopen,
     correctCallAgain,
@@ -277,8 +239,6 @@ export function WorkflowPanel({
       className="print-hide mt-7 border-t border-[var(--color-line)] pt-7"
     >
       <WorkflowStatus truth={truth} classifyLegacyClosure={legal.classifyLegacyClosure} />
-
-      <PanelFeedback feedback={showFeedback ? panel.feedback : null} />
 
       {undoOpen !== null ? (
         <UndoAffordance undo={undoOpen} pending={pending} inFlight={inFlight} onUndo={undoLatest} />

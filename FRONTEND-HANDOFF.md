@@ -194,6 +194,19 @@ availability or configuration. A failed read must not display an apparently empt
 
 ## Requests and appointments
 
+The home sheet calls `readFullRecord(requestId)` from
+`src/app/admin/(portal)/requests/record-actions.ts` with a UUID and receives
+`FullRecord` from `src/lib/portal/request-record/contracts.ts`. Null means the request no
+longer exists; a rejection is a failed read to treat as `unavailable`: offer retry and do not
+render an empty record. Invalid IDs reject before any database access. This staff-authorized
+Server Function returns private, uncached responses by construction; the read adds no cache
+or revalidation. It carries patient contact details and notes: keep them out of URLs, telemetry,
+and persistent browser storage, and render name, phone, and email under `data-ui-redact`.
+History retains notes and creation origin; resolve actor names using trimmed, lowercased email
+keys in `actorNames`, falling back to the original email. Frontend acceptance: open a card →
+open the sheet → see the composed record; save an outcome on the card → re-read → see the new
+history entry and version. Sheet wiring and visual verification remain frontend work.
+
 The scheduling endpoint coordinates a reservation and its intake request in one save. First
 review/select or register the patient and explicitly link the request through the patient API.
 The older request-only Scheduled action does not reserve provider capacity.

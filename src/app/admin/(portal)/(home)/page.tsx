@@ -93,10 +93,13 @@ function countOf(
 
 /** "37m" under an hour, "5h" under a day, then "12d" — the reference's rhythm. */
 function rel(ms: number, nowMs: number): string {
+  /* Spelled out, as the approved frame reads them: "19 min ago", "2 hr ago",
+     "3 days ago" (Figma Ypf9ohpRcGWF5C9T9bSvWW, node 88:1176). */
   const delta = Math.max(0, nowMs - ms);
-  if (delta < HOUR_MS) return `${Math.max(1, Math.round(delta / MINUTE_MS))}m`;
-  if (delta < DAY_MS) return `${Math.round(delta / HOUR_MS)}h`;
-  return `${Math.round(delta / DAY_MS)}d`;
+  if (delta < HOUR_MS) return `${Math.max(1, Math.round(delta / MINUTE_MS))} min ago`;
+  if (delta < DAY_MS) return `${Math.round(delta / HOUR_MS)} hr ago`;
+  const days = Math.round(delta / DAY_MS);
+  return days === 1 ? "1 day ago" : `${days} days ago`;
 }
 
 function initialsOf(name: string): string {

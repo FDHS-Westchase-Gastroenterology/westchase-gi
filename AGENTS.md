@@ -247,6 +247,11 @@ Issues live in this repo's GitHub Issues, managed with the `gh` CLI, and use fiv
 as-is: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`.
 Domain context is the single `CONTEXT.md` at the repo root.
 
+For an explicitly authorized fresh localhost staff-portal reproduction through Stagehand, follow
+the [tracked local browser proof](CONTRIBUTING.md#fresh-local-staff-portal-browser-proof). The
+local discoverability shim at `.agents/skills/westchase-portal-stagehand/SKILL.md` points to the
+same recipe; it remains under the repository's local-only `.agents/` convention.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know

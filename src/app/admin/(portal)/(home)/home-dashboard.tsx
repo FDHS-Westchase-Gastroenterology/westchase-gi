@@ -38,6 +38,15 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
   /* The full-record sheet: which line, and whether the keyboard opened it
      (a keyboard-initiated open shows the sheet without motion). */
   const [sheet, setSheet] = useState<{ id: string; instant: boolean } | null>(null);
+  /* A toggle-close from the card's footer carries no Base UI change
+     details for the sheet to read, so the dashboard remembers whether the
+     key — not the pointer — asked for it; the exit is then instant. */
+  const [closedByKey, setClosedByKey] = useState(false);
+  /* The record being worked on: the row whose card is open, or whose full
+     record is open — held through the sheet's closing transition,
+     independent of hover, keyboard focus, and of whether the card closed
+     before the sheet did. */
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [settledId, setSettledId] = useState<string | null>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -119,11 +128,36 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
         lines={filtered}
         resetKey={active.map((entry) => `${entry.key}=${entry.raw}`).join("&")}
         openRowId={openRowId}
+        sheetId={sheet?.id ?? null}
+        selectedId={selectedId}
         settledId={settledId}
-        onOpenRow={setOpenRowId}
+        onOpenRow={(id) => {
+          setOpenRowId(id);
+          if (id !== null) {
+            setSelectedId(id);
+            /* The sheet follows the most recently opened card: another
+               row's card retargets an open sheet to that record without
+               re-entering (plans/full-record-sheet-decisions.md, Phase 0). */
+            setSheet((current) =>
+              current === null || current.id === id ? current : { id, instant: current.instant },
+            );
+          } else if (sheet === null) {
+            setSelectedId(null);
+          }
+        }}
         onOpenFull={(id, instant) => {
-          setSheet({ id, instant });
-          setOpenRowId(null);
+          /* The card's footer is the sheet's toggle — "Open full record",
+             then "Hide full record" — and the card stays open beside the
+             sheet: staff work the phone with both in view. The row stays
+             selected until the last of the two has closed. */
+          if (sheet?.id === id) {
+            setSheet(null);
+            setClosedByKey(instant);
+          } else {
+            setSheet({ id, instant });
+            setClosedByKey(false);
+          }
+          setSelectedId(id);
         }}
         onSettled={markSettled}
         note={
@@ -164,9 +198,13 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
 
       <FullRecordSheet
         line={sheetLine}
-        instant={sheet?.instant ?? false}
+        instant={sheet?.instant ?? closedByKey}
         onOpenChange={(open) => {
           if (!open) setSheet(null);
+        }}
+        onClosed={() => {
+          /* The card, if still open, keeps its row. */
+          setSelectedId(openRowId);
         }}
       />
     </>

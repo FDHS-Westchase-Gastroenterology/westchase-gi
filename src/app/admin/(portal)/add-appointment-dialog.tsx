@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useId, useRef, useState } from "react";
 
-import { usePortalFeedback } from "./portal-feedback";
 import { StaffRequestForm } from "./requests/new/staff-request-form";
 import type { StaffRequestFormHandle } from "./requests/new/staff-request-form";
 
@@ -14,7 +13,8 @@ import type { StaffRequestFormHandle } from "./requests/new/staff-request-form";
    for deep links and still lands on the new record; only this entry point stays.
 
    The form is mounted on open and unmounted on close, so a dismissed draft
-   never survives to surprise the next person who opens it. */
+   never survives to surprise the next person who opens it. The result is the
+   form's toast: the dialog only closes and refreshes the line under it. */
 export function AddAppointmentDialog({
   triggerClassName,
   idempotencyKey,
@@ -29,7 +29,6 @@ export function AddAppointmentDialog({
   const formHandleRef = useRef<StaffRequestFormHandle>(null);
   const [open, setOpen] = useState(false);
   const router = useRouter();
-  const { publish } = usePortalFeedback();
 
   const close = useCallback(() => {
     dialogRef.current?.close();
@@ -39,18 +38,10 @@ export function AddAppointmentDialog({
     formHandleRef.current?.requestDismiss();
   }, []);
 
-  const created = useCallback(
-    (name: string) => {
-      close();
-      publish({
-        source: "requests-output",
-        tone: "status",
-        message: `${name} is on the line under New.`,
-      });
-      router.refresh();
-    },
-    [close, publish, router],
-  );
+  const created = useCallback(() => {
+    close();
+    router.refresh();
+  }, [close, router]);
 
   return (
     <>

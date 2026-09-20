@@ -34,15 +34,162 @@ Claude Design is optional; approval there is not a contribution or merge require
 npm ci
 cp .env.example .env.local   # fill in real values; this is the variable inventory
 npx playwright install chromium
-npm run dev                  # refresh fictional patients, then serve :3000
-npm run dev:patients         # refresh the fictional queue without starting Next
+npm run dev                  # serve :3000; never refreshes the database
+npm run dev:patients -- inspect  # read-only fixture plan for this checkout
 npm run dev:mission          # the E2E stack's server on :3100
 ```
 
-`npm run dev` replaces the `/seed` appointment-request rows with a random mix from
-the name pool in `scripts/dev-patients.mjs` (15 patients: 10 new, 3 call-again
-today, 1 stale, 1 later). `DEV_SEED=0` skips it. `npm run dev:mission` does not
-seed, so E2E stays on `supabase/seed.sql`. Production targets are refused.
+`npm run dev` and `npm run dev:mission` never seed. `DEV_SEED` is retained only as
+an inspection hint for older environments: neither `DEV_SEED=1` nor an unset value
+triggers seeding, and `DEV_SEED=0` does not disable an explicit regeneration command.
+E2E remains on `supabase/seed.sql`.
+
+### Development appointment fixtures
+
+The CLI defaults to read-only `inspect`. Run it from the checkout serving the app;
+it reports the checkout, branch, commit, selected `.env.local` (or `--env-file`),
+environment precedence, validated target, current and planned stored/UI counts,
+related-record counts, replacement boundary, and any recovery journal. Process
+environment overrides the selected file. Output omits patient fields and credentials.
+
+The `portal-review` profile always creates 32 fictional requests: 10 New, 12 Call
+Again (10 due, one stale without a date, one future callback), five Scheduled, and
+five Closed. Scheduled stores `booked`; Call Again stores `contacted`. Each request
+has a creation event; contacted requests have a matching callback history entry;
+scheduled requests have a future appointment. `--profile custom` uses the
+`DEV_SEED_*` count overrides in `.env.example`. `--seed` and `--now` reproduce
+content, dates, and scenarios using the app's queue/state contracts. Database IDs
+are fresh for every replacement so both batches can coexist safely during staging.
+Use the same reference clock when verifying a reproduced scenario; without `--now`,
+the clock is the current time and callbacks naturally move between attention buckets.
+
+```bash
+npm run dev:patients -- inspect --profile portal-review
+npm run dev:patients -- verify --profile portal-review
+
+# After inspecting and coordinating a shared Preview with other users and CI:
+npm run dev:patients -- regenerate --profile portal-review --confirm-target "$SUPABASE_BRANCH_PROJECT_REF" --shared-preview-ready
+
+# For an intentionally configured loopback development database:
+npm run dev:patients -- regenerate --profile portal-review --confirm-target local
+
+# Reproduce a scenario; use the same seed/clock for inspect, regenerate, and verify:
+npm run dev:patients -- inspect --profile portal-review --seed review-1 --now 2026-09-16T19:45:13.000Z
+
+# If a run was interrupted, inspect first, then recover against that same target:
+npm run dev:patients -- recover --confirm-target "$SUPABASE_BRANCH_PROJECT_REF" --shared-preview-ready
+
+# Optional authenticated HTTP proof using an existing session (no sign-in):
+npm run dev:patients -- verify --app-url http://localhost:3000 --storage-state /path/to/existing-playwright-state.json
+```
+
+Replace `$SUPABASE_BRANCH_PROJECT_REF` with the literal ref printed by `inspect`
+if it is only in `.env.local` and not exported in the shell. Hosted targets require a
+matching HTTPS Supabase URL, Preview branch marker/ref, explicit allowlist
+(`DEV_SEED_ALLOWED_PROJECT_REF`, falling back to `PLAYWRIGHT_ALLOWED_SUPABASE_PROJECT_REF`),
+and distinct Production refs/URLs. Both configured Supabase URLs must agree. CI
+regeneration and Production targets are refused. The branch ref takes precedence
+over the legacy `SUPABASE_PROJECT_REF` alias. `--confirm-target` is required for
+regenerate/recover; hosted writes also require `--shared-preview-ready`.
+
+Replacement is recoverable, not a database transaction. It validates the existing
+scope and app read first, saves a private journal, inserts and verifies the complete
+new batch and events, then deletes only the recorded old `/seed` IDs. Insert failure
+rolls back only the staged batch, leaving the previous requests available. An
+interrupted retirement keeps the complete new batch; `recover` finishes retirement
+or rolls back incomplete staging according to the journal. A changed or protected
+record stops automatic recovery for review. Do not delete the journal or edit
+records while recovering. The journal is mode `0600` under the repository's common
+Git directory; it contains only the synthetic scope and a digest of the preserved
+scope. Successful verification removes it and leaves a counts-only receipt.
+
+The boundary requires `/seed`, a known fictional name, its matching `mock.com`
+address, and an `81355501xx` phone. Retention holds, patient/appointment links, or
+retained audit history block replacement. Verification checks the selected profile,
+creation/callback history, lifecycle fields, removal of old related records, and
+unchanged non-seed requests plus their related records. A standalone `verify` cannot
+prove historical preservation; that proof is recorded during regeneration/recovery.
+Every verification exercises the app's `readRequestWorklist` service against the
+target using an existing active, onboarded `PORTAL_SEED_ADMIN_EMAIL` identity.
+It never signs in. HTTP verification is reported separately and requires the two
+optional arguments shown above.
+
+Keep other users and CI idle through completion: both batches can be visible briefly,
+and the target lock coordinates only this repository's checkouts on this host. It
+does not fence writers on other machines. For a future need to reset an actively used
+shared Preview without this coordination, add a transactional fixture-replacement
+RPC and test concurrent writers in the disposable GitHub Supabase suite. Acceptance
+criteria: no externally visible partial/duplicate batch, unchanged protected and
+non-seed records under concurrent commands, and rollback of every child-write failure.
+That migration and deployment are outside this CLI change.
+
+The workflow tests use an in-process loopback HTTP database stand-in and the actual
+app parsing/read service. They challenge insertion/cleanup failures, interrupted
+retirement, concurrent edits, protected records, truncated reads, and app response
+disagreement. These prove CLI orchestration and transport handling, not live SQL/RLS
+or foreign-key behavior. The disposable `supabase-integration` gate remains the
+database integration authority; never run that Docker suite on Jason's Mac.
+
+### Fresh local staff-portal browser proof
+
+Use this workflow when a task explicitly asks for an independent browser reproduction against
+the exact uncommitted checkout. It proves the local server, seeded staff authentication, an
+existing synthetic request, the request popover, its companion full-record sheet, and an inspected
+capture. Keep it read-only: do not choose an outcome, save a request, submit a form, regenerate
+fixtures, or change application source.
+
+Choose the provider from the target. Use the registered `mcp__stagehand_local__*` tools for a
+localhost checkout; they launch an isolated Chrome profile and can own the worktree's development
+server. Use `mcp__browserbase__*` only for a hosted Westchase GI Preview or another public URL.
+Browserbase cannot prove uncommitted local source, and localhost must not be exposed to make it fit.
+The owner-oriented `CLAUDE.md` route assumes an already running server and an authenticated Claude
+Browser pane. It remains useful for ordinary frontend work; this fresh Stagehand route applies only
+when the reproduction is explicitly authorized.
+
+1. Call `mcp__stagehand_local__start` with the absolute checkout path in `worktree` and the
+   authored viewport (normally `desktop`). Let it run the default `dev` script; do not shell a
+   second server. Use the returned `appOrigin`, because its loopback port is allocated per session.
+   An `audit` and absolute `evidenceDir` are optional for durable evidence.
+2. Navigate to `${appOrigin}/admin` using `localhost` and confirm with `read_page` that the fresh
+   session reaches `/admin/login`. Call `sign_in({ origin: appOrigin })` with no credentials in
+   the arguments. The helper reads `PORTAL_SEED_ADMIN_EMAIL` / `PORTAL_SEED_ADMIN_PASSWORD` from
+   its MCP environment, Keychain, or the worktree `.env.local`; never copy, print, or pass them.
+   Read the authenticated page again and confirm the queue is visible.
+3. Inspect the current page with `snapshot` or DOM-only `evaluate`. If session health reports
+   `modelConfigured: false`, natural-language `act`, `observe`, and `extract` are unavailable;
+   use page-derived deterministic `act.action` objects instead. An action's `success: true` means
+   that the tool dispatched the action, not that the page reached the intended state.
+4. Choose one visible queue control whose current aria-label starts with `Open request for `. Use
+   its observed exact selector and a state-based wait, then confirm the popover with `read_page` or
+   `evaluate`. Keep the selected name as a local comparison value rather than hardcoding a patient
+   or phone number into the recipe.
+5. Inspect for a visible `button.wgi-record-foot` in that popover. This selector is the one
+   established by the local readiness proof. Replay a deterministic click action with
+   `method: "click"` and `arguments: []`, waiting for a non-empty sheet name, for example:
+
+   ```text
+   document.querySelector(".wgi-sheet-name")?.textContent?.trim().length > 0
+   ```
+
+   Re-read the page and verify that `.wgi-sheet-name` identifies the same selected request and
+   that the popover and sheet are visible together. If a click reports success but the sheet is
+   absent, inspect the current DOM and wait condition once before reporting the observed tool/UI
+   boundary; do not guess at a new selector or call it a product defect from the tool result alone.
+6. Capture with `mcp__stagehand_local__screenshot`, using an absolute `saveTo` path and browser-side
+   `redact` selectors for the staff account or other non-synthetic identity. Screenshot results are
+   metadata-only. Inspect the actual image through `evidence_get({ id, inline: true })` or the saved
+   path with an image viewer, and record whether both surfaces are visible. Confirm dimensions when
+   useful (desktop is 1440 × 900). Keep individual request evidence outside the checked-in UI atlas
+   unless the task specifically authorizes that location.
+7. Always call `mcp__stagehand_local__end`, including after a failure. Confirm `active: false`,
+   `closed: true`, `devServerStopped: true`, and an empty `cleanupErrors` list. A listener check or
+   failed request to the dynamic port can corroborate that the server is off. Do not leave Chrome
+   or the managed development server running.
+
+Known, evidence-backed recovery is small: after `LOCAL_MODEL`, switch to deterministic actions;
+after a stale or completed session, end it and start fresh; after a successful click with no visible
+state change, re-read and inspect once. Never install a model key, reseed, weaken authentication,
+expose localhost, or edit application code as a workaround for this proof.
 
 `.env.local` may point the default environment at the Git branch's ephemeral **Supabase
 Preview Branch**; Production values live under the `_PROD`-suffixed names and in Vercel.

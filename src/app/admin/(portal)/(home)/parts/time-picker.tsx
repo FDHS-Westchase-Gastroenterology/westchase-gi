@@ -4,7 +4,7 @@ import { AnimatePresence, LazyMotion, m, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 
-import type { TimeParts } from "@/app/admin/(portal)/(home)/record-card-model";
+import type { TimeParts } from "@/app/admin/(portal)/(home)/record-card-time";
 import {
   hourOptions,
   joinTime,
@@ -12,7 +12,7 @@ import {
   minuteOptions,
   TIME_SLOTS,
   timeParts,
-} from "@/app/admin/(portal)/(home)/record-card-model";
+} from "@/app/admin/(portal)/(home)/record-card-time";
 import { Clock } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { TimePicker as TimeWheels, TimePickerColumn } from "@/components/ui/time-picker";

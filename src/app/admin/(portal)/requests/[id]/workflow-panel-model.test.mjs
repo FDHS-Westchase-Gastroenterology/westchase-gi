@@ -11,8 +11,10 @@ import {
   followUpChoice,
   INITIAL_PANEL,
   panelReducer,
+  rejectionCopy,
   staleVersionCopy,
   successCopy,
+  workingCopy,
 } from "./workflow-panel-model.ts";
 
 function idsFor(state, options) {
@@ -63,21 +65,8 @@ test("a saved outcome clears the form and keeps only the success feedback", () =
     type: "set_appointment_day",
     day: "2026-10-01",
   });
-  const saved = panelReducer(filled, {
-    type: "succeeded",
-    text: "Saved.",
-    closedOrBooked: true,
-    nextHref: "/admin/requests/next?q=queue",
-  });
-  assert.deepEqual(saved, {
-    ...INITIAL_PANEL,
-    feedback: {
-      tone: "success",
-      text: "Saved.",
-      closedOrBooked: true,
-      nextHref: "/admin/requests/next?q=queue",
-    },
-  });
+  const saved = panelReducer(filled, { type: "succeeded", text: "Saved." });
+  assert.deepEqual(saved, { ...INITIAL_PANEL, feedback: { tone: "success", text: "Saved." } });
   const failed = panelReducer(filled, { type: "failed", text: "No." });
   assert.equal(failed.selected, "booked");
   assert.deepEqual(failed.feedback, { tone: "error", text: "No." });
@@ -144,4 +133,24 @@ test("a call-again choice is complete only when its chip, and its day if custom,
 
 test("a rejection code this build does not know reads as the ambiguous-save sentence", () => {
   assert.equal(failureCopy("rejection_from_a_newer_deploy"), failureCopy("unavailable"));
+});
+
+test("a refused command's sentence follows its code, reading the truth a stale version carries", () => {
+  assert.equal(
+    rejectionCopy({ ok: false, code: "stale_version", current: { state: "closed", version: 4 } }),
+    staleVersionCopy({ state: "closed" }),
+  );
+  assert.equal(rejectionCopy({ ok: false, code: "stale_version" }), staleVersionCopy(undefined));
+  assert.match(rejectionCopy({ ok: false, code: "illegal_transition" }), /no longer available/);
+  assert.equal(rejectionCopy({ ok: false, code: "unavailable" }), failureCopy("unavailable"));
+  assert.equal(rejectionCopy({ ok: false, code: "not_found" }), failureCopy("not_found"));
+});
+
+test("the working verb matches the button that started the command", () => {
+  assert.equal(workingCopy({ kind: "reopen" }), "Reopening…");
+  assert.equal(workingCopy({ kind: "undo" }), "Undoing…");
+  assert.equal(workingCopy({ kind: "attempt", outcome: "voicemail" }), "Saving…");
+  assert.equal(workingCopy({ kind: "booked" }), "Saving…");
+  assert.equal(workingCopy({ kind: "classify" }), "Saving…");
+  assert.equal(workingCopy({ kind: "set_call_again" }), "Saving…");
 });

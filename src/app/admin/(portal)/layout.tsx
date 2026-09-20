@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { logoutAction } from "@/app/admin/actions";
 import { Activity, ExternalLink, FileText, LogOut, Users } from "@/components/icons";
+import { Toaster } from "@/components/ui/toaster";
 import { getSessionUser } from "@/lib/portal/auth";
 import { getPortalReleaseState } from "@/lib/portal/release-briefing";
 import {
@@ -134,6 +135,9 @@ export default async function PortalLayout({
           </main>
         </div>
       </div>
+      {/* Save feedback lives with the shell, so a toast outlives the surface
+          that earned it (the home record card closes on a confirmed save). */}
+      <Toaster />
     </PortalReleaseProvider>
   );
 }

@@ -89,6 +89,14 @@
   --motion-exit: cubic-bezier(0.23, 1, 0.32, 1);
   --motion-exit-duration: 160ms;
   --motion-micro-duration: 150ms; /* micro states: hover tints, pressed ink, focus rings */
+  /* The staff home's Apple-inspired temperament: one standard curve, three
+     beats. Fast is feedback (hover tint, press), base is a surface moving
+     (popover, sheet exit, content settling), sheet is the full-record sheet
+     arriving. */
+  --motion-standard: cubic-bezier(0.32, 0.72, 0, 1);
+  --motion-fast-duration: 140ms;
+  --motion-base-duration: 240ms;
+  --motion-sheet-duration: 420ms;
 
   /* Z-index scale */
   --z-header: 50;
@@ -252,20 +260,36 @@
        workbench — nothing it declares can outrank the reset above. Its
        surfaces register here: the record popover and the full-record sheet
        keep the charter's cross-fade (their travel is already dropped by
-       home.css's transform: none rules), and the loading shimmer keeps a
-       slowed pulse instead of freezing mid-frame. The popover's keyboard
-       and dismiss states (Base UI's data-instant) stay excluded, as do the
+       home.css's transform: none rules), and the sheet's content settle —
+       a keyframe, not a transition — keeps the same beat on the fade-only
+       variant home.css substitutes. The loading shimmer keeps a slowed
+       pulse instead of freezing mid-frame. The popover's keyboard and
+       dismiss states (Base UI's data-instant) stay excluded, as do the
        sheet's keyboard open and close (its own data-instant): keyboard-
        initiated actions never animate, reduced motion or not. */
     .wgi-popover:not([data-instant]),
-    .wgi-sheet:not([data-instant]),
-    .wgi-sheet-overlay:not([data-instant]) {
+    .wgi-sheet:not([data-instant]) {
       transition-duration: var(--pm-reduced-duration, 120ms) !important;
+    }
+
+    .wgi-sheet:not([data-instant]) :is(.wgi-sheet-head, .wgi-sheet-body) {
+      animation-duration: var(--pm-reduced-duration, 120ms) !important;
+      animation-delay: 0ms !important;
+    }
+
+    /* The save toast (ui/toaster.tsx, on Sonner) keeps the cross-fade and
+       gives up its rise: per-property against the recipe's
+       `transform, opacity, height` list. Sonner's own reduced-motion rule
+       is unlayered, which the cascade ranks below a layered !important. */
+    [data-sonner-toast] {
+      transition-duration: 0s, var(--pm-reduced-duration, 120ms), 0s !important;
     }
 
     .wgi-list-skeleton td > span,
     .wgi-loading-head > span,
-    .wgi-loading-head > i {
+    .wgi-loading-head > i,
+    .wgi-sheet-skeleton > i,
+    .wgi-sheet-placeholder {
       animation-duration: 3.2s !important;
       animation-iteration-count: infinite !important;
     }
@@ -1206,9 +1230,10 @@
     --portal-attention-ink: oklch(0.5 0.11 70);
 
     /* The Line type scale: fixed rem steps, a 1.2 ratio on a 15px body
-       floor. Hierarchy comes from size and space; three weights (400/600/800)
-       carry the rest. Never fluid — a clamp()ed heading in product UI is what
-       let a count sentence outrank the page title. */
+       floor. Hierarchy comes from size and space; the portal loads real
+       regular, medium, semibold and bold faces (400/500/600/700). Never fluid —
+       a clamp()ed heading in product UI is what let a count sentence
+       outrank the page title. */
     --pt-2xs: 0.6875rem;
     --pt-xs: 0.8125rem;
     --pt-sm: 0.9375rem;
@@ -1253,6 +1278,15 @@
     --pm-reduced-duration: 120ms;
     --pm-fade-duration: 200ms;
     --pm-scrim-duration: 220ms;
+
+    /* Interaction aliases for the staff home (home.css): mint says "you can
+       interact / this is the record", teal says "keyboard focus", amber says
+       "text selected". Hover is the brand mint; press is mint-2 pulled a
+       step toward navy so a press reads deeper than the selected fill and
+       stays mint rather than turning steel. */
+    --color-mint-hover: var(--color-mint);
+    --color-mint-press: color-mix(in oklch, var(--color-mint-2) 90%, var(--color-navy));
+    --color-teal-strong: var(--color-teal-ink);
 
     background: var(--portal-canvas);
     font-size: 1rem;

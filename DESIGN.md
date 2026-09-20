@@ -270,9 +270,15 @@ display serif never dresses operational content. A fixed rem scale, never fluid 
 heading is what let a count sentence outrank the page title. The steps, a 1.2 ratio on a 15px
 floor: `--pt-2xs` 0.6875rem tracked uppercase column heads, `--pt-xs` 0.8125rem meta and
 timestamps, `--pt-sm` 0.9375rem body floor, `--pt-base` 1.0625rem the datum on a line (a
-patient's name), `--pt-lg` 1.25rem group headings, `--pt-xl` 1.75rem the sheet's day. Exactly
-three weights: 400 body and meta, 600 names and labels, 800 the day and group heads. Hierarchy
-comes from size and space, never from stacking near-identical sizes and leaning on weight.
+patient's name), `--pt-lg` 1.25rem group headings, `--pt-xl` 1.75rem the sheet's day. The selected
+[calmer Lato treatment](https://www.figma.com/design/GrBLYZSAxioZ8syWPHChlb?node-id=44-260)
+uses four real weights: 400 supporting text, 500 greetings and table headings, 600 names,
+labels and controls, and 700 prominent headings. `src/lib/portal-fonts.ts` loads these
+self-hosted faces; patient-site font loading remains in `src/lib/fonts.ts`. Do not synthesize
+weights or request an unloaded face. Home's approved date is 2.25rem / 1.1 with -0.015em
+tracking; its existing 18.5px name, 15.5px phone and 14.5px table-heading steps remain scoped
+to Home. Names use normal tracking. Hierarchy comes from size and space rather than heavy
+weights throughout the screen.
 
 Both: counts, phone numbers, and times use tabular numerals. Negative tracking is a Latin-only
 affordance; Korean and Arabic headings reset it.
@@ -326,13 +332,18 @@ for lifted cards. The portal prefers hairlines to shadows everywhere but the mod
 - **The registry owns every curve and duration.** `--motion-spring` (440ms, a ζ≈0.7 spring
   sampled into `linear()`: lands in ~110ms, overshoots 4.6% once, settles without a second
   bounce), `--motion-exit` (160ms, a strong ease-out), `--motion-micro-duration` (150ms). The
-  patient site also uses `--ease-out-quint` / `--ease-out-quart` for its lift and underline.
+  staff home's temperament is `--motion-standard` (`cubic-bezier(0.32, 0.72, 0, 1)`) over three
+  beats: `--motion-fast-duration` (140ms, hover tint and press), `--motion-base-duration` (240ms,
+  a popover arriving, a sheet leaving, content settling), `--motion-sheet-duration` (420ms, the
+  full-record sheet arriving). The patient site also uses `--ease-out-quint` / `--ease-out-quart`
+  for its lift and underline.
 - **A recipe's `motion` axis owns a component's motion.** The base string carries none.
   Temperaments are named; the default is the brand's. `hover:` is a trigger, not motion: the
   hovered paint belongs to `variant`, the journey there to `motion`.
 - **Two engines, one registry.** CSS (`@starting-style`, `transition` with `allow-discrete`,
   hover, press, focus rings) reads the `--motion-*` tokens; `motion/react` reads the presets in
-  `src/lib/motion.ts` (`arrive`, `leave`, `micro`, `crossfade`, `transitionFor`). They are the
+  `src/lib/motion.ts` (`arrive`, `leave`, `micro`, `fast`, `base`, `sheet`, `crossfade`,
+  `transitionFor`). They are the
   same temperaments, so a surface may use either — or both — without changing character. Pick
   by fit, not by rule: CSS runs off the main thread and keeps moving while a page loads;
   motion.dev keeps velocity when a spring is retargeted mid-flight and handles gestures, layout
@@ -367,6 +378,21 @@ for lifted cards. The portal prefers hairlines to shadows everywhere but the mod
   the surface is; a dialog can grow from the control that opened it (`--pm-origin-x/y`); dialogs
   nest. A portalled Dialog cannot transition the `overlay` property or style `::backdrop`, so the
   shadcn Dialog stays unadopted for it — a fit-checked keep, not a debt.
+- **Companion surfaces on the staff home.** The record card is a popover that detaches into a
+  companion panel when the full record opens: it stays anchored to its row, stays on top, and its
+  footer becomes the sheet's toggle ("Open full record" ↔ "Hide full record"). The full-record
+  sheet is an undimmed, non-modal inspector of the selected request — no scrim, because dimming
+  means modal — and the card is never covered: it is the wall the sheet resizes against. Escape
+  closes the surface holding focus, else the sheet; the selected row holds its tint while either
+  is open. While the card is attached, every element of the list under it but the anchor row is
+  blurred and inert — a popover should not cover the element that revealed it, and a nonmodal
+  popover closes on an outside click — and the positioner shifts the card into view rather than
+  shrinking it, because a popover is only big enough for its contents. Dragged by its header, the
+  card detaches into a floating panel: the anchor freezes, the blur lifts, outside presses and
+  focus moves stop dismissing it, the head grows a close button, and the sheet no longer resizes
+  against it. (Apple HIG Popovers on macOS detachable popovers, Panels on the inspector, and
+  `UISheetPresentationController.largestUndimmedDetentIdentifier` — an undimmed sheet is the
+  nonmodal one.)
 - **A modal that must fetch still opens on the spring's schedule** and shimmers a skeleton while
   it waits. The surface is never late, only its facts.
 - **Scroll has mass, not decoration.** Windowed groups are nested overflow boxes with
@@ -617,7 +643,13 @@ approval is not required.
   `stock/scroll-area.tsx`): the viewport is exposed as its own part so the list can name it,
   focus it and reset it, and `ScrollBar` adds a local `data-held` flag Base UI does not
   publish. Elsewhere it is still not a fit.
-- Sonner is Radix-era; Base UI projects use Toast.
+- Sonner is Radix-era; the registry's Base UI Toast is its base-nova counterpart. On the
+  project owner's explicit decision (2026-09-15) Sonner is adopted for the staff portal's
+  save feedback wherever a save has a pending beat and then a confirmation: the home record
+  card, the add-request dialog, the note composer and the request work panel.
+  `ui/toaster.tsx`, from the registry source in `stock/sonner.tsx`, is mounted once in the
+  portal layout so a result outlives the card, dialog or page that earned it, with
+  `toast.promise` following the save itself. The Base UI Toast stays unadopted.
 - The chat family has no product need: the practice's differentiator is a staffed human line.
 
 ---

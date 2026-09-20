@@ -270,7 +270,7 @@ test.describe("portal requests operation", () => {
       await expect(noteError).toHaveCount(0);
       await expect(noteField).not.toHaveAttribute("aria-describedby", /request-note-error/);
       await notesSection.getByRole("button", { name: "Save note" }).click();
-      await expect(notesSection.getByTestId("request-note-feedback")).toHaveText("Note added.");
+      await expect(page.getByTestId("request-note-toast")).toContainText("Note added.");
       await expect(notesSection.getByRole("button", { name: "Add note" })).toBeFocused();
       await expect(page.getByTestId("staff-request-created")).toHaveCount(0);
       await expect(page).toHaveURL(
@@ -304,8 +304,8 @@ test.describe("portal requests operation", () => {
       await workflowPanel.getByText("Left a voicemail — call again", { exact: true }).click();
       await workflowPanel.getByText("Tomorrow morning", { exact: true }).click();
       await page.getByTestId("save-workflow").click();
-      await expect(page.getByTestId("workflow-feedback")).toContainText("Saved");
-      await expect(page.getByTestId("workflow-feedback")).not.toBeFocused();
+      await expect(page.getByTestId("workflow-toast")).toContainText("Saved");
+      await expect(page.getByTestId("workflow-toast")).not.toBeFocused();
       await expect(notesSection.getByTestId("request-note-feedback")).toHaveCount(0);
       await expect(page.getByTestId("staff-request-created")).toHaveCount(0);
       await expect(notesSection.getByLabel("Note", { exact: true })).toBeHidden();
@@ -328,7 +328,7 @@ test.describe("portal requests operation", () => {
       ).toBeVisible();
 
       await page.getByTestId("undo-latest").click();
-      await expect(page.getByTestId("workflow-feedback")).toContainText(
+      await expect(page.getByTestId("workflow-toast")).toContainText(
         "Undone — this request is New again.",
       );
       await expect(notesSection.getByTestId("request-note-feedback")).toHaveCount(0);
@@ -466,7 +466,7 @@ test.describe("portal requests operation", () => {
     await expect(history).toContainText(`queue-${runId}-staff@example.test`);
 
     const panel = page.getByTestId("workflow-panel");
-    const feedback = page.getByTestId("workflow-feedback");
+    const feedback = page.getByTestId("workflow-toast");
     async function statusOf() {
       const { data, error } = await db
         .from("requests")
@@ -1282,7 +1282,7 @@ test.describe("portal requests operation", () => {
       );
       await correction.getByText("Tomorrow morning", { exact: true }).click();
       await page.getByTestId("set-call-again-submit").click();
-      await expect(page.getByTestId("workflow-feedback")).toContainText("Saved — call again");
+      await expect(page.getByTestId("workflow-toast")).toContainText("Saved — call again");
       const corrected = await db
         .from("requests")
         .select("status, follow_up_at")
@@ -1296,7 +1296,7 @@ test.describe("portal requests operation", () => {
       // The correction is reversible to the exact legacy null snapshot;
       // Both the original missing evidence and its correction stay in history.
       await page.getByTestId("undo-latest").click();
-      await expect(page.getByTestId("workflow-feedback")).toContainText(
+      await expect(page.getByTestId("workflow-toast")).toContainText(
         "Undone — this request is Contacted again.",
       );
       const restoredLegacy = await db
@@ -1322,14 +1322,18 @@ test.describe("portal requests operation", () => {
       // Current state. One save books it; continuation appears only after
       // A confirmed success.
       const panel = page.getByTestId("workflow-panel");
-      const feedback = page.getByTestId("workflow-feedback");
+      const feedback = page.getByTestId("workflow-toast");
       await expect(page.getByTestId("save-workflow")).toHaveText("Save");
       await expect(page.getByTestId("save-workflow")).toBeDisabled();
-      await expect(page.getByTestId("open-next-request")).toHaveCount(0);
+      const openNext = page.getByRole("button", { name: "Open next appointment request" });
+      await expect(openNext).toHaveCount(0);
       await panel.getByText("Appointment booked", { exact: true }).click();
       await nameTheAppointment(page, 9);
       await page.getByTestId("save-workflow").click();
       await expect(feedback).toContainText("marked Scheduled");
+      await expect(
+        feedback.getByRole("button", { name: "Open next appointment request" }),
+      ).toBeVisible();
       await expect(page.getByTestId("undo-latest")).toHaveText("Undo");
 
       // Undo is a real atomic reversal — a compensating transition that
@@ -1356,7 +1360,7 @@ test.describe("portal requests operation", () => {
       await nameTheAppointment(page, 9);
       await page.getByTestId("save-workflow").click();
       await expect(feedback).toContainText("marked Scheduled");
-      await page.getByTestId("open-next-request").click();
+      await openNext.click();
       await expect(page).toHaveURL(new RegExp(`/admin/requests/${idsByKey.get("stale")}`));
 
       const { data: savedRow, error: savedRowError } = await db
@@ -1418,7 +1422,7 @@ test.describe("portal requests operation", () => {
     await expect(notesSection.getByRole("button", { name: "Save note" })).toBeDisabled();
     await noteField.fill(noteText);
     await notesSection.getByRole("button", { name: "Save note" }).click();
-    await expect(notesSection.getByTestId("request-note-feedback")).toContainText("Note added.");
+    await expect(page.getByTestId("request-note-toast")).toContainText("Note added.");
 
     const notes = page.getByTestId("note-list");
     await expect(notes).toContainText(noteText);
@@ -1436,7 +1440,7 @@ test.describe("portal requests operation", () => {
     await panel.getByText("Left a voicemail — call again", { exact: true }).click();
     await panel.getByText("Tomorrow morning", { exact: true }).click();
     await page.getByTestId("save-workflow").click();
-    await expect(page.getByTestId("workflow-feedback")).toContainText("Saved");
+    await expect(page.getByTestId("workflow-toast")).toContainText("Saved");
 
     const { data: authorProfile } = await db
       .from("staff_profiles")

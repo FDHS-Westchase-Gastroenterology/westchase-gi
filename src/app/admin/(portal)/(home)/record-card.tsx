@@ -1,25 +1,17 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useId, useReducer, useRef, useState, useTransition } from "react";
+import { useId, useReducer } from "react";
+import type { ComponentProps } from "react";
 
-import { usePortalFeedback } from "@/app/admin/(portal)/portal-feedback";
 import { practiceLocalDay } from "@/app/admin/(portal)/requests/appointment-input";
-import {
-  closeRequest,
-  confirmBookingHandoff,
-  recordContactAttempt,
-  recordContactAndClose,
-} from "@/app/admin/(portal)/requests/workflow-actions";
 import { Phone, PhoneOff } from "@/components/icons";
 import { RadioGroup, RadioGroupItem } from "@/components/stock/radio-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/stock/toggle-group";
 import { Field, FieldLabel } from "@/components/ui/field";
-import type { CommandOutcome } from "@/lib/portal/workflow/contracts";
 
 import type { HomeLine } from "./home-line";
 import { HomeDayCalendar } from "./parts/calendar";
-import { ChevronGlyph, PhoneGlyph } from "./parts/glyphs";
+import { ChevronGlyph, CloseGlyph, PhoneGlyph } from "./parts/glyphs";
 import { TimePicker } from "./parts/time-picker";
 import {
   ANSWER_LABELS,
@@ -30,24 +22,16 @@ import {
   closureFor,
   commandFor,
   dayHorizon,
-  failureFor,
   FOLLOW_UP_LABELS,
   FOLLOW_UPS,
   followUpsFor,
   INITIAL_DRAFT,
   needsDay,
   needsTime,
-  savedMessage,
+  saveHintFor,
 } from "./record-card-model";
-import type {
-  CardAnswer,
-  CardCommand,
-  CardDraft,
-  CardEvent,
-  CardFailure,
-  FollowUp,
-} from "./record-card-model";
-import { saveCardCommand } from "./record-card-save";
+import type { CardAnswer, CardDraft, CardEvent, FollowUp } from "./record-card-model";
+import { useRecordCommit } from "./use-record-commit";
 
 /* ---- The record card: the calendar is the surface ----
    The registry's "date picker with presets" shape, in the portal's words:
@@ -59,79 +43,10 @@ import { saveCardCommand } from "./record-card-save";
    the day staff click, in either order. Nothing is recorded until Save,
    as nothing is filtered until Apply. Under the sidebar breakpoint the
    column stacks above the month and the card scrolls with Save pinned
-   along its lower edge. The rules live in record-card-model.ts. */
-
-/* The commit: which server action the draft means, the feedback line it
-   earns, and the three ways a save can fail. Optimistic concurrency and an
-   idempotency key ride every attempt, mirroring the request detail panel;
-   `retry` re-runs the last attempt under the same key when the portal could
-   not confirm the outcome. */
-function useRecordCommit(line: Readonly<HomeLine>, onSaved: () => void) {
-  const router = useRouter();
-  const { publish } = usePortalFeedback();
-  const [pending, startTransition] = useTransition();
-  const [failure, setFailure] = useState<CardFailure | null>(null);
-  const keyRef = useRef<string | null>(null);
-  const lastRun = useRef<(() => void) | null>(null);
-
-  function common() {
-    keyRef.current ??= crypto.randomUUID();
-    return {
-      requestId: line.id,
-      expectedVersion: line.version,
-      idempotencyKey: keyRef.current,
-    };
-  }
-
-  // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- CommandOutcome carries domain member types that cannot be made readonly
-  function settle(result: Readonly<CommandOutcome>, command: Readonly<CardCommand>) {
-    if (result.ok) {
-      keyRef.current = null;
-      publish({
-        source: "requests-output",
-        tone: "status",
-        message: savedMessage(command, line.name, result.callAgainAt),
-      });
-      onSaved();
-      router.refresh();
-      return;
-    }
-    const next = failureFor(result.code);
-    if (!next.uncertain) keyRef.current = null;
-    setFailure(next);
-    if (next.refresh) router.refresh();
-  }
-
-  function save(command: Readonly<CardCommand>) {
-    const attempt = () => {
-      if (pending) return;
-      setFailure(null);
-      startTransition(async () => {
-        settle(
-          await saveCardCommand(command, common(), {
-            recordContactAttempt,
-            recordContactAndClose,
-            closeRequest,
-            confirmBookingHandoff,
-          }),
-          command,
-        );
-      });
-    };
-    lastRun.current = attempt;
-    attempt();
-  }
-
-  return {
-    pending,
-    failure,
-    clearFailure: () => {
-      setFailure(null);
-    },
-    save,
-    retry: () => lastRun.current?.(),
-  };
-}
+   along its lower edge. The rules live in record-card-model.ts, the save
+   in use-record-commit.ts. Dragged by its head, the card detaches into a
+   panel (use-card-detach.ts) — the head is the grab surface, and a panel
+   carries its own close button where a popover has none (HIG Panels). */
 
 /* The answers: the registry radio group, one whole-row label per answer
    (the request detail's decision rows at the card's density), the closing
@@ -238,32 +153,27 @@ function SecondRow({
   );
 }
 
-function CardAlert({
-  failure,
-  pending,
-  onRetry,
-}: Readonly<{ failure: Readonly<CardFailure>; pending: boolean; onRetry: () => void }>) {
-  return (
-    <p role="alert" className="wgi-record-error">
-      {failure.message}{" "}
-      {failure.uncertain ? (
-        <button type="button" className="wgi-record-retry" disabled={pending} onClick={onRetry}>
-          Try again
-        </button>
-      ) : null}
-    </p>
-  );
-}
-
 export function RecordCard({
   line,
+  fullOpen,
+  detached,
+  dragHandleProps,
   onClose,
   onOpenFull,
   onSettled,
 }: Readonly<{
   line: Readonly<HomeLine>;
+  /** This record's full-record sheet is open beside the card. */
+  fullOpen: boolean;
+  /** The card is a detached panel: its head carries the close button a
+      popover does not need (an outside press is its close). */
+  detached: boolean;
+  /** The head's grab surface, from use-card-detach.ts. */
+  dragHandleProps: Pick<ComponentProps<"div">, "onPointerDown">;
   onClose: () => void;
-  /** `instant` when the press came from the keyboard: the sheet then opens without motion. */
+  /** Toggles the full record — opens it, or hides it when it already shows
+      this record. `instant` when the press came from the keyboard: the
+      sheet then opens or closes without motion. */
   onOpenFull: (instant: boolean) => void;
   onSettled: (id: string) => void;
 }>) {
@@ -279,6 +189,7 @@ export function RecordCard({
   const note = cardNoteFor(line.status);
   const locked = commit.pending || commit.failure?.uncertain === true;
   const command = commandFor(draft, today);
+  const hint = saveHintFor(draft, today);
   const answer = draft.answer;
   /* No day to pick — nothing chosen yet, No call, or a close — leaves the
      calendar in place but quiet, and shows no day, so a day that is not a
@@ -288,7 +199,7 @@ export function RecordCard({
   return (
     <>
       <div className="wgi-record-side">
-        <div className="wgi-record-head">
+        <div className="wgi-record-head" {...dragHandleProps}>
           <p className="wgi-record-name" data-ui-redact="patient-name">
             {line.name}
           </p>
@@ -298,6 +209,11 @@ export function RecordCard({
               {line.pref} · {line.timing}
             </span>
           </p>
+          {detached ? (
+            <button type="button" className="wgi-record-close" aria-label="Close" onClick={onClose}>
+              <CloseGlyph size={16} />
+            </button>
+          ) : null}
         </div>
         <a href={line.tel} className="wgi-record-call" data-ui-redact="patient-contact">
           <PhoneGlyph size={15} />
@@ -316,10 +232,6 @@ export function RecordCard({
           />
         ) : (
           <p className="wgi-record-note">{note}</p>
-        )}
-
-        {commit.failure === null ? null : (
-          <CardAlert failure={commit.failure} pending={commit.pending} onRetry={commit.retry} />
         )}
       </div>
 
@@ -348,18 +260,28 @@ export function RecordCard({
         <button
           type="button"
           className="wgi-record-foot"
+          /* The sheet's toggle: the card detaches into the sheet's
+             companion, so the foot that opened it also hides it. */
+          aria-expanded={fullOpen}
+          aria-controls={fullOpen ? "wgi-full-record" : undefined}
           onClick={(event) => {
             /* A click with no pointer behind it (Enter or Space) has detail 0. */
             onOpenFull(event.detail === 0);
           }}
         >
-          Open full record
+          {fullOpen ? "Hide full record" : "Open full record"}
           <ChevronGlyph size={14} />
         </button>
       </div>
 
       {note === null ? (
         <div className="wgi-record-commit">
+          {/* A disabled Save says what it waits for; the strip keeps its
+              height whether or not there is anything to say, the way the
+              second row does, so the card never jumps. */}
+          <p className="wgi-record-hint" aria-live="polite">
+            {hint}
+          </p>
           <button
             type="button"
             className="wgi-editor-apply"
