@@ -1,12 +1,12 @@
 import { useCallback, useRef } from "react";
 
-import { CARD_BUTTON, OPEN_CARD } from "./sheet-coexistence";
+import { OPEN_CARD } from "./sheet-coexistence";
 
-/* The sheet panel's box: how wide it may be, where it opens, how it gives
-   past its ends, and where its arrival scales from. It is the sheet's own
-   concern rather than a recipe's, because the numbers come from measuring
-   the live layout — the sidebar's wall, the card beside it, the bleed
-   home.css authors past the viewport edge. */
+/* The sheet panel's box: how wide it may be, where it opens, and how it
+   gives past its ends. It is the sheet's own concern rather than a recipe's,
+   because the numbers come from measuring the live layout — the sidebar's
+   wall, the card beside it, the bleed home.css authors past the viewport
+   edge. */
 
 const MIN_WIDTH_PX = 384;
 const KEY_STEP_PX = 32;
@@ -17,13 +17,14 @@ const SIDEBAR_LAYOUT = "(min-width: 60rem)";
 
 /* The bounds of a resize, in the sheet's own box width. That box carries
    the off-screen bleed home.css authors past the viewport edge (so the
-   arrival's scale and overshoot never open a gap there), measured here
-   rather than repeated as a constant. The measure is the layout box, not
-   the painted one: on its first frame the popup still wears the arrival
-   scale, and a bound read off a transformed rect would drift by it. On
-   the wide layout the sidebar is a fixed column above the sheet, so the
-   wall is its right edge; below that breakpoint the sidebar is a bottom
-   bar and the sheet keeps the viewport share. */
+   rubber band's translate never opens a gap there), measured here rather
+   than repeated as a constant. The measure is the layout box, not the
+   painted one: on its first frame the popup is still sliding in, and a
+   bound read off a transformed rect would drift by it. On the wide layout
+   there are two walls: the sidebar's right edge, and the open card's —
+   the card is never covered, so the sheet stops one list gutter short of
+   it. Below that breakpoint the sidebar is a bottom bar and the sheet
+   keeps the viewport share. */
 interface SheetBounds {
   readonly min: number;
   readonly max: number;
@@ -34,74 +35,56 @@ function boundsFor(sheet: HTMLElement): SheetBounds {
   const bleed = Math.max(0, sheet.offsetLeft + sheet.offsetWidth - window.innerWidth);
   const side = document.querySelector(".portal-sidebar")?.getBoundingClientRect();
   const wall = side !== undefined && side.width < window.innerWidth ? side.right : 0;
-  const widest = Math.min(window.innerWidth * VIEWPORT_SHARE, window.innerWidth - wall);
+  const widest = Math.min(
+    window.innerWidth * VIEWPORT_SHARE,
+    window.innerWidth - wall,
+    cardClearance() ?? Number.POSITIVE_INFINITY,
+  );
   return { min: MIN_WIDTH_PX + bleed, max: Math.max(MIN_WIDTH_PX, widest) + bleed, bleed };
 }
 
 /* Apple's rubber band: the further past the bound, the less the sheet
    follows, so it slows before it stops instead of freezing. */
-function rubberband(overshoot: number, dimension: number, constant = 0.55): number {
-  return (overshoot * dimension * constant) / (dimension + constant * Math.abs(overshoot));
+const BAND_CONSTANT = 0.55;
+function rubberband(overshoot: number, dimension: number): number {
+  return (
+    (overshoot * dimension * BAND_CONSTANT) / (dimension + BAND_CONSTANT * Math.abs(overshoot))
+  );
 }
 
 /* The room beside the open card on the sidebar layout: from the card's
    right edge to the viewport edge, less one list gutter, so the sheet
-   clears the card by the gap the list keeps (Phase 0.5). Null when there
-   is no card to clear or the layout is the narrow one, where nothing is
-   clamped. The gutter is read off the home root because the sheet is
+   clears the card by the gap the list keeps. Null when there is no card
+   to clear, when the card is a detached panel — a panel floats above the
+   sheet and is no wall to it — or the layout is the narrow one, where
+   nothing is clamped. The edge is read on the positioner, not the popup:
+   the popup's entry scale bends its painted edge in for a beat, and a
+   retarget's refit lands inside that beat — the layout box again, as in
+   boundsFor. The gutter is read off the home root because the sheet is
    portaled to body and cannot inherit it. */
 function cardClearance(): number | null {
   if (!window.matchMedia(SIDEBAR_LAYOUT).matches) return null;
   const card = document.querySelector(OPEN_CARD);
   const home = document.querySelector(".wgi-home");
-  if (card === null || home === null) return null;
+  if (card === null || card.hasAttribute("data-detached") || home === null) return null;
   const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
   const gutterRem = Number.parseFloat(getComputedStyle(home).getPropertyValue("--wgi-gutter"));
   const gutter = Number.isFinite(gutterRem) ? gutterRem * rem : 0;
-  return window.innerWidth - card.getBoundingClientRect().right - gutter;
+  const right = (card.parentElement ?? card).getBoundingClientRect().right;
+  return window.innerWidth - right - gutter;
 }
 
-/* The width the sheet opens at: the remembered width, else the authored
-   one, inside the bounds — and beside an open card no wider than the room
-   that clears it, never below the minimum. Staff may still drag or key it
-   wider over the card afterwards. The style is written only when it
-   changes something, so the authored width stays the stylesheet's. */
-function fit(sheet: HTMLElement, remembered: number | null): void {
+/* The width the sheet should hold: the remembered width, else the
+   authored one, clamped into the bounds — beside an open card never wider
+   than the room that clears it, and never below the minimum, where the
+   sheet may overlap the card, which stays on top. The inline style is
+   cleared to measure the authored width; the caller decides what to write
+   back, so a target that is the authored width stays the stylesheet's. */
+function fit(sheet: HTMLElement, remembered: number | null): number {
   sheet.style.width = "";
   const authored = sheet.offsetWidth;
-  const { min, max, bleed } = boundsFor(sheet);
-  const room = cardClearance();
-  const ceiling = room === null ? max : Math.max(min, Math.min(max, room + bleed));
-  const width = Math.min(ceiling, Math.max(min, remembered ?? authored));
-  if (width !== authored) sheet.style.width = `${width}px`;
-}
-
-/* The point the sheet scales from: the centre of the card's "Open full
-   record" button (the card itself if the button is not there), in the
-   sheet's own box, since a transform-origin is measured from its element's
-   top-left corner. The layout box, not the painted one, for the same
-   reason as the bounds. The card ends left of the sheet, so the x clamps
-   to the sheet's left edge and the y is the button's height on the sheet.
-   With no card open the properties are cleared and home.css's fallback
-   applies: the left edge, centred. */
-function setOrigin(sheet: HTMLElement): void {
-  const source = document.querySelector(CARD_BUTTON) ?? document.querySelector(OPEN_CARD);
-  if (source === null) {
-    sheet.style.removeProperty("--wgi-sheet-origin-x");
-    sheet.style.removeProperty("--wgi-sheet-origin-y");
-    return;
-  }
-  const rect = source.getBoundingClientRect();
-  const x = rect.left + rect.width / 2 - sheet.offsetLeft;
-  const y = rect.top + rect.height / 2 - sheet.offsetTop;
-  sheet.style.setProperty(
-    "--wgi-sheet-origin-x",
-    `${Math.min(sheet.offsetWidth, Math.max(0, x))}px`,
-  );
-  sheet.style.setProperty(
-    "--wgi-sheet-origin-y",
-    `${Math.min(sheet.offsetHeight, Math.max(0, y))}px`,
-  );
+  const { min, max } = boundsFor(sheet);
+  return Math.min(max, Math.max(min, remembered ?? authored));
 }
 
 /** The panel's box and the two ways staff change it: a drag on the grip, and
@@ -110,25 +93,83 @@ function setOrigin(sheet: HTMLElement): void {
 export function useSheetResize() {
   const remembered = useRef<number | null>(null);
   const popup = useRef<HTMLDivElement | null>(null);
+  const resizeFrame = useRef(0);
+  /* The listener and fallback a data-fitting or data-settling run left
+     armed, so a grab — or a second refit — can stand them down rather than
+     leave a stale timeout free to clear a newer run's flag. */
+  const fitCleanup = useRef<(() => void) | null>(null);
+  const settleCleanup = useRef<(() => void) | null>(null);
 
-  /* Fit first, then aim: the sheet is anchored to the right edge, so its
-     left edge — the origin's reference — moves with the width. */
+  /* The bounds moved under an open sheet — a retarget to another record, a
+     card arriving beside it, the window resizing: clamp the width again,
+     letting the change animate on the base beat (data-fitting, the one case
+     a programmatic width moves on a transition). During a drag the gesture
+     owns the bounds it captured, so a refit waits for the next grab. */
   const refit = useCallback((node: HTMLElement | null) => {
-    if (node === null) return;
-    fit(node, remembered.current);
-    setOrigin(node);
+    if (node === null || node.dataset.dragging === "true") return;
+    const before = node.offsetWidth;
+    const width = fit(node, remembered.current);
+    /* The measure ran with the inline width cleared; put back what was
+       on screen before anything else. Under a pixel nothing moved — a
+       retarget between same-size cards must not animate. */
+    node.style.width = `${before}px`;
+    if (Math.abs(width - before) < 1) return;
+    /* Commit `before` as the transition's start: the read flushes the
+       write, or the before-change style is the authored width fit() left
+       behind and the transition jumps there first. */
+    void node.offsetWidth;
+    fitCleanup.current?.();
+    node.dataset.fitting = "true";
+    const clearFit = () => {
+      delete node.dataset.fitting;
+      node.removeEventListener("transitionend", onFitEnd);
+      window.clearTimeout(fitFallback);
+      if (fitCleanup.current === clearFit) fitCleanup.current = null;
+    };
+    // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM event objects carry platform member types that cannot be made readonly
+    const onFitEnd = (endEvent: TransitionEvent) => {
+      if (endEvent.propertyName === "width") clearFit();
+    };
+    node.addEventListener("transitionend", onFitEnd);
+    const fitFallback = window.setTimeout(clearFit, 300);
+    fitCleanup.current = clearFit;
+    node.style.width = `${width}px`;
   }, []);
+
+  /* A viewport resize moves both walls; re-clamp on the frame while the
+     popup is mounted. */
+  const onWindowResize = useCallback(() => {
+    if (resizeFrame.current !== 0) return;
+    resizeFrame.current = requestAnimationFrame(() => {
+      resizeFrame.current = 0;
+      refit(popup.current);
+    });
+  }, [refit]);
 
   /* Stable, so React runs it once per mount: the popup remounts on every
      open, and the width staff chose last time comes back clamped to the
-     bounds of this viewport and the room beside the open card. */
+     bounds of this viewport and the walls beside it. The mount fit does
+     not animate — the sheet is arriving. */
   const mount = useCallback(
     // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM nodes carry platform member types that cannot be made readonly
     (node: HTMLDivElement | null) => {
+      if (node === null) {
+        window.removeEventListener("resize", onWindowResize);
+        if (resizeFrame.current !== 0) {
+          cancelAnimationFrame(resizeFrame.current);
+          resizeFrame.current = 0;
+        }
+        fitCleanup.current?.();
+        settleCleanup.current?.();
+        popup.current = null;
+        return;
+      }
+      if (popup.current === null) window.addEventListener("resize", onWindowResize);
       popup.current = node;
-      refit(node);
+      const width = fit(node, remembered.current);
+      if (width !== node.offsetWidth) node.style.width = `${width}px`;
     },
-    [refit],
+    [onWindowResize],
   );
 
   // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM event objects carry platform member types that cannot be made readonly
@@ -142,10 +183,28 @@ export function useSheetResize() {
     grip.dataset.dragging = "true";
     const pointerId = event.pointerId;
     const startX = event.clientX;
-    const startWidth = sheet.getBoundingClientRect().width;
     const { min, max } = boundsFor(sheet);
+    /* A grab while a fit or the band's settle is still running starts
+       where the sheet is, not where either was headed: pin the painted
+       width and transform before the drag kills the transitions, or the
+       first move snaps to the transition's target. For the band, run the
+       transform back through its inverse so the pull continues instead of
+       jumping. */
+    const shift =
+      sheet.dataset.settling === "true"
+        ? new DOMMatrixReadOnly(getComputedStyle(sheet).transform).e
+        : 0;
+    let startWidth = sheet.getBoundingClientRect().width;
+    sheet.style.width = `${startWidth}px`;
+    fitCleanup.current?.();
+    if (shift > 0) {
+      sheet.style.transform = `translateX(${shift}px)`;
+      startWidth = min - (shift * min) / (BAND_CONSTANT * (min - shift));
+    }
+    settleCleanup.current?.();
+    delete sheet.dataset.settling;
     /* 1:1 with the pointer: nothing eases while a finger is on it. */
-    sheet.style.transition = "none";
+    sheet.dataset.dragging = "true";
 
     // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM event objects carry platform member types that cannot be made readonly
     const move = (moveEvent: PointerEvent) => {
@@ -155,7 +214,8 @@ export function useSheetResize() {
       sheet.style.width = `${width}px`;
       remembered.current = width;
       /* Past the narrow end the sheet slides toward the edge with rising
-         resistance. The wide end is the sidebar: a wall, so a hard stop. */
+         resistance. The wide end is the nearer wall — the sidebar, or the
+         open card — so a hard stop. */
       const past = min - wanted;
       sheet.style.transform = past > 0 ? `translateX(${rubberband(past, min)}px)` : "";
     };
@@ -163,9 +223,25 @@ export function useSheetResize() {
     const up = (upEvent: PointerEvent) => {
       if (upEvent.pointerId !== pointerId) return;
       delete grip.dataset.dragging;
-      /* Let go together, so the rubber band springs home on the sheet's own
-         arrival temperament. */
-      sheet.style.transition = "";
+      delete sheet.dataset.dragging;
+      /* Let go together, so the rubber band eases home on the sheet's own
+         transition — on the base beat, not the sheet's slower arrival. */
+      if (sheet.style.transform !== "") {
+        sheet.dataset.settling = "true";
+        const clearSettle = () => {
+          delete sheet.dataset.settling;
+          sheet.removeEventListener("transitionend", settleEnd);
+          window.clearTimeout(settleFallback);
+          if (settleCleanup.current === clearSettle) settleCleanup.current = null;
+        };
+        // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM event objects carry platform member types that cannot be made readonly
+        const settleEnd = (endEvent: TransitionEvent) => {
+          if (endEvent.propertyName === "transform") clearSettle();
+        };
+        sheet.addEventListener("transitionend", settleEnd);
+        const settleFallback = window.setTimeout(clearSettle, 300);
+        settleCleanup.current = clearSettle;
+      }
       sheet.style.transform = "";
       grip.removeEventListener("pointermove", move);
       grip.removeEventListener("pointerup", up);

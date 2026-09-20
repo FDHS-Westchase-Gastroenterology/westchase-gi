@@ -15,8 +15,9 @@ import {
   INITIAL_DRAFT,
   needsDay,
   savedMessage,
-  timeWithinDay,
+  saveHintFor,
 } from "./record-card-model.ts";
+import { timeWithinDay } from "./record-card-time.ts";
 
 const TODAY = "2026-09-08"; // A Tuesday
 
@@ -136,6 +137,36 @@ test("Save waits for a complete, in-bounds decision", () => {
     today: TODAY,
   });
   assert.equal(canSave(close, TODAY), true);
+});
+
+test("a disabled Save says what it is waiting for", () => {
+  assert.equal(saveHintFor(INITIAL_DRAFT, TODAY), null, "a blank card asks nothing");
+  const callBack = cardReducer(INITIAL_DRAFT, {
+    type: "answer",
+    answer: "no_answer",
+    today: TODAY,
+  });
+  assert.equal(saveHintFor(callBack, TODAY), "Pick the day to call back.");
+  const contacted = cardReducer(INITIAL_DRAFT, {
+    type: "answer",
+    answer: "contacted",
+    today: TODAY,
+  });
+  assert.equal(saveHintFor(contacted, TODAY), "Pick the day to call back.");
+  const booked = cardReducer(INITIAL_DRAFT, {
+    type: "answer",
+    answer: "booked",
+    today: TODAY,
+  });
+  assert.equal(saveHintFor(booked, TODAY), "Pick the appointment day.");
+  const dayOnly = cardReducer(booked, { type: "day", day: "2026-09-11" });
+  assert.equal(saveHintFor(dayOnly, TODAY), "Pick the appointment time.");
+  const timed = cardReducer(dayOnly, { type: "time", time: "09:30" });
+  assert.equal(saveHintFor(timed, TODAY), null, "a complete draft shows nothing");
+  const planned = cardReducer(callBack, { type: "day", day: "2026-09-09" });
+  assert.equal(saveHintFor(planned, TODAY), null, "a picked day is the whole ask");
+  const noCall = cardReducer(callBack, { type: "followUp", followUp: "none" });
+  assert.equal(saveHintFor(noCall, TODAY), null, "No call needs no day");
 });
 
 test("today means this afternoon; any other day is that day's morning", () => {
