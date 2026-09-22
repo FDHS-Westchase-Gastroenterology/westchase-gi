@@ -20,7 +20,7 @@ request detail's, and the copy joins [item 3](roadmap.md#3-choice-lists) with th
 An instant — when a request arrived, when a follow-up is due — formats in `PRACTICE_TIME_ZONE`
 (`America/New_York`, `src/lib/portal/scheduling/time.ts`); `requests/format.ts` writes the same zone
 into each of its formatters. A calendar day or a clock time has no instant behind it, so it formats
-in UTC from a UTC anchor, as `clockLabel` in `(home)/record-card-model.ts` does, and day math
+in UTC from a UTC anchor, as `clockLabel` in `(home)/record-card-time.ts` does, and day math
 anchors `${day}T00:00:00Z`. `format.ts` has no plain-day formatter; a new one follows `clockLabel`.
 
 ## Time
@@ -50,7 +50,7 @@ The staff home wraps the wheel for the record card: the wrapper supplies the Hou
 "AM or PM" columns at `size="sm"` and a full-width Done
 ([components.md](components.md#route-owned-compositions)), inside the start-time sheet in
 [overlays.md](overlays.md#the-start-time-sheet). Its columns are cut from `TIME_SLOTS`,
-every minute from `TIME_MIN` to `TIME_MAX`, in `(home)/record-card-model.ts`: `MERIDIEMS`,
+every minute from `TIME_MIN` to `TIME_MAX`, in `(home)/record-card-time.ts`: `MERIDIEMS`,
 `hourOptions(meridiem)` and `minuteOptions(meridiem, hour)` return strings that the wrapper's
 `labelled()` turns into options, and `joinTime` returns `""` for a time outside the slots. The
 model and the wrapper both belong to the staff home. A second time field composes the wheel from

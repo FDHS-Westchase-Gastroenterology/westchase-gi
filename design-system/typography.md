@@ -63,10 +63,10 @@ outrank the page title.
 | `--pt-lg` | 1.25rem | group headings |
 | `--pt-xl` | 1.75rem | the sheet's day |
 
-A size between two steps does not exist; a heading that wants one is a hierarchy question. The
-staff home is the recorded exception: the approved Home frame sets its date at 2.25rem / 1.1 with
--0.015em tracking, and its 18.5px name, 15.5px phone and 14.5px table-heading sizes as `--wgi-*`
-tokens in `home.css`, read nowhere else.
+A size between two steps does not exist; a heading that wants one is a hierarchy question. The staff
+home is the recorded exception: the approved Home frame sets its date at 2.25rem / 1.1 with -0.015em
+tracking, its 18.5px name, 15.5px phone and 14.5px table-heading sizes as `--wgi-*` tokens in
+`home.css`, read nowhere else, and eight more as [literals](#recorded-exceptions).
 
 ## Weights
 
@@ -117,12 +117,13 @@ What does the portal text do?
 ## Numerals and tracking
 
 - **Counts, phone numbers, dates and times use tabular numerals** (`tabular-nums`, or
-  `font-variant-numeric: tabular-nums` in a stylesheet), so a column of times aligns and a
-  changing count does not shift its neighbors.
+  `font-variant-numeric: tabular-nums` in CSS), so times align and a changing count holds still.
 - **Negative tracking is a Latin-only affordance.** Patient headings track -0.01em and `.display`
-  -0.015em. `:lang(ko)` and `:lang(ar)` reset heading tracking to 0 and open heading leading to
-  1.3, because tightened Hangul and Arabic collide. The portal heading reset also sets tracking to 0.
-- **Names keep normal tracking** in the portal; only the Home date tightens.
+  -0.015em; `:lang(ko)` and `:lang(ar)` reset heading tracking to 0 and open heading leading to 1.3,
+  because tightened Hangul and Arabic collide. The portal heading reset sets 0, and the Home frame
+  tightens only its date (-0.015em), the record card's name and the empty state's heading (-0.01em).
+  Thirteen older portal rules track -0.005em to -0.025em, eleven beside a weight above 700
+  ([item 12](roadmap.md#12-portal-type-weights-and-heading-family)).
 
 ## Recorded exceptions
 
@@ -130,20 +131,19 @@ What does the portal text do?
 | --- | --- | --- |
 | `.portal-sidebar-mark`, `.portal-mobile-brand > span` in `portal-workbench.css` | The practice monogram in the display serif | Stays: a brand mark, not operational content. |
 | `.portal-print-sheet-header p` in `portal-workbench.css` | The printed sheet's practice line in the display serif | The serif stays as a brand mark on paper; its 650 weight is counted in the drift below. |
-| `--wgi-*` sizes in `home.css` | Three sizes between `--pt-*` steps and a 2.25rem date | Stays: the approved Home frame. |
+| `home.css` | Three `--wgi-*` sizes between `--pt-*` steps and a 2.25rem date; eight literals: 1rem on the list's received column and footer, 0.98rem on `.wgi-cmd`, and the sheet's 0.75rem kicker, 1.4375rem name, 0.875rem section heads and 1rem stands and email | Stays: the approved Home frame and the sheet merged in PR #304. |
 
 ## Recorded drift
 
-Measured on commit e7734a4 with the compiled stylesheet in headless Chromium at 1440 and 390 wide,
-and by counting `font-weight` values and the bracketed-numeric, `font-extrabold` and `font-black`
-weight utilities under `src/app/admin`. The weight rows wait on
-[roadmap item 12](roadmap.md#12-portal-type-weights-and-heading-family). The last row, counted on
-commit bfe0fc6, waits on [item 2](roadmap.md#2-workbench-tokenization).
+Rendered on e7734a4 in headless Chromium at 1440 and 390 wide. `font-weight` values, weight
+utilities and sizes under `src/app/admin` recounted with 174f10e merged. Weight rows wait on
+[item 12](roadmap.md#12-portal-type-weights-and-heading-family); the last on
+[item 2](roadmap.md#2-workbench-tokenization).
 
 | Where | Measured | Consequence |
 | --- | --- | --- |
 | `.portal-queue-title`, the Requests page `h1` | Computed family is the display serif; 880 requested | Trocchi renders at 400, the only face loaded. |
 | `.portal-page-title` | `clamp(1.75rem, 5vw, 2.4rem)`: 38.4px at 1440, 28px at 390; 900 requested | A fluid heading at a weight that renders as 700. |
 | `.portal-auth-title` in `globals.css` | 900 requested | Renders as 700. |
-| 93 weight requests outside 400 to 700 in 13 files | 900 ×41, 800 ×23, 850 ×8, 740 ×5, 780 ×4, and twelve more between 650 and 880 | Each renders as the nearest loaded face, mostly 700. `portal-workbench.css` holds 57 and `help/page.tsx` 14. |
+| 92 weight requests outside 400 to 700 in 13 files | 900 ×41, 800 ×22, 850 ×8, 740 ×5, 780 ×4, and twelve more between 650 and 880 | Each renders as the nearest loaded face, mostly 700. `portal-workbench.css` holds 57 and `help/page.tsx` 14. |
 | 161 literal `text-[…rem]` sizes in 21 TSX files under `src/app/admin` | 24 distinct values; two land on a step (0.8125rem, 1.25rem) and none reads `--pt-*`. They include the settings `h2`s at `1.05rem` and `1.3rem` `font-black` | Route files size type off the scale. A new one names a `--pt-*` step, as `text-[length:var(--pt-sm)]` ([styling.md](styling.md#styling-model)). |

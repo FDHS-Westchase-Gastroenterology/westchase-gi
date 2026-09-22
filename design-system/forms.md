@@ -105,7 +105,8 @@ void createStaffRequestAction(input);
 
 A form that can show its own failure beside the fields gives the toast no error branch; a surface
 with nothing to point at, like the request work panel, reads the failure off the rejection. The
-home record card keeps its own follower, `record-card-save.ts`.
+home record card keeps its own follower, `record-card-save.ts`, which `use-record-commit.ts` hands
+to `toast.promise`.
 
 Settings saves do not toast. A settings form is a `<form action={action} noValidate
 aria-labelledby>` opened by its own heading: a `border-t border-[var(--color-line)] pt-5` edge where

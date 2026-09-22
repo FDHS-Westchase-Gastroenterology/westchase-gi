@@ -55,7 +55,8 @@ like `--font-size-17` stops being true the first time the value is tuned.
 | `--release-row` | The release briefing's stagger index: set inline per row |
 | `--normal-bg`, `--normal-text`, `--normal-border`, `--border-radius`, `--width`, `--cell-size`, `--tw-ring-shadow` | Third-party names: Sonner in `toaster.tsx`, the calendar, Tailwind's ring shadow |
 
-A scope never assigns a brand name; the `:lang()` blocks are the one exception, recorded below.
+A scope never assigns a brand name; the `:lang()` blocks and the staff home's three `.portal-scope`
+interaction aliases are the exceptions, recorded below.
 
 **Check the shared `--color-*` namespace before adopting.** shadcn and the brand both declare
 `--color-*`, and the later `@theme` block wins without a warning. `--color-muted` is shadcn's
@@ -79,7 +80,8 @@ departure missing from this table is drift.
 | `:lang(vi)`, `:lang(ko)`, `:lang(ar)` | Re-point `--font-display` and `--font-body` | Stays: an island in another language (the review hub shows five on one page) must switch faces, which one class on `<html>` cannot do. |
 | Bridge `@theme inline` | `--font-sans` and `--font-heading` repeat the Lato stack | Stays: `--font-sans` is Tailwind's default family and the Toaster's font. `--font-heading` has no rendered consumer. |
 | `.portal-scope`; `.portal-workspace` in `portal-workbench.css` | `--portal-canvas`, `--portal-surface`, `--portal-attention-ink`, `--portal-surface-muted` are OKLCH literals | Move into the brand `@theme`: [roadmap item 10](roadmap.md#10-portal-surface-tints). |
-| `.wgi-home` and `.portal-workspace:has(.wgi-home)` in `home.css` | `--wgi-*` paints, shadows, radii and type sizes; the Home canvas re-points `--portal-canvas` | Stays: the values come from the approved Home frame, stay scoped to Home, and carry their contrast measurements beside them. A `--wgi-*` name is never read outside Home. |
+| `.wgi-home` and `.portal-workspace:has(.wgi-home)` in `home.css` | `--wgi-*` paints, shadows, radii and type sizes, nine of them restated on `.wgi-record-card` and `.wgi-sheet`, which portal outside `.wgi-home`; literal corners, shadows and sizes in Home rules ([layout.md](layout.md#shape-and-elevation), [typography.md](typography.md#recorded-drift)); the Home canvas re-points `--portal-canvas` | Stays: the values come from the approved Home frame, stay scoped to Home, and carry their contrast measurements beside them. A `--wgi-*` name is never read outside Home. |
+| `.portal-scope` in `globals.css` | `--color-mint-hover` (`mint`), `--color-mint-press` (`mint-2` mixed 10% toward `navy`) and `--color-teal-strong` (`teal-ink`) declare `--color-*` names outside the brand `@theme` | Stays: the staff home's hover, press and focus inks from PR #304, set on `<body>` so the portaled card and sheet read them. Whether they join the brand `@theme` is Jason's call; nothing else reads them. |
 | `.portal-scope` | `--pm-reduced-duration: 120ms`, `--pm-scrim-duration: 220ms` | Stays until the registry names a reduced-motion cross-fade and a scrim fade: [motion.md](motion.md#recorded-motion-literals). |
 | `.portal-scope` | `--btn-radius: 0.5rem` sits off the radius set | [Roadmap item 8](roadmap.md#8-the-radius-ramp). |
 | `.portal-scope`; `.wgi-answer` in `home.css` | `--btn-hover-shadow: 0 0 #0000`, `--tw-ring-shadow: 0 0 #0000` | Stays: Tailwind's empty shadow. `none` would invalidate the comma-separated shadow list Tailwind composes. |
@@ -115,9 +117,10 @@ on brand darks; a real dark theme is a practice decision.
 - **Shape and elevation**: `--radius-sm`, `--radius`, `--radius-lg`; `--shadow-soft`,
   `--shadow-card`, `--shadow-popover`.
 - **Motion**: `--motion-spring`, `--motion-spring-duration`, `--motion-exit`,
-  `--motion-exit-duration`, `--motion-micro-duration`, `--ease-out-quint`, `--ease-out-quart`;
-  portal aliases `--pm-spring`, `--pm-spring-duration`, `--pm-exit`, `--pm-exit-duration`,
-  `--pm-reduced-duration`, `--pm-scrim-duration`.
+  `--motion-exit-duration`, `--motion-micro-duration`; the staff home's `--motion-standard` over
+  `--motion-fast-duration`, `--motion-base-duration`, `--motion-sheet-duration`; `--ease-out-quint`,
+  `--ease-out-quart`; portal aliases `--pm-spring`, `--pm-spring-duration`, `--pm-exit`,
+  `--pm-exit-duration`, `--pm-reduced-duration`, `--pm-scrim-duration`.
 - **Stacking**: `--z-header` 50, `--z-dropdown` 60, `--z-overlay` 70, `--z-drawer` 80.
 - **Staff home**: the `--wgi-*` block at the top of `.wgi-home` in `home.css`, each value with its
   source and contrast note.

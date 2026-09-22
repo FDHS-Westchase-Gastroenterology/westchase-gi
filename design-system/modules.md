@@ -10,7 +10,7 @@ branch.
 
 `@/*` resolves to `src/*` (`tsconfig.json`). A module imports a sibling in its own directory as
 `./name`; everything else, including a route-owned module one directory away, uses the alias.
-Under `src/app` that is 140 `./` specifiers and 82 `@/app/…` ones against a single `../` import,
+Under `src/app` that is 154 `./` specifiers and 82 `@/app/…` ones against a single `../` import,
 in a test file. A parent-relative specifier in a component is drift.
 
 ```tsx

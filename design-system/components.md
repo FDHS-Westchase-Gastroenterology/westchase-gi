@@ -61,11 +61,11 @@ under `.wgi-*`. They are route-owned: nothing outside the staff home imports the
 
 | Component | When | Real uses |
 | --- | --- | --- |
-| `HomePopover` `HomePopoverTrigger` `HomePopoverContent` | The filter bar's editors and the list's row menus ([overlays.md](overlays.md#popovers)) | `filter-bar.tsx`, `line-list.tsx` |
+| `HomePopover` `HomePopoverTrigger` `HomePopoverContent` | The filter bar's editors and each row's record card ([overlays.md](overlays.md#popovers)) | `filter-bar.tsx`, `line-row.tsx` |
 | `HomeSheet` `HomeSheetContent` `HomeSheetTitle` `HomeSheetClose` | The non-modal full-record sheet ([overlays.md](overlays.md#the-full-record-sheet)) | `full-record-sheet.tsx` |
-| `LineStatusBadge` | A request's status on a Home row and in the sheet ([surfaces.md](surfaces.md#badges)) | `line-list.tsx`, `full-record-sheet.tsx` |
+| `LineStatusBadge` | A request's status on a Home row and in the sheet ([surfaces.md](surfaces.md#badges)) | `line-row.tsx`, `full-record-sheet.tsx` |
 | `HomeRangeCalendar` `HomeDayCalendar` | A custom received range; a return day | `filter-bar.tsx`, `record-card.tsx` |
-| `PhoneGlyph` `ChevronGlyph` `CloseGlyph` | Home's stroke glyphs at the design's weights | `line-list.tsx`, `record-card.tsx`, `full-record-sheet.tsx` |
+| `PhoneGlyph` `ChevronGlyph` `CloseGlyph` | Home's stroke glyphs at the design's weights | `line-row.tsx`, `record-card.tsx`, `full-record-sheet.tsx`, `full-record-sheet-body.tsx` |
 | `TimePicker` in `parts/time-picker.tsx` | The record card's start time, wrapping `ui/time-picker.tsx` ([dates-and-times.md](dates-and-times.md#time)) | `record-card.tsx` |
 
 ## Patterns

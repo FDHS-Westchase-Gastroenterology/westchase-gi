@@ -74,10 +74,10 @@ Both products meet these. A change that breaks one is not finished.
 
 ## Motion
 
-Two engines, one registry. CSS reads the `--motion-*` tokens; `motion/react` reads the presets in
-`src/lib/motion.ts`; they are the same temperaments, and neither invents a curve or a duration.
-Surfaces arrive on a spring and leave faster than they came; micro states settle in 150ms; reduced
-motion cross-fades in place ([motion](design-system/motion.md)).
+Two engines, one registry: CSS reads the `--motion-*` tokens, `motion/react` the presets in
+`src/lib/motion.ts`, and neither invents a curve or a duration. Surfaces arrive on a spring and
+leave faster than they came; micro states settle in 150ms; the staff home runs one curve at 140, 240
+and 420ms; reduced motion cross-fades in place ([motion](design-system/motion.md)).
 
 A temperament the registry lacks is a conversation with Jason, then a registry entry — never an
 inline value. Any diff that adds or changes motion carries a `review-animations` verdict in the

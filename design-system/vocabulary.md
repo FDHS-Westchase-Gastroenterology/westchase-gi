@@ -58,8 +58,10 @@ is given where one exists. When a guide and this list disagree, fix the guide.
 - **Staff home** — the portal's first page, `src/app/admin/(portal)/(home)/`. Its section wears
   `.wgi-home` and its scoped stylesheet is `home.css`.
 - **Line list** — the staff home's table of lines, `line-list.tsx`.
+- **Line row** — one line and the record card it opens, `line-row.tsx`.
 - **Record card** — the popover a line opens on the staff home, `record-card.tsx`, rendered in
-  `HomePopoverContent`.
+  `HomePopoverContent`. Dragged by its head it detaches into a floating panel
+  ([overlays.md](overlays.md#the-full-record-sheet)).
 - **Full-record sheet** — the side sheet the record card opens beside itself,
   `full-record-sheet.tsx`, rendered in `HomeSheetContent`. It is not a modal; see
   [overlays.md](overlays.md#the-full-record-sheet).

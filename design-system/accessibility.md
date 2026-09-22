@@ -43,8 +43,10 @@ Focus is always visible, and the two products show it differently:
 
 - **Patient site** — a 2px `--color-teal-ink` outline at 3px offset, on `:focus-visible` for
   everything, set once in `globals.css`.
-- **Staff portal** — a 3px `--color-amber-deep` outline at 3px offset on every link, button,
-  input, select, textarea and summary inside `.portal-scope`. The color question is recorded as
+- **Staff portal** — a 3px `--color-amber-deep` outline at 3px offset on every link, button, input,
+  select, textarea and summary inside `.portal-scope`, except on the staff home, whose controls,
+  popovers and sheet draw a 2px `--color-teal` ring behind a 2px surface gap
+  ([color.md](color.md#focus)). The color question is recorded as
   [item 13](roadmap.md#13-the-portal-focus-color).
 
 Both shells open with a skip link: `#main` on the patient site, `#portal-main` on the portal,

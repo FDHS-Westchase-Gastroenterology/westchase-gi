@@ -10,7 +10,7 @@ one implementation, and the portal has no tooltip, hover card or menu. Motion va
 What must the reader do with this surface?
 ├── Staff portal: answer before anything else (confirm, choose, fill a short form) → a native modal dialog
 ├── Staff home: edit or read one thing that belongs to a control or a row          → HomePopover
-├── Staff home: read a whole record while its card and the list stay usable        → the full-record sheet
+├── Staff home: read a whole record beside its card                                → the full-record sheet
 ├── Staff home: set the record card's start time                                   → the card's TimePicker
 ├── Staff portal: learn how a save on a request turned out                         → toast.promise (forms.md)
 ├── Patient site: pick a language, a section or a page                             → the Header menus
@@ -36,9 +36,9 @@ component is [roadmap item 9](roadmap.md#9-a-native-dialog-component).
   draft. Neither class sets a height or a disabled look, so every call site adds `min-h-11`, and one
   whose press runs a server action adds `disabled:opacity-60` and disables Cancel, Close and Escape
   too until the action settles (`RemoveRecipientDialog` in `recipients-manager.tsx#L167`).
-- **Motion.** It rises 0.75rem from `scale(0.97)` and closes toward 0.4rem and `scale(0.985)`,
-  transform on arriving and the rest on leaving, over a plain `rgba(20, 32, 45, 0.48)` scrim that
-  fades in over 220ms. Modals stay centered: they answer the whole page, not one trigger.
+- **Motion.** It rises 0.75rem from `scale(0.97)`, transform on arriving and the rest on leaving,
+  and closes toward 0.4rem and `scale(0.985)` over a `rgba(20, 32, 45, 0.48)` scrim that fades in
+  over 220ms. It stays centered: a modal answers the whole page.
 
 **The keyboard opens and closes a dialog instantly.** Toggle `data-instant` from
 `event.detail === 0` in the trigger's click and in the dialog's `onClickCapture`, and set it in
@@ -80,51 +80,53 @@ item 9. `PortalTour` runs on legacy `overlay-rise` keyframes: roadmap item 7.
 
 ## Popovers
 
-`HomePopover`, `HomePopoverTrigger` and `HomePopoverContent` (`(home)/parts/popover.tsx`) wrap
-Base UI Popover for the staff home's record card (`.wgi-record-card`) and filter editors
-(`.wgi-editor`). They open below, start-aligned, 8px away and 8px inside the viewport. A tall one
-flips above its anchor, never beside it where the sidebar is, and scrolls inside
-`--available-height`. Pass `anchor` when the trigger is smaller than what the popover describes:
-the record card's trigger is a chevron, and the card anchors to the whole row.
+`HomePopover`, `HomePopoverTrigger` and `HomePopoverContent` (`(home)/parts/popover.tsx`) wrap Base
+UI Popover for the staff home's record card (`.wgi-record-card`) and filter editors (`.wgi-editor`;
+copy `filter-bar.tsx`). They open start-aligned, 8px from the anchor and the viewport, an editor
+below its trigger; `line-row.tsx` passes the card the whole row as `anchor` and the roomier `side`.
+The positioner shifts a popover into view but never flips, shrinks or sets it beside its anchor; a
+card taller than the viewport scrolls inside `--available-height`.
 
-Focus moves to the first tabbable element inside, or to a field marked `autoFocus`, and returns to
-the trigger. An outside press, Escape or focus leaving closes a popover. In `cardStaysOpen`
-(`(home)/sheet-coexistence.ts`) the record card declines the closes that belong to a surface
-beside it: a press on its own row or a toast, a press or focus move into the full-record sheet,
-and an Escape meant for the sheet. In a table the popover lives in the row's last cell, because
-its portal leaves focus-guard spans beside the trigger.
+Focus moves to the first tabbable element or a field marked `autoFocus`, and returns to the trigger.
+An outside press, Escape or focus leaving closes a popover, and the card has a close button in its
+head. `cardStaysOpen` (`(home)/sheet-coexistence.ts`) keeps the card open through a press on its row
+or a toast, a press or focus move into the sheet, an Escape while a sheet is mounted and focus is
+outside the card, and, once detached, any outside press or focus move. In a table the popover sits
+in the row's last cell: its portal leaves focus guards by the trigger.
 
-`.wgi-popover` grows from `var(--transform-origin)` and `scale(0.95)` over leaving's 160ms and
-closes in 120ms ([item 14](roadmap.md#14-the-staff-home-temperament-and-companion-surfaces)); Base
-UI's `data-instant` makes a keyboard press, Escape or focus leaving instant, and an outside press
-animates.
-
-```tsx
-// Correct (filter-bar.tsx, shortened): the route's popover, dressed by its class
-<HomePopover open={open} onOpenChange={setOpen}>
-  <HomePopoverTrigger render={<button type="button" className="wgi-add-filter" />}>Add filter</HomePopoverTrigger>
-  <HomePopoverContent className="wgi-editor" aria-label="Add filter">…</HomePopoverContent>
-</HomePopover>
-```
+`.wgi-popover` grows from `var(--transform-origin)` and `scale(0.95)` on base, 240ms, and closes on
+fast, 140ms ([motion.md](motion.md#the-registry)); `data-instant` makes a keyboard press, Escape or
+focus leaving instant, and an outside press animates.
 
 ## The full-record sheet
 
-`FullRecordSheet` (`(home)/full-record-sheet.tsx`) is built on `HomeSheet` and `HomeSheetContent`
-(`(home)/parts/sheet.tsx`), the portal's one Base UI Dialog and its only non-modal dialog.
-`modal={false}` and `disablePointerDismissal` leave no scrim, no scroll lock and nothing inert, so
-the record card and the list stay usable beside it. The card and the sheet as companions are
-[roadmap item 14](roadmap.md#14-the-staff-home-temperament-and-companion-surfaces).
+`FullRecordSheet` (`(home)/full-record-sheet.tsx`), on `HomeSheet` and `HomeSheetContent`
+(`(home)/parts/sheet.tsx`), is the portal's one Base UI Dialog and its only non-modal one:
+`modal={false}` and `disablePointerDismissal` leave no scrim, no scroll lock and nothing inert.
 
-- **Opening.** The card's "Open full record" button opens it, and the card stays open. Opening
-  another row's card retargets the open sheet to that record without re-entering.
-- **Placement.** The right edge, 42rem wide and at most 94vw, stopping at the sidebar from 60rem
-  on `--z-drawer`. The left-edge grip resizes it by pointer or arrow keys, rubber-bands past the
-  narrow end, remembers the width, and opens no wider than clears an open card.
-- **Motion.** It grows from `scale(0.96)` about the card's button (`--wgi-sheet-origin-x`, `-y`)
-  and leaves to `scale(0.97)`, transform on arriving and opacity on leaving, with a 4vw bleed
-  covering the right edge while it scales. A keyboard open or close is instant.
+**Companion surfaces.** The sheet is the selected request's undimmed inspector and the record card
+its companion, anchored to its row and on top: no scrim, because dimming means modal, and the sheet
+resizes against the card instead of covering it. While attached, the list blurs all but the anchor
+row and its body takes no presses, so a press there closes the card. Dragged 6px by its head from
+60rem on (`use-card-detach.ts`), the card becomes a floating panel: the anchor freezes, the blur
+lifts, outside presses and focus moves stop closing it. Its lane (`panel-lane.ts`) ends at the
+viewport's edges, hard, and one list gutter short of an open sheet, where a drag rubber-bands and
+settles back on base. A sheet arriving pushes it left on the sheet's beat, never past the sidebar;
+it stays put when the sheet leaves. Apple's pattern: HIG Popovers on macOS detachable popovers,
+Panels on the inspector, and UIKit's sheet presentation controller's largest undimmed detent.
+
+- **Opening.** The card's foot toggles the sheet, "Open full record" or "Hide full record", with
+  `aria-expanded` and `aria-controls="wgi-full-record"`; the card stays open. Opening another row's
+  card retargets the open sheet without re-entering, and its content replays the settle.
+- **Placement.** The right edge, 33.875rem wide and at most 94vw, stopping at the sidebar from 60rem
+  on `--z-drawer`, with the card's positioner a layer above. The left-edge grip resizes it by
+  pointer or arrow keys, rubber-bands past the narrow end and remembers the width; the sheet opens
+  no wider than the card leaves it and refits on base when that bound moves.
+- **Motion.** It slides in from the right edge on the sheet beat, 420ms, and leaves that way on
+  base, 240ms; a 4vw bleed covers the edge through the grip's rubber band. The header, then the
+  body 60ms later, settle in on base, the foot 120ms behind. A keyboard open or close is instant.
 - **Focus and Escape.** It opens onto the sheet itself, not the grip, and returns to the card's
-  button, or to the row's trigger when the card has closed. One Escape closes one surface: the one
+  toggle, or to the row's trigger when the card has closed. One Escape closes one surface: the one
   holding focus, or the sheet when focus is in neither.
 - **States.** The header's name, status and phone come from the list line, so it is never late.
   `SheetBody` shows a skeleton (`role="status"`) while the record loads, a notice when the request
@@ -132,18 +134,16 @@ the record card and the list stay usable beside it. The card and the sheet as co
 
 ## The start-time sheet
 
-The record card's `TimePicker` (`(home)/parts/time-picker.tsx`) wraps the `ui/` time wheels in a
-`role="dialog"` sheet that rises from the card's bottom edge on `arrive` and leaves on `leave`,
-over an `aria-hidden` scrim that dims the card and takes no focus. Focus goes to the hour wheel and
-back to the trigger. Done commits the draft; the scrim and Escape discard it, and Escape stops
-there, so the card stays open. Under reduced motion the sheet cross-fades in place on `crossfade`.
+The record card's `TimePicker` (`(home)/parts/time-picker.tsx`) wraps the `ui/` wheels in a
+`role="dialog"` sheet rising from the card's bottom edge on `arrive` and leaving on `leave`, over an
+`aria-hidden` scrim that dims the card and takes no focus. Focus goes to the hour wheel and back;
+Done commits, the scrim or Escape discards without closing the card; reduced motion is `crossfade`.
 
 ## The patient site
 
 The `Header` language menu and navigation submenus are white panels on `--shadow-card` and
-`--z-dropdown`, rendered only while open; a click outside or Escape closes them. The mobile menu
-is a fixed panel under the header on `--z-drawer` that locks page scroll and closes on Escape.
-None of them animate; only their chevrons turn ([roadmap item 16](roadmap.md#16-motion-literals)).
-`LanguageChooser`, which opens by itself only when the browser prefers another supported language
-and no choice is remembered, and `ProfileCardViewer` are native dialogs on `overlay-rise`
-([roadmap item 7](roadmap.md#7-the-legacy-feature-blocks)).
+`--z-dropdown`, rendered only while open and closed by a click outside or Escape; the mobile menu is
+a fixed panel under the header on `--z-drawer` that locks page scroll and closes on Escape. None
+animate but their chevrons ([item 16](roadmap.md#16-motion-literals)). `LanguageChooser`, a native
+dialog that opens itself when the browser prefers another supported language and none is remembered,
+and `ProfileCardViewer` run on `overlay-rise` ([item 7](roadmap.md#7-the-legacy-feature-blocks)).

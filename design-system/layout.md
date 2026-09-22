@@ -84,7 +84,7 @@ Print drops the rail and the shadow and lets the viewport grow to every line.
 | Radius | Value | Holds | Worn by |
 | --- | --- | --- | --- |
 | `--radius-sm` (`rounded-sm`) | 0.375rem | A control or a mark inside a surface | `Input`, `Textarea`, `NativeSelect`, `TimePicker`; Home's triggers, answer rows (`.wgi-answer`) and Overdue stamp (`.portal-stamp`); the skip link |
-| `--radius` (`rounded`) | 0.625rem | A button; portal paper, and a portal menu, popover or toast | `Button`, which the portal retunes to 0.5rem through `--btn-radius` ([recorded exception](tokens.md#recorded-exceptions)); `.portal-queue-workbench`, `.portal-request-record`, `.portal-account-menu > div`, `.wgi-popover`, `Toaster` |
+| `--radius` (`rounded`) | 0.625rem | A button; portal paper, and a portal menu, popover or toast | `Button`, which the portal retunes to 0.5rem through `--btn-radius` ([recorded exception](tokens.md#recorded-exceptions)); `.portal-queue-workbench`, `.portal-request-record`, `.portal-account-menu > div`, `Toaster` |
 | `--radius-lg` (`rounded-lg`) | 0.875rem | A card, a choice card, an image, a modal, a patient-site menu | `.card`, `AuthCard`, `Item`, a `FieldLabel` that wraps a `Field`, patient images and tiles, `Header` navigation menus, `.portal-confirm-dialog`, the tour dialog |
 | `rounded-full` or 999px | A pill | A badge, a count, a chip, a bullet, a scroll thumb | `Badge`, the `ScrollArea` thumb, `.wgi-pill`, `.portal-nav-count`, list bullets |
 
@@ -120,19 +120,19 @@ divide it. Each shadow token has one role, and a surface wears one at a time.
 | `--shadow-card` | A card, image or modal lifted off the page | A single patient photo set beside copy, the physicians page's navy panel, `AuthCard`, `.card`, `ProfileCardViewer`'s shell and toolbar, `Header` menus, the tour dialog, `.portal-confirm-dialog`, `.wgi-time-sheet` |
 | `--shadow-popover` | A layer floating over same-white paper, where `--shadow-card`'s negative spread would hide inside the paper's edge | `.wgi-popover`, `Toaster` |
 
-**A card's shadow is its edge; a portal layer floating over paper adds a hairline.** A card or
-modal never pairs its shadow with a border: `AuthCard` removes the `Card` ring, `.wgi-list-card`
-draws no stroke ("the lift is the edge"), and `.portal-confirm-dialog` sets `border: 0`. A portal
-menu, popover, sheet, shelf or toast draws a `line` or `line-2` hairline beside its shadow, as the
-approved Home frame does: `.wgi-popover`, `.wgi-sheet`, `.wgi-time-sheet`, `Toaster`, the account
-menu and the commit shelf.
+**A card's shadow is its edge; a portal layer floating over paper adds a hairline.** A card or modal
+never pairs its shadow with a border: `AuthCard` removes the `Card` ring and
+`.portal-confirm-dialog` sets `border: 0`. The staff home's list surface is flat paper on the
+canvas, square-cornered with neither stroke nor shadow. A portal menu, popover, sheet, shelf or
+toast draws a `line` or `line-2` hairline beside its shadow, as the approved Home frame does:
+`.wgi-popover`, `.wgi-sheet`, `.wgi-time-sheet`, `Toaster`, the account menu and the commit shelf.
 
 **An inset shadow is a drawn line, not elevation.** `Button` `outline` and `ghost-light` draw
 their 1.5px boundary as an inset shadow, the `commit` press adds inset depth, and Home paints its
 row tints the same way. None of them lifts a surface.
 
 **Recorded drift.** Counted with `node scripts/design-system-docs.mjs css` on commit e7734a4, and
-by searching `rounded-*` and `shadow-*` classes under `src`.
+`home.css` with 174f10e merged, and by searching `rounded-*` and `shadow-*` classes under `src`.
 
 | Where | What | Disposition |
 | --- | --- | --- |
@@ -145,5 +145,5 @@ by searching `rounded-*` and `shadow-*` classes under `src`.
 | Base `:focus-visible` in `globals.css` | A 3px radius | [Roadmap item 8](roadmap.md#8-the-radius-ramp) |
 | `.release-signal`, `.release-summary`, `.language-dialog` in `globals.css` | `calc()` offsets of `--radius-sm` and a border paired with a shadow on the release signal; literal shadows on the summary and the dialog | [Roadmap item 7](roadmap.md#7-the-legacy-feature-blocks) |
 | The shadow tokens' comment in the brand `@theme` | Says a shadow is never paired with a visible border, while six portal floating layers pair one | An open decision on the comment's scope: [roadmap item 10](roadmap.md#10-portal-surface-tints). Until it is settled, follow the rule above, which the approved Home frame sets. |
-| `home.css` | 93 of 141 spacing declarations literal rem; `--wgi-row-radius`, `--wgi-badge-radius`, the 1.4375rem list card, the 6px rail and thumb; `--wgi-card-shadow`, `--wgi-cmd-shadow`, the filter and sheet shadows | Stays: the approved Home frame ([recorded exceptions](tokens.md#recorded-exceptions)) |
+| `home.css` | 100 of 149 spacing declarations literal rem; `--wgi-row-radius`, `--wgi-badge-radius`, `--wgi-cmd-radius`, `.wgi-popover`'s 8px corners, the editor box's 0.25rem, the 6px rail and thumb; `--wgi-card-shadow`, the filter and sheet shadows | Stays: the approved Home frame ([recorded exceptions](tokens.md#recorded-exceptions)) |
 | The review flyer's `@media print` block in `globals.css` | 14pt and 6pt corners | Stays: the block reproduces the approved flyer on letter paper ([recorded exceptions](tokens.md#recorded-exceptions)) |

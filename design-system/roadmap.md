@@ -1,10 +1,10 @@
 # Roadmap — the extraction queue
 
 Each item is recorded drift or a gap and the change that resolves it; its number is a name that
-lives until the change lands. Counts are from commit e7734a4. Each item opens with a status:
-**Ready**, land it through the [adoption workflow](adoption.md#workflow) and the standing gates;
-**Measure first**, measure the running product before deciding; **Jason decides**, a brand call, so
-bring evidence, not a change; **In progress**, Jason's current work, not to start separately.
+lives until the change lands. Counts are from commit e7734a4, rechecked with 174f10e merged. Each
+item opens with a status: **Ready**, land it through the [adoption workflow](adoption.md#workflow)
+and the standing gates; **Measure first**, measure the running product before deciding; **Jason
+decides**, a brand call, so bring evidence, not a change.
 
 ## 1. Card surfaces
 
@@ -96,25 +96,21 @@ a recorded exception. Its icons are part of it: the recipe asks 14px but they re
 ## 12. Portal type weights and heading family
 
 **Jason decides.** The portal loads Lato 400 to 700 and Trocchi 400 (`src/lib/portal-fonts.ts`) with
-synthesis off, so 93 weight requests outside 400–700 in 13 files render at the nearest loaded
+synthesis off, so 92 weight requests outside 400–700 in 13 files render at the nearest loaded
 weight, mostly 700: `.portal-page-title` and `.portal-auth-title` ask for 900, the Requests title
-for the serif at 880, which renders Trocchi 400 ([typography.md](typography.md#recorded-drift)). The
-approved Lato weights stay; bring rendered comparisons.
+for the serif at 880, which renders Trocchi 400 ([typography.md](typography.md#recorded-drift)).
+Thirteen older rules also track -0.005em to -0.025em, eleven of them among those weights, where the
+Home frame tightens only its date, card name and empty heading
+([typography.md](typography.md#numerals-and-tracking)). The approved Lato weights stay; bring
+rendered comparisons.
 
 ## 13. The portal focus color
 
-**Jason decides.** Focus is teal ([color.md](color.md#focus)), but the portal draws an `amber-deep`
-outline from `.portal-scope`, three workbench rules and four Home controls, and
-`call-again-fieldset.tsx` draws `amber`, beside teal recipe rings. Contrast cannot decide: against
-3:1, `amber-deep` measures 3.3–3.7, `teal` 3.4–3.9 and `amber` 1.8–2.0. Bring screens of both.
-
-## 14. The staff home temperament and companion surfaces
-
-**In progress** (Jason's full-record-sheet work). It proposes a staff home curve,
-`cubic-bezier(0.32, 0.72, 0, 1)` at 140, 240 and 420ms (fast, base, sheet), and a record card that
-detaches into a companion of the sheet, anchored to its row. Nothing committed declares them; until
-they land, Home runs on arriving, leaving and tinting, with its own 120ms popover close, 240ms
-row-wash exhale and presses ([motion.md](motion.md#recorded-motion-literals)).
+**Jason decides.** Focus is teal ([color.md](color.md#focus)), and the staff home draws a teal ring,
+but the rest of the portal draws an `amber-deep` outline from `.portal-scope` and three workbench
+rules, and `call-again-fieldset.tsx` draws `amber`, beside teal recipe rings. Contrast cannot
+decide: against 3:1, `amber-deep` measures 3.3–3.7, `teal` 3.4–3.9 and `amber` 1.8–2.0. Bring
+screens of both.
 
 ## 15. The patient-site shared layer
 

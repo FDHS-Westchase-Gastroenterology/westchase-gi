@@ -43,7 +43,7 @@ the padding; a call site adds layout only. The staff home's list card and the si
 | Component | When | Real uses |
 | --- | --- | --- |
 | `Table` `TableHeader` `TableBody` `TableRow` | The grid itself | `line-list.tsx`, `audit/page.tsx`, `release-engagement.tsx` |
-| `TableHead` `TableCell` | A column heading; a cell | `line-list.tsx`, `audit/page.tsx`, `release-engagement.tsx` |
+| `TableHead` `TableCell` | A column heading; a cell | `line-list.tsx`, `line-row.tsx`, `audit/page.tsx`, `release-engagement.tsx` |
 
 - **Every column heading is a `TableHead`, and the recipe supplies `scope="col"`.** A call site
   passes `scope` only for a header that labels a row. The staff home's list adds `data-cell` as

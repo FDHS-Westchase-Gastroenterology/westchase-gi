@@ -81,11 +81,14 @@ Four lowercase `RequestStatus` keys drive it — `new`, `contacted`, `scheduled`
 
 ## Focus
 
-**Focus is teal.** The patient site draws a 2px `teal-ink` outline at a 3px offset on every
-element (`:focus-visible` in `@layer base`). Recipes draw their own ring and set `outline-none`:
+**Focus is teal.** The patient site draws a 2px `teal-ink` outline at a 3px offset on every element
+(`:focus-visible` in `@layer base`). Recipes draw their own ring and set `outline-none`:
 `ring-ring/50` on `Button`, `Badge`, `Checkbox`, `Item` and `ScrollArea`; `border-teal-ink` with
-`ring-teal/25` on `Input`, `Textarea`, `NativeSelect` and `TimePicker`. New focus styles use a
-recipe ring or a `teal-ink` outline.
+`ring-teal/25` on `Input`, `Textarea`, `NativeSelect` and `TimePicker`. The staff home, its popovers
+and its sheet draw one `teal` ring in unlayered `home.css`: a 2px `--portal-surface` gap and a 2px
+band as `box-shadow`, restated inset where a control clips it (the list viewport, pills, answer and
+editor rows) and as a `teal-strong` underline on the filter search. New focus styles use a recipe
+ring or a `teal-ink` outline; a Home control copies the Home ring.
 
 The portal still paints several focus indicators amber. Each row waits on
 [roadmap item 13](roadmap.md#13-the-portal-focus-color).
@@ -93,7 +96,6 @@ The portal still paints several focus indicators amber. Each row waits on
 | Where | Treatment |
 | --- | --- |
 | `.portal-scope :where(a, button, input, select, textarea, summary)` in `portal-workbench.css`, and three more workbench rules | A 3px `amber-deep` outline at a 3px offset. A recipe inside the portal still shows its teal ring, because `outline-none` sits in the utilities layer, which outranks this components-layer rule; one screen can show both colors. |
-| `home.css`: the list viewport, the line trigger, answer rows, the time trigger | A 3px `amber-deep` outline. The filter editor's input underlines in `teal` instead. |
 | `call-again-fieldset.tsx` | A 3px `amber` outline when a link lands focus on the correction group; the reopen group uses `teal-ink`. |
 
 Contrast does not decide between them: on portal surfaces `amber-deep` measures 3.3 to 3.7 and
@@ -119,7 +121,7 @@ Meaning does: amber already says "look here".
 
 ## Recorded drift
 
-Counted with `node scripts/design-system-docs.mjs css` on commit e7734a4: color functions and hex
+Counted with `node scripts/design-system-docs.mjs css` with 174f10e merged: color functions and hex
 values outside `color-mix()`, and `color-mix()` calls, in declarations that are not custom
 properties.
 
@@ -127,7 +129,7 @@ properties.
 | --- | --- | --- | --- |
 | `portal-workbench.css` | 43 | 21 | The printed request sheet's `#172b39` and `#a6b3ba` inks; `.portal-nav-link[aria-current="page"]` in an off-palette green `rgb(80 168 165 / 20%)`; `.portal-request-form-alert` in a second red built from OKLCH literals; the confirm scrim; sidebar text at `rgb(226 239 240 / 58%)`; shadow colors. Mint washes mix at six strengths from 36% to 76%, where Home uses `mint` and `mint-2`. All wait on [roadmap item 10](roadmap.md#10-portal-surface-tints). |
 | `globals.css` | 34 | 12 | Most sit in print blocks; the review flyer's inks are a [recorded exception](tokens.md#recorded-exceptions). The rest belong to the legacy feature blocks, among them `.list-avoid`'s red cross (`oklch(0.5 0.19 25)`, the same red as the workbench alert): [roadmap item 7](roadmap.md#7-the-legacy-feature-blocks) and [item 10](roadmap.md#10-portal-surface-tints). |
-| `home.css` | 5 | 9 | Two shadow colors and three white alphas in the approved Home frame, plus 25 literals inside its custom properties: a [recorded exception](tokens.md#recorded-exceptions). |
+| `home.css` | 9 | 8 | Two shadow colors, three white alphas and four `#fff` fallbacks behind the teal focus ring in the approved Home frame, plus 36 literals inside its custom properties, nine of them the `--wgi-*` values restated on the portaled `.wgi-record-card` and `.wgi-sheet`: a [recorded exception](tokens.md#recorded-exceptions). |
 
 Route files carry one more: the invalid-field red `aria-[invalid=true]:border-[oklch(0.5_0.19_25)]`,
 with a background mixed from a second OKLCH literal, in `outcome-choice-list.tsx`'s `fieldClass`

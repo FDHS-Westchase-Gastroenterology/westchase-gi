@@ -6,8 +6,8 @@ The craft itself lives in the global skills (apple-design, review-animations, im
 
 The registry owns every curve and duration. Do not define an easing token, inline a bezier, or tune a spring by hand. Discuss a temperament the registry lacks with Jason (DESIGN.md "Motion"); once agreed, add it to the registry and reference it from there. Claude Design approval is not required.
 
-- CSS: the brand `@theme` block in `src/app/globals.css`. Curves: `--motion-spring` (a `linear()` sampling of a ζ≈0.7 spring), `--motion-exit`, and for the patient site `--ease-out-quint` and `--ease-out-quart`. Durations: `--motion-spring-duration`, `--motion-exit-duration` and `--motion-micro-duration`. The portal modal reads the same values through its `--pm-*` aliases; the button recipe reads `--btn-duration` and `--btn-ease`.
-- JavaScript: `src/lib/motion.ts` exports the same temperaments for `motion/react`: `arrive`, `leave`, `micro`, `crossfade`, and `transitionFor(kind, reducedMotion)`.
+- CSS: the brand `@theme` block in `src/app/globals.css`. Curves: `--motion-spring` (a `linear()` sampling of a ζ≈0.7 spring), `--motion-exit`, `--motion-standard` (the staff home's curve), and for the patient site `--ease-out-quint` and `--ease-out-quart`. Durations: `--motion-spring-duration`, `--motion-exit-duration`, `--motion-micro-duration`, and the standard curve's three beats `--motion-fast-duration`, `--motion-base-duration` and `--motion-sheet-duration`. The portal modal reads the same values through its `--pm-*` aliases; the button recipe reads `--btn-duration` and `--btn-ease`.
+- JavaScript: `src/lib/motion.ts` exports the same temperaments for `motion/react`: `arrive`, `leave`, `micro`, `fast`, `base`, `sheet`, `crossfade`, and `transitionFor(kind, reducedMotion)`.
 - design-system/components.md "Component API rules" says where a component's motion is declared (the `motion` axis of its recipe in `src/components/ui/`; base strings carry none), and design-system/motion.md "The registry" says which engine and temperament governs what, with the full table of what wears each.
 
 ## Chosen values
@@ -17,10 +17,10 @@ The registry owns every curve and duration. Do not define an easing token, inlin
 | Surfaces entering (modals, drawers, sheets) | `--motion-spring` over `--motion-spring-duration` | `arrive` | 440ms spring, `{ type: "spring", duration: 0.44, bounce: 0.3 }`: lands in about 110ms, one 4.6% overshoot, no second bounce |
 | Surfaces leaving | `--motion-exit` over `--motion-exit-duration` | `leave` | 160ms, `cubic-bezier(0.23, 1, 0.32, 1)`. Exits are faster than entrances. |
 | Micro states (hover tint, pressed ink, checked paint) | `--motion-micro-duration` with an ease-out (`--motion-exit` in the button recipe) | `micro` | 150ms |
+| Staff home (hover/press, popover, full-record sheet, detached card) | `--motion-standard` over `--motion-fast-duration` / `--motion-base-duration` / `--motion-sheet-duration` | `fast` / `base` / `sheet` | `cubic-bezier(0.32, 0.72, 0, 1)` at 140 / 240 / 420ms: feedback, a surface moving (popover in, sheet out, content settling, the detached card settling into its lane), the sheet sliding in and the card yielding to it. Small buttons press to `scale(0.98)`; rows press as a deeper tint. |
 | Reduced motion | the blanket reset in `@layer base` | `crossfade` | 120ms opacity-only cross-fade, no travel |
 
-- A staff home temperament — `cubic-bezier(0.32, 0.72, 0, 1)` at 140 / 240 / 420ms for feedback, a surface moving, and the sheet sliding in — is proposed rather than chosen: no token, preset or rule carries it yet, and the staff home wears the temperaments above. It lands through design-system/roadmap.md "14. The staff home temperament and companion surfaces".
-- Press feedback: every pressable element has an `:active` state. Portal: `scale(0.98)` at the micro duration. Patient site: lift-then-settle (design-system/motion.md "Buttons feel pressed"). The scale stays within 0.95–0.98.
+- Press feedback: every pressable element has an `:active` state. Portal: `scale(0.98)` at the micro duration, on the staff home at the fast beat. Patient site: lift-then-settle (design-system/motion.md "Buttons feel pressed"). The scale stays within 0.95–0.98.
 - Entrances start at `scale(0.95)` to `scale(0.97)` with opacity, never `scale(0)`.
 - Bounce is `arrive`'s and no more. More bounce is for drag-to-dismiss and playful interactions only.
 

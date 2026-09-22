@@ -119,11 +119,11 @@ repeats it and fails on a restyle this table lacks or a row the code no longer m
 | `Input` | `text-[0.85rem]` | `recipient-row.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
 | `NativeSelect` | `font-bold` `text-[var(--color-body)]` | `staff-manager.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
 
-The census covers `ui/` imports. On bfe0fc6, 24 of the 75 native `<button>` elements outside `ui/`
-and `stock/` draw their own border or radius: 17 in the portal, 11 of them in the settings managers
-(`recipient-row.tsx`, `staff-manager.tsx`, `software/maintainer-access.tsx`), and seven on the
-patient site and review hub. They wait on [item 17](roadmap.md#17-call-site-restyles); a new
-pressable wears `Button` or `buttonVariants()` ([buttons.md](buttons.md#button-or-link)).
+The census covers `ui/` imports. With 174f10e merged, 24 of the 76 native `<button>` elements
+outside `ui/` and `stock/` draw their own border or radius: 17 in the portal, 11 of them in the
+settings managers (`recipient-row.tsx`, `staff-manager.tsx`, `software/maintainer-access.tsx`), and
+seven on the patient site and review hub. They wait on [item 17](roadmap.md#17-call-site-restyles);
+a new pressable wears `Button` or `buttonVariants()` ([buttons.md](buttons.md#button-or-link)).
 
 ## Global CSS
 
