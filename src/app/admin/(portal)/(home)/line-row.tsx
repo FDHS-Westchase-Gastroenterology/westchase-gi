@@ -76,7 +76,12 @@ export function LineRow({
 }>) {
   const rowRef = useRef<HTMLTableRowElement>(null);
   const [side, setSide] = useState<"top" | "bottom">("bottom");
-  const detach = useCardDetach({ open, row: rowRef, onDetachChange });
+  const detach = useCardDetach({
+    open,
+    sheetOpen: fullOpen,
+    row: rowRef,
+    onDetachChange,
+  });
   /* Staff work at a desk with a phone in hand: the number is text to read
     and copy (one click selects all of it), not a link that would open a
     softphone. On a touch screen it is a dial. The record card keeps its own
@@ -111,7 +116,11 @@ export function LineRow({
       onClick={(event) => {
         /* The whole row opens the record; its phone link stays a dial, its
            chevron is the trigger itself, and a click that selected text
-           (the phone number, to copy) is a selection, not an open. */
+           (the phone number, to copy) is a selection, not an open. The card
+           is portaled to body but still a React child of this row, so its
+           clicks bubble here — the release that ends a drag of its head
+           among them. Only a click on the row itself toggles the card. */
+        if (!(event.target instanceof Node) || !event.currentTarget.contains(event.target)) return;
         if (onControl(event) || selecting(event.currentTarget)) return;
         if (!open) setSide(preferredSide(rowRef.current));
         onOpenChange(!open);
@@ -188,7 +197,6 @@ export function LineRow({
             <RecordCard
               line={line}
               fullOpen={fullOpen}
-              detached={detach.detached}
               dragHandleProps={detach.handleProps}
               onClose={() => {
                 onOpenChange(false);

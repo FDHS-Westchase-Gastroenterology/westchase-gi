@@ -1,5 +1,6 @@
 import { useCallback, useRef } from "react";
 
+import { listGutter, roomBesidePanel, SIDEBAR_LAYOUT, sidebarWall } from "./panel-lane";
 import { OPEN_CARD } from "./sheet-coexistence";
 
 /* The sheet panel's box: how wide it may be, where it opens, and how it
@@ -12,8 +13,6 @@ const MIN_WIDTH_PX = 384;
 const KEY_STEP_PX = 32;
 /** The widest the sheet goes when nothing walls it: a sliver of page stays. */
 const VIEWPORT_SHARE = 0.94;
-/** The layout with the sidebar as a column, where the sheet sits beside the card. */
-const SIDEBAR_LAYOUT = "(min-width: 60rem)";
 
 /* The bounds of a resize, in the sheet's own box width. That box carries
    the off-screen bleed home.css authors past the viewport edge (so the
@@ -21,9 +20,9 @@ const SIDEBAR_LAYOUT = "(min-width: 60rem)";
    than repeated as a constant. The measure is the layout box, not the
    painted one: on its first frame the popup is still sliding in, and a
    bound read off a transformed rect would drift by it. On the wide layout
-   there are two walls: the sidebar's right edge, and the open card's —
+   there are two walls: the sidebar's right edge, and the open card —
    the card is never covered, so the sheet stops one list gutter short of
-   it. Below that breakpoint the sidebar is a bottom bar and the sheet
+   it, or of where a detached panel can yield to. Below that breakpoint the sidebar is a bottom bar and the sheet
    keeps the viewport share. */
 interface SheetBounds {
   readonly min: number;
@@ -33,8 +32,7 @@ interface SheetBounds {
 
 function boundsFor(sheet: HTMLElement): SheetBounds {
   const bleed = Math.max(0, sheet.offsetLeft + sheet.offsetWidth - window.innerWidth);
-  const side = document.querySelector(".portal-sidebar")?.getBoundingClientRect();
-  const wall = side !== undefined && side.width < window.innerWidth ? side.right : 0;
+  const wall = sidebarWall();
   const widest = Math.min(
     window.innerWidth * VIEWPORT_SHARE,
     window.innerWidth - wall,
@@ -54,24 +52,21 @@ function rubberband(overshoot: number, dimension: number): number {
 
 /* The room beside the open card on the sidebar layout: from the card's
    right edge to the viewport edge, less one list gutter, so the sheet
-   clears the card by the gap the list keeps. Null when there is no card
-   to clear, when the card is a detached panel — a panel floats above the
-   sheet and is no wall to it — or the layout is the narrow one, where
-   nothing is clamped. The edge is read on the positioner, not the popup:
-   the popup's entry scale bends its painted edge in for a beat, and a
-   retarget's refit lands inside that beat — the layout box again, as in
-   boundsFor. The gutter is read off the home root because the sheet is
-   portaled to body and cannot inherit it. */
+   clears the card by the gap the list keeps. A detached panel is a wall
+   that gives: it yields leftward as the sheet widens (panel-lane.ts), so
+   its room is what it can make — never so much that it would be pushed
+   over the nav. Null when there is no card to clear, or the layout is the
+   narrow one, where nothing is clamped. The attached card's edge is read
+   on the positioner, not the popup: the popup's entry scale bends its
+   painted edge in for a beat, and a retarget's refit lands inside that
+   beat — the layout box again, as in boundsFor. */
 function cardClearance(): number | null {
   if (!window.matchMedia(SIDEBAR_LAYOUT).matches) return null;
-  const card = document.querySelector(OPEN_CARD);
-  const home = document.querySelector(".wgi-home");
-  if (card === null || card.hasAttribute("data-detached") || home === null) return null;
-  const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
-  const gutterRem = Number.parseFloat(getComputedStyle(home).getPropertyValue("--wgi-gutter"));
-  const gutter = Number.isFinite(gutterRem) ? gutterRem * rem : 0;
+  const card = document.querySelector<HTMLElement>(OPEN_CARD);
+  if (card === null || document.querySelector(".wgi-home") === null) return null;
+  if (card.hasAttribute("data-detached")) return roomBesidePanel(card);
   const right = (card.parentElement ?? card).getBoundingClientRect().right;
-  return window.innerWidth - right - gutter;
+  return window.innerWidth - right - listGutter();
 }
 
 /* The width the sheet should hold: the remembered width, else the

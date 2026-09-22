@@ -156,7 +156,6 @@ function SecondRow({
 export function RecordCard({
   line,
   fullOpen,
-  detached,
   dragHandleProps,
   onClose,
   onOpenFull,
@@ -165,9 +164,6 @@ export function RecordCard({
   line: Readonly<HomeLine>;
   /** This record's full-record sheet is open beside the card. */
   fullOpen: boolean;
-  /** The card is a detached panel: its head carries the close button a
-      popover does not need (an outside press is its close). */
-  detached: boolean;
   /** The head's grab surface, from use-card-detach.ts. */
   dragHandleProps: Pick<ComponentProps<"div">, "onPointerDown">;
   onClose: () => void;
@@ -209,11 +205,17 @@ export function RecordCard({
               {line.pref} · {line.timing}
             </span>
           </p>
-          {detached ? (
-            <button type="button" className="wgi-record-close" aria-label="Close" onClick={onClose}>
-              <CloseGlyph size={16} />
-            </button>
-          ) : null}
+          {/* The card's own close, at the head's right like the sheet's: an
+              outside press also closes the popover, but not the panel it
+              becomes once dragged, and a pointer should not have to guess. */}
+          <button
+            type="button"
+            className="wgi-record-close"
+            aria-label="Close record card"
+            onClick={onClose}
+          >
+            <CloseGlyph size={16} />
+          </button>
         </div>
         <a href={line.tel} className="wgi-record-call" data-ui-redact="patient-contact">
           <PhoneGlyph size={15} />
