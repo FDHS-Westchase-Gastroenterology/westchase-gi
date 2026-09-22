@@ -1,7 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
-import type { MouseEvent as ReactMouseEvent, ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import type { ReactNode } from "react";
 
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import {
@@ -10,22 +17,11 @@ import {
   ScrollAreaViewport,
   ScrollBar,
 } from "@/components/ui/scroll-area";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 import { requestCount } from "./home-line";
 import type { HomeLine } from "./home-line";
-import { LineStatusBadge } from "./parts/badge";
-import { ChevronGlyph, PhoneGlyph } from "./parts/glyphs";
-import { HomePopover, HomePopoverContent, HomePopoverTrigger } from "./parts/popover";
-import { RecordCard } from "./record-card";
-import { cardStaysOpen } from "./sheet-coexistence";
+import { LineRow } from "./line-row";
 
 /* The request list (issue #282): one thin floating surface — column labels,
    rows, the inset scrollbar and a count footer — whose rows scroll inside it
@@ -33,13 +29,31 @@ import { cardStaysOpen } from "./sheet-coexistence";
    recipe; the columns are the Table recipe under a sticky header; the
    scrolling element is the ScrollArea viewport, named and focusable, so the
    wheel, the keyboard and the thumb all move the same box. Geometry and paint
-   live in home.css under `.wgi-list*` and `.appt-*`. */
+   live in home.css under `.wgi-list*` and `.appt-*`.
+
+   Under an open record card the surface is blurred and inert (Figma node
+   76:781, the surface's softening): every element on it but the anchor
+   row — the column labels, the other rows, the footer, the scroll rail —
+   takes a blur as its own paint, and the body answers no presses, so a
+   press anywhere on it is the outside press that closes the card (HIG
+   Popovers) and the rail cannot be dragged. Nothing is tinted, because
+   dimming means modal; the blur alone softens. Nothing is measured
+   either: the card's data-veiled flag is the whole mechanism, and the
+   open row stays sharp because the blur is never painted on it — a
+   popover should not cover the element that revealed it. A card dragged
+   into a panel lifts the blur (use-card-detach.ts): the panel floats
+   free of the list, so the list is no longer "under" it. */
 
 interface LineListProps {
   readonly lines: readonly Readonly<HomeLine>[];
   /** Changes when a committed filter changes: the new result set starts at the top. */
   readonly resetKey: string;
   readonly openRowId: string | null;
+  /** The record whose full-record sheet is open, when one is — the open
+      card for it turns its footer into the sheet's toggle. */
+  readonly sheetId: string | null;
+  /** The record being worked on (home-dashboard.tsx): its row keeps the deeper mint. */
+  readonly selectedId: string | null;
   readonly settledId: string | null;
   readonly onOpenRow: (id: string | null) => void;
   readonly onOpenFull: (id: string, instant: boolean) => void;
@@ -92,6 +106,8 @@ export function LineList({
   lines,
   resetKey,
   openRowId,
+  sheetId,
+  selectedId,
   settledId,
   onOpenRow,
   onOpenFull,
@@ -104,6 +120,25 @@ export function LineList({
   const tableRef = useRef<HTMLTableElement>(null);
   const rangeRef = useRef<HTMLSpanElement>(null);
   const count = lines.length;
+
+  /* The open card's panel state, reported up from its row: a detached card
+     floats free of the list, so the blur lifts while it is one. The flag
+     resets when the open row changes — another row's card starts attached
+     — and a render-phase reset keeps it in step without a painted frame
+     in the wrong state. */
+  const [detached, setDetached] = useState(false);
+  const [detachedRow, setDetachedRow] = useState(openRowId);
+  if (detachedRow !== openRowId) {
+    setDetachedRow(openRowId);
+    setDetached(false);
+  }
+  /* A committed filter change can hide the open row without its card
+     ever closing, and a detached flag for a row that is not rendered is
+     stale — the same row coming back opens attached. */
+  if (detached && openRowId !== null && !lines.some((line) => line.id === openRowId)) {
+    setDetached(false);
+  }
+  const veiled = openRowId !== null && !detached;
 
   /* The footer's range is written straight to its text node from the scroll
      listener — no React render per scroll frame, and no announcement, since
@@ -148,7 +183,11 @@ export function LineList({
   }, [resetKey]);
 
   return (
-    <Card className="wgi-list-card" data-testid="home-list-surface">
+    <Card
+      className="wgi-list-card"
+      data-testid="home-list-surface"
+      data-veiled={veiled || undefined}
+    >
       <CardContent className="wgi-list-body">
         {count === 0 ? (
           empty
@@ -187,14 +226,21 @@ export function LineList({
                       line={line}
                       dial={dial}
                       open={openRowId === line.id}
+                      fullOpen={sheetId === line.id}
+                      selected={selectedId === line.id}
                       settled={settledId === line.id}
                       onOpenChange={(open) => {
+                        /* Every close comes through here — the row's
+                           click, the chevron's outside press, the panel's
+                           own close — so the panel flag clears with it. */
+                        setDetached(false);
                         onOpenRow(open ? line.id : null);
                       }}
                       onOpenFull={(instant) => {
                         onOpenFull(line.id, instant);
                       }}
                       onSettled={onSettled}
+                      onDetachChange={setDetached}
                     />
                   ))}
                 </TableBody>
@@ -216,155 +262,5 @@ export function LineList({
         </CardFooter>
       )}
     </Card>
-  );
-}
-
-function stop(event: Readonly<{ stopPropagation: () => void }>): void {
-  event.stopPropagation();
-}
-
-/** True when the click landed on a control of its own — a link or a button. */
-function onControl(event: ReactMouseEvent<HTMLTableRowElement>): boolean {
-  return event.target instanceof Element && event.target.closest("a, button") !== null;
-}
-
-/** True when the click ends a text selection inside the row: staff copying
-   a phone number, not opening the record. */
-// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- DOM nodes carry platform member types that cannot be made readonly
-function selecting(row: HTMLTableRowElement): boolean {
-  const selection = window.getSelection();
-  return selection !== null && !selection.isCollapsed && selection.containsNode(row, true);
-}
-
-function LineRow({
-  line,
-  dial,
-  open,
-  settled,
-  onOpenChange,
-  onOpenFull,
-  onSettled,
-}: Readonly<{
-  line: Readonly<HomeLine>;
-  /** Render the phone as a dial link (touch) or as copyable text (desktop). */
-  dial: boolean;
-  open: boolean;
-  settled: boolean;
-  onOpenChange: (open: boolean) => void;
-  onOpenFull: (instant: boolean) => void;
-  onSettled: (id: string) => void;
-}>) {
-  const rowRef = useRef<HTMLTableRowElement>(null);
-  /* Staff work at a desk with a phone in hand: the number is text to read
-     and copy (one click selects all of it), not a link that would open a
-     softphone. On a touch screen it is a dial. The record card keeps its own
-     call link either way. */
-  const phone = dial ? (
-    <a
-      href={line.tel}
-      className="appt-phone"
-      aria-label={`Call ${line.name} at ${line.phoneDisplay}`}
-      data-ui-redact="patient-contact"
-      onClick={stop}
-      onMouseDown={stop}
-      onPointerDown={stop}
-    >
-      <PhoneGlyph size={18} />
-      {line.phoneDisplay}
-    </a>
-  ) : (
-    <span className="appt-phone" data-ui-redact="patient-contact">
-      <PhoneGlyph size={18} />
-      {line.phoneDisplay}
-    </span>
-  );
-  return (
-    <TableRow
-      ref={rowRef}
-      data-row={line.id}
-      data-open={open || undefined}
-      data-settled={settled || undefined}
-      className="wgi-list-row"
-      onClick={(event) => {
-        /* The whole row opens the record; its phone link stays a dial, its
-           chevron is the trigger itself, and a click that selected text
-           (the phone number, to copy) is a selection, not an open. */
-        if (onControl(event) || selecting(event.currentTarget)) return;
-        onOpenChange(!open);
-      }}
-    >
-      <TableCell data-cell="patient">
-        <span className="appt-name" data-ui-redact="patient-name">
-          {line.name}
-        </span>
-        <span className="appt-phone-stack">{phone}</span>
-      </TableCell>
-      <TableCell data-cell="phone">{phone}</TableCell>
-      <TableCell data-cell="status">
-        <span className="appt-status">
-          <span data-col="status">
-            <LineStatusBadge status={line.status} />
-          </span>
-        </span>
-      </TableCell>
-      <TableCell data-cell="pref">
-        <span data-col="pref">{line.pref}</span>
-      </TableCell>
-      <TableCell data-cell="received">
-        {/* An overdue line carries no second badge: its age turns the attention
-            ink and bold (D4, 2026-09-13), and the word stays for a screen reader. */}
-        <span
-          data-col="received"
-          data-overdue={line.stamp === null ? undefined : true}
-          title={`Received ${line.receivedFull}`}
-        >
-          {line.receivedRel}
-          {line.stamp === null ? null : <span className="sr-only">, {line.stamp}</span>}
-        </span>
-      </TableCell>
-      <TableCell data-cell="open">
-        {/* The popover lives in the row's last cell, not around the row: its
-            portal leaves focus-guard spans beside the trigger, and a span is
-            valid inside a cell where it is not inside a table body. The card
-            still anchors to the whole row. */}
-        <HomePopover
-          open={open}
-          onOpenChange={(next, details) => {
-            /* The card declines a close that belongs to a surface it shares
-               the screen with — its own row, the save toast, or the
-               full-record sheet beside it. `cardStaysOpen` holds the rules
-               and the sheet's half of the Escape rule with them. */
-            if (!next && cardStaysOpen(details, rowRef.current)) {
-              details.cancel();
-              return;
-            }
-            onOpenChange(next);
-          }}
-        >
-          <HomePopoverTrigger
-            className="appt-line-trigger"
-            aria-label={`Open request for ${line.name}`}
-          >
-            <ChevronGlyph size={18} />
-          </HomePopoverTrigger>
-          <HomePopoverContent
-            className="wgi-record-card"
-            anchor={rowRef}
-            side="bottom"
-            align="start"
-            sideOffset={8}
-          >
-            <RecordCard
-              line={line}
-              onClose={() => {
-                onOpenChange(false);
-              }}
-              onOpenFull={onOpenFull}
-              onSettled={onSettled}
-            />
-          </HomePopoverContent>
-        </HomePopover>
-      </TableCell>
-    </TableRow>
   );
 }

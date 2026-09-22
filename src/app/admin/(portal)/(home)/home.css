@@ -1,14 +1,79 @@
 /* ---- Home dashboard: the filter bar and the flat line list ----
    Implements `Portal Home Redesign.dc.html`. Every color arrives through the
    brand tokens / the portal bridge; type sits on the closed --pt-* scale;
-   radii are the brand's three steps. Motion is authored fresh for this
-   surface (portal-home-redesign-brief §4.5): hover tints ride a 130ms strong
-   ease-out, popovers grow from their trigger in 160ms and leave in 120ms,
-   a recorded outcome lands as a 480ms mint fade on the row.
+   radii are the brand's three steps. Motion is the registry's standard curve
+   (--motion-standard) over its three beats: hover tints and presses on the
+   fast beat (140ms), popovers grow from their trigger on the base beat
+   (240ms) and leave on the fast one, the full-record sheet slides in on the
+   sheet beat (420ms) and leaves on the base one, and a recorded outcome lands
+   as a mint wash on the row.
+
+   Three colors say three things (DESIGN.md "Motion", Apple-inspired
+   restraint): mint is "you can interact here" and "this is the record",
+   teal is keyboard focus, amber is text selected for copying.
 
    These rules are intentionally unlayered: they must outrank the Tailwind
    utilities the stock-derived parts carry (same trick the design file used
    against the bundle's @layer). */
+
+/* ---------- Focus: one teal ring ----------
+   Keyboard focus is teal, drawn with box-shadow so nothing moves, with a
+   surface-coloured gap so it stays distinct from the mint hover and selected
+   fills. :where() keeps it at zero specificity: a control that must draw the
+   ring inside its clipped box (a capsule, a list row, the list viewport) or
+   as an underline (the filter search box) restates it beside its own rules.
+   This file is unlayered, so it outranks the amber outline in
+   portal-workbench.css and the site's base outline on the portaled
+   surfaces. */
+.wgi-home :where(a, button, input, [tabindex]):focus-visible,
+.wgi-popover
+  :where(
+    a,
+    button,
+    input,
+    [role="checkbox"],
+    [role="radio"],
+    [data-slot="radio-group-item"]
+  ):focus-visible,
+.wgi-sheet :where(a, button, input):focus-visible,
+.wgi-sheet:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
+}
+
+/* ---------- Press: one shared small-button feedback ----------
+   scale(.98) on the fast beat, a transition so a release mid-press eases
+   back. Every control in this list carries `transform` in its transition.
+   Wide bars (the sheet's foot, a pill's label, an answer row) press as a
+   deeper tint instead: a scale would open gaps at their ends. */
+.wgi-add-filter:active,
+.wgi-sug:active,
+.wgi-pill-remove:active,
+.appt-line-trigger:active,
+.wgi-editor-dim:active,
+.wgi-editor-apply:active:enabled,
+.wgi-time-trigger:active:enabled,
+.wgi-record-follow > [data-slot="toggle-group-item"]:active:enabled,
+.wgi-record-call:active,
+.wgi-record-close:active,
+.wgi-empty-clear:active,
+.wgi-sheet-close:active,
+.wgi-sheet-call:active {
+  transform: scale(0.98);
+}
+
+/* ---------- Text selection ----------
+   Amber, the portal's own (portal-workbench.css). The popover and the sheet
+   are portaled outside .portal-scope and would otherwise take the site's
+   base selection; they restate it here so a phone number reads the same
+   whether copied from the list, the card or the sheet. */
+.wgi-popover ::selection,
+.wgi-sheet ::selection {
+  background: var(--color-amber-soft);
+  color: var(--color-navy-2);
+}
 
 /* ---------- Filter bar ---------- */
 
@@ -35,17 +100,18 @@
   font-weight: 600;
   cursor: pointer;
   transition:
-    background-color var(--motion-micro-duration) var(--motion-exit),
-    transform var(--motion-micro-duration) var(--motion-exit);
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
 }
 
-.wgi-add-filter:hover,
+@media (hover: hover) {
+  .wgi-add-filter:hover {
+    background: var(--color-mint-hover);
+  }
+}
+
 .wgi-add-filter[data-popup-open] {
   background: var(--color-mint);
-}
-
-.wgi-add-filter:active {
-  transform: scale(0.97);
 }
 
 .wgi-add-filter > svg {
@@ -75,11 +141,13 @@
   font-family: inherit;
   font-size: var(--pt-xs);
   cursor: pointer;
-  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
 }
 
-.wgi-pill-label:hover {
-  background: var(--color-mint);
+@media (hover: hover) {
+  .wgi-pill-label:hover {
+    background: var(--color-mint-hover);
+  }
 }
 
 .wgi-pill-label:active,
@@ -110,19 +178,22 @@
   color: var(--color-muted-ink);
   cursor: pointer;
   transition:
-    background-color var(--motion-micro-duration) var(--motion-exit),
-    color var(--motion-micro-duration) var(--motion-exit);
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
 }
 
-.wgi-pill-remove:hover {
-  background: var(--color-mint);
-  color: var(--color-ink);
+@media (hover: hover) {
+  .wgi-pill-remove:hover {
+    background: var(--color-mint-hover);
+    color: var(--color-ink);
+  }
 }
 
-/* The capsule clips; outlines must sit inside it to stay visible. */
+/* The capsule clips; the ring sits inside it to stay visible. */
 .wgi-pill-label:focus-visible,
 .wgi-pill-remove:focus-visible {
-  outline-offset: -3px;
+  box-shadow: inset 0 0 0 2px var(--color-teal);
 }
 
 /* Suggestion pill: a complete pre-filled filter, dashed and quiet, one click
@@ -140,18 +211,16 @@
   font-size: var(--pt-xs);
   cursor: pointer;
   transition:
-    background-color var(--motion-micro-duration) var(--motion-exit),
-    border-color var(--motion-micro-duration) var(--motion-exit),
-    transform var(--motion-micro-duration) var(--motion-exit);
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    border-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
 }
 
-.wgi-sug:hover {
-  background: var(--portal-surface);
-  border-color: var(--color-line-3);
-}
-
-.wgi-sug:active {
-  transform: scale(0.97);
+@media (hover: hover) {
+  .wgi-sug:hover {
+    background: var(--portal-surface);
+    border-color: var(--color-line-3);
+  }
 }
 
 /* The count a ghost would show: quiet numerals after the value, so a glance
@@ -205,14 +274,13 @@
   --wgi-name-size: 1.156rem;
   --wgi-phone-size: 0.969rem;
   --wgi-label-size: 0.906rem;
-  /* Figma parity (file GrBLYZSAxioZ8syWPHChlb, frame 3:46; D1 is 23:2745):
-     the mockup's paints, read from the frame and scoped to Home so the brand
-     @theme stays untouched. Three of its inks failed AA and were darkened
-     along their own hue until they pass on every row band: --wgi-muted-ink
-     (#7284a0 -> #576883, 4.54 on the open tint), --wgi-label-ink-canvas
-     (#647493 -> #5a6a89, 4.93 on the canvas); the label ink itself is only
-     used on the surface, where #647493 clears 4.5. The phone glyph is
-     decorative and keeps the frame's #94a8c3. */
+  /* Figma parity: the paints below are the design file's own variables
+     (Ypf9ohpRcGWF5C9T9bSvWW, "Home · Approved baseline", node 88:1176,
+     which carries these names), scoped to Home so the brand @theme stays
+     untouched. --wgi-muted-ink was darkened along its hue to pass AA on the
+     open tint (#7284a0 -> #576883, 4.54). The phone glyph is decorative and
+     keeps the frame's #94a8c3. The card shadow is the record card's lift now
+     (node 76:1005); the list surface is flat. */
   --wgi-surface: #fcfdfe;
   --wgi-card-shadow: 0 7px 20px rgba(36, 68, 94, 0.18);
   --wgi-rule: #dfe6ef;
@@ -221,16 +289,13 @@
   --wgi-open: #dbe9ea;
   --wgi-row-radius: 12px;
   --wgi-name-ink: #10143a;
-  --wgi-label-ink: #647493;
-  --wgi-label-ink-canvas: #5a6a89;
   --wgi-muted-ink: #576883;
   --wgi-icon-ink: #94a8c3;
   --wgi-track: #e3e8f0;
   --wgi-thumb: #9ca8ba;
   --wgi-chip-stroke: #c4d5e5;
-  --wgi-cmd-fill: #f8f9fb;
-  --wgi-cmd-stroke: #ccd3dd;
-  --wgi-cmd-shadow: 0 2px 6px rgba(27, 51, 74, 0.08);
+  --wgi-cmd-fill: #ffffff;
+  --wgi-cmd-stroke: #b9c7d8;
   /* Status badges are glass (issue #300): a 65% fill that lands on the
      frame's paint over the surface (#fff0dc, #e7f3f8) and lets each row band
      show through, the frame's 1.3px stroke, 7.5px corners. The New ink is
@@ -242,28 +307,39 @@
   --wgi-badge-new-fill: rgb(255 232 201 / 0.65);
   --wgi-badge-new-stroke: #ffcb89;
   --wgi-badge-new-ink: #9b5410;
-  --wgi-badge-contacted-fill: rgb(218 236 244 / 0.65);
-  --wgi-badge-contacted-stroke: #adc6da;
-  --wgi-badge-contacted-ink: #28435d;
+  /* The September 15 refinements (Figma Ypf9ohpRcGWF5C9T9bSvWW, node
+     88:1176): Call again is a pale amber, Scheduled a pale green, and the
+     commands, canvas and card take the values below. Inks pass AA on the
+     open tint: contacted 5.6, scheduled 5.9. */
+  --wgi-badge-contacted-fill: #fdefdb;
+  --wgi-badge-contacted-stroke: #f4dab5;
+  --wgi-badge-contacted-ink: #95500c;
+  --wgi-badge-scheduled-fill: #d7efe5;
+  --wgi-badge-scheduled-stroke: #bde4d6;
+  --wgi-badge-scheduled-ink: #006650;
+  --wgi-cmd-primary: #173758;
+  --wgi-cmd-radius: 6px;
 }
 
-/* The page behind Home is the frame's cooler canvas, so the card's shadow
-   reads as a lift instead of a hairline. The workspace and the main element
+/* The page behind Home is the frame's quiet neutral canvas (--portal-canvas
+   in the file), against which the list surface reads as a flat grouped
+   surface rather than a lifted card. The workspace and the main element
    both paint --portal-canvas, so the property is re-pointed for this
    subtree; :has keeps the other portal pages on the brand canvas. */
 .portal-workspace:has(.wgi-home) {
-  --portal-canvas: #e8f6fc;
+  --portal-canvas: #f2f4f7;
 }
 
 /* The header loses its navy rule: the surface below closes the header now.
-   Greeting 17px medium in the muted ink, the day 36px bold in the page ink. */
+   Greeting 17px medium and the day 36px bold, both in the page ink, 4px
+   apart. */
 .wgi-home > .portal-sheet-head {
   border-block-end: 0;
   padding-block-end: 0;
 }
 
 .wgi-home .portal-sheet-greeting {
-  color: var(--wgi-label-ink-canvas);
+  color: var(--wgi-name-ink);
   font-family: var(--font-body), Arial, sans-serif;
   font-size: var(--pt-base);
   font-weight: 500;
@@ -280,25 +356,62 @@
   line-height: 1.1;
 }
 
-/* Both commands are quiet, as the approved treatment paints them (#285):
-   a near-white fill, a fine cool stroke, a low shadow and the page ink, so
-   neither outranks the day or the list. The Button recipe keeps the
-   geometry, press and focus; only paint is set here, so the outline hover
-   has to be restated (this file outranks its utilities). */
-.wgi-cmd {
-  font-weight: 600;
-  background: var(--wgi-cmd-fill);
-  box-shadow:
-    inset 0 0 0 1px var(--wgi-cmd-stroke),
-    var(--wgi-cmd-shadow);
-  color: var(--color-ink);
+/* The commands as the approved frame paints them (node 88:1211): 40px tall,
+   6px corners, 16px sides, 15.68px semibold, 12px apart. Print requests is
+   white with a 1px cool stroke in the page ink; Add request is the one
+   filled command, the frame's deep navy with white text. The Button recipe
+   keeps the press and focus; paint and geometry are set here, so the
+   outline hover has to be restated (this file outranks its utilities). */
+.wgi-home .portal-sheet-commands {
+  gap: 0.75rem;
 }
 
-.wgi-cmd:hover {
-  background: var(--wgi-surface);
+.wgi-cmd {
+  min-height: 2.5rem;
+  border-radius: var(--wgi-cmd-radius);
+  padding-block: 0;
+  padding-inline: 1rem;
+  font-size: 0.98rem;
+  font-weight: 600;
+  background: var(--wgi-cmd-fill);
+  box-shadow: inset 0 0 0 1px var(--wgi-cmd-stroke);
+  color: var(--wgi-name-ink);
+}
+
+@media (hover: hover) {
+  .wgi-cmd:hover {
+    background: var(--wgi-surface);
+    box-shadow: inset 0 0 0 1px var(--wgi-muted-ink);
+  }
+}
+
+.wgi-cmd-primary {
+  background: var(--wgi-cmd-primary);
+  box-shadow: none;
+  color: var(--color-on-dark);
+}
+
+@media (hover: hover) {
+  .wgi-cmd-primary:hover {
+    background: color-mix(in oklch, var(--wgi-cmd-primary) 88%, white);
+    box-shadow: none;
+  }
+}
+
+/* The recipe's ring is Tailwind's; the shared teal ring above replaces it,
+   and the command keeps its stroke beneath the ring. */
+.wgi-cmd:focus-visible {
+  --tw-ring-shadow: 0 0 #0000;
   box-shadow:
-    inset 0 0 0 1px var(--wgi-muted-ink),
-    var(--wgi-cmd-shadow);
+    inset 0 0 0 1px var(--wgi-cmd-stroke),
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
+}
+
+.wgi-cmd-primary:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
 }
 
 /* Filters sit 26px under the header, 11px apart; the Add filter capsule is
@@ -328,9 +441,11 @@
   font-size: var(--pt-sm);
 }
 
-.wgi-home .wgi-sug:hover {
-  background: var(--wgi-surface);
-  border-color: var(--wgi-muted-ink);
+@media (hover: hover) {
+  .wgi-home .wgi-sug:hover {
+    background: var(--wgi-surface);
+    border-color: var(--wgi-muted-ink);
+  }
 }
 
 .wgi-home .wgi-pill {
@@ -354,28 +469,61 @@
 }
 
 /* ---------- The list surface ----------
-   One Card: 23px corner, 23px of paper above the column labels, the rows
-   scrolling inside, a count footer that never moves. The Tailwind strings
-   the Card and Table recipes carry (spacing, ring, hairlines, uppercase
-   labels) are overridden here; this file is unlayered for that reason. */
+   One flat grouped surface (node 88:1220): square-cornered paper on the
+   neutral canvas, no stroke and no shadow, 23px of paper above the column
+   labels, the rows scrolling inside, a count footer that never moves. The
+   Tailwind strings the Card and Table recipes carry (spacing, ring,
+   hairlines, uppercase labels) are overridden here; this file is
+   unlayered for that reason. */
 
 .wgi-list-card {
   display: flex;
   flex: 1 1 0;
   flex-direction: column;
+  position: relative;
   /* Never shorter than the labels, six and a half rows and the footer:
      a short window scrolls the page rather than crushing the list. */
   min-height: calc(var(--wgi-head-h) + 6.5 * var(--wgi-row-h) + 5.5rem);
   margin-block-start: 1.5rem;
   gap: 0;
   overflow: hidden;
-  border-radius: 1.4375rem;
+  border-radius: 0;
   background: var(--wgi-surface);
-  /* The frame's one soft shadow and no stroke: the lift is the edge. */
-  box-shadow: var(--wgi-card-shadow);
+  box-shadow: none;
   padding: 1.4375rem 0 0;
-  color: var(--color-body);
-  font-size: var(--pt-sm);
+}
+
+/* The blur under an open record card (Figma node 76:781, the surface's
+   softening): every element on the surface but the anchor row — the
+   column labels, the other rows, the footer, the scroll rail — takes the
+   blur as its own paint, and the body answers no presses, so a press
+   anywhere on it is the outside press that closes the card (HIG
+   Popovers) and the rail cannot be dragged. The elements carry no tint,
+   because dimming means modal; the blur alone softens. Nothing is
+   measured: the card's data-veiled flag is the whole mechanism, and the
+   open row stays sharp because the blur is never painted on it. The
+   popover portals out of the body, so the card itself is untouched. */
+.wgi-list-card[data-veiled] .wgi-list-body {
+  pointer-events: none;
+}
+
+.wgi-list-card[data-veiled] .wgi-list-row:not([data-open]),
+.wgi-list-card[data-veiled] .wgi-list-head th,
+.wgi-list-card[data-veiled] .wgi-list-foot,
+.wgi-list-card[data-veiled] .wgi-list-rail {
+  filter: blur(4px);
+}
+
+/* Reduced transparency: the blur is the softening, so each element fades
+   to the 12% the old 88% surface wash left showing. */
+@media (prefers-reduced-transparency: reduce) {
+  .wgi-list-card[data-veiled] .wgi-list-row:not([data-open]),
+  .wgi-list-card[data-veiled] .wgi-list-head th,
+  .wgi-list-card[data-veiled] .wgi-list-foot,
+  .wgi-list-card[data-veiled] .wgi-list-rail {
+    filter: none;
+    opacity: 0.12;
+  }
 }
 
 .wgi-list-body {
@@ -407,10 +555,10 @@
   border-radius: 0;
 }
 
+/* The card clips the viewport, so its ring sits inside. */
 .wgi-list-viewport:focus-visible {
-  outline: 3px solid var(--color-amber-deep);
-  outline-offset: -3px;
-  box-shadow: none;
+  outline: none;
+  box-shadow: inset 0 0 0 3px var(--color-teal);
 }
 
 .wgi-list-table {
@@ -420,7 +568,7 @@
   border-spacing: 0;
 }
 
-/* Column widths from the frame (240 / 216 / 243 / 265 / 109 / 24 of 1097). */
+/* Column widths from the frame (22 / 20 / 20 / 24 / 12 percent, then the chevron). */
 .wgi-list-table [data-cell="patient"] {
   width: 22%;
 }
@@ -430,23 +578,26 @@
 }
 
 .wgi-list-table [data-cell="status"] {
-  width: 22%;
+  width: 20%;
 }
 
 .wgi-list-table [data-cell="pref"] {
   width: 24%;
 }
 
+/* Wide enough for "13 hr ago" and "5 days ago" at the 1440 desktop width,
+   the badge column giving up the room: the frame draws both at 1632. */
 .wgi-list-table [data-cell="received"] {
-  width: 10%;
+  width: 12%;
 }
 
 .wgi-list-table [data-cell="open"] {
   width: 2.5rem;
 }
 
-/* Column labels: 36px tall, title case, bold label ink, a hairline below.
-   Sticky inside the viewport, painted so rows pass beneath, not through. */
+/* Column labels: 36px tall, title case, medium in the page ink, a hairline
+   below. Sticky inside the viewport, painted so rows pass beneath, not
+   through. */
 .wgi-list-head th {
   position: sticky;
   top: 0;
@@ -456,13 +607,14 @@
   border-bottom: 1px solid var(--wgi-rule);
   background: var(--wgi-surface);
   padding: 0 1rem;
-  color: var(--wgi-label-ink);
+  color: var(--wgi-name-ink);
   font-size: var(--wgi-label-size);
   font-weight: 500;
   letter-spacing: 0;
   text-align: left;
   text-transform: none;
   vertical-align: middle;
+  transition: filter var(--motion-base-duration) var(--motion-standard);
 }
 
 .wgi-list-head tr {
@@ -476,6 +628,9 @@
 .wgi-list-row {
   height: var(--wgi-row-h);
   border: 0;
+  /* The blur lands on the row, not the cells — the filter is the tr's own
+     paint, so the band and its radii soften as one piece. */
+  transition: filter var(--motion-base-duration) var(--motion-standard);
 }
 
 .wgi-list-row > td {
@@ -493,8 +648,8 @@
      replays it. */
   box-shadow: inset 0 0 0 100vmax transparent;
   transition:
-    background-color var(--motion-micro-duration) var(--motion-exit),
-    box-shadow 240ms cubic-bezier(0.19, 1, 0.22, 1);
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    box-shadow var(--motion-base-duration) var(--motion-standard);
 }
 
 .wgi-list-row > td:first-child {
@@ -512,17 +667,26 @@
   background-color: var(--wgi-band);
 }
 
-/* The whole row opens the record (line-list.tsx); the mint says so on
-   hover, the deeper mint while its record is open. */
+/* The whole row opens the record (line-list.tsx); the light mint says so on
+   hover, on a hover-capable device only. */
 @media (hover: hover) {
   .wgi-list-row:hover > td {
-    background-color: var(--wgi-hover);
+    background-color: var(--color-mint-hover);
   }
 }
 
-.wgi-list-row[data-open] > td,
-.wgi-list-row[data-open]:hover > td {
+/* The record being worked on (home-dashboard.tsx owns it): the deeper mint
+   holds through hover and focus elsewhere, while the card or the sheet is
+   open, and until the sheet has finished leaving. */
+.wgi-list-row[data-selected] > td,
+.wgi-list-row[data-selected]:hover > td {
   background-color: var(--wgi-open);
+}
+
+/* Pressed: deeper still, the whole row at its normal size. */
+.wgi-list-row:active > td,
+.wgi-list-row[data-selected]:active > td {
+  background-color: var(--color-mint-press);
 }
 
 .wgi-list-row[data-settled] > td {
@@ -571,13 +735,15 @@ span.appt-phone {
 
 /* On a touch screen it is a dial, and the link says so on hover. */
 a.appt-phone {
-  transition: color var(--motion-micro-duration) var(--motion-exit);
+  transition: color var(--motion-fast-duration) var(--motion-standard);
 }
 
-a.appt-phone:hover {
-  color: var(--color-teal-ink);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+@media (hover: hover) {
+  a.appt-phone:hover {
+    color: var(--color-teal-ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
 }
 
 /* The glyph is decorative (the number beside it is the text), so it may
@@ -638,19 +804,28 @@ a.appt-phone:hover {
   outline: none;
   -webkit-tap-highlight-color: transparent;
   transition:
-    background-color var(--motion-micro-duration) var(--motion-exit),
-    color var(--motion-micro-duration) var(--motion-exit);
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
 }
 
-.appt-line-trigger:hover,
+@media (hover: hover) {
+  .appt-line-trigger:hover {
+    background: var(--color-mint-2);
+    color: var(--color-ink);
+  }
+}
+
 .appt-line-trigger[data-popup-open] {
   background: var(--color-mint-2);
   color: var(--color-ink);
 }
 
-.appt-line-trigger:focus-visible {
-  outline: 3px solid var(--color-amber-deep);
-  outline-offset: -2px;
+/* The chevron presses with its row: the same deeper mint, and the shared
+   small-button scale. */
+.appt-line-trigger:active {
+  background: var(--color-mint-press);
+  color: var(--color-ink);
 }
 
 /* ---------- The rail ----------
@@ -672,6 +847,7 @@ a.appt-phone:hover {
   border-radius: 6px;
   background: var(--wgi-track);
   padding: 0;
+  transition: filter var(--motion-base-duration) var(--motion-standard);
 }
 
 .wgi-list-rail[data-orientation="vertical"] {
@@ -684,7 +860,7 @@ a.appt-phone:hover {
   flex: none;
   border-radius: 6px;
   background: var(--wgi-thumb);
-  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
 }
 
 /* A 44px-wide hit area around an 11px track, inside the gutter; the drawn
@@ -768,8 +944,9 @@ a.appt-phone:hover {
 }
 
 /* ---------- The footer ----------
-   Count at the left, range at the right, 16px bold muted, tabular; on
-   the surface's own paper, no rule above it. */
+   Count at the left, range at the right, 16px regular in the page ink,
+   tabular, a hairline above it (node 88:1241). The rule spans the rows'
+   width, so the footer sits inside the card's own padding. */
 .wgi-list-foot {
   display: flex;
   flex: none;
@@ -778,14 +955,17 @@ a.appt-phone:hover {
   justify-content: space-between;
   gap: 0.25rem 1rem;
   min-height: 1.5625rem;
+  margin-inline: 1.4375rem var(--wgi-gutter);
   border: 0;
+  border-top: 1px solid var(--wgi-rule);
   border-radius: 0;
   background: transparent;
-  padding: 0.75rem var(--wgi-gutter) 1.375rem 1.875rem;
-  color: var(--wgi-label-ink);
+  transition: filter var(--motion-base-duration) var(--motion-standard);
+  padding: 0.75rem 0 1.375rem 0.4375rem;
+  color: var(--wgi-name-ink);
   font-size: 1rem;
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  font-weight: 400;
 }
 
 .wgi-list-range {
@@ -921,7 +1101,6 @@ a.appt-phone:hover {
   }
 
   .wgi-list-card {
-    border-radius: var(--radius-lg);
     padding-top: 1rem;
   }
 
@@ -934,7 +1113,8 @@ a.appt-phone:hover {
   }
 
   .wgi-list-foot {
-    padding: 0.625rem 1rem 1rem;
+    margin-inline: 0.75rem var(--wgi-gutter);
+    padding: 0.625rem 0 1rem 0.25rem;
     font-size: var(--pt-xs);
   }
 
@@ -993,11 +1173,11 @@ a.appt-phone:hover {
   border-color: var(--wgi-badge-contacted-stroke);
 }
 
-/* The portal's own statuses on the same glass, from the brand tokens. */
+/* Scheduled on the same glass, in the frame's pale green. */
 .wgi-badge-scheduled {
-  background: color-mix(in srgb, var(--color-navy) 12%, transparent);
-  color: var(--color-navy);
-  border-color: color-mix(in srgb, var(--color-navy) 32%, transparent);
+  background: var(--wgi-badge-scheduled-fill);
+  color: var(--wgi-badge-scheduled-ink);
+  border-color: var(--wgi-badge-scheduled-stroke);
 }
 
 .wgi-badge-closed {
@@ -1069,22 +1249,30 @@ a.appt-phone:hover {
 
 /* ---------- Popover shell (fresh StockPopover conversion) ---------- */
 
+/* The positioner is a box at the anchor, not a surface: a card dragged
+   into a panel (use-card-detach.ts) leaves it behind, and the rows under
+   that empty box must still take the press. The popup takes its own. */
+.wgi-popover-positioner {
+  pointer-events: none;
+}
+
+/* The frame's card (node 76:1005): 8px corners, a hairline in the list
+   rule, and the one soft lift the list surface used to carry. */
 .wgi-popover {
-  border: 1px solid var(--color-line-2);
-  border-radius: var(--radius);
-  background: var(--portal-surface);
+  pointer-events: auto;
+  border: 1px solid var(--wgi-rule, var(--color-line-2));
+  border-radius: 8px;
+  background: var(--wgi-surface, var(--portal-surface));
   color: var(--color-body);
-  box-shadow: var(--shadow-popover);
+  box-shadow: var(--wgi-card-shadow, var(--shadow-popover));
   outline: none;
   transform-origin: var(--transform-origin);
-  /* A small popover, so it arrives on the registry's exit temperament
-     (160ms, strong ease-out) rather than the 440ms spring the modals ride;
-     design-eng.md caps small popovers at 125–200ms. The exit is a faster
-     version of the same curve. Both read the --pm-* registry, never an
-     inlined bezier. */
+  /* Scale and fade from the trigger's origin on the base beat (240ms) of
+     the standard curve; the exit is the same curve on the fast beat. Both
+     read the registry, never an inlined bezier. */
   transition:
-    transform var(--pm-exit-duration) var(--pm-exit),
-    opacity var(--pm-exit-duration) var(--pm-exit);
+    transform var(--motion-base-duration) var(--motion-standard),
+    opacity var(--motion-base-duration) var(--motion-standard);
 }
 
 .wgi-popover[data-starting-style],
@@ -1094,7 +1282,7 @@ a.appt-phone:hover {
 }
 
 .wgi-popover[data-ending-style] {
-  transition-duration: 120ms;
+  transition-duration: var(--motion-fast-duration);
 }
 
 /* Keyboard-initiated actions never animate. Base UI marks the popup
@@ -1110,17 +1298,24 @@ a.appt-phone:hover {
 /* The registry's "date picker with presets" shape: the editor's 20rem
    calendar (so the two share one calendar) with a 13.5rem column beside
    it for who, how to reach them, what happened, and Save. The month is
-   six weeks tall whatever it shows, so the card is one fixed height that
-   stands above or below any row of a 900px screen; the max-height is a
-   safety net for a shorter viewport, not a mode. */
+   six weeks tall whatever it shows, so the card is one fixed height. The
+   positioner keeps the side the row gives it and shifts the card into
+   view rather than shrinking it (a popover is only as big as its
+   contents): the first row can never squeeze below its content, and the
+   max-height with a whole-card scroll is the last resort for a viewport
+   shorter than the card, not a mode. */
 .wgi-record-card {
+  /* Portaled to body, so the home root's --wgi-* paints are restated. */
+  --wgi-band: #eaf1f7;
+  --wgi-cmd-primary: #173758;
+  --wgi-open: #dbe9ea;
   display: grid;
   width: 33.5rem;
   max-height: var(--available-height, 40rem);
   overflow: auto;
   padding: 0;
   grid-template-columns: 13.5rem minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(max-content, 1fr) auto;
   grid-template-areas:
     "side main"
     "commit main";
@@ -1191,8 +1386,72 @@ a.appt-phone:hover {
   }
 }
 
+/* The head is the card's grab surface: a drag here past the threshold
+   detaches the card into a panel (use-card-detach.ts; HIG Popovers on
+   detachable popovers). `touch-action: none` keeps the pointer events on
+   the head rather than starting a scroll, `user-select: none` keeps the
+   name from selecting under the grab, and the grab cursor says the card
+   can move. */
 .wgi-record-head {
+  position: relative;
   padding: 0.8rem 0.9rem 0.55rem;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.wgi-record-card[data-dragging] .wgi-record-head {
+  cursor: grabbing;
+}
+
+/* A detached panel carries its own close button where a popover has none
+   (HIG Panels): the head makes room for it. */
+.wgi-record-card[data-detached] .wgi-record-head {
+  padding-right: 2.75rem;
+}
+
+/* The panel's close: the sheet's small quiet button at the head's corner,
+   2rem drawn with a 44px hit area reaching past it. */
+.wgi-record-close {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--btn-radius);
+  background: none;
+  padding: 0;
+  color: var(--color-muted-ink);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-record-close::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+
+@media (hover: hover) {
+  .wgi-record-close:hover {
+    background: var(--color-mint-hover);
+    color: var(--color-ink);
+  }
+}
+
+/* Below the sidebar breakpoint the card cannot detach, so the head is
+   not a grab surface and touches on it keep their scroll. */
+@media (max-width: 59.99rem) {
+  .wgi-record-head {
+    cursor: default;
+    touch-action: auto;
+  }
 }
 
 .wgi-record-name {
@@ -1221,17 +1480,23 @@ a.appt-phone:hover {
   margin: 0 0.9rem;
   padding: 0.5rem 0.7rem;
   border-radius: var(--radius-sm);
-  background: var(--color-mint);
-  /* the primary action is printed ink (8.1:1 on mint); teal is for hover */
-  color: var(--color-navy);
+  /* The frame's phone action (Portal/Phone action): the row band as its
+     fill and the command navy as its ink (9.4:1); mint is for hover. */
+  background: var(--wgi-band);
+  color: var(--wgi-cmd-primary);
   font-size: var(--pt-sm);
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
 }
 
-.wgi-record-call:hover {
-  background: var(--color-mint-2);
-  color: var(--color-teal-ink);
+@media (hover: hover) {
+  .wgi-record-call:hover {
+    background: var(--color-mint-hover);
+    color: var(--wgi-cmd-primary);
+  }
 }
 
 .wgi-record-call > svg {
@@ -1269,8 +1534,8 @@ a.appt-phone:hover {
   cursor: pointer;
   text-align: start;
   transition:
-    background-color var(--motion-micro-duration) var(--motion-exit),
-    transform var(--motion-micro-duration) var(--motion-exit);
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
 }
 
 .wgi-answer[data-closes] {
@@ -1279,23 +1544,29 @@ a.appt-phone:hover {
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
 }
 
-.wgi-answer:has([data-slot="radio-group-item"]:enabled):hover {
-  background: var(--color-mint);
+@media (hover: hover) {
+  .wgi-answer:has([data-slot="radio-group-item"]:enabled):hover {
+    background: var(--color-mint-hover);
+  }
 }
 
+/* A whole-row press is a deeper tint, not a scale (a wide bar). */
 .wgi-answer:has([data-slot="radio-group-item"]:enabled):active {
-  transform: scale(0.98);
-  background: var(--color-mint-2);
-  transition-duration: 0s;
+  background: var(--color-mint-press);
 }
 
 .wgi-answer:has([data-checked]) {
   background: var(--color-mint-2);
 }
 
+/* The ring is the row's, inside it; the radio itself draws nothing. */
 .wgi-answer:has([data-slot="radio-group-item"]:focus-visible) {
-  outline: 3px solid var(--color-amber-deep);
-  outline-offset: -3px;
+  box-shadow: inset 0 0 0 2px var(--color-teal);
+}
+
+.wgi-answer [data-slot="radio-group-item"]:focus-visible {
+  outline: none;
+  box-shadow: none;
 }
 
 .wgi-answer:has([data-slot="radio-group-item"]:disabled) {
@@ -1315,7 +1586,7 @@ a.appt-phone:hover {
    but quiet: the card keeps its shape and the eye keeps its map. */
 .wgi-record-cal {
   flex: 1 1 auto;
-  transition: opacity var(--motion-micro-duration) var(--motion-exit);
+  transition: opacity var(--motion-fast-duration) var(--motion-standard);
 }
 
 .wgi-record-cal .wgi-editor-cal {
@@ -1360,25 +1631,22 @@ a.appt-phone:hover {
   /* The registry ships transition-all on Tailwind's ease; name the
      properties and read the registry curve, the button recipe's way. */
   transition:
-    background-color var(--motion-micro-duration) var(--motion-exit),
-    border-color var(--motion-micro-duration) var(--motion-exit),
-    color var(--motion-micro-duration) var(--motion-exit),
-    transform var(--motion-micro-duration) var(--motion-exit);
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    border-color var(--motion-fast-duration) var(--motion-standard),
+    color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
 }
 
-.wgi-record-follow > [data-slot="toggle-group-item"]:hover {
-  background: var(--color-mint);
+@media (hover: hover) {
+  .wgi-record-follow > [data-slot="toggle-group-item"]:hover {
+    background: var(--color-mint-hover);
+  }
 }
 
 .wgi-record-follow > [data-slot="toggle-group-item"][data-pressed] {
   border-color: var(--color-teal-ink);
   background: var(--color-mint-2);
   color: var(--color-navy);
-}
-
-.wgi-record-follow > [data-slot="toggle-group-item"]:active:enabled {
-  transform: scale(0.98);
-  transition-duration: 0s;
 }
 
 /* The time beside its word: one trigger on the strip, and the wheels the
@@ -1417,9 +1685,9 @@ a.appt-phone:hover {
   font-variant-numeric: tabular-nums;
   cursor: pointer;
   transition:
-    background-color var(--motion-micro-duration) var(--motion-exit),
-    border-color var(--motion-micro-duration) var(--motion-exit),
-    transform var(--motion-micro-duration) var(--motion-exit);
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    border-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
 }
 
 /* 11.1:1 on the surface: an unfilled field reads as a prompt, not as ink. */
@@ -1434,18 +1702,10 @@ a.appt-phone:hover {
   color: var(--color-teal-ink);
 }
 
-.wgi-time-trigger:hover:enabled {
-  background: var(--color-mint);
-}
-
-.wgi-time-trigger:active:enabled {
-  transform: scale(0.98);
-  transition-duration: 0s;
-}
-
-.wgi-time-trigger:focus-visible {
-  outline: 3px solid var(--color-amber-deep);
-  outline-offset: -3px;
+@media (hover: hover) {
+  .wgi-time-trigger:hover:enabled {
+    background: var(--color-mint-hover);
+  }
 }
 
 .wgi-time-trigger[aria-expanded="true"] {
@@ -1519,16 +1779,27 @@ a.appt-phone:hover {
 }
 
 /* Save: the card's one commit, painted as the editor's Apply, along the
-   column's lower edge. */
+   column's lower edge. The hint strip above it holds one line whether it
+   has anything to say or not — the same "never jumps" rule the second
+   row keeps — so a disabled Save can always say what it waits for. */
 .wgi-record-commit {
   display: flex;
+  flex-direction: column;
   border-top: 1px solid var(--color-line);
   padding: 0.55rem 0.5rem 0.6rem;
   grid-area: commit;
 }
 
+.wgi-record-hint {
+  min-height: 1.1rem;
+  margin: 0 0 0.35rem;
+  color: var(--color-body); /* the meta's ink: muted-ink reads as haze at this size */
+  font-size: var(--pt-2xs);
+}
+
 .wgi-record-commit > .wgi-editor-apply {
-  flex: 1 1 0;
+  flex: none;
+  width: 100%;
   margin-top: 0;
 }
 
@@ -1542,7 +1813,9 @@ a.appt-phone:hover {
 }
 
 /* The way into the full record: the strip along the calendar's lower
-   edge, the earlier card's foot at its own density. */
+   edge, the earlier card's foot at its own density. It is the sheet's
+   toggle — Open, then Hide — and its open state wears the working row's
+   deeper mint, so row, toggle and sheet share one tint. */
 .wgi-record-foot {
   display: flex;
   width: 100%;
@@ -1558,14 +1831,41 @@ a.appt-phone:hover {
   font-size: var(--pt-xs);
   font-weight: 700;
   cursor: pointer;
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
 }
 
-.wgi-record-foot:hover {
-  background: var(--color-mint);
+@media (hover: hover) {
+  .wgi-record-foot:hover {
+    background: var(--color-mint-hover);
+  }
 }
 
+.wgi-record-foot[aria-expanded="true"] {
+  background: var(--wgi-open);
+}
+
+@media (hover: hover) {
+  .wgi-record-foot[aria-expanded="true"]:hover {
+    background: var(--wgi-open);
+  }
+}
+
+/* A bar the card's width: the press is a deeper tint. */
+.wgi-record-foot:active,
+.wgi-record-foot[aria-expanded="true"]:active {
+  background: var(--color-mint-press);
+}
+
+/* The chevron flips in the open state, pointing back toward the card: a
+   hint of the direction the sheet will go. State, not travel — reduced
+   motion drops the transition and keeps the flip. */
 .wgi-record-foot > svg {
   flex: none;
+  transition: transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-record-foot[aria-expanded="true"] > svg {
+  transform: scaleX(-1);
 }
 
 /* ---------- The editor popover ---------- */
@@ -1596,9 +1896,10 @@ a.appt-phone:hover {
   color: var(--color-muted-ink);
 }
 
+/* The search box's ring is its underline, in the stronger teal. */
 .wgi-editor-input:focus-visible {
   outline: none;
-  box-shadow: inset 0 -2px 0 var(--color-teal);
+  box-shadow: inset 0 -2px 0 var(--color-teal-strong);
 }
 
 /* "<Dimension> ⌄" beside the search box, going up one level: the category
@@ -1631,11 +1932,15 @@ a.appt-phone:hover {
   font-size: var(--pt-2xs);
   font-weight: 700;
   cursor: pointer;
-  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
 }
 
-.wgi-editor-dim:hover {
-  background: var(--color-mint);
+@media (hover: hover) {
+  .wgi-editor-dim:hover {
+    background: var(--color-mint-hover);
+  }
 }
 
 .wgi-editor-dim > svg {
@@ -1673,12 +1978,22 @@ a.appt-phone:hover {
   display: flex;
   align-items: center;
   border-radius: var(--radius-sm);
-  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
 }
 
-.wgi-editor-opt:hover,
+@media (hover: hover) {
+  .wgi-editor-opt:hover {
+    background: var(--color-mint-hover);
+  }
+}
+
 .wgi-editor-opt:focus-within {
   background: var(--color-mint);
+}
+
+/* An option row presses as a deeper tint: it is the popover's width. */
+.wgi-editor-opt:active {
+  background: var(--color-mint-press);
 }
 
 .wgi-editor-row {
@@ -1699,8 +2014,9 @@ a.appt-phone:hover {
   text-align: start;
 }
 
+/* Rows sit flush in the list, so their rings sit inside them. */
 .wgi-editor-row:focus-visible {
-  outline-offset: -3px;
+  box-shadow: inset 0 0 0 2px var(--color-teal);
 }
 
 .wgi-editor-row[data-muted] {
@@ -1727,7 +2043,7 @@ a.appt-phone:hover {
 }
 
 .wgi-editor-check:focus-visible {
-  outline-offset: -3px;
+  box-shadow: inset 0 0 0 2px var(--color-teal);
 }
 
 .wgi-editor-check + .wgi-editor-row {
@@ -1745,8 +2061,8 @@ a.appt-phone:hover {
   border-radius: 0.25rem;
   background: transparent;
   transition:
-    background-color var(--motion-micro-duration) var(--motion-exit),
-    border-color var(--motion-micro-duration) var(--motion-exit);
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    border-color var(--motion-fast-duration) var(--motion-standard);
 }
 
 .wgi-editor-box[data-checked] {
@@ -1777,16 +2093,24 @@ a.appt-phone:hover {
 
 /* The label's hint shows for the row; the checkbox's hint takes over while
    the pointer or focus is on the box itself. */
-.wgi-editor-opt:hover .wgi-editor-quick[data-target="label"],
 .wgi-editor-opt:focus-within .wgi-editor-quick[data-target="label"],
-.wgi-editor-opt:has(.wgi-editor-check:hover) .wgi-editor-quick[data-target="check"],
 .wgi-editor-opt:has(.wgi-editor-check:focus-visible) .wgi-editor-quick[data-target="check"] {
   visibility: visible;
 }
 
-.wgi-editor-opt:has(.wgi-editor-check:hover) .wgi-editor-quick[data-target="label"],
 .wgi-editor-opt:has(.wgi-editor-check:focus-visible) .wgi-editor-quick[data-target="label"] {
   visibility: hidden;
+}
+
+@media (hover: hover) {
+  .wgi-editor-opt:hover .wgi-editor-quick[data-target="label"],
+  .wgi-editor-opt:has(.wgi-editor-check:hover) .wgi-editor-quick[data-target="check"] {
+    visibility: visible;
+  }
+
+  .wgi-editor-opt:has(.wgi-editor-check:hover) .wgi-editor-quick[data-target="label"] {
+    visibility: hidden;
+  }
 }
 
 /* The calendar view: the month grid is the popover's full width, then a
@@ -1851,16 +2175,14 @@ a.appt-phone:hover {
   font-weight: 700;
   cursor: pointer;
   transition:
-    background-color var(--motion-micro-duration) var(--motion-exit),
-    transform var(--motion-micro-duration) var(--motion-exit);
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
 }
 
-.wgi-editor-apply:hover:enabled {
-  background: color-mix(in oklch, var(--color-navy) 88%, white);
-}
-
-.wgi-editor-apply:active:enabled {
-  transform: scale(0.97);
+@media (hover: hover) {
+  .wgi-editor-apply:hover:enabled {
+    background: color-mix(in oklch, var(--color-navy) 88%, white);
+  }
 }
 
 .wgi-editor-apply:disabled {
@@ -1933,102 +2255,174 @@ a.appt-phone:hover {
   font-weight: 700;
   cursor: pointer;
   transition:
-    background-color var(--motion-micro-duration) var(--motion-exit),
-    transform var(--motion-micro-duration) var(--motion-exit);
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
 }
 
-.wgi-empty-clear:hover {
-  background: var(--color-mint);
-}
-
-.wgi-empty-clear:active {
-  transform: scale(0.97);
+@media (hover: hover) {
+  .wgi-empty-clear:hover {
+    background: var(--color-mint-hover);
+  }
 }
 
 /* ---------- Full record: the right sheet ---------- */
 
-/* The sheet runs non-modal beside the record card
-   (plans/full-record-sheet-decisions.md, Phase 0): no scrim, no scroll
-   lock, nothing inert behind it. It arrives from the card: the popup's
-   transform-origin is the card's "Open full record" button, which
-   full-record-sheet.tsx sets as --wgi-sheet-origin-x/y from that button's
-   rect, clamped into the sheet's own box — so when the card ends before
-   the sheet begins, the origin sits on the sheet's left edge at the
-   button's height. From there the sheet scales in from 0.96 with a fade:
-   the registry's entrance start, one 4.6% overshoot on the spring, settled
-   inside half a second. The fade rides the exit curve, which finishes
-   "it's here" while the spring settles the scale. It leaves faster than it
-   came, toward the same point. Transitions rather than keyframes, so a
-   close during the entrance reverses from wherever the sheet is. With no
-   card the origin falls back to the left edge, centred.
-   The box bleeds 4vw past the viewport's right edge: a scale from a
-   left-edge origin pulls the right edge in by 4% of the box, the widest
-   sheet is 94vw, and the bleed keeps the viewport edge covered instead of
-   flashing a strip of page while the spring lands. The widths below are
-   the visible sheet; the bleed is added on top, and the resize code
-   measures it rather than repeating the number. */
+/* The sheet is the record's inspector: it runs beside the record card,
+   undimmed — no backdrop and no blur, because dimming the page says modal
+   and this surface is not one (plans/full-record-sheet-decisions.md, the
+   companion model; Apple HIG's detachable popovers and panels). The card
+   detaches beside its row and stays on top of the sheet on the sidebar
+   layout, never covered — and it is the wall the sheet resizes against
+   (full-record-sheet-geometry.ts). The sheet slides in from the right edge
+   on the sheet beat (420ms) of the standard curve and leaves the same way
+   on the base beat (240ms): exits are quieter than entrances, and the path
+   in is the path out (DESIGN.md "Motion", spatial consistency).
+   Transitions rather than keyframes, so a close during the entrance
+   reverses from wherever the sheet is. The slide is transform only; under
+   reduced motion the surface cross-fades instead, with no travel.
+   The box bleeds 4vw past the viewport's right edge: the resize grip's
+   rubber band translates the sheet toward that edge past its narrow
+   bound, and the bleed keeps the edge covered instead of flashing a strip
+   of page. The widths below are the visible sheet; the bleed is added on
+   top, and the resize code measures it rather than repeating the number.
+   The sheet sits on the drawer layer above the sidebar (z 60) and the
+   popovers (z 50); on the sidebar layout the record card's positioner
+   rises one layer above it (below), and below the breakpoint the
+   full-width sheet covers the card as before. */
 .wgi-sheet {
   --wgi-sheet-bleed: 4vw;
   position: fixed;
   inset-block: 0;
   right: calc(-1 * var(--wgi-sheet-bleed));
-  z-index: 50;
+  z-index: var(--z-drawer, 80);
   box-sizing: border-box;
   height: 100%;
-  width: calc(42rem + var(--wgi-sheet-bleed));
+  /* The frame's sheet (node 72:627): 542px wide on the list surface, a
+     hairline in the list rule, a soft spill toward the page. The sheet is
+     portaled to body, so the home root's --wgi-* paints are restated. */
+  --wgi-surface: #fcfdfe;
+  --wgi-rule: #dfe6ef;
+  --wgi-band: #eaf1f7;
+  --wgi-name-ink: #10143a;
+  --wgi-muted-ink: #576883;
+  --wgi-cmd-primary: #173758;
+  width: calc(33.875rem + var(--wgi-sheet-bleed));
   /* The sidebar is the wall: never past its edge, and never the whole
      viewport when there is no sidebar column to stop at. */
   max-width: calc(94vw + var(--wgi-sheet-bleed));
-  background: var(--portal-surface);
+  background: var(--wgi-surface);
   border: 0;
-  border-left: 1px solid var(--color-line-2);
-  /* Directional spill toward the page, the sidebar's shadow mirrored. */
-  box-shadow: -24px 0 48px -28px oklch(0.28 0.05 245 / 0.5);
+  border-left: 1px solid var(--wgi-rule);
+  box-shadow: -10px 0 14px rgba(31, 56, 79, 0.16);
   padding: 0 var(--wgi-sheet-bleed) 0 0;
   outline: none;
-  transform-origin: var(--wgi-sheet-origin-x, 0%) var(--wgi-sheet-origin-y, 50%);
   transition:
-    transform var(--pm-spring-duration) var(--pm-spring),
-    opacity var(--pm-exit-duration) var(--pm-exit);
+    transform var(--motion-sheet-duration) var(--motion-standard),
+    opacity var(--motion-sheet-duration) var(--motion-standard);
 }
 
-/* At the sidebar breakpoint the sheet sits above the record card (the
-   popover's positioner is z 50): a sheet widened over the card keeps its
-   grip reachable. `--z-drawer` is the registry's drawer layer in the brand
-   @theme; nothing else reads it yet, so the fallback repeats its value in
-   case the token is not emitted. Below the breakpoint the sheet keeps 50
-   (mobile unchanged). */
+/* At the sidebar breakpoint the sidebar is a column: the sheet stops at
+   its edge. */
 @media (min-width: 60rem) {
   .wgi-sheet {
-    z-index: var(--z-drawer, 80);
     max-width: calc(min(94vw, 100vw - 17rem) + var(--wgi-sheet-bleed));
   }
 }
 
 .wgi-sheet[data-starting-style] {
-  opacity: 0;
-  transform: scale(0.96);
+  transform: translateX(100%);
 }
 
 .wgi-sheet[data-ending-style] {
-  opacity: 0;
-  transform: scale(0.97);
-  transition:
-    transform var(--pm-exit-duration) var(--pm-exit),
-    opacity var(--pm-exit-duration) var(--pm-exit);
+  transform: translateX(100%);
+  transition-duration: var(--motion-base-duration);
 }
 
 /* Keyboard-initiated actions never animate: the sheet marks itself
    data-instant for an open or close that came from the keyboard, the
-   attribute Base UI's popovers set on their own. */
-.wgi-sheet[data-instant] {
+   attribute Base UI's popovers set on their own. The content's settle
+   goes with it. */
+.wgi-sheet[data-instant],
+.wgi-sheet[data-instant] :is(.wgi-sheet-head, .wgi-sheet-body, .wgi-sheet-foot) {
   transition-duration: 0ms;
+  transition-delay: 0ms;
+  animation: none;
+}
+
+/* A live drag tracks the pointer 1:1 — nothing eases while a finger is on
+   the grip — and letting go of the rubber band eases it home on the base
+   beat, not the sheet's slower arrival. data-fitting is the one case a
+   width change animates: a programmatic refit when the bounds moved under
+   an open sheet (the card arriving beside it, a retarget, the window
+   resizing), never during a drag. */
+.wgi-sheet[data-dragging] {
+  transition: none;
+}
+
+.wgi-sheet[data-fitting] {
+  transition:
+    width var(--motion-base-duration) var(--motion-standard),
+    transform var(--motion-sheet-duration) var(--motion-standard),
+    opacity var(--motion-sheet-duration) var(--motion-standard);
+}
+
+/* After data-fitting, so the band's ease home keeps the base beat even
+   while a width fit is in flight. */
+.wgi-sheet[data-settling] {
+  transition-duration: var(--motion-base-duration);
+}
+
+/* The detached card is never covered: on the sidebar layout its
+   positioner rises one layer above the sheet, and the card is the wall
+   the sheet's resize stops at. Below the breakpoint the card keeps the
+   popover layer and the full-width sheet covers it, as before. */
+@media (min-width: 60rem) {
+  .wgi-popover-positioner:has(.wgi-record-card) {
+    z-index: calc(var(--z-drawer, 80) + 1);
+  }
+}
+
+/* The content settles a beat behind the surface: header, then body, a
+   short fade-and-nudge on the base beat, 60ms apart. A keyframe rather
+   than a starting-style transition so the same settle replays when the
+   keyed content remounts on a retarget — the inspector's cue that the
+   selection changed. Exits do not stagger — the sheet leaves whole. */
+@keyframes wgi-sheet-settle {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+
+/* Under reduced motion the settle keeps its fade and drops the travel. */
+@keyframes wgi-sheet-settle-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.wgi-sheet-head,
+.wgi-sheet-body {
+  animation: wgi-sheet-settle var(--motion-base-duration) var(--motion-standard) both;
+}
+
+.wgi-sheet-body {
+  animation-delay: 60ms;
 }
 
 .wgi-sheet-surface {
   position: relative;
   display: flex;
   flex-direction: column;
+  height: 100%;
+}
+
+/* Keyed by the record on screen: a retarget remounts it and the settle
+   replays above. */
+.wgi-sheet-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   height: 100%;
 }
 
@@ -2061,19 +2455,32 @@ a.appt-phone:hover {
   background: var(--color-line-2);
   box-shadow: -1px 0 0 rgb(255 255 255 / 60%);
   transition:
-    background-color var(--motion-micro-duration) var(--motion-exit),
-    transform var(--motion-micro-duration) var(--motion-exit);
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
 }
 
-.wgi-sheet-grip:hover > span,
+@media (hover: hover) {
+  .wgi-sheet-grip:hover > span {
+    background: var(--color-teal);
+    transform: scaleY(1.333);
+  }
+}
+
 .wgi-sheet-grip:focus-visible > span,
 .wgi-sheet-grip[data-dragging] > span {
   background: var(--color-teal);
   transform: scaleY(1.333);
 }
 
+/* The strip is a tall invisible target; the ring belongs to the pill. */
 .wgi-sheet-grip:focus-visible {
-  outline-offset: -3px;
+  box-shadow: none;
+}
+
+.wgi-sheet-grip:focus-visible > span {
+  box-shadow:
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
 }
 
 .wgi-sheet-head {
@@ -2081,26 +2488,28 @@ a.appt-phone:hover {
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--ps-4);
-  padding: 1.25rem 1.4rem var(--ps-4);
-  border-bottom: 1px solid var(--color-line);
+  padding: var(--ps-6) var(--ps-6) 1.25rem 1.5625rem;
+  border-bottom: 1px solid var(--wgi-rule);
 }
 
 .wgi-sheet-kicker {
   margin: 0;
-  color: var(--color-muted-ink);
-  font-size: var(--pt-2xs);
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  color: var(--wgi-name-ink);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.7px;
+  line-height: 1.5;
   text-transform: uppercase;
 }
 
 .wgi-sheet-name {
-  margin: var(--ps-1) 0 0;
-  color: var(--color-ink);
+  margin: 0.1875rem 0 0;
+  color: var(--wgi-name-ink);
   font-family: var(--font-body);
-  font-size: var(--pt-lg);
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-size: 1.4375rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.75rem;
 }
 
 .wgi-sheet-meta {
@@ -2108,7 +2517,7 @@ a.appt-phone:hover {
   flex-wrap: wrap;
   align-items: center;
   gap: 0.4rem;
-  margin: 0.4rem 0 0;
+  margin: 0.1875rem 0 0;
   color: var(--color-muted-ink);
   font-size: var(--pt-xs);
 }
@@ -2120,10 +2529,10 @@ a.appt-phone:hover {
    the header keeps its height; the email line in Contact waits the same
    way. */
 .wgi-sheet-stands {
-  margin: 0.55rem 0 0;
-  color: var(--color-ink);
-  font-size: var(--pt-sm);
-  line-height: 1.45;
+  margin: 0.4375rem 0 0;
+  color: var(--wgi-name-ink);
+  font-size: 1rem;
+  line-height: 1.375rem;
 }
 
 .wgi-sheet-placeholder {
@@ -2150,49 +2559,46 @@ a.appt-phone:hover {
   color: var(--color-muted-ink);
   cursor: pointer;
   transition:
-    background-color var(--motion-micro-duration) var(--motion-exit),
-    transform var(--motion-micro-duration) var(--motion-exit);
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
 }
 
-.wgi-sheet-close:hover {
-  background: var(--color-mint);
-  color: var(--color-ink);
-}
-
-.wgi-sheet-close:active {
-  transform: scale(0.96);
+@media (hover: hover) {
+  .wgi-sheet-close:hover {
+    background: var(--color-mint-hover);
+    color: var(--color-ink);
+  }
 }
 
 .wgi-sheet-body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 1.25rem 1.4rem 2rem;
+  padding: 1.25rem var(--ps-6) 2rem 1.5625rem;
 }
 
 .wgi-sheet-call {
   display: flex;
   align-items: center;
-  gap: var(--ps-2);
-  padding: 0.7rem 0.9rem;
+  gap: 0.625rem;
+  min-height: 3rem;
+  padding: 0.75rem 0.875rem;
   border-radius: var(--radius-sm);
-  background: var(--color-mint);
-  color: var(--color-teal-ink);
+  background: var(--wgi-band);
+  color: var(--wgi-cmd-primary);
   font-size: var(--pt-base);
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   transition:
-    background-color var(--motion-micro-duration) var(--motion-exit),
-    transform var(--motion-micro-duration) var(--motion-exit);
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
 }
 
-.wgi-sheet-call:hover {
-  background: var(--color-mint-2);
-  color: var(--color-teal-ink);
-}
-
-.wgi-sheet-call:active {
-  transform: scale(0.98);
+@media (hover: hover) {
+  .wgi-sheet-call:hover {
+    background: var(--color-mint-hover);
+    color: var(--wgi-cmd-primary);
+  }
 }
 
 .wgi-sheet-call > svg {
@@ -2201,20 +2607,29 @@ a.appt-phone:hover {
 
 .wgi-sheet-dl {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.55rem 1.25rem;
+  grid-template-columns: 7.625rem 1fr;
+  gap: 0;
   margin: 0;
 }
 
+.wgi-sheet-dl dt,
+.wgi-sheet-dl dd {
+  display: flex;
+  align-items: center;
+  min-height: 1.9375rem;
+}
+
 .wgi-sheet-dl dt {
-  color: var(--color-muted-ink);
-  font-size: var(--pt-xs);
+  color: var(--wgi-muted-ink);
+  font-size: var(--pt-sm);
+  line-height: 1.375rem;
 }
 
 .wgi-sheet-dl dd {
   margin: 0;
-  color: var(--color-ink);
-  font-size: var(--pt-sm);
+  color: var(--wgi-name-ink);
+  font-size: var(--pt-base);
+  line-height: 1.5rem;
 }
 
 /* Section headings inside the body, one per section, on the recipe the
@@ -2222,16 +2637,18 @@ a.appt-phone:hover {
    Separator (`bg-border` paints --color-line through the bridge); its
    margins carry the body's 1.25rem rhythm. */
 .wgi-sheet-section {
-  margin: 0 0 0.6rem;
-  color: var(--color-ink);
-  font-size: var(--pt-xs);
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  margin: 0 0 0.625rem;
+  color: var(--wgi-name-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: 0.25px;
+  line-height: 1.125rem;
   text-transform: uppercase;
 }
 
 .wgi-sheet-rule {
   margin: 1.25rem 0;
+  background: var(--wgi-rule);
 }
 
 .wgi-sheet-contact {
@@ -2251,35 +2668,39 @@ a.appt-phone:hover {
 }
 
 .wgi-sheet-email {
-  color: var(--color-teal-ink);
-  font-size: var(--pt-sm);
-  font-weight: 600;
+  color: var(--wgi-cmd-primary);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.375rem;
   overflow-wrap: anywhere;
   text-decoration: underline;
   text-decoration-color: var(--color-line-3);
   text-underline-offset: 0.15em;
-  transition: text-decoration-color var(--motion-micro-duration) var(--motion-exit);
+  transition: text-decoration-color var(--motion-fast-duration) var(--motion-standard);
 }
 
-.wgi-sheet-email:hover {
-  color: var(--color-teal-ink);
-  text-decoration-color: currentColor;
+@media (hover: hover) {
+  .wgi-sheet-email:hover {
+    color: var(--wgi-cmd-primary);
+    text-decoration-color: currentColor;
+  }
 }
 
 /* The patient's own words, as submitted: line breaks kept. */
 .wgi-sheet-message {
   margin: 0;
-  color: var(--color-ink);
-  font-size: var(--pt-sm);
-  line-height: 1.5;
+  color: var(--wgi-name-ink);
+  font-size: var(--pt-base);
+  line-height: 1.375rem;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
 .wgi-sheet-empty {
   margin: 0;
-  color: var(--color-muted-ink);
-  font-size: var(--pt-sm);
+  color: var(--wgi-muted-ink);
+  font-size: var(--pt-base);
+  line-height: 1.375rem;
 }
 
 /* Notes and history are the ui Item recipe (base-nova source, see
@@ -2288,13 +2709,16 @@ a.appt-phone:hover {
    pulled back to the body's edge by the group's negative margin in the
    JSX. */
 .wgi-sheet-items [data-slot="item-title"] {
-  color: var(--color-ink);
-  font-size: var(--pt-sm);
-  font-weight: 600;
+  color: var(--wgi-name-ink);
+  font-size: var(--pt-base);
+  font-weight: 400;
+  line-height: 1.375rem;
 }
 
 .wgi-sheet-items [data-slot="item-description"] {
-  font-size: var(--pt-xs);
+  color: var(--wgi-muted-ink);
+  font-size: var(--pt-sm);
+  line-height: 1.375rem;
 }
 
 .wgi-sheet-items [data-slot="item"][data-undone] [data-slot="item-title"] {
@@ -2371,19 +2795,27 @@ a.appt-phone:hover {
 
 .wgi-sheet-foot {
   display: flex;
+  min-height: 4.375rem;
   align-items: center;
   justify-content: space-between;
-  border-top: 1px solid var(--color-line);
-  padding: 0.7rem 1.4rem;
-  color: var(--color-teal-ink);
-  font-size: var(--pt-xs);
-  font-weight: 700;
-  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+  border-top: 1px solid var(--wgi-rule);
+  padding: 0 1.5625rem;
+  color: var(--wgi-cmd-primary);
+  font-size: var(--pt-base);
+  font-weight: 600;
+  /* The tint on the fast beat; the settle (opacity, transform) on the base
+     beat, last of the three, 120ms behind the header. */
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    opacity var(--motion-base-duration) var(--motion-standard) 120ms,
+    transform var(--motion-base-duration) var(--motion-standard) 120ms;
 }
 
-.wgi-sheet-foot:hover {
-  background: var(--color-mint);
-  color: var(--color-teal-ink);
+@media (hover: hover) {
+  .wgi-sheet-foot:hover {
+    background: var(--color-mint-hover);
+    color: var(--wgi-cmd-primary);
+  }
 }
 
 /* Pressed: the bar spans the sheet, so the press is a deeper tint rather
@@ -2433,6 +2865,24 @@ a.appt-phone:hover {
     transform: none;
   }
 
+  /* The slide gave the sheet nothing to fade; the cross-fade needs a
+     start. The content's settle keeps its fade the same way — the fade
+     variant drops the keyframe's nudge. */
+  .wgi-sheet[data-starting-style],
+  .wgi-sheet[data-ending-style] {
+    opacity: 0;
+  }
+
+  .wgi-sheet-head,
+  .wgi-sheet-body {
+    animation-name: wgi-sheet-settle-fade;
+  }
+
+  /* The rubber band's ease home is travel too; the sheet snaps to bounds. */
+  .wgi-sheet[data-settling] {
+    transition: none;
+  }
+
   /* The grip's stretch is travel too; the tint alone says "live". */
   .wgi-sheet-grip:hover > span,
   .wgi-sheet-grip:focus-visible > span,
@@ -2442,18 +2892,23 @@ a.appt-phone:hover {
 
   /* The settle wash needs no override: the timed clear in
      home-dashboard.tsx shows the mint tint for ~200ms either way, and the
-     blanket reset in globals.css @layer base already collapses the 240ms
+     blanket reset in globals.css @layer base already collapses the
      exhale to an instant change. */
 
+  /* The shared small-button press keeps its tint and loses the scale. */
   .wgi-add-filter:active,
   .wgi-sug:active,
+  .wgi-pill-remove:active,
+  .appt-line-trigger:active,
+  .wgi-editor-dim:active,
   .wgi-editor-apply:active:enabled,
   .wgi-time-trigger:active:enabled,
-  .wgi-answer:has([data-slot="radio-group-item"]:enabled):active,
   .wgi-record-follow > [data-slot="toggle-group-item"]:active:enabled,
+  .wgi-record-call:active,
+  .wgi-record-close:active,
   .wgi-empty-clear:active,
-  .wgi-sheet-call:active,
-  .wgi-sheet-close:active {
+  .wgi-sheet-close:active,
+  .wgi-sheet-call:active {
     transform: none;
   }
 }

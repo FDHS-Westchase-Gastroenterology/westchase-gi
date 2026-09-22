@@ -10,18 +10,29 @@
    motion's `bounce` is 1 − ζ, so 0.3 reproduces the single 4.6% overshoot.
    `leave` matches --motion-exit: a strong ease-out at 160ms.
    `micro` matches --motion-micro-duration: 150ms for surfaces that tint.
+   `fast`, `base` and `sheet` are --motion-standard over its three beats
+   (140, 240, 420ms): the staff home's feedback, a surface moving, and the
+   full-record sheet arriving.
    `crossfade` is the reduced-motion temperament: 120ms, opacity only. */
 
 import type { Transition } from "motion/react";
 
+const standard: [number, number, number, number] = [0.32, 0.72, 0, 1];
+
 export const arrive: Transition = { type: "spring", duration: 0.44, bounce: 0.3 };
 export const leave: Transition = { type: "tween", duration: 0.16, ease: [0.23, 1, 0.32, 1] };
 export const micro: Transition = { type: "tween", duration: 0.15, ease: "easeOut" };
+export const fast: Transition = { type: "tween", duration: 0.14, ease: standard };
+export const base: Transition = { type: "tween", duration: 0.24, ease: standard };
+export const sheet: Transition = { type: "tween", duration: 0.42, ease: standard };
 export const crossfade: Transition = { type: "tween", duration: 0.12, ease: "linear" };
 
-export type MotionTemperament = "arrive" | "leave" | "micro";
+export type MotionTemperament = "arrive" | "leave" | "micro" | "fast" | "base" | "sheet";
 
-const temperaments = { arrive, leave, micro } satisfies Record<MotionTemperament, Transition>;
+const temperaments = { arrive, leave, micro, fast, base, sheet } satisfies Record<
+  MotionTemperament,
+  Transition
+>;
 
 /* Reduced motion withholds the physics, never the change: every temperament
    collapses to the cross-fade, and the caller drops its travel the same way

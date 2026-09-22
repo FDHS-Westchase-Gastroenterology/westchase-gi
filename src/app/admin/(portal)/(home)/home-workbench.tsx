@@ -80,7 +80,10 @@ export function HomeWorkbench({
             />
             <AddAppointmentDialog
               idempotencyKey={addRequestKey}
-              triggerClassName={cn(buttonVariants({ variant: "outline" }), "wgi-cmd")}
+              triggerClassName={cn(
+                buttonVariants({ variant: "outline" }),
+                "wgi-cmd wgi-cmd-primary",
+              )}
             />
           </div>
         </header>
