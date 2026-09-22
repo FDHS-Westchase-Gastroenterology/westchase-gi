@@ -1404,13 +1404,32 @@ a.appt-phone {
   cursor: grabbing;
 }
 
-/* A detached panel carries its own close button where a popover has none
-   (HIG Panels): the head makes room for it. */
-.wgi-record-card[data-detached] .wgi-record-head {
+/* The panel moves on its own only when the lane changes under it
+   (use-card-detach.ts), and only `translate` travels — the drag writes it
+   1:1 with no transition, and transform and opacity keep the entrance's
+   beat. The sheet's arrival pushes the panel aside on the sheet's own beat,
+   so the two read as one change; the rubber band past the sheet's edge
+   eases home on the base beat, like the sheet grip's. */
+.wgi-record-card[data-yielding] {
+  transition:
+    transform var(--motion-base-duration) var(--motion-standard),
+    opacity var(--motion-base-duration) var(--motion-standard),
+    translate var(--motion-sheet-duration) var(--motion-standard);
+}
+
+.wgi-record-card[data-settling] {
+  transition:
+    transform var(--motion-base-duration) var(--motion-standard),
+    opacity var(--motion-base-duration) var(--motion-standard),
+    translate var(--motion-base-duration) var(--motion-standard);
+}
+
+/* The card's close, attached or detached: the head makes room for it. */
+.wgi-record-head {
   padding-right: 2.75rem;
 }
 
-/* The panel's close: the sheet's small quiet button at the head's corner,
+/* The card's close: the sheet's small quiet button at the head's corner,
    2rem drawn with a 44px hit area reaching past it. */
 .wgi-record-close {
   position: absolute;
@@ -2372,10 +2391,12 @@ a.appt-phone {
   transition-duration: var(--motion-base-duration);
 }
 
-/* The detached card is never covered: on the sidebar layout its
-   positioner rises one layer above the sheet, and the card is the wall
-   the sheet's resize stops at. Below the breakpoint the card keeps the
-   popover layer and the full-width sheet covers it, as before. */
+/* The card is never covered: on the sidebar layout its positioner rises
+   one layer above the sheet. A detached panel keeps to the lane left of
+   the sheet (panel-lane.ts), so the layer only shows where the window is
+   too narrow for both — and the panel is the wall the sheet's resize
+   stops at. Below the breakpoint the card keeps the popover layer and the
+   full-width sheet covers it, as before. */
 @media (min-width: 60rem) {
   .wgi-popover-positioner:has(.wgi-record-card) {
     z-index: calc(var(--z-drawer, 80) + 1);
@@ -2878,8 +2899,11 @@ a.appt-phone {
     animation-name: wgi-sheet-settle-fade;
   }
 
-  /* The rubber band's ease home is travel too; the sheet snaps to bounds. */
-  .wgi-sheet[data-settling] {
+  /* The rubber band's ease home is travel too; the sheet snaps to bounds.
+     The panel's yield and settle are the same: it lands in its lane. */
+  .wgi-sheet[data-settling],
+  .wgi-record-card[data-yielding],
+  .wgi-record-card[data-settling] {
     transition: none;
   }
 
