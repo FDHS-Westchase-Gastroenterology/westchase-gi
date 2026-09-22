@@ -8,7 +8,7 @@
    sheet beat (420ms) and leaves on the base one, and a recorded outcome lands
    as a mint wash on the row.
 
-   Three colors say three things (DESIGN.md "Motion", Apple-inspired
+   Three colors say three things (design-system/color.md "Roles", Apple-inspired
    restraint): mint is "you can interact here" and "this is the record",
    teal is keyboard focus, amber is text selected for copying.
 
@@ -1953,7 +1953,7 @@ a.appt-phone {
 
 /* The wheels are a popover over the month: they sit just above the strip,
    never over the field that raised them (HIG Popovers), and grow out of
-   that field and shrink back into it (DESIGN.md "Motion", spatial
+   that field and shrink back into it (design-system/motion.md "Rules of use", spatial
    consistency). time-picker.tsx sets the transform origin at the
    trigger; the arrival, the exit and the reduced-motion temperament are
    the motion.dev presets in src/lib/motion.ts. */
@@ -1976,7 +1976,7 @@ a.appt-phone {
 
 /* A transformed descendant still counts toward an ancestor's scrollable
    overflow, so while the wheels scale in they would hand the card, which
-   is overflow: auto, a range that exists only for one spring. Clipping
+   is overflow: auto, a range that exists only during the entrance. Clipping
    main for the life of the wheels removes it; nothing visible is lost. */
 .wgi-record-main:has(.wgi-time-sheet) {
   overflow: clip;
@@ -2506,7 +2506,7 @@ a.appt-phone {
    (full-record-sheet-geometry.ts). The sheet slides in from the right edge
    on the sheet beat (420ms) of the standard curve and leaves the same way
    on the base beat (240ms): exits are quieter than entrances, and the path
-   in is the path out (DESIGN.md "Motion", spatial consistency).
+   in is the path out (design-system/motion.md "Rules of use", spatial consistency).
    Transitions rather than keyframes, so a close during the entrance
    reverses from wherever the sheet is. The slide is transform only; under
    reduced motion the surface cross-fades instead, with no travel.

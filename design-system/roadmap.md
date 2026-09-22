@@ -50,7 +50,7 @@ empties; `Alert` (`stock/alert.tsx`) takes `.portal-sheet-notice`, `.portal-shee
 
 **Ready.** `(home)/parts/calendar.tsx` wraps `stock/calendar.tsx` twice, an approved exception:
 `HomeRangeCalendar` for the Received editor's range and `HomeDayCalendar` for the record card's
-return day. Adopt `Calendar` into `ui/`, keeping both uses' behavior and paint.
+callback or appointment day. Adopt `Calendar` into `ui/`, keeping both uses' behavior and paint.
 
 ## 7. The legacy feature blocks
 
@@ -138,8 +138,9 @@ a `buttonVariants()` link. Bring each as rendered: an option, a knob, or gone.
 
 ## 18. Time picker name
 
-**Measure first.** `TimePicker`'s root is a role-less `div` named with `aria-label`, which ARIA
-prohibits on the `generic` role. Headless Chromium's Playwright snapshot drops the name and the CDP
-tree keeps it, so run VoiceOver on the staff home's time field before choosing a fix, likely
-`role="group"`. The request detail's `type="time"` input (`outcome-choice-list.tsx#L125`) stays
-until this lands, and a second consumer moves the picker's model into `src/lib/portal/`.
+**Measure first.** Inside the staff home's trigger-anchored start-time panel, `TimePicker`'s root is
+a role-less `div` named with `aria-label`, which ARIA prohibits on the `generic` role. Headless
+Chromium's Playwright snapshot drops the name and the CDP tree keeps it, so run VoiceOver on the
+staff home's time field before choosing a fix, likely `role="group"`. The request detail's
+`type="time"` input (`outcome-choice-list.tsx#L125`) stays until this lands, and a second consumer
+moves the picker's model into `src/lib/portal/`.

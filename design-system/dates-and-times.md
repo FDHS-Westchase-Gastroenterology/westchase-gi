@@ -48,8 +48,8 @@ is one wheel and takes no element props:
 
 The staff home wraps the wheel for the record card: the wrapper supplies the Hour, Minute and
 "AM or PM" columns at `size="sm"` and a full-width Done
-([components.md](components.md#route-owned-compositions)), inside the start-time sheet in
-[overlays.md](overlays.md#the-start-time-sheet). Its columns are cut from `TIME_SLOTS`,
+([components.md](components.md#route-owned-compositions)), inside the start-time panel in
+[overlays.md](overlays.md#the-start-time-panel). Its columns are cut from `TIME_SLOTS`,
 every minute from `TIME_MIN` to `TIME_MAX`, in `(home)/record-card-time.ts`: `MERIDIEMS`,
 `hourOptions(meridiem)` and `minuteOptions(meridiem, hour)` return strings that the wrapper's
 `labelled()` turns into options, and `joinTime` returns `""` for a time outside the slots. The

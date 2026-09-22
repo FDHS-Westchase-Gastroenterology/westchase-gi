@@ -1,8 +1,6 @@
 # Overlays
 
-An overlay is chosen by what the reader must do next, not by how it looks. Each kind below has
-one implementation, and the portal has no tooltip, hover card or menu. Motion values come from
-[motion.md](motion.md); paint comes from [color.md](color.md).
+Choose by the reader's next action, not looks. Each kind has one implementation; the portal has no tooltip, hover card or menu. Motion is in [motion.md](motion.md), paint in [color.md](color.md).
 
 ## Choosing an overlay
 
@@ -40,24 +38,18 @@ component is [roadmap item 9](roadmap.md#9-a-native-dialog-component).
   and closes toward 0.4rem and `scale(0.985)` over a `rgba(20, 32, 45, 0.48)` scrim that fades in
   over 220ms. It stays centered: a modal answers the whole page.
 
-**The keyboard opens and closes a dialog instantly.** Toggle `data-instant` from
-`event.detail === 0` in the trigger's click and in the dialog's `onClickCapture`, and set it in
-`onCancel`. It removes the transition from the dialog and its backdrop, under reduced motion too.
+**Keyboard opens and closes instantly.** Set `data-instant` from `event.detail === 0` in the trigger's
+`onClick` and dialog's `onClickCapture`, and in `onCancel` to skip dialog and backdrop transitions.
 
-**Focus lands inside in the same task as `showModal()`,** on the answer a person most likely
-wants: Cancel or Keep editing on a confirmation, the chooser's primary action, the form's name
-field. A frame callback never runs while the tab is hidden, so never defer the opening move. Tab
-wraps inside the dialog by hand ([accessibility.md](accessibility.md#focus)). On close, focus
-returns to the trigger. When the action removed the trigger's own row, focus goes to the list's
-heading instead: an `h2` with `tabIndex={-1}` and `.portal-settings-list-heading`, focused in a
-frame callback after the dialog closes, once the row is gone (`finishRemoveDialog` in
-`recipients-manager.tsx`). An action that fails closes the dialog, returns focus to the trigger and
-reports the failure in the page's inline result line ([forms.md](forms.md#reporting-a-result)).
+**Focus lands inside in the same task as `showModal()`** on the safe next step: Cancel/Keep editing,
+the chooser's primary action or the form name field. Never defer to a frame in a hidden tab. Tab
+wraps by hand ([accessibility.md](accessibility.md#focus)). On close, focus returns to its trigger or
+the focusable list heading after row removal (`finishRemoveDialog`); failures return focus and report
+inline ([forms.md](forms.md#reporting-a-result)).
 
-**Only Escape and the dialog's own controls close it.** A press on the scrim does nothing. Escape
-takes the safe answer: a dialog that can refuse (a removal in flight, a dirty draft) calls
-`preventDefault()` in `onCancel` and runs its Close path, and the discard confirmation lets Escape
-keep editing. A dialog may open another: the add-appointment form hosts the discard confirmation.
+**Only Escape and dialog controls close it.** Scrim presses do nothing. A dialog can prevent Escape
+while a removal is in flight or a draft is dirty; `onCancel` runs its Close path. The discard
+confirmation keeps editing on Escape, and the add form can open that nested confirmation.
 
 `PrintChooser` follows every rule above; copy it, except that a dialog built for one chosen target
 opens from an effect keyed on it (`recipients-manager.tsx`). `RemoveRecipientDialog` and the
@@ -87,6 +79,10 @@ below its trigger; `line-row.tsx` passes the card the whole row as `anchor` and 
 The positioner shifts a popover into view but never flips, shrinks or sets it beside its anchor; a
 card taller than the viewport scrolls inside `--available-height`.
 
+The card pairs identity and answer rows with a six-week calendar. Its lower strip holds follow-up or
+start-time controls and a readout; one footer toggles the full record and saves. It starts blank and
+commits on Save; scheduled and closed lines use one column.
+
 Focus moves to the first tabbable element or a field marked `autoFocus`, and returns to the trigger.
 An outside press, Escape or focus leaving closes a popover, and the card has a close button in its
 head. `cardStaysOpen` (`(home)/sheet-coexistence.ts`) keeps the card open through a press on its row
@@ -104,24 +100,25 @@ focus leaving instant, and an outside press animates.
 (`(home)/parts/sheet.tsx`), is the portal's one Base UI Dialog and its only non-modal one:
 `modal={false}` and `disablePointerDismissal` leave no scrim, no scroll lock and nothing inert.
 
-**Companion surfaces.** The sheet is the selected request's undimmed inspector and the record card
-its companion, anchored to its row and on top: no scrim, because dimming means modal, and the sheet
-resizes against the card instead of covering it. While attached, the list blurs all but the anchor
-row and its body takes no presses, so a press there closes the card. Dragged 6px by its head from
-60rem on (`use-card-detach.ts`), the card becomes a floating panel: the anchor freezes, the blur
-lifts, outside presses and focus moves stop closing it. Its lane (`panel-lane.ts`) ends at the
-viewport's edges, hard, and one list gutter short of an open sheet, where a drag rubber-bands and
-settles back on base. A sheet arriving pushes it left on the sheet's beat, never past the sidebar;
-it stays put when the sheet leaves. Apple's pattern: HIG Popovers on macOS detachable popovers,
-Panels on the inspector, and UIKit's sheet presentation controller's largest undimmed detent.
+**Companion surfaces.** The sheet is an undimmed, non-modal inspector. From 60rem, its attached
+card stays beside it and above it; it fits beyond the card with one gutter. Its 24rem minimum can
+force overlap, with the card on top. Below 60rem, the sheet covers the card. While attached, the list
+blurs everything but the anchor row and takes no presses in its body. A press there closes the card;
+a press or focus move into the sheet keeps it open. A 6px head drag from 60rem freezes the row
+anchor and detaches it; blur lifts and outside presses or focus moves stop dismissing it. `panel-lane.ts`
+keeps it 8px inside hard viewport edges, one gutter from an open sheet. It yields on arrival, clamps
+later width changes, and may overlap the sheet while staying above it. Automatic movement stops at
+the sidebar gutter; staff can drag over it, and the panel stays put when the sheet leaves. Apple's
+pattern: HIG Popovers on macOS detachable popovers, Panels on the inspector, and UIKit's sheet
+presentation controller's largest undimmed detent.
 
 - **Opening.** The card's foot toggles the sheet, "Open full record" or "Hide full record", with
   `aria-expanded` and `aria-controls="wgi-full-record"`; the card stays open. Opening another row's
   card retargets the open sheet without re-entering, and its content replays the settle.
-- **Placement.** The right edge, 33.875rem wide and at most 94vw, stopping at the sidebar from 60rem
-  on `--z-drawer`, with the card's positioner a layer above. The left-edge grip resizes it by
-  pointer or arrow keys, rubber-bands past the narrow end and remembers the width; the sheet opens
-  no wider than the card leaves it and refits on base when that bound moves.
+- **Placement.** It docks right at 33.875rem (max 94vw) on `--z-drawer`; from 60rem it stops at the
+  sidebar and layers below the card. A left grip resizes by pointer or arrows, rubber-bands, and
+  remembers width. The sheet fits beyond the card to a 24rem minimum, so overlap is possible; it
+  refits on base as available room changes.
 - **Motion.** It slides in from the right edge on the sheet beat, 420ms, and leaves that way on
   base, 240ms; a 4vw bleed covers the edge through the grip's rubber band. The header, then the
   body 60ms later, settle in on base, the foot 120ms behind. A keyboard open or close is instant.
@@ -132,12 +129,13 @@ Panels on the inspector, and UIKit's sheet presentation controller's largest und
   `SheetBody` shows a skeleton (`role="status"`) while the record loads, a notice when the request
   no longer exists, and an alert with "Try again" when it cannot load.
 
-## The start-time sheet
+## The start-time panel
 
-The record card's `TimePicker` (`(home)/parts/time-picker.tsx`) wraps the `ui/` wheels in a
-`role="dialog"` sheet rising from the card's bottom edge on `arrive` and leaving on `leave`, over an
-`aria-hidden` scrim that dims the card and takes no focus. Focus goes to the hour wheel and back;
-Done commits, the scrim or Escape discards without closing the card; reduced motion is `crossfade`.
+The card's `TimePicker` wraps `ui/` wheels in a `role="dialog"` panel over the calendar, above its
+trigger strip. Its `aria-hidden` scrim dims without focus. It scales from the trigger at 0.96 on
+`base` (240ms, no overshoot), exits on `leave` (160ms), and cross-fades on `crossfade` under reduced
+motion. Keyboard open, keyboard Done and Escape are instant; pointer Done and scrim dismissal use `leave`. Focus goes
+to the hour and back; Done commits, while scrim or Escape discards without closing the card.
 
 ## The patient site
 

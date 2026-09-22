@@ -2327,7 +2327,7 @@
    NEVER let the shadcn CLI (`init`/`apply`/`add` with a preset) or an
    agent rewrite this block back to neutral OKLCH literals, and never
    let it touch the brand `@theme` block above. Brand anchors: navy,
-   teal, amber, mint — see DESIGN.md "What the practice owns".
+   teal, amber, mint — see design-system/color.md "Roles".
  * ------------------------------------------------------------------ */
 @theme inline {
   /* Fonts stay brand-owned: Lato carries interface text for shadcn

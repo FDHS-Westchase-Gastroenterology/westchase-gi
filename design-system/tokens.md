@@ -17,7 +17,8 @@ Brand @theme                   first block of src/app/globals.css
 │   --ease-*, --motion-*, --z-*, --step-*
 ├── Scopes                     re-tune the brand for one register or surface
 │   ├── .portal-scope          --portal-*, --pt-*, --ps-*, --pm-*, and the --btn-* knobs
-│   └── .wgi-home              --wgi-* (home.css)
+│   ├── .wgi-home              --wgi-* (home.css)
+│   └── portaled Home surfaces .wgi-record-card and .wgi-sheet --wgi-* (home.css)
 └── Semantic bridge            last blocks of src/app/globals.css
         @theme inline          --color-primary: var(--primary) …, --font-sans, --font-heading
         :root, .dark           --primary: var(--color-navy) …
@@ -48,7 +49,7 @@ like `--font-size-17` stops being true the first time the value is tuned.
 | `--color-*` role utilities (`--color-primary`), `--font-sans`, `--font-heading` | shadcn: `@theme inline` in the bridge |
 | `--font-lato`, `--font-trocchi` and the locale face variables | next/font: `src/lib/fonts.ts` (patient site, review hub), `src/lib/portal-fonts.ts` (portal) |
 | `--portal-*`, `--pt-*`, `--ps-*`, `--pm-*` | Staff portal: `.portal-scope` in `globals.css` |
-| `--wgi-*` | Staff home: `.wgi-home` in `home.css` |
+| `--wgi-*` | Staff home: `.wgi-home` and its portaled `.wgi-record-card` and `.wgi-sheet` in `home.css` |
 | `--btn-*` | Button recipe knobs, read with fallbacks in `button-variants.ts`. `.portal-scope` assigns eight: radius, both paddings, lift, hover shadow, press scale, duration and ease. The `commit` motion's `--btn-press-*`, `--btn-commit-*` and `--btn-release-duration` are assigned nowhere, so their fallbacks are the values |
 | `--tp-row`, `--tp-rows`, `--card-spacing` | TimePicker and Card recipes: set by their own sizes |
 | `--overlay-rise`, `--overlay-scale` | The `overlay-rise` keyframes in `@layer components`: set per legacy dialog |
@@ -80,7 +81,7 @@ departure missing from this table is drift.
 | `:lang(vi)`, `:lang(ko)`, `:lang(ar)` | Re-point `--font-display` and `--font-body` | Stays: an island in another language (the review hub shows five on one page) must switch faces, which one class on `<html>` cannot do. |
 | Bridge `@theme inline` | `--font-sans` and `--font-heading` repeat the Lato stack | Stays: `--font-sans` is Tailwind's default family and the Toaster's font. `--font-heading` has no rendered consumer. |
 | `.portal-scope`; `.portal-workspace` in `portal-workbench.css` | `--portal-canvas`, `--portal-surface`, `--portal-attention-ink`, `--portal-surface-muted` are OKLCH literals | Move into the brand `@theme`: [roadmap item 10](roadmap.md#10-portal-surface-tints). |
-| `.wgi-home` and `.portal-workspace:has(.wgi-home)` in `home.css` | `--wgi-*` paints, shadows, radii and type sizes, nine of them restated on `.wgi-record-card` and `.wgi-sheet`, which portal outside `.wgi-home`; literal corners, shadows and sizes in Home rules ([layout.md](layout.md#shape-and-elevation), [typography.md](typography.md#recorded-drift)); the Home canvas re-points `--portal-canvas` | Stays: the values come from the approved Home frame, stay scoped to Home, and carry their contrast measurements beside them. A `--wgi-*` name is never read outside Home. |
+| `.wgi-home`, `.wgi-record-card` and `.wgi-sheet` in `home.css` | Home paints, shadows, radii and type sizes; `.wgi-record-card` receives shared frame paints outside `.wgi-home`, and `.wgi-sheet` repeats paints its portal cannot inherit; literal corners, shadows and sizes in Home rules ([layout.md](layout.md#shape-and-elevation), [typography.md](typography.md#recorded-drift)); `.wgi-home` re-points `--portal-canvas` | Stays: these names belong to the staff home and its portaled overlays, with their contrast measurements here. |
 | `.portal-scope` in `globals.css` | `--color-mint-hover` (`mint`), `--color-mint-press` (`mint-2` mixed 10% toward `navy`) and `--color-teal-strong` (`teal-ink`) declare `--color-*` names outside the brand `@theme` | Stays: the staff home's hover, press and focus inks from PR #304, set on `<body>` so the portaled card and sheet read them. Whether they join the brand `@theme` is Jason's call; nothing else reads them. |
 | `.portal-scope` | `--pm-reduced-duration: 120ms`, `--pm-scrim-duration: 220ms` | Stays until the registry names a reduced-motion cross-fade and a scrim fade: [motion.md](motion.md#recorded-motion-literals). |
 | `.portal-scope` | `--btn-radius: 0.5rem` sits off the radius set | [Roadmap item 8](roadmap.md#8-the-radius-ramp). |
@@ -97,7 +98,7 @@ There is one theme, light, in the practice's palette. Each register assigns it t
 | --- | --- | --- |
 | Patient site | the root, no class (`src/app/[locale]/layout.tsx`) | Display serif headings, the fluid `--step-*` type, section rhythm, the button lift. |
 | Staff portal | `.portal-scope` on `<body>` (`src/app/admin/layout.tsx`) | Lato only, the closed `--pt-*` and `--ps-*` scales, `--pm-*` motion aliases, the flattened button knobs. |
-| Staff home | `.wgi-home` on the home section (`home.css`) | The approved Home frame's `--wgi-*` sizes and paints and its canvas. |
+| Staff home | `.wgi-home` on the section, plus portaled `.wgi-record-card` and `.wgi-sheet` (`home.css`) | The approved Home frame's `--wgi-*` sizes, paints and canvas; its popover and sheet receive their Home paints outside the section. |
 | Print | `@page` and `@media print` | Paper: screen chrome hides, scrolled regions open to print every line, backgrounds drop to white. The request detail, the request packet and the review flyer each name their own `@page`. |
 | Locale | `:lang(vi)`, `:lang(ko)`, `:lang(ar)` | Font faces, leading, tracking; Arabic reads right to left through `dir`. |
 

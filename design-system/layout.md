@@ -117,13 +117,13 @@ divide it. Each shadow token has one role, and a surface wears one at a time.
 | Shadow | Role | Worn by |
 | --- | --- | --- |
 | `--shadow-soft` | A tile or control that lifts | `Button` `default` and `amber` on hover; the patient home's wayfinding tiles and physician cards, which also rise 4px on hover; the office gallery's photo grid; `LocationMaps` |
-| `--shadow-card` | A card, image or modal lifted off the page | A single patient photo set beside copy, the physicians page's navy panel, `AuthCard`, `.card`, `ProfileCardViewer`'s shell and toolbar, `Header` menus, the tour dialog, `.portal-confirm-dialog`, `.wgi-time-sheet` |
-| `--shadow-popover` | A layer floating over same-white paper, where `--shadow-card`'s negative spread would hide inside the paper's edge | `.wgi-popover`, `Toaster` |
+| `--shadow-card` | A card, image or modal lifted off the page | A single patient photo set beside copy, the physicians page's navy panel, `AuthCard`, `.card`, `ProfileCardViewer`'s shell and toolbar, `Header` menus, the tour dialog, `.portal-confirm-dialog` |
+| `--shadow-popover` | A layer floating over same-white paper, where `--shadow-card`'s negative spread would hide inside the paper's edge | `Toaster`; `.wgi-popover`'s fallback when no Home paint is set |
 
 **A card's shadow is its edge; a portal layer floating over paper adds a hairline.** A card or modal
 never pairs its shadow with a border: `AuthCard` removes the `Card` ring and
 `.portal-confirm-dialog` sets `border: 0`. The staff home's list surface is flat paper on the
-canvas, square-cornered with neither stroke nor shadow. A portal menu, popover, sheet, shelf or
+canvas, square-cornered with neither stroke nor shadow. A portal menu, popover, panel, sheet, shelf or
 toast draws a `line` or `line-2` hairline beside its shadow, as the approved Home frame does:
 `.wgi-popover`, `.wgi-sheet`, `.wgi-time-sheet`, `Toaster`, the account menu and the commit shelf.
 
@@ -145,5 +145,5 @@ row tints the same way. None of them lifts a surface.
 | Base `:focus-visible` in `globals.css` | A 3px radius | [Roadmap item 8](roadmap.md#8-the-radius-ramp) |
 | `.release-signal`, `.release-summary`, `.language-dialog` in `globals.css` | `calc()` offsets of `--radius-sm` and a border paired with a shadow on the release signal; literal shadows on the summary and the dialog | [Roadmap item 7](roadmap.md#7-the-legacy-feature-blocks) |
 | The shadow tokens' comment in the brand `@theme` | Says a shadow is never paired with a visible border, while six portal floating layers pair one | An open decision on the comment's scope: [roadmap item 10](roadmap.md#10-portal-surface-tints). Until it is settled, follow the rule above, which the approved Home frame sets. |
-| `home.css` | 100 of 149 spacing declarations literal rem; `--wgi-row-radius`, `--wgi-badge-radius`, `--wgi-cmd-radius`, `.wgi-popover`'s 8px corners, the editor box's 0.25rem, the 6px rail and thumb; `--wgi-card-shadow`, the filter and sheet shadows | Stays: the approved Home frame ([recorded exceptions](tokens.md#recorded-exceptions)) |
+| `home.css` | 100 of 149 spacing declarations literal rem; `--wgi-row-radius`, `--wgi-badge-radius`, `--wgi-cmd-radius`, `.wgi-popover`'s 8px corners, the editor box's 0.25rem, the 6px rail and thumb; `--wgi-card-shadow`, the filter and overlay shadows | Stays: the approved Home frame ([recorded exceptions](tokens.md#recorded-exceptions)) |
 | The review flyer's `@media print` block in `globals.css` | 14pt and 6pt corners | Stays: the block reproduces the approved flyer on letter paper ([recorded exceptions](tokens.md#recorded-exceptions)) |

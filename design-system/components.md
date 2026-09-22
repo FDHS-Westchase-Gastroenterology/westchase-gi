@@ -38,7 +38,7 @@ the roadmap item beside each adopts it into `ui/`; a new consumer waits for that
 
 | Component | When | Real uses |
 | --- | --- | --- |
-| `Calendar` | The Received editor's custom range and the record card's return day, through `HomeRangeCalendar` and `HomeDayCalendar` ([item 6](roadmap.md#6-the-calendar)) | `parts/calendar.tsx` |
+| `Calendar` | The Received editor's custom range and the record card's callback or appointment day, through `HomeRangeCalendar` and `HomeDayCalendar` ([item 6](roadmap.md#6-the-calendar)) | `parts/calendar.tsx` |
 | `RadioGroup` `RadioGroupItem` `ToggleGroup` `ToggleGroupItem` | The record card's outcome rows and follow-up choices ([item 3](roadmap.md#3-choice-lists)) | `record-card.tsx` |
 
 ## Route-owned compositions
@@ -64,7 +64,7 @@ under `.wgi-*`. They are route-owned: nothing outside the staff home imports the
 | `HomePopover` `HomePopoverTrigger` `HomePopoverContent` | The filter bar's editors and each row's record card ([overlays.md](overlays.md#popovers)) | `filter-bar.tsx`, `line-row.tsx` |
 | `HomeSheet` `HomeSheetContent` `HomeSheetTitle` `HomeSheetClose` | The non-modal full-record sheet ([overlays.md](overlays.md#the-full-record-sheet)) | `full-record-sheet.tsx` |
 | `LineStatusBadge` | A request's status on a Home row and in the sheet ([surfaces.md](surfaces.md#badges)) | `line-row.tsx`, `full-record-sheet.tsx` |
-| `HomeRangeCalendar` `HomeDayCalendar` | A custom received range; a return day | `filter-bar.tsx`, `record-card.tsx` |
+| `HomeRangeCalendar` `HomeDayCalendar` | A custom received range; a callback or appointment day | `filter-bar.tsx`, `record-card.tsx` |
 | `PhoneGlyph` `ChevronGlyph` `CloseGlyph` | Home's stroke glyphs at the design's weights | `line-row.tsx`, `record-card.tsx`, `full-record-sheet.tsx`, `full-record-sheet-body.tsx` |
 | `TimePicker` in `parts/time-picker.tsx` | The record card's start time, wrapping `ui/time-picker.tsx` ([dates-and-times.md](dates-and-times.md#time)) | `record-card.tsx` |
 

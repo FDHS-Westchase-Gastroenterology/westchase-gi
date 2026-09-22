@@ -14,20 +14,20 @@ time wheel does; it animates `transform` and `opacity` strings, not `x` and `y`.
 
 | Temperament | CSS | `motion/react` | Value | Worn by |
 | --- | --- | --- | --- | --- |
-| Arriving | `--motion-spring` over `--motion-spring-duration` | `arrive` | 440ms; a spring that lands in about 110ms and overshoots 4.6% once | `.portal-confirm-dialog`, `Toaster`, the time picker's sheet and wheels |
-| Leaving | `--motion-exit` over `--motion-exit-duration` | `leave` | 160ms, `cubic-bezier(0.23, 1, 0.32, 1)` | Every exit off the staff home's standard curve; the portal `Button` |
+| Arriving | `--motion-spring` over `--motion-spring-duration` | `arrive` | 440ms; a spring that lands in about 110ms and overshoots 4.6% once | `.portal-confirm-dialog`, `Toaster`, the time wheels |
+| Leaving | `--motion-exit` over `--motion-exit-duration` | `leave` | 160ms, `cubic-bezier(0.23, 1, 0.32, 1)` | The time-picker panel; every exit off the staff home's standard curve; the portal `Button` |
 | Tinting | `--motion-micro-duration` on `--motion-exit` | `micro` | 150ms | `Checkbox`, the time wheels' rows, `Toaster`'s icon swap |
-| Staff home | `--motion-standard` over `--motion-fast-duration`, `--motion-base-duration`, `--motion-sheet-duration` | `fast`, `base`, `sheet` | 140, 240 and 420ms on `cubic-bezier(0.32, 0.72, 0, 1)` | Fast: Home's presses, tints and scroll thumb, `.wgi-popover`'s close. Base: `.wgi-popover`'s open, the list's blur and wash exhale, `.wgi-sheet`'s close, refit and settle, the detached card's settle into its lane. Sheet: `.wgi-sheet`'s slide in, the detached card's yield to it |
+| Staff home | `--motion-standard` over `--motion-fast-duration`, `--motion-base-duration`, `--motion-sheet-duration` | `fast`, `base`, `sheet` | 140, 240 and 420ms on `cubic-bezier(0.32, 0.72, 0, 1)` | Fast: Home's presses, tints and scroll thumb, `.wgi-popover`'s close. Base: the time-picker panel and `.wgi-popover` open, the list's blur and wash exhale, `.wgi-sheet` close, refit and settle, and the detached card settling into its lane. Sheet: `.wgi-sheet` slides in, and the detached card yields to it |
 | Reduced | opt-outs beside the reset in `@layer base` | `crossfade` | 120ms, opacity only | [Reduced motion](#reduced-motion) |
 | Patient-site ease | `--ease-out-quint`, `--ease-out-quart` | none | Curves only. The durations are literals in the `globals.css` rule that uses the curve, recorded under [item 16](roadmap.md#16-motion-literals); a JSX call site never writes one | `Button` outside the portal, link underlines, `Reveal` |
 
 The portal reads these through the `--pm-*` aliases on `.portal-scope`, which also point the
-`Button` knobs `--btn-duration` and `--btn-ease` at leaving. Only the time pickers import presets:
-`arrive`, `leave` and `crossfade`; `micro`, `fast`, `base`, `sheet` and `transitionFor` go unused.
+`Button` knobs `--btn-duration` and `--btn-ease` at leaving. The time wheel imports `arrive`; its
+Home panel imports `base`, `leave` and `crossfade`. `micro`, `fast`, `sheet` and `transitionFor`
+have no importer in `src`.
 
-**A temperament the registry lacks is a conversation, not a value.** Discuss it with Jason, then add
-its token and preset together. Never inline a curve, tune a spring by hand or write a duration at a
-call site. The staff home wears its own beats, except the time picker's arriving and leaving.
+**A temperament the registry lacks is a conversation, not a value.** Discuss it with Jason, then
+add its token and preset together. Never inline a curve, tune a spring by hand or set a duration at a call site.
 
 **A recipe's `motion` axis owns a component's motion.** The base string carries none. `hover:` and
 `active:` are triggers: the hovered paint belongs to `variant`, the journey to it to `motion`.
@@ -120,7 +120,7 @@ An earlier layer wins among those, so an authored reduced temperament opts out b
 | `.portal-confirm-dialog`, `.wgi-popover`, `.wgi-sheet` | A 120ms cross-fade on `--pm-reduced-duration`; rise, scale and slide go; the sheet's header and body fade in together on the same beat; the rubber bands, the grip and the detached card's yield snap; a keyboard open or close stays instant |
 | `Toaster` | A 120ms fade; the rise and the stack's height change land at once |
 | Home's loading placeholders | The pulse slows to 3.2s instead of freezing mid-frame |
-| `Button`, Home's buttons, the time picker | Paint and depth change at once; scale, lift and wheel travel go; the picker's sheet cross-fades on `crossfade` |
+| `Button`, Home's buttons, the time picker | Paint and depth change at once; scale, lift and wheel travel go; the picker's panel cross-fades on `crossfade` |
 | `Reveal`, `AuthCard` | Content shows at once; the glint does not run |
 | The release briefing, request notes | 100ms and 120ms fades: [roadmap item 7](roadmap.md#7-the-legacy-feature-blocks) |
 

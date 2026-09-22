@@ -1,4 +1,4 @@
-/* The motion registry, bound for motion.dev (DESIGN.md "Motion").
+/* The motion registry, bound for motion.dev (design-system/motion.md "The registry").
 
    Two engines, one registry. The `--motion-*` tokens in src/app/globals.css
    and the presets below are the same temperaments, so a surface may animate
