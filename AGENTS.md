@@ -132,9 +132,10 @@ is not required to implement, review, or merge a component or appearance change.
 
 `src/components/stock/` retains registry source and examples as inputs to that bundle. Its
 vendor exclusions remain because the toolchain consumes upstream code. New product consumers
-use approved `ui/` recipes. The staff home calendar currently imports `stock/calendar.tsx`;
-preserve that behavior until its approved replacement is synced. `MANIFEST.json` records source
-provenance. Do not treat the registry defaults as approved brand design.
+use approved `ui/` recipes. The staff home imports `stock/calendar.tsx`, `stock/radio-group.tsx`
+and `stock/toggle-group.tsx` directly; preserve that behavior until approved `ui/` recipes replace
+them. `MANIFEST.json` records source provenance. Do not treat the registry defaults as approved
+brand design.
 
 `.ds-sync/` is the machine-local toolchain; `.design-sync/` holds project-specific pipeline
 source and previews; `ds-bundle/` is generated output. `local-only-paths.json` governs all three.

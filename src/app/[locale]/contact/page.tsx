@@ -67,7 +67,7 @@ export default async function ContactPage({ params }: Readonly<PageProps>) {
         </div>
       </section>
 
-      <TextBand locale={locale} dict={dict} />
+      <TextBand dict={dict} />
     </>
   );
 }

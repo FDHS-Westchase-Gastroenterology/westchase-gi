@@ -42,7 +42,7 @@ function PrepList({ docs, locale }: Readonly<{ docs: PrepDoc[]; locale: Locale }
             className="group flex items-baseline justify-between gap-6 py-4"
           >
             <span className="min-w-0">
-              <span className="block text-[1.12rem] leading-snug font-[var(--font-display)] text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
+              <span className="block text-[1.12rem] leading-snug text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
                 {doc.title[locale]}
               </span>
               <span className="measure mt-1 block text-[0.93rem] text-[var(--color-body)]">
@@ -91,9 +91,7 @@ export default async function ProcedurePrepPage({ params }: Readonly<PageProps>)
         {/* The one question that matters before anything else on this page. */}
         <div className="card mt-8 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 p-5 sm:p-6">
           <div className="min-w-0">
-            <h2 className="text-base font-[var(--font-body)] font-extrabold text-[var(--color-ink)]">
-              {t.unsure}
-            </h2>
+            <h2 className="text-base font-extrabold text-[var(--color-ink)]">{t.unsure}</h2>
             <p className="measure mt-1 text-[0.95rem] text-[var(--color-body)]">{t.unsureBody}</p>
           </div>
           <a href={site.textLine.href} data-slot="button" className={buttonVariants()}>
@@ -118,7 +116,7 @@ export default async function ProcedurePrepPage({ params }: Readonly<PageProps>)
         </div>
       </section>
 
-      <TextBand locale={locale} dict={dict} />
+      <TextBand dict={dict} />
     </>
   );
 }

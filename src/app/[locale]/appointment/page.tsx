@@ -41,9 +41,7 @@ export default async function AppointmentPage({ params }: Readonly<PageProps>) {
           <AppointmentForm locale={locale} dict={dict} />
           <aside className="grid gap-6 lg:sticky lg:top-32">
             <div className="card bg-[var(--color-navy)] p-7 text-[var(--color-on-dark)]">
-              <h2 className="h3 font-[var(--font-display)] text-[var(--color-on-dark)]">
-                {dict.common.textBand.heading}
-              </h2>
+              <h2 className="h3 text-[var(--color-on-dark)]">{dict.common.textBand.heading}</h2>
               <p className="mt-3 text-[var(--color-on-dark-muted)]">{dict.common.textBand.body}</p>
               <div className="mt-5 flex flex-wrap gap-3">
                 <a

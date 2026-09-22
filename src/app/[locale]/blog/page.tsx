@@ -44,9 +44,7 @@ export default async function BlogPage({ params }: Readonly<PageProps>) {
               <p className="text-[0.92rem] font-bold text-[var(--color-muted-ink)]">
                 {t.postedLabel}: {formatPosted(latest.posted, locale)}
               </p>
-              <h2 className="h2 mt-2 font-[var(--font-display)] text-[var(--color-ink)]">
-                {latest.title[locale]}
-              </h2>
+              <h2 className="h2 mt-2 text-[var(--color-ink)]">{latest.title[locale]}</h2>
               <p className="measure mt-3 text-[var(--color-body)]">{latest.teaser[locale]}</p>
               <span className="link-line mt-5 inline-flex">
                 {t.readPost} <ArrowRight className="h-4 w-4" />
@@ -70,7 +68,7 @@ export default async function BlogPage({ params }: Readonly<PageProps>) {
                     {formatPosted(post.posted, locale)}
                   </p>
                   <div>
-                    <h2 className="text-[1.35rem] leading-snug font-[var(--font-display)] text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
+                    <h2 className="text-[1.35rem] leading-snug text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
                       {post.title[locale]}
                     </h2>
                     <p className="measure mt-1.5 text-[0.98rem] text-[var(--color-body)]">
@@ -95,7 +93,7 @@ export default async function BlogPage({ params }: Readonly<PageProps>) {
         </div>
       </section>
 
-      <TextBand locale={locale} dict={dict} />
+      <TextBand dict={dict} />
     </>
   );
 }

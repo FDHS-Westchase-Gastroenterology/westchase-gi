@@ -24,7 +24,7 @@ import { base, crossfade, leave } from "@/lib/motion";
    three wheels out of that trigger over the month — the hour, the minute,
    then the half of the day, the way staff say a time out loud.
 
-   The sheet edits a draft and Done is what reaches the card. That is what
+   The panel edits a draft and Done is what reaches the card. That is what
    lets the wheels open on a real time rather than a blank: an unset field
    raises them mid-morning, and nothing is recorded until Done, so a wheel
    turned past the right row on the way to it has changed nothing. The
@@ -103,9 +103,9 @@ export function TimePicker({
   );
 }
 
-/* The sheet itself: a scrim that quiets the month and a panel that grows
-   out of the trigger beneath it and shrinks back into it (HIG Popovers;
-   DESIGN.md "Motion", spatial consistency). */
+/* The panel itself: a scrim quiets the month, and the panel grows from the
+   trigger beneath it and shrinks back into it (HIG Popovers;
+   design-system/motion.md "Rules of use", spatial consistency). */
 function TimeSheet({
   trigger,
   draft,
@@ -142,8 +142,8 @@ function TimeSheet({
     panel.style.setProperty("--wgi-time-origin", `${x}px ${y}px`);
   }, [trigger]);
 
-  /* The sheet sits along the month's lower edge, and on a narrow card that
-     edge can be below the fold, so the sheet asks for the least scrolling
+  /* The panel sits along the month's lower edge, and on a narrow card that
+     edge can be below the fold, so the panel asks for the least scrolling
      that puts it on screen — none on a desktop card, where it already is.
      Then the hour takes focus, because the hour is where a time is decided;
      the scroll that would otherwise cause belongs to the wheel, not the card. */
@@ -163,7 +163,7 @@ function TimeSheet({
   return (
     <>
       {/* A pointer affordance only, and inert to assistive technology: a
-          screen reader dismisses this sheet with Escape or commits it with
+          screen reader dismisses this panel with Escape or commits it with
           Done, both of which live inside the dialog. */}
       <m.button
         type="button"
@@ -184,7 +184,8 @@ function TimeSheet({
         aria-label="Choose a start time"
         className="wgi-time-sheet"
         /* Reduced motion keeps the arrival and drops the growth: the
-           panel cross-fades in place (DESIGN.md "Reduced motion"). */
+           panel cross-fades in place
+           (design-system/motion.md "Reduced motion"). */
         initial={
           instant ? false : reduced ? { opacity: 0 } : { opacity: 0, transform: "scale(0.96)" }
         }
@@ -194,8 +195,8 @@ function TimeSheet({
           transform: reduced ? "scale(1)" : "scale(0.96)",
           transition: instant ? INSTANT : reduced ? crossfade : leave,
         }}
-        /* A popover on the staff home's beat: a surface moving, not a
-           sheet arriving, so no overshoot. */
+        /* The panel moves on the staff home's base beat, without a spring or
+           overshoot. */
         transition={reduced ? crossfade : base}
         onKeyDown={handleKeyDown}
       >

@@ -12,6 +12,8 @@
     "lint": "oxlint",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
+    "design-system:check": "node scripts/design-system-docs.mjs check",
+    "design-system:write": "node scripts/design-system-docs.mjs write",
     "hooks:install": "git config core.hooksPath .githooks",
     "local-only:check": "node scripts/check-local-only.mjs tracked",
     "local-only:verify": "node scripts/check-local-only.mjs verify-generated",

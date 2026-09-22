@@ -60,10 +60,14 @@ function requireKnownIntakeStatus(response: Response) {
 function ContactActions({ dict }: Readonly<{ dict: Dictionary }>) {
   return (
     <>
-      <a href={site.phone.href} className={buttonVariants()}>
+      <a href={site.phone.href} data-slot="button" className={buttonVariants()}>
         <Phone className="h-4 w-4" /> {dict.common.callUs}
       </a>
-      <a href={site.textLine.href} className={buttonVariants({ variant: "outline" })}>
+      <a
+        href={site.textLine.href}
+        data-slot="button"
+        className={buttonVariants({ variant: "outline" })}
+      >
         <MessageSquare className="h-4 w-4" /> {dict.common.textUs}
       </a>
     </>
@@ -89,7 +93,7 @@ function SuccessCard({
       <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-[var(--color-mint)] text-[var(--color-teal-ink)]">
         <Check className="h-7 w-7" />
       </span>
-      <h2 className="h3 mt-5 font-[var(--font-display)]">{f.doneHeading}</h2>
+      <h2 className="h3 mt-5">{f.doneHeading}</h2>
       <p className="mt-3 max-w-md text-[var(--color-body)]">{f.doneBody}</p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         <ContactActions dict={dict} />

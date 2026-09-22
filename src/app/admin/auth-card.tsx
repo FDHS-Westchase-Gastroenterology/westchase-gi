@@ -26,7 +26,7 @@ export function AuthCard({
               {/* One amber glint sweeps the wordmark on arrival (shadcn
                   shimmer: once, then done). Rare-tier motion; the utility
                   disables itself under prefers-reduced-motion. */}
-              <p className="shimmer text-[1.15rem] leading-snug font-[var(--font-display)] shimmer-color-amber shimmer-duration-2400 shimmer-once">
+              <p className="shimmer text-[1.15rem] leading-snug shimmer-color-amber shimmer-duration-2400 shimmer-once">
                 Westchase Gastroenterology
               </p>
               <p className="mt-2 border-t border-[var(--color-line-dark)] pt-3 text-[0.76rem] font-bold tracking-[0.1em] text-[var(--color-on-dark-muted)] uppercase">

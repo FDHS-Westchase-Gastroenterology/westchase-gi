@@ -7,10 +7,20 @@ import type { ComponentProps } from "react";
 
 import { Separator } from "@/components/ui/separator";
 
-/* Upstream shadcn Item (base-nova), adapted only to the repo's import and
-   lint conventions. Colors resolve through the semantic token bridge in
-   globals.css; brand surfaces restyle through className, never by editing
-   token values here. */
+/*
+ * Upstream shadcn Item (base-nova, registry source in
+ * src/components/stock/item.tsx). Adopted verbatim apart from the repo's
+ * import and lint conventions and one repoint: `ItemSeparator` renders the
+ * brand `Separator` from ui/ rather than the registry copy.
+ *
+ * Colors resolve through the semantic token bridge in globals.css; brand
+ * surfaces restyle through className, never by editing token values here.
+ *
+ * Consumer: the staff home's full record sheet, which renders its notes and
+ * history as extra-small items in an `ItemGroup` and adds the entry states
+ * through its own `.wgi-sheet-items` hook
+ * (design-system/surfaces.md "Lists").
+ */
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function ItemGroup({ className, ...props }: ComponentProps<"div">) {

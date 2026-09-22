@@ -2,10 +2,8 @@ import { MessageSquare, Phone } from "@/components/icons";
 import { buttonVariants } from "@/components/ui/button-variants";
 import type { Dictionary } from "@/lib/i18n";
 import { site } from "@/lib/site";
-import type { Locale } from "@/lib/site";
 
 interface TextBandProps {
-  locale: Locale;
   dict: Dictionary;
 }
 
@@ -19,7 +17,7 @@ export function TextBand({ dict }: Readonly<TextBandProps>) {
     <section className="print-hide bg-[var(--color-navy)] text-[var(--color-on-dark)]">
       <div className="container-x section-sm flex flex-col items-start justify-between gap-6 md:flex-row md:items-center">
         <div className="max-w-2xl">
-          <h2 className="h2 font-[var(--font-display)] text-[var(--color-on-dark)]">{t.heading}</h2>
+          <h2 className="h2 text-[var(--color-on-dark)]">{t.heading}</h2>
           <p className="mt-3 text-[var(--color-on-dark-muted)]">{t.body}</p>
         </div>
         <div className="flex flex-wrap gap-3">

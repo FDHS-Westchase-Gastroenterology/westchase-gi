@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useRef } from "react";
 
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
@@ -96,24 +97,21 @@ export function RequestSearchForm({
         Search
       </Button>
       {search ? (
-        <Button
-          variant="outline"
+        <Link
+          href={requestsHref({ search: "", status: filter })}
+          data-slot="button"
           data-testid="request-search-clear"
-          render={
-            <Link
-              href={requestsHref({ search: "", status: filter })}
-              onClick={(event) => {
-                if (!isUnmodifiedPrimaryClick(event)) return;
-                event.preventDefault();
-                if (inputRef.current !== null) inputRef.current.value = "";
-                router.push(requestsHref({ search: "", status: filter }));
-                focusAfterNavigate(REQUEST_SEARCH_INPUT_ID);
-              }}
-            />
-          }
+          className={buttonVariants({ variant: "outline" })}
+          onClick={(event) => {
+            if (!isUnmodifiedPrimaryClick(event)) return;
+            event.preventDefault();
+            if (inputRef.current !== null) inputRef.current.value = "";
+            router.push(requestsHref({ search: "", status: filter }));
+            focusAfterNavigate(REQUEST_SEARCH_INPUT_ID);
+          }}
         >
           Clear
-        </Button>
+        </Link>
       ) : null}
       <p
         id={REQUEST_SEARCH_STATUS_ID}

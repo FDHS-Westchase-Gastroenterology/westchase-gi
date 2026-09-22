@@ -1,4 +1,4 @@
-/* The motion registry, bound for motion.dev (DESIGN.md "Motion").
+/* The motion registry, bound for motion.dev (design-system/motion.md "The registry").
 
    Two engines, one registry. The `--motion-*` tokens in src/app/globals.css
    and the presets below are the same temperaments, so a surface may animate
@@ -36,7 +36,7 @@ const temperaments = { arrive, leave, micro, fast, base, sheet } satisfies Recor
 
 /* Reduced motion withholds the physics, never the change: every temperament
    collapses to the cross-fade, and the caller drops its travel the same way
-   the CSS registry does (DESIGN.md "Reduced motion"). */
+   the CSS registry does (design-system/motion.md "Reduced motion"). */
 export function transitionFor(kind: MotionTemperament, reducedMotion: boolean): Transition {
   return reducedMotion ? crossfade : temperaments[kind];
 }

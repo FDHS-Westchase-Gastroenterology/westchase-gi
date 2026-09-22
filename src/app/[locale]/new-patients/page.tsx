@@ -74,7 +74,7 @@ export default async function NewPatientsPage({ params }: Readonly<PageProps>) {
                 <ExternalLink className="h-4 w-4" />
               </a>
             </div>
-            <h3 className="mt-10 text-base font-[var(--font-body)] font-extrabold text-[var(--color-ink)]">
+            <h3 className="mt-10 text-base font-extrabold text-[var(--color-ink)]">
               {dict.common.docs.newPatientHeading}
             </h3>
             <p className="measure-sm mt-2 text-[0.95rem] text-[var(--color-body)]">
@@ -86,7 +86,7 @@ export default async function NewPatientsPage({ params }: Readonly<PageProps>) {
           </div>
 
           <Reveal delay={1} className="card p-7 sm:p-8 lg:sticky lg:top-32">
-            <h2 className="h3 font-[var(--font-display)]">{t.missionHeading}</h2>
+            <h2 className="h3">{t.missionHeading}</h2>
             <p className="mt-4">{t.missionIntro}</p>
             <ul className="list-check mt-5">
               {t.missionItems.map((item) => (
@@ -130,7 +130,7 @@ export default async function NewPatientsPage({ params }: Readonly<PageProps>) {
         </div>
       </section>
 
-      <TextBand locale={locale} dict={dict} />
+      <TextBand dict={dict} />
     </>
   );
 }

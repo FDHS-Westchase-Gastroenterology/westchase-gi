@@ -5,18 +5,20 @@ import type { VariantProps } from "class-variance-authority";
 import { cn } from "cn";
 
 /*
- * Brand adaptation of the shadcn Badge (DESIGN.md "Component system").
+ * Brand adaptation of the shadcn Badge (design-system/components.md
+ * "Component tiers").
  * The stamp shape is the full pill on the committed type step (0.8125rem,
  * weight 600). The named variants below make the DESIGN.md color law
  * executable: each hue holds exactly one role, and a stamp always carries
  * words beside its color.
  *
  * Sole importer today: src/app/admin/(portal)/requests/status-badge.tsx
- * (rendered on the portal queue and request-detail pages). Consumer maps
- * below are crutches — refresh with docs/COMPONENT-INVENTORY.md; full list
- * regenerates with: rg -l 'ui/badge' src
+ * (rendered on the portal queue and request-detail pages); the staff home
+ * has its own wrapper. Current consumers of every variant are in
+ * design-system/surfaces.md "Badges".
  *
- * Two axes, decoupled per DESIGN.md "Component API rules":
+ * Two axes, decoupled per design-system/components.md
+ * "Component API rules":
  * - `variant` is color and surface only, and is required: the color law
  *   means there is no meaningless stamp. The registry's six stock variants
  *   were pruned unconsumed (2026-08-28); re-fetch from the registry if a
