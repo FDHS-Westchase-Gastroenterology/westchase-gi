@@ -23,7 +23,9 @@ export interface HomeLine {
   readonly createdAtMs: number;
   /** "Tampa · Morning" */
   readonly pref: string;
-  /** "waiting 3h" / "due today" / "back Sep 4" / "quiet 5d" / "handed off" / "closed" */
+  /** The card's due text, in words: "Received 3 hr ago" / "Due today" /
+      "Overdue since Sep 12" / "Back Thu, Sep 17" / "Last activity 5 days ago" /
+      "Handed off" / "Closed". */
   readonly timing: string;
   /** The only amber on a line: it tints the age on the list and is a word on the card. */
   readonly stamp: "Overdue" | null;

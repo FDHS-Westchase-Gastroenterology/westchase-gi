@@ -54,6 +54,7 @@
 .appt-line-trigger:active,
 .wgi-editor-dim:active,
 .wgi-editor-apply:active:enabled,
+.wgi-record-save:active:enabled,
 .wgi-time-trigger:active:enabled,
 .wgi-record-follow > [data-slot="toggle-group-item"]:active:enabled,
 .wgi-record-call:active,
@@ -274,6 +275,12 @@
   --wgi-name-size: 1.156rem;
   --wgi-phone-size: 0.969rem;
   --wgi-label-size: 0.906rem;
+}
+
+/* The record card is portaled to body, outside .wgi-home, so it reads the
+   same paints from this shared rule rather than restating them. */
+.wgi-home,
+.wgi-record-card {
   /* Figma parity: the paints below are the design file's own variables
      (Ypf9ohpRcGWF5C9T9bSvWW, "Home · Approved baseline", node 88:1176,
      which carries these names), scoped to Home so the brand @theme stays
@@ -319,6 +326,11 @@
   --wgi-badge-scheduled-ink: #006650;
   --wgi-cmd-primary: #173758;
   --wgi-cmd-radius: 6px;
+  /* The record card's redesign (Figma Ypf9ohpRcGWF5C9T9bSvWW, section 03,
+     node 134:1176): small uppercase labels take the file's label ink, and
+     a day from a neighboring month is the chip stroke, named for its job. */
+  --wgi-label-ink: #647493;
+  --wgi-outside-day: var(--wgi-chip-stroke);
 }
 
 /* The page behind Home is the frame's quiet neutral canvas (--portal-canvas
@@ -1295,20 +1307,22 @@ a.appt-phone {
 
 /* ---------- The record card ---------- */
 
-/* The registry's "date picker with presets" shape: the editor's 20rem
-   calendar (so the two share one calendar) with a 13.5rem column beside
-   it for who, how to reach them, what happened, and Save. The month is
-   six weeks tall whatever it shows, so the card is one fixed height. The
-   positioner keeps the side the row gives it and shifts the card into
-   view rather than shrinking it (a popover is only as big as its
-   contents): the first row can never squeeze below its content, and the
-   max-height with a whole-card scroll is the last resort for a viewport
-   shorter than the card, not a mode. */
+/* Figma Ypf9ohpRcGWF5C9T9bSvWW, section 03 (node 134:1176): a 13.5rem
+   column for who, how to reach them and what happened, beside the month
+   and the strip beneath it, and one footer across both — the way into the
+   full record and Save. The month is six weeks tall whatever it shows and
+   the strip holds its height in every state, so the card is one fixed
+   height. The positioner keeps the side the row gives it and shifts the
+   card into view rather than shrinking it (a popover is only as big as
+   its contents): the max-height with a whole-card scroll is the last
+   resort for a viewport shorter than the card, not a mode. The four type
+   sizes below sit between the closed --pt-* steps; they are the frame's,
+   scoped to the card, and used nowhere else. */
 .wgi-record-card {
-  /* Portaled to body, so the home root's --wgi-* paints are restated. */
-  --wgi-band: #eaf1f7;
-  --wgi-cmd-primary: #173758;
-  --wgi-open: #dbe9ea;
+  --wgi-card-name-size: 1.125rem; /* 18px */
+  --wgi-card-row-size: 0.785rem; /* 12.56px: answers, days, segments */
+  --wgi-card-tag-size: 0.656rem; /* 10.5px: the strip's small label */
+  --wgi-card-value-size: 0.844rem; /* 13.5px: the strip's value */
   display: grid;
   width: 33.5rem;
   max-height: var(--available-height, 40rem);
@@ -1318,7 +1332,7 @@ a.appt-phone {
   grid-template-rows: minmax(max-content, 1fr) auto;
   grid-template-areas:
     "side main"
-    "commit main";
+    "foot foot";
 }
 
 /* A scheduled or closed line has nothing to answer and no day to pick:
@@ -1329,13 +1343,14 @@ a.appt-phone {
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
     "side"
-    "main";
+    "foot";
 }
 
 .wgi-record-side {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  padding-bottom: 0.75rem;
   grid-area: side;
 }
 
@@ -1344,20 +1359,16 @@ a.appt-phone {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  border-left: 1px solid var(--color-line);
+  border-left: 1px solid var(--wgi-rule);
   grid-area: main;
-}
-
-.wgi-record-card:has(.wgi-record-note) .wgi-record-main {
-  border-left: 0;
 }
 
 /* Below the sidebar breakpoint the column stacks above the month at the
    editor's width and the card scrolls inside the space the positioner
-   reports, Save pinned along its lower edge. The primary nav docks along
-   the bottom edge above the popover layer (portal-workbench.css), so a
-   card opening downward stops short of the dock by its 5rem height plus
-   a breath. */
+   reports, the footer pinned along its lower edge. The primary nav docks
+   along the bottom edge above the popover layer (portal-workbench.css),
+   so a card opening downward stops short of the dock by its 5rem height
+   plus a breath. */
 @media (max-width: 59.99rem) {
   .wgi-record-card {
     width: 20rem;
@@ -1366,7 +1377,7 @@ a.appt-phone {
     grid-template-areas:
       "side"
       "main"
-      "commit";
+      "foot";
   }
 
   .wgi-record-card[data-side="bottom"] {
@@ -1374,15 +1385,15 @@ a.appt-phone {
   }
 
   .wgi-record-main {
-    border-top: 1px solid var(--color-line);
+    border-top: 1px solid var(--wgi-rule);
     border-left: 0;
   }
 
-  .wgi-record-commit {
+  .wgi-record-foot {
     position: sticky;
     bottom: 0;
     z-index: 1;
-    background: var(--portal-surface);
+    background: var(--wgi-surface);
   }
 }
 
@@ -1391,10 +1402,14 @@ a.appt-phone {
    detachable popovers). `touch-action: none` keeps the pointer events on
    the head rather than starting a scroll, `user-select: none` keeps the
    name from selecting under the grab, and the grab cursor says the card
-   can move. */
+   can move. The name makes room for the close; the lines under it run
+   the column's full width. */
 .wgi-record-head {
   position: relative;
-  padding: 0.8rem 0.9rem 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 1rem 0.9375rem 0.625rem;
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -1424,11 +1439,6 @@ a.appt-phone {
     translate var(--motion-base-duration) var(--motion-standard);
 }
 
-/* The card's close, attached or detached: the head makes room for it. */
-.wgi-record-head {
-  padding-right: 2.75rem;
-}
-
 /* The card's close: the sheet's small quiet button at the head's corner,
    2rem drawn with a 44px hit area reaching past it. */
 .wgi-record-close {
@@ -1444,7 +1454,7 @@ a.appt-phone {
   border-radius: var(--btn-radius);
   background: none;
   padding: 0;
-  color: var(--color-muted-ink);
+  color: var(--wgi-muted-ink);
   cursor: pointer;
   transition:
     background-color var(--motion-fast-duration) var(--motion-standard),
@@ -1460,7 +1470,7 @@ a.appt-phone {
 @media (hover: hover) {
   .wgi-record-close:hover {
     background: var(--color-mint-hover);
-    color: var(--color-ink);
+    color: var(--wgi-name-ink);
   }
 }
 
@@ -1475,32 +1485,55 @@ a.appt-phone {
 
 .wgi-record-name {
   margin: 0;
-  color: var(--color-ink);
-  font-size: var(--pt-base);
+  padding-right: 1.75rem;
+  color: var(--wgi-name-ink);
+  font-size: var(--wgi-card-name-size);
   font-weight: 700;
-  letter-spacing: -0.01em;
+  line-height: 1.21;
   overflow-wrap: anywhere;
 }
 
-.wgi-record-meta {
+/* The queue line: the list row's badge at the head's scale, then when the
+   line is due in words. An overdue line's words take the badge's amber
+   ink, the one amber the card spends on time. */
+.wgi-record-queue {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.35rem;
-  margin: 0.2rem 0 0;
-  color: var(--color-body); /* 11.1:1 on the surface; muted-ink read as haze at 13px/400 */
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: var(--pt-xs);
+  font-weight: 600;
+}
+
+.wgi-record-queue > [data-overdue] {
+  color: var(--wgi-badge-contacted-ink);
+}
+
+.wgi-record-badge {
+  height: 1.425rem;
+  border-radius: 6px;
+  padding: 0 0.53rem;
+  font-size: 0.7125rem;
+}
+
+.wgi-record-pref {
+  margin: 0;
+  color: var(--wgi-muted-ink);
   font-size: var(--pt-xs);
 }
 
+/* The frame's phone action: the row band as its fill and the command
+   navy as its ink (9.4:1); mint is for hover. */
 .wgi-record-call {
   display: flex;
+  min-height: 2.4375rem;
   align-items: center;
-  gap: 0.45rem;
-  margin: 0 0.9rem;
-  padding: 0.5rem 0.7rem;
-  border-radius: var(--radius-sm);
-  /* The frame's phone action (Portal/Phone action): the row band as its
-     fill and the command navy as its ink (9.4:1); mint is for hover. */
+  gap: 0.525rem;
+  margin: 0 0.9375rem;
+  padding: 0 0.73rem;
+  border-radius: var(--wgi-cmd-radius);
   background: var(--wgi-band);
   color: var(--wgi-cmd-primary);
   font-size: var(--pt-sm);
@@ -1522,44 +1555,53 @@ a.appt-phone {
   flex: none;
 }
 
+/* The small uppercase label over a group: OUTCOME here, and the strip's
+   CALL BACK / APPOINTMENT beside the month. */
+.wgi-record-label {
+  margin: 1.375rem 0.9375rem 0.25rem;
+  color: var(--wgi-label-ink);
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
 /* The answers: what happened, in the queue's own words and nothing after
-   them — the calendar beside them is the readout. */
+   them — the strip beside them is the readout. */
 .wgi-record-answers {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: var(--ps-1);
-  padding: 0.65rem 0.5rem 0.4rem;
+  padding: 0 0.5rem;
 }
 
 /* One row = one answer: the registry radio inside a whole-row label (the
-   request detail's decision rows, at the card's density). Checked paints
-   the row the way the open line paints its trigger — mint-2; the radio
-   itself is the registry's, navy when checked. The registry's own row
-   utilities sit in the utilities layer, so these unlayered rules win. */
+   request detail's decision rows, at the card's density). The chosen row
+   says so twice without a fill: the radio becomes a navy ring and the
+   label turns semibold ink. The registry's own row utilities sit in the
+   utilities layer, so these unlayered rules win. */
 .wgi-answer {
   display: flex;
   width: 100%;
   align-items: center;
-  gap: var(--ps-2);
-  min-height: 2.2rem;
+  gap: 0.625rem;
+  min-height: 2.479rem;
   border: 0;
   border-radius: var(--radius-sm);
-  padding: 0 0.5rem;
+  padding: 0 0.4375rem;
   background: none;
-  color: var(--color-ink);
-  font-size: var(--pt-xs);
-  font-weight: 600;
+  color: var(--wgi-name-ink);
+  font-size: var(--wgi-card-row-size);
+  font-weight: 400;
   cursor: pointer;
   text-align: start;
-  transition:
-    background-color var(--motion-fast-duration) var(--motion-standard),
-    transform var(--motion-fast-duration) var(--motion-standard);
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
 }
 
 .wgi-answer[data-closes] {
   margin-top: 0.3rem;
-  border-top: 1px solid var(--color-line);
+  border-top: 1px solid var(--wgi-rule);
   border-radius: 0 0 var(--radius-sm) var(--radius-sm);
 }
 
@@ -1575,7 +1617,7 @@ a.appt-phone {
 }
 
 .wgi-answer:has([data-checked]) {
-  background: var(--color-mint-2);
+  font-weight: 600;
 }
 
 /* The ring is the row's, inside it; the radio itself draws nothing. */
@@ -1585,7 +1627,6 @@ a.appt-phone {
 
 .wgi-answer [data-slot="radio-group-item"]:focus-visible {
   outline: none;
-  box-shadow: none;
 }
 
 .wgi-answer:has([data-slot="radio-group-item"]:disabled) {
@@ -1593,114 +1634,237 @@ a.appt-phone {
   opacity: 0.55;
 }
 
-/* The registry radio's ring is the card's amber row outline instead. */
+/* The frame's radio, drawn as strokes: a hairline in the muted ink at
+   rest, and chosen, a 5px navy ring around the surface — no dot, no fill.
+   The registry's indicator dot is hidden. */
 .wgi-answer [data-slot="radio-group-item"] {
   --tw-ring-shadow: 0 0 #0000;
-  box-shadow: none;
+  width: 1rem;
+  height: 1rem;
+  border: 0;
+  background: var(--wgi-surface);
+  box-shadow: inset 0 0 0 1px var(--wgi-muted-ink);
 }
 
-/* The surface: the editor's calendar (same class, same width, same cells)
-   at the card's density — weeks a quarter-rem apart instead of a half —
-   six weeks tall whatever the month. A closing answer leaves it in place
-   but quiet: the card keeps its shape and the eye keeps its map. */
+.wgi-answer [data-slot="radio-group-item"][data-checked] {
+  background: var(--wgi-surface);
+  box-shadow: inset 0 0 0 5px var(--wgi-cmd-primary);
+}
+
+.wgi-answer [data-slot="radio-group-indicator"] {
+  display: none;
+}
+
+/* The surface: the editor's calendar (same class, same component) at the
+   frame's cells — 42.6px wide, 46px apart — six weeks tall whatever the
+   month. The card paints it two ways. At rest (nothing answered, No call,
+   a close) every day is the thumb ink and the month title the label ink:
+   the card keeps its shape and the eye keeps its map, and nothing reads as
+   a plan. Active, the days in reach are ink, today is teal over a dot,
+   and the picked day is the only navy fill in the card besides Save. */
 .wgi-record-cal {
   flex: 1 1 auto;
-  transition: opacity var(--motion-fast-duration) var(--motion-standard);
 }
 
 .wgi-record-cal .wgi-editor-cal {
-  padding: 0.5rem 0.6rem 0.2rem;
+  --cell-size: 2.66rem;
+
+  padding: 0.25rem 0.625rem 0.375rem;
 }
 
 .wgi-record-cal .rdp-month {
-  gap: 0.75rem;
+  gap: 0;
+}
+
+.wgi-record-cal .rdp-caption_label {
+  color: var(--wgi-name-ink);
+  font-size: 0.8875rem;
+  font-weight: 700;
+}
+
+.wgi-record-cal .rdp-weekdays {
+  height: 2.1875rem;
+  align-items: center;
+}
+
+.wgi-record-cal .rdp-weekday {
+  color: var(--wgi-label-ink);
+  font-size: var(--wgi-card-row-size);
+  opacity: 0.7;
 }
 
 .wgi-record-cal .rdp-week {
-  margin-top: 0.25rem;
+  margin-top: 0.215rem;
 }
 
-.wgi-record-cal[data-idle] {
-  opacity: 0.45;
-}
-
-/* The second question, along the month's lower edge, one strip tall in
-   every state so the card never jumps: a contact answer's Call again and
-   No call (the registry toggle group, outline, small), a booking's time
-   (the registry input group), or nothing. */
-.wgi-record-second {
+.wgi-record-cal .rdp-day {
   display: flex;
   align-items: center;
-  min-height: 3rem;
-  border-top: 1px solid var(--color-line);
-  padding: 0.45rem 0.6rem;
+  justify-content: center;
+  opacity: 1;
 }
 
-/* The pressed toggle takes the portal's checked tint, the same mint-2 as
-   the chosen answer and the open line, so the pair reads as one choice. */
+.wgi-record-cal .rdp-day_button {
+  width: 2.125rem;
+  min-width: 0;
+  height: 2.125rem;
+  border-radius: 999px;
+  color: var(--wgi-name-ink);
+  font-size: var(--wgi-card-row-size);
+  font-variant-numeric: tabular-nums;
+  opacity: 1;
+  /* The registry ships transition-all on Tailwind's ease; the pick and the
+     rest-to-active repaint are fill and ink, on the feedback beat. */
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    color var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-record-cal .rdp-day_button > span {
+  opacity: 1;
+}
+
+.wgi-record-cal .rdp-disabled .rdp-day_button {
+  color: var(--wgi-thumb);
+}
+
+.wgi-record-cal .rdp-outside .rdp-day_button {
+  color: var(--wgi-outside-day);
+}
+
+.wgi-record-cal:not([data-idle]) .rdp-today:not(.rdp-disabled, .rdp-outside) .rdp-day_button {
+  gap: 0.125rem;
+  color: var(--color-teal);
+  font-weight: 700;
+}
+
+.wgi-record-cal:not([data-idle])
+  .rdp-today:not(.rdp-disabled, .rdp-outside)
+  .rdp-day_button::after {
+  content: "";
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: currentcolor;
+}
+
+.wgi-record-cal .rdp-day_button[data-selected-single="true"] {
+  background: var(--wgi-cmd-primary);
+  color: white;
+  font-weight: 700;
+}
+
+.wgi-record-cal .rdp-day_button[data-selected-single="true"]::after {
+  display: none;
+}
+
+/* The registry rings the focused day whenever it holds focus, so a click
+   would leave a halo round the pick the frame draws bare. The ring is for
+   the keyboard: it stays for focus-visible and goes for a pointer. */
+.wgi-record-cal .rdp-day_button:not(:focus-visible) {
+  --tw-ring-shadow: 0 0 #0000;
+}
+
+.wgi-record-cal[data-idle] .rdp-caption_label {
+  color: var(--wgi-label-ink);
+}
+
+.wgi-record-cal[data-idle] .rdp-weekday {
+  color: var(--wgi-thumb);
+}
+
+.wgi-record-cal[data-idle] .rdp-day:not(.rdp-outside) .rdp-day_button {
+  color: var(--wgi-thumb);
+}
+
+/* The strip along the month's lower edge, one height in every state so
+   the card never jumps: the second question at its left — a contact's
+   Call again or No call, a booking's time — and at its right the answer
+   Save records, or the pick it still waits for. */
+.wgi-record-strip {
+  display: flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-top: 1px solid var(--wgi-rule);
+  padding: 0.375rem 1rem 0.375rem 0.625rem;
+}
+
+/* The segmented control: the registry toggle group on the band, the
+   pressed segment raised onto the surface. */
 .wgi-record-follow {
-  width: 100%;
+  gap: 2px;
+  border-radius: var(--wgi-cmd-radius);
+  padding: 2px;
+  background: var(--wgi-band);
 }
 
 .wgi-record-follow > [data-slot="toggle-group-item"] {
-  flex: 1 1 0;
-  color: var(--color-ink);
-  font-size: var(--pt-xs);
-  font-weight: 600;
+  height: auto;
+  gap: 0.3125rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 0.25rem 0.625rem;
+  background: transparent;
+  color: var(--wgi-muted-ink);
+  font-size: 0.781rem;
+  font-weight: 400;
   /* The registry ships transition-all on Tailwind's ease; name the
      properties and read the registry curve, the button recipe's way. */
   transition:
     background-color var(--motion-fast-duration) var(--motion-standard),
     border-color var(--motion-fast-duration) var(--motion-standard),
+    box-shadow var(--motion-fast-duration) var(--motion-standard),
     color var(--motion-fast-duration) var(--motion-standard),
     transform var(--motion-fast-duration) var(--motion-standard);
 }
 
 @media (hover: hover) {
-  .wgi-record-follow > [data-slot="toggle-group-item"]:hover {
+  .wgi-record-follow > [data-slot="toggle-group-item"]:hover:not([data-pressed]) {
     background: var(--color-mint-hover);
+    color: var(--wgi-name-ink);
   }
 }
 
 .wgi-record-follow > [data-slot="toggle-group-item"][data-pressed] {
-  border-color: var(--color-teal-ink);
-  background: var(--color-mint-2);
-  color: var(--color-navy);
+  border-color: var(--wgi-chip-stroke);
+  background: var(--wgi-surface);
+  box-shadow: 0 1px 2px rgb(15 20 59 / 0.08);
+  color: var(--wgi-name-ink);
+  font-weight: 700;
 }
 
-/* The time beside its word: one trigger on the strip, and the wheels the
-   trigger raises over the month. The strip stays one line tall whatever
-   the card is asked, so choosing a time never moves the calendar. */
+/* The time beside its word: one field-shaped trigger on the strip, and
+   the wheels it raises over the month. */
 .wgi-record-when {
-  width: 100%;
+  width: auto;
   align-items: center;
-  gap: var(--ps-2);
+  gap: 0.5rem;
 }
 
 .wgi-record-when > [data-slot="field-label"] {
   flex: none;
-  color: var(--color-ink);
-  font-size: var(--pt-xs);
+  color: var(--wgi-muted-ink);
+  font-size: 0.781rem;
   font-weight: 600;
 }
 
-/* The trigger wears the field's hairline and the card's checked tint
-   while its sheet is up, so the open surface is traceable to the control
+/* The trigger wears the field's hairline, and while its wheels are up the
+   card's checked tint, so the open surface is traceable to the control
    that opened it. */
 .wgi-time-trigger {
   display: flex;
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: none;
   align-items: center;
-  gap: 0.4rem;
-  min-height: 2.2rem;
-  border: 1.5px solid var(--color-line-2);
-  border-radius: var(--radius-sm);
-  padding: 0 0.6rem;
-  background: white;
-  color: var(--color-ink);
+  gap: 0.375rem;
+  border: 1px solid var(--wgi-chip-stroke);
+  border-radius: var(--wgi-cmd-radius);
+  padding: 0.375rem 0.75rem 0.375rem 0.625rem;
+  background: var(--wgi-surface);
+  color: var(--wgi-name-ink);
   font-size: var(--pt-xs);
-  font-weight: 600;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
   transition:
@@ -1709,16 +1873,17 @@ a.appt-phone {
     transform var(--motion-fast-duration) var(--motion-standard);
 }
 
-/* 11.1:1 on the surface: an unfilled field reads as a prompt, not as ink. */
+/* An unfilled field reads as a prompt, not as ink. */
 .wgi-time-trigger[data-empty] {
-  color: var(--color-body);
+  color: var(--wgi-muted-ink);
+  font-weight: 400;
 }
 
 .wgi-time-trigger > svg {
   flex: none;
-  width: 1rem;
-  height: 1rem;
-  color: var(--color-teal-ink);
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--wgi-muted-ink);
 }
 
 @media (hover: hover) {
@@ -1737,10 +1902,44 @@ a.appt-phone {
   opacity: 0.55;
 }
 
-/* The month behind the sheet is context, not a control: the scrim quiets
-   it and dismisses the sheet without committing. The stock calendar paints
-   its day buttons at z-index 10 in this same stacking context, so the scrim
-   and the sheet sit above that rather than at 1 and 2. */
+/* The strip's answer: a small label over the value, right-aligned. A
+   value still missing is the quiet ink at regular weight. */
+.wgi-record-readout {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  margin: 0;
+  text-align: right;
+}
+
+.wgi-record-readout-label {
+  color: var(--wgi-label-ink);
+  font-size: var(--wgi-card-tag-size);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.wgi-record-readout-value {
+  color: var(--wgi-name-ink);
+  font-size: var(--wgi-card-value-size);
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.wgi-record-readout-value[data-missing] {
+  color: var(--wgi-muted-ink);
+  font-weight: 400;
+}
+
+/* The month behind the wheels is context, not a control: the scrim quiets
+   it and dismisses the wheels without committing. The stock calendar
+   paints its day buttons at z-index 10 in this same stacking context, so
+   the scrim and the wheels sit above that rather than at 1 and 2. */
 .wgi-time-scrim {
   position: absolute;
   z-index: 20;
@@ -1752,42 +1951,40 @@ a.appt-phone {
   cursor: default;
 }
 
-/* The sheet rises from the strip's own edge and leaves the same way
-   (DESIGN.md "Motion", spatial consistency). Its arrival, its exit and
-   its reduced-motion temperament are the motion.dev presets in
-   src/lib/motion.ts — the same registry the --motion-* tokens carry. */
+/* The wheels are a popover over the month: they sit just above the strip,
+   never over the field that raised them (HIG Popovers), and grow out of
+   that field and shrink back into it (DESIGN.md "Motion", spatial
+   consistency). time-picker.tsx sets the transform origin at the
+   trigger; the arrival, the exit and the reduced-motion temperament are
+   the motion.dev presets in src/lib/motion.ts. */
 .wgi-time-sheet {
   position: absolute;
   z-index: 21;
-  right: 0;
-  bottom: 0;
-  left: 0;
+  right: 0.625rem;
+  bottom: calc(3rem + 0.375rem);
+  left: 0.625rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  border-top: 1px solid var(--color-line);
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 8px;
   padding: 0.7rem 0.75rem 0.75rem;
-  background: var(--portal-surface);
-  box-shadow: var(--shadow-card);
+  background: var(--wgi-surface);
+  box-shadow: var(--wgi-card-shadow);
+  transform-origin: var(--wgi-time-origin, 50% 100%);
 }
 
 /* A transformed descendant still counts toward an ancestor's scrollable
-   overflow, so for as long as the sheet is riding in on translateY(100%)
-   it hands the card — which is overflow: auto — a sheet's worth of scroll
-   range that exists only for the length of one spring. The reveal that
-   runs on mount scrolls into that window, and when the range collapses
-   behind the settling sheet scrollTop is clamped back, so the month lurches
-   and slams back. Clipping main for the life of the sheet removes the
-   phantom range; the card already clipped the travel at its own padding
-   box, so nothing that was visible stops being visible. */
+   overflow, so while the wheels scale in they would hand the card, which
+   is overflow: auto, a range that exists only for one spring. Clipping
+   main for the life of the wheels removes it; nothing visible is lost. */
 .wgi-record-main:has(.wgi-time-sheet) {
   overflow: clip;
 }
 
 .wgi-time-title {
   margin: 0;
-  color: var(--color-ink);
+  color: var(--wgi-name-ink);
   font-size: var(--pt-sm);
   font-weight: 700;
   text-align: center;
@@ -1797,94 +1994,108 @@ a.appt-phone {
   width: 100%;
 }
 
-/* Save: the card's one commit, painted as the editor's Apply, along the
-   column's lower edge. The hint strip above it holds one line whether it
-   has anything to say or not — the same "never jumps" rule the second
-   row keeps — so a disabled Save can always say what it waits for. */
-.wgi-record-commit {
-  display: flex;
-  flex-direction: column;
-  border-top: 1px solid var(--color-line);
-  padding: 0.55rem 0.5rem 0.6rem;
-  grid-area: commit;
-}
-
-.wgi-record-hint {
-  min-height: 1.1rem;
-  margin: 0 0 0.35rem;
-  color: var(--color-body); /* the meta's ink: muted-ink reads as haze at this size */
-  font-size: var(--pt-2xs);
-}
-
-.wgi-record-commit > .wgi-editor-apply {
-  flex: none;
-  width: 100%;
-  margin-top: 0;
-}
-
 /* Scheduled and closed lines have nothing to answer; the sentence points
    at the full record, where reopening lives. */
 .wgi-record-note {
-  margin: 0.75rem 0.9rem 0.4rem;
+  margin: 1rem 0.9375rem 0.4rem;
   color: var(--color-body);
   font-size: var(--pt-xs);
   line-height: 1.45;
 }
 
-/* The way into the full record: the strip along the calendar's lower
-   edge, the earlier card's foot at its own density. It is the sheet's
-   toggle — Open, then Hide — and its open state wears the working row's
-   deeper mint, so row, toggle and sheet share one tint. */
+/* One footer across both columns: the way into the full record at its
+   left, Save at its right. */
 .wgi-record-foot {
   display: flex;
-  width: 100%;
   align-items: center;
   justify-content: space-between;
-  margin-top: auto;
+  gap: 0.75rem;
+  border-top: 1px solid var(--wgi-rule);
+  padding: 0.75rem 0.75rem 0.75rem 1.125rem;
+  grid-area: foot;
+}
+
+/* The full record's toggle — Open, then Hide — as a link: command navy
+   ink and a chevron, no fill until hover. Its open state wears the working
+   row's deeper mint, so row, toggle and sheet share one tint. */
+.wgi-record-full {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: -0.375rem;
   border: 0;
-  border-top: 1px solid var(--color-line);
+  border-radius: var(--radius-sm);
   background: none;
-  padding: 0.55rem 0.9rem;
-  color: var(--color-navy); /* 9.0:1 on the surface; an action, so navy, not teal */
+  padding: 0.375rem;
+  color: var(--wgi-cmd-primary);
   font-family: inherit;
-  font-size: var(--pt-xs);
-  font-weight: 700;
+  font-size: 0.84rem;
+  font-weight: 600;
   cursor: pointer;
   transition: background-color var(--motion-fast-duration) var(--motion-standard);
 }
 
 @media (hover: hover) {
-  .wgi-record-foot:hover {
+  .wgi-record-full:hover {
     background: var(--color-mint-hover);
   }
 }
 
-.wgi-record-foot[aria-expanded="true"] {
+.wgi-record-full[aria-expanded="true"] {
   background: var(--wgi-open);
 }
 
-@media (hover: hover) {
-  .wgi-record-foot[aria-expanded="true"]:hover {
-    background: var(--wgi-open);
-  }
-}
-
-/* A bar the card's width: the press is a deeper tint. */
-.wgi-record-foot:active,
-.wgi-record-foot[aria-expanded="true"]:active {
+/* A link, not a key: the press is a deeper tint. */
+.wgi-record-full:active {
   background: var(--color-mint-press);
 }
 
 /* The chevron flips in the open state, pointing back toward the card: a
    hint of the direction the sheet will go. State, not travel — reduced
    motion drops the transition and keeps the flip. */
-.wgi-record-foot > svg {
+.wgi-record-full > svg {
   flex: none;
   transition: transform var(--motion-fast-duration) var(--motion-standard);
 }
 
-.wgi-record-foot[aria-expanded="true"] > svg {
+.wgi-record-full[aria-expanded="true"] > svg {
   transform: scaleX(-1);
+}
+
+/* Save: the card's one commit, as wide as its word. Enabled it is the
+   command navy, the only navy fill in the card besides the picked day;
+   disabled it goes quiet on the band, and the strip says what it waits
+   for. */
+.wgi-record-save {
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 5px;
+  background: var(--wgi-cmd-primary);
+  padding: 0 1.375rem;
+  color: white;
+  font-family: inherit;
+  font-size: var(--wgi-card-row-size);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-record-save:hover:enabled {
+    background: color-mix(in oklch, var(--wgi-cmd-primary) 88%, white);
+  }
+}
+
+.wgi-record-save:disabled {
+  background: var(--wgi-band);
+  color: var(--wgi-thumb);
+  cursor: default;
 }
 
 /* ---------- The editor popover ---------- */
@@ -2926,6 +3137,7 @@ a.appt-phone {
   .appt-line-trigger:active,
   .wgi-editor-dim:active,
   .wgi-editor-apply:active:enabled,
+  .wgi-record-save:active:enabled,
   .wgi-time-trigger:active:enabled,
   .wgi-record-follow > [data-slot="toggle-group-item"]:active:enabled,
   .wgi-record-call:active,
