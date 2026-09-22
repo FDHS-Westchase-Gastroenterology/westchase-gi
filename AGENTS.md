@@ -243,8 +243,9 @@ Lint, format, production-build, and visual-evidence gates for pull requests and 
 
 ## Agent skills
 
-Issues live in this repo's GitHub Issues, managed with the `gh` CLI, and use five triage labels
-as-is: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`.
+Issues live in this repo's GitHub Issues, managed with the `gh` CLI, and use six triage labels
+as-is: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `backlog`, `wontfix`.
+`backlog` marks an agreed direction that is deliberately deferred and does not block current work.
 Domain context is the single `CONTEXT.md` at the repo root.
 
 For an explicitly authorized fresh localhost staff-portal reproduction through Stagehand, follow
