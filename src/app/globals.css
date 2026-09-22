@@ -2,6 +2,10 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Documentation is not a class source. The design-system guides quote correct and incorrect
+   class strings, which Tailwind's automatic scan would otherwise compile into the stylesheet. */
+@source not "../../**/*.md";
+
 @custom-variant dark (&:is(.dark *));
 
 /* ------------------------------------------------------------------ *
