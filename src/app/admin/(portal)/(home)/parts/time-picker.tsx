@@ -1,8 +1,8 @@
 "use client";
 
 import { AnimatePresence, LazyMotion, m, useReducedMotion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
-import type { KeyboardEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import type { KeyboardEvent, RefObject } from "react";
 
 import type { TimeParts } from "@/app/admin/(portal)/(home)/record-card-time";
 import {
@@ -17,12 +17,12 @@ import { Clock } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { TimePicker as TimeWheels, TimePickerColumn } from "@/components/ui/time-picker";
 import type { TimePickerOption } from "@/components/ui/time-picker";
-import { arrive, crossfade, leave } from "@/lib/motion";
+import { base, crossfade, leave } from "@/lib/motion";
 
 /* The record card's start time, in Base's shape: the strip along the
-   month's lower edge holds one trigger, and pressing it raises a sheet
-   over the month with three wheels — the hour, the minute, then the half
-   of the day, the way staff say a time out loud.
+   month's lower edge holds one trigger, and pressing it grows a panel of
+   three wheels out of that trigger over the month — the hour, the minute,
+   then the half of the day, the way staff say a time out loud.
 
    The sheet edits a draft and Done is what reaches the card. That is what
    lets the wheels open on a real time rather than a blank: an unset field
@@ -43,13 +43,14 @@ export function TimePicker({
 }>) {
   const trigger = useRef<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState(false);
-  /* Escape leaves at once; Done and the scrim leave on the registry exit. */
+  /* The keyboard moves at once — a trigger or Done pressed with Enter or
+     Space, and Escape; a pointer opens and closes on the registry beats. */
   const [instant, setInstant] = useState(false);
   const [draft, setDraft] = useState<TimeParts>(() => settle(timeParts(OPENING_TIME)));
 
-  function raise() {
+  function raise(now: boolean) {
     setDraft(settle(timeParts(time === "" ? OPENING_TIME : time)));
-    setInstant(false);
+    setInstant(now);
     setOpen(true);
   }
 
@@ -70,10 +71,13 @@ export function TimePicker({
         aria-haspopup="dialog"
         aria-expanded={open}
         data-empty={time === "" || undefined}
-        onClick={raise}
+        onClick={(event) => {
+          /* A click with no pointer behind it (Enter or Space) has detail 0. */
+          raise(event.detail === 0);
+        }}
       >
         <Clock />
-        <span>{time === "" ? "Choose a start time" : slotLabel(time)}</span>
+        <span>{time === "" ? "Choose" : slotLabel(time)}</span>
       </button>
       {/* Only this one surface animates in JavaScript, so it loads the DOM
           feature set on demand rather than shipping the full bundle. */}
@@ -82,13 +86,14 @@ export function TimePicker({
           {open ? (
             <TimeSheet
               key="sheet"
+              trigger={trigger}
               draft={draft}
               instant={instant}
               onDismiss={dismiss}
               onDraft={setDraft}
-              onDone={() => {
+              onDone={(now) => {
                 onPick(joinTime(draft));
-                dismiss(false);
+                dismiss(now);
               }}
             />
           ) : null}
@@ -98,24 +103,44 @@ export function TimePicker({
   );
 }
 
-/* The sheet itself: a scrim that quiets the month and a panel that rises
-   from the month's lower edge and leaves the same way. */
+/* The sheet itself: a scrim that quiets the month and a panel that grows
+   out of the trigger beneath it and shrinks back into it (HIG Popovers;
+   DESIGN.md "Motion", spatial consistency). */
 function TimeSheet({
+  trigger,
   draft,
   instant,
   onDismiss,
   onDraft,
   onDone,
 }: Readonly<{
+  trigger: RefObject<HTMLButtonElement | null>;
   draft: TimeParts;
   instant: boolean;
   onDismiss: (now: boolean) => void;
   onDraft: (parts: TimeParts) => void;
-  onDone: () => void;
+  onDone: (now: boolean) => void;
 }>) {
   const sheet = useRef<HTMLDivElement | null>(null);
   const wheels = useRef<HTMLDivElement | null>(null);
   const reduced = useReducedMotion() === true;
+
+  /* The panel scales about the trigger's center on its own lower edge, so
+     it opens out of the field that raised it wherever the strip puts that
+     field. Measured from the layout box rather than the drawn one, which
+     is still scaled, and before the first paint, so the first frame
+     already grows from there. */
+  useLayoutEffect(() => {
+    const panel = sheet.current;
+    const field = trigger.current;
+    const frame = panel?.offsetParent;
+    if (!panel || !field || !frame) return;
+    const inner = frame.getBoundingClientRect();
+    const from = field.getBoundingClientRect();
+    const x = from.left + from.width / 2 - inner.left - frame.clientLeft - panel.offsetLeft;
+    const y = from.top + from.height / 2 - inner.top - frame.clientTop - panel.offsetTop;
+    panel.style.setProperty("--wgi-time-origin", `${x}px ${y}px`);
+  }, [trigger]);
 
   /* The sheet sits along the month's lower edge, and on a narrow card that
      edge can be below the fold, so the sheet asks for the least scrolling
@@ -145,7 +170,7 @@ function TimeSheet({
         tabIndex={-1}
         aria-hidden="true"
         className="wgi-time-scrim"
-        initial={{ opacity: 0 }}
+        initial={instant ? false : { opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0, transition: instant ? INSTANT : leave }}
         transition={reduced ? crossfade : leave}
@@ -158,16 +183,20 @@ function TimeSheet({
         role="dialog"
         aria-label="Choose a start time"
         className="wgi-time-sheet"
-        /* Reduced motion keeps the arrival and drops the travel: the
-           sheet cross-fades in place (DESIGN.md "Reduced motion"). */
-        initial={reduced ? { opacity: 0 } : { opacity: 0, transform: "translateY(100%)" }}
-        animate={{ opacity: 1, transform: "translateY(0%)" }}
+        /* Reduced motion keeps the arrival and drops the growth: the
+           panel cross-fades in place (DESIGN.md "Reduced motion"). */
+        initial={
+          instant ? false : reduced ? { opacity: 0 } : { opacity: 0, transform: "scale(0.96)" }
+        }
+        animate={{ opacity: 1, transform: "scale(1)" }}
         exit={{
           opacity: 0,
-          transform: reduced ? "translateY(0%)" : "translateY(100%)",
+          transform: reduced ? "scale(1)" : "scale(0.96)",
           transition: instant ? INSTANT : reduced ? crossfade : leave,
         }}
-        transition={reduced ? crossfade : arrive}
+        /* A popover on the staff home's beat: a surface moving, not a
+           sheet arriving, so no overshoot. */
+        transition={reduced ? crossfade : base}
         onKeyDown={handleKeyDown}
       >
         <p className="wgi-time-title">Choose a start time</p>
@@ -199,7 +228,13 @@ function TimeSheet({
             />
           </TimeWheels>
         </div>
-        <Button size="sm" className="wgi-time-done" onClick={onDone}>
+        <Button
+          size="sm"
+          className="wgi-time-done"
+          onClick={(event) => {
+            onDone(event.detail === 0);
+          }}
+        >
           Done
         </Button>
       </m.div>

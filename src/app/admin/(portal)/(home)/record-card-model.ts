@@ -195,6 +195,41 @@ export function saveHintFor(draft: Readonly<CardDraft>, today: string): string |
   return "Pick the day to call back.";
 }
 
+/** The strip's answer beside its control: what Save records, in a small
+   label and a value. A value still missing names the pick Save waits for,
+   so the disabled Save's hint lives here. Days only: the call-again's
+   morning or afternoon is the server's to say. Null while nothing is
+   answered, when the strip holds its height empty. */
+export interface CardReadout {
+  readonly label: string;
+  readonly value: string;
+  readonly missing: boolean;
+}
+
+const READOUT_DAY = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
+/** "Thu, Sep 17" for a practice-local YYYY-MM-DD. */
+export function readoutDay(day: string): string {
+  return READOUT_DAY.format(new Date(`${day}T12:00:00Z`));
+}
+
+export function cardReadoutFor(draft: Readonly<CardDraft>, today: string): CardReadout | null {
+  if (draft.answer === null) return null;
+  if (!needsDay(draft.answer, draft.followUp)) {
+    return { label: "No callback", value: "Request closes", missing: false };
+  }
+  const label = needsTime(draft.answer) ? "Appointment" : "Call back";
+  const hint = saveHintFor(draft, today);
+  if (hint === "Pick the appointment time.") return { label, value: "Pick a time", missing: true };
+  if (hint !== null) return { label, value: "Pick a day", missing: true };
+  return { label, value: readoutDay(draft.day), missing: false };
+}
+
 /** The call-again the chosen day means: today is this afternoon, any other day its morning. */
 export function followUpFor(day: string, today: string): FollowUpChoice {
   return day === today ? { kind: "this_afternoon" } : { kind: "day", date: day };

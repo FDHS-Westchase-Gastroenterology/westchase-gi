@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   addDays,
   canSave,
+  cardReadoutFor,
   cardNoteFor,
   cardReducer,
   cardRowsFor,
@@ -167,6 +168,42 @@ test("a disabled Save says what it is waiting for", () => {
   assert.equal(saveHintFor(planned, TODAY), null, "a picked day is the whole ask");
   const noCall = cardReducer(callBack, { type: "followUp", followUp: "none" });
   assert.equal(saveHintFor(noCall, TODAY), null, "No call needs no day");
+});
+
+test("the strip reads back what Save records, or the pick it waits for", () => {
+  assert.equal(cardReadoutFor(INITIAL_DRAFT, TODAY), null, "a blank card reads nothing");
+  const callBack = cardReducer(INITIAL_DRAFT, {
+    type: "answer",
+    answer: "no_answer",
+    today: TODAY,
+  });
+  assert.deepEqual(cardReadoutFor(callBack, TODAY), {
+    label: "Call back",
+    value: "Pick a day",
+    missing: true,
+  });
+  const planned = cardReducer(callBack, { type: "day", day: "2026-09-10" });
+  assert.deepEqual(cardReadoutFor(planned, TODAY), {
+    label: "Call back",
+    value: "Thu, Sep 10",
+    missing: false,
+  });
+  const noCall = cardReducer(planned, { type: "followUp", followUp: "none" });
+  assert.deepEqual(cardReadoutFor(noCall, TODAY), {
+    label: "No callback",
+    value: "Request closes",
+    missing: false,
+  });
+  const booked = cardReducer(INITIAL_DRAFT, { type: "answer", answer: "booked", today: TODAY });
+  assert.equal(cardReadoutFor(booked, TODAY)?.value, "Pick a day");
+  const dayOnly = cardReducer(booked, { type: "day", day: "2026-09-22" });
+  assert.equal(cardReadoutFor(dayOnly, TODAY)?.value, "Pick a time");
+  const timed = cardReducer(dayOnly, { type: "time", time: "10:30" });
+  assert.deepEqual(cardReadoutFor(timed, TODAY), {
+    label: "Appointment",
+    value: "Tue, Sep 22",
+    missing: false,
+  });
 });
 
 test("today means this afternoon; any other day is that day's morning", () => {
