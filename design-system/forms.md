@@ -55,9 +55,12 @@ Which control?
 │   ├── A request's outcome or follow-up → a choice list (below)
 │   └── Anything else → NativeSelect
 ├── An independent yes or no → Checkbox
-├── A date → a date input (below)
-└── A time of day → TimePicker
+├── A date → a date input (dates-and-times.md)
+└── A time of day → TimePicker (dates-and-times.md)
 ```
+
+Dates and times have their own guide, [dates-and-times.md](dates-and-times.md): the raw date
+input, practice-local days and instants, and the `TimePicker` wheel.
 
 ## Choices
 
@@ -68,34 +71,15 @@ with `RadioGroup` and `ToggleGroup` from `stock/`, a
 [item 3](roadmap.md#3-choice-lists) adopts the two primitives into `ui/`. Until then, a new choice
 list copies `outcome-choice-list.tsx`.
 
-## Dates
-
-A date is `<input type="date">`, practice-local, in the `YYYY-MM-DD` strings the portal passes
-around: the record's call-again day, an outcome's day, the Received editor's custom range.
-The Received editor pairs its Start and End inputs with a month grid; the staff home's grids are
-`HomeRangeCalendar` and `HomeDayCalendar` on the stock
-`Calendar` ([item 6](roadmap.md#6-the-calendar)). A new date control is a date input.
-
-## Time
-
-`TimePicker` and `TimePickerColumn` in `ui/time-picker.tsx` are the wheel: columns of options that
-scroll with momentum (`time-picker-physics.ts`) and settle on a row, operable by keyboard. Paint
-and motion axes live in `time-picker-variants.ts`.
-
-| Component | When | Real uses |
-| --- | --- | --- |
-| `TimePicker` `TimePickerColumn` | The wheel itself, composed with hour, minute and meridiem columns | `parts/time-picker.tsx` |
-
-The staff home wraps the wheel for the record card: the wrapper supplies the Hour, Minute and
-"AM or PM" columns at `size="sm"` and a full-width Done
-([components.md](components.md#route-owned-compositions)). A second time field composes the wheel
-from `ui/` the same way; the wrapper stays the staff home's.
-
 ## Saving
 
-A portal save shows its progress in one toast that follows the save's promise: the working verb
+A save on a request — from the staff home, the queue or a request's page — shows its progress in
+one toast that follows the save's promise: the working verb
 while it runs, the saved sentence only once the server confirmed. `Toaster` (Sonner, from
-`src/components/ui/toaster.tsx`) is mounted once, in the portal layout; the patient site has none.
+`src/components/ui/toaster.tsx`) is mounted once, in the portal layout, so a result outlives the
+surface that started it; the patient site has none. Toasts sit bottom center, 26rem wide, on
+`--popover` paper with `--shadow-popover` and no `richColors`; they arrive on the spring, leave on
+leaving, follow a swipe, and under reduced motion fade over 120ms.
 `followed` (`(portal)/toast-follow.ts`) narrows that promise on a **type guard**, not a value; its
 module and full signature are in [modules.md](modules.md#portal-modules).
 
@@ -123,20 +107,30 @@ A form that can show its own failure beside the fields gives the toast no error 
 with nothing to point at, like the request work panel, reads the failure off the rejection. The
 home record card keeps its own follower, `record-card-save.ts`.
 
+Settings saves do not toast. A settings form is a `<form action={action} noValidate
+aria-labelledby>` opened by its own heading: a `border-t border-[var(--color-line)] pt-5` edge where
+it follows a list, every control `disabled={pending}`, and a submit `Button` at `self-end` whose
+label turns to the working verb. A refused submit focuses the field, marks it `aria-invalid` with a
+`FieldError`, and shows one `role="alert"` `.portal-settings-form-summary` line between the heading
+and the fields (`recipients-manager.tsx#L348`, `staff-manager.tsx#L336`). The server's actions
+return no field errors, so a failure the server reports is an inline result line, below.
+
 ## Reporting a result
 
-The portal answers an action in two places, and they are not interchangeable.
+The portal answers an action in three places, and they are not interchangeable.
 
 | Mechanism | When | Real uses |
 | --- | --- | --- |
 | `toast.promise` | A save with a promise to follow, in the portal's one toast region | `created-toast.ts`, `request-notes.tsx`, `use-workflow-panel.ts` |
 | `PortalFeedbackMessage` | A result with no promise to follow, or one that has to outlive a toast | `requests-output-actions.tsx`, `print-controls.tsx`, `request-current-feedback.tsx` |
+| An inline `role="status"` or `role="alert"` line | A settings manager's result, beside the list or form it changed. The manager calls `router.refresh()` to reload its rows and mounts no provider | `recipients-manager.tsx`, `staff-manager.tsx`, `software/maintainer-access.tsx` |
 
 `PortalFeedbackProvider` (`portal-feedback.tsx`) holds a single current result per page, so a
 later note, workflow command or output handoff replaces the banner instead of stacking a second
 one. Five surfaces mount it: the staff home, the requests queue, a request's detail page, the
 print packet and the review-flyer printer. An island calls `publish({ source, tone, message })`; a
-`PortalFeedbackMessage` renders only while the current result carries its own `source`, and
+`PortalFeedbackMessage`, which takes `source` and an optional `testId` and `className`, renders only
+while the current result carries its own `source`, and
 `dismiss(source)` clears only its own. `tone` is `status` or `alert`, and it is both the element's
 `role` and its paint: mint on a teal hairline, or `amber-soft` on amber.
 

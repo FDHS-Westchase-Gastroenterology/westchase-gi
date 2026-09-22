@@ -42,9 +42,9 @@ short path to the phone, the forms, the portal and directions ([PRODUCT.md](../P
 `bg-[var(--color-mint)]` and a `--color-line` hairline edge to edge, wrapping one `div` that
 carries `container-x` (or `container-tight` for prose) plus `.section` or `.section-sm`. Fifteen
 bands are built this way, `PageHero` among them — it is a mint band with an `h1` in it, not a
-separate structure. The hairline marks a seam with a white band and only there: `border-b` under
-the navy hero or `Header`, `border-t` above `TextBand`, `border-y` between two white bands, one
-line per seam. `appointment/received/page.tsx` is the exception: it fills the viewport and wears
+separate structure. A mint band draws a hairline on each edge it shares with a white band, and on
+no other: `border-y` between two white bands, `border-t` alone when the navy `TextBand` follows it,
+`border-b` alone under the navy hero or `Header`. `TextBand` draws none, so each seam has one line. `appointment/received/page.tsx` is the exception: it fills the viewport and wears
 `section` on the `<section>` itself, with no hairline.
 
 ```tsx
@@ -116,8 +116,8 @@ divide it. Each shadow token has one role, and a surface wears one at a time.
 
 | Shadow | Role | Worn by |
 | --- | --- | --- |
-| `--shadow-soft` | A tile or control that lifts | `Button` `default` and `amber` on hover; the patient home's wayfinding tiles and physician cards, which also rise 4px on hover; office gallery images; `LocationMaps` |
-| `--shadow-card` | A card, image or modal lifted off the page | Patient images, the physicians page's navy panel, `AuthCard`, `.card`, `ProfileCardViewer`'s shell and toolbar, `Header` menus, the tour dialog, `.portal-confirm-dialog`, `.wgi-time-sheet` |
+| `--shadow-soft` | A tile or control that lifts | `Button` `default` and `amber` on hover; the patient home's wayfinding tiles and physician cards, which also rise 4px on hover; the office gallery's photo grid; `LocationMaps` |
+| `--shadow-card` | A card, image or modal lifted off the page | A single patient photo set beside copy, the physicians page's navy panel, `AuthCard`, `.card`, `ProfileCardViewer`'s shell and toolbar, `Header` menus, the tour dialog, `.portal-confirm-dialog`, `.wgi-time-sheet` |
 | `--shadow-popover` | A layer floating over same-white paper, where `--shadow-card`'s negative spread would hide inside the paper's edge | `.wgi-popover`, `Toaster` |
 
 **A card's shadow is its edge; a portal layer floating over paper adds a hairline.** A card or

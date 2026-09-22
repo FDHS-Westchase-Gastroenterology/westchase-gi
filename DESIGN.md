@@ -17,9 +17,10 @@ adding a button, a field or a modal never decides a color, a duration or a radiu
 - [Components](design-system/components.md) — the tiers, the recipe API, what earns extraction.
 - [Modules](design-system/modules.md) — import specifiers, the locale pair, the portal route contract.
 - [Buttons](design-system/buttons.md) — variants, sizes, motion, icons, disabled and pending.
-- [Forms](design-system/forms.md) — fields, controls, choices, dates, time, saving.
+- [Forms](design-system/forms.md) — fields, controls, choices, saving, results.
+- [Dates and times](design-system/dates-and-times.md) — the date input, practice-local days, the time wheel.
 - [Surfaces](design-system/surfaces.md) — cards, tables, lists, rules, scrolling, badges.
-- [Overlays](design-system/overlays.md) — dialogs, popovers, the record sheet, toasts.
+- [Overlays](design-system/overlays.md) — dialogs, popovers, the record sheet, the time sheet.
 - [Motion](design-system/motion.md) — the two engines, the temperaments, reduced motion.
 - [Accessibility](design-system/accessibility.md) — targets, focus, announcements, landmarks.
 - [Styling](design-system/styling.md) — the styling model, global CSS, call-site restyles.
@@ -55,8 +56,7 @@ They live in the brand `@theme` block of `src/app/globals.css`, which is hands-o
 for every registry command — the reconciliation procedure in
 [AGENTS.md](AGENTS.md#design-authority-and-brand-protection) runs after each one. A surface that
 needs a value the anchors lack records it on the [roadmap](design-system/roadmap.md) and brings
-rendered evidence, rather than inventing a literal
-([tokens](design-system/tokens.md), [color](design-system/color.md)).
+rendered evidence, rather than inventing a literal.
 
 ## Floors
 
@@ -69,7 +69,8 @@ Both products meet these. A change that breaks one is not finished.
   sends it to the problem.
 - Every animation has a reduced-motion answer, and nothing autoplays.
 - Platform semantics first: a native select, a date input, a native dialog. Replacing one means
-  re-earning its keyboard, locale and assistive behavior.
+  re-earning its keyboard, locale and assistive behavior; the staff home's time wheel is the one
+  replacement, and its open gap is [roadmap item 18](design-system/roadmap.md#18-time-picker-name).
 
 ## Motion
 

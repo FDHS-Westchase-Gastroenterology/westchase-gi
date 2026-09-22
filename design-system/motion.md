@@ -18,7 +18,7 @@ time wheel does; it animates `transform` and `opacity` strings, not `x` and `y`.
 | Leaving | `--motion-exit` over `--motion-exit-duration` | `leave` | 160ms, `cubic-bezier(0.23, 1, 0.32, 1)` | Every exit; the staff home popover's entrance; the portal `Button` |
 | Tinting | `--motion-micro-duration` on `--motion-exit` | `micro` | 150ms | `Checkbox`, the time wheels' rows, Home's washes and scroll thumb, `Toaster`'s icon swap |
 | Reduced | opt-outs beside the reset in `@layer base` | `crossfade` | 120ms, opacity only | [Reduced motion](#reduced-motion) |
-| Patient-site ease | `--ease-out-quint`, `--ease-out-quart` | none | Curves only; each use writes its duration | `Button` outside the portal, link underlines, `Reveal` |
+| Patient-site ease | `--ease-out-quint`, `--ease-out-quart` | none | Curves only. The durations are literals in the `globals.css` rule that uses the curve, recorded under [item 16](roadmap.md#16-motion-literals); a JSX call site never writes one | `Button` outside the portal, link underlines, `Reveal` |
 
 The portal reads these through the `--pm-*` aliases on `.portal-scope`, which also point the
 `Button` knobs `--btn-duration` and `--btn-ease` at leaving. The two time pickers are the only

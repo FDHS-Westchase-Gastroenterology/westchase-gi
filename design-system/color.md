@@ -48,8 +48,8 @@ the flyer printer. They are recorded, not a pattern; new portal work uses `defau
 
 `Badge` (`src/components/ui/badge.tsx`) makes the roles executable, and `StatusBadge`
 (`src/app/admin/(portal)/requests/status-badge.tsx`) maps each request status to a variant with
-the status label as its words. Use `StatusBadge` for a request; use `Badge` only for a stamp that
-is not a request status.
+the status label as its words. Use `StatusBadge` for a request. No stamp outside a request status
+exists today; the first one wears `Badge` and picks its variant by role, never by paint.
 
 Variants: `attention`, `current`, `settled`, `quiet`. Nothing else exists — an unlisted variant is
 a bug, not an option. `variant` is required: there is no default, because a stamp without a
@@ -68,10 +68,8 @@ Four lowercase `RequestStatus` keys drive it — `new`, `contacted`, `scheduled`
 | `closed` | `quiet` | `line` under `muted-ink` | Closed |
 
 ```tsx
-// Correct: the status picks the paint; the label is the words
+// Correct (requests/page.tsx): the status picks the paint; the label is the words
 <StatusBadge status={request.status} />
-// Correct: a stamp that is not a request status names its role
-<Badge variant="attention">Needs a call</Badge>
 ```
 
 ```tsx incorrect
@@ -128,5 +126,10 @@ properties.
 | Stylesheet | Literals | `color-mix()` | Where they sit, and the disposition |
 | --- | --- | --- | --- |
 | `portal-workbench.css` | 43 | 21 | The printed request sheet's `#172b39` and `#a6b3ba` inks; `.portal-nav-link[aria-current="page"]` in an off-palette green `rgb(80 168 165 / 20%)`; `.portal-request-form-alert` in a second red built from OKLCH literals; the confirm scrim; sidebar text at `rgb(226 239 240 / 58%)`; shadow colors. Mint washes mix at six strengths from 36% to 76%, where Home uses `mint` and `mint-2`. All wait on [roadmap item 10](roadmap.md#10-portal-surface-tints). |
-| `globals.css` | 34 | 12 | Most sit in print blocks; the review flyer's inks are a [recorded exception](tokens.md#recorded-exceptions). The rest belong to the legacy feature blocks: [roadmap item 7](roadmap.md#7-the-legacy-feature-blocks) and [item 10](roadmap.md#10-portal-surface-tints). |
+| `globals.css` | 34 | 12 | Most sit in print blocks; the review flyer's inks are a [recorded exception](tokens.md#recorded-exceptions). The rest belong to the legacy feature blocks, among them `.list-avoid`'s red cross (`oklch(0.5 0.19 25)`, the same red as the workbench alert): [roadmap item 7](roadmap.md#7-the-legacy-feature-blocks) and [item 10](roadmap.md#10-portal-surface-tints). |
 | `home.css` | 5 | 9 | Two shadow colors and three white alphas in the approved Home frame, plus 25 literals inside its custom properties: a [recorded exception](tokens.md#recorded-exceptions). |
+
+Route files carry one more: the invalid-field red `aria-[invalid=true]:border-[oklch(0.5_0.19_25)]`,
+with a background mixed from a second OKLCH literal, in `outcome-choice-list.tsx`'s `fieldClass`
+(`#L84`) and `call-again-fieldset.tsx#L114`. An invalid field is `--destructive`'s job
+([Roles](#roles)); these move onto it with [roadmap item 3](roadmap.md#3-choice-lists).

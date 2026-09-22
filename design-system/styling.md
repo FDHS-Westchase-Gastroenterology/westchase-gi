@@ -5,29 +5,31 @@ produces a class for every call site and paint that no recipe owns.
 
 ## Styling model
 
-1. **Tokens** hold decisions. CSS custom properties in `src/app/globals.css`, declared in
-   Tailwind v4 `@theme` so every token is also a utility (`bg-navy`, `text-muted-ink`,
-   `rounded-lg`, `ease-[var(--motion-exit)]`). See [tokens.md](tokens.md).
+1. **Tokens** hold decisions: CSS custom properties in `src/app/globals.css`. Brand tokens are
+   declared in Tailwind v4 `@theme`, so each is also a utility (`bg-navy`, `text-muted-ink`,
+   `rounded-lg`). The portal's `--pt-*` type and `--ps-*` space steps are set in `.portal-scope` and
+   have no utility: write arbitrary values, hinting the type where the utility is ambiguous —
+   `text-[length:var(--pt-sm)]`, `gap-[var(--ps-4)]`; without the hint, `text-[var(--pt-sm)]`
+   compiles to a color. See [tokens.md](tokens.md).
 2. **Recipes** hold component appearance. One `cva` definition per component in
-   `src/components/ui/`, written as arrays — one string per job, each under a comment naming the
-   job — with decoupled axes and brand defaults. See [components.md](components.md).
-3. **Call-site utilities** hold layout. `className` on a component instance sets width, gap,
-   grid, alignment, margin and responsive placement. It never sets the component's own color,
-   type, radius, shadow or motion: a different paint is a variant, a different feel is a
-   temperament or a scope knob. The call sites that still do are
-   [recorded](#recorded-call-site-restyles).
-4. **Scoped CSS** is the last resort, for composition that utilities and recipes cannot
-   express: print layouts, `::backdrop`, `@starting-style` entrances, a primitive's state
-   attributes. The portal's sheet is `src/app/admin/portal-workbench.css`; the staff home's is
-   `home.css` beside its route. A rule that carries a literal color, a raw `rem` step, or a
-   component's look is drift; [roadmap.md](roadmap.md) lists what is being extracted.
+   `src/components/ui/`, written as arrays (one string per job, under a comment naming it) with
+   decoupled axes and brand defaults. See [components.md](components.md).
+3. **Call-site utilities** hold layout. `className` on a component instance sets width, gap, grid,
+   alignment, margin and responsive placement. It never sets the component's own color, type,
+   radius, shadow or motion: a different paint is a variant, a different feel is a temperament or a
+   scope knob. Call sites that still do are [recorded](#recorded-call-site-restyles).
+4. **Scoped CSS** is the last resort, for what utilities and recipes cannot express: print layouts,
+   `::backdrop`, `@starting-style` entrances, primitive state attributes. It lives in
+   `admin/portal-workbench.css` and, for the staff home, `home.css`. A literal color, raw `rem` step
+   or component look in it is drift; [roadmap.md](roadmap.md) queues it for extraction.
 
-Point 3 governs a `className` on a `ui/` component instance. A plain element a route owns has no
-recipe to contradict, so its type is its own: the three `tabular-nums` spans in
-`audit/recent-work.tsx` follow [typography.md](typography.md#numerals-and-tracking) rather than
-breaking the rule, and `ProfileCardViewer.tsx` does the same for its zoom readout. Numerals are
-also the one type decision a recipe takes for a call site — `ui/time-picker-variants.ts` sets
-`tabular-nums` in its base string.
+Point 3 governs `className` on a `ui/` instance. A plain element a route owns has no recipe to
+contradict, so its `className` takes type from the scale: a size step such as
+`text-[length:var(--pt-sm)]` ([typography.md](typography.md#sizes)), a weight from
+[typography.md](typography.md#weights); literal rem sizes are [drift](typography.md#recorded-drift).
+The `tabular-nums` spans in `audit/recent-work.tsx` and `ProfileCardViewer.tsx`'s zoom readout
+follow [typography.md](typography.md#numerals-and-tracking); numerals are the one type decision a
+recipe takes for a call site: `ui/time-picker-variants.ts` sets `tabular-nums` in its base string.
 
 ## What a recipe or scoped rule may name
 
@@ -42,11 +44,10 @@ The `ui/` recipes use both. `text-muted-foreground` is the semantic text ink; `b
 surface tint, not text, because shadcn owns `--color-muted` and the brand's secondary ink is
 `--color-muted-ink`. Check every semantic utility a stock component brings for that collision.
 
-Both of those forms are the **recipe** register. A route or a route-owned component writes the
-same token the long way, `bg-[var(--color-navy)]`, and the split is absolute: counted over tracked
-sources with `git grep -oE`, `src/components/ui/` holds 32 short brand utilities and no bracketed
-one, while `src/app/[locale]`, `src/components/` outside `ui/` and `stock/`, and `src/app/admin`
-hold 683 bracketed ones and not one short. Write the register the file you are in already uses.
+Both forms are the **recipe** register. Route code writes the same token the long way,
+`bg-[var(--color-navy)]`, and the split is absolute (`git grep -oE`): `src/components/ui/` holds 32
+short brand utilities and no bracketed one; `src/app/[locale]`, `src/components/` outside `ui/` and
+`stock/`, and `src/app/admin` hold 683 bracketed and no short. Match the file's register.
 
 Geometry that has no token is written once, in the recipe that owns it: `border-[1.5px]` on
 fields, a component's own type size such as the Button `sm` size's `text-[0.9rem]`. White is the
@@ -68,21 +69,20 @@ CSS keyword, not a brand token: `bg-white` paints fields and patient-site cards.
 
 Recorded departures in recipes, each with its disposition:
 
-- `ui/input.tsx`, `ui/textarea.tsx`, `ui/native-select.tsx`: the `wgi` motion is
-  `duration-200 ease-[ease]`, off the registry ([motion.md](motion.md#recorded-motion-literals)).
-- `ui/item.tsx`: the base string carries `transition-colors duration-100`, and base strings
-  carry no motion ([motion.md](motion.md#recorded-motion-literals)).
+- `ui/input.tsx`, `ui/textarea.tsx`, `ui/native-select.tsx` (the `wgi` motion's
+  `duration-200 ease-[ease]`) and `ui/item.tsx` (`transition-colors duration-100` in a base
+  string, which carries no motion) write motion off the registry
+  ([motion.md](motion.md#recorded-motion-literals)).
 - `ui/button-variants.ts`: the `wgi` and `commit` knob fallbacks write their own durations
-  ([motion.md](motion.md#recorded-motion-literals)). `ghost-light` writes its inset stroke as an
-  `rgba()` white; it stays, because white is a keyword color and the stroke needs an alpha.
+  ([motion.md](motion.md#recorded-motion-literals)); `ghost-light`'s inset stroke is an `rgba()`
+  white, which stays: white is a keyword color and the stroke needs an alpha.
 - `ui/card.tsx` `rounded-xl` (Tailwind's 0.75rem) and `ui/checkbox.tsx` `rounded-[4px]` sit off
   the radius set ([roadmap item 8](roadmap.md#8-the-radius-ramp)).
 
 ## Recorded call-site restyles
 
-The call sites below set a `ui/` component's paint, type, shape or motion, against point 3 of the
-model. Each keeps its look until the roadmap item beside it lands; none is a pattern to copy. A new
-look is a recipe option, not a row.
+These call sites set a `ui/` component's paint, type, shape or motion, against point 3. Each keeps
+its look until its roadmap item lands; copy none. A new look is a recipe option.
 
 ```tsx
 // Correct (reset-request-form.tsx): the variant picks the look; the call site sizes and places it
@@ -94,11 +94,10 @@ look is a recipe option, not a row.
 <Button type="submit" disabled={pending} className="self-end disabled:opacity-60">
 ```
 
-The census, on commit e7734a4, is every literal class in `src/**/*.tsx` outside `ui/` and
-`stock/` that sets a look on an element imported from `ui/`, beside a call to a `ui/` recipe as
-in `cn(buttonVariants(), "bg-white")`, or in a recipe call's `className`.
-`npm run design-system:check` repeats it and fails on a restyle this table does not hold or a row
-the code no longer matches.
+The census, on commit e7734a4, is every literal class in `src/**/*.tsx` outside `ui/` and `stock/`
+that sets a look on an element imported from `ui/`, beside a `ui/` recipe call as in
+`cn(buttonVariants(), "bg-white")`, or in a recipe call's `className`. `npm run design-system:check`
+repeats it and fails on a restyle this table lacks or a row the code no longer matches.
 
 | Component | Classes | Call sites | Disposition |
 | --- | --- | --- | --- |
@@ -120,12 +119,19 @@ the code no longer matches.
 | `Input` | `text-[0.85rem]` | `recipient-row.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
 | `NativeSelect` | `font-bold` `text-[var(--color-body)]` | `staff-manager.tsx` | [Item 17](roadmap.md#17-call-site-restyles) |
 
+The census covers `ui/` imports. On bfe0fc6, 24 of the 75 native `<button>` elements outside `ui/`
+and `stock/` draw their own border or radius: 17 in the portal, 11 of them in the settings managers
+(`recipient-row.tsx`, `staff-manager.tsx`, `software/maintainer-access.tsx`), and seven on the
+patient site and review hub. They wait on [item 17](roadmap.md#17-call-site-restyles); a new
+pressable wears `Button` or `buttonVariants()` ([buttons.md](buttons.md#button-or-link)).
+
 ## Global CSS
 
 `src/app/globals.css` contains these blocks, in this order, and nothing else:
 
 | Block | Contains |
 | --- | --- |
+| Preamble | The Tailwind, `tw-animate-css` and shadcn imports; `@source not "../../**/*.md"`, so a class string quoted in a guide never compiles; the `dark` variant. |
 | Brand `@theme` | Every brand token: colors, fonts, radii, shadows, easings, durations, z-index, the patient fluid type scale. |
 | `:lang()` blocks | Per-locale font family swaps and script-specific leading and tracking. Unlayered on purpose. |
 | `@layer base` | Element defaults (`html`, `body`, headings, links, `::selection`, `:focus-visible`, `img`) and the reduced-motion posture with every authored opt-out ([motion.md](motion.md#reduced-motion)). |
@@ -133,13 +139,11 @@ the code no longer matches.
 | Print blocks | `@page` and `@media print` compositions for printed patient-site pages, the request detail and the review flyer. The request packet prints from `portal-workbench.css` and the staff home list from `home.css`. |
 | The semantic bridge | `@theme inline` mapping `--color-*` onto semantic names, then `:root` and `.dark` mapping semantic names onto brand tokens. The one literal is `--destructive`. |
 
-A new rule in `globals.css` answers "which block, and why not a recipe?". A rule named after a
-component (`.card`, `.card-lined`) is a recipe that has not been extracted yet
-([roadmap.md](roadmap.md#1-card-surfaces)).
+A new `globals.css` rule answers "which block, and why not a recipe?". A component-named rule
+(`.card`, `.card-lined`) is an unextracted recipe ([item 1](roadmap.md#1-card-surfaces)).
 
 The legacy feature blocks in `@layer components` each serve one surface: the release briefing
 (`.release-signal*`, `.release-summary*`), the language chooser (`.language-dialog*`), the
-first-login tour (`.tour-dialog`), request notes (`.request-note-*`), procedure prep
-(`.prep-schedule*`, `.prep-table*`) and the provider-card viewer (`.pc-*`). The three dialogs
-among them enter on the shared `overlay-rise` keyframes, shaped per dialog by `--overlay-rise` and
-`--overlay-scale`. The blocks are queued for extraction; new rules do not join them.
+first-login tour (`.tour-dialog`), request notes (`.request-note-*`), procedure prep (`.prep-*` and
+the `.list-plain`, `.list-steps` and `.list-avoid` lists `PrepBody` picks) and the provider-card
+viewer (`.pc-*`); its three dialogs share `overlay-rise`. New rules stay out.

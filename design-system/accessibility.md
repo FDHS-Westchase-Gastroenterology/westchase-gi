@@ -11,13 +11,13 @@ A pressable thing is at least 44px tall. The `Button` recipe holds that floor fo
 
 ```
 Which size?
-├── The page's main action, or anything on the patient site → default (44px)
-├── A hero or a full-width mobile action → lg (52px)
+├── A patient-site call to action: the hero, Header, TextBand, ReviewHub, AppointmentForm → lg (52px)
 ├── An icon with no label → icon (44px square, plus an accessible name)
-└── A control packed into a dense portal row → sm (36px, below the floor)
+└── Anything else, a dense portal row included → default (44px)
 ```
 
-`sm` is the one size under the floor: it measures 36px, and six surfaces use it
+`sm` is not a branch to choose. It is the one size under the floor: it measures 36px, and six
+recorded surfaces use it
 ([buttons.md](buttons.md#sizes)). 36px clears the WCAG 2.1 AA minimum of 24px and misses the 44px
 comfort floor this system sets, so it stays a recorded question
 ([item 11](roadmap.md#11-button-sm-targets)) rather than a silent default.
@@ -52,12 +52,15 @@ whose `<main>` carries `tabIndex={-1}` so the jump lands somewhere focusable.
 
 Focus moves with the work:
 
-- A modal dialog confines Tab by itself: `showModal()` makes the rest of the page inert, and on
-  close it returns focus to the control that opened it. `AddAppointmentDialog`, `LanguageChooser`
-  and `ProfileCardViewer` rest on that alone. `print-chooser.tsx`, `portal-tour.tsx`,
-  `recipients-manager.tsx` and the request form's discard confirmation wrap Tab by hand as well,
-  and no two agree on what counts as focusable. Copy `print-chooser.tsx`: it alone skips Base UI's
-  hidden `tabindex="-1"` input and anything `aria-disabled`. Converging the four is
+- A modal dialog does not confine Tab by itself. `showModal()` makes the rest of the page inert
+  and returns focus to the opener on close, but in Chromium, Tab from the dialog's last control
+  leaves the page for one stop before it comes back to the first (measured in Playwright's
+  Chromium: Cancel, Remove, `BODY`, Cancel). So a portal dialog wraps Tab by hand:
+  `print-chooser.tsx`, `portal-tour.tsx`, `recipients-manager.tsx` and the request form's discard
+  confirmation do, and no two agree on what counts as focusable. Copy `keepFocusInDialog` from
+  `print-chooser.tsx`: it alone skips Base UI's hidden `tabindex="-1"` input and anything
+  `aria-disabled`. `AddAppointmentDialog` does not wrap; on the patient site `LanguageChooser` and
+  `ProfileCardViewer` rest on inertness alone. Converging them is
   [roadmap item 9](roadmap.md#9-a-native-dialog-component).
 - The day editor in `call-again-fieldset.tsx` is not an overlay and traps nothing. It expands in
   place, sends focus to the corrected day on open and back to its trigger on close, and lets Tab
@@ -118,7 +121,9 @@ which is why they stay links and never become a tab widget
 The patient site's routes are locale-scoped: the layout sets `lang` and `dir` from `localeDir`,
 which returns `rtl` for Arabic. Two rules keep that honest — `.bidi-ltr` wraps phone numbers,
 domains and other LTR runs so they are not reordered in an RTL sentence, and directional glyphs
-flip with `rtl:-scale-x-100`. The staff portal ships in English only; nothing in it is translated.
+flip with `rtl:-scale-x-100`. Motion follows the direction too: `Reveal`'s `right` entrance starts
+16px toward the inline start, and `html.js[dir="rtl"]` mirrors it (`src/app/globals.css#L468`).
+The staff portal ships in English only; nothing in it is translated.
 
 ## Motion
 

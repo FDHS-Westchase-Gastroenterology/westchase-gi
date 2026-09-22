@@ -49,7 +49,7 @@ like `--font-size-17` stops being true the first time the value is tuned.
 | `--font-lato`, `--font-trocchi` and the locale face variables | next/font: `src/lib/fonts.ts` (patient site, review hub), `src/lib/portal-fonts.ts` (portal) |
 | `--portal-*`, `--pt-*`, `--ps-*`, `--pm-*` | Staff portal: `.portal-scope` in `globals.css` |
 | `--wgi-*` | Staff home: `.wgi-home` in `home.css` |
-| `--btn-*` | Button recipe knobs: read with fallbacks in `button-variants.ts`, assigned by `.portal-scope` |
+| `--btn-*` | Button recipe knobs, read with fallbacks in `button-variants.ts`. `.portal-scope` assigns eight: radius, both paddings, lift, hover shadow, press scale, duration and ease. The `commit` motion's `--btn-press-*`, `--btn-commit-*` and `--btn-release-duration` are assigned nowhere, so their fallbacks are the values |
 | `--tp-row`, `--tp-rows`, `--card-spacing` | TimePicker and Card recipes: set by their own sizes |
 | `--overlay-rise`, `--overlay-scale` | The `overlay-rise` keyframes in `@layer components`: set per legacy dialog |
 | `--release-row` | The release briefing's stagger index: set inline per row |

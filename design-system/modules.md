@@ -25,10 +25,10 @@ import { PrintChooser } from "./print-chooser";
 | Module | What it exports | A page imports |
 | --- | --- | --- |
 | `src/lib/i18n.ts` | `getDictionary`, `isLocale`, the `Dictionary` type | The dictionary and the locale guard |
-| `src/lib/site.ts` | `site`, `localePath`, `locales`, `localeDir`, `formatOfficeHours`, the `Locale` type | Practice facts and every internal href |
+| `src/lib/site.ts` | `site`, `localePath`, `locales`, `localeDir`, `formatOfficeHours`, `directionsUrl`, `mapEmbedUrl`, the `Locale` type | Practice facts and every internal href. `site.affiliations` names the surgery centers; each `site.locations[]` entry carries a `mapsQuery` that `directionsUrl(query)` and `mapEmbedUrl(query, locale)` turn into links |
 | `src/lib/metadata.ts` | `pageMetadata` | The metadata contract ([patient-site.md](patient-site.md)) |
 | `src/components/patterns/` | `PageHero`, `TextBand`, `Reveal`, `revealDelay` | The page rhythm ([components.md](components.md)) |
-| `src/components/icons.tsx` | 31 icon components | Any glyph on a patient page |
+| `src/components/icons.tsx` | 31 icon components; each renders `aria-hidden` unless a prop overrides it | Any glyph on a patient page; the words beside it carry the meaning |
 
 **The two locale modules divide by kind, not by subject.** `src/lib/site.ts` owns the *type* —
 `Locale`, the `locales` tuple, `localeSet` — because the practice's facts are keyed by it.
@@ -107,7 +107,43 @@ The patient site's route contract is in [patient-site.md](patient-site.md); this
   page-level exception is `src/app/admin/(portal)/requests/print/page.tsx`, a print sheet.
 - **The frame is the layout's.** `src/app/admin/(portal)/layout.tsx` writes `.portal-content`, the
   sidebar and the mobile bar. A page renders its heading block and its work, nothing around them
-  ([layout.md](layout.md#page-structures)).
+  ([layout.md](layout.md#page-structures)). Under `settings/` the heading block is the layout's
+  too: `settings/layout.tsx` renders the `PortalPageHeader` and the tabs, and a settings page
+  renders only its sections.
 - **Feedback is mounted per page, not per layout.** `PortalFeedbackProvider` wraps the part of a
-  page that reports a result — five call sites, each inside the page it serves. `Toaster` is the
-  opposite: one mount, in the layout ([overlays.md](overlays.md#toasts)).
+  page that reports a result through it — five call sites, each inside the page it serves. The
+  settings managers mount none; they report in their own inline lines
+  ([forms.md](forms.md#reporting-a-result)). `Toaster` is the opposite: one mount, in the layout
+  ([forms.md](forms.md#saving)).
+- **Access is checked twice.** The `(portal)` layout checks only that a session exists
+  (`getSessionUser`, redirecting to `/admin/login`). Every page calls `requireRole("staff")`
+  itself; `registry/page.tsx`, a `permanentRedirect`, is the one page without it. Every server
+  action reaches `requireRole` before it reads or writes, as its first statement or through its
+  file's shared helper. This is the backend's contract, Codex's to change
+  ([AGENTS.md](../AGENTS.md#agent-responsibilities)); a new page or action keeps it.
+- **An action returns a result, never field errors.** `settings/actions.ts` returns
+  `MutationResult` — `{ ok: true }` or a `ManagementFailure` `{ ok: false, code, error }` — or a
+  result that adds fields to the success side (`AddRecipientResult`, `InviteStaffResult`), all in
+  `src/lib/portal/management.ts`. `code` is `invalid`, `not_found`, `conflict` or `unavailable`.
+  Each manager maps `code` to its own words in a `FAILURE_COPY` table, falls back to `unavailable`
+  for a code it does not know, and never shows `error`. `software/maintainer-access.tsx` does the
+  same over `MaintainerFailureCode` (`src/lib/portal/maintainer-operation.ts`).
+
+### A settings page
+
+A new settings page follows the two that exist, `settings/page.tsx` and
+`settings/software/page.tsx`:
+
+1. Add its tab to `TABS` in `settings/settings-tabs.tsx`. The layout renders the header and tabs.
+2. The page is an async Server Component that calls `requireRole("staff")`, loads its rows, throws
+   when a read fails so `error.tsx` answers, and passes the rows to a client manager.
+3. The page stacks its sections with `space-y-8`. A section a link can jump to is wrapped in a
+   `div` with an `id` and `scroll-mt-6`.
+4. Each section is a `.portal-panel` at `p-6 sm:p-7` (the Website page's single panel uses
+   `sm:p-8`), opened by an `h2`. `.portal-panel` is copied until
+   [item 1](roadmap.md#1-card-surfaces) makes it a `Card` variant. The existing `h2`s set
+   `1.05rem` and `1.3rem` at `font-black`, which is [drift](typography.md#recorded-drift); a new one
+   writes `text-[length:var(--pt-lg)] font-bold`.
+5. Rows inside a section are the ruled list in [surfaces.md](surfaces.md#lists), an add form below
+   them opens with its own rule ([surfaces.md](surfaces.md#rules-and-scrolling)), and each action's
+   result reports inline ([forms.md](forms.md#reporting-a-result)).

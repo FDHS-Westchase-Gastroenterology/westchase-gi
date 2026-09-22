@@ -24,7 +24,7 @@ Is the text inside .portal-scope (every /admin page)?
 │         The serif appears only in the brand mark (Recorded exceptions)
 └── No, a patient-site page
     ├── h1–h3, .display → --font-display at 400 (the element defaults set both)
-    └── everything else → --font-body, reached with the font-body utility
+    └── everything else → --font-body, inherited from body; no class sets it
 ```
 
 **The portal is Lato only.** Operational content never wears the display serif. The portal's heading
@@ -136,8 +136,9 @@ What does the portal text do?
 
 Measured on commit e7734a4 with the compiled stylesheet in headless Chromium at 1440 and 390 wide,
 and by counting `font-weight` values and the bracketed-numeric, `font-extrabold` and `font-black`
-weight utilities under `src/app/admin`. Each row waits on
-[roadmap item 12](roadmap.md#12-portal-type-weights-and-heading-family).
+weight utilities under `src/app/admin`. The weight rows wait on
+[roadmap item 12](roadmap.md#12-portal-type-weights-and-heading-family). The last row, counted on
+commit bfe0fc6, waits on [item 2](roadmap.md#2-workbench-tokenization).
 
 | Where | Measured | Consequence |
 | --- | --- | --- |
@@ -145,3 +146,4 @@ weight utilities under `src/app/admin`. Each row waits on
 | `.portal-page-title` | `clamp(1.75rem, 5vw, 2.4rem)`: 38.4px at 1440, 28px at 390; 900 requested | A fluid heading at a weight that renders as 700. |
 | `.portal-auth-title` in `globals.css` | 900 requested | Renders as 700. |
 | 93 weight requests outside 400 to 700 in 13 files | 900 ×41, 800 ×23, 850 ×8, 740 ×5, 780 ×4, and twelve more between 650 and 880 | Each renders as the nearest loaded face, mostly 700. `portal-workbench.css` holds 57 and `help/page.tsx` 14. |
+| 161 literal `text-[…rem]` sizes in 21 TSX files under `src/app/admin` | 24 distinct values; two land on a step (0.8125rem, 1.25rem) and none reads `--pt-*`. They include the settings `h2`s at `1.05rem` and `1.3rem` `font-black` | Route files size type off the scale. A new one names a `--pt-*` step, as `text-[length:var(--pt-sm)]` ([styling.md](styling.md#styling-model)). |

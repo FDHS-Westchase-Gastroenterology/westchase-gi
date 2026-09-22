@@ -12,7 +12,7 @@ What must the reader do with this surface?
 ├── Staff home: edit or read one thing that belongs to a control or a row          → HomePopover
 ├── Staff home: read a whole record while its card and the list stay usable        → the full-record sheet
 ├── Staff home: set the record card's start time                                   → the card's TimePicker
-├── Staff portal: learn how a save turned out                                      → toast.promise
+├── Staff portal: learn how a save on a request turned out                         → toast.promise (forms.md)
 ├── Patient site: pick a language, a section or a page                             → the Header menus
 └── A tooltip, a hover card, a menu, a drawer, a second sheet, or anything else    → ask Jason
 ```
@@ -31,9 +31,11 @@ component is [roadmap item 9](roadmap.md#9-a-native-dialog-component).
   `-heading` pairing it with a `-close` button, and the copy; `-actions` stacks full-width
   buttons, then a right-aligned row from 40rem. The dialog is `min(92vw, 28rem)` by at most
   `min(90dvh, 32rem)`; `portal-add-appointment` is 40rem by 46rem.
-- **Actions.** The safe answer is a `Button`. Beside it sits at most one text action:
-  `-destructive` (amber, bordered) to remove something, or `-discard` (teal text) to cancel a
-  choice or abandon a draft. Neither class sets a height, so every call site adds `min-h-11`.
+- **Actions.** The safe answer is a `Button`. Beside it sits at most one text action: `-destructive`
+  (amber, bordered) to remove something, or `-discard` (teal text) to cancel a choice or abandon a
+  draft. Neither class sets a height or a disabled look, so every call site adds `min-h-11`, and one
+  whose press runs a server action adds `disabled:opacity-60` and disables Cancel, Close and Escape
+  too until the action settles (`RemoveRecipientDialog` in `recipients-manager.tsx#L167`).
 - **Motion.** It rises 0.75rem from `scale(0.97)` and closes toward 0.4rem and `scale(0.985)`,
   transform on arriving and the rest on leaving, over a plain `rgba(20, 32, 45, 0.48)` scrim that
   fades in over 220ms. Modals stay centered: they answer the whole page, not one trigger.
@@ -44,8 +46,13 @@ component is [roadmap item 9](roadmap.md#9-a-native-dialog-component).
 
 **Focus lands inside in the same task as `showModal()`,** on the answer a person most likely
 wants: Cancel or Keep editing on a confirmation, the chooser's primary action, the form's name
-field. A frame callback never runs while the tab is hidden, so never defer the move. Tab wraps
-inside the dialog. On close, focus returns to the trigger, or to the list that changed.
+field. A frame callback never runs while the tab is hidden, so never defer the opening move. Tab
+wraps inside the dialog by hand ([accessibility.md](accessibility.md#focus)). On close, focus
+returns to the trigger. When the action removed the trigger's own row, focus goes to the list's
+heading instead: an `h2` with `tabIndex={-1}` and `.portal-settings-list-heading`, focused in a
+frame callback after the dialog closes, once the row is gone (`finishRemoveDialog` in
+`recipients-manager.tsx`). An action that fails closes the dialog, returns focus to the trigger and
+reports the failure in the page's inline result line ([forms.md](forms.md#reporting-a-result)).
 
 **Only Escape and the dialog's own controls close it.** A press on the scrim does nothing. Escape
 takes the safe answer: a dialog that can refuse (a removal in flight, a dirty draft) calls
@@ -87,9 +94,9 @@ beside it: a press on its own row or a toast, a press or focus move into the ful
 and an Escape meant for the sheet. In a table the popover lives in the row's last cell, because
 its portal leaves focus-guard spans beside the trigger.
 
-`.wgi-popover` grows from `var(--transform-origin)` and `scale(0.95)` over leaving's 160ms,
-closing in 120ms ([item 14](roadmap.md#14-the-staff-home-temperament-and-companion-surfaces)).
-Base UI's `data-instant` makes a keyboard press, Escape or focus leaving instant; an outside press
+`.wgi-popover` grows from `var(--transform-origin)` and `scale(0.95)` over leaving's 160ms and
+closes in 120ms ([item 14](roadmap.md#14-the-staff-home-temperament-and-companion-surfaces)); Base
+UI's `data-instant` makes a keyboard press, Escape or focus leaving instant, and an outside press
 animates.
 
 ```tsx
@@ -130,13 +137,6 @@ The record card's `TimePicker` (`(home)/parts/time-picker.tsx`) wraps the `ui/` 
 over an `aria-hidden` scrim that dims the card and takes no focus. Focus goes to the hour wheel and
 back to the trigger. Done commits the draft; the scrim and Escape discard it, and Escape stops
 there, so the card stays open. Under reduced motion the sheet cross-fades in place on `crossfade`.
-
-## Toasts
-
-`Toaster` (`src/components/ui/toaster.tsx`) is Sonner, mounted once by the portal layout so a
-result outlives the surface that started it; every save reports through `toast.promise`. Toasts
-sit bottom center, 26rem wide, on `--popover` paper with `--shadow-popover` and no `richColors`,
-arrive on the spring, leave on leaving and follow a swipe; reduced motion is a 120ms fade.
 
 ## The patient site
 

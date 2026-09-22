@@ -43,8 +43,12 @@ is given where one exists. When a guide and this list disagree, fix the guide.
   `LineStatusBadge`, `HomeDayCalendar` and its `TimePicker` wrapper.
 - **Recorded exception** — a place the code departs from a rule on purpose, written down with
   its reason in the guide that owns the rule. A departure that no guide records is drift.
-- **Drift** — code that breaks a rule without a recorded exception. Drift is fixed or added to
-  the [roadmap](roadmap.md); it is never copied.
+- **Drift** — code that breaks a rule without a recorded exception. Drift is fixed or added to the
+  [roadmap](roadmap.md), and it is not copied, with one exception: a guide may name a drifting
+  pattern as the one to copy until its roadmap item lands, because nothing better exists yet. Three
+  do — the request detail's date input ([dates-and-times.md](dates-and-times.md#dates), item 3),
+  `PrintChooser` ([overlays.md](overlays.md#modal-dialogs), item 9) and `.portal-panel` for a
+  settings section ([modules.md](modules.md#a-settings-page), item 1). A copy joins that item.
 
 ## Product terms
 

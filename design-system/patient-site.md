@@ -1,11 +1,9 @@
 # Patient site
 
-`src/app/[locale]/` is the public site: 17 routes in five languages (`src/lib/site.ts`), read
-mostly on a phone by older patients. This guide owns what every one of those routes shares — the
-metadata contract, the heading idiom, the global content classes. The components those pages
-compose are in [components.md](components.md), the grid and section rhythm in
-[layout.md](layout.md), the type scale in [typography.md](typography.md). What is stated here is
-the patient site's; the staff portal's counterpart is in [surfaces.md](surfaces.md).
+`src/app/[locale]/` is the public site: 17 routes in five languages (`src/lib/site.ts`), read mostly
+on a phone by older patients. This guide owns what those routes share: the metadata contract, the
+heading idiom and the global content classes. Components, layout and type have their own guides; the
+portal's counterpart is [surfaces.md](surfaces.md).
 
 ## The route contract
 
@@ -20,75 +18,68 @@ interface PageProps {
 export async function generateMetadata({ params }: Readonly<PageProps>): Promise<Metadata> {
   const { locale: raw } = await params;
   const locale: Locale = isLocale(raw) ? raw : "en";
-  const dict = getDictionary(locale);
-  return pageMetadata(
-    locale,
-    "/services",
-    dict.meta.services.title,
-    dict.meta.services.description,
-  );
+  const { title, description } = getDictionary(locale).meta.services;
+  return pageMetadata(locale, "/services", title, description);
 }
 ```
 
-`pageMetadata` (`src/lib/metadata.ts`) is what makes a page findable in five languages: it builds
-the canonical URL, an hreflang alternate for every locale, `x-default`, and the Open Graph block.
-A route that assembles its own object publishes none of that, so hand-written metadata is the one
-thing to look for when a new route is reviewed.
-
-Fifteen of the seventeen route files follow the contract exactly. The two that do not are
-deliberate, and both are the same judgement: a page that must not be indexed must not advertise a
-canonical URL either.
+`pageMetadata` (`src/lib/metadata.ts`) builds the canonical URL, an hreflang alternate per locale,
+`x-default` and the Open Graph block; hand-written metadata publishes none of that. Fifteen of the
+seventeen route files follow the contract; the two below are deliberate, because a page that must
+not be indexed must not advertise a canonical URL:
 
 | Route | What it does instead | Why |
 | --- | --- | --- |
 | `src/app/[locale]/[...rest]/page.tsx` | No `generateMetadata` at all; the body is `notFound()` | The response is a 404. It has no canonical URL and no locale alternates to publish. |
 | `src/app/[locale]/appointment/received/page.tsx` | Returns a literal with `referrer: "no-referrer"` and robots `index: false` | A receipt confirming one person's request is noindex; `pageMetadata` exists to publish the opposite. |
 
+The `[locale]` layout renders `Header`, `NoticeBanner`, `<main id="main">` and `Footer` around every
+page (`[locale]/layout.tsx`), so a page returns a fragment of bands. A new route also needs:
+
+- its path in `paths` in `src/app/sitemap.ts`;
+- its path in `STATIC_ROUTE_TEMPLATES` in `src/lib/telemetry.ts`, the server's page-view allowlist
+  (backend work, per AGENTS.md "Agent responsibilities");
+- `meta.<camelRoute>` (`title`, `description`) and a `<camelRoute>` copy block in each of the five
+  dictionaries (`src/lib/dictionaries/`), typed by `en`, so a missing key fails the build.
+
 ## The page rhythm
 
-`PageHero` opens the page, `Reveal` bands carry the body, `TextBand` closes with the standing
-call to action, and `revealDelay` clamps a computed index to the four stagger steps. Their
-options and real uses are in [components.md](components.md); the stagger and its reduced-motion
-behavior are in [motion.md](motion.md).
+`PageHero` opens the page, `Reveal` bands carry the body, `TextBand` closes with the standing call
+to action; `revealDelay` narrows a stagger index to the delay type. Options and uses are in
+[components.md](components.md), the stagger and its reduced motion in [motion.md](motion.md).
 
 ## Level and size are chosen separately
 
-Base `h1, h2, h3` (`src/app/globals.css#L164`) set the display family, the ink, weight 400,
-leading, tracking and `text-wrap: balance` — and no size at all. `.h1`, `.h2` and `.h3` set only
-`font-size`. So a heading's outline level and its size are two decisions, not one: an `<h2>` that
-should read at the third size wears `.h3`, and the outline a screen reader announces stays
-correct while the type matches the band it sits in.
+Base `h1, h2, h3` (`src/app/globals.css#L164`) set the display family, the ink, weight 400, leading,
+tracking and `text-wrap: balance`, and no size; `.h1`, `.h2` and `.h3` set only `font-size`. Level
+and size are two decisions: an `<h2>` that should read at the third size wears `.h3`, so the outline
+a screen reader announces stays correct while the type matches its band.
 
 ```tsx
 // Correct (blog/[slug]/page.tsx): an <h2> in the outline, reading at the third size
 <h2 className="h3">{t.moreHeading}</h2>
 ```
 
-A literal type utility at the call site does not reach the same place; it reaches nowhere.
-Tailwind v4 reads an un-hinted `var()` in the `font-*` namespace as a **weight**, so both lines
-below compile to `font-weight: <a font stack>`, which is invalid at computed-value time and
-silently falls back to the inherited weight:
+A family utility at the call site reaches nowhere. Tailwind v4 reads an un-hinted `var()` in the
+`font-*` namespace as a **weight**, so both lines below compile to `font-weight: <a font stack>`,
+which is invalid at computed-value time and falls back to the inherited weight:
 
 ```tsx incorrect
 <h2 className="h3 font-[var(--font-display)]">{t.missionHeading}</h2>
 <h2 className="text-base font-[var(--font-body)] font-extrabold">{t.stepsHeading}</h2>
 ```
 
-Neither line ever set a family. On `h1`–`h3` the base rule supplies the display serif regardless,
-so the first is inert; the second asks for the body sans on a heading and gets the serif anyway.
-`font-display` and `font-body` are the theme's own utilities and do compile to `font-family` —
-they are the only way to name a face at a call site.
-
-Outside `h1`–`h3` the base rule is not in force and the body sans is: a `dt` or an `h4` inherits
-Lato, where `font-extrabold` resolves to the real 900 face the family loads. That is why four
-patient `<dt>`s carry the weight without the synthesis the drift table records for `h2` and `h3`.
+Neither line sets a family: on `h1`–`h3` the base rule supplies the display serif regardless, and
+`font-display` and `font-body`, the theme's own `font-family` utilities, are the only way to name a
+face at a call site. Outside `h1`–`h3` the body sans is in force: a `dt` or an `h4` inherits Lato,
+where `font-extrabold` reaches its real 900 face, so four patient `<dt>`s carry the weight without
+the synthesis the [drift table](#recorded-drift) records for `h2` and `h3`.
 
 ## Content classes
 
-Global classes in `src/app/globals.css`, available on any patient markup with no import.
-`.container-x`, `.container-tight`, `.section` and `.section-sm` are the page frame and belong to
-[layout.md](layout.md); these are the rest. The counts are `className` uses across tracked
-`src/**/*.tsx` outside `admin/` and `stock/`, measured on this branch.
+Global classes in `src/app/globals.css`, on any patient markup with no import; the page frame
+(`.container-x`, `.section` and their variants) is [layout.md](layout.md)'s. Uses count `className`
+uses in tracked `src/**/*.tsx` outside `admin/` and `stock/`.
 
 | Class | What it sets | Uses |
 | --- | --- | --- |
@@ -96,47 +87,58 @@ Global classes in `src/app/globals.css`, available on any patient markup with no
 | `.h1` `.h2` `.h3` | `--step-1`, `--step-2`, `--step-3`, and nothing else | 6 · 22 · 12 |
 | `.lead` | `--step-lead` at leading 1.6: the sentence under a page or section heading | 12 |
 | `.measure` `.measure-sm` | A 68ch or 54ch column, so prose stops before the container does | 21 · 13 |
-| `.heading-tick` | A 2.75rem amber pill above a heading, `.heading-tick--center` to center it | 26 · 1 |
+| `.heading-tick` | A 2.75rem amber pill above a heading, `.heading-tick--center` to center it. Its CSS comment reserves it for major section starts, "never as an every-block eyebrow" | 26 · 1 |
 | `.link-line` | Teal ink at 700 whose underline wipes in on hover, flipped for RTL | 15 |
 | `.link-plain` | Teal ink at 700, already underlined, the rule solidifying on hover | 6 |
-| `.card` `.card-lined` | White at `--radius-lg` with `--shadow-card`; lined trades the shadow for a `--color-line` hairline | 9 · 5 |
+| `.card` `.card-lined` | White at `--radius-lg` with `--shadow-card`; lined trades the shadow for a `--color-line` hairline. Neither sets padding: the call site writes it, from `p-5 sm:p-6` to `p-7 sm:p-8` | 9 · 5 |
 | `.list-check` | A check-marked list: navy marks on white, `.list-check--amber` on navy | 6 · 1 |
 | `.bidi-ltr` | Isolates a Latin island — a phone number, an address — inside Arabic | 15 |
 | `.print-hide` | Removes an element from the print stylesheet | 5 |
 
-`.heading-tick` is the one with a rule attached to it: the CSS comment above it reserves the tick
-for major section starts, "never as an every-block eyebrow".
+`.list-check` sets no type: a grid with a 0.7rem gap and a masked navy check on each `li::before`; a
+call site adds columns or `gap-x-*` on the `ul`. Five of the six uses add `font-semibold` and
+`text-[var(--color-ink)]` (on each `li`, or on the `ul` in `physicians/page.tsx`); the `--amber`
+twin on navy sets `text-[0.97rem]` and on-dark muted ink.
 
-`.list-check` sets no type: it is a grid with a 0.7rem gap and a masked navy check on each
-`li::before`, which is why a call site adds `sm:grid-cols-2`, `lg:grid-cols-3` or its own
-`gap-x-*` straight onto the `ul`. Five of the six uses add `font-semibold` and
-`text-[var(--color-ink)]` too — four on each `li`, `physicians/page.tsx` once on the `ul`; the
-sixth is the `--amber` twin on navy, which sets `text-[0.97rem]` and on-dark muted ink, no weight.
+Prep handouts render through `PrepBody` (`src/components/PrepBody.tsx`) from typed blocks
+(`src/lib/content/preps/types.ts`), so the counts above miss their classes. A list block's `style`
+picks `.list-plain` (teal dots), `.list-steps` (a navy-numbered `<ol>`), `.list-check` or
+`.list-avoid` (a red cross); a `note` is `.prep-note`, amber-soft under `ink`; `.prep-schedule*` and
+`.prep-table*` lay out dosing and food tables. Another page's numbered sequence reuses
+`.list-steps`; `.profile-timeline` is the physicians page's career rail. All sit in the
+procedure-prep [legacy block](styling.md#global-css).
 
 ## `.card` is a class, the `Card` is a component
 
-They do not overlap and neither is the other's shorthand. `.card` is the patient site's white
-panel, written on a `div` that already exists; it appears nowhere under `src/app/admin/`. `Card`
-is the shadcn recipe and has three consumers, all in the portal: the home list, its loading
-skeleton, and `AuthCard`. A patient surface that reaches for `Card` gets portal geometry and the
-semantic token bridge instead of the brand panel; a portal surface that reaches for `.card` gets
-a shadow the portal does not use ([surfaces.md](surfaces.md)).
+Neither is the other's shorthand. `.card` is the patient site's white panel, used nowhere under
+`src/app/admin/`; `Card` is the shadcn recipe, with three portal consumers (the home list, its
+skeleton, `AuthCard`). A patient surface on `Card` gets portal geometry and the semantic bridge, not
+the brand panel; a portal surface on `.card` gets a shadow the portal does not use.
 
-A third white panel exists and is not a class: the home page's wayfinding tiles and physician
-cards hand-write the same white and `--radius-lg` with `--shadow-soft` and a 300ms hover lift
-(`page.tsx` lines 147 and 224). That is the approved Home styling
-([tokens.md](tokens.md#recorded-exceptions)), not a fourth option — a new patient panel takes
-`.card` or `.card-lined`.
+A third white panel is not a class: the home page's wayfinding tiles and physician cards hand-write
+white, `--radius-lg`, `--shadow-soft` and a 300ms hover lift (`[locale]/page.tsx` lines 147 and
+223). That approved Home styling ([tokens.md](tokens.md#recorded-exceptions)) is not an option: a
+new patient panel takes `.card` or `.card-lined`.
+
+## Notes and notices
+
+```
+What is the note?
+├── Read before the rest of the page → a .card in PageHero's children (procedure-prep/page.tsx#L92)
+├── An aside that points somewhere else → a mint strip, .card-lined plus bg-[var(--color-mint)]
+│     (services/page.tsx#L74, patient-education/[slug]/page.tsx#L76, resources/page.tsx#L46)
+└── Something the patient must act on now → amber-soft under ink: NoticeBanner,
+      AppointmentForm's failure block (AppointmentForm.tsx#L118) and a prep handout's .prep-note
+```
 
 ## What the patient site does not have
 
-- **No disclosure or accordion.** `<details>` appears in no patient source file and no `ui/`
-  recipe covers one. Content that would collapse is a `Reveal` band instead.
-- **No `Badge`.** The recipe's four variants name request states, and its only consumer is the
-  portal's `src/app/admin/(portal)/requests/status-badge.tsx`.
-- **No toast.** `Toaster` is mounted by the portal layout alone. The appointment form answers in
-  place: a `role="status"` region on success, a `role="alert"` block on failure, and a
-  `FieldError` under the field that refused (`src/components/AppointmentForm.tsx`).
+- **No disclosure or accordion.** No patient source file uses `<details>` and no `ui/` recipe covers
+  one; content that would collapse is a `Reveal` band instead.
+- **No `Badge`.** Its variants name request states; its one consumer is `requests/status-badge.tsx`.
+- **No toast.** Only the portal layout mounts `Toaster`. The appointment form answers in place: a
+  `role="status"` region on success, a `role="alert"` block on failure, and a `FieldError` under the
+  field that refused (`src/components/AppointmentForm.tsx`).
 
 ## Recorded drift
 

@@ -53,8 +53,8 @@ below.
 | `StatusBadge` | A request's status in the queue and on its detail page ([surfaces.md](surfaces.md#badges)) | `requests/page.tsx`, `[id]/page.tsx` |
 | `PrintChooser` | Choosing what to print, from the staff home and the requests output actions ([overlays.md](overlays.md#modal-dialogs)) | `home-workbench.tsx`, `requests-output-actions.tsx` |
 | `followed` | The promise a save toast follows ([forms.md](forms.md#saving)) | `created-toast.ts`, `request-notes.tsx`, `use-workflow-panel.ts` |
-| `PortalPageHeader` | Every portal page's title block, shared from the route group's root ([layout.md](layout.md#page-structures)) | `settings/layout.tsx`, `audit/page.tsx`, `requests/new/page.tsx` |
-| `PortalFeedbackProvider` `PortalFeedbackMessage` | The one current result on a page, where a toast cannot reach ([forms.md](forms.md#reporting-a-result)) | `home-workbench.tsx`, `requests-output-actions.tsx`, `print-controls.tsx` |
+| `PortalPageHeader` | Every portal page's title block ([layout.md](layout.md#page-structures)). A settings page renders none of its own; `settings/layout.tsx` renders one above every settings page ([modules.md](modules.md#a-settings-page)) | `settings/layout.tsx`, `audit/page.tsx`, `requests/new/page.tsx` |
+| `PortalFeedbackProvider` `PortalFeedbackMessage` | A result with no promise to follow, or one that has to outlive a toast; the settings managers report inline instead ([forms.md](forms.md#reporting-a-result)) | `home-workbench.tsx`, `requests-output-actions.tsx`, `print-controls.tsx` |
 
 The staff home keeps its converted registry parts in `(home)/parts/`, repainted in `home.css`
 under `.wgi-*`. They are route-owned: nothing outside the staff home imports them.
@@ -66,7 +66,7 @@ under `.wgi-*`. They are route-owned: nothing outside the staff home imports the
 | `LineStatusBadge` | A request's status on a Home row and in the sheet ([surfaces.md](surfaces.md#badges)) | `line-list.tsx`, `full-record-sheet.tsx` |
 | `HomeRangeCalendar` `HomeDayCalendar` | A custom received range; a return day | `filter-bar.tsx`, `record-card.tsx` |
 | `PhoneGlyph` `ChevronGlyph` `CloseGlyph` | Home's stroke glyphs at the design's weights | `line-list.tsx`, `record-card.tsx`, `full-record-sheet.tsx` |
-| `TimePicker` in `parts/time-picker.tsx` | The record card's start time, wrapping `ui/time-picker.tsx` ([forms.md](forms.md#time)) | `record-card.tsx` |
+| `TimePicker` in `parts/time-picker.tsx` | The record card's start time, wrapping `ui/time-picker.tsx` ([dates-and-times.md](dates-and-times.md#time)) | `record-card.tsx` |
 
 ## Patterns
 
@@ -75,7 +75,7 @@ under `.wgi-*`. They are route-owned: nothing outside the staff home imports the
 | `PageHero` | The band that opens a patient-site page; 11 routes wear it | `about/page.tsx`, `contact/page.tsx`, `services/page.tsx` |
 | `TextBand` | The navy statement band that closes a patient-site page; 14 routes wear it. Its two actions are the practice's own text line and phone, read from `site`, so no route chooses them | `about/page.tsx`, `services/page.tsx`, `resources/page.tsx` |
 | `Reveal` | Content that rises in on scroll: `variant` `up` (default), `fade` or `right`; `delay` `0` (default, no attribute) through `4`, 90ms a step ([motion.md](motion.md)); 12 routes wear it | `procedure-prep/page.tsx`, `physicians/page.tsx`, `contact/page.tsx` |
-| `revealDelay` in `patterns/reveal-delay.ts` | Narrows a computed index to `RevealDelay`. Every call site already bounds its own index (`i % 4`, `Math.min(i + 1, 4)`), so this is the type guard, not the policy | `office-gallery/page.tsx`, `procedure-prep/page.tsx` |
+| `revealDelay` in `patterns/reveal-delay.ts` | Narrows a computed index to `RevealDelay`: 0 or below gives 0, 4 or above gives 4. The policy is the call site's: a grid cycles by its widest column count (`i % 4` for the home tiles, `i % 3` for the physician cards, `i % 2` in the office gallery), and a stacked column after a lead item counts up and holds (`Math.min(i + 1, 4)` in procedure prep) | `[locale]/page.tsx`, `office-gallery/page.tsx`, `procedure-prep/page.tsx` |
 
 Props, in full: `PageHero` takes `title`, an optional `lead` and `children`; `TextBand` takes
 `dict` and nothing else; `Reveal` takes `children`, `as`, `className`, `delay` and `variant`. None

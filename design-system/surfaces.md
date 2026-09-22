@@ -1,17 +1,16 @@
 # Surfaces
 
 A surface is the paper the content sits on: a card, a table, a list of rows, the rules and
-scrollbars between them. The portal's surfaces are white on the workbench tint; the patient
-site's are the section bands in [layout.md](layout.md#page-structures).
-
-Every branch of the tree below is a `ui/` recipe only the staff portal consumes, so the tree
-answers a portal question. A patient page picks from the `.card` class and the content classes in
+scrollbars between them. The tree answers a portal question: every branch but the settings rows
+is a `ui/` recipe only the portal consumes, white on the workbench tint. A patient page uses the
+section bands in [layout.md](layout.md#page-structures) and the `.card` and content classes in
 [patient-site.md](patient-site.md) instead.
 
 ```
 Which portal surface?
 ├── Records with the same fields, compared down columns → Table
 ├── Entries read one after another, each a title and a line of detail → Item in an ItemGroup
+├── Settings rows, each carrying its own controls → a ruled <ul> (see Lists)
 ├── One block of content that needs a heading, a body and actions → Card
 └── A short status word → Badge
 ```
@@ -53,27 +52,42 @@ the padding; a call site adds layout only. The staff home's list card and the si
   is a button inside the row's cell ([accessibility.md](accessibility.md#targets)).
 - **`TableCaption` and `TableFooter` have no consumer today.** A table that needs a summary row
   uses `CardFooter` under it, as the staff home does.
-- **A wide table brings its own scroll container.** `Table` sets no width and no overflow. A table
-  too wide for its column sits in a `div` with `overflow-x-auto` plus `role="region"`,
-  `aria-labelledby` and `tabIndex={0}`, so a keyboard can reach and scroll it: `audit/page.tsx`
-  wraps a `min-w-[640px]` table that way. `release-engagement.tsx` answers the same width the
-  other way, hiding its table below `md` and repeating the rows as a list.
+- **A wide table brings its own scroll container.** `Table` sets no width or overflow, so
+  `audit/page.tsx` wraps its `min-w-[640px]` table in a `div` with `overflow-x-auto`,
+  `role="region"`, `aria-labelledby` and `tabIndex={0}`, which a keyboard can reach and scroll.
+  `release-engagement.tsx` instead hides its table below `md` and repeats the rows as a list.
 
-Eleven audit cells set their own ink and size through `className`
-([styling.md](styling.md#recorded-call-site-restyles)); those looks wait on
-[item 17](roadmap.md#17-call-site-restyles), and a new table takes the recipe's.
+Eleven audit cells set their own ink and size ([recorded](styling.md#recorded-call-site-restyles),
+waiting on [item 17](roadmap.md#17-call-site-restyles)); a new table takes the recipe's.
 
 ## Lists
 
 | Component | When | Real uses |
 | --- | --- | --- |
 | `Item` `ItemGroup` `ItemContent` `ItemTitle` `ItemDescription` | Entries read in sequence: notes, an activity trail | `full-record-sheet-body.tsx` |
+| A ruled `<ul>` of settings rows, plain markup | Rows that each carry their own controls: a recipient, a staff member, a maintainer | `recipients-manager.tsx` with `recipient-row.tsx`, `staff-manager.tsx`, `software/maintainer-access.tsx` |
 
-The full record sheet renders its notes and history as `size="xs"` items inside an `ItemGroup`.
-`variant` (`default`, `outline`, `muted`), the other sizes, and `ItemMedia`, `ItemActions`,
-`ItemHeader`, `ItemFooter` and `ItemSeparator` have no consumer today. The sheet's own
-`.wgi-sheet-items` hook adds the entry states (`data-undone`, `data-attention`); its hover
-transition is a recorded literal ([item 16](roadmap.md#16-motion-literals)).
+The full record sheet renders its notes and history as `size="xs"` items in an `ItemGroup`, and
+its `.wgi-sheet-items` hook in `home.css` adds the entry states (`data-undone`, `data-attention`,
+`data-quiet`). `variant`, the other sizes, `ItemMedia`, `ItemActions`, `ItemHeader`, `ItemFooter`
+and `ItemSeparator` have no consumer; the recipe's `duration-100` color transition is a recorded
+literal ([item 16](roadmap.md#16-motion-literals)).
+
+`ItemGroup` renders `role="list"`, so each `Item` is announced as a list entry. `size="sm"` pads
+exactly like `default`; choose `default` or `xs`. `ItemTitle` is 14px `font-medium` with
+`line-clamp-1` and `ItemDescription` clamps at two lines; 14px sits below the portal's 15px floor
+([typography.md](typography.md#sizes)), so the sheet's hook repaints them (`--pt-sm` at 600,
+`--pt-xs`) and each title passes `line-clamp-none block w-full` so a note shows whole. A second
+consumer of that repaint moves it into the recipe as a size ([adoption](adoption.md#workflow)).
+
+Settings rows are plain markup, written the same way in all three lists:
+`<ul className="divide-y divide-[var(--color-line)]">`, each
+`<li className="flex flex-wrap items-center justify-between gap-3 py-3.5">` holding the name as
+`truncate font-bold text-[var(--color-ink)]` and the controls. Copy it; the `<ul>`'s top margin
+follows its place in the panel. A second line under the name is `truncate` muted ink at
+`text-[length:var(--pt-xs)]`, not the `0.85rem` [item 2](roadmap.md#2-workbench-tokenization)
+records. A new control wears `Button` ([buttons.md](buttons.md#button-or-link)); the rows'
+hand-built buttons wait on [item 17](roadmap.md#17-call-site-restyles).
 
 ## Rules and scrolling
 
@@ -82,9 +96,13 @@ transition is a recorded literal ([item 16](roadmap.md#16-motion-literals)).
 | `Separator` | A rule between sections of one surface | `full-record-sheet-body.tsx` |
 | `ScrollArea` `ScrollAreaViewport` `ScrollBar` `ScrollAreaThumb` | The staff home's request list, which needs a rail that survives its own row states | `line-list.tsx` |
 
-The platform scrollbar is the default everywhere else: `ScrollArea` is adopted for the staff
-home's list alone ([adoption.md](adoption.md#standing-findings)), and its viewport keeps the
-region role and label that make the list reachable from the keyboard.
+`ScrollArea` is adopted for the staff home's list alone
+([adoption.md](adoption.md#standing-findings)); its viewport keeps the region role and label that
+make the list reachable from the keyboard. Every other list grows and the page scrolls natively.
+
+A rule that opens the block below it belongs to that block: the add forms under the recipient,
+staff and maintainer lists open with `mt-5 border-t border-[var(--color-line)] pt-5`. A rule that
+stands alone between two sections of one surface is a `Separator`.
 
 ```tsx
 // Correct (line-list.tsx): the viewport is the scrolling region, named for a screen reader
@@ -98,38 +116,16 @@ region role and label that make the list reachable from the keyboard.
 
 ## Badges
 
-A badge is a status word on a colored ground. The word always rides with the color: the color
-repeats what the word says and never carries the meaning alone.
-
 | Component | When | Real uses |
 | --- | --- | --- |
-| `Badge` | The recipe: four brand variants, no default | `status-badge.tsx` |
+| `Badge` | A status word on a colored ground: four brand variants, `variant` required | `status-badge.tsx` |
 
-| Variant | Paint | Says |
-| --- | --- | --- |
-| `attention` | Amber | Waiting on the practice: a new request |
-| `current` | Mint | In hand: someone has made contact |
-| `settled` | Navy | Done and dated: the appointment is scheduled |
-| `quiet` | Grey | Closed, out of the queue |
-
-`variant` is required, because a color with no status is a guess. `motion` is `none` by default;
-`shadcn` has no consumer.
-
-Two route-owned wrappers map product status to these words
+The variants, the status each one stamps and the rule that color never speaks alone are in
+[color.md](color.md#status-stamps). Two route-owned wrappers map product status to them
 ([components.md](components.md#route-owned-compositions)): `StatusBadge` for the requests queue
 and detail page, and `LineStatusBadge` for the staff home's rows and its record sheet, repainted
 in `home.css` under `.wgi-badge*`. A new surface that shows request status imports one of them
-rather than choosing a variant itself.
-
-```tsx
-// Correct (status-badge.tsx): status picks the variant, and the word stays in the badge
-<Badge data-status={status} variant={STATUS_VARIANTS[status]}>
-```
-
-```tsx incorrect
-// Incorrect: no variant, and a dot that leaves the color carrying the meaning
-<Badge><span className="size-2 rounded-full bg-amber-500" /></Badge>
-```
+rather than choosing a variant itself. `motion` is `none` by default; `shadcn` has no consumer.
 
 ## Empty states
 
@@ -143,6 +139,9 @@ hand-built classes today; `Empty` (`stock/empty.tsx`) replaces them under
 | `.portal-queue-empty` | A list panel came back empty: 18rem, centered, an `h2`, a 52ch line and one `.portal-inline-link` | `request-queue-empty.tsx` |
 | `.portal-empty` | Hairlines on a `mint` ground and nothing else; the call site brings its own padding and centering | `audit/page.tsx`, `recent-work.tsx` |
 | `.portal-request-notes-empty` `.portal-request-history-empty` | One muted 0.9rem line inside a section that is already open, with no box around it | `[id]/page.tsx`, `request-notes.tsx` |
+
+A settings list with no rows keeps its `<ul>` and says so in one muted `<li>` at `py-4`
+(`recipients-manager.tsx#L642`); a new one writes `text-[length:var(--pt-sm)]`, not its `0.95rem`.
 
 An emptiness that is a refusal rather than a resting state also carries `role="alert"`: four of
 the six `.portal-empty-state` uses do, because the packet route was asked for something it cannot

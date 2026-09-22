@@ -1,42 +1,42 @@
 # Roadmap — the extraction queue
 
-Each item is recorded drift or a gap, and the change that resolves it. Numbers are names, not a
-ranking: guides and comments link to them, so a number lives until its change lands. Counts are from
-commit e7734a4. Every item opens with one status: **Ready**, land it through the
-[adoption workflow](adoption.md#workflow) and the standing gates; **Measure first**, measure the
-running product before deciding; **Jason decides**, a brand call, so bring the evidence the item
-names, not a change; **In progress**, Jason's current work, not to be started separately.
+Each item is recorded drift or a gap and the change that resolves it; its number is a name that
+lives until the change lands. Counts are from commit e7734a4. Each item opens with a status:
+**Ready**, land it through the [adoption workflow](adoption.md#workflow) and the standing gates;
+**Measure first**, measure the running product before deciding; **Jason decides**, a brand call, so
+bring evidence, not a change; **In progress**, Jason's current work, not to start separately.
 
 ## 1. Card surfaces
 
-**Ready.** `.card` and `.card-lined` in `globals.css` are a recipe written as classes (white on
-`--radius-lg`, with `--shadow-card` or a `line` border) at 14 call sites in 13 patient-site and
-review-hub files. They become `variant` values on `ui/card.tsx`, as do `AuthCard`'s `className`
-restyle and the box `.portal-panel`, `.portal-help` and `.portal-flyer-list` share, each looking as
-it does today; call sites keep only their layout.
+**Ready.** `.card` and `.card-lined` in `globals.css` are a recipe written as classes at 14 call
+sites in 13 patient-site and review-hub files. They become `variant` values on `ui/card.tsx`, as do
+`AuthCard`'s `className` restyle and the box `.portal-panel`, `.portal-help` and
+`.portal-flyer-list` share, each looking as it does today; call sites keep only their layout.
 
 ## 2. Workbench tokenization
 
 **Ready, one surface at a time.** In `portal-workbench.css`, 233 of 273 spacing declarations are
-literal rem and 16 read `--ps-*`; 96 of 105 font sizes skip `--pt-*`; 43 colors are literal and 21
-are mixes; seven radii and four shadows are literal. A declaration moves onto a token once its
-surface is checked in the product. A value no token matches is never rounded to a step: colors and
-shadows go to item 10, radii to item 8, other sizes to Jason.
+literal rem, 96 of 105 font sizes skip `--pt-*`, 43 colors are literal and 21 mixes, as are seven
+radii and four shadows. Each moves onto a token once its surface is checked; a value no token
+matches is never rounded but goes to item 10 (colors, shadows), item 8 (radii) or Jason. The 161
+literal `text-[…rem]` sizes in `src/app/admin` route files
+([typography.md](typography.md#recorded-drift)) move onto the `--pt-*` steps the same way.
 
 ## 3. Choice lists
 
 **Ready.** `outcome-choice-list.tsx` and `workflow-panel.tsx` hand-roll radio rows in 30
 `.portal-choice-*` rules with a 180ms reveal. Adopt `RadioGroup` and `ToggleGroup`, which the record
-card imports from `stock/` ([an approved exception](components.md#component-tiers)), into `ui/` with
-a variant per paint and move all three onto them. Unifying looks or reveals is Jason's.
+card [imports from `stock/`](components.md#recorded-stock-imports), into `ui/` with one variant per
+paint; unifying the three looks is Jason's. Their date inputs (`outcome-choice-list.tsx#L84`,
+`call-again-fieldset.tsx#L114`) hand-write the `Input` geometry and join as they look, their invalid
+red moving onto `--destructive` ([color.md](color.md#recorded-drift)).
 
 ## 4. The task index
 
-**Ready.** The portal's task index is 34 hand-written rules, 24 `.portal-sidebar-*` and 10
-`.portal-nav-*`, with literal radii, shadows and text alphas. The registry's `Sidebar`
-(`stock/sidebar.tsx`) does that job, and the bridge already maps its `--sidebar-*` tokens onto navy.
-Adopt it into `ui/` looking and behaving as it does now; navigation stays `nav` with `aria-current`
-([a standing finding](adoption.md#standing-findings)).
+**Ready.** The portal's task index is 34 hand-written rules (24 `.portal-sidebar-*`, 10
+`.portal-nav-*`) with literal radii, shadows, alphas. `Sidebar` (`stock/sidebar.tsx`) does the job,
+and the bridge maps its `--sidebar-*` tokens onto navy. Adopt it into `ui/` unchanged; navigation
+stays `nav` with `aria-current` ([standing finding](adoption.md#standing-findings)).
 
 ## 5. Empty states, callouts and pagers
 
@@ -69,58 +69,52 @@ outline. Bring them as rendered, not a new ramp; the brand `@theme` is hands-off
 
 ## 9. A native dialog component
 
-**Ready.** Four portal dialogs wire `<dialog>` by hand: `AddAppointmentDialog`, `PrintChooser`,
-`RemoveRecipientDialog` and the request form's discard confirmation. They drifted: two set
-`data-instant`, all but `AddAppointmentDialog` contain Tab, first focus comes from `autoFocus`, a
-ref or both, and the discard confirmation has no `onCancel`. One component built from `PrintChooser`
-([overlays.md](overlays.md#modal-dialogs)) owns opening, closing, `data-instant`, Tab, first focus,
-Escape through the consumer's close path and focus return; consumers keep their body, actions and
-refusals. Until it lands, copy `PrintChooser`.
+**Ready.** The [four portal dialogs](overlays.md#modal-dialogs) wire `<dialog>` by hand and drifted:
+two set `data-instant`, one lets Tab escape, first focus is `autoFocus`, a ref or both, one has no
+`onCancel`. A component built from `PrintChooser` owns open, close, `data-instant`, Tab, first
+focus, Escape and focus return; consumers keep their body, actions and close path. Until then, copy
+`PrintChooser`. Whether it serves the patient site's `LanguageChooser` and `ProfileCardViewer`,
+which let Tab escape too ([accessibility.md](accessibility.md#focus)), is Jason's.
 
 ## 10. Portal surface tints
 
 **Jason decides.** `--portal-canvas`, `--portal-surface`, `--portal-surface-muted` and
-`--portal-attention-ink` are OKLCH literals on `.portal-scope` and `.portal-workspace`.
-`portal-workbench.css` writes an off-palette nav green, a second alert red, mint washes at six
-strengths where Home uses `mint` and `mint-2`, and literal shadows on the sidebar, account menu and
-commit shelf ([color.md](color.md#recorded-drift)). Each moves onto a brand token, existing or new;
-names and values are Jason's, since the brand `@theme` is hands-off — as is the shadow tokens' claim
-that a shadow never pairs with a border, which six portal floating layers contradict.
+`--portal-attention-ink` are OKLCH literals, and the workbench writes an off-palette nav green, a
+second alert red, six mint washes and literal shadows ([color.md](color.md#recorded-drift)). Each
+moves onto a brand token Jason names. The shadow tokens' claim that a shadow never pairs with a
+border, broken by six floating layers, is Jason's ([layout.md](layout.md#shape-and-elevation)).
 
 ## 11. Button sm targets
 
 **Measure first.** `Button`'s `sm` is `min-h-9`, 36px: above WCAG 2.2's 24px minimum, below the
-[44px target floor](accessibility.md#targets), and "still a comfortable target" in its recipe
-comment. Of its [six consumers](buttons.md#sizes), measured on the running patient site, the
-`Footer` and `LocationMaps` links render 36px and `Header`'s 42px at 1440 (hidden at 390), against
-44px for `default` and 52px for `lg`; the two portal consumers need a signed-in session. Bring all
-six to Jason: raising `sm` changes approved Home styling; keeping it needs a recorded exception.
+[44px target floor](accessibility.md#targets). Of its [six consumers](buttons.md#sizes), the patient
+site's `Footer` and `LocationMaps` links render 36px at 1440 and `Header`'s 42px; the portal's two
+are unmeasured. Bring all six to Jason: raising `sm` changes approved Home styling, keeping it needs
+a recorded exception. Its icons are part of it: the recipe asks 14px but they render 16px
+([buttons.md](buttons.md#icons)), so a repair shrinks the `Footer`'s review-link icons.
 
 ## 12. Portal type weights and heading family
 
-**Jason decides.** The portal loads Lato 400, 500, 600, 700 and Trocchi 400
-(`src/lib/portal-fonts.ts`) with synthesis off, so 93 weight requests outside 400–700 across 13
-files render at the nearest loaded weight, mostly 700. `.portal-page-title` and `.portal-auth-title`
-ask for 900 and get 700; the Requests title asks for the serif at 880 and gets Trocchi 400
-([typography.md](typography.md#recorded-drift)). The approved Lato weights stay; family and weights
-are brand decisions, so bring rendered comparisons, not a change.
+**Jason decides.** The portal loads Lato 400 to 700 and Trocchi 400 (`src/lib/portal-fonts.ts`) with
+synthesis off, so 93 weight requests outside 400–700 in 13 files render at the nearest loaded
+weight, mostly 700: `.portal-page-title` and `.portal-auth-title` ask for 900, the Requests title
+for the serif at 880, which renders Trocchi 400 ([typography.md](typography.md#recorded-drift)). The
+approved Lato weights stay; bring rendered comparisons.
 
 ## 13. The portal focus color
 
-**Jason decides.** Focus is teal ([color.md](color.md#focus)), but the portal draws a 3px
-`amber-deep` outline from `.portal-scope`, three more workbench rules and four Home controls, and
-`call-again-fieldset.tsx` draws `amber`. Recipes inside keep teal rings, so one screen shows both.
-Contrast does not decide it: `amber-deep` measures 3.3 to 3.7 and `teal` 3.4 to 3.9, both above 3:1,
-while `amber` fails at 1.8 to 2.0. Bring screens that show both colors.
+**Jason decides.** Focus is teal ([color.md](color.md#focus)), but the portal draws an `amber-deep`
+outline from `.portal-scope`, three workbench rules and four Home controls, and
+`call-again-fieldset.tsx` draws `amber`, beside teal recipe rings. Contrast cannot decide: against
+3:1, `amber-deep` measures 3.3–3.7, `teal` 3.4–3.9 and `amber` 1.8–2.0. Bring screens of both.
 
 ## 14. The staff home temperament and companion surfaces
 
-**In progress** (Jason's full-record-sheet work). It proposes a staff home curve, cubic-bezier(0.32,
-0.72, 0, 1), on beats of 140, 240 and 420ms with fast, base and sheet presets, and a record card
-that detaches into a companion of the full-record sheet, anchored to its row, its footer toggling
-the sheet. No committed stylesheet or preset declares them. Until they land, Home runs on arriving,
-leaving and tinting, with its own 120ms popover close, 240ms row-wash exhale and presses
-([motion.md](motion.md#recorded-motion-literals)).
+**In progress** (Jason's full-record-sheet work). It proposes a staff home curve,
+`cubic-bezier(0.32, 0.72, 0, 1)` at 140, 240 and 420ms (fast, base, sheet), and a record card that
+detaches into a companion of the sheet, anchored to its row. Nothing committed declares them; until
+they land, Home runs on arriving, leaving and tinting, with its own 120ms popover close, 240ms
+row-wash exhale and presses ([motion.md](motion.md#recorded-motion-literals)).
 
 ## 15. The patient-site shared layer
 
@@ -130,20 +124,26 @@ changes imports only; markup, paint and behavior stay.
 
 ## 16. Motion literals
 
-**Jason decides.** [motion.md](motion.md#recorded-motion-literals) lists the literals; each needs
-one of three decisions. Onto an existing temperament: `Item`'s 100ms hover and the workbench hover
-tints, onto tinting. A name the registry lacks: the modal scrim's 220ms fade, the 120ms cross-fade
-CSS writes out instead of naming `crossfade`, `commit`'s 90, 110 and 140ms, the `wgi` fallback's
-200ms, and the patient site's five reveal and hover durations. A conflict with an instant focus
-ring: the fields' 200ms `ease` on `border-color` and `box-shadow`, and `commit`'s `box-shadow`. Bare
-`transition-*` utilities run Tailwind's default 150ms curve until the brand `@theme` maps it onto
-the registry. Each approved mapping moves its surfaces in one reviewed change.
+**Jason decides.** [motion.md](motion.md#recorded-motion-literals) lists the literals; each moves
+onto an existing temperament (`Item`'s hover, the workbench hover tints), takes a name the registry
+lacks (the scrim's fade, the written-out cross-fade, `commit`'s beats, the `wgi` fallbacks, the
+patient site's durations), or drops its conflict with an instant focus ring (the fields' `ease`,
+`commit`'s `box-shadow`). Bare `transition-*` utilities run Tailwind's default curve until the brand
+`@theme` maps it. Each approved mapping moves its surfaces in one reviewed change.
 
 ## 17. Call-site restyles
 
 **Jason decides.** Beyond `AuthCard`, [38 call sites](styling.md#recorded-call-site-restyles) set a
 `ui/` component's look: 24 disabled-button opacities, three white review-hub buttons, and 11
-audit-table and field inks and sizes. Quieter: of 31 icons inside a button or `buttonVariants` link,
-27 size themselves with `h-*`/`w-*` rather than [`data-icon`](buttons.md#icons), in five sizes from
-14 to 20px, all inert — the recipe's `[&_svg:not([class*='size-'])]` rule outranks them, so an icon
-written 18px renders 16px. Bring each as rendered: it becomes a recipe option, a knob, or goes.
+audit-table and field inks and sizes. Of 31 button icons, 27 carry an inert `h-*` or `w-*` instead
+of [`data-icon`](buttons.md#icons). Outside the census, 24 native `<button>` elements draw their own
+border or radius ([recorded](styling.md#recorded-call-site-restyles)) and each becomes a `Button` or
+a `buttonVariants()` link. Bring each as rendered: an option, a knob, or gone.
+
+## 18. Time picker name
+
+**Measure first.** `TimePicker`'s root is a role-less `div` named with `aria-label`, which ARIA
+prohibits on the `generic` role. Headless Chromium's Playwright snapshot drops the name and the CDP
+tree keeps it, so run VoiceOver on the staff home's time field before choosing a fix, likely
+`role="group"`. The request detail's `type="time"` input (`outcome-choice-list.tsx#L125`) stays
+until this lands, and a second consumer moves the picker's model into `src/lib/portal/`.
