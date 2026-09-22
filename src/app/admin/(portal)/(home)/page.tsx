@@ -49,6 +49,12 @@ const NY_MONTH_DAY = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   timeZone: PRACTICE_TZ,
 });
+const NY_WEEKDAY_MONTH_DAY = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "short",
+  day: "numeric",
+  timeZone: PRACTICE_TZ,
+});
 
 const NY_DAY = new Intl.DateTimeFormat("en-CA", {
   dateStyle: "short",
@@ -123,33 +129,33 @@ function lineFor(
 
   switch (row.bucket) {
     case "new": {
-      timing = `waiting ${rel(createdMs, nowMs)}`;
+      timing = `Received ${rel(createdMs, nowMs)}`;
       break;
     }
     case "follow_up": {
       const due = new Date(row.follow_up_at ?? row.created_at);
       const overdue = practiceDayNumber(due) < practiceDayNumber(now);
-      timing = overdue ? `due ${NY_MONTH_DAY.format(due)}` : "due today";
+      timing = overdue ? `Overdue since ${NY_MONTH_DAY.format(due)}` : "Due today";
       if (overdue) stamp = "Overdue";
       followUp = overdue ? "overdue" : "due_today";
       break;
     }
     case "upcoming": {
-      timing = `back ${NY_MONTH_DAY.format(new Date(row.follow_up_at ?? row.created_at))}`;
+      timing = `Back ${NY_WEEKDAY_MONTH_DAY.format(new Date(row.follow_up_at ?? row.created_at))}`;
       followUp = "upcoming";
       break;
     }
     case "stale": {
-      timing = `quiet ${rel(Date.parse(row.lastActivityAt ?? row.created_at), nowMs)}`;
+      timing = `Last activity ${rel(Date.parse(row.lastActivityAt ?? row.created_at), nowMs)}`;
       followUp = "needs_date";
       break;
     }
     case "scheduled": {
-      timing = "handed off";
+      timing = "Handed off";
       break;
     }
     case "closed": {
-      timing = "closed";
+      timing = "Closed";
       break;
     }
   }

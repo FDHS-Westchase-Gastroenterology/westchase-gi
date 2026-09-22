@@ -29,7 +29,7 @@ export const CARD = '[data-slot="popover-content"].wgi-record-card';
 export const OPEN_CARD = `${CARD}[data-open]`;
 /** The button inside the open card that toggles the sheet; focus returns
     to it when the sheet closes while the card is still up. */
-export const CARD_BUTTON = `${OPEN_CARD} .wgi-record-foot`;
+export const CARD_BUTTON = `${OPEN_CARD} .wgi-record-full`;
 
 /** True when the element holding focus sits inside `selector`. */
 function focusWithin(selector: string): boolean {
