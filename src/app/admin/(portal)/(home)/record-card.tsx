@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/stock/radio-group";
 import { ToggleGroup, ToggleGroupItem } from "@/components/stock/toggle-group";
 import { Field, FieldLabel } from "@/components/ui/field";
 
+import { prefersText } from "./home-line";
 import type { HomeLine } from "./home-line";
 import { LineStatusBadge } from "./parts/badge";
 import { HomeDayCalendar } from "./parts/calendar";
@@ -169,14 +170,6 @@ function StripReadout({ readout }: Readonly<{ readout: Readonly<CardReadout> | n
       )}
     </p>
   );
-}
-
-/* "Tampa · Morning" as the card says it: "Prefers Tampa · morning". An
-   office keeps its name; "Either office" and the times are plain words. */
-function prefersText(pref: string): string {
-  const [place = "", time = ""] = pref.split(" · ");
-  const office = place === "Either office" ? "either office" : place;
-  return `Prefers ${office} · ${time.toLowerCase()}`;
 }
 
 export function RecordCard({

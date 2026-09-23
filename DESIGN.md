@@ -393,6 +393,19 @@ for lifted cards. The portal prefers hairlines to shadows everywhere but the mod
   against it. (Apple HIG Popovers on macOS detachable popovers, Panels on the inspector, and
   `UISheetPresentationController.largestUndimmedDetentIdentifier` — an undimmed sheet is the
   nonmodal one.)
+- **The full record reads down one column.** A pinned header carries the name with the close
+  beside it, the queue line, the preference and the contact row; below it the patient's message
+  (two lines until "Show all"), the latest note, the history, and the request as submitted behind
+  a closed disclosure whose chevron points at what it hides and turns down when open (HIG
+  Disclosure controls). Sections are spaced, not ruled. The history is the tab's one scroll
+  region (HIG Scroll views: no nested scroll views on one axis): it takes the height the others
+  leave, holds its days' headers at its top, and lets go of its own scroll — the whole tab scrolls
+  instead — once it would show fewer than about three rows. Each event is one line; the system's
+  own entries recede, events later undone are struck through, and a failed notification email is
+  the one row that escalates, in the call badge's amber. A row's full detail is one popover beside
+  the sheet with its arrow on the row (HIG Popovers: one at a time, pointing at its source, never
+  covering it): it opens after a pointer rests on a row and at once while one is warm, follows
+  keyboard focus without taking it, pins on a click, and takes the first Escape before the sheet.
 - **A modal that must fetch still opens on the spring's schedule** and shimmers a skeleton while
   it waits. The surface is never late, only its facts.
 - **Scroll has mass, not decoration.** Windowed groups are nested overflow boxes with
@@ -405,7 +418,8 @@ for lifted cards. The portal prefers hairlines to shadows everywhere but the mod
   overscroll. Where it reports its own rubber-band through the scroll offset (Safari), the thumb
   shortens against the pushed end in lockstep with the rows; where it clamps (Chromium), the thumb
   stays put. Scroll position never animates, and no script draws overscroll: nothing gives the
-  thumb a body, a spring, or a clock (issue #302).
+  thumb a body, a spring, or a clock (issue #302). The full record's history draws the same bar
+  on the same rules, hidden at rest: it appears while the history moves, is held, or is hovered.
 - **Micro state changes stay micro.** Hover tints, pressed ink, and focus rings keep the 150ms
   ease-out; the spring and exit govern surfaces that move.
 - **Buttons feel pressed.** Every pressable element has an `:active` state (the portal's 0.98
@@ -638,11 +652,13 @@ approval is not required.
 - The portal modal keeps the native `<dialog>` top layer (Motion, "one modal").
 - The authored skeletons are structured shapes with one sweep; a generic pulse is a downgrade.
 - The hero is static; Carousel is not a fit. The testimonial rail is scroll-snap.
-- Windowed groups keep the platform scrollbar. ScrollArea is adopted for one surface, the
-  staff home request list (`ui/scroll-area.tsx`, from the registry source in
-  `stock/scroll-area.tsx`): the viewport is exposed as its own part so the list can name it,
-  focus it and reset it, and `ScrollBar` adds a local `data-held` flag Base UI does not
-  publish. Elsewhere it is still not a fit.
+- Windowed groups keep the platform scrollbar. ScrollArea is adopted for two surfaces on the
+  staff home, the request list and the full record's history (`ui/scroll-area.tsx`, from the
+  registry source in `stock/scroll-area.tsx`): the viewport is exposed as its own part so each
+  can name it, focus it and reset it, and `ScrollBar` adds a local `data-held` flag Base UI does
+  not publish. The history's bar shows only while it scrolls, is held, or is hovered itself — Base
+  UI's `data-hovering` covers the whole region, so the bar's own `:hover` stands in — and an edge
+  fade marks rows below the fold. Elsewhere it is still not a fit.
 - Sonner is Radix-era; the registry's Base UI Toast is its base-nova counterpart. On the
   project owner's explicit decision (2026-09-15) Sonner is adopted for the staff portal's
   save feedback wherever a save has a pending beat and then a confirmation: the home record

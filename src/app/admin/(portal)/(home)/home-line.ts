@@ -40,6 +40,15 @@ export interface HomeLine {
   readonly detailHref: string;
 }
 
+/* "Tampa · Morning" as the card and the full record say it: "Prefers Tampa
+   · morning". An office keeps its name; "Either office" and the times are
+   plain words. */
+export function prefersText(pref: string): string {
+  const [place = "", time = ""] = pref.split(" · ");
+  const office = place === "Either office" ? "either office" : place;
+  return `Prefers ${office} · ${time.toLowerCase()}`;
+}
+
 /* ---- Predicates: one per filter, decoded through the definitions ---- */
 
 function passes(line: Readonly<HomeLine>, key: FilterKey, raw: string): boolean {

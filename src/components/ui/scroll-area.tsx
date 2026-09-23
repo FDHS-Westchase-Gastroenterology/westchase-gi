@@ -37,7 +37,8 @@ import type { ComponentProps, PointerEvent as ReactPointerEvent } from "react";
  * rows; where it clamps (Chromium) the thumb stays put. The consumer's CSS
  * owns the thumb's color and its micro-beat tint transition (issue #302).
  *
- * Sole importer today: src/app/admin/(portal)/(home)/line-list.tsx.
+ * Importers today: src/app/admin/(portal)/(home)/line-list.tsx and
+ * src/app/admin/(portal)/(home)/full-record-history.tsx.
  */
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly

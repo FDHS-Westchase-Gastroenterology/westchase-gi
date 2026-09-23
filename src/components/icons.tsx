@@ -33,6 +33,79 @@ export function PhoneOff(p: IconProps) {
   );
 }
 
+/* The request history's call and record marks (lucide phone-missed,
+   voicemail, message-square-text, archive, calendar-check, undo-2,
+   rotate-ccw), drawn like the rest of this set. */
+export function PhoneMissed(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <line x1="22" x2="16" y1="2" y2="8" />
+      <line x1="16" x2="22" y1="2" y2="8" />
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+    </svg>
+  );
+}
+
+export function Voicemail(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <circle cx="6" cy="12" r="4" />
+      <circle cx="18" cy="12" r="4" />
+      <line x1="6" x2="18" y1="16" y2="16" />
+    </svg>
+  );
+}
+
+export function MessageSquareText(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      <path d="M13 8H7" />
+      <path d="M17 12H7" />
+    </svg>
+  );
+}
+
+export function Archive(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <rect width="20" height="5" x="2" y="3" rx="1" />
+      <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+      <path d="M10 12h4" />
+    </svg>
+  );
+}
+
+export function CalendarCheck(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M8 2v4" />
+      <path d="M16 2v4" />
+      <rect width="18" height="18" x="3" y="4" rx="2" />
+      <path d="M3 10h18" />
+      <path d="m9 16 2 2 4-4" />
+    </svg>
+  );
+}
+
+export function Undo2(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M9 14 4 9l5-5" />
+      <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" />
+    </svg>
+  );
+}
+
+export function RotateCcw(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
+    </svg>
+  );
+}
+
 export function MessageSquare(p: IconProps) {
   return (
     <svg {...base(p)}>
@@ -283,6 +356,16 @@ export function CircleHelp(p: IconProps) {
       <circle cx="12" cy="12" r="10" />
       <path d="M9.1 9a3 3 0 1 1 5.83 1c0 2-3 2-3 4" />
       <path d="M12 18h.01" />
+    </svg>
+  );
+}
+
+export function CircleAlert(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 8v4" />
+      <path d="M12 16h.01" />
     </svg>
   );
 }

@@ -1,17 +1,21 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { formatPhoneForDisplay, telHref } from "@/app/admin/(portal)/requests/format";
+import { isMailbox } from "@/lib/portal/contracts";
+import type { FullRecord } from "@/lib/portal/request-record/contracts";
 import { presentationStatus } from "@/lib/portal/workflow/contracts";
 
-import { SheetBody, StandsLine } from "./full-record-sheet-body";
+import { SheetBody } from "./full-record-sheet-body";
 import { useSheetResize } from "./full-record-sheet-geometry";
+import { attemptsLabel, recordSections } from "./full-record-sheet-model";
+import { prefersText } from "./home-line";
 import type { HomeLine } from "./home-line";
 import { LineStatusBadge } from "./parts/badge";
-import { ChevronGlyph, CloseGlyph } from "./parts/glyphs";
+import { CloseGlyph, PhoneGlyph } from "./parts/glyphs";
 import { HomeSheet, HomeSheetClose, HomeSheetContent, HomeSheetTitle } from "./parts/sheet";
-import { CARD_BUTTON, closedByKeyboard } from "./sheet-coexistence";
+import { CARD_BUTTON, closedByKeyboard, sheetStaysOpen } from "./sheet-coexistence";
 import { useRecordRead } from "./use-record-read";
 
 /* Full record: a right sheet that runs beside the record card
@@ -21,8 +25,10 @@ import { useRecordRead } from "./use-record-read";
    undimmed inspector of the selected request: no backdrop, because a
    dimmed page reads as modal and this surface is not one. Staff work the
    phone with both in view: the card records what happened, the sheet
-   shows the whole request — contact, the request as submitted, the
-   patient's message, staff notes, and the recorded history. It reads its
+   shows the whole request (Figma Ypf9ohpRcGWF5C9T9bSvWW, section 04) — a
+   pinned header with who, where the request stands, how to reach them,
+   and below it the patient's message, the latest note, the history, and
+   the request as submitted. It reads its
    record through the request-record server function on open and shows an
    authored skeleton while it waits; the name, status, and phone come from
    the list's line first, so the header is never late, only its facts.
@@ -45,10 +51,57 @@ import { useRecordRead } from "./use-record-read";
    that clears the card.
 
    This file is the composition: the read, the dismissal policy, and the
-   header and footer. The sections are in full-record-sheet-body.tsx,
+   header. The sections are in full-record-sheet-body.tsx,
    what they say in full-record-sheet-model.ts, the panel's box in
    full-record-sheet-geometry.ts, and the rules this sheet and the home
    popovers share in sheet-coexistence.ts. */
+
+function Attempts({ count }: Readonly<{ count: number }>) {
+  const label = attemptsLabel(count);
+  return label === null ? null : <span className="wgi-sheet-attempts">· {label}</span>;
+}
+
+type SheetContactProps = Readonly<{
+  line: Readonly<HomeLine>;
+  record: FullRecord | null;
+  loading: boolean;
+}>;
+
+/* The phone as the card's call chip, then the email. The number is the
+   list's until the record arrives, so a slow or failed read never hides
+   it; the email waits for the record, a placeholder while it loads. */
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the request record carries workflow history entries whose types cannot be made readonly
+function SheetContact({ line, record, loading }: SheetContactProps) {
+  const mailbox = record?.email?.trim() ?? "";
+  const safeMailbox = mailbox !== "" && isMailbox(mailbox) ? mailbox : null;
+  return (
+    <div className="wgi-sheet-contact">
+      <a
+        href={record === null ? line.tel : telHref(record.phone)}
+        className="wgi-record-call wgi-sheet-call"
+        data-ui-redact="patient-contact"
+      >
+        <PhoneGlyph size={15} />
+        {record === null ? line.phoneDisplay : formatPhoneForDisplay(record.phone)}
+      </a>
+      {record === null ? (
+        loading ? (
+          <span className="wgi-sheet-placeholder" aria-hidden="true" />
+        ) : null
+      ) : safeMailbox === null ? (
+        <span className="wgi-sheet-empty">No email provided</span>
+      ) : (
+        <a
+          href={`mailto:${safeMailbox}`}
+          className="wgi-sheet-email"
+          data-ui-redact="patient-contact"
+        >
+          {safeMailbox}
+        </a>
+      )}
+    </div>
+  );
+}
 
 export function FullRecordSheet({
   line,
@@ -74,6 +127,7 @@ export function FullRecordSheet({
 
   const shownId = shown?.id ?? null;
   const { outcome, record, retry, release } = useRecordRead(line, shownId);
+  const sections = useMemo(() => (record === null ? null : recordSections(record)), [record]);
 
   /* A retarget (another row's card opened while the sheet was up) keeps
      the popup mounted, so the mount-time fit does not run again: refit
@@ -101,7 +155,9 @@ export function FullRecordSheet({
         /* Escape heard here is the sheet's own: a popup holding focus takes
            the key on its onKeyDown and stops it there, and the card yields
            document-level Escapes to the sheet while one is mounted
-           (sheet-coexistence.ts). */
+           (sheet-coexistence.ts). A history popover beside the sheet takes
+           the Escape first. */
+        if (!open && sheetStaysOpen(details)) return;
         if (!open) setLeavingByKey(closedByKeyboard(details));
         onOpenChange(open);
       }}
@@ -151,20 +207,14 @@ export function FullRecordSheet({
                 affordance, not the record's. */}
             <div className="wgi-sheet-content" key={shown.id}>
               <header className="wgi-sheet-head">
-                <div>
-                  <p className="wgi-sheet-kicker">Full record</p>
-                  {/* Base UI's Title renders an <h2> itself — no render element,
-                      so the heading and its content stay in one JSX node. */}
-                  <HomeSheetTitle className="wgi-sheet-name" data-ui-redact="patient-name">
-                    {record?.name ?? shown.name}
-                  </HomeSheetTitle>
-                  <p className="wgi-sheet-meta">
-                    <LineStatusBadge
-                      status={record === null ? shown.status : presentationStatus(record.state)}
-                    />
-                  </p>
-                  <StandsLine record={record} loading={outcome === null} />
-                </div>
+                {/* Base UI's Title renders an <h2> itself — no render element,
+                    so the heading and its content stay in one JSX node. The
+                    sheet is named by it: the patient, and, for a screen
+                    reader, what this surface is. */}
+                <HomeSheetTitle className="wgi-sheet-name">
+                  <span className="sr-only">Full record: </span>
+                  <span data-ui-redact="patient-name">{record?.name ?? shown.name}</span>
+                </HomeSheetTitle>
                 <HomeSheetClose
                   render={
                     <button
@@ -174,16 +224,22 @@ export function FullRecordSheet({
                     />
                   }
                 >
-                  <CloseGlyph size={18} />
+                  <CloseGlyph size={16} />
                 </HomeSheetClose>
+                {/* The card's queue line, at the sheet's size: the badge, when
+                    it is due, and how many calls it has taken so far. */}
+                <p className="wgi-record-queue wgi-sheet-queue">
+                  <LineStatusBadge
+                    status={record === null ? shown.status : presentationStatus(record.state)}
+                    className="wgi-record-badge"
+                  />
+                  <span data-overdue={shown.stamp === null ? undefined : true}>{shown.timing}</span>
+                  {sections === null ? null : <Attempts count={sections.attempts} />}
+                </p>
+                <p className="wgi-sheet-pref">{prefersText(shown.pref)}</p>
+                <SheetContact line={shown} record={record} loading={outcome === null} />
               </header>
-              <div className="wgi-sheet-body">
-                <SheetBody line={shown} outcome={outcome} onRetry={retry} />
-              </div>
-              <Link href={shown.detailHref} className="wgi-sheet-foot">
-                Open request page
-                <ChevronGlyph size={18} />
-              </Link>
+              <SheetBody outcome={outcome} sections={sections} onRetry={retry} />
             </div>
           </div>
         </HomeSheetContent>
