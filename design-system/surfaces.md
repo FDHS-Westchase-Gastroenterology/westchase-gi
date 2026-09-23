@@ -67,9 +67,13 @@ waiting on [item 17](roadmap.md#17-call-site-restyles)); a new table takes the r
 | `Item` `ItemGroup` `ItemContent` `ItemTitle` `ItemDescription` | Entries read in sequence: notes, an activity trail | None in product since the full record's redesign |
 | A ruled `<ul>` of settings rows, plain markup | Rows that each carry their own controls: a recipient, a staff member, a maintainer | `recipients-manager.tsx` with `recipient-row.tsx`, `staff-manager.tsx`, `software/maintainer-access.tsx` |
 
-The full record's history is its own one-line rows with a popover each
-([overlays.md](overlays.md#the-full-record-sheet)), not `Item`s, so the recipe waits for a
-consumer. Its `duration-100` color transition is a recorded literal
+The full record's history (`full-record-history.tsx`) is one-line rows under sticky days, not
+`Item`s. It is the sheet's one scroll region until it would show under three rows. Undone events
+are struck through; a failed notification email escalates in amber. A row's detail is one popover
+beside the sheet, arrow on the row: it opens on a resting pointer, at once while warm, and on
+keyboard focus without taking it; a click pins it, and it takes the first Escape.
+
+`Item` waits for a consumer. Its `duration-100` color transition is a recorded literal
 ([item 16](roadmap.md#16-motion-literals)). `ItemGroup` renders `role="list"`, so each `Item` is
 announced as a list entry. `size="sm"` pads exactly like `default`; choose `default` or `xs`.
 `ItemTitle` is 14px `font-medium` with `line-clamp-1` and `ItemDescription` clamps at two lines;

@@ -125,22 +125,8 @@ presentation controller's largest undimmed detent.
 - **Focus and Escape.** It opens onto the sheet itself, not the grip, and returns to the card's
   toggle, or to the row's trigger when the card has closed. One Escape closes one surface: the one
   holding focus, or the sheet when focus is in neither.
-- **Content.** It reads down one column (Figma `Ypf9ohpRcGWF5C9T9bSvWW`, section 04). A pinned
-  header carries the name with the close beside it, the queue line (badge, timing, attempts), the
-  preference and the contact row; below it the patient's message (two lines until "Show all"), the
-  latest note as a tinted block, the history, and the request as submitted behind a closed
-  disclosure (`HomeCollapsible`) whose chevron points at what it hides and turns down when open
-  (HIG Disclosure controls). Sections are spaced, not ruled.
-- **History.** `full-record-history.tsx` is the tab's one scroll region (HIG Scroll views: no
-  nested scroll views on one axis): it takes the height the others leave, holds its days' headers
-  at its top, and lets go of its own scroll, so the whole tab scrolls, once it would show fewer
-  than about three rows. Each event is one line on a rail of icons; the system's own entries
-  recede, events later undone are struck through, and a failed notification email is the one row
-  that escalates, in the call badge's amber. A row's full detail is one popover beside the sheet
-  with its arrow on the row (HIG Popovers: one at a time, pointing at its source, never covering
-  it): it opens after a pointer rests on a row and at once while one is warm, follows keyboard
-  focus without taking it, pins on a click, and takes the first Escape before the sheet. Below
-  the room it needs beside the sheet, it drops under its row.
+- **Content.** One column (Figma section 04): a pinned header, the patient's message, the latest
+  note, the [history](surfaces.md#lists), and the request's details behind a closed disclosure.
 - **States.** The header's name, status and phone come from the list line, so it is never late.
   `SheetBody` shows a skeleton (`role="status"`) while the record loads, a notice when the request
   no longer exists, and an alert with "Try again" when it cannot load.
