@@ -139,8 +139,12 @@ function RequestDetails({ record }: Readonly<{ record: FullRecord }>) {
         <span className="wgi-disclosure-chevron">
           <ChevronGlyph size={16} />
         </span>
-        <span className="wgi-sheet-label">Request details</span>
-        <span className="wgi-disclosure-summary">{detailsSummary(record)}</span>
+        <span className="wgi-disclosure-title">
+          <span className="wgi-sheet-label">Request details</span>
+          <span className="wgi-disclosure-summary">
+            <span>{detailsSummary(record)}</span>
+          </span>
+        </span>
       </HomeCollapsibleTrigger>
       <HomeCollapsiblePanel>
         <dl className="wgi-sheet-dl">
