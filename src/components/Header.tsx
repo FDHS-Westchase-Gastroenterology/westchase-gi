@@ -256,7 +256,7 @@ export function Header({ locale, dict }: Readonly<HeaderProps>) {
               className="h-14 w-auto flex-none sm:h-[4.25rem]"
             />
             <span className="min-w-0 leading-tight">
-              <span className="bidi-ltr block truncate text-[1.05rem] font-[var(--font-display)] text-[var(--color-navy)] sm:text-[1.2rem]">
+              <span className="bidi-ltr block truncate text-[1.05rem] text-[var(--color-navy)] sm:text-[1.2rem]">
                 Westchase Gastroenterology
               </span>
               <span className="bidi-ltr block truncate text-[0.72rem] font-bold tracking-[0.01em] text-[var(--color-teal-ink)] sm:text-[0.8rem]">

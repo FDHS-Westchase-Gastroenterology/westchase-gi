@@ -158,7 +158,7 @@ export function ReviewHub() {
           priority
           className="h-16 w-auto"
         />
-        <p className="mt-3 text-[1.35rem] leading-tight font-[var(--font-display)] text-[var(--color-navy)]">
+        <p className="mt-3 text-[1.35rem] leading-tight text-[var(--color-navy)]">
           Westchase Gastroenterology
         </p>
       </header>

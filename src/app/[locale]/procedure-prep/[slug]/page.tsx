@@ -46,7 +46,7 @@ function PrintLetterhead({
 }>) {
   return (
     <div className="hidden text-center print:block">
-      <p className="text-[16pt] font-[var(--font-display)] font-bold">{site.name}</p>
+      <p className="text-[16pt] font-bold">{site.name}</p>
       <p className="mt-1 text-[9pt]">
         {site.locations
           .map((l) => `${l.name[locale]}: ${l.street}, ${l.city}, ${l.region} ${l.postal}`)
@@ -102,7 +102,7 @@ export default async function PrepDetailPage({ params }: Readonly<PageProps>) {
           {/* The human channel, on-page — patients mid-prep should never dig
               for a number. Hidden in print; the letterhead carries it there. */}
           <div className="print-hide mt-12 border-t border-[var(--color-line)] pt-7">
-            <h2 className="text-base font-[var(--font-body)] font-extrabold text-[var(--color-ink)]">
+            <h2 className="text-base font-extrabold text-[var(--color-ink)]">
               {t.questionsHeading}
             </h2>
             <p className="measure mt-2 text-[0.98rem] text-[var(--color-body)]">
@@ -133,7 +133,7 @@ export default async function PrepDetailPage({ params }: Readonly<PageProps>) {
         </div>
       </article>
 
-      <TextBand locale={locale} dict={dict} />
+      <TextBand dict={dict} />
     </>
   );
 }

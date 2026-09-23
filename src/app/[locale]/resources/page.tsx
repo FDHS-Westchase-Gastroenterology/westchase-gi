@@ -45,7 +45,7 @@ export default async function ResourcesPage({ params }: Readonly<PageProps>) {
         <div className="container-x">
           <Reveal className="card-lined flex flex-wrap items-center justify-between gap-6 bg-[var(--color-mint)] p-7 sm:p-8">
             <div className="max-w-xl">
-              <h2 className="h3 font-[var(--font-display)]">{t.educationHeading}</h2>
+              <h2 className="h3">{t.educationHeading}</h2>
               <p className="mt-2 text-[var(--color-body)]">{t.educationBody}</p>
             </div>
             <Link
@@ -109,7 +109,7 @@ export default async function ResourcesPage({ params }: Readonly<PageProps>) {
             ))}
           </dl>
 
-          <h2 className="h3 mt-14 font-[var(--font-display)]">{t.professionalHeading}</h2>
+          <h2 className="h3 mt-14">{t.professionalHeading}</h2>
           <ul className="mt-5 flex flex-wrap gap-x-8 gap-y-3">
             {professionalOrgs.map((org) => (
               <li key={org.url}>
@@ -138,7 +138,7 @@ export default async function ResourcesPage({ params }: Readonly<PageProps>) {
         </div>
       </section>
 
-      <TextBand locale={locale} dict={dict} />
+      <TextBand dict={dict} />
     </>
   );
 }

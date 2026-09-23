@@ -110,7 +110,7 @@ function Section({ section, locale }: Readonly<{ section: ProfileSection; locale
 function Quote({ text }: Readonly<{ text: string }>) {
   return (
     <blockquote className="mt-10 border-t-2 border-[var(--color-amber)] pt-5">
-      <p className="max-w-[38rem] text-[1.28rem] leading-normal font-[var(--font-display)] text-[var(--color-navy)]">
+      <p className="max-w-[38rem] text-[1.28rem] leading-normal text-[var(--color-navy)]">
         &ldquo;{text}&rdquo;
       </p>
     </blockquote>
@@ -184,7 +184,7 @@ function PhysicianProfile({
         </Reveal>
 
         <Reveal delay={1} className={flip ? "lg:order-1" : ""}>
-          <h2 className="text-[clamp(1.7rem,3.2vw,2.2rem)] leading-tight font-[var(--font-display)] text-[var(--color-ink)]">
+          <h2 className="text-[clamp(1.7rem,3.2vw,2.2rem)] leading-tight text-[var(--color-ink)]">
             {doc.name}, {doc.credentials}
           </h2>
           <p className="mt-2 font-bold text-[var(--color-teal-ink)]">
@@ -271,7 +271,7 @@ export default async function PhysiciansPage({ params }: Readonly<PageProps>) {
                   />
                 </Reveal>
                 <Reveal delay={1} className={flip ? "lg:order-1" : ""}>
-                  <h3 className="text-[clamp(1.55rem,3vw,2rem)] leading-tight font-[var(--font-display)] text-[var(--color-ink)]">
+                  <h3 className="text-[clamp(1.55rem,3vw,2rem)] leading-tight text-[var(--color-ink)]">
                     {np.name}, {np.credentials}
                   </h3>
                   <p className="mt-2 font-bold text-[var(--color-teal-ink)]">{np.role[locale]}</p>
@@ -280,7 +280,7 @@ export default async function PhysiciansPage({ params }: Readonly<PageProps>) {
                       <li key={f.en}>{f[locale]}</li>
                     ))}
                   </ul>
-                  <p className="mt-7 max-w-[34rem] border-t-2 border-[var(--color-amber)] pt-4 text-[1.15rem] leading-normal font-[var(--font-display)] text-[var(--color-navy)]">
+                  <p className="mt-7 max-w-[34rem] border-t-2 border-[var(--color-amber)] pt-4 text-[1.15rem] leading-normal text-[var(--color-navy)]">
                     {np.tagline[locale]}
                   </p>
                 </Reveal>
@@ -292,7 +292,7 @@ export default async function PhysiciansPage({ params }: Readonly<PageProps>) {
           <Reveal className="mt-12 lg:mt-16">
             <div className="grid items-center gap-x-12 gap-y-9 rounded-[var(--radius-lg)] bg-[var(--color-navy)] p-7 text-[var(--color-on-dark)] shadow-[var(--shadow-card)] sm:p-10 lg:grid-cols-[1.2fr_minmax(0,21rem)] lg:p-12">
               <div>
-                <h3 className="text-[clamp(1.45rem,2.6vw,1.85rem)] leading-tight font-[var(--font-display)] text-[var(--color-on-dark)]">
+                <h3 className="text-[clamp(1.45rem,2.6vw,1.85rem)] leading-tight text-[var(--color-on-dark)]">
                   {nps.sharedTagline.heading[locale]}
                 </h3>
                 <p className="mt-2 font-bold text-[var(--color-amber)]">
@@ -352,7 +352,7 @@ export default async function PhysiciansPage({ params }: Readonly<PageProps>) {
 
           <Reveal delay={1} className="min-w-0">
             <p className="font-bold text-[var(--color-teal-ink)]">{t.infusionHeading}</p>
-            <h2 className="mt-1 text-[clamp(1.7rem,3.2vw,2.2rem)] leading-tight font-[var(--font-display)] text-[var(--color-ink)]">
+            <h2 className="mt-1 text-[clamp(1.7rem,3.2vw,2.2rem)] leading-tight text-[var(--color-ink)]">
               {inf.name}, {inf.credentials}
             </h2>
             <p className="mt-2 font-bold text-[var(--color-teal-ink)]">
@@ -442,7 +442,7 @@ export default async function PhysiciansPage({ params }: Readonly<PageProps>) {
         </div>
       </section>
 
-      <TextBand locale={locale} dict={dict} />
+      <TextBand dict={dict} />
     </>
   );
 }

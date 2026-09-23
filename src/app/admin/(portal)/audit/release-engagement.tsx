@@ -138,11 +138,11 @@ export function ReleaseEngagementSection({
           <Table data-testid="release-engagement-table" className="hidden md:table">
             <TableHeader>
               <TableRow>
-                <TableHead scope="col">Staff member</TableHead>
-                <TableHead scope="col">Summary</TableHead>
-                <TableHead scope="col">Guide</TableHead>
-                <TableHead scope="col">Dismissals</TableHead>
-                <TableHead scope="col">Response</TableHead>
+                <TableHead>Staff member</TableHead>
+                <TableHead>Summary</TableHead>
+                <TableHead>Guide</TableHead>
+                <TableHead>Dismissals</TableHead>
+                <TableHead>Response</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

@@ -10,8 +10,8 @@ import type { ComponentProps } from "react";
  * (teal's one meaning: the finger tracking a line), destructive reserved
  * for the invalid state, and the 44px minimum target.
  *
- * Motion is decoupled onto its own axis (DESIGN.md "Component API
- * rules"): the base string carries none. `wgi` (default) is the authored
+ * Motion is decoupled onto its own axis (design-system/components.md
+ * "Component API rules"): the base string carries none. `wgi` (default) is the authored
  * .field-input physics — border-color and box-shadow at 200ms. `shadcn`
  * is the upstream registry's stock transition-colors, verbatim.
  */

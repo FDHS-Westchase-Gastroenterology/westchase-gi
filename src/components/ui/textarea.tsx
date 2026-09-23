@@ -8,8 +8,8 @@ import type { ComponentProps } from "react";
  * recipe as Input (white paper, 1.5px line-2 border, brand radius-sm,
  * teal focus), with content-following sizing.
  *
- * Motion is decoupled onto its own axis (DESIGN.md "Component API
- * rules"), mirroring Input: `wgi` (default) is the authored .field-input
+ * Motion is decoupled onto its own axis (design-system/components.md
+ * "Component API rules"), mirroring Input: `wgi` (default) is the authored .field-input
  * physics; `shadcn` is the stock transition-colors, verbatim.
  */
 const textareaVariants = cva(

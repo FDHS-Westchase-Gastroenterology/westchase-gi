@@ -24,8 +24,8 @@ import {
 import { arrive } from "@/lib/motion";
 
 /*
- * Project-authored primitive, not a registry component (DESIGN.md
- * "Component tiers"): shadcn ships no time picker in any style, and
+ * Project-authored primitive, not a registry component
+ * (design-system/components.md "Component tiers"): shadcn ships no time picker in any style, and
  * `npx shadcn@latest search @shadcn -q "picker"` returns nothing, so there
  * is no registry source to adapt and no upstream feel to name on the
  * motion axis. The behavior model is Base, Uber's design system: a framed
@@ -51,7 +51,8 @@ import { arrive } from "@/lib/motion";
  * velocity, so there is no seam between the hand and the animation, and a
  * grab mid-flight picks the wheel up from wherever it is on screen.
  *
- * Axes are decoupled (DESIGN.md "Component API rules"): `size` is geometry
+ * Axes are decoupled (design-system/components.md
+ * "Component API rules"): `size` is geometry
  * alone — the row height and how many rows the window shows — and every
  * size keeps the 16px type, because the portal's floor is 15px and this is
  * a primary readout. `motion` is temperament: `wgi` (default) is the
@@ -258,8 +259,8 @@ function TimePickerColumn({
 
   /* A row a person aimed at is chosen at once; only the wheel's own drift
      is allowed to lag behind the band. A null velocity is a step rather
-     than a throw: it lands on the row it asked for (DESIGN.md
-     "Keyboard-initiated actions never animate"). */
+     than a throw: it lands on the row it asked for
+     (design-system/motion.md "Keyboard-initiated actions never animate"). */
   function choose(index: number, velocity: number | null) {
     if (settle.current !== null) clearTimeout(settle.current);
     setCentered(index);

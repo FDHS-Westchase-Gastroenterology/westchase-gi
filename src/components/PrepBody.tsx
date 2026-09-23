@@ -182,7 +182,7 @@ export function PrepBody({ sections }: Readonly<{ sections: PrepSection[] }>) {
       {sections.map((section, i) => (
         <section key={keys[i]}>
           {section.heading !== undefined && section.heading !== "" ? (
-            <h2 className="h3 font-[var(--font-display)]">{section.heading}</h2>
+            <h2 className="h3">{section.heading}</h2>
           ) : null}
           <div
             className={`grid gap-5 ${section.heading !== undefined && section.heading !== "" ? "mt-4" : ""}`}

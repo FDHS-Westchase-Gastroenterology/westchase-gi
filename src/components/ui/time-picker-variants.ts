@@ -8,8 +8,8 @@ import { cva } from "class-variance-authority";
  * pulling in the client component.
  *
  * Three recipes, one per part: the frame that draws the band, the wheel
- * that scrolls under it, and the row. Axes are decoupled (DESIGN.md
- * "Component API rules") — `size` is geometry, `motion` is temperament,
+ * that scrolls under it, and the row. Axes are decoupled
+ * (design-system/components.md "Component API rules") — `size` is geometry, `motion` is temperament,
  * and the base strings carry no motion at all.
  */
 const timePickerVariants = cva(
