@@ -64,21 +64,21 @@ waiting on [item 17](roadmap.md#17-call-site-restyles)); a new table takes the r
 
 | Component | When | Real uses |
 | --- | --- | --- |
-| `Item` `ItemGroup` `ItemContent` `ItemTitle` `ItemDescription` | Entries read in sequence: notes, an activity trail | `full-record-sheet-body.tsx` |
+| `Item` `ItemGroup` `ItemContent` `ItemTitle` `ItemDescription` | Entries read in sequence: notes, an activity trail | None in product since the full record's redesign |
 | A ruled `<ul>` of settings rows, plain markup | Rows that each carry their own controls: a recipient, a staff member, a maintainer | `recipients-manager.tsx` with `recipient-row.tsx`, `staff-manager.tsx`, `software/maintainer-access.tsx` |
 
-The full record sheet renders its notes and history as `size="xs"` items in an `ItemGroup`, and
-its `.wgi-sheet-items` hook in `home.css` adds the entry states (`data-undone`, `data-attention`,
-`data-quiet`). `variant`, the other sizes, `ItemMedia`, `ItemActions`, `ItemHeader`, `ItemFooter`
-and `ItemSeparator` have no consumer; the recipe's `duration-100` color transition is a recorded
-literal ([item 16](roadmap.md#16-motion-literals)).
+The full record's history (`full-record-history.tsx`) is one-line rows under sticky days, not
+`Item`s. It is the sheet's one scroll region until it would show under three rows. Undone events
+are struck through; a failed notification email escalates in amber. A row's detail is one popover
+beside the sheet, arrow on the row: it opens on a resting pointer, at once while warm, and on
+keyboard focus without taking it; a click pins it, and it takes the first Escape.
 
-`ItemGroup` renders `role="list"`, so each `Item` is announced as a list entry. `size="sm"` pads
-exactly like `default`; choose `default` or `xs`. `ItemTitle` is 14px `font-medium` with
-`line-clamp-1` and `ItemDescription` clamps at two lines; 14px sits below the portal's 15px floor
-([typography.md](typography.md#sizes)), so the sheet's hook repaints them (`--pt-sm` at 600,
-`--pt-xs`) and each title passes `line-clamp-none block w-full` so a note shows whole. A second
-consumer of that repaint moves it into the recipe as a size ([adoption](adoption.md#workflow)).
+`Item` waits for a consumer. Its `duration-100` color transition is a recorded literal
+([item 16](roadmap.md#16-motion-literals)). `ItemGroup` renders `role="list"`, so each `Item` is
+announced as a list entry. `size="sm"` pads exactly like `default`; choose `default` or `xs`.
+`ItemTitle` is 14px `font-medium` with `line-clamp-1` and `ItemDescription` clamps at two lines;
+14px sits below the portal's 15px floor ([typography.md](typography.md#sizes)), so a consumer
+repaints them or adds a size ([adoption](adoption.md#workflow)).
 
 Settings rows are plain markup, written the same way in all three lists:
 `<ul className="divide-y divide-[var(--color-line)]">`, each
@@ -93,12 +93,12 @@ hand-built buttons wait on [item 17](roadmap.md#17-call-site-restyles).
 
 | Component | When | Real uses |
 | --- | --- | --- |
-| `Separator` | A rule between sections of one surface | `full-record-sheet-body.tsx` |
-| `ScrollArea` `ScrollAreaViewport` `ScrollBar` `ScrollAreaThumb` | The staff home's request list, which needs a rail that survives its own row states | `line-list.tsx` |
+| `Separator` | A rule between sections of one surface | `FieldSeparator` in `ui/field.tsx` |
+| `ScrollArea` `ScrollAreaViewport` `ScrollBar` `ScrollAreaThumb` | The staff home's request list and the full record's history, which need a rail that survives their own row states | `line-list.tsx`, `full-record-history.tsx` |
 
-`ScrollArea` is adopted for the staff home's list alone
-([adoption.md](adoption.md#standing-findings)); its viewport keeps the region role and label that
-make the list reachable from the keyboard. Every other list grows and the page scrolls natively.
+`ScrollArea` is adopted for those two staff home regions
+([adoption.md](adoption.md#standing-findings)); each viewport keeps the region role and label that
+make it reachable from the keyboard. Every other list grows and the page scrolls natively.
 
 A rule that opens the block below it belongs to that block: the add forms under the recipient,
 staff and maintainer lists open with `mt-5 border-t border-[var(--color-line)] pt-5`. A rule that

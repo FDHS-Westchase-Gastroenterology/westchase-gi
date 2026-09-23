@@ -62,11 +62,17 @@ one is a conversation with Jason, not a judgment call inside a feature.
   sections hold their own shapes and breathe on one shared opacity loop (`wgi-skeleton`); the
   registry's generic block is a downgrade.
 - **The patient-site hero is static**, so no carousel. The testimonial rail is scroll-snap.
-- **Scroll regions keep the platform scrollbar.** ScrollArea is adopted for exactly one surface,
-  the staff home request list, because that list needs the real scrolling element: an accessible
-  name, keyboard focus, a scroll listener for its footer, and a `scrollTop` reset on filter
-  change. `ScrollBar` adds a local `data-held` flag Base UI does not publish
-  ([surfaces.md](surfaces.md#rules-and-scrolling)).
+- **Scroll regions keep the platform scrollbar.** ScrollArea is adopted for two staff home
+  surfaces, the request list and the full record's history, because each needs the real
+  scrolling element: an accessible name, keyboard focus, and, for the list, a scroll listener for
+  its footer and a `scrollTop` reset on filter change. `ScrollBar` adds a local `data-held` flag
+  Base UI does not publish. The history's bar shows only while it scrolls, is held, or is hovered
+  itself (Base UI's `data-hovering` covers the whole region, so the bar's own `:hover` stands in),
+  and an edge fade marks rows below the fold ([surfaces.md](surfaces.md#rules-and-scrolling)).
+- **Collapsible is a staff home part.** `(home)/parts/collapsible.tsx` is a fresh conversion of
+  `stock/collapsible.tsx` for the full record's request details, painted and timed in `home.css`
+  under `.wgi-disclosure`; its panel height animates through Base UI's
+  `--collapsible-panel-height`.
 - **Sonner is the portal's save feedback**, on the owner's explicit decision of 2026-09-15,
   wherever a save has a pending beat and then a confirmation: the home record card, the staff
   request form in both its homes, the note composer and the request work panel. `Toaster` is

@@ -33,9 +33,10 @@
     input,
     [role="checkbox"],
     [role="radio"],
-    [data-slot="radio-group-item"]
+    [data-slot="radio-group-item"],
+    [tabindex]
   ):focus-visible,
-.wgi-sheet :where(a, button, input):focus-visible,
+.wgi-sheet :where(a, button, input, [tabindex]):focus-visible,
 .wgi-sheet:focus-visible {
   outline: none;
   box-shadow:
@@ -46,8 +47,8 @@
 /* ---------- Press: one shared small-button feedback ----------
    scale(.98) on the fast beat, a transition so a release mid-press eases
    back. Every control in this list carries `transform` in its transition.
-   Wide bars (the sheet's foot, a pill's label, an answer row) press as a
-   deeper tint instead: a scale would open gaps at their ends. */
+   Wide bars (a history row, the details disclosure, a pill's label, an
+   answer row) press as a deeper tint instead: a scale would open gaps at their ends. */
 .wgi-add-filter:active,
 .wgi-sug:active,
 .wgi-pill-remove:active,
@@ -277,10 +278,13 @@
   --wgi-label-size: 0.906rem;
 }
 
-/* The record card is portaled to body, outside .wgi-home, so it reads the
-   same paints from this shared rule rather than restating them. */
+/* The record card, the full-record sheet and its history popover are
+   portaled to body, outside .wgi-home, so they read the same paints from
+   this shared rule rather than restating them. */
 .wgi-home,
-.wgi-record-card {
+.wgi-record-card,
+.wgi-sheet,
+.wgi-history-popover {
   /* Figma parity: the paints below are the design file's own variables
      (Ypf9ohpRcGWF5C9T9bSvWW, "Home · Approved baseline", node 88:1176,
      which carries these names), scoped to Home so the brand @theme stays
@@ -2528,14 +2532,8 @@ a.appt-phone {
   box-sizing: border-box;
   height: 100%;
   /* The frame's sheet (node 72:627): 542px wide on the list surface, a
-     hairline in the list rule, a soft spill toward the page. The sheet is
-     portaled to body, so the home root's --wgi-* paints are restated. */
-  --wgi-surface: #fcfdfe;
-  --wgi-rule: #dfe6ef;
-  --wgi-band: #eaf1f7;
-  --wgi-name-ink: #10143a;
-  --wgi-muted-ink: #576883;
-  --wgi-cmd-primary: #173758;
+     hairline in the list rule, a soft spill toward the page. It is
+     portaled to body and reads Home's paints from the shared rule. */
   width: calc(33.875rem + var(--wgi-sheet-bleed));
   /* The sidebar is the wall: never past its edge, and never the whole
      viewport when there is no sidebar column to stop at. */
@@ -2573,7 +2571,7 @@ a.appt-phone {
    attribute Base UI's popovers set on their own. The content's settle
    goes with it. */
 .wgi-sheet[data-instant],
-.wgi-sheet[data-instant] :is(.wgi-sheet-head, .wgi-sheet-body, .wgi-sheet-foot) {
+.wgi-sheet[data-instant] :is(.wgi-sheet-head, .wgi-sheet-body) {
   transition-duration: 0ms;
   transition-delay: 0ms;
   animation: none;
@@ -2715,80 +2713,45 @@ a.appt-phone {
     0 0 0 4px var(--color-teal);
 }
 
+/* The pinned header (Figma Ypf9ohpRcGWF5C9T9bSvWW, section 04): the name
+   and the close on one line, then the card's queue line
+   with the number of calls, the preference, and the phone chip beside the
+   email. It never scrolls and never moves; everything below it does. */
 .wgi-sheet-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--ps-4);
-  padding: var(--ps-6) var(--ps-6) 1.25rem 1.5625rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  flex: none;
+  padding: 1.25rem 1.5rem 1.25rem;
   border-bottom: 1px solid var(--wgi-rule);
 }
 
-.wgi-sheet-kicker {
+.wgi-sheet-head > :not(.wgi-sheet-name, .wgi-sheet-close) {
+  grid-column: 1 / -1;
+}
+
+/* The small uppercase label every section's heading carries. */
+.wgi-sheet-label {
   margin: 0;
-  color: var(--wgi-name-ink);
-  font-size: 0.75rem;
-  font-weight: 400;
-  letter-spacing: 0.7px;
-  line-height: 1.5;
+  color: var(--wgi-label-ink);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.88px;
+  line-height: 0.875rem;
   text-transform: uppercase;
-}
-
-.wgi-sheet-name {
-  margin: 0.1875rem 0 0;
-  color: var(--wgi-name-ink);
-  font-family: var(--font-body);
-  font-size: 1.4375rem;
-  font-weight: 600;
-  letter-spacing: 0;
-  line-height: 1.75rem;
-}
-
-.wgi-sheet-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.4rem;
-  margin: 0.1875rem 0 0;
-  color: var(--color-muted-ink);
-  font-size: var(--pt-xs);
-}
-
-/* Where it stands: one sentence of the record's own facts under the
-   badge, information rather than a control
-   (plans/full-record-sheet-decisions.md, Content answers). Until the read
-   lands, a placeholder bar holds the line on the list skeleton's sweep, so
-   the header keeps its height; the email line in Contact waits the same
-   way. */
-.wgi-sheet-stands {
-  margin: 0.4375rem 0 0;
-  color: var(--wgi-name-ink);
-  font-size: 1rem;
-  line-height: 1.375rem;
-}
-
-.wgi-sheet-placeholder {
-  display: block;
-  height: 0.85rem;
-  width: 14rem;
-  max-width: 100%;
-  margin: 0.7rem 0 0.15rem;
-  border-radius: var(--radius-sm);
-  background: color-mix(in oklch, var(--color-line-2) 72%, white);
-  animation: wgi-skeleton 1.6s ease-in-out infinite;
 }
 
 .wgi-sheet-close {
   display: inline-flex;
-  flex: none;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 2rem;
+  height: 2rem;
+  margin: -0.375rem -0.5rem -0.375rem 0;
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: var(--btn-radius);
+  border-radius: var(--wgi-cmd-radius);
   background: none;
-  color: var(--color-muted-ink);
+  color: var(--wgi-muted-ink);
   cursor: pointer;
   transition:
     background-color var(--motion-fast-duration) var(--motion-standard),
@@ -2797,174 +2760,629 @@ a.appt-phone {
 
 @media (hover: hover) {
   .wgi-sheet-close:hover {
-    background: var(--color-mint-hover);
-    color: var(--color-ink);
+    background: var(--wgi-hover);
+    color: var(--wgi-name-ink);
   }
 }
 
-.wgi-sheet-body {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  padding: 1.25rem var(--ps-6) 2rem 1.5625rem;
-}
-
-.wgi-sheet-call {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  min-height: 3rem;
-  padding: 0.75rem 0.875rem;
-  border-radius: var(--radius-sm);
-  background: var(--wgi-band);
-  color: var(--wgi-cmd-primary);
-  font-size: var(--pt-base);
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  transition:
-    background-color var(--motion-fast-duration) var(--motion-standard),
-    transform var(--motion-fast-duration) var(--motion-standard);
-}
-
-@media (hover: hover) {
-  .wgi-sheet-call:hover {
-    background: var(--color-mint-hover);
-    color: var(--wgi-cmd-primary);
-  }
-}
-
-.wgi-sheet-call > svg {
-  flex: none;
-}
-
-.wgi-sheet-dl {
-  display: grid;
-  grid-template-columns: 7.625rem 1fr;
-  gap: 0;
+.wgi-sheet-name {
   margin: 0;
+  color: var(--wgi-name-ink);
+  font-family: var(--font-body);
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.75rem;
+  overflow-wrap: anywhere;
 }
 
-.wgi-sheet-dl dt,
-.wgi-sheet-dl dd {
-  display: flex;
-  align-items: center;
-  min-height: 1.9375rem;
+.wgi-sheet-queue {
+  margin-top: 0.5rem;
 }
 
-.wgi-sheet-dl dt {
+/* The count stays in ink beside an overdue line's amber; the escalation
+   is the card's, and only the timing carries it (#316, D4). */
+.wgi-sheet-attempts {
+  margin-left: -0.25rem;
+  color: var(--wgi-name-ink);
+  font-weight: 400;
+}
+
+.wgi-sheet-pref {
+  margin: 0.25rem 0 0;
   color: var(--wgi-muted-ink);
-  font-size: var(--pt-sm);
-  line-height: 1.375rem;
-}
-
-.wgi-sheet-dl dd {
-  margin: 0;
-  color: var(--wgi-name-ink);
-  font-size: var(--pt-base);
-  line-height: 1.5rem;
-}
-
-/* Section headings inside the body, one per section, on the recipe the
-   activity heading used to carry. The rule between sections is the ui
-   Separator (`bg-border` paints --color-line through the bridge); its
-   margins carry the body's 1.25rem rhythm. */
-.wgi-sheet-section {
-  margin: 0 0 0.625rem;
-  color: var(--wgi-name-ink);
-  font-size: 0.875rem;
-  font-weight: 600;
-  letter-spacing: 0.25px;
-  line-height: 1.125rem;
-  text-transform: uppercase;
-}
-
-.wgi-sheet-rule {
-  margin: 1.25rem 0;
-  background: var(--wgi-rule);
+  font-size: var(--pt-xs);
 }
 
 .wgi-sheet-contact {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-top: 0.875rem;
 }
 
-.wgi-sheet-contact > .wgi-sheet-call {
-  align-self: stretch;
-}
-
-.wgi-sheet-contact > .wgi-sheet-placeholder {
-  width: 11rem;
-  margin: 0.2rem 0 0;
+/* The card's call chip at the sheet's size. */
+.wgi-sheet-call {
+  min-height: 2.25rem;
+  margin: 0;
+  padding: 0 0.75rem;
+  font-size: 0.9375rem;
 }
 
 .wgi-sheet-email {
-  color: var(--wgi-cmd-primary);
-  font-size: 1rem;
-  font-weight: 400;
-  line-height: 1.375rem;
+  min-width: 0;
+  color: #294f60;
+  font-size: 0.84375rem;
+  line-height: 1.25rem;
   overflow-wrap: anywhere;
   text-decoration: underline;
-  text-decoration-color: var(--color-line-3);
+  text-decoration-color: var(--wgi-chip-stroke);
   text-underline-offset: 0.15em;
   transition: text-decoration-color var(--motion-fast-duration) var(--motion-standard);
 }
 
 @media (hover: hover) {
   .wgi-sheet-email:hover {
-    color: var(--wgi-cmd-primary);
+    color: #294f60;
     text-decoration-color: currentColor;
   }
 }
 
-/* The patient's own words, as submitted: line breaks kept. */
-.wgi-sheet-message {
+/* Until the read lands, a bar holds the email's place on the list
+   skeleton's sweep, so the header keeps its height. */
+.wgi-sheet-placeholder {
+  display: block;
+  height: 0.85rem;
+  width: 11rem;
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--color-line-2) 72%, white);
+  animation: wgi-skeleton 1.6s ease-in-out infinite;
+}
+
+/* The body: sections 28px apart, no rules. A column so the history can
+   take the height the others leave (full-record-sheet-body.tsx); it only
+   scrolls itself once the history has let go of its own scroll. */
+.wgi-sheet-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1.75rem;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding: 1.375rem 1.5rem 1.5rem;
+}
+
+.wgi-sheet-section {
+  flex: none;
   margin: 0;
-  color: var(--wgi-name-ink);
-  font-size: var(--pt-base);
-  line-height: 1.375rem;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+}
+
+.wgi-sheet-section > .wgi-sheet-label,
+.wgi-history > .wgi-sheet-label {
+  margin-bottom: 0.625rem;
 }
 
 .wgi-sheet-empty {
   margin: 0;
   color: var(--wgi-muted-ink);
-  font-size: var(--pt-base);
-  line-height: 1.375rem;
-}
-
-/* Notes and history are the ui Item recipe (base-nova source, see
-   src/components/stock/MANIFEST.json), size xs, styled by slot the way the
-   record card styles its toggle group. The item's own inline padding is
-   pulled back to the body's edge by the group's negative margin in the
-   JSX. */
-.wgi-sheet-items [data-slot="item-title"] {
-  color: var(--wgi-name-ink);
-  font-size: var(--pt-base);
-  font-weight: 400;
-  line-height: 1.375rem;
-}
-
-.wgi-sheet-items [data-slot="item-description"] {
-  color: var(--wgi-muted-ink);
   font-size: var(--pt-sm);
-  line-height: 1.375rem;
+  line-height: 1.25rem;
 }
 
-.wgi-sheet-items [data-slot="item"][data-undone] [data-slot="item-title"] {
-  color: var(--color-muted-ink);
+/* The patient's own words behind a quote rule, line breaks kept, two
+   lines until "Show all" opens them in place. */
+.wgi-sheet-message {
+  margin: 0;
+  border-left: 2px solid var(--wgi-chip-stroke);
+  padding-left: 0.875rem;
+}
+
+.wgi-sheet-message > p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--wgi-name-ink);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.wgi-sheet-message > p[data-open] {
+  display: block;
+  -webkit-line-clamp: unset;
+}
+
+.wgi-sheet-more {
+  margin-top: 0.375rem;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  padding: 0;
+  color: #294f60;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 0.15em;
+  transition: text-decoration-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-sheet-more:hover {
+    text-decoration-color: currentColor;
+  }
+}
+
+/* The latest staff note: a tinted block, the note and its byline. */
+.wgi-sheet-note {
+  margin: 0;
+  border-radius: 8px;
+  background: var(--wgi-band);
+  padding: 0.75rem 0.875rem;
+}
+
+.wgi-sheet-note > p {
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: 0.90625rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.wgi-sheet-note > figcaption {
+  margin-top: 0.375rem;
+  color: var(--wgi-muted-ink);
+  font-size: 0.78125rem;
+  line-height: 1.125rem;
+}
+
+/* ---------- The history ----------
+   The one scroll region: it takes the height the sections leave, down to
+   the label, a day and about three rows; below that the body releases it
+   and scrolls whole. */
+.wgi-history {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 8.75rem;
+}
+
+.wgi-sheet-body[data-released] .wgi-history {
+  flex: none;
+}
+
+.wgi-history-scroll {
+  flex: 1;
+  min-height: 0;
+  /* The rows' hover tint runs past the text column, so the scroll area
+     does too, and hands the room back as padding. */
+  margin-inline: -0.5rem;
+}
+
+.wgi-sheet-body[data-released] .wgi-history-scroll {
+  flex: none;
+}
+
+.wgi-history-viewport {
+  overscroll-behavior-y: contain;
+  padding-inline: 0.5rem;
+  border-radius: 6px;
+}
+
+/* The soft edge: a fade over the last rows while more wait below
+   (HIG Scroll views, scroll edge effects). */
+.wgi-history-scroll::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 1.75rem;
+  background: linear-gradient(to bottom, transparent, var(--wgi-surface));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-history-scroll[data-overflow-y-end]::after {
+  opacity: 1;
+}
+
+/* The scrollbar shows only while the rows move, or while the pointer is
+   on the bar itself: a 4px thumb in the list's thumb ink. Base UI's
+   data-hovering covers the whole region, so the bar's own :hover is used. */
+.wgi-history-bar {
+  width: 0.625rem;
+  padding: 0.125rem 0.1875rem;
+  opacity: 0;
+  transition: opacity var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-history-bar[data-scrolling],
+.wgi-history-bar[data-held] {
+  opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wgi-history-bar:hover {
+    opacity: 1;
+  }
+}
+
+.wgi-history-thumb {
+  width: 4px;
+  border-radius: 2px;
+  background: var(--wgi-thumb);
+}
+
+.wgi-history-days {
+  --wgi-rail-x: 7.25px;
+  padding-bottom: 0.25rem;
+}
+
+/* Day headers stick to the top of the region as their rows pass under.
+   Each header and each row draws its own piece of the rail at the icons'
+   center, so the rail runs unbroken from the first icon to the last. */
+.wgi-history-date {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  background: var(--wgi-surface);
+  padding: 0.5rem 0 0.25rem 1.625rem;
+  color: var(--wgi-muted-ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1rem;
+}
+
+.wgi-history-day:first-child > .wgi-history-date {
+  padding-top: 0;
+}
+
+.wgi-history-date::before,
+.wgi-history-row::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  width: 1.5px;
+  background: var(--wgi-rule);
+}
+
+.wgi-history-date::before {
+  left: var(--wgi-rail-x);
+}
+
+.wgi-history-day:first-child > .wgi-history-date::before {
+  display: none;
+}
+
+.wgi-history-rows {
+  margin: 0 -0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+/* One line per event: the icon in the rail, then the words. The row is
+   the popover's trigger; its tint says which row the popover belongs to. */
+.wgi-history-row {
+  --wgi-row-fill: var(--wgi-surface);
+  position: relative;
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  min-height: 1.875rem;
+  border: 0;
+  border-radius: 6px;
+  background: var(--wgi-row-fill);
+  padding: 0.3125rem 0.5rem;
+  color: var(--wgi-name-ink);
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  text-align: left;
+  cursor: default;
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-history-row::before {
+  left: calc(0.5rem + var(--wgi-rail-x));
+}
+
+.wgi-history-day:first-child li:first-child > .wgi-history-row::before {
+  top: 50%;
+}
+
+.wgi-history-day:last-child li:last-child > .wgi-history-row::before {
+  bottom: 50%;
+}
+
+@media (hover: hover) {
+  .wgi-history-row:hover {
+    --wgi-row-fill: var(--wgi-hover);
+  }
+}
+
+.wgi-history-row[data-popup-open] {
+  --wgi-row-fill: var(--wgi-hover);
+}
+
+/* Pressed: a row is wide, so it presses as a deeper tint. */
+.wgi-history-row:active {
+  --wgi-row-fill: var(--wgi-open);
+}
+
+/* The region clips, so the ring is drawn inside the row. */
+.wgi-sheet .wgi-history-row:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--color-teal);
+}
+
+/* The icon's box takes the row's fill, so it cuts the rail cleanly and
+   tints with the row on the same beat. */
+.wgi-history-icon {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  width: 1rem;
+  height: 1.125rem;
+  align-items: center;
+  justify-content: center;
+  background: var(--wgi-row-fill);
+  color: var(--wgi-name-ink);
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-history-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--wgi-icon-ink);
+}
+
+.wgi-history-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wgi-history-text b {
+  font-weight: 600;
+}
+
+/* The system's own entries, and events later undone, recede. */
+.wgi-history-row[data-system] :is(.wgi-history-icon, .wgi-history-text),
+.wgi-history-row[data-undone] :is(.wgi-history-icon, .wgi-history-text) {
+  color: var(--wgi-muted-ink);
+}
+
+/* A failed notification email is the one row that escalates: the call
+   badge's amber ink, and its alert mark on the badge's fill (#316). */
+.wgi-history-row[data-attention] .wgi-history-text {
+  color: var(--wgi-badge-contacted-ink);
+}
+
+.wgi-history-row[data-attention] .wgi-history-icon svg {
+  border-radius: 50%;
+  background: var(--wgi-badge-contacted-fill);
+  color: var(--wgi-badge-contacted-ink);
+}
+
+.wgi-history-row[data-undone] .wgi-history-words {
   text-decoration: line-through;
 }
 
-.wgi-sheet-items [data-slot="item"][data-attention] [data-slot="item-title"] {
-  color: var(--color-amber-deep);
+/* ---------- The history popover ----------
+   Beside the sheet, level with its row, the arrow on the row; above the
+   sheet and the card. It grows from the arrow's point on the popover
+   shell's beats (.wgi-popover). */
+.wgi-history-positioner {
+  z-index: calc(var(--z-drawer, 80) + 2);
 }
 
-.wgi-sheet-items [data-slot="item"][data-quiet] [data-slot="item-title"] {
-  color: var(--color-muted-ink);
-  font-weight: 500;
+.wgi-history-popover {
+  width: 18.75rem;
+  max-width: calc(100vw - 1.5rem);
+  box-sizing: border-box;
+  padding: 0.875rem 1rem 1rem;
+  box-shadow:
+    0 1px 1.5px rgb(15 20 59 / 8%),
+    0 8px 12px rgb(15 20 59 / 14%);
+}
+
+.wgi-history-arrow {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--wgi-rule);
+  background: var(--wgi-surface);
+  transform: rotate(45deg);
+}
+
+.wgi-history-arrow[data-side="left"] {
+  right: -6px;
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+}
+
+.wgi-history-arrow[data-side="bottom"] {
+  top: -6px;
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+}
+
+.wgi-history-arrow[data-side="top"] {
+  bottom: -6px;
+  border-top-color: transparent;
+  border-left-color: transparent;
+}
+
+.wgi-history-heading {
+  margin: 0 0 0.375rem;
+  color: var(--wgi-label-ink);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.88px;
+  line-height: 0.875rem;
+  text-transform: uppercase;
+}
+
+.wgi-history-body {
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+/* A long note scrolls in place and stops at its ends. */
+.wgi-history-note {
+  max-height: 13.75rem;
+  margin: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 4px;
+  color: var(--wgi-name-ink);
+  font-size: 0.90625rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.wgi-history-facts {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.75rem 0 0;
+}
+
+.wgi-history-facts > div {
+  display: grid;
+  grid-template-columns: 4.75rem minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+.wgi-history-facts dt {
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+.wgi-history-facts dd {
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: 0.84375rem;
+  line-height: 1.25rem;
+}
+
+/* ---------- Request details ----------
+   A disclosure, last in the tab: the chevron points right when closed and
+   down when open (HIG Disclosure controls), the summary stands in for the
+   list while it is closed. The panel's height opens on the base beat, and
+   the history above gives up the room as it does; the header stays put. */
+.wgi-disclosure-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: calc(100% + 1rem);
+  margin: -0.375rem -0.5rem;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  padding: 0.375rem 0.5rem 0.375rem 0.125rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-disclosure-trigger:hover {
+    background: var(--wgi-hover);
+  }
+}
+
+.wgi-disclosure-trigger:active {
+  background: var(--wgi-open);
+}
+
+.wgi-disclosure-chevron {
+  display: inline-flex;
+  flex: none;
+  width: 1.5rem;
+  justify-content: center;
+  color: var(--wgi-muted-ink);
+  transition: transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-disclosure-trigger[data-panel-open] .wgi-disclosure-chevron {
+  transform: rotate(90deg);
+}
+
+.wgi-disclosure-trigger > .wgi-sheet-label {
+  flex: none;
+}
+
+.wgi-disclosure-summary {
+  min-width: 0;
+  overflow: hidden;
+  margin-left: 0.375rem;
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: opacity var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-disclosure-trigger[data-panel-open] .wgi-disclosure-summary {
+  opacity: 0;
+}
+
+.wgi-disclosure-panel {
+  height: var(--collapsible-panel-height);
+  overflow: hidden;
+  transition: height var(--motion-base-duration) var(--motion-standard);
+}
+
+.wgi-disclosure-panel[data-starting-style],
+.wgi-disclosure-panel[data-ending-style] {
+  height: 0;
+}
+
+.wgi-disclosure-panel[data-ending-style] {
+  transition-duration: var(--motion-fast-duration);
+}
+
+.wgi-sheet-dl {
+  display: grid;
+  grid-template-columns: 6.875rem minmax(0, 1fr);
+  margin: 0;
+  padding: 0.75rem 0 0 1.625rem;
+}
+
+.wgi-sheet-dl dt,
+.wgi-sheet-dl dd {
+  display: flex;
+  align-items: center;
+  min-height: 1.75rem;
+}
+
+.wgi-sheet-dl dt {
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+}
+
+.wgi-sheet-dl dd {
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: 0.84375rem;
+  overflow-wrap: anywhere;
 }
 
 /* The record's skeleton: the sections' own shapes on the list skeleton's
@@ -3023,37 +3441,6 @@ a.appt-phone {
   margin: 0;
   color: var(--color-muted-ink);
   font-size: var(--pt-sm);
-}
-
-.wgi-sheet-foot {
-  display: flex;
-  min-height: 4.375rem;
-  align-items: center;
-  justify-content: space-between;
-  border-top: 1px solid var(--wgi-rule);
-  padding: 0 1.5625rem;
-  color: var(--wgi-cmd-primary);
-  font-size: var(--pt-base);
-  font-weight: 600;
-  /* The tint on the fast beat; the settle (opacity, transform) on the base
-     beat, last of the three, 120ms behind the header. */
-  transition:
-    background-color var(--motion-fast-duration) var(--motion-standard),
-    opacity var(--motion-base-duration) var(--motion-standard) 120ms,
-    transform var(--motion-base-duration) var(--motion-standard) 120ms;
-}
-
-@media (hover: hover) {
-  .wgi-sheet-foot:hover {
-    background: var(--color-mint-hover);
-    color: var(--wgi-cmd-primary);
-  }
-}
-
-/* Pressed: the bar spans the sheet, so the press is a deeper tint rather
-   than a scale that would open gaps at its ends. */
-.wgi-sheet-foot:active {
-  background: var(--color-mint-2);
 }
 
 /* ---------- Loading (home's own segment) ---------- */

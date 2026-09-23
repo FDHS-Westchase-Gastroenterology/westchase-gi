@@ -121,10 +121,12 @@ presentation controller's largest undimmed detent.
   refits on base as available room changes.
 - **Motion.** It slides in from the right edge on the sheet beat, 420ms, and leaves that way on
   base, 240ms; a 4vw bleed covers the edge through the grip's rubber band. The header, then the
-  body 60ms later, settle in on base, the foot 120ms behind. A keyboard open or close is instant.
+  body 60ms later, settle in on base. A keyboard open or close is instant.
 - **Focus and Escape.** It opens onto the sheet itself, not the grip, and returns to the card's
   toggle, or to the row's trigger when the card has closed. One Escape closes one surface: the one
   holding focus, or the sheet when focus is in neither.
+- **Content.** One column (Figma section 04): a pinned header, the patient's message, the latest
+  note, the [history](surfaces.md#lists), and the request's details behind a closed disclosure.
 - **States.** The header's name, status and phone come from the list line, so it is never late.
   `SheetBody` shows a skeleton (`role="status"`) while the record loads, a notice when the request
   no longer exists, and an alert with "Try again" when it cannot load.

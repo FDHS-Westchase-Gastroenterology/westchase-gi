@@ -95,14 +95,13 @@ their trigger through `var(--transform-origin)`, modals stay centered ([overlays
 native dialogs do not set it yet: [roadmap item 9](roadmap.md#9-a-native-dialog-component). An arrow
 key steps a time wheel straight to its row; a click or a throw settles the wheel on the spring.
 
-**Scroll has mass, not decoration.** Scroll regions keep the platform scrollbar and draw no rail or
-progress fill. The one drawn rail is the staff home list's `ScrollArea` scrollbar: a resting track
-and thumb whenever rows overflow, stronger ink while rows move or under a fine pointer, strongest
-while held, each change on fast. The thumb is a pure function of scroll position, read on every
-scroll event: height is the visible share, offset the scroll offset, and neither transitions. The
-browser owns overscroll: where it reports its rubber band through the scroll offset (Safari) the
-thumb shortens against the pushed end in lockstep; where it clamps (Chromium) the thumb stays put.
-Scroll position never animates; nothing gives the thumb a body, a spring or a clock (issue #302).
+**Scroll has mass, not decoration.** Scroll regions keep the platform scrollbar. The drawn rails
+are `ScrollArea` scrollbars: the staff home list's rests visible whenever rows overflow, the full
+record history's is hidden at rest; each inks up on fast while rows move, under a fine pointer, and
+most while held. The thumb is a pure function of scroll position: height the visible share, offset
+the scroll offset, neither transitioning. The browser owns overscroll: where it reports its rubber
+band through the scroll offset (Safari) the thumb shortens against the pushed end in lockstep; where
+it clamps (Chromium) it stays put. Nothing gives the thumb a body, a spring or a clock (issue #302).
 
 **Transitions over keyframes.** A transition retargets from where it is; a keyframe restarts. A
 second recorded outcome retargets the staff home row's mint wash instead of cutting it. Keyframes

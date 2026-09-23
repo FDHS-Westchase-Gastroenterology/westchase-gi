@@ -87,6 +87,19 @@ export function cardStaysOpen(
   return false;
 }
 
+/** The history's row popover (full-record-history.tsx), portaled beside
+    the sheet. */
+export const HISTORY_POPOVER = ".wgi-history-popover";
+
+/** True when the sheet declines an Escape: a history popover is up, open
+    or on its way out, and the key is its. Both listen on the document, so
+    without this one press would close the popover and the sheet under it;
+    the popover goes first and the sheet takes the next Escape. */
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- Base UI event details carry platform event types that cannot be made readonly
+export function sheetStaysOpen(details: HomeSheetChangeDetails): boolean {
+  return details.reason === "escape-key" && document.querySelector(HISTORY_POPOVER) !== null;
+}
+
 /* A close is keyboard-initiated on Escape, or when the close button was
    pressed with Enter or Space (a click with no pointer behind it). */
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- Base UI event details carry platform event types that cannot be made readonly
