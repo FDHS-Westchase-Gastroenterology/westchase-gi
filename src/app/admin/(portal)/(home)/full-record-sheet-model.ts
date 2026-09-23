@@ -1,7 +1,7 @@
 import { historyLine } from "@/app/admin/(portal)/requests/[id]/request-history";
 import {
   CONTACT_OUTCOME_LABELS,
-  followUpWhenLabel,
+  formatPhoneForDisplay,
   localeLabel,
 } from "@/app/admin/(portal)/requests/format";
 import type { FullRecord } from "@/lib/portal/request-record/contracts";
@@ -15,7 +15,7 @@ import type { HistoryEntry } from "@/lib/portal/workflow/contracts";
    one place. The rows reuse the request page's wording (request-history.ts)
    for every kind but the two the sheet says differently: a call attempt
    leads with its outcome and says the next call in short, and a note
-   shows its own first line. */
+   shows its own text. */
 
 /** Where the request came from is the `created` entry of its history. */
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the request record carries workflow history entries whose types cannot be made readonly
@@ -44,9 +44,9 @@ export function actorLabel(names: FullRecord["actorNames"], actor: string): stri
 }
 
 /* Practice-local dates, in the three shapes the sheet uses: the day key
-   rows group under, the day header ("Fri, Sep 18"), the short next-call
-   day ("Sep 17"), and the exact time a popover and a byline carry
-   ("Fri, Sep 18, 4:41 PM"). */
+   rows group under, the day header and a popover's next call ("Fri,
+   Sep 18"), a row's short next-call day ("Sep 17"), and the exact time
+   a popover and a byline carry ("Fri, Sep 18, 4:41 PM"). */
 const TIME_ZONE = "America/New_York";
 const dayKey = new Intl.DateTimeFormat("en-CA", { dateStyle: "short", timeZone: TIME_ZONE });
 const dayLabel = new Intl.DateTimeFormat("en-US", {
@@ -94,24 +94,29 @@ export interface HistoryFact {
 /** What a row's popover opens to: a heading, the full wording, the facts. */
 export interface HistoryDetail {
   readonly heading: string;
-  /** The row's whole text, untruncated; a note's full text. */
-  readonly body: string;
+  /** The row's whole text, untruncated; a note's full text. Null for a call
+      attempt, whose heading is its outcome. */
+  readonly body: string | null;
   /** Only a note is the staff's free text, so only a note's body is redacted. */
   readonly note: boolean;
+  /** Who and when on one line under a note's heading; the other kinds say
+      them as facts. */
+  readonly byline: string | null;
   readonly facts: readonly HistoryFact[];
 }
+
+/* How much a row weighs, set for each kind (#324): news leads in bold
+   ink — reaching the patient, and a failed notification email in amber —
+   a note reads in ink, and routine attempts, the system's own marks and
+   anything later undone recede to muted ink, icon and all. */
+export type HistoryEmphasis = "attention" | "strong" | "ink" | "muted";
 
 export interface HistoryRow {
   readonly id: string;
   readonly icon: HistoryIcon;
-  /** Recorded by the system rather than by a person: muted ink. */
-  readonly system: boolean;
-  /** The one row the history escalates, a notification email that failed:
-      the badge's amber ink. */
-  readonly attention: boolean;
-  /** The row's first words; bold for a call attempt. */
+  readonly emphasis: HistoryEmphasis;
+  /** The row's first words; bold when the row is strong or escalates. */
   readonly lead: string;
-  readonly strong: boolean;
   /** What follows the lead on the same line, " · next call Sep 17". */
   readonly rest: string;
   readonly undone: boolean;
@@ -143,17 +148,15 @@ export interface RecordSections {
 
 type Names = FullRecord["actorNames"];
 
+function byline(names: Names, actor: string, at: string): string {
+  return `${actorLabel(names, actor)} · ${exactTimeLabel(at)}`;
+}
+
 function byFacts(names: Names, actor: string | null, at: string): HistoryFact[] {
   const facts: HistoryFact[] = [];
   if (actor !== null) facts.push({ key: "By", value: actorLabel(names, actor) });
   facts.push({ key: "When", value: exactTimeLabel(at) });
   return facts;
-}
-
-function firstLine(text: string): string {
-  const trimmed = text.trim();
-  const end = trimmed.indexOf("\n");
-  return end === -1 ? trimmed : trimmed.slice(0, end).trim();
 }
 
 const ATTEMPT_ICONS = {
@@ -179,10 +182,10 @@ function iconFor(entry: Readonly<HistoryEntry>): HistoryIcon {
 }
 
 const HEADINGS = {
-  "no-answer": "Call attempt",
-  voicemail: "Call attempt",
-  reached: "Call attempt",
-  note: "Staff note",
+  "no-answer": CONTACT_OUTCOME_LABELS.no_answer,
+  voicemail: CONTACT_OUTCOME_LABELS.voicemail,
+  reached: CONTACT_OUTCOME_LABELS.reached_follow_up,
+  note: "Note",
   closed: "Closed",
   booked: "Scheduled",
   undo: "Undo",
@@ -194,57 +197,59 @@ const HEADINGS = {
 /* One row for one entry, or null for the entries the history skips: a
    call attempt's own self-transition renders once, as its attempt. A
    failed notification email is the history's one escalating row: it leads
-   with the failure and names the recipient after it. */
+   with the failure and names the recipient after it. An attempt does not
+   record the number dialled, so its popover names the phone on file. */
 function rowFor(
   // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the request record carries workflow history entries whose types cannot be made readonly
   entry: HistoryEntry,
-  names: Names,
+  record: Readonly<Pick<FullRecord, "actorNames" | "phone">>,
   isUndoneAttempt: (id: string) => boolean,
 ): HistoryRow | null {
+  const names = record.actorNames;
   if (entry.kind === "contact_attempt") {
-    const lead = CONTACT_OUTCOME_LABELS[entry.outcome];
+    const icon = ATTEMPT_ICONS[entry.outcome];
     const next = entry.callAgainAt !== null && entry.callAgainAt !== "" ? entry.callAgainAt : null;
     return {
       id: entry.id,
-      icon: ATTEMPT_ICONS[entry.outcome],
-      system: false,
-      attention: false,
-      lead,
-      strong: true,
+      icon,
+      emphasis: entry.outcome === "reached_follow_up" ? "strong" : "muted",
+      lead: CONTACT_OUTCOME_LABELS[entry.outcome],
       rest:
         next === null ? " · no call-again day" : ` · next call ${shortDay.format(new Date(next))}`,
       undone: isUndoneAttempt(entry.id),
       at: entry.at,
       detail: {
-        heading: HEADINGS[ATTEMPT_ICONS[entry.outcome]],
-        body: lead,
+        heading: HEADINGS[icon],
+        body: null,
         note: false,
+        byline: null,
         facts: [
           {
             key: "Next call",
-            value: next === null ? "No call-again day set" : followUpWhenLabel(next),
+            value: next === null ? "No call-again day set" : dayLabel.format(new Date(next)),
           },
+          { key: "Number", value: formatPhoneForDisplay(record.phone) },
           ...byFacts(names, entry.actor, entry.at),
         ],
       },
     };
   }
   if (entry.kind === "note") {
+    const text = entry.text.trim();
     return {
       id: entry.id,
       icon: "note",
-      system: false,
-      attention: false,
-      lead: firstLine(entry.text),
-      strong: false,
+      emphasis: "ink",
+      lead: text,
       rest: "",
       undone: false,
       at: entry.at,
       detail: {
         heading: HEADINGS.note,
-        body: entry.text.trim(),
+        body: text,
         note: true,
-        facts: byFacts(names, entry.actor, entry.at),
+        byline: byline(names, entry.actor, entry.at),
+        facts: [],
       },
     };
   }
@@ -255,10 +260,8 @@ function rowFor(
   return {
     id: line.id,
     icon,
-    system: line.actor === null && !line.attention,
-    attention: line.attention,
+    emphasis: line.attention ? "attention" : line.actor === null ? "muted" : "ink",
     lead: failed === null ? line.text : "Notification email failed",
-    strong: failed !== null,
     rest: failed === null ? "" : ` · ${failed === "" ? "recipient unavailable" : failed}`,
     undone: line.undone,
     at: line.at,
@@ -266,6 +269,7 @@ function rowFor(
       heading: HEADINGS[icon],
       body: line.text,
       note: false,
+      byline: null,
       facts: byFacts(names, line.actor, line.at),
     },
   };
@@ -315,10 +319,10 @@ export function recordSections(record: FullRecord): RecordSections {
       latestNote = {
         id: entry.id,
         text: entry.text.trim(),
-        byline: `${actorLabel(record.actorNames, entry.actor)} · ${exactTimeLabel(entry.at)}`,
+        byline: byline(record.actorNames, entry.actor, entry.at),
       };
     }
-    const row = rowFor(entry, record.actorNames, isUndoneAttempt);
+    const row = rowFor(entry, record, isUndoneAttempt);
     if (row === null) continue;
     const date = new Date(row.at);
     const key = dayKey.format(date);

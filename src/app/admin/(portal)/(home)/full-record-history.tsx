@@ -25,8 +25,9 @@ import {
 import type { HistoryDay, HistoryIcon, HistoryRow } from "./full-record-sheet-model";
 import { CARD } from "./sheet-coexistence";
 
-/* The sheet's history (Figma Ypf9ohpRcGWF5C9T9bSvWW, section 04): one
-   line per event under sticky practice-local days, the icons joined by a
+/* The sheet's history (Figma Ypf9ohpRcGWF5C9T9bSvWW, section 04): a
+   line per event (a note, up to two) under sticky practice-local days,
+   weighted by what it says, the icons joined by a
    rail, and the sheet's only scroll region while the tab has room for it
    (full-record-sheet-body.tsx decides). A row's full detail is a popover
    beside the sheet, its arrow on the row (HIG Popovers: the arrow points
@@ -135,8 +136,12 @@ function HistoryPopup({ opened }: Readonly<{ opened: Opened }>) {
             focus staying on the list keeps its keys the list's. */}
         <Popover.Popup className="wgi-popover wgi-history-popover" initialFocus={false}>
           <Popover.Arrow className="wgi-history-arrow" />
-          <Popover.Title className="wgi-history-heading">{detail.heading}</Popover.Title>
-          {detail.note ? (
+          <Popover.Title className="wgi-history-heading">
+            <RowIcon icon={row.icon} />
+            {detail.heading}
+          </Popover.Title>
+          {detail.byline === null ? null : <p className="wgi-history-byline">{detail.byline}</p>}
+          {detail.body === null ? null : detail.note ? (
             /* A long note scrolls inside the popover and stops there; the
                history behind it does not move. */
             <div
@@ -151,14 +156,16 @@ function HistoryPopup({ opened }: Readonly<{ opened: Opened }>) {
           ) : (
             <p className="wgi-history-body">{detail.body}</p>
           )}
-          <dl className="wgi-history-facts">
-            {detail.facts.map((fact) => (
-              <div key={fact.key}>
-                <dt>{fact.key}</dt>
-                <dd>{fact.value}</dd>
-              </div>
-            ))}
-          </dl>
+          {detail.facts.length === 0 ? null : (
+            <dl className="wgi-history-facts">
+              {detail.facts.map((fact) => (
+                <div key={fact.key}>
+                  <dt>{fact.key}</dt>
+                  <dd>{fact.value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </Popover.Popup>
       </Popover.Positioner>
     </Popover.Portal>
@@ -166,7 +173,8 @@ function HistoryPopup({ opened }: Readonly<{ opened: Opened }>) {
 }
 
 function RowText({ row }: Readonly<{ row: HistoryRow }>) {
-  const lead: ReactNode = row.strong ? <b>{row.lead}</b> : row.lead;
+  const bold = row.emphasis === "strong" || row.emphasis === "attention";
+  const lead: ReactNode = bold ? <b>{row.lead}</b> : row.lead;
   return (
     <span className="wgi-history-text">
       <span
@@ -278,8 +286,8 @@ export function RecordHistory({
                             openOnHover
                             delay={warm ? 0 : REST_DELAY}
                             className="wgi-history-row"
-                            data-system={row.system || undefined}
-                            data-attention={row.attention || undefined}
+                            data-emphasis={row.emphasis}
+                            data-note={row.detail.note || undefined}
                             data-undone={row.undone || undefined}
                             onFocus={onFocus}
                           >

@@ -102,23 +102,50 @@ test("the history groups under practice-local days, newest first, with notes int
 test("a call attempt leads with its outcome and says the next call in short", () => {
   const [voicemail, , noAnswer] = recordSections(record(HISTORY)).days[0].rows;
   assert.equal(voicemail.lead, "Left a voicemail");
-  assert.equal(voicemail.strong, true);
   assert.equal(voicemail.rest, " · next call Sep 17");
   assert.equal(voicemail.icon, "voicemail");
+  assert.equal(voicemail.detail.heading, "Left a voicemail");
+  assert.equal(voicemail.detail.body, null);
   assert.deepEqual(voicemail.detail.facts, [
-    { key: "Next call", value: "Thursday, September 17 morning" },
+    { key: "Next call", value: "Thu, Sep 17" },
+    { key: "Number", value: "(813) 555-0100" },
     { key: "By", value: "Maria R." },
     { key: "When", value: "Wed, Sep 16, 3:30 PM" },
   ]);
   assert.equal(noAnswer.rest, " · no call-again day");
   assert.equal(noAnswer.icon, "no-answer");
-  assert.equal(noAnswer.detail.facts[1].value, "unknown@example.test");
+  assert.equal(noAnswer.detail.facts[0].value, "No call-again day set");
+  assert.equal(noAnswer.detail.facts[2].value, "unknown@example.test");
 });
 
-test("a note shows its first line in the row and its whole text in the popover", () => {
+test("routine attempts recede and reaching the patient stays strong", () => {
+  const [voicemail, , noAnswer] = recordSections(record(HISTORY)).days[0].rows;
+  assert.equal(voicemail.emphasis, "muted");
+  assert.equal(noAnswer.emphasis, "muted");
+  const [reached] = recordSections(
+    record([
+      {
+        kind: "contact_attempt",
+        id: "a3",
+        outcome: "reached_follow_up",
+        callAgainAt: null,
+        actor: MARIA,
+        at: "2026-09-16T20:00:00.000Z",
+      },
+    ]),
+  ).days[0].rows;
+  assert.equal(reached.emphasis, "strong");
+  assert.equal(reached.icon, "reached");
+});
+
+test("a note reads in ink with its whole text, and its popover carries the byline", () => {
   const note = recordSections(record(HISTORY)).days[0].rows[1];
-  assert.equal(note.lead, "Asked for a callback after 3pm.");
+  assert.equal(note.emphasis, "ink");
+  assert.equal(note.lead, "Asked for a callback after 3pm.\nPrefers Dr. Example.");
+  assert.equal(note.detail.heading, "Note");
   assert.equal(note.detail.body, "Asked for a callback after 3pm.\nPrefers Dr. Example.");
+  assert.equal(note.detail.byline, "Maria R. · Wed, Sep 16, 11:00 AM");
+  assert.deepEqual(note.detail.facts, []);
   assert.equal(note.detail.note, true);
   assert.equal(note.icon, "note");
 });
@@ -128,23 +155,21 @@ test("an undone event keeps the request page's wording and says it was undone", 
   assert.equal(closed.lead, "Closed — patient won't schedule");
   assert.equal(closed.undone, true);
   assert.equal(closed.icon, "closed");
-  assert.equal(closed.system, false);
+  assert.equal(closed.emphasis, "ink");
 });
 
-test("system entries are marked as the system's; a failed delivery escalates", () => {
+test("system entries recede; a failed delivery escalates", () => {
   const created = recordSections(record(HISTORY)).days[2].rows[0];
-  assert.equal(created.system, true);
+  assert.equal(created.emphasis, "muted");
   assert.equal(created.icon, "dot");
   const failed = recordSections(
     record([
       { kind: "delivery", id: "d", recipient: "", accepted: false, at: "2026-09-13T14:01:00.000Z" },
     ]),
   ).days[0].rows[0];
-  assert.equal(failed.system, false);
-  assert.equal(failed.attention, true);
+  assert.equal(failed.emphasis, "attention");
   assert.equal(failed.icon, "alert");
   assert.equal(failed.lead, "Notification email failed");
-  assert.equal(failed.strong, true);
   assert.equal(failed.rest, " · recipient unavailable");
   const [named, accepted] = recordSections(
     record([
@@ -165,8 +190,7 @@ test("system entries are marked as the system's; a failed delivery escalates", (
     ]),
   ).days[0].rows;
   assert.equal(named.rest, " · front-desk@example.test");
-  assert.equal(accepted.system, true);
-  assert.equal(accepted.attention, false);
+  assert.equal(accepted.emphasis, "muted");
   assert.equal(accepted.icon, "dot");
 });
 
