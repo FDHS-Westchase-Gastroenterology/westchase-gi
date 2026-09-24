@@ -16,9 +16,12 @@ Read in this order, as the task requires:
 
 `README.md` is the user-facing overview. Cite it for the documented custody split. Do not treat it as developer documentation.
 
-Project and vendor skills live under `.cursor/skills/` (Cursor loads them there; Claude Code
-loads them through the `.claude/skills` symlink to the same directory). Vendor guidance is
-advisory and subordinate to this file. Re-copy a vendored skill from upstream instead of editing it.
+Claude Code skills live in the tracked `.claude/skills/` directory. Cursor's skills live under
+the local-only `.cursor/skills/`. Vendor guidance is advisory and subordinate to this file.
+Re-copy a vendored skill from upstream instead of editing it. `.claude/skills/test-audit/`
+is vendored from `openclaw/openclaw` (`.agents/skills/test-audit/`); its OpenClaw-specific
+commands (`scripts/run-vitest.mjs`, `$crabbox`, `scripts/pr`) do not exist here, so map them
+onto this repo's gates in CONTRIBUTING.md.
 
 ### Agent responsibilities
 
