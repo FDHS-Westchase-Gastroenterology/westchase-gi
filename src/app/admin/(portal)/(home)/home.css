@@ -253,8 +253,10 @@
 }
 
 @media (min-width: 60rem) {
+  /* The canvas is inset 16px above and below (portal-workbench.css), so
+     the column fills the viewport less the two insets. */
   .portal-content:has(> .wgi-home) {
-    min-height: 100dvh;
+    min-height: calc(100dvh - 2rem);
     padding-block: 2.25rem 1.5rem;
   }
 }
@@ -349,15 +351,6 @@
      a day from a neighboring month is the chip stroke, named for its job. */
   --wgi-label-ink: #647493;
   --wgi-outside-day: var(--wgi-chip-stroke);
-}
-
-/* The page behind Home is the frame's quiet neutral canvas (--portal-canvas
-   in the file), against which the list surface reads as a flat grouped
-   surface rather than a lifted card. The workspace and the main element
-   both paint --portal-canvas, so the property is re-pointed for this
-   subtree; :has keeps the other portal pages on the brand canvas. */
-.portal-workspace:has(.wgi-home) {
-  --portal-canvas: #f2f4f7;
 }
 
 /* The header loses its navy rule: the surface below closes the header now.
@@ -1217,19 +1210,13 @@ a.appt-phone {
 }
 
 .wgi-badge-contacted {
-  background: linear-gradient(
-    var(--wgi-badge-contacted-fill),
-    var(--wgi-badge-contacted-fill-end)
-  );
+  background: linear-gradient(var(--wgi-badge-contacted-fill), var(--wgi-badge-contacted-fill-end));
   color: var(--wgi-badge-contacted-ink);
   border-color: var(--wgi-badge-contacted-stroke);
 }
 
 .wgi-badge-scheduled {
-  background: linear-gradient(
-    var(--wgi-badge-scheduled-fill),
-    var(--wgi-badge-scheduled-fill-end)
-  );
+  background: linear-gradient(var(--wgi-badge-scheduled-fill), var(--wgi-badge-scheduled-fill-end));
   color: var(--wgi-badge-scheduled-ink);
   border-color: var(--wgi-badge-scheduled-stroke);
 }

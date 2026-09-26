@@ -1288,7 +1288,7 @@
      hold editable work, and amber is reserved for attention rather than
      decoration. :where() keeps the rule easy to override in print layouts. */
   .portal-scope {
-    --portal-canvas: oklch(0.955 0.01 230);
+    --portal-canvas: #f6f9fa;
     --portal-surface: oklch(0.995 0.002 220);
     --portal-attention-ink: oklch(0.5 0.11 70);
 
@@ -2469,7 +2469,9 @@
   --muted-foreground: var(--color-muted-ink);
   --accent: var(--color-mint);
   --accent-foreground: var(--color-ink);
-  --destructive: var(--color-coral-700); /* invalid input and destructive actions only; 6.3 to 6.7 on the light surfaces */
+  --destructive: var(
+    --color-coral-700
+  ); /* invalid input and destructive actions only; 6.3 to 6.7 on the light surfaces */
   --border: var(--color-line);
   --input: var(--color-line-3);
   --ring: var(--color-teal-ink); /* matches the site's :focus-visible outline */

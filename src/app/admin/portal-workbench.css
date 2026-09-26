@@ -383,12 +383,26 @@
       width: 17rem;
       flex-direction: column;
       border-top: 0;
-      border-right: 1px solid rgb(255 255 255 / 12%);
-      box-shadow: 12px 0 32px rgb(19 40 56 / 8%);
+      box-shadow: none;
+    }
+
+    /* The inset canvas (issue #327, section 05): the navy runs on from the
+       sidebar and frames the work on the other three sides, 16px deep, and
+       the stage is the canvas inside it, with a 16px radius. The page
+       keeps document scroll, so the top inset scrolls away with a long
+       page and the release bar still sticks to the viewport; overflow clip
+       rounds the corners without making the stage a scroll container. */
+    .portal-workspace {
+      padding: 1rem 1rem 1rem 0;
+      background: var(--color-navy-2);
     }
 
     .portal-stage {
+      min-height: calc(100dvh - 2rem);
       margin-inline-start: 17rem;
+      overflow: clip;
+      border-radius: 1rem;
+      background: var(--portal-canvas);
     }
 
     .portal-mobile-header {
@@ -2730,8 +2744,16 @@
     background: white !important;
   }
 
+  .portal-workspace {
+    padding: 0 !important;
+    background: white !important;
+  }
+
   .portal-stage {
+    min-height: auto !important;
     margin: 0 !important;
+    overflow: visible !important;
+    border-radius: 0 !important;
   }
 
   .portal-scope main {
