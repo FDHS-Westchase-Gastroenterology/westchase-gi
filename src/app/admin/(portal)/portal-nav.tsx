@@ -7,11 +7,11 @@ import { Activity, CircleHelp, ClipboardCheck, FileText, Home, Settings } from "
 
 // Four destinations per layout, each its own list (issue #327, Figma section
 // 08 option 2). The desktop rail gives the four work pages the same row and
-// moves Settings and Help to the account footer; the phone bar keeps Home,
+// Moves Settings and Help to the account footer; the phone bar keeps Home,
 // Requests, Settings and Help, with Activity log in the account menu. The
-// shell renders one PortalNav per layout and hides the inactive one whole,
-// so a link that is not on screen never holds a tab stop. Home, Requests,
-// the current-location signal and the waiting count never move.
+// Shell renders one PortalNav per layout and hides the inactive one whole,
+// So a link that is not on screen never holds a tab stop. Home, Requests,
+// The current-location signal and the waiting count never move.
 
 const HOME = { href: "/admin", label: "Home", icon: Home };
 const REQUESTS = { href: "/admin/requests", label: "Requests", icon: ClipboardCheck };
