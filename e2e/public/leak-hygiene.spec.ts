@@ -10,7 +10,8 @@ test("VAL-INTAKE-012: every map iframe carries no-referrer in the DOM", async ({
   test.skip(testInfo.project.name !== "chromium", "DOM check");
 
   for (const path of ["/en/contact", "/en/new-patients"]) {
-    await page.goto(path);
+    // The server-rendered attribute does not depend on the embedded map loading.
+    await page.goto(path, { waitUntil: "domcontentloaded" });
     const iframes = page.locator("iframe");
     const count = await iframes.count();
     expect(count, `${path} should render map embeds`).toBeGreaterThan(0);

@@ -79,7 +79,7 @@ const timePickerOptionVariants = cva(
     "flex h-[var(--tp-row)] snap-center items-center justify-center px-2",
     // Ink: quiet until it is the row the band holds
     "cursor-pointer text-muted-ink",
-    "data-selected:font-bold data-selected:text-ink",
+    "data-selected:bg-mint-2 data-selected:font-bold data-selected:text-teal-ink",
   ],
   {
     variants: {

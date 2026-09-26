@@ -1,7 +1,7 @@
 # Dates and times
 
-A date field stays the platform's own input; a time of day on the staff home is the one control
-that replaces a native input. Both sit inside the `Field` family in [forms.md](forms.md), which
+A date field stays the platform's own input; the staff home's time picker pairs a native time
+field with scrolling wheels. Both sit inside the `Field` family in [forms.md](forms.md), which
 owns labels, errors and saving.
 
 ## Dates
@@ -47,7 +47,7 @@ is one wheel and takes no element props:
 | `motion` | The row temperament; `wgi` is the default |
 
 The staff home wraps the wheel for the record card: the wrapper supplies the Hour, Minute and
-"AM or PM" columns at `size="sm"` and a full-width Done
+"AM or PM" columns at `size="sm"`, a native editable Selected time field, and a full-width Done
 ([components.md](components.md#route-owned-compositions)), inside the start-time panel in
 [overlays.md](overlays.md#the-start-time-panel). Its columns use the fixed `HOURS`, `MINUTES` and `MERIDIEMS` lists in
 `(home)/record-card-time.ts`, covering every minute of the day. The wrapper labels each list
@@ -56,6 +56,13 @@ or invalid clock time. The
 model and the wrapper both belong to the staff home. A second time field composes the wheel from
 `ui/` the same way, and first moves the model into `src/lib/portal/`, so one route never imports
 another's.
+
+Typing in Selected time and clicking or scrolling a wheel update the same picker draft. The
+selected rows carry a mint band and bold ink; the field shows the resulting time immediately.
+Done (or Enter in a complete time field) accepts that draft into the card; Escape or the scrim
+discards it. An incomplete time disables Done. The request is persisted only by the card's Save.
+This pairs precise textual entry with browsing in context, following
+[Apple HIG Pickers](https://developer.apple.com/design/human-interface-guidelines/pickers).
 
 Two gaps wait on [item 18](roadmap.md#18-time-picker-name): whether the frame's `aria-label` reaches
 a screen reader, and the request detail's outcome time, still a native `<input type="time">`

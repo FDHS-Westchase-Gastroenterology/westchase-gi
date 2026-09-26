@@ -1,8 +1,8 @@
 "use client";
 
 import { AnimatePresence, LazyMotion, m, useReducedMotion } from "motion/react";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { KeyboardEvent, RefObject } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import type { Dispatch, KeyboardEvent, RefObject, SetStateAction } from "react";
 
 import type { TimeParts } from "@/app/admin/(portal)/(home)/record-card-time";
 import {
@@ -15,6 +15,8 @@ import {
 } from "@/app/admin/(portal)/(home)/record-card-time";
 import { Clock } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { Field, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { TimePicker as TimeWheels, TimePickerColumn } from "@/components/ui/time-picker";
 import type { TimePickerOption } from "@/components/ui/time-picker";
 import { base, crossfade, leave } from "@/lib/motion";
@@ -118,11 +120,13 @@ function TimeSheet({
   draft: TimeParts;
   instant: boolean;
   onDismiss: (now: boolean) => void;
-  onDraft: (parts: TimeParts) => void;
+  onDraft: Dispatch<SetStateAction<TimeParts>>;
   onDone: (now: boolean) => void;
 }>) {
   const sheet = useRef<HTMLDivElement | null>(null);
   const wheels = useRef<HTMLDivElement | null>(null);
+  const inputId = useId();
+  const selectedTime = joinTime(draft);
   const reduced = useReducedMotion() === true;
 
   /* The panel scales about the trigger's center on its own lower edge, so
@@ -201,6 +205,23 @@ function TimeSheet({
         onKeyDown={handleKeyDown}
       >
         <p className="wgi-time-title">Choose a start time</p>
+        <Field orientation="horizontal">
+          <FieldLabel htmlFor={inputId}>Selected time</FieldLabel>
+          <Input
+            id={inputId}
+            type="time"
+            step={60}
+            value={selectedTime}
+            onChange={(event) => {
+              onDraft(timeParts(event.currentTarget.value));
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== "Enter") return;
+              event.preventDefault();
+              if (selectedTime !== "") onDone(true);
+            }}
+          />
+        </Field>
         <div ref={wheels} className="wgi-time-wheels">
           <TimeWheels size="sm" aria-label="Start time">
             <TimePickerColumn
@@ -208,7 +229,7 @@ function TimeSheet({
               options={HOUR_OPTIONS}
               value={draft.hour}
               onValueChange={(hour) => {
-                onDraft(settle({ ...draft, hour }));
+                onDraft((current) => settle({ ...current, hour }));
               }}
             />
             <TimePickerColumn
@@ -216,7 +237,7 @@ function TimeSheet({
               options={MINUTE_OPTIONS}
               value={draft.minute}
               onValueChange={(minute) => {
-                onDraft(settle({ ...draft, minute }));
+                onDraft((current) => settle({ ...current, minute }));
               }}
             />
             <TimePickerColumn
@@ -224,7 +245,7 @@ function TimeSheet({
               options={MERIDIEM_OPTIONS}
               value={draft.meridiem}
               onValueChange={(meridiem) => {
-                onDraft(settle({ ...draft, meridiem }));
+                onDraft((current) => settle({ ...current, meridiem }));
               }}
             />
           </TimeWheels>
@@ -232,6 +253,7 @@ function TimeSheet({
         <Button
           size="sm"
           className="wgi-time-done"
+          disabled={selectedTime === ""}
           onClick={(event) => {
             onDone(event.detail === 0);
           }}
@@ -266,6 +288,6 @@ function settle(parts: Readonly<TimeParts>): TimeParts {
   return {
     hour: HOURS.includes(parts.hour) ? parts.hour : "12",
     minute: MINUTES.includes(parts.minute) ? parts.minute : "00",
-    meridiem: parts.meridiem,
+    meridiem: MERIDIEMS.includes(parts.meridiem) ? parts.meridiem : "AM",
   };
 }

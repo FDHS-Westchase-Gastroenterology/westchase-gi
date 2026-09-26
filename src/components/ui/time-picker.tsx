@@ -118,7 +118,6 @@ function TimePickerColumn({
   const drag = useRef<Drag | null>(null);
   const stretch = useRef(0);
   const swallowClick = useRef(false);
-  const opened = useRef(false);
   const name = useId();
   const reduced = useReducedMotion() === true;
   const chosen = options.findIndex((option) => option.value === value);
@@ -199,33 +198,26 @@ function TimePickerColumn({
     const el = scroller.current;
     const tr = track.current;
     if (el === null || tr === null) return;
+    if (settle.current !== null) clearTimeout(settle.current);
     stopFlight();
     stretch.current = place(el, tr, index * rowHeight(tr));
     delete el.dataset.settling;
   }
 
-  /* The value is the truth; the wheel follows it. A settle already headed
-     for that row is left alone rather than restarted from a standstill —
-     retargeting a spring with zero velocity is the brick wall the release
-     velocity exists to avoid. The first pass is a jump, never a glide: the
-     surface carrying the wheel is the thing doing the arriving. */
+  /* Preserve a gesture already headed to this value. External edits land
+     immediately, so typing and then pressing an arrow starts from the
+     entered time, never an intermediate row of a travelling wheel. */
   useEffect(() => {
     const el = scroller.current;
     const tr = track.current;
     if (el === null || tr === null || chosen < 0) return;
-    const first = !opened.current;
-    opened.current = true;
     if (flight.current?.target === chosen) return;
     if (flight.current === null && bandIndex(el, tr) === chosen) return;
-    if (first) {
-      jumpTo(chosen);
-      return;
-    }
-    travelTo(chosen, 0);
+    jumpTo(chosen);
     /* The wheel follows the value, and only the value: re-running this on
        every render would restart a settle the wheel is already flying. */
     // oxlint-disable-next-line react/exhaustive-deps
-  }, [chosen, reduced]);
+  }, [chosen]);
 
   useEffect(
     () => () => {
@@ -276,7 +268,7 @@ function TimePickerColumn({
     /* The wheel's own position is where it is now. A held arrow repeats
        faster than React commits, and stepping from the last render would
        make every repeat in the burst ask for the same row. */
-    const next = keyTarget(event.key, bandIndex(el, tr), last);
+    const next = keyTarget(event.key, flight.current?.target ?? bandIndex(el, tr), last);
     if (next === null) return;
     event.preventDefault();
     choose(next, null);
@@ -293,7 +285,9 @@ function TimePickerColumn({
     stopFlight();
     delete el.dataset.settling;
     swallowClick.current = false;
-    el.setPointerCapture(event.pointerId);
+    // Capture the pressed row so mouse clicks still reach its selection handler.
+    // Captured drag events bubble to the column just as uncaptured events do.
+    if (event.target instanceof HTMLElement) event.target.setPointerCapture(event.pointerId);
     drag.current = {
       startY: event.clientY,
       startTop: presentation(el),
@@ -329,7 +323,9 @@ function TimePickerColumn({
     const held = drag.current;
     drag.current = null;
     if (el === null || tr === null || held === null) return;
-    if (el.hasPointerCapture(event.pointerId)) el.releasePointerCapture(event.pointerId);
+    if (event.target instanceof HTMLElement && event.target.hasPointerCapture(event.pointerId)) {
+      event.target.releasePointerCapture(event.pointerId);
+    }
     if (!held.moved) {
       /* A tap stops a flying wheel, and it parks under the drag's mark. */
       travelTo(bandIndex(el, tr), 0);

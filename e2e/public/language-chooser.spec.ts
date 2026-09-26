@@ -376,7 +376,8 @@ test("without JavaScript root negotiation remains readable and the chooser canno
 
   const mismatched = await browser.newContext({ locale: "es-MX", javaScriptEnabled: false });
   const hintless = await mismatched.newPage();
-  await hintless.goto("/en/contact");
+  // With scripts disabled, the document is the complete chooser contract.
+  await hintless.goto("/en/contact", { waitUntil: "domcontentloaded" });
   await expect(hintless.locator("main")).toBeVisible();
   await expectNoOpenChooser(hintless);
   await mismatched.close();
