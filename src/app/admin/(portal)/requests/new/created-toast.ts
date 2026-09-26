@@ -27,10 +27,13 @@ export function attemptKey(
   return state.status === "error" && state.idempotencyKey !== null ? state.idempotencyKey : initial;
 }
 
-/** Follows one attempt with its toast; one toast per key, so a retry updates it in place. */
-export function followCreation(attempt: Promise<CreateStaffRequestActionState>, key: string): void {
+/** Follows one attempt with its own toast. A failed attempt's toast is
+    already dismissed, so a retry has nothing to update in place; and Sonner
+    removes a dismissed toast by id about 200ms later, taking with it any new
+    toast that reused the id inside that window. Each attempt therefore takes
+    a fresh id. */
+export function followCreation(attempt: Promise<CreateStaffRequestActionState>): void {
   toast.promise(followed(attempt, created), {
-    id: `${CREATED_TOAST_TEST_ID}:${key}`,
     testId: CREATED_TOAST_TEST_ID,
     loading: "Adding appointment request…",
     success: (result) => `${result.name} is on the line under New.`,

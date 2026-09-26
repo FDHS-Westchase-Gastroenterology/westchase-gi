@@ -433,7 +433,7 @@ export function StaffRequestForm({
   const action = hosted
     ? async (previous: Readonly<CreateStaffRequestActionState>, formData: FormData) => {
         const attempt = createStaffRequest(previous, formData);
-        followCreation(attempt, attemptKey(previous, initialIdempotencyKey));
+        followCreation(attempt);
         const next = await attempt;
         if (next.status === "created") onCreated();
         return next;

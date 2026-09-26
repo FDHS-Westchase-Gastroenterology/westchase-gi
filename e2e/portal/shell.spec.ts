@@ -297,7 +297,10 @@ test("VAL-ADMIN-016: the waiting count rides on the Requests nav item", async ({
       .poll(
         async () => {
           await page.reload();
-          const badge = page.getByTestId("nav-waiting-badge");
+          // The sidebar and the mobile bar both carry the badge; one shows.
+          const badge = page.locator(
+            'nav[aria-label="Portal sections"]:visible [data-testid="nav-waiting-badge"]',
+          );
           const shown = (await badge.count()) > 0;
           const text = shown ? Number((await badge.textContent())?.replace(/\D+/g, "")) : null;
           const { count, error } = await db
