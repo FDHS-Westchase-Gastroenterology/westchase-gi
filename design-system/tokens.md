@@ -13,7 +13,7 @@ so tuning a brand token reaches every register at once.
 
 ```text
 Brand @theme                   first block of src/app/globals.css
-│   --color-* hues, --font-display, --font-body, --radius-*, --shadow-*,
+│   --color-* hues and ramps, --font-display, --font-body, --radius-*, --shadow-*,
 │   --ease-*, --motion-*, --z-*, --step-*
 ├── Scopes                     re-tune the brand for one register or surface
 │   ├── .portal-scope          --portal-*, --pt-*, --ps-*, --pm-*, and the --btn-* knobs
@@ -77,7 +77,7 @@ departure missing from this table is drift.
 
 | Where | What | Disposition |
 | --- | --- | --- |
-| Bridge `:root` and `.dark` | `--destructive` is an OKLCH literal | Stays: destructive actions have no brand hue by design. |
+| Bridge `.dark` | `--destructive` is an OKLCH literal | Stays: dark mode is not a shipped surface. The light `--destructive` reads `coral-700`. |
 | `:lang(vi)`, `:lang(ko)`, `:lang(ar)` | Re-point `--font-display` and `--font-body` | Stays: an island in another language (the review hub shows five on one page) must switch faces, which one class on `<html>` cannot do. |
 | Bridge `@theme inline` | `--font-sans` and `--font-heading` repeat the Lato stack | Stays: `--font-sans` is Tailwind's default family and the Toaster's font. `--font-heading` has no rendered consumer. |
 | `.portal-scope`; `.portal-workspace` in `portal-workbench.css` | `--portal-canvas`, `--portal-surface`, `--portal-attention-ink`, `--portal-surface-muted` are OKLCH literals | Move into the brand `@theme`: [roadmap item 10](roadmap.md#10-portal-surface-tints). |
@@ -111,6 +111,14 @@ on brand darks; a real dark theme is a practice decision.
   `teal-ink`; `amber`, `amber-soft`, `amber-deep`; `ink`, `body`, `muted-ink`, `on-dark`,
   `on-dark-muted` (ink); `line`, `line-2`, `line-3`, `line-dark`. Portal surfaces: `--portal-canvas`,
   `--portal-surface`, `--portal-surface-muted`, `--portal-attention-ink`.
+- **Ramps** (`--color-{hue}-{step}`): `navy`, `teal`, `mint`, `amber`, `coral` and `slate`, each at
+  steps 50, 100, 200 … 900, 950. A step that is a brand anchor is `var()` of its brand token:
+  `navy-800` is `navy` and `navy-900` is `navy-2`; `teal-600` is `teal` and `teal-700` is
+  `teal-ink`; `mint-50` is `mint` and `mint-100` is `mint-2`; `amber-100` is `amber-soft`,
+  `amber-400` is `amber` and `amber-600` is `amber-deep`; `slate-50` is `paper`, `slate-200` `line`,
+  `slate-300` `line-2`, `slate-600` `line-3`, `slate-700` `muted-ink`, `slate-900` `body` and
+  `slate-950` `ink`. `slate`, `amber` and `teal` replace Tailwind's default palettes of the same
+  names. What each ramp is for is in [color.md](color.md#ramps).
 - **Type**: `--font-display`, `--font-body`; patient fluid steps `--step-hero`, `--step-1` to
   `--step-3`, `--step-lead`; portal steps `--pt-2xs`, `--pt-xs`, `--pt-sm`, `--pt-base`, `--pt-lg`,
   `--pt-xl`.

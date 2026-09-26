@@ -307,27 +307,41 @@
   --wgi-chip-stroke: #c4d5e5;
   --wgi-cmd-fill: #ffffff;
   --wgi-cmd-stroke: #b9c7d8;
-  /* Status badges are glass (issue #300): a 65% fill that lands on the
-     frame's paint over the surface (#fff0dc, #e7f3f8) and lets each row band
-     show through, the frame's 1.3px stroke, 7.5px corners. The New ink is
-     the frame's #a15a19 taken 0.02 down in oklch lightness, same hue and
-     chroma, because the translucent fill sits darker on the open tint:
-     5.08 on the surface, 4.87 on the band, 4.72 on the open tint (the
-     frame's ink reads 4.34 there). Call again ink is 8.5+ everywhere. */
+  /* Status badges wear the glass gradient (issue #327, Figma section 06
+     After, node 238:1828; design-system/color.md "The glass gradient"): a
+     vertical fill from ramp step n to n+1, a stroke one step deeper, and
+     the first ink that clears 4.5:1 against both ends. Loudness comes from
+     where the fill sits on its ramp: New is the loudest, Closed a ghost.
+     Contrast, top / bottom of the fill: New 7.1 / 6.0, Call again 7.8 / 6.7,
+     Scheduled 7.3 / 6.6; Closed 6.8 on white and 6.0 on the band. */
   --wgi-badge-radius: 7.5px;
-  --wgi-badge-new-fill: rgb(255 232 201 / 0.65);
-  --wgi-badge-new-stroke: #ffcb89;
-  --wgi-badge-new-ink: #9b5410;
-  /* The September 15 refinements (Figma Ypf9ohpRcGWF5C9T9bSvWW, node
-     88:1176): Call again is a pale amber, Scheduled a pale green, and the
-     commands, canvas and card take the values below. Inks pass AA on the
-     open tint: contacted 5.6, scheduled 5.9. */
-  --wgi-badge-contacted-fill: #fdefdb;
-  --wgi-badge-contacted-stroke: #f4dab5;
-  --wgi-badge-contacted-ink: #95500c;
-  --wgi-badge-scheduled-fill: #d7efe5;
-  --wgi-badge-scheduled-stroke: #bde4d6;
-  --wgi-badge-scheduled-ink: #006650;
+  --wgi-badge-new-fill: var(--color-amber-300);
+  --wgi-badge-new-fill-end: var(--color-amber-400);
+  --wgi-badge-new-stroke: var(--color-amber-500);
+  --wgi-badge-new-ink: var(--color-navy-900);
+  --wgi-badge-new-highlight: rgb(255 255 255 / 0.55);
+  --wgi-badge-contacted-fill: var(--color-teal-100);
+  --wgi-badge-contacted-fill-end: var(--color-teal-200);
+  --wgi-badge-contacted-stroke: var(--color-teal-300);
+  --wgi-badge-contacted-ink: var(--color-teal-800);
+  --wgi-badge-scheduled-fill: var(--color-mint-100);
+  --wgi-badge-scheduled-fill-end: var(--color-mint-200);
+  --wgi-badge-scheduled-stroke: var(--color-mint-300);
+  --wgi-badge-scheduled-ink: var(--color-mint-800);
+  --wgi-badge-closed-stroke: var(--color-slate-300);
+  --wgi-badge-closed-ink: var(--color-slate-700);
+  /* The applied filter pill's navy glass. */
+  --wgi-pill-fill: var(--color-navy-50);
+  --wgi-pill-fill-end: var(--color-navy-100);
+  --wgi-pill-stroke: var(--color-navy-800);
+  --wgi-pill-highlight: rgb(255 255 255 / 0.8);
+  --wgi-pill-key-ink: var(--color-navy-700);
+  --wgi-pill-value-ink: var(--color-slate-950);
+  /* Attention outside a status: an overdue call-back and a failed
+     notification email keep the September 15 pale amber the Call again
+     badge wore before it turned teal. 5.6 on the open tint. */
+  --wgi-attention-fill: #fdefdb;
+  --wgi-attention-ink: #95500c;
   --wgi-cmd-primary: #173758;
   --wgi-cmd-radius: 6px;
   /* The record card's redesign (Figma Ypf9ohpRcGWF5C9T9bSvWW, section 03,
@@ -464,23 +478,42 @@
   }
 }
 
+/* An applied filter is navy glass (issue #327, Figma section 06 After;
+   design-system/color.md "The glass gradient"): navy-50 to navy-100 under
+   a 1.2px navy-800 stroke and a white 0.8 highlight. The key reads navy-700
+   (5.8 / 5.3 on the two ends), the value slate-950 and the remove mark
+   navy-800. A suggestion stays dashed, transparent and in the muted ink, so
+   applied and suggested differ in fill, border style and ink. Hover, press
+   and focus keep the shared pill rules above. */
 .wgi-home .wgi-pill {
-  border-color: var(--wgi-chip-stroke);
-  background: var(--wgi-surface);
+  border: 1.2px solid var(--wgi-pill-stroke);
+  background: linear-gradient(var(--wgi-pill-fill), var(--wgi-pill-fill-end));
+  box-shadow: inset 0 1px 0 var(--wgi-pill-highlight);
 }
 
-.wgi-home .wgi-pill-key,
-.wgi-home .wgi-sug-count,
+.wgi-home .wgi-pill .wgi-pill-key {
+  color: var(--wgi-pill-key-ink);
+}
+
 .wgi-home .wgi-pill-remove {
+  color: var(--wgi-pill-stroke);
+}
+
+.wgi-home .wgi-pill .wgi-pill-value {
+  color: var(--wgi-pill-value-ink);
+}
+
+.wgi-home .wgi-sug .wgi-pill-key,
+.wgi-home .wgi-sug-count {
   color: var(--wgi-muted-ink);
 }
 
-.wgi-home .wgi-pill-value {
+.wgi-home .wgi-sug .wgi-pill-value {
   color: var(--wgi-name-ink);
 }
 
 .wgi-home .wgi-pill-label {
-  min-height: calc(3.0625rem - 2px);
+  min-height: calc(3.0625rem - 2.4px);
   font-size: var(--pt-sm);
 }
 
@@ -1112,7 +1145,7 @@ a.appt-phone {
   }
 
   .wgi-home .wgi-pill-label {
-    min-height: calc(2.75rem - 2px);
+    min-height: calc(2.75rem - 2.4px);
     font-size: var(--pt-xs);
   }
 
@@ -1148,15 +1181,14 @@ a.appt-phone {
 }
 
 /* ---------- Status badge (fresh StockBadge conversion) ----------
-   The frame's badge: 30px tall, 7.5px corners, 15px bold, a 1.3px stroke,
-   14px sides. One glass recipe for every status (issue #300): a translucent
-   fill so the row band shows through, the status stroke, and a 1px white
-   highlight along the top edge that reads as the pane. Nothing is blurred:
-   a row band is a flat tint, so there is nothing for a backdrop filter to
-   soften and 57 filters would cost a compositor layer each. Every status
-   stays a badge; none is text alone. Each ink's floor is on the open tint
-   (the darkest band): New 4.72, Call again 8.3, Scheduled 6.2, Closed 4.9
-   in the row's own muted ink. */
+   The frame's badge: 30px tall, 7.5px corners, 15px semibold, a 1.3px
+   stroke, 14px sides. One glass-gradient recipe for every tinted status
+   (issue #327): an opaque vertical fill from one ramp step to the next, the
+   status stroke one step deeper, and a 1px white highlight along the top
+   edge that reads as the pane. The fill is opaque, so its ink is measured
+   against the fill alone, whatever band the row wears. Closed is the ghost:
+   no fill and no highlight, a slate outline around slate-700 words, so it
+   recedes without dropping to text alone. Nothing is blurred. */
 
 .wgi-badge {
   display: inline-flex;
@@ -1178,28 +1210,35 @@ a.appt-phone {
 }
 
 .wgi-badge-new {
-  background: var(--wgi-badge-new-fill);
+  background: linear-gradient(var(--wgi-badge-new-fill), var(--wgi-badge-new-fill-end));
   color: var(--wgi-badge-new-ink);
   border-color: var(--wgi-badge-new-stroke);
+  box-shadow: inset 0 1px 0 var(--wgi-badge-new-highlight);
 }
 
 .wgi-badge-contacted {
-  background: var(--wgi-badge-contacted-fill);
+  background: linear-gradient(
+    var(--wgi-badge-contacted-fill),
+    var(--wgi-badge-contacted-fill-end)
+  );
   color: var(--wgi-badge-contacted-ink);
   border-color: var(--wgi-badge-contacted-stroke);
 }
 
-/* Scheduled on the same glass, in the frame's pale green. */
 .wgi-badge-scheduled {
-  background: var(--wgi-badge-scheduled-fill);
+  background: linear-gradient(
+    var(--wgi-badge-scheduled-fill),
+    var(--wgi-badge-scheduled-fill-end)
+  );
   color: var(--wgi-badge-scheduled-ink);
   border-color: var(--wgi-badge-scheduled-stroke);
 }
 
 .wgi-badge-closed {
-  background: rgb(255 255 255 / 0.35);
-  color: var(--wgi-muted-ink);
-  border-color: var(--color-line-2);
+  background: none;
+  box-shadow: none;
+  color: var(--wgi-badge-closed-ink);
+  border-color: var(--wgi-badge-closed-stroke);
 }
 
 /* ---------- Skeleton rows (hold the exact surface geometry) ---------- */
@@ -1512,7 +1551,7 @@ a.appt-phone {
 }
 
 .wgi-record-queue > [data-overdue] {
-  color: var(--wgi-badge-contacted-ink);
+  color: var(--wgi-attention-ink);
 }
 
 .wgi-record-badge {
@@ -3180,16 +3219,16 @@ a.appt-phone {
   color: var(--wgi-muted-ink);
 }
 
-/* A failed notification email is the one row that escalates: the call
-   badge's amber ink, and its alert mark on the badge's fill (#316). */
+/* A failed notification email is the one row that escalates: the attention
+   amber ink, and its alert mark on the attention fill (#316). */
 .wgi-history-row[data-emphasis="attention"] .wgi-history-text {
-  color: var(--wgi-badge-contacted-ink);
+  color: var(--wgi-attention-ink);
 }
 
 .wgi-history-row[data-emphasis="attention"] .wgi-history-icon svg {
   border-radius: 50%;
-  background: var(--wgi-badge-contacted-fill);
-  color: var(--wgi-badge-contacted-ink);
+  background: var(--wgi-attention-fill);
+  color: var(--wgi-attention-ink);
 }
 
 .wgi-history-row[data-undone] .wgi-history-words {

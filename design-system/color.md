@@ -8,22 +8,22 @@ type sizes are in [typography.md](typography.md).
 
 | Hue | Tokens | Says | Where it paints |
 | --- | --- | --- | --- |
-| Neutrals | `paper`, `ink`, `body`, `muted-ink`, `line`, `line-2`, `line-3`, `on-dark`, `on-dark-muted`, `line-dark` | Nothing | Headings in `ink`, copy in `body`, secondary text in `muted-ink`; hairlines in `line`, control boundaries in `line-3`; `on-dark` and `line-dark` on navy |
+| Neutrals | `paper`, `ink`, `body`, `muted-ink`, `line`, `line-2`, `line-3`, `on-dark`, `on-dark-muted`, `line-dark`; the `slate` ramp names the scale they sit on | Nothing | Headings in `ink`, copy in `body`, secondary text in `muted-ink`; hairlines in `line`, control boundaries in `line-3`; `on-dark` and `line-dark` on navy |
 | Navy | `navy`, `navy-2` | Printed ink, the primary action | The task index, the sheet's head rule, a checked choice's dot, the settled stamp, `Button` `default`, the patient footer |
-| Teal | `teal`, `teal-ink` | Current, and keyboard focus | `teal-ink` for current text and, through `--ring`, recipe focus rings; `teal` for marks that are not text, such as the field focus halo |
-| Amber | `amber`, `amber-soft`, `amber-deep` | Look here | Notices and the attention stamp (`amber-soft` under `ink`), the warm call to action (`Button` `amber`), selected text |
-| Mint | `mint`, `mint-2` | You can act here | The wash under a hovered control or row (`mint`) and under an open, pressed or checked one (`mint-2`); saved confirmations; empty states; patient section bands |
-| Red | `--destructive` | This input is invalid | `aria-invalid` fields and `FieldError`. `Button` `destructive` has no consumer, and the portal's one removal confirmation (`.portal-confirm-dialog-destructive`) is attention amber. Any other red is drift |
+| Teal | `teal`, `teal-ink` | Current, and keyboard focus | `teal-ink` for current text and, through `--ring`, recipe focus rings; `teal` for marks that are not text, such as the field focus halo; the contacted stamp's teal glass |
+| Amber | `amber`, `amber-soft`, `amber-deep` | Look here | Notices and the attention stamp (amber glass under `navy-900`), the warm call to action (`Button` `amber`), selected text |
+| Mint | `mint`, `mint-2` | You can act here; settled | The wash under a hovered control or row (`mint`) and under an open, pressed or checked one (`mint-2`); saved confirmations; empty states; patient section bands. As glass, mint is settled: the scheduled stamp |
+| Coral | `--destructive` (`coral-700`), `coral-600` | This input is invalid | `aria-invalid` fields and `FieldError`, in `coral-700`; `coral-600` only for borders and marks, never text. `Button` `destructive` has no consumer, and the portal's one removal confirmation (`.portal-confirm-dialog-destructive`) is attention amber. Any other red is drift |
 
 ```text
 What does the color tell the reader?
 ├── Nothing: text, a page, a rule                  → a neutral
 ├── This is the primary action here                → navy (Button default)
 ├── This is current, or has keyboard focus         → teal-ink text; the --ring ring
-├── Look here, or this removes something           → amber-soft under ink; amber-deep marks
+├── Look here, or this removes something           → amber glass or amber-soft; amber-deep marks
 ├── You can act on this: hovered, open, checked    → a mint wash
 ├── A request's status                             → StatusBadge (Status stamps)
-└── This input is invalid                          → --destructive, with FieldError text
+└── This input is invalid                          → --destructive (coral), with FieldError text
 ```
 
 **Color never carries state alone.** A stamp always carries words; an error always has text.
@@ -62,10 +62,14 @@ Four lowercase `RequestStatus` keys drive it — `new`, `contacted`, `scheduled`
 
 | Status | Variant | Paint | Words |
 | --- | --- | --- | --- |
-| `new` | `attention` | `amber-soft` under `ink` | New |
-| `contacted` | `current` | `mint-2` under `teal-ink` | Contacted |
-| `scheduled` | `settled` | `navy` under `on-dark` | Scheduled |
-| `closed` | `quiet` | `line` under `muted-ink` | Closed |
+| `new` | `attention` | Amber glass: `amber-300` → `amber-400`, `amber-500` stroke, `navy-900` words | New |
+| `contacted` | `current` | Teal glass: `teal-100` → `teal-200`, `teal-300` stroke, `teal-800` words | Contacted |
+| `scheduled` | `settled` | Mint glass: `mint-100` → `mint-200`, `mint-300` stroke, `mint-800` words | Scheduled |
+| `closed` | `quiet` | Slate ghost: no fill, `slate-300` stroke, `slate-700` words | Closed |
+
+The staff home's `.wgi-badge-*` (`home.css`) wears the same paint on its own 30px geometry, where
+Contacted reads "Call again". Contrast, top and bottom of the fill: New 7.1 and 6.0, Contacted 7.8
+and 6.7, Scheduled 7.3 and 6.6; Closed 6.8 on white and 6.0 on the Home row band.
 
 ```tsx
 // Correct (requests/page.tsx): the status picks the paint; the label is the words
@@ -78,6 +82,40 @@ Four lowercase `RequestStatus` keys drive it — `new`, `contacted`, `scheduled`
 // Incorrect: color carrying state alone
 <span aria-label="New" className="size-2 rounded-full bg-amber" />
 ```
+
+## Ramps
+
+Six ramps carry each hue from step 50 (lightest) to 950 (deepest) as `--color-{hue}-{step}`
+([tokens.md](tokens.md#reference)). They were generated in OKLCH and match the Figma variable
+collection "WGI · Ramps". Four extend the brand hues: `navy`, `teal`, `mint` and `amber`. `coral` is
+the warm red that belongs with the brand, and `slate` names the neutrals the brand already uses.
+Every brand token sits on its step at its own value.
+
+A ramp step inherits its hue's role: a `teal` step still says current, an `amber` step still says
+look here. Reach for a step when a surface needs a tint the named tokens do not cover, such as the
+two ends of a gradient; keep the named token where one exists.
+
+## The glass gradient
+
+One rule for every tinted surface that should read as a raised object: a status stamp, an applied
+filter, any new tinted chip.
+
+| Part | Rule |
+| --- | --- |
+| Fill | A vertical linear gradient, step *n* at the top to step *n+1* at the bottom |
+| Highlight | `inset 0 1px 0` white, at 0.55 to 0.8 |
+| Stroke | One step deeper than the bottom of the fill |
+| Ink | The first step that clears 4.5:1 against both ends of the fill |
+
+Loudness comes from where the gradient sits on the ramp, not from adding a hue: the New stamp's
+`amber-300` → `amber-400` is louder than the Contacted stamp's `teal-100` → `teal-200`. A surface
+that should recede is a ghost: no fill and no highlight, a `slate-300` outline around `slate-700`
+words, so it still has an edge and never becomes color alone.
+
+The staff home's applied filter pill is navy glass: `navy-50` → `navy-100` under a 1.2px `navy-800`
+stroke and a white 0.8 highlight, with the key in `navy-700` (5.3 to 5.8), the value in `slate-950`
+and the remove mark in `navy-800`. A suggestion beside it stays dashed and unfilled, so applied and
+suggested differ in fill, border style and ink.
 
 ## Focus
 

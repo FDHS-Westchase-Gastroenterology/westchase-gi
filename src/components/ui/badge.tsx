@@ -54,14 +54,22 @@ const badgeVariants = cva(
         shadcn: "transition-all",
       },
       variant: {
-        /* The color law: amber means attention, teal/mint means current or
-           in motion, navy is settled ink, neutral recedes. All four are worn
-           by status-badge.tsx — new=attention, contacted=current,
-           scheduled=settled, closed=quiet. */
-        attention: "bg-amber-soft text-ink",
-        current: "bg-mint-2 text-teal-ink",
-        settled: "bg-navy text-on-dark",
-        quiet: "bg-line text-muted-ink",
+        /* The color law on the glass gradient (design-system/color.md
+           "The glass gradient"): a vertical fill from ramp step n to n+1,
+           a stroke one step deeper, a white top highlight, and the first
+           ink that clears 4.5:1 on both ends. Amber means attention, teal
+           means current, mint means settled, and slate recedes as a ghost
+           with no fill. The same paint as the staff home's .wgi-badge-*
+           (home.css), so a status looks the same on Home and on Requests.
+           All four are worn by status-badge.tsx — new=attention,
+           contacted=current, scheduled=settled, closed=quiet. */
+        attention:
+          "border-amber-500 bg-linear-to-b from-amber-300 to-amber-400 text-navy-900 shadow-[inset_0_1px_0_rgb(255_255_255/0.55)]",
+        current:
+          "border-teal-300 bg-linear-to-b from-teal-100 to-teal-200 text-teal-800 shadow-[inset_0_1px_0_rgb(255_255_255/0.6)]",
+        settled:
+          "border-mint-300 bg-linear-to-b from-mint-100 to-mint-200 text-mint-800 shadow-[inset_0_1px_0_rgb(255_255_255/0.6)]",
+        quiet: "border-slate-300 bg-transparent text-slate-700",
       },
     },
     defaultVariants: {

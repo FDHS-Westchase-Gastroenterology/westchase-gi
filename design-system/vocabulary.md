@@ -10,7 +10,7 @@ is given where one exists. When a guide and this list disagree, fix the guide.
 - **Brand token** — a token in the brand `@theme` block of `src/app/globals.css`. The practice's
   own decisions; every other layer refers to them.
 - **Semantic token** — one of shadcn's role names (`--primary`, `--muted`, `--ring`). Each maps
-  onto a brand token in the **bridge**. The one literal is `--destructive`.
+  onto a brand token in the **bridge**. The one literal is the dark `--destructive`.
 - **The bridge** — the `@theme inline`, `:root` and `.dark` blocks at the end of `globals.css`.
   The only place shadcn's tokens are defined.
 - **Recipe** — a component's complete vocabulary of appearance, written as a `cva` definition

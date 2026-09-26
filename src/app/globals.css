@@ -44,6 +44,84 @@
   --color-line-3: oklch(0.6 0.025 235); /* control boundaries (>=3:1 on paper+mint) */
   --color-line-dark: oklch(0.47 0.05 245); /* hairlines on navy */
 
+  /* Ramps: six hues in eleven steps, 50 lightest to 950 deepest
+     (design-system/color.md "Ramps"). Generated in OKLCH and stated as the
+     hex the Figma collection "WGI · Ramps" holds. A step that is a brand
+     anchor is var() of the brand token above, so the two cannot drift.
+     slate, amber and teal replace Tailwind's default palettes of the same
+     names; coral is the warm red --destructive reads. */
+  --color-navy-50: #f2f7fd;
+  --color-navy-100: #e6eef6;
+  --color-navy-200: #cfdeed;
+  --color-navy-300: #b4cae0;
+  --color-navy-400: #94b2ce;
+  --color-navy-500: #7598b9;
+  --color-navy-600: #567da1;
+  --color-navy-700: #3c6489;
+  --color-navy-800: var(--color-navy);
+  --color-navy-900: var(--color-navy-2);
+  --color-navy-950: #06233c;
+
+  --color-teal-50: #f0f8fd;
+  --color-teal-100: #e0f0f8;
+  --color-teal-200: #c4e2f2;
+  --color-teal-300: #a3cfe6;
+  --color-teal-400: #7eb7d5;
+  --color-teal-500: #5c9dbe;
+  --color-teal-600: var(--color-teal);
+  --color-teal-700: var(--color-teal-ink);
+  --color-teal-800: #154e67;
+  --color-teal-900: #00384e;
+  --color-teal-950: #012535;
+
+  --color-mint-50: var(--color-mint);
+  --color-mint-100: var(--color-mint-2);
+  --color-mint-200: #c4e4e1;
+  --color-mint-300: #a2d2ce;
+  --color-mint-400: #7dbbb7;
+  --color-mint-500: #5aa29e;
+  --color-mint-600: #3d8782;
+  --color-mint-700: #296d69;
+  --color-mint-800: #11524f;
+  --color-mint-900: #033b39;
+  --color-mint-950: #002826;
+
+  --color-amber-50: #fdf6ec;
+  --color-amber-100: var(--color-amber-soft);
+  --color-amber-200: #fed59c;
+  --color-amber-300: #f6bb66;
+  --color-amber-400: var(--color-amber);
+  --color-amber-500: #cb9238;
+  --color-amber-600: var(--color-amber-deep);
+  --color-amber-700: #825704;
+  --color-amber-800: #624000;
+  --color-amber-900: #472d00;
+  --color-amber-950: #301d01;
+
+  --color-coral-50: #fef4f2;
+  --color-coral-100: #fee7e2;
+  --color-coral-200: #fed0c7;
+  --color-coral-300: #feb1a1;
+  --color-coral-400: #f68c78;
+  --color-coral-500: #df6d57;
+  --color-coral-600: #bf523f;
+  --color-coral-700: #9e3c2b;
+  --color-coral-800: #7d2517;
+  --color-coral-900: #601105;
+  --color-coral-950: #450500;
+
+  --color-slate-50: var(--color-paper);
+  --color-slate-100: #e9edf0;
+  --color-slate-200: var(--color-line);
+  --color-slate-300: var(--color-line-2);
+  --color-slate-400: #a3b0ba;
+  --color-slate-500: #8696a2;
+  --color-slate-600: var(--color-line-3);
+  --color-slate-700: var(--color-muted-ink);
+  --color-slate-800: #3c4a54;
+  --color-slate-900: var(--color-body);
+  --color-slate-950: var(--color-ink);
+
   /* Fonts */
   --font-display: var(--font-trocchi), Georgia, "Times New Roman", serif;
   --font-body: var(--font-lato), ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -2321,8 +2399,10 @@
    shadcn components resolve every color through the semantic tokens
    below; each one is mapped onto the committed brand palette in the
    @theme block at the top of this file. This bridge is the ONLY place
-   shadcn's tokens exist, and the ONLY non-brand hue is --destructive
-   (destructive actions have no brand hue by design).
+   shadcn's tokens exist. Every token, --destructive included, resolves
+   to a brand token: --destructive reads the coral ramp, the warm red that
+   belongs with the brand (coral-700 for text; coral-600 for borders and
+   marks, never text).
 
    NEVER let the shadcn CLI (`init`/`apply`/`add` with a preset) or an
    agent rewrite this block back to neutral OKLCH literals, and never
@@ -2389,7 +2469,7 @@
   --muted-foreground: var(--color-muted-ink);
   --accent: var(--color-mint);
   --accent-foreground: var(--color-ink);
-  --destructive: oklch(0.577 0.245 27.325); /* the one non-brand hue: destructive actions only */
+  --destructive: var(--color-coral-700); /* invalid input and destructive actions only; 6.3 to 6.7 on the light surfaces */
   --border: var(--color-line);
   --input: var(--color-line-3);
   --ring: var(--color-teal-ink); /* matches the site's :focus-visible outline */
