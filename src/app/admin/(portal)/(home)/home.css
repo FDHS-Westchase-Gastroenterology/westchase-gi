@@ -1,0 +1,3721 @@
+/* ---- Home dashboard: the filter bar and the flat line list ----
+   Implements `Portal Home Redesign.dc.html`. Every color arrives through the
+   brand tokens / the portal bridge; type sits on the closed --pt-* scale;
+   radii are the brand's three steps. Motion is the registry's standard curve
+   (--motion-standard) over its three beats: hover tints and presses on the
+   fast beat (140ms), popovers grow from their trigger on the base beat
+   (240ms) and leave on the fast one, the full-record sheet slides in on the
+   sheet beat (420ms) and leaves on the base one, and a recorded outcome lands
+   as a mint wash on the row. On a wide-gamut screen every paint is restated
+   in Display P3 (the layer after the shared paint rule, and .portal-scope in
+   globals.css), as the Figma file shows it.
+
+   Three colors say three things (design-system/color.md "Roles", Apple-inspired
+   restraint): mint is "you can interact here" and "this is the record",
+   teal is keyboard focus, amber is text selected for copying.
+
+   These rules are intentionally unlayered: they must outrank the Tailwind
+   utilities the stock-derived parts carry (same trick the design file used
+   against the bundle's @layer). */
+
+/* ---------- Focus: one teal ring ----------
+   Keyboard focus is teal, drawn with box-shadow so nothing moves, with a
+   surface-coloured gap so it stays distinct from the mint hover and selected
+   fills. :where() keeps it at zero specificity: a control that must draw the
+   ring inside its clipped box (a capsule, a list row, the list viewport) or
+   as an underline (the filter search box) restates it beside its own rules.
+   This file is unlayered, so it outranks the amber outline in
+   portal-workbench.css and the site's base outline on the portaled
+   surfaces. */
+.wgi-home :where(a, button, input, [tabindex]):focus-visible,
+.wgi-popover
+  :where(
+    a,
+    button,
+    input,
+    [role="checkbox"],
+    [role="radio"],
+    [data-slot="radio-group-item"],
+    [tabindex]
+  ):focus-visible,
+.wgi-sheet :where(a, button, input, [tabindex]):focus-visible,
+.wgi-sheet:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
+}
+
+/* ---------- Press: one shared small-button feedback ----------
+   scale(.98) on the fast beat, a transition so a release mid-press eases
+   back. Every control in this list carries `transform` in its transition.
+   Wide bars (a history row, the details disclosure, a pill's label, an
+   answer row) press as a deeper tint instead: a scale would open gaps at their ends. */
+.wgi-add-filter:active,
+.wgi-sug:active,
+.wgi-pill-remove:active,
+.appt-line-trigger:active,
+.wgi-editor-dim:active,
+.wgi-editor-apply:active:enabled,
+.wgi-record-save:active:enabled,
+.wgi-time-trigger:active:enabled,
+.wgi-record-follow > [data-slot="toggle-group-item"]:active:enabled,
+.wgi-record-call:active,
+.wgi-record-close:active,
+.wgi-empty-clear:active,
+.wgi-sheet-close:active,
+.wgi-sheet-call:active {
+  transform: scale(0.98);
+}
+
+/* ---------- Text selection ----------
+   Amber, the portal's own (portal-workbench.css). The popover and the sheet
+   are portaled outside .portal-scope and would otherwise take the site's
+   base selection; they restate it here so a phone number reads the same
+   whether copied from the list, the card or the sheet. */
+.wgi-popover ::selection,
+.wgi-sheet ::selection {
+  background: var(--color-amber-soft);
+  color: var(--color-navy-2);
+}
+
+/* ---------- Filter bar ---------- */
+
+.wgi-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ps-2);
+  margin-block-start: 1.25rem;
+}
+
+.wgi-add-filter {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--color-line-2);
+  border-radius: 999px;
+  background: var(--portal-surface);
+  padding: 0 var(--ps-4);
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-add-filter:hover {
+    background: var(--color-mint-hover);
+  }
+}
+
+.wgi-add-filter[data-popup-open] {
+  background: var(--color-mint);
+}
+
+.wgi-add-filter > svg {
+  flex: none;
+  opacity: 0.7;
+}
+
+/* Active pill: one bordered capsule, two buttons — the label opens the
+   editor, the × removes the filter. */
+.wgi-pill {
+  display: inline-flex;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--color-line-2);
+  border-radius: 999px;
+  background: var(--portal-surface);
+}
+
+.wgi-pill-label {
+  display: inline-flex;
+  min-height: calc(2.75rem - 2px);
+  align-items: center;
+  gap: 0.4rem;
+  border: 0;
+  background: none;
+  padding: 0 0.35rem 0 0.95rem;
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  cursor: pointer;
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-pill-label:hover {
+    background: var(--color-mint-hover);
+  }
+}
+
+.wgi-pill-label:active,
+.wgi-pill-label[data-popup-open] {
+  background: var(--color-mint-2);
+}
+
+.wgi-pill-key {
+  color: var(--color-muted-ink);
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.wgi-pill-value {
+  color: var(--color-ink);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.wgi-pill-remove {
+  display: inline-flex;
+  width: 2.1rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--color-muted-ink);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-pill-remove:hover {
+    background: var(--color-mint-hover);
+    color: var(--color-ink);
+  }
+}
+
+/* The capsule clips; the ring sits inside it to stay visible. */
+.wgi-pill-label:focus-visible,
+.wgi-pill-remove:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--color-teal);
+}
+
+/* Suggestion pill: a complete pre-filled filter, dashed and quiet, one click
+   from active. */
+.wgi-sug {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px dashed var(--color-line-2);
+  border-radius: 999px;
+  background: transparent;
+  padding: 0 0.95rem;
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    border-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-sug:hover {
+    background: var(--portal-surface);
+    border-color: var(--color-line-3);
+  }
+}
+
+/* The count a ghost would show: quiet numerals after the value, so a glance
+   says whether the click is worth it. */
+.wgi-sug-count {
+  color: var(--color-muted-ink);
+  font-size: var(--pt-2xs);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* ---------- The page (issue #282) ----------
+   Figma "Westchase GI · Staff portal" (node 3:46) is drawn at 3056×1918 for
+   a 1528×959 CSS viewport: one Figma unit is 0.5 CSS px, and every length
+   below is that frame's measurement halved. The home column becomes a flex
+   column that fills the viewport, so the list surface can take whatever
+   height the header, the filters and the "Other staff jobs" row leave; the
+   rows scroll inside the surface and the page does not move. */
+
+.portal-content:has(> .wgi-home) {
+  display: flex;
+  flex-direction: column;
+  /* The mobile header is sticky above the content until the sidebar docks,
+     and the shell's bottom padding stays: it is what clears the docked
+     mobile navigation when the page is scrolled to its end. */
+  min-height: calc(100dvh - 3.6rem);
+  padding-block-start: 1.25rem;
+}
+
+@media (min-width: 60rem) {
+  /* The canvas is inset 16px above and below (portal-workbench.css), so
+     the column fills the viewport less the two insets. */
+  .portal-content:has(> .wgi-home) {
+    min-height: calc(100dvh - 2rem);
+    padding-block: 2.25rem 1.5rem;
+  }
+}
+
+.wgi-home {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  max-width: 76rem;
+  /* Row 46.5px, heading row 36px, right gutter 39px (rows to card edge),
+     day 36px bold, name 18.5px, phone 15.5px, heading 14.5px. The four
+     type sizes sit between the closed --pt-* steps; they are scoped here,
+     derived once from the approved frame, and used nowhere else. */
+  --wgi-row-h: 2.9rem;
+  --wgi-head-h: 2.25rem;
+  --wgi-gutter: 2.4375rem;
+  /* The gap between companion surfaces: the record card and the floating
+     sheet beside it (issue #327, section 05, frame C). Read by
+     panel-lane.ts, because the two are portaled to body. */
+  --wgi-companion-gap: 1rem;
+  --wgi-day-size: 2.25rem;
+  --wgi-name-size: 1.156rem;
+  --wgi-phone-size: 0.969rem;
+  --wgi-label-size: 0.906rem;
+}
+
+/* The record card, the full-record sheet and its history popover are
+   portaled to body, outside .wgi-home, so they read the same paints from
+   this shared rule rather than restating them. */
+.wgi-home,
+.wgi-record-card,
+.wgi-sheet,
+.wgi-history-popover {
+  /* Figma parity: the paints below are the design file's own variables
+     (Ypf9ohpRcGWF5C9T9bSvWW, "Home · Approved baseline", node 88:1176,
+     which carries these names), scoped to Home so the brand @theme stays
+     untouched. --wgi-muted-ink was darkened along its hue to pass AA on the
+     open tint (#7284a0 -> #576883, 4.54). The phone glyph is decorative and
+     keeps the frame's #94a8c3. The card shadow is the record card's lift now
+     (node 76:1005); the list surface is flat. */
+  --wgi-surface: #fcfdfe;
+  --wgi-card-shadow: 0 7px 20px rgba(36, 68, 94, 0.18);
+  /* The floating sheet's lift (issue #327, section 05, frame C): contact,
+     key and ambient layers in the frame's name ink, so it reads as a
+     surface above the canvas rather than an edge of the window. */
+  --wgi-sheet-shadow:
+    0 1px 2px rgb(16 20 58 / 0.14), 0 12px 24px rgb(16 20 58 / 0.18),
+    0 32px 72px -8px rgb(16 20 58 / 0.3);
+  --wgi-rule: #dfe6ef;
+  --wgi-band: #eaf1f7;
+  --wgi-hover: #e3efed;
+  --wgi-open: #dbe9ea;
+  --wgi-row-radius: 12px;
+  --wgi-name-ink: #10143a;
+  --wgi-muted-ink: #576883;
+  --wgi-icon-ink: #94a8c3;
+  --wgi-track: #e3e8f0;
+  --wgi-thumb: #9ca8ba;
+  --wgi-chip-stroke: #c4d5e5;
+  --wgi-cmd-fill: #ffffff;
+  --wgi-cmd-stroke: #b9c7d8;
+  /* Status badges wear the glass gradient (issue #327, Figma section 06
+     After, node 238:1828; design-system/color.md "The glass gradient"): a
+     vertical fill from ramp step n to n+1, a stroke one step deeper, and
+     the first ink that clears 4.5:1 against both ends. Loudness comes from
+     where the fill sits on its ramp: New is the loudest, Closed a ghost.
+     Contrast, top / bottom of the fill: New 7.1 / 6.0, Call again 7.8 / 6.7,
+     Scheduled 7.3 / 6.6; Closed 6.8 on white and 6.0 on the band. */
+  --wgi-badge-radius: 7.5px;
+  --wgi-badge-new-fill: var(--color-amber-300);
+  --wgi-badge-new-fill-end: var(--color-amber-400);
+  --wgi-badge-new-stroke: var(--color-amber-500);
+  --wgi-badge-new-ink: var(--color-navy-900);
+  --wgi-badge-new-highlight: rgb(255 255 255 / 0.55);
+  --wgi-badge-contacted-fill: var(--color-teal-100);
+  --wgi-badge-contacted-fill-end: var(--color-teal-200);
+  --wgi-badge-contacted-stroke: var(--color-teal-300);
+  --wgi-badge-contacted-ink: var(--color-teal-800);
+  --wgi-badge-scheduled-fill: var(--color-mint-100);
+  --wgi-badge-scheduled-fill-end: var(--color-mint-200);
+  --wgi-badge-scheduled-stroke: var(--color-mint-300);
+  --wgi-badge-scheduled-ink: var(--color-mint-800);
+  --wgi-badge-closed-stroke: var(--color-slate-300);
+  --wgi-badge-closed-ink: var(--color-slate-700);
+  /* The applied filter pill's navy glass. */
+  --wgi-pill-fill: var(--color-navy-50);
+  --wgi-pill-fill-end: var(--color-navy-100);
+  --wgi-pill-stroke: var(--color-navy-800);
+  --wgi-pill-highlight: rgb(255 255 255 / 0.8);
+  --wgi-pill-key-ink: var(--color-navy-700);
+  --wgi-pill-value-ink: var(--color-slate-950);
+  /* Attention outside a status: an overdue call-back and a failed
+     notification email keep the September 15 pale amber the Call again
+     badge wore before it turned teal. 5.6 on the open tint. */
+  --wgi-attention-fill: #fdefdb;
+  --wgi-attention-ink: #95500c;
+  --wgi-cmd-primary: #173758;
+  --wgi-cmd-radius: 6px;
+  /* The record card's redesign (Figma Ypf9ohpRcGWF5C9T9bSvWW, section 03,
+     node 134:1176): small uppercase labels take the file's label ink, and
+     a day from a neighboring month is the chip stroke, named for its job. */
+  --wgi-label-ink: #647493;
+  --wgi-outside-day: var(--wgi-chip-stroke);
+  /* The full record's quiet links: the email address, More, and the
+     history heading's glyph. 8.7 on the surface. */
+  --wgi-link-ink: #294f60;
+}
+
+/* The Display P3 layer (issue #327): on a wide-gamut screen each literal
+   above is restated with the same channel values, read as Display P3, which
+   is how the Figma file shows them on a P3 Mac. An sRGB screen keeps the hex.
+   The ramp-backed paints (badges, pill) need no restatement here: their
+   var() reads the P3 ramp that .portal-scope assigns in globals.css. White
+   is the same colour in both spaces, and the shadows are low-alpha ink whose
+   shift is below what the eye resolves, so both keep their sRGB literals. */
+@media (color-gamut: p3) {
+  .wgi-home,
+  .wgi-record-card,
+  .wgi-sheet,
+  .wgi-history-popover {
+    --wgi-surface: color(display-p3 0.988 0.992 0.996);
+    --wgi-rule: color(display-p3 0.875 0.902 0.937);
+    --wgi-band: color(display-p3 0.918 0.945 0.969);
+    --wgi-hover: color(display-p3 0.89 0.937 0.929);
+    --wgi-open: color(display-p3 0.859 0.914 0.918);
+    --wgi-name-ink: color(display-p3 0.063 0.078 0.227);
+    --wgi-muted-ink: color(display-p3 0.341 0.408 0.514);
+    --wgi-icon-ink: color(display-p3 0.58 0.659 0.765);
+    --wgi-track: color(display-p3 0.89 0.91 0.941);
+    --wgi-thumb: color(display-p3 0.612 0.659 0.729);
+    --wgi-chip-stroke: color(display-p3 0.769 0.835 0.898);
+    --wgi-cmd-stroke: color(display-p3 0.725 0.78 0.847);
+    --wgi-attention-fill: color(display-p3 0.992 0.937 0.859);
+    --wgi-attention-ink: color(display-p3 0.584 0.314 0.047);
+    --wgi-cmd-primary: color(display-p3 0.09 0.216 0.345);
+    --wgi-label-ink: color(display-p3 0.392 0.455 0.576);
+    --wgi-link-ink: color(display-p3 0.161 0.31 0.376);
+  }
+}
+
+/* The header loses its navy rule: the surface below closes the header now.
+   Greeting 17px medium and the day 36px bold, both in the page ink, 4px
+   apart. */
+.wgi-home > .portal-sheet-head {
+  border-block-end: 0;
+  padding-block-end: 0;
+}
+
+.wgi-home .portal-sheet-greeting {
+  color: var(--wgi-name-ink);
+  font-family: var(--font-body), Arial, sans-serif;
+  font-size: var(--pt-base);
+  font-weight: 500;
+}
+
+/* The day is set in the body sans (Lato) as the frame draws it, not the
+   display serif the portal's heading base rule would give an h1. */
+.wgi-home .portal-sheet-day {
+  color: var(--wgi-name-ink);
+  font-family: var(--font-body), Arial, sans-serif;
+  font-size: var(--wgi-day-size);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.1;
+}
+
+/* The commands as the approved frame paints them (node 88:1211): 40px tall,
+   6px corners, 16px sides, 15.68px semibold, 12px apart. Print requests is
+   white with a 1px cool stroke in the page ink; Add request is the one
+   filled command, the frame's deep navy with white text. The Button recipe
+   keeps the press and focus; paint and geometry are set here, so the
+   outline hover has to be restated (this file outranks its utilities). */
+.wgi-home .portal-sheet-commands {
+  gap: 0.75rem;
+}
+
+.wgi-cmd {
+  min-height: 2.5rem;
+  border-radius: var(--wgi-cmd-radius);
+  padding-block: 0;
+  padding-inline: 1rem;
+  font-size: 0.98rem;
+  font-weight: 600;
+  background: var(--wgi-cmd-fill);
+  box-shadow: inset 0 0 0 1px var(--wgi-cmd-stroke);
+  color: var(--wgi-name-ink);
+}
+
+@media (hover: hover) {
+  .wgi-cmd:hover {
+    background: var(--wgi-surface);
+    box-shadow: inset 0 0 0 1px var(--wgi-muted-ink);
+  }
+}
+
+.wgi-cmd-primary {
+  background: var(--wgi-cmd-primary);
+  box-shadow: none;
+  color: var(--color-on-dark);
+}
+
+@media (hover: hover) {
+  .wgi-cmd-primary:hover {
+    background: color-mix(in oklch, var(--wgi-cmd-primary) 88%, white);
+    box-shadow: none;
+  }
+}
+
+/* The recipe's ring is Tailwind's; the shared teal ring above replaces it,
+   and the command keeps its stroke beneath the ring. */
+.wgi-cmd:focus-visible {
+  --tw-ring-shadow: 0 0 #0000;
+  box-shadow:
+    inset 0 0 0 1px var(--wgi-cmd-stroke),
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
+}
+
+.wgi-cmd-primary:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
+}
+
+/* Filters sit 26px under the header, 11px apart; the Add filter capsule is
+   49px tall with a fine border and a 9px shadow; the suggestions keep their
+   dashed outline, on the frame's pale stroke, as pills. */
+.wgi-home .wgi-filter-bar {
+  gap: 0.6875rem;
+  margin-block-start: 1.625rem;
+}
+
+.wgi-home .wgi-add-filter {
+  min-height: 3.0625rem;
+  border-width: 1.5px;
+  border-color: var(--wgi-chip-stroke);
+  padding-inline: 1.125rem;
+  background: var(--wgi-surface);
+  box-shadow: 0 3px 9px rgba(27, 51, 74, 0.05);
+  color: var(--wgi-name-ink);
+  font-size: var(--pt-sm);
+}
+
+.wgi-home .wgi-sug {
+  min-height: 3.0625rem;
+  border-width: 1.2px;
+  border-color: var(--wgi-chip-stroke);
+  padding-inline: 1.125rem;
+  font-size: var(--pt-sm);
+}
+
+@media (hover: hover) {
+  .wgi-home .wgi-sug:hover {
+    background: var(--wgi-surface);
+    border-color: var(--wgi-muted-ink);
+  }
+}
+
+/* An applied filter is navy glass (issue #327, Figma section 06 After;
+   design-system/color.md "The glass gradient"): navy-50 to navy-100 under
+   a 1.2px navy-800 stroke and a white 0.8 highlight. The key reads navy-700
+   (5.8 / 5.3 on the two ends), the value slate-950 and the remove mark
+   navy-800. A suggestion stays dashed, transparent and in the muted ink, so
+   applied and suggested differ in fill, border style and ink. Hover, press
+   and focus keep the shared pill rules above. */
+.wgi-home .wgi-pill {
+  border: 1.2px solid var(--wgi-pill-stroke);
+  background: linear-gradient(var(--wgi-pill-fill), var(--wgi-pill-fill-end));
+  box-shadow: inset 0 1px 0 var(--wgi-pill-highlight);
+}
+
+.wgi-home .wgi-pill .wgi-pill-key {
+  color: var(--wgi-pill-key-ink);
+}
+
+.wgi-home .wgi-pill-remove {
+  color: var(--wgi-pill-stroke);
+}
+
+.wgi-home .wgi-pill .wgi-pill-value {
+  color: var(--wgi-pill-value-ink);
+}
+
+.wgi-home .wgi-sug .wgi-pill-key,
+.wgi-home .wgi-sug-count {
+  color: var(--wgi-muted-ink);
+}
+
+.wgi-home .wgi-sug .wgi-pill-value {
+  color: var(--wgi-name-ink);
+}
+
+.wgi-home .wgi-pill-label {
+  min-height: calc(3.0625rem - 2.4px);
+  font-size: var(--pt-sm);
+}
+
+/* ---------- The list surface ----------
+   One flat grouped surface (node 88:1220): square-cornered paper on the
+   neutral canvas, no stroke and no shadow, 23px of paper above the column
+   labels, the rows scrolling inside, a count footer that never moves. The
+   Tailwind strings the Card and Table recipes carry (spacing, ring,
+   hairlines, uppercase labels) are overridden here; this file is
+   unlayered for that reason. */
+
+.wgi-list-card {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  position: relative;
+  /* Never shorter than the labels, six and a half rows and the footer:
+     a short window scrolls the page rather than crushing the list. */
+  min-height: calc(var(--wgi-head-h) + 6.5 * var(--wgi-row-h) + 5.5rem);
+  margin-block-start: 1.5rem;
+  gap: 0;
+  overflow: hidden;
+  border-radius: 0;
+  background: var(--wgi-surface);
+  box-shadow: none;
+  padding: 1.4375rem 0 0;
+}
+
+/* The quiet recede under an open record card (issue #327, section 05):
+   every element on the surface but the anchor row — the column labels,
+   the other rows, the footer, the scroll rail — drops to 35% opacity as
+   its own paint, and the body answers no presses, so a press anywhere on
+   it is the outside press that closes the card (HIG Popovers) and the
+   rail cannot be dragged. Nothing is blurred and nothing is tinted: the
+   list steps back rather than going out of focus, and the page is not
+   dimmed, because dimming means modal. The anchor row keeps its open
+   tint at full strength. The same 35% holds under reduced transparency,
+   because an opacity is not a translucent material. Nothing is measured:
+   the card's data-veiled flag is the whole mechanism. The popover portals
+   out of the body, so the card itself is untouched. Each element fades on
+   the base beat; under reduced motion it keeps the cross-fade
+   (globals.css, beside the blanket reset). */
+.wgi-list-card[data-veiled] .wgi-list-body {
+  pointer-events: none;
+}
+
+.wgi-list-card[data-veiled] .wgi-list-row:not([data-open]),
+.wgi-list-card[data-veiled] .wgi-list-head th,
+.wgi-list-card[data-veiled] .wgi-list-foot,
+.wgi-list-card[data-veiled] .wgi-list-rail {
+  opacity: 0.35;
+}
+
+.wgi-list-body {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0;
+}
+
+.wgi-list-scroll {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0 var(--wgi-gutter) 0 1.4375rem;
+}
+
+/* The real scrolling element. `overscroll-behavior` keeps a wheel at either
+   end from moving the page; `scroll-behavior: auto` keeps every keyboard
+   and script scroll instant, so nothing ever chases the thumb. */
+.wgi-list-viewport {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scroll-behavior: auto;
+  border-radius: 0;
+}
+
+/* The card clips the viewport, so its ring sits inside. */
+.wgi-list-viewport:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 3px var(--color-teal);
+}
+
+.wgi-list-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Column widths from the frame (22 / 20 / 20 / 24 / 12 percent, then the chevron). */
+.wgi-list-table [data-cell="patient"] {
+  width: 22%;
+}
+
+.wgi-list-table [data-cell="phone"] {
+  width: 20%;
+}
+
+.wgi-list-table [data-cell="status"] {
+  width: 20%;
+}
+
+.wgi-list-table [data-cell="pref"] {
+  width: 24%;
+}
+
+/* Wide enough for "13 hr ago" and "5 days ago" at the 1440 desktop width,
+   the badge column giving up the room: the frame draws both at 1632. */
+.wgi-list-table [data-cell="received"] {
+  width: 12%;
+}
+
+.wgi-list-table [data-cell="open"] {
+  width: 2.5rem;
+}
+
+/* Column labels: 36px tall, title case, medium in the page ink, a hairline
+   below. Sticky inside the viewport, painted so rows pass beneath, not
+   through. */
+.wgi-list-head th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: var(--wgi-head-h);
+  border: 0;
+  border-bottom: 1px solid var(--wgi-rule);
+  background: var(--wgi-surface);
+  padding: 0 1rem;
+  color: var(--wgi-name-ink);
+  font-size: var(--wgi-label-size);
+  font-weight: 500;
+  letter-spacing: 0;
+  text-align: left;
+  text-transform: none;
+  vertical-align: middle;
+  transition: opacity var(--motion-base-duration) var(--motion-standard);
+}
+
+.wgi-list-head tr {
+  border: 0;
+}
+
+/* Rows: 46.5px, 16px in from the left and 18px from the right, no rule
+   between them. Every second row is a quiet band on the frame's tint with
+   12px corners; the band is painted on the cells because a row box cannot
+   hold a radius. */
+.wgi-list-row {
+  height: var(--wgi-row-h);
+  border: 0;
+  /* The recede lands on the row, not the cells — the opacity is the tr's
+     own paint, so the band and its radii fade as one piece. */
+  transition: opacity var(--motion-base-duration) var(--motion-standard);
+}
+
+.wgi-list-row > td {
+  height: var(--wgi-row-h);
+  padding: 0 1rem;
+  vertical-align: middle;
+  white-space: nowrap;
+  /* Two paints on one cell, on two beats. The band, hover and open tints
+     are the cell's background on the micro beat. A recorded outcome lands
+     as an inset shadow over that background: the tint arrives with the
+     settle, holds while the popover closes, and exhales over 240ms once the
+     timed clear in home-dashboard.tsx removes the attribute. A transition,
+     not a keyframe, so a second outcome retargets the wash mid-flight
+     instead of cutting it, and the attribute cycling off and back on
+     replays it. */
+  box-shadow: inset 0 0 0 100vmax transparent;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    box-shadow var(--motion-base-duration) var(--motion-standard);
+}
+
+.wgi-list-row > td:first-child {
+  border-start-start-radius: var(--wgi-row-radius);
+  border-end-start-radius: var(--wgi-row-radius);
+}
+
+.wgi-list-row > td:last-child {
+  border-start-end-radius: var(--wgi-row-radius);
+  border-end-end-radius: var(--wgi-row-radius);
+  padding-inline-end: 0.75rem;
+}
+
+.wgi-list-row:nth-child(even) > td {
+  background-color: var(--wgi-band);
+}
+
+/* The whole row opens the record (line-list.tsx); the light mint says so on
+   hover, on a hover-capable device only. */
+@media (hover: hover) {
+  .wgi-list-row:hover > td {
+    background-color: var(--color-mint-hover);
+  }
+}
+
+/* The record being worked on (home-dashboard.tsx owns it): the deeper mint
+   holds through hover and focus elsewhere, while the card or the sheet is
+   open, and until the sheet has finished leaving. */
+.wgi-list-row[data-selected] > td,
+.wgi-list-row[data-selected]:hover > td {
+  background-color: var(--wgi-open);
+}
+
+/* Pressed: deeper still, the whole row at its normal size. */
+.wgi-list-row:active > td,
+.wgi-list-row[data-selected]:active > td {
+  background-color: var(--color-mint-press);
+}
+
+.wgi-list-row[data-settled] > td {
+  box-shadow: inset 0 0 0 100vmax var(--wgi-open);
+  transition: none;
+}
+
+.wgi-list-row {
+  cursor: pointer;
+}
+
+/* A focused control scrolls in beneath the sticky labels, never under them. */
+.wgi-list-row a,
+.wgi-list-row button {
+  scroll-margin-block-start: calc(var(--wgi-head-h) + 0.25rem);
+}
+
+.appt-name {
+  display: block;
+  overflow: hidden;
+  color: var(--wgi-name-ink);
+  font-size: var(--wgi-name-size);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+}
+
+.appt-phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--wgi-muted-ink);
+  font-size: var(--wgi-phone-size);
+  font-variant-numeric: tabular-nums;
+  /* Supporting data stays regular beneath the semibold patient name. */
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+/* On a desk the number is text: one click selects the whole of it to copy
+   into the phone system, and nothing lights up under the cursor. */
+span.appt-phone {
+  cursor: text;
+  user-select: all;
+}
+
+/* On a touch screen it is a dial, and the link says so on hover. */
+a.appt-phone {
+  transition: color var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  a.appt-phone:hover {
+    color: var(--color-teal-ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+}
+
+/* The glyph is decorative (the number beside it is the text), so it may
+   sit lighter than AA, as the frame draws it. */
+.appt-phone > svg {
+  flex: none;
+  color: var(--wgi-icon-ink);
+}
+
+/* The phone under the name only once the Phone column has gone. */
+.appt-phone-stack {
+  display: none;
+}
+
+.appt-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wgi-list-row [data-col="pref"],
+.wgi-list-row [data-col="received"] {
+  display: block;
+  overflow: hidden;
+  color: var(--wgi-muted-ink);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  /* The selected calmer Lato treatment keeps supporting data regular. */
+  font-weight: 400;
+  text-overflow: ellipsis;
+}
+
+/* An overdue line has no second badge: its age is the attention ink
+   (amber-700), bold (5.56 on the band, 5.09 on the open tint), and
+   line-row.tsx keeps the word for a screen reader. */
+.wgi-list-row [data-col="received"][data-overdue] {
+  color: var(--portal-attention-ink);
+  font-weight: 600;
+}
+
+/* The row-opening affordance: a chevron button at the right edge. The row
+   itself is the wider target; this is the one the keyboard reaches. At rest
+   it is a control boundary, not text: the frame draws it in its light slate,
+   and the brand's control ink is that value (3.86 on the surface, 3.15 on
+   the open tint, over the 3:1 floor); it darkens to the page ink on hover. */
+.appt-line-trigger {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  padding: 0;
+  color: var(--color-line-3);
+  cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .appt-line-trigger:hover {
+    background: var(--color-mint-2);
+    color: var(--color-ink);
+  }
+}
+
+.appt-line-trigger[data-popup-open] {
+  background: var(--color-mint-2);
+  color: var(--color-ink);
+}
+
+/* The chevron presses with its row: the same deeper mint, and the shared
+   small-button scale. */
+.appt-line-trigger:active {
+  background: var(--color-mint-press);
+  color: var(--color-ink);
+}
+
+/* ---------- The rail ----------
+   Track 11px wide, inset 26px from the surface's right edge, from the foot
+   of the column labels to the bottom of the rows; thumb 10px in the track,
+   6px corners. Base UI sizes and moves the thumb as a pure function of
+   the scroll position, and nothing here transitions its transform or
+   height: only its ink tints, on the micro beat. The browser owns
+   overscroll (the viewport's `overscroll-behavior-y: contain`), and no
+   script draws it (issue #302). */
+.wgi-list-rail {
+  /* Base UI positions the rail inline (top: 0; inset-inline-end: 0), so the
+     offsets below the column labels and in from the gutter are margins. */
+  --wgi-rail-gap: 0.8125rem;
+  margin-block-start: var(--wgi-head-h);
+  margin-inline-end: var(--wgi-rail-gap);
+  width: 0.6875rem;
+  height: auto;
+  border-radius: 6px;
+  background: var(--wgi-track);
+  padding: 0;
+  transition: opacity var(--motion-base-duration) var(--motion-standard);
+}
+
+.wgi-list-rail[data-orientation="vertical"] {
+  height: auto;
+}
+
+.wgi-list-thumb {
+  position: relative;
+  width: 100%;
+  flex: none;
+  border-radius: 6px;
+  background: var(--wgi-thumb);
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+/* A 44px-wide hit area around an 11px track, inside the gutter; the drawn
+   thumb keeps its measured size, and the pseudo-element belongs to the
+   thumb, so Base UI reads a press on it as a grab rather than a track
+   jump. The card clips at its edge, `--wgi-rail-gap` past the rail, so
+   the area reaches exactly that far right and takes the rest of its 44px
+   (33px less the gap) on the left, over the gutter. */
+.wgi-list-thumb::before {
+  content: "";
+  position: absolute;
+  inset: 0 calc(-1 * var(--wgi-rail-gap)) 0 calc(var(--wgi-rail-gap) - 2.0625rem);
+}
+
+/* Emphasis while the rows are moving (Base UI's data-scrolling, held for
+   500ms past the last scroll) and, with a mouse, while the rail is
+   hovered: the same tint. */
+.wgi-list-rail[data-scrolling] .wgi-list-thumb {
+  background: var(--color-line-3);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wgi-list-rail[data-hovering] .wgi-list-thumb,
+  .wgi-list-thumb:hover {
+    background: var(--color-line-3);
+  }
+
+  .wgi-list-rail[data-hovering] .wgi-list-thumb,
+  .wgi-list-thumb:hover {
+    cursor: grab;
+  }
+}
+
+/* Held wins over scrolling and hover: the strongest ink the instant the
+   button goes down, released with it (data-held is the recipe's own
+   flag). */
+.wgi-list-rail[data-held] .wgi-list-thumb,
+.wgi-list-rail[data-held] .wgi-list-thumb:hover {
+  background: var(--color-muted-ink);
+}
+
+.wgi-list-rail[data-held] .wgi-list-thumb,
+.wgi-list-rail[data-held] .wgi-list-thumb:hover {
+  cursor: grabbing;
+}
+
+/* Touch: the gutter widens so the 44px-wide hit area sits over the gutter
+   rather than the rows, and the area also reaches 14px above and below
+   the thumb so the 16px shortest thumb still offers 44px to a finger. */
+@media (pointer: coarse) {
+  .wgi-home {
+    --wgi-gutter: 2.75rem;
+  }
+
+  .wgi-list-thumb::before {
+    inset: -0.875rem calc(-1 * var(--wgi-rail-gap)) -0.875rem calc(var(--wgi-rail-gap) - 2.0625rem);
+  }
+}
+
+@media (forced-colors: active) {
+  .wgi-list-rail {
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
+
+  /* Every tint state above, each at its own specificity and later in
+     source, so high contrast paints the thumb one ink in all of them. */
+  .wgi-list-rail .wgi-list-thumb,
+  .wgi-list-rail[data-scrolling] .wgi-list-thumb,
+  .wgi-list-rail[data-hovering] .wgi-list-thumb,
+  .wgi-list-rail[data-held] .wgi-list-thumb,
+  .wgi-list-rail .wgi-list-thumb:hover,
+  .wgi-list-rail[data-held] .wgi-list-thumb:hover {
+    background: CanvasText;
+    forced-color-adjust: none;
+  }
+
+  .wgi-list-head th {
+    border-bottom-color: CanvasText;
+  }
+}
+
+/* ---------- The footer ----------
+   Count at the left, range at the right, 16px regular in the page ink,
+   tabular, a hairline above it (node 88:1241). The rule spans the rows'
+   width, so the footer sits inside the card's own padding. */
+.wgi-list-foot {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+  min-height: 1.5625rem;
+  margin-inline: 1.4375rem var(--wgi-gutter);
+  border: 0;
+  border-top: 1px solid var(--wgi-rule);
+  border-radius: 0;
+  background: transparent;
+  transition: opacity var(--motion-base-duration) var(--motion-standard);
+  padding: 0.75rem 0 1.375rem 0.4375rem;
+  color: var(--wgi-name-ink);
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+}
+
+.wgi-list-range {
+  margin-inline-start: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.wgi-list-note {
+  margin: 0;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-xs);
+  font-weight: 400;
+}
+
+/* Columns leave from the right as the surface narrows; the name, the
+   status and the affordance always hold, and the phone tucks under the
+   name once its column is gone. */
+@media (max-width: 82rem) {
+  .wgi-list-table [data-cell="received"] {
+    display: none;
+  }
+
+  .wgi-list-table [data-cell="patient"] {
+    width: 26%;
+  }
+
+  .wgi-list-table [data-cell="phone"] {
+    width: 22%;
+  }
+
+  .wgi-list-table [data-cell="status"] {
+    width: 24%;
+  }
+
+  .wgi-list-table [data-cell="pref"] {
+    width: 28%;
+  }
+}
+
+@media (max-width: 74rem) {
+  .wgi-list-table [data-cell="pref"] {
+    display: none;
+  }
+
+  .wgi-list-table [data-cell="patient"] {
+    width: 36%;
+  }
+
+  .wgi-list-table [data-cell="phone"] {
+    width: 30%;
+  }
+
+  .wgi-list-table [data-cell="status"] {
+    width: 34%;
+  }
+}
+
+@media (max-width: 48rem) {
+  .wgi-list-table [data-cell="phone"] {
+    display: none;
+  }
+
+  .wgi-list-table [data-cell="patient"] {
+    width: 54%;
+  }
+
+  .wgi-list-table [data-cell="status"] {
+    width: 46%;
+  }
+
+  .appt-phone-stack {
+    display: block;
+    margin-block-start: 0.125rem;
+  }
+
+  .appt-phone-stack .appt-phone {
+    font-size: var(--pt-xs);
+  }
+
+  .wgi-home {
+    --wgi-row-h: 3.5rem;
+    --wgi-gutter: 2rem;
+    --wgi-day-size: 1.75rem;
+  }
+
+  /* The header on a phone: the day on one line, the two commands side by
+     side on the next, and the filters one row deep that scrolls sideways,
+     so the first request is on screen without a scroll. */
+  .wgi-home > .portal-sheet-head {
+    gap: var(--ps-3);
+  }
+
+  .wgi-home > .portal-sheet-head .portal-sheet-commands {
+    flex-wrap: nowrap;
+  }
+
+  .wgi-home > .portal-sheet-head .portal-sheet-commands > * {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 0.75rem;
+    font-size: var(--pt-xs);
+  }
+
+  .wgi-home .wgi-filter-bar {
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    margin-block: 0.75rem -0.5rem;
+    margin-inline: -1rem;
+    overflow-x: auto;
+    padding-block: 0.5rem;
+    padding-inline: 1rem;
+    scrollbar-width: none;
+  }
+
+  .wgi-home .wgi-filter-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .wgi-home .wgi-filter-bar > * {
+    flex: none;
+  }
+
+  .wgi-home .wgi-add-filter,
+  .wgi-home .wgi-sug {
+    min-height: 2.75rem;
+    padding-inline: 0.875rem;
+    font-size: var(--pt-xs);
+  }
+
+  .wgi-home .wgi-pill-label {
+    min-height: calc(2.75rem - 2.4px);
+    font-size: var(--pt-xs);
+  }
+
+  .wgi-list-card {
+    padding-top: 1rem;
+  }
+
+  .wgi-list-scroll {
+    padding-inline-start: 0.75rem;
+  }
+
+  .wgi-list-rail {
+    --wgi-rail-gap: 0.75rem;
+  }
+
+  .wgi-list-foot {
+    margin-inline: 0.75rem var(--wgi-gutter);
+    padding: 0.625rem 0 1rem 0.25rem;
+    font-size: var(--pt-xs);
+  }
+
+  .wgi-list-row > td {
+    padding-inline: 0.625rem;
+  }
+
+  .wgi-list-head th {
+    padding-inline: 0.625rem;
+  }
+
+  .appt-name {
+    font-size: var(--pt-sm);
+  }
+}
+
+/* ---------- Status badge (fresh StockBadge conversion) ----------
+   The frame's badge: 30px tall, 7.5px corners, 15px semibold, a 1.3px
+   stroke, 14px sides. One glass-gradient recipe for every tinted status
+   (issue #327): an opaque vertical fill from one ramp step to the next, the
+   status stroke one step deeper, and a 1px white highlight along the top
+   edge that reads as the pane. The fill is opaque, so its ink is measured
+   against the fill alone, whatever band the row wears. Closed is the ghost:
+   no fill and no highlight, a slate outline around slate-700 words, so it
+   recedes without dropping to text alone. Nothing is blurred. */
+
+.wgi-badge {
+  display: inline-flex;
+  height: 1.875rem;
+  width: fit-content;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1.3px solid transparent;
+  border-radius: var(--wgi-badge-radius);
+  padding: 0 0.875rem;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6);
+  font-size: var(--pt-sm);
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.wgi-badge-new {
+  background: linear-gradient(var(--wgi-badge-new-fill), var(--wgi-badge-new-fill-end));
+  color: var(--wgi-badge-new-ink);
+  border-color: var(--wgi-badge-new-stroke);
+  box-shadow: inset 0 1px 0 var(--wgi-badge-new-highlight);
+}
+
+.wgi-badge-contacted {
+  background: linear-gradient(var(--wgi-badge-contacted-fill), var(--wgi-badge-contacted-fill-end));
+  color: var(--wgi-badge-contacted-ink);
+  border-color: var(--wgi-badge-contacted-stroke);
+}
+
+.wgi-badge-scheduled {
+  background: linear-gradient(var(--wgi-badge-scheduled-fill), var(--wgi-badge-scheduled-fill-end));
+  color: var(--wgi-badge-scheduled-ink);
+  border-color: var(--wgi-badge-scheduled-stroke);
+}
+
+.wgi-badge-closed {
+  background: none;
+  box-shadow: none;
+  color: var(--wgi-badge-closed-ink);
+  border-color: var(--wgi-badge-closed-stroke);
+}
+
+/* ---------- Skeleton rows (hold the exact surface geometry) ---------- */
+
+@keyframes wgi-skeleton {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.wgi-list-skeleton .wgi-list-viewport {
+  overflow: hidden;
+}
+
+.wgi-list-skeleton td > span {
+  display: block;
+  height: 0.85rem;
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--color-line-2) 72%, white);
+  animation: wgi-skeleton 1.6s ease-in-out infinite;
+}
+
+/* ---------- Print: paper has no scroll ---------- */
+
+@media print {
+  .portal-content:has(> .wgi-home) {
+    display: block;
+    min-height: 0;
+  }
+
+  .wgi-list-card {
+    display: block;
+    min-height: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .wgi-list-scroll {
+    display: block;
+    padding: 0;
+  }
+
+  .wgi-list-viewport {
+    height: auto;
+    overflow: visible !important;
+  }
+
+  .wgi-list-rail {
+    display: none;
+  }
+
+  .wgi-list-head th {
+    position: static;
+  }
+}
+
+/* ---------- Popover shell (fresh StockPopover conversion) ---------- */
+
+/* The positioner is a box at the anchor, not a surface: a card dragged
+   into a panel (use-card-detach.ts) leaves it behind, and the rows under
+   that empty box must still take the press. The popup takes its own. */
+.wgi-popover-positioner {
+  pointer-events: none;
+}
+
+/* The frame's card (node 76:1005): 8px corners, a hairline in the list
+   rule, and the one soft lift the list surface used to carry. */
+.wgi-popover {
+  pointer-events: auto;
+  border: 1px solid var(--wgi-rule, var(--color-line-2));
+  border-radius: 8px;
+  background: var(--wgi-surface, var(--portal-surface));
+  color: var(--color-body);
+  box-shadow: var(--wgi-card-shadow, var(--shadow-popover));
+  outline: none;
+  transform-origin: var(--transform-origin);
+  /* Scale and fade from the trigger's origin on the base beat (240ms) of
+     the standard curve; the exit is the same curve on the fast beat. Both
+     read the registry, never an inlined bezier. */
+  transition:
+    transform var(--motion-base-duration) var(--motion-standard),
+    opacity var(--motion-base-duration) var(--motion-standard);
+}
+
+.wgi-popover[data-starting-style],
+.wgi-popover[data-ending-style] {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.wgi-popover[data-ending-style] {
+  transition-duration: var(--motion-fast-duration);
+}
+
+/* Keyboard-initiated actions never animate. Base UI marks the popup
+   data-instant="click" when Enter/Space opened it, "dismiss" on Escape or
+   an outside click, and "focus" when focus left; every one of those skips
+   the transition. */
+.wgi-popover[data-instant] {
+  transition-duration: 0ms;
+}
+
+/* ---------- The record card ---------- */
+
+/* Figma Ypf9ohpRcGWF5C9T9bSvWW, section 03 (node 134:1176): a 13.5rem
+   column for who, how to reach them and what happened, beside the month
+   and the strip beneath it, and one footer across both — the way into the
+   full record and Save. The month is six weeks tall whatever it shows and
+   the strip holds its height in every state, so the card is one fixed
+   height. The positioner keeps the side the row gives it and shifts the
+   card into view rather than shrinking it (a popover is only as big as
+   its contents): the max-height with a whole-card scroll is the last
+   resort for a viewport shorter than the card, not a mode. The four type
+   sizes below sit between the closed --pt-* steps; they are the frame's,
+   scoped to the card, and used nowhere else. */
+.wgi-record-card {
+  --wgi-card-name-size: 1.125rem; /* 18px */
+  --wgi-card-row-size: 0.785rem; /* 12.56px: answers, days, segments */
+  --wgi-card-tag-size: 0.656rem; /* 10.5px: the strip's small label */
+  --wgi-card-value-size: 0.844rem; /* 13.5px: the strip's value */
+  display: grid;
+  width: 33.5rem;
+  max-height: var(--available-height, 40rem);
+  overflow: auto;
+  padding: 0;
+  grid-template-columns: 13.5rem minmax(0, 1fr);
+  grid-template-rows: minmax(max-content, 1fr) auto;
+  grid-template-areas:
+    "side main"
+    "foot foot";
+}
+
+/* A scheduled or closed line has nothing to answer and no day to pick:
+   the card is the column alone, at the editor's width, the way into the
+   full record beneath it. */
+.wgi-record-card:has(.wgi-record-note) {
+  width: 20rem;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "side"
+    "foot";
+}
+
+.wgi-record-side {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding-bottom: 0.75rem;
+  grid-area: side;
+}
+
+.wgi-record-main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-left: 1px solid var(--wgi-rule);
+  grid-area: main;
+}
+
+/* Below the sidebar breakpoint the column stacks above the month at the
+   editor's width and the card scrolls inside the space the positioner
+   reports, the footer pinned along its lower edge. The primary nav docks
+   along the bottom edge above the popover layer (portal-workbench.css),
+   so a card opening downward stops short of the dock by its 5rem height
+   plus a breath. */
+@media (max-width: 59.99rem) {
+  .wgi-record-card {
+    width: 20rem;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    grid-template-areas:
+      "side"
+      "main"
+      "foot";
+  }
+
+  .wgi-record-card[data-side="bottom"] {
+    max-height: calc(var(--available-height, 40rem) - 5.5rem);
+  }
+
+  .wgi-record-main {
+    border-top: 1px solid var(--wgi-rule);
+    border-left: 0;
+  }
+
+  .wgi-record-foot {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    background: var(--wgi-surface);
+  }
+}
+
+/* The head is the card's grab surface: a drag here past the threshold
+   detaches the card into a panel (use-card-detach.ts; HIG Popovers on
+   detachable popovers). `touch-action: none` keeps the pointer events on
+   the head rather than starting a scroll, `user-select: none` keeps the
+   name from selecting under the grab, and the grab cursor says the card
+   can move. The name makes room for the close; the lines under it run
+   the column's full width. */
+.wgi-record-head {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 1rem 0.9375rem 0.625rem;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.wgi-record-card[data-dragging] .wgi-record-head {
+  cursor: grabbing;
+}
+
+/* The panel moves on its own only when the lane changes under it
+   (use-card-detach.ts), and only `translate` travels — the drag writes it
+   1:1 with no transition, and transform and opacity keep the entrance's
+   beat. The sheet's arrival pushes the panel aside on the sheet's own beat,
+   so the two read as one change; the rubber band past the sheet's edge
+   eases home on the base beat, like the sheet grip's. */
+.wgi-record-card[data-yielding] {
+  transition:
+    transform var(--motion-base-duration) var(--motion-standard),
+    opacity var(--motion-base-duration) var(--motion-standard),
+    translate var(--motion-sheet-duration) var(--motion-standard);
+}
+
+.wgi-record-card[data-settling] {
+  transition:
+    transform var(--motion-base-duration) var(--motion-standard),
+    opacity var(--motion-base-duration) var(--motion-standard),
+    translate var(--motion-base-duration) var(--motion-standard);
+}
+
+/* The card's close: the sheet's small quiet button at the head's corner,
+   2rem drawn with a 44px hit area reaching past it. */
+.wgi-record-close {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--btn-radius);
+  background: none;
+  padding: 0;
+  color: var(--wgi-muted-ink);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-record-close::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+
+@media (hover: hover) {
+  .wgi-record-close:hover {
+    background: var(--color-mint-hover);
+    color: var(--wgi-name-ink);
+  }
+}
+
+/* Below the sidebar breakpoint the card cannot detach, so the head is
+   not a grab surface and touches on it keep their scroll. */
+@media (max-width: 59.99rem) {
+  .wgi-record-head {
+    cursor: default;
+    touch-action: auto;
+  }
+}
+
+.wgi-record-name {
+  margin: 0;
+  padding-right: 1.75rem;
+  color: var(--wgi-name-ink);
+  font-size: var(--wgi-card-name-size);
+  font-weight: 700;
+  line-height: 1.21;
+  overflow-wrap: anywhere;
+}
+
+/* The queue line: the list row's badge at the head's scale, then when the
+   line is due in words. An overdue line's words take the badge's amber
+   ink, the one amber the card spends on time. */
+.wgi-record-queue {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: var(--pt-xs);
+  font-weight: 600;
+}
+
+.wgi-record-queue > [data-overdue] {
+  color: var(--wgi-attention-ink);
+}
+
+.wgi-record-badge {
+  height: 1.425rem;
+  border-radius: 6px;
+  padding: 0 0.53rem;
+  font-size: 0.7125rem;
+}
+
+.wgi-record-pref {
+  margin: 0;
+  color: var(--wgi-muted-ink);
+  font-size: var(--pt-xs);
+}
+
+/* The frame's phone action: the row band as its fill and the command
+   navy as its ink (9.4:1); mint is for hover. */
+.wgi-record-call {
+  display: flex;
+  min-height: 2.4375rem;
+  align-items: center;
+  gap: 0.525rem;
+  margin: 0 0.9375rem;
+  padding: 0 0.73rem;
+  border-radius: var(--wgi-cmd-radius);
+  background: var(--wgi-band);
+  color: var(--wgi-cmd-primary);
+  font-size: var(--pt-sm);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-record-call:hover {
+    background: var(--color-mint-hover);
+    color: var(--wgi-cmd-primary);
+  }
+}
+
+.wgi-record-call > svg {
+  flex: none;
+}
+
+/* The small uppercase label over a group: OUTCOME here, and the strip's
+   CALL BACK / APPOINTMENT beside the month. */
+.wgi-record-label {
+  margin: 1.375rem 0.9375rem 0.25rem;
+  color: var(--wgi-label-ink);
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+/* The answers: what happened, in the queue's own words and nothing after
+   them — the strip beside them is the readout. */
+.wgi-record-answers {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  padding: 0 0.5rem;
+}
+
+/* One row = one answer: the registry radio inside a whole-row label (the
+   request detail's decision rows, at the card's density). The chosen row
+   says so twice without a fill: the radio becomes a navy ring and the
+   label turns semibold ink. The registry's own row utilities sit in the
+   utilities layer, so these unlayered rules win. */
+.wgi-answer {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 2.479rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 0 0.4375rem;
+  background: none;
+  color: var(--wgi-name-ink);
+  font-size: var(--wgi-card-row-size);
+  font-weight: 400;
+  cursor: pointer;
+  text-align: start;
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-answer[data-closes] {
+  margin-top: 0.3rem;
+  border-top: 1px solid var(--wgi-rule);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+}
+
+@media (hover: hover) {
+  .wgi-answer:has([data-slot="radio-group-item"]:enabled):hover {
+    background: var(--color-mint-hover);
+  }
+}
+
+/* A whole-row press is a deeper tint, not a scale (a wide bar). */
+.wgi-answer:has([data-slot="radio-group-item"]:enabled):active {
+  background: var(--color-mint-press);
+}
+
+.wgi-answer:has([data-checked]) {
+  font-weight: 600;
+}
+
+/* The ring is the row's, inside it; the radio itself draws nothing. */
+.wgi-answer:has([data-slot="radio-group-item"]:focus-visible) {
+  box-shadow: inset 0 0 0 2px var(--color-teal);
+}
+
+.wgi-answer [data-slot="radio-group-item"]:focus-visible {
+  outline: none;
+}
+
+.wgi-answer:has([data-slot="radio-group-item"]:disabled) {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* The frame's radio, drawn as strokes: a hairline in the muted ink at
+   rest, and chosen, a 5px navy ring around the surface — no dot, no fill.
+   The registry's indicator dot is hidden. */
+.wgi-answer [data-slot="radio-group-item"] {
+  --tw-ring-shadow: 0 0 #0000;
+  width: 1rem;
+  height: 1rem;
+  border: 0;
+  background: var(--wgi-surface);
+  box-shadow: inset 0 0 0 1px var(--wgi-muted-ink);
+}
+
+.wgi-answer [data-slot="radio-group-item"][data-checked] {
+  background: var(--wgi-surface);
+  box-shadow: inset 0 0 0 5px var(--wgi-cmd-primary);
+}
+
+.wgi-answer [data-slot="radio-group-indicator"] {
+  display: none;
+}
+
+/* The surface: the editor's calendar (same class, same component) at the
+   frame's cells — 42.6px wide, 46px apart — six weeks tall whatever the
+   month. The card paints it two ways. At rest (nothing answered, No call,
+   a close) every day is the thumb ink and the month title the label ink:
+   the card keeps its shape and the eye keeps its map, and nothing reads as
+   a plan. Active, the days in reach are ink, today is teal over a dot,
+   and the picked day is the only navy fill in the card besides Save. */
+.wgi-record-cal {
+  flex: 1 1 auto;
+}
+
+.wgi-record-cal .wgi-editor-cal {
+  --cell-size: 2.66rem;
+
+  padding: 0.25rem 0.625rem 0.375rem;
+}
+
+.wgi-record-cal .rdp-month {
+  gap: 0;
+}
+
+.wgi-record-cal .rdp-caption_label {
+  color: var(--wgi-name-ink);
+  font-size: 0.8875rem;
+  font-weight: 700;
+}
+
+.wgi-record-cal .rdp-weekdays {
+  height: 2.1875rem;
+  align-items: center;
+}
+
+.wgi-record-cal .rdp-weekday {
+  color: var(--wgi-label-ink);
+  font-size: var(--wgi-card-row-size);
+  opacity: 0.7;
+}
+
+.wgi-record-cal .rdp-week {
+  margin-top: 0.215rem;
+}
+
+.wgi-record-cal .rdp-day {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+}
+
+.wgi-record-cal .rdp-day_button {
+  width: 2.125rem;
+  min-width: 0;
+  height: 2.125rem;
+  border-radius: 999px;
+  color: var(--wgi-name-ink);
+  font-size: var(--wgi-card-row-size);
+  font-variant-numeric: tabular-nums;
+  opacity: 1;
+  /* The registry ships transition-all on Tailwind's ease; the pick and the
+     rest-to-active repaint are fill and ink, on the feedback beat. */
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    color var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-record-cal .rdp-day_button > span {
+  opacity: 1;
+}
+
+.wgi-record-cal .rdp-disabled .rdp-day_button {
+  color: var(--wgi-thumb);
+}
+
+.wgi-record-cal .rdp-outside .rdp-day_button {
+  color: var(--wgi-outside-day);
+}
+
+.wgi-record-cal:not([data-idle]) .rdp-today:not(.rdp-disabled, .rdp-outside) .rdp-day_button {
+  gap: 0.125rem;
+  color: var(--color-teal);
+  font-weight: 700;
+}
+
+.wgi-record-cal:not([data-idle])
+  .rdp-today:not(.rdp-disabled, .rdp-outside)
+  .rdp-day_button::after {
+  content: "";
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: currentcolor;
+}
+
+.wgi-record-cal .rdp-day_button[data-selected-single="true"] {
+  background: var(--wgi-cmd-primary);
+  color: white;
+  font-weight: 700;
+}
+
+.wgi-record-cal .rdp-day_button[data-selected-single="true"]::after {
+  display: none;
+}
+
+/* The registry rings the focused day whenever it holds focus, so a click
+   would leave a halo round the pick the frame draws bare. The ring is for
+   the keyboard: it stays for focus-visible and goes for a pointer. */
+.wgi-record-cal .rdp-day_button:not(:focus-visible) {
+  --tw-ring-shadow: 0 0 #0000;
+}
+
+.wgi-record-cal[data-idle] .rdp-caption_label {
+  color: var(--wgi-label-ink);
+}
+
+.wgi-record-cal[data-idle] .rdp-weekday {
+  color: var(--wgi-thumb);
+}
+
+.wgi-record-cal[data-idle] .rdp-day:not(.rdp-outside) .rdp-day_button {
+  color: var(--wgi-thumb);
+}
+
+/* The strip along the month's lower edge, one height in every state so
+   the card never jumps: the second question at its left — a contact's
+   Call again or No call, a booking's time — and at its right the answer
+   Save records, or the pick it still waits for. */
+.wgi-record-strip {
+  display: flex;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-top: 1px solid var(--wgi-rule);
+  padding: 0.375rem 1rem 0.375rem 0.625rem;
+}
+
+/* The segmented control: the registry toggle group on the band, the
+   pressed segment raised onto the surface. */
+.wgi-record-follow {
+  gap: 2px;
+  border-radius: var(--wgi-cmd-radius);
+  padding: 2px;
+  background: var(--wgi-band);
+}
+
+.wgi-record-follow > [data-slot="toggle-group-item"] {
+  height: auto;
+  gap: 0.3125rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 0.25rem 0.625rem;
+  background: transparent;
+  color: var(--wgi-muted-ink);
+  font-size: 0.781rem;
+  font-weight: 400;
+  /* The registry ships transition-all on Tailwind's ease; name the
+     properties and read the registry curve, the button recipe's way. */
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    border-color var(--motion-fast-duration) var(--motion-standard),
+    box-shadow var(--motion-fast-duration) var(--motion-standard),
+    color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-record-follow > [data-slot="toggle-group-item"]:hover:not([data-pressed]) {
+    background: var(--color-mint-hover);
+    color: var(--wgi-name-ink);
+  }
+}
+
+.wgi-record-follow > [data-slot="toggle-group-item"][data-pressed] {
+  border-color: var(--wgi-chip-stroke);
+  background: var(--wgi-surface);
+  box-shadow: 0 1px 2px rgb(15 20 59 / 0.08);
+  color: var(--wgi-name-ink);
+  font-weight: 700;
+}
+
+/* The time beside its word: one field-shaped trigger on the strip, and
+   the wheels it raises over the month. */
+.wgi-record-when {
+  width: auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wgi-record-when > [data-slot="field-label"] {
+  flex: none;
+  color: var(--wgi-muted-ink);
+  font-size: 0.781rem;
+  font-weight: 600;
+}
+
+/* The trigger wears the field's hairline, and while its wheels are up the
+   card's checked tint, so the open surface is traceable to the control
+   that opened it. */
+.wgi-time-trigger {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.375rem;
+  border: 1px solid var(--wgi-chip-stroke);
+  border-radius: var(--wgi-cmd-radius);
+  padding: 0.375rem 0.75rem 0.375rem 0.625rem;
+  background: var(--wgi-surface);
+  color: var(--wgi-name-ink);
+  font-size: var(--pt-xs);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    border-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+/* An unfilled field reads as a prompt, not as ink. */
+.wgi-time-trigger[data-empty] {
+  color: var(--wgi-muted-ink);
+  font-weight: 400;
+}
+
+.wgi-time-trigger > svg {
+  flex: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--wgi-muted-ink);
+}
+
+@media (hover: hover) {
+  .wgi-time-trigger:hover:enabled {
+    background: var(--color-mint-hover);
+  }
+}
+
+.wgi-time-trigger[aria-expanded="true"] {
+  border-color: var(--color-teal-ink);
+  background: var(--color-mint-2);
+}
+
+.wgi-time-trigger:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* The strip's answer: a small label over the value, right-aligned. A
+   value still missing is the quiet ink at regular weight. */
+.wgi-record-readout {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  margin: 0;
+  text-align: right;
+}
+
+.wgi-record-readout-label {
+  color: var(--wgi-label-ink);
+  font-size: var(--wgi-card-tag-size);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.wgi-record-readout-value {
+  color: var(--wgi-name-ink);
+  font-size: var(--wgi-card-value-size);
+  font-weight: 700;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.wgi-record-readout-value[data-missing] {
+  color: var(--wgi-muted-ink);
+  font-weight: 400;
+}
+
+/* The month behind the wheels is context, not a control: the scrim quiets
+   it and dismisses the wheels without committing. The stock calendar
+   paints its day buttons at z-index 10 in this same stacking context, so
+   the scrim and the wheels sit above that rather than at 1 and 2. */
+.wgi-time-scrim {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: color-mix(in oklch, var(--color-navy) 24%, transparent);
+  cursor: default;
+}
+
+/* The wheels are a popover over the month: they sit just above the strip,
+   never over the field that raised them (HIG Popovers), and grow out of
+   that field and shrink back into it (design-system/motion.md "Rules of use", spatial
+   consistency). time-picker.tsx sets the transform origin at the
+   trigger; the arrival, the exit and the reduced-motion temperament are
+   the motion.dev presets in src/lib/motion.ts. */
+.wgi-time-sheet {
+  position: absolute;
+  z-index: 21;
+  right: 0.625rem;
+  bottom: calc(3rem + 0.375rem);
+  left: 0.625rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 8px;
+  padding: 0.7rem 0.75rem 0.75rem;
+  background: var(--wgi-surface);
+  box-shadow: var(--wgi-card-shadow);
+  transform-origin: var(--wgi-time-origin, 50% 100%);
+}
+
+/* A transformed descendant still counts toward an ancestor's scrollable
+   overflow, so while the wheels scale in they would hand the card, which
+   is overflow: auto, a range that exists only during the entrance. Clipping
+   main for the life of the wheels removes it; nothing visible is lost. */
+.wgi-record-main:has(.wgi-time-sheet) {
+  overflow: clip;
+}
+
+.wgi-time-title {
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: var(--pt-sm);
+  font-weight: 700;
+  text-align: center;
+}
+
+.wgi-time-done {
+  width: 100%;
+}
+
+/* Scheduled and closed lines have nothing to answer; the sentence points
+   at the full record, where reopening lives. */
+.wgi-record-note {
+  margin: 1rem 0.9375rem 0.4rem;
+  color: var(--color-body);
+  font-size: var(--pt-xs);
+  line-height: 1.45;
+}
+
+/* One footer across both columns: the way into the full record at its
+   left, Save at its right. */
+.wgi-record-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-top: 1px solid var(--wgi-rule);
+  padding: 0.75rem 0.75rem 0.75rem 1.125rem;
+  grid-area: foot;
+}
+
+/* The full record's toggle — Open, then Hide — as a link: command navy
+   ink and a chevron, no fill until hover. Its open state wears the working
+   row's deeper mint, so row, toggle and sheet share one tint. */
+.wgi-record-full {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: -0.375rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  padding: 0.375rem;
+  color: var(--wgi-cmd-primary);
+  font-family: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-record-full:hover {
+    background: var(--color-mint-hover);
+  }
+}
+
+.wgi-record-full[aria-expanded="true"] {
+  background: var(--wgi-open);
+}
+
+/* A link, not a key: the press is a deeper tint. */
+.wgi-record-full:active {
+  background: var(--color-mint-press);
+}
+
+/* The chevron flips in the open state, pointing back toward the card: a
+   hint of the direction the sheet will go. State, not travel — reduced
+   motion drops the transition and keeps the flip. */
+.wgi-record-full > svg {
+  flex: none;
+  transition: transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-record-full[aria-expanded="true"] > svg {
+  transform: scaleX(-1);
+}
+
+/* Save: the card's one commit, as wide as its word. Enabled it is the
+   command navy, the only navy fill in the card besides the picked day;
+   disabled it goes quiet on the band, and the strip says what it waits
+   for. */
+.wgi-record-save {
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 5px;
+  background: var(--wgi-cmd-primary);
+  padding: 0 1.375rem;
+  color: white;
+  font-family: inherit;
+  font-size: var(--wgi-card-row-size);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-record-save:hover:enabled {
+    background: color-mix(in oklch, var(--wgi-cmd-primary) 88%, white);
+  }
+}
+
+.wgi-record-save:disabled {
+  background: var(--wgi-band);
+  color: var(--wgi-thumb);
+  cursor: default;
+}
+
+/* ---------- The editor popover ---------- */
+
+/* 20rem: room for the category list to breathe, and the exact width the
+   calendar fills when the Received editor turns into it. */
+.wgi-editor {
+  width: 20rem;
+  max-height: min(40rem, var(--available-height, 24rem));
+  overflow: auto;
+  padding: 0;
+}
+
+.wgi-editor-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 0;
+  border-bottom: 1px solid var(--color-line);
+  background: none;
+  padding: 0.7rem 0.9rem;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  outline: none;
+}
+
+.wgi-editor-input::placeholder {
+  color: var(--color-muted-ink);
+}
+
+/* The search box's ring is its underline, in the stronger teal. */
+.wgi-editor-input:focus-visible {
+  outline: none;
+  box-shadow: inset 0 -2px 0 var(--color-teal-strong);
+}
+
+/* "<Dimension> ⌄" beside the search box, going up one level: the category
+   list on the Add-filter path, the preset list from the calendar. The box
+   beside it keeps the input's paint. */
+.wgi-editor-head {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--color-line);
+}
+
+.wgi-editor-head > .wgi-editor-input {
+  flex: 1;
+  min-width: 0;
+  border-bottom: 0;
+}
+
+.wgi-editor-dim {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.25rem;
+  margin-inline-start: 0.6rem;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-sm);
+  background: none;
+  padding: 0.25rem 0.45rem;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-editor-dim:hover {
+    background: var(--color-mint-hover);
+  }
+}
+
+.wgi-editor-dim > svg {
+  color: var(--color-muted-ink);
+}
+
+/* The calendar view's header text: the draft range in the input's slot,
+   "Start – End" filling in as days are picked. Not a field — nothing to type. */
+.wgi-editor-readout {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0.7rem 0.9rem;
+  color: var(--color-ink);
+  font-size: var(--pt-xs);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wgi-editor-readout[data-empty] {
+  color: var(--color-muted-ink);
+  font-weight: 400;
+}
+
+.wgi-editor-body {
+  padding: 0.3rem;
+}
+
+/* One row = one option. The row is a real button; the hover hint (`Only` /
+   `Check all` on the label, `Check` / `Uncheck` on the checkbox) is a
+   passive caption revealed on the row's hover or focus. */
+.wgi-editor-opt {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-sm);
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-editor-opt:hover {
+    background: var(--color-mint-hover);
+  }
+}
+
+.wgi-editor-opt:focus-within {
+  background: var(--color-mint);
+}
+
+/* An option row presses as a deeper tint: it is the popover's width. */
+.wgi-editor-opt:active {
+  background: var(--color-mint-press);
+}
+
+.wgi-editor-row {
+  display: flex;
+  width: 100%;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: 0.55rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  padding: 0 0.6rem;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: start;
+}
+
+/* Rows sit flush in the list, so their rings sit inside them. */
+.wgi-editor-row:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--color-teal);
+}
+
+.wgi-editor-row[data-muted] {
+  color: var(--color-muted-ink);
+}
+
+.wgi-editor-row > svg[data-chevron] {
+  flex: none;
+  margin-left: auto;
+  color: var(--color-line-3);
+}
+
+/* Checkbox rows: the box is its own target beside the label button. */
+.wgi-editor-check {
+  display: inline-flex;
+  min-height: 2.5rem;
+  flex: none;
+  align-items: center;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  padding: 0 0.55rem 0 0.6rem;
+  cursor: pointer;
+}
+
+.wgi-editor-check:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--color-teal);
+}
+
+.wgi-editor-check + .wgi-editor-row {
+  padding-inline-start: 0;
+}
+
+/* A member row sits under its parent: the box steps in by one box and gap,
+   so the members' boxes line up under the parent's label. */
+.wgi-editor-opt[data-depth="1"] .wgi-editor-check {
+  padding-inline-start: calc(0.6rem + 1rem + 0.55rem);
+}
+
+.wgi-editor-box {
+  display: inline-flex;
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--color-line-3);
+  border-radius: 0.25rem;
+  background: transparent;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    border-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-editor-box[data-checked] {
+  border-color: var(--color-navy);
+  background: var(--color-navy);
+  color: white;
+}
+
+.wgi-editor-tick {
+  display: inline-flex;
+  width: 1rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-navy);
+}
+
+.wgi-editor-quick {
+  position: absolute;
+  right: 0.6rem;
+  padding: 0.2rem 0.1rem;
+  color: var(--color-teal-ink);
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/* The label's hint shows for the row; the checkbox's hint takes over while
+   the pointer or focus is on the box itself. */
+.wgi-editor-opt:focus-within .wgi-editor-quick[data-target="label"],
+.wgi-editor-opt:has(.wgi-editor-check:focus-visible) .wgi-editor-quick[data-target="check"] {
+  visibility: visible;
+}
+
+.wgi-editor-opt:has(.wgi-editor-check:focus-visible) .wgi-editor-quick[data-target="label"] {
+  visibility: hidden;
+}
+
+@media (hover: hover) {
+  .wgi-editor-opt:hover .wgi-editor-quick[data-target="label"],
+  .wgi-editor-opt:has(.wgi-editor-check:hover) .wgi-editor-quick[data-target="check"] {
+    visibility: visible;
+  }
+
+  .wgi-editor-opt:has(.wgi-editor-check:hover) .wgi-editor-quick[data-target="label"] {
+    visibility: hidden;
+  }
+}
+
+/* The calendar view: the month grid is the popover's full width, then a
+   ruled block of Start, End, and Apply beneath it. */
+.wgi-editor-range {
+  display: flex;
+  flex-direction: column;
+}
+
+.wgi-editor-cal {
+  --cell-size: 2.4rem;
+
+  width: 100%;
+  padding: 0.6rem 0.6rem 0.5rem;
+}
+
+.wgi-editor-range-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  border-top: 1px solid var(--color-line);
+  padding: 0.7rem 0.6rem 0.6rem;
+}
+
+.wgi-editor-range-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-2xs);
+  font-weight: 700;
+}
+
+.wgi-editor-range-fields input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 2.25rem;
+  border: 1px solid var(--color-line-2);
+  border-radius: var(--radius-sm);
+  background: white;
+  padding: 0.3rem 0.6rem;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-xs);
+}
+
+/* Apply: the one deliberate commit in the bar, painted as the portal's
+   primary button (the header's Print requests). */
+.wgi-editor-apply {
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  margin-top: 0.2rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-navy);
+  padding: 0 0.9rem;
+  color: white;
+  font-family: inherit;
+  font-size: var(--pt-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-editor-apply:hover:enabled {
+    background: color-mix(in oklch, var(--color-navy) 88%, white);
+  }
+}
+
+.wgi-editor-apply:disabled {
+  background: var(--color-line-2);
+  color: var(--color-muted-ink);
+  cursor: default;
+}
+
+.wgi-editor-hint {
+  margin: 0;
+  border-top: 1px solid var(--color-line);
+  padding: var(--ps-2) 0.9rem;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-2xs);
+}
+
+.wgi-list-note {
+  margin: var(--ps-2) 0 0;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-xs);
+}
+
+/* ---------- Empty state ---------- */
+
+.wgi-empty {
+  margin-top: var(--ps-4);
+  border-top: 1px solid var(--color-line);
+  padding: 3.5rem var(--ps-4);
+  text-align: center;
+}
+
+/* Inside the list surface the empty state is the surface's whole body:
+   centered in the room the rows would have taken, no rule above it. */
+.wgi-list-card .wgi-empty {
+  margin: auto;
+  border-top: 0;
+  padding-block: 3rem 3.5rem;
+}
+
+.wgi-empty h2 {
+  margin: 0;
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: var(--pt-base);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.wgi-empty p {
+  max-width: 44ch;
+  margin: var(--ps-2) auto 0;
+  color: var(--color-body);
+  font-size: var(--pt-sm);
+  line-height: 1.6;
+}
+
+.wgi-empty-clear {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  margin-top: var(--ps-4);
+  border: 0;
+  border-radius: var(--btn-radius);
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--color-line-2);
+  padding: 0 1.1rem;
+  color: var(--color-ink);
+  font-family: inherit;
+  font-size: var(--pt-sm);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-empty-clear:hover {
+    background: var(--color-mint-hover);
+  }
+}
+
+/* ---------- Full record: the right sheet ---------- */
+
+/* The sheet is the record's inspector: it runs beside the record card,
+   undimmed — no backdrop and no blur, because dimming the page says modal
+   and this surface is not one (design-system/overlays.md "Companion
+   surfaces"; Apple HIG's panels and inspectors). The card stays on top of
+   the sheet on the sidebar layout, never covered, and it is the wall the
+   sheet resizes against (full-record-sheet-geometry.ts).
+
+   On the sidebar layout the sheet floats inside the inset canvas (issue
+   #327, section 05, frame C): 8px from the canvas's top, right and bottom
+   edges, a 12px radius, and the layered --wgi-sheet-shadow in place of a
+   hairline, so it reads as a surface above the canvas rather than an edge
+   of the window. It opens 521px wide, which at 1440 leaves the frame's
+   16px gap to the card; the grip narrows it, and widens it until it stops
+   one gap short of the card. Below the breakpoint it keeps the full-height
+   edge sheet: flush to the viewport's right edge, a hairline and a spill.
+
+   It slides in from off the right edge on the sheet beat (420ms) of the
+   standard curve and leaves along the same path on the base beat (240ms):
+   exits are quieter than entrances, and the path in is the path out
+   (design-system/motion.md "Rules of use", spatial consistency). The
+   travel is the sheet's width plus its inset, so the floating sheet
+   starts and ends wholly off screen. Transitions rather than keyframes,
+   so a close during the entrance reverses from wherever the sheet is. The
+   slide is transform only; under reduced motion the surface cross-fades
+   instead, with no travel.
+
+   Below the breakpoint the box bleeds 4vw past the viewport's right edge:
+   the resize grip's rubber band translates the sheet toward that edge past
+   its narrow bound, and the bleed keeps the edge covered instead of
+   flashing a strip of page. The floating sheet has no bleed — its band
+   carries the whole surface toward the edge, and the inset shows it
+   move. The widths below are the visible sheet; the resize code measures
+   any bleed rather than repeating the number.
+
+   The sheet sits on the drawer layer above the sidebar (z 60) and the
+   popovers (z 50); on the sidebar layout the record card's positioner
+   rises one layer above it (below), and below the breakpoint the
+   full-width sheet covers the card as before. */
+.wgi-sheet {
+  --wgi-sheet-bleed: 4vw;
+  --wgi-sheet-travel: 100%;
+  position: fixed;
+  inset-block: 0;
+  right: calc(-1 * var(--wgi-sheet-bleed));
+  z-index: var(--z-drawer, 80);
+  box-sizing: border-box;
+  height: 100%;
+  /* The edge sheet (node 72:627): 542px wide on the list surface, a
+     hairline in the list rule, a soft spill toward the page. It is
+     portaled to body and reads Home's paints from the shared rule. */
+  width: calc(33.875rem + var(--wgi-sheet-bleed));
+  /* Never the whole viewport when there is no sidebar column to stop at. */
+  max-width: calc(94vw + var(--wgi-sheet-bleed));
+  background: var(--wgi-surface);
+  border: 0;
+  border-left: 1px solid var(--wgi-rule);
+  box-shadow: -10px 0 14px rgba(31, 56, 79, 0.16);
+  padding: 0 var(--wgi-sheet-bleed) 0 0;
+  outline: none;
+  transition:
+    transform var(--motion-sheet-duration) var(--motion-standard),
+    opacity var(--motion-sheet-duration) var(--motion-standard);
+}
+
+/* The floating sheet. Its inset is the canvas's own (1rem from the
+   viewport, portal-workbench.css) plus the frame's 8px; the canvas is the
+   wall, so the sheet never reaches past the canvas's left edge less the
+   same 8px. The content clips to the radius (below); the sheet itself
+   does not, so the grip can straddle its left edge. */
+@media (min-width: 60rem) {
+  .wgi-sheet {
+    --wgi-sheet-bleed: 0px;
+    --wgi-sheet-inset: 1.5rem;
+    --wgi-sheet-travel: calc(100% + var(--wgi-sheet-inset));
+    inset-block: var(--wgi-sheet-inset);
+    right: var(--wgi-sheet-inset);
+    height: auto;
+    width: 32.5625rem;
+    /* The canvas's width (the viewport less the 17rem sidebar and the
+       1rem inset on its right), less the 8px the sheet keeps each side. */
+    max-width: min(94vw, 100vw - 17rem - 1rem - 1rem);
+    border-left: 0;
+    border-radius: 0.75rem;
+    box-shadow: var(--wgi-sheet-shadow);
+  }
+
+  /* A keyboard open focuses the sheet: the ring stacks on the lift rather
+     than replacing it. */
+  .wgi-sheet:focus-visible {
+    box-shadow:
+      0 0 0 2px var(--portal-surface, #fff),
+      0 0 0 4px var(--color-teal),
+      var(--wgi-sheet-shadow);
+  }
+
+  .wgi-sheet-content {
+    overflow: hidden;
+    border-radius: inherit;
+  }
+
+  .wgi-sheet-surface {
+    border-radius: inherit;
+  }
+}
+
+.wgi-sheet[data-starting-style],
+.wgi-sheet[data-ending-style] {
+  transform: translateX(var(--wgi-sheet-travel));
+}
+
+.wgi-sheet[data-ending-style] {
+  transition-duration: var(--motion-base-duration);
+}
+
+/* Keyboard-initiated actions never animate: the sheet marks itself
+   data-instant for an open or close that came from the keyboard, the
+   attribute Base UI's popovers set on their own. The content's settle
+   goes with it. */
+.wgi-sheet[data-instant],
+.wgi-sheet[data-instant] :is(.wgi-sheet-head, .wgi-sheet-body) {
+  transition-duration: 0ms;
+  transition-delay: 0ms;
+  animation: none;
+}
+
+/* A live drag tracks the pointer 1:1 — nothing eases while a finger is on
+   the grip — and letting go of the rubber band eases it home on the base
+   beat, not the sheet's slower arrival. data-fitting is the one case a
+   width change animates: a programmatic refit when the bounds moved under
+   an open sheet (the card arriving beside it, a retarget, the window
+   resizing), never during a drag. */
+.wgi-sheet[data-dragging] {
+  transition: none;
+}
+
+.wgi-sheet[data-fitting] {
+  transition:
+    width var(--motion-base-duration) var(--motion-standard),
+    transform var(--motion-sheet-duration) var(--motion-standard),
+    opacity var(--motion-sheet-duration) var(--motion-standard);
+}
+
+/* After data-fitting, so the band's ease home keeps the base beat even
+   while a width fit is in flight. */
+.wgi-sheet[data-settling] {
+  transition-duration: var(--motion-base-duration);
+}
+
+/* The card is never covered: on the sidebar layout its positioner rises
+   one layer above the sheet. A detached panel keeps to the lane left of
+   the sheet (panel-lane.ts), so the layer only shows where the window is
+   too narrow for both — and the panel is the wall the sheet's resize
+   stops at. Below the breakpoint the card keeps the popover layer and the
+   full-width sheet covers it, as before. */
+@media (min-width: 60rem) {
+  .wgi-popover-positioner:has(.wgi-record-card) {
+    z-index: calc(var(--z-drawer, 80) + 1);
+  }
+}
+
+/* The content settles a beat behind the surface: header, then body, a
+   short fade-and-nudge on the base beat, 60ms apart. A keyframe rather
+   than a starting-style transition so the same settle replays when the
+   keyed content remounts on a retarget — the inspector's cue that the
+   selection changed. Exits do not stagger — the sheet leaves whole. */
+@keyframes wgi-sheet-settle {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+}
+
+/* Under reduced motion the settle keeps its fade and drops the travel. */
+@keyframes wgi-sheet-settle-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.wgi-sheet-head,
+.wgi-sheet-body {
+  animation: wgi-sheet-settle var(--motion-base-duration) var(--motion-standard) both;
+}
+
+.wgi-sheet-body {
+  animation-delay: 60ms;
+}
+
+.wgi-sheet-surface {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Keyed by the record on screen: a retarget remounts it and the settle
+   replays above. */
+.wgi-sheet-content {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+/* A left-edge grip drags the panel wider — the "bring the sheet across"
+   gesture. Pointer capture keeps the drag alive off the strip. */
+.wgi-sheet-grip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 2;
+  width: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+/* The pill lengthens a third on hover, focus and drag: a transform, so the
+   stretch composites instead of relaying the strip. */
+.wgi-sheet-grip > span {
+  width: 4px;
+  height: 3rem;
+  border-radius: 999px;
+  background: var(--color-line-2);
+  box-shadow: -1px 0 0 rgb(255 255 255 / 60%);
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-sheet-grip:hover > span {
+    background: var(--color-teal);
+    transform: scaleY(1.333);
+  }
+}
+
+.wgi-sheet-grip:focus-visible > span,
+.wgi-sheet-grip[data-dragging] > span {
+  background: var(--color-teal);
+  transform: scaleY(1.333);
+}
+
+/* The strip is a tall invisible target; the ring belongs to the pill. */
+.wgi-sheet-grip:focus-visible {
+  box-shadow: none;
+}
+
+.wgi-sheet-grip:focus-visible > span {
+  box-shadow:
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
+}
+
+/* The pinned header (Figma Ypf9ohpRcGWF5C9T9bSvWW, section 04): the name
+   and the close on one line, then the card's queue line
+   with the number of calls, the preference, and the phone chip beside the
+   email. It never scrolls and never moves; everything below it does. */
+.wgi-sheet-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  flex: none;
+  padding: 1.25rem 1.5rem 1.25rem;
+  border-bottom: 1px solid var(--wgi-rule);
+}
+
+.wgi-sheet-head > :not(.wgi-sheet-name, .wgi-sheet-close) {
+  grid-column: 1 / -1;
+}
+
+/* The small uppercase label every section's heading carries. */
+.wgi-sheet-label {
+  margin: 0;
+  color: var(--wgi-label-ink);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.88px;
+  line-height: 0.875rem;
+  text-transform: uppercase;
+}
+
+.wgi-sheet-close {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  margin: -0.375rem -0.5rem -0.375rem 0;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--wgi-cmd-radius);
+  background: none;
+  color: var(--wgi-muted-ink);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-sheet-close:hover {
+    background: var(--wgi-hover);
+    color: var(--wgi-name-ink);
+  }
+}
+
+.wgi-sheet-name {
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-family: var(--font-body);
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.75rem;
+  overflow-wrap: anywhere;
+}
+
+.wgi-sheet-queue {
+  margin-top: 0.5rem;
+}
+
+/* The count stays in ink beside an overdue line's amber; the escalation
+   is the card's, and only the timing carries it (#316, D4). */
+.wgi-sheet-attempts {
+  margin-left: -0.25rem;
+  color: var(--wgi-name-ink);
+  font-weight: 400;
+}
+
+.wgi-sheet-pref {
+  margin: 0.25rem 0 0;
+  color: var(--wgi-muted-ink);
+  font-size: var(--pt-xs);
+}
+
+.wgi-sheet-contact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-top: 0.875rem;
+}
+
+/* The card's call chip at the sheet's size. */
+.wgi-sheet-call {
+  min-height: 2.25rem;
+  margin: 0;
+  padding: 0 0.75rem;
+  font-size: 0.9375rem;
+}
+
+.wgi-sheet-email {
+  min-width: 0;
+  color: var(--wgi-link-ink);
+  font-size: 0.84375rem;
+  line-height: 1.25rem;
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+  text-decoration-color: var(--wgi-chip-stroke);
+  text-underline-offset: 0.15em;
+  transition: text-decoration-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-sheet-email:hover {
+    color: var(--wgi-link-ink);
+    text-decoration-color: currentColor;
+  }
+}
+
+/* Until the read lands, a bar holds the email's place on the list
+   skeleton's sweep, so the header keeps its height. */
+.wgi-sheet-placeholder {
+  display: block;
+  height: 0.85rem;
+  width: 11rem;
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--color-line-2) 72%, white);
+  animation: wgi-skeleton 1.6s ease-in-out infinite;
+}
+
+/* The body: sections 28px apart, no rules. A column so the history can
+   take the height the others leave (full-record-sheet-body.tsx); it only
+   scrolls itself once the history has let go of its own scroll. */
+.wgi-sheet-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1.75rem;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  padding: 1.375rem 1.5rem 1.5rem;
+}
+
+.wgi-sheet-section {
+  flex: none;
+  margin: 0;
+}
+
+.wgi-sheet-section > .wgi-sheet-label,
+.wgi-history > .wgi-sheet-label {
+  margin-bottom: 0.625rem;
+}
+
+.wgi-sheet-empty {
+  margin: 0;
+  color: var(--wgi-muted-ink);
+  font-size: var(--pt-sm);
+  line-height: 1.25rem;
+}
+
+/* The patient's own words behind a quote rule, line breaks kept, two
+   lines until "Show all" opens them in place. */
+.wgi-sheet-message {
+  margin: 0;
+  border-left: 2px solid var(--wgi-chip-stroke);
+  padding-left: 0.875rem;
+}
+
+.wgi-sheet-message > p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--wgi-name-ink);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.wgi-sheet-message > p[data-open] {
+  display: block;
+  -webkit-line-clamp: unset;
+}
+
+.wgi-sheet-more {
+  margin-top: 0.375rem;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  padding: 0;
+  color: var(--wgi-link-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 0.15em;
+  transition: text-decoration-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-sheet-more:hover {
+    text-decoration-color: currentColor;
+  }
+}
+
+/* The latest staff note: a tinted block, the note and its byline. */
+.wgi-sheet-note {
+  margin: 0;
+  border-radius: 8px;
+  background: var(--wgi-band);
+  padding: 0.75rem 0.875rem;
+}
+
+.wgi-sheet-note > p {
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: 0.90625rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.wgi-sheet-note > figcaption {
+  margin-top: 0.375rem;
+  color: var(--wgi-muted-ink);
+  font-size: 0.78125rem;
+  line-height: 1.125rem;
+}
+
+/* ---------- The history ----------
+   The one scroll region: it takes the height the sections leave, down to
+   the label, a day and about three rows; below that the body releases it
+   and scrolls whole. */
+.wgi-history {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  min-height: 8.75rem;
+}
+
+.wgi-sheet-body[data-released] .wgi-history {
+  flex: none;
+}
+
+.wgi-history-scroll {
+  flex: 1;
+  min-height: 0;
+  /* The rows' hover tint runs past the text column, so the scroll area
+     does too, and hands the room back as padding. */
+  margin-inline: -0.5rem;
+}
+
+.wgi-sheet-body[data-released] .wgi-history-scroll {
+  flex: none;
+}
+
+.wgi-history-viewport {
+  overscroll-behavior-y: contain;
+  padding-inline: 0.5rem;
+  border-radius: 6px;
+}
+
+/* The soft edge: a fade over the last rows while more wait below
+   (HIG Scroll views, scroll edge effects). */
+.wgi-history-scroll::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 1.75rem;
+  background: linear-gradient(to bottom, transparent, var(--wgi-surface));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-history-scroll[data-overflow-y-end]::after {
+  opacity: 1;
+}
+
+/* The scrollbar shows only while the rows move, or while the pointer is
+   on the bar itself: a 4px thumb in the list's thumb ink. Base UI's
+   data-hovering covers the whole region, so the bar's own :hover is used. */
+.wgi-history-bar {
+  width: 0.625rem;
+  padding: 0.125rem 0.1875rem;
+  opacity: 0;
+  transition: opacity var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-history-bar[data-scrolling],
+.wgi-history-bar[data-held] {
+  opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wgi-history-bar:hover {
+    opacity: 1;
+  }
+}
+
+.wgi-history-thumb {
+  width: 4px;
+  border-radius: 2px;
+  background: var(--wgi-thumb);
+}
+
+.wgi-history-days {
+  --wgi-rail-x: 7.25px;
+  padding-bottom: 0.25rem;
+}
+
+/* Day headers stick to the top of the region as their rows pass under.
+   Each header and each row draws its own piece of the rail at the icons'
+   center, so the rail runs unbroken from the first icon to the last. */
+.wgi-history-date {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0;
+  background: var(--wgi-surface);
+  padding: 0.5rem 0 0.25rem 1.625rem;
+  color: var(--wgi-muted-ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1rem;
+}
+
+.wgi-history-day:first-child > .wgi-history-date {
+  padding-top: 0;
+}
+
+.wgi-history-date::before,
+.wgi-history-row::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  width: 1.5px;
+  background: var(--wgi-rule);
+}
+
+.wgi-history-date::before {
+  left: var(--wgi-rail-x);
+}
+
+.wgi-history-day:first-child > .wgi-history-date::before {
+  display: none;
+}
+
+.wgi-history-rows {
+  margin: 0 -0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+/* A line per event, a note's up to two: the icon in the rail, level with
+   the first line, then the words. The row is the popover's trigger; its
+   tint says which row the popover belongs to. */
+.wgi-history-row {
+  --wgi-row-fill: var(--wgi-surface);
+  position: relative;
+  display: grid;
+  grid-template-columns: 1rem minmax(0, 1fr);
+  align-items: start;
+  gap: 0.625rem;
+  width: 100%;
+  min-height: 1.875rem;
+  border: 0;
+  border-radius: 6px;
+  background: var(--wgi-row-fill);
+  padding: 0.3125rem 0.5rem;
+  color: var(--wgi-name-ink);
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  text-align: left;
+  cursor: default;
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-history-row::before {
+  left: calc(0.5rem + var(--wgi-rail-x));
+}
+
+/* The rail ends at the first and last icons' centers: the row's top
+   padding and half a line, so a two-line note ends it at its icon. */
+.wgi-history-day:first-child li:first-child > .wgi-history-row::before {
+  top: 0.9375rem;
+}
+
+.wgi-history-day:last-child li:last-child > .wgi-history-row::before {
+  bottom: calc(100% - 0.9375rem);
+}
+
+@media (hover: hover) {
+  .wgi-history-row:hover {
+    --wgi-row-fill: var(--wgi-hover);
+  }
+}
+
+.wgi-history-row[data-popup-open] {
+  --wgi-row-fill: var(--wgi-hover);
+}
+
+/* Pressed: a row is wide, so it presses as a deeper tint. */
+.wgi-history-row:active {
+  --wgi-row-fill: var(--wgi-open);
+}
+
+/* The region clips, so the ring is drawn inside the row. */
+.wgi-sheet .wgi-history-row:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--color-teal);
+}
+
+/* The icon's box takes the row's fill, so it cuts the rail cleanly and
+   tints with the row on the same beat. */
+.wgi-history-icon {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  width: 1rem;
+  height: 1.25rem;
+  align-items: center;
+  justify-content: center;
+  background: var(--wgi-row-fill);
+  color: var(--wgi-name-ink);
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-history-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--wgi-icon-ink);
+}
+
+.wgi-history-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A note reads in full, its line breaks folded, up to two lines. Clipped
+   rather than hidden: a hidden box scrolls, and a press on the row would
+   scroll the clamped text past its first line. */
+.wgi-history-row[data-note] .wgi-history-text {
+  display: -webkit-box;
+  overflow: clip;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.wgi-history-text b {
+  font-weight: 600;
+}
+
+/* Each row carries the weight the model gave it (#324). Routine attempts,
+   the system's own entries, and events later undone recede, icon and all;
+   a hovered or open row keeps its weight and takes the tint alone. */
+.wgi-history-row[data-emphasis="muted"] :is(.wgi-history-icon, .wgi-history-text),
+.wgi-history-row[data-undone] :is(.wgi-history-icon, .wgi-history-text) {
+  color: var(--wgi-muted-ink);
+}
+
+/* A failed notification email is the one row that escalates: the attention
+   amber ink, and its alert mark on the attention fill (#316). */
+.wgi-history-row[data-emphasis="attention"] .wgi-history-text {
+  color: var(--wgi-attention-ink);
+}
+
+.wgi-history-row[data-emphasis="attention"] .wgi-history-icon svg {
+  border-radius: 50%;
+  background: var(--wgi-attention-fill);
+  color: var(--wgi-attention-ink);
+}
+
+.wgi-history-row[data-undone] .wgi-history-words {
+  text-decoration: line-through;
+}
+
+/* ---------- The history popover ----------
+   Beside the sheet, level with its row, the arrow on the row; above the
+   sheet and the card. It grows from the arrow's point on the popover
+   shell's beats (.wgi-popover). */
+.wgi-history-positioner {
+  z-index: calc(var(--z-drawer, 80) + 2);
+}
+
+.wgi-history-popover {
+  width: 18.75rem;
+  max-width: calc(100vw - 1.5rem);
+  box-sizing: border-box;
+  padding: 0.875rem 1rem 1rem;
+  box-shadow:
+    0 1px 1.5px rgb(15 20 59 / 8%),
+    0 8px 12px rgb(15 20 59 / 14%);
+}
+
+.wgi-history-arrow {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--wgi-rule);
+  background: var(--wgi-surface);
+  transform: rotate(45deg);
+}
+
+.wgi-history-arrow[data-side="left"] {
+  right: -6px;
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+}
+
+.wgi-history-arrow[data-side="bottom"] {
+  top: -6px;
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+}
+
+.wgi-history-arrow[data-side="top"] {
+  bottom: -6px;
+  border-top-color: transparent;
+  border-left-color: transparent;
+}
+
+/* The heading names the event beside the row's own icon: a call
+   attempt's outcome, or NOTE. */
+.wgi-history-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.375rem;
+  color: var(--wgi-label-ink);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.88px;
+  line-height: 0.875rem;
+  text-transform: uppercase;
+}
+
+.wgi-history-heading > .wgi-history-icon {
+  flex: none;
+  height: 1rem;
+  background: none;
+  color: var(--wgi-link-ink);
+}
+
+/* A note's byline sits under its heading, before the note. */
+.wgi-history-byline {
+  margin: 0 0 0.375rem;
+  color: var(--wgi-muted-ink);
+  font-size: 0.78125rem;
+  line-height: 1.125rem;
+}
+
+.wgi-history-body {
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+/* A long note scrolls in place and stops at its ends. */
+.wgi-history-note {
+  max-height: 13.75rem;
+  margin: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-radius: 4px;
+  color: var(--wgi-name-ink);
+  font-size: 0.90625rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.wgi-history-facts {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0.75rem 0 0;
+}
+
+/* A call attempt's facts follow its heading directly. */
+.wgi-history-heading + .wgi-history-facts {
+  margin-top: 0.25rem;
+}
+
+.wgi-history-facts > div {
+  display: grid;
+  grid-template-columns: 4.75rem minmax(0, 1fr);
+  gap: 0.5rem;
+}
+
+.wgi-history-facts dt {
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+.wgi-history-facts dd {
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: 0.84375rem;
+  line-height: 1.25rem;
+}
+
+/* ---------- Request details ----------
+   A disclosure, last in the tab: the chevron points right when closed and
+   down when open (HIG Disclosure controls), the label over the summary
+   that stands in for the list while it is closed. Both sit on the list's
+   indent past the chevron. The panel's height opens on the base beat, and
+   the history above gives up the room as it does; the header stays put. */
+.wgi-disclosure-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: calc(100% + 1rem);
+  margin: -0.375rem -0.5rem;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  padding: 0.375rem 0.5rem 0.375rem 0.125rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-disclosure-trigger:hover {
+    background: var(--wgi-hover);
+  }
+}
+
+.wgi-disclosure-trigger:active {
+  background: var(--wgi-open);
+}
+
+.wgi-disclosure-chevron {
+  display: inline-flex;
+  flex: none;
+  width: 1.5rem;
+  justify-content: center;
+  color: var(--wgi-muted-ink);
+  transition: transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-disclosure-trigger[data-panel-open] .wgi-disclosure-chevron {
+  transform: rotate(90deg);
+}
+
+.wgi-disclosure-title {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+/* The summary fades as the panel opens and gives its line back on the
+   panel's beat, so the label settles beside the chevron. */
+.wgi-disclosure-summary {
+  display: grid;
+  grid-template-rows: 1fr;
+  color: var(--wgi-name-ink);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  transition:
+    opacity var(--motion-fast-duration) var(--motion-standard),
+    grid-template-rows var(--motion-base-duration) var(--motion-standard);
+}
+
+.wgi-disclosure-summary > span {
+  min-height: 0;
+  overflow: hidden;
+  padding-top: 0.1875rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: padding-top var(--motion-base-duration) var(--motion-standard);
+}
+
+.wgi-disclosure-trigger[data-panel-open] .wgi-disclosure-summary {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+
+/* The gap above the summary goes with it: a collapsed track keeps its
+   item's padding. */
+.wgi-disclosure-trigger[data-panel-open] .wgi-disclosure-summary > span {
+  padding-top: 0;
+}
+
+.wgi-disclosure-panel {
+  height: var(--collapsible-panel-height);
+  overflow: hidden;
+  transition: height var(--motion-base-duration) var(--motion-standard);
+}
+
+.wgi-disclosure-panel[data-starting-style],
+.wgi-disclosure-panel[data-ending-style] {
+  height: 0;
+}
+
+.wgi-disclosure-panel[data-ending-style] {
+  transition-duration: var(--motion-fast-duration);
+}
+
+.wgi-sheet-dl {
+  display: grid;
+  grid-template-columns: 6.875rem minmax(0, 1fr);
+  column-gap: 0.75rem;
+  margin: 0;
+  padding: 0.75rem 0 0 1.625rem;
+}
+
+.wgi-sheet-dl dt,
+.wgi-sheet-dl dd {
+  display: flex;
+  align-items: center;
+  min-height: 1.75rem;
+}
+
+.wgi-sheet-dl dt {
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+}
+
+.wgi-sheet-dl dd {
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: 0.84375rem;
+  overflow-wrap: anywhere;
+}
+
+/* The record's skeleton: the sections' own shapes on the list skeleton's
+   shared opacity loop (DESIGN.md keeps the authored shape; a generic block
+   is a downgrade). */
+.wgi-sheet-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.wgi-sheet-skeleton > i {
+  display: block;
+  height: 0.85rem;
+  width: 100%;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--color-line-2) 72%, white);
+  animation: wgi-skeleton 1.6s ease-in-out infinite;
+}
+
+.wgi-sheet-skeleton > i[data-stands-for="section-title"] {
+  width: 5.5rem;
+  height: 0.7rem;
+  margin-top: 0.65rem;
+}
+
+.wgi-sheet-skeleton > i[data-stands-for="section-title"]:first-of-type {
+  margin-top: 0;
+}
+
+.wgi-sheet-skeleton > i[data-stands-for="detail-row"] {
+  width: 70%;
+}
+
+.wgi-sheet-skeleton > i[data-stands-for="detail-value"] {
+  width: 45%;
+}
+
+/* A record that no longer exists, and a read that failed: two lines in
+   the body, in place of the sections. */
+.wgi-sheet-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+
+.wgi-sheet-state-title {
+  margin: 0;
+  color: var(--color-ink);
+  font-size: var(--pt-sm);
+  font-weight: 700;
+}
+
+.wgi-sheet-state-note {
+  margin: 0;
+  color: var(--color-muted-ink);
+  font-size: var(--pt-sm);
+}
+
+/* ---------- Loading (home's own segment) ---------- */
+
+.wgi-loading-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ps-2);
+}
+
+.wgi-loading-head > span {
+  display: block;
+  height: 0.9rem;
+  width: 11rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--color-line-2) 60%, white);
+  animation: wgi-skeleton 1.6s ease-in-out infinite;
+}
+
+.wgi-loading-head > i {
+  display: block;
+  height: 2.5rem;
+  width: 18rem;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklch, var(--color-line-2) 72%, white);
+  animation: wgi-skeleton 1.6s ease-in-out infinite;
+}
+
+/* ---------- Reduced motion: gentler, never zero comprehension ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+  /* Durations are authored in globals.css's @layer base reduced-motion
+     block — the blanket reset there is !important, and important
+     declarations outrank everything non-important regardless of layers, so
+     nothing this (unlayered) file declares can restore a duration. Only
+     the travel is dropped here. */
+  .wgi-popover[data-starting-style],
+  .wgi-popover[data-ending-style],
+  .wgi-sheet[data-starting-style],
+  .wgi-sheet[data-ending-style] {
+    transform: none;
+  }
+
+  /* The slide gave the sheet nothing to fade; the cross-fade needs a
+     start. The content's settle keeps its fade the same way — the fade
+     variant drops the keyframe's nudge. */
+  .wgi-sheet[data-starting-style],
+  .wgi-sheet[data-ending-style] {
+    opacity: 0;
+  }
+
+  .wgi-sheet-head,
+  .wgi-sheet-body {
+    animation-name: wgi-sheet-settle-fade;
+  }
+
+  /* The rubber band's ease home is travel too; the sheet snaps to bounds.
+     The panel's yield and settle are the same: it lands in its lane. */
+  .wgi-sheet[data-settling],
+  .wgi-record-card[data-yielding],
+  .wgi-record-card[data-settling] {
+    transition: none;
+  }
+
+  /* The grip's stretch is travel too; the tint alone says "live". */
+  .wgi-sheet-grip:hover > span,
+  .wgi-sheet-grip:focus-visible > span,
+  .wgi-sheet-grip[data-dragging] > span {
+    transform: none;
+  }
+
+  /* The settle wash needs no override: the timed clear in
+     home-dashboard.tsx shows the mint tint for ~200ms either way, and the
+     blanket reset in globals.css @layer base already collapses the
+     exhale to an instant change. */
+
+  /* The shared small-button press keeps its tint and loses the scale. */
+  .wgi-add-filter:active,
+  .wgi-sug:active,
+  .wgi-pill-remove:active,
+  .appt-line-trigger:active,
+  .wgi-editor-dim:active,
+  .wgi-editor-apply:active:enabled,
+  .wgi-record-save:active:enabled,
+  .wgi-time-trigger:active:enabled,
+  .wgi-record-follow > [data-slot="toggle-group-item"]:active:enabled,
+  .wgi-record-call:active,
+  .wgi-record-close:active,
+  .wgi-empty-clear:active,
+  .wgi-sheet-close:active,
+  .wgi-sheet-call:active {
+    transform: none;
+  }
+}

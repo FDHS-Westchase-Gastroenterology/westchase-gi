@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { buttonVariants } from "@/components/ui/button-variants";
 import type { Dictionary } from "@/lib/i18n";
 import { site, localePath, directionsUrl, formatOfficeHours } from "@/lib/site";
 import type { Locale } from "@/lib/site";
@@ -57,9 +58,7 @@ export function Footer({ locale, dict }: Readonly<FooterProps>) {
               height={50}
               className="h-11 w-11 rounded-full bg-white/95 p-1.5"
             />
-            <p className="text-xl leading-tight font-[var(--font-display)] text-[var(--color-on-dark)]">
-              {site.headerName}
-            </p>
+            <p className="text-xl leading-tight text-[var(--color-on-dark)]">{site.headerName}</p>
           </div>
           <p className="mt-4 max-w-sm text-[0.95rem] leading-relaxed">{c.footer.phoneNote}</p>
           <p className="mt-3 max-w-sm text-[0.95rem] leading-relaxed">
@@ -76,7 +75,7 @@ export function Footer({ locale, dict }: Readonly<FooterProps>) {
 
         {/* Explore */}
         <nav aria-label={c.footer.exploreHeading}>
-          <h2 className="text-[0.85rem] font-[var(--font-body)] font-extrabold tracking-wide text-[var(--color-amber)] uppercase">
+          <h2 className="text-[0.85rem] font-extrabold tracking-wide text-[var(--color-amber)] uppercase">
             {c.footer.exploreHeading}
           </h2>
           <ul className="mt-4 grid gap-2.5 font-semibold">
@@ -92,7 +91,7 @@ export function Footer({ locale, dict }: Readonly<FooterProps>) {
 
         {/* For patients */}
         <nav aria-label={c.footer.patientsHeading}>
-          <h2 className="text-[0.85rem] font-[var(--font-body)] font-extrabold tracking-wide text-[var(--color-amber)] uppercase">
+          <h2 className="text-[0.85rem] font-extrabold tracking-wide text-[var(--color-amber)] uppercase">
             {c.footer.patientsHeading}
           </h2>
           <ul className="mt-4 grid gap-2.5 font-semibold">
@@ -119,7 +118,7 @@ export function Footer({ locale, dict }: Readonly<FooterProps>) {
 
         {/* Locations + contact */}
         <div>
-          <h2 className="text-[0.85rem] font-[var(--font-body)] font-extrabold tracking-wide text-[var(--color-amber)] uppercase">
+          <h2 className="text-[0.85rem] font-extrabold tracking-wide text-[var(--color-amber)] uppercase">
             {c.footer.locationsHeading}
           </h2>
           <ul className="mt-4 grid gap-5">
@@ -193,7 +192,7 @@ export function Footer({ locale, dict }: Readonly<FooterProps>) {
       <div className="border-t border-[var(--color-line-dark)]">
         <div className="container-x flex flex-col gap-6 py-9 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-md">
-            <p className="text-xl leading-tight font-[var(--font-display)] text-[var(--color-on-dark)]">
+            <p className="text-xl leading-tight text-[var(--color-on-dark)]">
               {c.footer.reviewHeading}
             </p>
             <p className="mt-2 text-[0.95rem] leading-relaxed">{c.footer.reviewBody}</p>
@@ -203,7 +202,8 @@ export function Footer({ locale, dict }: Readonly<FooterProps>) {
               href={site.links.googleReview}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn btn-amber btn-sm"
+              data-slot="button"
+              className={buttonVariants({ variant: "amber", size: "sm" })}
             >
               <Star className="h-4 w-4" /> {c.footer.reviewGoogle}
             </a>
@@ -211,7 +211,8 @@ export function Footer({ locale, dict }: Readonly<FooterProps>) {
               href={site.links.facebookReviews}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn btn-ghost-light btn-sm"
+              data-slot="button"
+              className={buttonVariants({ variant: "ghost-light", size: "sm" })}
             >
               <Facebook className="h-4 w-4" /> {c.footer.reviewFacebook}
             </a>

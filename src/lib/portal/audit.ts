@@ -8,7 +8,7 @@ import { z } from "zod";
 import type { JsonObject } from "@/lib/json";
 import type { AuditAction } from "@/lib/portal/contracts";
 
-interface AuditEntry {
+interface AuditWrite {
   actorEmail: string;
   action: AuditAction;
   entity: string;
@@ -32,7 +32,7 @@ function isPreProvenanceSchema(error: Readonly<{ code?: string } | null>): boole
  */
 export async function recordAudit(
   client: SupabaseClient,
-  entry: Readonly<AuditEntry>,
+  entry: Readonly<AuditWrite>,
 ): Promise<void> {
   const legacyAuditRow = {
     actor_email: entry.actorEmail,
@@ -59,7 +59,7 @@ export async function recordAudit(
 
 export async function beginExternalAudit(
   client: SupabaseClient,
-  entry: Readonly<AuditEntry>,
+  entry: Readonly<AuditWrite>,
 ): Promise<ExternalAudit> {
   const detail = { ...entry.detail, outcome: "pending" };
   const legacyAuditRow = {

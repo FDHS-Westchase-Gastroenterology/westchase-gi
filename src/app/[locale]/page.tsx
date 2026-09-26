@@ -11,10 +11,11 @@ import {
   Phone,
 } from "@/components/icons";
 import { LocationCards } from "@/components/LocationCards";
-import { Reveal } from "@/components/Reveal";
-import { revealDelay } from "@/components/reveal-delay";
+import { Reveal } from "@/components/patterns/Reveal";
+import { revealDelay } from "@/components/patterns/reveal-delay";
+import { TextBand } from "@/components/patterns/TextBand";
 import { TestimonialRail } from "@/components/TestimonialRail";
-import { TextBand } from "@/components/TextBand";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
 import { physicians, nursePractitioners, infusionNurse } from "@/lib/providers";
@@ -85,15 +86,21 @@ export default async function HomePage({ params }: Readonly<PageProps>) {
               <Heart className="h-4.5 w-4.5" />
               {t.heroKicker}
             </p>
-            <h1 className="display mt-4 font-[var(--font-display)] text-[var(--color-on-dark)]">
-              {t.heroTitle}
-            </h1>
+            <h1 className="display mt-4 text-[var(--color-on-dark)]">{t.heroTitle}</h1>
             <p className="lead mt-5 max-w-xl text-[var(--color-on-dark-muted)]">{t.heroLead}</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href={p("/appointment")} className="btn btn-amber btn-lg">
+              <Link
+                href={p("/appointment")}
+                data-slot="button"
+                className={buttonVariants({ variant: "amber", size: "lg" })}
+              >
                 {dict.common.requestAppointment}
               </Link>
-              <a href={site.phone.href} className="btn btn-ghost-light btn-lg">
+              <a
+                href={site.phone.href}
+                data-slot="button"
+                className={buttonVariants({ variant: "ghost-light", size: "lg" })}
+              >
                 <Phone className="h-4.5 w-4.5" /> {dict.common.callUs}
               </a>
             </div>
@@ -160,7 +167,7 @@ export default async function HomePage({ params }: Readonly<PageProps>) {
                       {tile.title}
                       <ArrowRight className="h-4 w-4 flex-none text-[var(--color-teal-ink)] transition-transform duration-300 group-hover:translate-x-1" />
                     </span>
-                    <span className="mt-0.5 block text-[0.92rem] leading-snug text-[var(--color-muted)]">
+                    <span className="mt-0.5 block text-[0.92rem] leading-snug text-[var(--color-muted-ink)]">
                       {tile.sub}
                     </span>
                   </span>
@@ -185,7 +192,7 @@ export default async function HomePage({ params }: Readonly<PageProps>) {
             ))}
           </div>
           <div className="mt-9 flex flex-wrap items-center gap-5">
-            <Link href={p("/appointment")} className="btn btn-navy">
+            <Link href={p("/appointment")} data-slot="button" className={buttonVariants()}>
               {dict.common.requestAppointment}
             </Link>
             <Link href={p("/about")} className="link-line">
@@ -224,7 +231,7 @@ export default async function HomePage({ params }: Readonly<PageProps>) {
                       className="aspect-[7/8] w-full object-cover object-top"
                     />
                     <span className="block px-6 pt-5 pb-5">
-                      <span className="block text-xl font-[var(--font-display)] text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
+                      <span className="block text-xl text-[var(--color-ink)] transition-colors group-hover:text-[var(--color-teal-ink)]">
                         {doc.name}, {doc.credentials}
                       </span>
                       <span className="mt-1 block text-[0.95rem] font-semibold text-[var(--color-teal-ink)]">
@@ -248,7 +255,7 @@ export default async function HomePage({ params }: Readonly<PageProps>) {
         <div className="container-x">
           <Reveal>
             <h2 className="h2 heading-tick">{t.testimonialsHeading}</h2>
-            <p className="mt-3 text-[var(--color-muted)]">{t.testimonialsNote}</p>
+            <p className="mt-3 text-[var(--color-muted-ink)]">{t.testimonialsNote}</p>
           </Reveal>
         </div>
         <div className="mt-8">
@@ -259,7 +266,8 @@ export default async function HomePage({ params }: Readonly<PageProps>) {
             href={site.links.googleReview}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn btn-outline"
+            data-slot="button"
+            className={buttonVariants({ variant: "outline" })}
           >
             {t.reviewCta} <ExternalLink className="h-4 w-4" />
           </a>
@@ -279,7 +287,7 @@ export default async function HomePage({ params }: Readonly<PageProps>) {
         </div>
       </section>
 
-      <TextBand locale={locale} dict={dict} />
+      <TextBand dict={dict} />
     </>
   );
 }

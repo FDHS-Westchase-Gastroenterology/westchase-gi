@@ -34,5 +34,5 @@
     ".next-verify/types/**/*.ts",
     ".next-verify/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "tools/oxlint/anti-slop"]
+  "exclude": ["node_modules", "tools/oxlint/anti-slop", ".design-sync", ".ds-sync", "ds-bundle"]
 }

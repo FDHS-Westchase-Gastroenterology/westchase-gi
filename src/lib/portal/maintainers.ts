@@ -3,7 +3,6 @@ import "server-only";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
-import type { MaintainerAccessModel } from "@/app/admin/(portal)/settings/software/maintainer-access";
 import type { Json } from "@/lib/json";
 import { beginExternalAudit, finishExternalAudit } from "@/lib/portal/audit";
 import { requireRole } from "@/lib/portal/auth";
@@ -27,6 +26,7 @@ import type {
   MaintainerFailureCode,
   MaintainerMutationResult,
 } from "@/lib/portal/maintainer-operation";
+import type { MaintainerAccessModel } from "@/lib/portal/maintainer-view";
 import { serviceClient } from "@/lib/portal/server";
 
 const usernameSchema = z.strictObject({

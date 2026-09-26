@@ -3,9 +3,10 @@ import Link from "next/link";
 
 import { DocumentList } from "@/components/DocumentList";
 import { ArrowRight, ExternalLink } from "@/components/icons";
-import { PageHero } from "@/components/PageHero";
-import { Reveal } from "@/components/Reveal";
-import { TextBand } from "@/components/TextBand";
+import { PageHero } from "@/components/patterns/PageHero";
+import { Reveal } from "@/components/patterns/Reveal";
+import { TextBand } from "@/components/patterns/TextBand";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
 import { patientResources, professionalOrgs, patientEducation } from "@/lib/resources";
@@ -44,10 +45,14 @@ export default async function ResourcesPage({ params }: Readonly<PageProps>) {
         <div className="container-x">
           <Reveal className="card-lined flex flex-wrap items-center justify-between gap-6 bg-[var(--color-mint)] p-7 sm:p-8">
             <div className="max-w-xl">
-              <h2 className="h3 font-[var(--font-display)]">{t.educationHeading}</h2>
+              <h2 className="h3">{t.educationHeading}</h2>
               <p className="mt-2 text-[var(--color-body)]">{t.educationBody}</p>
             </div>
-            <Link href={localePath(locale, "/patient-education")} className="btn btn-navy">
+            <Link
+              href={localePath(locale, "/patient-education")}
+              data-slot="button"
+              className={buttonVariants()}
+            >
               {t.educationCta} <ArrowRight className="h-4 w-4" />
             </Link>
           </Reveal>
@@ -104,7 +109,7 @@ export default async function ResourcesPage({ params }: Readonly<PageProps>) {
             ))}
           </dl>
 
-          <h2 className="h3 mt-14 font-[var(--font-display)]">{t.professionalHeading}</h2>
+          <h2 className="h3 mt-14">{t.professionalHeading}</h2>
           <ul className="mt-5 flex flex-wrap gap-x-8 gap-y-3">
             {professionalOrgs.map((org) => (
               <li key={org.url}>
@@ -133,7 +138,7 @@ export default async function ResourcesPage({ params }: Readonly<PageProps>) {
         </div>
       </section>
 
-      <TextBand locale={locale} dict={dict} />
+      <TextBand dict={dict} />
     </>
   );
 }

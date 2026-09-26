@@ -1,37 +1,7 @@
 import assert from "node:assert/strict";
-import { register } from "node:module";
 import test from "node:test";
-import { pathToFileURL } from "node:url";
 
-// Queue-attention is server-only and uses extensionless relative imports.
-// Node's test runner needs a resolve hook; Next's bundler supplies both at build time.
-register(
-  `data:text/javascript,${encodeURIComponent(`
-    export async function resolve(specifier, context, nextResolve) {
-      if (specifier === "server-only") {
-        return {
-          shortCircuit: true,
-          url: "data:text/javascript,export {}",
-          format: "module",
-        };
-      }
-      if (
-        (specifier.startsWith("./") || specifier.startsWith("../")) &&
-        !/\\.(?:[cm]?[jt]s|json|mjs|cjs|tsx|jsx)$/.test(specifier)
-      ) {
-        try {
-          return await nextResolve(specifier + ".ts", context);
-        } catch {
-          // fall through
-        }
-      }
-      return nextResolve(specifier, context);
-    }
-  `)}`,
-  pathToFileURL("./"),
-);
-
-const { orderQueueRows } = await import("./queue-attention.ts");
+import { orderQueueRows } from "./queue-attention.ts";
 
 // Tue 2026-07-28 09:00 ET — boundary is Mon 2026-07-27 08:00 ET.
 const NOW = new Date("2026-07-28T13:00:00Z");
