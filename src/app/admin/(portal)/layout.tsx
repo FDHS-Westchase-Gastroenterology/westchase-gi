@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { logoutAction } from "@/app/admin/actions";
-import { Activity, ExternalLink, FileText, LogOut, Users } from "@/components/icons";
+import { ExternalLink, LogOut, Users } from "@/components/icons";
 import { Toaster } from "@/components/ui/toaster";
 import { getSessionUser } from "@/lib/portal/auth";
 import { getPortalReleaseState } from "@/lib/portal/release-briefing";
@@ -13,11 +13,12 @@ import {
 import { availableQueueCount } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
 
-import { PortalNav } from "./portal-nav";
+import { PortalAccountLinks, PortalNav } from "./portal-nav";
 import { PortalReleaseProvider, PortalReleaseUtility } from "./portal-release-briefing";
 
-// The Front Desk Ledger: one persistent desktop index becomes the same four
-// Thumb-reachable destinations on mobile. The navigation stays put while the
+// The Front Desk Ledger: a persistent desktop index of the four work pages,
+// With Settings and Help in its account footer, becomes four thumb-reachable
+// Destinations on mobile. The navigation stays put while the
 // Appointment-request canvas changes, preserving location and task continuity.
 
 export default async function PortalLayout({
@@ -65,19 +66,8 @@ export default async function PortalLayout({
             </span>
           </Link>
 
-          <PortalNav waitingCount={waitingCount} />
-
-          <div className="portal-sidebar-tools">
-            <p>Practice tools</p>
-            <Link href="/admin/review-flyers">
-              <FileText className="h-[1.1rem] w-[1.1rem]" />
-              Review flyers
-            </Link>
-            <Link href="/admin/audit">
-              <Activity className="h-[1.1rem] w-[1.1rem]" />
-              Activity log
-            </Link>
-          </div>
+          <PortalNav layout="sidebar" waitingCount={waitingCount} />
+          <PortalNav layout="bar" waitingCount={waitingCount} />
 
           <div className="portal-sidebar-account">
             <p className="portal-sidebar-person">
@@ -91,6 +81,7 @@ export default async function PortalLayout({
               </small>
             </p>
             <div className="portal-sidebar-account-actions">
+              <PortalAccountLinks />
               <Link href="/">
                 <ExternalLink className="h-4 w-4" />
                 View website

@@ -60,8 +60,10 @@
     box-shadow: 0 -10px 30px rgb(19 40 56 / 12%);
   }
 
+  /* One list per layout: the phone bar shows its own, and the rail's list
+     is removed whole, so none of its links holds a tab stop. */
   .portal-sidebar-brand,
-  .portal-sidebar-tools,
+  .portal-primary-nav[data-layout="sidebar"],
   .portal-sidebar-account {
     display: none;
   }
@@ -445,8 +447,13 @@
       letter-spacing: 0.04em;
     }
 
-    .portal-primary-nav {
+    .portal-primary-nav[data-layout="sidebar"] {
+      display: block;
       padding: 1.35rem 1rem;
+    }
+
+    .portal-primary-nav[data-layout="bar"] {
+      display: none;
     }
 
     .portal-primary-nav > ul {
@@ -484,38 +491,6 @@
       margin-inline-start: auto;
       border-width: 0;
       font-size: 0.66rem;
-    }
-
-    .portal-sidebar-tools {
-      display: block;
-      margin-top: 0.65rem;
-      padding: 0 1rem;
-    }
-
-    .portal-sidebar-tools > p {
-      margin: 0 0 0.45rem 0.75rem;
-      color: rgb(226 239 240 / 58%);
-      font-size: 0.66rem;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .portal-sidebar-tools a {
-      display: flex;
-      min-height: 2.75rem;
-      align-items: center;
-      gap: 0.7rem;
-      border-radius: 0.6rem;
-      padding-inline: 0.8rem;
-      color: var(--color-on-dark-muted);
-      font-size: 0.82rem;
-      font-weight: 600;
-    }
-
-    .portal-sidebar-tools a:hover {
-      background: rgb(255 255 255 / 7%);
-      color: white;
     }
 
     .portal-sidebar-account {
@@ -565,10 +540,12 @@
       text-overflow: ellipsis;
     }
 
+    /* Settings and Help above View website and Sign out: two rows of two,
+       each a 44px target, their icons on the name's left edge. */
     .portal-sidebar-account-actions {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 0.35rem;
+      column-gap: 0.35rem;
       margin-top: 0.75rem;
     }
 
@@ -578,9 +555,10 @@
       min-height: 2.75rem;
       width: 100%;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
       gap: 0.4rem;
       border-radius: 0.55rem;
+      padding-inline: 0.45rem;
       color: var(--color-on-dark-muted);
       font-size: 0.75rem;
       font-weight: 400;
@@ -590,6 +568,11 @@
     .portal-sidebar-account-actions button:hover {
       background: rgb(255 255 255 / 8%);
       color: white;
+    }
+
+    /* Settings or Help on its own page: the ink brightens, with no fill. */
+    .portal-sidebar-account-actions a[aria-current="page"] {
+      color: var(--color-on-dark);
     }
   }
 

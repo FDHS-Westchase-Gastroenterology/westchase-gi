@@ -3,32 +3,46 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { CircleHelp, ClipboardCheck, Home, Settings } from "@/components/icons";
+import { Activity, CircleHelp, ClipboardCheck, FileText, Home, Settings } from "@/components/icons";
 
-// The four fixed staff destinations, in the specification's fixed order.
-// Their presentation adapts from a persistent desktop rail to a mobile
-// Tab bar, but the vocabulary, order, current-location signal, and waiting
-// Count never move. Occasional utilities stay outside this primary index.
+// Four destinations per layout, each its own list (issue #327, Figma section
+// 08 option 2). The desktop rail gives the four work pages the same row and
+// moves Settings and Help to the account footer; the phone bar keeps Home,
+// Requests, Settings and Help, with Activity log in the account menu. The
+// shell renders one PortalNav per layout and hides the inactive one whole,
+// so a link that is not on screen never holds a tab stop. Home, Requests,
+// the current-location signal and the waiting count never move.
 
-const NAV_ITEMS = [
-  { href: "/admin", label: "Home", icon: Home },
-  { href: "/admin/requests", label: "Requests", icon: ClipboardCheck },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
-  { href: "/admin/help", label: "Help", icon: CircleHelp },
-] as const;
+const HOME = { href: "/admin", label: "Home", icon: Home };
+const REQUESTS = { href: "/admin/requests", label: "Requests", icon: ClipboardCheck };
+const SETTINGS = { href: "/admin/settings", label: "Settings", icon: Settings };
+const HELP = { href: "/admin/help", label: "Help", icon: CircleHelp };
+
+const NAV_ITEMS = {
+  sidebar: [
+    HOME,
+    REQUESTS,
+    { href: "/admin/review-flyers", label: "Review flyers", icon: FileText },
+    { href: "/admin/audit", label: "Activity log", icon: Activity },
+  ],
+  bar: [HOME, REQUESTS, SETTINGS, HELP],
+} as const;
 
 function isActive(pathname: string, href: string): boolean {
   if (href === "/admin") return pathname === "/admin";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function PortalNav({ waitingCount }: Readonly<{ waitingCount: number | null }>) {
+export function PortalNav({
+  layout,
+  waitingCount,
+}: Readonly<{ layout: keyof typeof NAV_ITEMS; waitingCount: number | null }>) {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Portal sections" className="portal-primary-nav">
+    <nav aria-label="Portal sections" className="portal-primary-nav" data-layout={layout}>
       <ul>
-        {NAV_ITEMS.map((item) => {
+        {NAV_ITEMS[layout].map((item) => {
           const active = isActive(pathname, item.href);
           const showBadge =
             item.href === "/admin/requests" && waitingCount !== null && waitingCount > 0;
@@ -60,4 +74,24 @@ export function PortalNav({ waitingCount }: Readonly<{ waitingCount: number | nu
       </ul>
     </nav>
   );
+}
+
+// Settings and Help in the desktop account footer: the small-link style of
+// View website and Sign out, current in on-dark ink with no fill.
+export function PortalAccountLinks() {
+  const pathname = usePathname();
+
+  return [SETTINGS, HELP].map((item) => {
+    const Icon = item.icon;
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        aria-current={isActive(pathname, item.href) ? "page" : undefined}
+      >
+        <Icon className="h-4 w-4" />
+        {item.label}
+      </Link>
+    );
+  });
 }
