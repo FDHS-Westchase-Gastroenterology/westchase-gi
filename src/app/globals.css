@@ -340,6 +340,15 @@
       transition-duration: var(--pm-reduced-duration, 120ms) !important;
     }
 
+    /* The list's quiet recede under an open card is already an opacity
+       change with no travel, so it keeps the same cross-fade. */
+    .wgi-list-row,
+    .wgi-list-head th,
+    .wgi-list-foot,
+    .wgi-list-rail {
+      transition-duration: var(--pm-reduced-duration, 120ms) !important;
+    }
+
     .wgi-sheet:not([data-instant]) :is(.wgi-sheet-head, .wgi-sheet-body) {
       animation-duration: var(--pm-reduced-duration, 120ms) !important;
       animation-delay: 0ms !important;
