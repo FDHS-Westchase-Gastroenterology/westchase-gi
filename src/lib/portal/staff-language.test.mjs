@@ -8,15 +8,11 @@ import {
   HELP_LINKS,
   HELP_NOTIFICATION_TRUTH,
   HELP_QUEUE_RECORD,
-  NEW_REQUESTS_HREF,
-  OPEN_NEW_REQUESTS_LABEL,
   RECIPIENT_CONFIRMATION_BODY,
   RECIPIENTS_INTRO,
-  START_OLDEST_REQUEST_LABEL,
   allStaffLanguageText,
   greetingName,
   helpOutageCopy,
-  oldestNewRequestAction,
   signInIdentifierField,
   staffGreeting,
   staffLanguageHasForbiddenClaim,
@@ -47,40 +43,6 @@ test("greeting uses a human first name and never greets Portal", () => {
   assert.equal(greetingName(""), null);
   assert.equal(staffGreeting("Good evening", "Portal administrator"), "Good evening.");
   assert.doesNotMatch(staffGreeting("Good evening", "Portal administrator"), /Portal/);
-});
-
-test("Start with oldest request opens the exact oldest New request", () => {
-  const action = oldestNewRequestAction({
-    newCount: 3,
-    oldestRequestId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-  });
-  assert.deepEqual(action, {
-    kind: "open-oldest",
-    href: "/admin/requests/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-    label: START_OLDEST_REQUEST_LABEL,
-  });
-});
-
-test("no New request replaces the oldest action with an honest empty destination", () => {
-  assert.deepEqual(oldestNewRequestAction({ newCount: 0, oldestRequestId: null }), {
-    kind: "empty",
-    href: NEW_REQUESTS_HREF,
-    label: OPEN_NEW_REQUESTS_LABEL,
-  });
-  assert.deepEqual(
-    oldestNewRequestAction({
-      newCount: 2,
-      oldestRequestId: "  ",
-    }),
-    {
-      kind: "empty",
-      href: NEW_REQUESTS_HREF,
-      label: OPEN_NEW_REQUESTS_LABEL,
-    },
-  );
-  assert.deepEqual(oldestNewRequestAction({ newCount: null, oldestRequestId: null }), {
-    kind: "none",
-  });
 });
 
 test("Help, email, and activity copy drop unsupported absolute claims", () => {

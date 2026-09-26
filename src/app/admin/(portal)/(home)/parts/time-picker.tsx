@@ -6,11 +6,11 @@ import type { KeyboardEvent, RefObject } from "react";
 
 import type { TimeParts } from "@/app/admin/(portal)/(home)/record-card-time";
 import {
-  hourOptions,
+  clockLabel,
+  HOURS,
   joinTime,
   MERIDIEMS,
-  minuteOptions,
-  TIME_SLOTS,
+  MINUTES,
   timeParts,
 } from "@/app/admin/(portal)/(home)/record-card-time";
 import { Clock } from "@/components/icons";
@@ -77,7 +77,7 @@ export function TimePicker({
         }}
       >
         <Clock />
-        <span>{time === "" ? "Choose" : slotLabel(time)}</span>
+        <span>{time === "" ? "Choose" : clockLabel(time)}</span>
       </button>
       {/* Only this one surface animates in JavaScript, so it loads the DOM
           feature set on demand rather than shipping the full bundle. */}
@@ -205,7 +205,7 @@ function TimeSheet({
           <TimeWheels size="sm" aria-label="Start time">
             <TimePickerColumn
               label="Hour"
-              options={labelled(hourOptions(draft.meridiem))}
+              options={HOUR_OPTIONS}
               value={draft.hour}
               onValueChange={(hour) => {
                 onDraft(settle({ ...draft, hour }));
@@ -213,7 +213,7 @@ function TimeSheet({
             />
             <TimePickerColumn
               label="Minute"
-              options={labelled(minuteOptions(draft.meridiem, draft.hour))}
+              options={MINUTE_OPTIONS}
               value={draft.minute}
               onValueChange={(minute) => {
                 onDraft(settle({ ...draft, minute }));
@@ -221,7 +221,7 @@ function TimeSheet({
             />
             <TimePickerColumn
               label="AM or PM"
-              options={labelled(MERIDIEMS)}
+              options={MERIDIEM_OPTIONS}
               value={draft.meridiem}
               onValueChange={(meridiem) => {
                 onDraft(settle({ ...draft, meridiem }));
@@ -253,23 +253,19 @@ const INSTANT = { duration: 0 } as const;
    one flick from anything nearby. */
 const OPENING_TIME = "09:00";
 
-function slotLabel(time: string): string {
-  return TIME_SLOTS.find((slot) => slot.value === time)?.label ?? "";
-}
-
 function labelled(values: readonly string[]): readonly TimePickerOption[] {
   return values.map((value) => ({ value, label: value }));
 }
 
-/* A wheel always reads a real time. The clock is whole, so today no part
-   contradicts another; the guard stays because the option lists are the
-   caller's to narrow, and a draft that survives a narrowing it no longer
-   fits should move to a row that exists rather than sit on one that does
-   not. */
+const HOUR_OPTIONS = labelled(HOURS);
+const MINUTE_OPTIONS = labelled(MINUTES);
+const MERIDIEM_OPTIONS = labelled(MERIDIEMS);
+
+/** An unset or malformed input opens on real wheel rows. */
 function settle(parts: Readonly<TimeParts>): TimeParts {
-  const hours = hourOptions(parts.meridiem);
-  const hour = hours.includes(parts.hour) ? parts.hour : (hours[0] ?? "");
-  const minutes = minuteOptions(parts.meridiem, hour);
-  const minute = minutes.includes(parts.minute) ? parts.minute : (minutes[0] ?? "");
-  return { hour, minute, meridiem: parts.meridiem };
+  return {
+    hour: HOURS.includes(parts.hour) ? parts.hour : "12",
+    minute: MINUTES.includes(parts.minute) ? parts.minute : "00",
+    meridiem: parts.meridiem,
+  };
 }

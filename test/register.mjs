@@ -18,6 +18,8 @@ register(
     export async function resolve(specifier, context, nextResolve) {
       if (specifier === "server-only" || specifier === "client-only") return empty;
       if (specifier.startsWith("@/")) specifier = srcRoot + specifier.slice(2);
+      // Next exposes this CommonJS subpath without a Node ESM export map.
+      if (specifier === "next/headers") specifier = "next/headers.js";
       if (specifier.endsWith(".json")) {
         const resolved = await nextResolve(specifier, context);
         return { ...resolved, importAttributes: { type: "json" } };

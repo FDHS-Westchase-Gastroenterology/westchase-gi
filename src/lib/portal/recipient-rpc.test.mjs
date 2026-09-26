@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
-  isRecipientRpcMissing,
-  recipientRpcFailureCode,
-  runRecipientMutationTransport,
-} from "./recipient-rpc.ts";
+import { recipientRpcFailureCode, runRecipientMutationTransport } from "./recipient-rpc.ts";
 
 test("uses the atomic recipient transport when the RPC is available", async () => {
   let compatibilityCalls = 0;
@@ -40,7 +36,6 @@ test("uses compatibility only for an RPC missing from PostgREST's schema", async
     response: { ok: true, recipientId: "compatibility-id" },
   });
   assert.equal(compatibilityCalls, 1);
-  assert.equal(isRecipientRpcMissing({ code: "PGRST202" }), true);
 });
 
 test("does not use compatibility for permission, database, or validation failures", async () => {
@@ -60,7 +55,6 @@ test("does not use compatibility for permission, database, or validation failure
       response: atomicResponse,
     });
     assert.equal(compatibilityCalls, 0);
-    assert.equal(isRecipientRpcMissing({ code }), false);
   }
 });
 

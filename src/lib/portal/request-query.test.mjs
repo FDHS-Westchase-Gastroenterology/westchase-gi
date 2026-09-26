@@ -8,7 +8,6 @@ import {
   requestSearchFilter,
   requestSearchStatus,
   requestsHref,
-  uniqueByRequestId,
   REQUEST_SEARCH_MAX_LENGTH,
 } from "./request-query.ts";
 
@@ -42,26 +41,6 @@ test("quotes PostgREST-reserved search syntax", () => {
     requestSearchFilter('Doe, Jane. (test): "quoted" \\ path %_*'),
     ["name", "phone", "email"].map((column) => `${column}.imatch.${pattern}`).join(","),
   );
-});
-
-test("uniqueByRequestId keeps one row when related matches fan out", () => {
-  assert.deepEqual(uniqueByRequestId([]), []);
-  assert.deepEqual(uniqueByRequestId([{ id: "a" }]), [{ id: "a" }]);
-  assert.deepEqual(uniqueByRequestId([{ id: "a" }, { id: "b" }, { id: "c" }]), [
-    { id: "a" },
-    { id: "b" },
-    { id: "c" },
-  ]);
-  const related = [
-    { id: "req-1", relation: "note-1" },
-    { id: "req-1", relation: "note-2" },
-    { id: "req-1", relation: "event-1" },
-    { id: "req-2", relation: "note-3" },
-  ];
-  assert.deepEqual(uniqueByRequestId(related), [
-    { id: "req-1", relation: "note-1" },
-    { id: "req-2", relation: "note-3" },
-  ]);
 });
 
 test("requestSearchStatus announces zero, one, and many unique results", () => {

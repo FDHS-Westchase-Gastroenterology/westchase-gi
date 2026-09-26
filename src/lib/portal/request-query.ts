@@ -39,24 +39,6 @@ export function requestSearchFilter(search: string): string {
   return `name.imatch.${quoted},phone.imatch.${quoted},email.imatch.${quoted}`;
 }
 
-/**
- * One appointment request counts once. Related-table rows such as notes,
- * Events, or audit entries can fan out to several matches for the same id;
- * The queue, chips, range, and total all consume this unique set.
- */
-export function uniqueByRequestId<Row extends { readonly id: string }>(
-  rows: readonly Row[],
-): Row[] {
-  const seen = new Set<string>();
-  const unique: Row[] = [];
-  for (const row of rows) {
-    if (seen.has(row.id)) continue;
-    seen.add(row.id);
-    unique.push(row);
-  }
-  return unique;
-}
-
 export function requestsHref({
   page = 1,
   path = "/admin/requests",

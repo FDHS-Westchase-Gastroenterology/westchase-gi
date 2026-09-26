@@ -61,9 +61,6 @@ export interface RecentWorkItem {
   readonly actor: string;
   readonly sentence: string;
   readonly requestId: string | null;
-  // True when the action is unknown to the human vocabulary and the entry
-  // Falls back to the technical form — an honest fallback, never silence.
-  readonly technical: boolean;
   // Work group for the staff-facing filter, classified from the action.
   readonly workType: Exclude<RecentWorkType, "all">;
   // Storage action code. Used only for deterministic grouping; the human
@@ -144,38 +141,26 @@ function staffStateWord(raw: string): string | null {
   return state === null ? null : stateLabel(state);
 }
 
-interface ActionDescription {
-  sentence: string;
-  technical: boolean;
-}
-
 function describeAction(
   entry: Readonly<AuditEntry>,
   detail: JsonObject,
   ctx: Readonly<RecentWorkContext>,
-): ActionDescription {
-  const requestEntity = entry.entity === "requests";
+): string | null {
   switch (entry.action) {
     case "request.create":
-      return { sentence: "added an appointment request", technical: false };
+      return "added an appointment request";
     case "request.status_change": {
       const to = asJsonString(detail.to) ?? "";
       if (to === "closed" && detail.legacy_unclassified_close === true) {
-        return { sentence: "closed a request without an outcome", technical: false };
+        return "closed a request without an outcome";
       }
       const status = parseRequestStatus(to);
-      return {
-        sentence: `marked a request ${status === null ? to : STATUS_LABELS[status]}`,
-        technical: false,
-      };
+      return `marked a request ${status === null ? to : STATUS_LABELS[status]}`;
     }
     case "request.close": {
-      return {
-        sentence: `closed a request — ${
-          detail.disposition === "converted" ? "appointment booked" : "no appointment booked"
-        }`,
-        technical: false,
-      };
+      return `closed a request — ${
+        detail.disposition === "converted" ? "appointment booked" : "no appointment booked"
+      }`;
     }
     case "request.call_outcome": {
       const outcome = asJsonString(detail.outcome) ?? "";
@@ -186,62 +171,35 @@ function describeAction(
           : "";
       switch (outcome) {
         case "reached_follow_up":
-          return {
-            sentence: `reached the patient on a request${followUp}`,
-            technical: false,
-          };
+          return `reached the patient on a request${followUp}`;
         case "voicemail":
-          return {
-            sentence: `left a voicemail on a request${followUp}`,
-            technical: false,
-          };
+          return `left a voicemail on a request${followUp}`;
         case "no_answer":
-          return {
-            sentence: `got no answer on a request${followUp}`,
-            technical: false,
-          };
+          return `got no answer on a request${followUp}`;
         case "wont_schedule":
-          return {
-            sentence: "closed a request — patient won't schedule",
-            technical: false,
-          };
+          return "closed a request — patient won't schedule";
         case "not_actionable":
-          return {
-            sentence: "closed a request — duplicate or not actionable",
-            technical: false,
-          };
+          return "closed a request — duplicate or not actionable";
         case "scheduled_transferred":
-          return {
-            sentence: "finished a request — appointment was booked",
-            technical: false,
-          };
+          return "finished a request — appointment was booked";
       }
-      return {
-        sentence: `recorded an outcome on a request${
-          isCallOutcomeId(outcome) ? ` — ${OUTCOME_HISTORY_LABELS[outcome]}` : ""
-        }`,
-        technical: false,
-      };
+      return `recorded an outcome on a request${
+        isCallOutcomeId(outcome) ? ` — ${OUTCOME_HISTORY_LABELS[outcome]}` : ""
+      }`;
     }
     case "request.note":
-      return { sentence: "added a note to a request", technical: false };
+      return "added a note to a request";
     case "request.authorized_delete":
-      return { sentence: "deleted a request early (authorized)", technical: false };
+      return "deleted a request early (authorized)";
     case "request.retention_delete":
-      return { sentence: "a request was removed by the retention policy", technical: false };
+      return "a request was removed by the retention policy";
     case "request.retention_hold":
-      return {
-        sentence: `${asJsonBoolean(detail.held) === false ? "released" : "placed"} a legal hold on a request`,
-        technical: false,
-      };
+      return `${asJsonBoolean(detail.held) === false ? "released" : "placed"} a legal hold on a request`;
     case "requests.export": {
       const count = asJsonNumber(detail.row_count);
-      return {
-        sentence: `exported the request list${
-          count !== null ? ` (${count} ${count === 1 ? "request" : "requests"})` : ""
-        }`,
-        technical: false,
-      };
+      return `exported the request list${
+        count !== null ? ` (${count} ${count === 1 ? "request" : "requests"})` : ""
+      }`;
     }
     case "requests.print_new": {
       const count = asJsonNumber(detail.row_count);
@@ -252,129 +210,69 @@ function describeAction(
         selection === "default" ||
         (Array.isArray(selection) && selection.length === 1 && selection[0] === "new")
       ) {
-        return {
-          sentence: `prepared the New-request print packet${countText}`,
-          technical: false,
-        };
+        return `prepared the New-request print packet${countText}`;
       }
       if (Array.isArray(selection)) {
-        return {
-          sentence: `prepared a print packet of ${formatStatusList(selection, STATUS_LABELS)}${countText}`,
-          technical: false,
-        };
+        return `prepared a print packet of ${formatStatusList(selection, STATUS_LABELS)}${countText}`;
       }
-      return {
-        sentence: `prepared a request print packet${countText}`,
-        technical: false,
-      };
+      return `prepared a request print packet${countText}`;
     }
     case "recipients.add":
-      return {
-        sentence: `added ${recipientLabel(ctx.recipientsById, entry.entity_id)} to notification emails`,
-        technical: false,
-      };
+      return `added ${recipientLabel(ctx.recipientsById, entry.entity_id)} to notification emails`;
     case "recipients.remove":
-      return {
-        sentence: `removed ${recipientLabel(ctx.recipientsById, entry.entity_id)} from notification emails`,
-        technical: false,
-      };
+      return `removed ${recipientLabel(ctx.recipientsById, entry.entity_id)} from notification emails`;
     case "recipients.toggle":
-      return {
-        sentence: `${asJsonBoolean(detail.to) === true ? "resumed" : "paused"} notification emails for ${recipientLabel(ctx.recipientsById, entry.entity_id)}`,
-        technical: false,
-      };
+      return `${asJsonBoolean(detail.to) === true ? "resumed" : "paused"} notification emails for ${recipientLabel(ctx.recipientsById, entry.entity_id)}`;
     case "recipients.label_update":
-      return {
-        sentence: `renamed ${recipientLabel(ctx.recipientsById, entry.entity_id)} on the notification list`,
-        technical: false,
-      };
+      return `renamed ${recipientLabel(ctx.recipientsById, entry.entity_id)} on the notification list`;
     case "staff.invite":
-      return {
-        sentence: `invited ${profileLabel(ctx.namesByProfileId, entry.entity_id)} to the portal`,
-        technical: false,
-      };
+      return `invited ${profileLabel(ctx.namesByProfileId, entry.entity_id)} to the portal`;
     case "staff.onboard":
-      return { sentence: "completed portal setup", technical: false };
+      return "completed portal setup";
     case "staff.deactivate":
-      return {
-        sentence: `deactivated ${profileLabel(ctx.namesByProfileId, entry.entity_id)}'s portal access`,
-        technical: false,
-      };
+      return `deactivated ${profileLabel(ctx.namesByProfileId, entry.entity_id)}'s portal access`;
     case "staff.role":
-      return {
-        sentence: `changed ${profileLabel(ctx.namesByProfileId, entry.entity_id)}'s role`,
-        technical: false,
-      };
+      return `changed ${profileLabel(ctx.namesByProfileId, entry.entity_id)}'s role`;
     case "staff.password_reset":
-      return {
-        sentence: `sent ${profileLabel(ctx.namesByProfileId, entry.entity_id)} a password reset link`,
-        technical: false,
-      };
-    case "staff.tour_dismiss":
-      // Filtered from the human view in toRecentWorkItems (it pairs with
-      // Tour_complete on finish); the technical record keeps it.
-      return { sentence: "dismissed the portal tour nudge", technical: true };
+      return `sent ${profileLabel(ctx.namesByProfileId, entry.entity_id)} a password reset link`;
     case "staff.tour_restart":
-      return { sentence: "restarted the portal tour", technical: false };
+      return "restarted the portal tour";
     case "staff.tour_complete":
-      return { sentence: "finished the portal tour", technical: false };
+      return "finished the portal tour";
     case "maintainers.invite":
-      return {
-        sentence: `invited ${asJsonString(detail.target_login) ?? "a maintainer"} to edit the website`,
-        technical: false,
-      };
+      return `invited ${asJsonString(detail.target_login) ?? "a maintainer"} to edit the website`;
     case "maintainers.cancel":
-      return {
-        sentence: `canceled a website-maintainer invitation for ${asJsonString(detail.target_login) ?? "a maintainer"}`,
-        technical: false,
-      };
+      return `canceled a website-maintainer invitation for ${asJsonString(detail.target_login) ?? "a maintainer"}`;
     case "maintainers.revoke":
-      return {
-        sentence: `removed ${asJsonString(detail.target_login) ?? "a maintainer"}'s website access`,
-        technical: false,
-      };
+      return `removed ${asJsonString(detail.target_login) ?? "a maintainer"}'s website access`;
     case "request.workflow_command": {
       const command = asJsonString(detail.command) ?? "";
       const to = asJsonString(detail.to) ?? "";
       switch (command) {
         case "record_contact_attempt":
-          return { sentence: "recorded a contact attempt on a request", technical: false };
+          return "recorded a contact attempt on a request";
         case "confirm_booking_handoff":
-          return { sentence: "marked a request Scheduled", technical: false };
+          return "marked a request Scheduled";
         case "close_request":
-          return { sentence: "closed a request", technical: false };
+          return "closed a request";
         case "reopen_request":
-          return { sentence: "reopened a request", technical: false };
+          return "reopened a request";
         case "set_call_again":
-          return { sentence: "corrected the call-again time on a request", technical: false };
+          return "corrected the call-again time on a request";
         case "undo_latest_transition": {
           const restored = staffStateWord(to);
-          return {
-            sentence:
-              restored === null
-                ? "undid the last change on a request"
-                : `undid the last change on a request — back to ${restored}`,
-            technical: false,
-          };
+          return restored === null
+            ? "undid the last change on a request"
+            : `undid the last change on a request — back to ${restored}`;
         }
         case "classify_legacy_closure":
-          return { sentence: "classified a closed request", technical: false };
+          return "classified a closed request";
         default:
-          return {
-            sentence: requestEntity
-              ? `${entry.action} on a request`
-              : `${entry.action} (${entry.entity})`,
-            technical: true,
-          };
+          return null;
       }
     }
     default:
-      return {
-        sentence: requestEntity
-          ? `${entry.action} on a request`
-          : `${entry.action} (${entry.entity})`,
-        technical: true,
-      };
+      return null;
   }
 }
 
@@ -389,19 +287,16 @@ export function toRecentWorkItems(
     // The technical record rather than the human view.
     if (entry.action === "staff.tour_dismiss") continue;
     const detail = detailObject(entry.detail);
-    const { sentence, technical } = describeAction(entry, detail, ctx);
+    const sentence = describeAction(entry, detail, ctx);
     const workType = classifyWorkType(entry.action);
-    // Unknown actions fall back to their raw identifier, which never
-    // Belongs in the human view: technical items stay in the technical
-    // Table beneath Recent work.
-    if (technical || workType === null) continue;
+    // Unknown actions stay in the separate technical record.
+    if (sentence === null || workType === null) continue;
     items.push({
       id: entry.id,
       at: entry.at,
       actor: nameOrEmail(ctx.namesByEmail, entry.actor_email),
       sentence,
       requestId: entry.entity === "requests" ? entry.entity_id : null,
-      technical,
       workType,
       action: entry.action,
       sourceIndex,
@@ -575,7 +470,6 @@ export function compactRepeatedOutput(items: readonly RecentWorkItem[]): RecentW
         : Date.parse(previous.at) - Date.parse(item.at);
     const joins =
       previous !== undefined &&
-      !item.technical &&
       outputPhrase(item.action) !== null &&
       item.action === previous.action &&
       item.actor === previous.actor &&

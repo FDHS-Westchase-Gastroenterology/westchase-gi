@@ -20,19 +20,12 @@ export const WEBSITE_CAPABILITIES = [
   "Review-flyer printing",
 ] as const;
 
-export const STAFF_SECTION_ORDER = [
-  "what-website-does",
-  "what-practice-controls",
-  "still-needs-attention",
-  "how-to-request-change",
-] as const;
-
 export const STAFF_SECTION_HEADINGS = {
   "what-website-does": "What the website does",
   "what-practice-controls": "What Westchase GI controls",
   "still-needs-attention": "Still needs attention",
   "how-to-request-change": "How to request a website change",
-} as const satisfies Record<(typeof STAFF_SECTION_ORDER)[number], string>;
+} as const;
 
 export const STAFF_WEBSITE_DOES =
   "Patients use the public site to request an appointment, read procedure prep and education, download current documents, and confirm hours, locations, and providers. Staff use the same software for the authenticated staff portal and for review-flyer printing.";
@@ -45,10 +38,6 @@ export const STAFF_REQUEST_CHANGE =
 
 export const MAINTAINER_DISCLOSURE_SUMMARY =
   "Maintainer details: providers, repository, deployment, and credentials. Most staff never need these accounts.";
-export const MAINTAINER_DISCLOSURE_CLOSED =
-  "Show maintainer details: providers, repository, deployment, and credentials. Most staff never need these accounts.";
-export const MAINTAINER_DISCLOSURE_OPEN =
-  "Hide maintainer details: providers, repository, deployment, and credentials. Most staff never need these accounts.";
 
 export const MAINTAINER_DISCLOSURE_INTRO =
   "These destinations are for website maintainers. They open in a new tab and leave the staff portal. Staff should request a website change instead of signing in to a provider console.";
@@ -190,8 +179,6 @@ export function allWebsiteCustodyText(connection: WebsiteConnectionState): strin
     STAFF_PRACTICE_CONTROLS,
     STAFF_REQUEST_CHANGE,
     MAINTAINER_DISCLOSURE_SUMMARY,
-    MAINTAINER_DISCLOSURE_CLOSED,
-    MAINTAINER_DISCLOSURE_OPEN,
     MAINTAINER_DISCLOSURE_INTRO,
     MAINTAINER_GRANT_ACCESS,
     ...WEBSITE_CAPABILITIES,

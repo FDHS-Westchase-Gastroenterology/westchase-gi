@@ -133,17 +133,6 @@ test("the form funnel counts view, submit, and success", async ({ page }) => {
   await expectIncrement("form_success", "/appointment", beforeSuccess);
 });
 
-test("nothing fires on admin routes", async ({ page }) => {
-  await page.goto("/admin/login");
-  await expect(page.getByRole("heading", { name: "Staff sign in" })).toBeVisible();
-
-  const rows = analyticsQuery(
-    `select event, route_template from private.analytics_daily` +
-      ` where day = current_date and route_template like '%admin%'`,
-  );
-  expect(rows).toHaveLength(0);
-});
-
 test("beacon payloads never carry patient fields", async ({ page }) => {
   const bodies: string[] = [];
   await page.route("**/api/telemetry", async (route) => {

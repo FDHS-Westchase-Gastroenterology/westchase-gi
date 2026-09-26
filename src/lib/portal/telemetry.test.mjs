@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { createHmac } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import test from "node:test";
@@ -161,12 +160,7 @@ test("event enum matches the frozen 20-value list exactly", () => {
   assert.equal(ANALYTICS_EVENTS.length, 20);
 });
 
-test("telemetry HMAC domain differs from intake and yields 64-hex", () => {
+test("telemetry keeps its versioned hash domain distinct from intake", () => {
   assert.notEqual(TELEMETRY_CLIENT_HASH_DOMAIN, INTAKE_CLIENT_HASH_DOMAIN);
   assert.equal(TELEMETRY_CLIENT_HASH_DOMAIN, "wgi:telemetry-rate-limit:client:v1\0");
-  const hash = createHmac("sha256", "unit-test-key")
-    .update(TELEMETRY_CLIENT_HASH_DOMAIN)
-    .update("missing")
-    .digest("hex");
-  assert.match(hash, /^[0-9a-f]{64}$/);
 });

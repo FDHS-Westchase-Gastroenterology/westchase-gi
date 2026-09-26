@@ -265,10 +265,10 @@ test("grouping boundaries never combine unlike events", () => {
 });
 
 test("a practice-day change separates otherwise identical adjacent events", () => {
-  // 23:50 ET Aug 21 and 00:05 ET Aug 22 — 15 minutes apart across midnight.
+  // Newest first: 00:05 ET Aug 21, then 23:50 ET Aug 20, 15 minutes apart.
   const entries = [
-    entry({ action: "requests.print_new", detail: {}, at: "2026-08-21T03:50:00.000Z" }),
     entry({ action: "requests.print_new", detail: {}, at: "2026-08-21T04:05:00.000Z" }),
+    entry({ action: "requests.print_new", detail: {}, at: "2026-08-21T03:50:00.000Z" }),
   ];
   const items = toRecentWorkItems(entries, CTX());
   const result = compactRepeatedOutput(items);
@@ -379,7 +379,6 @@ test("current workflow commands render distinguishable plain language", () => {
   for (const item of items) {
     assert.equal(item.requestId, requestId);
     assert.equal(item.workType, "requests");
-    assert.equal(item.technical, false);
     assert.ok(!item.sentence.includes("request.workflow_command"));
     assert.ok(!item.sentence.includes("record_contact_attempt"));
     assert.ok(!item.sentence.includes("undo_latest_transition"));

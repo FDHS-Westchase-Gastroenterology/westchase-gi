@@ -101,6 +101,7 @@ test("booking keeps whatever day is already on the calendar and asks for a time"
   assert.equal(canSave({ ...timed, time: "19:05" }, TODAY), true, "a late add-on");
   assert.equal(canSave({ ...timed, time: "00:00" }, TODAY), true, "the first minute of the day");
   assert.equal(canSave({ ...timed, time: "23:59" }, TODAY), true, "the last minute of the day");
+  assert.equal(canSave({ ...timed, time: "12:99" }, TODAY), false, "no minute past the clock");
   assert.equal(timeWithinDay("24:00"), false, "no hour past the clock");
   assert.equal(timeWithinDay("9:30"), false, "the field's own zero-padded form only");
 });

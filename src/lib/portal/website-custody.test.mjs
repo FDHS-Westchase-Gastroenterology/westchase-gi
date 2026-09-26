@@ -2,35 +2,19 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 const {
-  MAINTAINER_DISCLOSURE_CLOSED,
-  MAINTAINER_DISCLOSURE_OPEN,
   MAINTAINER_DISCLOSURE_SUMMARY,
-  PROVIDER_LINK_REL,
-  PROVIDER_LINK_TARGET,
   REVIEW_FLYERS_HREF,
   STAFF_SECTION_HEADINGS,
-  STAFF_SECTION_ORDER,
   WEBSITE_CAPABILITIES,
   WEBSITE_CHANGE_HREF,
   WEBSITE_MAINTAINER_SERVICES,
-  WEBSITE_PROVIDER_LINKS,
   allWebsiteCustodyText,
   websiteAttentionItems,
   websiteCustodyHasForbiddenOwnershipClaim,
   websiteCustodyHasSecretMaterial,
-  websiteProviderLink,
 } = await import("./website-custody.ts");
 
-test("staff-first section order answers the four staff questions before maintainer details", () => {
-  assert.deepEqual(
-    [...STAFF_SECTION_ORDER],
-    [
-      "what-website-does",
-      "what-practice-controls",
-      "still-needs-attention",
-      "how-to-request-change",
-    ],
-  );
+test("Website copy names its staff destinations and maintainer disclosure", () => {
   assert.equal(STAFF_SECTION_HEADINGS["what-website-does"], "What the website does");
   assert.equal(STAFF_SECTION_HEADINGS["what-practice-controls"], "What Westchase GI controls");
   assert.equal(STAFF_SECTION_HEADINGS["still-needs-attention"], "Still needs attention");
@@ -43,8 +27,6 @@ test("staff-first section order answers the four staff questions before maintain
   );
   assert.match(MAINTAINER_DISCLOSURE_SUMMARY, /^Maintainer details:/);
   assert.match(MAINTAINER_DISCLOSURE_SUMMARY, /providers, repository, deployment, and credentials/);
-  assert.match(MAINTAINER_DISCLOSURE_CLOSED, /^Show maintainer details:/);
-  assert.match(MAINTAINER_DISCLOSURE_OPEN, /^Hide maintainer details:/);
 });
 
 test("supported ownership claims stay narrow and unresolved items stay visible", () => {
@@ -79,44 +61,6 @@ test("supported ownership claims stay narrow and unresolved items stay visible",
     "email-delivery",
     "credentials",
   ]);
-});
-
-test("provider links open in a new tab and name that they leave the staff portal", () => {
-  assert.equal(PROVIDER_LINK_TARGET, "_blank");
-  assert.equal(PROVIDER_LINK_REL, "noopener noreferrer");
-  assert.deepEqual(
-    WEBSITE_PROVIDER_LINKS.map((link) => ({
-      id: link.id,
-      href: link.href,
-      name: link.name,
-    })),
-    [
-      {
-        id: "github",
-        href: "https://github.com/FDHS-Westchase-Gastroenterology/westchase-gi",
-        name: "Open GitHub (leaves the staff portal)",
-      },
-      {
-        id: "vercel",
-        href: "https://vercel.com/login",
-        name: "Open Vercel (leaves the staff portal)",
-      },
-      {
-        id: "supabase",
-        href: "https://supabase.com/dashboard/sign-in",
-        name: "Open Supabase (leaves the staff portal)",
-      },
-      {
-        id: "porkbun",
-        href: "https://porkbun.com/account/login",
-        name: "Open Porkbun (leaves the staff portal)",
-      },
-    ],
-  );
-  for (const link of WEBSITE_PROVIDER_LINKS) {
-    assert.match(link.name, /leaves the staff portal/);
-    assert.equal(websiteProviderLink(link.id).href, link.href);
-  }
 });
 
 test("custody copy does not claim finished ownership or render secrets", () => {

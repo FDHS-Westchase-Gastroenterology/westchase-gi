@@ -284,13 +284,7 @@ export default async function AdminRequestsPage({
   if (!result.ok) throw new Error(`Queue read failed: ${result.code}`);
   const { counts, items: requests } = result;
   const total = REQUEST_STATUSES.reduce((sum, status) => sum + counts[status], 0);
-  const openRows =
-    filter === "closed"
-      ? 0
-      : filter === "all"
-        ? counts.new + counts.contacted + counts.scheduled
-        : counts[filter];
-  const pageWindow = requestPageWindow({ filter, page, counts, openRows });
+  const pageWindow = requestPageWindow(page, result.total);
   if (pageWindow.redirectPage !== null) {
     redirect(requestsHref({ page: pageWindow.redirectPage, search, status: filter }));
   }

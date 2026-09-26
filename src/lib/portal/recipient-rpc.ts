@@ -20,15 +20,6 @@ export type RecipientMutationTransportResult<Data, CompatibilityResult> =
     };
 
 /**
- * PGRST202 is PostgREST's stable schema-cache signal for a function signature
- * it cannot find. No other failure may reopen the non-atomic compatibility
- * path: permissions, validation, and infrastructure errors must fail closed.
- */
-export function isRecipientRpcMissing(error: Readonly<RecipientRpcError | undefined>): boolean {
-  return error?.code === "PGRST202";
-}
-
-/**
  * Prefer the atomic RPC on every call so a newly promoted migration takes
  * effect without an application restart. The compatibility operation runs
  * only while PostgREST explicitly lacks that RPC signature.
@@ -38,7 +29,8 @@ export async function runRecipientMutationTransport<Data, CompatibilityResult>(
   compatibilityOperation: () => PromiseLike<CompatibilityResult>,
 ): Promise<RecipientMutationTransportResult<Data, CompatibilityResult>> {
   const response = await atomicOperation();
-  if (!isRecipientRpcMissing(response.error)) {
+  // Only a missing RPC may reopen the non-atomic deployment compatibility path.
+  if (response.error?.code !== "PGRST202") {
     return { transport: "atomic", response };
   }
 

@@ -1,5 +1,4 @@
-// Staff-facing language the portal can prove. Home greeting, the oldest-New
-// Action, Help, and notification copy live here so tests can lock the claims
+// Staff-facing language the portal can prove. Home greeting, Help, and notification copy live here so tests can lock the claims
 // Without rendering the pages. Do not greet a system label as a person, and
 // Do not promise behavior the portal cannot enforce.
 
@@ -8,10 +7,6 @@ export function signInIdentifierField(allowPreviewAlias: boolean) {
     ? ({ label: "Email or username", type: "text", inputMode: undefined } as const)
     : ({ label: "Email", type: "email", inputMode: "email" } as const);
 }
-
-export const START_OLDEST_REQUEST_LABEL = "Start with oldest request";
-export const OPEN_NEW_REQUESTS_LABEL = "Open New requests";
-export const NEW_REQUESTS_HREF = "/admin/requests?status=new";
 
 const NON_PERSONAL_FIRST_TOKENS = new Set([
   "admin",
@@ -35,46 +30,6 @@ export function greetingName(displayName: string): string | null {
 export function staffGreeting(timeOfDay: string, displayName: string): string {
   const name = greetingName(displayName);
   return name === null ? `${timeOfDay}.` : `${timeOfDay}, ${name}.`;
-}
-
-export type OldestNewRequestAction =
-  | {
-      readonly kind: "open-oldest";
-      readonly href: string;
-      readonly label: typeof START_OLDEST_REQUEST_LABEL;
-    }
-  | {
-      readonly kind: "empty";
-      readonly href: string;
-      readonly label: typeof OPEN_NEW_REQUESTS_LABEL;
-    }
-  | { readonly kind: "none" };
-
-export function oldestNewRequestAction(input: {
-  readonly newCount: number | null;
-  readonly oldestRequestId: string | null;
-}): OldestNewRequestAction {
-  if (input.newCount === null) return { kind: "none" };
-  if (input.newCount <= 0) {
-    return {
-      kind: "empty",
-      href: NEW_REQUESTS_HREF,
-      label: OPEN_NEW_REQUESTS_LABEL,
-    };
-  }
-  const id = input.oldestRequestId?.trim() ?? "";
-  if (id === "") {
-    return {
-      kind: "empty",
-      href: NEW_REQUESTS_HREF,
-      label: OPEN_NEW_REQUESTS_LABEL,
-    };
-  }
-  return {
-    kind: "open-oldest",
-    href: `/admin/requests/${id}`,
-    label: START_OLDEST_REQUEST_LABEL,
-  };
 }
 
 export const HELP_LINKS = {
@@ -138,8 +93,6 @@ export function allStaffLanguageText(phoneDisplay: string, textDisplay: string):
   return [
     signInIdentifierField(false).label,
     signInIdentifierField(true).label,
-    START_OLDEST_REQUEST_LABEL,
-    OPEN_NEW_REQUESTS_LABEL,
     HELP_QUEUE_ARRIVAL,
     HELP_QUEUE_OPEN,
     HELP_QUEUE_RECORD,

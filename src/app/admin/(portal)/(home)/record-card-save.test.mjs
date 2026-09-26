@@ -92,7 +92,7 @@ test("ordinary Close request remains its own save action", async () => {
   ]);
 });
 
-test("an uncertain completion can retry the exact same input and stale rejection is returned unchanged", async () => {
+test("completion dispatch preserves supplied retry input and stale rejection", async () => {
   const command = commandFor(decision("contacted", "none"), TODAY);
   const unavailable = { ok: false, code: "unavailable" };
   const { calls, actions } = recorder(unavailable);

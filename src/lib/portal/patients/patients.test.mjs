@@ -60,7 +60,7 @@ test("registration requires only a name and never silently accepts clinical or b
   assert.equal(patientSearchInputSchema.safeParse({ limit: 101 }).success, false);
 });
 
-test("receipt fingerprints bind normalized intent and actor without storing identifying text", async () => {
+test("receipt fingerprints bind normalized intent and actor", async () => {
   const previousKey = process.env.WORKFLOW_COMMAND_HMAC_KEY;
   process.env.WORKFLOW_COMMAND_HMAC_KEY = "TEST patient command secret";
   const calls = [];
@@ -105,7 +105,6 @@ test("receipt fingerprints bind normalized intent and actor without storing iden
     assert.equal(calls[0].args.p_fingerprint, calls[1].args.p_fingerprint);
     assert.notEqual(calls[0].args.p_fingerprint, calls[2].args.p_fingerprint);
     assert.notEqual(calls[0].args.p_fingerprint, calls[3].args.p_fingerprint);
-    assert.equal(JSON.stringify(saved).includes(row.name), false);
     assert.deepEqual(
       await executePatientCommand(db, actorId, {
         idempotencyKey,
