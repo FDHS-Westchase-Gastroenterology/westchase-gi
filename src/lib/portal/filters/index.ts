@@ -1,13 +1,13 @@
-import { followUpFilter } from "./follow-up";
 import { locationFilter } from "./location";
 import { dateRangeLabel, datePresets, matchesPreset, receivedFilter } from "./received";
 import { searchFilter } from "./search";
 import { statusFilter } from "./status";
-import type { ActiveFilter, FilterKey, FilterParam } from "./types";
+import type { ActiveFilter, FilterKey, FilterParam, MultiSelectFilterParam } from "./types";
 
 export type {
   ActiveFilter,
   DateFilterParam,
+  FilterGroup,
   FilterKey,
   FilterParam,
   MultiSelectFilterParam,
@@ -23,14 +23,14 @@ export {
 } from "./received";
 export { FOLLOW_UP_WORDS } from "./follow-up";
 export type { FollowUpValue } from "./follow-up";
-export { STATUS_WORDS } from "./status";
+export { STATUS_DEFAULT_RAW, STATUS_WORDS, statusLeaf } from "./status";
+export type { StatusLeaf } from "./status";
 /* The client hooks live in ./use-filter-param ("use client"); import them
    directly so this barrel stays importable from server code. */
 
 /** The portal home bar, in Add-Filter menu order. */
 export const HOME_FILTERS: readonly FilterParam[] = [
   statusFilter,
-  followUpFilter,
   locationFilter,
   receivedFilter,
   searchFilter,
@@ -49,7 +49,22 @@ function isFilterKey(value: string): value is FilterKey {
 /* ---- The URL contract (brief §2.5 / §4.2) ----
    One param per filter; multi-select joins with commas; **param order is pill
    order** — first occurrence wins; params that are not ours (host or viewer
-   state) survive untouched. */
+   state) survive untouched. A dimension with a default carries its pill on a
+   bare URL, first in the bar, and spells its absence `key=any`. */
+
+/** The absence of a defaulted dimension, as its param spells it. */
+export const ANY_VALUE = "any";
+
+function hasDefault(def: FilterParam): def is FilterParam & { readonly defaultRaw: string } {
+  return def.type === "multi-select" && def.defaultRaw !== undefined;
+}
+
+/** Canonical raw: two spellings of one selection compare equal. */
+function canonical(def: FilterParam, raw: string): string | null {
+  if (def.type !== "multi-select") return raw;
+  const values = def.decode(raw);
+  return values === null ? null : def.encode(values);
+}
 
 /** Ordered active filters read from a search string. Malformed values drop. */
 export function readActiveFilters(search: string): ActiveFilter[] {
@@ -59,32 +74,91 @@ export function readActiveFilters(search: string): ActiveFilter[] {
   for (const [key, raw] of params.entries()) {
     if (!isFilterKey(key) || seen.has(key) || raw === "") continue;
     seen.add(key);
-    if (filterByKey(key).decode(raw) === null) continue;
+    const def = filterByKey(key);
+    if (raw === ANY_VALUE && hasDefault(def)) continue;
+    if (def.decode(raw) === null) continue;
     active.push({ key, raw });
   }
-  return active;
+  const defaults = HOME_FILTERS.filter(hasDefault).flatMap((def) =>
+    seen.has(def.key) ? [] : [{ key: def.key, raw: def.defaultRaw }],
+  );
+  return [...defaults, ...active];
 }
 
-/** The next search string: foreign params keep their relative order, ours follow in pill order. */
+/** The next search string: foreign params keep their relative order, ours
+    follow in pill order. A default pill that leads the bar needs no param;
+    a defaulted dimension with no pill writes `key=any`. */
 export function writeActiveFilters(currentSearch: string, active: readonly ActiveFilter[]): string {
   const next = new URLSearchParams();
   for (const [key, raw] of new URLSearchParams(currentSearch).entries()) {
     if (!isFilterKey(key)) next.append(key, raw);
   }
-  for (const { key, raw } of active) next.append(key, raw);
+  active.forEach(({ key, raw }, index) => {
+    const def = filterByKey(key);
+    const leadingDefault = index === 0 && hasDefault(def) && canonical(def, raw) === def.defaultRaw;
+    if (!leadingDefault) next.append(key, raw);
+  });
+  for (const def of HOME_FILTERS.filter(hasDefault)) {
+    if (!active.some((entry) => entry.key === def.key)) next.append(def.key, ANY_VALUE);
+  }
   return next.toString();
 }
 
+/** True when the bar carries nothing but its defaults: the list as it opens. */
+export function isDefaultView(active: readonly ActiveFilter[]): boolean {
+  const defaults = HOME_FILTERS.filter(hasDefault);
+  return (
+    active.length === defaults.length &&
+    defaults.every((def) =>
+      active.some((entry) => entry.key === def.key && canonical(def, entry.raw) === def.defaultRaw),
+    )
+  );
+}
+
 /* ---- Display labels (pill values, empty-state sentences) ---- */
+
+/* A tree dimension reads by its parents: every member selected is the
+   parent's word, a named subset is the subset's word, anything else lists
+   the leaves. */
+function multiSelectSegments(def: MultiSelectFilterParam, values: readonly string[]): string[] {
+  const chosen = new Set(values);
+  const segments: string[] = [];
+  const spoken = new Set<string>();
+  const groups = new Map(def.groups.map((group) => [group.value, group]));
+  for (const option of def.options) {
+    if (!chosen.has(option.value)) continue;
+    const group = option.group === undefined ? undefined : groups.get(option.group);
+    if (group === undefined) {
+      segments.push(option.label);
+      continue;
+    }
+    if (spoken.has(group.value)) continue;
+    const members = def.options.filter((candidate) => candidate.group === group.value);
+    const picked = members.filter((member) => chosen.has(member.value));
+    const subset = group.subsets.find(
+      (candidate) =>
+        candidate.values.length === picked.length &&
+        picked.every((member) => candidate.values.includes(member.value)),
+    );
+    if (picked.length === members.length) {
+      segments.push(group.label);
+      spoken.add(group.value);
+    } else if (subset !== undefined) {
+      segments.push(subset.label);
+      spoken.add(group.value);
+    } else {
+      segments.push(option.label);
+    }
+  }
+  return segments;
+}
 
 /** Decode a raw param into the pill's value label: "New | Call again", "3 selected", "Last 7 days", ""maria"". */
 export function filterValueLabel(def: FilterParam, raw: string, nowMs: number): string {
   if (def.type === "multi-select") {
     const values = def.decode(raw);
     if (values === null) return raw;
-    const labels = values.map(
-      (value) => def.options.find((option) => option.value === value)?.label ?? value,
-    );
+    const labels = multiSelectSegments(def, values);
     return labels.length <= 2 ? labels.join(" | ") : `${labels.length} selected`;
   }
   if (def.type === "date") {

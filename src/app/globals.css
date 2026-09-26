@@ -1299,7 +1299,9 @@
   .portal-scope {
     --portal-canvas: #f6f9fa;
     --portal-surface: oklch(0.995 0.002 220);
-    --portal-attention-ink: oklch(0.5 0.11 70);
+    /* Attention ink is the amber ramp's text step (Figma section 05):
+       6.3:1 on white, 5.1:1 on the home list's open-row tint. */
+    --portal-attention-ink: var(--color-amber-700);
     /* The sidebar's current row: a teal wash over the navy. */
     --portal-nav-current: rgb(80 168 165 / 20%);
 
@@ -1527,7 +1529,6 @@
 
       --portal-canvas: color(display-p3 0.965 0.976 0.98);
       --portal-surface: color(display-p3 0.988 0.996 0.996);
-      --portal-attention-ink: color(display-p3 0.541 0.337 0);
       --portal-nav-current: color(display-p3 0.314 0.659 0.647 / 20%);
     }
   }

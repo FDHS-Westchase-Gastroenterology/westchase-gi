@@ -23,6 +23,7 @@ import type {
   TextFilterParam,
 } from "@/lib/portal/filters";
 
+import { AnyRow, MultiSelectRows, TickGlyph } from "./filter-options";
 import { suggestionId } from "./home-line";
 import type { FilterSuggestion } from "./home-line";
 import { HomeRangeCalendar } from "./parts/calendar";
@@ -330,42 +331,6 @@ function ChevronRightGlyph() {
   );
 }
 
-function CheckGlyph() {
-  return (
-    <svg
-      width="10"
-      height="10"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
-}
-
-function TickGlyph() {
-  return (
-    <svg
-      width="13"
-      height="13"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.6"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M20 6 9 17l-5-5" />
-    </svg>
-  );
-}
-
 /* The multi-select shell (checkbox + label as two targets): search box, an
    "Any …" escape row that carries ✓ in the resting state, then the option
    rows. */
@@ -401,118 +366,6 @@ function OptionEditor({
       <div className="wgi-editor-body">
         <MultiSelectRows def={def} raw={raw} q={q} setParam={setParam} />
       </div>
-    </>
-  );
-}
-
-function AnyRow({
-  label,
-  checked,
-  onChoose,
-}: Readonly<{ label: string; checked: boolean; onChoose: () => void }>) {
-  return (
-    <div className="wgi-editor-opt">
-      <button
-        type="button"
-        data-muted="true"
-        className="wgi-editor-row"
-        aria-pressed={checked}
-        onClick={onChoose}
-      >
-        <span aria-hidden="true" className="wgi-editor-tick">
-          {checked ? <TickGlyph /> : null}
-        </span>
-        {label}
-      </button>
-    </div>
-  );
-}
-
-/* Resting state is every value checked and no param (filter-bar brief §5.3):
-   a full set never writes a chip, and unchecking the last value restores the
-   set. Each row is two targets — the checkbox toggles one value; the label
-   isolates it (Only) or, on the sole checked value, brings all back. */
-function MultiSelectRows({
-  def,
-  raw,
-  q,
-  setParam,
-}: Readonly<{
-  def: MultiSelectFilterParam;
-  raw: string | null;
-  q: string;
-  setParam: SetParam;
-}>) {
-  const allValues = def.options.map((option) => option.value);
-  const decoded = raw === null ? null : def.decode(raw);
-  /* `selected` keeps encode order; the Set answers membership in the rows. */
-  const selected = decoded === null || decoded.length === allValues.length ? allValues : decoded;
-  const selectedSet = new Set(selected);
-  const allChecked = selected.length === allValues.length;
-
-  const commit = (next: readonly string[]) => {
-    setParam(
-      def.key,
-      next.length === 0 || next.length === allValues.length ? null : def.encode(next),
-    );
-  };
-
-  return (
-    <>
-      <AnyRow
-        label={def.anyLabel}
-        checked={allChecked}
-        onChoose={() => {
-          commit(allValues);
-        }}
-      />
-      {def.options.flatMap((option) => {
-        if (!option.label.toLowerCase().includes(q)) return [];
-        const checked = selectedSet.has(option.value);
-        const sole = checked && selected.length === 1;
-        return (
-          <div key={option.value} className="wgi-editor-opt" data-multi="true">
-            <button
-              type="button"
-              role="checkbox"
-              aria-checked={checked}
-              aria-label={`${checked ? "Uncheck" : "Check"} ${option.label}`}
-              className="wgi-editor-check"
-              onClick={() => {
-                commit(
-                  checked
-                    ? selected.filter((value) => value !== option.value)
-                    : [...selected, option.value],
-                );
-              }}
-            >
-              <span
-                aria-hidden="true"
-                className="wgi-editor-box"
-                data-checked={checked || undefined}
-              >
-                {checked ? <CheckGlyph /> : null}
-              </span>
-            </button>
-            <button
-              type="button"
-              className="wgi-editor-row"
-              aria-label={sole ? `${option.label}: Check all` : `${option.label}: Only`}
-              onClick={() => {
-                commit(sole ? allValues : [option.value]);
-              }}
-            >
-              {option.label}
-            </button>
-            <span aria-hidden="true" className="wgi-editor-quick" data-target="check">
-              {checked ? "Uncheck" : "Check"}
-            </span>
-            <span aria-hidden="true" className="wgi-editor-quick" data-target="label">
-              {sole ? "Check all" : "Only"}
-            </span>
-          </div>
-        );
-      })}
     </>
   );
 }

@@ -857,9 +857,9 @@ a.appt-phone {
   text-overflow: ellipsis;
 }
 
-/* An overdue line has no second badge: its age is the attention ink, bold
-   (5.40 on the band, 4.94 on the open tint), and line-list.tsx keeps the
-   word for a screen reader. */
+/* An overdue line has no second badge: its age is the attention ink
+   (amber-700), bold (5.56 on the band, 5.09 on the open tint), and
+   line-row.tsx keeps the word for a screen reader. */
 .wgi-list-row [data-col="received"][data-overdue] {
   color: var(--portal-attention-ink);
   font-weight: 600;
@@ -2347,6 +2347,12 @@ a.appt-phone {
 
 .wgi-editor-check + .wgi-editor-row {
   padding-inline-start: 0;
+}
+
+/* A member row sits under its parent: the box steps in by one box and gap,
+   so the members' boxes line up under the parent's label. */
+.wgi-editor-opt[data-depth="1"] .wgi-editor-check {
+  padding-inline-start: calc(0.6rem + 1rem + 0.55rem);
 }
 
 .wgi-editor-box {

@@ -3,12 +3,19 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { isDefaultView } from "@/lib/portal/filters";
 import type { ActiveFilter, FilterKey } from "@/lib/portal/filters";
 import { useActiveFilters } from "@/lib/portal/filters/use-filter-param";
 
 import { FilterBar } from "./filter-bar";
 import { FullRecordSheet } from "./full-record-sheet";
-import { applyFilters, emptyStateMessage, suggestFilters, suggestionId } from "./home-line";
+import {
+  applyFilters,
+  emptyStateMessage,
+  requestCount,
+  suggestFilters,
+  suggestionId,
+} from "./home-line";
 import type { FilterSuggestion, HomeLine } from "./home-line";
 import { LineList } from "./line-list";
 
@@ -169,7 +176,34 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
           ) : null
         }
         empty={
-          active.length > 0 ? (
+          lines.length === 0 ? (
+            <div className="wgi-empty" data-testid="sheet-empty">
+              <h2>No requests yet.</h2>
+              <p>
+                A website request lands here the moment a patient submits the form, and a contacted
+                request comes back on the day staff set for it.
+              </p>
+            </div>
+          ) : isDefaultView(active) ? (
+            /* The list as it opens holds the work due now; an empty one is
+               a caught-up desk, not a filter to debug. */
+            <div className="wgi-empty" data-testid="home-caught-up">
+              <h2>Nothing to call right now.</h2>
+              <p>
+                No new requests and no calls due. {requestCount(lines.length)} wait on a later date
+                or are already handled.
+              </p>
+              <button
+                type="button"
+                className="wgi-empty-clear"
+                onClick={() => {
+                  setParam("status", null);
+                }}
+              >
+                Show all requests
+              </button>
+            </div>
+          ) : (
             <div className="wgi-empty" data-testid="home-no-results">
               <h2>No results</h2>
               <p>{emptyStateMessage(lines, active, nowMs)}</p>
@@ -183,14 +217,6 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
               >
                 Clear filters
               </button>
-            </div>
-          ) : (
-            <div className="wgi-empty" data-testid="sheet-empty">
-              <h2>No requests yet.</h2>
-              <p>
-                A website request lands here the moment a patient submits the form, and a contacted
-                request comes back on the day staff set for it.
-              </p>
             </div>
           )
         }

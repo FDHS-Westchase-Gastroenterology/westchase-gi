@@ -141,8 +141,17 @@ function lineFor(
       break;
     }
     case "upcoming": {
-      timing = `Back ${NY_WEEKDAY_MONTH_DAY.format(new Date(row.follow_up_at ?? row.created_at))}`;
-      followUp = "upcoming";
+      /* A dateless Call again row that was just worked rests here until the
+         next business morning. It still has no day to come back on, so it
+         reads and filters as Needs a date rather than borrowing its
+         received date as a callback. */
+      if (row.follow_up_at === null) {
+        timing = `Last activity ${rel(Date.parse(row.lastActivityAt ?? row.created_at), nowMs)}`;
+        followUp = "needs_date";
+      } else {
+        timing = `Back ${NY_WEEKDAY_MONTH_DAY.format(new Date(row.follow_up_at))}`;
+        followUp = "upcoming";
+      }
       break;
     }
     case "stale": {

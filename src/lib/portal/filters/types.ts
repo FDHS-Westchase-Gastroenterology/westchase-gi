@@ -5,11 +5,22 @@
    route (the phase-2 natural-language path) — so nothing here may touch the
    DOM, the database, or server-only modules. */
 
-export type FilterKey = "status" | "followup" | "location" | "received" | "search";
+export type FilterKey = "status" | "location" | "received" | "search";
 
 export interface FilterOption {
   readonly value: string;
   readonly label: string;
+  /** The parent option this one sits under, when the dimension is a tree. */
+  readonly group?: string;
+}
+
+/* A parent option: its value is URL shorthand for every member, and its
+   label speaks for them when all are selected. A named subset speaks for an
+   exact partial selection ("Call again · due"). */
+export interface FilterGroup {
+  readonly value: string;
+  readonly label: string;
+  readonly subsets: readonly { readonly label: string; readonly values: readonly string[] }[];
 }
 
 /** An inclusive epoch-ms range. Travels raw in the URL; renders practice-local. */
@@ -30,7 +41,12 @@ interface FilterParamBase<Value> {
 export interface MultiSelectFilterParam extends FilterParamBase<readonly string[]> {
   readonly type: "multi-select";
   readonly anyLabel: string;
+  /** Leaf options in canonical order; a grouped leaf names its parent. */
   readonly options: readonly FilterOption[];
+  readonly groups: readonly FilterGroup[];
+  /** The pill a bare URL carries. A dimension with a default spells its
+      absence `key=any`. */
+  readonly defaultRaw?: string;
 }
 
 export interface DateFilterParam extends FilterParamBase<DateRange> {

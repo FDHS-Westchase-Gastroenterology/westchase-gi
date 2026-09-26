@@ -1,6 +1,6 @@
 import type { RequestLocation } from "@/lib/portal/contracts";
-import { datePresets, filterByKey, filterValueLabel } from "@/lib/portal/filters";
-import type { ActiveFilter, FilterKey, FollowUpValue } from "@/lib/portal/filters";
+import { datePresets, filterByKey, filterValueLabel, statusLeaf } from "@/lib/portal/filters";
+import type { ActiveFilter, FilterKey, FollowUpValue, StatusLeaf } from "@/lib/portal/filters";
 /* Type-only import: erased at compile time, so the server-only module never
    enters the client graph. */
 import type { AttentionBucket } from "@/lib/portal/queue-attention";
@@ -57,8 +57,7 @@ function passes(line: Readonly<HomeLine>, key: FilterKey, raw: string): boolean 
     const values = def.decode(raw);
     if (values === null) return true;
     if (key === "location") return values.includes(line.location);
-    if (key === "followup") return line.followUp !== null && values.includes(line.followUp);
-    return values.includes(line.status);
+    return values.includes(statusLeaf(line.status, line.followUp));
   }
   if (def.type === "date") {
     const range = def.decode(raw);
@@ -120,7 +119,8 @@ export interface FilterSuggestion {
    uncounted. The ranked list takes over the moment the day arrives. */
 export const PLACEHOLDER_SUGGESTIONS: readonly FilterSuggestion[] = [
   { key: "status", raw: "new" },
-  { key: "status", raw: "contacted" },
+  { key: "status", raw: "overdue" },
+  { key: "status", raw: "due_today" },
 ];
 
 /** The most ghosts the bar offers at once; more reads as a second menu. */
@@ -242,18 +242,16 @@ function receivedCandidates(nowMs: number): Candidate[] {
 
 /* Candidate ghosts in offer order, as groups: a group yields its first
    candidate that narrows the visible rows, so Received offers one preset,
-   not three. Each dimension is offered only where it means something:
-
-   - Status names the job, so it is offered while no status pill is up.
-   - Follow-up is where a Call again row stands against its call-again date,
-     so it is offered on the empty bar and under a pill that is exactly Call
-     again. Under New | Call again it would drop the New rows unannounced.
-   - Received is arrival time, which cuts the inbox: no status pill, or a
-     pill that includes New. A Call again pile is cut by Follow-up instead.
-   - Location is the preferred office and applies everywhere.
+   not three. Status is one dimension with Call again split by standing, so a
+   status ghost replaces the status pill; `narrows` keeps only the ones that
+   cut what is on screen (New out of the default, Overdue out of Call again),
+   never a sibling that swaps the rows. Received is arrival time, which cuts
+   the inbox: no status pill, or a pill that includes New; a Call again pile
+   is cut by its standings instead. Location is the preferred office and
+   applies everywhere.
 
    The rank puts the job first, then the calls the desk is behind on, then
-   today's arrivals, then the rest of the follow-up pile, then the office;
+   today's arrivals, then the rest of the calls due, then the office;
    Upcoming and the booked tail close, where the cap usually drops them. */
 function candidateGroups(
   filtered: readonly Readonly<HomeLine>[],
@@ -261,26 +259,19 @@ function candidateGroups(
   nowMs: number,
 ): readonly (readonly Candidate[])[] {
   const statuses = pillValues(active, "status");
-  const statusOffered = statuses === null;
-  const followUpOffered =
-    statuses === null || (statuses.length === 1 && statuses[0] === "contacted");
   const receivedOffered = statuses === null || statuses.includes("new");
   const location = leadingLocation(filtered);
-
-  const status = (raw: string): readonly Candidate[] =>
-    statusOffered ? [{ key: "status", raw }] : [];
-  const followUp = (raw: FollowUpValue): readonly Candidate[] =>
-    followUpOffered ? [{ key: "followup", raw }] : [];
+  const status = (raw: StatusLeaf | "contacted"): readonly Candidate[] => [{ key: "status", raw }];
 
   return [
     status("new"),
     status("contacted"),
-    followUp("overdue"),
+    status("overdue"),
     receivedOffered ? receivedCandidates(nowMs) : [],
-    followUp("due_today"),
-    followUp("needs_date"),
+    status("due_today"),
+    status("needs_date"),
     location === null ? [] : [{ key: "location", raw: location }],
-    followUp("upcoming"),
+    status("upcoming"),
     status("scheduled"),
   ];
 }

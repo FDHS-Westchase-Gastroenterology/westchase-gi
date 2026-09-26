@@ -22,6 +22,7 @@ export const locationFilter: MultiSelectFilterParam = {
   type: "multi-select",
   anyLabel: "Any location",
   options: LOCATION_OPTIONS,
+  groups: [],
   encode: (value) => value.join(","),
   decode: (raw) => {
     const values = [...new Set(raw.split(",").filter(isRequestLocation))];

@@ -19,7 +19,9 @@ const completionPayload = z.tuple([
 ]);
 
 async function openCard(page: Page, name: string): Promise<void> {
-  await page.goto("/admin");
+  /* The contacted fixture calls back tomorrow, which the opening list leaves
+     out; the whole list holds both fixtures. */
+  await page.goto("/admin?status=any");
   await page.getByRole("button", { name: new RegExp(name, "u") }).click();
   await expect(page.getByRole("radio", { name: "No answer", exact: true })).toBeVisible();
 }

@@ -14,7 +14,7 @@ import {
 import { useActiveFilters } from "@/lib/portal/filters/use-filter-param";
 
 import { FilterBar } from "./filter-bar";
-import { PLACEHOLDER_SUGGESTIONS } from "./home-line";
+import { PLACEHOLDER_SUGGESTIONS, suggestionId } from "./home-line";
 
 import "./home.css";
 
@@ -42,7 +42,7 @@ export default function HomeLoading() {
   const { active, setParam } = useActiveFilters();
   const [nowMs] = useState(() => Date.now());
   const suggestions = PLACEHOLDER_SUGGESTIONS.filter(
-    (suggestion) => !active.some((entry) => entry.key === suggestion.key),
+    (suggestion) => !active.some((entry) => suggestionId(entry) === suggestionId(suggestion)),
   );
 
   return (

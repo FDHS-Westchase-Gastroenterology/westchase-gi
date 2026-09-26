@@ -1,7 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { datePresets, filterByKey, filterValueLabel } from "@/lib/portal/filters";
+import {
+  datePresets,
+  filterByKey,
+  filterValueLabel,
+  STATUS_DEFAULT_RAW,
+} from "@/lib/portal/filters";
 
 import {
   applyFilters,
@@ -76,11 +81,26 @@ test("a ghost that would empty the list stays out", () => {
   assert.ok(!ids(suggestFilters(lines, [], NOW)).includes("status:contacted"));
 });
 
-test("every ranked ghost narrows the visible rows: no sibling status once a status pill is up", () => {
+test("the list opens on New plus the calls due; upcoming calls and the booked tail wait", () => {
+  const due = [line(), callAgain("overdue"), callAgain("due_today"), callAgain("needs_date")];
+  const waiting = [
+    callAgain("upcoming"),
+    line({ status: "scheduled", bucket: "scheduled" }),
+    line({ status: "closed", bucket: "closed" }),
+  ];
+  assert.deepEqual(applyFilters([...due, ...waiting], status(STATUS_DEFAULT_RAW)), due);
+  /* The old one-word link still means the whole Call again pile. */
+  assert.deepEqual(applyFilters([...due, ...waiting], status("contacted")), [
+    ...due.slice(1),
+    waiting[0],
+  ]);
+});
+
+test("every ranked ghost narrows the visible rows: a sibling status never, a standing inside the pill yes", () => {
   const lines = [line({ status: "new" }), callAgain("due_today"), callAgain("overdue")];
+  assert.ok(!keys(suggestFilters(lines, status("new"), NOW)).includes("status"));
   for (const active of [status("new"), status("contacted"), status("new,contacted")]) {
     const suggestions = suggestFilters(lines, active, NOW);
-    assert.ok(!keys(suggestions).includes("status"), `no status ghost under ${active[0].raw}`);
     const visible = applyFilters(lines, active);
     for (const ghost of suggestions) {
       assert.ok(ghost.count > 0 && ghost.count < visible.length);
@@ -113,10 +133,10 @@ test("under Call again, the pile is cut by follow-up standing: behind first, the
   ];
   const suggestions = suggestFilters(lines, status("contacted"), NOW);
   assert.deepEqual(ids(suggestions), [
-    "followup:overdue",
-    "followup:due_today",
-    "followup:needs_date",
-    "followup:upcoming",
+    "status:overdue",
+    "status:due_today",
+    "status:needs_date",
+    "status:upcoming",
   ]);
   assert.deepEqual(
     suggestions.map((suggestion) => suggestion.count),
@@ -137,12 +157,25 @@ test("Received is arrival time: offered on the inbox, never on the Call again pi
   assert.ok(!keys(suggestFilters(lines, status("contacted"), NOW)).includes("received"));
 });
 
-test("Follow-up is offered on the empty bar and under exactly Call again, nowhere else", () => {
+test("under the opening pill, the ghosts split it: New alone, the calls alone, the calls behind", () => {
   const lines = [line({ status: "new" }), callAgain("overdue"), callAgain("due_today")];
-  assert.ok(ids(suggestFilters(lines, [], NOW)).includes("followup:overdue"));
-  assert.ok(keys(suggestFilters(lines, status("contacted"), NOW)).includes("followup"));
-  assert.ok(!keys(suggestFilters(lines, status("new,contacted"), NOW)).includes("followup"));
-  assert.ok(!keys(suggestFilters(lines, status("new"), NOW)).includes("followup"));
+  const suggestions = suggestFilters(lines, status(STATUS_DEFAULT_RAW), NOW);
+  assert.deepEqual(
+    suggestions.slice(0, 3).map((ghost) => [suggestionId(ghost), ghost.count]),
+    [
+      ["status:new", 1],
+      ["status:contacted", 2],
+      ["status:overdue", 1],
+    ],
+  );
+  /* Call again would add the upcoming calls the pill leaves out, so it is
+     no longer a refinement once one exists. */
+  const withUpcoming = [...lines, callAgain("upcoming")];
+  assert.ok(
+    !ids(suggestFilters(withUpcoming, status(STATUS_DEFAULT_RAW), NOW)).includes(
+      "status:contacted",
+    ),
+  );
 });
 
 test("a Today pill minted on an earlier render is still the Today pill: no ghost beside it", () => {
@@ -234,9 +267,9 @@ test("a removed pill is the way back: it returns at the end as a pivot, and the 
   assert.equal(swapped.length, SUGGESTION_LIMIT);
   assert.equal(ids(swapped).at(-1), "status:new");
   assert.deepEqual(ids(swapped).slice(0, 3), [
-    "followup:overdue",
-    "followup:due_today",
-    "followup:needs_date",
+    "status:overdue",
+    "status:due_today",
+    "status:needs_date",
   ]);
 
   /* Removed New from an empty bar: same membership as the plain bar, New last. */
