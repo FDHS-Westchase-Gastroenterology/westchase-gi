@@ -115,6 +115,58 @@ export function isDefaultView(active: readonly ActiveFilter[]): boolean {
   );
 }
 
+/* ---- Pills: one per top-level choice ----
+   A dimension's param holds one selection, and the bar speaks it as one pill
+   per top-level choice: an ungrouped option, or a parent carrying whichever
+   of its members are chosen. The opening Status is two pills, New and Call
+   again · due, each removable on its own. Pills on one dimension are
+   alternatives (a row has one status, one office), so adding one widens the
+   list and removing one narrows it; pills on different dimensions narrow. */
+
+export interface FilterPill {
+  readonly key: FilterKey;
+  /** The top-level choice this pill speaks for: an option, a group, or the whole dimension. */
+  readonly choice: string;
+  /** This pill's own selection, encoded as the dimension's param carries it. */
+  readonly raw: string;
+}
+
+export function filterPills(active: readonly ActiveFilter[]): FilterPill[] {
+  return active.flatMap(({ key, raw }) => {
+    const def = filterByKey(key);
+    if (def.type !== "multi-select") return [{ key, choice: key, raw }];
+    const chosen = new Set(def.decode(raw));
+    const choices = new Map<string, string[]>();
+    for (const option of def.options) {
+      if (!chosen.has(option.value)) continue;
+      const choice = option.group ?? option.value;
+      choices.set(choice, [...(choices.get(choice) ?? []), option.value]);
+    }
+    return [...choices].map(([choice, values]) => ({ key, choice, raw: def.encode(values) }));
+  });
+}
+
+/** A multi-select param with another selection added to it. */
+export function unionRaw(def: MultiSelectFilterParam, raw: string | null, added: string): string {
+  const values = new Set([
+    ...(raw === null ? [] : (def.decode(raw) ?? [])),
+    ...(def.decode(added) ?? []),
+  ]);
+  return def.encode(
+    def.options.flatMap((option) => (values.has(option.value) ? [option.value] : [])),
+  );
+}
+
+/** The dimension's param once one of its pills is gone; null when none remain. */
+export function withoutPill(active: readonly ActiveFilter[], pill: FilterPill): string | null {
+  const def = filterByKey(pill.key);
+  const entry = active.find((candidate) => candidate.key === pill.key);
+  if (def.type !== "multi-select" || entry === undefined) return null;
+  const removed = new Set(def.decode(pill.raw));
+  const rest = (def.decode(entry.raw) ?? []).filter((value) => !removed.has(value));
+  return rest.length > 0 ? def.encode(rest) : null;
+}
+
 /* ---- Display labels (pill values, empty-state sentences) ---- */
 
 /* A tree dimension reads by its parents: every member selected is the
@@ -153,13 +205,23 @@ function multiSelectSegments(def: MultiSelectFilterParam, values: readonly strin
   return segments;
 }
 
-/** Decode a raw param into the pill's value label: "New | Call again", "3 selected", "Last 7 days", ""maria"". */
+/** Decode a raw param into the pill's value label: "New | Call again", "Call again · 3 of 4", "3 selected", "Last 7 days", ""maria"". */
 export function filterValueLabel(def: FilterParam, raw: string, nowMs: number): string {
   if (def.type === "multi-select") {
     const values = def.decode(raw);
     if (values === null) return raw;
     const labels = multiSelectSegments(def, values);
-    return labels.length <= 2 ? labels.join(" | ") : `${labels.length} selected`;
+    if (labels.length <= 2) return labels.join(" | ");
+    /* One parent's pill with three of its members: say whose, and how many. */
+    const chosen = new Set(values);
+    const parents = new Set(
+      def.options.flatMap((option) => (chosen.has(option.value) ? [option.group] : [])),
+    );
+    const [parent] = parents;
+    const group = parents.size === 1 ? def.groups.find((g) => g.value === parent) : undefined;
+    if (group === undefined) return `${labels.length} selected`;
+    const members = def.options.filter((option) => option.group === group.value).length;
+    return `${group.label} · ${chosen.size} of ${members}`;
   }
   if (def.type === "date") {
     const value = def.decode(raw);

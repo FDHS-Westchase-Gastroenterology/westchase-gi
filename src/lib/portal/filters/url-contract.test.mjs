@@ -3,10 +3,12 @@ import test from "node:test";
 
 import {
   filterByKey,
+  filterPills,
   filterValueLabel,
   isDefaultView,
   readActiveFilters,
   STATUS_DEFAULT_RAW,
+  withoutPill,
   writeActiveFilters,
 } from "@/lib/portal/filters";
 
@@ -62,5 +64,27 @@ test("the Status pill reads by parent: Call again, a named subset, or the standi
   assert.equal(label("contacted"), "Call again");
   assert.equal(label("new,contacted"), "New | Call again");
   assert.equal(label("overdue,due_today"), "Overdue | Due today");
+  assert.equal(label("overdue,due_today,upcoming"), "Call again · 3 of 4");
   assert.equal(label("new,contacted,scheduled"), "3 selected");
+});
+
+test("one pill per top-level choice: the opening Status is New and Call again · due, each removable alone", () => {
+  const opening = readActiveFilters("");
+  const pills = filterPills(opening);
+  assert.deepEqual(
+    pills.map((pill) => label(pill.raw)),
+    ["New", "Call again · due"],
+  );
+  assert.equal(withoutPill(opening, pills[0]), "overdue,due_today,needs_date");
+  assert.equal(withoutPill(opening, pills[1]), "new");
+  assert.equal(withoutPill(readActiveFilters("status=new"), pills[0]), null);
+
+  const offices = filterPills(readActiveFilters("status=any&location=tampa,lutz"));
+  assert.deepEqual(
+    offices.map((pill) => [pill.key, pill.raw]),
+    [
+      ["location", "tampa"],
+      ["location", "lutz"],
+    ],
+  );
 });

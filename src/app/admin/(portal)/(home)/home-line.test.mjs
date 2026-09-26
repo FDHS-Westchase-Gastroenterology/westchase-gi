@@ -96,18 +96,25 @@ test("the list opens on New plus the calls due; upcoming calls and the booked ta
   ]);
 });
 
-test("every ranked ghost narrows the visible rows: a sibling status never, a standing inside the pill yes", () => {
-  const lines = [line({ status: "new" }), callAgain("due_today"), callAgain("overdue")];
-  assert.ok(!keys(suggestFilters(lines, status("new"), NOW)).includes("status"));
-  for (const active of [status("new"), status("contacted"), status("new,contacted")]) {
+test("no ghost repeats a status pill: beside the opening New and Call again · due, no status ghost", () => {
+  const lines = [
+    line({ status: "new" }),
+    line({ status: "new", createdAtMs: NOW - 3 * DAY }),
+    callAgain("overdue"),
+    callAgain("due_today"),
+    callAgain("needs_date"),
+    callAgain("upcoming"),
+    line({ status: "scheduled", bucket: "scheduled" }),
+  ];
+  for (const active of [status(STATUS_DEFAULT_RAW), status("new"), status("contacted")]) {
     const suggestions = suggestFilters(lines, active, NOW);
+    assert.ok(!keys(suggestions).includes("status"), active[0].raw);
     const visible = applyFilters(lines, active);
-    for (const ghost of suggestions) {
-      assert.ok(ghost.count > 0 && ghost.count < visible.length);
-    }
+    for (const ghost of suggestions) assert.ok(ghost.count > 0 && ghost.count < visible.length);
   }
-  assert.deepEqual(withSuggestion(status("new"), { key: "status", raw: "contacted" }), [
-    { key: "status", raw: "contacted" },
+  /* A status ghost joins the pills beside it rather than replacing them. */
+  assert.deepEqual(withSuggestion(status("contacted"), { key: "status", raw: "new" }), [
+    { key: "status", raw: "new,contacted" },
   ]);
 });
 
@@ -122,28 +129,6 @@ test("the other office is a pivot, so a Location pill has no Location ghost besi
   );
 });
 
-test("under Call again, the pile is cut by follow-up standing: behind first, then due, then dateless", () => {
-  const lines = [
-    line({ status: "new" }),
-    callAgain("overdue", { createdAtMs: NOW - 3 * DAY }),
-    callAgain("due_today"),
-    callAgain("due_today"),
-    callAgain("needs_date"),
-    callAgain("upcoming"),
-  ];
-  const suggestions = suggestFilters(lines, status("contacted"), NOW);
-  assert.deepEqual(ids(suggestions), [
-    "status:overdue",
-    "status:due_today",
-    "status:needs_date",
-    "status:upcoming",
-  ]);
-  assert.deepEqual(
-    suggestions.map((suggestion) => suggestion.count),
-    [1, 2, 1, 1],
-  );
-});
-
 test("Received is arrival time: offered on the inbox, never on the Call again pile", () => {
   const lines = [
     line({ status: "new" }),
@@ -155,27 +140,6 @@ test("Received is arrival time: offered on the inbox, never on the Call again pi
   assert.ok(keys(suggestFilters(lines, status("new"), NOW)).includes("received"));
   assert.ok(keys(suggestFilters(lines, status("new,contacted"), NOW)).includes("received"));
   assert.ok(!keys(suggestFilters(lines, status("contacted"), NOW)).includes("received"));
-});
-
-test("under the opening pill, the ghosts split it: New alone, the calls alone, the calls behind", () => {
-  const lines = [line({ status: "new" }), callAgain("overdue"), callAgain("due_today")];
-  const suggestions = suggestFilters(lines, status(STATUS_DEFAULT_RAW), NOW);
-  assert.deepEqual(
-    suggestions.slice(0, 3).map((ghost) => [suggestionId(ghost), ghost.count]),
-    [
-      ["status:new", 1],
-      ["status:contacted", 2],
-      ["status:overdue", 1],
-    ],
-  );
-  /* Call again would add the upcoming calls the pill leaves out, so it is
-     no longer a refinement once one exists. */
-  const withUpcoming = [...lines, callAgain("upcoming")];
-  assert.ok(
-    !ids(suggestFilters(withUpcoming, status(STATUS_DEFAULT_RAW), NOW)).includes(
-      "status:contacted",
-    ),
-  );
 });
 
 test("a Today pill minted on an earlier render is still the Today pill: no ghost beside it", () => {
@@ -248,7 +212,7 @@ test("an even split between offices offers no office, whichever office comes fir
   }
 });
 
-test("a removed pill is the way back: it returns at the end as a pivot, and the cap makes room", () => {
+test("a removed pill is the way back: it returns at the end, and the cap makes room", () => {
   const lines = [
     line({ status: "new", location: "lutz" }),
     line({ status: "new", createdAtMs: NOW - 3 * DAY }),
@@ -261,16 +225,17 @@ test("a removed pill is the way back: it returns at the end as a pivot, and the 
   assert.equal(plain.length, SUGGESTION_LIMIT);
   assert.equal(ids(plain)[0], "status:new");
 
-  /* Swapped New for Call again: New is not a refinement of the Call again
-     pile, yet it comes back last because the user just had it. */
-  const swapped = suggestFilters(lines, status("contacted"), NOW, status("new"));
-  assert.equal(swapped.length, SUGGESTION_LIMIT);
-  assert.equal(ids(swapped).at(-1), "status:new");
-  assert.deepEqual(ids(swapped).slice(0, 3), [
-    "status:overdue",
-    "status:due_today",
-    "status:needs_date",
-  ]);
+  /* Removed New from the opening pills: New widens the calls left on the
+     bar, yet it comes back last because the user just had it, and taking
+     it restores the opening view. */
+  const calls = status("overdue,due_today,needs_date");
+  const withoutNew = suggestFilters(lines, calls, NOW, status("new"));
+  const back = withoutNew.at(-1);
+  assert.deepEqual([suggestionId(back), back.count], ["status:new", 5]);
+  assert.deepEqual(withSuggestion(calls, back), status(STATUS_DEFAULT_RAW));
+
+  /* A removed pill whose values the bar already carries is not offered. */
+  assert.ok(!ids(suggestFilters(lines, calls, NOW, status("overdue"))).includes("status:overdue"));
 
   /* Removed New from an empty bar: same membership as the plain bar, New last. */
   const removed = suggestFilters(lines, [], NOW, status("new"));

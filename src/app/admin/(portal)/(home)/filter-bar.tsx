@@ -7,6 +7,7 @@ import {
   datePresets,
   dayLabel,
   filterByKey,
+  filterPills,
   filterValueLabel,
   HOME_FILTERS,
   matchesPreset,
@@ -19,11 +20,12 @@ import type {
   DateFilterParam,
   FilterKey,
   FilterParam,
+  FilterPill,
   MultiSelectFilterParam,
   TextFilterParam,
 } from "@/lib/portal/filters";
 
-import { AnyRow, MultiSelectRows, TickGlyph } from "./filter-options";
+import { AnyRow, ChevronRightGlyph, MultiSelectRows, TickGlyph } from "./filter-options";
 import { suggestionId } from "./home-line";
 import type { FilterSuggestion } from "./home-line";
 import { HomeRangeCalendar } from "./parts/calendar";
@@ -31,7 +33,8 @@ import { HomePopover, HomePopoverContent, HomePopoverTrigger } from "./parts/pop
 import { SuggestionPill } from "./suggestion-pill";
 
 /* The filter bar (brief §2.2): Add Filter, then active pills in URL order,
-   then suggestion pills. Every toggle applies instantly — URL, pill label,
+   one per top-level choice (New and Call again · due are two pills on one
+   Status param), then suggestion pills. Every toggle applies instantly — URL, pill label,
    and list update per click. The one exception is the Received editor's
    custom range, which takes over the popover and holds a draft until Apply
    (filter-bar brief §5.5). */
@@ -41,7 +44,7 @@ interface FilterBarProps {
   readonly suggestions: readonly FilterSuggestion[];
   readonly nowMs: number;
   readonly setParam: (key: FilterKey, raw: string | null) => void;
-  readonly onRemove: (key: FilterKey) => void;
+  readonly onRemove: (pill: FilterPill) => void;
   readonly onActivate: (suggestion: FilterSuggestion) => void;
 }
 
@@ -65,17 +68,19 @@ export function FilterBar({
   onRemove,
   onActivate,
 }: FilterBarProps) {
+  const dimensionRaws = new Map(active.map((entry) => [entry.key, entry.raw]));
   return (
     <div role="toolbar" aria-label="Filters" className="wgi-filter-bar print-hide">
       <AddFilterButton active={active} nowMs={nowMs} setParam={setParam} />
-      {active.map((entry) => (
+      {filterPills(active).map((pill) => (
         <ActivePill
-          key={entry.key}
-          entry={entry}
+          key={`${pill.key}:${pill.choice}`}
+          pill={pill}
+          dimensionRaw={dimensionRaws.get(pill.key) ?? pill.raw}
           nowMs={nowMs}
           setParam={setParam}
           onRemove={() => {
-            onRemove(entry.key);
+            onRemove(pill);
           }}
         />
       ))}
@@ -192,37 +197,42 @@ function AddFilterButton({
   );
 }
 
-/* ---- Active pill: label button opens the editor, × removes ---- */
+/* ---- Active pill: label button opens the editor, × removes ----
+   The label opens its whole dimension, since the pills beside it are
+   choices in the same param; × removes this pill's choice alone. */
 
 function ActivePill({
-  entry,
+  pill,
+  dimensionRaw,
   nowMs,
   setParam,
   onRemove,
 }: Readonly<{
-  entry: ActiveFilter;
+  pill: FilterPill;
+  dimensionRaw: string;
   nowMs: number;
   setParam: SetParam;
   onRemove: () => void;
 }>) {
-  const def = filterByKey(entry.key);
+  const def = filterByKey(pill.key);
+  const value = filterValueLabel(def, pill.raw, nowMs);
   const [open, setOpen] = useState(false);
 
   return (
-    <span className="wgi-pill" data-pill={entry.key}>
+    <span className="wgi-pill" data-pill={pill.key}>
       <HomePopover open={open} onOpenChange={setOpen}>
         <HomePopoverTrigger render={<button type="button" className="wgi-pill-label" />}>
           <span className="wgi-pill-key">{def.label}</span>
-          <span className="wgi-pill-value">{filterValueLabel(def, entry.raw, nowMs)}</span>
+          <span className="wgi-pill-value">{value}</span>
         </HomePopoverTrigger>
         <HomePopoverContent className="wgi-editor" aria-label={`Filter by ${def.label}`}>
-          <FilterEditor def={def} raw={entry.raw} nowMs={nowMs} setParam={setParam} />
+          <FilterEditor def={def} raw={dimensionRaw} nowMs={nowMs} setParam={setParam} />
         </HomePopoverContent>
       </HomePopover>
       <button
         type="button"
         className="wgi-pill-remove"
-        aria-label={`Remove ${def.label} filter`}
+        aria-label={`Remove ${def.label} ${value} filter`}
         onClick={onRemove}
       >
         <svg
@@ -308,26 +318,6 @@ function EditorHead({
       <DimButton label={label} onClick={onBack} />
       {children}
     </div>
-  );
-}
-
-/* The row-end chevron: this row opens another level. */
-function ChevronRightGlyph() {
-  return (
-    <svg
-      data-chevron="true"
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="m9 18 6-6-6-6" />
-    </svg>
   );
 }
 

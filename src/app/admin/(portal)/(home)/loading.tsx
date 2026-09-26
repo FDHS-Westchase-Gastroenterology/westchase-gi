@@ -11,10 +11,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { withoutPill } from "@/lib/portal/filters";
 import { useActiveFilters } from "@/lib/portal/filters/use-filter-param";
 
 import { FilterBar } from "./filter-bar";
-import { PLACEHOLDER_SUGGESTIONS, suggestionId } from "./home-line";
+import { PLACEHOLDER_SUGGESTIONS, suggestionRaw } from "./home-line";
 
 import "./home.css";
 
@@ -42,7 +43,7 @@ export default function HomeLoading() {
   const { active, setParam } = useActiveFilters();
   const [nowMs] = useState(() => Date.now());
   const suggestions = PLACEHOLDER_SUGGESTIONS.filter(
-    (suggestion) => !active.some((entry) => suggestionId(entry) === suggestionId(suggestion)),
+    (suggestion) => !active.some((entry) => entry.key === suggestion.key),
   );
 
   return (
@@ -57,11 +58,11 @@ export default function HomeLoading() {
         suggestions={suggestions}
         nowMs={nowMs}
         setParam={setParam}
-        onRemove={(key) => {
-          setParam(key, null);
+        onRemove={(pill) => {
+          setParam(pill.key, withoutPill(active, pill));
         }}
         onActivate={(suggestion) => {
-          setParam(suggestion.key, suggestion.raw);
+          setParam(suggestion.key, suggestionRaw(active, suggestion));
         }}
       />
       <Card className="wgi-list-card" aria-hidden="true">

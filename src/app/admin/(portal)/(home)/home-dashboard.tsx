@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { isDefaultView } from "@/lib/portal/filters";
-import type { ActiveFilter, FilterKey } from "@/lib/portal/filters";
+import { filterByKey, filterPills, isDefaultView, withoutPill } from "@/lib/portal/filters";
+import type { ActiveFilter, FilterKey, FilterPill } from "@/lib/portal/filters";
 import { useActiveFilters } from "@/lib/portal/filters/use-filter-param";
 
 import { FilterBar } from "./filter-bar";
@@ -15,6 +15,7 @@ import {
   requestCount,
   suggestFilters,
   suggestionId,
+  suggestionRaw,
 } from "./home-line";
 import type { FilterSuggestion, HomeLine } from "./home-line";
 import { LineList } from "./line-list";
@@ -35,10 +36,10 @@ interface HomeDashboardProps {
 export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps) {
   const { active, setParam: writeParam, clearAll } = useActiveFilters();
 
-  /* Filters the user removed, in removal order. A removed filter returns to
-     the bar as a ghost at the end, so the eye finds it where it went, and it
-     is the one kind of ghost allowed to swap the rows out rather than narrow
-     them; the ranking in `suggestFilters` owns everything else. */
+  /* Pills the user removed, in removal order. A removed pill returns to the
+     bar as a ghost at the end, so the eye finds it where it went, and it is
+     the one kind of ghost allowed to widen or swap the rows rather than
+     narrow them; the ranking in `suggestFilters` owns everything else. */
   const [demoted, setDemoted] = useState<readonly ActiveFilter[]>([]);
 
   const [openRowId, setOpenRowId] = useState<string | null>(null);
@@ -95,24 +96,32 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
   };
 
   const activate = (suggestion: FilterSuggestion) => {
-    /* The pill this ghost replaces, if any, comes back as a ghost at the end. */
-    const replaced = active.find((entry) => entry.key === suggestion.key);
-    writeParam(suggestion.key, suggestion.raw);
+    /* A multi-select ghost joins its dimension's pills; a date ghost takes
+       the one Received pill's place, and that pill comes back as a ghost. */
+    const replaced =
+      filterByKey(suggestion.key).type === "multi-select"
+        ? undefined
+        : active.find((entry) => entry.key === suggestion.key);
+    writeParam(suggestion.key, suggestionRaw(active, suggestion));
     const id = suggestionId(suggestion);
     setDemoted((queue) => queue.filter((candidate) => suggestionId(candidate) !== id));
     if (replaced !== undefined) demote(replaced);
   };
 
-  /* Every path that clears a pill demotes it: the x button, an editor's Any
-     row, an emptied search. The ghost lands at the end either way. */
+  /* Every path that takes a pill off the bar demotes it: the x button, an
+     editor's Any row or unchecked box, an emptied search. Each pill that
+     leaves lands at the end as its own ghost. */
   const setParam = (key: FilterKey, raw: string | null) => {
-    const entry = raw === null ? active.find((candidate) => candidate.key === key) : undefined;
+    const after = new Set(
+      filterPills(raw === null ? [] : [{ key, raw }]).map((pill) => pill.choice),
+    );
+    const gone = filterPills(active).filter((pill) => pill.key === key && !after.has(pill.choice));
     writeParam(key, raw);
-    if (entry !== undefined) demote(entry);
+    for (const pill of gone) demote(pill);
   };
 
-  const remove = (key: FilterKey) => {
-    setParam(key, null);
+  const remove = (pill: FilterPill) => {
+    setParam(pill.key, withoutPill(active, pill));
   };
 
   const sheetLine = sheet === null ? null : (lines.find((line) => line.id === sheet.id) ?? null);

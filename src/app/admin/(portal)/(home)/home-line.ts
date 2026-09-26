@@ -1,5 +1,11 @@
 import type { RequestLocation } from "@/lib/portal/contracts";
-import { datePresets, filterByKey, filterValueLabel, statusLeaf } from "@/lib/portal/filters";
+import {
+  datePresets,
+  filterByKey,
+  filterValueLabel,
+  statusLeaf,
+  unionRaw,
+} from "@/lib/portal/filters";
 import type { ActiveFilter, FilterKey, FollowUpValue, StatusLeaf } from "@/lib/portal/filters";
 /* Type-only import: erased at compile time, so the server-only module never
    enters the client graph. */
@@ -116,11 +122,12 @@ export interface FilterSuggestion {
 }
 
 /** What the loading bar offers before any row exists to count: the job,
-   uncounted. The ranked list takes over the moment the day arrives. */
+   uncounted, and only on a dimension with no pill yet, the way the ranked
+   list offers it. The ranked list takes over the moment the day arrives. */
 export const PLACEHOLDER_SUGGESTIONS: readonly FilterSuggestion[] = [
   { key: "status", raw: "new" },
+  { key: "status", raw: "contacted" },
   { key: "status", raw: "overdue" },
-  { key: "status", raw: "due_today" },
 ];
 
 /** The most ghosts the bar offers at once; more reads as a second menu. */
@@ -138,23 +145,27 @@ export function suggestionLabel(suggestion: Readonly<FilterSuggestion>, nowMs: n
   return suggestion.count === undefined ? head : `${head}, ${requestCount(suggestion.count)}`;
 }
 
-/* Two filters on one dimension are the same filter when they render the same
-   pill. A "Today" range minted last minute and one minted now differ as
-   strings, not as filters, so raw equality alone would offer a ghost beside
-   its own pill after a reload. */
-function sameFilter(a: Readonly<ActiveFilter>, b: Readonly<ActiveFilter>, nowMs: number): boolean {
-  if (a.key !== b.key) return false;
-  if (a.raw === b.raw) return true;
-  const def = filterByKey(a.key);
-  return filterValueLabel(def, a.raw, nowMs) === filterValueLabel(def, b.raw, nowMs);
-}
-
+/* A ghost is already on the bar when applying it would change nothing. On
+   a multi-select that is every value it carries already chosen: New is on
+   the bar under the opening pills, and so is Overdue, inside Call again ·
+   due. A date or text ghost is on the bar when it renders the same pill; a
+   "Today" range minted last minute and one minted now differ as strings,
+   not as filters, so raw equality alone would offer a ghost beside its own
+   pill after a reload. */
 function isSuggestionActive(
   suggestion: Readonly<Pick<FilterSuggestion, "key" | "raw">>,
   active: readonly Readonly<ActiveFilter>[],
   nowMs: number,
 ): boolean {
-  return active.some((entry) => sameFilter(entry, suggestion, nowMs));
+  const entry = active.find((candidate) => candidate.key === suggestion.key);
+  if (entry === undefined) return false;
+  if (entry.raw === suggestion.raw) return true;
+  const def = filterByKey(suggestion.key);
+  if (def.type === "multi-select") {
+    const chosen = new Set(def.decode(entry.raw));
+    return (def.decode(suggestion.raw) ?? []).every((value) => chosen.has(value));
+  }
+  return filterValueLabel(def, entry.raw, nowMs) === filterValueLabel(def, suggestion.raw, nowMs);
 }
 
 /* `applyFilters` keeps list order and hands back the same line objects, so two
@@ -164,21 +175,35 @@ function sameRows(a: readonly Readonly<HomeLine>[], b: readonly Readonly<HomeLin
   return a.length === b.length && a.every((line, index) => line === b[index]);
 }
 
-/** The filters the bar would carry after activating a ghost: one param per
-   dimension, so a ghost on an occupied dimension replaces that pill. */
+/** The param a ghost writes. A multi-select ghost is one more pill beside
+   its dimension's others, an alternative the list also shows; a date or
+   text dimension holds one pill, so its ghost replaces it. */
+export function suggestionRaw(
+  active: readonly Readonly<ActiveFilter>[],
+  suggestion: Readonly<Pick<FilterSuggestion, "key" | "raw">>,
+): string {
+  const def = filterByKey(suggestion.key);
+  if (def.type !== "multi-select") return suggestion.raw;
+  const entry = active.find((candidate) => candidate.key === suggestion.key);
+  return unionRaw(def, entry?.raw ?? null, suggestion.raw);
+}
+
+/** The filters the bar would carry after activating a ghost, in pill order. */
 export function withSuggestion(
   active: readonly Readonly<ActiveFilter>[],
   suggestion: Readonly<Pick<FilterSuggestion, "key" | "raw">>,
 ): ActiveFilter[] {
-  const others = active.filter((entry) => entry.key !== suggestion.key);
-  return [...others, { key: suggestion.key, raw: suggestion.raw }];
+  const raw = suggestionRaw(active, suggestion);
+  const index = active.findIndex((entry) => entry.key === suggestion.key);
+  if (index < 0) return [...active, { key: suggestion.key, raw }];
+  return active.map((entry, at) => (at === index ? { key: suggestion.key, raw } : entry));
 }
 
 /* A refinement narrows what is on screen: every row it shows is already
    visible, and at least one visible row drops. That is the whole test for a
-   ranked ghost. A ghost that swaps the rows out instead — the sibling
-   status, the other office — is a pivot, and the bar offers a pivot only as
-   the way back to a pill the user just removed. */
+   ranked ghost. A ghost that widens the list instead (another status beside
+   the status pills, the other office) is the way back to a pill the user
+   just removed, and the bar offers it only as that. */
 function narrows(
   shown: readonly Readonly<HomeLine>[],
   filtered: readonly Readonly<HomeLine>[],
@@ -242,13 +267,12 @@ function receivedCandidates(nowMs: number): Candidate[] {
 
 /* Candidate ghosts in offer order, as groups: a group yields its first
    candidate that narrows the visible rows, so Received offers one preset,
-   not three. Status is one dimension with Call again split by standing, so a
-   status ghost replaces the status pill; `narrows` keeps only the ones that
-   cut what is on screen (New out of the default, Overdue out of Call again),
-   never a sibling that swaps the rows. Received is arrival time, which cuts
-   the inbox: no status pill, or a pill that includes New; a Call again pile
-   is cut by its standings instead. Location is the preferred office and
-   applies everywhere.
+   not three. A status ghost joins the status pills, so it narrows only when
+   Status has no pill; beside the opening New and Call again · due it would
+   widen or repeat a pill, and trimming a pill is its editor's job. Received
+   is arrival time, which cuts the inbox: no status pill, or pills that
+   include New; a Call again pile is cut in its editor, by standing.
+   Location is the preferred office and applies everywhere.
 
    The rank puts the job first, then the calls the desk is behind on, then
    today's arrivals, then the rest of the calls due, then the office;
@@ -261,7 +285,8 @@ function candidateGroups(
   const statuses = pillValues(active, "status");
   const receivedOffered = statuses === null || statuses.includes("new");
   const location = leadingLocation(filtered);
-  const status = (raw: StatusLeaf | "contacted"): readonly Candidate[] => [{ key: "status", raw }];
+  const status = (raw: StatusLeaf | "contacted"): readonly Candidate[] =>
+    statuses === null ? [{ key: "status", raw }] : [];
 
   return [
     status("new"),
@@ -277,12 +302,12 @@ function candidateGroups(
 }
 
 /** The ghosts worth offering right now, ranked, each with the count it would
-   show. A ranked ghost narrows the visible rows; one that is already the
-   active pill, that would empty the list, or that would swap the rows out is
-   noise and stays out. `demoted` holds the filters the user just removed, in
-   removal order: each returns at the end of the bar as the way back, even
-   when it swaps rather than narrows, and the cap makes room for it by
-   dropping the lowest-ranked refinement first. */
+   show. A ranked ghost narrows the visible rows; one already on the bar,
+   one that would empty the list, and one that would widen or swap the rows
+   are noise and stay out. `demoted` holds the pills the user just removed,
+   in removal order: each returns at the end of the bar as the way back,
+   even when it widens or swaps rather than narrows, and the cap makes room
+   for it by dropping the lowest-ranked refinement first. */
 export function suggestFilters(
   lines: readonly Readonly<HomeLine>[],
   active: readonly Readonly<ActiveFilter>[],
