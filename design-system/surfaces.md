@@ -121,7 +121,7 @@ stands alone between two sections of one surface is a `Separator`.
 | `Badge` | A status word on a colored ground: four brand variants, `variant` required | `status-badge.tsx` |
 
 The variants, the status each one stamps and the rule that color never speaks alone are in
-[color.md](stamps.md). Two route-owned wrappers map product status to them
+[stamps.md](stamps.md). Two route-owned wrappers map product status to them
 ([components.md](components.md#route-owned-compositions)): `StatusBadge` for the requests queue
 and detail page, and `LineStatusBadge` for the staff home's rows and its record sheet, repainted
 in `home.css` under `.wgi-badge*`. A new surface that shows request status imports one of them
