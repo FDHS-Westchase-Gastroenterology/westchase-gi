@@ -6,7 +6,9 @@
    fast beat (140ms), popovers grow from their trigger on the base beat
    (240ms) and leave on the fast one, the full-record sheet slides in on the
    sheet beat (420ms) and leaves on the base one, and a recorded outcome lands
-   as a mint wash on the row.
+   as a mint wash on the row. On a wide-gamut screen every paint is restated
+   in Display P3 (the layer after the shared paint rule, and .portal-scope in
+   globals.css), as the Figma file shows it.
 
    Three colors say three things (design-system/color.md "Roles", Apple-inspired
    restraint): mint is "you can interact here" and "this is the record",
