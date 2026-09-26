@@ -91,7 +91,7 @@ rejects with the described failure, which is what `toast.promise` renders
 **A status is a key; its words come from `STATUS_LABELS`.** `RequestStatus`
 (`src/lib/portal/workflow/contracts.ts`) is the lowercase union the database stores — `new`,
 `contacted`, `scheduled`, `closed`. `STATUS_LABELS` (`src/app/admin/(portal)/requests/format.ts`)
-maps each to its capitalized label, and `StatusBadge` reads it ([color.md](color.md#status-stamps)).
+maps each to its capitalized label, and `StatusBadge` reads it ([stamps.md](stamps.md)).
 A screen that capitalizes a status itself has invented a second label table.
 `src/lib/portal/contracts.ts` also exists and is the intake boundary; it does not hold
 `RequestStatus`.

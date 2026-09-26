@@ -18,7 +18,7 @@ const STEPS = [
   },
   {
     title: "Settings",
-    body: "Manage notification email recipients here. Administrators can also invite staff and manage access. Help stays in the desktop task rail or the mobile navigation.",
+    body: "Manage notification email recipients here. Administrators can also invite staff and manage access. On a computer, Settings and Help sit at the foot of the side panel; on a phone, in the bottom navigation.",
   },
 ] as const;
 

@@ -5,9 +5,9 @@ import { SHEET } from "./sheet-coexistence";
    sheet is the record's inspector along the right edge; the panel is a
    freestanding companion (HIG Panels) that never slides under it and is
    never dragged over it. With no sheet the lane is the whole viewport,
-   less a small margin; with one open it ends one list gutter short of the
-   sheet's left edge — the gap the list keeps — so the two read as
-   neighbours rather than a stack. When the sheet claims the space the
+   less a small margin; with one open it ends one companion gap (16px, the
+   Figma section 05 frame's) short of the sheet's left edge, so the two
+   read as neighbours rather than a stack. When the sheet claims the space the
    panel stands in (it opens, a refit widens it, staff drag its grip), the
    panel yields leftward, the way a window yields to a screen edge; when
    the sheet leaves, the panel stays where it was put. Only where the
@@ -28,14 +28,16 @@ export interface Offset {
 /** The panel always keeps this much space to the viewport's edges. */
 export const VIEWPORT_MARGIN_PX = 8;
 
-/** The home list's gutter in pixels, read off the home root because the
-    card and the sheet are portaled to body and cannot inherit it. */
-export function listGutter(): number {
+/** The gap between two companion surfaces — the card and the sheet, or
+    a detached panel and the sheet — in pixels, read off the home root
+    because the card and the sheet are portaled to body and cannot
+    inherit it. */
+export function companionGap(): number {
   const home = document.querySelector(".wgi-home");
   if (home === null) return 0;
   const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize);
-  const gutterRem = Number.parseFloat(getComputedStyle(home).getPropertyValue("--wgi-gutter"));
-  return Number.isFinite(gutterRem) ? gutterRem * rem : 0;
+  const gapRem = Number.parseFloat(getComputedStyle(home).getPropertyValue("--wgi-companion-gap"));
+  return Number.isFinite(gapRem) ? gapRem * rem : 0;
 }
 
 /** The sidebar's right edge on the sidebar layout, else 0. */
@@ -89,19 +91,20 @@ export function laneFor(base: DOMRect): Lane {
   /* The sheet pushes the panel no further than the nav's edge: past that,
      too narrow for both, the panel overlaps the sheet and stays on top
      rather than covering the nav. Staff may still drag it over the nav. */
-  const gutter = listGutter();
+  const gutter = companionGap();
   const floorX = Math.max(minX, sidebarWall() + gutter - base.left);
   const wallX = Math.max(floorX, edge - gutter - base.right);
   return { minX, maxX: Math.min(screenMax, wallX), minY, maxY, walled: wallX < screenMax };
 }
 
 /** How wide the sheet may open beside a detached panel: as wide as the
-    panel can make room by yielding — to the sidebar's wall plus a gutter,
+    panel can make room by yielding — to the sidebar's wall plus a gap,
     or where the panel already is when staff put it further left — so the
-    sheet never pushes the panel over the nav. */
-export function roomBesidePanel(popup: HTMLElement): number {
-  const gutter = listGutter();
+    sheet never pushes the panel over the nav. `edge` is the sheet's
+    visible right edge. */
+export function roomBesidePanel(popup: HTMLElement, edge: number): number {
+  const gutter = companionGap();
   const left = panelBase(popup).left + panelOffset(popup).x;
   const yieldLeft = Math.max(VIEWPORT_MARGIN_PX, Math.min(left, sidebarWall() + gutter));
-  return window.innerWidth - yieldLeft - popup.offsetWidth - gutter;
+  return edge - yieldLeft - popup.offsetWidth - gutter;
 }

@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 
-import { listGutter, roomBesidePanel, SIDEBAR_LAYOUT, sidebarWall } from "./panel-lane";
+import { companionGap, roomBesidePanel, SIDEBAR_LAYOUT, sidebarWall } from "./panel-lane";
 import { OPEN_CARD } from "./sheet-coexistence";
 
 /* The sheet panel's box: how wide it may be, where it opens, and how it
@@ -14,16 +14,19 @@ const KEY_STEP_PX = 32;
 /** The widest the sheet goes when nothing walls it: a sliver of page stays. */
 const VIEWPORT_SHARE = 0.94;
 
-/* The bounds of a resize, in the sheet's own box width. That box carries
-   the off-screen bleed home.css authors past the viewport edge (so the
-   rubber band's translate never opens a gap there), measured here rather
-   than repeated as a constant. The measure is the layout box, not the
-   painted one: on its first frame the popup is still sliding in, and a
-   bound read off a transformed rect would drift by it. On the wide layout
-   there are two walls: the sidebar's right edge, and the open card —
-   the card is never covered, so the sheet stops one list gutter short of
-   it, or of where a detached panel can yield to. Below that breakpoint the sidebar is a bottom bar and the sheet
-   keeps the viewport share. */
+/* The bounds of a resize, in the sheet's own box width. Below the sidebar
+   breakpoint that box carries an off-screen bleed home.css authors past
+   the viewport edge (so the rubber band's translate never opens a gap
+   there), measured here rather than repeated as a constant; on the
+   sidebar layout the sheet floats inside the canvas and has none. The
+   measure is the layout box, not the painted one: on its first frame the
+   popup is still sliding in, and a bound read off a transformed rect
+   would drift by it. On the wide layout there are two walls: the canvas's
+   left edge, less the inset the sheet keeps on its right, and the open
+   card — the card is never covered, so the sheet stops one companion gap
+   short of it, or of where a detached panel can yield to. Below that
+   breakpoint the sidebar is a bottom bar and the sheet keeps the viewport
+   share. */
 interface SheetBounds {
   readonly min: number;
   readonly max: number;
@@ -31,14 +34,28 @@ interface SheetBounds {
 }
 
 function boundsFor(sheet: HTMLElement): SheetBounds {
-  const bleed = Math.max(0, sheet.offsetLeft + sheet.offsetWidth - window.innerWidth);
-  const wall = sidebarWall();
+  const right = sheet.offsetLeft + sheet.offsetWidth;
+  const bleed = Math.max(0, right - window.innerWidth);
+  const edge = right - bleed;
   const widest = Math.min(
     window.innerWidth * VIEWPORT_SHARE,
-    window.innerWidth - wall,
-    cardClearance() ?? Number.POSITIVE_INFINITY,
+    edge - leftWall(edge),
+    cardClearance(edge) ?? Number.POSITIVE_INFINITY,
   );
   return { min: MIN_WIDTH_PX + bleed, max: Math.max(MIN_WIDTH_PX, widest) + bleed, bleed };
+}
+
+/* How far left the sheet may reach. On the sidebar layout the canvas
+   (.portal-stage) holds it, and the sheet keeps the same inset from the
+   canvas's left edge that it keeps from the right, so the measure comes
+   from the two boxes rather than a repeated constant. Elsewhere the
+   sidebar's wall, which is 0 when the sidebar is the bottom bar. */
+function leftWall(edge: number): number {
+  const canvas = window.matchMedia(SIDEBAR_LAYOUT).matches
+    ? document.querySelector(".portal-stage")?.getBoundingClientRect()
+    : undefined;
+  if (canvas === undefined) return sidebarWall();
+  return canvas.left + Math.max(0, canvas.right - edge);
 }
 
 /* Apple's rubber band: the further past the bound, the less the sheet
@@ -51,22 +68,22 @@ function rubberband(overshoot: number, dimension: number): number {
 }
 
 /* The room beside the open card on the sidebar layout: from the card's
-   right edge to the viewport edge, less one list gutter, so the sheet
-   clears the card by the gap the list keeps. A detached panel is a wall
-   that gives: it yields leftward as the sheet widens (panel-lane.ts), so
-   its room is what it can make — never so much that it would be pushed
+   right edge to the sheet's right edge (`edge`), less one companion gap,
+   so the sheet clears the card by the frame's 16px. A detached panel is a
+   wall that gives: it yields leftward as the sheet widens (panel-lane.ts),
+   so its room is what it can make — never so much that it would be pushed
    over the nav. Null when there is no card to clear, or the layout is the
    narrow one, where nothing is clamped. The attached card's edge is read
    on the positioner, not the popup: the popup's entry scale bends its
    painted edge in for a beat, and a retarget's refit lands inside that
    beat — the layout box again, as in boundsFor. */
-function cardClearance(): number | null {
+function cardClearance(edge: number): number | null {
   if (!window.matchMedia(SIDEBAR_LAYOUT).matches) return null;
   const card = document.querySelector<HTMLElement>(OPEN_CARD);
   if (card === null || document.querySelector(".wgi-home") === null) return null;
-  if (card.hasAttribute("data-detached")) return roomBesidePanel(card);
+  if (card.hasAttribute("data-detached")) return roomBesidePanel(card, edge);
   const right = (card.parentElement ?? card).getBoundingClientRect().right;
-  return window.innerWidth - right - listGutter();
+  return edge - right - companionGap();
 }
 
 /* The width the sheet should hold: the remembered width, else the

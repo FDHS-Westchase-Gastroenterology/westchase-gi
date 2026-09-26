@@ -123,12 +123,14 @@ test.describe("portal home", () => {
     await expect(stagedLine).toHaveCount(1);
     await expect(stagedLine.locator("[data-col='status']")).toHaveText("New");
 
-    // Primary nav is task-first: Home / queue / Settings / Help — the flyer
-    // Printer holds no tab, and Home carries the current-page marker.
-    const nav = page.locator('nav[aria-label="Portal sections"]');
-    await expect(nav.locator("a")).toHaveCount(4);
+    // The desktop rail gives the four work pages the same row; Settings and
+    // Help sit in the account footer. Home carries the current-page marker.
+    const nav = page.locator('nav[aria-label="Portal sections"]:visible');
+    await expect(nav.locator("a")).toHaveText(
+      [/^Home$/, /^Requests/, /^Review flyers$/, /^Activity log$/],
+      { useInnerText: true },
+    );
     await expect(nav.locator('a[aria-current="page"]')).toHaveText("Home");
-    await expect(nav.getByRole("link", { name: "Review flyers" })).toHaveCount(0);
 
     // Print opens a chooser. All New still uses the existing packet.
     await page.getByTestId("print-chooser-trigger").click();
@@ -171,7 +173,7 @@ test.describe("portal home", () => {
     await expect(page.getByRole("heading", { name: "Requests", exact: true })).toBeVisible();
     // The waiting-count badge may append a count inside the same link.
     await expect(
-      page.locator('nav[aria-label="Portal sections"] a[aria-current="page"]'),
+      page.locator('nav[aria-label="Portal sections"]:visible a[aria-current="page"]'),
     ).toHaveText(/^Requests/, { useInnerText: true });
     await page.getByTestId("print-chooser-trigger").click();
     await expect(

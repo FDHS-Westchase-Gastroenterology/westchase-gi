@@ -13,7 +13,7 @@ so tuning a brand token reaches every register at once.
 
 ```text
 Brand @theme                   first block of src/app/globals.css
-│   --color-* hues, --font-display, --font-body, --radius-*, --shadow-*,
+│   --color-* hues and ramps, --font-display, --font-body, --radius-*, --shadow-*,
 │   --ease-*, --motion-*, --z-*, --step-*
 ├── Scopes                     re-tune the brand for one register or surface
 │   ├── .portal-scope          --portal-*, --pt-*, --ps-*, --pm-*, and the --btn-* knobs
@@ -56,8 +56,8 @@ like `--font-size-17` stops being true the first time the value is tuned.
 | `--release-row` | The release briefing's stagger index: set inline per row |
 | `--normal-bg`, `--normal-text`, `--normal-border`, `--border-radius`, `--width`, `--cell-size`, `--tw-ring-shadow` | Third-party names: Sonner in `toaster.tsx`, the calendar, Tailwind's ring shadow |
 
-A scope never assigns a brand name; the `:lang()` blocks and the staff home's three `.portal-scope`
-interaction aliases are the exceptions, recorded below.
+A scope never assigns a brand name; the `:lang()` blocks, the staff home's three `.portal-scope`
+interaction aliases and the portal's Display P3 layer are the exceptions, recorded below.
 
 **Check the shared `--color-*` namespace before adopting.** shadcn and the brand both declare
 `--color-*`, and the later `@theme` block wins without a warning. `--color-muted` is shadcn's
@@ -77,12 +77,13 @@ departure missing from this table is drift.
 
 | Where | What | Disposition |
 | --- | --- | --- |
-| Bridge `:root` and `.dark` | `--destructive` is an OKLCH literal | Stays: destructive actions have no brand hue by design. |
+| Bridge `.dark` | `--destructive` is an OKLCH literal | Stays: dark mode is not a shipped surface. The light `--destructive` reads `coral-700`. |
 | `:lang(vi)`, `:lang(ko)`, `:lang(ar)` | Re-point `--font-display` and `--font-body` | Stays: an island in another language (the review hub shows five on one page) must switch faces, which one class on `<html>` cannot do. |
 | Bridge `@theme inline` | `--font-sans` and `--font-heading` repeat the Lato stack | Stays: `--font-sans` is Tailwind's default family and the Toaster's font. `--font-heading` has no rendered consumer. |
-| `.portal-scope`; `.portal-workspace` in `portal-workbench.css` | `--portal-canvas`, `--portal-surface`, `--portal-attention-ink`, `--portal-surface-muted` are OKLCH literals | Move into the brand `@theme`: [roadmap item 10](roadmap.md#10-portal-surface-tints). |
+| `.portal-scope`; `.portal-workspace` in `portal-workbench.css` | `--portal-canvas` (hex), `--portal-surface`, `--portal-attention-ink` and `--portal-surface-muted` (OKLCH), and `--portal-nav-current`, the sidebar's current row in an off-palette `rgb()` green, are literals | Move into the brand `@theme`: [roadmap item 10](roadmap.md#10-portal-surface-tints). |
 | `.wgi-home`, `.wgi-record-card` and `.wgi-sheet` in `home.css` | Home paints, shadows, radii and type sizes; `.wgi-record-card` receives shared frame paints outside `.wgi-home`, and `.wgi-sheet` repeats paints its portal cannot inherit; literal corners, shadows and sizes in Home rules ([layout.md](layout.md#shape-and-elevation), [typography.md](typography.md#recorded-drift)); `.wgi-home` re-points `--portal-canvas` | Stays: these names belong to the staff home and its portaled overlays, with their contrast measurements here. |
 | `.portal-scope` in `globals.css` | `--color-mint-hover` (`mint`), `--color-mint-press` (`mint-2` mixed 10% toward `navy`) and `--color-teal-strong` (`teal-ink`) declare `--color-*` names outside the brand `@theme` | Stays: the staff home's hover, press and focus inks from PR #304, set on `<body>` so the portaled card and sheet read them. Whether they join the brand `@theme` is Jason's call; nothing else reads them. |
+| `@media (color-gamut: p3)` on `.portal-scope` in `globals.css`, on `.portal-workspace` in `portal-workbench.css`, and on Home's four paint selectors in `home.css` | The Display P3 layer: every brand `--color-*`, the bridge's semantic mappings, and the portal and Home paint literals restated as `color(display-p3 …)` with the channels of their sRGB value | Stays: the Figma file shows each hex as Display P3 on a P3 Mac, and this is how the portal matches it (issue #327). The brand `@theme` keeps the values; the layer derives from them and is regenerated when one changes. Aliases and semantic mappings are declared again because a `var()` resolves where it is declared. See [color.md](color.md#display-p3). |
 | `.portal-scope` | `--pm-reduced-duration: 120ms`, `--pm-scrim-duration: 220ms` | Stays until the registry names a reduced-motion cross-fade and a scrim fade: [motion.md](motion.md#recorded-motion-literals). |
 | `.portal-scope` | `--btn-radius: 0.5rem` sits off the radius set | [Roadmap item 8](roadmap.md#8-the-radius-ramp). |
 | `.portal-scope`; `.wgi-answer` in `home.css` | `--btn-hover-shadow: 0 0 #0000`, `--tw-ring-shadow: 0 0 #0000` | Stays: Tailwind's empty shadow. `none` would invalidate the comma-separated shadow list Tailwind composes. |
@@ -111,6 +112,14 @@ on brand darks; a real dark theme is a practice decision.
   `teal-ink`; `amber`, `amber-soft`, `amber-deep`; `ink`, `body`, `muted-ink`, `on-dark`,
   `on-dark-muted` (ink); `line`, `line-2`, `line-3`, `line-dark`. Portal surfaces: `--portal-canvas`,
   `--portal-surface`, `--portal-surface-muted`, `--portal-attention-ink`.
+- **Ramps** (`--color-{hue}-{step}`): `navy`, `teal`, `mint`, `amber`, `coral` and `slate`, each at
+  steps 50, 100, 200 … 900, 950. A step that is a brand anchor is `var()` of its brand token:
+  `navy-800` is `navy` and `navy-900` is `navy-2`; `teal-600` is `teal` and `teal-700` is
+  `teal-ink`; `mint-50` is `mint` and `mint-100` is `mint-2`; `amber-100` is `amber-soft`,
+  `amber-400` is `amber` and `amber-600` is `amber-deep`; `slate-50` is `paper`, `slate-200` `line`,
+  `slate-300` `line-2`, `slate-600` `line-3`, `slate-700` `muted-ink`, `slate-900` `body` and
+  `slate-950` `ink`. `slate`, `amber` and `teal` replace Tailwind's default palettes of the same
+  names. What each ramp is for is in [color.md](color.md#ramps).
 - **Type**: `--font-display`, `--font-body`; patient fluid steps `--step-hero`, `--step-1` to
   `--step-3`, `--step-lead`; portal steps `--pt-2xs`, `--pt-xs`, `--pt-sm`, `--pt-base`, `--pt-lg`,
   `--pt-xl`.

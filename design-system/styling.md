@@ -137,7 +137,7 @@ a new pressable wears `Button` or `buttonVariants()` ([buttons.md](buttons.md#bu
 | `@layer base` | Element defaults (`html`, `body`, headings, links, `::selection`, `:focus-visible`, `img`) and the reduced-motion posture with every authored opt-out ([motion.md](motion.md#reduced-motion)). |
 | `@layer components` | Layout primitives (`.container-x`, `.section`), typography helpers (`.display`, `.h1`–`.h3`, `.lead`, `.measure`), link and list styles, the `.portal-scope` token assignment, the `overlay-rise` keyframes the legacy dialogs share, and legacy feature blocks queued for extraction. |
 | Print blocks | `@page` and `@media print` compositions for printed patient-site pages, the request detail and the review flyer. The request packet prints from `portal-workbench.css` and the staff home list from `home.css`. |
-| The semantic bridge | `@theme inline` mapping `--color-*` onto semantic names, then `:root` and `.dark` mapping semantic names onto brand tokens. The one literal is `--destructive`. |
+| The semantic bridge | `@theme inline` mapping `--color-*` onto semantic names, then `:root` and `.dark` mapping semantic names onto brand tokens. The one literal is the dark `--destructive`; light `--destructive` reads `coral-700`. |
 
 A new `globals.css` rule answers "which block, and why not a recipe?". A component-named rule
 (`.card`, `.card-lined`) is an unextracted recipe ([item 1](roadmap.md#1-card-surfaces)).

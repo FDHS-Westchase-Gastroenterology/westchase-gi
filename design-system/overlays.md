@@ -100,28 +100,28 @@ focus leaving instant, and an outside press animates.
 (`(home)/parts/sheet.tsx`), is the portal's one Base UI Dialog and its only non-modal one:
 `modal={false}` and `disablePointerDismissal` leave no scrim, no scroll lock and nothing inert.
 
-**Companion surfaces.** The sheet is an undimmed, non-modal inspector. From 60rem, its attached
-card stays beside it and above it; it fits beyond the card with one gutter. Its 24rem minimum can
-force overlap, with the card on top. Below 60rem, the sheet covers the card. While attached, the list
-blurs everything but the anchor row and takes no presses in its body. A press there closes the card;
-a press or focus move into the sheet keeps it open. A 6px head drag from 60rem freezes the row
-anchor and detaches it; blur lifts and outside presses or focus moves stop dismissing it. `panel-lane.ts`
-keeps it 8px inside hard viewport edges, one gutter from an open sheet. It yields on arrival, clamps
-later width changes, and may overlap the sheet while staying above it. Automatic movement stops at
-the sidebar gutter; staff can drag over it, and the panel stays put when the sheet leaves. Apple's
-pattern: HIG Popovers on macOS detachable popovers, Panels on the inspector, and UIKit's sheet
-presentation controller's largest undimmed detent.
+**Companion surfaces.** The sheet is an undimmed, non-modal inspector. From 60rem it floats inside
+the canvas, 8px from its edges, rounded and lifted by `--wgi-sheet-shadow`; the attached card is its
+wall, and it stops a 16px gap (`--wgi-companion-gap`) beyond the card, to a 24rem minimum that can
+force overlap with the card on top. Below 60rem it docks right and covers the card. While attached,
+the list recedes to 35% but the anchor row, and takes no presses in its body: a press there closes
+the card; a press or focus move into the sheet keeps it open. A 6px head drag from 60rem detaches the
+card; the recede lifts and outside presses or focus moves stop dismissing it. `panel-lane.ts` keeps
+it 8px inside hard viewport edges, one gap from an open sheet; it yields on arrival, clamps later
+width changes, and may overlap the sheet while staying above it. Automatic movement stops at the
+sidebar gutter; staff can drag over it. Apple's pattern: HIG Popovers on macOS detachable popovers,
+Panels on the inspector, and UIKit's sheet presentation controller's largest undimmed detent.
 
 - **Opening.** The card's foot toggles the sheet, "Open full record" or "Hide full record", with
   `aria-expanded` and `aria-controls="wgi-full-record"`; the card stays open. Opening another row's
   card retargets the open sheet without re-entering, and its content replays the settle.
-- **Placement.** It docks right at 33.875rem (max 94vw) on `--z-drawer`; from 60rem it stops at the
-  sidebar and layers below the card. A left grip resizes by pointer or arrows, rubber-bands, and
-  remembers width. The sheet fits beyond the card to a 24rem minimum, so overlap is possible; it
-  refits on base as available room changes.
-- **Motion.** It slides in from the right edge on the sheet beat, 420ms, and leaves that way on
-  base, 240ms; a 4vw bleed covers the edge through the grip's rubber band. The header, then the
-  body 60ms later, settle in on base. A keyboard open or close is instant.
+- **Placement.** Docked below 60rem it is 33.875rem (max 94vw); floating it is 32.5625rem, beside
+  the sidebar. Both sit on `--z-drawer`, below the card. A left grip resizes by pointer or arrows,
+  rubber-bands, and remembers width; the sheet refits on base as the room beside the card changes.
+- **Motion.** It slides in from the right on the sheet beat, 420ms, travelling its width plus its
+  inset when floating, and leaves that way on base, 240ms; docked, a 4vw bleed covers the edge
+  through the grip's rubber band. The header, then the body 60ms later, settle in on base. A
+  keyboard open or close is instant.
 - **Focus and Escape.** It opens onto the sheet itself, not the grip, and returns to the card's
   toggle, or to the row's trigger when the card has closed. One Escape closes one surface: the one
   holding focus, or the sheet when focus is in neither.

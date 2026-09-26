@@ -82,15 +82,22 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
       // Every primary destination is a real 44px target AND fully on
       // Screen — reachability must never depend on unmarked horizontal
       // Scrolling (a destination that starts offscreen does not exist
-      // For staff who don't know to swipe a nav bar).
-      const navBoxes = await page
-        .locator('nav[aria-label="Portal sections"] a')
-        .evaluateAll((links) =>
-          links.map((link) => {
-            const rect = link.getBoundingClientRect();
-            return { height: rect.height, left: rect.left, right: rect.right };
-          }),
-        );
+      // For staff who don't know to swipe a nav bar). Each layout renders
+      // Its own list; the other is removed whole, so exactly one shows.
+      const visibleNav = page.locator('nav[aria-label="Portal sections"]:visible');
+      await expect(visibleNav).toHaveCount(1);
+      await expect(visibleNav.locator("a")).toHaveText(
+        viewport.width < 960
+          ? [/^Home$/, /^Requests/, /^Settings$/, /^Help$/]
+          : [/^Home$/, /^Requests/, /^Review flyers$/, /^Activity log$/],
+        { useInnerText: true },
+      );
+      const navBoxes = await visibleNav.locator("a").evaluateAll((links) =>
+        links.map((link) => {
+          const rect = link.getBoundingClientRect();
+          return { height: rect.height, left: rect.left, right: rect.right };
+        }),
+      );
       expect(navBoxes).toHaveLength(4);
       for (const box of navBoxes) {
         expect(box.height, "nav target height").toBeGreaterThanOrEqual(44);
@@ -102,6 +109,21 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
 
       if (viewport.width < 960) {
         await page.getByRole("button", { name: "Open account menu" }).click();
+      } else {
+        // Settings and Help sit in the account footer, above View website
+        // And Sign out, each a 44px target.
+        const account = page.locator(".portal-sidebar-account-actions");
+        await expect(account.locator("a, button")).toHaveText([
+          "Settings",
+          "Help",
+          "View website",
+          "Sign out",
+        ]);
+        for (const box of await account
+          .locator("a, button")
+          .evaluateAll((controls) => controls.map((c) => c.getBoundingClientRect().height))) {
+          expect(box, "account footer target height").toBeGreaterThanOrEqual(44);
+        }
       }
 
       const websiteLink = page.getByRole("link", { name: "View website" });
@@ -164,10 +186,15 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
         ).toBeGreaterThanOrEqual(0);
       }
 
-      // Settings is active on both of its sub-pages.
+      // Settings is current on both of its sub-pages: in the phone bar,
+      // And in the account footer on desktop.
       if (portalPage.path.startsWith("/admin/settings")) {
         await expect(
-          page.locator('nav[aria-label="Portal sections"] a[aria-current="page"]'),
+          page.locator(
+            viewport.width < 960
+              ? 'nav[aria-label="Portal sections"]:visible a[aria-current="page"]'
+              : '.portal-sidebar-account-actions a[aria-current="page"]',
+          ),
         ).toHaveText("Settings");
       }
     }
@@ -186,9 +213,9 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
       probe.remove();
 
       const rail = document.querySelector(".portal-sidebar");
-      const active = document.querySelector(
-        'nav[aria-label="Portal sections"] a[aria-current="page"]',
-      );
+      const active = Array.from(
+        document.querySelectorAll('nav[aria-label="Portal sections"] a[aria-current="page"]'),
+      ).find((link) => link.getBoundingClientRect().width > 0);
       return {
         expectedNavy,
         expectedAmber,

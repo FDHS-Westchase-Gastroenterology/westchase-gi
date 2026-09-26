@@ -164,8 +164,9 @@ Reconciliation procedure — run after **every** CLI operation that touches CSS:
 1. Commit or stash a clean checkpoint of `src/app/globals.css` **before** running the command.
 2. Run the command, then `git diff src/app/globals.css` and reject or rewrite anything that:
    - adds OKLCH color literals to the semantic `:root` / `.dark` blocks — every semantic token
-     must reference a brand `--color-*` token. The single permitted literal is `--destructive`
-     (destructive actions have no brand hue by design);
+     must reference a brand `--color-*` token. Light `--destructive` reads the coral ramp
+     (`--color-coral-700`); the single permitted literal is the dark `--destructive`, because
+     dark mode is not a shipped surface;
    - touches the brand `@theme` block, its comment header, or any brand token value;
    - re-declares `--radius-*` inside the bridge's `@theme inline` block — the brand `@theme`
      owns the radius namespace (`--radius` 0.625rem, sm 0.375rem, lg 0.875rem);

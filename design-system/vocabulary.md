@@ -10,7 +10,7 @@ is given where one exists. When a guide and this list disagree, fix the guide.
 - **Brand token** — a token in the brand `@theme` block of `src/app/globals.css`. The practice's
   own decisions; every other layer refers to them.
 - **Semantic token** — one of shadcn's role names (`--primary`, `--muted`, `--ring`). Each maps
-  onto a brand token in the **bridge**. The one literal is `--destructive`.
+  onto a brand token in the **bridge**. The one literal is the dark `--destructive`.
 - **The bridge** — the `@theme inline`, `:root` and `.dark` blocks at the end of `globals.css`.
   The only place shadcn's tokens are defined.
 - **Recipe** — a component's complete vocabulary of appearance, written as a `cva` definition
@@ -31,8 +31,10 @@ is given where one exists. When a guide and this list disagree, fix the guide.
   assigns its theme through a scope. Never a component's appearance; that is a recipe.
 - **Scope** — a CSS class on an ancestor that re-tunes tokens for everything inside it
   (`.portal-scope`, `.wgi-home`). A scope assigns values to its own namespace or to a recipe's
-  knobs; it never redefines a brand token. The `:lang()` blocks, which re-point the font tokens
-  for a language, are the one exception ([tokens.md](tokens.md#recorded-exceptions)).
+  knobs; it never redefines a brand token. Two exceptions are recorded
+  ([tokens.md](tokens.md#recorded-exceptions)): the `:lang()` blocks, which re-point the font
+  tokens for a language, and the portal's **Display P3 layer**, which restates the brand colors
+  in `display-p3` inside `.portal-scope` on a wide-gamut screen ([color.md](color.md#display-p3)).
 - **Knob** — a per-scope override a recipe reads with a fallback (`--btn-lift`, `--btn-radius`).
   Knobs let a scope change a recipe's feel without fighting utility classes.
 - **Tier** — where a component lives and what that implies: `stock/` (registry source kept for

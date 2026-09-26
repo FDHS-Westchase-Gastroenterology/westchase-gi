@@ -3,9 +3,10 @@ import type { RequestStatus } from "@/lib/portal/workflow/contracts";
 
 import { STATUS_LABELS } from "./format";
 
-/* One visual vocabulary for request status across queue and detail, riding
-   the Badge color-law variants: new demands attention (amber), contacted is
-   in motion (mint/teal), scheduled is settled (navy), closed recedes. */
+/* One visual vocabulary for request status across queue, detail and the
+   staff home, riding the Badge color-law variants on the glass gradient:
+   new demands attention (amber), contacted is current (teal), scheduled is
+   settled (mint), closed recedes (the slate ghost). */
 const STATUS_VARIANTS = {
   new: "attention",
   contacted: "current",
