@@ -41,6 +41,6 @@ to run if the list above ever overlaps one of them.
 | `tools/` | The custom oxlint anti-slop plugin, tested by npm run test:unit. |
 | `public/` | Static assets served by Next.js. |
 | `private/` | Review-flyer PDFs and QR codes verified by scripts/verify-review-flyers.mjs. |
-| `.claude/` | Shared Claude Code launch configuration, repository rules, and skills symlink are tracked by owner instruction. |
+| `.claude/` | Shared Claude Code launch configuration, repository rules, and project skills (`.claude/skills/`) are tracked by owner instruction. |
 
 <!-- END generated from local-only-paths.json -->

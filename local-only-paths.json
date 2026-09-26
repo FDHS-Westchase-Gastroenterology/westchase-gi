@@ -170,7 +170,7 @@
     },
     {
       "path": ".claude/",
-      "reason": "Shared Claude Code launch configuration, repository rules, and skills symlink are tracked by owner instruction."
+      "reason": "Shared Claude Code launch configuration, repository rules, and project skills (`.claude/skills/`) are tracked by owner instruction."
     }
   ]
 }
