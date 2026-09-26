@@ -35,6 +35,13 @@
     background: var(--portal-canvas);
   }
 
+  /* The Display P3 layer (issue #327; globals.css beside .portal-scope). */
+  @media (color-gamut: p3) {
+    .portal-workspace {
+      --portal-surface-muted: color(display-p3 0.953 0.973 0.98);
+    }
+  }
+
   .portal-stage {
     min-width: 0;
   }
@@ -99,7 +106,7 @@
   }
 
   .portal-nav-link[aria-current="page"] {
-    background: rgb(80 168 165 / 20%);
+    background: var(--portal-nav-current);
     color: white;
   }
 

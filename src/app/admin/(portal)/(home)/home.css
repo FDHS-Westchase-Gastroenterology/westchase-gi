@@ -361,6 +361,41 @@
      a day from a neighboring month is the chip stroke, named for its job. */
   --wgi-label-ink: #647493;
   --wgi-outside-day: var(--wgi-chip-stroke);
+  /* The full record's quiet links: the email address, More, and the
+     history heading's glyph. 8.7 on the surface. */
+  --wgi-link-ink: #294f60;
+}
+
+/* The Display P3 layer (issue #327): on a wide-gamut screen each literal
+   above is restated with the same channel values, read as Display P3, which
+   is how the Figma file shows them on a P3 Mac. An sRGB screen keeps the hex.
+   The ramp-backed paints (badges, pill) need no restatement here: their
+   var() reads the P3 ramp that .portal-scope assigns in globals.css. White
+   is the same colour in both spaces, and the shadows are low-alpha ink whose
+   shift is below what the eye resolves, so both keep their sRGB literals. */
+@media (color-gamut: p3) {
+  .wgi-home,
+  .wgi-record-card,
+  .wgi-sheet,
+  .wgi-history-popover {
+    --wgi-surface: color(display-p3 0.988 0.992 0.996);
+    --wgi-rule: color(display-p3 0.875 0.902 0.937);
+    --wgi-band: color(display-p3 0.918 0.945 0.969);
+    --wgi-hover: color(display-p3 0.89 0.937 0.929);
+    --wgi-open: color(display-p3 0.859 0.914 0.918);
+    --wgi-name-ink: color(display-p3 0.063 0.078 0.227);
+    --wgi-muted-ink: color(display-p3 0.341 0.408 0.514);
+    --wgi-icon-ink: color(display-p3 0.58 0.659 0.765);
+    --wgi-track: color(display-p3 0.89 0.91 0.941);
+    --wgi-thumb: color(display-p3 0.612 0.659 0.729);
+    --wgi-chip-stroke: color(display-p3 0.769 0.835 0.898);
+    --wgi-cmd-stroke: color(display-p3 0.725 0.78 0.847);
+    --wgi-attention-fill: color(display-p3 0.992 0.937 0.859);
+    --wgi-attention-ink: color(display-p3 0.584 0.314 0.047);
+    --wgi-cmd-primary: color(display-p3 0.09 0.216 0.345);
+    --wgi-label-ink: color(display-p3 0.392 0.455 0.576);
+    --wgi-link-ink: color(display-p3 0.161 0.31 0.376);
+  }
 }
 
 /* The header loses its navy rule: the surface below closes the header now.
@@ -2889,7 +2924,7 @@ a.appt-phone {
 
 .wgi-sheet-email {
   min-width: 0;
-  color: #294f60;
+  color: var(--wgi-link-ink);
   font-size: 0.84375rem;
   line-height: 1.25rem;
   overflow-wrap: anywhere;
@@ -2901,7 +2936,7 @@ a.appt-phone {
 
 @media (hover: hover) {
   .wgi-sheet-email:hover {
-    color: #294f60;
+    color: var(--wgi-link-ink);
     text-decoration-color: currentColor;
   }
 }
@@ -2981,7 +3016,7 @@ a.appt-phone {
   border-radius: 3px;
   background: none;
   padding: 0;
-  color: #294f60;
+  color: var(--wgi-link-ink);
   font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
@@ -3336,7 +3371,7 @@ a.appt-phone {
   flex: none;
   height: 1rem;
   background: none;
-  color: #294f60;
+  color: var(--wgi-link-ink);
 }
 
 /* A note's byline sits under its heading, before the note. */

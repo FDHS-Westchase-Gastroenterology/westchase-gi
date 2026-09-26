@@ -22,7 +22,7 @@ What does the color tell the reader?
 ├── This is current, or has keyboard focus         → teal-ink text; the --ring ring
 ├── Look here, or this removes something           → amber glass or amber-soft; amber-deep marks
 ├── You can act on this: hovered, open, checked    → a mint wash
-├── A request's status                             → StatusBadge (Status stamps)
+├── A request's status                             → StatusBadge (stamps.md)
 └── This input is invalid                          → --destructive (coral), with FieldError text
 ```
 
@@ -43,45 +43,6 @@ portal surface, `paper`, the Home canvas, white and `mint`:
 a section. In the portal the primary action is navy `default`. Four occasional portal panels use
 `amber` for their one onward action: the help page, the release briefing, the tour's last step and
 the flyer printer. They are recorded, not a pattern; new portal work uses `default`.
-
-## Status stamps
-
-`Badge` (`src/components/ui/badge.tsx`) makes the roles executable, and `StatusBadge`
-(`src/app/admin/(portal)/requests/status-badge.tsx`) maps each request status to a variant with
-the status label as its words. Use `StatusBadge` for a request. No stamp outside a request status
-exists today; the first one wears `Badge` and picks its variant by role, never by paint.
-
-Variants: `attention`, `current`, `settled`, `quiet`. Nothing else exists — an unlisted variant is
-a bug, not an option. `variant` is required: there is no default, because a stamp without a
-meaning is not a stamp.
-
-Four lowercase `RequestStatus` keys drive it — `new`, `contacted`, `scheduled`, `closed`
-(`workflow/contracts.ts`). `STATUS_VARIANTS` maps each to a variant and `STATUS_LABELS`
-(`requests/format.ts`) supplies the capitalized word, so no call site writes either; a durable
-`RequestState` of `booked` becomes `scheduled` first, through `presentationStatus`.
-
-| Status | Variant | Paint | Words |
-| --- | --- | --- | --- |
-| `new` | `attention` | Amber glass: `amber-300` → `amber-400`, `amber-500` stroke, `navy-900` words | New |
-| `contacted` | `current` | Teal glass: `teal-100` → `teal-200`, `teal-300` stroke, `teal-800` words | Contacted |
-| `scheduled` | `settled` | Mint glass: `mint-100` → `mint-200`, `mint-300` stroke, `mint-800` words | Scheduled |
-| `closed` | `quiet` | Slate ghost: no fill, `slate-300` stroke, `slate-700` words | Closed |
-
-The staff home's `.wgi-badge-*` (`home.css`) wears the same paint on its own 30px geometry, where
-Contacted reads "Call again". Contrast, top and bottom of the fill: New 7.1 and 6.0, Contacted 7.8
-and 6.7, Scheduled 7.3 and 6.6; Closed 6.8 on white and 6.0 on the Home row band.
-
-```tsx
-// Correct (requests/page.tsx): the status picks the paint; the label is the words
-<StatusBadge status={request.status} />
-```
-
-```tsx incorrect
-// Incorrect: a paint instead of a role
-<Badge className="bg-teal text-white">New</Badge>
-// Incorrect: color carrying state alone
-<span aria-label="New" className="size-2 rounded-full bg-amber" />
-```
 
 ## Ramps
 
@@ -157,6 +118,19 @@ Meaning does: amber already says "look here".
 - **On navy.** `on-dark` for text, `on-dark-muted` for secondary text (4.5:1 or more on navy),
   `line-dark` for hairlines. White at an alpha is a keyword color, not drift.
 
+## Display P3
+
+The portal's Figma file has no color profile, so on a Display P3 Mac it shows each hex as a P3
+color, richer than the browser's sRGB reading. On a wide-gamut screen `@media (color-gamut: p3)`
+restates every color the portal paints as `color(display-p3 r g b)` with the channels of its sRGB
+value (`navy-2`, `#1f374e`, becomes `color(display-p3 0.122 0.216 0.306)`); OKLCH anchors use the
+pixel Chrome paints for them. `.portal-scope` restates the brand `--color-*` names, re-declares the
+ramp aliases and the bridge's semantic mappings (a `var()` resolves where it is declared) and the
+`--portal-*` literals; `home.css` restates the `--wgi-*` literals. sRGB screens and the patient site
+are unchanged ([tokens.md](tokens.md#recorded-exceptions)). White, low-alpha shadows, print colors,
+the form reds and the scrim stay sRGB. A new portal color is a custom property with a P3 line
+beside the others. Every AA pair holds; the largest drop is `coral-700` on white, 6.70 to 6.50.
+
 ## Recorded drift
 
 Counted with `node scripts/design-system-docs.mjs css` with 174f10e merged: color functions and hex
@@ -165,7 +139,7 @@ properties.
 
 | Stylesheet | Literals | `color-mix()` | Where they sit, and the disposition |
 | --- | --- | --- | --- |
-| `portal-workbench.css` | 43 | 21 | The printed request sheet's `#172b39` and `#a6b3ba` inks; `.portal-nav-link[aria-current="page"]` in an off-palette green `rgb(80 168 165 / 20%)`; `.portal-request-form-alert` in a second red built from OKLCH literals; the confirm scrim; sidebar text at `rgb(226 239 240 / 58%)`; shadow colors. Mint washes mix at six strengths from 36% to 76%, where Home uses `mint` and `mint-2`. All wait on [roadmap item 10](roadmap.md#10-portal-surface-tints). |
+| `portal-workbench.css` | 43 | 21 | The printed request sheet's `#172b39` and `#a6b3ba` inks; `--portal-nav-current`, the current sidebar row, in an off-palette green `rgb(80 168 165 / 20%)`; `.portal-request-form-alert` in a second red built from OKLCH literals; the confirm scrim; sidebar text at `rgb(226 239 240 / 58%)`; shadow colors. Mint washes mix at six strengths from 36% to 76%, where Home uses `mint` and `mint-2`. All wait on [roadmap item 10](roadmap.md#10-portal-surface-tints). |
 | `globals.css` | 34 | 12 | Most sit in print blocks; the review flyer's inks are a [recorded exception](tokens.md#recorded-exceptions). The rest belong to the legacy feature blocks, among them `.list-avoid`'s red cross (`oklch(0.5 0.19 25)`, the same red as the workbench alert): [roadmap item 7](roadmap.md#7-the-legacy-feature-blocks) and [item 10](roadmap.md#10-portal-surface-tints). |
 | `home.css` | 9 | 8 | Two shadow colors, three white alphas and four `#fff` fallbacks behind the teal focus ring in the approved Home frame, plus 36 literals inside its custom properties, including shared paints for the portaled `.wgi-record-card` and the `.wgi-sheet`'s own paints: a [recorded exception](tokens.md#recorded-exceptions). |
 

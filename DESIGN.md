@@ -10,7 +10,7 @@ adding a button, a field or a modal never decides a color, a duration or a radiu
 
 - [Vocabulary](design-system/vocabulary.md) — the words: token, recipe, variant, pattern, slot.
 - [Tokens](design-system/tokens.md) — the brand theme, the portal scopes, the semantic bridge.
-- [Color](design-system/color.md) — the palette, ink pairs, status colors, focus.
+- [Color](design-system/color.md) — the palette, ramps, glass, Display P3, focus; [stamps](design-system/stamps.md) for status.
 - [Typography](design-system/typography.md) — the two families, the steps, the loaded weights.
 - [Layout](design-system/layout.md) — page structures, spacing scales, shape and elevation.
 - [Patient site](design-system/patient-site.md) — the route contract, the content classes, the rhythm.
