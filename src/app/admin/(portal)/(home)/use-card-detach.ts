@@ -2,7 +2,7 @@ import type { PopoverPositionerProps } from "@base-ui/react/popover";
 import { useEffect, useRef, useState } from "react";
 import type { ComponentProps, PointerEvent as ReactPointerEvent, RefObject } from "react";
 
-import { laneFor, listGutter, panelBase, SIDEBAR_LAYOUT } from "./panel-lane";
+import { companionGap, laneFor, panelBase, SIDEBAR_LAYOUT } from "./panel-lane";
 import type { Offset } from "./panel-lane";
 import { SHEET } from "./sheet-coexistence";
 
@@ -289,7 +289,7 @@ export function useCardDetach({
       const wantedX = origin.x + dx;
       const x =
         lane.walled && wantedX > lane.maxX
-          ? lane.maxX + rubberband(wantedX - lane.maxX, listGutter())
+          ? lane.maxX + rubberband(wantedX - lane.maxX, companionGap())
           : Math.min(lane.maxX, Math.max(lane.minX, wantedX));
       const y = Math.min(lane.maxY, Math.max(lane.minY, origin.y + dy));
       offsetRef.current = { x, y };

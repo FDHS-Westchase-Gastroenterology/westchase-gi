@@ -274,6 +274,10 @@
   --wgi-row-h: 2.9rem;
   --wgi-head-h: 2.25rem;
   --wgi-gutter: 2.4375rem;
+  /* The gap between companion surfaces: the record card and the floating
+     sheet beside it (issue #327, section 05, frame C). Read by
+     panel-lane.ts, because the two are portaled to body. */
+  --wgi-companion-gap: 1rem;
   --wgi-day-size: 2.25rem;
   --wgi-name-size: 1.156rem;
   --wgi-phone-size: 0.969rem;
@@ -296,6 +300,12 @@
      (node 76:1005); the list surface is flat. */
   --wgi-surface: #fcfdfe;
   --wgi-card-shadow: 0 7px 20px rgba(36, 68, 94, 0.18);
+  /* The floating sheet's lift (issue #327, section 05, frame C): contact,
+     key and ambient layers in the frame's name ink, so it reads as a
+     surface above the canvas rather than an edge of the window. */
+  --wgi-sheet-shadow:
+    0 1px 2px rgb(16 20 58 / 0.14), 0 12px 24px rgb(16 20 58 / 0.18),
+    0 32px 72px -8px rgb(16 20 58 / 0.3);
   --wgi-rule: #dfe6ef;
   --wgi-band: #eaf1f7;
   --wgi-hover: #e3efed;
@@ -2521,40 +2531,56 @@ a.appt-phone {
 
 /* The sheet is the record's inspector: it runs beside the record card,
    undimmed — no backdrop and no blur, because dimming the page says modal
-   and this surface is not one (plans/full-record-sheet-decisions.md, the
-   companion model; Apple HIG's detachable popovers and panels). The card
-   detaches beside its row and stays on top of the sheet on the sidebar
-   layout, never covered — and it is the wall the sheet resizes against
-   (full-record-sheet-geometry.ts). The sheet slides in from the right edge
-   on the sheet beat (420ms) of the standard curve and leaves the same way
-   on the base beat (240ms): exits are quieter than entrances, and the path
-   in is the path out (design-system/motion.md "Rules of use", spatial consistency).
-   Transitions rather than keyframes, so a close during the entrance
-   reverses from wherever the sheet is. The slide is transform only; under
-   reduced motion the surface cross-fades instead, with no travel.
-   The box bleeds 4vw past the viewport's right edge: the resize grip's
-   rubber band translates the sheet toward that edge past its narrow
-   bound, and the bleed keeps the edge covered instead of flashing a strip
-   of page. The widths below are the visible sheet; the bleed is added on
-   top, and the resize code measures it rather than repeating the number.
+   and this surface is not one (design-system/overlays.md "Companion
+   surfaces"; Apple HIG's panels and inspectors). The card stays on top of
+   the sheet on the sidebar layout, never covered, and it is the wall the
+   sheet resizes against (full-record-sheet-geometry.ts).
+
+   On the sidebar layout the sheet floats inside the inset canvas (issue
+   #327, section 05, frame C): 8px from the canvas's top, right and bottom
+   edges, a 12px radius, and the layered --wgi-sheet-shadow in place of a
+   hairline, so it reads as a surface above the canvas rather than an edge
+   of the window. It opens 521px wide, which at 1440 leaves the frame's
+   16px gap to the card; the grip narrows it, and widens it until it stops
+   one gap short of the card. Below the breakpoint it keeps the full-height
+   edge sheet: flush to the viewport's right edge, a hairline and a spill.
+
+   It slides in from off the right edge on the sheet beat (420ms) of the
+   standard curve and leaves along the same path on the base beat (240ms):
+   exits are quieter than entrances, and the path in is the path out
+   (design-system/motion.md "Rules of use", spatial consistency). The
+   travel is the sheet's width plus its inset, so the floating sheet
+   starts and ends wholly off screen. Transitions rather than keyframes,
+   so a close during the entrance reverses from wherever the sheet is. The
+   slide is transform only; under reduced motion the surface cross-fades
+   instead, with no travel.
+
+   Below the breakpoint the box bleeds 4vw past the viewport's right edge:
+   the resize grip's rubber band translates the sheet toward that edge past
+   its narrow bound, and the bleed keeps the edge covered instead of
+   flashing a strip of page. The floating sheet has no bleed — its band
+   carries the whole surface toward the edge, and the inset shows it
+   move. The widths below are the visible sheet; the resize code measures
+   any bleed rather than repeating the number.
+
    The sheet sits on the drawer layer above the sidebar (z 60) and the
    popovers (z 50); on the sidebar layout the record card's positioner
    rises one layer above it (below), and below the breakpoint the
    full-width sheet covers the card as before. */
 .wgi-sheet {
   --wgi-sheet-bleed: 4vw;
+  --wgi-sheet-travel: 100%;
   position: fixed;
   inset-block: 0;
   right: calc(-1 * var(--wgi-sheet-bleed));
   z-index: var(--z-drawer, 80);
   box-sizing: border-box;
   height: 100%;
-  /* The frame's sheet (node 72:627): 542px wide on the list surface, a
+  /* The edge sheet (node 72:627): 542px wide on the list surface, a
      hairline in the list rule, a soft spill toward the page. It is
      portaled to body and reads Home's paints from the shared rule. */
   width: calc(33.875rem + var(--wgi-sheet-bleed));
-  /* The sidebar is the wall: never past its edge, and never the whole
-     viewport when there is no sidebar column to stop at. */
+  /* Never the whole viewport when there is no sidebar column to stop at. */
   max-width: calc(94vw + var(--wgi-sheet-bleed));
   background: var(--wgi-surface);
   border: 0;
@@ -2567,20 +2593,53 @@ a.appt-phone {
     opacity var(--motion-sheet-duration) var(--motion-standard);
 }
 
-/* At the sidebar breakpoint the sidebar is a column: the sheet stops at
-   its edge. */
+/* The floating sheet. Its inset is the canvas's own (1rem from the
+   viewport, portal-workbench.css) plus the frame's 8px; the canvas is the
+   wall, so the sheet never reaches past the canvas's left edge less the
+   same 8px. The content clips to the radius (below); the sheet itself
+   does not, so the grip can straddle its left edge. */
 @media (min-width: 60rem) {
   .wgi-sheet {
-    max-width: calc(min(94vw, 100vw - 17rem) + var(--wgi-sheet-bleed));
+    --wgi-sheet-bleed: 0px;
+    --wgi-sheet-inset: 1.5rem;
+    --wgi-sheet-travel: calc(100% + var(--wgi-sheet-inset));
+    inset-block: var(--wgi-sheet-inset);
+    right: var(--wgi-sheet-inset);
+    height: auto;
+    width: 32.5625rem;
+    /* The canvas's width (the viewport less the 17rem sidebar and the
+       1rem inset on its right), less the 8px the sheet keeps each side. */
+    max-width: min(94vw, 100vw - 17rem - 1rem - 1rem);
+    border-left: 0;
+    border-radius: 0.75rem;
+    box-shadow: var(--wgi-sheet-shadow);
+  }
+
+  /* A keyboard open focuses the sheet: the ring stacks on the lift rather
+     than replacing it. */
+  .wgi-sheet:focus-visible {
+    box-shadow:
+      0 0 0 2px var(--portal-surface, #fff),
+      0 0 0 4px var(--color-teal),
+      var(--wgi-sheet-shadow);
+  }
+
+  .wgi-sheet-content {
+    overflow: hidden;
+    border-radius: inherit;
+  }
+
+  .wgi-sheet-surface {
+    border-radius: inherit;
   }
 }
 
-.wgi-sheet[data-starting-style] {
-  transform: translateX(100%);
+.wgi-sheet[data-starting-style],
+.wgi-sheet[data-ending-style] {
+  transform: translateX(var(--wgi-sheet-travel));
 }
 
 .wgi-sheet[data-ending-style] {
-  transform: translateX(100%);
   transition-duration: var(--motion-base-duration);
 }
 
