@@ -133,9 +133,12 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* The portal loads no Lato italic and turns synthesis off (.portal-scope),
+   so this one line asks for the slanted face back. */
 .printed-page-absent {
   color: var(--paper-quiet);
   font-style: italic;
+  font-synthesis-style: auto;
 }
 
 .printed-page-grid .printed-page-stands {
