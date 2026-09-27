@@ -1,0 +1,341 @@
+/* ------------------------------------------------------------------ *
+   The printed request (request-print-page.tsx): one US Letter call sheet.
+   CSS px print at 1/96in, so every size here is its printed size. Ink is
+   black only: no teal, no fills. Type never drops below 9px (tracked
+   labels, footer), 11px (history), 12px (notes) or 13px (message and
+   values); no rule is thinner than 1px or lighter than #99a3ad.
+   On screen the page is a sheet of paper with its own 0.55in margin; in
+   print `@page request-detail` (globals.css) supplies that margin.
+ * ------------------------------------------------------------------ */
+
+.printed-page {
+  --paper-ink: #111417;
+  --paper-quiet: #474d54;
+  --paper-rule: #99a3ad;
+
+  display: flex;
+  box-sizing: border-box;
+  flex-direction: column;
+  width: 8.5in;
+  min-height: 11in;
+  background: white;
+  padding: 0.55in;
+  color: var(--paper-ink);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: start;
+  print-color-adjust: exact;
+}
+
+.printed-page h2,
+.printed-page h3,
+.printed-page p,
+.printed-page ul,
+.printed-page dl,
+.printed-page dd {
+  margin: 0;
+  padding: 0;
+}
+
+.printed-page ul {
+  list-style: none;
+}
+
+/* Tracked labels: section heads, field names, the box's own head. */
+.printed-page h3,
+.printed-page dt {
+  color: var(--paper-quiet);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.printed-page-masthead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--paper-ink);
+  padding-bottom: 7px;
+  font-size: 11px;
+}
+
+.printed-page-masthead span {
+  color: var(--paper-quiet);
+  font-size: 10px;
+}
+
+.printed-page-identity {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  border-bottom: 1px solid var(--paper-rule);
+  padding-block: 16px 14px;
+}
+
+.printed-page-identity h2 {
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.printed-page-identity p {
+  margin-top: 6px;
+  color: var(--paper-quiet);
+  font-size: 12px;
+}
+
+.printed-page-chip {
+  flex: none;
+  margin-top: 4px;
+  border: 1px solid var(--paper-ink);
+  border-radius: 3px;
+  padding: 3px 8px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.printed-page-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 1.5rem;
+  border-bottom: 1px solid var(--paper-rule);
+  padding-block: 14px;
+}
+
+.printed-page-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.printed-page-grid-wide {
+  grid-column: span 2;
+}
+
+.printed-page-grid dd {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+
+.printed-page-grid .printed-page-phone {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.printed-page-absent {
+  color: var(--paper-quiet);
+  font-style: italic;
+}
+
+.printed-page-grid .printed-page-stands {
+  font-weight: 700;
+}
+
+.printed-page-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-bottom: 1px solid var(--paper-rule);
+  padding-block: 14px;
+}
+
+.printed-page-message {
+  font-size: 13px;
+  line-height: 1.55;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.printed-page-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.printed-page-notes li {
+  break-inside: avoid;
+}
+
+.printed-page-notes p {
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.printed-page-notes small {
+  display: block;
+  margin-top: 2px;
+  color: var(--paper-quiet);
+  font-size: 9px;
+}
+
+.printed-page-history {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.printed-page-history tr {
+  break-inside: avoid;
+}
+
+.printed-page-history tr + tr > * {
+  border-top: 1px solid var(--paper-rule);
+}
+
+.printed-page-history th,
+.printed-page-history td {
+  padding-block: 6px;
+  text-align: start;
+  vertical-align: baseline;
+}
+
+.printed-page-history th {
+  width: 8.5em;
+  padding-inline-end: 1rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.printed-page-history td:last-child {
+  padding-inline-start: 1rem;
+  color: var(--paper-quiet);
+  text-align: end;
+  white-space: nowrap;
+}
+
+.printed-page-history tr[data-undone] td:nth-child(2) {
+  color: var(--paper-quiet);
+  text-decoration: line-through;
+}
+
+/* "This call": always at the foot of the page, and never split. On a
+   sparse page it drops to the bottom; on a long one it moves whole. */
+.printed-page-call {
+  display: flex;
+  flex-direction: column;
+  margin-top: auto;
+  border: 1.5px solid var(--paper-ink);
+  border-radius: 6px;
+  padding: 18px 20px 20px;
+  break-inside: avoid;
+}
+
+.printed-page > :has(+ .printed-page-call) {
+  margin-bottom: 16px;
+}
+
+.printed-page-call > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.printed-page-call > header em {
+  color: var(--paper-quiet);
+  font-size: 9px;
+}
+
+.printed-page-outcomes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px 1.5rem;
+  margin-top: 14px;
+  font-size: 12px;
+}
+
+.printed-page-outcomes li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.printed-page-outcomes li span {
+  flex: none;
+  box-sizing: border-box;
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--paper-ink);
+  border-radius: 2px;
+}
+
+.printed-page-blanks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-top: 20px;
+}
+
+.printed-page-blanks p,
+.printed-page-notes-label {
+  color: var(--paper-quiet);
+  font-size: 11px;
+}
+
+.printed-page-blanks p {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.printed-page-blanks p span {
+  flex: 1;
+  height: 28px;
+  border-bottom: 1px solid var(--paper-ink);
+}
+
+.printed-page-notes-label {
+  margin-top: 12px;
+}
+
+.printed-page-ruled span {
+  display: block;
+  height: 34px;
+  border-bottom: 1px solid var(--paper-ink);
+}
+
+.printed-page-footer {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 12px;
+  font-size: 9px;
+}
+
+.printed-page-footer span {
+  color: var(--paper-quiet);
+}
+
+@media print {
+  body.portal-scope:has(.printed-page) {
+    page: request-detail;
+  }
+
+  /* The page's own margin is the printer's; the column stretches to the
+     sheet's printable height so the box sits at its foot. */
+  .printed-page {
+    width: auto;
+    min-height: 9.85in;
+    padding: 0;
+    box-shadow: none !important;
+  }
+
+  .printed-page + .printed-page {
+    break-before: page;
+  }
+}

@@ -3,7 +3,7 @@ import { startTransition, useEffect, useState } from "react";
 import { readFullRecord } from "@/app/admin/(portal)/requests/record-actions";
 import type { FullRecord } from "@/lib/portal/request-record/contracts";
 
-import type { ReadOutcome, ReadState } from "./full-record-sheet-model";
+import type { ReadOutcome, ReadState } from "@/app/admin/(portal)/requests/record-sections";
 import type { HomeLine } from "./home-line";
 
 /* The sheet's read of one record: when it happens, what it produced, and how

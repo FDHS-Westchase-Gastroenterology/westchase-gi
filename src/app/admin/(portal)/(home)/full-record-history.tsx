@@ -22,7 +22,7 @@ import {
   ScrollBar,
 } from "@/components/ui/scroll-area";
 
-import type { HistoryDay, HistoryIcon, HistoryRow } from "./full-record-sheet-model";
+import type { HistoryDay, HistoryIcon, HistoryRow } from "@/app/admin/(portal)/requests/record-sections";
 import { CARD } from "./sheet-coexistence";
 
 /* The sheet's history (Figma Ypf9ohpRcGWF5C9T9bSvWW, section 04): a
