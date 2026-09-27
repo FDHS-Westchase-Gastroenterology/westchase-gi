@@ -431,16 +431,25 @@ None is authoritative business state.
 
 Operations that would become misleading if partly applied use one Postgres RPC. This includes
 intake, staff-authored intake, workflow commands, recipient and staff changes, release engagement,
-print-packet preparation, legal holds, and deletion.
+legal holds, and deletion.
 
 GitHub cannot participate in a Postgres transaction. A maintainer mutation therefore writes a
 `pending` audit row before the provider call, then resolves it as `succeeded`, `failed`, or
 `unconfirmed`. An unclear provider result remains unclear and leaves evidence for an operator.
 
-The print packet follows the same honesty rule at a different boundary. Its RPC selects the exact
-durable `new` membership, generates the database snapshot time, orders rows, and writes one
-metadata-only audit entry. Opening or cancelling the browser print dialog causes no database
-mutation. The live queue remains authoritative after the snapshot.
+The print packet follows the same honesty rule at a different boundary. It is read-only: the
+route (`src/app/admin/(portal)/requests/print/page.tsx`) prepares either every request in the
+chosen statuses or exactly the chosen request ids (`ids` wins over `status`) through
+`src/lib/portal/request-print.ts`. That reads full records in one batched pass
+(`fetchFullRecords` and `fetchFullRecordsByStoredStatus` in
+`src/lib/portal/request-record/reads.ts`): requests, then their transitions and events by request
+id, in chunks of 100 ids and pages checked against an exact count, so the Data API's row cap
+cannot truncate a record. The server re-checks every record against the choice, orders them oldest
+first (`created_at`, then `id`), and fails the whole packet when a read fails or a chosen id is
+missing. It then writes one audit row (`requests.print_new`: `row_count`, `status_filter` or null
+for chosen ids, and `request_ids` in print order) before any patient detail renders; a failed
+audit write shows the failure page instead of the packet. Opening or cancelling the browser print
+dialog causes no database mutation. The live queue remains authoritative after the snapshot.
 
 ### Schema evolution
 

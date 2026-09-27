@@ -211,8 +211,11 @@ front-desk work; changing the artwork is not portal work.
 **New-request print packet**:
 An oldest-first paper snapshot of every appointment request that is durably NEW when the packet
 is prepared. It supports a manager's physical handoff, carries patient data, and must stay inside
-the clinic. Preparing or printing it records metadata-only audit evidence but never changes
-request status, attention, version, or Request history; staff record every outcome in the portal.
+the clinic. A print packet can also hold every request in other chosen statuses, or exactly the
+requests staff chose; each request prints as one page drawn from its full record. Preparing or
+printing it records audit evidence without patient details (the count, the status choice, and the
+request ids in print order) but never changes request status, attention, version, or Request
+history; staff record every outcome in the portal.
 _Avoid_: export, batch update, assignment queue
 
 ### Design
