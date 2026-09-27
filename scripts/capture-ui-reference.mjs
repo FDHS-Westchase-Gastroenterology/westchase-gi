@@ -174,6 +174,12 @@ const portalCaptures = [
     ready: "main h1",
   },
   {
+    name: "desktop-portal-requests-new",
+    path: "/admin/requests/new",
+    viewport: { width: 1440, height: 900 },
+    ready: "main h1",
+  },
+  {
     name: "desktop-portal-review-flyers",
     path: "/admin/review-flyers",
     viewport: { width: 1440, height: 900 },
@@ -212,6 +218,12 @@ const portalCaptures = [
   {
     name: "mobile-portal-requests",
     path: "/admin/requests?q=Sample+patient",
+    viewport: { width: 390, height: 844 },
+    ready: "main h1",
+  },
+  {
+    name: "mobile-portal-requests-new",
+    path: "/admin/requests/new",
     viewport: { width: 390, height: 844 },
     ready: "main h1",
   },
