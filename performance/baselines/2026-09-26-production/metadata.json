@@ -1,0 +1,25 @@
+{
+  "project_ref": "gfvrjaoxamvshzplxmep",
+  "project_name": "Westchase-Gi",
+  "region": "us-east-2",
+  "supabase_default_branch_verified": true,
+  "source_branch": "portal/appointment-workflow-experience",
+  "source_sha": "dc69845eab392679678477f3259ffab8fd38681a",
+  "latest_successful_github_production_deployment": {
+    "sha": "ddcbf23d8f25361a01a3777a1392bcfe529de0f2",
+    "id": 6557576561,
+    "created_at": "2026-09-20T20:53:04Z",
+    "status": "success",
+    "evidence_url": "https://api.github.com/repos/FDHS-Westchase-Gastroenterology/westchase-gi/deployments/6557576561/statuses"
+  },
+  "collection_mode": "passive_read_only",
+  "schema_changed": false,
+  "statistics_reset": false,
+  "application_rows_exported": false,
+  "active_benchmark": false,
+  "full_backend_request_latency_measured": false,
+  "log_window": {
+    "start": "2026-09-26T02:00:00Z",
+    "end": "2026-09-27T02:00:00Z"
+  }
+}

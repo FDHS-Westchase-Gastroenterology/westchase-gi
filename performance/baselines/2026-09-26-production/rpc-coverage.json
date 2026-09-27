@@ -1,0 +1,846 @@
+[
+  {
+    "rpc": "portal_acknowledge_staff_release",
+    "production_schema_present": true,
+    "coverage": "observed",
+    "calls": 1,
+    "mean_exec_time_ms": 1.247892,
+    "max_exec_time_ms": 1.247892,
+    "queryids": ["-5060238676894482454"],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/app/admin/(portal)/release-briefing-actions.ts",
+          "line": 40
+        },
+        {
+          "file": "src/lib/portal/release-briefing.ts",
+          "line": 17
+        }
+      ],
+      "production": [
+        {
+          "file": "src/app/admin/(portal)/release-briefing-actions.ts",
+          "line": 14
+        },
+        {
+          "file": "src/lib/portal/release-briefing.ts",
+          "line": 19
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_add_notification_recipient",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/management.ts",
+          "line": 198
+        }
+      ],
+      "production": [
+        {
+          "file": "src/lib/portal/management.ts",
+          "line": 198
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_add_request_note",
+    "production_schema_present": true,
+    "coverage": "observed",
+    "calls": 149,
+    "mean_exec_time_ms": 9.433087093959731,
+    "max_exec_time_ms": 37.121256,
+    "queryids": ["-1742775055090692227"],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/app/admin/(portal)/requests/actions.ts",
+          "line": 43
+        }
+      ],
+      "production": [
+        {
+          "file": "src/app/admin/(portal)/requests/actions.ts",
+          "line": 53
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_available_appointment_slots",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/scheduling/service.ts",
+          "line": 79
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_check_intake_rate_limit",
+    "production_schema_present": true,
+    "coverage": "observed",
+    "calls": 11819,
+    "mean_exec_time_ms": 9.413284359928843,
+    "max_exec_time_ms": 83.727999,
+    "queryids": ["8524477318362578304"],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/intake.ts",
+          "line": 164
+        },
+        {
+          "file": "src/lib/portal/telemetry.ts",
+          "line": 44
+        }
+      ],
+      "production": [
+        {
+          "file": "src/lib/portal/intake.ts",
+          "line": 164
+        },
+        {
+          "file": "src/lib/portal/telemetry.ts",
+          "line": 44
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_close_request",
+    "production_schema_present": true,
+    "coverage": "observed",
+    "calls": 6,
+    "mean_exec_time_ms": 8.082606499999999,
+    "max_exec_time_ms": 32.201797,
+    "queryids": ["562700337351079373"],
+    "sources": {}
+  },
+  {
+    "rpc": "portal_complete_staff_onboarding",
+    "production_schema_present": true,
+    "coverage": "observed",
+    "calls": 9,
+    "mean_exec_time_ms": 9.075911999999999,
+    "max_exec_time_ms": 12.345617,
+    "queryids": ["4937633612173061976"],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/app/admin/actions.ts",
+          "line": 171
+        }
+      ],
+      "production": [
+        {
+          "file": "src/app/admin/actions.ts",
+          "line": 170
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_create_request_with_outbox",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/intake.ts",
+          "line": 318
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_create_staff_request",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/app/admin/(portal)/requests/new/actions.ts",
+          "line": 65
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_delete_request_early",
+    "production_schema_present": true,
+    "coverage": "no_observed_calls",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {}
+  },
+  {
+    "rpc": "portal_execute_appointment_command",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/scheduling/service.ts",
+          "line": 63
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_execute_billing_command",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/billing/service.ts",
+          "line": 42
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_execute_clinical_command",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/clinical/service.ts",
+          "line": 36
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_execute_patient_command",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/patients/commands.ts",
+          "line": 29
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_execute_request_command",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/workflow/commands.ts",
+          "line": 254
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_hide_staff_release",
+    "production_schema_present": true,
+    "coverage": "no_observed_calls",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/app/admin/(portal)/release-briefing-actions.ts",
+          "line": 46
+        },
+        {
+          "file": "src/lib/portal/release-briefing.ts",
+          "line": 18
+        }
+      ],
+      "production": [
+        {
+          "file": "src/app/admin/(portal)/release-briefing-actions.ts",
+          "line": 15
+        },
+        {
+          "file": "src/lib/portal/release-briefing.ts",
+          "line": 20
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_list_appointments",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/scheduling/service.ts",
+          "line": 125
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_list_clinical_signers",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/clinical/service.ts",
+          "line": 78
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_list_patient_clinical_records",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/clinical/service.ts",
+          "line": 49
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_log_call_outcome",
+    "production_schema_present": true,
+    "coverage": "observed",
+    "calls": 145,
+    "mean_exec_time_ms": 12.721584420689656,
+    "max_exec_time_ms": 63.969944,
+    "queryids": ["-1628067123316674264"],
+    "sources": {
+      "production": [
+        {
+          "file": "src/app/admin/(portal)/requests/actions.ts",
+          "line": 159
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_open_staff_release",
+    "production_schema_present": true,
+    "coverage": "observed",
+    "calls": 8,
+    "mean_exec_time_ms": 16.024934375,
+    "max_exec_time_ms": 36.166542,
+    "queryids": ["-6679333566669091601"],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/app/admin/(portal)/release-briefing-actions.ts",
+          "line": 34
+        },
+        {
+          "file": "src/lib/portal/release-briefing.ts",
+          "line": 16
+        }
+      ],
+      "production": [
+        {
+          "file": "src/app/admin/(portal)/release-briefing-actions.ts",
+          "line": 13
+        },
+        {
+          "file": "src/lib/portal/release-briefing.ts",
+          "line": 18
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_prepare_new_request_print_packet",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/request-print.ts",
+          "line": 15
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_preview_data_lifecycle",
+    "production_schema_present": true,
+    "coverage": "observed",
+    "calls": 1,
+    "mean_exec_time_ms": 8.605249,
+    "max_exec_time_ms": 8.605249,
+    "queryids": ["-880604920991611270"],
+    "sources": {}
+  },
+  {
+    "rpc": "portal_read_appointment",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/scheduling/service.ts",
+          "line": 144
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_read_clinical_record",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/clinical/service.ts",
+          "line": 66
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_read_patient",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/patients/reads.ts",
+          "line": 45
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_read_patient_billing",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/billing/service.ts",
+          "line": 21
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_read_request_worklist",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/request-worklist/service.ts",
+          "line": 31
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_read_scheduling_config",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/scheduling/service.ts",
+          "line": 112
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_record_analytics_event",
+    "production_schema_present": true,
+    "coverage": "observed",
+    "calls": 11678,
+    "mean_exec_time_ms": 2.0596376483130587,
+    "max_exec_time_ms": 62.278994,
+    "queryids": ["-8635062647781949427"],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/telemetry.ts",
+          "line": 87
+        }
+      ],
+      "production": [
+        {
+          "file": "src/lib/portal/telemetry.ts",
+          "line": 87
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_record_staff_password_reset",
+    "production_schema_present": true,
+    "coverage": "observed",
+    "calls": 2,
+    "mean_exec_time_ms": 12.9766545,
+    "max_exec_time_ms": 15.82121,
+    "queryids": ["-3081303916445002306"],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/app/admin/actions.ts",
+          "line": 183
+        }
+      ],
+      "production": [
+        {
+          "file": "src/app/admin/actions.ts",
+          "line": 182
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_record_staff_release_dismiss",
+    "production_schema_present": true,
+    "coverage": "observed",
+    "calls": 3,
+    "mean_exec_time_ms": 7.037191,
+    "max_exec_time_ms": 16.306904,
+    "queryids": ["1220171580704176411"],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/app/admin/(portal)/release-briefing-actions.ts",
+          "line": 58
+        },
+        {
+          "file": "src/lib/portal/release-briefing.ts",
+          "line": 20
+        }
+      ],
+      "production": [
+        {
+          "file": "src/app/admin/(portal)/release-briefing-actions.ts",
+          "line": 17
+        },
+        {
+          "file": "src/lib/portal/release-briefing.ts",
+          "line": 22
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_record_staff_release_guide_open",
+    "production_schema_present": true,
+    "coverage": "observed",
+    "calls": 2,
+    "mean_exec_time_ms": 6.1888625,
+    "max_exec_time_ms": 9.277415,
+    "queryids": ["-2783342553322089281"],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/app/admin/(portal)/release-briefing-actions.ts",
+          "line": 52
+        },
+        {
+          "file": "src/lib/portal/release-briefing.ts",
+          "line": 19
+        }
+      ],
+      "production": [
+        {
+          "file": "src/app/admin/(portal)/release-briefing-actions.ts",
+          "line": 16
+        },
+        {
+          "file": "src/lib/portal/release-briefing.ts",
+          "line": 21
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_remove_notification_recipient",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/management.ts",
+          "line": 349
+        }
+      ],
+      "production": [
+        {
+          "file": "src/lib/portal/management.ts",
+          "line": 349
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_run_data_lifecycle",
+    "production_schema_present": true,
+    "coverage": "no_observed_calls",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {}
+  },
+  {
+    "rpc": "portal_save_scheduling_config",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/scheduling/service.ts",
+          "line": 62
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_scheduling_catalog",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/scheduling/service.ts",
+          "line": 96
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_search_patients",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/patients/reads.ts",
+          "line": 23
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_set_request_legal_hold",
+    "production_schema_present": true,
+    "coverage": "observed",
+    "calls": 2,
+    "mean_exec_time_ms": 1.2207675,
+    "max_exec_time_ms": 1.277944,
+    "queryids": ["-1225543331208807888"],
+    "sources": {}
+  },
+  {
+    "rpc": "portal_set_staff_tour_dismissed",
+    "production_schema_present": true,
+    "coverage": "observed",
+    "calls": 16,
+    "mean_exec_time_ms": 4.7991900625,
+    "max_exec_time_ms": 20.980736,
+    "queryids": ["2929861107632429433"],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/app/admin/(portal)/tour-actions.ts",
+          "line": 18
+        }
+      ],
+      "production": [
+        {
+          "file": "src/app/admin/(portal)/tour-actions.ts",
+          "line": 18
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_toggle_notification_recipient",
+    "production_schema_present": false,
+    "coverage": "absent_from_production",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/management.ts",
+          "line": 306
+        }
+      ],
+      "production": [
+        {
+          "file": "src/lib/portal/management.ts",
+          "line": 306
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_undo_call_outcome",
+    "production_schema_present": true,
+    "coverage": "no_observed_calls",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "production": [
+        {
+          "file": "src/app/admin/(portal)/requests/actions.ts",
+          "line": 204
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_update_recipient_label",
+    "production_schema_present": true,
+    "coverage": "no_observed_calls",
+    "calls": 0,
+    "mean_exec_time_ms": null,
+    "max_exec_time_ms": null,
+    "queryids": [],
+    "sources": {
+      "branch": [
+        {
+          "file": "src/lib/portal/management.ts",
+          "line": 267
+        }
+      ],
+      "production": [
+        {
+          "file": "src/lib/portal/management.ts",
+          "line": 267
+        }
+      ]
+    }
+  },
+  {
+    "rpc": "portal_update_request_status",
+    "production_schema_present": true,
+    "coverage": "observed",
+    "calls": 47,
+    "mean_exec_time_ms": 9.68496844680851,
+    "max_exec_time_ms": 38.390776,
+    "queryids": ["-4759036556594900473"],
+    "sources": {}
+  }
+]

@@ -500,6 +500,15 @@ migration-changing, or otherwise untrusted PRs are rejected before review. Execu
 
 ## Operating the system
 
+Before optimizing CRUD, use the [backend performance baseline](performance/README.md) and its
+dated production evidence. Capture read-only statistics with explicit environment, deployment,
+schema and observation windows. Compare interval counters for the same operation and workload;
+preserve missing measurements as gaps. Do not reset production statistics or exercise production
+writes to create a baseline. Controlled write benchmarks use coordinated fictional Preview data.
+
+Store subsequent observations beside the original record and link them from the performance
+index. Application request latency and SQL execution latency are separate measurements.
+
 Day-to-day incident basics (the portal's Help page covers the front-desk view):
 
 - **Form down / database unreachable:** patients see the truthful failure state with the

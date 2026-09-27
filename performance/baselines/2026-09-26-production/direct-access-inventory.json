@@ -1,0 +1,835 @@
+[
+  {
+    "revision": "branch",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/(home)/page.tsx",
+    "line": 235
+  },
+  {
+    "revision": "branch",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/(home)/page.tsx",
+    "line": 236
+  },
+  {
+    "revision": "branch",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/(home)/page.tsx",
+    "line": 240
+  },
+  {
+    "revision": "branch",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/(home)/page.tsx",
+    "line": 244
+  },
+  {
+    "revision": "branch",
+    "table": "notification_recipients",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/(home)/page.tsx",
+    "line": 248
+  },
+  {
+    "revision": "branch",
+    "table": "notification_outbox",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/(home)/page.tsx",
+    "line": 252
+  },
+  {
+    "revision": "branch",
+    "table": "audit_log",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/audit/page.tsx",
+    "line": 139
+  },
+  {
+    "revision": "branch",
+    "table": "audit_log",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/audit/page.tsx",
+    "line": 148
+  },
+  {
+    "revision": "branch",
+    "table": "staff_profiles",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/audit/page.tsx",
+    "line": 157
+  },
+  {
+    "revision": "branch",
+    "table": "notification_recipients",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/audit/page.tsx",
+    "line": 158
+  },
+  {
+    "revision": "branch",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/layout.tsx",
+    "line": 37
+  },
+  {
+    "revision": "branch",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/requests/export/route.ts",
+    "line": 94
+  },
+  {
+    "revision": "branch",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/requests/export/route.ts",
+    "line": 106
+  },
+  {
+    "revision": "branch",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/requests/export/route.ts",
+    "line": 131
+  },
+  {
+    "revision": "branch",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/requests/queue.ts",
+    "line": 105
+  },
+  {
+    "revision": "branch",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/requests/queue.ts",
+    "line": 172
+  },
+  {
+    "revision": "branch",
+    "table": "notification_recipients",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/settings/page.tsx",
+    "line": 36
+  },
+  {
+    "revision": "branch",
+    "table": "staff_profiles",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/settings/page.tsx",
+    "line": 40
+  },
+  {
+    "revision": "branch",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/api/preview-environment/route.ts",
+    "line": 74
+  },
+  {
+    "revision": "branch",
+    "table": "request_transitions",
+    "operation": "select",
+    "file": "src/app/api/preview-environment/route.ts",
+    "line": 75
+  },
+  {
+    "revision": "branch",
+    "table": "audit_log",
+    "operation": "insert",
+    "file": "src/lib/portal/audit.ts",
+    "line": 49
+  },
+  {
+    "revision": "branch",
+    "table": "audit_log",
+    "operation": "insert",
+    "file": "src/lib/portal/audit.ts",
+    "line": 52
+  },
+  {
+    "revision": "branch",
+    "table": "audit_log",
+    "operation": "insert",
+    "file": "src/lib/portal/audit.ts",
+    "line": 77
+  },
+  {
+    "revision": "branch",
+    "table": "audit_log",
+    "operation": "insert",
+    "file": "src/lib/portal/audit.ts",
+    "line": 80
+  },
+  {
+    "revision": "branch",
+    "table": "audit_log",
+    "operation": "update",
+    "file": "src/lib/portal/audit.ts",
+    "line": 98
+  },
+  {
+    "revision": "branch",
+    "table": "staff_profiles",
+    "operation": "select",
+    "file": "src/lib/portal/auth.ts",
+    "line": 71
+  },
+  {
+    "revision": "branch",
+    "table": "request_events",
+    "operation": "insert",
+    "file": "src/lib/portal/intake.ts",
+    "line": 72
+  },
+  {
+    "revision": "branch",
+    "table": "request_events",
+    "operation": "update",
+    "file": "src/lib/portal/intake.ts",
+    "line": 119
+  },
+  {
+    "revision": "branch",
+    "table": "request_events",
+    "operation": "insert",
+    "file": "src/lib/portal/intake.ts",
+    "line": 188
+  },
+  {
+    "revision": "branch",
+    "table": "notification_outbox",
+    "operation": "select",
+    "file": "src/lib/portal/intake.ts",
+    "line": 205
+  },
+  {
+    "revision": "branch",
+    "table": "notification_outbox",
+    "operation": "update",
+    "file": "src/lib/portal/intake.ts",
+    "line": 249
+  },
+  {
+    "revision": "branch",
+    "table": "staff_profiles",
+    "operation": "delete",
+    "file": "src/lib/portal/management.ts",
+    "line": 148
+  },
+  {
+    "revision": "branch",
+    "table": "staff_profiles",
+    "operation": "delete",
+    "file": "src/lib/portal/management.ts",
+    "line": 153
+  },
+  {
+    "revision": "branch",
+    "table": "staff_profiles",
+    "operation": "insert",
+    "file": "src/lib/portal/management.ts",
+    "line": 413
+  },
+  {
+    "revision": "branch",
+    "table": "staff_profiles",
+    "operation": "select",
+    "file": "src/lib/portal/management.ts",
+    "line": 463
+  },
+  {
+    "revision": "branch",
+    "table": "staff_profiles",
+    "operation": "select",
+    "file": "src/lib/portal/management.ts",
+    "line": 559
+  },
+  {
+    "revision": "branch",
+    "table": "staff_profiles",
+    "operation": "update",
+    "file": "src/lib/portal/management.ts",
+    "line": 580
+  },
+  {
+    "revision": "branch",
+    "table": "staff_profiles",
+    "operation": "update",
+    "file": "src/lib/portal/management.ts",
+    "line": 596
+  },
+  {
+    "revision": "branch",
+    "table": "staff_profiles",
+    "operation": "update",
+    "file": "src/lib/portal/management.ts",
+    "line": 613
+  },
+  {
+    "revision": "branch",
+    "table": "staff_profiles",
+    "operation": "select",
+    "file": "src/lib/portal/management.ts",
+    "line": 633
+  },
+  {
+    "revision": "branch",
+    "table": "staff_profiles",
+    "operation": "update",
+    "file": "src/lib/portal/management.ts",
+    "line": 673
+  },
+  {
+    "revision": "branch",
+    "table": "staff_profiles",
+    "operation": "update",
+    "file": "src/lib/portal/management.ts",
+    "line": 694
+  },
+  {
+    "revision": "branch",
+    "table": "notification_recipients",
+    "operation": "insert",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 55
+  },
+  {
+    "revision": "branch",
+    "table": "notification_recipients",
+    "operation": "delete",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 86
+  },
+  {
+    "revision": "branch",
+    "table": "notification_recipients",
+    "operation": "update",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 92
+  },
+  {
+    "revision": "branch",
+    "table": "notification_recipients",
+    "operation": "delete",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 95
+  },
+  {
+    "revision": "branch",
+    "table": "notification_recipients",
+    "operation": "select",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 119
+  },
+  {
+    "revision": "branch",
+    "table": "notification_recipients",
+    "operation": "update",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 129
+  },
+  {
+    "revision": "branch",
+    "table": "notification_recipients",
+    "operation": "update",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 149
+  },
+  {
+    "revision": "branch",
+    "table": "notification_recipients",
+    "operation": "select",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 170
+  },
+  {
+    "revision": "branch",
+    "table": "notification_recipients",
+    "operation": "delete",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 179
+  },
+  {
+    "revision": "branch",
+    "table": "notification_recipients",
+    "operation": "insert",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 199
+  },
+  {
+    "revision": "branch",
+    "table": "portal_release_states",
+    "operation": "select",
+    "file": "src/lib/portal/release-briefing.ts",
+    "line": 31
+  },
+  {
+    "revision": "branch",
+    "table": "portal_release_states",
+    "operation": "select",
+    "file": "src/lib/portal/release-engagement.ts",
+    "line": 21
+  },
+  {
+    "revision": "branch",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/lib/portal/request-print.ts",
+    "line": 171
+  },
+  {
+    "revision": "branch",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/lib/portal/request-record/reads.ts",
+    "line": 30
+  },
+  {
+    "revision": "branch",
+    "table": "staff_profiles",
+    "operation": "select",
+    "file": "src/lib/portal/staff-identity.ts",
+    "line": 15
+  },
+  {
+    "revision": "branch",
+    "table": "request_command_receipts",
+    "operation": "select",
+    "file": "src/lib/portal/workflow/commands.ts",
+    "line": 185
+  },
+  {
+    "revision": "branch",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/lib/portal/workflow/commands.ts",
+    "line": 204
+  },
+  {
+    "revision": "branch",
+    "table": "request_transitions",
+    "operation": "select",
+    "file": "src/lib/portal/workflow/commands.ts",
+    "line": 227
+  },
+  {
+    "revision": "branch",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/lib/portal/workflow/reads.ts",
+    "line": 66
+  },
+  {
+    "revision": "branch",
+    "table": "request_transitions",
+    "operation": "select",
+    "file": "src/lib/portal/workflow/reads.ts",
+    "line": 73
+  },
+  {
+    "revision": "branch",
+    "table": "request_events",
+    "operation": "select",
+    "file": "src/lib/portal/workflow/reads.ts",
+    "line": 80
+  },
+  {
+    "revision": "production",
+    "table": "audit_log",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/audit/page.tsx",
+    "line": 71
+  },
+  {
+    "revision": "production",
+    "table": "staff_profiles",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/audit/page.tsx",
+    "line": 80
+  },
+  {
+    "revision": "production",
+    "table": "notification_recipients",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/audit/page.tsx",
+    "line": 81
+  },
+  {
+    "revision": "production",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/layout.tsx",
+    "line": 35
+  },
+  {
+    "revision": "production",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/page.tsx",
+    "line": 131
+  },
+  {
+    "revision": "production",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/page.tsx",
+    "line": 137
+  },
+  {
+    "revision": "production",
+    "table": "notification_recipients",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/page.tsx",
+    "line": 143
+  },
+  {
+    "revision": "production",
+    "table": "request_events",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/page.tsx",
+    "line": 147
+  },
+  {
+    "revision": "production",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/requests/[id]/page.tsx",
+    "line": 275
+  },
+  {
+    "revision": "production",
+    "table": "request_events",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/requests/[id]/page.tsx",
+    "line": 282
+  },
+  {
+    "revision": "production",
+    "table": "audit_log",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/requests/[id]/page.tsx",
+    "line": 287
+  },
+  {
+    "revision": "production",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/requests/export/route.ts",
+    "line": 94
+  },
+  {
+    "revision": "production",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/requests/export/route.ts",
+    "line": 106
+  },
+  {
+    "revision": "production",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/requests/export/route.ts",
+    "line": 131
+  },
+  {
+    "revision": "production",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/requests/page.tsx",
+    "line": 291
+  },
+  {
+    "revision": "production",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/requests/page.tsx",
+    "line": 308
+  },
+  {
+    "revision": "production",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/requests/queue.ts",
+    "line": 74
+  },
+  {
+    "revision": "production",
+    "table": "audit_log",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/requests/queue.ts",
+    "line": 94
+  },
+  {
+    "revision": "production",
+    "table": "requests",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/requests/queue.ts",
+    "line": 139
+  },
+  {
+    "revision": "production",
+    "table": "notification_recipients",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/settings/page.tsx",
+    "line": 35
+  },
+  {
+    "revision": "production",
+    "table": "staff_profiles",
+    "operation": "select",
+    "file": "src/app/admin/(portal)/settings/page.tsx",
+    "line": 39
+  },
+  {
+    "revision": "production",
+    "table": "audit_log",
+    "operation": "insert",
+    "file": "src/lib/portal/audit.ts",
+    "line": 49
+  },
+  {
+    "revision": "production",
+    "table": "audit_log",
+    "operation": "insert",
+    "file": "src/lib/portal/audit.ts",
+    "line": 52
+  },
+  {
+    "revision": "production",
+    "table": "audit_log",
+    "operation": "insert",
+    "file": "src/lib/portal/audit.ts",
+    "line": 77
+  },
+  {
+    "revision": "production",
+    "table": "audit_log",
+    "operation": "insert",
+    "file": "src/lib/portal/audit.ts",
+    "line": 80
+  },
+  {
+    "revision": "production",
+    "table": "audit_log",
+    "operation": "update",
+    "file": "src/lib/portal/audit.ts",
+    "line": 98
+  },
+  {
+    "revision": "production",
+    "table": "staff_profiles",
+    "operation": "select",
+    "file": "src/lib/portal/auth.ts",
+    "line": 72
+  },
+  {
+    "revision": "production",
+    "table": "request_events",
+    "operation": "insert",
+    "file": "src/lib/portal/intake.ts",
+    "line": 72
+  },
+  {
+    "revision": "production",
+    "table": "request_events",
+    "operation": "update",
+    "file": "src/lib/portal/intake.ts",
+    "line": 119
+  },
+  {
+    "revision": "production",
+    "table": "request_events",
+    "operation": "insert",
+    "file": "src/lib/portal/intake.ts",
+    "line": 188
+  },
+  {
+    "revision": "production",
+    "table": "notification_recipients",
+    "operation": "select",
+    "file": "src/lib/portal/intake.ts",
+    "line": 199
+  },
+  {
+    "revision": "production",
+    "table": "requests",
+    "operation": "insert",
+    "file": "src/lib/portal/intake.ts",
+    "line": 281
+  },
+  {
+    "revision": "production",
+    "table": "staff_profiles",
+    "operation": "delete",
+    "file": "src/lib/portal/management.ts",
+    "line": 148
+  },
+  {
+    "revision": "production",
+    "table": "staff_profiles",
+    "operation": "delete",
+    "file": "src/lib/portal/management.ts",
+    "line": 153
+  },
+  {
+    "revision": "production",
+    "table": "staff_profiles",
+    "operation": "insert",
+    "file": "src/lib/portal/management.ts",
+    "line": 413
+  },
+  {
+    "revision": "production",
+    "table": "staff_profiles",
+    "operation": "select",
+    "file": "src/lib/portal/management.ts",
+    "line": 463
+  },
+  {
+    "revision": "production",
+    "table": "staff_profiles",
+    "operation": "select",
+    "file": "src/lib/portal/management.ts",
+    "line": 559
+  },
+  {
+    "revision": "production",
+    "table": "staff_profiles",
+    "operation": "update",
+    "file": "src/lib/portal/management.ts",
+    "line": 580
+  },
+  {
+    "revision": "production",
+    "table": "staff_profiles",
+    "operation": "update",
+    "file": "src/lib/portal/management.ts",
+    "line": 596
+  },
+  {
+    "revision": "production",
+    "table": "staff_profiles",
+    "operation": "update",
+    "file": "src/lib/portal/management.ts",
+    "line": 613
+  },
+  {
+    "revision": "production",
+    "table": "staff_profiles",
+    "operation": "select",
+    "file": "src/lib/portal/management.ts",
+    "line": 633
+  },
+  {
+    "revision": "production",
+    "table": "staff_profiles",
+    "operation": "update",
+    "file": "src/lib/portal/management.ts",
+    "line": 673
+  },
+  {
+    "revision": "production",
+    "table": "staff_profiles",
+    "operation": "update",
+    "file": "src/lib/portal/management.ts",
+    "line": 694
+  },
+  {
+    "revision": "production",
+    "table": "notification_recipients",
+    "operation": "insert",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 57
+  },
+  {
+    "revision": "production",
+    "table": "notification_recipients",
+    "operation": "delete",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 88
+  },
+  {
+    "revision": "production",
+    "table": "notification_recipients",
+    "operation": "update",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 94
+  },
+  {
+    "revision": "production",
+    "table": "notification_recipients",
+    "operation": "delete",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 97
+  },
+  {
+    "revision": "production",
+    "table": "notification_recipients",
+    "operation": "select",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 121
+  },
+  {
+    "revision": "production",
+    "table": "notification_recipients",
+    "operation": "update",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 131
+  },
+  {
+    "revision": "production",
+    "table": "notification_recipients",
+    "operation": "update",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 151
+  },
+  {
+    "revision": "production",
+    "table": "notification_recipients",
+    "operation": "select",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 172
+  },
+  {
+    "revision": "production",
+    "table": "notification_recipients",
+    "operation": "delete",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 181
+  },
+  {
+    "revision": "production",
+    "table": "notification_recipients",
+    "operation": "insert",
+    "file": "src/lib/portal/recipient-compatibility.ts",
+    "line": 201
+  },
+  {
+    "revision": "production",
+    "table": "portal_release_states",
+    "operation": "select",
+    "file": "src/lib/portal/release-briefing.ts",
+    "line": 33
+  },
+  {
+    "revision": "production",
+    "table": "portal_release_states",
+    "operation": "select",
+    "file": "src/lib/portal/release-engagement.ts",
+    "line": 21
+  },
+  {
+    "revision": "production",
+    "table": "staff_profiles",
+    "operation": "select",
+    "file": "src/lib/portal/staff-identity.ts",
+    "line": 15
+  }
+]

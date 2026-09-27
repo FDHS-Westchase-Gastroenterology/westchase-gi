@@ -1,0 +1,333 @@
+{
+  "tables": [
+    {
+      "table": "analytics_daily",
+      "schema": "private",
+      "deletes": 3,
+      "inserts": 5582,
+      "updates": 6098,
+      "idx_scan": 11687,
+      "seq_scan": 1,
+      "total_bytes": 1130496,
+      "last_analyze": null,
+      "seq_tup_read": 0,
+      "last_autoanalyze": "2026-09-24T19:44:26.573407+00:00",
+      "estimated_dead_rows": 52,
+      "estimated_live_rows": 5579
+    },
+    {
+      "table": "audit_log",
+      "schema": "public",
+      "deletes": 27,
+      "inserts": 444,
+      "updates": 2,
+      "idx_scan": 37,
+      "seq_scan": 2417,
+      "total_bytes": 212992,
+      "last_analyze": null,
+      "seq_tup_read": 617449,
+      "last_autoanalyze": "2026-09-24T19:51:26.526836+00:00",
+      "estimated_dead_rows": 27,
+      "estimated_live_rows": 417
+    },
+    {
+      "table": "intake_rate_limits",
+      "schema": "private",
+      "deletes": 6991,
+      "inserts": 6992,
+      "updates": 4842,
+      "idx_scan": 20959,
+      "seq_scan": 11793,
+      "total_bytes": 81920,
+      "last_analyze": null,
+      "seq_tup_read": 32468,
+      "last_autoanalyze": "2026-09-27T00:36:04.414608+00:00",
+      "estimated_dead_rows": 25,
+      "estimated_live_rows": 1
+    },
+    {
+      "table": "notification_recipients",
+      "schema": "public",
+      "deletes": 3,
+      "inserts": 12,
+      "updates": 2,
+      "idx_scan": 273,
+      "seq_scan": 929,
+      "total_bytes": 65536,
+      "last_analyze": null,
+      "seq_tup_read": 7304,
+      "last_autoanalyze": null,
+      "estimated_dead_rows": 5,
+      "estimated_live_rows": 9
+    },
+    {
+      "table": "portal_release_states",
+      "schema": "public",
+      "deletes": 0,
+      "inserts": 3,
+      "updates": 11,
+      "idx_scan": 429,
+      "seq_scan": 3,
+      "total_bytes": 32768,
+      "last_analyze": null,
+      "seq_tup_read": 0,
+      "last_autoanalyze": null,
+      "estimated_dead_rows": 11,
+      "estimated_live_rows": 3
+    },
+    {
+      "table": "request_events",
+      "schema": "public",
+      "deletes": 5,
+      "inserts": 1508,
+      "updates": 0,
+      "idx_scan": 1762,
+      "seq_scan": 207,
+      "total_bytes": 532480,
+      "last_analyze": null,
+      "seq_tup_read": 29869,
+      "last_autoanalyze": "2026-09-25T14:23:21.309747+00:00",
+      "estimated_dead_rows": 0,
+      "estimated_live_rows": 1503
+    },
+    {
+      "table": "requests",
+      "schema": "public",
+      "deletes": 7,
+      "inserts": 169,
+      "updates": 199,
+      "idx_scan": 7233,
+      "seq_scan": 7659,
+      "total_bytes": 147456,
+      "last_analyze": null,
+      "seq_tup_read": 507347,
+      "last_autoanalyze": "2026-09-22T12:42:16.82064+00:00",
+      "estimated_dead_rows": 80,
+      "estimated_live_rows": 162
+    },
+    {
+      "table": "staff_profiles",
+      "schema": "public",
+      "deletes": 13,
+      "inserts": 23,
+      "updates": 36,
+      "idx_scan": 1235,
+      "seq_scan": 3546,
+      "total_bytes": 65536,
+      "last_analyze": null,
+      "seq_tup_read": 31923,
+      "last_autoanalyze": "2026-07-25T18:22:30.488571+00:00",
+      "estimated_dead_rows": 19,
+      "estimated_live_rows": 10
+    }
+  ],
+  "settings": {
+    "shared_buffers": "28672",
+    "max_connections": "60",
+    "track_functions": "none",
+    "track_io_timing": "off",
+    "pg_stat_statements.max": "5000",
+    "pg_stat_statements.track": "top",
+    "pg_stat_statements.track_planning": "off"
+  },
+  "functions": [
+    {
+      "name": "portal_acknowledge_staff_release",
+      "definition_md5": "7dd3eb894b855fc66ad4b297f0fc37ce",
+      "identity_arguments": "p_user_id uuid, p_release_id text"
+    },
+    {
+      "name": "portal_add_request_note",
+      "definition_md5": "eaae0c091033fb7bd13f1650965a0fdf",
+      "identity_arguments": "p_actor_email text, p_request_id uuid, p_note text, p_note_length integer"
+    },
+    {
+      "name": "portal_check_intake_rate_limit",
+      "definition_md5": "2107146a717f5c5facb1f04acd188f58",
+      "identity_arguments": "p_client_hash text, p_limit integer, p_window_seconds integer"
+    },
+    {
+      "name": "portal_close_request",
+      "definition_md5": "78a3a4fde3faf809d21838bf7bc67852",
+      "identity_arguments": "p_actor_email text, p_request_id uuid, p_disposition text"
+    },
+    {
+      "name": "portal_complete_staff_onboarding",
+      "definition_md5": "94d5302650e8a9f8ae440487439a74d3",
+      "identity_arguments": "p_user_id uuid"
+    },
+    {
+      "name": "portal_delete_request_early",
+      "definition_md5": "8ced900c2b9311f8b7e962322cc47a70",
+      "identity_arguments": "p_actor_email text, p_request_id uuid, p_authorization_ref text"
+    },
+    {
+      "name": "portal_hide_staff_release",
+      "definition_md5": "948b8f6d7b9e9f1239c2d84d1aa5c445",
+      "identity_arguments": "p_user_id uuid, p_release_id text"
+    },
+    {
+      "name": "portal_log_call_outcome",
+      "definition_md5": "9ca293c902fb8f76825bef8eea783da9",
+      "identity_arguments": "p_actor_email text, p_request_id uuid, p_outcome text, p_note text, p_follow_up_at timestamp with time zone"
+    },
+    {
+      "name": "portal_open_staff_release",
+      "definition_md5": "2f311fbc0b02df0060028fd6cd2d2d3b",
+      "identity_arguments": "p_user_id uuid, p_release_id text"
+    },
+    {
+      "name": "portal_preview_data_lifecycle",
+      "definition_md5": "6d594cf5e80c812491d85b78d4aea750",
+      "identity_arguments": "p_now timestamp with time zone"
+    },
+    {
+      "name": "portal_record_analytics_event",
+      "definition_md5": "df9c53bca5b8a0f2c7d1436670218d36",
+      "identity_arguments": "p_event text, p_route_template text, p_locale text, p_device_class text"
+    },
+    {
+      "name": "portal_record_staff_password_reset",
+      "definition_md5": "c970e942507189528cb0b30e4e1e9aed",
+      "identity_arguments": "p_user_id uuid"
+    },
+    {
+      "name": "portal_record_staff_release_dismiss",
+      "definition_md5": "296e127eb6de9dba8b6a3a47f17f4dea",
+      "identity_arguments": "p_user_id uuid, p_release_id text"
+    },
+    {
+      "name": "portal_record_staff_release_guide_open",
+      "definition_md5": "e0e69d139712620b35a0b372592cfe5e",
+      "identity_arguments": "p_user_id uuid, p_release_id text"
+    },
+    {
+      "name": "portal_run_data_lifecycle",
+      "definition_md5": "59e8f58be96f6a6477f62e9512de5274",
+      "identity_arguments": "p_actor_email text, p_now timestamp with time zone"
+    },
+    {
+      "name": "portal_set_request_legal_hold",
+      "definition_md5": "4615545061b976d1df7c20f6a53b31a9",
+      "identity_arguments": "p_actor_email text, p_request_id uuid, p_held boolean, p_reason text"
+    },
+    {
+      "name": "portal_set_staff_tour_dismissed",
+      "definition_md5": "19cddb64c924a18c8496bfa5904d1bd7",
+      "identity_arguments": "p_user_id uuid, p_dismissed boolean"
+    },
+    {
+      "name": "portal_undo_call_outcome",
+      "definition_md5": "51246cfec4b29f2b9150fcdccacaf837",
+      "identity_arguments": "p_actor_email text, p_request_id uuid, p_event_id uuid"
+    },
+    {
+      "name": "portal_update_recipient_label",
+      "definition_md5": "dcf282bc40ae2724ac16536fc315edea",
+      "identity_arguments": "p_actor_email text, p_recipient_id uuid, p_label text"
+    },
+    {
+      "name": "portal_update_request_status",
+      "definition_md5": "bb82de333afb29aae42ab2bbf879e14f",
+      "identity_arguments": "p_actor_email text, p_request_id uuid, p_next_status text"
+    },
+    {
+      "name": "rls_auto_enable",
+      "definition_md5": "6998ea6b4c2480f5d2e34b5dcf3f8d36",
+      "identity_arguments": ""
+    }
+  ],
+  "migrations": [
+    "20260713074105",
+    "20260713074631",
+    "20260714224219",
+    "20260715022720",
+    "20260715023258",
+    "20260715025435",
+    "20260716090000",
+    "20260716132839",
+    "20260716151327",
+    "20260718230000",
+    "20260720102654",
+    "20260725133049",
+    "20260725170000",
+    "20260727013641",
+    "20260727070521",
+    "20260728223000",
+    "20260729095026",
+    "20260729105056",
+    "20260729105736",
+    "20260729172311"
+  ],
+  "captured_at": "2026-09-27T01:59:35.314231+00:00",
+  "connections": [
+    {
+      "state": "idle",
+      "usename": "authenticator",
+      "connections": 1,
+      "wait_event_type": "Client"
+    },
+    {
+      "state": "active",
+      "usename": "postgres",
+      "connections": 1,
+      "wait_event_type": null
+    },
+    {
+      "state": "idle",
+      "usename": "supabase_admin",
+      "connections": 2,
+      "wait_event_type": "Client"
+    },
+    {
+      "state": "idle",
+      "usename": "supabase_admin",
+      "connections": 1,
+      "wait_event_type": "Extension"
+    },
+    {
+      "state": null,
+      "usename": "supabase_admin",
+      "connections": 1,
+      "wait_event_type": "Extension"
+    }
+  ],
+  "database_name": "postgres",
+  "collector_role": "postgres",
+  "database_bytes": 14535827,
+  "database_stats": {
+    "datname": "postgres",
+    "blks_hit": 42971025,
+    "sessions": 191409,
+    "blks_read": 1567,
+    "conflicts": 0,
+    "deadlocks": 0,
+    "temp_bytes": 0,
+    "temp_files": 0,
+    "active_time": 10097463.194,
+    "numbackends": 6,
+    "stats_reset": "2026-06-30T00:50:05.91645+00:00",
+    "tup_deleted": 8684,
+    "tup_fetched": 15930655,
+    "tup_updated": 16063,
+    "xact_commit": 3353665,
+    "session_time": 24543079957.559,
+    "tup_inserted": 21992,
+    "tup_returned": 184347441,
+    "blk_read_time": 0,
+    "xact_rollback": 564,
+    "blk_write_time": 0,
+    "sessions_fatal": 0,
+    "sessions_killed": 4,
+    "checksum_failures": 0,
+    "sessions_abandoned": 107,
+    "checksum_last_failure": null,
+    "idle_in_transaction_time": 478260.991
+  },
+  "postgres_version": "PostgreSQL 17.6 on x86_64-pc-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit",
+  "statement_stats_info": {
+    "dealloc": 0,
+    "stats_reset": "2026-07-12T22:29:18.916669+00:00"
+  },
+  "postmaster_started_at": "2026-07-12T22:31:28.299221+00:00"
+}

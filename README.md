@@ -96,3 +96,4 @@ covered in `CONTRIBUTING.md`.
 | `AGENTS.md`                | AI coding agents | Hard rules and fast ramp-up for autonomous work                                |
 | `PRODUCT.md` / `DESIGN.md` | Product + design | Product definitions (patient site + staff portal) and the design system        |
 | `ui-reference/`            | Developers       | Checked-in screenshots: the visual baseline for UI work                        |
+| [`performance/`](performance/README.md) | Developers | Backend CRUD baseline, production evidence, coverage gaps, and comparison procedure |
