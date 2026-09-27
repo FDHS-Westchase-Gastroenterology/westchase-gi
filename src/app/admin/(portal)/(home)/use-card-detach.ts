@@ -15,8 +15,9 @@ import { SHEET } from "./sheet-coexistence";
    writes `translate`, never `transform` — transform is what the entrance
    transition animates and it stays untouched — with no momentum on
    release, because a reposition drag is damping 1.0, not a flick
-   surface. While detached the card is a panel, not a popover: the blur
-   lifts, and outside presses and focus moves no longer dismiss it
+   surface. While detached the card is a panel, not a popover: the list
+   keeps its recede but answers presses again, and outside presses and
+   focus moves no longer dismiss it
    (sheet-coexistence.ts).
 
    The panel keeps to its lane (panel-lane.ts): the viewport, and with the
@@ -119,7 +120,7 @@ export function useCardDetach({
   readonly sheetOpen: boolean;
   /** The row the card anchors to, frozen into a virtual element on detach. */
   readonly row: RefObject<HTMLTableRowElement | null>;
-  /** Reports the panel state up to the list, which lifts the blur. */
+  /** Reports the panel state up to the list, which answers presses again. */
   readonly onDetachChange: (detached: boolean) => void;
 }): CardDetach {
   const [detached, setDetached] = useState(false);

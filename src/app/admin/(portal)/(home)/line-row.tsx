@@ -75,7 +75,7 @@ export function LineRow({
   onOpenChange: (open: boolean) => void;
   onOpenFull: (instant: boolean) => void;
   onSettled: (id: string) => void;
-  /** The card's panel state, up to the list's blur. */
+  /** The card's panel state, up to the list's press block. */
   onDetachChange: (detached: boolean) => void;
 }>) {
   const rowRef = useRef<HTMLTableRowElement>(null);

@@ -634,8 +634,11 @@
    the card's data-veiled flag is the whole mechanism. The popover portals
    out of the body, so the card itself is untouched. Each element fades on
    the base beat; under reduced motion it keeps the cross-fade
-   (globals.css, beside the blanket reset). */
-.wgi-list-card[data-veiled] .wgi-list-body {
+   (globals.css, beside the blanket reset). The recede holds while the
+   card is dragged into a panel and after it is let go (use-card-detach.ts);
+   a panel gives the body its presses back (data-panel), because it stays
+   while staff scroll the list or open another row. */
+.wgi-list-card[data-veiled]:not([data-panel]) .wgi-list-body {
   pointer-events: none;
 }
 

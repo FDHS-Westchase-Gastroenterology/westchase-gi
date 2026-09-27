@@ -106,7 +106,8 @@ wall, and it stops a 16px gap (`--wgi-companion-gap`) beyond the card, to a 24re
 force overlap with the card on top. Below 60rem it docks right and covers the card. While attached,
 the list recedes to 35% but the anchor row, and takes no presses in its body: a press there closes
 the card; a press or focus move into the sheet keeps it open. A 6px head drag from 60rem detaches the
-card; the recede lifts and outside presses or focus moves stop dismissing it. `panel-lane.ts` keeps
+card; the recede holds, the body takes presses again, and outside presses or focus moves stop
+dismissing it. `panel-lane.ts` keeps
 it 8px inside hard viewport edges, one gap from an open sheet; it yields on arrival, clamps later
 width changes, and may overlap the sheet while staying above it. Automatic movement stops at the
 sidebar gutter; staff can drag over it. Apple's pattern: HIG Popovers on macOS detachable popovers,

@@ -32,18 +32,18 @@ import { LineRow } from "./line-row";
    wheel, the keyboard and the thumb all move the same box. Geometry and paint
    live in home.css under `.wgi-list*` and `.appt-*`.
 
-   Under an open record card the surface is blurred and inert (Figma node
-   76:781, the surface's softening): every element on it but the anchor
-   row — the column labels, the other rows, the footer, the scroll rail —
-   takes a blur as its own paint, and the body answers no presses, so a
-   press anywhere on it is the outside press that closes the card (HIG
-   Popovers) and the rail cannot be dragged. Nothing is tinted, because
-   dimming means modal; the blur alone softens. Nothing is measured
-   either: the card's data-veiled flag is the whole mechanism, and the
-   open row stays sharp because the blur is never painted on it — a
-   popover should not cover the element that revealed it. A card dragged
-   into a panel lifts the blur (use-card-detach.ts): the panel floats
-   free of the list, so the list is no longer "under" it. */
+   Under an open record card the surface recedes (issue #327, section 05;
+   home.css): every element on it but the anchor row — the column labels,
+   the other rows, the footer, the scroll rail — drops to 35% opacity as
+   its own paint, and the body answers no presses, so a press anywhere on
+   it is the outside press that closes the card (HIG Popovers) and the
+   rail cannot be dragged. Nothing is measured: the card's data-veiled
+   flag is the whole mechanism, and the open row keeps full strength — a
+   popover should not cover the element that revealed it. The recede
+   holds for as long as the card is open, attached or dragged into a
+   panel (use-card-detach.ts). A panel only gives the presses back
+   (data-panel): it stays while staff work elsewhere, so the list scrolls
+   and another row's card can take its place. */
 
 interface LineListProps {
   readonly lines: readonly Readonly<HomeLine>[];
@@ -124,7 +124,7 @@ export function LineList({
   const count = lines.length;
 
   /* The open card's panel state, reported up from its row: a detached card
-     floats free of the list, so the blur lifts while it is one. The flag
+     leaves the list answering presses under its recede. The flag
      resets when the open row changes — another row's card starts attached
      — and a render-phase reset keeps it in step without a painted frame
      in the wrong state. */
@@ -140,7 +140,7 @@ export function LineList({
   if (detached && openRowId !== null && !lines.some((line) => line.id === openRowId)) {
     setDetached(false);
   }
-  const veiled = openRowId !== null && !detached;
+  const veiled = openRowId !== null;
 
   /* The footer's range is written straight to its text node from the scroll
      listener — no React render per scroll frame, and no announcement, since
@@ -189,6 +189,7 @@ export function LineList({
       className="wgi-list-card"
       data-testid="home-list-surface"
       data-veiled={veiled || undefined}
+      data-panel={(veiled && detached) || undefined}
     >
       <CardContent className="wgi-list-body">
         {count === 0 ? (
