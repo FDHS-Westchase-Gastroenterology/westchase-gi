@@ -46,9 +46,13 @@ export function useShownRows(rows: readonly Line[]): ShownRows {
     for (const line of [...shown.leaving, ...shown.rows]) {
       if (!next.has(line.id)) gone.set(line.id, line);
     }
+    const arriving = new Set<string>();
+    for (const line of rows) {
+      if (!before.has(line.id)) arriving.add(line.id);
+    }
     setShown({
       rows,
-      arriving: new Set(rows.filter((line) => !before.has(line.id)).map((line) => line.id)),
+      arriving,
       leaving: [...gone.values()],
     });
   }
