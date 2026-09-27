@@ -1,301 +1,167 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { prepareNewRequestPrintPacket, prepareStatusRequestPrintPacket } from "./request-print.ts";
+import { fakePostgrest } from "../../../test/fake-postgrest.mjs";
+import { PRINT_ID_LIMIT } from "./print-selection.ts";
+import { prepareIdRequestPrintPacket, prepareStatusRequestPrintPacket } from "./request-print.ts";
 
-const GENERATED_AT = "2026-08-09T12:00:00.000Z";
-const FIRST_ROW = {
-  id: "00000000-0000-4000-8000-000000000001",
-  name: "Fictional One",
-  phone: "000-000-0001",
-  email: null,
-  location: "tampa",
-  preferred_time: "morning",
-  message: "Fictional message.",
-  locale: "en",
-  source_path: "/en/appointment",
-  created_at: "2026-08-09T09:00:00.000Z",
-};
-const SECOND_ROW = {
-  id: "00000000-0000-4000-8000-000000000002",
-  name: "Fictional Two",
-  phone: "000-000-0002",
-  email: "fictional@example.test",
-  location: "lutz",
-  preferred_time: "afternoon",
-  message: null,
-  locale: "es",
-  source_path: "/es/appointment",
-  created_at: "2026-08-09T10:00:00.000Z",
-};
+const OLDER = "00000000-0000-4000-8000-000000000001";
+const NEWER = "00000000-0000-4000-8000-000000000002";
+const BOOKED = "00000000-0000-4000-8000-000000000003";
+const CLOSED = "00000000-0000-4000-8000-000000000004";
+const MISSING = "00000000-0000-4000-8000-000000000009";
 
-function rpcHarness(result) {
-  const calls = [];
+function requestRow(id, overrides) {
   return {
-    calls,
-    db: {
-      rpc(name, parameters) {
-        calls.push({ name, parameters });
-        return result instanceof Error ? Promise.reject(result) : Promise.resolve(result);
-      },
-    },
+    id,
+    name: `Fictional ${id.slice(-1)}`,
+    phone: "000-000-0000",
+    email: null,
+    location: "tampa",
+    preferred_time: "morning",
+    message: null,
+    locale: "en",
+    source_path: "/en/appointment",
+    created_at: "2026-08-09T09:00:00.000Z",
+    status: "new",
+    version: 1,
+    follow_up_at: null,
+    record_handoff_at: null,
+    appointment_at: null,
+    closed_at: null,
+    closure_reason: null,
+    legacy_review_required: false,
+    ...overrides,
   };
 }
 
-function packet(requests, generatedAt = GENERATED_AT) {
-  return { data: { generated_at: generatedAt, requests }, error: null };
-}
-
-test("maps one oldest-first RPC packet and passes only the server actor", async () => {
-  const harness = rpcHarness(packet([FIRST_ROW, SECOND_ROW]));
-  const result = await prepareNewRequestPrintPacket({
-    db: harness.db,
-    actorEmail: "staff@example.test",
-  });
-
-  assert.deepEqual(harness.calls, [
-    {
-      name: "portal_prepare_new_request_print_packet",
-      parameters: { p_actor_email: "staff@example.test" },
-    },
-  ]);
-  assert.deepEqual(result, {
-    ok: true,
-    generatedAt: GENERATED_AT,
-    requests: [
-      {
-        id: FIRST_ROW.id,
-        name: FIRST_ROW.name,
-        phone: FIRST_ROW.phone,
-        email: null,
-        location: "tampa",
-        preferredTime: "morning",
-        message: FIRST_ROW.message,
-        locale: "en",
-        sourcePath: "/en/appointment",
-        createdAt: FIRST_ROW.created_at,
-        status: "new",
-      },
-      {
-        id: SECOND_ROW.id,
-        name: SECOND_ROW.name,
-        phone: SECOND_ROW.phone,
-        email: SECOND_ROW.email,
-        location: "lutz",
-        preferredTime: "afternoon",
-        message: null,
-        locale: "es",
-        sourcePath: "/es/appointment",
-        createdAt: SECOND_ROW.created_at,
-        status: "new",
-      },
+function tables(requests) {
+  return {
+    requests: requests ?? [
+      requestRow(NEWER, { created_at: "2026-08-09T10:00:00.000Z" }),
+      requestRow(OLDER, { created_at: "2026-08-09T09:00:00.000Z" }),
+      requestRow(BOOKED, { created_at: "2026-08-09T08:00:00.000Z", status: "booked" }),
+      requestRow(CLOSED, { created_at: "2026-08-09T07:00:00.000Z", status: "closed" }),
     ],
-  });
-});
-
-test("preserves a successfully empty packet", async () => {
-  const harness = rpcHarness(packet([]));
-  assert.deepEqual(
-    await prepareNewRequestPrintPacket({
-      db: harness.db,
-      actorEmail: "staff@example.test",
-    }),
-    { ok: true, generatedAt: GENERATED_AT, requests: [] },
-  );
-});
-
-test("fails closed for RPC errors and thrown transports", async () => {
-  for (const result of [{ data: null, error: { code: "PGRST000" } }, new Error("unavailable")]) {
-    const harness = rpcHarness(result);
-    assert.deepEqual(
-      await prepareNewRequestPrintPacket({
-        db: harness.db,
-        actorEmail: "staff@example.test",
-      }),
-      { ok: false },
-    );
-  }
-});
-
-test("fails closed for malformed packet objects and arrays", async () => {
-  const malformed = [
-    null,
-    [],
-    { generated_at: GENERATED_AT },
-    { generated_at: GENERATED_AT, requests: {}, extra: true },
-    { generated_at: GENERATED_AT, requests: [FIRST_ROW], extra: true },
-  ];
-  for (const data of malformed) {
-    const harness = rpcHarness({ data, error: null });
-    assert.deepEqual(
-      await prepareNewRequestPrintPacket({
-        db: harness.db,
-        actorEmail: "staff@example.test",
-      }),
-      { ok: false },
-    );
-  }
-});
-
-test("fails closed for malformed rows, timestamps, and enums", async () => {
-  const malformedRows = [
-    { ...FIRST_ROW, name: null },
-    { ...FIRST_ROW, created_at: "not-a-timestamp" },
-    { ...FIRST_ROW, location: "other" },
-    { ...FIRST_ROW, preferred_time: "evening" },
-    { ...FIRST_ROW, unexpected: true },
-  ];
-  const cases = [
-    packet([FIRST_ROW], "not-a-timestamp"),
-    ...malformedRows.map((row) => packet([row])),
-  ];
-  for (const result of cases) {
-    const harness = rpcHarness(result);
-    assert.deepEqual(
-      await prepareNewRequestPrintPacket({
-        db: harness.db,
-        actorEmail: "staff@example.test",
-      }),
-      { ok: false },
-    );
-  }
-});
-
-test("fails closed for duplicate IDs and out-of-order rows", async () => {
-  for (const requests of [
-    [FIRST_ROW, { ...SECOND_ROW, id: FIRST_ROW.id }],
-    [SECOND_ROW, FIRST_ROW],
-    [SECOND_ROW, { ...FIRST_ROW, created_at: SECOND_ROW.created_at }],
-  ]) {
-    const harness = rpcHarness(packet(requests));
-    assert.deepEqual(
-      await prepareNewRequestPrintPacket({
-        db: harness.db,
-        actorEmail: "staff@example.test",
-      }),
-      { ok: false },
-    );
-  }
-});
-
-test("preserves PostgreSQL microsecond order before applying the UUID tie-breaker", async () => {
-  const earlier = {
-    ...FIRST_ROW,
-    id: SECOND_ROW.id,
-    created_at: "2026-08-09T09:00:00.000001+00:00",
-  };
-  const later = {
-    ...SECOND_ROW,
-    id: FIRST_ROW.id,
-    created_at: "2026-08-09T09:00:00.000999+00:00",
-  };
-  const harness = rpcHarness(packet([earlier, later]));
-
-  const result = await prepareNewRequestPrintPacket({
-    db: harness.db,
-    actorEmail: "staff@example.test",
-  });
-
-  assert.equal(result.ok, true);
-  assert.deepEqual(result.ok ? result.requests.map((request) => request.id) : [], [
-    SECOND_ROW.id,
-    FIRST_ROW.id,
-  ]);
-});
-
-test("rejects reversed PostgreSQL microseconds inside one millisecond", async () => {
-  const later = {
-    ...FIRST_ROW,
-    created_at: "2026-08-09T09:00:00.000999+00:00",
-  };
-  const earlier = {
-    ...SECOND_ROW,
-    created_at: "2026-08-09T09:00:00.000001+00:00",
-  };
-  const harness = rpcHarness(packet([later, earlier]));
-
-  assert.deepEqual(
-    await prepareNewRequestPrintPacket({
-      db: harness.db,
-      actorEmail: "staff@example.test",
-    }),
-    { ok: false },
-  );
-});
-
-function queryHarness(result) {
-  const calls = [];
-  const builder = {
-    select(columns) {
-      calls.push({ method: "select", columns });
-      return builder;
-    },
-    in(column, values) {
-      calls.push({ method: "in", column, values });
-      return builder;
-    },
-    order(column, options) {
-      calls.push({ method: "order", column, options });
-      return builder;
-    },
-    then(onFulfilled, onRejected) {
-      return Promise.resolve(result).then(onFulfilled, onRejected);
-    },
-  };
-  return {
-    calls,
-    db: {
-      from(table) {
-        calls.push({ method: "from", table });
-        return builder;
-      },
-    },
+    request_transitions: [],
+    request_events: [],
+    staff_profiles: [],
   };
 }
 
-test("maps a custom status packet oldest first and keeps the status on each row", async () => {
-  const contacted = {
-    ...SECOND_ROW,
-    status: "contacted",
-  };
-  const scheduled = {
-    ...FIRST_ROW,
-    status: "booked",
-    created_at: "2026-08-09T08:00:00.000Z",
-  };
-  const harness = queryHarness({ data: [scheduled, contacted], error: null });
+function ids(result) {
+  return result.ok ? result.records.map((record) => record.id) : result;
+}
+
+test("a status packet prints every request in those statuses, oldest first", async () => {
+  const db = fakePostgrest(tables());
+  const result = await prepareStatusRequestPrintPacket({ db, statuses: ["new", "scheduled"] });
+
+  assert.deepEqual(ids(result), [BOOKED, OLDER, NEWER]);
+  assert.ok(result.ok && !Number.isNaN(Date.parse(result.preparedAt)));
+  assert.deepEqual(db.calls.find((call) => call.table === "requests").filters, [
+    { column: "status", values: ["new", "booked", "scheduled"] },
+  ]);
+});
+
+test("the New packet is the same status read, with no database procedure", async () => {
+  const db = fakePostgrest(tables());
+  const result = await prepareStatusRequestPrintPacket({ db, statuses: ["new"] });
+
+  assert.deepEqual(ids(result), [OLDER, NEWER]);
+  assert.equal("rpc" in db, false);
+});
+
+test("an empty status packet is a successful packet of nothing", async () => {
   const result = await prepareStatusRequestPrintPacket({
-    db: harness.db,
-    statuses: ["contacted", "scheduled"],
+    db: fakePostgrest(tables([])),
+    statuses: ["contacted"],
   });
+  assert.deepEqual(ids(result), []);
+});
 
-  assert.equal(result.ok, true);
+test("a status packet fails closed for no statuses, a failed read, or a row outside the choice", async () => {
   assert.deepEqual(
-    result.ok ? result.requests.map((request) => [request.id, request.status]) : [],
-    [
-      [scheduled.id, "scheduled"],
-      [contacted.id, "contacted"],
-    ],
+    await prepareStatusRequestPrintPacket({ db: fakePostgrest(tables()), statuses: [] }),
+    { ok: false, reason: "unavailable" },
   );
   assert.deepEqual(
-    harness.calls.filter((call) => call.method === "in"),
-    [{ method: "in", column: "status", values: ["contacted", "booked", "scheduled"] }],
+    await prepareStatusRequestPrintPacket({
+      db: fakePostgrest(tables(), { fail: (call) => call.table === "request_events" }),
+      statuses: ["new"],
+    }),
+    { ok: false, reason: "unavailable" },
+  );
+  assert.deepEqual(
+    await prepareStatusRequestPrintPacket({
+      db: fakePostgrest(tables(), { ignoreFilters: ["requests"] }),
+      statuses: ["new"],
+    }),
+    { ok: false, reason: "unavailable" },
   );
 });
 
-test("fails closed for an empty custom status list or a query error", async () => {
+test("an id packet prints exactly the chosen requests, oldest first", async () => {
+  const db = fakePostgrest(tables());
+  const result = await prepareIdRequestPrintPacket({ db, ids: [NEWER, CLOSED, OLDER] });
+
+  assert.deepEqual(ids(result), [CLOSED, OLDER, NEWER]);
+  assert.deepEqual(db.calls.find((call) => call.table === "requests").filters, [
+    { column: "id", values: [NEWER, CLOSED, OLDER] },
+  ]);
+});
+
+test("an id packet with a request that no longer exists prints nothing", async () => {
   assert.deepEqual(
-    await prepareStatusRequestPrintPacket({
-      db: queryHarness({ data: [], error: null }).db,
-      statuses: [],
-    }),
-    { ok: false },
+    await prepareIdRequestPrintPacket({ db: fakePostgrest(tables()), ids: [OLDER, MISSING] }),
+    { ok: false, reason: "missing" },
   );
+});
+
+test("an id packet fails closed for an empty, repeated, oversized, or malformed list", async () => {
+  const tooMany = Array.from(
+    { length: PRINT_ID_LIMIT + 1 },
+    (_, index) => `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+  );
+  for (const list of [[], [OLDER, OLDER], tooMany, ["not-a-uuid"], [` ${OLDER}`]]) {
+    const db = fakePostgrest(tables());
+    assert.deepEqual(await prepareIdRequestPrintPacket({ db, ids: list }), {
+      ok: false,
+      reason: "unavailable",
+    });
+    assert.deepEqual(db.calls, [], "an invalid list reads nothing");
+  }
+});
+
+test("an id packet fails closed when a read fails", async () => {
+  for (const table of ["requests", "request_transitions"]) {
+    assert.deepEqual(
+      await prepareIdRequestPrintPacket({
+        db: fakePostgrest(tables(), { fail: (call) => call.table === table }),
+        ids: [OLDER],
+      }),
+      { ok: false, reason: "unavailable" },
+    );
+  }
+});
+
+test("PostgreSQL microseconds order a packet before the id tie-breaker", async () => {
+  const requests = [
+    requestRow(OLDER, { created_at: "2026-08-09T09:00:00.000002Z" }),
+    requestRow(NEWER, { created_at: "2026-08-09T09:00:00.000001Z" }),
+    requestRow(BOOKED, { created_at: "2026-08-09T09:00:00.000001+00:00" }),
+  ];
+  const result = await prepareIdRequestPrintPacket({
+    db: fakePostgrest(tables(requests)),
+    ids: [OLDER, NEWER, BOOKED],
+  });
+  assert.deepEqual(ids(result), [NEWER, BOOKED, OLDER]);
+});
+
+test("an unreadable creation time fails the packet rather than guessing its order", async () => {
+  const requests = [requestRow(OLDER), requestRow(NEWER, { created_at: "2026-08-09 09:00:00" })];
   assert.deepEqual(
-    await prepareStatusRequestPrintPacket({
-      db: queryHarness({ data: null, error: { code: "PGRST000" } }).db,
-      statuses: ["contacted"],
-    }),
-    { ok: false },
+    await prepareIdRequestPrintPacket({ db: fakePostgrest(tables(requests)), ids: [OLDER, NEWER] }),
+    { ok: false, reason: "unavailable" },
   );
 });

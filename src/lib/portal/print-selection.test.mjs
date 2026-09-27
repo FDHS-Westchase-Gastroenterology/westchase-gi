@@ -5,8 +5,11 @@ import {
   formatStatusList,
   isNewOnlyPrintSelection,
   knownSelectionCount,
+  parsePrintIdSelection,
   parsePrintStatusSelection,
+  PRINT_ID_LIMIT,
   printPacketHref,
+  printPacketIdsHref,
   printSelectionIsAvailable,
 } from "./print-selection.ts";
 
@@ -33,6 +36,53 @@ test("printPacketHref reuses the New packet URL for New-only work", () => {
     printPacketHref(["new", "contacted"]),
     "/admin/requests/print?status=new%2Ccontacted&auto=1",
   );
+});
+
+const FIRST_ID = "00000000-0000-4000-8000-000000000001";
+const SECOND_ID = "00000000-0000-4000-8000-000000000002";
+
+test("parsePrintIdSelection keeps chosen request ids in order, once each", () => {
+  assert.deepEqual(parsePrintIdSelection(`${SECOND_ID},${FIRST_ID}`), [SECOND_ID, FIRST_ID]);
+  assert.deepEqual(parsePrintIdSelection([FIRST_ID, `${SECOND_ID},${FIRST_ID}`]), [
+    FIRST_ID,
+    SECOND_ID,
+  ]);
+  assert.deepEqual(parsePrintIdSelection(` ${FIRST_ID} `), [FIRST_ID]);
+  assert.deepEqual(parsePrintIdSelection(FIRST_ID.toUpperCase()), [FIRST_ID]);
+});
+
+test("parsePrintIdSelection rejects a missing, empty, malformed, or oversized list", () => {
+  const limit = Array.from(
+    { length: PRINT_ID_LIMIT },
+    (_, index) => `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+  );
+  assert.equal(PRINT_ID_LIMIT, 100);
+  assert.equal(parsePrintIdSelection(limit.join(","))?.length, PRINT_ID_LIMIT);
+  for (const invalid of [
+    undefined,
+    "",
+    ",",
+    `${FIRST_ID},`,
+    `${FIRST_ID},not-a-uuid`,
+    "new",
+    [],
+    [...limit, "00000000-0000-4000-8000-999999999999"].join(","),
+  ]) {
+    assert.equal(parsePrintIdSelection(invalid), null, String(invalid));
+  }
+});
+
+test("printPacketIdsHref names the chosen requests and starts printing when asked", () => {
+  assert.equal(
+    printPacketIdsHref([SECOND_ID, FIRST_ID]),
+    `/admin/requests/print?ids=${SECOND_ID},${FIRST_ID}&auto=1`,
+  );
+  assert.equal(printPacketIdsHref([FIRST_ID], false), `/admin/requests/print?ids=${FIRST_ID}`);
+  const href = new URL(printPacketIdsHref([SECOND_ID, FIRST_ID]), "http://localhost");
+  assert.deepEqual(parsePrintIdSelection(href.searchParams.get("ids") ?? undefined), [
+    SECOND_ID,
+    FIRST_ID,
+  ]);
 });
 
 test("New-only detection treats the default packet as New", () => {
