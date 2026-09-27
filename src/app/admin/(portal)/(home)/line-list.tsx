@@ -21,6 +21,7 @@ import { Table, TableBody, TableHead, TableHeader, TableRow } from "@/components
 
 import { requestCount } from "./home-line";
 import type { HomeLine } from "./home-line";
+import { useLanded } from "./landed-request";
 import { LineRow } from "./line-row";
 
 /* The request list (issue #282): one thin floating surface — column labels,
@@ -116,6 +117,7 @@ export function LineList({
   note,
 }: LineListProps) {
   const dial = useCoarsePointer();
+  const landed = useLanded();
   const viewportRef = useRef<HTMLDivElement>(null);
   const tableRef = useRef<HTMLTableElement>(null);
   const rangeRef = useRef<HTMLSpanElement>(null);
@@ -229,6 +231,7 @@ export function LineList({
                       fullOpen={sheetId === line.id}
                       selected={selectedId === line.id}
                       settled={settledId === line.id}
+                      landed={landed?.id === line.id ? landed.phase : null}
                       onOpenChange={(open) => {
                         /* Every close comes through here — the row's
                            click, the chevron's outside press, the panel's

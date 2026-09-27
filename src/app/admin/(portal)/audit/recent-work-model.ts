@@ -12,10 +12,11 @@ import {
 } from "@/app/admin/(portal)/requests/format";
 import { asJsonBoolean, asJsonNumber, asJsonObject, asJsonString } from "@/lib/json";
 import type { Json, JsonObject } from "@/lib/json";
-import { formatStatusList, parsePrintStatusSelection } from "@/lib/portal/print-selection";
 import { isPortalReleaseAuditAction } from "@/lib/portal/release-state";
 import type { AuditLogRow } from "@/lib/portal/rows";
 import { normalizeRequestState, parseRequestStatus } from "@/lib/portal/workflow/contracts";
+
+import { printPacketSentence } from "./print-packet-sentence";
 
 /** The audit_log columns the Activity page reads. */
 export type AuditEntry = Readonly<
@@ -243,31 +244,8 @@ function describeAction(
         technical: false,
       };
     }
-    case "requests.print_new": {
-      const count = asJsonNumber(detail.row_count);
-      const countText = count !== null ? ` (${count} ${count === 1 ? "request" : "requests"})` : "";
-      const filter = asJsonString(detail.status_filter);
-      const selection = parsePrintStatusSelection(filter ?? undefined);
-      if (
-        selection === "default" ||
-        (Array.isArray(selection) && selection.length === 1 && selection[0] === "new")
-      ) {
-        return {
-          sentence: `prepared the New-request print packet${countText}`,
-          technical: false,
-        };
-      }
-      if (Array.isArray(selection)) {
-        return {
-          sentence: `prepared a print packet of ${formatStatusList(selection, STATUS_LABELS)}${countText}`,
-          technical: false,
-        };
-      }
-      return {
-        sentence: `prepared a request print packet${countText}`,
-        technical: false,
-      };
-    }
+    case "requests.print_new":
+      return { sentence: printPacketSentence(detail), technical: false };
     case "recipients.add":
       return {
         sentence: `added ${recipientLabel(ctx.recipientsById, entry.entity_id)} to notification emails`,

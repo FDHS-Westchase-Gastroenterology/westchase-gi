@@ -31,11 +31,30 @@ export function attemptKey(
     already dismissed, so a retry has nothing to update in place; and Sonner
     removes a dismissed toast by id about 200ms later, taking with it any new
     toast that reused the id inside that window. Each attempt therefore takes
-    a fresh id. */
-export function followCreation(attempt: Promise<CreateStaffRequestActionState>): void {
+    a fresh id.
+
+    `onLeave` hears the new request's id when a confirmed toast leaves, by
+    its timeout or by hand, so Home's landed wash (A6) lasts exactly as long
+    as the sentence that names it. A failed attempt's toast leaves silently. */
+export function followCreation(
+  attempt: Promise<CreateStaffRequestActionState>,
+  onLeave?: (requestId: string) => void,
+): void {
+  let requestId: string | null = null;
+  void attempt.then(
+    (result) => {
+      if (created(result)) requestId = result.requestId;
+    },
+    () => undefined,
+  );
+  const left = () => {
+    if (requestId !== null) onLeave?.(requestId);
+  };
   toast.promise(followed(attempt, created), {
     testId: CREATED_TOAST_TEST_ID,
     loading: "Adding appointment request…",
     success: (result) => `${result.name} is on the line under New.`,
+    onAutoClose: left,
+    onDismiss: left,
   });
 }

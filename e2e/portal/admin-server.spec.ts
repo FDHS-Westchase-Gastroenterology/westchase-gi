@@ -1140,6 +1140,7 @@ test.describe("portal management server boundaries", () => {
       idRowSchema.safeParse(staged),
       "Slice 8 request fixture was not created",
     ).id;
+    const chosenPrintIds = [requestId, randomUUID(), randomUUID()];
     const commands = [
       ["record_contact_attempt", "new", "contacted", "recorded a contact attempt on a request"],
       ["confirm_booking_handoff", "contacted", "booked", "marked a request Scheduled"],
@@ -1198,6 +1199,15 @@ test.describe("portal management server boundaries", () => {
           at: new Date(anchor.getTime() - 30 * 60_000).toISOString(),
         },
         {
+          // A packet of chosen requests: no status filter, its ids in print order.
+          actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
+          action: "requests.print_new",
+          entity: "requests",
+          entity_id: null,
+          detail: { row_count: 3, status_filter: null, request_ids: chosenPrintIds },
+          at: new Date(anchor.getTime() - 35 * 60_000).toISOString(),
+        },
+        {
           actor_email: SEED_ADMIN_EMAIL.toLowerCase(),
           action: "maintainers.invite",
           entity: "maintainers",
@@ -1228,6 +1238,8 @@ test.describe("portal management server boundaries", () => {
       await expect(recent).not.toContainText("set_call_again");
       await expect(recent).not.toContainText("undo_latest_transition");
       await expect(recent).not.toContainText("resulting_version");
+      await expect(recent).toContainText("prepared a print packet of 3 requests");
+      for (const id of chosenPrintIds.slice(1)) await expect(recent).not.toContainText(id);
       await expect(
         recent
           .locator("li", { hasText: "recorded a contact attempt on a request" })

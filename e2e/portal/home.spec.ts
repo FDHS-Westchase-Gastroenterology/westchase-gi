@@ -132,36 +132,33 @@ test.describe("portal home", () => {
     );
     await expect(nav.locator('a[aria-current="page"]')).toHaveText("Home");
 
-    // Print opens a chooser. All New still uses the existing packet.
-    await page.getByTestId("print-chooser-trigger").click();
-    const printLink = page.getByRole("link", {
-      name: `Print all ${newCount} new appointment ${
-        newCount === 1 ? "request" : "requests"
-      }; opens in a new tab`,
-    });
-    await expect(printLink).toHaveAttribute("href", "/admin/requests/print?auto=1");
-    await expect(printLink).toHaveAttribute("target", "_blank");
-    await expect(page.getByTestId("print-chooser-summary")).toHaveText(
-      "Choose one or more statuses.",
+    // Print opens the Print sheet: the requests Home shows, every one
+    // Chosen, each chosen request one page, printed by id in a new tab.
+    await page.getByTestId("home-print-requests").click();
+    const printSheet = page.getByTestId("print-requests-sheet");
+    await expect(printSheet).toBeVisible();
+    await expect(printSheet.getByRole("heading", { name: "Print requests" })).toBeVisible();
+    await expect(page.getByTestId("print-chooser")).toHaveCount(0);
+    const printRows = page.getByTestId("print-table").locator("tbody tr");
+    await expect(printRows.first()).toBeVisible();
+    const printSubmit = page.getByTestId("print-requests-submit");
+    await expect(printSubmit).toHaveAttribute(
+      "href",
+      /^\/admin\/requests\/print\?ids=[^&]+&auto=1$/,
     );
-    await expect(page.getByRole("button", { name: "Print selected" })).toBeDisabled();
-    const { count: contactedCount, error: contactedError } = await db
-      .from("requests")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "contacted");
-    expect(contactedError).toBeNull();
-    await page.getByTestId("print-status-contacted").check();
-    if ((contactedCount ?? 0) > 0) {
-      await expect(page.getByRole("link", { name: "Print selected" })).toHaveAttribute(
-        "href",
-        "/admin/requests/print?status=contacted&auto=1",
-      );
-    } else {
-      await expect(page.getByRole("button", { name: "Print selected" })).toBeDisabled();
-    }
+    await expect(printSubmit).toHaveAttribute("target", "_blank");
+    await expect(page.getByTestId("print-summary")).toContainText("oldest first");
+
+    // Leaving everything out leaves nothing to print.
+    await page.getByTestId("print-select-all").click();
+    await expect(page.getByTestId("print-summary")).toHaveText(/^None of \d+ requests? chosen$/);
+    await expect(printSubmit).toBeDisabled();
+    await page.getByTestId("print-select-all").click();
+    await expect(printSubmit).toHaveAttribute("href", /ids=/);
+
     await page.keyboard.press("Escape");
-    await expect(page.getByTestId("print-chooser")).toBeHidden();
-    await expect(page.getByTestId("print-chooser-trigger")).toBeFocused();
+    await expect(printSheet).toBeHidden();
+    await expect(page.getByTestId("home-print-requests")).toBeFocused();
 
     // One noun on the portal nav: Requests (the records are appointment
     // Requests, the destination under /admin/requests carries the same word).

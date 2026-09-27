@@ -69,8 +69,8 @@ a mint pill in `DocumentList.tsx:56-83`. The real anchor reads `dict.common.docs
 | `outline` | Transparent, `ink` label, a 1.5px `line-2` inset stroke | The action beside a primary one: cancel, clear, change email, go back | 26 files; four more switch between `default` and `outline` |
 | `ghost-light` | 12% white with a 34% white stroke | The second action on a navy band | The home page, the appointment page, `Footer`, `TextBand` |
 
-`secondary`, `ghost`, `destructive` and `link` are registry paints with no consumer and no approved
-brand look; choosing one is Jason's call. An unlisted variant is a bug, not an option.
+`destructive` has one consumer, the Add sheet's Discard (coral glass). `secondary`, `ghost` and
+`link` have no consumer or approved look; choosing one is Jason's call. Unlisted is a bug.
 
 ```
 Which variant?

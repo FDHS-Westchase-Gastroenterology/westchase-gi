@@ -3,8 +3,9 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useId, useRef, useState } from "react";
 
+import { clearLanded, markLanded } from "./(home)/landed-request";
 import { StaffRequestForm } from "./requests/new/staff-request-form";
-import type { StaffRequestFormHandle } from "./requests/new/staff-request-form";
+import type { StaffRequestFormHandle } from "./requests/new/use-leave-guard";
 
 /* Adding a walk-in or a phoned-in request used to cost two navigations: out to
    a page and back again. Coming to the portal is already an interruption to the
@@ -14,7 +15,12 @@ import type { StaffRequestFormHandle } from "./requests/new/staff-request-form";
 
    The form is mounted on open and unmounted on close, so a dismissed draft
    never survives to surprise the next person who opens it. The result is the
-   form's toast: the dialog only closes and refreshes the line under it. */
+   form's toast: the dialog only closes, marks the new row as landed
+   (landed-request.ts) and refreshes the line under it. Home's filter is
+   never touched; when it hides the new row, the toast is the confirmation.
+
+   The sheet is Home's glass (home.css "Glass sheets"). Cancel and Escape
+   are its ways out, so it has no Close button. */
 export function AddAppointmentDialog({
   triggerClassName,
   idempotencyKey,
@@ -38,10 +44,14 @@ export function AddAppointmentDialog({
     formHandleRef.current?.requestDismiss();
   }, []);
 
-  const created = useCallback(() => {
-    close();
-    router.refresh();
-  }, [close, router]);
+  const created = useCallback(
+    (requestId: string) => {
+      markLanded(requestId);
+      close();
+      router.refresh();
+    },
+    [close, router],
+  );
 
   return (
     <>
@@ -58,15 +68,18 @@ export function AddAppointmentDialog({
           setOpen(true);
         }}
       >
-        Add request
+        Add request…
       </button>
       <dialog
         ref={dialogRef}
         aria-modal="true"
         aria-labelledby={titleId}
         data-testid="add-appointment-dialog"
-        onClickCapture={(event) => {
-          event.currentTarget.toggleAttribute("data-instant", event.detail === 0);
+        onPointerDownCapture={(event) => {
+          event.currentTarget.toggleAttribute("data-instant", false);
+        }}
+        onKeyDownCapture={(event) => {
+          event.currentTarget.toggleAttribute("data-instant", true);
         }}
         onCancel={(event) => {
           if (event.target !== event.currentTarget) return;
@@ -79,33 +92,24 @@ export function AddAppointmentDialog({
           setOpen(false);
           triggerRef.current?.focus();
         }}
-        className="portal-confirm-dialog portal-add-appointment"
+        className="portal-confirm-dialog wgi-glass-sheet portal-add-appointment"
       >
-        <div className="portal-confirm-dialog-body">
-          <div className="portal-confirm-dialog-heading">
-            <h2 id={titleId} className="portal-confirm-dialog-title">
-              Add appointment request
-            </h2>
-            <button type="button" onClick={requestClose} className="portal-confirm-dialog-close">
-              Close
-            </button>
-          </div>
-          <p>
-            For a call, a walk-in, or a message that needs appointment follow-up. It joins the line
-            as a New request.
-          </p>
-          {open ? (
-            <StaffRequestForm
-              idempotencyKey={idempotencyKey}
-              permalink="/admin"
-              returnHref="/admin"
-              returnLabel="Cancel"
-              onCreated={created}
-              onDismiss={close}
-              dismissRequestRef={formHandleRef}
-            />
-          ) : null}
-        </div>
+        <header className="wgi-glass-sheet-header">
+          <h2 id={titleId}>Add request</h2>
+          <p>It joins the line under New. No chart is created and no email is sent.</p>
+        </header>
+        {open ? (
+          <StaffRequestForm
+            idempotencyKey={idempotencyKey}
+            permalink="/admin"
+            returnHref="/admin"
+            returnLabel="Cancel"
+            onCreated={created}
+            onCreatedToastLeave={clearLanded}
+            onDismiss={close}
+            dismissRequestRef={formHandleRef}
+          />
+        ) : null}
       </dialog>
     </>
   );

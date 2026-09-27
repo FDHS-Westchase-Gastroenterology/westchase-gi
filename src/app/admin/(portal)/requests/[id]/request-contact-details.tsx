@@ -23,10 +23,7 @@ export function RequestContactDetails({
   const formLanguage = localeLabel(row.locale);
   const patientMessage = row.message !== null ? row.message.trim() : "";
   return (
-    <section
-      className="request-print-card portal-request-details"
-      aria-labelledby="request-details-heading"
-    >
+    <section className="portal-request-details" aria-labelledby="request-details-heading">
       <header className="portal-request-details-header">
         <h2 id="request-details-heading">Contact and request</h2>
         <p data-testid="request-intake-meta">

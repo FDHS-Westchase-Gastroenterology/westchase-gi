@@ -354,8 +354,8 @@ shared database by closing/reopening a child PR, or hand-patch it into an unrepr
 Open [`ui-reference/README.md`](ui-reference/README.md) before frontend work. Refresh the
 affected images against the matching local or Preview origin; use the default live-origin
 capture after deployment for public pages. The portal atlas covers only the seven top-level
-staff routes with the Preview Branch seed identity, redacts in-browser, and never runs
-against Production.
+staff routes and the empty add-request form with the Preview Branch seed identity, redacts
+in-browser, and never runs against Production.
 
 UI-visible work also has to satisfy the [visual evidence](AGENTS.md#visual-evidence) gate:
 before and after screenshots in the pull-request conversation, or a video of the authored

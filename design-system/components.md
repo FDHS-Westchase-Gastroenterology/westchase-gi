@@ -50,8 +50,8 @@ below.
 | Component | When | Real uses |
 | --- | --- | --- |
 | `AuthCard` | The signed-out staff screens: sign-in, reset request, set password, confirmation ([item 1](roadmap.md#1-card-surfaces)) | `login/page.tsx`, `forgot-password/page.tsx`, `set-password/page.tsx`, `confirm/page.tsx` |
-| `StatusBadge` | A request's status in the queue and on its detail page ([surfaces.md](surfaces.md#badges)) | `requests/page.tsx`, `[id]/page.tsx` |
-| `PrintChooser` | Choosing what to print, from the staff home and the requests output actions ([overlays.md](overlays.md#modal-dialogs)) | `home-workbench.tsx`, `requests-output-actions.tsx` |
+| `StatusBadge` | A request's status in the queue and on its detail page ([surfaces.md](surfaces.md#badges)) | `requests/page.tsx`, `[id]/request-detail-header.tsx` |
+| `PrintChooser` | Choosing what to print from the Requests page; the staff home prints from its own sheet ([overlays.md](overlays.md#modal-dialogs)) | `requests-output-actions.tsx` |
 | `followed` | The promise a save toast follows ([forms.md](forms.md#saving)) | `created-toast.ts`, `request-notes.tsx`, `use-workflow-panel.ts` |
 | `PortalPageHeader` | Every portal page's title block ([layout.md](layout.md#page-structures)). A settings page renders none of its own; `settings/layout.tsx` renders one above every settings page ([modules.md](modules.md#a-settings-page)) | `settings/layout.tsx`, `audit/page.tsx`, `requests/new/page.tsx` |
 | `PortalFeedbackProvider` `PortalFeedbackMessage` | A result with no promise to follow, or one that has to outlive a toast; the settings managers report inline instead ([forms.md](forms.md#reporting-a-result)) | `home-workbench.tsx`, `requests-output-actions.tsx`, `print-controls.tsx` |

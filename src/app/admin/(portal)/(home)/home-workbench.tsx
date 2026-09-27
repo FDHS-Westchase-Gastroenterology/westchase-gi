@@ -7,12 +7,11 @@ import {
   PortalFeedbackMessage,
   PortalFeedbackProvider,
 } from "@/app/admin/(portal)/portal-feedback";
-import { PrintChooser } from "@/app/admin/(portal)/requests/print-chooser";
 import { buttonVariants } from "@/components/ui/button-variants";
-import type { StatusCounts } from "@/lib/portal/workflow/contracts";
 
 import { HomeDashboard } from "./home-dashboard";
 import type { HomeLine } from "./home-line";
+import { PrintRequestsSheet } from "./print-requests-sheet";
 
 import "./home.css";
 
@@ -37,7 +36,7 @@ export function HomeWorkbench({
   lines,
   nowMs,
   closedCapped,
-  statusCounts,
+  printedBy,
   noActiveRecipients,
   deliveryFailureCount,
   announcements,
@@ -52,7 +51,8 @@ export function HomeWorkbench({
   /** One server clock for every relative label on the page. */
   nowMs: number;
   closedCapped: boolean;
-  statusCounts: StatusCounts;
+  /** The signed-in staff member, printed on each page's footer. */
+  printedBy: string | null;
   noActiveRecipients: boolean;
   deliveryFailureCount: number | null;
   announcements?: ReactNode;
@@ -73,10 +73,11 @@ export function HomeWorkbench({
             </h1>
           </div>
           <div className="portal-sheet-commands print-hide">
-            <PrintChooser
-              statusCounts={statusCounts}
-              triggerClassName={cn(buttonVariants({ variant: "outline" }), "wgi-cmd")}
-              triggerLabel="Print requests"
+            <PrintRequestsSheet
+              lines={lines}
+              nowMs={nowMs}
+              closedCapped={closedCapped}
+              printedBy={printedBy}
             />
             <AddAppointmentDialog
               idempotencyKey={addRequestKey}

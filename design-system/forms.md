@@ -8,10 +8,10 @@ its own label stack.
 
 | Component | When | Real uses |
 | --- | --- | --- |
-| `Field` `FieldLabel` | One labeled control. `orientation` is `vertical` (default), `horizontal` or `responsive`. | `staff-request-form.tsx`, `request-search-form.tsx`, `record-card.tsx` |
+| `Field` `FieldLabel` | One labeled control. `orientation` is `vertical` (default), `horizontal` or `responsive`. | `staff-request-fields.tsx`, `request-search-form.tsx`, `record-card.tsx` |
 | `FieldGroup` | The stack of fields in one form | `login-form.tsx`, `password-form.tsx`, `reset-request-form.tsx` |
 | `FieldSet` `FieldLegend` `FieldTitle` | A named group of related choices | `print-chooser.tsx` |
-| `FieldDescription` `FieldError` | The hint under a control; the reason it was refused | `staff-request-form.tsx`, `AppointmentForm.tsx` |
+| `FieldDescription` `FieldError` | The hint under a control; the reason it was refused. `size="note"` is the Add request sheet's quieter 13px line, its fix led by an icon | `staff-request-fields.tsx`, `AppointmentForm.tsx` |
 
 - **An invalid control sets `aria-invalid`** and its `FieldError` says what to change, in the
   words the staff member or patient uses. Color is never the only signal.
@@ -21,8 +21,8 @@ its own label stack.
   record card's start time. Everything else stacks.
 
 ```tsx
-// Correct (staff-request-form.tsx): the control carries the state; FieldError carries the words
-aria-invalid={errors.name === null ? undefined : true}
+// Correct (staff-request-fields.tsx): the control carries the state; FieldError carries the words
+aria-invalid={error === null ? undefined : true}
 ```
 
 ```tsx incorrect
@@ -34,9 +34,10 @@ aria-invalid={errors.name === null ? undefined : true}
 
 | Component | When | Real uses |
 | --- | --- | --- |
-| `Input` | Single-line text, email, phone, search | `staff-request-form.tsx`, `recipient-row.tsx` |
-| `Textarea` | Multi-line text | `staff-request-form.tsx`, `AppointmentForm.tsx` |
-| `NativeSelect` | Choosing one of a fixed list | `staff-manager.tsx`, `AppointmentForm.tsx` |
+| `Input` | Single-line text, email, phone, search | `staff-request-fields.tsx`, `recipient-row.tsx` |
+| `Textarea` | Multi-line text | `staff-request-fields.tsx`, `AppointmentForm.tsx` |
+| `NativeSelect` | Choosing one of a longer fixed list | `staff-manager.tsx`, `AppointmentForm.tsx` |
+| `SegmentedControl` | Choosing one of two to four short options, all visible at once, one always chosen | `staff-request-fields.tsx` (preferred office and time) |
 | `Checkbox` | An independent yes or no, including each row of a multi-select list | `print-chooser.tsx` |
 
 The four controls share one `motion` axis: `wgi` (default), `shadcn` and `none`, and only `wgi`
@@ -46,13 +47,17 @@ corner off the radius steps ([item 8](roadmap.md#8-the-radius-ramp)).
 
 Selects stay native. A native `<select>` opens the platform picker on phones, speaks every
 locale the site serves and needs no portal layer, so `NativeSelect` is the only select until a
-surface needs search inside the list.
+surface needs search inside the list. When the list is two to four short options that fit side by
+side, show them all with `SegmentedControl` (`ui/segmented-control.tsx`) instead: it is Base UI's
+radio group underneath (one tab stop, arrow keys choose, a hidden native radio posts `name=value`
+as the select did), and the thumb slides on the staff home's fast beat.
 
 ```
 Which control?
 ├── Free text → Input; more than one line → Textarea
 ├── One of a fixed list
 │   ├── A request's outcome or follow-up → a choice list (below)
+│   ├── Two to four short options that fit side by side → SegmentedControl
 │   └── Anything else → NativeSelect
 ├── An independent yes or no → Checkbox
 ├── A date → a date input (dates-and-times.md)

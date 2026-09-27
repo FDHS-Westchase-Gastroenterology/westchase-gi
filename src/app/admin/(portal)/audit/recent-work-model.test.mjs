@@ -118,6 +118,40 @@ test("current lifecycle events still translate into plain language", () => {
   }
 });
 
+test("a print packet reads by what it printed: chosen requests, statuses, or an older row", () => {
+  const chosen = ["00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002"];
+  const sentence = (detail) =>
+    toRecentWorkItems([entry({ action: "requests.print_new", detail })], CTX())[0].sentence;
+
+  assert.equal(
+    sentence({ row_count: 3, status_filter: null, request_ids: [...chosen, chosen[0]] }),
+    "prepared a print packet of 3 requests",
+  );
+  assert.equal(
+    sentence({ status_filter: null, request_ids: chosen.slice(0, 1) }),
+    "prepared a print packet of 1 request",
+  );
+  assert.equal(
+    sentence({ row_count: 2, status_filter: "new", request_ids: chosen }),
+    "prepared the New-request print packet (2 requests)",
+  );
+  assert.equal(
+    sentence({ row_count: 2, status_filter: "contacted,scheduled", request_ids: chosen }),
+    "prepared a print packet of Contacted and Scheduled (2 requests)",
+  );
+  assert.equal(sentence({ row_count: 5 }), "prepared the New-request print packet (5 requests)");
+  assert.equal(
+    sentence({ row_count: 5, status_filter: "new" }),
+    "prepared the New-request print packet (5 requests)",
+  );
+  assert.equal(
+    sentence({ row_count: 5, status_filter: "open" }),
+    "prepared a request print packet (5 requests)",
+  );
+  for (const id of chosen)
+    assert.ok(!sentence({ row_count: 2, status_filter: null, request_ids: chosen }).includes(id));
+});
+
 test("search finds actor names, action phrases, and the linked request id only", () => {
   const requestId = "9f83e2a1-1111-2222-3333-444455556666";
   const entries = [

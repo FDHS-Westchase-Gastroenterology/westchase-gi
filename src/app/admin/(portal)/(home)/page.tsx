@@ -18,7 +18,6 @@ import { availableQueueCount } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
 import { displayNameOrEmail, fetchStaffNameMap } from "@/lib/portal/staff-identity";
 import { staffGreeting } from "@/lib/portal/staff-language";
-import { VIEW_DB_STATUSES } from "@/lib/portal/workflow/contracts";
 
 import type { HomeLine } from "./home-line";
 import { HomeWorkbench } from "./home-workbench";
@@ -216,35 +215,12 @@ export default async function AdminHomePage({
   const db = serviceClient();
 
   /* A failed read is never an empty day. The open-set read settles
-     independently of every count, so one unavailable number suppresses
+     independently of the counts, so one unavailable number suppresses
      itself instead of blanking the work. */
-  const [
-    openRead,
-    closedRead,
-    staffRead,
-    newCountRead,
-    contactedCountRead,
-    scheduledCountRead,
-    closedCountRead,
-    recipientsRead,
-    outboxRead,
-  ] = await Promise.allSettled([
+  const [openRead, closedRead, staffRead, recipientsRead, outboxRead] = await Promise.allSettled([
     fetchAttentiveOpenRows(db, { actorId: session.id, now }),
     fetchClosedRows(db, { from: 0, limit: CLOSED_WINDOW }),
     fetchStaffNameMap(db),
-    db.from("requests").select("id", { count: "exact", head: true }).eq("status", "new"),
-    db
-      .from("requests")
-      .select("id", { count: "exact", head: true })
-      .in("status", [...VIEW_DB_STATUSES.contacted]),
-    db
-      .from("requests")
-      .select("id", { count: "exact", head: true })
-      .in("status", [...VIEW_DB_STATUSES.scheduled]),
-    db
-      .from("requests")
-      .select("id", { count: "exact", head: true })
-      .in("status", [...VIEW_DB_STATUSES.closed]),
     db
       .from("notification_recipients")
       .select("id", { count: "exact", head: true })
@@ -283,12 +259,7 @@ export default async function AdminHomePage({
       nowMs={now.getTime()}
       closedCapped={closedRows.length === CLOSED_WINDOW}
       addRequestKey={randomUUID()}
-      statusCounts={{
-        new: countOf(newCountRead),
-        contacted: countOf(contactedCountRead),
-        scheduled: countOf(scheduledCountRead),
-        closed: countOf(closedCountRead),
-      }}
+      printedBy={session.displayName === "" ? session.email : session.displayName}
       noActiveRecipients={recipientCount === 0}
       deliveryFailureCount={outboxTrouble !== null && outboxTrouble > 0 ? outboxTrouble : null}
       announcements={

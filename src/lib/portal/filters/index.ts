@@ -104,6 +104,21 @@ export function writeActiveFilters(currentSearch: string, active: readonly Activ
   return next.toString();
 }
 
+/** One dimension's param written into an ordered filter list: a dimension
+    keeps its place in pill order, a new one joins the end, and null takes
+    it off the bar. Home writes the result to its URL; the Print sheet keeps
+    it in local state. */
+export function withParam(
+  active: readonly ActiveFilter[],
+  key: FilterKey,
+  raw: string | null,
+): ActiveFilter[] {
+  if (raw === null) return active.filter((entry) => entry.key !== key);
+  const index = active.findIndex((entry) => entry.key === key);
+  if (index < 0) return [...active, { key, raw }];
+  return active.map((entry, at) => (at === index ? { key, raw } : entry));
+}
+
 /** True when the bar carries nothing but its defaults: the list as it opens. */
 export function isDefaultView(active: readonly ActiveFilter[]): boolean {
   const defaults = HOME_FILTERS.filter(hasDefault);

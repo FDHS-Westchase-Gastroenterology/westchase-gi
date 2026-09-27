@@ -140,6 +140,14 @@ export function Check(p: IconProps) {
   );
 }
 
+export function Minus(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+
 // "Forward" arrow: mirrors under RTL so it always points in reading direction.
 export function ArrowRight(p: IconProps) {
   return (

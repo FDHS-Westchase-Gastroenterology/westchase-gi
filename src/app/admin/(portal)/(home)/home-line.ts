@@ -86,6 +86,18 @@ export function applyFilters(
   return lines.filter((line) => active.every(({ key, raw }) => passes(line, key, raw)));
 }
 
+/** True when the filters ask for Closed and the closed tail stopped at its
+    fetch window, so older closed requests are not in these lines. */
+export function closedTailCut(
+  active: readonly Readonly<ActiveFilter>[],
+  closedCapped: boolean,
+): boolean {
+  return (
+    closedCapped &&
+    active.some((entry) => entry.key === "status" && entry.raw.split(",").includes("closed"))
+  );
+}
+
 /* The zero-result sentence names the responsible filter: the first active
    filter whose removal would surface rows again. */
 export function emptyStateMessage(

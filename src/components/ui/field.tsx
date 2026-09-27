@@ -22,6 +22,11 @@ import { Separator } from "@/components/ui/separator";
  * `FieldError` the label's `font-semibold` so a refusal reads at the weight
  * of the control it belongs to.
  *
+ * `FieldDescription` and `FieldError` carry a `size` axis. `default` is the
+ * registry's text-sm line. `note` is the Add request sheet's quieter line
+ * under a field: 13px and snug, and the fix is set at body weight because
+ * a leading icon carries its emphasis (design-system/forms.md "Fields").
+ *
  * Consumers: every form in both products — the staff request form and the
  * request search, the record card's start time, the print chooser, the three
  * settings managers, the three auth forms, and the patient site's
@@ -147,17 +152,35 @@ function FieldTitle({ className, ...props }: ComponentProps<"div">) {
   );
 }
 
+const fieldDescriptionVariants = cva(
+  [
+    "text-left font-normal text-muted-foreground group-has-data-horizontal/field:text-balance [[data-variant=legend]+&]:-mt-1.5",
+    "last:mt-0 nth-last-2:-mt-1",
+    "[&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary",
+  ],
+  {
+    variants: {
+      size: {
+        default: "text-sm leading-normal",
+        note: "text-[0.8125rem] leading-snug",
+      },
+    },
+    defaultVariants: {
+      size: "default",
+    },
+  },
+);
+
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-function FieldDescription({ className, ...props }: ComponentProps<"p">) {
+function FieldDescription({
+  className,
+  size,
+  ...props
+}: ComponentProps<"p"> & VariantProps<typeof fieldDescriptionVariants>) {
   return (
     <p
       data-slot="field-description"
-      className={cn(
-        "text-left text-sm leading-normal font-normal text-muted-foreground group-has-data-horizontal/field:text-balance [[data-variant=legend]+&]:-mt-1.5",
-        "last:mt-0 nth-last-2:-mt-1",
-        "[&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary",
-        className,
-      )}
+      className={cn(fieldDescriptionVariants({ size }), className)}
       {...props}
     />
   );
@@ -189,15 +212,30 @@ function FieldSeparator({ children, className, ...props }: ComponentProps<"div">
   );
 }
 
+const fieldErrorVariants = cva("text-destructive", {
+  variants: {
+    size: {
+      default: "text-sm font-semibold",
+      /* A leading icon, when present, sits on the first line. */
+      note: "flex items-start gap-1.5 text-[0.8125rem] leading-snug font-normal [&_svg]:mt-0.5 [&_svg]:size-3.5 [&_svg]:shrink-0",
+    },
+  },
+  defaultVariants: {
+    size: "default",
+  },
+});
+
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function FieldError({
   className,
   children,
   errors,
+  size,
   ...props
-}: ComponentProps<"div"> & {
-  errors?: readonly ({ message?: string } | undefined)[];
-}) {
+}: ComponentProps<"div"> &
+  VariantProps<typeof fieldErrorVariants> & {
+    errors?: readonly ({ message?: string } | undefined)[];
+  }) {
   const content = useMemo((): ReactNode => {
     if (children !== undefined && children !== null) {
       return children;
@@ -232,7 +270,7 @@ function FieldError({
     <div
       role="alert"
       data-slot="field-error"
-      className={cn("text-sm font-semibold text-destructive", className)}
+      className={cn(fieldErrorVariants({ size }), className)}
       {...props}
     >
       {content}

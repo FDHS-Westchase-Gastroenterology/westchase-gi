@@ -22,10 +22,12 @@ const textareaVariants = cva(
     "text-base text-ink outline-none placeholder:text-muted-ink",
     // Focus: teal, the finger tracking a line
     "focus-visible:border-teal-ink focus-visible:ring-3 focus-visible:ring-teal/25",
+    // Read-only: the draft is held while it saves; quiet paper, no text cursor
+    "read-only:cursor-default read-only:bg-slate-50",
     // Disabled state
     "disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50",
     // Invalid state
-    "aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20",
+    "aria-invalid:border-coral-600 aria-invalid:ring-3 aria-invalid:ring-coral-100",
   ],
   {
     variants: {

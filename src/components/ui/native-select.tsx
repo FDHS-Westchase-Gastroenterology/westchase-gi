@@ -26,7 +26,7 @@ const nativeSelectVariants = cva(
     // Disabled state
     "disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50",
     // Invalid state
-    "aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20",
+    "aria-invalid:border-coral-600 aria-invalid:ring-3 aria-invalid:ring-coral-100",
   ],
   {
     variants: {

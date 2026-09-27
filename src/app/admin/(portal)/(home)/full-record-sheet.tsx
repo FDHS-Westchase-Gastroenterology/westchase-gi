@@ -3,13 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { formatPhoneForDisplay, telHref } from "@/app/admin/(portal)/requests/format";
+import { attemptsLabel, recordSections } from "@/app/admin/(portal)/requests/record-sections";
 import { isMailbox } from "@/lib/portal/contracts";
 import type { FullRecord } from "@/lib/portal/request-record/contracts";
 import { presentationStatus } from "@/lib/portal/workflow/contracts";
 
 import { SheetBody } from "./full-record-sheet-body";
 import { useSheetResize } from "./full-record-sheet-geometry";
-import { attemptsLabel, recordSections } from "./full-record-sheet-model";
 import { prefersText } from "./home-line";
 import type { HomeLine } from "./home-line";
 import { LineStatusBadge } from "./parts/badge";
@@ -52,7 +52,7 @@ import { useRecordRead } from "./use-record-read";
 
    This file is the composition: the read, the dismissal policy, and the
    header. The sections are in full-record-sheet-body.tsx,
-   what they say in full-record-sheet-model.ts, the panel's box in
+   what they say in requests/record-sections.ts, the panel's box in
    full-record-sheet-geometry.ts, and the rules this sheet and the home
    popovers share in sheet-coexistence.ts. */
 

@@ -145,7 +145,8 @@ export const buttonVariants = cva(
         /* No consumer today. */
         ghost:
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
-        /* No consumer today. */
+        /* The Add sheet's Discard (staff-request-form-footer.tsx), which
+           wears it under data-glass="destructive". */
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20",
         /* No consumer today. Cancels the wgi hover lift on purpose. */

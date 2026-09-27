@@ -7,12 +7,12 @@ import {
 import type { FullRecord } from "@/lib/portal/request-record/contracts";
 import type { HistoryEntry } from "@/lib/portal/workflow/contracts";
 
-/* What the sheet says about a record, derived from the record alone: the
-   origin, an actor's name, the count of calls in the header, the latest
-   note, the history as dated one-line rows with the detail each row's
-   popover opens, and the one-line summary of the request as submitted.
-   Nothing here touches the DOM or React, so the wording can be read in
-   one place. The rows reuse the request page's wording (request-history.ts)
+/* What the full-record sheet and the printed page say about a record,
+   derived from the record alone: the origin, an actor's name, the count
+   of calls in the header, the latest note, the history as dated one-line
+   rows with the detail each row's popover opens, and the one-line summary
+   of the request as submitted. Nothing here touches the DOM, React or the
+   server, so the Home sheet and the print route read the same wording. The rows reuse the request page's wording (request-history.ts)
    for every kind but the two the sheet says differently: a call attempt
    leads with its outcome and says the next call in short, and a note
    shows its own text. */
@@ -71,6 +71,11 @@ const exactTime = new Intl.DateTimeFormat("en-US", {
 
 export function exactTimeLabel(iso: string): string {
   return exactTime.format(new Date(iso));
+}
+
+/** A practice-local day: "Fri, Sep 18". */
+export function dayOnlyLabel(iso: string): string {
+  return dayLabel.format(new Date(iso));
 }
 
 /** The portal icon a row carries; `dot` is the system's quiet mark. */
@@ -283,7 +288,7 @@ function rowFor(
 const PAIRING_WINDOW = 60_000;
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the request record carries workflow history entries whose types cannot be made readonly
-function undoneAttemptIds(history: readonly HistoryEntry[]): (id: string) => boolean {
+export function undoneAttemptIds(history: readonly HistoryEntry[]): (id: string) => boolean {
   const claimed = new Set<string>();
   for (const move of history) {
     if (move.kind !== "transition" || move.command !== "record_contact_attempt" || !move.undone)

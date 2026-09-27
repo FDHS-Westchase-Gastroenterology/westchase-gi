@@ -13,17 +13,17 @@ type sizes are in [typography.md](typography.md).
 | Teal | `teal`, `teal-ink` | Current, and keyboard focus | `teal-ink` for current text and, through `--ring`, recipe focus rings; `teal` for marks that are not text, such as the field focus halo; the contacted stamp's teal glass |
 | Amber | `amber`, `amber-soft`, `amber-deep` | Look here | Notices and the attention stamp (amber glass under `navy-900`), the warm call to action (`Button` `amber`), selected text |
 | Mint | `mint`, `mint-2` | You can act here; settled | The wash under a hovered control or row (`mint`) and under an open, pressed or checked one (`mint-2`); saved confirmations; empty states; patient section bands. As glass, mint is settled: the scheduled stamp |
-| Coral | `--destructive` (`coral-700`), `coral-600` | This input is invalid | `aria-invalid` fields and `FieldError`, in `coral-700`; `coral-600` only for borders and marks, never text. `Button` `destructive` has no consumer, and the portal's one removal confirmation (`.portal-confirm-dialog-destructive`) is attention amber. Any other red is drift |
+| Coral | `--destructive` (`coral-700`), `coral-600` | This is wrong, or this throws away what you typed | `aria-invalid` fields and `FieldError`, in `coral-700`; `coral-600` only for borders and marks, never text. The Add sheet's "Couldn't add" alert (a `coral-50` → `coral-100` glass under `coral-800` ink) and its discard question: a `coral-50` panel with `Button` `destructive` worn as coral glass. Removing a saved thing (`.portal-confirm-dialog-destructive`) stays attention amber. Any other red is drift |
 
 ```text
 What does the color tell the reader?
 ├── Nothing: text, a page, a rule                  → a neutral
 ├── This is the primary action here                → navy (Button default)
 ├── This is current, or has keyboard focus         → teal-ink text; the --ring ring
-├── Look here, or this removes something           → amber glass or amber-soft; amber-deep marks
+├── Look here, or this removes something saved     → amber glass or amber-soft; amber-deep marks
 ├── You can act on this: hovered, open, checked    → a mint wash
 ├── A request's status                             → StatusBadge (stamps.md)
-└── This input is invalid                          → --destructive (coral), with FieldError text
+└── Invalid, a failed save, or discarding a draft  → coral: --destructive, with words beside it
 ```
 
 **Color never carries state alone.** A stamp always carries words; an error always has text.

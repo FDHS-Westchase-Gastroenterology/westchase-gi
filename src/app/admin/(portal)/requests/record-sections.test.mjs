@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { attemptsLabel, detailsSummary, recordSections } from "./full-record-sheet-model.ts";
+import { attemptsLabel, detailsSummary, recordSections } from "./record-sections.ts";
 
 const MARIA = "maria@example.test";
 

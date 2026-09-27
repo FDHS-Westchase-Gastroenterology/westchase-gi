@@ -324,6 +324,18 @@
       transition-duration: var(--pm-reduced-duration, 120ms) !important;
     }
 
+    /* The Add request form's fades (issue #332): the fix under a field,
+       the alert, and the discard question keep the cross-fade; the rows
+       that open for them are left to the reset above, so they open at once
+       with no travel. The segmented control's thumb jumps, and its ink keeps
+       the cross-fade. */
+    .portal-request-field-note > [data-slot="field-error"],
+    .portal-request-form-alert,
+    .portal-request-discard,
+    [data-slot="segmented-control-item"] {
+      transition-duration: var(--pm-reduced-duration, 120ms) !important;
+    }
+
     /* The home dashboard (home.css) is authored unlayered, so — like the
        workbench — nothing it declares can outrank the reset above. Its
        surfaces register here: the record popover and the full-record sheet
@@ -346,6 +358,18 @@
     .wgi-list-head th,
     .wgi-list-foot,
     .wgi-list-rail {
+      transition-duration: var(--pm-reduced-duration, 120ms) !important;
+    }
+
+    /* The Print sheet's rows arrive and leave by opacity alone, a previewed
+       page fades in and dims, and the landed row (issue #332, A6) arrives
+       and clears its wash by opacity and paint, so all keep the cross-fade;
+       the landed row's 4px rise is dropped beside home.css's reset. */
+    .wgi-print-row,
+    .wgi-print-paper,
+    .wgi-print-paper-scale,
+    .wgi-list-row[data-landed],
+    .wgi-list-row[data-landed="leaving"] > td {
       transition-duration: var(--pm-reduced-duration, 120ms) !important;
     }
 
@@ -2249,89 +2273,37 @@
 }
 
 /* ------------------------------------------------------------------ *
-   Appointment-request print: a complete patient contact handoff.
-   The portal shell and editing controls recede; contact details, notes,
-   and request activity can flow across as many letter pages as needed.
+   Appointment-request print: the printed page (requests/print/
+   request-print-page.tsx) on US Letter. The packet and the record's own
+   Print request both print it on this page box; the portal shell recedes.
+   On the record, the screen view is `print-hide` and the paper, hidden on
+   screen, is what prints.
  * ------------------------------------------------------------------ */
 @page request-detail {
   size: letter;
   margin: 0.55in;
 }
 
+.request-detail-paper {
+  display: none;
+}
+
 @media print {
-  body.portal-scope:has(.request-detail-print) {
-    page: request-detail;
+  .request-detail-paper {
+    display: block;
   }
 
-  body.portal-scope:has(.request-detail-print) .portal-workspace,
-  body.portal-scope:has(.request-detail-print) .portal-stage,
-  body.portal-scope:has(.request-detail-print) .portal-content {
-    min-height: auto !important;
-    background: white !important;
-  }
-
-  body.portal-scope:has(.request-detail-print) .portal-release-utility {
+  body.portal-scope:has(.printed-page) .portal-release-utility {
     display: none !important;
   }
 
-  body.portal-scope:has(.request-detail-print) main {
+  body.portal-scope:has(.printed-page) main {
     padding: 0 !important;
   }
 
-  body.portal-scope:has(.request-detail-print) main > .container-x {
+  body.portal-scope:has(.printed-page) main > .container-x {
     max-width: none;
     padding: 0;
-  }
-
-  .request-detail-print {
-    break-inside: auto !important;
-  }
-
-  .request-detail-print .portal-page-title {
-    font-size: 18pt;
-  }
-
-  .request-print-card {
-    break-inside: auto;
-    margin-top: 14pt;
-    border: 1pt solid #777;
-    border-radius: 0;
-    padding: 12pt;
-    background: white !important;
-  }
-
-  .request-print-card.portal-request-details {
-    overflow: visible;
-    padding: 0;
-  }
-
-  .request-print-card.portal-request-details .portal-request-contact {
-    background: white !important;
-  }
-
-  .request-print-card.portal-request-details svg {
-    color: black !important;
-  }
-
-  .request-print-card h2,
-  .request-print-card h3,
-  .request-print-card dt,
-  .request-print-card dd,
-  .request-print-card a,
-  .request-print-card .portal-request-contact-unavailable,
-  .request-print-card .portal-request-ledger-event,
-  .request-print-card .portal-request-ledger-meta {
-    color: black !important;
-  }
-
-  .request-print-card a {
-    text-decoration: none;
-  }
-
-  .request-print-card dl > div,
-  .request-note-item,
-  .request-activity-item {
-    break-inside: avoid;
   }
 }
 

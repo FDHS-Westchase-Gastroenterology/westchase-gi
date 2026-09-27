@@ -1,7 +1,11 @@
+import { requestIdSchema } from "./request-record/contracts";
 import { parseRequestStatus } from "./workflow/contracts";
 import type { RequestStatus, StatusCounts } from "./workflow/contracts";
 
 export const NEW_PRINT_PACKET_HREF = "/admin/requests/print";
+
+/** The most requests one chosen-ids packet may name. */
+export const PRINT_ID_LIMIT = 100;
 
 export type PrintStatusSelection = readonly RequestStatus[] | "default" | "invalid";
 
@@ -30,6 +34,35 @@ export function parsePrintStatusSelection(
     unique.push(status);
   }
   return unique.length === 0 ? "invalid" : unique;
+}
+
+/**
+ * The `ids` query parameter: comma-separated request ids, repeated or not.
+ * Duplicates collapse to their first position. Null when the parameter is
+ * absent, empty, names more than PRINT_ID_LIMIT requests, or holds anything
+ * that is not a request id, so a bad list never prints part of itself.
+ */
+export function parsePrintIdSelection(
+  raw: string | readonly string[] | undefined,
+): string[] | null {
+  if (raw === undefined) return null;
+  const ids: string[] = [];
+  const seen = new Set<string>();
+  for (const token of statusTokens(raw)) {
+    const parsed = requestIdSchema.safeParse(token);
+    if (!parsed.success) return null;
+    const id = parsed.data.toLowerCase();
+    if (seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  return ids.length === 0 || ids.length > PRINT_ID_LIMIT ? null : ids;
+}
+
+export function printPacketIdsHref(ids: readonly string[], auto = true): string {
+  const params = new URLSearchParams({ ids: ids.join(",") });
+  if (auto) params.set("auto", "1");
+  return `${NEW_PRINT_PACKET_HREF}?${params.toString().replaceAll("%2C", ",")}`;
 }
 
 export function isNewOnlyPrintSelection(selection: PrintStatusSelection): boolean {

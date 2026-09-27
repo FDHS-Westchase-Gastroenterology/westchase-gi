@@ -22,8 +22,10 @@ Bold marks the default; a required prop has none.
   - `Checkbox`: `motion` **`wgi`** · `shadcn` · `none`
 - [`field.tsx`](../src/components/ui/field.tsx) · `"use client"`
   - `Field`: `orientation` **`vertical`** · `horizontal` · `responsive`
+  - `FieldDescription`: `size` **`default`** · `note`
+  - `FieldError`: `size` **`default`** · `note`
   - `FieldLegend`: `variant` **`legend`** · `label`
-  - Also exports: `FieldLabel`, `FieldDescription`, `FieldError`, `FieldGroup`, `FieldSeparator`, `FieldSet`, `FieldContent`, `FieldTitle`
+  - Also exports: `FieldLabel`, `FieldGroup`, `FieldSeparator`, `FieldSet`, `FieldContent`, `FieldTitle`
 - [`input.tsx`](../src/components/ui/input.tsx) · built on `@base-ui/react/input`
   - `Input`: `motion` **`wgi`** · `shadcn` · `none`
 - [`item.tsx`](../src/components/ui/item.tsx) · built on `@base-ui/react/merge-props`, `@base-ui/react/use-render`
@@ -37,6 +39,9 @@ Bold marks the default; a required prop has none.
 - [`scroll-area.tsx`](../src/components/ui/scroll-area.tsx) · `"use client"` · built on `@base-ui/react/scroll-area`
   - `ScrollBar`: `orientation` **`vertical`**
   - Also exports: `ScrollArea`, `ScrollAreaThumb`, `ScrollAreaViewport`
+- [`segmented-control.tsx`](../src/components/ui/segmented-control.tsx) · `"use client"` · built on `@base-ui/react/radio`, `@base-ui/react/radio-group`
+  - `SegmentedControl`: `motion` **`wgi`** · `none`
+  - Helpers and types: `SegmentedControlOption`
 - [`separator.tsx`](../src/components/ui/separator.tsx) · `"use client"` · built on `@base-ui/react/separator`
   - `Separator`: `orientation` **`horizontal`**
 - [`table.tsx`](../src/components/ui/table.tsx)
