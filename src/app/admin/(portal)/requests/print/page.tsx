@@ -22,6 +22,7 @@ import {
   prepareStatusRequestPrintPacket,
 } from "@/lib/portal/request-print";
 import { serviceClient } from "@/lib/portal/server";
+import type { ServiceClient } from "@/lib/portal/server";
 import type { RequestStatus } from "@/lib/portal/workflow/contracts";
 
 import { PrintPacketControls } from "./print-controls";
@@ -120,6 +121,124 @@ function PrintUnavailable({ retry, newOnly }: Readonly<{ retry?: string; newOnly
   );
 }
 
+function InvalidPrintList() {
+  return (
+    <>
+      <PortalPageHeader
+        back={{ href: "/admin", label: "Back to Home" }}
+        title="That print list is not valid"
+        description="No patient details were shown and no appointment request changed."
+      />
+      <section className="portal-empty-state" role="alert">
+        <h2>Choose what to print again</h2>
+        <p>Use Print on Home or Requests to choose the appointment requests to print.</p>
+        <div>
+          <Link href="/admin" data-slot="button" className={buttonVariants()}>
+            Back to Home
+          </Link>
+        </div>
+      </section>
+    </>
+  );
+}
+
+function MissingRequest() {
+  return (
+    <>
+      <PortalPageHeader
+        back={{ href: "/admin", label: "Back to Home" }}
+        title="A chosen request is no longer available"
+        description="No patient details were shown and no appointment request changed."
+      />
+      <section className="portal-empty-state" role="alert">
+        <h2>Choose the requests again</h2>
+        <p>
+          At least one request in this list could not be found, so no packet was prepared. Return to
+          Home or Requests and choose the requests to print again.
+        </p>
+        <div>
+          <Link href="/admin" data-slot="button" className={buttonVariants()}>
+            Back to Home
+          </Link>
+          <PacketQueueLink newOnly={false} />
+        </div>
+      </section>
+    </>
+  );
+}
+
+function EmptyPacket({ statusList }: Readonly<{ statusList: string }>) {
+  return (
+    <>
+      <PortalPageHeader
+        back={{ href: "/admin", label: "Back to Home" }}
+        title={`No ${statusList} appointment requests to print`}
+        description={`None of those statuses had requests when this packet was prepared. No pages were created and no request changed.`}
+      />
+      <section className="portal-empty-state">
+        <Printer className="h-7 w-7" />
+        <h2>There is no {statusList} work to hand off</h2>
+        <p>
+          The live queue may have changed since you opened this window. Return to Home for the next
+          task, or open Requests to review the current queue.
+        </p>
+        <div>
+          <Link href="/admin" data-slot="button" className={buttonVariants()}>
+            Back to Home
+          </Link>
+          <Link
+            href="/admin/requests"
+            data-slot="button"
+            className={buttonVariants({ variant: "outline" })}
+          >
+            Open Requests
+          </Link>
+        </div>
+      </section>
+    </>
+  );
+}
+
+async function preparePacket(db: ServiceClient, choice: Readonly<PacketChoice>) {
+  return choice.kind === "ids"
+    ? prepareIdRequestPrintPacket({ db, ids: choice.ids })
+    : prepareStatusRequestPrintPacket({ db, statuses: choice.statuses });
+}
+
+/* The audit row is written before any patient detail renders: a packet whose
+   audit failed is a packet that never printed. Returns whether it was written. */
+async function auditPacket(
+  db: ServiceClient,
+  actorEmail: string,
+  choice: Readonly<PacketChoice>,
+  requestIds: readonly string[],
+): Promise<boolean> {
+  try {
+    await recordAudit(db, {
+      actorEmail,
+      action: AUDIT_ACTIONS.REQUESTS_PRINT_NEW,
+      entity: "requests",
+      entityId: null,
+      detail: {
+        row_count: requestIds.length,
+        status_filter: choice.kind === "status" ? choice.statuses.join(",") : null,
+        request_ids: [...requestIds],
+      },
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function packetDescription(choice: Readonly<PacketChoice>, count: number, statusList: string) {
+  if (choice.kind === "ids")
+    return `${count} chosen ${count === 1 ? "request" : "requests"}, ordered oldest first for a fair paper handoff.`;
+  return `${count} ${
+    count === 1 ? "request was" : "requests were"
+  } ${statusList} when this packet was prepared, ordered oldest first for a fair paper handoff.`;
+}
+
 export default async function PrintNewRequestsPage({
   searchParams,
 }: Readonly<{
@@ -128,122 +247,29 @@ export default async function PrintNewRequestsPage({
   const session = await requireRole("staff");
   const params = await searchParams;
   const choice = packetChoice(params);
-  if (choice === null) {
-    return (
-      <>
-        <PortalPageHeader
-          back={{ href: "/admin", label: "Back to Home" }}
-          title="That print list is not valid"
-          description="No patient details were shown and no appointment request changed."
-        />
-        <section className="portal-empty-state" role="alert">
-          <h2>Choose what to print again</h2>
-          <p>Use Print on Home or Requests to choose the appointment requests to print.</p>
-          <div>
-            <Link href="/admin" data-slot="button" className={buttonVariants()}>
-              Back to Home
-            </Link>
-          </div>
-        </section>
-      </>
-    );
-  }
+  if (choice === null) return <InvalidPrintList />;
 
   const newOnly = choice.kind === "status" && choice.newOnly;
   const db = serviceClient();
-  const packet =
-    choice.kind === "ids"
-      ? await prepareIdRequestPrintPacket({ db, ids: choice.ids })
-      : await prepareStatusRequestPrintPacket({ db, statuses: choice.statuses });
-
-  if (!packet.ok && packet.reason === "missing") {
-    return (
-      <>
-        <PortalPageHeader
-          back={{ href: "/admin", label: "Back to Home" }}
-          title="A chosen request is no longer available"
-          description="No patient details were shown and no appointment request changed."
-        />
-        <section className="portal-empty-state" role="alert">
-          <h2>Choose the requests again</h2>
-          <p>
-            At least one request in this list could not be found, so no packet was prepared. Return
-            to Home or Requests and choose the requests to print again.
-          </p>
-          <div>
-            <Link href="/admin" data-slot="button" className={buttonVariants()}>
-              Back to Home
-            </Link>
-            <PacketQueueLink newOnly={false} />
-          </div>
-        </section>
-      </>
-    );
-  }
-
+  const packet = await preparePacket(db, choice);
+  if (!packet.ok && packet.reason === "missing") return <MissingRequest />;
   if (!packet.ok) return <PrintUnavailable retry={retryHref(choice)} newOnly={newOnly} />;
 
-  /* The audit row is written before any patient detail renders: a packet
-     whose audit failed is a packet that never printed. */
-  try {
-    await recordAudit(db, {
-      actorEmail: session.email,
-      action: AUDIT_ACTIONS.REQUESTS_PRINT_NEW,
-      entity: "requests",
-      entityId: null,
-      detail: {
-        row_count: packet.records.length,
-        status_filter: choice.kind === "status" ? choice.statuses.join(",") : null,
-        request_ids: packet.records.map((record) => record.id),
-      },
-    });
-  } catch {
-    return <PrintUnavailable newOnly={newOnly} />;
-  }
+  const audited = await auditPacket(
+    db,
+    session.email,
+    choice,
+    packet.records.map((record) => record.id),
+  );
+  if (!audited) return <PrintUnavailable newOnly={newOnly} />;
 
   const count = packet.records.length;
   const statusList =
     choice.kind === "status" ? formatStatusList(choice.statuses, STATUS_LABELS) : "";
-
-  if (count === 0) {
-    return (
-      <>
-        <PortalPageHeader
-          back={{ href: "/admin", label: "Back to Home" }}
-          title={`No ${statusList} appointment requests to print`}
-          description={`None of those statuses had requests when this packet was prepared. No pages were created and no request changed.`}
-        />
-        <section className="portal-empty-state">
-          <Printer className="h-7 w-7" />
-          <h2>There is no {statusList} work to hand off</h2>
-          <p>
-            The live queue may have changed since you opened this window. Return to Home for the
-            next task, or open Requests to review the current queue.
-          </p>
-          <div>
-            <Link href="/admin" data-slot="button" className={buttonVariants()}>
-              Back to Home
-            </Link>
-            <Link
-              href="/admin/requests"
-              data-slot="button"
-              className={buttonVariants({ variant: "outline" })}
-            >
-              Open Requests
-            </Link>
-          </div>
-        </section>
-      </>
-    );
-  }
+  if (count === 0) return <EmptyPacket statusList={statusList} />;
 
   const printedBy = session.displayName === "" ? session.email : session.displayName;
-  const description =
-    choice.kind === "ids"
-      ? `${count} chosen ${count === 1 ? "request" : "requests"}, ordered oldest first for a fair paper handoff.`
-      : `${count} ${
-          count === 1 ? "request was" : "requests were"
-        } ${statusList} when this packet was prepared, ordered oldest first for a fair paper handoff.`;
+  const description = packetDescription(choice, count, statusList);
 
   return (
     <PortalFeedbackProvider>

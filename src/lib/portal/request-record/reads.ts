@@ -172,37 +172,39 @@ async function composeFullRecords(
   if (new Set(ids).size !== ids.length) throw new Error("Invalid full record");
   if (ids.length === 0) return [];
 
-  const transitions: unknown[] = [];
-  const events: unknown[] = [];
-  const staffNamesRead = fetchStaffNameMap(db);
-  for (const chunk of chunks(ids, FULL_RECORD_BATCH_SIZE)) {
-    const [chunkTransitions, chunkEvents] = await Promise.all([
-      readEveryRow((from, to) =>
-        db
-          .from("request_transitions")
-          .select(`request_id,${REQUEST_TRANSITION_COLUMNS}`, { count: "exact" })
-          .in("request_id", chunk)
-          .order("occurred_at", { ascending: false })
-          .order("id", { ascending: true })
-          .range(from, to),
+  const idChunks = chunks(ids, FULL_RECORD_BATCH_SIZE);
+  const [transitions, events, staffNames] = await Promise.all([
+    Promise.all(
+      idChunks.map(async (chunk) =>
+        readEveryRow((from, to) =>
+          db
+            .from("request_transitions")
+            .select(`request_id,${REQUEST_TRANSITION_COLUMNS}`, { count: "exact" })
+            .in("request_id", chunk)
+            .order("occurred_at", { ascending: false })
+            .order("id", { ascending: true })
+            .range(from, to),
+        ),
       ),
-      readEveryRow((from, to) =>
-        db
-          .from("request_events")
-          .select(`request_id,${REQUEST_EVENT_COLUMNS}`, { count: "exact" })
-          .in("request_id", chunk)
-          .order("created_at", { ascending: false })
-          .order("id", { ascending: true })
-          .range(from, to),
+    ),
+    Promise.all(
+      idChunks.map(async (chunk) =>
+        readEveryRow((from, to) =>
+          db
+            .from("request_events")
+            .select(`request_id,${REQUEST_EVENT_COLUMNS}`, { count: "exact" })
+            .in("request_id", chunk)
+            .order("created_at", { ascending: false })
+            .order("id", { ascending: true })
+            .range(from, to),
+        ),
       ),
-    ]);
-    transitions.push(...chunkTransitions);
-    events.push(...chunkEvents);
-  }
-  const staffNames = await staffNamesRead;
+    ),
+    fetchStaffNameMap(db),
+  ]);
 
-  const transitionsByRequest = groupByRequest(transitions);
-  const eventsByRequest = groupByRequest(events);
+  const transitionsByRequest = groupByRequest(transitions.flat());
+  const eventsByRequest = groupByRequest(events.flat());
   const now = new Date();
   return rows.map((row) =>
     composeFullRecord(
@@ -232,20 +234,21 @@ export async function fetchFullRecords(
 ): Promise<FullRecord[]> {
   const unique = [...new Set(ids)];
   if (unique.length === 0) return [];
-  const byId = new Map<string, unknown>();
-  for (const chunk of chunks(unique, FULL_RECORD_BATCH_SIZE)) {
-    const chunkRows = await readEveryRow((from, to) =>
-      db
-        .from("requests")
-        .select(BATCH_REQUEST_COLUMNS, { count: "exact" })
-        .in("id", chunk)
-        .order("id", { ascending: true })
-        .range(from, to),
-    );
-    const parsed = z.array(z.object({ id: z.string() }).loose()).safeParse(chunkRows);
-    if (!parsed.success) throw new Error("Invalid full record");
-    for (const row of parsed.data) byId.set(row.id, row);
-  }
+  const chunkRows = await Promise.all(
+    chunks(unique, FULL_RECORD_BATCH_SIZE).map(async (chunk) =>
+      readEveryRow((from, to) =>
+        db
+          .from("requests")
+          .select(BATCH_REQUEST_COLUMNS, { count: "exact" })
+          .in("id", chunk)
+          .order("id", { ascending: true })
+          .range(from, to),
+      ),
+    ),
+  );
+  const parsed = z.array(z.object({ id: z.string() }).loose()).safeParse(chunkRows.flat());
+  if (!parsed.success) throw new Error("Invalid full record");
+  const byId = new Map<string, unknown>(parsed.data.map((row) => [row.id, row]));
   const rows: unknown[] = [];
   for (const id of unique) {
     const row = byId.get(id);
