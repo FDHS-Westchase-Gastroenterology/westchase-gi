@@ -286,12 +286,11 @@ test.describe("appointment-request print packet", () => {
     expect(newAudits).toHaveLength(1);
     testAuditIds.push(newAudits[0].id);
     const detail = z
-      .object({
+      .strictObject({
         row_count: z.number(),
         status_filter: z.string(),
         request_ids: z.array(z.string()),
       })
-      .strict()
       .parse(newAudits[0].detail);
     expect(detail.row_count).toBe(packetCount);
     expect(detail.status_filter).toBe("new");
