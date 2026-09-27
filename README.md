@@ -1,10 +1,10 @@
 # PR 333 UI evidence (issue 332)
 
 Source before: `dc69845eab392679678477f3259ffab8fd38681a`
-Source after: `33a8076` (branch `claude/github-issue-332-e2b3a1`)
+Source after: `33a807615ff462e465eaf32ea79d3efba83597da`
 
-Captured on localhost against the inherited Preview database with fictional seed data and browser-side redaction of the staff identity and Home's patient names. Desktop viewport: 1440 × 900. The packet and the Print sheet's preview show synthetic seed records ("SYNTHETIC DEMO RECORD"). Requests added during capture used "Evidence …" names and `@example.test` addresses and were deleted afterwards.
+Captured on localhost against the inherited Preview database, with its fictional seed data. The signed-in staff identity is replaced in the browser with "Staff Member · staff@example.com". Desktop viewport: 1440 × 900. No physical-device or Safari claim is made.
 
-Videos start after sign-in. The first second of each recording was cut because it showed the account before the redaction ran.
+Videos start after sign-in. The first second of each recording was cut because it showed the account before the redaction ran. Requests added during capture used `@example.test` addresses and were deleted afterwards.
 
 The A4 state is simulated: the capture rewrote the server's response to `unavailable`.
