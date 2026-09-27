@@ -1,3 +1,6 @@
+import { cn } from "cn";
+
+import { buttonVariants } from "@/components/ui/button-variants";
 import type { Dictionary } from "@/lib/i18n";
 import { site, directionsUrl, formatOfficeHours } from "@/lib/site";
 import type { Locale } from "@/lib/site";
@@ -16,7 +19,7 @@ export function LocationCards({ locale, dict }: Readonly<LocationCardsProps>) {
     <div className="grid gap-6 md:grid-cols-2">
       {site.locations.map((loc) => (
         <article key={loc.id} className="card p-7 sm:p-8">
-          <h3 className="h3 font-[var(--font-display)]">{loc.name[locale]}</h3>
+          <h3 className="h3">{loc.name[locale]}</h3>
           <address className="mt-5 grid gap-3 not-italic">
             <p className="flex items-start gap-3">
               <MapPin className="mt-1 h-4.5 w-4.5 flex-none text-[var(--color-teal-ink)]" />
@@ -45,7 +48,7 @@ export function LocationCards({ locale, dict }: Readonly<LocationCardsProps>) {
                   {c.textLine}:{" "}
                   <span className="bidi-ltr whitespace-nowrap">{site.textLine.display}</span>
                 </a>
-                <span className="block text-[0.9rem] text-[var(--color-muted)]">
+                <span className="block text-[0.9rem] text-[var(--color-muted-ink)]">
                   {c.textLineHuman}
                 </span>
               </span>
@@ -74,7 +77,8 @@ export function LocationCards({ locale, dict }: Readonly<LocationCardsProps>) {
             href={directionsUrl(loc.mapsQuery)}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn btn-navy mt-6 w-full sm:w-auto"
+            data-slot="button"
+            className={cn(buttonVariants(), "mt-6 w-full sm:w-auto")}
           >
             {c.getDirections}
           </a>

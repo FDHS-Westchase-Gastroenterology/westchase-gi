@@ -1,6 +1,6 @@
 export const PORTAL_RELEASE_BRIEFING = {
-  id: "2026-07-29-request-workflow",
-  publishedAt: "2026-07-29T05:05:11-04:00",
+  id: "2026-08-06-appointment-workflow",
+  publishedAt: "2026-08-06T05:00:00-04:00",
   guideHref: "/admin/help#appointment-workflow-guide",
 } as const;
 

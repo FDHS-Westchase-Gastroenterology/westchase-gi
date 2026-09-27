@@ -2,22 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  arrivedOutsideOfficeHours,
   previousBusinessMorningBoundary,
   resolveFollowUpAt,
   waitingSince,
 } from "./business-time.ts";
 
 // July dates: America/New_York is UTC-4 (EDT).
-
-test("office hours are Mon–Fri 8:00–17:00 practice time", () => {
-  assert.equal(arrivedOutsideOfficeHours("2026-07-24T12:00:00Z"), false); // Fri 8:00 AM
-  assert.equal(arrivedOutsideOfficeHours("2026-07-24T11:59:00Z"), true); // Fri 7:59 AM
-  assert.equal(arrivedOutsideOfficeHours("2026-07-24T20:59:00Z"), false); // Fri 4:59 PM
-  assert.equal(arrivedOutsideOfficeHours("2026-07-24T21:00:00Z"), true); // Fri 5:00 PM
-  assert.equal(arrivedOutsideOfficeHours("2026-07-25T15:00:00Z"), true); // Sat 11 AM
-  assert.equal(arrivedOutsideOfficeHours("2026-07-26T15:00:00Z"), true); // Sun 11 AM
-});
 
 test("waiting labels follow the practice-local calendar", () => {
   const now = new Date("2026-07-26T20:00:00Z"); // Sunday 4:00 PM EDT

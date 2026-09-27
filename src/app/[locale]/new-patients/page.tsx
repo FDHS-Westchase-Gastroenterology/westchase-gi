@@ -1,11 +1,13 @@
+import { cn } from "cn";
 import type { Metadata } from "next";
 
 import { DocumentList } from "@/components/DocumentList";
 import { ExternalLink, FileText } from "@/components/icons";
 import { LocationMaps } from "@/components/LocationMaps";
-import { PageHero } from "@/components/PageHero";
-import { Reveal } from "@/components/Reveal";
-import { TextBand } from "@/components/TextBand";
+import { PageHero } from "@/components/patterns/PageHero";
+import { Reveal } from "@/components/patterns/Reveal";
+import { TextBand } from "@/components/patterns/TextBand";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { getDictionary, isLocale } from "@/lib/i18n";
 import { pageMetadata } from "@/lib/metadata";
 import { site } from "@/lib/site";
@@ -51,7 +53,8 @@ export default async function NewPatientsPage({ params }: Readonly<PageProps>) {
                 href={site.links.newPatientFormsEn}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn btn-navy justify-between"
+                data-slot="button"
+                className={cn(buttonVariants(), "justify-between")}
               >
                 <span className="inline-flex items-center gap-2">
                   <FileText className="h-4.5 w-4.5" /> {t.formsOnlineEn}
@@ -62,7 +65,8 @@ export default async function NewPatientsPage({ params }: Readonly<PageProps>) {
                 href={site.links.newPatientFormsEs}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn btn-navy justify-between"
+                data-slot="button"
+                className={cn(buttonVariants(), "justify-between")}
               >
                 <span className="inline-flex items-center gap-2">
                   <FileText className="h-4.5 w-4.5" /> {t.formsOnlineEs}
@@ -70,7 +74,7 @@ export default async function NewPatientsPage({ params }: Readonly<PageProps>) {
                 <ExternalLink className="h-4 w-4" />
               </a>
             </div>
-            <h3 className="mt-10 text-base font-[var(--font-body)] font-extrabold text-[var(--color-ink)]">
+            <h3 className="mt-10 text-base font-extrabold text-[var(--color-ink)]">
               {dict.common.docs.newPatientHeading}
             </h3>
             <p className="measure-sm mt-2 text-[0.95rem] text-[var(--color-body)]">
@@ -82,7 +86,7 @@ export default async function NewPatientsPage({ params }: Readonly<PageProps>) {
           </div>
 
           <Reveal delay={1} className="card p-7 sm:p-8 lg:sticky lg:top-32">
-            <h2 className="h3 font-[var(--font-display)]">{t.missionHeading}</h2>
+            <h2 className="h3">{t.missionHeading}</h2>
             <p className="mt-4">{t.missionIntro}</p>
             <ul className="list-check mt-5">
               {t.missionItems.map((item) => (
@@ -126,7 +130,7 @@ export default async function NewPatientsPage({ params }: Readonly<PageProps>) {
         </div>
       </section>
 
-      <TextBand locale={locale} dict={dict} />
+      <TextBand dict={dict} />
     </>
   );
 }

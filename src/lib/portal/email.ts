@@ -24,6 +24,9 @@ export type PortalEmailOutcome =
       providerStatusCode: number | null;
     };
 
+/** Whether a provider accepted a message for delivery; the two words every delivery surface reports. */
+export type DeliveryOutcome = PortalEmailOutcome["status"];
+
 export type SendPortalEmail = (message: PortalEmailMessage) => Promise<PortalEmailOutcome>;
 
 export type PortalEmailTransport = Readonly<{

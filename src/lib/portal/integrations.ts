@@ -9,6 +9,10 @@ import { asJsonArray, asJsonNumber, asJsonObject, asJsonString } from "@/lib/jso
 import type { Json } from "@/lib/json";
 import { GitHubApiError, readGitHubResponse } from "@/lib/portal/github-response";
 import { getMaintainerManagementState } from "@/lib/portal/maintainer-operation";
+import type {
+  InstallationAdministration,
+  MaintainerManagementState,
+} from "@/lib/portal/maintainer-operation";
 
 const GITHUB_API = "https://api.github.com";
 const GITHUB_API_VERSION = "2026-03-10";
@@ -29,7 +33,7 @@ export interface GitHubMaintainerInvitation {
 }
 export interface GitHubMaintainerSnapshot {
   readonly ownerLogin: string;
-  readonly management: "restrict_installation" | "permission_upgrade_required" | "ready";
+  readonly management: MaintainerManagementState;
   readonly maintainers: readonly GitHubMaintainer[];
   readonly invitations: readonly GitHubMaintainerInvitation[] | null;
 }
@@ -52,7 +56,7 @@ export interface GitHubMaintainerSession {
 }
 
 interface GitHubInstallation {
-  administration: "none" | "read" | "write";
+  administration: InstallationAdministration;
 }
 
 interface GitHubResponse {

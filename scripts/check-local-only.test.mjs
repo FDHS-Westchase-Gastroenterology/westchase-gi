@@ -10,10 +10,10 @@
  * Run: node --test scripts/check-local-only.test.mjs   (also part of npm run test:unit)
  */
 
-import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { test, describe } from "node:test";
 
 import {
   loadManifest,
@@ -34,10 +34,11 @@ const VIOLATING = [
   ".agents/skills/CODEX.md",
   ".agents/lessons/release-metaphors.md",
   ".agents/setup",
-  ".claude/settings.json",
-  ".claude/rules/local-only-directories.md",
   ".codex/skills/review.md",
   ".cursor/hooks/pre.js",
+  ".design-sync/config.json",
+  ".design-sync/ds/build-ds.mjs",
+  ".design-sync/component-metadata.json",
   ".design-sync/ds/styles.css",
   ".design-sync/node_modules/pkg/index.js",
   ".ds-sync/manifest.json",
@@ -51,8 +52,8 @@ const VIOLATING = [
   "plans/portal-home-redesign.md",
   "screenshots/home-2026-09-05.png",
   "MEMORY.md",
-  // docs/ is local-only by owner decision on 2026-09-05: the whole tree was deleted
-  // deliberately, including the architecture decision records, and is not to return.
+  // Docs/ is local-only by owner decision on 2026-09-05: the whole tree was deleted
+  // Deliberately, including the architecture decision records, and is not to return.
   "docs/portal-home-redesign-brief/audit-01-resting-suggestion-pills.jpg",
   "docs/portal-home-redesign-brief.md",
   "docs/COMPONENT-INVENTORY.md",
@@ -66,10 +67,12 @@ const VIOLATING = [
  * import statement depends on, plus the near-miss lookalikes.
  */
 const CLEAN = [
+  ".claude/launch.json",
+  ".claude/rules/local-only-directories.md",
+  ".claude/skills",
   // The 2026-09-02 incident, encoded by name.
   "scripts/seed-portal.mjs",
   "scripts/verify-schema.mjs",
-  "scripts/design-system/sync-stock.mjs",
   "scripts/capture-ui-reference.mjs",
   "scripts/dev-patients.mjs",
   "scripts/verify-no-secrets.mjs",

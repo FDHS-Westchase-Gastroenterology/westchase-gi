@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 
 import { ArticleBody } from "@/components/ArticleBody";
 import { ArrowRight, Download, FileText, MessageSquare } from "@/components/icons";
-import { TextBand } from "@/components/TextBand";
+import { TextBand } from "@/components/patterns/TextBand";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { educationTopics, getTopic } from "@/lib/content/education";
 import { documents } from "@/lib/documents";
 import { getDictionary, isLocale } from "@/lib/i18n";
@@ -76,7 +77,7 @@ export default async function EducationTopicPage({ params }: Readonly<PageProps>
               <div className="flex min-w-0 items-start gap-3">
                 <FileText className="mt-1 h-5 w-5 flex-none text-[var(--color-teal-ink)]" />
                 <div>
-                  <h2 className="text-base font-[var(--font-body)] font-extrabold text-[var(--color-ink)]">
+                  <h2 className="text-base font-extrabold text-[var(--color-ink)]">
                     {t.sheetHeading}
                   </h2>
                   <p className="measure-sm mt-1 text-[0.95rem] text-[var(--color-body)]">
@@ -87,11 +88,15 @@ export default async function EducationTopicPage({ params }: Readonly<PageProps>
                 </div>
               </div>
               {sheet.file !== null && sheet.file !== "" ? (
-                <a href={sheet.file} download className="btn btn-navy">
+                <a href={sheet.file} download data-slot="button" className={buttonVariants()}>
                   <Download className="h-4 w-4" /> {dict.common.docs.download}
                 </a>
               ) : (
-                <a href={site.textLine.href} className="btn btn-outline">
+                <a
+                  href={site.textLine.href}
+                  data-slot="button"
+                  className={buttonVariants({ variant: "outline" })}
+                >
                   <MessageSquare className="h-4 w-4" /> {dict.common.textUs}
                 </a>
               )}
@@ -100,7 +105,7 @@ export default async function EducationTopicPage({ params }: Readonly<PageProps>
 
           {/* General-education disclaimer + the human channel. */}
           <div className="mt-10 border-t border-[var(--color-line)] pt-7">
-            <h2 className="text-base font-[var(--font-body)] font-extrabold text-[var(--color-ink)]">
+            <h2 className="text-base font-extrabold text-[var(--color-ink)]">
               {t.questionsHeading}
             </h2>
             <p className="measure mt-2 text-[0.98rem] text-[var(--color-body)]">
@@ -118,7 +123,7 @@ export default async function EducationTopicPage({ params }: Readonly<PageProps>
         </div>
       </article>
 
-      <TextBand locale={locale} dict={dict} />
+      <TextBand dict={dict} />
     </>
   );
 }

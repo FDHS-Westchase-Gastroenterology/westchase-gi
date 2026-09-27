@@ -28,10 +28,11 @@ async function setTourDismissedRpc(
 async function setTourDismissed(
   session: Readonly<PortalSessionUser>,
   dismissed: boolean,
+  returnState: "not-now" | "restarted",
 ): Promise<never> {
   await setTourDismissedRpc(session, dismissed);
   revalidatePath("/admin");
-  redirect("/admin");
+  redirect(`/admin?tour=${returnState}`);
 }
 
 interface TourProgress {
@@ -61,12 +62,12 @@ function parseTourProgress(input: Readonly<TourProgressInput>): TourProgress {
 
 export async function dismissPortalTourAction(): Promise<never> {
   const session = await requireRole("staff", { unauthenticated: "throw" });
-  return setTourDismissed(session, true);
+  return setTourDismissed(session, true, "not-now");
 }
 
 export async function restartPortalTourAction(): Promise<never> {
   const session = await requireRole("staff", { unauthenticated: "throw" });
-  return setTourDismissed(session, false);
+  return setTourDismissed(session, false, "restarted");
 }
 
 export async function finishPortalTourAction(input: Readonly<TourProgressInput>): Promise<never> {
@@ -88,5 +89,5 @@ export async function finishPortalTourAction(input: Readonly<TourProgressInput>)
   });
 
   revalidatePath("/admin");
-  redirect("/admin");
+  redirect("/admin?tour=finished");
 }

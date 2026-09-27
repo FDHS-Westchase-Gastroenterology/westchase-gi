@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "code-slop": {
+      "source": "asyrafhussin/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/code-slop/SKILL.md",
+      "computedHash": "a4362f272da2f81751108d0bbfb8b5128e5067329619645d24b100c95dc3edd9"
+    }
+  }
+}

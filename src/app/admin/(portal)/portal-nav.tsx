@@ -3,71 +3,68 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-// One task-first primary nav for every role. Home is the landing
-// Surface; the queue lives under /admin/requests; occasional tasks
-// (review flyers, website custody) are reached from Home and Settings
-// Instead of holding permanent tabs. Every destination stays visible on
-// A phone: the queue tab compacts to "Requests" below `sm` so the row
-// Never depends on unmarked horizontal scrolling.
+import { Activity, CircleHelp, ClipboardCheck, FileText, Home, Settings } from "@/components/icons";
 
-interface NavItem {
-  href: string;
-  label: string;
-  compactLabel?: string;
-}
+// Four destinations per layout, each its own list (issue #327, Figma section
+// 08 option 2). The desktop rail gives the four work pages the same row and
+// Moves Settings and Help to the account footer; the phone bar keeps Home,
+// Requests, Settings and Help, with Activity log in the account menu. The
+// Shell renders one PortalNav per layout and hides the inactive one whole,
+// So a link that is not on screen never holds a tab stop. Home, Requests,
+// The current-location signal and the waiting count never move.
 
-const NAV_ITEMS: readonly NavItem[] = [
-  { href: "/admin", label: "Home" },
-  {
-    href: "/admin/requests",
-    label: "Appointment requests",
-    compactLabel: "Requests",
-  },
-  { href: "/admin/settings", label: "Settings" },
-  { href: "/admin/help", label: "Help" },
-];
+const HOME = { href: "/admin", label: "Home", icon: Home };
+const REQUESTS = { href: "/admin/requests", label: "Requests", icon: ClipboardCheck };
+const SETTINGS = { href: "/admin/settings", label: "Settings", icon: Settings };
+const HELP = { href: "/admin/help", label: "Help", icon: CircleHelp };
+
+const NAV_ITEMS = {
+  sidebar: [
+    HOME,
+    REQUESTS,
+    { href: "/admin/review-flyers", label: "Review flyers", icon: FileText },
+    { href: "/admin/audit", label: "Activity log", icon: Activity },
+  ],
+  bar: [HOME, REQUESTS, SETTINGS, HELP],
+} as const;
 
 function isActive(pathname: string, href: string): boolean {
   if (href === "/admin") return pathname === "/admin";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function PortalNav({ waitingCount }: Readonly<{ waitingCount: number | null }>) {
+export function PortalNav({
+  layout,
+  waitingCount,
+}: Readonly<{ layout: keyof typeof NAV_ITEMS; waitingCount: number | null }>) {
   const pathname = usePathname();
 
   return (
-    <nav aria-label="Portal sections" className="-mb-px overflow-x-auto">
-      <ul className="flex min-w-max items-stretch gap-1">
-        {NAV_ITEMS.map((item) => {
+    <nav aria-label="Portal sections" className="portal-primary-nav" data-layout={layout}>
+      <ul>
+        {NAV_ITEMS[layout].map((item) => {
           const active = isActive(pathname, item.href);
           const showBadge =
             item.href === "/admin/requests" && waitingCount !== null && waitingCount > 0;
+          const Icon = item.icon;
+
           return (
-            <li key={item.href} className="flex">
+            <li key={item.href}>
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className={`flex min-h-11 items-center border-b-[3px] px-2.5 text-[0.95rem] font-bold transition-colors sm:px-4 ${
-                  active
-                    ? "border-[var(--color-amber)] text-white"
-                    : "border-transparent text-[var(--color-on-dark-muted)] hover:text-white"
-                }`}
+                aria-label={showBadge ? `${item.label}, ${waitingCount} waiting` : item.label}
+                className="portal-nav-link"
               >
-                {item.compactLabel !== undefined && item.compactLabel !== "" ? (
-                  <>
-                    <span className="sm:hidden">{item.compactLabel}</span>
-                    <span className="hidden sm:inline">{item.label}</span>
-                  </>
-                ) : (
-                  item.label
-                )}
+                <Icon className="portal-nav-icon" />
+                <span>{item.label}</span>
                 {showBadge ? (
                   <span
                     data-testid="nav-waiting-badge"
-                    className="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--color-amber)] px-1.5 py-0.5 text-center text-[0.72rem] font-extrabold text-[var(--color-navy-2)] tabular-nums"
+                    aria-hidden="true"
+                    className="portal-nav-count"
                   >
-                    {waitingCount}
-                    <span className="sr-only"> waiting</span>
+                    {waitingCount > 99 ? "99+" : waitingCount}
                   </span>
                 ) : null}
               </Link>
@@ -77,4 +74,24 @@ export function PortalNav({ waitingCount }: Readonly<{ waitingCount: number | nu
       </ul>
     </nav>
   );
+}
+
+// Settings and Help in the desktop account footer: the small-link style of
+// View website and Sign out, current in on-dark ink with no fill.
+export function PortalAccountLinks() {
+  const pathname = usePathname();
+
+  return [SETTINGS, HELP].map((item) => {
+    const Icon = item.icon;
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        aria-current={isActive(pathname, item.href) ? "page" : undefined}
+      >
+        <Icon className="h-4 w-4" />
+        {item.label}
+      </Link>
+    );
+  });
 }
