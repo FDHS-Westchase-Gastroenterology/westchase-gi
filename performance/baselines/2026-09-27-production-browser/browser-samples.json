@@ -1,0 +1,23 @@
+{
+  "metadata": {
+    "startedAt": "2026-09-27T03:44:57.477Z",
+    "origin": "https://westchasegi.com",
+    "deploymentSha": "ddcbf23d8f25361a01a3777a1392bcfe529de0f2",
+    "samples": 1,
+    "warmups": 2,
+    "concurrency": 1,
+    "viewport": "1440x900",
+    "runtime": "deployed production; workstation Chrome; no network or CPU throttling",
+    "completed": false,
+    "authenticated": false,
+    "blockedNonReadRequests": 0,
+    "boundary": "navigation start or before Playwright click through verified rendered content; includes automation overhead",
+    "privacy": "No screenshots, traces, session files, names, IDs, URLs containing record IDs, or response bodies stored",
+    "browser": "153.0.8010.53",
+    "stage": "submit-login",
+    "failureAtLogin": true,
+    "loginErrorVisible": true,
+    "finishedAt": "2026-09-27T03:45:31.959Z"
+  },
+  "observations": []
+}

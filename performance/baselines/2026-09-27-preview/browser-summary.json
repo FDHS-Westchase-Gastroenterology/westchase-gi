@@ -1,0 +1,185 @@
+{
+  "metadata": {
+    "startedAt": "2026-09-27T03:15:21.662Z",
+    "projectRef": "gqzwcvwyhykscuidcmlh",
+    "run": "9a1f2b4a",
+    "samples": 20,
+    "warmups": 2,
+    "concurrency": 1,
+    "viewport": "1440x900",
+    "runtime": "local next start; remote Preview Supabase",
+    "completed": true,
+    "boundary": "browser navigation start or before Playwright click through verified rendered state; includes automation overhead",
+    "finishedAt": "2026-09-27T03:19:39.412Z",
+    "source": {
+      "baseSha": "f38d8b4d36cfe26ecfa7a93279b662eef4480411",
+      "applicationSha256": "6d9a025fcc8643370fdd0bc636eb1bb18ba80ef77dc2fc9e6c85804b0312b3a9",
+      "buildId": "4owmuMSN1svRDUR301LT2",
+      "node": "v26.7.0"
+    },
+    "sourceRecorded": "Immediately after run; application code unchanged since production build",
+    "browser": "153.0.8010.53"
+  },
+  "operations": [
+    {
+      "operation": "browser.create_request",
+      "outcome": "success",
+      "samples": 20,
+      "mean_ms": 931.21,
+      "median_ms": 846.05,
+      "p95_ms": 1143.71,
+      "min_ms": 830.12,
+      "max_ms": 1886.17
+    },
+    {
+      "operation": "browser.home",
+      "outcome": "success",
+      "samples": 20,
+      "mean_ms": 622.02,
+      "median_ms": 595.55,
+      "p95_ms": 989.3,
+      "min_ms": 302.4,
+      "max_ms": 1284.1
+    },
+    {
+      "operation": "browser.home.load",
+      "outcome": "success",
+      "samples": 20,
+      "mean_ms": 334.61,
+      "median_ms": 293.15,
+      "p95_ms": 465.4,
+      "min_ms": 242.6,
+      "max_ms": 738.9
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "outcome": "success",
+      "samples": 20,
+      "mean_ms": 261.03,
+      "median_ms": 240.1,
+      "p95_ms": 326.4,
+      "min_ms": 205,
+      "max_ms": 431
+    },
+    {
+      "operation": "browser.next_request",
+      "outcome": "success",
+      "samples": 20,
+      "mean_ms": 448.43,
+      "median_ms": 366.3,
+      "p95_ms": 669.8,
+      "min_ms": 326.7,
+      "max_ms": 1337.1
+    },
+    {
+      "operation": "browser.open_card",
+      "outcome": "success",
+      "samples": 20,
+      "mean_ms": 185,
+      "median_ms": 172.2,
+      "p95_ms": 285.1,
+      "min_ms": 110.9,
+      "max_ms": 298.9
+    },
+    {
+      "operation": "browser.open_full_record",
+      "outcome": "success",
+      "samples": 20,
+      "mean_ms": 710.89,
+      "median_ms": 614.8,
+      "p95_ms": 1209.6,
+      "min_ms": 574.5,
+      "max_ms": 1210.4
+    },
+    {
+      "operation": "browser.request_detail",
+      "outcome": "success",
+      "samples": 20,
+      "mean_ms": 380.01,
+      "median_ms": 328.3,
+      "p95_ms": 560,
+      "min_ms": 269.7,
+      "max_ms": 578.7
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "outcome": "success",
+      "samples": 20,
+      "mean_ms": 284.2,
+      "median_ms": 260.4,
+      "p95_ms": 383,
+      "min_ms": 237.7,
+      "max_ms": 422
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "outcome": "success",
+      "samples": 20,
+      "mean_ms": 229.62,
+      "median_ms": 222.55,
+      "p95_ms": 272.2,
+      "min_ms": 205.5,
+      "max_ms": 280.5
+    },
+    {
+      "operation": "browser.requests",
+      "outcome": "success",
+      "samples": 20,
+      "mean_ms": 641.68,
+      "median_ms": 604,
+      "p95_ms": 751.2,
+      "min_ms": 293.8,
+      "max_ms": 1560
+    },
+    {
+      "operation": "browser.requests.load",
+      "outcome": "success",
+      "samples": 20,
+      "mean_ms": 357.75,
+      "median_ms": 282.8,
+      "p95_ms": 490.3,
+      "min_ms": 246.6,
+      "max_ms": 1357.2
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "outcome": "success",
+      "samples": 20,
+      "mean_ms": 238.53,
+      "median_ms": 217.95,
+      "p95_ms": 310.1,
+      "min_ms": 208.3,
+      "max_ms": 486.8
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "outcome": "success",
+      "samples": 20,
+      "mean_ms": 910.85,
+      "median_ms": 889.45,
+      "p95_ms": 965.4,
+      "min_ms": 863.5,
+      "max_ms": 1101.7
+    },
+    {
+      "operation": "browser.save_note",
+      "outcome": "success",
+      "samples": 20,
+      "mean_ms": 1228,
+      "median_ms": 1089.45,
+      "p95_ms": 1871.2,
+      "min_ms": 1078.6,
+      "max_ms": 2995.7
+    },
+    {
+      "operation": "browser.undo",
+      "outcome": "success",
+      "samples": 20,
+      "mean_ms": 1023.94,
+      "median_ms": 951.6,
+      "p95_ms": 1199.5,
+      "min_ms": 851.5,
+      "max_ms": 1267.7
+    }
+  ]
+}

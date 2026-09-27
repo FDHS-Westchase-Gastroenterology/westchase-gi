@@ -1,0 +1,38 @@
+{
+  "capturedAt": "2026-09-27T03:23:52.776Z",
+  "counts": {
+    "requests": {
+      "rows": 101
+    },
+    "request_events": {
+      "rows": 284
+    },
+    "request_transitions": {
+      "rows": 130
+    },
+    "patients": {
+      "rows": 146
+    },
+    "patient_revisions": {
+      "rows": 406
+    },
+    "appointments": {
+      "rows": 325
+    },
+    "scheduling_changes": {
+      "rows": 932
+    },
+    "billing_entries": {
+      "rows": null
+    },
+    "clinical_records": {
+      "rows": null
+    },
+    "clinical_revisions": {
+      "rows": null
+    },
+    "audit_log": {
+      "rows": 2353
+    }
+  }
+}

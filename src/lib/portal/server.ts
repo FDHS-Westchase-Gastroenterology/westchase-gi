@@ -4,6 +4,8 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
+import { timedSupabaseFetch } from "./performance";
+
 function requiredEnv(names: readonly string[]): string {
   for (const name of names) {
     const value = process.env[name]?.trim();
@@ -64,6 +66,7 @@ export async function serverClient() {
   const cookieStore = await cookies();
 
   return createServerClient(supabaseUrl(), publishableKey(), {
+    global: { fetch: timedSupabaseFetch },
     cookies: {
       getAll() {
         return cookieStore.getAll();
@@ -88,6 +91,7 @@ export async function serverClient() {
  */
 export function serviceClient() {
   return createClient(supabaseUrl(), serviceRoleKey(), {
+    global: { fetch: timedSupabaseFetch },
     auth: {
       autoRefreshToken: false,
       detectSessionInUrl: false,

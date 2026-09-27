@@ -599,8 +599,10 @@ The exact command set and change-type check matrix live in
 ## Common starting points
 
 For backend or database performance work, start with the [performance baseline](performance/README.md).
-It separates production SQL execution, Supabase API origin latency, and unmeasured application
-latency, and maps observed CRUD coverage to the deployed and active-branch contracts.
+It separates production SQL execution and Supabase API origin latency from controlled Preview
+API/browser measurements, and maps coverage to deployed and active-branch contracts.
+`src/lib/portal/performance.ts` owns fixed-label backend timing and Supabase transport aggregates;
+the performance index defines its privacy boundaries, repeatable collectors and remaining gaps.
 
 Start from the owner of the behavior, then follow its imports toward the route and its calls toward
 the adapter or database. The matching change-type check matrix is

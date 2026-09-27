@@ -9,14 +9,19 @@ It is a passive production observation, not a load test or a complete latency be
 Its coverage register includes both the deployed application and the active portal branch.
 An unavailable measurement is a gap, never a zero-millisecond result.
 
+The [2026-09-27 application baseline](baselines/2026-09-27-preview/REPORT.md) adds 41 authenticated
+API scenarios and 10 rendered browser workflows, measured against fictional Preview data through
+an optimized local server. It includes repeatable collectors and privacy-safe runtime timing.
+Keep this evidence separate from production SQL and Supabase API observations.
+
 ## Measurement boundaries
 
 | Layer | Evidence | What it measures | Limits |
 | --- | --- | --- | --- |
 | PostgreSQL | `statements.json`, `context.json`, `indexes.json` | Successful top-level SQL execution, calls, rows, buffers, WAL, schema and workload context | Excludes HTTP/network, application work, and untracked planning; statement success does not establish business success or commit |
 | Supabase API | `api-latency.json` | Gateway-observed origin response time, grouped by allowlisted route, method, and HTTP status | Excludes the full Next.js request and browser round trip; bounded retained logs, often sparse |
-| Application | Currently unmeasured | Whole route/Server Action, auth, database calls, validation, email and other adapters | Needs separately deployed, privacy-preserving timing instrumentation |
-| Controlled benchmark | Currently unmeasured | Repeatable individual command and read cases under specified concurrency/data size | Run writes on a coordinated fictional Preview target; do not describe Preview results as production results |
+| Application | Preview runtime events and browser samples in the September 27 record | Instrumented handler/action totals, Supabase transport, and verified rendered workflows | Production instrumentation is not deployed; unwrapped adapters remain coverage gaps |
+| Controlled benchmark | 41 API scenarios and 10 browser workflows in the September 27 record | Repeatable individual commands and reads at concurrency one with fictional Preview data | Preview results are not production results; sample count, workload and environment constrain comparisons |
 
 PostgreSQL definitions come from the [PostgreSQL 17 statistics reference](https://www.postgresql.org/docs/17/pgstatstatements.html)
 and [Supabase query statistics guide](https://supabase.com/docs/guides/database/extensions/pg_stat_statements).
@@ -111,7 +116,126 @@ Include first/subsequent pages, search, long histories, concurrent booking/ledge
 retention batches where applicable. Archive, cancel, reversal, amendment, unlink, and retention
 are distinct operations; do not introduce hard deletes just to fill a CRUD column.
 
-Full backend timing instrumentation should record a stable operation name, duration, outcome,
-database-call count and aggregate duration, deploy SHA, and environment without request/patient
-identifiers or payloads. Capture auth, database, email/GitHub, and total request time separately.
-This is follow-up implementation work, not evidence present in the first baseline.
+## Runtime timing
+
+[`src/lib/portal/performance.ts`](../src/lib/portal/performance.ts) emits one `portal.performance`
+JSON event for each instrumented handler or Server Action. Logging is enabled by default;
+`PORTAL_PERFORMANCE_LOGS=0` disables it. Deployment uses the normal application release path;
+adding this code does not deploy it or promote the database.
+
+The instrumented boundaries are the seven patient/worklist/scheduling/billing/clinical API
+handlers, eleven request Server Actions, both public intake handlers, and aggregate telemetry.
+All request command actions start timing before their validation/auth work. Domain API handlers
+start before same-origin checks and refine their label only after validated command parsing.
+Authorization and business rules remain inside the measured callback.
+
+The event contains only a version, fixed operation label, allowlisted command discriminator,
+`success`/`rejected`/`redirect`/`thrown`, milliseconds, Supabase call count, failed transport count, and the
+sum of Supabase time through response headers. The emitter never reads input URLs, payloads,
+record IDs, staff identities, request headers, or exception text into a log. The runtime log
+provider supplies deployment/environment/time metadata; preserve those with an export. Export
+only these events and their safe metadata, not the provider's raw request log envelopes.
+
+`thrown` includes Next.js redirect control flow and is **not an error-rate metric**. Creating a
+request and redirecting successfully produces `thrown`; the browser benchmark separately proves
+the successful destination. `redirect` covers returned HTTP 3xx responses; `rejected` covers returned HTTP errors or domain failures.
+The failed-call count concerns HTTP/network failures; an RPC's HTTP 200 can still reject a command.
+Logging failure cannot replace the original result or exception. Async-local state isolates
+concurrent invocations. The supplied Supabase fetch function preserves the original Response/body.
+
+Handler/action time excludes proxy work, framework request dispatch, later RSC rendering,
+serialization/stream completion, browser transport, rendering, and animation. Supabase timing
+includes Auth as well as PostgREST; it is not SQL execution time. Parallel call durations overlap:
+**never subtract their sum from handler duration to estimate application CPU time**. It stops at
+response headers, while handler time includes any subsequently awaited body decoding.
+
+Page-render totals, staff/settings/Auth administration, GitHub, exports/printing, email transport,
+and lifecycle jobs do not yet have individual total-duration wrappers. Auth/profile calls are
+included when they run inside an instrumented boundary. The dated coverage register distinguishes
+instrumented operations from those exercised by the controlled run.
+
+## Repeat the controlled Preview measurement
+
+Run one benchmark process at a time, with other fixture resets and migrations idle. These
+collectors add uniquely named fictional data; they do not reset the existing cohort or delete
+audit history. Core/API configuration runs provision one fictional administrator, disable its
+signing permission, deactivate its profile and ban the Auth account before completion. Their
+records and audit history remain. Browser runs use the existing seeded staff identity, create
+fictional requests, and resolve each completed fixture. A failed run leaves its partial results
+and may leave unresolved fictional records; inspect its run marker before any cleanup.
+
+1. Select the integration branch's existing Preview database using the project branching skill.
+   Check the project is healthy and load branch credentials privately. Align both project refs,
+   `SUPABASE_PREVIEW_BRANCH=1`, the explicit Playwright allowlist, and distinct Production aliases.
+   Set `VERCEL_ENV=preview` locally so `/api/preview-environment` can attest the server's binding.
+   Both runners require this attestation and the existing E2E target guard before provisioning.
+2. Install the locked dependencies and build with the intended Node version. The repo pins Node
+   22 in `.nvmrc`; the first workstation capture used Node 26.7.0 and records that difference.
+   Treat a Node-version change as a new baseline. Never use a development server for comparisons.
+3. Start `npm run start -- --hostname 127.0.0.1 --port 62170` and redirect its output to a private,
+   disposable runtime log. Keep that server dedicated to the serial benchmark. Change the port
+   when occupied; pass the matching `http://localhost:<port>` origin below.
+4. Run the core API, browser, and configuration cases sequentially. Each defaults to two warm-up
+   iterations and twenty measured iterations. `--samples` accepts 1–50; small pilots cannot
+   establish a tail-latency target. API timing runs from browser `fetch` through decoded response;
+   browser timing waits for the verified rendered outcome. The scripts emit timing data only.
+
+```bash
+node --env-file=.env.local --import ./test/register.mjs scripts/benchmark-portal.mjs \
+  --origin http://localhost:62170 --confirm-target <preview-ref> \
+  --output <new-baseline>/api-samples.json
+node scripts/correlate-portal-performance.mjs <new-baseline>/api-samples.json <private-runtime-log>
+node --env-file=.env.local --import ./test/register.mjs scripts/benchmark-portal-browser.mjs \
+  --origin http://localhost:62170 --confirm-target <preview-ref> \
+  --output <new-baseline>/browser-samples.json
+node --env-file=.env.local --import ./test/register.mjs scripts/benchmark-portal.mjs \
+  --origin http://localhost:62170 --confirm-target <preview-ref> --configuration \
+  --output <new-baseline>/configuration-samples.json
+node scripts/correlate-portal-performance.mjs <new-baseline>/configuration-samples.json <private-runtime-log>
+```
+
+5. Before starting another API/configuration run, correlate that run with its dedicated log.
+   The correlator refuses mismatched counts/operation labels. It has no cross-request IDs;
+   do not use it on interleaved traffic or unrelated production logs.
+
+```bash
+node scripts/summarize-portal-performance.mjs <new-baseline>/api-samples.json <new-baseline>/api-summary.json
+node scripts/summarize-portal-performance.mjs <new-baseline>/browser-samples.json <new-baseline>/browser-summary.json
+```
+
+Repeat correlation/summary for the configuration file immediately after that run. Keep the
+build ID, source digest, runtime/browser versions, concurrency, warmups, fixture sizes and source
+SHA with each result. The summary uses a conventional median and nearest-rank p95, separating
+successes from expected failures. Review `metadata.completed` and fixture retirement before
+calling a run successful. Stop the server and browsers when finished; do not commit raw logs,
+credentials, storage state, screenshots containing non-fictional identities, or response bodies.
+
+## Authenticated production browser reads
+
+Use `scripts/benchmark-production-reads.mjs` only after authorization to use an existing staff
+account. Load `PORTAL_PROD_ADMIN_EMAIL` and `PORTAL_PROD_ADMIN_PASSWORD` locally; the collector
+can use the existing `PORTAL_SEED_ADMIN_*` pair when that same account and password are valid
+in production. Preview alias credentials do not work on the production sign-in form. Never
+provision an account, reset a password, or mint an administrator session to fill an access gap.
+
+```bash
+node scripts/benchmark-production-reads.mjs \
+  --confirm-origin https://westchasegi.com \
+  --deployment-sha <verified-production-sha> \
+  --output performance/baselines/<date>-production-browser/browser-samples.json
+node scripts/summarize-portal-performance.mjs \
+  performance/baselines/<date>-production-browser/browser-samples.json \
+  performance/baselines/<date>-production-browser/browser-summary.json
+```
+
+The collector signs in once and measures only home/list/detail/next-request reads. After login,
+it blocks non-read network requests, including telemetry and acknowledgements. Playwright request
+routing disables the browser HTTP cache: report that condition, and do not treat its navigation
+timings as cache-equivalent to the Preview browser collector. Static assets may still benefit
+from upstream CDN caches. No record mutation controls are clicked. It stores numeric timings and
+static labels only; credentials, browser state, patient content, record paths, screenshots and
+traces stay out of artifacts. A failed sign-in yields `completed:false` and no latency estimate.
+
+The [September 27 access check](baselines/2026-09-27-production-browser/REPORT.md) records the
+actual authentication result. A locally configured credential is not proof it is currently valid
+on production.

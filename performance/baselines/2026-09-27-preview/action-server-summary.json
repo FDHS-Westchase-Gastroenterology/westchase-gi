@@ -1,0 +1,62 @@
+{
+  "boundary": "Authenticated Server Action only; excludes RSC response/rendering and browser updates",
+  "warmupsIncluded": true,
+  "note": "All browser-run action invocations, including warmups and final fixture closure; do not treat these as paired browser percentiles",
+  "operations": [
+    {
+      "operation": "requests.createStaffRequest",
+      "samples": 22,
+      "median_ms": 217.36,
+      "p95_ms": 253.75,
+      "upstream_calls_min": 3,
+      "upstream_calls_max": 3,
+      "outcomes": {
+        "thrown": 22
+      }
+    },
+    {
+      "operation": "requests.addRequestNote",
+      "samples": 22,
+      "median_ms": 212.22,
+      "p95_ms": 421.17,
+      "upstream_calls_min": 3,
+      "upstream_calls_max": 3,
+      "outcomes": {
+        "success": 22
+      }
+    },
+    {
+      "operation": "requests.readFullRecord",
+      "samples": 22,
+      "median_ms": 223.68,
+      "p95_ms": 285.91,
+      "upstream_calls_min": 7,
+      "upstream_calls_max": 7,
+      "outcomes": {
+        "success": 22
+      }
+    },
+    {
+      "operation": "requests.recordContactAndClose",
+      "samples": 44,
+      "median_ms": 355.05,
+      "p95_ms": 398.12,
+      "upstream_calls_min": 5,
+      "upstream_calls_max": 5,
+      "outcomes": {
+        "success": 44
+      }
+    },
+    {
+      "operation": "requests.undoLatestTransition",
+      "samples": 22,
+      "median_ms": 418.88,
+      "p95_ms": 517.04,
+      "upstream_calls_min": 6,
+      "upstream_calls_max": 6,
+      "outcomes": {
+        "success": 22
+      }
+    }
+  ]
+}

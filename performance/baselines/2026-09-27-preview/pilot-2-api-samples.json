@@ -1,0 +1,200 @@
+{
+  "metadata": {
+    "startedAt": "2026-09-27T03:11:21.571Z",
+    "projectRef": "gqzwcvwyhykscuidcmlh",
+    "run": "52e7f419",
+    "samples": 20,
+    "warmups": 2,
+    "concurrency": 1,
+    "runtime": "local next start; remote Preview Supabase",
+    "viewport": "1440x900",
+    "percentileMethod": "nearest rank; warmups excluded; success and failure separate",
+    "completed": false,
+    "fixtureAccountRetired": true,
+    "finishedAt": "2026-09-27T03:11:32.147Z"
+  },
+  "observations": [
+    {
+      "operation": "clinical.set_signer",
+      "phase": "warmup",
+      "duration_ms": 246.9,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "warmup",
+      "duration_ms": 231.8,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "warmup",
+      "duration_ms": 221.3,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "warmup",
+      "duration_ms": 230.1,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 220.2,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "patients.search",
+      "phase": "warmup",
+      "duration_ms": 212.9,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "patients.read",
+      "phase": "warmup",
+      "duration_ms": 210.8,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "patients.update",
+      "phase": "warmup",
+      "duration_ms": 226.2,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "patients.update.replay",
+      "phase": "warmup",
+      "duration_ms": 210.3,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "patients.update.stale",
+      "phase": "warmup",
+      "duration_ms": 213.7,
+      "ok": false,
+      "status": 409
+    },
+    {
+      "operation": "patients.archive",
+      "phase": "warmup",
+      "duration_ms": 217,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "patients.restore",
+      "phase": "warmup",
+      "duration_ms": 212.4,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "requests.worklist",
+      "phase": "warmup",
+      "duration_ms": 221.6,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "scheduling.catalog",
+      "phase": "warmup",
+      "duration_ms": 214.5,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "scheduling.read_config",
+      "phase": "warmup",
+      "duration_ms": 211.5,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "scheduling.availability",
+      "phase": "warmup",
+      "duration_ms": 237.4,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "scheduling.book",
+      "phase": "warmup",
+      "duration_ms": 229,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "scheduling.appointments",
+      "phase": "warmup",
+      "duration_ms": 215.5,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "scheduling.read_appointment",
+      "phase": "warmup",
+      "duration_ms": 216.7,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "scheduling.reschedule",
+      "phase": "warmup",
+      "duration_ms": 227,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "scheduling.cancel",
+      "phase": "warmup",
+      "duration_ms": 234.9,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "scheduling.undo",
+      "phase": "warmup",
+      "duration_ms": 237.5,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "scheduling.retire_booking",
+      "phase": "warmup",
+      "duration_ms": 212.9,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "scheduling.check_in",
+      "phase": "warmup",
+      "duration_ms": 228.3,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "scheduling.complete",
+      "phase": "warmup",
+      "duration_ms": 235.2,
+      "ok": true,
+      "status": 200
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "warmup",
+      "duration_ms": 221.5,
+      "ok": true,
+      "status": 200
+    }
+  ]
+}

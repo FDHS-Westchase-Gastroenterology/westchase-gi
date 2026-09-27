@@ -1,0 +1,1838 @@
+{
+  "metadata": {
+    "startedAt": "2026-09-27T03:19:58.460Z",
+    "projectRef": "gqzwcvwyhykscuidcmlh",
+    "run": "44cf32e5",
+    "samples": 20,
+    "warmups": 2,
+    "suite": "configuration-and-links",
+    "concurrency": 1,
+    "runtime": "local next start; remote Preview Supabase",
+    "viewport": "1440x900",
+    "percentileMethod": "nearest rank; warmups excluded; success and failure separate",
+    "completed": true,
+    "fixtureAccountRetired": true,
+    "finishedAt": "2026-09-27T03:20:46.656Z",
+    "backendCorrelation": "Serial dedicated server log sequence; every operation/detail label matched, including setup and retirement",
+    "source": {
+      "baseSha": "f38d8b4d36cfe26ecfa7a93279b662eef4480411",
+      "applicationSha256": "6d9a025fcc8643370fdd0bc636eb1bb18ba80ef77dc2fc9e6c85804b0312b3a9",
+      "buildId": "4owmuMSN1svRDUR301LT2",
+      "node": "v26.7.0"
+    },
+    "browser": "153.0.8010.53",
+    "sourceRecorded": "Immediately after run; application code unchanged since production build"
+  },
+  "observations": [
+    {
+      "operation": "clinical.set_signer",
+      "phase": "warmup",
+      "duration_ms": 226.7,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 213.84,
+      "upstream_headers_ms": 204.76,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "warmup",
+      "duration_ms": 213.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 209.47,
+      "upstream_headers_ms": 202.75,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "warmup",
+      "duration_ms": 222.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 215.95,
+      "upstream_headers_ms": 211.19,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "warmup",
+      "duration_ms": 220.4,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 214.65,
+      "upstream_headers_ms": 209.87,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "warmup",
+      "duration_ms": 233.8,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 230.56,
+      "upstream_headers_ms": 223.13,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "warmup",
+      "duration_ms": 233.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 223.86,
+      "upstream_headers_ms": 214.73,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "warmup",
+      "duration_ms": 229.8,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 225.98,
+      "upstream_headers_ms": 221.67,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "warmup",
+      "duration_ms": 205.3,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 200.94,
+      "upstream_headers_ms": 197.14,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 230.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 227.21,
+      "upstream_headers_ms": 216.91,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "warmup",
+      "duration_ms": 211.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 207.59,
+      "upstream_headers_ms": 204.45,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "warmup",
+      "duration_ms": 260.4,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 252.69,
+      "upstream_headers_ms": 243.21,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 229.7,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 222.97,
+      "upstream_headers_ms": 216.81,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "warmup",
+      "duration_ms": 227.1,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 221.12,
+      "upstream_headers_ms": 214.38,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "warmup",
+      "duration_ms": 212,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 205.1,
+      "upstream_headers_ms": 199.97,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "warmup",
+      "duration_ms": 240.1,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 233.57,
+      "upstream_headers_ms": 223.99,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "warmup",
+      "duration_ms": 234.8,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 226.74,
+      "upstream_headers_ms": 209.92,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 221.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 217.01,
+      "upstream_headers_ms": 211.04,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "warmup",
+      "duration_ms": 208.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 204.52,
+      "upstream_headers_ms": 199.46,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "warmup",
+      "duration_ms": 221.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 218.03,
+      "upstream_headers_ms": 213.9,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 206.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 203.52,
+      "upstream_headers_ms": 201.18,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 202.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 199.14,
+      "upstream_headers_ms": 195.79,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 210.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 207.25,
+      "upstream_headers_ms": 201.52,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 224.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 220.69,
+      "upstream_headers_ms": 218.1,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 206.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 202.22,
+      "upstream_headers_ms": 199.81,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 238.7,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 227.87,
+      "upstream_headers_ms": 218.41,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 216.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 210.38,
+      "upstream_headers_ms": 204.56,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 206.4,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 203.79,
+      "upstream_headers_ms": 200.79,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 205.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 202.24,
+      "upstream_headers_ms": 200.04,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 215.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 210.87,
+      "upstream_headers_ms": 207.97,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 216.4,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 211.96,
+      "upstream_headers_ms": 208.38,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 219.4,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 216.18,
+      "upstream_headers_ms": 213.19,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 228.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 226.13,
+      "upstream_headers_ms": 223.12,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 246.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 243.57,
+      "upstream_headers_ms": 241.39,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 201.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 198.43,
+      "upstream_headers_ms": 196.27,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 211.3,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 208.83,
+      "upstream_headers_ms": 203.01,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 213.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 206.31,
+      "upstream_headers_ms": 204.41,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 234.1,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 231.57,
+      "upstream_headers_ms": 225.53,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 200,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 197.81,
+      "upstream_headers_ms": 195.75,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 210.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 207.46,
+      "upstream_headers_ms": 205.17,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 212,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 208.76,
+      "upstream_headers_ms": 205.14,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 224,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 221.31,
+      "upstream_headers_ms": 216.46,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 202.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 198.47,
+      "upstream_headers_ms": 195.76,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 206.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 204.31,
+      "upstream_headers_ms": 202.26,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 204.3,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 201.74,
+      "upstream_headers_ms": 199.69,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 198.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 196.42,
+      "upstream_headers_ms": 194.34,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 203.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 200.73,
+      "upstream_headers_ms": 197.87,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 219.8,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 216.57,
+      "upstream_headers_ms": 212.76,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 211.7,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 207.79,
+      "upstream_headers_ms": 204.27,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 202.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 199.82,
+      "upstream_headers_ms": 196.36,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 212.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 209.39,
+      "upstream_headers_ms": 204.14,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 232.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 229.53,
+      "upstream_headers_ms": 223.66,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 210.4,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 206.01,
+      "upstream_headers_ms": 197.93,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 204.7,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 200.49,
+      "upstream_headers_ms": 197.57,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 226.4,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 223.65,
+      "upstream_headers_ms": 221.65,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 345.3,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 342.22,
+      "upstream_headers_ms": 339.45,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 215.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 212.36,
+      "upstream_headers_ms": 209.44,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 224.3,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 220.66,
+      "upstream_headers_ms": 213.62,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 205.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 203.16,
+      "upstream_headers_ms": 200.53,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 212.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 210,
+      "upstream_headers_ms": 206.58,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 225.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 219.03,
+      "upstream_headers_ms": 212.5,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 210.7,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 207.37,
+      "upstream_headers_ms": 204.36,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 231.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 228.53,
+      "upstream_headers_ms": 225.82,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 215.1,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 212.2,
+      "upstream_headers_ms": 209.08,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 216.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 212.09,
+      "upstream_headers_ms": 209.02,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 205.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 200.95,
+      "upstream_headers_ms": 198.41,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 215.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 210.93,
+      "upstream_headers_ms": 207.23,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 203.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 200.66,
+      "upstream_headers_ms": 198.7,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 208.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 205.47,
+      "upstream_headers_ms": 202.96,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 214.3,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 211.74,
+      "upstream_headers_ms": 209.71,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 206.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 204.01,
+      "upstream_headers_ms": 199.6,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 224.3,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 219.22,
+      "upstream_headers_ms": 216.8,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 208.3,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 205.34,
+      "upstream_headers_ms": 203.22,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 208,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 205.78,
+      "upstream_headers_ms": 203.65,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 205.8,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 202.59,
+      "upstream_headers_ms": 199.98,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 224.3,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 221.32,
+      "upstream_headers_ms": 218.57,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 213.7,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 210.7,
+      "upstream_headers_ms": 207.14,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 223.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 220.74,
+      "upstream_headers_ms": 217.83,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 244.3,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 242.1,
+      "upstream_headers_ms": 240.17,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 211.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 209.62,
+      "upstream_headers_ms": 206.88,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 202.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 199.79,
+      "upstream_headers_ms": 197.87,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 212.3,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 209.7,
+      "upstream_headers_ms": 207.84,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 209.7,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 207.36,
+      "upstream_headers_ms": 205.49,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 200.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 197.91,
+      "upstream_headers_ms": 196.28,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 209,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 206.88,
+      "upstream_headers_ms": 204.53,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 218.4,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 214.89,
+      "upstream_headers_ms": 210.13,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 221.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 216.62,
+      "upstream_headers_ms": 210.37,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 214.8,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 212.26,
+      "upstream_headers_ms": 209.93,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 214.8,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 210.18,
+      "upstream_headers_ms": 206.69,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 205.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 202.32,
+      "upstream_headers_ms": 198.53,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 221.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 218.76,
+      "upstream_headers_ms": 216.65,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 203.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 199.47,
+      "upstream_headers_ms": 196.99,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 212.8,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 208.68,
+      "upstream_headers_ms": 206.2,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 206,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 203.63,
+      "upstream_headers_ms": 201.61,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 208.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 205.45,
+      "upstream_headers_ms": 199.55,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 212.4,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 210,
+      "upstream_headers_ms": 206.4,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 215,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 212.46,
+      "upstream_headers_ms": 210.18,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 202.4,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 197.99,
+      "upstream_headers_ms": 195,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 231.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 228.83,
+      "upstream_headers_ms": 226.87,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 231.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 228.54,
+      "upstream_headers_ms": 226.35,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 203.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 201.47,
+      "upstream_headers_ms": 199.02,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 209.7,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 207.19,
+      "upstream_headers_ms": 204.97,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 210.8,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 208.54,
+      "upstream_headers_ms": 205.41,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 222.4,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 218.94,
+      "upstream_headers_ms": 216.81,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 206.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 204.38,
+      "upstream_headers_ms": 202.36,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 218.8,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 216.45,
+      "upstream_headers_ms": 214.36,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 207.7,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 205.3,
+      "upstream_headers_ms": 203.26,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 207.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 205.13,
+      "upstream_headers_ms": 203.29,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 211.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 209.5,
+      "upstream_headers_ms": 207.84,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 223.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 221.05,
+      "upstream_headers_ms": 219.13,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 212.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 209.87,
+      "upstream_headers_ms": 207.5,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 211.1,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 208.44,
+      "upstream_headers_ms": 206.03,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 205.1,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 202.84,
+      "upstream_headers_ms": 200.86,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 224.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 218.64,
+      "upstream_headers_ms": 216.03,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 219.8,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 217.06,
+      "upstream_headers_ms": 212.71,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 202.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 200.36,
+      "upstream_headers_ms": 198.37,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 205,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 202.24,
+      "upstream_headers_ms": 199.59,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 228.8,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 223.14,
+      "upstream_headers_ms": 212.94,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 217.7,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 215.56,
+      "upstream_headers_ms": 213.31,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 209.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 206.74,
+      "upstream_headers_ms": 203.68,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 249.1,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 246.57,
+      "upstream_headers_ms": 244.43,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 229.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 226.69,
+      "upstream_headers_ms": 224.59,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 204.3,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 201.98,
+      "upstream_headers_ms": 200.01,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 207.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 205.06,
+      "upstream_headers_ms": 201.96,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 235.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 232.57,
+      "upstream_headers_ms": 220.53,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 239,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 228.29,
+      "upstream_headers_ms": 224.22,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 255,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 249.75,
+      "upstream_headers_ms": 225.25,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 222.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 219.7,
+      "upstream_headers_ms": 217.25,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 211.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 205.96,
+      "upstream_headers_ms": 202.26,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 218.7,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 215.53,
+      "upstream_headers_ms": 213.11,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 207.8,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 205.4,
+      "upstream_headers_ms": 203.53,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 211.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 209.31,
+      "upstream_headers_ms": 207.41,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 213.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 211.64,
+      "upstream_headers_ms": 209.77,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 210.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 208.57,
+      "upstream_headers_ms": 206.28,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 206.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 203.58,
+      "upstream_headers_ms": 201.56,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 217.1,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 214.94,
+      "upstream_headers_ms": 212.64,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 203.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 201.92,
+      "upstream_headers_ms": 199.96,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 210.4,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 208.5,
+      "upstream_headers_ms": 206.7,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 223.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 220.84,
+      "upstream_headers_ms": 207.31,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 210.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 207.98,
+      "upstream_headers_ms": 205.77,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 205.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 203.76,
+      "upstream_headers_ms": 201.77,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 210,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 207.86,
+      "upstream_headers_ms": 205.71,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 235.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 232.84,
+      "upstream_headers_ms": 229.94,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 234.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 231.49,
+      "upstream_headers_ms": 229.22,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 235.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 232.94,
+      "upstream_headers_ms": 230.47,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 221,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 217.28,
+      "upstream_headers_ms": 214.87,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 206.1,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 202.07,
+      "upstream_headers_ms": 197.64,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 211.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 209.1,
+      "upstream_headers_ms": 207.29,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 211.8,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 209.53,
+      "upstream_headers_ms": 207.58,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 293.7,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 291.41,
+      "upstream_headers_ms": 289.33,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 214.3,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 212.17,
+      "upstream_headers_ms": 210.27,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 211.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 208.75,
+      "upstream_headers_ms": 206.56,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 210.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 207.53,
+      "upstream_headers_ms": 205.03,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 204.4,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 202.2,
+      "upstream_headers_ms": 200.13,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 205.7,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 203.48,
+      "upstream_headers_ms": 201.65,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 205.4,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 203.31,
+      "upstream_headers_ms": 201.53,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 211.4,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 209.16,
+      "upstream_headers_ms": 207.27,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 203.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 200.96,
+      "upstream_headers_ms": 198.44,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 202.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 199.58,
+      "upstream_headers_ms": 197.18,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 230.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 228.68,
+      "upstream_headers_ms": 226.22,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 217.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 215.06,
+      "upstream_headers_ms": 210.02,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 210.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 208.66,
+      "upstream_headers_ms": 204.45,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 206.7,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 204.37,
+      "upstream_headers_ms": 202.41,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 237.1,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 228.22,
+      "upstream_headers_ms": 224.12,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 209.4,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 205.21,
+      "upstream_headers_ms": 203.28,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 215.7,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 212.15,
+      "upstream_headers_ms": 208.8,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 251.7,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 243.21,
+      "upstream_headers_ms": 238.03,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 231.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 220.5,
+      "upstream_headers_ms": 213.98,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 220.4,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 213.27,
+      "upstream_headers_ms": 205.49,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 214.8,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 211.32,
+      "upstream_headers_ms": 208.69,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 206.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 202.48,
+      "upstream_headers_ms": 196.99,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 206.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 204.57,
+      "upstream_headers_ms": 202.53,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 214.2,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 211.69,
+      "upstream_headers_ms": 209.63,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_location",
+      "phase": "measured",
+      "duration_ms": 211.3,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 208.44,
+      "upstream_headers_ms": 205.4,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "phase": "measured",
+      "duration_ms": 226,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 222.97,
+      "upstream_headers_ms": 220.31,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "phase": "measured",
+      "duration_ms": 223.3,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 219.96,
+      "upstream_headers_ms": 215.23,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "measured",
+      "duration_ms": 220.7,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 217.99,
+      "upstream_headers_ms": 214.68,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.create",
+      "phase": "warmup",
+      "duration_ms": 210.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 207.88,
+      "upstream_headers_ms": 204.14,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.link_request",
+      "phase": "measured",
+      "duration_ms": 249.6,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 235.21,
+      "upstream_headers_ms": 215.5,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.unlink_request",
+      "phase": "measured",
+      "duration_ms": 230.9,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 219.76,
+      "upstream_headers_ms": 212.82,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "patients.retire_fixture",
+      "phase": "warmup",
+      "duration_ms": 217.4,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 213.83,
+      "upstream_headers_ms": 208.28,
+      "upstream_calls": 3
+    },
+    {
+      "operation": "clinical.set_signer",
+      "phase": "warmup",
+      "duration_ms": 206.5,
+      "ok": true,
+      "status": 200,
+      "backend_ms": 202.4,
+      "upstream_headers_ms": 199.27,
+      "upstream_calls": 3
+    }
+  ]
+}

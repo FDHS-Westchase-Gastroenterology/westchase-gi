@@ -1,0 +1,112 @@
+{
+  "metadata": {
+    "startedAt": "2026-09-27T03:19:58.460Z",
+    "projectRef": "gqzwcvwyhykscuidcmlh",
+    "run": "44cf32e5",
+    "samples": 20,
+    "warmups": 2,
+    "suite": "configuration-and-links",
+    "concurrency": 1,
+    "runtime": "local next start; remote Preview Supabase",
+    "viewport": "1440x900",
+    "percentileMethod": "nearest rank; warmups excluded; success and failure separate",
+    "completed": true,
+    "fixtureAccountRetired": true,
+    "finishedAt": "2026-09-27T03:20:46.656Z",
+    "backendCorrelation": "Serial dedicated server log sequence; every operation/detail label matched, including setup and retirement",
+    "source": {
+      "baseSha": "f38d8b4d36cfe26ecfa7a93279b662eef4480411",
+      "applicationSha256": "6d9a025fcc8643370fdd0bc636eb1bb18ba80ef77dc2fc9e6c85804b0312b3a9",
+      "buildId": "4owmuMSN1svRDUR301LT2",
+      "node": "v26.7.0"
+    },
+    "browser": "153.0.8010.53",
+    "sourceRecorded": "Immediately after run; application code unchanged since production build"
+  },
+  "operations": [
+    {
+      "operation": "clinical.set_signer",
+      "outcome": "success",
+      "samples": 20,
+      "backend_mean_ms": 212.28,
+      "upstream_headers_mean_ms": 209.22,
+      "upstream_calls_min": 3,
+      "upstream_calls_max": 3,
+      "mean_ms": 215.6,
+      "median_ms": 213.4,
+      "p95_ms": 235.5,
+      "min_ms": 202.6,
+      "max_ms": 249.1
+    },
+    {
+      "operation": "patients.link_request",
+      "outcome": "success",
+      "samples": 20,
+      "backend_mean_ms": 209.32,
+      "upstream_headers_mean_ms": 204.92,
+      "upstream_calls_min": 3,
+      "upstream_calls_max": 3,
+      "mean_ms": 213.05,
+      "median_ms": 207.75,
+      "p95_ms": 231.5,
+      "min_ms": 201.6,
+      "max_ms": 249.6
+    },
+    {
+      "operation": "patients.unlink_request",
+      "outcome": "success",
+      "samples": 20,
+      "backend_mean_ms": 209.86,
+      "upstream_headers_mean_ms": 206.91,
+      "upstream_calls_min": 3,
+      "upstream_calls_max": 3,
+      "mean_ms": 213.19,
+      "median_ms": 209.2,
+      "p95_ms": 232.2,
+      "min_ms": 200.2,
+      "max_ms": 237.1
+    },
+    {
+      "operation": "scheduling.save_appointment_type",
+      "outcome": "success",
+      "samples": 20,
+      "backend_mean_ms": 216.81,
+      "upstream_headers_mean_ms": 212.47,
+      "upstream_calls_min": 3,
+      "upstream_calls_max": 3,
+      "mean_ms": 220.05,
+      "median_ms": 215.35,
+      "p95_ms": 251.7,
+      "min_ms": 200,
+      "max_ms": 255
+    },
+    {
+      "operation": "scheduling.save_location",
+      "outcome": "success",
+      "samples": 20,
+      "backend_mean_ms": 215.3,
+      "upstream_headers_mean_ms": 212,
+      "upstream_calls_min": 3,
+      "upstream_calls_max": 3,
+      "mean_ms": 218.71,
+      "median_ms": 212.8,
+      "p95_ms": 239,
+      "min_ms": 198.9,
+      "max_ms": 293.7
+    },
+    {
+      "operation": "scheduling.save_provider",
+      "outcome": "success",
+      "samples": 20,
+      "backend_mean_ms": 222.23,
+      "upstream_headers_mean_ms": 219.27,
+      "upstream_calls_min": 3,
+      "upstream_calls_max": 3,
+      "mean_ms": 225.59,
+      "median_ms": 219.6,
+      "p95_ms": 234.2,
+      "min_ms": 209.6,
+      "max_ms": 345.3
+    }
+  ]
+}

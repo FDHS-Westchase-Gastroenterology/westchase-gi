@@ -1,4 +1,5 @@
 import { PortalAuthorizationError, requireRole } from "@/lib/portal/auth";
+import { measureBackend } from "@/lib/portal/performance";
 import {
   isPrivateRequestOrigin,
   PRIVATE_API_HEADERS,
@@ -16,27 +17,29 @@ const failureStatuses = {
 } as const;
 
 export async function POST(request: Request) {
-  if (!isPrivateRequestOrigin(request))
-    return Response.json(
-      { ok: false, code: "forbidden" },
-      { status: 403, headers: PRIVATE_API_HEADERS },
-    );
-  try {
-    const staff = await requireRole("staff", { unauthenticated: "throw" });
-    const input = requestWorklistInputSchema.safeParse(await readPrivateJson(request));
-    if (!input.success)
+  return measureBackend("requests.worklist", async () => {
+    if (!isPrivateRequestOrigin(request))
       return Response.json(
-        { ok: false, code: "invalid_query" },
-        { status: 400, headers: PRIVATE_API_HEADERS },
+        { ok: false, code: "forbidden" },
+        { status: 403, headers: PRIVATE_API_HEADERS },
       );
-    const result = await readRequestWorklist(serviceClient(), staff.id, input.data);
-    return Response.json(result, {
-      status: result.ok ? 200 : failureStatuses[result.code],
-      headers: PRIVATE_API_HEADERS,
-    });
-  } catch (error) {
-    const status = error instanceof PortalAuthorizationError ? error.status : 503;
-    const code = status === 401 ? "unauthorized" : status === 403 ? "forbidden" : "unavailable";
-    return Response.json({ ok: false, code }, { status, headers: PRIVATE_API_HEADERS });
-  }
+    try {
+      const staff = await requireRole("staff", { unauthenticated: "throw" });
+      const input = requestWorklistInputSchema.safeParse(await readPrivateJson(request));
+      if (!input.success)
+        return Response.json(
+          { ok: false, code: "invalid_query" },
+          { status: 400, headers: PRIVATE_API_HEADERS },
+        );
+      const result = await readRequestWorklist(serviceClient(), staff.id, input.data);
+      return Response.json(result, {
+        status: result.ok ? 200 : failureStatuses[result.code],
+        headers: PRIVATE_API_HEADERS,
+      });
+    } catch (error) {
+      const status = error instanceof PortalAuthorizationError ? error.status : 503;
+      const code = status === 401 ? "unauthorized" : status === 403 ? "forbidden" : "unavailable";
+      return Response.json({ ok: false, code }, { status, headers: PRIVATE_API_HEADERS });
+    }
+  });
 }

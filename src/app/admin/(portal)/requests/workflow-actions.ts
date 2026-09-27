@@ -1,9 +1,9 @@
 "use server";
-
 import { revalidatePath } from "next/cache";
 
 import { requireRole } from "@/lib/portal/auth";
 import type { FollowUpChoice } from "@/lib/portal/business-time";
+import { measureBackend } from "@/lib/portal/performance";
 import { serviceClient } from "@/lib/portal/server";
 import type { RequestCommandInput } from "@/lib/portal/workflow/command-intent";
 import { executeRequestCommand } from "@/lib/portal/workflow/commands";
@@ -56,25 +56,29 @@ export async function recordContactAttempt(
     }
   >,
 ): Promise<CommandOutcome> {
-  return run({
-    ...input,
-    command: {
-      kind: "record_contact_attempt",
-      outcome: input.outcome,
-      callAgain: input.callAgain,
-    },
-  });
+  return measureBackend<CommandOutcome>("requests.recordContactAttempt", async () =>
+    run({
+      ...input,
+      command: {
+        kind: "record_contact_attempt",
+        outcome: input.outcome,
+        callAgain: input.callAgain,
+      },
+    }),
+  );
 }
 
 /** Record the contact fact and finish the request as one reversible decision. */
 export async function recordContactAndClose(
   input: Readonly<ContactCompletionInput>,
 ): Promise<CommandOutcome> {
-  const parsed = contactCompletionInputSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, code: "invalid_command" };
-  return run({
-    ...parsed.data,
-    command: { kind: "record_contact_and_close", outcome: parsed.data.outcome },
+  return measureBackend<CommandOutcome>("requests.recordContactAndClose", async () => {
+    const parsed = contactCompletionInputSchema.safeParse(input);
+    if (!parsed.success) return { ok: false, code: "invalid_command" };
+    return run({
+      ...parsed.data,
+      command: { kind: "record_contact_and_close", outcome: parsed.data.outcome },
+    });
   });
 }
 
@@ -87,32 +91,40 @@ export interface AppointmentChoice {
 export async function confirmBookingHandoff(
   input: Readonly<Common & { appointment: Readonly<AppointmentChoice> }>,
 ): Promise<CommandOutcome> {
-  return run({
-    ...input,
-    command: { kind: "confirm_booking_handoff", appointment: input.appointment },
-  });
+  return measureBackend<CommandOutcome>("requests.confirmBookingHandoff", async () =>
+    run({
+      ...input,
+      command: { kind: "confirm_booking_handoff", appointment: input.appointment },
+    }),
+  );
 }
 
 export async function closeRequest(
   input: Readonly<Common & { reason: ManualClosureReason; note?: string }>,
 ): Promise<CommandOutcome> {
-  return run({
-    ...input,
-    command: { kind: "close_request", reason: input.reason },
-    note: input.note,
-  });
+  return measureBackend<CommandOutcome>("requests.closeRequest", async () =>
+    run({
+      ...input,
+      command: { kind: "close_request", reason: input.reason },
+      note: input.note,
+    }),
+  );
 }
 
 export async function reopenRequest(
   input: Readonly<Common & { callAgain: Readonly<FollowUpChoice> }>,
 ): Promise<CommandOutcome> {
-  return run({ ...input, command: { kind: "reopen_request", callAgain: input.callAgain } });
+  return measureBackend<CommandOutcome>("requests.reopenRequest", async () =>
+    run({ ...input, command: { kind: "reopen_request", callAgain: input.callAgain } }),
+  );
 }
 
 export async function setCallAgain(
   input: Readonly<Common & { callAgain: Readonly<FollowUpChoice> }>,
 ): Promise<CommandOutcome> {
-  return run({ ...input, command: { kind: "set_call_again", callAgain: input.callAgain } });
+  return measureBackend<CommandOutcome>("requests.setCallAgain", async () =>
+    run({ ...input, command: { kind: "set_call_again", callAgain: input.callAgain } }),
+  );
 }
 
 function undoFingerprintCommand(): WorkflowCommand {
@@ -125,18 +137,22 @@ function undoFingerprintCommand(): WorkflowCommand {
 export async function undoLatestTransition(
   input: Readonly<Common & { transitionId: string }>,
 ): Promise<CommandOutcome> {
-  return run({
-    ...input,
-    command: undoFingerprintCommand(),
-    transitionId: input.transitionId,
-  });
+  return measureBackend<CommandOutcome>("requests.undoLatestTransition", async () =>
+    run({
+      ...input,
+      command: undoFingerprintCommand(),
+      transitionId: input.transitionId,
+    }),
+  );
 }
 
 export async function classifyLegacyClosure(
   input: Readonly<Common & { resolution: "booked" | Readonly<{ reason: ManualClosureReason }> }>,
 ): Promise<CommandOutcome> {
-  return run({
-    ...input,
-    command: { kind: "classify_legacy_closure", resolution: input.resolution },
-  });
+  return measureBackend<CommandOutcome>("requests.classifyLegacyClosure", async () =>
+    run({
+      ...input,
+      command: { kind: "classify_legacy_closure", resolution: input.resolution },
+    }),
+  );
 }

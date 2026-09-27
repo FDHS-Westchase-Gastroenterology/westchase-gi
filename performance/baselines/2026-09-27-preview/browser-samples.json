@@ -1,0 +1,2137 @@
+{
+  "metadata": {
+    "startedAt": "2026-09-27T03:15:21.662Z",
+    "projectRef": "gqzwcvwyhykscuidcmlh",
+    "run": "9a1f2b4a",
+    "samples": 20,
+    "warmups": 2,
+    "concurrency": 1,
+    "viewport": "1440x900",
+    "runtime": "local next start; remote Preview Supabase",
+    "completed": true,
+    "boundary": "browser navigation start or before Playwright click through verified rendered state; includes automation overhead",
+    "finishedAt": "2026-09-27T03:19:39.412Z",
+    "source": {
+      "baseSha": "f38d8b4d36cfe26ecfa7a93279b662eef4480411",
+      "applicationSha256": "6d9a025fcc8643370fdd0bc636eb1bb18ba80ef77dc2fc9e6c85804b0312b3a9",
+      "buildId": "4owmuMSN1svRDUR301LT2",
+      "node": "v26.7.0"
+    },
+    "sourceRecorded": "Immediately after run; application code unchanged since production build",
+    "browser": "153.0.8010.53"
+  },
+  "observations": [
+    {
+      "operation": "browser.home",
+      "phase": "warmup",
+      "duration_ms": 679.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "warmup",
+      "duration_ms": 279.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "warmup",
+      "duration_ms": 343.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "warmup",
+      "duration_ms": 597.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "warmup",
+      "duration_ms": 216.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "warmup",
+      "duration_ms": 275.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "warmup",
+      "duration_ms": 865.98,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "warmup",
+      "duration_ms": 557.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "warmup",
+      "duration_ms": 221.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "warmup",
+      "duration_ms": 249.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "warmup",
+      "duration_ms": 370.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "warmup",
+      "duration_ms": 1474.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "warmup",
+      "duration_ms": 249.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "warmup",
+      "duration_ms": 598.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "warmup",
+      "duration_ms": 921.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "warmup",
+      "duration_ms": 1159.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "warmup",
+      "duration_ms": 592.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "warmup",
+      "duration_ms": 222.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "warmup",
+      "duration_ms": 268.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "warmup",
+      "duration_ms": 577.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "warmup",
+      "duration_ms": 225.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "warmup",
+      "duration_ms": 263.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "warmup",
+      "duration_ms": 836.99,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "warmup",
+      "duration_ms": 284.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "warmup",
+      "duration_ms": 218.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "warmup",
+      "duration_ms": 246.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "warmup",
+      "duration_ms": 357.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "warmup",
+      "duration_ms": 1074.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "warmup",
+      "duration_ms": 113,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "warmup",
+      "duration_ms": 698.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "warmup",
+      "duration_ms": 870,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "warmup",
+      "duration_ms": 1168.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 579.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 205,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 242.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 562.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 209,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 246.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 834.16,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 269.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 222,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 250.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 335.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 1081.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 110.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 614.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 871.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 863.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 689.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 286.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 348.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 646.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 227,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 354.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 834.65,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 275.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 224.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 256.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 353.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 1082,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 154.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 598.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 872.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 1169.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 347.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 261,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 289.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 751.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 212.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 317.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 1886.17,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 278.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 226.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 260.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 372.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 1084.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 112.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 731,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 924.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 872.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 600.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 229.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 278.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 625.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 255,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 307.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 841.14,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 318.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 222.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 260.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 368.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 1083.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 157.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 581,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 887.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 879.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 771.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 233.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 291.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 720.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 310.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 490.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 837.73,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 547,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 211.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 243.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 349.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 1084,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 122.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 632.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 887.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 1199.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 628.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 247.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 294.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 293.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 208.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 263.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 847.45,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 544.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 210.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 237.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 1337.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 1109.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 190.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 574.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 889.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 872,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 587.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 217.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 252.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 576.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 221.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 258.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 833.24,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 280.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 218.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 254.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 360.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 1871.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 127.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 615.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 888.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 1162.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 592.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 220.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 260,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 572.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 213.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 257,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 840.81,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 277.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 217.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 253.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 378.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 1125.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 133.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 614.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 1101.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 935.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 989.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 431,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 738.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 603.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 217,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 279,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 869.48,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 392.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 243.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 290.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 354.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 1079.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 195.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 764.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 887.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 1169.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 423.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 279.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 343.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 625.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 216.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 316.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 834.51,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 282.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 205.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 256.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 326.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 1089.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 152,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 715,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 863.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 1197.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 615.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 224.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 277.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 590.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 214.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 254.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 849.67,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 285.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 222.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 254.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 377.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 1104.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 236.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 1209.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 903.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 851.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 578.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 213.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 258,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 590.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 218.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 273.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 844.64,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 283.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 226,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 261.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 363.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 1089,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 139.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 610.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 889.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 1162.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 598.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 232,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 278.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 574.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 209.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 250.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 833.15,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 271.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 216.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 250.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 362.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 1084.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 178.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 598.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 889.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 1187.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 302.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 217.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 252.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 580,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 212.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 286.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 830.12,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 578.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 206.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 268.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 326.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 1087.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 165.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 597.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 919.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 1267.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 702.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 275.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 325.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 604.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 216.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 276.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 900.73,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 560,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 272.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 422,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 669.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 2995.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 206.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 1210.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 952.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 959.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 458.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 295.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 375.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 643,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 251.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 406.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 931.17,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 477.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 262.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 364.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 536.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 1078.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 233.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 608,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 871.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 879.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 742.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 326.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 447.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 391.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 228.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 347.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 930,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 401.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 216.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 272.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 345.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 1117.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 261.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 715,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 873.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 887.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 549.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 323.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 465.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 678.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 223.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 340.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 961.17,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 430,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 280.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 383,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 398,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 1114.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 285.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 812.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 965.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 943.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 399.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 215.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 320.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 643.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 219.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 271.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 940.55,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 337.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 237.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 295.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 430.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 1104.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 237.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 801.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 959,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 1108.5,
+      "ok": true
+    },
+    {
+      "operation": "browser.home",
+      "phase": "measured",
+      "duration_ms": 1284.1,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.ttfb",
+      "phase": "measured",
+      "duration_ms": 286.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.home.load",
+      "phase": "measured",
+      "duration_ms": 348.6,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests",
+      "phase": "measured",
+      "duration_ms": 1560,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.ttfb",
+      "phase": "measured",
+      "duration_ms": 486.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.requests.load",
+      "phase": "measured",
+      "duration_ms": 1357.2,
+      "ok": true
+    },
+    {
+      "operation": "browser.create_request",
+      "phase": "measured",
+      "duration_ms": 1143.71,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail",
+      "phase": "measured",
+      "duration_ms": 507.8,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.ttfb",
+      "phase": "measured",
+      "duration_ms": 249.3,
+      "ok": true
+    },
+    {
+      "operation": "browser.request_detail.load",
+      "phase": "measured",
+      "duration_ms": 348.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.next_request",
+      "phase": "measured",
+      "duration_ms": 621.7,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_note",
+      "phase": "measured",
+      "duration_ms": 1092.4,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_card",
+      "phase": "measured",
+      "duration_ms": 298.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.open_full_record",
+      "phase": "measured",
+      "duration_ms": 613.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.save_contact_close",
+      "phase": "measured",
+      "duration_ms": 919.9,
+      "ok": true
+    },
+    {
+      "operation": "browser.undo",
+      "phase": "measured",
+      "duration_ms": 910.5,
+      "ok": true
+    }
+  ]
+}
