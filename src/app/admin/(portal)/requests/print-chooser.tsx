@@ -75,11 +75,9 @@ function selectionSummary(statuses: readonly RequestStatus[], counts: StatusCoun
 export function PrintChooser({
   statusCounts,
   triggerClassName,
-  triggerLabel = "Print",
 }: Readonly<{
   statusCounts: StatusCounts;
   triggerClassName: string;
-  triggerLabel?: string;
 }>) {
   const titleId = useId();
   const summaryId = useId();
@@ -151,7 +149,7 @@ export function PrintChooser({
         className={triggerClassName}
       >
         <Printer data-icon="inline-start" />
-        {triggerLabel}
+        Print
       </button>
       <dialog
         ref={dialogRef}

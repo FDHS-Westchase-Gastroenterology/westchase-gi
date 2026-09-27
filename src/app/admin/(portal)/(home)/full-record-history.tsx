@@ -4,6 +4,11 @@ import { Popover } from "@base-ui/react/popover";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ComponentType, FocusEvent, KeyboardEvent, ReactNode, SVGProps } from "react";
 
+import type {
+  HistoryDay,
+  HistoryIcon,
+  HistoryRow,
+} from "@/app/admin/(portal)/requests/record-sections";
 import {
   Archive,
   CalendarCheck,
@@ -22,7 +27,6 @@ import {
   ScrollBar,
 } from "@/components/ui/scroll-area";
 
-import type { HistoryDay, HistoryIcon, HistoryRow } from "@/app/admin/(portal)/requests/record-sections";
 import { CARD } from "./sheet-coexistence";
 
 /* The sheet's history (Figma Ypf9ohpRcGWF5C9T9bSvWW, section 04): a

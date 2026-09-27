@@ -6,6 +6,7 @@ import type { MouseEvent as ReactMouseEvent } from "react";
 import { TableCell, TableRow } from "@/components/ui/table";
 
 import type { HomeLine } from "./home-line";
+import type { LandedPhase } from "./landed-request";
 import { LineStatusBadge } from "./parts/badge";
 import { ChevronGlyph, PhoneGlyph } from "./parts/glyphs";
 import { HomePopover, HomePopoverContent, HomePopoverTrigger } from "./parts/popover";
@@ -55,6 +56,7 @@ export function LineRow({
   fullOpen,
   selected,
   settled,
+  landed,
   onOpenChange,
   onOpenFull,
   onSettled,
@@ -68,6 +70,8 @@ export function LineRow({
   fullOpen: boolean;
   selected: boolean;
   settled: boolean;
+  /** Just added from Home (landed-request.ts): washed amber while its toast shows. */
+  landed: LandedPhase | null;
   onOpenChange: (open: boolean) => void;
   onOpenFull: (instant: boolean) => void;
   onSettled: (id: string) => void;
@@ -112,6 +116,7 @@ export function LineRow({
       data-selected={selected || undefined}
       data-open={open || undefined}
       data-settled={settled || undefined}
+      data-landed={landed ?? undefined}
       className="wgi-list-row"
       onClick={(event) => {
         /* The whole row opens the record; its phone link stays a dial, its

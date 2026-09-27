@@ -7,8 +7,10 @@ import type { ComponentProps } from "react";
 /*
  * Brand adaptation of the shadcn Input: the committed field recipe.
  * White paper, a 1.5px line-2 border on the brand radius-sm, teal focus
- * (teal's one meaning: the finger tracking a line), destructive reserved
- * for the invalid state, and the 44px minimum target.
+ * (teal's one meaning: the finger tracking a line), and the 44px minimum
+ * target. Invalid is a coral-600 stroke with a coral-100 halo; the fix
+ * under the field is set in coral-700 (--destructive), never coral-600,
+ * which is too light for text (design-system/forms.md "Fields").
  *
  * Motion is decoupled onto its own axis (design-system/components.md
  * "Component API rules"): the base string carries none. `wgi` (default) is the authored
@@ -27,10 +29,12 @@ const inputVariants = cva(
     "file:inline-flex file:border-0 file:bg-transparent file:text-sm file:font-semibold file:text-foreground",
     // Focus: teal, the finger tracking a line
     "focus-visible:border-teal-ink focus-visible:ring-3 focus-visible:ring-teal/25",
+    // Read-only: the draft is held while it saves; quiet paper, no text cursor
+    "read-only:cursor-default read-only:bg-slate-50",
     // Disabled state
     "disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50",
     // Invalid state
-    "aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20",
+    "aria-invalid:border-coral-600 aria-invalid:ring-3 aria-invalid:ring-coral-100",
   ],
   {
     variants: {

@@ -20,15 +20,15 @@ What must the reader do with this surface?
 **Every modal is one modal.** A staff-portal modal is a native `<dialog>` opened with
 `showModal()` and dressed in the `.portal-confirm-dialog` parts of `portal-workbench.css`. The top
 layer supplies the backdrop, inertness and Escape's `cancel` event; CSS animates it with
-`transition-behavior: allow-discrete`. There are four: `PrintChooser`, `AddAppointmentDialog`
-(hosting `StaffRequestForm`), `RemoveRecipientDialog` and the request form's discard confirmation.
-The shadcn Dialog stays unadopted ([a standing finding](adoption.md#standing-findings)); a wrapper
-component is [roadmap item 9](roadmap.md#9-a-native-dialog-component).
+`transition-behavior: allow-discrete`. There are four: `PrintChooser`, `RemoveRecipientDialog`, and
+the staff home's glass sheets (`.wgi-glass-sheet`, [inks](tokens.md#recorded-exceptions))
+`AddAppointmentDialog` (hosting `StaffRequestForm`) and `PrintRequestsSheet`. The shadcn Dialog stays
+unadopted ([a standing finding](adoption.md#standing-findings)); a wrapper is [item 9](roadmap.md#9-a-native-dialog-component).
 
 - **Parts.** `-body` and `-actions` are siblings, never nested. `-body` holds the `-title`, or a
   `-heading` pairing it with a `-close` button, and the copy; `-actions` stacks full-width
   buttons, then a right-aligned row from 40rem. The dialog is `min(92vw, 28rem)` by at most
-  `min(90dvh, 32rem)`; `portal-add-appointment` is 40rem by 46rem.
+  `min(90dvh, 32rem)`; the Add sheet is 35rem by 52rem and the Print sheet 70rem by 43.75rem.
 - **Actions.** The safe answer is a `Button`. Beside it sits at most one text action: `-destructive`
   (amber, bordered) to remove something, or `-discard` (teal text) to cancel a choice or abandon a
   draft. Neither class sets a height or a disabled look, so every call site adds `min-h-11`, and one
@@ -36,10 +36,10 @@ component is [roadmap item 9](roadmap.md#9-a-native-dialog-component).
   too until the action settles (`RemoveRecipientDialog` in `recipients-manager.tsx#L167`).
 - **Motion.** It rises 0.75rem from `scale(0.97)`, transform on arriving and the rest on leaving,
   and closes toward 0.4rem and `scale(0.985)` over a `rgba(20, 32, 45, 0.48)` scrim that fades in
-  over 220ms. It stays centered: a modal answers the whole page.
+  over 220ms. It stays centered. A glass sheet's frost grows in on `--pm-spring` over an 18% scrim.
 
 **Keyboard opens and closes instantly.** Set `data-instant` from `event.detail === 0` in the trigger's
-`onClick` and dialog's `onClickCapture`, and in `onCancel` to skip dialog and backdrop transitions.
+`onClick`, the dialog's `onClickCapture` (glass sheets: pointer/key-down capture) and `onCancel`.
 
 **Focus lands inside in the same task as `showModal()`** on the safe next step: Cancel/Keep editing,
 the chooser's primary action or the form name field. Never defer to a frame in a hidden tab. Tab
@@ -48,13 +48,13 @@ the focusable list heading after row removal (`finishRemoveDialog`); failures re
 inline ([forms.md](forms.md#reporting-a-result)).
 
 **Only Escape and dialog controls close it.** Scrim presses do nothing. A dialog can prevent Escape
-while a removal is in flight or a draft is dirty; `onCancel` runs its Close path. The discard
-confirmation keeps editing on Escape, and the add form can open that nested confirmation.
+while a removal is in flight or a draft is dirty; `onCancel` runs its Close path. On a typed draft,
+Escape or Cancel turns the Add sheet's footer into the discard question; Escape again keeps editing.
 
 `PrintChooser` follows every rule above; copy it, except that a dialog built for one chosen target
-opens from an effect keyed on it (`recipients-manager.tsx`). `RemoveRecipientDialog` and the
-discard confirmation do not set `data-instant`, `AddAppointmentDialog` does not wrap Tab: roadmap
-item 9. `PortalTour` runs on legacy `overlay-rise` keyframes: roadmap item 7.
+opens from an effect keyed on it (`recipients-manager.tsx`). `RemoveRecipientDialog` does not set
+`data-instant`, `AddAppointmentDialog` does not wrap Tab: roadmap item 9. `PortalTour` runs on
+legacy `overlay-rise` keyframes: roadmap item 7.
 
 ```tsx
 // Correct (print-chooser.tsx, shortened): instant from the keyboard, Escape through Close

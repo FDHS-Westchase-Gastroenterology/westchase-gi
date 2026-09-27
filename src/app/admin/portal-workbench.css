@@ -1154,157 +1154,221 @@
     }
   }
 
+  /* The Add request form (issue #332, A1–A5). One well holds every field,
+     the privacy note and the alert, so patient details always sit on solid
+     paper; the footer trails it. On the standalone route the well is a
+     plain white panel under the page header. On Home the same form sits in
+     the glass sheet, and home.css "Glass sheets" insets the well into the
+     glass and pins the footer. */
   .portal-request-create {
-    max-width: 55rem;
+    max-width: 40rem;
   }
 
-  .portal-request-form-sheet {
-    overflow: hidden;
+  .portal-request-form {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .portal-request-form-well {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
     border: 1px solid var(--color-line-2);
-    border-radius: var(--radius);
+    border-radius: var(--radius-lg);
     background: var(--portal-surface);
+    padding: 1.25rem;
   }
 
-  .portal-request-form-boundary {
-    border-bottom: 1px solid var(--color-line-2);
-    background: color-mix(in oklch, var(--color-amber-soft) 55%, white);
-    padding: 1rem 1.15rem;
-  }
-
-  .portal-request-form-boundary strong {
-    color: var(--color-ink);
-    font-size: 0.9rem;
-    font-weight: 850;
-  }
-
-  .portal-request-form-boundary p {
-    max-width: 66ch;
-    margin-top: 0.2rem;
-    color: var(--color-body);
-    font-size: 0.82rem;
-    line-height: 1.55;
-  }
-
-  .portal-request-form-alert {
-    margin: 1rem 1.15rem 0;
-    border: 1px solid color-mix(in oklch, oklch(0.5 0.19 25) 45%, white);
-    border-radius: var(--radius-sm);
-    background: color-mix(in oklch, oklch(0.96 0.025 25) 82%, white);
-    padding: 0.85rem 1rem;
-    color: var(--color-body);
-    font-size: 0.84rem;
-    line-height: 1.5;
-  }
-
-  .portal-request-form-alert strong {
-    display: block;
-    color: var(--color-ink);
-    font-weight: 850;
-  }
-
-  .portal-request-form-alert p {
-    margin-top: 0.15rem;
-  }
-
-  .portal-request-form-alert a {
-    display: inline-flex;
-    min-height: 2.75rem;
-    align-items: center;
-    margin-top: 0.25rem;
-    color: var(--color-teal-ink);
-    font-weight: 800;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-  }
-
-  .portal-request-form-section {
-    min-width: 0;
-    padding: 1.3rem 1.15rem 1.4rem;
-  }
-
-  .portal-request-form-section + .portal-request-form-section {
-    border-top: 1px solid var(--color-line-2);
-  }
-
-  .portal-request-form-section legend {
-    float: left;
-    width: 100%;
-    color: var(--color-ink);
-    font-size: 1.02rem;
-    font-weight: 900;
-    letter-spacing: -0.015em;
-  }
-
-  .portal-request-form-section legend + * {
-    clear: both;
-  }
-
-  .portal-request-form-section-copy {
-    max-width: 62ch;
-    padding-top: 0.2rem;
-    color: var(--color-muted-ink);
-    font-size: 0.82rem;
-    line-height: 1.5;
-  }
-
-  .portal-request-form-grid {
+  .portal-request-form-pair {
     display: grid;
-    gap: 1.1rem;
-    margin-top: 1rem;
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 30rem) {
+    .portal-request-form-pair {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
   }
 
   .portal-request-field {
     min-width: 0;
   }
 
-  /* A locked draft (unavailable/conflict) must stay readable while staff
-     compare values: full ink, muted paper, no dimming. */
-  .portal-request-form-sheet[data-draft-locked="true"]
-    :is([data-slot="input"], [data-slot="native-select"], [data-slot="textarea"]):is(
-      [readonly],
-      :disabled
-    ) {
-    cursor: default;
-    background: var(--portal-surface-muted);
+  .portal-request-field-optional {
+    color: var(--color-muted-ink);
+    font-size: 0.8125rem;
+    font-weight: 400;
+  }
+
+  /* A field's one note line: the hint at rest, the fix once refused. When a
+     fix arrives under a field that had no hint, the line opens its row on
+     the base beat and the words fade in on the fast one, so the fields
+     below make room before the fix is read. Swapping hint for fix, or one
+     fix for another, keeps the row and fades only the words (the fix is
+     keyed on its text). Under reduced motion the row opens at once and the
+     words keep the cross-fade (globals.css, beside the blanket reset). */
+  .portal-request-field-note {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows var(--motion-base-duration) var(--motion-standard);
+  }
+
+  /* Only a line born with a fix opens; a hint is simply there when the
+     form mounts, so nothing grows while the sheet arrives. */
+  @starting-style {
+    .portal-request-field-note:has(> [data-slot="field-error"]) {
+      grid-template-rows: 0fr;
+    }
+  }
+
+  .portal-request-field-note > * {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .portal-request-field-note > [data-slot="field-error"] {
     opacity: 1;
+    transition: opacity var(--motion-fast-duration) var(--motion-standard);
+  }
+
+  @starting-style {
+    .portal-request-field-note > [data-slot="field-error"] {
+      opacity: 0;
+    }
+  }
+
+  /* The guard against clinical detail, kept word for word: a quiet amber
+     panel on the well, directly above the scheduling note it governs. */
+  .portal-request-form-boundary {
+    border: 1px solid var(--color-amber-300);
+    border-radius: var(--radius-sm);
+    background: var(--color-amber-50);
+    padding: 0.75rem 0.875rem;
+    color: var(--color-slate-900);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+
+  .portal-request-form-boundary strong {
+    color: var(--color-slate-950);
+    font-weight: 700;
+  }
+
+  .portal-request-form-boundary p {
+    max-width: 62ch;
+    margin-top: 0.125rem;
+  }
+
+  /* A4: the coral alert at the top of the well. Its row opens on the base
+     beat so the fields step down rather than jump, and its paint fades in
+     on the fast one. It takes focus, so it wears the teal ring then. */
+  .portal-request-form-alert-reveal {
+    display: grid;
+    grid-template-rows: 1fr;
+    transition: grid-template-rows var(--motion-base-duration) var(--motion-standard);
+  }
+
+  @starting-style {
+    .portal-request-form-alert-reveal {
+      grid-template-rows: 0fr;
+    }
+  }
+
+  .portal-request-form-alert {
+    display: grid;
+    min-height: 0;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 0.625rem;
+    overflow: hidden;
+    border: 1px solid var(--color-coral-300);
+    border-radius: 0.75rem;
+    background: linear-gradient(var(--color-coral-50), var(--color-coral-100));
+    padding: 0.75rem 0.875rem;
+    color: var(--color-coral-800);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    opacity: 1;
+    transition: opacity var(--motion-fast-duration) var(--motion-standard);
+  }
+
+  @starting-style {
+    .portal-request-form-alert {
+      opacity: 0;
+    }
+  }
+
+  .portal-request-form-alert > svg {
+    width: 1rem;
+    height: 1rem;
+    margin-top: 0.125rem;
+    color: var(--color-coral-700);
+  }
+
+  .portal-request-form-alert strong {
+    display: block;
+    color: var(--color-coral-900);
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+
+  .portal-request-form-alert p {
+    margin-top: 0.125rem;
   }
 
   .portal-request-form-footer {
     display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    border-top: 1px solid var(--color-line-2);
-    background: var(--portal-surface-muted);
-    padding: 1.15rem;
-  }
-
-  .portal-request-form-footer > p {
-    max-width: 54ch;
-    color: var(--color-muted-ink);
-    font-size: 0.8rem;
-    line-height: 1.5;
-  }
-
-  .portal-request-form-footer > p strong {
-    display: block;
-    margin-bottom: 0.15rem;
-    color: var(--color-ink);
-    font-weight: 850;
-  }
-
-  .portal-request-form-footer > div {
-    display: grid;
-    gap: 0.65rem;
-  }
-
-  .portal-request-form-footer [data-slot="button"] {
-    width: 100%;
-    justify-content: center;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding-block-start: 1rem;
   }
 
   .portal-request-form-footer a[aria-disabled="true"] {
     pointer-events: none;
     opacity: 0.55;
+  }
+
+  /* A5: the discard question, asked in place of the footer on solid coral
+     paper. It crossfades in on the fast beat. */
+  .portal-request-discard {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+    margin-block-start: 0.75rem;
+    border-radius: 1rem;
+    background: var(--color-coral-50);
+    padding: 0.75rem 0.75rem 0.75rem 1rem;
+    opacity: 1;
+    transition: opacity var(--motion-fast-duration) var(--motion-standard);
+  }
+
+  @starting-style {
+    .portal-request-discard {
+      opacity: 0;
+    }
+  }
+
+  .portal-request-discard-copy strong {
+    display: block;
+    color: var(--color-slate-950);
+    font-size: 0.9375rem;
+    font-weight: 600;
+  }
+
+  .portal-request-discard-copy p {
+    color: var(--color-slate-800);
+    font-size: 0.8125rem;
+  }
+
+  .portal-request-discard-actions {
+    display: flex;
+    gap: 0.625rem;
   }
 
   .portal-request-created {
@@ -1355,45 +1419,6 @@
     background: var(--color-amber-soft);
   }
 
-  @media (min-width: 40rem) {
-    .portal-request-form-boundary,
-    .portal-request-form-section,
-    .portal-request-form-footer {
-      padding-inline: 1.5rem;
-    }
-
-    .portal-request-form-alert {
-      margin-inline: 1.5rem;
-    }
-
-    .portal-request-form-grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 1.15rem 1.25rem;
-    }
-
-    .portal-request-field--wide {
-      grid-column: 1 / -1;
-    }
-
-    .portal-request-form-footer {
-      flex-direction: row;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1.5rem;
-    }
-
-    .portal-request-form-footer > div {
-      display: flex;
-      flex: none;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-
-    .portal-request-form-footer [data-slot="button"] {
-      width: auto;
-    }
-  }
-
   .portal-settings-form-summary {
     margin-top: 0.75rem;
     border-left: 3px solid var(--color-amber-deep);
@@ -1428,19 +1453,6 @@
     border-color: var(--color-teal-ink);
     background: var(--color-mint);
     color: var(--color-teal-ink);
-  }
-
-  /* A form needs more room than a confirmation, and a tall day needs the sheet
-     to scroll inside the dialog rather than push the page. The compound
-     selector outranks the .portal-confirm-dialog grammar declared further
-     down at equal specificity; a bare class loses to it. */
-  .portal-confirm-dialog.portal-add-appointment {
-    width: min(94vw, 40rem);
-    max-height: min(90dvh, 46rem);
-  }
-
-  .portal-add-appointment .portal-request-form-sheet {
-    margin-block-start: var(--ps-3);
   }
 
   .portal-print-chooser-primary {
@@ -2459,234 +2471,6 @@
     gap: 1.5rem;
   }
 
-  .portal-print-sheet {
-    width: 100%;
-    overflow: hidden;
-    border: 1px solid var(--color-line-2);
-    border-radius: var(--radius);
-    background: white;
-    color: #172b39;
-  }
-
-  .portal-print-sheet-header {
-    display: flex;
-    flex-direction: column;
-    gap: 0.8rem;
-    border-bottom: 3px solid var(--color-navy);
-    padding: 1.25rem;
-  }
-
-  .portal-print-sheet-header p {
-    color: var(--color-navy);
-    font-family: var(--font-display), Georgia, serif;
-    font-size: 0.95rem;
-    font-weight: 650;
-  }
-
-  .portal-print-sheet-header h2 {
-    margin-top: 0.15rem;
-    color: #172b39;
-    font-size: 1.55rem;
-    font-weight: 900;
-    letter-spacing: -0.02em;
-  }
-
-  .portal-print-sheet-header > div:last-child {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    color: #475a65;
-    font-size: 0.76rem;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .portal-print-sheet-header > div:last-child strong {
-    color: #172b39;
-    font-size: 0.85rem;
-  }
-
-  .portal-print-sheet > section {
-    padding: 1.15rem 1.25rem 0;
-  }
-
-  .portal-print-sheet section h3 {
-    margin-bottom: 0.6rem;
-    color: #28495d;
-    font-size: 0.78rem;
-    font-weight: 900;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-  }
-
-  .portal-print-fields {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    border-top: 1px solid #cdd7dc;
-  }
-
-  .portal-print-field {
-    min-width: 0;
-    border-bottom: 1px solid #cdd7dc;
-    padding: 0.6rem 0.45rem 0.65rem 0;
-  }
-
-  .portal-print-field:nth-child(even) {
-    border-left: 1px solid #cdd7dc;
-    padding-left: 0.75rem;
-  }
-
-  .portal-print-field--wide {
-    grid-column: 1 / -1;
-    border-left: 0 !important;
-    padding-left: 0 !important;
-  }
-
-  .portal-print-field dt {
-    color: #5b6c76;
-    font-size: 0.68rem;
-    font-weight: 800;
-  }
-
-  .portal-print-field dd {
-    overflow-wrap: anywhere;
-    margin-top: 0.14rem;
-    color: #172b39;
-    font-size: 0.9rem;
-    font-weight: 750;
-    line-height: 1.4;
-  }
-
-  .portal-print-fields--contact dd {
-    font-size: 0.98rem;
-  }
-
-  .portal-paper-handoff {
-    margin-top: 0.3rem;
-  }
-
-  .portal-paper-identity {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 0.25rem 1rem;
-    margin-bottom: 0.7rem;
-    border-block: 1px solid #cdd7dc;
-    padding-block: 0.4rem;
-    color: #172b39;
-    font-size: 0.72rem;
-  }
-
-  .portal-paper-identity > span {
-    font-weight: 900;
-  }
-
-  .portal-paper-identity > small {
-    color: #5b6c76;
-    overflow-wrap: anywhere;
-  }
-
-  .portal-paper-lines {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-  }
-
-  .portal-paper-lines p,
-  .portal-paper-follow-up {
-    min-height: 2.1rem;
-    border-bottom: 1px solid #172b39;
-    color: #5b6c76;
-    font-size: 0.7rem;
-    font-weight: 800;
-  }
-
-  .portal-paper-outcomes {
-    margin-top: 0.85rem;
-  }
-
-  .portal-paper-outcomes > p {
-    margin-bottom: 0.4rem;
-    color: #5b6c76;
-    font-size: 0.7rem;
-    font-weight: 800;
-  }
-
-  .portal-paper-outcomes ul {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.45rem 1rem;
-  }
-
-  .portal-paper-outcomes li {
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
-    color: #283d49;
-    font-size: 0.72rem;
-    line-height: 1.3;
-  }
-
-  .portal-paper-outcomes li > span {
-    width: 0.78rem;
-    height: 0.78rem;
-    flex: none;
-    border: 1px solid #172b39;
-  }
-
-  .portal-paper-later-outcome {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.45rem;
-    margin-top: 0.7rem;
-    color: #283d49;
-    font-size: 0.72rem;
-    line-height: 1.35;
-  }
-
-  .portal-paper-later-outcome > span {
-    width: 0.78rem;
-    height: 0.78rem;
-    flex: none;
-    border: 1px solid #172b39;
-  }
-
-  .portal-paper-follow-up {
-    width: 48%;
-    margin-top: 0.9rem;
-  }
-
-  .portal-paper-notes {
-    margin-top: 0.85rem;
-    color: #5b6c76;
-    font-size: 0.7rem;
-    font-weight: 800;
-  }
-
-  .portal-paper-notes i {
-    display: block;
-    height: 1.55rem;
-    border-bottom: 1px solid #a6b3ba;
-  }
-
-  .portal-print-sheet-footer {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 0.4rem 1rem;
-    margin: 1rem 1.25rem 0;
-    border-top: 1px solid #cdd7dc;
-    padding-block: 0.65rem;
-    color: #657680;
-    font-size: 0.62rem;
-    overflow-wrap: anywhere;
-  }
-
-  .portal-print-confidentiality {
-    flex-basis: 100%;
-    color: #172b39;
-    font-weight: 850;
-  }
-
   .portal-print-follow-up {
     display: flex;
     flex-direction: column;
@@ -2711,39 +2495,10 @@
       align-items: center;
       justify-content: space-between;
     }
-
-    .portal-print-sheet-header {
-      flex-direction: row;
-      align-items: flex-start;
-      justify-content: space-between;
-      padding: 1.4rem 1.6rem;
-    }
-
-    .portal-print-sheet-header > div:last-child {
-      align-items: flex-end;
-      text-align: end;
-    }
-
-    .portal-print-sheet > section {
-      padding-inline: 1.6rem;
-    }
-
-    .portal-print-sheet-footer {
-      margin-inline: 1.6rem;
-    }
   }
-}
-
-@page request-packet {
-  size: letter portrait;
-  margin: 0.38in;
 }
 
 @media print {
-  body.portal-scope:has(.portal-print-packet) {
-    page: request-packet;
-  }
-
   html,
   body.portal-scope {
     width: auto !important;
@@ -2774,119 +2529,6 @@
 
   .portal-print-packet {
     display: block !important;
-  }
-
-  .portal-print-sheet {
-    box-sizing: border-box;
-    min-height: 10.24in;
-    break-after: page;
-    overflow: visible;
-    border: 0 !important;
-    border-radius: 0 !important;
-    print-color-adjust: exact;
-  }
-
-  .portal-print-sheet:last-child {
-    break-after: auto;
-  }
-
-  .portal-print-sheet-header {
-    padding-top: 0;
-  }
-
-  .portal-print-sheet > section {
-    break-inside: auto;
-  }
-
-  .portal-print-sheet > section:first-of-type,
-  .portal-paper-handoff {
-    break-inside: avoid;
-  }
-
-  .portal-print-field--message dd {
-    column-count: 2;
-    column-gap: 0.25in;
-    font-size: 9pt;
-    line-height: 1.3;
-  }
-
-  /* Keep an unusually long patient note and its routing area on one physical
-     handoff sheet. The full message remains present; only that sheet spends
-     density to preserve the one-request/one-sheet contract. */
-  .portal-print-sheet--dense .portal-print-sheet-header {
-    gap: 0.35rem;
-    padding-bottom: 0.65rem;
-  }
-
-  .portal-print-sheet--dense > section {
-    padding-top: 0.55rem;
-  }
-
-  .portal-print-sheet--dense section h3 {
-    margin-bottom: 0.35rem;
-  }
-
-  .portal-print-sheet--dense .portal-print-field {
-    padding-block: 0.34rem 0.38rem;
-  }
-
-  .portal-print-sheet--dense .portal-print-field--message dd {
-    font-size: 7.5pt;
-    line-height: 1.15;
-  }
-
-  .portal-print-sheet--dense .portal-paper-identity {
-    margin-bottom: 0.35rem;
-    padding-block: 0.25rem;
-  }
-
-  .portal-print-sheet--dense .portal-paper-lines p,
-  .portal-print-sheet--dense .portal-paper-follow-up {
-    min-height: 1.35rem;
-  }
-
-  .portal-print-sheet--dense .portal-paper-outcomes {
-    margin-top: 0.45rem;
-  }
-
-  .portal-print-sheet--dense .portal-paper-later-outcome,
-  .portal-print-sheet--dense .portal-paper-follow-up,
-  .portal-print-sheet--dense .portal-paper-notes {
-    margin-top: 0.4rem;
-  }
-
-  .portal-print-sheet--dense .portal-paper-notes i {
-    height: 1.05rem;
-  }
-
-  .portal-print-sheet--dense .portal-print-sheet-footer {
-    margin-top: 0.45rem;
-    padding-block: 0.35rem;
-  }
-
-  .portal-request-record {
-    display: contents;
-    border: 0;
-    background: transparent;
-  }
-
-  .portal-request-details,
-  .portal-request-notes,
-  .portal-request-history {
-    margin: 14pt 0 0;
-    border: 1pt solid #777;
-    border-radius: 0;
-    background: white;
-  }
-
-  .portal-request-contact,
-  .portal-request-contact-email,
-  .portal-request-contact-unavailable {
-    background: white;
-  }
-
-  .portal-workflow-shell {
-    display: none !important;
   }
 }
 

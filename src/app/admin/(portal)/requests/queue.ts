@@ -79,6 +79,7 @@ export interface RequestDetailRow {
   message: string | null;
   locale: string;
   created_at: string;
+  source_path: string;
 }
 
 const requestDetailSchema = z.object({
@@ -91,6 +92,7 @@ const requestDetailSchema = z.object({
   message: z.string().nullable(),
   locale: z.string(),
   created_at: z.string(),
+  source_path: z.string(),
 }) satisfies z.ZodType<RequestDetailRow>;
 
 /**
@@ -104,7 +106,9 @@ export async function fetchRequestDetail(
 ): Promise<RequestDetailRow | null> {
   const { data, error } = await db
     .from("requests")
-    .select("id, name, phone, email, location, preferred_time, message, locale, created_at")
+    .select(
+      "id, name, phone, email, location, preferred_time, message, locale, created_at, source_path",
+    )
     .eq("id", requestId)
     .maybeSingle();
   if (error) throw new Error("Request detail read failed");

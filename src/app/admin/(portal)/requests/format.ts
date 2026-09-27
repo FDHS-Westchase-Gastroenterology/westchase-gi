@@ -91,16 +91,29 @@ export function formatReceived(iso: string, withYear = false): string {
   return (withYear ? dateTimeWithYear : dateTime).format(date);
 }
 
-export const LOCATION_LABELS = {
-  any: "Either office",
+/* The choice words, as the Add sheet's segmented controls offer them
+   beside their "Office" and "Time" labels. The list and the printed page
+   read the same words with the noun the label would have given them. */
+export const LOCATION_CHOICES = {
+  any: "Either",
   tampa: "Tampa",
   lutz: "Lutz",
 } as const satisfies Record<RequestLocation, string>;
 
-export const TIME_LABELS = {
-  any: "Any time",
+export const TIME_CHOICES = {
+  any: "Any",
   morning: "Morning",
   afternoon: "Afternoon",
+} as const satisfies Record<RequestTime, string>;
+
+export const LOCATION_LABELS = {
+  ...LOCATION_CHOICES,
+  any: `${LOCATION_CHOICES.any} office`,
+} as const satisfies Record<RequestLocation, string>;
+
+export const TIME_LABELS = {
+  ...TIME_CHOICES,
+  any: `${TIME_CHOICES.any} time`,
 } as const satisfies Record<RequestTime, string>;
 
 export const LOCALE_LABELS = {

@@ -46,12 +46,14 @@ const recordRowSchema = z.object({
 /* A batched `requests` row: the record's columns, parsed here, with the
    work-surface columns kept for composeRequestWorkSurface to parse. */
 const batchRowSchema = recordRowSchema.loose();
-type RecordRow = z.infer<typeof recordRowSchema>;
+export type RecordRow = z.infer<typeof recordRowSchema>;
 type BatchRow = z.infer<typeof batchRowSchema>;
 
 const requestIdRowSchema = z.object({ request_id: z.string() });
 
-function composeFullRecord(
+/** The full record from reads a caller already holds: the request's own
+    columns, its work surface and the staff name map. */
+export function composeFullRecord(
   row: RecordRow,
   // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the work surface carries workflow history entries whose types cannot be made readonly
   surface: RequestWorkSurface,

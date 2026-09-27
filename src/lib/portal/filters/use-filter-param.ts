@@ -3,7 +3,7 @@
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useMemo } from "react";
 
-import { readActiveFilters, writeActiveFilters } from "./index";
+import { readActiveFilters, withParam, writeActiveFilters } from "./index";
 import type { ActiveFilter, FilterKey } from "./types";
 
 /* Provider-less hooks (brief §4.3): a filter's value is a pure function of
@@ -31,16 +31,7 @@ export function useActiveFilters(): ActiveFilterControls {
 
   const setParam = useCallback(
     (key: FilterKey, raw: string | null) => {
-      const current = readActiveFilters(window.location.search);
-      const index = current.findIndex((entry) => entry.key === key);
-      let next: ActiveFilter[];
-      if (raw === null) {
-        next = current.filter((entry) => entry.key !== key);
-      } else if (index >= 0) {
-        next = current.map((entry, at) => (at === index ? { key, raw } : entry));
-      } else {
-        next = [...current, { key, raw }];
-      }
+      const next = withParam(readActiveFilters(window.location.search), key, raw);
       replaceSearch(pathname, writeActiveFilters(window.location.search, next));
     },
     [pathname],

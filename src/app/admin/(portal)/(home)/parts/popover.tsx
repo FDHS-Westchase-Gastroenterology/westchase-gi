@@ -2,13 +2,25 @@
 
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import { cn } from "cn";
+import { createContext, use } from "react";
+import type { RefObject } from "react";
 
 /* Fresh conversion of the stock registry Popover for the home dashboard
    (portal-home-redesign-brief §4.5): the same Base UI skeleton, repainted
    through the portal bridge and given this surface's own motion — 160ms in,
    120ms out on the strong ease-out, growing from scale(0.95) at the
    trigger's origin (never from nothing). Paint and motion live in home.css
-   under `.wgi-popover`. */
+   under `.wgi-popover`.
+
+   A popover portals to the body, except inside a modal dialog: the body
+   is inert behind `showModal()` and sits below the top layer, so the Print
+   sheet hands its own dialog down through `HomePopoverContainer` and the
+   popovers of the filter bar inside it portal there instead. */
+
+const PopoverContainerContext = createContext<RefObject<HTMLElement | null> | null>(null);
+
+/** Where the popovers below portal to; the body when nothing provides one. */
+const HomePopoverContainer = PopoverContainerContext;
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function HomePopover(props: PopoverPrimitive.Root.Props) {
@@ -33,8 +45,9 @@ function HomePopoverContent({
     PopoverPrimitive.Positioner.Props,
     "align" | "alignOffset" | "anchor" | "side" | "sideOffset"
   >) {
+  const container = use(PopoverContainerContext);
   return (
-    <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Portal container={container ?? undefined}>
       <PopoverPrimitive.Positioner
         /* The list row anchors the card when the trigger is only the
            chevron at the row's end; without an anchor the popup positions
@@ -64,4 +77,4 @@ function HomePopoverContent({
   );
 }
 
-export { HomePopover, HomePopoverContent, HomePopoverTrigger };
+export { HomePopover, HomePopoverContainer, HomePopoverContent, HomePopoverTrigger };

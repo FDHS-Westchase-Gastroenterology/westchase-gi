@@ -8,12 +8,16 @@ import {
   localeLabel,
   TIME_LABELS,
 } from "@/app/admin/(portal)/requests/format";
+import { detailsSummary, originLabel } from "@/app/admin/(portal)/requests/record-sections";
+import type {
+  LatestNote,
+  ReadOutcome,
+  RecordSections,
+} from "@/app/admin/(portal)/requests/record-sections";
 import { Button } from "@/components/ui/button";
 import type { FullRecord } from "@/lib/portal/request-record/contracts";
 
 import { RecordHistory } from "./full-record-history";
-import { detailsSummary, originLabel } from "@/app/admin/(portal)/requests/record-sections";
-import type { LatestNote, ReadOutcome, RecordSections } from "@/app/admin/(portal)/requests/record-sections";
 import { HomeCollapsible, HomeCollapsiblePanel, HomeCollapsibleTrigger } from "./parts/collapsible";
 import { ChevronGlyph } from "./parts/glyphs";
 

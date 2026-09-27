@@ -3,13 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { formatPhoneForDisplay, telHref } from "@/app/admin/(portal)/requests/format";
+import { attemptsLabel, recordSections } from "@/app/admin/(portal)/requests/record-sections";
 import { isMailbox } from "@/lib/portal/contracts";
 import type { FullRecord } from "@/lib/portal/request-record/contracts";
 import { presentationStatus } from "@/lib/portal/workflow/contracts";
 
 import { SheetBody } from "./full-record-sheet-body";
 import { useSheetResize } from "./full-record-sheet-geometry";
-import { attemptsLabel, recordSections } from "@/app/admin/(portal)/requests/record-sections";
 import { prefersText } from "./home-line";
 import type { HomeLine } from "./home-line";
 import { LineStatusBadge } from "./parts/badge";

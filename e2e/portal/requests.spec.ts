@@ -115,33 +115,42 @@ test.describe("portal requests operation", () => {
       await page.getByTestId("home-add-patient-request").click();
       await expect(page).toHaveURL(/\/admin\/?$/);
       await expect(page.getByTestId("add-appointment-dialog")).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Add appointment request" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Add request" })).toBeVisible();
       await expect(page.getByText("Keep this to scheduling.")).toBeVisible();
 
-      const form = page.getByRole("form", { name: "Add appointment request" });
+      const form = page.getByRole("form", { name: "Add request" });
       const name = form.locator("#staff-request-name");
       const phone = form.locator("#staff-request-phone");
       const idempotency = form.locator('input[name="idempotencyKey"]');
       const originalKey = await idempotency.inputValue();
 
-      // Server validation preserves the draft and the idempotency key. This
-      // Lets staff correct one field without retyping or risking a duplicate
-      // After an ambiguous save attempt.
+      // The sheet checks every field before it posts: the first one to fix
+      // Takes focus and names its fix, the draft and the idempotency key
+      // Stay, and nothing reaches the server until the fix is made.
       await name.fill(patientName);
       await form.locator("#staff-request-message").fill(schedulingNote);
       await page.getByTestId("submit-staff-request").click();
       await expect(phone).toBeFocused();
-      await expect(page.getByTestId("staff-request-error")).toContainText(
-        "Check the highlighted fields.",
-      );
+      await expect(phone).toHaveAttribute("aria-invalid", "true");
+      await expect(form).toContainText("Enter all 10 digits, with the area code.");
+      await expect(page.getByTestId("staff-request-error")).toHaveCount(0);
       await expect(name).toHaveValue(patientName);
       await expect(form.locator("#staff-request-message")).toHaveValue(schedulingNote);
       await expect(idempotency).toHaveValue(originalKey);
 
       await phone.fill("8135550188");
+      await expect(phone).not.toHaveAttribute("aria-invalid", "true");
       await form.locator("#staff-request-email").fill(patientEmail);
-      await form.locator("#staff-request-location").selectOption("lutz");
-      await form.locator("#staff-request-time").selectOption("afternoon");
+      await form
+        .getByRole("radiogroup", { name: "Office" })
+        .getByRole("radio", { name: "Lutz" })
+        .click();
+      await form
+        .getByRole("radiogroup", { name: "Time" })
+        .getByRole("radio", { name: "Afternoon" })
+        .click();
+      await expect(form.locator('input[name="location"]:checked')).toHaveValue("lutz");
+      await expect(form.locator('input[name="time"]:checked')).toHaveValue("afternoon");
       await page.getByTestId("submit-staff-request").click();
 
       await expect(page.getByTestId("add-appointment-dialog")).toBeHidden({ timeout: 15_000 });
@@ -758,13 +767,24 @@ test.describe("portal requests operation", () => {
     }
     expect(layout.x + layout.width).toBeLessThanOrEqual(390);
 
+    // In print the screen view steps aside for the printed page, which
+    // Wraps the same long content inside the paper.
     await page.emulateMedia({ media: "print" });
-    await expect(details).toHaveCSS("overflow", "visible");
-    const printMessage = await details.getByTestId("request-message").evaluate((element) => ({
-      clientWidth: element.clientWidth,
-      scrollWidth: element.scrollWidth,
-    }));
-    expect(printMessage.scrollWidth).toBeLessThanOrEqual(printMessage.clientWidth + 1);
+    await expect(details).toBeHidden();
+    const paper = page.locator(".request-detail-paper .printed-page");
+    await expect(paper).toBeVisible();
+    const printWrapping = await paper.evaluate((article) =>
+      [".printed-page-message", ".printed-page-grid-wide dd"].map((selector) => {
+        const element = article.querySelector(selector);
+        return element === null
+          ? { clientWidth: 0, scrollWidth: Number.POSITIVE_INFINITY }
+          : { clientWidth: element.clientWidth, scrollWidth: element.scrollWidth };
+      }),
+    );
+    for (const box of printWrapping) {
+      expect(box.scrollWidth).toBeLessThanOrEqual(box.clientWidth + 1);
+    }
+    await page.emulateMedia({ media: "screen" });
   });
 
   // The outcome surface's interaction contract: one native radio group.
@@ -1521,21 +1541,21 @@ test.describe("portal requests operation", () => {
     expect(afterPrintError).toBeNull();
     expect(afterPrint).toEqual(beforePrint);
 
-    // Print keeps the complete patient handoff and removes portal controls
-    // And delivery diagnostics. The request root must be allowed to paginate.
+    // Print is the printed page, the same call sheet the Print sheet makes:
+    // The patient handoff, the notes and the call history, and none of the
+    // Portal controls. The screen view is hidden in print.
     await page.emulateMedia({ media: "print" });
-    await expect(page.getByTestId("request-detail-name")).toBeVisible();
-    await expect(page.getByText(staged.message)).toBeVisible();
-    await expect(page.getByTestId("note-list")).toContainText(handoffText);
-    await expect(page.getByTestId("request-history")).toContainText("Left a voicemail");
+    const printed = page.locator(".request-detail-paper .printed-page");
+    await expect(printed).toBeVisible();
+    await expect(printed.locator(".printed-page-message")).toHaveText(staged.message);
+    await expect(printed.locator(".printed-page-notes")).toContainText(handoffText);
+    await expect(printed.locator(".printed-page-history")).toContainText("Left a voicemail");
+    await expect(printed.locator(".printed-page-call")).toBeVisible();
+    await expect(page.getByTestId("request-detail-name")).toBeHidden();
     await expect(page.getByTestId("workflow-panel")).toBeHidden();
     await expect(page.getByRole("link", { name: "Back to Requests" })).toBeHidden();
-    expect(
-      await page
-        .locator(".request-detail-print")
-        .evaluate((element) => getComputedStyle(element).breakInside),
-    ).toBe("auto");
     await page.emulateMedia({ media: "screen" });
+    await expect(printed).toBeHidden();
 
     const { data: events, error } = await db
       .from("request_events")

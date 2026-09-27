@@ -1,24 +1,16 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { filterByKey, filterPills, isDefaultView, withoutPill } from "@/lib/portal/filters";
-import type { ActiveFilter, FilterKey, FilterPill } from "@/lib/portal/filters";
 import { useActiveFilters } from "@/lib/portal/filters/use-filter-param";
 
 import { FilterBar } from "./filter-bar";
+import { ClosedTailNote, FilterEmptyState } from "./filter-empty-state";
 import { FullRecordSheet } from "./full-record-sheet";
-import {
-  applyFilters,
-  emptyStateMessage,
-  requestCount,
-  suggestFilters,
-  suggestionId,
-  suggestionRaw,
-} from "./home-line";
-import type { FilterSuggestion, HomeLine } from "./home-line";
+import { applyFilters, closedTailCut } from "./home-line";
+import type { HomeLine } from "./home-line";
 import { LineList } from "./line-list";
+import { useFilterEditing } from "./use-filter-editing";
 
 /* The working list under the header (brief §1): a filter bar, then one flat,
    attention-ordered list. Filters are the organizing principle — what the
@@ -34,13 +26,13 @@ interface HomeDashboardProps {
 }
 
 export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps) {
-  const { active, setParam: writeParam, clearAll } = useActiveFilters();
-
-  /* Pills the user removed, in removal order. A removed pill returns to the
-     bar as a ghost at the end, so the eye finds it where it went, and it is
-     the one kind of ghost allowed to widen or swap the rows rather than
-     narrow them; the ranking in `suggestFilters` owns everything else. */
-  const [demoted, setDemoted] = useState<readonly ActiveFilter[]>([]);
+  const filters = useActiveFilters();
+  const { active } = filters;
+  const { suggestions, setParam, activate, remove, clearFilters } = useFilterEditing(lines, nowMs, {
+    active,
+    writeParam: filters.setParam,
+    clearAll: filters.clearAll,
+  });
 
   const [openRowId, setOpenRowId] = useState<string | null>(null);
   /* The full-record sheet: which line, and whether the keyboard opened it
@@ -80,54 +72,7 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
 
   const filtered = useMemo(() => applyFilters(lines, active), [lines, active]);
 
-  const suggestions = useMemo(
-    () => suggestFilters(lines, active, nowMs, demoted),
-    [lines, active, nowMs, demoted],
-  );
-
-  /* A search pill is never a ghost, so there is nothing to remember for it. */
-  const demote = (entry: Readonly<ActiveFilter>) => {
-    if (entry.key === "search") return;
-    const id = suggestionId(entry);
-    setDemoted((queue) => [
-      ...queue.filter((candidate) => suggestionId(candidate) !== id),
-      { key: entry.key, raw: entry.raw },
-    ]);
-  };
-
-  const activate = (suggestion: FilterSuggestion) => {
-    /* A multi-select ghost joins its dimension's pills; a date ghost takes
-       the one Received pill's place, and that pill comes back as a ghost. */
-    const replaced =
-      filterByKey(suggestion.key).type === "multi-select"
-        ? undefined
-        : active.find((entry) => entry.key === suggestion.key);
-    writeParam(suggestion.key, suggestionRaw(active, suggestion));
-    const id = suggestionId(suggestion);
-    setDemoted((queue) => queue.filter((candidate) => suggestionId(candidate) !== id));
-    if (replaced !== undefined) demote(replaced);
-  };
-
-  /* Every path that takes a pill off the bar demotes it: the x button, an
-     editor's Any row or unchecked box, an emptied search. Each pill that
-     leaves lands at the end as its own ghost. */
-  const setParam = (key: FilterKey, raw: string | null) => {
-    const after = new Set(
-      filterPills(raw === null ? [] : [{ key, raw }]).map((pill) => pill.choice),
-    );
-    const gone = filterPills(active).filter((pill) => pill.key === key && !after.has(pill.choice));
-    writeParam(key, raw);
-    for (const pill of gone) demote(pill);
-  };
-
-  const remove = (pill: FilterPill) => {
-    setParam(pill.key, withoutPill(active, pill));
-  };
-
   const sheetLine = sheet === null ? null : (lines.find((line) => line.id === sheet.id) ?? null);
-  const showClosedNote =
-    closedCapped &&
-    active.some((entry) => entry.key === "status" && entry.raw.split(",").includes("closed"));
 
   return (
     <>
@@ -176,58 +121,18 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
           setSelectedId(id);
         }}
         onSettled={markSettled}
-        note={
-          showClosedNote ? (
-            <span className="wgi-list-note">
-              Showing the latest closed requests —{" "}
-              <Link href="/admin/requests?status=closed">older ones live in Requests</Link>.
-            </span>
-          ) : null
-        }
+        note={closedTailCut(active, closedCapped) ? <ClosedTailNote /> : null}
         empty={
-          lines.length === 0 ? (
-            <div className="wgi-empty" data-testid="sheet-empty">
-              <h2>No requests yet.</h2>
-              <p>
-                A website request lands here the moment a patient submits the form, and a contacted
-                request comes back on the day staff set for it.
-              </p>
-            </div>
-          ) : isDefaultView(active) ? (
-            /* The list as it opens holds the work due now; an empty one is
-               a caught-up desk, not a filter to debug. */
-            <div className="wgi-empty" data-testid="home-caught-up">
-              <h2>Nothing to call right now.</h2>
-              <p>
-                No new requests and no calls due. {requestCount(lines.length)} wait on a later date
-                or are already handled.
-              </p>
-              <button
-                type="button"
-                className="wgi-empty-clear"
-                onClick={() => {
-                  setParam("status", null);
-                }}
-              >
-                Show all requests
-              </button>
-            </div>
-          ) : (
-            <div className="wgi-empty" data-testid="home-no-results">
-              <h2>No results</h2>
-              <p>{emptyStateMessage(lines, active, nowMs)}</p>
-              <button
-                type="button"
-                className="wgi-empty-clear"
-                onClick={() => {
-                  clearAll();
-                  setDemoted([]);
-                }}
-              >
-                Clear filters
-              </button>
-            </div>
-          )
+          <FilterEmptyState
+            lines={lines}
+            active={active}
+            nowMs={nowMs}
+            testIdPrefix="home"
+            onShowAll={() => {
+              setParam("status", null);
+            }}
+            onClear={clearFilters}
+          />
         }
       />
 

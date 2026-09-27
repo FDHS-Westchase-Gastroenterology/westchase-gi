@@ -5,7 +5,7 @@ import { cva } from "class-variance-authority";
 import type { VariantProps } from "class-variance-authority";
 import { cn } from "cn";
 
-import { Check } from "@/components/icons";
+import { Check, Minus } from "@/components/icons";
 
 /*
  * Brand adaptation of the shadcn Checkbox, adopted from
@@ -26,10 +26,14 @@ import { Check } from "@/components/icons";
  *
  * Motion is decoupled onto its own axis (design-system/components.md
  * "Component API rules"): the base string carries none. `wgi` (default) paints the
- * checked and focus states at the registry micro temperament,
+ * checked, mixed and focus states at the registry micro temperament,
  * --motion-micro-duration on --motion-exit, the same beat as the button
  * recipe's hover tint. `shadcn` is the upstream registry's stock
  * transition-colors, verbatim.
+ *
+ * Mixed (`indeterminate`) wears the checked paint with a dash in place of
+ * the tick, for a select-all box over a partly chosen list (the Home Print
+ * sheet, (home)/print-requests-sheet.tsx).
  */
 const checkboxVariants = cva(
   [
@@ -39,6 +43,8 @@ const checkboxVariants = cva(
     "border border-input outline-none",
     // Checked: navy fill, on-dark check
     "data-checked:border-primary data-checked:bg-primary data-checked:text-primary-foreground",
+    // Mixed: the checked paint, a dash for the tick
+    "data-indeterminate:border-primary data-indeterminate:bg-primary data-indeterminate:text-primary-foreground",
     // Focus: teal ring on the box; inside a choice card the card wears it instead
     "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 group-has-[:focus-visible]/field-label:ring-0 group-has-[:focus-visible]/field-label:not-data-checked:border-input group-has-[:focus-visible]/field-label:data-checked:border-primary",
     // Disabled: the control and its field fade together
@@ -79,7 +85,8 @@ function Checkbox({
         data-slot="checkbox-indicator"
         className="grid place-content-center text-current transition-none [&>svg]:size-3.5"
       >
-        <Check />
+        <Check className="in-data-indeterminate:hidden" />
+        <Minus className="hidden in-data-indeterminate:block" />
       </CheckboxPrimitive.Indicator>
     </CheckboxPrimitive.Root>
   );
