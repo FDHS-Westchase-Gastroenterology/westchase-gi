@@ -58,41 +58,72 @@ function presentId(id: string | null | undefined): id is string {
   return id !== null && id !== undefined && id !== "";
 }
 
+/* The columns every work-surface read selects. The batched full-record read
+   selects the same columns plus `request_id`, so both paths hand the pure
+   composition below the same rows. */
+export const REQUEST_WORK_COLUMNS =
+  "id,status,version,follow_up_at,record_handoff_at,appointment_at,closed_at,closure_reason,legacy_review_required,created_at";
+export const REQUEST_TRANSITION_COLUMNS =
+  "id,from_state,to_state,command,actor_email,occurred_at,reason_code,call_again_at,appointment_at,compensates_transition_id,provenance";
+export const REQUEST_EVENT_COLUMNS = "id,type,recipient,status,meta,created_at";
+
+export interface WorkSurfaceRows {
+  readonly requestId: string;
+  /** The `requests` row, read with at least REQUEST_WORK_COLUMNS. */
+  readonly request: unknown;
+  /** The request's transitions, newest first. */
+  readonly transitions: readonly unknown[];
+  /** The request's events, newest first. */
+  readonly events: readonly unknown[];
+  /** The clock the undo window is measured against. */
+  readonly now: Date;
+}
+
 export async function fetchRequestWorkSurface(
   db: SupabaseClient,
   requestId: string,
 ): Promise<RequestWorkSurface | null> {
   const [request, transitions, events] = await Promise.all([
-    db
-      .from("requests")
-      .select(
-        "id,status,version,follow_up_at,record_handoff_at,appointment_at,closed_at,closure_reason,legacy_review_required,created_at",
-      )
-      .eq("id", requestId)
-      .maybeSingle(),
+    db.from("requests").select(REQUEST_WORK_COLUMNS).eq("id", requestId).maybeSingle(),
     db
       .from("request_transitions")
-      .select(
-        "id,from_state,to_state,command,actor_email,occurred_at,reason_code,call_again_at,appointment_at,compensates_transition_id,provenance",
-      )
+      .select(REQUEST_TRANSITION_COLUMNS)
       .eq("request_id", requestId)
       .order("occurred_at", { ascending: false }),
     db
       .from("request_events")
-      .select("id,type,recipient,status,meta,created_at")
+      .select(REQUEST_EVENT_COLUMNS)
       .eq("request_id", requestId)
       .order("created_at", { ascending: false }),
   ]);
   if (request.error || transitions.error || events.error)
     throw new Error("Request work surface read failed");
   if (request.data === null) return null;
-  const requestRow = requestWorkRowSchema.safeParse(request.data);
+  const rawTransitions = z.array(z.unknown()).safeParse(transitions.data);
+  const rawEvents = z.array(z.unknown()).safeParse(events.data);
+  return composeRequestWorkSurface({
+    requestId,
+    request: request.data,
+    transitions: rawTransitions.success ? rawTransitions.data : [],
+    events: rawEvents.success ? rawEvents.data : [],
+    now: new Date(),
+  });
+}
+
+/**
+ * The work surface from rows already read: the single-request read above and
+ * the batched full-record read both call this, so a request composes the same
+ * history whichever path read it. Throws on an invalid request row or an
+ * invalid contact-completion history line, exactly as the read always has.
+ */
+export function composeRequestWorkSurface(rows: WorkSurfaceRows): RequestWorkSurface {
+  const { requestId, now } = rows;
+  const requestRow = requestWorkRowSchema.safeParse(rows.request);
   if (!requestRow.success) throw new Error("Invalid request state");
   const state = requestRow.data.status;
 
-  const rawTransitions = z.array(z.unknown()).safeParse(transitions.data);
   const transitionRows: z.infer<typeof transitionRowSchema>[] = [];
-  for (const raw of rawTransitions.success ? rawTransitions.data : []) {
+  for (const raw of rows.transitions) {
     const parsed = transitionRowSchema.safeParse(raw);
     if (parsed.success) transitionRows.push(parsed.data);
   }
@@ -101,9 +132,8 @@ export async function fetchRequestWorkSurface(
   for (const row of transitionRows) {
     if (presentId(row.compensates_transition_id)) compensated.add(row.compensates_transition_id);
   }
-  const rawEvents = z.array(z.unknown()).safeParse(events.data);
   const eventRows: z.infer<typeof eventRowSchema>[] = [];
-  for (const raw of rawEvents.success ? rawEvents.data : []) {
+  for (const raw of rows.events) {
     const parsed = eventRowSchema.safeParse(raw);
     if (parsed.success) eventRows.push(parsed.data);
   }
@@ -237,7 +267,7 @@ export async function fetchRequestWorkSurface(
       latestCommand !== "undo_latest_transition" &&
       latestCommand !== "classify_legacy_closure" &&
       expires !== null &&
-      expires >= new Date()
+      expires >= now
         ? {
             transitionId: latest.id,
             command: latestCommand,

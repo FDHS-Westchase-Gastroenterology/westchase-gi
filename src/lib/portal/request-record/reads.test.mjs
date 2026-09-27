@@ -1,9 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { fakePostgrest } from "../../../../test/fake-postgrest.mjs";
 import { fetchRequestWorkSurface } from "../workflow/reads.ts";
 import { requestIdSchema } from "./contracts.ts";
-import { fetchFullRecord } from "./reads.ts";
+import {
+  FULL_RECORD_BATCH_SIZE,
+  fetchFullRecord,
+  fetchFullRecords,
+  fetchFullRecordsByStoredStatus,
+} from "./reads.ts";
 
 const REQUEST_ID = "11111111-1111-4111-8111-111111111111";
 const CREATED_AT = "2026-09-01T12:00:00.000Z";
@@ -227,4 +233,253 @@ test("the request-id validator accepts UUIDs and throws on malformed boundary in
   ]) {
     assert.throws(() => requestIdSchema.parse(invalid));
   }
+});
+
+/* The batched read: many requests, each table read once per chunk of ids. */
+
+const SECOND_ID = "22222222-2222-4222-8222-222222222222";
+const THIRD_ID = "33333333-3333-4333-8333-333333333333";
+const MISSING_ID = "99999999-9999-4999-8999-999999999999";
+
+function requestRow(id, overrides) {
+  return {
+    id,
+    name: `Fictional ${id.slice(0, 4)}`,
+    phone: "000-000-0000",
+    email: null,
+    location: "tampa",
+    preferred_time: "morning",
+    message: null,
+    locale: "en",
+    created_at: CREATED_AT,
+    source_path: "/en/appointment",
+    status: "new",
+    version: 1,
+    follow_up_at: null,
+    record_handoff_at: null,
+    appointment_at: null,
+    closed_at: null,
+    closure_reason: null,
+    legacy_review_required: false,
+    ...overrides,
+  };
+}
+
+function batchTables() {
+  return {
+    requests: [
+      requestRow(REQUEST_ID, {
+        name: "Example Patient",
+        phone: "813-555-0100",
+        message: "Please call in the morning.",
+        locale: "es",
+        source_path: "/es/appointments",
+        status: "booked",
+        version: "5",
+        record_handoff_at: BOOKED_AT,
+        appointment_at: "2026-09-10T14:00:00.000Z",
+      }),
+      requestRow(SECOND_ID, { created_at: "2026-08-30T12:00:00.000Z" }),
+      requestRow(THIRD_ID, { created_at: "2026-08-31T12:00:00.000Z", status: "contacted" }),
+    ],
+    request_transitions: [
+      {
+        request_id: REQUEST_ID,
+        id: "booking",
+        from_state: "contacted",
+        to_state: "booked",
+        command: "confirm_booking_handoff",
+        actor_email: " Scheduler@Example.invalid ",
+        occurred_at: BOOKED_AT,
+        appointment_at: "2026-09-10T14:00:00.000Z",
+        provenance: "staff",
+      },
+      {
+        request_id: THIRD_ID,
+        id: "attempt",
+        from_state: "new",
+        to_state: "contacted",
+        command: "record_contact_attempt",
+        actor_email: "unrelated@example.invalid",
+        occurred_at: "2026-09-01T09:00:00.000Z",
+        provenance: "staff",
+      },
+    ],
+    request_events: [
+      {
+        request_id: REQUEST_ID,
+        id: "created",
+        type: "created",
+        status: "recorded",
+        meta: { origin: "staff" },
+        created_at: CREATED_AT,
+      },
+      {
+        request_id: REQUEST_ID,
+        id: "note",
+        type: "note",
+        status: "recorded",
+        meta: { text: "Patient requested a callback.", author_email: " NURSE@example.invalid " },
+        created_at: NOTE_AT,
+      },
+      {
+        request_id: SECOND_ID,
+        id: "second-note",
+        type: "note",
+        status: "recorded",
+        meta: { text: "Fictional note.", author_email: "unrelated@example.invalid" },
+        created_at: "2026-08-30T13:00:00.000Z",
+      },
+    ],
+    staff_profiles: [
+      { email: "SCHEDULER@example.invalid", display_name: "Sam" },
+      { email: "nurse@example.invalid", display_name: "Nora" },
+      { email: "unrelated@example.invalid", display_name: "Other Staff" },
+    ],
+  };
+}
+
+function callsTo(client, table) {
+  return client.calls.filter((call) => call.table === table);
+}
+
+test("a batch composes each record exactly as the single read does", async () => {
+  const ids = [REQUEST_ID, SECOND_ID, THIRD_ID];
+  const batch = await fetchFullRecords(fakePostgrest(batchTables()), ids);
+  const singles = await Promise.all(
+    ids.map((id) => fetchFullRecord(fakePostgrest(batchTables()), id)),
+  );
+  assert.deepEqual(batch, singles);
+  const single = await fetchFullRecord(recordClient(), REQUEST_ID);
+  assert.deepEqual(batch[0], {
+    ...single,
+    history: single.history.filter((entry) => entry.id !== "call"),
+  });
+});
+
+test("a batch reads requests, transitions, events, and staff names once each", async () => {
+  const client = fakePostgrest(batchTables());
+  await fetchFullRecords(client, [REQUEST_ID, SECOND_ID]);
+  for (const table of ["requests", "request_transitions", "request_events", "staff_profiles"])
+    assert.equal(callsTo(client, table).length, 1, table);
+  assert.deepEqual(callsTo(client, "requests")[0].filters, [
+    { column: "id", values: [REQUEST_ID, SECOND_ID] },
+  ]);
+  for (const table of ["request_transitions", "request_events"])
+    assert.deepEqual(callsTo(client, table)[0].filters, [
+      { column: "request_id", values: [REQUEST_ID, SECOND_ID] },
+    ]);
+});
+
+test("each record in a batch names only its own history actors", async () => {
+  const [first, second, third] = await fetchFullRecords(fakePostgrest(batchTables()), [
+    REQUEST_ID,
+    SECOND_ID,
+    THIRD_ID,
+  ]);
+  assert.deepEqual(first.actorNames, {
+    "scheduler@example.invalid": "Sam",
+    "nurse@example.invalid": "Nora",
+  });
+  assert.deepEqual(second.actorNames, { "unrelated@example.invalid": "Other Staff" });
+  assert.deepEqual(third.actorNames, { "unrelated@example.invalid": "Other Staff" });
+  assert.deepEqual(
+    second.history.map((entry) => entry.id ?? entry.kind),
+    ["second-note", "created"],
+  );
+});
+
+test("a batch returns records in the order asked and leaves out ids with no request", async () => {
+  const records = await fetchFullRecords(fakePostgrest(batchTables()), [
+    THIRD_ID,
+    MISSING_ID,
+    REQUEST_ID,
+    THIRD_ID,
+  ]);
+  assert.deepEqual(
+    records.map((record) => record.id),
+    [THIRD_ID, REQUEST_ID],
+  );
+  assert.deepEqual(await fetchFullRecords(fakePostgrest(batchTables()), []), []);
+});
+
+test("a batch pages past the server row cap instead of truncating history", async () => {
+  const ids = [REQUEST_ID, SECOND_ID, THIRD_ID];
+  const whole = await fetchFullRecords(fakePostgrest(batchTables()), ids);
+  const client = fakePostgrest(batchTables(), {
+    maxRows: { requests: 1, request_transitions: 1, request_events: 1 },
+  });
+  assert.deepEqual(await fetchFullRecords(client, ids), whole);
+  assert.equal(callsTo(client, "requests").length, 3);
+  assert.equal(callsTo(client, "request_events").length, 3);
+  assert.equal(callsTo(client, "request_transitions").length, 2);
+});
+
+test("more than a hundred ids are read in chunks of a hundred", async () => {
+  const filler = Array.from(
+    { length: FULL_RECORD_BATCH_SIZE },
+    (_, index) => `aaaaaaaa-aaaa-4aaa-8aaa-${String(index).padStart(12, "0")}`,
+  );
+  const client = fakePostgrest(batchTables());
+  const records = await fetchFullRecords(client, [...filler, REQUEST_ID]);
+  assert.deepEqual(
+    records.map((record) => record.id),
+    [REQUEST_ID],
+  );
+  assert.deepEqual(
+    callsTo(client, "requests").map((call) => call.filters[0].values.length),
+    [FULL_RECORD_BATCH_SIZE, 1],
+  );
+});
+
+for (const table of ["requests", "request_transitions", "request_events"]) {
+  test(`a failed batched ${table} read rejects`, async () => {
+    await assert.rejects(
+      fetchFullRecords(fakePostgrest(batchTables(), { fail: (call) => call.table === table }), [
+        REQUEST_ID,
+        SECOND_ID,
+      ]),
+      /read failed/,
+    );
+  });
+}
+
+test("a batched history read without its count, or that comes up short, rejects", async () => {
+  await assert.rejects(
+    fetchFullRecords(fakePostgrest(batchTables(), { countless: true }), [REQUEST_ID]),
+    /read failed/,
+  );
+  await assert.rejects(
+    fetchFullRecords(fakePostgrest(batchTables(), { extraCount: 1 }), [REQUEST_ID]),
+    /read incomplete/,
+  );
+});
+
+test("an invalid stored row in a batch rejects the whole batch", async () => {
+  const tables = batchTables();
+  tables.requests[1].source_path = null;
+  await assert.rejects(
+    fetchFullRecords(fakePostgrest(tables), [REQUEST_ID, SECOND_ID]),
+    /Invalid full record/,
+  );
+});
+
+test("the stored-status read returns every matching record oldest first", async () => {
+  const client = fakePostgrest(batchTables());
+  const records = await fetchFullRecordsByStoredStatus(client, ["new", "contacted"]);
+  assert.deepEqual(
+    records.map((record) => [record.id, record.state]),
+    [
+      [SECOND_ID, "new"],
+      [THIRD_ID, "contacted"],
+    ],
+  );
+  const [read] = callsTo(client, "requests");
+  assert.deepEqual(read.filters, [{ column: "status", values: ["new", "contacted"] }]);
+  assert.deepEqual(read.orders, [
+    { column: "created_at", ascending: true },
+    { column: "id", ascending: true },
+  ]);
+  assert.equal(read.count, "exact");
+  assert.deepEqual(await fetchFullRecordsByStoredStatus(client, []), []);
 });
