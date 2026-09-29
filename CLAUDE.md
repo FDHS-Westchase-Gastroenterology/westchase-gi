@@ -5,14 +5,12 @@
 AGENTS.md holds the hard rules and the ramp-up order. Claude Code reads CLAUDE.md only,
 so it is imported here rather than duplicated.
 
-## Frontend ownership
+## Task ownership and frontend work
 
-Claude Code handles all frontend work for the patient site and staff portal: components,
-layout, styling, motion, interactions, accessibility, frontend dependencies, and visual checks.
-Codex handles the backend. Follow AGENTS.md "Agent responsibilities" for shared work and
-explicit assignments. Follow the repository's `DESIGN.md` adoption workflow: reuse existing
-components, inspect shadcn registry provenance, and verify adaptations in the product.
-Claude Design approval is not required.
+Claude Code does every task it picks up end to end, backend included, and may delegate part of
+it to a subagent; AGENTS.md "Task ownership" has the rule. For UI, follow the repository's
+`DESIGN.md` adoption workflow: reuse existing components, inspect shadcn registry provenance,
+and verify adaptations in the product. Claude Design approval is not required.
 
 Before connecting staff-portal controls, read [FRONTEND-HANDOFF.md](FRONTEND-HANDOFF.md). It names
 the available backend actions, required inputs, failure behavior, and frontend acceptance paths

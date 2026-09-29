@@ -119,8 +119,8 @@ The patient site's route contract is in [patient-site.md](patient-site.md); this
   (`getSessionUser`, redirecting to `/admin/login`). Every page calls `requireRole("staff")`
   itself; `registry/page.tsx`, a `permanentRedirect`, is the one page without it. Every server
   action reaches `requireRole` before it reads or writes, as its first statement or through its
-  file's shared helper. This is the backend's contract, Codex's to change
-  ([AGENTS.md](../AGENTS.md#agent-responsibilities)); a new page or action keeps it.
+  file's shared helper. This is the server layer's enforcement
+  ([AGENTS.md](../AGENTS.md#task-ownership)); a new page or action keeps it.
 - **An action returns a result, never field errors.** `settings/actions.ts` returns
   `MutationResult` — `{ ok: true }` or a `ManagementFailure` `{ ok: false, code, error }` — or a
   result that adds fields to the success side (`AddRecipientResult`, `InviteStaffResult`), all in

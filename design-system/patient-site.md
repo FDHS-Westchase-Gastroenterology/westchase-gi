@@ -37,8 +37,7 @@ The `[locale]` layout renders `Header`, `NoticeBanner`, `<main id="main">` and `
 page (`[locale]/layout.tsx`), so a page returns a fragment of bands. A new route also needs:
 
 - its path in `paths` in `src/app/sitemap.ts`;
-- its path in `STATIC_ROUTE_TEMPLATES` in `src/lib/telemetry.ts`, the server's page-view allowlist
-  (backend work, per AGENTS.md "Agent responsibilities");
+- its path in `STATIC_ROUTE_TEMPLATES` in `src/lib/telemetry.ts`, the server's page-view allowlist;
 - `meta.<camelRoute>` (`title`, `description`) and a `<camelRoute>` copy block in each of the five
   dictionaries (`src/lib/dictionaries/`), typed by `en`, so a missing key fails the build.
 

@@ -16,30 +16,34 @@ Read in this order, as the task requires:
 
 `README.md` is the user-facing overview. Cite it for the documented custody split. Do not treat it as developer documentation.
 
-Claude Code skills live in the tracked `.claude/skills/` directory. Cursor's skills live under
-the local-only `.cursor/skills/`. Vendor guidance is advisory and subordinate to this file.
+Claude Code skills live in the tracked `.claude/skills/` directory. Codex and Cursor skills live
+under the local-only `.codex/skills/` and `.cursor/skills/`. A project-authored skill's tracked
+copy in `.claude/skills/` is its source; another harness gets a copy of it, never a separate
+edit. Vendor guidance is advisory and subordinate to this file.
 Re-copy a vendored skill from upstream instead of editing it. `.claude/skills/test-audit/`
 is vendored from `openclaw/openclaw` (`.agents/skills/test-audit/`); its OpenClaw-specific
 commands (`scripts/run-vitest.mjs`, `$crabbox`, `scripts/pr`) do not exist here, so map them
 onto this repo's gates in CONTRIBUTING.md.
 
-### Agent responsibilities
+### Task ownership
 
-Jason works with **Codex for backend work** and **Claude Code for all frontend work**.
+The agent that picks up a task does all of it. That covers server behavior, API routes, Server
+Actions, authentication, authorization, database changes, integrations, patient-site and
+staff-portal UI, and the tests and visual verification for each. The harness does not decide the
+scope, and neither does a file's server/client directive.
 
-- Codex owns server behavior, API routes, Server Actions, authentication, authorization,
-  database changes, integrations, and their tests.
-- Claude Code owns patient-site and staff-portal UI, including layout, components, styling,
-  motion, browser interactions, accessibility, frontend dependencies, and visual verification.
-  This includes the rendered UI in Server Components; the file's server/client directive does
-  not decide ownership.
-- Shared work uses an explicit contract: the data, allowed actions, validation, and error
-  states the frontend receives. Keep backend enforcement in the server layer and implement
-  the corresponding UI with Claude Code. Describe any remaining work for the other agent.
+- The agent may delegate part of the task to a subagent in its own harness. It stays accountable
+  for the result and verifies it before sharing.
+- It never defers part of the task to a different harness, such as backend work left for Codex.
+  A backend gap the task depends on is closed in the same task.
+- Every harness has the Supabase skills for database, Auth, and RLS work; see
+  [Supabase guidance](#supabase-guidance-and-dependency-contract).
+- A change that spans the server and the UI starts from an explicit contract: the data, allowed
+  actions, validation, and error states the UI receives. Enforcement stays in the server layer;
+  the UI reflects it and never replaces it.
 
-An explicit assignment from Jason takes precedence over this default split. Claude Code
-implements the frontend using the repository's design system in `DESIGN.md`. Both agents
-follow the same contribution and release gates.
+An explicit assignment from Jason takes precedence. Every agent builds UI with the design system
+in `DESIGN.md` and follows the same contribution and release gates.
 
 Staff-portal integration starts with [FRONTEND-HANDOFF.md](FRONTEND-HANDOFF.md). It maps the
 implemented backend contracts to the remaining frontend controls, error handling, and acceptance
@@ -204,8 +208,12 @@ Never weaken the [trust boundaries](ARCHITECTURE.md#trust-boundaries), [main exe
 
 ### Supabase guidance and dependency contract
 
-Use the project-authored `wgi-supabase-branching` skill first, then the committed `supabase` and
-`supabase-postgres-best-practices` vendor skills for database, Auth, and RLS work.
+Use the project-authored `wgi-supabase-branching` skill first, then the `supabase` and
+`supabase-postgres-best-practices` vendor skills for database, Auth, and RLS work. The project
+skill is tracked in `.claude/skills/wgi-supabase-branching/` and copied into `.codex/skills/`.
+The vendor skills come from `supabase/agent-skills` and are installed in each harness's user
+skill directory (`~/.claude/skills`, `~/.codex/skills`, `~/.agents/skills`). A harness that lacks
+one gets a copy; the work does not move to another harness.
 
 Choose the Preview database from the branch's intended merge destination. A child Git branch
 inherits its integration branch's Supabase Preview database. PR #224

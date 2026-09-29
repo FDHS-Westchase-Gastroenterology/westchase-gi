@@ -10,10 +10,10 @@ Product truth lives in `PRODUCT.md` (patient-site and staff-portal registers) an
 Repository custody facts are summarized in [`README.md`](README.md); the design of every
 external connection is in [`ARCHITECTURE.md`](ARCHITECTURE.md#external-interfaces).
 
-Jason uses Codex for backend work and Claude Code for all frontend work. The responsibility
-split and how to handle shared changes are in [AGENTS.md](AGENTS.md#agent-responsibilities).
-Claude Code implements and verifies the frontend against repository components and brand tokens.
-Claude Design is optional; approval there is not a contribution or merge requirement.
+The agent that picks up a task does all of it, backend and frontend, and may delegate part of it
+to a subagent in its own harness; [AGENTS.md](AGENTS.md#task-ownership) has the rule. UI is
+implemented and verified against repository components and brand tokens. Claude Design is
+optional; approval there is not a contribution or merge requirement.
 
 ## Before editing
 

@@ -4,8 +4,8 @@ The global skills under `~/.claude/skills` carry the method for UI work in this 
 
 ## Which skill, when
 
-Claude Code owns frontend implementation and verification; Codex owns backend work, as defined
-in AGENTS.md "Agent responsibilities". Frontend source uses `import { cn } from "cn";`.
+Claude Code does every task it picks up end to end, backend included, as AGENTS.md "Task
+ownership" defines. Frontend source uses `import { cn } from "cn";`.
 Apply AGENTS.md "Class-name helper" and CONTRIBUTING.md "Class-name helper updates" when
 migrating or syncing components, including registry inputs and the local design bundle.
 
