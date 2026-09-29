@@ -16,11 +16,8 @@ Read in this order, as the task requires:
 
 `README.md` is the user-facing overview. Cite it for the documented custody split. Do not treat it as developer documentation.
 
-Claude Code skills live in the tracked `.claude/skills/` directory. Codex and Cursor skills live
-under the local-only `.codex/skills/` and `.cursor/skills/`. A project-authored skill's tracked
-copy in `.claude/skills/` is its source; another harness gets a copy of it, never a separate
-edit. Vendor guidance is advisory and subordinate to this file.
-Re-copy a vendored skill from upstream instead of editing it. `.claude/skills/test-audit/`
+Skills are installed once globally under `~/.claude/skills/`. Backend and general skills are also available through symlinks under `~/.agents/skills/`; frontend skills are available to Claude. Do not install skills in this repository or its worktrees. Vendor guidance is advisory and subordinate to this file.
+Re-copy a vendored skill from upstream instead of editing it. The global `test-audit` skill
 is vendored from `openclaw/openclaw` (`.agents/skills/test-audit/`); its OpenClaw-specific
 commands (`scripts/run-vitest.mjs`, `$crabbox`, `scripts/pr`) do not exist here, so map them
 onto this repo's gates in CONTRIBUTING.md.
@@ -210,10 +207,9 @@ Never weaken the [trust boundaries](ARCHITECTURE.md#trust-boundaries), [main exe
 
 Use the project-authored `wgi-supabase-branching` skill first, then the `supabase` and
 `supabase-postgres-best-practices` vendor skills for database, Auth, and RLS work. The project
-skill is tracked in `.claude/skills/wgi-supabase-branching/` and copied into `.codex/skills/`.
-The vendor skills come from `supabase/agent-skills` and are installed in each harness's user
-skill directory (`~/.claude/skills`, `~/.codex/skills`, `~/.agents/skills`). A harness that lacks
-one gets a copy; the work does not move to another harness.
+skill lives at `~/.claude/skills/wgi-supabase-branching/`, with a shared link in `~/.agents/skills/`.
+The vendor skills come from `supabase/agent-skills` and live in `~/.claude/skills/`, with shared
+links under `~/.agents/skills/`. Keep one physical copy of each skill.
 
 Choose the Preview database from the branch's intended merge destination. A child Git branch
 inherits its integration branch's Supabase Preview database. PR #224
@@ -263,8 +259,8 @@ Domain context is the single `CONTEXT.md` at the repo root.
 
 For an explicitly authorized fresh localhost staff-portal reproduction through Stagehand, follow
 the [tracked local browser proof](CONTRIBUTING.md#fresh-local-staff-portal-browser-proof). The
-local discoverability shim at `.agents/skills/westchase-portal-stagehand/SKILL.md` points to the
-same recipe; it remains under the repository's local-only `.agents/` convention.
+global `~/.claude/skills/westchase-portal-stagehand/SKILL.md` points to the
+same recipe in the active repository checkout.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
