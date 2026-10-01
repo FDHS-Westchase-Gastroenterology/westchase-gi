@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useReducer } from "react";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
 import { practiceLocalDay } from "@/app/admin/(portal)/requests/appointment-input";
 import { Phone, PhoneOff } from "@/components/icons";
@@ -14,6 +14,7 @@ import type { HomeLine } from "./home-line";
 import { LineStatusBadge } from "./parts/badge";
 import { HomeDayCalendar } from "./parts/calendar";
 import { ChevronGlyph, CloseGlyph, PhoneGlyph } from "./parts/glyphs";
+import { BookButton, RecordBookingMain } from "./parts/record-booking";
 import { TimePicker } from "./parts/time-picker";
 import {
   ANSWER_LABELS,
@@ -33,6 +34,7 @@ import {
   needsTime,
 } from "./record-card-model";
 import type { CardAnswer, CardDraft, CardEvent, CardReadout, FollowUp } from "./record-card-model";
+import { useRecordBooking } from "./use-record-booking";
 import { useRecordCommit } from "./use-record-commit";
 
 /* ---- The record card: the calendar is the surface ----
@@ -172,6 +174,90 @@ function StripReadout({ readout }: Readonly<{ readout: Readonly<CardReadout> | n
   );
 }
 
+/* The month and strip for everything but a linked booking: the day and,
+   for a booking, the time Save records. No day to pick — nothing chosen
+   yet, No call, or a close — leaves the calendar in place but quiet, and
+   shows no day, so a day that is not a plan never reads as one. */
+function DayMain({
+  draft,
+  today,
+  locked,
+  dispatch,
+}: Readonly<{
+  draft: Readonly<CardDraft>;
+  today: string;
+  locked: boolean;
+  dispatch: (event: Readonly<CardEvent>) => void;
+}>) {
+  const idle = !needsDay(draft.answer, draft.followUp);
+  return (
+    <div className="wgi-record-main">
+      <div className="wgi-record-cal" data-idle={idle || undefined}>
+        <HomeDayCalendar
+          day={idle ? "" : draft.day}
+          min={today}
+          max={practiceLocalDay(dayHorizon(draft.answer))}
+          disabled={locked || idle}
+          onChange={(day) => {
+            dispatch({ type: "day", day });
+          }}
+        />
+      </div>
+      {/* One strip tall in every state, so the card never jumps. */}
+      <div className="wgi-record-strip">
+        <StripControl
+          draft={draft}
+          options={followUpsFor(draft.answer)}
+          locked={locked}
+          dispatch={dispatch}
+        />
+        <StripReadout readout={cardReadoutFor(draft, today)} />
+      </div>
+    </div>
+  );
+}
+
+/* One footer spans both columns: the way into the full record, and the
+   card's commit — Save, or Book for a linked booking. */
+function RecordFoot({
+  fullOpen,
+  onOpenFull,
+  children,
+}: Readonly<{ fullOpen: boolean; onOpenFull: (instant: boolean) => void; children: ReactNode }>) {
+  return (
+    <div className="wgi-record-foot">
+      <button
+        type="button"
+        className="wgi-record-full"
+        /* The sheet's toggle: the card detaches into the sheet's
+           companion, so the foot that opened it also hides it. */
+        aria-expanded={fullOpen}
+        aria-controls={fullOpen ? "wgi-full-record" : undefined}
+        onClick={(event) => {
+          /* A click with no pointer behind it (Enter or Space) has detail 0. */
+          onOpenFull(event.detail === 0);
+        }}
+      >
+        {fullOpen ? "Hide full record" : "Open full record"}
+        <ChevronGlyph size={14} />
+      </button>
+      {children}
+    </div>
+  );
+}
+
+function SaveButton({
+  pending,
+  disabled,
+  onSave,
+}: Readonly<{ pending: boolean; disabled: boolean; onSave: () => void }>) {
+  return (
+    <button type="button" className="wgi-record-save" disabled={disabled} onClick={onSave}>
+      {pending ? "Saving…" : "Save"}
+    </button>
+  );
+}
+
 export function RecordCard({
   line,
   fullOpen,
@@ -192,29 +278,39 @@ export function RecordCard({
   onOpenFull: (instant: boolean) => void;
   onSettled: (id: string) => void;
 }>) {
+  /* Practice-local today, read once per render so the bounds, the horizon
+     check and the calendar agree even across midnight. */
+  const today = practiceLocalDay(0);
   const [draft, dispatch] = useReducer(cardReducer, INITIAL_DRAFT);
   const commit = useRecordCommit(line, () => {
     onSettled(line.id);
     onClose();
   });
-
-  /* Practice-local today, read once per render so the bounds, the horizon
-     check and the calendar agree even across midnight. */
-  const today = practiceLocalDay(0);
-  const note = cardNoteFor(line.status);
-  const locked = commit.pending || commit.failure?.uncertain === true;
-  const command = commandFor(draft, today);
-  const readout = cardReadoutFor(draft, today);
   const answer = draft.answer;
+
+  /* A request linked to a patient books straight into the schedule
+     (issue #344): its month shows the open starts, and Book replaces Save.
+     An unlinked request keeps the day and time Save hands to scheduling. */
+  const booking = line.patientId !== null && needsTime(answer);
+  const plan = useRecordBooking(line, {
+    active: booking,
+    today,
+    onBooked: () => {
+      onSettled(line.id);
+      onClose();
+    },
+  });
+
+  const note = cardNoteFor(line.status);
+  const mode = note !== null ? "note" : booking ? "book" : "save";
+  const locked = commit.pending || commit.failure?.uncertain === true || plan.book.pending;
+  const command = commandFor(draft, today);
+
   const outcomeId = useId();
-  /* No day to pick — nothing chosen yet, No call, or a close — leaves the
-     calendar in place but quiet, and shows no day, so a day that is not a
-     plan never reads as one. */
-  const idle = !needsDay(answer, draft.followUp);
 
   return (
     <>
-      <div className="wgi-record-side">
+      <div className="wgi-record-side" inert={plan.book.pending || undefined}>
         <div className="wgi-record-head" {...dragHandleProps}>
           <p className="wgi-record-name" data-ui-redact="patient-name">
             {line.name}
@@ -264,61 +360,29 @@ export function RecordCard({
         )}
       </div>
 
-      {note === null ? (
-        <div className="wgi-record-main">
-          <div className="wgi-record-cal" data-idle={idle || undefined}>
-            <HomeDayCalendar
-              day={idle ? "" : draft.day}
-              min={today}
-              max={practiceLocalDay(dayHorizon(answer))}
-              disabled={locked || idle}
-              onChange={(day) => {
-                dispatch({ type: "day", day });
-              }}
-            />
-          </div>
-          {/* One strip tall in every state, so the card never jumps. */}
-          <div className="wgi-record-strip">
-            <StripControl
-              draft={draft}
-              options={followUpsFor(answer)}
-              locked={locked}
-              dispatch={dispatch}
-            />
-            <StripReadout readout={readout} />
-          </div>
-        </div>
+      {mode === "book" ? (
+        <RecordBookingMain
+          booking={plan}
+          today={today}
+          last={practiceLocalDay(dayHorizon(answer))}
+          locked={locked}
+        />
+      ) : mode === "save" ? (
+        <DayMain draft={draft} today={today} locked={locked} dispatch={dispatch} />
       ) : null}
 
-      <div className="wgi-record-foot">
-        <button
-          type="button"
-          className="wgi-record-full"
-          /* The sheet's toggle: the card detaches into the sheet's
-             companion, so the foot that opened it also hides it. */
-          aria-expanded={fullOpen}
-          aria-controls={fullOpen ? "wgi-full-record" : undefined}
-          onClick={(event) => {
-            /* A click with no pointer behind it (Enter or Space) has detail 0. */
-            onOpenFull(event.detail === 0);
-          }}
-        >
-          {fullOpen ? "Hide full record" : "Open full record"}
-          <ChevronGlyph size={14} />
-        </button>
-        {note === null ? (
-          <button
-            type="button"
-            className="wgi-record-save"
+      <RecordFoot fullOpen={fullOpen} onOpenFull={onOpenFull}>
+        {mode === "book" ? <BookButton booking={plan} locked={locked} /> : null}
+        {mode === "save" ? (
+          <SaveButton
+            pending={commit.pending}
             disabled={locked || command === null}
-            onClick={() => {
+            onSave={() => {
               if (command !== null) commit.save(command);
             }}
-          >
-            {commit.pending ? "Saving…" : "Save"}
-          </button>
+          />
         ) : null}
-      </div>
+      </RecordFoot>
     </>
   );
 }

@@ -64,7 +64,12 @@
 .wgi-record-close:active,
 .wgi-empty-clear:active,
 .wgi-sheet-close:active,
-.wgi-sheet-call:active {
+.wgi-sheet-call:active,
+.wgi-booking-cal .rdp-day_button:active:enabled,
+.wgi-booking-action:active:enabled,
+.wgi-day-time:active:enabled,
+.wgi-day-use:active,
+.wgi-day-enter:active {
   transform: scale(0.98);
 }
 
@@ -1685,7 +1690,6 @@ a.appt-phone {
 .wgi-record-cal .rdp-weekday {
   color: var(--wgi-label-ink);
   font-size: var(--wgi-card-row-size);
-  opacity: 0.7;
 }
 
 .wgi-record-cal .rdp-week {
@@ -1729,7 +1733,7 @@ a.appt-phone {
 
 .wgi-record-cal:not([data-idle]) .rdp-today:not(.rdp-disabled, .rdp-outside) .rdp-day_button {
   gap: 0.125rem;
-  color: var(--color-teal);
+  color: var(--color-teal-ink);
   font-weight: 700;
 }
 
@@ -1770,6 +1774,86 @@ a.appt-phone {
 
 .wgi-record-cal[data-idle] .rdp-day:not(.rdp-outside) .rdp-day_button {
   color: var(--wgi-thumb);
+}
+
+/* ---------- The booking month (issue #344; Figma 09d–09f) ----------
+   A request linked to a patient books from the card's own month: a day
+   with open times wears the mint-100 disc and the bold number, and the
+   rest stay plain ink. Not yet read looks the same as no open times, so
+   a read in flight never flickers a spinner over the grid. The number
+   holds its weight through hover and the pick; the paint changes, never
+   the glyphs. The day buttons are DayPicker's, bare of the registry
+   button recipe, so the disc is drawn here in full. */
+.wgi-booking-cal .rdp-day_button {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font-family: inherit;
+  font-weight: 400;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    box-shadow var(--motion-fast-duration) var(--motion-standard),
+    color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+/* A 44px target round the 34px disc; ::after stays today's dot. */
+.wgi-booking-cal .rdp-day_button::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 999px;
+}
+
+.wgi-booking-cal .rdp-day_button:disabled {
+  cursor: default;
+}
+
+.wgi-booking-cal .rdp-day_button[data-open-times] {
+  background: var(--color-mint-2);
+  font-weight: 700;
+}
+
+@media (hover: hover) {
+  .wgi-booking-cal .rdp-day_button[data-open-times]:hover:not([data-selected-single]) {
+    background: var(--color-mint-200);
+    box-shadow: inset 0 0 0 1.5px var(--color-mint-800);
+  }
+
+  .wgi-booking-cal
+    .rdp-day:not(.rdp-disabled, .rdp-outside)
+    .rdp-day_button:not([data-open-times], [data-selected-single]):hover {
+    background: var(--color-slate-100);
+  }
+}
+
+/* The day whose popover is up keeps its hover paint while the pointer
+   is in the popover. */
+.wgi-booking-cal .rdp-day_button[data-open-times][data-popup-open]:not([data-selected-single]) {
+  background: var(--color-mint-200);
+  box-shadow: inset 0 0 0 1.5px var(--color-mint-800);
+}
+
+.wgi-booking-cal .rdp-day_button:not([data-open-times], [data-selected-single])[data-popup-open] {
+  background: var(--color-slate-100);
+}
+
+.wgi-booking-cal .rdp-day_button:focus-visible {
+  outline: 2px solid var(--color-teal-ink);
+  outline-offset: 2px;
+}
+
+/* The pick is the navy disc; a day without open times keeps its regular
+   number under it. */
+.wgi-booking-cal .rdp-day_button[data-selected-single]:not([data-open-times]) {
+  font-weight: 400;
 }
 
 /* The strip along the month's lower edge, one height in every state so
@@ -1929,6 +2013,90 @@ a.appt-phone {
 .wgi-record-readout-value[data-missing] {
   color: var(--wgi-muted-ink);
   font-weight: 400;
+}
+
+/* The booking strip (issue #344): the visit type at its left and what
+   Book sends at its right, held at the height of its tallest answer — the
+   value with its provider and office beneath — so a pick never moves the
+   card. "Enter a time…" opens the second row: provider, then the time. */
+.wgi-record-strip[data-booking] {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.375rem;
+}
+
+.wgi-booking-row,
+.wgi-booking-squeeze {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.wgi-booking-row {
+  min-height: 2.75rem;
+}
+
+.wgi-booking-status {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.wgi-booking-select {
+  width: auto;
+  max-width: 11rem;
+  min-height: 2rem;
+  border-width: 1px;
+  border-color: var(--wgi-chip-stroke);
+  border-radius: var(--wgi-cmd-radius);
+  padding: 0.3125rem 0.5rem;
+  color: var(--wgi-name-ink);
+  font-size: var(--pt-xs);
+  font-weight: 700;
+}
+
+.wgi-booking-squeeze > .wgi-booking-select {
+  max-width: 14rem;
+}
+
+.wgi-booking-detail {
+  color: var(--wgi-muted-ink);
+  font-size: var(--wgi-card-row-size);
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.wgi-record-readout-value[data-failed] {
+  color: var(--color-coral-700);
+}
+
+.wgi-booking-action {
+  flex: none;
+  border: 0;
+  border-radius: 4px;
+  padding: 0.25rem 0.375rem;
+  background: transparent;
+  color: var(--color-teal-ink);
+  font-family: inherit;
+  font-size: var(--wgi-card-row-size);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-booking-action:hover:enabled {
+    background: var(--color-mint-hover);
+  }
+}
+
+.wgi-booking-action:disabled {
+  cursor: default;
+  opacity: 0.55;
 }
 
 /* The month behind the wheels is context, not a control: the scrim quiets
@@ -2091,6 +2259,13 @@ a.appt-phone {
   background: var(--wgi-band);
   color: var(--wgi-thumb);
   cursor: default;
+}
+
+/* Booking…: the working spinner before the word, on the label's ink. */
+.wgi-record-save > [data-icon="inline-start"] {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-inline-end: 0.375rem;
 }
 
 /* ---------- The editor popover ---------- */
@@ -3284,6 +3459,211 @@ a.appt-phone {
   bottom: -6px;
   border-top-color: transparent;
   border-left-color: transparent;
+}
+
+.wgi-history-arrow[data-side="right"] {
+  left: -6px;
+  border-top-color: transparent;
+  border-right-color: transparent;
+}
+
+/* ---------- The booking day popover (issue #344; Figma 09d, 09e) ----------
+   Beside the card, level with the day's row, never over the month: the
+   anchor is the card's width at that row (parts/booking-calendar.tsx).
+   Above the card. The header and the way to enter a time hold still and
+   the providers scroll between them when the viewport is short. Opened
+   from the keyboard, or reopened by a start lost to someone else, it
+   appears at once. */
+.wgi-day-positioner {
+  z-index: calc(var(--z-drawer, 80) + 2);
+}
+
+.wgi-day-popover {
+  display: flex;
+  width: 17.5rem;
+  max-width: calc(100vw - 1.5rem);
+  max-height: min(var(--available-height, 100dvh), calc(100dvh - 24px));
+  box-sizing: border-box;
+  flex-direction: column;
+  box-shadow: var(--shadow-soft);
+}
+
+.wgi-day-popover[data-keyboard] {
+  transition-duration: 0ms;
+}
+
+.wgi-day-head {
+  flex: none;
+  padding: 0.75rem 0.875rem 0.5rem;
+}
+
+.wgi-day-title {
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: var(--wgi-card-value-size);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.wgi-day-sub {
+  margin: 0.125rem 0 0;
+  color: var(--wgi-muted-ink);
+  font-size: var(--wgi-card-row-size);
+  font-variant-numeric: tabular-nums;
+}
+
+.wgi-day-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0.25rem 0.875rem 0.75rem;
+}
+
+.wgi-day-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.wgi-day-provider {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: var(--wgi-card-row-size);
+}
+
+.wgi-day-provider > span {
+  color: var(--wgi-muted-ink);
+}
+
+.wgi-day-times {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wgi-day-time {
+  width: 100%;
+  min-height: 2rem;
+  border: 0;
+  border-radius: 6px;
+  background: var(--color-mint-2);
+  color: var(--wgi-name-ink);
+  font-family: inherit;
+  font-size: var(--wgi-card-row-size);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    box-shadow var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-day-time:hover:enabled {
+    background: var(--color-mint-200);
+    box-shadow: inset 0 0 0 1.5px var(--color-mint-800);
+  }
+}
+
+.wgi-day-time:focus-visible,
+.wgi-day-use:focus-visible,
+.wgi-day-enter:focus-visible,
+.wgi-booking-action:focus-visible {
+  outline: 2px solid var(--color-teal-ink);
+  outline-offset: 2px;
+}
+
+/* A start somebody else took a moment ago: struck, and no longer a
+   control. */
+.wgi-day-time[data-taken] {
+  background: var(--wgi-band);
+  color: var(--wgi-muted-ink);
+  font-weight: 400;
+  text-decoration: line-through;
+  cursor: default;
+}
+
+.wgi-day-lost {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.5rem;
+}
+
+.wgi-day-taken {
+  margin: 0;
+  color: var(--color-amber-700);
+  font-size: var(--wgi-card-row-size);
+  font-weight: 700;
+}
+
+.wgi-day-use,
+.wgi-day-enter {
+  border: 0;
+  border-radius: 4px;
+  padding: 0.25rem 0.375rem;
+  background: transparent;
+  color: var(--color-teal-ink);
+  font-family: inherit;
+  font-size: var(--wgi-card-row-size);
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+@media (hover: hover) {
+  .wgi-day-use:hover,
+  .wgi-day-enter:hover {
+    background: var(--color-mint-hover);
+  }
+}
+
+.wgi-day-full {
+  margin: 0;
+  color: var(--wgi-muted-ink);
+  font-size: var(--wgi-card-row-size);
+}
+
+.wgi-day-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--wgi-name-ink);
+  font-size: var(--wgi-card-row-size);
+}
+
+.wgi-day-reasons > li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.wgi-day-reason {
+  color: var(--wgi-muted-ink);
+  text-align: right;
+}
+
+.wgi-day-foot {
+  flex: none;
+  border-top: 1px solid var(--wgi-rule);
+  padding: 0.375rem 0.5rem;
 }
 
 /* The heading names the event beside the row's own icon: a call

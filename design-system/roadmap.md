@@ -50,7 +50,9 @@ empties; `Alert` (`stock/alert.tsx`) takes `.portal-sheet-notice`, `.portal-shee
 
 **Ready.** `(home)/parts/calendar.tsx` wraps `stock/calendar.tsx` twice, an approved exception:
 `HomeRangeCalendar` for the Received editor's range and `HomeDayCalendar` for the record card's
-callback or appointment day. Adopt `Calendar` into `ui/`, keeping both uses' behavior and paint.
+callback or appointment day. `(home)/parts/booking-calendar.tsx` wraps it a third time as
+`BookingCalendar`, the record card's booking month with open-time discs and day popovers. Adopt
+`Calendar` into `ui/`, keeping all three uses' behavior and paint.
 
 ## 7. The legacy feature blocks
 
