@@ -127,7 +127,7 @@ test.describe("portal home", () => {
     // Help sit in the account footer. Home carries the current-page marker.
     const nav = page.locator('nav[aria-label="Portal sections"]:visible');
     await expect(nav.locator("a")).toHaveText(
-      [/^Home$/, /^Requests/, /^Review flyers$/, /^Activity log$/],
+      [/^Home$/, /^Schedule$/, /^Requests/, /^Review flyers$/, /^Activity log$/],
       { useInnerText: true },
     );
     await expect(nav.locator('a[aria-current="page"]')).toHaveText("Home");

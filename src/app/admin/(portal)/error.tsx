@@ -11,8 +11,9 @@ import { PortalPageHeader } from "./portal-page-header";
 // Failures stay inside the authenticated workbench. We intentionally do not
 // Render or log the Error object here: upstream messages can contain sensitive
 // Operational context, while staff need a safe recovery path rather than a
-// Technical diagnosis.
-export default function PortalError({ reset }: Readonly<{ reset: () => void }>) {
+// Technical diagnosis. `retry` fetches the segment again; `reset` would only
+// Re-render the payload that already failed.
+export default function PortalError({ retry }: Readonly<{ retry: () => void }>) {
   return (
     <section aria-labelledby="portal-error-heading">
       <PortalPageHeader
@@ -27,7 +28,7 @@ export default function PortalError({ reset }: Readonly<{ reset: () => void }>) 
           open Requests and confirm the live queue before continuing from paper or email.
         </p>
         <div>
-          <Button type="button" onClick={reset}>
+          <Button type="button" onClick={retry}>
             Try again
           </Button>
           <Link

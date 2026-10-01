@@ -1,0 +1,565 @@
+/* The Schedule's month view (Figma Ypf9ohpRcGWF5C9T9bSvWW, section 08,
+   S1) and its day preview (H1, node 656:8201). The --wgi-* paints come
+   from wgi-paints.css; the sizes below are the frame's. Unlayered, like
+   home.css, so it outranks the workbench's base outline. */
+
+.wgi-schedule {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: 2rem 3rem 1.5rem;
+  color: var(--color-body);
+}
+
+.wgi-schedule :where(a, input, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
+}
+
+/* ---------- Header ---------- */
+
+.wgi-schedule-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+}
+
+.wgi-schedule-nav,
+.wgi-schedule-tools {
+  display: flex;
+  align-items: center;
+}
+
+.wgi-schedule-nav {
+  gap: 0.875rem;
+}
+
+.wgi-schedule-tools {
+  gap: 0.75rem;
+}
+
+.wgi-schedule-title {
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: 2.25rem;
+  font-weight: 700;
+  letter-spacing: -0.54px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.wgi-schedule-arrows {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.wgi-schedule-arrow {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--wgi-name-ink);
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-schedule-arrow:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.wgi-schedule-arrow:disabled {
+  color: var(--wgi-chip-stroke);
+  background: none;
+}
+
+.wgi-schedule-today {
+  display: inline-flex;
+  height: 2.25rem;
+  align-items: center;
+  padding: 0 1rem;
+  border: 1px solid var(--wgi-chip-stroke);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--wgi-name-ink);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-schedule-today:active {
+  transform: scale(0.98);
+}
+
+/* Search arrives with the day view; the field holds its place, disabled. */
+.wgi-schedule-search {
+  display: flex;
+  width: 15rem;
+  height: 2.625rem;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.875rem;
+  border: 1px solid var(--wgi-chip-stroke);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--wgi-label-ink);
+}
+
+.wgi-schedule-search svg {
+  flex: none;
+}
+
+.wgi-schedule-search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 0.9375rem;
+}
+
+.wgi-schedule-search input::placeholder {
+  color: var(--wgi-label-ink);
+  opacity: 1;
+}
+
+.wgi-schedule-search input:disabled {
+  cursor: default;
+}
+
+/* ---------- The month ---------- */
+
+.wgi-schedule-surface {
+  padding: 23px;
+  border-radius: 16px;
+  background: var(--wgi-surface);
+}
+
+.wgi-schedule-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.wgi-schedule-weekdays,
+.wgi-schedule-week {
+  display: grid;
+  grid-template-columns: var(--schedule-columns, repeat(7, minmax(0, 1fr)));
+  gap: 6px;
+}
+
+.wgi-schedule-weekdays {
+  height: 2.25rem;
+  align-items: center;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--wgi-rule);
+  color: var(--wgi-name-ink);
+  font-size: 0.90625rem;
+  font-weight: 500;
+}
+
+.wgi-schedule-weekdays > * {
+  padding-left: 10px;
+}
+
+.wgi-schedule-week + .wgi-schedule-week {
+  margin-top: 6px;
+}
+
+.wgi-schedule-week:last-child {
+  margin-bottom: 10px;
+}
+
+.wgi-day {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  height: 118px;
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px;
+  border-radius: 12px;
+  cursor: default;
+  outline: none;
+  transition: background-color var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-day-date {
+  display: grid;
+  min-width: 24px;
+  height: 24px;
+  place-items: center start;
+  color: var(--color-slate-800);
+  font-size: 0.9375rem;
+  line-height: 1;
+}
+
+.wgi-day-date[data-today] {
+  place-items: center;
+  border-radius: 999px;
+  background: var(--wgi-name-ink);
+  color: #fff;
+  font-weight: 600;
+}
+
+.wgi-day-note {
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+}
+
+/* Future days: tinted deeper as they fill. */
+.wgi-day[data-kind="future"] {
+  box-shadow: 0 3px 4.5px rgb(27 51 74 / 5%);
+}
+
+.wgi-day[data-tone="low"] {
+  background: #fff;
+  box-shadow:
+    inset 0 0 0 1px var(--wgi-rule),
+    0 3px 4.5px rgb(27 51 74 / 5%);
+}
+
+.wgi-day[data-tone="mid"] {
+  background: var(--color-teal-100);
+}
+
+.wgi-day[data-tone="high"] {
+  background: var(--color-teal-200);
+}
+
+.wgi-day[data-tone="full"] {
+  background: var(--color-teal-300);
+}
+
+/* Previewed, a day deepens one step; full is already deepest. A day
+   reached from the keyboard repaints at once. */
+.wgi-day[data-tone="low"][data-popup-open] {
+  background: var(--color-teal-100);
+}
+
+.wgi-day[data-tone="mid"][data-popup-open] {
+  background: var(--color-teal-200);
+}
+
+.wgi-day[data-tone="high"][data-popup-open] {
+  background: var(--color-teal-300);
+}
+
+.wgi-day:focus-visible {
+  transition-duration: 0ms;
+}
+
+.wgi-day-count {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--color-slate-800);
+  font-size: 0.875rem;
+}
+
+.wgi-day-count b,
+.wgi-day-full {
+  color: var(--wgi-name-ink);
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+/* Past days: a quiet wash that firms on hover. */
+.wgi-day[data-kind="past"] {
+  background: rgb(from var(--wgi-rule) r g b / 25%);
+}
+
+.wgi-day:is([data-kind="past"], [data-kind="closed"]) .wgi-day-date:not([data-today]) {
+  color: var(--wgi-muted-ink);
+}
+
+/* Closed days: a dashed outline drawn as SVG so the dashes keep the
+   frame's 4/4 rhythm; a narrow column shows only the date. */
+.wgi-day-outline {
+  position: absolute;
+  inset: 0.5px;
+  width: calc(100% - 1px);
+  height: calc(100% - 1px);
+  overflow: visible;
+  pointer-events: none;
+}
+
+.wgi-day-outline rect {
+  fill: none;
+  stroke: var(--wgi-chip-stroke);
+  stroke-dasharray: 4 4;
+  stroke-width: 1;
+}
+
+.wgi-day[data-kind="closed"] > :not(.wgi-day-outline) {
+  position: relative;
+}
+
+.wgi-day:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--portal-surface, #fff),
+    0 0 0 4px var(--color-teal);
+}
+
+/* ---------- Legend ---------- */
+
+.wgi-schedule-legend {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1.5rem;
+  margin: 0;
+  padding: 10px 4px 0 0;
+  list-style: none;
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+}
+
+.wgi-schedule-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wgi-schedule-steps {
+  display: flex;
+  gap: 3px;
+}
+
+.wgi-schedule-steps i,
+.wgi-schedule-closed-key {
+  display: block;
+  width: 14px;
+  height: 14px;
+  box-sizing: border-box;
+  border-radius: 4px;
+}
+
+.wgi-schedule-steps [data-tone="low"] {
+  border: 1px solid var(--wgi-chip-stroke);
+  background: #fff;
+}
+
+.wgi-schedule-steps [data-tone="mid"] {
+  background: var(--color-teal-100);
+}
+
+.wgi-schedule-steps [data-tone="high"] {
+  background: var(--color-teal-200);
+}
+
+.wgi-schedule-steps [data-tone="full"] {
+  background: var(--color-teal-300);
+}
+
+.wgi-schedule-closed-key {
+  border: 1px dashed var(--wgi-chip-stroke);
+}
+
+/* ---------- The day preview ---------- */
+
+/* The positioner is a box at the day, not a surface; the popup takes
+   its own pointer. */
+.wgi-day-preview-positioner {
+  pointer-events: none;
+}
+
+.wgi-day-preview {
+  width: 17.5rem;
+  max-width: calc(100vw - 1.5rem);
+  box-sizing: border-box;
+  padding: 14px 16px 4px;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--color-body);
+  box-shadow:
+    0 10px 14px rgb(17 43 64 / 32%),
+    0 1px 1px rgb(17 43 64 / 12%);
+  outline: none;
+  pointer-events: auto;
+  transform-origin: var(--transform-origin);
+  /* Scale and fade from the day on the base beat of the standard curve;
+     the exit takes the fast beat. Both read the registry. */
+  transition:
+    transform var(--motion-base-duration) var(--motion-standard),
+    opacity var(--motion-base-duration) var(--motion-standard);
+}
+
+.wgi-day-preview[data-starting-style],
+.wgi-day-preview[data-ending-style] {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
+.wgi-day-preview[data-ending-style] {
+  transition-duration: var(--motion-fast-duration);
+}
+
+/* Keyboard-initiated opens and closes never animate: Base UI's own
+   data-instant, and data-keyed when focus opened it. */
+.wgi-day-preview[data-instant],
+.wgi-day-preview[data-keyed] {
+  transition-duration: 0ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wgi-day-preview[data-starting-style],
+  .wgi-day-preview[data-ending-style] {
+    transform: none;
+  }
+}
+
+.wgi-day-preview-arrow {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--wgi-rule);
+  background: #fff;
+  transform: rotate(45deg);
+}
+
+.wgi-day-preview-arrow[data-side="right"] {
+  left: -6px;
+  border-top-color: transparent;
+  border-right-color: transparent;
+}
+
+.wgi-day-preview-arrow[data-side="left"] {
+  right: -6px;
+  border-bottom-color: transparent;
+  border-left-color: transparent;
+}
+
+.wgi-day-preview-arrow[data-side="bottom"] {
+  top: -6px;
+  border-right-color: transparent;
+  border-bottom-color: transparent;
+}
+
+.wgi-day-preview-arrow[data-side="top"] {
+  bottom: -6px;
+  border-top-color: transparent;
+  border-left-color: transparent;
+}
+
+.wgi-day-preview-head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding-bottom: 12px;
+}
+
+.wgi-day-preview-title {
+  margin: 0;
+  color: var(--wgi-name-ink);
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.wgi-day-preview-summary {
+  margin: 0;
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+}
+
+.wgi-day-preview-providers {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wgi-day-preview-provider {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 0;
+  border-top: 1px solid var(--wgi-rule);
+}
+
+.wgi-day-preview-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wgi-day-preview-who {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+}
+
+.wgi-day-preview-name {
+  color: var(--wgi-name-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.wgi-day-preview-where {
+  overflow: hidden;
+  color: var(--wgi-label-ink);
+  font-size: 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wgi-day-preview-status {
+  flex: none;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--color-mint-100);
+  color: var(--color-mint-800);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.wgi-day-preview-status[data-full] {
+  background: var(--color-slate-100);
+  color: var(--color-slate-700);
+}
+
+.wgi-day-preview-times {
+  margin: 0;
+  color: var(--color-slate-800);
+  font-size: 0.8125rem;
+}
+
+/* Hover tints, for a pointer that can hover. */
+@media (hover: hover) and (pointer: fine) {
+  .wgi-schedule-arrow:not(:disabled):hover,
+  .wgi-schedule-today:hover {
+    background: var(--color-slate-100);
+  }
+
+  .wgi-day[data-tone="low"]:hover {
+    background: var(--color-teal-100);
+  }
+
+  .wgi-day[data-tone="mid"]:hover {
+    background: var(--color-teal-200);
+  }
+
+  .wgi-day[data-tone="high"]:hover {
+    background: var(--color-teal-300);
+  }
+
+  .wgi-day[data-kind="past"]:hover {
+    background: rgb(from var(--wgi-rule) r g b / 40%);
+  }
+}

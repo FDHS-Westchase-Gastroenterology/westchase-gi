@@ -1,6 +1,6 @@
 # Overlays
 
-Choose by the reader's next action, not looks. Each kind has one implementation; the portal has no tooltip, hover card or menu. Motion is in [motion.md](motion.md), paint in [color.md](color.md).
+Choose by the reader's next action, not looks. Each kind has one implementation; the portal has no menu. Motion is in [motion.md](motion.md), paint in [color.md](color.md).
 
 ## Choosing an overlay
 
@@ -11,8 +11,9 @@ What must the reader do with this surface?
 ├── Staff home: read a whole record beside its card                                → the full-record sheet
 ├── Staff home: set the record card's start time                                   → the card's TimePicker
 ├── Staff portal: learn how a save on a request turned out                         → toast.promise (forms.md)
+├── Staff portal: label a control, or preview a day read-only (previews.md)        → Tooltip, hover preview
 ├── Patient site: pick a language, a section or a page                             → the Header menus
-└── A tooltip, a hover card, a menu, a drawer, a second sheet, or anything else    → ask Jason
+└── A menu, a drawer, a second sheet, or anything else                             → ask Jason
 ```
 
 ## Modal dialogs
@@ -52,9 +53,8 @@ while a removal is in flight or a draft is dirty; `onCancel` runs its Close path
 Escape or Cancel turns the Add sheet's footer into the discard question; Escape again keeps editing.
 
 `PrintChooser` follows every rule above; copy it, except that a dialog built for one chosen target
-opens from an effect keyed on it (`recipients-manager.tsx`). `RemoveRecipientDialog` does not set
-`data-instant`, `AddAppointmentDialog` does not wrap Tab: roadmap item 9. `PortalTour` runs on
-legacy `overlay-rise` keyframes: roadmap item 7.
+opens from an effect keyed on it (`recipients-manager.tsx`). `RemoveRecipientDialog` lacks
+`data-instant` and `AddAppointmentDialog` Tab wrapping (item 9); `PortalTour` is on `overlay-rise` (item 7).
 
 ```tsx
 // Correct (print-chooser.tsx, shortened): instant from the keyboard, Escape through Close
@@ -77,11 +77,10 @@ UI Popover for the staff home's record card (`.wgi-record-card`) and filter edit
 copy `filter-bar.tsx`). They open start-aligned, 8px from the anchor and the viewport, an editor
 below its trigger; `line-row.tsx` passes the card the whole row as `anchor` and the roomier `side`.
 The positioner shifts a popover into view but never flips, shrinks or sets it beside its anchor; a
-card taller than the viewport scrolls inside `--available-height`.
-
-The card pairs identity and answer rows with a six-week calendar. Its lower strip holds follow-up or
-start-time controls and a readout; one footer toggles the full record and saves. It starts blank and
-commits on Save; scheduled and closed lines use one column.
+card taller than the viewport scrolls inside `--available-height`. The card pairs identity and
+answer rows with a six-week calendar. Its lower strip holds follow-up or start-time controls and a
+readout; one footer toggles the full record and saves. It starts blank and commits on Save;
+scheduled and closed lines use one column.
 
 Focus moves to the first tabbable element or a field marked `autoFocus`, and returns to the trigger.
 An outside press, Escape or focus leaving closes a popover, and the card has a close button in its

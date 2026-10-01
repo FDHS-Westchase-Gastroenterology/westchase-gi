@@ -16,7 +16,7 @@ that renders it. The per-component guides are [buttons.md](buttons.md), [forms.m
 
 A tier never imports a tier above it in this table, and nothing imports `stock/` except the three
 exceptions below. Two recorded departures: `ui/checkbox.tsx` and `patterns/TextBand.tsx` import
-`src/components/icons.tsx`, and the 16 files of `src/components/*.tsx` predate the tiers. Both wait on
+`src/components/icons/`, and the 15 files of `src/components/*.tsx` predate the tiers. Both wait on
 [roadmap item 15](roadmap.md#15-the-patient-site-shared-layer). Code generated from the registry
 becomes the project's once it lands in `ui/`: edit it there, never in `stock/`.
 

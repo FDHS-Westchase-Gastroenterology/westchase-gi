@@ -20,7 +20,7 @@ adding a button, a field or a modal never decides a color, a duration or a radiu
 - [Forms](design-system/forms.md) — fields, controls, choices, saving, results.
 - [Dates and times](design-system/dates-and-times.md) — the date input, practice-local days, the time wheel.
 - [Surfaces](design-system/surfaces.md) — cards, tables, lists, rules, scrolling, badges.
-- [Overlays](design-system/overlays.md) — dialogs, popovers, the record sheet, the time sheet.
+- [Overlays](design-system/overlays.md) — dialogs, popovers, the record sheet, the time sheet; [previews](design-system/previews.md) for tooltips and hover previews.
 - [Motion](design-system/motion.md) — the two engines, the temperaments, reduced motion.
 - [Accessibility](design-system/accessibility.md) — targets, focus, announcements, landmarks.
 - [Styling](design-system/styling.md) — the styling model, global CSS, call-site restyles.

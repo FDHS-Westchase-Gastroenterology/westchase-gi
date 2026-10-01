@@ -88,8 +88,8 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
       await expect(visibleNav).toHaveCount(1);
       await expect(visibleNav.locator("a")).toHaveText(
         viewport.width < 960
-          ? [/^Home$/, /^Requests/, /^Settings$/, /^Help$/]
-          : [/^Home$/, /^Requests/, /^Review flyers$/, /^Activity log$/],
+          ? [/^Home$/, /^Schedule$/, /^Requests/, /^Settings$/, /^Help$/]
+          : [/^Home$/, /^Schedule$/, /^Requests/, /^Review flyers$/, /^Activity log$/],
         { useInnerText: true },
       );
       const navBoxes = await visibleNav.locator("a").evaluateAll((links) =>

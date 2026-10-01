@@ -168,6 +168,12 @@ const portalCaptures = [
     ready: "main h1",
   },
   {
+    name: "desktop-portal-schedule",
+    path: "/admin/schedule",
+    viewport: { width: 1440, height: 900 },
+    ready: '[role="grid"]',
+  },
+  {
     name: "desktop-portal-requests",
     path: "/admin/requests?q=Sample+patient",
     viewport: { width: 1440, height: 900 },
@@ -214,6 +220,12 @@ const portalCaptures = [
     path: "/admin",
     viewport: { width: 390, height: 844 },
     ready: "main h1",
+  },
+  {
+    name: "mobile-portal-schedule",
+    path: "/admin/schedule",
+    viewport: { width: 390, height: 844 },
+    ready: '[role="grid"]',
   },
   {
     name: "mobile-portal-requests",

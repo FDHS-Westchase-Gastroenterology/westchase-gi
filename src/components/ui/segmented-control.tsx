@@ -7,6 +7,8 @@ import type { VariantProps } from "class-variance-authority";
 import { cn } from "cn";
 import type { CSSProperties } from "react";
 
+import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
+
 /*
  * A segmented control: two to four mutually exclusive choices shown at
  * once, one of them always chosen. Adapted from the shadcn RadioGroup
@@ -26,6 +28,16 @@ import type { CSSProperties } from "react";
  * the recipe teal ring on the segment. `readOnly` keeps the choice and
  * still submits it (a locked draft); `disabled` dims and drops it.
  *
+ * Paper is an axis. `track` (default) is the paper above. `glass` is the
+ * Schedule's view switch (Figma Ypf9ohpRcGWF5C9T9bSvWW, section 08, S1): a
+ * white capsule under a navy-200 stroke, 42px tall, whose thumb is the
+ * applied filter pill's navy glass, navy-50 to navy-100 under a navy-800
+ * stroke with a white top highlight.
+ *
+ * An option with a `disabledReason` cannot be chosen yet: Base UI marks
+ * it `aria-disabled` (it is a span, never a native disabled control), the
+ * arrow keys pass over it, and a tooltip on hover or focus says why.
+ *
  * Motion is its own axis (design-system/components.md "Component API
  * rules"). `wgi` (default): the thumb slides with `translate` on the staff
  * home's fast beat, --motion-fast-duration on --motion-standard, and a
@@ -37,10 +49,8 @@ import type { CSSProperties } from "react";
  */
 const segmentedControlVariants = cva(
   [
-    // Geometry: a 44px track, 4px inset, equal segments
-    "relative isolate grid min-h-11 w-full auto-cols-fr grid-flow-col rounded-[0.5rem] p-1",
-    // Paper: a bare slate-100 track; only the thumb carries a stroke
-    "bg-slate-100",
+    // Geometry: a 4px inset holding equal segments
+    "relative isolate grid w-full auto-cols-fr grid-flow-col p-1",
     // Invalid: the field's coral halo
     "aria-invalid:ring-3 aria-invalid:ring-coral-100",
     // Disabled: the whole control fades
@@ -48,6 +58,12 @@ const segmentedControlVariants = cva(
   ],
   {
     variants: {
+      paper: {
+        /* A bare slate-100 track, 44px; only the thumb carries a stroke. */
+        track: "min-h-11 rounded-[0.5rem] bg-slate-100",
+        /* A white capsule under a navy-200 stroke, 42px. */
+        glass: "min-h-[2.625rem] rounded-full border border-navy-200 bg-white",
+      },
       motion: {
         /* The staff home's fast beat for the thumb and the ink. */
         wgi: "[--segment-duration:var(--motion-fast-duration)] [--segment-ease:var(--motion-standard)]",
@@ -56,37 +72,63 @@ const segmentedControlVariants = cva(
       },
     },
     defaultVariants: {
+      paper: "track",
       motion: "wgi",
     },
   },
 );
 
-const segmentVariants = [
-  // Geometry: fills its column, sits above the thumb
-  "relative z-10 flex min-w-0 cursor-pointer items-center justify-center rounded-[0.375rem] px-1",
-  // Ink: slate-700 at rest, the chosen segment in slate-950 and semibold
-  "text-[0.875rem] leading-none font-normal whitespace-nowrap text-slate-700 select-none",
-  "data-checked:font-semibold data-checked:text-slate-950",
-  "transition-[color] duration-[var(--segment-duration)] ease-[var(--segment-ease)]",
-  // Hover: a darker ink on an unchosen segment
-  "hover:not-data-checked:not-data-readonly:not-data-disabled:text-slate-950",
-  // Focus: the recipe teal ring on the focused segment
-  "outline-none focus-visible:ring-2 focus-visible:ring-teal-ink",
-  // Read-only and disabled: no pointer affordance
-  "data-readonly:cursor-default data-disabled:cursor-not-allowed",
-];
+const segmentVariants = cva(
+  [
+    // Geometry: fills its column, sits above the thumb
+    "relative z-10 flex min-w-0 cursor-pointer items-center justify-center",
+    // Ink: slate-700 at rest, the chosen segment in slate-950 and semibold
+    "text-[0.875rem] leading-none font-normal whitespace-nowrap text-slate-700 select-none",
+    "data-checked:font-semibold data-checked:text-slate-950",
+    "transition-[color] duration-[var(--segment-duration)] ease-[var(--segment-ease)]",
+    // Hover: a darker ink on an unchosen segment
+    "hover:not-data-checked:not-data-readonly:not-data-disabled:text-slate-950",
+    // Focus: the recipe teal ring on the focused segment
+    "outline-none focus-visible:ring-2 focus-visible:ring-teal-ink",
+    // Read-only: no pointer affordance. Disabled: none either, and no hover ink
+    "data-readonly:cursor-default data-disabled:cursor-default",
+  ],
+  {
+    variants: {
+      paper: {
+        track: "rounded-[0.375rem] px-1",
+        glass: "min-h-8 rounded-full px-4",
+      },
+    },
+    defaultVariants: { paper: "track" },
+  },
+);
 
-const thumbVariants = [
-  // Geometry: one segment wide, moved by the chosen index
-  "pointer-events-none absolute inset-y-1 left-1 rounded-[0.375rem]",
-  "w-[calc((100%-0.5rem)/var(--segment-count))] translate-x-[calc(100%*var(--segment-index))]",
-  "border border-slate-200 bg-white shadow-[0_1px_2px_rgb(27_42_58/0.12)]",
-  "transition-[translate] duration-[var(--segment-duration)] ease-[var(--segment-ease)]",
-];
+const thumbVariants = cva(
+  [
+    // Geometry: one segment wide, moved by the chosen index
+    "pointer-events-none absolute inset-y-1 left-1",
+    "w-[calc((100%-0.5rem)/var(--segment-count))] translate-x-[calc(100%*var(--segment-index))]",
+    "transition-[translate] duration-[var(--segment-duration)] ease-[var(--segment-ease)]",
+  ],
+  {
+    variants: {
+      paper: {
+        track:
+          "rounded-[0.375rem] border border-slate-200 bg-white shadow-[0_1px_2px_rgb(27_42_58/0.12)]",
+        glass:
+          "rounded-full border-[1.2px] border-navy-800 bg-linear-to-b from-navy-50 to-navy-100 shadow-[inset_0_1px_0_rgb(255_255_255/0.8)]",
+      },
+    },
+    defaultVariants: { paper: "track" },
+  },
+);
 
 export interface SegmentedControlOption<Value extends string> {
   readonly value: Value;
   readonly label: string;
+  /** Why the option cannot be chosen yet; set, it disables the option and says so. */
+  readonly disabledReason?: string;
 }
 
 type SegmentedControlProps<Value extends string> = Omit<
@@ -102,6 +144,7 @@ type SegmentedControlProps<Value extends string> = Omit<
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function SegmentedControl<Value extends string>({
   className,
+  paper = "track",
   motion = "wgi",
   options,
   value,
@@ -124,21 +167,36 @@ function SegmentedControl<Value extends string>({
       onValueChange={(next) => {
         onValueChange?.(next);
       }}
-      className={cn(segmentedControlVariants({ motion }), className)}
+      className={cn(segmentedControlVariants({ paper, motion }), className)}
       style={place}
       {...props}
     >
-      <span aria-hidden="true" data-slot="segmented-control-thumb" className={cn(thumbVariants)} />
-      {options.map((option) => (
-        <RadioPrimitive.Root
-          key={option.value}
-          value={option.value}
-          data-slot="segmented-control-item"
-          className={cn(segmentVariants)}
-        >
-          {option.label}
-        </RadioPrimitive.Root>
-      ))}
+      <span
+        aria-hidden="true"
+        data-slot="segmented-control-thumb"
+        className={thumbVariants({ paper })}
+      />
+      {options.map((option) => {
+        const item = (
+          <RadioPrimitive.Root
+            key={option.value}
+            value={option.value}
+            disabled={option.disabledReason !== undefined}
+            data-slot="segmented-control-item"
+            className={segmentVariants({ paper })}
+          >
+            {option.label}
+          </RadioPrimitive.Root>
+        );
+        return option.disabledReason === undefined ? (
+          item
+        ) : (
+          <Tooltip key={option.value}>
+            <TooltipTrigger render={item} />
+            <TooltipContent side="bottom">{option.disabledReason}</TooltipContent>
+          </Tooltip>
+        );
+      })}
     </RadioGroupPrimitive>
   );
 }

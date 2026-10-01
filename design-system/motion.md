@@ -116,7 +116,7 @@ An earlier layer wins among those, so an authored reduced temperament opts out b
 
 | Surface | Under reduced motion |
 | --- | --- |
-| `.portal-confirm-dialog`, `.wgi-popover`, `.wgi-sheet` | A 120ms cross-fade on `--pm-reduced-duration`; rise, scale and slide go; the sheet's header and body fade in together on the same beat; the rubber bands, the grip and the detached card's yield snap; a keyboard open or close stays instant |
+| `.portal-confirm-dialog`, `.wgi-popover`, `.wgi-day-preview`, `.wgi-sheet` | A 120ms cross-fade on `--pm-reduced-duration`; rise, scale and slide go; the sheet's header and body fade in together on the same beat; the rubber bands, the grip and the detached card's yield snap; a keyboard open or close stays instant |
 | `Toaster` | A 120ms fade; the rise and the stack's height change land at once |
 | Home's loading placeholders | The pulse slows to 3.2s instead of freezing mid-frame |
 | `Button`, Home's buttons, the time picker | Paint and depth change at once; scale, lift and wheel travel go; the picker's panel cross-fades on `crossfade` |

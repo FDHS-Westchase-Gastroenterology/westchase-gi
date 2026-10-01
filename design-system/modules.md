@@ -28,7 +28,7 @@ import { PrintChooser } from "./print-chooser";
 | `src/lib/site.ts` | `site`, `localePath`, `locales`, `localeDir`, `formatOfficeHours`, `directionsUrl`, `mapEmbedUrl`, the `Locale` type | Practice facts and every internal href. `site.affiliations` names the surgery centers; each `site.locations[]` entry carries a `mapsQuery` that `directionsUrl(query)` and `mapEmbedUrl(query, locale)` turn into links |
 | `src/lib/metadata.ts` | `pageMetadata` | The metadata contract ([patient-site.md](patient-site.md)) |
 | `src/components/patterns/` | `PageHero`, `TextBand`, `Reveal`, `revealDelay` | The page rhythm ([components.md](components.md)) |
-| `src/components/icons.tsx` | 31 icon components; each renders `aria-hidden` unless a prop overrides it | Any glyph on a patient page; the words beside it carry the meaning |
+| `src/components/icons/` | 42 icon components; each renders `aria-hidden` unless a prop overrides it | Any glyph on a patient page; the words beside it carry the meaning |
 
 **The two locale modules divide by kind, not by subject.** `src/lib/site.ts` owns the *type* —
 `Locale`, the `locales` tuple, `localeSet` — because the practice's facts are keyed by it.
@@ -60,19 +60,19 @@ page maps over dictionary content rather than sorting or pushing to it.
 
 | Module | What it exports | A screen imports |
 | --- | --- | --- |
-| `src/components/icons.tsx` | 31 hand-written icon components | Every portal glyph |
+| `src/components/icons/` | 42 hand-written icon components; the portal shell's live in `portal.tsx` | Every portal glyph |
 | `src/app/admin/(portal)/toast-follow.ts` | `followed` | The promise a save toast follows |
 | `src/app/admin/(portal)/portal-feedback.tsx` | `PortalFeedbackProvider`, `PortalFeedbackMessage`, `usePortalFeedback` | The one current result on a page |
 | `src/components/output-feedback.ts` | `useOutputGuard` | A control that hands a file to the browser |
 | `src/lib/portal/workflow/contracts.ts` | `RequestStatus`, `StatusCounts`, the workflow shapes | The status a screen renders |
 | `src/app/admin/(portal)/requests/format.ts` | `STATUS_LABELS` and the display formatters | The words for a status key |
 
-**Icons are this repository's, not a package's.** `src/components/icons.tsx` exports 31
+**Icons are this repository's, not a package's.** `src/components/icons/` exports 42
 hand-written SVG components — `Phone`, `Download`, `Printer`, `Check`, `ChevronDown` and the rest
 — sized by the consuming recipe, never by a class ([buttons.md](buttons.md)). `lucide-react` is
 installed for the registry and has exactly one importer outside `src/components/stock/`:
 `src/components/ui/toaster.tsx`, which passes Sonner its icon set. New portal work imports from
-`@/components/icons`; a glyph the module lacks is added there.
+`@/components/icons`; a missing glyph is added there, or to `icons/portal.tsx` for the portal shell.
 
 **`followed` is a type guard, not a value.** Its second argument narrows the settled promise:
 

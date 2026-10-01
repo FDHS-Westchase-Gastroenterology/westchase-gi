@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { logoutAction } from "@/app/admin/actions";
 import { ExternalLink, LogOut, Users } from "@/components/icons";
 import { Toaster } from "@/components/ui/toaster";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { getSessionUser } from "@/lib/portal/auth";
 import { getPortalReleaseState } from "@/lib/portal/release-briefing";
 import {
@@ -15,6 +16,8 @@ import { serviceClient } from "@/lib/portal/server";
 
 import { PortalAccountLinks, PortalNav } from "./portal-nav";
 import { PortalReleaseProvider, PortalReleaseUtility } from "./portal-release-briefing";
+
+import "./wgi-paints.css";
 
 // The Front Desk Ledger: a persistent desktop index of the four work pages,
 // With Settings and Help in its account footer, becomes four thumb-reachable
@@ -46,89 +49,93 @@ export default async function PortalLayout({
 
   return (
     <PortalReleaseProvider eligible={releaseEligible} initialState={releaseState}>
-      <div className="portal-workspace min-h-dvh">
-        <a href="#portal-main" className="skip-link">
-          Skip to staff portal content
-        </a>
+      {/* One provider for every tooltip in the portal, so moving between
+          triggers skips the second wait. */}
+      <TooltipProvider>
+        <div className="portal-workspace min-h-dvh">
+          <a href="#portal-main" className="skip-link">
+            Skip to staff portal content
+          </a>
 
-        <aside className="portal-sidebar print-hide" aria-label="Portal workspace">
-          <Link
-            href="/admin"
-            className="portal-sidebar-brand"
-            aria-label="Westchase Gastroenterology staff portal home"
-          >
-            <span className="portal-sidebar-mark" aria-hidden="true">
-              W
-            </span>
-            <span>
-              <strong>Westchase Gastroenterology</strong>
-              <small>Staff portal</small>
-            </span>
-          </Link>
-
-          <PortalNav layout="sidebar" waitingCount={waitingCount} />
-          <PortalNav layout="bar" waitingCount={waitingCount} />
-
-          <div className="portal-sidebar-account">
-            <p className="portal-sidebar-person">
-              <span data-testid="session-user">{session.displayName}</span>
-              <small className="portal-sidebar-person-meta">
-                <span className="capitalize">{session.role}</span>
-                <span aria-hidden="true">·</span>
-                <span data-testid="session-email" title={session.email}>
-                  {session.email}
-                </span>
-              </small>
-            </p>
-            <div className="portal-sidebar-account-actions">
-              <PortalAccountLinks />
-              <Link href="/">
-                <ExternalLink className="h-4 w-4" />
-                View website
-              </Link>
-              <form action={logoutAction}>
-                <button type="submit">
-                  <LogOut className="h-4 w-4" />
-                  Sign out
-                </button>
-              </form>
-            </div>
-          </div>
-        </aside>
-
-        <div className="portal-stage">
-          <header className="portal-mobile-header print-hide">
-            <Link href="/admin" className="portal-mobile-brand">
-              <span aria-hidden="true">W</span>
-              <strong>Staff portal</strong>
+          <aside className="portal-sidebar print-hide" aria-label="Portal workspace">
+            <Link
+              href="/admin"
+              className="portal-sidebar-brand"
+              aria-label="Westchase Gastroenterology staff portal home"
+            >
+              <span className="portal-sidebar-mark" aria-hidden="true">
+                W
+              </span>
+              <span>
+                <strong>Westchase Gastroenterology</strong>
+                <small>Staff portal</small>
+              </span>
             </Link>
-            <details className="portal-account-menu">
-              <summary role="button" aria-label="Open account menu">
-                <Users className="h-5 w-5" />
-              </summary>
-              <div>
-                <p>
-                  <strong>{session.displayName}</strong>
+
+            <PortalNav layout="sidebar" waitingCount={waitingCount} />
+            <PortalNav layout="bar" waitingCount={waitingCount} />
+
+            <div className="portal-sidebar-account">
+              <p className="portal-sidebar-person">
+                <span data-testid="session-user">{session.displayName}</span>
+                <small className="portal-sidebar-person-meta">
                   <span className="capitalize">{session.role}</span>
-                </p>
-                <Link href="/admin/audit">Activity log</Link>
-                <Link href="/">View website</Link>
+                  <span aria-hidden="true">·</span>
+                  <span data-testid="session-email" title={session.email}>
+                    {session.email}
+                  </span>
+                </small>
+              </p>
+              <div className="portal-sidebar-account-actions">
+                <PortalAccountLinks />
+                <Link href="/">
+                  <ExternalLink className="h-4 w-4" />
+                  View website
+                </Link>
                 <form action={logoutAction}>
-                  <button type="submit">Sign out</button>
+                  <button type="submit">
+                    <LogOut className="h-4 w-4" />
+                    Sign out
+                  </button>
                 </form>
               </div>
-            </details>
-          </header>
+            </div>
+          </aside>
 
-          <PortalReleaseUtility />
-          <main id="portal-main" tabIndex={-1}>
-            <div className="portal-content">{children}</div>
-          </main>
+          <div className="portal-stage">
+            <header className="portal-mobile-header print-hide">
+              <Link href="/admin" className="portal-mobile-brand">
+                <span aria-hidden="true">W</span>
+                <strong>Staff portal</strong>
+              </Link>
+              <details className="portal-account-menu">
+                <summary role="button" aria-label="Open account menu">
+                  <Users className="h-5 w-5" />
+                </summary>
+                <div>
+                  <p>
+                    <strong>{session.displayName}</strong>
+                    <span className="capitalize">{session.role}</span>
+                  </p>
+                  <Link href="/admin/audit">Activity log</Link>
+                  <Link href="/">View website</Link>
+                  <form action={logoutAction}>
+                    <button type="submit">Sign out</button>
+                  </form>
+                </div>
+              </details>
+            </header>
+
+            <PortalReleaseUtility />
+            <main id="portal-main" tabIndex={-1}>
+              <div className="portal-content">{children}</div>
+            </main>
+          </div>
         </div>
-      </div>
-      {/* Save feedback lives with the shell, so a toast outlives the surface
+        {/* Save feedback lives with the shell, so a toast outlives the surface
           that earned it (the home record card closes on a confirmed save). */}
-      <Toaster />
+        <Toaster />
+      </TooltipProvider>
     </PortalReleaseProvider>
   );
 }

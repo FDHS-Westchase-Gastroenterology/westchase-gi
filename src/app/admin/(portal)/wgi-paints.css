@@ -1,0 +1,126 @@
+/* ---- The staff portal's Figma paints ----
+   Home and Schedule both draw from the design file's own variables, so
+   they are declared once here and loaded with the portal shell
+   (layout.tsx). Each surface that reads them, including the ones portaled
+   to body, joins both selector lists below. */
+
+/* The record card, the full-record sheet, its history popover and the
+   Schedule's day preview are portaled to body, outside their page, so
+   they read the same paints from this shared rule rather than restating
+   them. */
+.wgi-home,
+.wgi-record-card,
+.wgi-sheet,
+.wgi-history-popover,
+.wgi-schedule,
+.wgi-day-preview {
+  /* Figma parity: the paints below are the design file's own variables
+     (Ypf9ohpRcGWF5C9T9bSvWW, "Home · Approved baseline", node 88:1176,
+     which carries these names), scoped to the staff surfaces so the brand
+     @theme stays untouched. --wgi-muted-ink was darkened along its hue to pass AA on the
+     open tint (#7284a0 -> #576883, 4.54). The phone glyph is decorative and
+     keeps the frame's #94a8c3. The card shadow is the record card's lift now
+     (node 76:1005); the list surface is flat. */
+  --wgi-surface: #fcfdfe;
+  --wgi-card-shadow: 0 7px 20px rgba(36, 68, 94, 0.18);
+  /* The floating sheet's lift (issue #327, section 05, frame C): contact,
+     key and ambient layers in the frame's name ink, so it reads as a
+     surface above the canvas rather than an edge of the window. */
+  --wgi-sheet-shadow:
+    0 1px 2px rgb(16 20 58 / 0.14), 0 12px 24px rgb(16 20 58 / 0.18),
+    0 32px 72px -8px rgb(16 20 58 / 0.3);
+  --wgi-rule: #dfe6ef;
+  --wgi-band: #eaf1f7;
+  --wgi-hover: #e3efed;
+  --wgi-open: #dbe9ea;
+  --wgi-row-radius: 12px;
+  --wgi-name-ink: #10143a;
+  --wgi-muted-ink: #576883;
+  --wgi-icon-ink: #94a8c3;
+  --wgi-track: #e3e8f0;
+  --wgi-thumb: #9ca8ba;
+  --wgi-chip-stroke: #c4d5e5;
+  /* The header commands' glass recipe (issue #332, section 2): each
+     paint is a vertical fill from one ramp step to the next. */
+  --wgi-cmd-fill: #ffffff;
+  --wgi-cmd-fill-end: var(--color-slate-50);
+  --wgi-cmd-stroke: var(--color-slate-300);
+  /* Status badges wear the glass gradient (issue #327, Figma section 06
+     After, node 238:1828; design-system/color.md "The glass gradient"): a
+     vertical fill from ramp step n to n+1, a stroke one step deeper, and
+     the first ink that clears 4.5:1 against both ends. Loudness comes from
+     where the fill sits on its ramp: New is the loudest, Closed a ghost.
+     Contrast, top / bottom of the fill: New 7.1 / 6.0, Call again 7.8 / 6.7,
+     Scheduled 7.3 / 6.6; Closed 6.8 on white and 6.0 on the band. */
+  --wgi-badge-radius: 7.5px;
+  --wgi-badge-new-fill: var(--color-amber-300);
+  --wgi-badge-new-fill-end: var(--color-amber-400);
+  --wgi-badge-new-stroke: var(--color-amber-500);
+  --wgi-badge-new-ink: var(--color-navy-900);
+  --wgi-badge-new-highlight: rgb(255 255 255 / 0.55);
+  --wgi-badge-contacted-fill: var(--color-teal-100);
+  --wgi-badge-contacted-fill-end: var(--color-teal-200);
+  --wgi-badge-contacted-stroke: var(--color-teal-300);
+  --wgi-badge-contacted-ink: var(--color-teal-800);
+  --wgi-badge-scheduled-fill: var(--color-mint-100);
+  --wgi-badge-scheduled-fill-end: var(--color-mint-200);
+  --wgi-badge-scheduled-stroke: var(--color-mint-300);
+  --wgi-badge-scheduled-ink: var(--color-mint-800);
+  --wgi-badge-closed-stroke: var(--color-slate-300);
+  --wgi-badge-closed-ink: var(--color-slate-700);
+  /* The applied filter pill's navy glass. */
+  --wgi-pill-fill: var(--color-navy-50);
+  --wgi-pill-fill-end: var(--color-navy-100);
+  --wgi-pill-stroke: var(--color-navy-800);
+  --wgi-pill-highlight: rgb(255 255 255 / 0.8);
+  --wgi-pill-key-ink: var(--color-navy-700);
+  --wgi-pill-value-ink: var(--color-slate-950);
+  /* Attention outside a status: an overdue call-back and a failed
+     notification email keep the September 15 pale amber the Call again
+     badge wore before it turned teal. 5.6 on the open tint. */
+  --wgi-attention-fill: #fdefdb;
+  --wgi-attention-ink: #95500c;
+  --wgi-cmd-primary: #173758;
+  --wgi-cmd-radius: 6px;
+  /* The record card's redesign (Figma Ypf9ohpRcGWF5C9T9bSvWW, section 03,
+     node 134:1176): small uppercase labels take the file's label ink, and
+     a day from a neighboring month is the chip stroke, named for its job. */
+  --wgi-label-ink: #647493;
+  --wgi-outside-day: var(--wgi-chip-stroke);
+  /* The full record's quiet links: the email address, More, and the
+     history heading's glyph. 8.7 on the surface. */
+  --wgi-link-ink: #294f60;
+}
+
+/* The Display P3 layer (issue #327): on a wide-gamut screen each literal
+   above is restated with the same channel values, read as Display P3, which
+   is how the Figma file shows them on a P3 Mac. An sRGB screen keeps the hex.
+   The ramp-backed paints (badges, pill) need no restatement here: their
+   var() reads the P3 ramp that .portal-scope assigns in globals.css. White
+   is the same colour in both spaces, and the shadows are low-alpha ink whose
+   shift is below what the eye resolves, so both keep their sRGB literals. */
+@media (color-gamut: p3) {
+  .wgi-home,
+  .wgi-record-card,
+  .wgi-sheet,
+  .wgi-history-popover,
+  .wgi-schedule,
+  .wgi-day-preview {
+    --wgi-surface: color(display-p3 0.988 0.992 0.996);
+    --wgi-rule: color(display-p3 0.875 0.902 0.937);
+    --wgi-band: color(display-p3 0.918 0.945 0.969);
+    --wgi-hover: color(display-p3 0.89 0.937 0.929);
+    --wgi-open: color(display-p3 0.859 0.914 0.918);
+    --wgi-name-ink: color(display-p3 0.063 0.078 0.227);
+    --wgi-muted-ink: color(display-p3 0.341 0.408 0.514);
+    --wgi-icon-ink: color(display-p3 0.58 0.659 0.765);
+    --wgi-track: color(display-p3 0.89 0.91 0.941);
+    --wgi-thumb: color(display-p3 0.612 0.659 0.729);
+    --wgi-chip-stroke: color(display-p3 0.769 0.835 0.898);
+    --wgi-attention-fill: color(display-p3 0.992 0.937 0.859);
+    --wgi-attention-ink: color(display-p3 0.584 0.314 0.047);
+    --wgi-cmd-primary: color(display-p3 0.09 0.216 0.345);
+    --wgi-label-ink: color(display-p3 0.392 0.455 0.576);
+    --wgi-link-ink: color(display-p3 0.161 0.31 0.376);
+  }
+}

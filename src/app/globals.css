@@ -338,7 +338,8 @@
 
     /* The home dashboard (home.css) is authored unlayered, so — like the
        workbench — nothing it declares can outrank the reset above. Its
-       surfaces register here: the record popover and the full-record sheet
+       surfaces register here: the record popover, the Schedule's day
+       preview (schedule.css) and the full-record sheet
        keep the charter's cross-fade (their travel is already dropped by
        home.css's transform: none rules), and the sheet's content settle —
        a keyframe, not a transition — keeps the same beat on the fade-only
@@ -348,6 +349,7 @@
        sheet's keyboard open and close (its own data-instant): keyboard-
        initiated actions never animate, reduced motion or not. */
     .wgi-popover:not([data-instant]),
+    .wgi-day-preview:not([data-instant], [data-keyed]),
     .wgi-sheet:not([data-instant]) {
       transition-duration: var(--pm-reduced-duration, 120ms) !important;
     }

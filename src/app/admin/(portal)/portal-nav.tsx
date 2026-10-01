@@ -3,17 +3,27 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { Activity, CircleHelp, ClipboardCheck, FileText, Home, Settings } from "@/components/icons";
+import {
+  Activity,
+  Calendar,
+  CircleHelp,
+  ClipboardCheck,
+  FileText,
+  Home,
+  Settings,
+} from "@/components/icons";
 
-// Four destinations per layout, each its own list (issue #327, Figma section
-// 08 option 2). The desktop rail gives the four work pages the same row and
-// Moves Settings and Help to the account footer; the phone bar keeps Home,
-// Requests, Settings and Help, with Activity log in the account menu. The
+// Five destinations per layout, each its own list (issue #327, Figma section
+// 08 option 2; Schedule from issue #343). The desktop rail gives the five work
+// Pages the same row and moves Settings and Help to the account footer; the
+// Phone bar keeps Home, Schedule, Requests, Settings and Help, with Activity
+// Log in the account menu. The
 // Shell renders one PortalNav per layout and hides the inactive one whole,
 // So a link that is not on screen never holds a tab stop. Home, Requests,
 // The current-location signal and the waiting count never move.
 
 const HOME = { href: "/admin", label: "Home", icon: Home };
+const SCHEDULE = { href: "/admin/schedule", label: "Schedule", icon: Calendar };
 const REQUESTS = { href: "/admin/requests", label: "Requests", icon: ClipboardCheck };
 const SETTINGS = { href: "/admin/settings", label: "Settings", icon: Settings };
 const HELP = { href: "/admin/help", label: "Help", icon: CircleHelp };
@@ -21,11 +31,12 @@ const HELP = { href: "/admin/help", label: "Help", icon: CircleHelp };
 const NAV_ITEMS = {
   sidebar: [
     HOME,
+    SCHEDULE,
     REQUESTS,
     { href: "/admin/review-flyers", label: "Review flyers", icon: FileText },
     { href: "/admin/audit", label: "Activity log", icon: Activity },
   ],
-  bar: [HOME, REQUESTS, SETTINGS, HELP],
+  bar: [HOME, SCHEDULE, REQUESTS, SETTINGS, HELP],
 } as const;
 
 function isActive(pathname: string, href: string): boolean {

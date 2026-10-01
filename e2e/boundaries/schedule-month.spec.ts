@@ -73,7 +73,7 @@ test("the month summary counts open, full, past, and closed practice days at one
       providers.push(provider.id);
     }
     const [single, double] = providers;
-    const book = (date: string, time: string, providerId: string, patientIndex = 0) =>
+    const book = async (date: string, time: string, providerId: string, patientIndex = 0) =>
       save({
         action: "command",
         idempotencyKey: randomUUID(),
