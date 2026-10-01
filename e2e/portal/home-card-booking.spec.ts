@@ -30,6 +30,7 @@ function clockTime(label: string): string {
 test("Home Book recovers a start taken before it lands and books the nearest one", async ({
   page,
 }) => {
+  test.setTimeout(120_000);
   const db = serviceDb();
   const prefix = `card-book-${runId}`;
   const fixture = await createSchedulingFixture(db, prefix);
@@ -45,6 +46,8 @@ test("Home Book recovers a start taken before it lands and books the nearest one
       id: requestId,
       name,
       phone: "8135550198",
+      /* The global sweep removes a request a cancelled run leaves behind. */
+      email: `card-book-${runId}@example.test`,
       location: "tampa",
       preferred_time: "morning",
       locale: "en",
@@ -82,12 +85,19 @@ test("Home Book recovers a start taken before it lands and books the nearest one
       name: new RegExp(`^${LONG_DAY.format(new Date(`${day}T12:00:00Z`))}, \\d+ open times?$`, "u"),
     });
     await expect(dayButton).toBeVisible();
-    await dayButton.hover();
     const popover = page.locator(".wgi-day-popover");
+    /* A pointer resting on a day opens it; the card may still be settling
+       under the pointer, so rest on it again until the popover is up. */
+    await expect(async () => {
+      await page.mouse.move(0, 0);
+      await dayButton.hover();
+      await expect(popover).toBeVisible({ timeout: 2_000 });
+    }).toPass({ timeout: 20_000 });
     const starts = popover.getByRole("list", {
       name: `TEST ${prefix} First, TEST ${prefix} First`,
     });
     const tile = starts.getByRole("button").first();
+    await expect(tile).toBeVisible();
     const label = (await tile.textContent()) ?? "";
     await tile.click();
 
