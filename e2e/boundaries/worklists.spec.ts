@@ -6,8 +6,10 @@ import type { RequestWorklistInput } from "../../src/lib/portal/request-worklist
 import { requestWorklistDatabaseSchema } from "../../src/lib/portal/request-worklist/rows";
 import { expectDenied } from "../harness/assert";
 import { publishableDb, serviceDb } from "../harness/env";
+import { removePatients, savePatient } from "../harness/patients";
 import { createStaffFixture } from "../harness/session";
 import { createWorklistRequests } from "../harness/worklist";
+import { insertRequest } from "./support";
 
 test("worklists reach every request beyond 1000, keep exact filtered counts, and find complete neighbors", async () => {
   const db = serviceDb();
@@ -118,6 +120,83 @@ test("last activity and its named actor remain correct after 1500 audit entries"
     expect(value.items[0].lastActivityBy).toBe(staff.email);
   } finally {
     await fixture.dispose();
+    await staff.dispose();
+  }
+});
+
+test("worklist rows carry the linked patient through link, unlink, and relink", async () => {
+  const db = serviceDb();
+  const staff = await createStaffFixture(db, {
+    prefix: "worklist-link",
+    displayName: "TEST Worklist Link",
+  });
+  const requestId = randomUUID();
+  const name = `TEST worklist link ${randomUUID().slice(0, 8)}`;
+  const patientIds: string[] = [];
+  const linked = async () => {
+    const result = await db.rpc("portal_read_request_worklist", {
+      p_actor_id: staff.userId,
+      p_filter: { query: name },
+    });
+    expect(result.error).toBeNull();
+    const value = requestWorklistDatabaseSchema.parse(result.data);
+    if (!value.ok) throw new Error(`Worklist read failed: ${value.code}`);
+    expect(value.items).toHaveLength(1);
+    // The closed tail reads the same link through a PostgREST to-one embed.
+    const embedded = await db
+      .from("requests")
+      .select("id, patient_request_links(patient_id)")
+      .eq("id", requestId)
+      .single();
+    expect(embedded.error).toBeNull();
+    expect(embedded.data?.patient_request_links ?? null).toEqual(
+      value.items[0].patientId === null ? null : { patient_id: value.items[0].patientId },
+    );
+    return value.items[0].patientId;
+  };
+  try {
+    await insertRequest(db, { id: requestId, name });
+    expect(await linked()).toBeNull();
+    const created = [];
+    for (const label of ["First", "Second"]) {
+      const patient = await savePatient(db, staff.userId, {
+        kind: "create",
+        patient: { name: `TEST worklist link ${label}` },
+      });
+      if (!patient.ok) throw new Error("Patient fixture failed");
+      patientIds.push(patient.patientId);
+      created.push(patient);
+    }
+    const [first, second] = created;
+    const link = await savePatient(db, staff.userId, {
+      kind: "link_request",
+      patientId: first.patientId,
+      expectedVersion: first.version,
+      requestId,
+    });
+    if (!link.ok) throw new Error("Link failed");
+    expect(await linked()).toBe(first.patientId);
+    expect(
+      await savePatient(db, staff.userId, {
+        kind: "unlink_request",
+        patientId: first.patientId,
+        expectedVersion: link.version,
+        requestId,
+      }),
+    ).toMatchObject({ ok: true });
+    expect(await linked()).toBeNull();
+    expect(
+      await savePatient(db, staff.userId, {
+        kind: "link_request",
+        patientId: second.patientId,
+        expectedVersion: second.version,
+        requestId,
+      }),
+    ).toMatchObject({ ok: true });
+    expect(await linked()).toBe(second.patientId);
+  } finally {
+    await db.from("requests").delete().eq("id", requestId);
+    await removePatients(db, patientIds);
     await staff.dispose();
   }
 });

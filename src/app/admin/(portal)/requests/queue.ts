@@ -28,6 +28,8 @@ export interface QueueRow {
   legacy_review_required: boolean;
   /** Optimistic-concurrency token, so a row can be worked where it is read. */
   version: number;
+  /** The linked patient record; the request card books directly when present. */
+  patientId: string | null;
 }
 
 export type AttentiveQueueRow = AttentiveRow<QueueRow>;
@@ -36,7 +38,7 @@ export type AttentiveQueueRow = AttentiveRow<QueueRow>;
 export type WorkedQueueRow = AttentiveQueueRow & { lastActivityBy: string | null };
 
 const COLUMNS =
-  "id, name, phone, location, preferred_time, locale, status, created_at, follow_up_at, legacy_review_required, version";
+  "id, name, phone, location, preferred_time, locale, status, created_at, follow_up_at, legacy_review_required, version, patient_request_links(patient_id)";
 
 export type OpenStatus = Exclude<RequestStatus, "closed">;
 export const OPEN_STATUSES = [
@@ -59,13 +61,19 @@ const storedQueueRowSchema = z.object({
   // Postgres may hand a bigint back as a string, the way the work-surface
   // Read already allows for.
   version: z.union([z.number(), z.string()]),
+  // A to-one embed: patient_request_links is keyed by request_id.
+  patient_request_links: z.object({ patient_id: z.string() }).nullable(),
 });
 
-function toQueueRow(row: z.infer<typeof storedQueueRowSchema>): QueueRow {
+function toQueueRow({
+  patient_request_links: link,
+  ...row
+}: z.infer<typeof storedQueueRowSchema>): QueueRow {
   return {
     ...row,
     status: presentationStatus(row.status),
     version: Number(row.version),
+    patientId: link?.patient_id ?? null,
   };
 }
 
@@ -185,8 +193,7 @@ export async function fetchClosedRows(
   if (error) throw new Error(`Queue read failed: ${error.code}`);
   const parsed = z.array(storedQueueRowSchema).safeParse(data);
   if (!parsed.success) throw new Error("Queue read failed: invalid");
-  // Offset pages stay on `requests`. Unique-after-range would hide a join
-  // Fan-out by returning a short page, so this query never joins related
-  // Tables.
+  // Offset pages stay on `requests`. The only embed is the to-one patient
+  // Link (keyed by request_id), which cannot fan a row out and shorten a page.
   return parsed.data.map(toQueueRow);
 }

@@ -246,3 +246,77 @@ export const monthSummaryOutcomeSchema = z.union([
 ]);
 export type MonthSummaryDay = z.output<typeof monthSummaryDaySchema>;
 export type MonthSummary = Extract<z.output<typeof monthSummaryOutcomeSchema>, { ok: true }>;
+
+export const MONTH_AVAILABILITY_REASONS = ["booked_out", "no_hours", "time_off"] as const;
+export const monthAvailabilityEntrySchema = z
+  .object({
+    providerId: z.uuid(),
+    providerName: z.string(),
+    locationId: z.uuid().nullable(),
+    locationName: z.string().nullable(),
+    open: z
+      .array(
+        z.object({ startsAt: schedulingTimestampSchema, time: appointmentTimeSchema }).readonly(),
+      )
+      .readonly(),
+    booked: count,
+    capacity: count,
+    reason: z.enum(MONTH_AVAILABILITY_REASONS).nullable(),
+  })
+  .readonly();
+export const monthAvailabilityDaySchema = z
+  .object({
+    date: dateSchema,
+    past: z.boolean(),
+    open: count,
+    booked: count,
+    capacity: count,
+    providers: z.array(monthAvailabilityEntrySchema).readonly(),
+  })
+  .readonly();
+const namedSchema = z.object({ id: z.uuid(), name: z.string() }).readonly();
+export const monthAvailabilityOutcomeSchema = z.union([
+  z
+    .object({
+      ok: z.literal(true),
+      observedAt: schedulingTimestampSchema,
+      today: dateSchema,
+      month: z.string(),
+      timeZone: z.literal("America/New_York"),
+      appointmentType: z
+        .object({
+          id: z.uuid(),
+          name: z.string(),
+          version: schedulingVersionSchema,
+          durationMinutes: z.number().int().positive(),
+          bufferBeforeMinutes: z.number().int().nonnegative(),
+          bufferAfterMinutes: z.number().int().nonnegative(),
+        })
+        .readonly(),
+      locations: z
+        .array(
+          z
+            .object({ id: z.uuid(), name: z.string(), requestLocation: z.enum(["tampa", "lutz"]) })
+            .readonly(),
+        )
+        .min(1)
+        .readonly(),
+      providers: z
+        .array(
+          z
+            .object({ id: z.uuid(), name: z.string(), locations: z.array(namedSchema).readonly() })
+            .readonly(),
+        )
+        .readonly(),
+      days: z.array(monthAvailabilityDaySchema).min(28).max(31).readonly(),
+    })
+    .readonly(),
+  schedulingFailureSchema,
+]);
+export type MonthAvailabilityReason = (typeof MONTH_AVAILABILITY_REASONS)[number];
+export type MonthAvailabilityEntry = z.output<typeof monthAvailabilityEntrySchema>;
+export type MonthAvailabilityDay = z.output<typeof monthAvailabilityDaySchema>;
+export type MonthAvailability = Extract<
+  z.output<typeof monthAvailabilityOutcomeSchema>,
+  { ok: true }
+>;

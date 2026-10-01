@@ -108,6 +108,8 @@ async function localFixtureServer(t) {
         last_activity_by: null,
         lastActivityAt: null,
         lastActivityBy: null,
+        patient_id: null,
+        patientId: null,
       }));
       send(200, {
         ok: true,

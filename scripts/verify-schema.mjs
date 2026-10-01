@@ -136,6 +136,8 @@ const RPC_SIGNATURES = {
     "p_actor_id uuid, p_provider_id uuid, p_location_id uuid, p_date date, p_appointment_type_id uuid, p_patient_id uuid, p_appointment_id uuid, p_interval_minutes integer",
   portal_schedule_month_summary:
     "p_actor_id uuid, p_month date, p_location_id uuid, p_appointment_type_id uuid",
+  portal_schedule_month_availability:
+    "p_actor_id uuid, p_month date, p_appointment_type_id uuid, p_request_location text, p_patient_id uuid",
   portal_log_call_outcome:
     "p_actor_email text, p_request_id uuid, p_outcome text, p_note text, p_follow_up_at timestamp with time zone",
   portal_undo_call_outcome: "p_actor_email text, p_request_id uuid, p_event_id uuid",
@@ -207,7 +209,7 @@ const RPC_RESULTS = {
   portal_list_clinical_signers: "jsonb",
   portal_read_request_worklist: "jsonb",
   portal_request_worklist_rows:
-    "TABLE(id uuid, name text, phone text, location text, preferred_time text, locale text, status text, created_at timestamp with time zone, follow_up_at timestamp with time zone, legacy_review_required boolean, version bigint, last_activity_at timestamp with time zone, last_activity_by text, bucket text, bucket_order integer, ascending_time timestamp with time zone, descending_time timestamp with time zone)",
+    "TABLE(id uuid, name text, phone text, location text, preferred_time text, locale text, status text, created_at timestamp with time zone, follow_up_at timestamp with time zone, legacy_review_required boolean, version bigint, last_activity_at timestamp with time zone, last_activity_by text, bucket text, bucket_order integer, ascending_time timestamp with time zone, descending_time timestamp with time zone, patient_id uuid)",
   portal_search_patients: "jsonb",
   portal_read_patient: "jsonb",
   portal_preserve_appointment_patient: "trigger",
@@ -221,6 +223,7 @@ const RPC_RESULTS = {
   portal_read_appointment: "jsonb",
   portal_available_appointment_slots: "jsonb",
   portal_schedule_month_summary: "jsonb",
+  portal_schedule_month_availability: "jsonb",
   portal_log_call_outcome: "uuid",
   portal_undo_call_outcome: "jsonb",
   portal_hide_staff_release: "boolean",
@@ -898,6 +901,12 @@ async function main() {
   );
   assert(
     migrationRows.some(
+      (row) => row.version === "20260930230000" && row.name === "card_booking_month_availability",
+    ),
+    "Card booking month availability migration is not applied",
+  );
+  assert(
+    migrationRows.some(
       (row) => row.version === PHASE_C_MIGRATION.version && row.name === PHASE_C_MIGRATION.name,
     ),
     `Phase C migration ${PHASE_C_MIGRATION.version}_${PHASE_C_MIGRATION.name} is not applied`,
@@ -1110,6 +1119,25 @@ async function main() {
       tourColumnRows[0].is_nullable === "YES" &&
       tourColumnRows[0].column_default === null,
     "staff_profiles.portal_tour_dismissed_at must be nullable timestamptz with no default",
+  );
+
+  const requestLocationColumnRows = await queryDatabase({
+    accessToken,
+    ref: config.ref,
+    query: `
+      select data_type, is_nullable, column_default
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'scheduling_locations'
+        and column_name = 'request_location';
+    `,
+  });
+  assert(
+    requestLocationColumnRows.length === 1 &&
+      requestLocationColumnRows[0].data_type === "text" &&
+      requestLocationColumnRows[0].is_nullable === "YES" &&
+      requestLocationColumnRows[0].column_default === null,
+    "scheduling_locations.request_location must be nullable text with no default",
   );
 
   const portalReleaseColumnRows = await queryDatabase({

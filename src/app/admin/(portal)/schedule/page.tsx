@@ -28,6 +28,6 @@ export default async function SchedulePage({
     action: "month_summary",
     month,
   });
-  if (!summary.ok || !("days" in summary)) throw new Error("The schedule could not be read.");
+  if (!summary.ok || !("referenceType" in summary)) throw new Error("The schedule could not be read.");
   return <ScheduleMonthView view={scheduleMonthFor(summary)} />;
 }

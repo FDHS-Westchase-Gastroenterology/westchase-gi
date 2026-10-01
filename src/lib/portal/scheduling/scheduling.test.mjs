@@ -393,3 +393,139 @@ test("month summary reads a practice month and rejects malformed rows as unavail
     data,
   );
 });
+
+test("month availability reads per-provider open starts for the request's office", async () => {
+  // Rows copied from the RPC's output shape: offset timestamps and literal nulls.
+  const entry = (overrides) => ({
+    providerId: id,
+    providerName: "TEST Alpha",
+    locationId: otherId,
+    locationName: "TEST Tampa",
+    open: [],
+    booked: 0,
+    capacity: 0,
+    reason: null,
+    ...overrides,
+  });
+  const days = Array.from({ length: 30 }, (_, index) => {
+    const date = `2026-11-${String(index + 1).padStart(2, "0")}`;
+    if (index < 5) return { date, past: true, open: 0, booked: 0, capacity: 0, providers: [] };
+    if (index === 5)
+      return {
+        date,
+        past: false,
+        open: 2,
+        booked: 1,
+        capacity: 3,
+        providers: [
+          entry({
+            open: [
+              { startsAt: "2026-11-06T14:15:00+00:00", time: "09:15" },
+              { startsAt: "2026-11-06T15:00:00+00:00", time: "10:00" },
+            ],
+            booked: 1,
+            capacity: 3,
+          }),
+        ],
+      };
+    if (index === 6)
+      return {
+        date,
+        past: false,
+        open: 0,
+        booked: 0,
+        capacity: 0,
+        providers: [entry({ locationId: null, locationName: null, reason: "no_hours" })],
+      };
+    return {
+      date,
+      past: false,
+      open: 0,
+      booked: 4,
+      capacity: 4,
+      providers: [entry({ booked: 4, capacity: 4, reason: "booked_out" })],
+    };
+  });
+  const availability = {
+    ok: true,
+    month: "2026-11",
+    today: "2026-11-06",
+    timeZone: "America/New_York",
+    observedAt: "2026-11-06T13:27:48.996+00:00",
+    appointmentType: {
+      id,
+      name: "TEST New patient",
+      version: 2,
+      durationMinutes: 30,
+      bufferBeforeMinutes: 5,
+      bufferAfterMinutes: 5,
+    },
+    locations: [{ id: otherId, name: "TEST Tampa", requestLocation: "tampa" }],
+    providers: [{ id, name: "TEST Alpha", locations: [{ id: otherId, name: "TEST Tampa" }] }],
+    days,
+  };
+  const calls = [];
+  let data = availability;
+  const db = {
+    rpc(name, args) {
+      calls.push({ name, args });
+      return {
+        async abortSignal() {
+          return { data, error: null };
+        },
+      };
+    },
+  };
+  const outcome = await executeSchedulingOperation(db, otherId, {
+    action: "month_availability",
+    month: "2026-11",
+    appointmentTypeId: id,
+    location: "tampa",
+    patientId: otherId,
+  });
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.days[5].providers[0].open[1].time, "10:00");
+  assert.equal(outcome.days[6].providers[0].reason, "no_hours");
+  assert.deepEqual(calls[0], {
+    name: "portal_schedule_month_availability",
+    args: {
+      p_actor_id: otherId,
+      p_month: "2026-11-01",
+      p_appointment_type_id: id,
+      p_request_location: "tampa",
+      p_patient_id: otherId,
+    },
+  });
+  for (const input of [
+    { month: "2026-13", appointmentTypeId: id, location: "any" },
+    { month: "2026-11", appointmentTypeId: id, location: "brandon" },
+    { month: "2026-11", appointmentTypeId: null, location: "any" },
+    { month: "2026-11", location: "any" },
+  ])
+    assert.deepEqual(
+      await executeSchedulingOperation(db, otherId, { action: "month_availability", ...input }),
+      { ok: false, code: "invalid_command" },
+    );
+  assert.equal(calls.length, 1);
+  data = { ...availability, days: [{ ...days[5], providers: [entry({ reason: "away" })] }] };
+  assert.deepEqual(
+    await executeSchedulingOperation(db, otherId, {
+      action: "month_availability",
+      month: "2026-11",
+      appointmentTypeId: id,
+      location: "any",
+    }),
+    { ok: false, code: "unavailable" },
+  );
+  assert.equal(calls[1].args.p_patient_id, null);
+  data = { ok: false, code: "location_unavailable" };
+  assert.deepEqual(
+    await executeSchedulingOperation(db, otherId, {
+      action: "month_availability",
+      month: "2026-11",
+      appointmentTypeId: id,
+      location: "lutz",
+    }),
+    data,
+  );
+});

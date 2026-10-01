@@ -54,6 +54,8 @@ export const worklistRowSchema = z.object({
   lastActivityAt: timestamp.nullable(),
   lastActivityBy: z.string().nullable(),
   bucket: z.enum(ATTENTION_BUCKETS),
+  /** The linked patient record, so the request card can book directly. */
+  patientId: z.uuid().nullable(),
 });
 
 export const requestWorklistFailureSchema = z.object({
