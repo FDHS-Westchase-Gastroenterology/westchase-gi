@@ -86,7 +86,9 @@ export function BookingStrip({
               {line.value}
             </span>
             {line.detail === null ? null : (
-              <span className="wgi-booking-detail">{line.detail}</span>
+              <span className="wgi-booking-detail" title={line.detail}>
+                {line.detail}
+              </span>
             )}
           </p>
           {line.action === null ? null : (
