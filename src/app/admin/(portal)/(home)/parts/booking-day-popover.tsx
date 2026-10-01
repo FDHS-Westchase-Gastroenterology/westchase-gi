@@ -49,8 +49,11 @@ export function useDayPopover() {
       keyboard,
       setKeyboard,
       idFor,
-      /** Opens a day's popover at once, as if the keyboard had. */
+      /** Opens a day's popover at once, as if the keyboard had. A day that
+         is not a trigger on screen (another month, a locked card) has no
+         popover to open. */
       openNow: (date: string) => {
+        if (document.getElementById(idFor(date)) === null) return;
         setKeyboard(true);
         handle.open(idFor(date));
       },

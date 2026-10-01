@@ -1,4 +1,4 @@
-import { useReducer } from "react";
+import { useEffect, useReducer, useRef } from "react";
 
 import {
   addMonths,
@@ -38,17 +38,26 @@ export function useRecordBooking(
     patientId: options.active ? patientId : null,
   });
   const popover = useDayPopover();
+  /* The day whose popover goes back up once Book lets go of the card. */
+  const reopen = useRef<string | null>(null);
   const book = useCardBooking(line, {
     onBooked: options.onBooked,
     onTaken: () => {
       /* The start went to someone else: strike it, re-read, and put the
          day's popover back up with the nearest open start. */
-      const lostDay = draft.day;
+      reopen.current = draft.day;
       dispatch({ type: "taken" });
       month.reread();
-      popover.openNow(lostDay);
     },
   });
+  /* While Book is pending the card is locked and its days are not popover
+     triggers, so the lost day's popover opens when the attempt settles. */
+  useEffect(() => {
+    if (book.pending || reopen.current === null) return;
+    const day = reopen.current;
+    reopen.current = null;
+    popover.openNow(day);
+  }, [book.pending, popover]);
 
   const command =
     patientId === null

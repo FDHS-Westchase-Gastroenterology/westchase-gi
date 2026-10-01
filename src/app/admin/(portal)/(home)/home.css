@@ -1850,8 +1850,13 @@ a.appt-phone {
   outline-offset: 2px;
 }
 
-/* The pick is the navy disc; a day without open times keeps its regular
-   number under it. */
+/* The pick is the navy disc, over the mint one when the day has open
+   times; a day without open times keeps its regular number under it. */
+.wgi-booking-cal .rdp-day_button[data-selected-single] {
+  background: var(--wgi-cmd-primary);
+  color: white;
+}
+
 .wgi-booking-cal .rdp-day_button[data-selected-single]:not([data-open-times]) {
   font-weight: 400;
 }
@@ -2037,16 +2042,22 @@ a.appt-phone {
   min-height: 2.75rem;
 }
 
+/* The answer takes the room the visit type leaves; a provider and office
+   longer than that end in an ellipsis rather than run under the select. */
 .wgi-booking-status {
   display: flex;
   min-width: 0;
+  flex: 1 1 auto;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.625rem;
 }
 
 .wgi-booking-select {
   width: auto;
+  min-width: 7.5rem;
   max-width: 11rem;
+  flex: 0 1 auto;
   min-height: 2rem;
   border-width: 1px;
   border-color: var(--wgi-chip-stroke);
@@ -2062,7 +2073,10 @@ a.appt-phone {
 }
 
 .wgi-booking-detail {
+  max-width: 100%;
+  overflow: hidden;
   color: var(--wgi-muted-ink);
+  text-overflow: ellipsis;
   font-size: var(--wgi-card-row-size);
   line-height: 1.25;
   white-space: nowrap;
