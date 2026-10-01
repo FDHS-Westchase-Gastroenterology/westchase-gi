@@ -151,7 +151,7 @@ export const appointmentReadOutcomeSchema = z.union([
   z.object({
     ok: z.literal(true),
     observedAt: schedulingTimestampSchema,
-    appointment: namedAppointmentSchema,
+    appointment: namedAppointmentSchema.extend({ patientPhone: z.string().nullable() }),
     request: schedulingRequestSchema.nullable(),
     history: schedulingHistorySchema,
     undo: z.object({ changeId: z.uuid(), expiresAt: schedulingTimestampSchema }).nullable(),
@@ -320,3 +320,78 @@ export type MonthAvailability = Extract<
   z.output<typeof monthAvailabilityOutcomeSchema>,
   { ok: true }
 >;
+
+const weekAppointmentSchema = z
+  .object({
+    id: z.uuid(),
+    startsAt: schedulingTimestampSchema,
+    endsAt: schedulingTimestampSchema,
+    status: appointmentStatusSchema.exclude(["cancelled"]),
+    appointmentType: z.string(),
+    patientName: z.string(),
+    patientListName: z.string(),
+  })
+  .readonly();
+const weekRangeSchema = z
+  .object({ from: schedulingTimestampSchema, until: schedulingTimestampSchema })
+  .readonly();
+export const weekDaySchema = z
+  .object({
+    date: dateSchema,
+    working: z.array(weekRangeSchema).readonly(),
+    appointments: z.array(weekAppointmentSchema).readonly(),
+    open: z
+      .array(
+        z
+          .object({
+            startsAt: schedulingTimestampSchema,
+            endsAt: schedulingTimestampSchema,
+            locationId: z.uuid(),
+            locationName: z.string(),
+          })
+          .readonly(),
+      )
+      .readonly(),
+    seen: count.nullable(),
+    openCount: count.nullable(),
+  })
+  .readonly();
+export const weekProviderSchema = z
+  .object({ id: z.uuid(), name: z.string(), days: z.array(weekDaySchema).length(7).readonly() })
+  .readonly();
+export const weekScheduleOutcomeSchema = z.union([
+  z
+    .object({
+      ok: z.literal(true),
+      observedAt: schedulingTimestampSchema,
+      today: dateSchema,
+      weekStart: dateSchema,
+      timeZone: z.literal("America/New_York"),
+      activeProviderCount: count,
+      referenceType: z
+        .object({
+          id: z.uuid(),
+          name: z.string(),
+          durationMinutes: z.number().int().positive(),
+          version: schedulingVersionSchema,
+        })
+        .readonly(),
+      providers: z.array(weekProviderSchema).min(1).max(3).readonly(),
+    })
+    .readonly(),
+  schedulingFailureSchema,
+]);
+export type WeekDay = z.output<typeof weekDaySchema>;
+export type WeekProvider = z.output<typeof weekProviderSchema>;
+export type WeekSchedule = Extract<z.output<typeof weekScheduleOutcomeSchema>, { ok: true }>;
+
+export const weekProviderOutcomeSchema = z.union([
+  z
+    .object({ ok: z.literal(true), providerId: z.uuid().nullable(), remembered: z.boolean() })
+    .readonly(),
+  schedulingFailureSchema,
+]);
+export const rememberWeekProviderOutcomeSchema = z.union([
+  z.object({ ok: z.literal(true), providerId: z.uuid() }).readonly(),
+  schedulingFailureSchema,
+]);

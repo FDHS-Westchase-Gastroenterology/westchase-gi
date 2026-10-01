@@ -24,6 +24,7 @@ localized content route.
 | Staff-login shell                   | [desktop-admin-login.png](desktop-admin-login.png)                                                                                                        |
 | Staff portal — Home                 | [desktop-portal-home.png](desktop-portal-home.png) · [mobile-portal-home.png](mobile-portal-home.png)                                                     |
 | Staff portal — Schedule             | [desktop-portal-schedule.png](desktop-portal-schedule.png) · [mobile-portal-schedule.png](mobile-portal-schedule.png)                                     |
+| Staff portal — Schedule week        | [desktop-portal-schedule-week.png](desktop-portal-schedule-week.png)                                                                                      |
 | Staff portal — Appointment requests | [desktop-portal-requests.png](desktop-portal-requests.png) · [mobile-portal-requests.png](mobile-portal-requests.png)                                     |
 | Staff portal — Add request          | [desktop-portal-requests-new.png](desktop-portal-requests-new.png) · [mobile-portal-requests-new.png](mobile-portal-requests-new.png)                     |
 | Staff portal — Print review flyers  | [desktop-portal-review-flyers.png](desktop-portal-review-flyers.png) · [mobile-portal-review-flyers.png](mobile-portal-review-flyers.png)                 |
@@ -48,6 +49,7 @@ deployment to re-baseline the current public site. It uses the existing Playwrig
 the portal run signs in but never changes portal records. Inspect the changed PNGs before committing
 them.
 
-Portal images are limited to the eight top-level staff routes and the empty add-request form, omit
+Portal images are limited to the eight top-level staff routes, the Schedule's week view and the
+empty add-request form, omit
 individual request details, and redact account and queue data in the browser before capture. Never
 run the portal mode against a Production origin.

@@ -1,6 +1,6 @@
 # Overlays
 
-Choose by the reader's next action, not looks. Each kind has one implementation; the portal has no menu. Motion is in [motion.md](motion.md), paint in [color.md](color.md).
+Choose by the reader's next action, not looks. Each kind has one implementation; the portal's one menu is the Schedule week's provider menu ([previews.md](previews.md)). Motion is in [motion.md](motion.md), paint in [color.md](color.md).
 
 ## Choosing an overlay
 
@@ -11,9 +11,9 @@ What must the reader do with this surface?
 ├── Staff home: read a whole record beside its card                                → the full-record sheet
 ├── Staff home: set the record card's start time                                   → the card's TimePicker
 ├── Staff portal: learn how a save on a request turned out                         → toast.promise (forms.md)
-├── Staff portal: label a control, or preview a day read-only (previews.md)        → Tooltip, hover preview
+├── Staff portal: label, preview a day, act on a week cell, pick providers (previews.md) → Tooltip, preview, week card, Menu
 ├── Patient site: pick a language, a section or a page                             → the Header menus
-└── A menu, a drawer, a second sheet, or anything else                             → ask Jason
+└── Another menu, a drawer, a second sheet, or anything else                       → ask Jason
 ```
 
 ## Modal dialogs

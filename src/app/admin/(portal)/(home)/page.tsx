@@ -4,22 +4,16 @@ import { PortalReleaseHomeAnnouncement } from "@/app/admin/(portal)/portal-relea
 import { PortalTour } from "@/app/admin/(portal)/portal-tour";
 import { PortalTourReturnFocus } from "@/app/admin/(portal)/portal-tour-return-focus";
 import type { PortalTourReturnState } from "@/app/admin/(portal)/portal-tour-return-focus";
-import {
-  formatPhoneForDisplay,
-  formatReceived,
-  LOCATION_LABELS,
-  telHref,
-  TIME_LABELS,
-} from "@/app/admin/(portal)/requests/format";
 import { fetchAttentiveOpenRows, fetchClosedRows } from "@/app/admin/(portal)/requests/queue";
 import type { QueueRow, WorkedQueueRow } from "@/app/admin/(portal)/requests/queue";
 import { requireRole } from "@/lib/portal/auth";
 import { availableQueueCount } from "@/lib/portal/request-query";
 import { serviceClient } from "@/lib/portal/server";
-import { displayNameOrEmail, fetchStaffNameMap } from "@/lib/portal/staff-identity";
+import { fetchStaffNameMap } from "@/lib/portal/staff-identity";
 import { staffGreeting } from "@/lib/portal/staff-language";
 
 import type { HomeLine } from "./home-line";
+import { lineFor } from "./home-line-for";
 import { HomeWorkbench } from "./home-workbench";
 
 /* Home is the practice's call list, reshaped per the redesign brief: the
@@ -43,36 +37,13 @@ const NY_DATE = new Intl.DateTimeFormat("en-US", {
   timeZone: PRACTICE_TZ,
 });
 
-const NY_MONTH_DAY = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  day: "numeric",
-  timeZone: PRACTICE_TZ,
-});
-const NY_WEEKDAY_MONTH_DAY = new Intl.DateTimeFormat("en-US", {
-  weekday: "short",
-  month: "short",
-  day: "numeric",
-  timeZone: PRACTICE_TZ,
-});
-
-const NY_DAY = new Intl.DateTimeFormat("en-CA", {
-  dateStyle: "short",
-  timeZone: PRACTICE_TZ,
-});
-
 const MORNING_START = 5 * 60 + 30;
 
 /* The closed tail rides along so `status: Closed` is a real slice, windowed
    because home is a working surface, not the archive. */
 const CLOSED_WINDOW = 60;
 
-const MINUTE_MS = 60_000;
-const HOUR_MS = 3_600_000;
 const DAY_MS = 86_400_000;
-
-function practiceDayNumber(date: Date): number {
-  return Math.round(Date.parse(`${NY_DAY.format(date)}T00:00:00Z`) / DAY_MS);
-}
 
 // Practice-local clock: the front desk reads this in Tampa.
 function greetingFor(minutes: number): string {
@@ -94,108 +65,6 @@ function countOf(
 ): number | null {
   if (read.status !== "fulfilled") return null;
   return availableQueueCount(read.value.count, read.value.error !== null);
-}
-
-/** "37m" under an hour, "5h" under a day, then "12d" — the reference's rhythm. */
-function rel(ms: number, nowMs: number): string {
-  /* Spelled out, as the approved frame reads them: "19 min ago", "2 hr ago",
-     "3 days ago" (Figma Ypf9ohpRcGWF5C9T9bSvWW, node 88:1176). */
-  const delta = Math.max(0, nowMs - ms);
-  if (delta < HOUR_MS) return `${Math.max(1, Math.round(delta / MINUTE_MS))} min ago`;
-  if (delta < DAY_MS) return `${Math.round(delta / HOUR_MS)} hr ago`;
-  const days = Math.round(delta / DAY_MS);
-  return days === 1 ? "1 day ago" : `${days} days ago`;
-}
-
-function initialsOf(name: string): string {
-  const tokens = name.split(/[\s._@-]+/u).filter((token) => token !== "");
-  if (tokens.length === 0) return "—";
-  const first = tokens[0]?.charAt(0) ?? "";
-  const second = tokens.length > 1 ? (tokens[1]?.charAt(0) ?? "") : "";
-  return `${first}${second}`.toUpperCase();
-}
-
-function lineFor(
-  row: Readonly<WorkedQueueRow>,
-  now: Date,
-  nameMap: ReadonlyMap<string, string>,
-): HomeLine {
-  const nowMs = now.getTime();
-  const createdMs = Date.parse(row.created_at);
-  let timing: string;
-  let stamp: HomeLine["stamp"] = null;
-  let followUp: HomeLine["followUp"] = null;
-
-  switch (row.bucket) {
-    case "new": {
-      timing = `Received ${rel(createdMs, nowMs)}`;
-      break;
-    }
-    case "follow_up": {
-      const due = new Date(row.follow_up_at ?? row.created_at);
-      const overdue = practiceDayNumber(due) < practiceDayNumber(now);
-      timing = overdue ? `Overdue since ${NY_MONTH_DAY.format(due)}` : "Due today";
-      if (overdue) stamp = "Overdue";
-      followUp = overdue ? "overdue" : "due_today";
-      break;
-    }
-    case "upcoming": {
-      /* A dateless Call again row that was just worked rests here until the
-         next business morning. It still has no day to come back on, so it
-         reads and filters as Needs a date rather than borrowing its
-         received date as a callback. */
-      if (row.follow_up_at === null) {
-        timing = `Last activity ${rel(Date.parse(row.lastActivityAt ?? row.created_at), nowMs)}`;
-        followUp = "needs_date";
-      } else {
-        timing = `Back ${NY_WEEKDAY_MONTH_DAY.format(new Date(row.follow_up_at))}`;
-        followUp = "upcoming";
-      }
-      break;
-    }
-    case "stale": {
-      timing = `Last activity ${rel(Date.parse(row.lastActivityAt ?? row.created_at), nowMs)}`;
-      followUp = "needs_date";
-      break;
-    }
-    case "scheduled": {
-      timing = "Handed off";
-      break;
-    }
-    case "closed": {
-      timing = "Closed";
-      break;
-    }
-  }
-
-  const actorName =
-    row.lastActivityBy === null ? null : displayNameOrEmail(nameMap, row.lastActivityBy);
-
-  return {
-    id: row.id,
-    version: row.version,
-    patientId: row.patientId,
-    name: row.name,
-    phoneDisplay: formatPhoneForDisplay(row.phone),
-    phoneDigits: row.phone.replaceAll(/\D/gu, ""),
-    tel: telHref(row.phone),
-    status: row.status,
-    bucket: row.bucket,
-    location: row.location,
-    createdAtMs: createdMs,
-    pref: `${LOCATION_LABELS[row.location]} · ${TIME_LABELS[row.preferred_time]}`,
-    timing,
-    stamp,
-    followUp,
-    receivedRel: rel(createdMs, nowMs),
-    receivedFull: formatReceived(row.created_at),
-    actorName,
-    actorInitials: actorName === null ? null : initialsOf(actorName),
-    lastActivityRel:
-      row.lastActivityAt === null ? null : rel(Date.parse(row.lastActivityAt), nowMs),
-    followUpSet: row.follow_up_at !== null,
-    detailHref: `/admin/requests/${row.id}`,
-  };
 }
 
 function closedAsWorked(row: Readonly<QueueRow>): WorkedQueueRow {

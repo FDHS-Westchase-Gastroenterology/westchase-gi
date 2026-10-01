@@ -108,6 +108,7 @@ export function FullRecordSheet({
   instant,
   onOpenChange,
   onClosed,
+  returnFocus,
 }: Readonly<{
   line: Readonly<HomeLine> | null;
   /** The open was keyboard-initiated, so the sheet appears without motion. */
@@ -115,6 +116,9 @@ export function FullRecordSheet({
   onOpenChange: (open: boolean) => void;
   /** The exit has completed: the record is no longer being worked on. */
   onClosed: () => void;
+  /** Where focus goes on close when the sheet opened from somewhere other
+      than a Home row: the schedule's appointment cell. */
+  returnFocus?: () => HTMLElement | null;
 }>) {
   /* The line stays rendered while the sheet leaves: the dashboard drops it
      the moment the sheet closes, and Base UI can only play the exit on a
@@ -182,6 +186,7 @@ export function FullRecordSheet({
              row's chevron. Asked at close time, not at render: the
              dashboard has already let go of the sheet by then. */
           finalFocus={() =>
+            returnFocus?.() ??
             document.querySelector<HTMLElement>(CARD_BUTTON) ??
             document.querySelector<HTMLElement>(`[data-row="${shown.id}"] .appt-line-trigger`)
           }

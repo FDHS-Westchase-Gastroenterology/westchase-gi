@@ -10,6 +10,9 @@ import {
   appointmentAvailabilityOutcomeSchema,
   monthAvailabilityOutcomeSchema,
   monthSummaryOutcomeSchema,
+  rememberWeekProviderOutcomeSchema,
+  weekProviderOutcomeSchema,
+  weekScheduleOutcomeSchema,
 } from "./read-contracts";
 import {
   appointmentListDatabaseSchema,
@@ -180,6 +183,39 @@ export async function executeSchedulingOperation(
         .abortSignal(AbortSignal.timeout(10_000));
       if (result.error !== null) return { ok: false, code: "unavailable" };
       const outcome = monthAvailabilityOutcomeSchema.safeParse(result.data);
+      return outcome.success ? outcome.data : { ok: false, code: "unavailable" };
+    }
+    case "week_schedule": {
+      const result = await db
+        .rpc("portal_schedule_week", {
+          p_actor_id: actorId,
+          p_week_start: operation.weekStart,
+          p_provider_ids: operation.providerIds,
+          p_location_id: operation.locationId,
+          p_appointment_type_id: operation.appointmentTypeId,
+        })
+        .abortSignal(AbortSignal.timeout(10_000));
+      if (result.error !== null) return { ok: false, code: "unavailable" };
+      const outcome = weekScheduleOutcomeSchema.safeParse(result.data);
+      return outcome.success ? outcome.data : { ok: false, code: "unavailable" };
+    }
+    case "week_provider": {
+      const result = await db
+        .rpc("portal_schedule_week_provider", { p_actor_id: actorId })
+        .abortSignal(AbortSignal.timeout(10_000));
+      if (result.error !== null) return { ok: false, code: "unavailable" };
+      const outcome = weekProviderOutcomeSchema.safeParse(result.data);
+      return outcome.success ? outcome.data : { ok: false, code: "unavailable" };
+    }
+    case "remember_week_provider": {
+      const result = await db
+        .rpc("portal_remember_week_provider", {
+          p_actor_id: actorId,
+          p_provider_id: operation.providerId,
+        })
+        .abortSignal(AbortSignal.timeout(10_000));
+      if (result.error !== null) return { ok: false, code: "unavailable" };
+      const outcome = rememberWeekProviderOutcomeSchema.safeParse(result.data);
       return outcome.success ? outcome.data : { ok: false, code: "unavailable" };
     }
   }

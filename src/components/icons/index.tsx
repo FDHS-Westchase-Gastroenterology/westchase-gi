@@ -3,6 +3,7 @@ import type { IconProps } from "./base";
 
 export {
   Users,
+  User,
   Home,
   Calendar,
   Settings,

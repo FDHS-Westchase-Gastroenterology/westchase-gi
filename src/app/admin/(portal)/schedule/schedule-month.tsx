@@ -2,6 +2,7 @@
 
 import { Popover } from "@base-ui/react/popover";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import type { CSSProperties, FocusEvent, KeyboardEvent, MouseEvent, ReactNode } from "react";
 
@@ -11,6 +12,7 @@ import type { SegmentedControlOption } from "@/components/ui/segmented-control";
 
 import { CellBody, DayPreviewPopup, Legend } from "./schedule-day";
 import type { DayPreview, ScheduleCell, ScheduleMonth } from "./schedule-model";
+import { weekHref } from "./week-calendar";
 
 /* The Schedule's month view (Figma Ypf9ohpRcGWF5C9T9bSvWW, section 08, S1;
    the day preview is H1, node 656:8201). Every practice day says how many
@@ -37,7 +39,7 @@ type View = "day" | "week" | "month";
 
 const VIEW_OPTIONS: readonly SegmentedControlOption<View>[] = [
   { value: "day", label: "Day", disabledReason: "Coming soon" },
-  { value: "week", label: "Week", disabledReason: "Coming soon" },
+  { value: "week", label: "Week" },
   { value: "month", label: "Month" },
 ];
 
@@ -85,6 +87,7 @@ function MonthArrow({
 }
 
 export function ScheduleMonthView({ view }: Readonly<{ view: ScheduleMonth }>) {
+  const router = useRouter();
   const baseId = useId();
   const titleId = `${baseId}-title`;
   const cellId = (date: string) => `${baseId}-${date}`;
@@ -256,6 +259,9 @@ export function ScheduleMonthView({ view }: Readonly<{ view: ScheduleMonth }>) {
             paper="glass"
             options={VIEW_OPTIONS}
             value="month"
+            onValueChange={(next) => {
+              if (next === "week") router.push(weekHref(null, []));
+            }}
             className="w-auto"
           />
         </div>

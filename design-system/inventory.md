@@ -34,6 +34,10 @@ Bold marks the default; a required prop has none.
   - Also exports: `ItemContent`, `ItemActions`, `ItemGroup`, `ItemSeparator`, `ItemTitle`, `ItemDescription`, `ItemHeader`, `ItemFooter`
 - [`label.tsx`](../src/components/ui/label.tsx) · `"use client"`
   - Components: `Label`
+- [`menu.tsx`](../src/components/ui/menu.tsx) · `"use client"` · built on `@base-ui/react/menu`
+  - `MenuContent`: `motion` **`wgi`** · `none`
+  - `MenuItem`: `tone` **`default`** · `primary`
+  - Also exports: `Menu`, `MenuCheckboxItem`, `MenuGroup`, `MenuLabel`, `MenuRadioGroup`, `MenuRadioItem`, `MenuSeparator`, `MenuTrigger`
 - [`native-select.tsx`](../src/components/ui/native-select.tsx)
   - `NativeSelect`: `motion` **`wgi`** · `shadcn` · `none`
 - [`scroll-area.tsx`](../src/components/ui/scroll-area.tsx) · `"use client"` · built on `@base-ui/react/scroll-area`

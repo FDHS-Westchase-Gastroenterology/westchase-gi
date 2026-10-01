@@ -13,7 +13,7 @@
   color: var(--color-body);
 }
 
-.wgi-schedule :where(a, input, [tabindex]):focus-visible {
+.wgi-schedule :where(a, button, input, [tabindex]):focus-visible {
   outline: none;
   box-shadow:
     0 0 0 2px var(--portal-surface, #fff),

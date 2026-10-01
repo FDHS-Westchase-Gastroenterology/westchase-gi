@@ -22,8 +22,8 @@ contracts are not yet on `main`.
 | Finish a contact without another call | One contact-and-close save, combined history, and Undo | Connected: both Home No call choices use completion; regression coverage includes history, replay, stale input, reload, and Undo | [Contact completion](#contact-completion) |
 | Manage patients | Registration, search, demographics, reviewed request links, archive/restore, and history | Patient search, registration, detail, identity review, and administrator controls | [Patients](#patients) |
 | Set up scheduling | Providers, locations, appointment types, hours, exceptions, and preparation buffers | Administrator configuration screens with complete reads and validation | [Scheduling](#scheduling) |
-| See month availability | One summary per practice date: open count, booked share, seen visits, closed days, and per-provider openings | Connected: `/admin/schedule` month view with the day preview; Day and Week views remain | [Scheduling](#scheduling) |
-| Book and manage appointments | Availability, conflict checks, booking, rescheduling, cancellation, arrival/outcomes, and Undo | Staff scheduling controls and appointment detail/history | [Scheduling](#scheduling) |
+| See month availability | One summary per practice date: open count, booked share, seen visits, closed days, and per-provider openings | Connected: `/admin/schedule` month view with the day preview, and the week view (`week_schedule`); the Day view remains | [Scheduling](#scheduling) |
+| Book and manage appointments | Availability, conflict checks, booking, rescheduling, cancellation, arrival/outcomes, and Undo | Connected on the week view: the appointment card checks in, reschedules, cancels and marks no-show or complete, and the open-time card books a found patient. Remaining: appointment history and Undo | [Scheduling](#scheduling) |
 | Schedule from an intake request | One operation updates both the reservation and its reviewed request | Connected for a linked request: the Home record card books from its month (`month_availability`, then one `book` with `sourceRequestId`). Remaining: patient selection/linking, paired rescheduling/cancellation/Undo | [Requests and appointments](#requests-and-appointments) |
 | Read the request queue | Complete filtered results, counts, attention order, and Previous/Next | Existing screens already use the complete reads; preserve them when changing filters or paging | [Worklists](#worklists) |
 | Record billing, when used | Patient-owned charges, payments recorded elsewhere, refunds, adjustments, and corrections | Optional ledger screens, role-aware actions, and reconciliation | [Billing](#billing) |
@@ -202,6 +202,9 @@ Cancelled appointments release capacity; completed and no-show records retain th
 | `check_in` | Scheduled only, on the appointment's practice date. |
 | `complete` | Requires checked-in status. |
 | `no_show` | Scheduled only, after the start time. |
+| `week_schedule` | Read one practice week (`weekStart`, a Sunday; one to three `providerIds`; optional `locationId`, `appointmentTypeId`) as seven days per provider: working ranges, appointments (no cancelled), open starts from the same SQL as `month_summary`, and seen/open counts. |
+| `week_provider` | Read the staff member's remembered week provider, or none. |
+| `remember_week_provider` | Remember `providerId` as the provider the week opens on. |
 | `undo` | Send appointment ID/version. Only the latest eligible change within 15 minutes; restoring a slot checks conflicts again. Undo of initial booking cancels it. A compensation cannot itself be undone. |
 
 Command success returns `entity`, `id`, and `version`, with a request summary when applicable.

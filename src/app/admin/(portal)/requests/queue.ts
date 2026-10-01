@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { REQUEST_LOCATIONS, REQUEST_TIMES } from "@/lib/portal/contracts";
 import type { RequestLocation, RequestTime } from "@/lib/portal/contracts";
+import { orderQueueRows } from "@/lib/portal/queue-attention";
 import type { AttentiveRow } from "@/lib/portal/queue-attention";
 import { readRequestWorklist } from "@/lib/portal/request-worklist/service";
 import { presentationStatus, storedRequestStateSchema } from "@/lib/portal/workflow/contracts";
@@ -196,4 +197,51 @@ export async function fetchClosedRows(
   // Offset pages stay on `requests`. The only embed is the to-one patient
   // Link (keyed by request_id), which cannot fan a row out and shorten a page.
   return parsed.data.map(toQueueRow);
+}
+
+const activitySchema = z.array(z.object({ at: z.string(), actor_email: z.string().nullable() }));
+
+/**
+ * One request as the worklist reads it: its attention bucket, its newest
+ * activity, and who did it, on the same rules as portal_request_worklist_rows
+ * (the newest request audit entry, and the newest one with an actor). Null
+ * when the request does not exist; throws on a failed read.
+ */
+export async function fetchWorkedRow(
+  db: SupabaseClient,
+  requestId: string,
+  now: Date = new Date(),
+): Promise<WorkedQueueRow | null> {
+  const audit = () =>
+    db
+      .from("audit_log")
+      .select("at, actor_email")
+      .eq("entity", "requests")
+      .eq("entity_id", requestId)
+      .order("at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(1);
+  const [requestRead, activityRead, actorRead] = await Promise.all([
+    db.from("requests").select(COLUMNS).eq("id", requestId).maybeSingle(),
+    audit(),
+    audit().not("actor_email", "is", null).neq("actor_email", ""),
+  ]);
+  if (requestRead.error || activityRead.error || actorRead.error) {
+    throw new Error("Request read failed");
+  }
+  if (requestRead.data === null) return null;
+  const row = storedQueueRowSchema.safeParse(requestRead.data);
+  const activity = activitySchema.safeParse(activityRead.data);
+  const actor = activitySchema.safeParse(actorRead.data);
+  if (!row.success || !activity.success || !actor.success) {
+    throw new Error("Request read failed: invalid");
+  }
+  const newest = activity.data.at(0)?.at;
+  const attentive = orderQueueRows(
+    [toQueueRow(row.data)],
+    new Map(newest === undefined ? [] : [[requestId, newest]]),
+    now,
+  ).at(0);
+  if (attentive === undefined) return null;
+  return { ...attentive, lastActivityBy: actor.data.at(0)?.actor_email ?? null };
 }

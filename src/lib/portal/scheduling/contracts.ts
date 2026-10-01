@@ -11,6 +11,9 @@ import type {
   appointmentAvailabilityOutcomeSchema,
   monthSummaryOutcomeSchema,
   monthAvailabilityOutcomeSchema,
+  weekScheduleOutcomeSchema,
+  weekProviderOutcomeSchema,
+  rememberWeekProviderOutcomeSchema,
 } from "./read-contracts";
 import { appointmentStartSchema } from "./time";
 
@@ -27,6 +30,10 @@ export const appointmentStatusSchema = z.enum([
 export const dateSchema = z.iso.date().refine((date) => !date.startsWith("0000-"));
 // A practice month, YYYY-MM, within the years the summary reads.
 export const monthSchema = z.string().regex(/^2[01]\d{2}-(0[1-9]|1[0-2])$/);
+// A practice week starts on Sunday, within the years the week read accepts.
+export const weekStartSchema = dateSchema.refine(
+  (date) => /^2[01]/.test(date) && new Date(`${date}T00:00:00Z`).getUTCDay() === 0,
+);
 const reasonSchema = z.string().trim().min(1).max(500);
 
 const providerHoursFields = {
@@ -216,6 +223,19 @@ export const schedulingInputSchema = z.discriminatedUnion("action", [
     location: z.enum(REQUEST_LOCATIONS),
     patientId: z.uuid().nullable().default(null),
   }),
+  z.strictObject({
+    action: z.literal("week_schedule"),
+    weekStart: weekStartSchema,
+    providerIds: z
+      .array(z.uuid())
+      .min(1)
+      .max(3)
+      .refine((ids) => new Set(ids).size === ids.length),
+    locationId: z.uuid().nullable().default(null),
+    appointmentTypeId: z.uuid().nullable().default(null),
+  }),
+  z.strictObject({ action: z.literal("week_provider") }),
+  z.strictObject({ action: z.literal("remember_week_provider"), providerId: z.uuid() }),
 ]);
 type ReadonlyFields<T> = T extends readonly (infer Item)[]
   ? readonly ReadonlyFields<Item>[]
@@ -287,4 +307,7 @@ export type SchedulingOutcome =
   | z.output<typeof appointmentListOutcomeSchema>
   | z.output<typeof appointmentReadOutcomeSchema>
   | z.output<typeof monthSummaryOutcomeSchema>
-  | z.output<typeof monthAvailabilityOutcomeSchema>;
+  | z.output<typeof monthAvailabilityOutcomeSchema>
+  | z.output<typeof weekScheduleOutcomeSchema>
+  | z.output<typeof weekProviderOutcomeSchema>
+  | z.output<typeof rememberWeekProviderOutcomeSchema>;

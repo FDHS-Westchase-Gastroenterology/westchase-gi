@@ -73,6 +73,7 @@ const TABLES = [
   "scheduling_providers",
   "staff_profiles",
   "staff_request_receipts",
+  "staff_schedule_preferences",
 ];
 
 const RETIRED_TABLES = [["registry", "assets"].join("_"), ["registry", "grants"].join("_")];
@@ -138,6 +139,13 @@ const RPC_SIGNATURES = {
     "p_actor_id uuid, p_month date, p_location_id uuid, p_appointment_type_id uuid",
   portal_schedule_month_availability:
     "p_actor_id uuid, p_month date, p_appointment_type_id uuid, p_request_location text, p_patient_id uuid",
+  portal_schedule_working: "p_first date, p_last date, p_provider_ids uuid[], p_location_id uuid",
+  portal_schedule_greedy_opens:
+    "p_first date, p_last date, p_provider_ids uuid[], p_location_id uuid, p_type_id uuid",
+  portal_schedule_week:
+    "p_actor_id uuid, p_week_start date, p_provider_ids uuid[], p_location_id uuid, p_appointment_type_id uuid",
+  portal_schedule_week_provider: "p_actor_id uuid",
+  portal_remember_week_provider: "p_actor_id uuid, p_provider_id uuid",
   portal_log_call_outcome:
     "p_actor_email text, p_request_id uuid, p_outcome text, p_note text, p_follow_up_at timestamp with time zone",
   portal_undo_call_outcome: "p_actor_email text, p_request_id uuid, p_event_id uuid",
@@ -224,6 +232,13 @@ const RPC_RESULTS = {
   portal_available_appointment_slots: "jsonb",
   portal_schedule_month_summary: "jsonb",
   portal_schedule_month_availability: "jsonb",
+  portal_schedule_working:
+    "TABLE(provider_id uuid, location_id uuid, day date, working tstzmultirange)",
+  portal_schedule_greedy_opens:
+    "TABLE(provider_id uuid, location_id uuid, day date, starts_at timestamp with time zone, ends_at timestamp with time zone)",
+  portal_schedule_week: "jsonb",
+  portal_schedule_week_provider: "jsonb",
+  portal_remember_week_provider: "jsonb",
   portal_log_call_outcome: "uuid",
   portal_undo_call_outcome: "jsonb",
   portal_hide_staff_release: "boolean",

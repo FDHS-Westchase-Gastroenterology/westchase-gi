@@ -83,7 +83,7 @@ The visual baseline is required. Before working on the frontend UI, open `ui-ref
 
 Refresh the affected images against the matching local or Preview origin before committing. After deployment, use the default live-origin capture for public pages.
 
-The atlas includes the eight top-level staff routes and the empty add-request form. Refresh them only with the Preview Branch seed identity, keep the browser-side redaction, and never include an individual request or Production data.
+The atlas includes the eight top-level staff routes, the Schedule's week view, and the empty add-request form. Refresh them only with the Preview Branch seed identity, keep the browser-side redaction, and never include an individual request or Production data.
 
 ### Visual evidence
 

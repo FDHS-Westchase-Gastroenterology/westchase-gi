@@ -15,6 +15,16 @@ export function Users(p: IconProps) {
   );
 }
 
+/* One person: the provider row on the schedule's appointment card. */
+export function User(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
+      <circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+
 export function Home(p: IconProps) {
   return (
     <svg {...base(p)}>

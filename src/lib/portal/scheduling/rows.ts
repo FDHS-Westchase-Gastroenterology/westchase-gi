@@ -114,6 +114,23 @@ const namedAppointmentDatabaseSchema = appointmentRow
     locationName: row.location_name,
     appointmentTypeName: row.appointment_type_name,
   }));
+// The appointment read also carries the patient's phone for the appointment card.
+const readAppointmentDatabaseSchema = appointmentRow
+  .extend({
+    patient_name: z.string(),
+    patient_phone: z.string().nullable().default(null),
+    provider_name: z.string(),
+    location_name: z.string(),
+    appointment_type_name: z.string(),
+  })
+  .transform((row) => ({
+    ...appointment(row),
+    patientName: row.patient_name,
+    patientPhone: row.patient_phone,
+    providerName: row.provider_name,
+    locationName: row.location_name,
+    appointmentTypeName: row.appointment_type_name,
+  }));
 const changeFields = {
   id: z.uuid(),
   version: schedulingVersionSchema,
@@ -241,7 +258,7 @@ export const appointmentReadDatabaseSchema = z
     z.object({
       ok: z.literal(true),
       observedAt: schedulingTimestampSchema,
-      appointment: namedAppointmentDatabaseSchema,
+      appointment: readAppointmentDatabaseSchema,
       request: schedulingRequestSchema.nullable().default(null),
       history: historyDatabaseSchema,
       undo: z.object({ changeId: z.uuid(), expiresAt: schedulingTimestampSchema }).nullable(),

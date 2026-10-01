@@ -62,7 +62,8 @@ export async function readCardMonth(
     patientId: input.patientId,
   });
   if (!availability.ok) return { ok: false, code: availability.code };
-  if (!("providers" in availability)) return { ok: false, code: "unavailable" };
+  if (!("providers" in availability) || !("month" in availability))
+    return { ok: false, code: "unavailable" };
   return { ok: true, types, availability };
 }
 

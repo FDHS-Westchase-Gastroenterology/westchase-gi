@@ -245,6 +245,14 @@ test("scheduling decodes complete appointment history and fails visibly on damag
   const decoded = appointmentReadDatabaseSchema.parse(response);
   assert.equal(decoded.appointment.patientId, id);
   assert.equal(decoded.appointment.patientName, "TEST Patient");
+  assert.equal(decoded.appointment.patientPhone, null);
+  assert.equal(
+    appointmentReadDatabaseSchema.parse({
+      ...response,
+      appointment: { ...response.appointment, patient_phone: "(813) 555-0100" },
+    }).appointment.patientPhone,
+    "(813) 555-0100",
+  );
   assert.equal("created_by" in decoded.appointment, false);
   assert.equal(decoded.history.items[0].after.appointmentTypeId, id);
   assert.equal(
@@ -527,5 +535,213 @@ test("month availability reads per-provider open starts for the request's office
       location: "lutz",
     }),
     data,
+  );
+});
+
+test("week schedule reads one to three providers' Sunday weeks in lane order", async () => {
+  const thirdId = "4b0f3f4e-2a59-4c55-9a0e-1c39b2c6c6f1";
+  // Rows copied from the RPC's output shape: offset timestamps and literal nulls.
+  const day = (date, overrides) => ({
+    date,
+    working: [],
+    appointments: [],
+    open: [],
+    seen: null,
+    openCount: 0,
+    ...overrides,
+  });
+  const days = [
+    day("2026-09-27"),
+    day("2026-09-28", {
+      working: [
+        { from: "2026-09-28T12:00:00+00:00", until: "2026-09-28T16:00:00+00:00" },
+        { from: "2026-09-28T17:00:00+00:00", until: "2026-09-28T21:00:00+00:00" },
+      ],
+      appointments: [
+        {
+          id,
+          startsAt: "2026-09-28T13:00:00+00:00",
+          endsAt: "2026-09-28T13:30:00+00:00",
+          status: "completed",
+          appointmentType: "TEST Follow-up",
+          patientName: "TEST Ellen Byrne",
+          patientListName: "Byrne",
+        },
+      ],
+      seen: 1,
+      openCount: null,
+    }),
+    day("2026-09-29", { seen: 0, openCount: null }),
+    day("2026-09-30", {
+      open: [
+        {
+          startsAt: "2026-09-30T14:00:00+00:00",
+          endsAt: "2026-09-30T14:30:00+00:00",
+          locationId: otherId,
+          locationName: "TEST Tampa",
+        },
+      ],
+      openCount: 1,
+    }),
+    day("2026-10-01"),
+    day("2026-10-02"),
+    day("2026-10-03"),
+  ];
+  const week = {
+    ok: true,
+    observedAt: "2026-09-30T13:27:48.996+00:00",
+    today: "2026-09-30",
+    weekStart: "2026-09-27",
+    timeZone: "America/New_York",
+    activeProviderCount: 3,
+    referenceType: { id, name: "TEST Follow-up", durationMinutes: 30, version: 2 },
+    providers: [
+      { id: otherId, name: "TEST Dr. Awad", days },
+      { id, name: "TEST Dr. Chang", days },
+    ],
+  };
+  const calls = [];
+  let data = week;
+  const db = {
+    rpc(name, args) {
+      calls.push({ name, args });
+      return {
+        async abortSignal() {
+          return { data, error: null };
+        },
+      };
+    },
+  };
+  const outcome = await executeSchedulingOperation(db, otherId, {
+    action: "week_schedule",
+    weekStart: "2026-09-27",
+    providerIds: [otherId, id],
+  });
+  assert.equal(outcome.ok, true);
+  assert.deepEqual(
+    outcome.providers.map((provider) => provider.id),
+    [otherId, id],
+  );
+  assert.deepEqual(calls[0], {
+    name: "portal_schedule_week",
+    args: {
+      p_actor_id: otherId,
+      p_week_start: "2026-09-27",
+      p_provider_ids: [otherId, id],
+      p_location_id: null,
+      p_appointment_type_id: null,
+    },
+  });
+  for (const input of [
+    { weekStart: "2026-09-28", providerIds: [id] },
+    { weekStart: "1999-12-26", providerIds: [id] },
+    { weekStart: "2026-09-27", providerIds: [] },
+    { weekStart: "2026-09-27", providerIds: [id, id] },
+    { weekStart: "2026-09-27", providerIds: [id, otherId, thirdId, key] },
+  ])
+    assert.deepEqual(
+      await executeSchedulingOperation(db, otherId, { action: "week_schedule", ...input }),
+      { ok: false, code: "invalid_command" },
+    );
+  assert.equal(calls.length, 1);
+  // A cancelled appointment or a short week is a contract break, not a partial grid.
+  const cancelled = { ...days[1].appointments[0], status: "cancelled" };
+  for (const broken of [
+    { ...week, providers: [{ ...week.providers[0], days: days.slice(1) }] },
+    {
+      ...week,
+      providers: [
+        {
+          ...week.providers[0],
+          days: [days[0], { ...days[1], appointments: [cancelled] }, ...days.slice(2)],
+        },
+      ],
+    },
+  ]) {
+    data = broken;
+    assert.deepEqual(
+      await executeSchedulingOperation(db, otherId, {
+        action: "week_schedule",
+        weekStart: "2026-09-27",
+        providerIds: [otherId],
+      }),
+      { ok: false, code: "unavailable" },
+    );
+  }
+  data = { ok: false, code: "provider_unavailable" };
+  assert.deepEqual(
+    await executeSchedulingOperation(db, otherId, {
+      action: "week_schedule",
+      weekStart: "2026-09-27",
+      providerIds: [thirdId],
+    }),
+    data,
+  );
+});
+
+test("the remembered week provider is read and written only through the actor's RPCs", async () => {
+  const calls = [];
+  const results = {
+    portal_schedule_week_provider: { ok: true, providerId: id, remembered: false },
+    portal_remember_week_provider: { ok: true, providerId: otherId },
+  };
+  const db = {
+    rpc(name, args) {
+      calls.push({ name, args });
+      return {
+        async abortSignal() {
+          return { data: results[name], error: null };
+        },
+      };
+    },
+  };
+  assert.deepEqual(await executeSchedulingOperation(db, key, { action: "week_provider" }), {
+    ok: true,
+    providerId: id,
+    remembered: false,
+  });
+  assert.deepEqual(
+    await executeSchedulingOperation(db, key, {
+      action: "remember_week_provider",
+      providerId: otherId,
+    }),
+    { ok: true, providerId: otherId },
+  );
+  assert.deepEqual(calls, [
+    { name: "portal_schedule_week_provider", args: { p_actor_id: key } },
+    { name: "portal_remember_week_provider", args: { p_actor_id: key, p_provider_id: otherId } },
+  ]);
+  assert.deepEqual(
+    await executeSchedulingOperation(db, key, { action: "week_provider", providerId: id }),
+    { ok: false, code: "invalid_command" },
+  );
+  assert.deepEqual(
+    await executeSchedulingOperation(db, key, {
+      action: "remember_week_provider",
+      providerId: "x",
+    }),
+    { ok: false, code: "invalid_command" },
+  );
+  results.portal_schedule_week_provider = { ok: true, providerId: null, remembered: false };
+  assert.deepEqual(await executeSchedulingOperation(db, key, { action: "week_provider" }), {
+    ok: true,
+    providerId: null,
+    remembered: false,
+  });
+  const failing = {
+    rpc() {
+      return {
+        async abortSignal() {
+          return { data: null, error: { message: "timeout" } };
+        },
+      };
+    },
+  };
+  assert.deepEqual(
+    await executeSchedulingOperation(failing, key, {
+      action: "remember_week_provider",
+      providerId: otherId,
+    }),
+    { ok: false, code: "unavailable" },
   );
 });
