@@ -8,6 +8,7 @@ import type {
   appointmentListOutcomeSchema,
   appointmentReadOutcomeSchema,
   appointmentAvailabilityOutcomeSchema,
+  monthSummaryOutcomeSchema,
 } from "./read-contracts";
 import { appointmentStartSchema } from "./time";
 
@@ -22,6 +23,8 @@ export const appointmentStatusSchema = z.enum([
   "cancelled",
 ]);
 export const dateSchema = z.iso.date().refine((date) => !date.startsWith("0000-"));
+// A practice month, YYYY-MM, within the years the summary reads.
+export const monthSchema = z.string().regex(/^2[01]\d{2}-(0[1-9]|1[0-2])$/);
 const reasonSchema = z.string().trim().min(1).max(500);
 
 const providerHoursFields = {
@@ -198,6 +201,12 @@ export const schedulingInputSchema = z.discriminatedUnion("action", [
       return duration > 0 && duration <= 93 * 86_400_000;
     }),
   z.strictObject({ action: z.literal("read_appointment"), id: z.uuid(), historyBefore }),
+  z.strictObject({
+    action: z.literal("month_summary"),
+    month: monthSchema,
+    locationId: z.uuid().nullable().default(null),
+    appointmentTypeId: z.uuid().nullable().default(null),
+  }),
 ]);
 type ReadonlyFields<T> = T extends readonly (infer Item)[]
   ? readonly ReadonlyFields<Item>[]
@@ -267,4 +276,5 @@ export type SchedulingOutcome =
   | z.output<typeof schedulingCatalogOutcomeSchema>
   | z.output<typeof schedulingConfigReadOutcomeSchema>
   | z.output<typeof appointmentListOutcomeSchema>
-  | z.output<typeof appointmentReadOutcomeSchema>;
+  | z.output<typeof appointmentReadOutcomeSchema>
+  | z.output<typeof monthSummaryOutcomeSchema>;

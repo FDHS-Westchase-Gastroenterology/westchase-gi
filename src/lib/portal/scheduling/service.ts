@@ -6,7 +6,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import { schedulingCommandOutcomeSchema, schedulingInputSchema } from "./contracts";
 import type { SchedulingInput, SchedulingOutcome } from "./contracts";
-import { appointmentAvailabilityOutcomeSchema } from "./read-contracts";
+import { appointmentAvailabilityOutcomeSchema, monthSummaryOutcomeSchema } from "./read-contracts";
 import {
   appointmentListDatabaseSchema,
   appointmentReadDatabaseSchema,
@@ -149,6 +149,19 @@ export async function executeSchedulingOperation(
         .abortSignal(AbortSignal.timeout(10_000));
       if (result.error !== null) return { ok: false, code: "unavailable" };
       const outcome = appointmentReadDatabaseSchema.safeParse(result.data);
+      return outcome.success ? outcome.data : { ok: false, code: "unavailable" };
+    }
+    case "month_summary": {
+      const result = await db
+        .rpc("portal_schedule_month_summary", {
+          p_actor_id: actorId,
+          p_month: `${operation.month}-01`,
+          p_location_id: operation.locationId,
+          p_appointment_type_id: operation.appointmentTypeId,
+        })
+        .abortSignal(AbortSignal.timeout(10_000));
+      if (result.error !== null) return { ok: false, code: "unavailable" };
+      const outcome = monthSummaryOutcomeSchema.safeParse(result.data);
       return outcome.success ? outcome.data : { ok: false, code: "unavailable" };
     }
   }

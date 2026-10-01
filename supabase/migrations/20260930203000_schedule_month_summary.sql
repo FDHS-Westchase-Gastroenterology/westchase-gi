@@ -187,7 +187,7 @@ begin
     'month',to_char(p_month,'YYYY-MM'),'timeZone','America/New_York',
     'referenceType',jsonb_build_object('id',v_type.id,'name',v_type.name,
       'durationMinutes',v_type.duration_minutes,'bufferBeforeMinutes',v_type.buffer_before_minutes,
-      'bufferAfterMinutes',v_type.buffer_after_minutes),
+      'bufferAfterMinutes',v_type.buffer_after_minutes,'version',v_type.version),
     'days',jsonb_agg(case
       when coalesce(pr.working_minutes,0)=0 then jsonb_build_object('date',dy.day,'status','closed',
         'open',null,'bookedShare',null,'seen',null)

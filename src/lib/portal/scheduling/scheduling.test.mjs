@@ -288,3 +288,108 @@ test("scheduling decodes complete appointment history and fails visibly on damag
   assert.equal(config.record.bufferAfterMinutes, 10);
   assert.equal(config.history.items[0].after.durationMinutes, 30);
 });
+
+test("month summary reads a practice month and rejects malformed rows as unavailable", async () => {
+  const provider = (name, open, firstOpen) => ({
+    id,
+    name,
+    open,
+    firstOpen,
+    locations: ["TEST Westchase"],
+  });
+  // Rows copied from the RPC's output shape: offset timestamps and literal nulls.
+  const days = Array.from({ length: 30 }, (_, index) => {
+    const date = `2026-11-${String(index + 1).padStart(2, "0")}`;
+    if (index === 4) return { date, open: null, seen: null, status: "closed", bookedShare: null };
+    if (index === 5)
+      return {
+        date,
+        open: 2,
+        seen: null,
+        booked: 1,
+        status: "open",
+        capacity: 3,
+        providers: [
+          provider("TEST Alpha", 2, ["2026-11-06T14:15:00+00:00", "2026-11-06T14:30:00+00:00"]),
+          provider("TEST Beta", 0, []),
+        ],
+        bookedShare: 0.1667,
+      };
+    if (index === 2)
+      return {
+        date,
+        open: 0,
+        seen: null,
+        booked: 6,
+        status: "full",
+        capacity: 6,
+        providers: [provider("TEST Alpha", 0, [])],
+        bookedShare: 1,
+      };
+    return { date, open: null, seen: 1, status: "past", bookedShare: null };
+  });
+  const summary = {
+    ok: true,
+    month: "2026-11",
+    today: "2026-11-06",
+    timeZone: "America/New_York",
+    observedAt: "2026-11-06T13:27:48.996+00:00",
+    referenceType: {
+      id,
+      name: "TEST Follow-up",
+      version: 1,
+      durationMinutes: 15,
+      bufferAfterMinutes: 0,
+      bufferBeforeMinutes: 0,
+    },
+    days,
+  };
+  const calls = [];
+  let data = summary;
+  const db = {
+    rpc(name, args) {
+      calls.push({ name, args });
+      return {
+        async abortSignal() {
+          return { data, error: null };
+        },
+      };
+    },
+  };
+  const outcome = await executeSchedulingOperation(db, otherId, {
+    action: "month_summary",
+    month: "2026-11",
+    locationId: null,
+  });
+  assert.equal(outcome.ok, true);
+  assert.equal(outcome.days[5].providers[0].firstOpen.length, 2);
+  assert.deepEqual(calls[0], {
+    name: "portal_schedule_month_summary",
+    args: {
+      p_actor_id: otherId,
+      p_month: "2026-11-01",
+      p_location_id: null,
+      p_appointment_type_id: null,
+    },
+  });
+  for (const month of ["2026-13", "1999-12", "2200-01", "2026-1", "2026-11-01"])
+    assert.deepEqual(
+      await executeSchedulingOperation(db, otherId, { action: "month_summary", month }),
+      { ok: false, code: "invalid_command" },
+    );
+  assert.equal(calls.length, 1);
+  data = { ...summary, days: [{ ...days[4], open: 3 }, ...days.slice(1)] };
+  assert.deepEqual(
+    await executeSchedulingOperation(db, otherId, { action: "month_summary", month: "2026-11" }),
+    { ok: false, code: "unavailable" },
+  );
+  data = { ok: false, code: "location_unavailable" };
+  assert.deepEqual(
+    await executeSchedulingOperation(db, otherId, {
+      action: "month_summary",
+      month: "2026-11",
+      locationId: id,
+    }),
+    data,
+  );
+});

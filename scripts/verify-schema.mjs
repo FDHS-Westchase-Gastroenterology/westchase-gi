@@ -134,6 +134,8 @@ const RPC_SIGNATURES = {
   portal_read_appointment: "p_actor_id uuid, p_id uuid, p_history_before bigint",
   portal_available_appointment_slots:
     "p_actor_id uuid, p_provider_id uuid, p_location_id uuid, p_date date, p_appointment_type_id uuid, p_patient_id uuid, p_appointment_id uuid, p_interval_minutes integer",
+  portal_schedule_month_summary:
+    "p_actor_id uuid, p_month date, p_location_id uuid, p_appointment_type_id uuid",
   portal_log_call_outcome:
     "p_actor_email text, p_request_id uuid, p_outcome text, p_note text, p_follow_up_at timestamp with time zone",
   portal_undo_call_outcome: "p_actor_email text, p_request_id uuid, p_event_id uuid",
@@ -218,6 +220,7 @@ const RPC_RESULTS = {
   portal_list_appointments: "jsonb",
   portal_read_appointment: "jsonb",
   portal_available_appointment_slots: "jsonb",
+  portal_schedule_month_summary: "jsonb",
   portal_log_call_outcome: "uuid",
   portal_undo_call_outcome: "jsonb",
   portal_hide_staff_release: "boolean",
@@ -886,6 +889,12 @@ async function main() {
         row.version === "20260907010143" && row.name === "coordinate_requests_and_appointments",
     ),
     "Coordinated request and appointment migration is not applied",
+  );
+  assert(
+    migrationRows.some(
+      (row) => row.version === "20260930203000" && row.name === "schedule_month_summary",
+    ),
+    "Schedule month summary migration is not applied",
   );
   assert(
     migrationRows.some(

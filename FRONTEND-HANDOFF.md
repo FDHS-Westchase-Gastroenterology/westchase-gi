@@ -22,6 +22,7 @@ contracts are not yet on `main`.
 | Finish a contact without another call | One contact-and-close save, combined history, and Undo | Connected: both Home No call choices use completion; regression coverage includes history, replay, stale input, reload, and Undo | [Contact completion](#contact-completion) |
 | Manage patients | Registration, search, demographics, reviewed request links, archive/restore, and history | Patient search, registration, detail, identity review, and administrator controls | [Patients](#patients) |
 | Set up scheduling | Providers, locations, appointment types, hours, exceptions, and preparation buffers | Administrator configuration screens with complete reads and validation | [Scheduling](#scheduling) |
+| See month availability | One summary per practice date: open count, booked share, seen visits, closed days, and per-provider openings | Connected: `/admin/schedule` month view with the day preview; Day and Week views remain | [Scheduling](#scheduling) |
 | Book and manage appointments | Availability, conflict checks, booking, rescheduling, cancellation, arrival/outcomes, and Undo | Staff scheduling controls and appointment detail/history | [Scheduling](#scheduling) |
 | Schedule from an intake request | One operation updates both the reservation and its reviewed request | Patient selection/linking, a single booking save, paired rescheduling/cancellation/Undo | [Requests and appointments](#requests-and-appointments) |
 | Read the request queue | Complete filtered results, counts, attention order, and Previous/Next | Existing screens already use the complete reads; preserve them when changing filters or paging | [Worklists](#worklists) |
@@ -145,6 +146,7 @@ are in [scheduling/time.ts](src/lib/portal/scheduling/time.ts).
 | `availability` | Read one day's available starts for a provider, location, type or existing appointment, and optional patient. |
 | `appointments` | Read a calendar range or a patient's appointments, with filters, totals, and start/ID cursors. |
 | `read_appointment` | Read one appointment, current linked-request summary, history, and current Undo expiry. |
+| `month_summary` | Read one practice month (`month: "YYYY-MM"`, optional `locationId`) as one row per date with open counts and per-provider openings. |
 | `command` | Write with `idempotencyKey` and `book`, `reschedule`, `cancel`, `check_in`, `complete`, `no_show`, or `undo`. |
 
 Configuration creates omit both `id` and `expectedVersion`; updates send both. Provider saves
@@ -152,6 +154,17 @@ replace the full `hours` and `exceptions` arrays, so load all current values bef
 Hours use weekday 0–6, minute offsets, location, and validity dates. Unavailable exceptions take
 precedence over availability. A null-location unavailable exception blocks that provider across
 locations. Provider edits cannot invalidate future scheduled or checked-in appointments.
+
+`month_summary` returns `observedAt`, the practice `today`, the `referenceType` it counted, and
+one row per date with `status` `open`, `full`, `past`, or `closed`. Working time is hours plus
+available exceptions less unavailable exceptions; a date with none is closed. A past date carries
+`seen` (checked in or completed). Today and later dates carry `open`, `booked`, `capacity`
+(`booked + open`), `bookedShare` (reserved minutes over working minutes), and `providers`, each with
+location names, its own `open` count, and up to two `firstOpen` starts. `open` places the
+shortest active appointment type back to back under the availability rules, including buffers;
+the provider counts sum to the day's count. Only starts after `observedAt` count, so today reads
+`full` with zero capacity once its hours have passed. The summary is a planning signal; booking
+still reads `availability`.
 
 Appointment types hold duration and before/after preparation buffers. A booking saves those values;
 later type edits do not rewrite existing reservations. Scheduling providers and locations are

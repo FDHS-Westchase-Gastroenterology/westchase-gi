@@ -181,3 +181,54 @@ export const appointmentAvailabilityOutcomeSchema = z.union([
   }),
   schedulingFailureSchema,
 ]);
+
+const dayBase = { date: dateSchema };
+const count = z.number().int().nonnegative();
+export const monthSummaryProviderSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  locations: z.array(z.string()),
+  open: count,
+  firstOpen: z.array(schedulingTimestampSchema).max(2),
+});
+export const monthSummaryDaySchema = z.discriminatedUnion("status", [
+  z.object({
+    ...dayBase,
+    status: z.literal("closed"),
+    open: z.null(),
+    bookedShare: z.null(),
+    seen: z.null(),
+  }),
+  z.object({ ...dayBase, status: z.literal("past"), open: z.null(), bookedShare: z.null(), seen: count }),
+  z.object({
+    ...dayBase,
+    status: z.enum(["open", "full"]),
+    open: count,
+    bookedShare: z.number().min(0).max(1),
+    seen: z.null(),
+    booked: count,
+    capacity: count,
+    providers: z.array(monthSummaryProviderSchema),
+  }),
+]);
+export const monthSummaryOutcomeSchema = z.union([
+  z.object({
+    ok: z.literal(true),
+    observedAt: schedulingTimestampSchema,
+    today: dateSchema,
+    month: z.string(),
+    timeZone: z.literal("America/New_York"),
+    referenceType: z.object({
+      id: z.uuid(),
+      name: z.string(),
+      durationMinutes: z.number().int().positive(),
+      bufferBeforeMinutes: z.number().int().nonnegative(),
+      bufferAfterMinutes: z.number().int().nonnegative(),
+      version: schedulingVersionSchema,
+    }),
+    days: z.array(monthSummaryDaySchema).min(28).max(31),
+  }),
+  schedulingFailureSchema,
+]);
+export type MonthSummaryDay = z.output<typeof monthSummaryDaySchema>;
+export type MonthSummary = Extract<z.output<typeof monthSummaryOutcomeSchema>, { ok: true }>;
