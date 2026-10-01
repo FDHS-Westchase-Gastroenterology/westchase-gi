@@ -43,8 +43,8 @@ test("the month summary counts open, full, past, and closed practice days at one
       startsAt: at(closedDay, "00:00"),
       endsAt: at(nextDate(closedDay), "00:00"),
     } as const;
-    // A 30-minute visit with 5-minute buffers reserves 40 minutes: one fits 08:55-09:35, two
-    // fit 08:55-10:15.
+    // A 30-minute visit with 5-minute buffers reserves 40 minutes on a 15-minute grid: one fits
+    // 08:55-09:35 (09:00), two fit 08:55-10:20 (09:00 and 09:45).
     const hours = (closeMinute: number) =>
       Array.from({ length: 7 }, (_, weekday) => ({
         locationId,
@@ -57,7 +57,7 @@ test("the month summary counts open, full, past, and closed practice days at one
     const providers: string[] = [];
     for (const [name, closeMinute] of [
       ["TEST schedule-month Single", 575],
-      ["TEST schedule-month Double", 615],
+      ["TEST schedule-month Double", 620],
     ] as const) {
       const provider = await save({
         action: "configure",
@@ -179,7 +179,8 @@ test("the month summary counts open, full, past, and closed practice days at one
       open: 0,
       booked: 3,
       capacity: 3,
-      bookedShare: 1,
+      // 120 reserved of 125 working minutes: the five minutes left cannot hold another visit.
+      bookedShare: 0.96,
     });
     expect(await day(releasedDay)).toMatchObject({ status: "open", open: 3, booked: 0 });
     expect(await day(closedDay)).toEqual({
