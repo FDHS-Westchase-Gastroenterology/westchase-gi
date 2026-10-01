@@ -10,6 +10,9 @@
   --week-minute: calc(76.25px / 60);
   --week-head: 78px;
   --week-gutter: 52px;
+  /* The first hour's label is centred on its line, so the body starts
+     this far below the sticky header to keep the label whole. */
+  --week-inset: 7px;
 }
 
 .wgi-week:has(.wgi-week-grid[data-compare]) {
@@ -123,6 +126,11 @@
   box-shadow: inset 0 -1px var(--wgi-rule);
 }
 
+.wgi-week-gutter-body,
+.wgi-week-day-body {
+  margin-top: var(--week-inset);
+}
+
 .wgi-week-gutter-body {
   background: none;
   box-shadow: none;
@@ -160,7 +168,7 @@
 .wgi-week-strip::after {
   content: "";
   display: block;
-  margin-top: var(--week-head);
+  margin-top: calc(var(--week-head) + var(--week-inset));
   background-color: var(--color-slate-50);
   transition: background-color var(--motion-fast-duration) var(--motion-standard);
 }
