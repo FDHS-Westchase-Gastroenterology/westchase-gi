@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { REQUEST_LOCATIONS } from "@/lib/portal/contracts";
 import { REQUEST_STATES } from "@/lib/portal/workflow/contracts";
 
 import type {
@@ -9,6 +10,7 @@ import type {
   appointmentReadOutcomeSchema,
   appointmentAvailabilityOutcomeSchema,
   monthSummaryOutcomeSchema,
+  monthAvailabilityOutcomeSchema,
 } from "./read-contracts";
 import { appointmentStartSchema } from "./time";
 
@@ -207,6 +209,13 @@ export const schedulingInputSchema = z.discriminatedUnion("action", [
     locationId: z.uuid().nullable().default(null),
     appointmentTypeId: z.uuid().nullable().default(null),
   }),
+  z.strictObject({
+    action: z.literal("month_availability"),
+    month: monthSchema,
+    appointmentTypeId: z.uuid(),
+    location: z.enum(REQUEST_LOCATIONS),
+    patientId: z.uuid().nullable().default(null),
+  }),
 ]);
 type ReadonlyFields<T> = T extends readonly (infer Item)[]
   ? readonly ReadonlyFields<Item>[]
@@ -277,4 +286,5 @@ export type SchedulingOutcome =
   | z.output<typeof schedulingConfigReadOutcomeSchema>
   | z.output<typeof appointmentListOutcomeSchema>
   | z.output<typeof appointmentReadOutcomeSchema>
-  | z.output<typeof monthSummaryOutcomeSchema>;
+  | z.output<typeof monthSummaryOutcomeSchema>
+  | z.output<typeof monthAvailabilityOutcomeSchema>;

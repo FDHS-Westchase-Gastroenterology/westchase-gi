@@ -174,6 +174,7 @@ function lineFor(
   return {
     id: row.id,
     version: row.version,
+    patientId: row.patientId,
     name: row.name,
     phoneDisplay: formatPhoneForDisplay(row.phone),
     phoneDigits: row.phone.replaceAll(/\D/gu, ""),

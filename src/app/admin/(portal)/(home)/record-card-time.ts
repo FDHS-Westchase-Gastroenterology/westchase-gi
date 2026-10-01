@@ -25,7 +25,7 @@ const CLOCK = new Intl.DateTimeFormat("en-US", {
 });
 
 /** The clock a staff member reads: 08:00 becomes 8:00 AM. */
-function clockLabel(time: string): string {
+export function clockLabel(time: string): string {
   return CLOCK.format(
     new Date(Date.UTC(2000, 0, 1, Number(time.slice(0, 2)), Number(time.slice(3, 5)))),
   );

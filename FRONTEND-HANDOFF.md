@@ -24,7 +24,7 @@ contracts are not yet on `main`.
 | Set up scheduling | Providers, locations, appointment types, hours, exceptions, and preparation buffers | Administrator configuration screens with complete reads and validation | [Scheduling](#scheduling) |
 | See month availability | One summary per practice date: open count, booked share, seen visits, closed days, and per-provider openings | Connected: `/admin/schedule` month view with the day preview; Day and Week views remain | [Scheduling](#scheduling) |
 | Book and manage appointments | Availability, conflict checks, booking, rescheduling, cancellation, arrival/outcomes, and Undo | Staff scheduling controls and appointment detail/history | [Scheduling](#scheduling) |
-| Schedule from an intake request | One operation updates both the reservation and its reviewed request | Patient selection/linking, a single booking save, paired rescheduling/cancellation/Undo | [Requests and appointments](#requests-and-appointments) |
+| Schedule from an intake request | One operation updates both the reservation and its reviewed request | Connected for a linked request: the Home record card books from its month (`month_availability`, then one `book` with `sourceRequestId`). Remaining: patient selection/linking, paired rescheduling/cancellation/Undo | [Requests and appointments](#requests-and-appointments) |
 | Read the request queue | Complete filtered results, counts, attention order, and Previous/Next | Existing screens already use the complete reads; preserve them when changing filters or paging | [Worklists](#worklists) |
 | Record billing, when used | Patient-owned charges, payments recorded elsewhere, refunds, adjustments, and corrections | Optional ledger screens, role-aware actions, and reconciliation | [Billing](#billing) |
 | Keep clinical records, when used | Notes, external document references, drafts, signing, amendments, and corrections | Optional clinical screens, signer administration, and protected record history | [Clinical records](#clinical-records) |
@@ -147,6 +147,7 @@ are in [scheduling/time.ts](src/lib/portal/scheduling/time.ts).
 | `appointments` | Read a calendar range or a patient's appointments, with filters, totals, and start/ID cursors. |
 | `read_appointment` | Read one appointment, current linked-request summary, history, and current Undo expiry. |
 | `month_summary` | Read one practice month (`month: "YYYY-MM"`, optional `locationId`) as one row per date with open counts and per-provider openings. |
+| `month_availability` | Read one practice month's bookable starts for one appointment type (`month`, `appointmentTypeId`, request `location`, optional `patientId`): per date and provider, every open start and, when none, the reason. |
 | `command` | Write with `idempotencyKey` and `book`, `reschedule`, `cancel`, `check_in`, `complete`, `no_show`, or `undo`. |
 
 Configuration creates omit both `id` and `expectedVersion`; updates send both. Provider saves
@@ -165,6 +166,14 @@ shortest active appointment type back to back under the availability rules, incl
 the provider counts sum to the day's count. Only starts after `observedAt` count, so today reads
 `full` with zero capacity once its hours have passed. The summary is a planning signal; booking
 still reads `availability`.
+
+`month_availability` returns `observedAt`, `today`, the `month`, the `appointmentType` with the
+`version` a `book` sends as `expectedTypeVersion`, the provider and location names, and one row
+per date with `past`, `open`, `booked`, `capacity`, and `providers`. Each provider entry lists its
+`open` starts (`startsAt`, `time`) at the request's location, or a `reason` of `booked_out`,
+`no_hours`, or `time_off` when it has none. The Home record card reads it through
+`readCardMonth` in `src/app/admin/(portal)/(home)/booking-actions.ts`, which also returns the
+active appointment types; a failed read is offered as Try again, never drawn as an empty month.
 
 Appointment types hold duration and before/after preparation buffers. A booking saves those values;
 later type edits do not rewrite existing reservations. Scheduling providers and locations are
@@ -252,6 +261,14 @@ Historical request-only bookings remain historical; do not infer a provider, pat
 reservation from them. Older source associations can be unmanaged. Use current read metadata to
 choose the applicable contract. Intake cleanup removes source references while retaining the
 patient and appointment. Undo cannot recreate a deleted request.
+
+The Home record card books a request whose worklist row carries `patientId` (Figma
+Ypf9ohpRcGWF5C9T9bSvWW, 09d–09f): choosing Appointment scheduled draws the month from `month_availability`, a day's
+popover lists its open starts, and Book sends `book` with `sourceRequestId` and `requestVersion`
+through `bookFromCard`. `time_unavailable` or `provider_conflict` re-reads the month under a new
+idempotency key and reopens the day with the nearest start; any other failure keeps the same key
+for Try again. A request with no linked patient keeps the day-and-time Save
+(`confirm_booking_handoff`).
 
 Acceptance: reviewed patient link → availability → one booking save → refresh both views →
 reschedule → cancel with a Call again day → eligible Undo → reload. Also test a competing booking,

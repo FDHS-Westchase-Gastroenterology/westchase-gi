@@ -19,6 +19,8 @@ export interface HomeLine {
   readonly id: string;
   /** Optimistic-concurrency token, so the outcome can be recorded on the line. */
   readonly version: number;
+  /** The linked patient record; with one the card books, without one it hands off. */
+  readonly patientId: string | null;
   readonly name: string;
   readonly phoneDisplay: string;
   readonly phoneDigits: string;

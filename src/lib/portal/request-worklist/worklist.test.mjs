@@ -6,6 +6,7 @@ import { requestWorklistDatabaseSchema } from "./rows.ts";
 import { readRequestWorklist } from "./service.ts";
 
 const id = "7625d4d9-2948-4fa5-a095-a4a5cd94fd7a";
+const otherId = "c3d6f1e2-8b4a-4f0e-9a51-2f6d7e8c9b10";
 
 test("worklist reads bound response size without limiting how far into the matching set staff can page", () => {
   assert.equal(
@@ -51,6 +52,23 @@ test("request pages preserve complete counts and decode latest-activity fields f
         last_activity_at: "2026-09-08T00:00:00Z",
         last_activity_by: "staff@example.test",
         bucket: "new",
+        patient_id: otherId,
+      },
+      {
+        id: otherId,
+        name: "TEST unlinked",
+        phone: "8135550101",
+        location: "tampa",
+        preferred_time: "any",
+        locale: "en",
+        status: "new",
+        created_at: "2026-09-07T00:00:00Z",
+        follow_up_at: null,
+        legacy_review_required: false,
+        version: 1,
+        last_activity_at: null,
+        last_activity_by: null,
+        bucket: "new",
       },
     ],
     nextOffset: 1001,
@@ -59,6 +77,8 @@ test("request pages preserve complete counts and decode latest-activity fields f
   assert.equal(parsed.total, 1107);
   assert.equal(parsed.items[0].lastActivityAt, "2026-09-08T00:00:00Z");
   assert.equal(parsed.items[0].lastActivityBy, "staff@example.test");
+  assert.equal(parsed.items[0].patientId, otherId);
+  assert.equal(parsed.items[1].patientId, null);
   assert.deepEqual(requestWorklistOutcomeSchema.parse(parsed), parsed);
 });
 

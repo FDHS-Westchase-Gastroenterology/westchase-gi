@@ -31,6 +31,10 @@ export const OPEN_CARD = `${CARD}[data-open]`;
     to it when the sheet closes while the card is still up. */
 export const CARD_BUTTON = `${OPEN_CARD} .wgi-record-full`;
 
+/** The booking month's day popover (parts/booking-calendar.tsx, issue
+    #344), portaled beside the card: its times are the card's own work. */
+export const DAY_POPOVER = ".wgi-day-popover";
+
 /** True when the element holding focus sits inside `selector`. */
 function focusWithin(selector: string): boolean {
   const active = document.activeElement;
@@ -60,13 +64,15 @@ export function cardStaysOpen(
        and the click would reopen it. A press on the save toast
        (ui/toaster.tsx, portaled beside the popover) is part of the save it
        reports: Try again and its close button keep the card open. A press
-       in the sheet is work on this record. */
+       in the sheet is work on this record, and so is a press in the
+       card's day popover. */
     const { target } = details.event;
     return (
       target instanceof Element &&
       (row?.contains(target) === true ||
         target.closest("[data-sonner-toaster]") !== null ||
-        target.closest(SHEET) !== null)
+        target.closest(SHEET) !== null ||
+        target.closest(DAY_POPOVER) !== null)
     );
   }
   if (details.reason === "focus-out") {
@@ -75,13 +81,17 @@ export function cardStaysOpen(
     return (
       event instanceof FocusEvent &&
       event.relatedTarget instanceof Element &&
-      event.relatedTarget.closest(SHEET) !== null
+      (event.relatedTarget.closest(SHEET) !== null ||
+        event.relatedTarget.closest(DAY_POPOVER) !== null)
     );
   }
   if (details.reason === "escape-key") {
     /* Focus inside the card makes the key the card's own. Heard any other
        way — from the document, focus in neither surface — it belongs to
-       the sheet while one is mounted, open or on its way out. */
+       the sheet while one is mounted, open or on its way out. A day
+       popover up beside the card takes it first: it closes and the card
+       stays for the next Escape. */
+    if (document.querySelector(DAY_POPOVER) !== null) return true;
     return !focusWithin(CARD) && document.querySelector(SHEET) !== null;
   }
   return false;
