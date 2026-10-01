@@ -190,10 +190,11 @@ test("month availability lists open starts per provider and office, with a reaso
       { locationId: lutz, open: ["09:00", "09:45"], booked: 0, capacity: 2, reason: null },
     ]);
 
-    // The patient's own visit on the full day blocks the overlapping start at the other office.
+    // The patient's own 09:00-09:30 visit on the full day blocks overlapping starts at Lutz.
+    // Patient overlap is visit time, not buffers, so 09:30 is the first start left.
     const forPatient = await read("any", fixture.patientIds[0]);
     expect(entries(forPatient, fullDay, double)).toEqual([
-      { locationId: lutz, open: ["09:45"], booked: 0, capacity: 1, reason: null },
+      { locationId: lutz, open: ["09:30"], booked: 0, capacity: 1, reason: null },
     ]);
 
     const now = new Date();
