@@ -1,10 +1,11 @@
 "use client";
 
 import { Popover } from "@base-ui/react/popover";
+import { cn } from "cn";
 import { startTransition, useEffect, useId, useState } from "react";
 
-import { Check, ChevronRight, Clock, MapPin, Phone, User } from "@/components/icons";
-import { Badge } from "@/components/ui/badge";
+import { formatPhoneForDisplay, telHref } from "@/app/admin/(portal)/requests/format";
+import { Check, ChevronRight, Clock, Ellipsis, MapPin, Phone, User } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuContent, MenuGroup, MenuItem, MenuTrigger } from "@/components/ui/menu";
 
@@ -14,11 +15,25 @@ import type { WeekAppointmentOutcome } from "./week-actions";
 import { appointmentWhen } from "./week-calendar";
 import { CancelFace, RescheduleFace } from "./week-card-faces";
 import { cardActions, failureMessage, MORE_LABEL, statusBadge } from "./week-card-model";
-import type { MoreCommand, WeekAppointmentCommand, WeekAppointmentDetail } from "./week-card-model";
+import type {
+  MoreCommand,
+  StatusBadge,
+  WeekAppointmentCommand,
+  WeekAppointmentDetail,
+} from "./week-card-model";
 import { CardError, useCommand } from "./week-card-parts";
 import type { CardHandlers } from "./week-card-parts";
 
 /* ---- The appointment card ---- */
+
+/* The status wears Home's line badge paints (home.css .wgi-badge), so
+   Scheduled on the week reads as the request's Scheduled on Home. */
+const BADGE_PAINT = {
+  settled: "wgi-badge-scheduled",
+  current: "wgi-badge-contacted",
+  attention: "wgi-badge-new",
+  quiet: "wgi-badge-closed",
+} as const satisfies Record<StatusBadge["variant"], string>;
 
 type Face = "details" | "reschedule" | "cancel";
 
@@ -121,7 +136,9 @@ function AppointmentDetails({
         {detail.patientName}
       </Popover.Title>
       <p className="wgi-week-card-kind">
-        <Badge variant={badge.variant}>{badge.label}</Badge>
+        <span data-slot="badge" className={cn("wgi-badge", BADGE_PAINT[badge.variant])}>
+          {badge.label}
+        </span>
         <span>{detail.appointmentTypeName}</span>
       </p>
       {face === "details" ? (
@@ -235,11 +252,11 @@ function DetailsFace({
           <li>
             <Phone width={16} height={16} />
             <a
-              href={`tel:${detail.patientPhone.replaceAll(/[^\d+]/gu, "")}`}
+              href={telHref(detail.patientPhone)}
               className="wgi-week-card-phone"
               data-ui-redact="patient-contact"
             >
-              {detail.patientPhone}
+              {formatPhoneForDisplay(detail.patientPhone)}
             </a>
           </li>
         )}
@@ -250,6 +267,7 @@ function DetailsFace({
           {actions.checkIn ? (
             <Button
               size="sm"
+              className="wgi-week-card-go"
               disabled={pending}
               onClick={() => {
                 send({ kind: "check_in", ...existing }, `${detail.patientName} is checked in.`);
@@ -278,7 +296,7 @@ function DetailsFace({
                 aria-label="More actions"
                 disabled={pending}
               >
-                <span aria-hidden="true">•••</span>
+                <Ellipsis width={15} height={15} />
               </MenuTrigger>
               <MenuContent align="end" className="min-w-48">
                 <MenuGroup>

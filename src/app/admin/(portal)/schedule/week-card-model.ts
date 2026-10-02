@@ -108,9 +108,9 @@ export interface StatusBadge {
   readonly variant: "attention" | "current" | "settled" | "quiet";
 }
 
-/* Scheduled wears Home's scheduled paint (status-badge.tsx), so a booking
-   looks the same on both; a patient who is here is current, and a visit
-   that is over recedes. */
+/* Scheduled wears Home's scheduled paint (the .wgi-badge paints in
+   home.css), so a booking looks the same on both; a patient who is here is
+   current, and a visit that is over recedes. */
 const STATUS_BADGE = {
   scheduled: { label: "Scheduled", variant: "settled" },
   checked_in: { label: "Checked in", variant: "current" },

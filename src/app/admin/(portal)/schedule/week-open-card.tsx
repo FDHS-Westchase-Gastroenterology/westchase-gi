@@ -81,6 +81,7 @@ export function OpenTimeCard({
           <div className="wgi-week-card-actions">
             <Button
               size="sm"
+              className="wgi-week-card-go"
               disabled={command.pending}
               onClick={() => {
                 book(patient);

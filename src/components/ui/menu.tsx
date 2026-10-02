@@ -16,9 +16,10 @@ import { Check } from "@/components/icons";
  * preview read beside its source is a popover (design-system/overlays.md).
  *
  * Paper: white with a 1px line edge, 12px corners and the popover shadow,
- * inset 6px. Items are 8px-cornered rows of 14px Lato in ink; the
- * highlighted row (pointer or keyboard) wears the mint band, and a checked
- * or chosen row carries a check at its end. An item's `tone` marks the one
+ * inset 6px, its rows 2px apart (W1b). Items are 8px-cornered rows of 14px
+ * Lato in ink; the highlighted row (pointer or keyboard) wears the mint
+ * band, and a checked or chosen row is set semibold with a navy check at
+ * its end. An item's `tone` marks the one
  * command that confirms a choice made in the menu, such as Compare in the
  * week's compare picker: `primary` sets it in bold teal ink.
  *
@@ -32,7 +33,7 @@ import { Check } from "@/components/icons";
 const menuVariants = cva(
   [
     // Geometry: at least the trigger's width, scrolling if the window is short
-    "z-50 max-h-(--available-height) min-w-(--anchor-width) overflow-y-auto rounded-[12px] p-1.5",
+    "z-50 flex max-h-(--available-height) min-w-(--anchor-width) flex-col gap-0.5 overflow-y-auto rounded-[12px] p-1.5",
     "outline-none",
     // Paper: white on a line edge with the popover shadow
     "border border-slate-200 bg-white text-ink shadow-popover",
@@ -58,7 +59,7 @@ const menuVariants = cva(
 );
 
 const itemClasses = [
-  "relative flex min-h-9 cursor-default items-center gap-2.5 rounded-[8px] px-2.5 py-1.5",
+  "relative flex min-h-9 cursor-default items-center gap-2.5 rounded-[8px] py-1.5 pr-2.5 pl-2",
   "font-sans text-[0.875rem] leading-5 outline-none select-none",
   "data-highlighted:bg-mint-50",
   "data-disabled:pointer-events-none data-disabled:text-muted-ink",
@@ -106,8 +107,14 @@ function MenuContent({
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-function MenuGroup(props: MenuPrimitive.Group.Props) {
-  return <MenuPrimitive.Group data-slot="menu-group" {...props} />;
+function MenuGroup({ className, ...props }: MenuPrimitive.Group.Props) {
+  return (
+    <MenuPrimitive.Group
+      data-slot="menu-group"
+      className={cn("flex flex-col gap-0.5", className)}
+      {...props}
+    />
+  );
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
@@ -154,20 +161,26 @@ function MenuCheckboxItem({ className, children, ...props }: MenuPrimitive.Check
   return (
     <MenuPrimitive.CheckboxItem
       data-slot="menu-checkbox-item"
-      className={cn(itemClasses, "pr-8", className)}
+      className={cn(itemClasses, "pr-8 data-checked:font-semibold", className)}
       {...props}
     >
       {children}
-      <MenuPrimitive.CheckboxItemIndicator className="absolute right-2.5 flex items-center text-teal-700">
-        <Check className="size-4" />
+      <MenuPrimitive.CheckboxItemIndicator className="absolute right-2.5 flex items-center text-navy-900">
+        <Check className="size-3.5" />
       </MenuPrimitive.CheckboxItemIndicator>
     </MenuPrimitive.CheckboxItem>
   );
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
-function MenuRadioGroup(props: MenuPrimitive.RadioGroup.Props) {
-  return <MenuPrimitive.RadioGroup data-slot="menu-radio-group" {...props} />;
+function MenuRadioGroup({ className, ...props }: MenuPrimitive.RadioGroup.Props) {
+  return (
+    <MenuPrimitive.RadioGroup
+      data-slot="menu-radio-group"
+      className={cn("flex flex-col gap-0.5", className)}
+      {...props}
+    />
+  );
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
@@ -175,12 +188,12 @@ function MenuRadioItem({ className, children, ...props }: MenuPrimitive.RadioIte
   return (
     <MenuPrimitive.RadioItem
       data-slot="menu-radio-item"
-      className={cn(itemClasses, "pr-8", className)}
+      className={cn(itemClasses, "pr-8 data-checked:font-semibold", className)}
       {...props}
     >
       {children}
-      <MenuPrimitive.RadioItemIndicator className="absolute right-2.5 flex items-center text-teal-700">
-        <Check className="size-4" />
+      <MenuPrimitive.RadioItemIndicator className="absolute right-2.5 flex items-center text-navy-900">
+        <Check className="size-3.5" />
       </MenuPrimitive.RadioItemIndicator>
     </MenuPrimitive.RadioItem>
   );
@@ -191,7 +204,7 @@ function MenuSeparator({ className, ...props }: MenuPrimitive.Separator.Props) {
   return (
     <MenuPrimitive.Separator
       data-slot="menu-separator"
-      className={cn("-mx-1.5 my-1.5 h-px bg-slate-200", className)}
+      className={cn("h-px shrink-0 bg-slate-200", className)}
       {...props}
     />
   );

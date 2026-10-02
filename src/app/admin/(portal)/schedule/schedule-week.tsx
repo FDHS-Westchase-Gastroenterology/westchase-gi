@@ -75,6 +75,18 @@ function WeekArrow({
   );
 }
 
+function renderTip({ payload }: Readonly<{ payload: TipPayload | undefined }>) {
+  return payload === undefined ? null : (
+    <TooltipContent side={payload.side} className="wgi-week-tip">
+      {payload.lines.map((line) => (
+        <span key={line} className="block">
+          {line}
+        </span>
+      ))}
+    </TooltipContent>
+  );
+}
+
 interface RecordOpen {
   readonly line: HomeLine;
   readonly appointmentId: string;
@@ -89,29 +101,25 @@ export function ScheduleWeekView({
   const baseId = useId();
   const titleId = `${baseId}-title`;
   const [tip] = useState(() => Tooltip.createHandle<TipPayload>());
+  const [band] = useState(() => Tooltip.createHandle<TipPayload>());
   const [card] = useState(() => Popover.createHandle<WeekCardPayload>());
   /* Opened from the keyboard: the card appears and leaves at once. */
   const [keyed, setKeyed] = useState(false);
   const [record, setRecord] = useState<RecordOpen | null>(null);
   const lastRecord = useRef<string | null>(null);
-  const grid: Grid = { view, baseId, tip, card, onKeyed: setKeyed };
+  const grid: Grid = { view, baseId, tip, band, card, onKeyed: setKeyed };
 
   return (
     <section className="wgi-schedule wgi-week" aria-labelledby={titleId}>
       <WeekHeader view={view} catalog={catalog} titleId={titleId} />
       <WeekGrid grid={grid} />
       <Tooltip.Root handle={tip} disableHoverablePopup>
-        {({ payload }) =>
-          payload === undefined ? null : (
-            <TooltipContent side={payload.side} className="wgi-week-tip">
-              {payload.lines.map((line) => (
-                <span key={line} className="block">
-                  {line}
-                </span>
-              ))}
-            </TooltipContent>
-          )
-        }
+        {renderTip}
+      </Tooltip.Root>
+      {/* A strip or an Off lane runs the grid's height, so its tooltip
+          meets the pointer where it rests (H5, H8). */}
+      <Tooltip.Root handle={band} disableHoverablePopup trackCursorAxis="y">
+        {renderTip}
       </Tooltip.Root>
       <Popover.Root handle={card}>
         {({ payload }) =>
