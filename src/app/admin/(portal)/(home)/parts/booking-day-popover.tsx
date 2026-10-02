@@ -1,7 +1,7 @@
 "use client";
 
 import { Popover } from "@base-ui/react/popover";
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 
 import {
   closedReasons,
@@ -13,6 +13,7 @@ import {
   openBlocks,
 } from "@/app/admin/(portal)/(home)/card-booking-days";
 import type { OpenBlock, TakenTime } from "@/app/admin/(portal)/(home)/card-booking-days";
+import { createDayAim } from "@/app/admin/(portal)/(home)/day-popover-aim";
 import { clockLabel } from "@/app/admin/(portal)/(home)/record-card-time";
 import type { CardMonthStatus } from "@/app/admin/(portal)/(home)/use-card-month";
 import type {
@@ -42,12 +43,32 @@ export function useDayPopover() {
   const [handle] = useState(() => Popover.createHandle<DayPayload>());
   /* The keyboard opened it: no transition, and it follows focus. */
   const [keyboard, setKeyboard] = useState(false);
+  /* The pointer's aim: crossing days on the way to the popover. */
+  const [aim] = useState(() =>
+    createDayAim(
+      (id) => {
+        setKeyboard(false);
+        handle.open(id);
+      },
+      () => {
+        handle.close();
+      },
+      () => handle.isOpen,
+    ),
+  );
+  useEffect(
+    () => () => {
+      aim.dispose();
+    },
+    [aim],
+  );
   return useMemo(() => {
     const idFor = (date: string) => `${baseId}-day-${date}`;
     return {
       handle,
       keyboard,
       setKeyboard,
+      aim,
       idFor,
       /** Opens a day's popover at once, as if the keyboard had. A day that
          is not a trigger on screen (another month, a locked card) has no
@@ -61,7 +82,7 @@ export function useDayPopover() {
         handle.close();
       },
     };
-  }, [baseId, handle, keyboard]);
+  }, [aim, baseId, handle, keyboard]);
 }
 
 export type DayPopover = ReturnType<typeof useDayPopover>;
@@ -270,6 +291,8 @@ export function DayPopup({
           className="wgi-popover wgi-day-popover"
           initialFocus={false}
           data-keyboard={popover.keyboard || undefined}
+          onPointerEnter={popover.aim.popupEnter}
+          onPointerLeave={popover.aim.popupLeave}
         >
           <Popover.Arrow className="wgi-history-arrow wgi-day-arrow" />
           <div className="wgi-day-head">

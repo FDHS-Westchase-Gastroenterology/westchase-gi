@@ -13,6 +13,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { NativeSelect } from "@/components/ui/native-select";
 import type { MonthAvailability } from "@/lib/portal/scheduling/read-contracts";
 
+import { ChevronGlyph } from "./glyphs";
 import { TimePicker } from "./time-picker";
 
 /* The strip under the booking month (issue #344; Figma 09d–09e): the visit
@@ -21,7 +22,8 @@ import { TimePicker } from "./time-picker";
    time…" opens a second row for a start the month does not offer: a
    provider and office, and the registry time field. The type and the
    provider are native selects, the portal's compact sizing of the
-   project's NativeSelect recipe (home.css .wgi-booking-select). */
+   project's NativeSelect recipe, each wrapped with a drawn chevron the way
+   the registry's native select is (home.css .wgi-booking-pick). */
 
 const ACTION_LABELS = {
   "retry-read": "Try again",
@@ -59,22 +61,25 @@ export function BookingStrip({
   return (
     <div className="wgi-record-strip" data-booking="">
       <div className="wgi-booking-row">
-        <NativeSelect
-          aria-label="Visit type"
-          className="wgi-booking-select"
-          value={typeId ?? ""}
-          disabled={locked || types.length === 0}
-          onChange={(event) => {
-            onType(event.currentTarget.value);
-          }}
-        >
-          {typeId === null ? <option value="">Visit type</option> : null}
-          {types.map((type) => (
-            <option key={type.id} value={type.id}>
-              {type.name}
-            </option>
-          ))}
-        </NativeSelect>
+        <span className="wgi-booking-pick">
+          <NativeSelect
+            aria-label="Visit type"
+            className="wgi-booking-select"
+            value={typeId ?? ""}
+            disabled={locked || types.length === 0}
+            onChange={(event) => {
+              onType(event.currentTarget.value);
+            }}
+          >
+            {typeId === null ? <option value="">Visit type</option> : null}
+            {types.map((type) => (
+              <option key={type.id} value={type.id}>
+                {type.name}
+              </option>
+            ))}
+          </NativeSelect>
+          <ChevronGlyph size={14} />
+        </span>
         <div className="wgi-booking-status" aria-live="polite">
           <p className="wgi-record-readout">
             <span className="wgi-record-readout-label">{line.label}</span>
@@ -107,23 +112,26 @@ export function BookingStrip({
       </div>
       {draft.squeeze ? (
         <div className="wgi-booking-squeeze">
-          <NativeSelect
-            aria-label="Provider"
-            className="wgi-booking-select"
-            value={picked}
-            disabled={locked || options.length === 0}
-            onChange={(event) => {
-              const option = options.find((entry) => entry.value === event.currentTarget.value);
-              if (option !== undefined) onSqueezeProvider(option.providerId, option.locationId);
-            }}
-          >
-            {picked === "" ? <option value="">Provider</option> : null}
-            {options.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </NativeSelect>
+          <span className="wgi-booking-pick">
+            <NativeSelect
+              aria-label="Provider"
+              className="wgi-booking-select"
+              value={picked}
+              disabled={locked || options.length === 0}
+              onChange={(event) => {
+                const option = options.find((entry) => entry.value === event.currentTarget.value);
+                if (option !== undefined) onSqueezeProvider(option.providerId, option.locationId);
+              }}
+            >
+              {picked === "" ? <option value="">Provider</option> : null}
+              {options.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </NativeSelect>
+            <ChevronGlyph size={14} />
+          </span>
           <Field orientation="horizontal" className="wgi-record-when">
             <FieldLabel htmlFor={timeId}>Time</FieldLabel>
             <TimePicker id={timeId} time={draft.time} disabled={locked} onPick={onSqueezeTime} />

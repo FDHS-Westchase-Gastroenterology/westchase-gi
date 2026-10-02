@@ -4,14 +4,15 @@
    (layout.tsx). Each surface that reads them, including the ones portaled
    to body, joins both selector lists below. */
 
-/* The record card, the full-record sheet, its history popover and the
-   Schedule's day preview and week card are portaled to body, outside their page, so
-   they read the same paints from this shared rule rather than restating
-   them. */
+/* The record card, the full-record sheet, its history popover, the card's
+   booking day popover and the Schedule's day preview and week card are
+   portaled to body, outside their page, so they read the same paints from
+   this shared rule rather than restating them. */
 .wgi-home,
 .wgi-record-card,
 .wgi-sheet,
 .wgi-history-popover,
+.wgi-day-popover,
 .wgi-schedule,
 .wgi-day-preview,
 .wgi-week-card {
@@ -105,6 +106,7 @@
   .wgi-record-card,
   .wgi-sheet,
   .wgi-history-popover,
+  .wgi-day-popover,
   .wgi-schedule,
   .wgi-day-preview,
   .wgi-week-card {
