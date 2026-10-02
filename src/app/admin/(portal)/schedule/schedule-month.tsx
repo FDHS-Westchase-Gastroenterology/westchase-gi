@@ -10,7 +10,7 @@ import { ChevronLeft, ChevronRight, Search } from "@/components/icons";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import type { SegmentedControlOption } from "@/components/ui/segmented-control";
 
-import { CellBody, DayPreviewPopup, Legend } from "./schedule-day";
+import { CellBody, DayPreviewPopup, Legend } from "./month-day-preview";
 import type { DayPreview, ScheduleCell, ScheduleMonth } from "./schedule-model";
 import { weekHref } from "./week-calendar";
 
