@@ -163,6 +163,7 @@ const FAILURE_COPY = new Map<SchedulingFailureCode, string>([
   ["type_changed", "The visit type just changed. Close the card and try again."],
   ["not_found", "This appointment is no longer on the schedule."],
   ["forbidden", "Your role can't make that change."],
+  ["undo_unavailable", "That can no longer be undone: it changed again or 15 minutes passed."],
 ]);
 
 export function failureMessage(code: SchedulingFailureCode): string {

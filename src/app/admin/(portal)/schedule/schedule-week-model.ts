@@ -1,4 +1,4 @@
-import type { WeekDay, WeekSchedule } from "@/lib/portal/scheduling/read-contracts";
+import type { WeekDay, WeekSchedule } from "@/lib/portal/scheduling/grid-contracts";
 
 import {
   addDays,

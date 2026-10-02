@@ -4,6 +4,7 @@ import test from "node:test";
 import { infusionNurse, nursePractitioners, physicians } from "@/lib/providers";
 
 import { checkDemoData } from "./demo-data/checks.mjs";
+import { nyDate, nyMinute, weekday } from "./demo-data/context.mjs";
 import { generateDemoData } from "./demo-data/generate.mjs";
 import { clinicianRoster } from "./demo-data/roster.mjs";
 import { resetSql } from "./demo-data/sql.mjs";
@@ -34,6 +35,66 @@ test("the dataset meets the bar at different reference times", () => {
     "2027-03-15T16:00:00Z",
   ])
     assert.deepEqual(checkDemoData(generate("westchase-demo-v1", now)), [], now);
+});
+
+/** What the Schedule's day view shows for the reference day, read back from the rows. */
+function today(d, now) {
+  const ms = Date.parse(now);
+  const date = nyDate(ms);
+  const minute = (v) => nyMinute(Date.parse(v));
+  const away = new Set(
+    d.rows.provider_time_exceptions
+      .filter((e) => e.kind === "unavailable" && nyDate(Date.parse(e.starts_at)) <= date)
+      .filter((e) => date < nyDate(Date.parse(e.ends_at)))
+      .map((e) => e.provider_id),
+  );
+  const hours = new Map(
+    d.rows.provider_hours
+      .filter((h) => h.weekday === weekday(date) && !away.has(h.provider_id))
+      .map((h) => [h.provider_id, h]),
+  );
+  const visits = d.rows.appointments.filter(
+    (a) => a.status !== "cancelled" && nyDate(Date.parse(a.starts_at)) === date,
+  );
+  const shortest = Math.min(...d.rows.appointment_types.map((t) => t.duration_minutes));
+  // An open time starts on the quarter hour after the clock and fits the hours and the visits.
+  const hasOpen = [...hours.values()].some((h) => {
+    const taken = visits
+      .filter((a) => a.provider_id === h.provider_id)
+      .map((a) => [minute(a.reserved_from), minute(a.reserved_until)]);
+    for (let m = h.open_minute; m + shortest <= h.close_minute; m += 15)
+      if (m > nyMinute(ms) && !taken.some(([a, b]) => m < b && m + shortest > a)) return true;
+    return false;
+  });
+  return {
+    working: hours.size,
+    off: d.rows.scheduling_providers.length - hours.size,
+    statuses: new Set(visits.map((a) => a.status)),
+    hasOpen,
+  };
+}
+
+test("today, while the clinic is open, has every state the day view shows", () => {
+  /* Wednesday late morning (the Figma day) and over lunch, Thursday's second hour, a Monday's
+     first hour and a Friday afternoon. Nobody has finished a visit in the first 45 minutes. */
+  for (const now of [
+    "2026-09-16T15:45:00Z",
+    "2026-09-16T16:05:00Z",
+    "2026-09-17T13:05:00Z",
+    "2026-10-05T12:50:00Z",
+    "2026-10-02T18:20:00Z",
+  ]) {
+    const d = generate("westchase-demo-v1", now);
+    const day = today(d, now);
+    assert.ok(day.working >= 3, `${now}: ${day.working} working`);
+    assert.ok(day.off >= 1, `${now}: nobody off`);
+    for (const status of ["checked_in", "completed"])
+      assert.ok(day.statuses.has(status), `${now}: no ${status} visit`);
+    assert.ok(day.hasOpen, `${now}: no open time`);
+    assert.deepEqual(checkDemoData(d), [], now);
+  }
+  // After the last provider closes, the finished day still shows who was seen.
+  assert.ok(today(data, "2026-10-02T20:46:08Z").statuses.has("completed"));
 });
 
 test("a seed and reference time always produce the same reset", () => {

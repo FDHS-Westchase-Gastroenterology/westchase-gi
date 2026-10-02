@@ -679,6 +679,126 @@ test("week schedule reads one to three providers' Sunday weeks in lane order", a
   );
 });
 
+test("day schedule reads every working provider on a practice date", async () => {
+  // Rows copied from the RPC's output shape: offset timestamps and literal nulls.
+  const provider = (providerId, name, overrides) => ({
+    id: providerId,
+    name,
+    working: [],
+    appointments: [],
+    open: [],
+    seen: null,
+    openCount: 0,
+    ...overrides,
+  });
+  const chang = provider(id, "TEST Dr. Chang", {
+    working: [
+      {
+        from: "2026-09-16T12:00:00+00:00",
+        until: "2026-09-16T16:00:00+00:00",
+        locationId: otherId,
+        locationName: "TEST Tampa",
+      },
+      {
+        from: "2026-09-16T17:00:00+00:00",
+        until: "2026-09-16T21:00:00+00:00",
+        locationId: key,
+        locationName: "TEST Lutz",
+      },
+    ],
+    appointments: [
+      {
+        id: key,
+        version: 3,
+        startsAt: "2026-09-16T13:00:00+00:00",
+        endsAt: "2026-09-16T13:30:00+00:00",
+        status: "checked_in",
+        appointmentType: "TEST Follow-up",
+        patientName: "TEST Ellen Byrne",
+        patientListName: "Byrne",
+      },
+    ],
+    open: [
+      {
+        startsAt: "2026-09-16T18:00:00+00:00",
+        endsAt: "2026-09-16T18:30:00+00:00",
+        locationId: key,
+        locationName: "TEST Lutz",
+      },
+    ],
+    openCount: 1,
+  });
+  const schedule = {
+    ok: true,
+    observedAt: "2026-09-16T15:45:00.123+00:00",
+    today: "2026-09-16",
+    date: "2026-09-16",
+    timeZone: "America/New_York",
+    activeProviderCount: 2,
+    referenceType: { id, name: "TEST Follow-up", durationMinutes: 30, version: 2 },
+    providers: [chang],
+    off: [{ id: otherId, name: "TEST Dr. Mendoza" }],
+  };
+  const calls = [];
+  let data = schedule;
+  const db = {
+    rpc(name, args) {
+      calls.push({ name, args });
+      return {
+        async abortSignal() {
+          return { data, error: null };
+        },
+      };
+    },
+  };
+  assert.deepEqual(
+    await executeSchedulingOperation(db, otherId, { action: "day_schedule", date: "2026-09-16" }),
+    schedule,
+  );
+  assert.deepEqual(calls[0], {
+    name: "portal_schedule_day",
+    args: { p_actor_id: otherId, p_date: "2026-09-16", p_appointment_type_id: null },
+  });
+  await executeSchedulingOperation(db, otherId, {
+    action: "day_schedule",
+    date: "2026-09-16",
+    appointmentTypeId: key,
+  });
+  assert.equal(calls[1].args.p_appointment_type_id, key);
+  for (const input of [
+    { date: "2026-09-31" },
+    { date: "1999-12-31" },
+    { date: "2200-01-01" },
+    { date: "2026-09-16", providerIds: [id] },
+    { date: "2026-09-16", appointmentTypeId: "x" },
+  ])
+    assert.deepEqual(
+      await executeSchedulingOperation(db, otherId, { action: "day_schedule", ...input }),
+      { ok: false, code: "invalid_command" },
+    );
+  assert.equal(calls.length, 2);
+  // A cancelled visit, an unversioned visit or a window without its office breaks the contract.
+  const [visit] = chang.appointments;
+  const { version: _version, ...unversioned } = visit;
+  const { locationName: _locationName, ...unnamed } = chang.working[0];
+  for (const broken of [
+    { ...chang, appointments: [{ ...visit, status: "cancelled" }] },
+    { ...chang, appointments: [unversioned] },
+    { ...chang, working: [unnamed] },
+  ]) {
+    data = { ...schedule, providers: [broken] };
+    assert.deepEqual(
+      await executeSchedulingOperation(db, otherId, { action: "day_schedule", date: "2026-09-16" }),
+      { ok: false, code: "unavailable" },
+    );
+  }
+  data = { ok: false, code: "unauthorized" };
+  assert.deepEqual(
+    await executeSchedulingOperation(db, otherId, { action: "day_schedule", date: "2026-09-16" }),
+    data,
+  );
+});
+
 test("the remembered week provider is read and written only through the actor's RPCs", async () => {
   const calls = [];
   const results = {

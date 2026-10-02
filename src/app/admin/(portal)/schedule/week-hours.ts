@@ -1,4 +1,4 @@
-import type { WeekDay } from "@/lib/portal/scheduling/read-contracts";
+import type { WeekDay } from "@/lib/portal/scheduling/grid-contracts";
 
 import { endMinute, practiceDate, practiceMinute } from "./week-calendar";
 

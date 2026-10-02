@@ -4,6 +4,12 @@ import { REQUEST_LOCATIONS } from "@/lib/portal/contracts";
 import { REQUEST_STATES } from "@/lib/portal/workflow/contracts";
 
 import type {
+  dayScheduleOutcomeSchema,
+  rememberWeekProviderOutcomeSchema,
+  weekProviderOutcomeSchema,
+  weekScheduleOutcomeSchema,
+} from "./grid-contracts";
+import type {
   schedulingCatalogOutcomeSchema,
   schedulingConfigReadOutcomeSchema,
   appointmentListOutcomeSchema,
@@ -11,9 +17,6 @@ import type {
   appointmentAvailabilityOutcomeSchema,
   monthSummaryOutcomeSchema,
   monthAvailabilityOutcomeSchema,
-  weekScheduleOutcomeSchema,
-  weekProviderOutcomeSchema,
-  rememberWeekProviderOutcomeSchema,
 } from "./read-contracts";
 import { appointmentStartSchema } from "./time";
 
@@ -234,6 +237,11 @@ export const schedulingInputSchema = z.discriminatedUnion("action", [
     locationId: z.uuid().nullable().default(null),
     appointmentTypeId: z.uuid().nullable().default(null),
   }),
+  z.strictObject({
+    action: z.literal("day_schedule"),
+    date: dateSchema.refine((date) => /^2[01]/.test(date)),
+    appointmentTypeId: z.uuid().nullable().default(null),
+  }),
   z.strictObject({ action: z.literal("week_provider") }),
   z.strictObject({ action: z.literal("remember_week_provider"), providerId: z.uuid() }),
 ]);
@@ -310,4 +318,5 @@ export type SchedulingOutcome =
   | z.output<typeof monthAvailabilityOutcomeSchema>
   | z.output<typeof weekScheduleOutcomeSchema>
   | z.output<typeof weekProviderOutcomeSchema>
-  | z.output<typeof rememberWeekProviderOutcomeSchema>;
+  | z.output<typeof rememberWeekProviderOutcomeSchema>
+  | z.output<typeof dayScheduleOutcomeSchema>;

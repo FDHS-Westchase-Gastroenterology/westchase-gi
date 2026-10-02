@@ -92,7 +92,6 @@ async function WeekPage({
     locationId: null,
     appointmentTypeId: null,
   });
-  if (!week.ok || !("activeProviderCount" in week))
-    throw new Error("The schedule could not be read.");
+  if (!week.ok || !("weekStart" in week)) throw new Error("The schedule could not be read.");
   return <ScheduleWeekView view={scheduleWeekFor(week)} catalog={active} />;
 }
