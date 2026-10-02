@@ -35,6 +35,7 @@ npm ci
 cp .env.example .env.local   # fill in real values; this is the variable inventory
 npx playwright install chromium
 npm run dev                  # serve :3000; never refreshes the database
+npm run demo:data -- check   # offline demo dataset held to the bar
 npm run dev:patients -- inspect  # read-only fixture plan for this checkout
 npm run dev:mission          # the E2E stack's server on :3100
 ```
@@ -43,6 +44,84 @@ npm run dev:mission          # the E2E stack's server on :3100
 an inspection hint for older environments: neither `DEV_SEED=1` nor an unset value
 triggers seeding, and `DEV_SEED=0` does not disable an explicit regeneration command.
 E2E remains on `supabase/seed.sql`.
+
+### Portal demo data
+
+Every dataset that a person reviews or demos in the staff portal meets one bar. An audience
+cannot tell it from a working clinic, and it holds only rows the database or portal could have
+written. `scripts/demo-data.test.mjs` encodes the bar, using the checks in
+`scripts/demo-data/checks.mjs`. A generator change that fails it is below the bar.
+
+The bar, as properties a reviewer can see:
+
+- **Staff are the practice's staff.** Clinicians, providers, note authors and signers come from
+  `src/lib/providers.ts`, so they always match the website. Clinician accounts use
+  `@preview.westchase.test` addresses.
+- **Patients read as people.** Each patient has a unique first and last name, a `@mock.com`
+  address, and a fictional `555-01xx` phone number. No patient shares a staff member's surname.
+  A field never contains fixture words (`TEST`, `seed`, `example`, `lorem`, `placeholder`,
+  `dummy`).
+- **Notes read as the clinic writes them.** Patient messages sound like patients. Staff notes,
+  clinical notes and cancellation reasons are specific and clinical. Staff-written text uses
+  "the patient" and never assumes a gender.
+- **Every row is one the system could have written.** No provider is double-booked. Each
+  appointment ends after it starts and was created before it starts. A note is either fully
+  signed or a draft. Billing versions and running balances chain in time order and agree with
+  the account. Request transitions start at `new` and match each request's status and version.
+  A booked request links to its appointment at the same time. Timestamps are whole seconds, as
+  the portal writes them. Revision, scheduling-change and audit history is derived from the
+  rows it describes.
+- **Every state a demo walks through is present.** Today has a full clinic. The next weeks fill
+  up in a realistic way. History includes completed, cancelled and no-show visits. Requests sit
+  in New, Call again, Scheduled and Closed, in several locales. Some notes are unsigned drafts,
+  and some accounts carry a balance.
+
+Clinic hours, the location rotation and the time-off week are invented. When the practice
+supplies real hours, put them in `scripts/demo-data/roster.mjs`. The history window and office
+holidays follow the reference clock, so a later reset stays current.
+
+```bash
+npm run demo:data -- check   # offline: generate, hold to the bar, print the summary; exit 1 below it
+npm run demo:data -- audit   # read-only: counts and the bar against the branch's live content, without e2e fixtures
+
+# After inspecting and coordinating the shared Preview with other users and CI:
+npm run demo:data -- reset --confirm-target "$SUPABASE_BRANCH_PROJECT_REF" --shared-preview-ready
+
+# Reproduce a dataset exactly: the same seed, reference clock and staff accounts give the same rows.
+npm run demo:data -- reset --seed westchase-demo-v1 --now 2026-10-02T21:17:00Z \
+  --confirm-target "$SUPABASE_BRANCH_PROJECT_REF" --shared-preview-ready
+```
+
+`reset` uses the same target rules as `dev:patients`: a hosted Preview branch ref on the
+allowlist, distinct from Production, with `--confirm-target` and `--shared-preview-ready`.
+It also needs the branch's `POSTGRES_URL` (or `POSTGRES_URL_NON_POOLING`), the Supabase CLI,
+and an authenticated `gh`. Before it writes, `reset` does four things:
+
+1. It refuses while any `supabase-integration` run is in flight.
+2. It finds or creates each clinician's auth user, with an unusable random password, and
+   removes stranded `@example.test` end-to-end users.
+3. It requires `--operator` or `PORTAL_SEED_ADMIN_EMAIL` to be an active admin profile. The
+   operator becomes the front-desk actor.
+4. It generates the dataset and holds it to the bar. Below the bar, nothing is written.
+
+The replacement then runs in one transaction. It wipes patients, requests and their history,
+scheduling, clinical records, billing, sourced audit rows, clinician profiles and the
+`dev:patients` `/seed` requests. It keeps auth users, admin profiles outside `@example.test`,
+notification recipients and unsourced audit rows. A failure leaves the previous data in place.
+`reset` finishes by comparing live counts with the dataset and auditing the live content.
+
+When a migration adds a table or column the portal shows, the change is not complete until it
+also updates the generator in `scripts/demo-data/`, the bar where needed, and `TABLES` and
+`PORTAL_TABLES` in `scripts/demo-data/sql.mjs`. A reset against a schema the generator does not
+cover fails inside its transaction.
+
+Two fixture sets are outside this bar, because their assertions depend on fixed values:
+
+- **End-to-end fixtures.** `supabase/seed.sql`, `@example.test` users, and rows the e2e harness
+  sweeps: `TEST` names and `.test` or `queue-` addresses. `audit` skips these rows and reports
+  how many it skipped.
+- **The `dev:patients` profiles.** These remain the recoverable tool for staging the request
+  worklist on its own, below.
 
 ### Development appointment fixtures
 
@@ -333,6 +412,7 @@ The checks below are added to the standing gates.
 | Intake form / API / persistence | [Patient appointment intake](ARCHITECTURE.md#patient-appointment-intake) | `src/lib/portal/contracts.test.mjs`, `e2e/portal/intake-api.spec.ts`, `e2e/portal/intake-form.spec.ts` |
 | Portal page, route, or action | [Portal identity, authorization, and reads](ARCHITECTURE.md#portal-identity-authorization-and-reads); add `src/lib/portal/workflow/contracts.ts` for queue work | The unit tests beside the module, then the `e2e/portal/` spec for the route (`requests.spec.ts`, `lifecycle.spec.ts` for the work panel) |
 | Migration, RLS, RPC, or seed | [State and persistence](ARCHITECTURE.md#state-and-persistence) and [trust boundaries](ARCHITECTURE.md#trust-boundaries) | `verify-schema --target branch` and `test:e2e:boundaries`; documented migration deployment to the selected database and green `supabase-integration` on the exact head |
+| Portal demo data, or a migration adding a table or column the portal shows | [Portal demo data](#portal-demo-data) | `npm run demo:data -- check` and `scripts/demo-data.test.mjs` (in `test:unit`); after a coordinated `reset`, `npm run demo:data -- audit` on the branch |
 | Email paths | [Email](ARCHITECTURE.md#email) | `src/lib/portal/email.test.mjs` (in `test:unit`) |
 | UI-visible change | `PRODUCT.md`, `DESIGN.md`, and [`ui-reference/README.md`](ui-reference/README.md) | Refresh covered `ui-reference/` images; before/after screenshots in the PR conversation; video when the change is a new workflow or has multiple authored steps |
 | CI / dependency automation | [Common starting points](ARCHITECTURE.md#common-starting-points) | `node --test .github/scripts/dependency-automation.test.cjs`; policy and test change together |

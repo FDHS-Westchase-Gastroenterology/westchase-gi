@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "demo:data": "node --import ./test/register.mjs scripts/demo-data-cli.mjs",
     "dev:patients": "node --import ./test/register.mjs scripts/dev-patients-cli.mjs",
     "dev:mission": "mkdir -p .logs; lsof -ti tcp:3100 | xargs -r kill -9; exec next dev -p 3100",
     "build": "next build",
