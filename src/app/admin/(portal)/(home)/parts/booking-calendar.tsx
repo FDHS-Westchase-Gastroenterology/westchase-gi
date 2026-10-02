@@ -8,6 +8,7 @@ import type { DayButtonProps } from "react-day-picker";
 
 import { dayAccessibleName, dayIsOpen, dayOf } from "@/app/admin/(portal)/(home)/card-booking-days";
 import type { TakenTime } from "@/app/admin/(portal)/(home)/card-booking-days";
+import { LEAVE_DELAY, REST_DELAY } from "@/app/admin/(portal)/(home)/day-popover-aim";
 import { DAY_POPOVER } from "@/app/admin/(portal)/(home)/sheet-coexistence";
 import type { CardMonthStatus } from "@/app/admin/(portal)/(home)/use-card-month";
 import { Calendar } from "@/components/stock/calendar";
@@ -24,9 +25,9 @@ import type { DayPopover, DayPopupActions } from "./booking-day-popover";
    over the month (HIG Popovers: the arrow points at its source, and it
    does not cover it):
 
-   - A pointer resting on a day opens it; crossing other days on the way
-     to the popover does not switch it, because each day waits for the
-     pointer to settle.
+   - A pointer resting on a day opens it, and resting on another day moves
+     it there; crossing days on the way to the popover leaves it where it
+     is, and leaving for elsewhere closes it (day-popover-aim.ts).
    - Keyboard focus on a day opens it at once, with no transition, and it
      follows focus through the grid; Tab moves into its times, Escape
      closes it and leaves focus on the day.
@@ -34,10 +35,6 @@ import type { DayPopover, DayPopupActions } from "./booking-day-popover";
 
    One popover serves every day through a handle, so there is never more
    than one open (parts/booking-day-popover.tsx). */
-
-/** How long a pointer rests on a day before its popover opens or moves to it. */
-const REST_DELAY = 250;
-const LEAVE_DELAY = 150;
 
 /* What the custom day button needs from the calendar that renders it.
    DayPicker owns the button's props; a context carries the rest, so the
@@ -108,6 +105,9 @@ function BookingDayButton({ day, modifiers, ...props }: DayButtonProps) {
       delay={REST_DELAY}
       closeDelay={LEAVE_DELAY}
       {...rest}
+      onPointerEnter={popover.aim.dayEnter}
+      onPointerMove={popover.aim.dayMove}
+      onPointerLeave={popover.aim.dayLeave}
       aria-label={name}
       data-open-times={dayIsOpen(read) || undefined}
       data-selected-single={selected || undefined}
@@ -234,6 +234,8 @@ export function BookingCalendar({
       <Popover.Root
         handle={popover.handle}
         onOpenChange={(open, details) => {
+          popover.aim.openChange(open, details);
+          if (details.isCanceled) return;
           /* A pointer took over: the next open animates again. */
           if (open && details.reason !== "imperative-action") popover.setKeyboard(false);
         }}

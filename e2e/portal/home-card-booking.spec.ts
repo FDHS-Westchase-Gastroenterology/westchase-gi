@@ -98,6 +98,18 @@ test("Home Book recovers a start taken before it lands and books the nearest one
     });
     const tile = starts.getByRole("button").first();
     await expect(tile).toBeVisible();
+    /* The way from the day to its popover crosses other days; they do not
+       take the popover on the way, as a menu aims at its submenu. */
+    const title = popover.getByRole("heading", {
+      name: LONG_DAY.format(new Date(`${day}T12:00:00Z`)),
+    });
+    await expect(title).toBeVisible();
+    const from = await dayButton.boundingBox();
+    const to = await tile.boundingBox();
+    if (from === null || to === null) throw new Error("The day or its first start has no box");
+    await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+    await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 20 });
+    await expect(title).toBeVisible();
     const label = (await tile.textContent()) ?? "";
     await tile.click();
 

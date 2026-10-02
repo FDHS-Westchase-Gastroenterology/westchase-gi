@@ -173,7 +173,12 @@ export function CancelFace({
       ) : null}
       {error === null ? null : <CardError>{error}</CardError>}
       <div className="wgi-week-card-actions">
-        <Button type="submit" size="sm" disabled={pending || trimmed === ""}>
+        <Button
+          type="submit"
+          size="sm"
+          className="wgi-week-card-go"
+          disabled={pending || trimmed === ""}
+        >
           Cancel appointment
         </Button>
         <Button type="button" variant="outline" size="sm" onClick={onBack}>

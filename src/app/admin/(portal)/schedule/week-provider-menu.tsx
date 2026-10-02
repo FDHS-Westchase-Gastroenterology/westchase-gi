@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { ReactNode } from "react";
 
 import {
@@ -36,7 +36,7 @@ function Avatar({ initials }: Readonly<{ initials: string }>) {
   return (
     <span
       aria-hidden="true"
-      className="flex size-6 items-center justify-center rounded-full bg-slate-100 text-[0.625rem] font-bold text-muted-ink"
+      className="flex size-6 shrink-0 items-center justify-center rounded-full bg-navy-100 text-[0.625rem] font-bold text-navy-900"
     >
       {initials}
     </span>
@@ -62,6 +62,8 @@ export function WeekProviderMenu({
   const [picked, setPicked] = useState<readonly string[]>(shown);
 
   const pickedIds = new Set(picked);
+  const full = picked.length >= COMPARE_MAX;
+  const upToId = useId();
 
   function pick(providerId: string, checked: boolean) {
     setPicked((current) =>
@@ -92,7 +94,7 @@ export function WeekProviderMenu({
       <MenuTrigger className="wgi-week-trigger" aria-label={view.triggerLabel}>
         {children}
       </MenuTrigger>
-      <MenuContent className="w-72">
+      <MenuContent className="w-[17.125rem]">
         {mode === "list" ? (
           <>
             <MenuRadioGroup
@@ -125,16 +127,21 @@ export function WeekProviderMenu({
               <MenuLabel className="flex justify-between gap-3">
                 <span>Compare up to {COMPARE_MAX}</span>
                 <span aria-live="polite">
-                  {picked.length} of {COMPARE_MAX} selected
+                  {picked.length} of {view.activeProviderCount} selected
                 </span>
               </MenuLabel>
+              <span id={upToId} hidden>
+                Up to {COMPARE_MAX}
+              </span>
               {catalog.map((provider) => {
                 const checked = pickedIds.has(provider.id);
+                const capped = !checked && full;
                 return (
                   <MenuCheckboxItem
                     key={provider.id}
                     checked={checked}
-                    disabled={!checked && picked.length >= COMPARE_MAX}
+                    disabled={capped}
+                    aria-describedby={capped ? upToId : undefined}
                     onCheckedChange={(next) => {
                       pick(provider.id, next);
                     }}

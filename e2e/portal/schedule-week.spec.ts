@@ -40,11 +40,15 @@ test("Schedule week switches provider, compares two in lanes, and opens a cell's
     /* "Compare providers…" turns the same menu into the picker. */
     await trigger.click();
     await page.getByRole("menuitem", { name: "Compare providers…" }).click();
-    await expect(page.getByText("1 of 3 selected")).toBeVisible();
+    /* The count's total is every active provider, one row each. */
+    const rows = page.getByRole("menuitemcheckbox");
+    await expect(rows.first()).toBeVisible();
+    const active = await rows.count();
+    await expect(page.getByText(`1 of ${active} selected`)).toBeVisible();
     const compare = page.getByRole("menuitem", { name: "Compare", exact: true });
     await expect(compare).toBeDisabled();
     await page.getByRole("menuitemcheckbox", { name: first, exact: true }).click();
-    await expect(page.getByText("2 of 3 selected")).toBeVisible();
+    await expect(page.getByText(`2 of ${active} selected`)).toBeVisible();
     await compare.click();
     await expect(trigger).toHaveAccessibleName(
       `Comparing ${second} and ${first}, providers, change`,

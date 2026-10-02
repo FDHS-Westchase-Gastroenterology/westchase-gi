@@ -9,8 +9,18 @@
   gap: 1.5rem;
   max-width: 76rem;
   margin: 0 auto;
-  padding: 2rem 3rem 1.5rem;
   color: var(--color-body);
+}
+
+/* The frames' canvas: 32px above the heading and 48px either side, so the
+   page is 1056px wide at 1440×900 (W1, S1). It replaces the shell's
+   padding rather than adding to it; below the docked sidebar the shell's
+   own padding stands. Print keeps the workbench's zero padding, which is
+   !important there. */
+@media (min-width: 60rem) {
+  .portal-content:has(> .wgi-schedule) {
+    padding: 2rem 3rem 1.5rem;
+  }
 }
 
 .wgi-schedule :where(a, button, input, [tabindex]):focus-visible {
@@ -44,13 +54,16 @@
   gap: 0.75rem;
 }
 
+/* The title is set in the body sans (Lato) as the frames draw it, not the
+   display serif the portal's heading base rule gives an h1. */
 .wgi-schedule-title {
   margin: 0;
   color: var(--wgi-name-ink);
+  font-family: var(--font-body), Arial, sans-serif;
   font-size: 2.25rem;
   font-weight: 700;
   letter-spacing: -0.54px;
-  line-height: 1.2;
+  line-height: 1.1;
   white-space: nowrap;
 }
 

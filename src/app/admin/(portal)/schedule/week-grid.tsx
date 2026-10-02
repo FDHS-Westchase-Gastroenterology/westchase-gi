@@ -32,12 +32,14 @@ export interface TipPayload {
   readonly side: TipSide;
 }
 
-/** What every piece of the grid shares: the week, the two handles, and the
-    keyboard flag the card reads. */
+/** What every piece of the grid shares: the week, the handles, and the
+    keyboard flag the card reads. `band` is the tooltip of the tall
+    targets, strips and Off lanes, which follows the pointer's height. */
 export interface Grid {
   readonly view: ScheduleWeek;
   readonly baseId: string;
   readonly tip: Tooltip.Handle<TipPayload>;
+  readonly band: Tooltip.Handle<TipPayload>;
   readonly card: Popover.Handle<WeekCardPayload>;
   readonly onKeyed: (keyed: boolean) => void;
 }
@@ -78,9 +80,12 @@ function cellDomId(baseId: string, cell: Readonly<WeekCell>): string {
 export function WeekGrid({ grid }: Readonly<{ grid: Grid }>) {
   const { view } = grid;
   const now = useSyncExternalStore(subscribeMinute, minuteNow, noClock);
+  /* A day without hours folds to a strip beside the days that have them; a
+     week without hours anywhere keeps its seven days at full width. */
+  const fold = view.columns.some((column) => column.kind === "day");
   const columns: CssVars = {
     "--week-columns": view.columns
-      .map((column) => (column.kind === "strip" ? "1.5rem" : "minmax(0, 1fr)"))
+      .map((column) => (fold && column.kind === "strip" ? "1.5rem" : "minmax(0, 1fr)"))
       .join(" "),
     "--week-height": view.end - view.start,
     "--lanes": view.providers.length,
@@ -124,7 +129,7 @@ function WeekStrip({
 }: Readonly<{ grid: Grid; column: Extract<WeekColumn, { kind: "strip" }>; first: boolean }>) {
   return (
     <Tooltip.Trigger
-      handle={grid.tip}
+      handle={grid.band}
       payload={{ lines: [column.hint], side: first ? "right" : "left" }}
       render={<div role="group" aria-label={column.label} className="wgi-week-strip" />}
     >
@@ -191,7 +196,7 @@ function WeekDay({
               lane.off ? (
                 <Tooltip.Trigger
                   key={`off:${lane.providerId}`}
-                  handle={grid.tip}
+                  handle={grid.band}
                   payload={{ lines: [lane.offLabel], side: "bottom" }}
                   render={
                     <span
@@ -240,7 +245,7 @@ function LaneLabel({ grid, lane }: Readonly<{ grid: Grid; lane: WeekLane }>) {
         />
       }
     >
-      {lane.surname}
+      <span className="wgi-week-lane-name">{lane.surname}</span>
     </Tooltip.Trigger>
   );
 }
