@@ -1,6 +1,13 @@
 import type { SchedulingFailureCode, SchedulingInput } from "@/lib/portal/scheduling/contracts";
 
-import { addDays, cardDay, practiceDate, practiceMinute, practiceTime, timeRange } from "./week-calendar";
+import {
+  addDays,
+  cardDay,
+  practiceDate,
+  practiceMinute,
+  practiceTime,
+  timeRange,
+} from "./week-calendar";
 
 /* The week view's two click cards (issue #345; Figma section 08, H3 and
    H4): the appointment card, which reads one appointment and offers the
@@ -188,7 +195,11 @@ export function cancelledDetail(
 
 /** "11:46 AM · 1:00 PM with Dr. John Chang": when the patient arrived, and
    the visit they are here for. */
-export function checkedInDetail(at: Readonly<Date>, startsAt: string, providerName: string): string {
+export function checkedInDetail(
+  at: Readonly<Date>,
+  startsAt: string,
+  providerName: string,
+): string {
   return `${practiceTime(at.toISOString())} · ${practiceTime(startsAt)} with ${providerName}`;
 }
 

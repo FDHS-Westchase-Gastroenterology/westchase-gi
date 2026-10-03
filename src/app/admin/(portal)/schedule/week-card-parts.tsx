@@ -22,9 +22,11 @@ export interface Said {
   readonly rest: string;
   /** The day's headline when it is shorter than the sentence: "X is booked". */
   readonly headline?: string;
-  /** The line under the headline. A cancel's depends on where the server
-     moved its request, so it can be read from the landed request. */
-  readonly detail: string | null | ((request: WeekCommandRequest | null) => string | null);
+  /** The line under the headline. */
+  readonly detail: string | null;
+  /** A cancel's line depends on where the server moved its request, so it
+     is read from the landed request and takes the place of `detail`. */
+  readonly detailAfter?: (request: WeekCommandRequest | null) => string;
 }
 
 /** What a landed command names: the appointment and its new version, which
@@ -90,7 +92,7 @@ export function useCommand(onDone: DoneHandler) {
             version: outcome.version,
             message,
             headline: said.headline ?? `${said.subject}${said.rest}`,
-            detail: typeof said.detail === "function" ? said.detail(outcome.request) : said.detail,
+            detail: said.detailAfter?.(outcome.request) ?? said.detail,
             request: outcome.request,
           });
           return;

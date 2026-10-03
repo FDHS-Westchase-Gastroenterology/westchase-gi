@@ -39,7 +39,7 @@ the roadmap item beside each adopts it into `ui/`; a new consumer waits for that
 | Component | When | Real uses |
 | --- | --- | --- |
 | `Calendar` | The Received editor's custom range and the record card's callback or appointment day, through `HomeRangeCalendar` and `HomeDayCalendar`; the record card's booking month with open-time discs, through `BookingCalendar` ([item 6](roadmap.md#6-the-calendar)) | `parts/calendar.tsx`, `parts/booking-calendar.tsx` |
-| `RadioGroup` `RadioGroupItem` `ToggleGroup` `ToggleGroupItem` | The record card's outcome rows and follow-up choices ([item 3](roadmap.md#3-choice-lists)) | `record-card.tsx` |
+| `RadioGroup` `RadioGroupItem` `ToggleGroup` `ToggleGroupItem` | The record card's outcome rows and follow-up choices, until [item 3](roadmap.md#3-choice-lists) moves them onto `ui/radio-group`, which new choice lists use | `record-card.tsx` |
 
 ## Route-owned compositions
 

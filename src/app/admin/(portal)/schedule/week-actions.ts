@@ -11,10 +11,7 @@ import type { ClinicalOutcome } from "@/lib/portal/clinical/contracts";
 import { executeClinicalOperation } from "@/lib/portal/clinical/service";
 import type { FoundPerson, PatientSummary, PatientVisit } from "@/lib/portal/patients/contracts";
 import { findPeople, readPatient, searchPatients } from "@/lib/portal/patients/reads";
-import type {
-  SchedulingFailureCode,
-  SchedulingOutcome,
-} from "@/lib/portal/scheduling/contracts";
+import type { SchedulingFailureCode, SchedulingOutcome } from "@/lib/portal/scheduling/contracts";
 import type { PlacementRefusal } from "@/lib/portal/scheduling/grid-contracts";
 import { executeSchedulingOperation } from "@/lib/portal/scheduling/service";
 import { serviceClient } from "@/lib/portal/server";
@@ -118,6 +115,7 @@ export type WeekCommandOutcome =
     }
   | Failure;
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the scheduling outcome is the service's zod output, whose nested members cannot be made readonly
 function landed(outcome: SchedulingOutcome): WeekCommandOutcome {
   if (!outcome.ok) return { ok: false, code: outcome.code };
   if (!("version" in outcome) || !("entity" in outcome)) return { ok: false, code: "unavailable" };
@@ -397,7 +395,12 @@ export type CanPlaceAnswer =
    start. The Day view asks once per destination while the card is over it;
    Reschedule still checks every rule when the card drops. */
 export async function canPlaceAppointment(
-  input: Readonly<{ appointmentId: string; providerId: string; locationId: string; startsAt: string }>,
+  input: Readonly<{
+    appointmentId: string;
+    providerId: string;
+    locationId: string;
+    startsAt: string;
+  }>,
 ): Promise<CanPlaceAnswer> {
   const session = await requireRole("staff", { unauthenticated: "throw" });
   const read = await executeSchedulingOperation(serviceClient(), session.id, {

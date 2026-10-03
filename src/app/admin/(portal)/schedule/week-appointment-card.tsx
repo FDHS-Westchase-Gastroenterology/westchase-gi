@@ -129,10 +129,11 @@ function AppointmentDetails({
     line: Said["detail"] = next.kind === "reschedule"
       ? null
       : `${appointmentAt(detail.startsAt)} · ${detail.providerName}, ${detail.locationName}`,
+    after?: Said["detailAfter"],
   ) {
     command.run(
       async (idempotencyKey) => weekAppointmentCommand({ idempotencyKey, command: next }),
-      { subject: detail.patientName, rest, detail: line },
+      { subject: detail.patientName, rest, detail: line, detailAfter: after },
     );
   }
 
@@ -140,6 +141,35 @@ function AppointmentDetails({
     command.clear();
     setFace(next);
   }
+
+  /* Figma Ap4: the cancel form is its own card, titled for what it does. */
+  if (face === "cancel")
+    return (
+      <CancelFace
+        detail={detail}
+        titleId={titleId}
+        pending={command.pending}
+        error={command.error}
+        onKeep={() => {
+          turnTo("details");
+        }}
+        onCancel={(reason, afterwards) => {
+          send(
+            {
+              kind: "cancel",
+              ...existing,
+              reason,
+              requestVersion: detail.requestVersion,
+              callAgainOn: afterwards?.outcome === "call_again" ? afterwards.callAgainOn : null,
+              requestOutcome: afterwards?.outcome ?? null,
+            },
+            "'s appointment is cancelled",
+            null,
+            (request) => cancelledDetail(detail, request),
+          );
+        }}
+      />
+    );
 
   return (
     <>
@@ -187,28 +217,6 @@ function AppointmentDetails({
                 requestVersion: detail.requestVersion,
               },
               " is moved",
-            );
-          }}
-        />
-      ) : null}
-      {face === "cancel" ? (
-        <CancelFace
-          detail={detail}
-          pending={command.pending}
-          error={command.error}
-          onBack={() => {
-            turnTo("details");
-          }}
-          onCancel={(reason, callAgainOn) => {
-            send(
-              {
-                kind: "cancel",
-                ...existing,
-                reason,
-                requestVersion: detail.requestVersion,
-                callAgainOn,
-              },
-              "'s appointment is cancelled",
             );
           }}
         />
