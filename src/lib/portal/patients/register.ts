@@ -25,7 +25,8 @@ export type RequestPatientOutcome =
 const requestRow = z.object({
   name: z.string(),
   phone: z.string(),
-  email: z.string(),
+  /* A caller who gave no email has none on the request. */
+  email: z.string().nullable(),
   patient_request_links: z.object({ patient_id: z.uuid() }).nullable(),
 });
 
@@ -54,8 +55,8 @@ function patientPhone(phone: string): string | null {
   return trimmed.replace(/\D/g, "").length >= 10 ? trimmed : null;
 }
 
-function patientEmail(email: string): string | null {
-  const trimmed = email.trim();
+function patientEmail(email: string | null): string | null {
+  const trimmed = email?.trim() ?? "";
   return isMailbox(trimmed) ? trimmed : null;
 }
 

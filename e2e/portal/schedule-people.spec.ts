@@ -163,14 +163,16 @@ test("a person known only by a request books from their record and becomes a pat
           .eq("id", fixture.locationIds[0])
       ).error,
     ).toBeNull();
-    /* A number too short for the patient record stays on the request. */
+    /* A caller who left no email and a number too short for the patient
+       record: the patient is registered with the name alone, and the
+       number stays on the request. */
     expect(
       (
         await db.from("requests").insert({
           id: requestId,
           name,
           phone: "555-0123",
-          email: `people-book-${runId}@example.test`,
+          email: null,
           location: "tampa",
           preferred_time: "morning",
           locale: "en",
@@ -220,7 +222,7 @@ test("a person known only by a request books from their record and becomes a pat
     expect(patient.data).toEqual({
       name,
       phone: null,
-      email: `people-book-${runId}@example.test`,
+      email: null,
     });
     const request = await db.from("requests").select("status").eq("id", requestId).single();
     expect(request.data).toEqual({ status: "booked" });
