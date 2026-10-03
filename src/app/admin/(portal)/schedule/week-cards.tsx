@@ -4,7 +4,7 @@ import { PopoverArrow, PopoverContent } from "@/components/ui/popover";
 
 import type { WeekAppointmentCell, WeekOpenCell } from "./schedule-week-model";
 import { AppointmentCard } from "./week-appointment-card";
-import type { CardHandlers, ReferenceType } from "./week-card-parts";
+import type { CardHandlers } from "./week-card-parts";
 import { OpenTimeCard } from "./week-open-card";
 
 /* The week view's click cards (issue #345; Figma section 08, H3 and H4).
@@ -37,12 +37,9 @@ const CARD_COLLISION = { side: "flip", align: "shift", fallbackAxisSide: "end" }
 export function WeekCardPopup({
   payload,
   keyed,
-  referenceType,
   onDone,
   onOpenRecord,
-}: Readonly<
-  CardHandlers & { payload: WeekCardPayload; keyed: boolean; referenceType: ReferenceType }
->) {
+}: Readonly<CardHandlers & { payload: WeekCardPayload; keyed: boolean }>) {
   return (
     /* Opened by Enter or Space, it appears and leaves at once. */
     <PopoverContent
@@ -60,7 +57,7 @@ export function WeekCardPopup({
       {payload.kind === "appointment" ? (
         <AppointmentCard cell={payload.cell} onDone={onDone} onOpenRecord={onOpenRecord} />
       ) : (
-        <OpenTimeCard cell={payload.cell} referenceType={referenceType} onDone={onDone} />
+        <OpenTimeCard cell={payload.cell} onDone={onDone} />
       )}
     </PopoverContent>
   );

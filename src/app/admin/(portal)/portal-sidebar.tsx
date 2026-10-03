@@ -12,6 +12,8 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
+import { useRememberSettingsReturn } from "./settings-nav";
+
 /* The desktop sidebar and its compact rail (issue #351; Figma S5 1366×768
    and 1280×800 frames), on ui/sidebar in its icon mode (issue #360). Below
    1366px wide the sidebar folds to a 72px rail of the same destinations,
@@ -33,6 +35,7 @@ const RAIL = "(min-width: 60rem) and (max-width: 85.3125rem)";
 
 export function PortalSidebar({ children }: Readonly<{ children: ReactNode }>) {
   const pathname = usePathname();
+  useRememberSettingsReturn(pathname);
   return (
     <SidebarProvider iconQuery={RAIL} location={pathname}>
       <Sidebar

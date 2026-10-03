@@ -8,10 +8,12 @@ import { createRequests } from "./requests.mjs";
 import {
   HORIZON_DAYS,
   LOCATIONS,
+  OFFICE_DAYS,
   TYPES,
   clinic,
   clinicianRoster,
   historyStart,
+  holidays,
   setupAt,
 } from "./roster.mjs";
 import { createSchedule } from "./schedule.mjs";
@@ -50,7 +52,7 @@ export function generateDemoData({ seed, now, staff: identities }) {
     Object.entries(LOCATIONS).map(([k, l]) => [k, { ...l, id: random.uuid() }]),
   );
   const providers = Object.fromEntries(
-    roster.map((c) => [c.key, { id: random.uuid(), name: c.name }]),
+    roster.map((c) => [c.key, { id: random.uuid(), name: c.name, credentials: c.credentials }]),
   );
 
   const people = createPeople(g);
@@ -72,6 +74,9 @@ export function generateDemoData({ seed, now, staff: identities }) {
   });
   const awayKey = Object.keys(g.clinic.away)[0];
   const awayDates = [...g.clinic.away[awayKey]].sort();
+  const closedDays = [];
+  for (let year = Number(START.slice(0, 4)); year <= Number(g.END.slice(0, 4)); year++)
+    closedDays.push(...holidays(year).filter(([day]) => day >= START));
 
   const rows = {
     staff_profiles: roster.map((c) => ({
@@ -93,17 +98,60 @@ export function generateDemoData({ seed, now, staff: identities }) {
       configured_at: iso(SETUP_AT + 2 * HOUR),
     })),
     scheduling_locations: Object.values(locations).map((l) =>
-      config({ id: l.id, name: l.name, request_location: l.request_location }),
+      config({
+        id: l.id,
+        name: l.name,
+        request_location: l.request_location,
+        street: l.street,
+        city: l.city,
+        region: l.region,
+        postal: l.postal,
+        maps_query: l.maps_query,
+      }),
     ),
-    scheduling_providers: Object.values(providers).map((p) => config({ id: p.id, name: p.name })),
-    appointment_types: Object.values(g.TYPES).map((t) =>
+    scheduling_providers: Object.values(providers).map((p, i) =>
+      config({
+        id: p.id,
+        name: p.name,
+        credentials: p.credentials,
+        bookable: true,
+        sort_order: i + 1,
+      }),
+    ),
+    appointment_types: Object.values(g.TYPES).map((t, i) =>
       config({
         id: t.id,
         name: t.name,
         duration_minutes: t.dur,
         buffer_before_minutes: 0,
         buffer_after_minutes: t.after,
+        sort_order: i + 1,
+        icon: t.icon,
+        description: t.description,
       }),
+    ),
+    appointment_type_providers: Object.entries(g.TYPES).flatMap(([type, t]) =>
+      Object.keys(providers)
+        .filter((k) => (k === g.clinic.infusionKey) === (type === "INF"))
+        .map((k) => ({ appointment_type_id: t.id, provider_id: providers[k].id })),
+    ),
+    location_hours: Object.values(locations).flatMap((l) =>
+      OFFICE_DAYS.map((wd) => ({
+        location_id: l.id,
+        weekday: wd,
+        open_minute: l.open,
+        close_minute: l.close,
+      })),
+    ),
+    location_closures: closedDays.flatMap(([day, note]) =>
+      Object.values(locations).map((l) => ({
+        id: random.uuid(),
+        location_id: l.id,
+        closed_on: day,
+        note,
+        created_at: iso(SETUP_AT),
+        created_by: operator.id,
+      })),
     ),
     provider_hours: Object.entries(g.clinic.hours).flatMap(([k, days]) =>
       Object.entries(days).map(([wd, [loc, open, close]]) => ({
@@ -122,6 +170,7 @@ export function generateDemoData({ seed, now, staff: identities }) {
         provider_id: providers[awayKey].id,
         location_id: null,
         kind: "unavailable",
+        reason: "conference",
         starts_at: iso(ny(awayDates[0], 0)),
         ends_at: iso(ny(addDays(awayDates.at(-1), 1), 0)),
       },

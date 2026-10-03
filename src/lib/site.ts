@@ -164,6 +164,11 @@ export function directionsUrl(query: string): string {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}`;
 }
 
+/** The place itself in Google Maps (keyless), for staff checking an office's pin. */
+export function placeUrl(query: string): string {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
 export function localePath(locale: Locale, path: string): string {
   const clean = path.startsWith("/") ? path : `/${path}`;
   return clean === "/" ? `/${locale}` : `/${locale}${clean}`;

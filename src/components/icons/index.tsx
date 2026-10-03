@@ -147,6 +147,20 @@ export function Ellipsis(p: IconProps) {
   );
 }
 
+/* The drag handle on a reorderable row (lucide grip-vertical). */
+export function GripVertical(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <circle cx="9" cy="12" r="1" />
+      <circle cx="9" cy="5" r="1" />
+      <circle cx="9" cy="19" r="1" />
+      <circle cx="15" cy="12" r="1" />
+      <circle cx="15" cy="5" r="1" />
+      <circle cx="15" cy="19" r="1" />
+    </svg>
+  );
+}
+
 export function Minus(p: IconProps) {
   return (
     <svg {...base(p)}>

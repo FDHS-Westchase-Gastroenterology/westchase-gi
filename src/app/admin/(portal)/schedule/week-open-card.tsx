@@ -20,7 +20,7 @@ import { appointmentAt, appointmentWhen } from "./week-calendar";
 import { startClock } from "./week-card-model";
 import type { WeekPatient } from "./week-card-model";
 import { CardError, useCommand } from "./week-card-parts";
-import type { DoneHandler, ReferenceType } from "./week-card-parts";
+import type { DoneHandler } from "./week-card-parts";
 
 /* ---- The open-time card ---- */
 
@@ -28,11 +28,9 @@ const SEARCH_REST_MS = 250;
 
 export function OpenTimeCard({
   cell,
-  referenceType,
   onDone,
 }: Readonly<{
   cell: WeekOpenCell;
-  referenceType: ReferenceType;
   onDone: DoneHandler;
 }>) {
   const titleId = useId();
@@ -49,8 +47,8 @@ export function OpenTimeCard({
             patientId: chosen.id,
             providerId: cell.providerId,
             locationId: cell.locationId,
-            appointmentTypeId: referenceType.id,
-            expectedTypeVersion: referenceType.version,
+            appointmentTypeId: cell.type.id,
+            expectedTypeVersion: cell.type.version,
             start: { date: cell.date, time: startClock(cell.startsAt) },
           },
         }),
@@ -79,7 +77,7 @@ export function OpenTimeCard({
         </li>
         <li>
           <MapPin width={16} height={16} />
-          {cell.locationName} · {referenceType.name}
+          {cell.locationName} · {cell.type.name}
         </li>
       </ul>
       {patient === null ? (

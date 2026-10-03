@@ -222,11 +222,22 @@
 }
 
 .wgi-dayview-block-line {
+  display: flex;
+  min-width: 0;
   grid-row: 2;
   grid-column: 1 / -1;
+  align-items: center;
+  gap: 0.3125rem;
   color: var(--wgi-muted-ink);
   font-size: 0.75rem;
   line-height: 15px;
+}
+
+/* The type's icon leads the time line (issue #352): icons, not colours,
+   because a block's colour already means its status. */
+.wgi-dayview-block-icon {
+  width: 0.75rem;
+  height: 0.75rem;
 }
 
 .wgi-dayview-block-tag {

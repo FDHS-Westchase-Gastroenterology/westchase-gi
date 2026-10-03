@@ -292,6 +292,107 @@ function CalendarRange({
   );
 }
 
+/* CalendarSpan, for a run of whole days taken off (issue #352, Figma St2:
+   a provider's time off). One month in range mode, in the same day strings,
+   with the behavior that frame asks for, which CalendarRange's editor does
+   not want:
+   - Click a start day, then an end day. The first click picks that one day
+     and waits for the end; a click on or after it closes the run there; a
+     click before it, or any click once the run is closed, starts over. One
+     day alone is a valid run.
+   - Or drag across the days: pressing a day and moving over others selects
+     from the pressed day to the one under the pointer, either direction,
+     and releasing ends it. The selection the drag's closing click makes is
+     ignored, so it does not restart the run.
+   - Days before `min` are disabled, and the month cannot page back past it.
+   - Days in `off` (already taken) carry the `is-off` class on their cell, so
+     the surface strikes them through; they stay pickable, because the
+     server takes overlapping time off as one more row.
+   Day buttons keep DayPicker's roving focus and Enter/Space, so the
+   keyboard picks a run the click way. */
+function CalendarSpan({
+  className,
+  from,
+  to,
+  min,
+  off,
+  onChange,
+}: Readonly<{
+  /** The surface's class on the root. */
+  className?: string;
+  /** The run's first and last days, or "" when nothing is picked. */
+  from: string;
+  to: string;
+  /** The first day that can be picked (YYYY-MM-DD, practice-local). */
+  min: string;
+  /** Days already taken, struck through. */
+  off: readonly string[];
+  onChange: (from: string, to: string) => void;
+}>) {
+  const first = parseDay(min);
+  const open = useRef(from !== "" && from === to);
+  const press = useRef<{ anchor: string; dragged: boolean } | null>(null);
+  const swallow = useRef(false);
+  const selected: DateRange | undefined =
+    from === "" ? undefined : { from: dayToDate(from), to: dayToDate(to) };
+
+  function dayAt(target: EventTarget | null): string | null {
+    if (!(target instanceof Element)) return null;
+    const button = target.closest<HTMLButtonElement>("button[data-day]");
+    if (button === null || button.disabled) return null;
+    return button.dataset.day ?? null;
+  }
+
+  return (
+    <div
+      onPointerDown={(event) => {
+        const day = event.button === 0 ? dayAt(event.target) : null;
+        press.current = day === null ? null : { anchor: day, dragged: false };
+        swallow.current = false;
+      }}
+      onPointerOver={(event) => {
+        const held = press.current;
+        const day = dayAt(event.target);
+        if (held === null || day === null || (event.buttons & 1) === 0) return;
+        if (day === held.anchor && !held.dragged) return;
+        held.dragged = true;
+        open.current = false;
+        onChange(day < held.anchor ? day : held.anchor, day < held.anchor ? held.anchor : day);
+      }}
+      onPointerUp={() => {
+        swallow.current = press.current?.dragged === true;
+        press.current = null;
+      }}
+    >
+      <Calendar
+        className={className}
+        mode="range"
+        numberOfMonths={1}
+        defaultMonth={dayToDate(from) ?? first}
+        startMonth={first}
+        disabled={{ before: first }}
+        modifiers={{ off: off.map((day) => parseDay(day)) }}
+        modifiersClassNames={{ off: "is-off" }}
+        selected={selected}
+        onSelect={(_range, picked) => {
+          if (swallow.current) {
+            swallow.current = false;
+            return;
+          }
+          const day = dateToDay(picked);
+          if (open.current && from !== "" && day >= from) {
+            open.current = false;
+            onChange(from, day);
+          } else {
+            open.current = true;
+            onChange(day, day);
+          }
+        }}
+      />
+    </div>
+  );
+}
+
 /* The same Calendar in single-day mode: the record card's return day and
    the week card's reschedule day. No autoFocus — focus stays on the answer
    the staff member just picked — and `required`, because a return day is
@@ -302,13 +403,15 @@ function CalendarRange({
    cell is the one staff clicked. The month follows a picked day (an
    outside day at the grid's edge opens its month) and otherwise stays
    where staff navigated it; that sync is a during-render derivation, not
-   an effect. */
+   an effect. Days already taken (an office's closed days) are struck
+   through and can't be picked. */
 function CalendarDay({
   className,
   day,
   min,
   max,
   disabled,
+  off = [],
   onChange,
 }: Readonly<{
   /** The surface's class on the root (Home's `wgi-editor-cal`). */
@@ -318,9 +421,12 @@ function CalendarDay({
   min: string;
   max: string;
   disabled: boolean;
+  /** Days already taken, struck through and disabled. */
+  off?: readonly string[];
   onChange: (day: string) => void;
 }>) {
   const selected = dayToDate(day);
+  const taken = off.map((each) => parseDay(each));
   const first = parseDay(min);
   const last = parseDay(max);
   const [month, setMonth] = useState(() => selected ?? first);
@@ -342,7 +448,9 @@ function CalendarDay({
       onMonthChange={setMonth}
       startMonth={first}
       endMonth={last}
-      disabled={disabled ? true : { before: first, after: last }}
+      disabled={disabled ? true : [{ before: first, after: last }, ...taken]}
+      modifiers={{ off: taken }}
+      modifiersClassNames={{ off: "is-off" }}
       selected={selected}
       onSelect={(date) => {
         onChange(dateToDay(date));
@@ -351,4 +459,4 @@ function CalendarDay({
   );
 }
 
-export { Calendar, CalendarDay, CalendarDayButton, CalendarRange };
+export { Calendar, CalendarDay, CalendarDayButton, CalendarRange, CalendarSpan };

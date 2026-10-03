@@ -49,7 +49,11 @@ const PORTAL_PAGES = [
   { name: "home", path: "/admin" },
   { name: "queue", path: "/admin/requests" },
   { name: "review-flyers", path: "/admin/review-flyers" },
-  { name: "settings", path: "/admin/settings" },
+  { name: "settings-providers", path: "/admin/settings/providers" },
+  { name: "settings-appointment-types", path: "/admin/settings/appointment-types" },
+  { name: "settings-locations", path: "/admin/settings/locations" },
+  { name: "settings-staff", path: "/admin/settings/staff" },
+  { name: "settings-notifications", path: "/admin/settings/notifications" },
   { name: "settings-software", path: "/admin/settings/software" },
   { name: "audit", path: "/admin/audit" },
   { name: "help", path: "/admin/help" },
@@ -84,12 +88,30 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
       // Scrolling (a destination that starts offscreen does not exist
       // For staff who don't know to swipe a nav bar). Each layout renders
       // Its own list; the other is removed whole, so exactly one shows.
-      const visibleNav = page.locator('nav[aria-label="Portal sections"]:visible');
+      // From 960 the Settings window swaps the sidebar for its own list,
+      // Led by the link that leaves it (issue #352).
+      const settingsWindow =
+        viewport.width >= 960 && portalPage.path.startsWith("/admin/settings/");
+      const visibleNav = page.locator(
+        settingsWindow
+          ? 'nav[aria-label="Settings"]:visible'
+          : 'nav[aria-label="Portal sections"]:visible',
+      );
       await expect(visibleNav).toHaveCount(1);
       await expect(visibleNav.locator("a")).toHaveText(
-        viewport.width < 960
-          ? [/^Home$/, /^Schedule$/, /^Requests/, /^Settings$/, /^Help$/]
-          : [/^Home$/, /^Schedule$/, /^Requests/, /^Review flyers$/, /^Activity log$/],
+        settingsWindow
+          ? [
+              /^Settings$/,
+              /^Providers$/,
+              /^Appointment types$/,
+              /^Locations$/,
+              /^Staff access$/,
+              /^Notifications$/,
+              /^Software$/,
+            ]
+          : viewport.width < 960
+            ? [/^Home$/, /^Schedule$/, /^Requests/, /^Settings$/, /^Help$/]
+            : [/^Home$/, /^Schedule$/, /^Requests/, /^Review flyers$/, /^Activity log$/],
         { useInnerText: true },
       );
       const navBoxes = await visibleNav.locator("a").evaluateAll((links) =>
@@ -98,7 +120,7 @@ test("VAL-ADMIN-014: shell holds the mechanical design bar at 390 and 1440", asy
           return { height: rect.height, left: rect.left, right: rect.right };
         }),
       );
-      expect(navBoxes).toHaveLength(4);
+      expect(navBoxes).toHaveLength(settingsWindow ? 7 : 5);
       for (const box of navBoxes) {
         expect(box.height, "nav target height").toBeGreaterThanOrEqual(44);
         expect(box.left, "nav item starts on screen").toBeGreaterThanOrEqual(0);
@@ -288,7 +310,9 @@ test("VAL-ADMIN-016: the waiting count rides on the Requests nav item", async ({
 
   try {
     await signIn(page);
-    await page.goto("/admin/settings");
+    // Settings swaps the sidebar for its own panes, so check from a page
+    // That keeps the portal sections.
+    await page.goto("/admin/audit");
 
     // Other specs on the same Preview Branch can add or remove
     // New requests mid-run; accept the badge once it matches the SQL count
@@ -412,7 +436,11 @@ test("staff can view the locale-negotiated website and return with their session
 // (PRODUCT.md, "The assistant seam is reserved, not occupied").
 const ASSISTANT_SEAM_PAGES = [
   "/admin",
-  "/admin/settings",
+  "/admin/settings/providers",
+  "/admin/settings/appointment-types",
+  "/admin/settings/locations",
+  "/admin/settings/staff",
+  "/admin/settings/notifications",
   "/admin/settings/software",
   "/admin/audit",
   "/admin/help",

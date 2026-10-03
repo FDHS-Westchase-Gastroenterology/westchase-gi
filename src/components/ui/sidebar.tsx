@@ -15,6 +15,7 @@ import {
 } from "react";
 import type { ComponentProps, FocusEvent, ReactElement, ReactNode, RefObject } from "react";
 
+import { Separator } from "./separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
 
 /*
@@ -48,6 +49,13 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
  * - Navigation stays links: SidebarMenuButton renders whatever `render`
  *   names (a Next Link with aria-current), and its tooltip names it only
  *   while the sidebar is collapsed to icons.
+ *
+ * - SidebarGroup, SidebarGroupLabel and SidebarSeparator (issue #352, for
+ *   the Settings window's Schedule, Practice and About groups) keep the
+ *   registry's parts and data attributes and drop its paint and its label
+ *   transition: the shell lays them out, and on the icon rail a label is
+ *   removed whole rather than slid away. The separator keeps the
+ *   registry's sidebar-border hairline on the ui/ Separator.
  *
  * The open/collapse transition belongs to the shell's CSS (the staff
  * home's base beat opening, fast beat closing, on --motion-standard);
@@ -354,13 +362,45 @@ function SidebarMenuButton({
   return <SidebarTooltip label={tooltip} trigger={element} />;
 }
 
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function SidebarGroup({ className, ...props }: ComponentProps<"div">) {
+  return (
+    <div data-slot="sidebar-group" data-sidebar="group" className={cn(className)} {...props} />
+  );
+}
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function SidebarGroupLabel({ className, render, ...props }: useRender.ComponentProps<"div">) {
+  return useRender({
+    defaultTagName: "div",
+    props: mergeProps<"div">({ className: cn(className) }, props),
+    render,
+    state: { slot: "sidebar-group-label", sidebar: "group-label" },
+  });
+}
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function SidebarSeparator({ className, ...props }: ComponentProps<typeof Separator>) {
+  return (
+    <Separator
+      data-slot="sidebar-separator"
+      data-sidebar="separator"
+      className={cn("w-auto bg-sidebar-border", className)}
+      {...props}
+    />
+  );
+}
+
 export {
   Sidebar,
+  SidebarGroup,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
   SidebarRail,
+  SidebarSeparator,
   SidebarTrigger,
   useSidebar,
 };

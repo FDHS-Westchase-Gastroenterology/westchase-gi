@@ -178,7 +178,6 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
               key={payload.kind === "appointment" ? payload.cell.id : payload.cell.key}
               payload={payload}
               keyed={keyed}
-              referenceType={view.referenceType}
               onDone={(_message, change) => {
                 card.close();
                 landed(change);

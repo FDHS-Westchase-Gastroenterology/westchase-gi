@@ -30,6 +30,12 @@ const failureStatuses = {
   appointment_in_past: 409,
   illegal_transition: 409,
   undo_unavailable: 409,
+  provider_not_bookable: 409,
+  provider_not_eligible: 409,
+  location_closed: 409,
+  outside_office_hours: 400,
+  type_in_use: 409,
+  already_closed: 409,
 } satisfies Record<SchedulingFailureCode, number>;
 
 export function schedulingFailureStatus(code: SchedulingFailureCode): number {

@@ -512,6 +512,68 @@
       height: 1.15rem;
     }
 
+    /* The Settings window's sidebar (issue #352, Figma St1): "‹ Settings"
+       as its title, then the Schedule, Practice and About groups. Labels
+       are 11px bold in the rows' ink; a hairline sits above each later
+       group with 12px on either side. The rows are the portal's. */
+    .portal-settings-nav {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .portal-settings-back {
+      display: flex;
+      min-height: 2.75rem;
+      align-items: center;
+      gap: 0.35rem;
+      margin-bottom: 0.75rem;
+      border-radius: 0.65rem;
+      padding: 0.5rem 0.8rem 0.5rem 0.55rem;
+      color: white;
+      font-size: var(--pt-lg);
+      font-weight: 600;
+      letter-spacing: -0.015em;
+      transition:
+        background-color var(--motion-micro-duration) var(--motion-exit),
+        transform var(--motion-micro-duration) var(--motion-exit);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+      .portal-settings-back:hover {
+        background: rgb(255 255 255 / 7%);
+      }
+    }
+
+    .portal-settings-back:active {
+      transform: scale(0.98);
+    }
+
+    .portal-settings-back-icon {
+      width: 1.1rem;
+      height: 1.1rem;
+      flex: none;
+      color: var(--color-on-dark-muted);
+    }
+
+    .portal-settings-group-label {
+      padding: 0.25rem 0.8rem 0.5rem;
+      color: var(--color-on-dark-muted);
+      font-size: var(--pt-2xs);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .portal-settings-group > ul {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .portal-settings-separator {
+      margin-block: 0.75rem;
+    }
+
     .portal-nav-count {
       position: static;
       min-width: 1.35rem;
@@ -655,6 +717,11 @@
       white-space: nowrap;
     }
 
+    .portal-settings-back {
+      padding-inline: 0.95rem;
+      white-space: nowrap;
+    }
+
     .portal-sidebar-toggle {
       display: grid;
       width: 3rem;
@@ -689,6 +756,11 @@
        accessibility tree, so every control keeps its name. */
     .portal-sidebar:not([data-expanded]) {
       & .portal-rail-hidden {
+        display: none;
+      }
+
+      /* The group labels fold away; the hairlines keep the groups apart. */
+      & .portal-settings-group-label {
         display: none;
       }
 
@@ -2662,6 +2734,45 @@
       flex-direction: row;
       align-items: center;
       justify-content: space-between;
+    }
+  }
+
+  /* Settings' panes on the phone (issue #352): the bar keeps its five
+     destinations, so the panes sit in a scrolling row of links above the
+     page. From 60rem the sidebar lists them. */
+  .portal-settings-panes {
+    margin: -0.5rem 0 1.25rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .portal-settings-panes > ul {
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .portal-settings-panes a {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    border: 1px solid var(--color-line-2);
+    border-radius: 999px;
+    padding-inline: 0.9rem;
+    color: var(--color-muted-ink);
+    font-size: var(--pt-xs);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .portal-settings-panes a[aria-current="page"] {
+    border-color: var(--color-navy);
+    background: var(--color-navy);
+    color: white;
+  }
+
+  @media (min-width: 60rem) {
+    .portal-settings-panes {
+      display: none;
     }
   }
 }

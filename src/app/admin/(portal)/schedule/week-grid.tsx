@@ -4,6 +4,7 @@ import { Tooltip } from "@base-ui/react/tooltip";
 import Link from "next/link";
 import type { CSSProperties, KeyboardEvent } from "react";
 
+import { TypeIcon } from "@/components/patterns/type-icon";
 import { PopoverTrigger } from "@/components/ui/popover";
 import type { PopoverHandle } from "@/components/ui/popover-behavior";
 
@@ -299,7 +300,12 @@ function AppointmentBody({
         <span className="wgi-week-cell-name" data-ui-redact="patient-name">
           {cell.name}
         </span>
-        {compare ? null : <span className="wgi-week-cell-type">{cell.type}</span>}
+        {compare ? null : (
+          <span className="wgi-week-cell-type">
+            <TypeIcon icon={cell.icon} className="wgi-week-cell-icon" />
+            {cell.type}
+          </span>
+        )}
       </span>
       {cell.status === null ? null : (
         <span className="wgi-week-cell-status" data-status={cell.status}>

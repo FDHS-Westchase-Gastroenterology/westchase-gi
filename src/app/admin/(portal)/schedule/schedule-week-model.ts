@@ -1,3 +1,4 @@
+import type { AppointmentTypeIcon } from "@/lib/portal/scheduling/contracts";
 import type { WeekDay, WeekSchedule } from "@/lib/portal/scheduling/grid-contracts";
 
 import {
@@ -70,6 +71,8 @@ export interface WeekAppointmentCell extends Placed {
   readonly state: WeekCellState;
   readonly name: string;
   readonly type: string;
+  /** The type's icon, leading the type on the block. */
+  readonly icon: AppointmentTypeIcon;
   /** "Here" or "No-show": the statuses staff act on; null otherwise. */
   readonly status: string | null;
   readonly short: boolean;
@@ -87,6 +90,8 @@ export interface WeekOpenCell extends Placed {
   readonly locationId: string;
   readonly locationName: string;
   readonly providerName: string;
+  /** The type this time books: the filtered type, or the provider's shortest eligible one. */
+  readonly type: WeekSchedule["referenceType"];
 }
 
 export type WeekCell = WeekAppointmentCell | WeekOpenCell;
@@ -152,7 +157,6 @@ export interface ScheduleWeek {
   readonly end: number;
   readonly hours: readonly { readonly minute: number; readonly label: string }[];
   readonly columns: readonly WeekColumn[];
-  readonly referenceType: WeekSchedule["referenceType"];
   readonly activeProviderCount: number;
 }
 
@@ -285,6 +289,7 @@ export function scheduleWeekFor(schedule: Readonly<WeekSchedule>): ScheduleWeek 
           state,
           name: appointment.patientListName,
           type: appointment.appointmentType,
+          icon: appointment.appointmentTypeIcon,
           status: statusLine(appointment.status),
           short: minutes <= SHORT_MINUTES,
           label: `${appointment.patientName}, ${appointment.appointmentType.toLowerCase()}, ${from} to ${until}${statusSentence(appointment.status, state)}${who}`,
@@ -310,6 +315,7 @@ export function scheduleWeekFor(schedule: Readonly<WeekSchedule>): ScheduleWeek 
           time,
           locationId: open.locationId,
           locationName: open.locationName,
+          type: open.type,
           label: `Open, ${time}, ${minutes} minutes${who}`,
         });
       }
@@ -358,7 +364,6 @@ export function scheduleWeekFor(schedule: Readonly<WeekSchedule>): ScheduleWeek 
     end,
     hours,
     columns,
-    referenceType: schedule.referenceType,
     activeProviderCount: schedule.activeProviderCount,
   };
 }

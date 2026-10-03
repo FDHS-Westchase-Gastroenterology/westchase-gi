@@ -1,0 +1,867 @@
+/* Settings › Providers, Appointment types and Locations (issue #352, Figma
+   St1–St5). The surfaces compose the ui/ recipes and restyle them here,
+   scoped and unlayered, in the --wgi-* paints from wgi-paints.css. Hover is
+   gated to fine pointers; every timing reads the motion registry. */
+
+/* ---- Header command ("Add provider", "Add type") ---- */
+
+/* The header sits outside .wgi-settings, so the command carries its own
+   glass recipe: a vertical fill from white to slate-50 with an inset stroke
+   (issue #332, section 2). */
+.wgi-settings-command {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  padding-inline: 1rem;
+  background: linear-gradient(#ffffff, var(--color-slate-50));
+  box-shadow: inset 0 0 0 1px var(--color-slate-300);
+  color: var(--color-navy-800);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  /* The fill is a gradient, which does not interpolate, so it changes at
+     once; the ring and the press ease. */
+  transition:
+    box-shadow var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-settings-command:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wgi-settings-command:hover {
+    background: linear-gradient(var(--color-slate-50), var(--color-slate-100));
+    box-shadow: inset 0 0 0 1px var(--color-slate-400);
+  }
+}
+
+.wgi-settings-command:active {
+  background: linear-gradient(var(--color-slate-100), var(--color-slate-200));
+  transform: scale(0.98);
+}
+
+/* ---- List and detail ---- */
+
+.settings-split {
+  display: grid;
+  grid-template-columns: 17rem minmax(0, 1fr);
+  overflow: clip;
+  border-radius: 16px;
+  background: var(--wgi-surface);
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-right: 1px solid var(--wgi-rule);
+  padding: 0.75rem;
+}
+
+.settings-list-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: var(--wgi-row-radius);
+  padding: 0.625rem;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.settings-list-row:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: -2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .settings-list-row:hover {
+    background: var(--wgi-band);
+  }
+}
+
+.settings-list-row[aria-current="page"] {
+  background: var(--color-navy-50);
+  box-shadow: inset 0 0 0 1px var(--color-navy-100);
+}
+
+.settings-avatar {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: linear-gradient(var(--color-navy-100), var(--color-navy-200));
+  color: var(--color-navy-800);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.settings-avatar-large {
+  width: 3.25rem;
+  height: 3.25rem;
+  background: linear-gradient(var(--color-navy-700), var(--color-navy-900));
+  color: #ffffff;
+  font-size: 1.1875rem;
+}
+
+.settings-detail {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1.375rem;
+  padding: 1.75rem 2rem;
+}
+
+.settings-section-title {
+  color: var(--wgi-name-ink);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.25rem;
+}
+
+/* ---- Weekly hours ---- */
+
+/* Day, office chip, then the hour track. Each row is a subgrid so the
+   ruler and every track share one column. */
+.settings-hours {
+  display: grid;
+  column-gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.settings-hours-ruler {
+  position: relative;
+  grid-column: 3;
+  height: 1.125rem;
+  color: var(--wgi-label-ink);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+}
+
+.settings-hours-ruler > span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.settings-hours-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  min-height: 2.625rem;
+  align-items: center;
+}
+
+.settings-hours-day {
+  color: var(--wgi-name-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.settings-hours-row.is-rest .settings-hours-day {
+  grid-column: 1 / 3;
+  color: var(--wgi-muted-ink);
+  font-weight: 400;
+}
+
+.settings-hours-chip {
+  display: inline-flex;
+  min-width: 0;
+  height: 1.875rem;
+  align-items: center;
+  gap: 0.375rem;
+  border: 1px solid var(--wgi-chip-stroke);
+  border-radius: 8px;
+  background: #ffffff;
+  padding-inline: 0.5rem;
+  color: var(--wgi-name-ink);
+  font-size: 0.75rem;
+  text-align: left;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.settings-hours-chip > svg {
+  color: var(--wgi-icon-ink);
+}
+
+button.settings-hours-chip:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: 1px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button.settings-hours-chip:hover {
+    background: var(--wgi-band);
+  }
+}
+
+button.settings-hours-chip:active {
+  background: var(--color-slate-100);
+}
+
+/* Quarter-hour precision on an hour grid: a faint line at every hour. */
+.settings-hours-track {
+  position: relative;
+  height: 1.875rem;
+  background-image: linear-gradient(to right, var(--wgi-rule) 1px, transparent 1px);
+  box-shadow: inset -1px 0 0 var(--wgi-rule);
+}
+
+.settings-hours-slider,
+.settings-hours-bar {
+  position: absolute;
+  top: 4px;
+}
+
+.settings-hours-bar {
+  height: 22px;
+  border: 1px solid var(--color-mint-500);
+  border-radius: 7px;
+  background: linear-gradient(var(--color-mint-100), var(--color-mint-200));
+}
+
+.settings-hours-rest {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-inline-start: 0.375rem;
+  color: var(--wgi-muted-ink);
+  font-size: 0.75rem;
+}
+
+/* ---- Time off ---- */
+
+.settings-text-command {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 8px;
+  padding-inline: 0.375rem;
+  color: var(--color-teal-700);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.settings-text-command:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: 1px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .settings-text-command:hover {
+    background: var(--wgi-hover);
+  }
+}
+
+.settings-time-off-row {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 10px;
+  background: var(--color-slate-50);
+  padding: 0.375rem 0.375rem 0.375rem 0.875rem;
+}
+
+.settings-row-more {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--wgi-muted-ink);
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.settings-row-more:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: -2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .settings-row-more:hover {
+    background: var(--color-slate-100);
+  }
+}
+
+.settings-notice {
+  border-radius: 10px;
+  background: var(--wgi-attention-fill);
+  padding: 0.625rem 0.75rem;
+  color: var(--wgi-attention-ink);
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+}
+
+.settings-notice-close {
+  display: inline-flex;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.settings-notice-close:focus-visible,
+.settings-notice-link:focus-visible {
+  outline: 2px solid var(--wgi-attention-ink);
+  outline-offset: 1px;
+}
+
+.settings-notice-link {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  border-radius: 4px;
+  color: var(--wgi-attention-ink);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-underline-offset: 2px;
+}
+
+.settings-time-off-popover {
+  width: 21.25rem;
+  padding: 0;
+}
+
+.settings-time-off-popover .is-off button {
+  background: var(--color-slate-100);
+  color: var(--wgi-muted-ink);
+  text-decoration: line-through;
+}
+
+.settings-time-select {
+  min-height: 2.25rem;
+  font-size: 0.8125rem;
+}
+
+.settings-reason {
+  display: flex;
+  min-height: 2.5rem;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--wgi-chip-stroke);
+  border-radius: 10px;
+  background: #ffffff;
+  padding-inline: 0.75rem;
+  color: var(--wgi-name-ink);
+  font-size: 0.8125rem;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.settings-reason:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: 1px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .settings-reason:hover {
+    background: var(--wgi-band);
+  }
+}
+
+.settings-popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  border-top: 1px solid var(--wgi-rule);
+  padding: 0.75rem 1.125rem;
+}
+
+/* ---- Appointment-type pills ---- */
+
+.settings-type-pill {
+  display: inline-flex;
+  height: 2rem;
+  align-items: center;
+  gap: 0.375rem;
+  border: 1px solid var(--wgi-chip-stroke);
+  border-radius: 9999px;
+  background: #ffffff;
+  padding-inline: 0.75rem;
+  color: var(--wgi-name-ink);
+  font-size: 0.8125rem;
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    border-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.settings-type-pill .settings-type-pill-check {
+  display: none;
+  color: var(--color-navy-700);
+}
+
+.settings-type-pill[data-pressed] {
+  border-color: var(--color-navy-200);
+  background: var(--color-navy-50);
+  font-weight: 600;
+}
+
+.settings-type-pill[data-pressed] .settings-type-pill-check {
+  display: block;
+}
+
+.settings-type-pill.is-retired {
+  border-style: dashed;
+  color: var(--wgi-muted-ink);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .settings-type-pill:not([data-disabled]):hover {
+    background: var(--wgi-band);
+  }
+
+  .settings-type-pill[data-pressed]:not([data-disabled]):hover {
+    background: var(--color-navy-100);
+  }
+}
+
+/* ---- Appointment types ---- */
+
+/* Grip, the type, who sees it, the switch, then the row's menu. The head
+   and every row share the columns. */
+.settings-types {
+  --types-columns: 3.25rem minmax(0, 1fr) 16.5rem 6.25rem 2rem;
+  overflow: clip;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.settings-types-head,
+.settings-type-row {
+  display: grid;
+  grid-template-columns: var(--types-columns);
+  align-items: center;
+  padding-inline-end: 4rem;
+}
+
+.settings-types-head {
+  min-height: 2.25rem;
+  border-bottom: 1px solid var(--wgi-rule);
+  background: var(--wgi-surface);
+  color: var(--wgi-muted-ink);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* A flex column, so a lifted row's z-index applies. */
+.settings-types-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-type-row {
+  position: relative;
+  min-height: 4rem;
+  background: #ffffff;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.settings-type-row + .settings-type-row {
+  box-shadow: inset 0 1px 0 var(--wgi-rule);
+}
+
+.settings-type-row.is-lifted {
+  border-radius: 10px;
+  box-shadow: var(--wgi-card-shadow);
+}
+
+.settings-type-grip-cell {
+  display: flex;
+  justify-content: center;
+}
+
+/* The grip and the menu show on the row's hover or focus; on touch they
+   always show, since there is no hover to find them by. */
+.settings-type-grip {
+  display: inline-flex;
+  width: 1.75rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--wgi-icon-ink);
+  cursor: grab;
+  touch-action: none;
+  transition:
+    opacity var(--motion-micro-duration) var(--motion-exit),
+    background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.settings-type-grip:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: -2px;
+}
+
+.settings-type-row.is-lifted .settings-type-grip {
+  background: var(--wgi-band);
+  color: var(--wgi-muted-ink);
+  cursor: grabbing;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .settings-type-row:hover {
+    background: var(--wgi-band);
+  }
+
+  .settings-type-row.is-lifted {
+    background: #ffffff;
+  }
+
+  .settings-type-row .settings-type-grip,
+  .settings-type-row .settings-row-more {
+    opacity: 0;
+  }
+
+  .settings-type-row:hover .settings-type-grip,
+  .settings-type-row:hover .settings-row-more,
+  .settings-type-row:focus-within .settings-type-grip,
+  .settings-type-row:focus-within .settings-row-more,
+  .settings-type-row.is-lifted .settings-type-grip,
+  .settings-type-row .settings-row-more[data-popup-open] {
+    opacity: 1;
+  }
+}
+
+.settings-type-tile {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: var(--color-slate-100);
+  color: var(--color-navy-800);
+}
+
+.settings-type-name {
+  color: var(--wgi-name-ink);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.25rem;
+}
+
+/* Turned off: the type reads quieter, its switch still at full strength. */
+.settings-type-row.is-off .settings-type-tile {
+  background: var(--color-slate-50);
+  color: var(--wgi-icon-ink);
+}
+
+.settings-type-row.is-off .settings-type-name {
+  color: var(--wgi-muted-ink);
+  font-weight: 600;
+}
+
+.settings-type-avatar {
+  display: inline-flex;
+  width: 1.5rem;
+  height: 1.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: var(--color-slate-100);
+  box-shadow: 0 0 0 2px #ffffff;
+  color: var(--color-navy-800);
+  font-size: 0.625rem;
+  font-weight: 700;
+}
+
+.settings-type-avatar + .settings-type-avatar {
+  margin-inline-start: -0.125rem;
+}
+
+/* The editor's icon choice: a tile per icon, the chosen one inked. */
+.settings-icon-choice {
+  display: inline-flex;
+  width: 2.5rem;
+  height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--wgi-chip-stroke);
+  border-radius: 10px;
+  background: #ffffff;
+  color: var(--wgi-muted-ink);
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    border-color var(--motion-micro-duration) var(--motion-exit),
+    color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.settings-icon-choice[data-pressed] {
+  border-color: var(--color-navy-700);
+  background: var(--color-navy-50);
+  box-shadow: inset 0 0 0 1px var(--color-navy-700);
+  color: var(--color-navy-800);
+}
+
+.settings-icon-choice:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .settings-icon-choice:not([data-pressed]):hover {
+    background: var(--wgi-band);
+  }
+}
+
+/* The type editor holds five fields, so it is the modal grammar's wider,
+   taller sheet: the icon choices sit in one row and the actions stay in
+   view at 1440×900. */
+.portal-confirm-dialog.settings-type-editor {
+  width: min(92vw, 34rem);
+  max-height: min(92dvh, 46rem);
+}
+
+/* ---- Locations ---- */
+
+.settings-locations {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.settings-location {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  overflow: clip;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 16px;
+  background: #ffffff;
+}
+
+.settings-location-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.125rem 1.25rem 1rem;
+}
+
+.settings-location-pin {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--color-teal-50);
+  color: var(--color-teal-700);
+}
+
+.settings-location-name {
+  color: var(--wgi-name-ink);
+  font-size: 1.125rem;
+  font-weight: 700;
+  line-height: 1.5rem;
+}
+
+.settings-location-address-line {
+  color: var(--wgi-muted-ink);
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+}
+
+.settings-location-edit {
+  font-size: 0.875rem;
+}
+
+/* The map picture is a still of the office's streets, kept in public/,
+   so no map key reaches the browser. The whole picture opens the place. */
+.settings-location-map {
+  position: relative;
+  display: block;
+  height: 140px;
+  overflow: clip;
+  border-top: 1px solid var(--wgi-rule);
+  background: var(--wgi-band);
+}
+
+.settings-location-map:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: -2px;
+}
+
+.settings-location-map-picture {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+}
+
+.settings-location-maps-chip {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border: 1px solid var(--wgi-rule);
+  border-radius: 9999px;
+  background: #ffffff;
+  padding: 0.375rem 0.75rem 0.375rem 0.625rem;
+  box-shadow: 0 1px 3px rgb(15 31 51 / 0.1);
+  color: var(--wgi-link-ink);
+  font-size: 0.75rem;
+  font-weight: 600;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .settings-location-map:hover .settings-location-maps-chip {
+    background: var(--color-slate-50);
+  }
+}
+
+.settings-location-row {
+  display: flex;
+  min-height: 3rem;
+  align-items: center;
+  gap: 0.75rem;
+  border-top: 1px solid var(--wgi-rule);
+  padding: 0.5rem 1.25rem;
+  font-size: 0.875rem;
+}
+
+.settings-location-label {
+  flex: 0 0 auto;
+  margin-inline-end: auto;
+  color: var(--wgi-muted-ink);
+}
+
+.settings-location-value {
+  color: var(--wgi-name-ink);
+  font-weight: 600;
+  text-align: end;
+}
+
+.settings-location-avatar {
+  display: inline-flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  border-radius: 9999px;
+  background: var(--color-navy-100);
+  color: var(--color-navy-800);
+  font-size: 0.625rem;
+  font-weight: 700;
+}
+
+.settings-location-avatar + .settings-location-avatar {
+  margin-inline-start: -0.375rem;
+}
+
+.settings-closures {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  color: var(--wgi-name-ink);
+  font-weight: 600;
+}
+
+.settings-closures > li + li::before {
+  padding-inline: 0.25rem;
+  color: var(--wgi-muted-ink);
+  content: "·";
+}
+
+button.settings-closure {
+  border-radius: 6px;
+  padding-inline: 0.125rem;
+  font-weight: 600;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+button.settings-closure:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: 1px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button.settings-closure:hover {
+    background: var(--wgi-hover);
+  }
+}
+
+.settings-location-displaced {
+  padding: 0 1.25rem 1rem;
+}
+
+/* The office editor: the address on one line, then a row per weekday. */
+.portal-confirm-dialog.settings-location-editor {
+  width: min(92vw, 36rem);
+  max-height: min(92dvh, 52rem);
+}
+
+.settings-location-address {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 5.5rem 7.5rem;
+  gap: 0.75rem;
+}
+
+.settings-office-hours {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-office-day {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.settings-office-day + .settings-office-day {
+  border-top: 1px solid var(--wgi-rule);
+}
+
+.settings-office-day-name {
+  min-width: 6rem;
+  color: var(--wgi-name-ink);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Rows, chips and text commands press as a deeper tint, the portal's press
+   for anything wider than a small button. Last in the file, so a press
+   outranks the hover tint under the same pointer. */
+.settings-list-row:active,
+.settings-text-command:active,
+.settings-reason:active,
+.settings-type-pill:not([data-disabled]):active,
+.settings-icon-choice:not([data-pressed]):active,
+button.settings-closure:active,
+.settings-location-map:active .settings-location-maps-chip {
+  background: var(--color-slate-100);
+}
+
+.settings-list-row[aria-current="page"]:active,
+.settings-type-pill[data-pressed]:not([data-disabled]):active {
+  background: var(--color-navy-100);
+}
+
+.settings-row-more:active {
+  background: var(--color-slate-200);
+}

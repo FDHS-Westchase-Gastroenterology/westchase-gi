@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
 
 import { Check } from "@/components/icons";
+import { TypeIcon } from "@/components/patterns/type-icon";
 import { PopoverTrigger } from "@/components/ui/popover";
 import type { PopoverHandle } from "@/components/ui/popover-behavior";
 
@@ -265,7 +266,10 @@ function DayCellView({
         <span className="wgi-dayview-block-name" data-ui-redact="patient-name">
           {cell.name}
         </span>
-        <span className="wgi-dayview-block-line">{cell.line}</span>
+        <span className="wgi-dayview-block-line">
+          <TypeIcon icon={cell.icon} className="wgi-dayview-block-icon" />
+          <span className="truncate">{cell.line}</span>
+        </span>
         {cell.tag === null ? null : <span className="wgi-dayview-block-tag">{cell.tag}</span>}
       </PopoverTrigger>
       {offer ? (

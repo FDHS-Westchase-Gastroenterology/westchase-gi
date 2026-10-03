@@ -99,7 +99,6 @@ export interface ScheduleDay {
   readonly cells: readonly DayCell[];
   /** "Dr. Alfredo Mendoza is not scheduled today", or null when everyone works. */
   readonly offLine: string | null;
-  readonly referenceType: DaySchedule["referenceType"];
   readonly activeProviderCount: number;
 }
 
@@ -190,6 +189,7 @@ export function scheduleDayFor(schedule: Readonly<DaySchedule>): ScheduleDay {
         tag: TAG[appointment.status],
         name: appointment.patientName,
         type: appointment.appointmentType,
+        icon: appointment.appointmentTypeIcon,
         status: TAG[appointment.status],
         short: minutesOf(appointment.startsAt, appointment.endsAt) <= 30,
         line: `${range} · ${appointment.appointmentType}`,
@@ -224,6 +224,7 @@ export function scheduleDayFor(schedule: Readonly<DaySchedule>): ScheduleDay {
         length,
         locationId: open.locationId,
         locationName: open.locationName,
+        type: open.type,
         detail: `${appointmentAt(open.startsAt)} · ${provider.name}, ${open.locationName}`,
         label: `Open, ${time}, ${length.replace(/ open$/u, "")}, ${provider.name}`,
       });
@@ -251,7 +252,6 @@ export function scheduleDayFor(schedule: Readonly<DaySchedule>): ScheduleDay {
       schedule.off.map((provider) => provider.name),
       isToday,
     ),
-    referenceType: schedule.referenceType,
     activeProviderCount: schedule.activeProviderCount,
   };
 }

@@ -123,6 +123,41 @@ function integrity({ rows }, problem) {
           problem(`${table}.${column} is not a whole-second UTC timestamp: ${value}`);
 }
 
+/** Mirrors the scheduling settings booking enforces: who sees each type, office hours and
+    closed days. */
+function settings({ rows }, problem) {
+  const eligible = new Set(
+    rows.appointment_type_providers.map((x) => `${x.appointment_type_id}/${x.provider_id}`),
+  );
+  const officeHours = groupBy(rows.location_hours, "location_id");
+  const closed = new Set(rows.location_closures.map((c) => `${c.location_id}/${c.closed_on}`));
+  for (const a of rows.appointments) {
+    if (!eligible.has(`${a.appointment_type_id}/${a.provider_id}`))
+      problem(`appointment ${a.id} has a provider who does not see its type`);
+    if (closed.has(`${a.location_id}/${nyDate(ms(a.starts_at))}`))
+      problem(`appointment ${a.id} falls on a closed day`);
+  }
+  for (const h of rows.provider_hours) {
+    const office = officeHours.get(h.location_id);
+    if (
+      office &&
+      !office.some(
+        (o) =>
+          o.weekday === h.weekday &&
+          o.open_minute <= h.open_minute &&
+          o.close_minute >= h.close_minute,
+      )
+    )
+      problem(`provider hours ${h.id} fall outside the office's hours`);
+  }
+  for (const t of rows.appointment_types)
+    if (!rows.appointment_type_providers.some((x) => x.appointment_type_id === t.id))
+      problem(`appointment type ${t.name} has no provider`);
+  if (!rows.location_closures.some((c) => /Thanksgiving/.test(c.note)))
+    problem("no Thanksgiving closed day");
+  if (!rows.provider_time_exceptions.some((e) => e.reason)) problem("no time off carries a reason");
+}
+
 function quality({ rows, staff }, problem) {
   const staffSurnames = new Set(
     staff.clinicians.map((c) =>
@@ -189,8 +224,11 @@ function dayView({ rows, meta }, problem) {
       .filter((e) => date < nyDate(Date.parse(e.ends_at)))
       .map((e) => e.provider_id),
   );
+  const closed = new Set(
+    rows.location_closures.filter((c) => c.closed_on === date).map((c) => c.location_id),
+  );
   const hours = rows.provider_hours.filter(
-    (h) => h.weekday === weekday(date) && !away.has(h.provider_id),
+    (h) => h.weekday === weekday(date) && !away.has(h.provider_id) && !closed.has(h.location_id),
   );
   if (hours.length === 0) return;
   const opens = Math.min(...hours.map((h) => h.open_minute));
@@ -211,9 +249,24 @@ function dayView({ rows, meta }, problem) {
     if (!statuses.has(status)) problem(`day view ${date}: no ${status} visit`);
   /* An open time starts on a quarter hour after the clock and fits the hours and the visits,
      while the day still has room for one. */
-  const shortest = Math.min(...rows.appointment_types.map((t) => t.duration_minutes));
-  if (clock - (clock % 15) + 15 + shortest > closes) return;
+  const reserve = (t) => t.buffer_before_minutes + t.duration_minutes + t.buffer_after_minutes;
+  const shortestFor = (provider) =>
+    Math.min(
+      ...rows.appointment_types
+        .filter((t) =>
+          rows.appointment_type_providers.some(
+            (x) => x.appointment_type_id === t.id && x.provider_id === provider,
+          ),
+        )
+        .map(reserve),
+    );
+  if (
+    clock - (clock % 15) + 15 + Math.min(...hours.map((h) => shortestFor(h.provider_id))) >
+    closes
+  )
+    return;
   const hasOpen = hours.some((h) => {
+    const shortest = shortestFor(h.provider_id);
     const taken = visits
       .filter((a) => a.provider_id === h.provider_id)
       .map((a) => [minute(a.reserved_from), minute(a.reserved_until)]);
@@ -235,6 +288,7 @@ export function checkDemoData(data) {
   const problems = [];
   const problem = (message) => problems.push(message);
   integrity(data, problem);
+  settings(data, problem);
   quality(data, problem);
   dayView(data, problem);
   return problems;

@@ -8,31 +8,35 @@ All images are current-viewport captures at 1×: desktop is 1440×900 and mobile
 intentionally cover shared chrome and each distinct public or staff UI pattern rather than every
 localized content route.
 
-| Surface / state                     | Reference                                                                                                                                                 |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| English home                        | [desktop-en-home.png](desktop-en-home.png) · [mobile-en-home.png](mobile-en-home.png)                                                                     |
-| English home, first visit           | [desktop-en-home-first-visit.png](desktop-en-home-first-visit.png)                                                                                        |
-| Home, locale-mismatch chooser       | [desktop-en-home-locale-hint.png](desktop-en-home-locale-hint.png)                                                                                        |
-| English mobile navigation open      | [mobile-en-menu.png](mobile-en-menu.png)                                                                                                                  |
-| Services                            | [desktop-en-services.png](desktop-en-services.png)                                                                                                        |
-| Physicians                          | [desktop-en-physicians.png](desktop-en-physicians.png)                                                                                                    |
-| Procedure preparation               | [mobile-en-procedure-prep.png](mobile-en-procedure-prep.png)                                                                                              |
-| Appointment form                    | [desktop-en-appointment.png](desktop-en-appointment.png)                                                                                                  |
-| Contact form and locations          | [desktop-en-contact.png](desktop-en-contact.png)                                                                                                          |
-| Arabic / RTL home                   | [desktop-ar-home.png](desktop-ar-home.png) · [mobile-ar-home.png](mobile-ar-home.png)                                                                     |
-| Review hub                          | [desktop-review.png](desktop-review.png)                                                                                                                  |
-| Staff-login shell                   | [desktop-admin-login.png](desktop-admin-login.png)                                                                                                        |
-| Staff portal — Home                 | [desktop-portal-home.png](desktop-portal-home.png) · [mobile-portal-home.png](mobile-portal-home.png)                                                     |
-| Staff portal — Schedule             | [desktop-portal-schedule.png](desktop-portal-schedule.png) · [mobile-portal-schedule.png](mobile-portal-schedule.png)                                     |
-| Staff portal — Schedule week        | [desktop-portal-schedule-week.png](desktop-portal-schedule-week.png)                                                                                      |
-| Staff portal — Schedule day         | [desktop-portal-schedule-day.png](desktop-portal-schedule-day.png)                                                                                        |
-| Staff portal — Appointment requests | [desktop-portal-requests.png](desktop-portal-requests.png) · [mobile-portal-requests.png](mobile-portal-requests.png)                                     |
-| Staff portal — Add request          | [desktop-portal-requests-new.png](desktop-portal-requests-new.png) · [mobile-portal-requests-new.png](mobile-portal-requests-new.png)                     |
-| Staff portal — Print review flyers  | [desktop-portal-review-flyers.png](desktop-portal-review-flyers.png) · [mobile-portal-review-flyers.png](mobile-portal-review-flyers.png)                 |
-| Staff portal — Settings             | [desktop-portal-settings.png](desktop-portal-settings.png) · [mobile-portal-settings.png](mobile-portal-settings.png)                                     |
-| Staff portal — Website settings     | [desktop-portal-settings-software.png](desktop-portal-settings-software.png) · [mobile-portal-settings-software.png](mobile-portal-settings-software.png) |
-| Staff portal — Activity log         | [desktop-portal-audit.png](desktop-portal-audit.png) · [mobile-portal-audit.png](mobile-portal-audit.png)                                                 |
-| Staff portal — Help                 | [desktop-portal-help.png](desktop-portal-help.png) · [mobile-portal-help.png](mobile-portal-help.png)                                                     |
+| Surface / state                             | Reference                                                                                                                                                                                     |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| English home                                | [desktop-en-home.png](desktop-en-home.png) · [mobile-en-home.png](mobile-en-home.png)                                                                                                         |
+| English home, first visit                   | [desktop-en-home-first-visit.png](desktop-en-home-first-visit.png)                                                                                                                            |
+| Home, locale-mismatch chooser               | [desktop-en-home-locale-hint.png](desktop-en-home-locale-hint.png)                                                                                                                            |
+| English mobile navigation open              | [mobile-en-menu.png](mobile-en-menu.png)                                                                                                                                                      |
+| Services                                    | [desktop-en-services.png](desktop-en-services.png)                                                                                                                                            |
+| Physicians                                  | [desktop-en-physicians.png](desktop-en-physicians.png)                                                                                                                                        |
+| Procedure preparation                       | [mobile-en-procedure-prep.png](mobile-en-procedure-prep.png)                                                                                                                                  |
+| Appointment form                            | [desktop-en-appointment.png](desktop-en-appointment.png)                                                                                                                                      |
+| Contact form and locations                  | [desktop-en-contact.png](desktop-en-contact.png)                                                                                                                                              |
+| Arabic / RTL home                           | [desktop-ar-home.png](desktop-ar-home.png) · [mobile-ar-home.png](mobile-ar-home.png)                                                                                                         |
+| Review hub                                  | [desktop-review.png](desktop-review.png)                                                                                                                                                      |
+| Staff-login shell                           | [desktop-admin-login.png](desktop-admin-login.png)                                                                                                                                            |
+| Staff portal — Home                         | [desktop-portal-home.png](desktop-portal-home.png) · [mobile-portal-home.png](mobile-portal-home.png)                                                                                         |
+| Staff portal — Schedule                     | [desktop-portal-schedule.png](desktop-portal-schedule.png) · [mobile-portal-schedule.png](mobile-portal-schedule.png)                                                                         |
+| Staff portal — Schedule week                | [desktop-portal-schedule-week.png](desktop-portal-schedule-week.png)                                                                                                                          |
+| Staff portal — Schedule day                 | [desktop-portal-schedule-day.png](desktop-portal-schedule-day.png)                                                                                                                            |
+| Staff portal — Appointment requests         | [desktop-portal-requests.png](desktop-portal-requests.png) · [mobile-portal-requests.png](mobile-portal-requests.png)                                                                         |
+| Staff portal — Add request                  | [desktop-portal-requests-new.png](desktop-portal-requests-new.png) · [mobile-portal-requests-new.png](mobile-portal-requests-new.png)                                                         |
+| Staff portal — Print review flyers          | [desktop-portal-review-flyers.png](desktop-portal-review-flyers.png) · [mobile-portal-review-flyers.png](mobile-portal-review-flyers.png)                                                     |
+| Staff portal — Settings › Providers         | [desktop-portal-settings-providers.png](desktop-portal-settings-providers.png) · [mobile-portal-settings-providers.png](mobile-portal-settings-providers.png)                                 |
+| Staff portal — Settings › Appointment types | [desktop-portal-settings-appointment-types.png](desktop-portal-settings-appointment-types.png) · [mobile-portal-settings-appointment-types.png](mobile-portal-settings-appointment-types.png) |
+| Staff portal — Settings › Locations         | [desktop-portal-settings-locations.png](desktop-portal-settings-locations.png) · [mobile-portal-settings-locations.png](mobile-portal-settings-locations.png)                                 |
+| Staff portal — Settings › Staff access      | [desktop-portal-settings-staff.png](desktop-portal-settings-staff.png) · [mobile-portal-settings-staff.png](mobile-portal-settings-staff.png)                                                 |
+| Staff portal — Settings › Notifications     | [desktop-portal-settings-notifications.png](desktop-portal-settings-notifications.png) · [mobile-portal-settings-notifications.png](mobile-portal-settings-notifications.png)                 |
+| Staff portal — Settings › Software          | [desktop-portal-settings-software.png](desktop-portal-settings-software.png) · [mobile-portal-settings-software.png](mobile-portal-settings-software.png)                                     |
+| Staff portal — Activity log                 | [desktop-portal-audit.png](desktop-portal-audit.png) · [mobile-portal-audit.png](mobile-portal-audit.png)                                                                                     |
+| Staff portal — Help                         | [desktop-portal-help.png](desktop-portal-help.png) · [mobile-portal-help.png](mobile-portal-help.png)                                                                                         |
 
 ## Refresh
 
@@ -50,7 +54,7 @@ deployment to re-baseline the current public site. It uses the existing Playwrig
 the portal run signs in but never changes portal records. Inspect the changed PNGs before committing
 them.
 
-Portal images are limited to the eight top-level staff routes, the Schedule's week and Day views and the
-empty add-request form, omit
+Portal images are limited to the eight top-level staff routes, the Schedule's week and Day views, the
+Settings window's panes and the empty add-request form, omit
 individual request details, and redact account and queue data in the browser before capture. Never
 run the portal mode against a Production origin.

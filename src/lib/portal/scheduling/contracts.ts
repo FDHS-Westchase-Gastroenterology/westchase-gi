@@ -38,6 +38,22 @@ export const weekStartSchema = dateSchema.refine(
   (date) => /^2[01]/.test(date) && new Date(`${date}T00:00:00Z`).getUTCDay() === 0,
 );
 const reasonSchema = z.string().trim().min(1).max(500);
+/* The Lucide icons an appointment type can wear on the schedule's blocks. Icons, not colors:
+   a block's color means its status. */
+export const APPOINTMENT_TYPE_ICONS = [
+  "user-plus",
+  "history",
+  "stethoscope",
+  "clipboard-check",
+  "syringe",
+  "droplet",
+  "microscope",
+  "pill",
+  "activity",
+  "file-text",
+] as const;
+export type AppointmentTypeIcon = (typeof APPOINTMENT_TYPE_ICONS)[number];
+export const appointmentTypeIconSchema = z.enum(APPOINTMENT_TYPE_ICONS);
 
 const providerHoursFields = {
   locationId: z.uuid(),
@@ -282,6 +298,12 @@ export const SCHEDULING_FAILURE_CODES = [
   "illegal_transition",
   "undo_unavailable",
   "invalid_local_time",
+  "provider_not_bookable",
+  "provider_not_eligible",
+  "location_closed",
+  "outside_office_hours",
+  "type_in_use",
+  "already_closed",
 ] as const;
 export type SchedulingFailureCode = (typeof SCHEDULING_FAILURE_CODES)[number];
 export const schedulingFailureSchema = z.object({

@@ -166,11 +166,12 @@ test("the month summary counts open, full, past, and closed practice days at one
     });
     const open = await day(openDay);
     if (open?.status !== "open") throw new Error("Open day missing");
+    // Providers in their Settings order, which starts as the order they were added.
     expect(open.providers.map((provider) => [provider.name, provider.open])).toEqual([
-      ["TEST schedule-month Double", 2],
       ["TEST schedule-month Single", 1],
+      ["TEST schedule-month Double", 2],
     ]);
-    expect(open.providers[0].firstOpen.map((start) => new Date(start).toISOString())).toEqual([
+    expect(open.providers[1].firstOpen.map((start) => new Date(start).toISOString())).toEqual([
       at(openDay, "09:00"),
       at(openDay, "09:45"),
     ]);

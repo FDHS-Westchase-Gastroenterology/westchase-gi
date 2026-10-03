@@ -8,6 +8,12 @@ import {
   schedulingInputSchema,
 } from "../../src/lib/portal/scheduling/contracts";
 import type { SchedulingInput } from "../../src/lib/portal/scheduling/contracts";
+import {
+  schedulingSettingsCommandInputSchema,
+  schedulingSettingsOutcomeSchema,
+  settingsCommandOutcomeSchema,
+} from "../../src/lib/portal/scheduling/settings-contracts";
+import type { SettingsCommand } from "../../src/lib/portal/scheduling/settings-contracts";
 import { resolveAppointmentStart } from "../../src/lib/portal/scheduling/time";
 import { removePatients, savePatient } from "./patients";
 import { createStaffFixture } from "./session";
@@ -51,6 +57,35 @@ export async function saveScheduling(
   );
   expect(result.error).toBeNull();
   return schedulingCommandOutcomeSchema.parse(result.data);
+}
+
+/** One Settings command, as the Settings window's server action sends it. */
+export async function saveSettings(
+  db: SupabaseClient,
+  actorId: string,
+  command: Readonly<SettingsCommand>,
+) {
+  const parsed = schedulingSettingsCommandInputSchema.parse({
+    idempotencyKey: randomUUID(),
+    command,
+  });
+  const result = await db.rpc("portal_save_scheduling_settings", {
+    p_actor_id: actorId,
+    p_idempotency_key: parsed.idempotencyKey,
+    p_fingerprint: createHmac("sha256", "TEST scheduling acceptance fixture")
+      .update(JSON.stringify({ actorId, action: "settings_command", command: parsed.command }))
+      .digest("hex"),
+    p_command: parsed.command,
+  });
+  expect(result.error).toBeNull();
+  return settingsCommandOutcomeSchema.parse(result.data);
+}
+
+/** The Settings window's read. */
+export async function readSettings(db: SupabaseClient, actorId: string) {
+  const result = await db.rpc("portal_scheduling_settings", { p_actor_id: actorId });
+  expect(result.error).toBeNull();
+  return schedulingSettingsOutcomeSchema.parse(result.data);
 }
 
 export function schedulingFixtureDate(days = 14) {

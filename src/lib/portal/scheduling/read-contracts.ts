@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   appointmentStatusSchema,
+  appointmentTypeIconSchema,
   providerExceptionSchema,
   providerHoursSchema,
   schedulingFailureSchema,
@@ -24,6 +25,9 @@ export const appointmentTypeSchema = schedulingSummarySchema.extend({
   durationMinutes: z.number().int().positive(),
   bufferBeforeMinutes: z.number().int().nonnegative(),
   bufferAfterMinutes: z.number().int().nonnegative(),
+  // Booking order and icon; null in a change recorded before types had them.
+  sortOrder: z.number().int().positive().nullable(),
+  icon: appointmentTypeIconSchema.nullable(),
 });
 export const providerScheduleSchema = z.object({
   provider: schedulingSummarySchema,
@@ -68,6 +72,18 @@ export const schedulingChangeCommandSchema = z.enum([
   "complete",
   "no_show",
   "undo",
+  "add_provider",
+  "set_provider_profile",
+  "set_provider_weekly_hours",
+  "add_time_off",
+  "remove_time_off",
+  "set_provider_types",
+  "reorder_appointment_types",
+  "set_appointment_type_active",
+  "delete_appointment_type",
+  "save_location_details",
+  "add_location_closure",
+  "remove_location_closure",
 ]);
 const snapshotSchema = z.union([
   providerScheduleSchema,

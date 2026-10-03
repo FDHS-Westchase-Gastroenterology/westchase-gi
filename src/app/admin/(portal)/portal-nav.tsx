@@ -14,6 +14,9 @@ import {
 } from "@/components/icons";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 
+import { SettingsNav } from "./settings-nav";
+import { inSettings } from "./settings-panes";
+
 // Five destinations per layout, each its own list (issue #327, Figma section
 // 08 option 2; Schedule from issue #343). The desktop rail gives the five work
 // Pages the same row and moves Settings and Help to the account footer; the
@@ -50,6 +53,8 @@ export function PortalNav({
   waitingCount,
 }: Readonly<{ layout: keyof typeof NAV_ITEMS; waitingCount: number | null }>) {
   const pathname = usePathname();
+  // Inside Settings the sidebar is Settings' own list (issue #352).
+  if (layout === "sidebar" && inSettings(pathname)) return <SettingsNav />;
 
   return (
     <nav aria-label="Portal sections" className="portal-primary-nav" data-layout={layout}>

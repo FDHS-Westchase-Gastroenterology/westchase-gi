@@ -5,14 +5,11 @@ import type { ReactNode } from "react";
 
 import type { HomeLine } from "@/app/admin/(portal)/(home)/home-line";
 
-import type { ScheduleWeek } from "./schedule-week-model";
 import type { WeekCommandOutcome } from "./week-actions";
 import { failureMessage } from "./week-card-model";
 
 /* What the week's click cards (week-cards.tsx) share: their handlers, the
    failure line, and one command in flight at a time. */
-
-export type ReferenceType = ScheduleWeek["referenceType"];
 
 /** The words a command's toast says once it lands: the week's sentence is
    the subject and the rest; the day's headline drops what its detail line,
