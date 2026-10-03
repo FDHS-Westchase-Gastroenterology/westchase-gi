@@ -49,7 +49,8 @@ const PORTAL_PAGES = [
   { name: "home", path: "/admin" },
   { name: "queue", path: "/admin/requests" },
   { name: "review-flyers", path: "/admin/review-flyers" },
-  { name: "settings", path: "/admin/settings" },
+  { name: "settings-providers", path: "/admin/settings/providers" },
+  { name: "settings-notifications", path: "/admin/settings/notifications" },
   { name: "settings-software", path: "/admin/settings/software" },
   { name: "audit", path: "/admin/audit" },
   { name: "help", path: "/admin/help" },
@@ -288,7 +289,9 @@ test("VAL-ADMIN-016: the waiting count rides on the Requests nav item", async ({
 
   try {
     await signIn(page);
-    await page.goto("/admin/settings");
+    // Settings swaps the sidebar for its own panes, so check from a page
+    // That keeps the portal sections.
+    await page.goto("/admin/audit");
 
     // Other specs on the same Preview Branch can add or remove
     // New requests mid-run; accept the badge once it matches the SQL count
@@ -412,7 +415,8 @@ test("staff can view the locale-negotiated website and return with their session
 // (PRODUCT.md, "The assistant seam is reserved, not occupied").
 const ASSISTANT_SEAM_PAGES = [
   "/admin",
-  "/admin/settings",
+  "/admin/settings/providers",
+  "/admin/settings/notifications",
   "/admin/settings/software",
   "/admin/audit",
   "/admin/help",

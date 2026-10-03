@@ -112,7 +112,7 @@ export function HomeWorkbench({
           <p data-testid="no-recipients-warning" className="portal-sheet-alert">
             <strong>Notification emails are paused.</strong> Requests still land here, but no email
             goes out when one arrives.{" "}
-            <Link href="/admin/settings#notifications">Manage recipients</Link>
+            <Link href="/admin/settings/notifications">Manage recipients</Link>
           </p>
         ) : null}
         {deliveryFailureCount !== null ? (

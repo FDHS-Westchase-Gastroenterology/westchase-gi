@@ -85,7 +85,7 @@ export const HELP_LINKS = {
   },
   openAppointments: { href: "/admin/requests", label: "Open Requests" },
   home: { href: "/admin", label: "Return to Home" },
-  settings: { href: "/admin/settings", label: "Settings" },
+  settings: { href: "/admin/settings/notifications", label: "Settings" },
   activity: { href: "/admin/audit", label: "Activity log" },
   website: { href: "/admin/settings/software", label: "Website" },
 } as const;

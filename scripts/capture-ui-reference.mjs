@@ -204,8 +204,8 @@ const portalCaptures = [
     ready: "main h1",
   },
   {
-    name: "desktop-portal-settings",
-    path: "/admin/settings",
+    name: "desktop-portal-settings-notifications",
+    path: "/admin/settings/notifications",
     viewport: { width: 1440, height: 900 },
     ready: '[data-testid="recipients-manager"]',
   },
@@ -258,8 +258,8 @@ const portalCaptures = [
     ready: "main h1",
   },
   {
-    name: "mobile-portal-settings",
-    path: "/admin/settings",
+    name: "mobile-portal-settings-notifications",
+    path: "/admin/settings/notifications",
     viewport: { width: 390, height: 844 },
     ready: '[data-testid="recipients-manager"]',
   },

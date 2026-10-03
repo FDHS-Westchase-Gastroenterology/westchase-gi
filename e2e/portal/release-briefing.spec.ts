@@ -155,7 +155,7 @@ test.describe("portal release briefing", () => {
       .getByRole("button", { name: "Hide this update now" })
       .click();
     await expect(utility).toHaveCount(0);
-    await page.goto("/admin/settings");
+    await page.goto("/admin/settings/notifications");
     await expect(page.getByTestId("portal-release-utility")).toHaveCount(0);
 
     const { data: finalState, error: finalStateError } = await db

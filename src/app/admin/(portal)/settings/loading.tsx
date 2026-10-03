@@ -1,9 +1,6 @@
-// Loading boundary for the Settings sub-pages. The heading and tab row
-// Live in layout.tsx above this boundary, so switching tabs commits
-// Navigation immediately (the underline moves on click) while only the
-// Content area shows this placeholder until the server payload arrives.
-// The placeholder preserves the workbench's hierarchy without adding a
-// Recurring pulse to an operational route staff may visit often.
+// Loading boundary for the Settings panes. The Settings sidebar sits above
+// It in the portal shell, so choosing a pane commits at once while only the
+// Pane shows this placeholder. No recurring pulse on a route staff visit often.
 
 export default function SettingsSectionLoading() {
   return (

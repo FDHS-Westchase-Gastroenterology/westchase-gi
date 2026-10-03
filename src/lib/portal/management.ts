@@ -91,7 +91,7 @@ function normalizeEmail(email: string): string {
 }
 
 function revalidateManagementViews(): void {
-  revalidatePath("/admin/settings");
+  revalidatePath("/admin/settings", "layout");
   revalidatePath("/admin/audit");
 }
 

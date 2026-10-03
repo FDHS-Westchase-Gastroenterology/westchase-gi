@@ -944,13 +944,13 @@ test.describe("portal authentication and direct REST boundaries", () => {
       await page.getByLabel("Password").fill(stalePassword);
       await page.getByRole("button", { name: "Sign in" }).click();
       await expect(page).toHaveURL(/\/admin\/?$/, { timeout: 15_000 });
-      for (const path of ["/admin", "/admin/settings", "/admin/settings/software"]) {
+      for (const path of ["/admin", "/admin/settings/notifications", "/admin/settings/software"]) {
         await page.goto(path);
         await expect(page).toHaveURL(new RegExp(`${path}/?$`));
         await expect(page.getByTestId("session-user")).toContainText("TEST Stale Token");
         if (path === "/admin") {
           await expect(page.getByTestId("home-greeting")).toBeVisible();
-        } else if (path === "/admin/settings") {
+        } else if (path === "/admin/settings/notifications") {
           await expect(page.getByTestId("recipients-manager")).toBeVisible();
         } else {
           await expect(page.getByTestId("managed-product")).toBeVisible();

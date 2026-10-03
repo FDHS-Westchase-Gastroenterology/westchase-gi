@@ -89,15 +89,9 @@ test.describe("portal management UI", () => {
 
     try {
       await signIn(page);
-      await page.goto("/admin/settings");
+      await page.goto("/admin/settings/notifications");
 
-      for (const selector of [
-        'label[for="recipient-email"]',
-        'label[for="recipient-label"]',
-        'label[for="invite-email"]',
-        'label[for="invite-name"]',
-        'label[for="invite-role"]',
-      ]) {
+      for (const selector of ['label[for="recipient-email"]', 'label[for="recipient-label"]']) {
         await expect(page.locator(selector)).toBeVisible();
       }
 
@@ -115,6 +109,15 @@ test.describe("portal management UI", () => {
       await expect(page.locator('label[for="recipient-email"]')).toBeVisible();
       await expect(page.locator('label[for="recipient-label"]')).toBeVisible();
 
+      // Staff access is its own Settings pane (issue #352).
+      await page.goto("/admin/settings/staff");
+      for (const selector of [
+        'label[for="invite-email"]',
+        'label[for="invite-name"]',
+        'label[for="invite-role"]',
+      ]) {
+        await expect(page.locator(selector)).toBeVisible();
+      }
       const inviteEmail = page.locator("#invite-email");
       const inviteName = page.locator("#invite-name");
       await page.getByRole("button", { name: "Send invite", exact: true }).click();
@@ -134,6 +137,7 @@ test.describe("portal management UI", () => {
       await expect(page.locator('label[for="invite-email"]')).toBeVisible();
       await expect(page.locator('label[for="invite-name"]')).toBeVisible();
 
+      await page.goto("/admin/settings/notifications");
       const row = recipientItem(page, fixtureEmail);
       const editLabel = row.getByRole("button", { name: "Edit label", exact: true });
       await editLabel.focus();
@@ -274,7 +278,7 @@ test.describe("portal management UI", () => {
     const emailD = `ux-${runId}-stale@example.test`;
 
     await signIn(page);
-    await page.goto("/admin/settings");
+    await page.goto("/admin/settings/notifications");
     await expect(page.locator("#recipient-email")).toBeVisible({
       timeout: 30_000,
     });
@@ -447,7 +451,7 @@ test.describe("portal management UI", () => {
     await expect(page.getByTestId("audit-table")).toContainText("recipients.remove");
 
     // Tidy the two survivors through the UI (also re-proves remove).
-    await page.goto("/admin/settings");
+    await page.goto("/admin/settings/notifications");
     for (const email of [emailA, emailB]) {
       await confirmRecipientRemoval(page, email);
       await expect(recipientItem(page, email)).toHaveCount(0, {
@@ -466,7 +470,7 @@ test.describe("portal management UI", () => {
     const inviteEmail = `ux-${runId}-staff@example.test`;
 
     await signIn(page);
-    await page.goto("/admin/settings");
+    await page.goto("/admin/settings/staff");
     await expect(page.locator("#invite-email")).toBeVisible({
       timeout: 30_000,
     });
@@ -578,7 +582,7 @@ test.describe("portal management UI", () => {
 
   test("VAL-ADMIN-018: Settings shows last sign-in from existing Auth state", async ({ page }) => {
     await signIn(page);
-    await page.goto("/admin/settings");
+    await page.goto("/admin/settings/staff");
 
     // The seed admin just signed in, so their row reads as a real sign-in
     // Timestamp — never "No sign-ins yet" and never a crashed page.
