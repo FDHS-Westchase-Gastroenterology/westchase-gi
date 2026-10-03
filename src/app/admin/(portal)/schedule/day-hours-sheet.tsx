@@ -563,14 +563,12 @@ function HoursSheet({
       baselineOf(provider, scope).length === 0 && worksAhead(editor.draftOf(provider), lock),
   );
   const addedIds = new Set(added.map((provider) => provider.id));
-  const groups = hours.locations
-    .map((place) => ({
-      place,
-      providers: hours.providers.filter(
-        (provider) => homeOf(provider, hours.locations) === place.id,
-      ),
-    }))
-    .filter((group) => group.providers.length > 0);
+  const groups = hours.locations.flatMap((place) => {
+    const providers = hours.providers.filter(
+      (provider) => homeOf(provider, hours.locations) === place.id,
+    );
+    return providers.length > 0 ? [{ place, providers }] : [];
+  });
 
   return (
     <dialog

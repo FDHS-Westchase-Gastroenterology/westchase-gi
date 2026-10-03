@@ -138,15 +138,17 @@ function joinTouching(windows: readonly HoursWindow[]): HoursWindow[] {
 }
 
 function before(windows: readonly HoursWindow[], lock: number): HoursWindow[] {
-  return windows
-    .filter((window) => window.openMinute < lock)
-    .map((window) => ({ ...window, closeMinute: Math.min(window.closeMinute, lock) }));
+  return windows.flatMap((window) =>
+    window.openMinute < lock
+      ? [{ ...window, closeMinute: Math.min(window.closeMinute, lock) }]
+      : [],
+  );
 }
 
 function after(windows: readonly HoursWindow[], lock: number): HoursWindow[] {
-  return windows
-    .filter((window) => window.closeMinute > lock)
-    .map((window) => ({ ...window, openMinute: Math.max(window.openMinute, lock) }));
+  return windows.flatMap((window) =>
+    window.closeMinute > lock ? [{ ...window, openMinute: Math.max(window.openMinute, lock) }] : [],
+  );
 }
 
 /** `next`, with the day before the lock as `day` has it: what has passed stays as it was. */
@@ -297,16 +299,15 @@ export function strandedIds(
   provider: Readonly<DayHoursProvider>,
   draft: readonly HoursWindow[],
 ): ReadonlySet<string> {
-  return new Set(
-    provider.bookings
-      .filter(
-        (booking) =>
-          booking.status !== "completed" &&
-          holds(provider.windows, booking) &&
-          !holds(draft, booking),
-      )
-      .map((booking) => booking.id),
-  );
+  const stranded = new Set<string>();
+  for (const booking of provider.bookings)
+    if (
+      booking.status !== "completed" &&
+      holds(provider.windows, booking) &&
+      !holds(draft, booking)
+    )
+      stranded.add(booking.id);
+  return stranded;
 }
 
 /* ---- Words ---- */
