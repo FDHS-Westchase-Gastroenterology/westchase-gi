@@ -1,8 +1,12 @@
 import { randomUUID } from "node:crypto";
 
 import { expect, test } from "@playwright/test";
+import { z } from "zod";
 
-import { findPeopleOutcomeSchema } from "../../src/lib/portal/patients/contracts";
+import {
+  findPeopleOutcomeSchema,
+  patientVisitSchema,
+} from "../../src/lib/portal/patients/contracts";
 import { expectDenied } from "../harness/assert";
 import { publishableDb, runId, serviceDb } from "../harness/env";
 import { savePatient } from "../harness/patients";
@@ -22,6 +26,13 @@ const tag = runId.replaceAll(/\d/gu, (digit) => "ghijklmnop"[Number(digit)]);
 /** A phone number only this run's people have. */
 const line = String(Number.parseInt(runId, 16) % 10_000_000).padStart(7, "0");
 const phone = `813${line}`;
+const visitsReadSchema = z.object({
+  ok: z.literal(true),
+  appointments: z.object({
+    items: z.array(patientVisitSchema),
+    total: z.number().int().nonnegative(),
+  }),
+});
 
 test("people are found by any word of their name or the digits of their phone, in standing order", async () => {
   test.setTimeout(120_000);
@@ -217,6 +228,52 @@ test("people are found by any word of their name or the digits of their phone, i
   } finally {
     await db.from("patient_request_links").delete().in("request_id", requestIds);
     await db.from("requests").delete().in("id", requestIds);
+    await fixture.dispose();
+  }
+});
+
+test("a patient's read lists their visits latest first, without the cancelled ones", async () => {
+  const db = serviceDb();
+  const fixture = await createSchedulingFixture(db, `find-visits-${runId}`);
+  try {
+    const ids: string[] = [];
+    for (const time of ["09:00", "11:00", "14:00"]) {
+      const booked = await fixture.save(fixture.booking(time));
+      if (!booked.ok) throw new Error(`Booking at ${time} failed`);
+      ids.push(booked.id);
+    }
+    expect(
+      await fixture.save({
+        action: "command",
+        idempotencyKey: randomUUID(),
+        command: { kind: "cancel", id: ids[1], expectedVersion: 1, reason: "TEST cancelled visit" },
+      }),
+    ).toMatchObject({ ok: true });
+    /* The patient's own fields stay in the row shape the server maps
+       (rows.ts); the visits arrive in the shape the record reads. */
+    const visitsOf = async (patientId: string | undefined) => {
+      const read = await db.rpc("portal_read_patient", {
+        p_actor_id: fixture.staff.userId,
+        p_patient_id: patientId,
+      });
+      expect(read.error).toBeNull();
+      return visitsReadSchema.parse(read.data).appointments;
+    };
+    const visits = await visitsOf(fixture.patientIds[0]);
+    expect(visits.total).toBe(2);
+    expect(visits.items.map((visit) => visit.id)).toEqual([ids[2], ids[0]]);
+    expect(visits.items[0]).toMatchObject({
+      status: "scheduled",
+      version: 1,
+      sourceRequestId: null,
+      providerId: fixture.providerIds[0],
+      providerName: `TEST find-visits-${runId} First`,
+      locationId: fixture.locationIds[0],
+      appointmentTypeId: fixture.typeId,
+    });
+    // Another patient's read carries none of them.
+    expect(await visitsOf(fixture.patientIds[1])).toEqual({ total: 0, items: [] });
+  } finally {
     await fixture.dispose();
   }
 });
