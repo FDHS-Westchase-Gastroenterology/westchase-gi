@@ -10,10 +10,12 @@ import { RecordCard } from "@/app/admin/(portal)/(home)/record-card";
 import type { CardAnswer } from "@/app/admin/(portal)/(home)/record-card-model";
 import { RecordSheetFrame } from "@/app/admin/(portal)/(home)/record-sheet-frame";
 import { useRecordRead } from "@/app/admin/(portal)/(home)/use-record-read";
+import type { ReadOutcome, RecordSections } from "@/app/admin/(portal)/requests/record-sections";
 import { recordSections } from "@/app/admin/(portal)/requests/record-sections";
 import { Calendar, ChevronRight, Plus } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent } from "@/components/ui/popover";
+import type { FullRecord } from "@/lib/portal/request-record/contracts";
 
 import { cameToUs, notBookedText } from "./patient-record-model";
 import { RecordNoteComposer } from "./record-note-composer";
@@ -96,54 +98,12 @@ export function RequestRecordSheet({
                 {notBookedText(shown.pref)}
               </p>
             </section>
-            {outcome === null ? (
-              <div className="wgi-sheet-skeleton" role="status">
-                <span className="sr-only">Loading the request</span>
-                <i data-stands-for="section-title" />
-                <i data-stands-for="detail-row" />
-                <i data-stands-for="detail-value" />
-              </div>
-            ) : record === null || sections === null ? (
-              <div className="wgi-sheet-state" role="alert">
-                <p className="wgi-sheet-state-title">
-                  {outcome.kind === "gone"
-                    ? "This request no longer exists."
-                    : "The request could not be loaded."}
-                </p>
-                {outcome.kind === "gone" ? null : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="mt-3"
-                    onClick={read.retry}
-                  >
-                    Try again
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <>
-                {sections.latestNote === null ? null : (
-                  <LatestNoteBlock note={sections.latestNote} />
-                )}
-                <section className="wgi-sheet-section" aria-labelledby="wgi-sheet-origin-label">
-                  <h3 id="wgi-sheet-origin-label" className="wgi-sheet-label">
-                    Their request
-                  </h3>
-                  <p className="wgi-sheet-origin">
-                    <span>{cameToUs(record)}</span>
-                    <Link href={`/admin/requests/${record.id}`} className="wgi-sheet-history-link">
-                      History · {sections.rowCount}
-                      <ChevronRight aria-hidden="true" />
-                    </Link>
-                  </p>
-                  {(record.message?.trim() ?? "") === "" ? null : (
-                    <MessageQuote message={record.message?.trim() ?? ""} />
-                  )}
-                </section>
-              </>
-            )}
+            <RequestRecordBody
+              outcome={outcome}
+              record={record}
+              sections={sections}
+              onRetry={read.retry}
+            />
           </div>
           <RequestRecordFoot
             key={shown.id}
@@ -154,6 +114,65 @@ export function RequestRecordSheet({
         </>
       )}
     </RecordSheetFrame>
+  );
+}
+
+/* What the read produced: a skeleton while it is in flight, a state when
+   the request is gone or could not be read, otherwise the latest note and
+   their request. */
+type RequestRecordBodyProps = Readonly<{
+  /** Null while the read is in flight. */
+  outcome: ReadOutcome | null;
+  record: FullRecord | null;
+  sections: RecordSections | null;
+  onRetry: () => void;
+}>;
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the request record carries workflow history entries whose types cannot be made readonly
+function RequestRecordBody({ outcome, record, sections, onRetry }: RequestRecordBodyProps) {
+  if (outcome === null) {
+    return (
+      <div className="wgi-sheet-skeleton" role="status">
+        <span className="sr-only">Loading the request</span>
+        <i data-stands-for="section-title" />
+        <i data-stands-for="detail-row" />
+        <i data-stands-for="detail-value" />
+      </div>
+    );
+  }
+  if (record === null || sections === null) {
+    const gone = outcome.kind === "gone";
+    return (
+      <div className="wgi-sheet-state" role="alert">
+        <p className="wgi-sheet-state-title">
+          {gone ? "This request no longer exists." : "The request could not be loaded."}
+        </p>
+        {gone ? null : (
+          <Button type="button" variant="outline" size="sm" className="mt-3" onClick={onRetry}>
+            Try again
+          </Button>
+        )}
+      </div>
+    );
+  }
+  const message = record.message?.trim() ?? "";
+  return (
+    <>
+      {sections.latestNote === null ? null : <LatestNoteBlock note={sections.latestNote} />}
+      <section className="wgi-sheet-section" aria-labelledby="wgi-sheet-origin-label">
+        <h3 id="wgi-sheet-origin-label" className="wgi-sheet-label">
+          Their request
+        </h3>
+        <p className="wgi-sheet-origin">
+          <span>{cameToUs(record)}</span>
+          <Link href={`/admin/requests/${record.id}`} className="wgi-sheet-history-link">
+            History · {sections.rowCount}
+            <ChevronRight aria-hidden="true" />
+          </Link>
+        </p>
+        {message === "" ? null : <MessageQuote message={message} />}
+      </section>
+    </>
   );
 }
 
