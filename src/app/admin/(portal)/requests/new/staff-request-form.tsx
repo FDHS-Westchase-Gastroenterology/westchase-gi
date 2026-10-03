@@ -9,6 +9,7 @@ import type { CreateStaffRequestActionState, StaffRequestDraft } from "@/lib/por
 
 import { attemptKey, followCreation } from "./created-toast";
 import { EMPTY_STAFF_REQUEST_DRAFT, isStaffRequestDraftDirty } from "./staff-request-draft";
+import type { StaffRequestPrefill } from "./staff-request-draft";
 import { StaffRequestError } from "./staff-request-error";
 import type { StaffRequestErrorCode } from "./staff-request-error";
 import { StaffRequestFields } from "./staff-request-fields";
@@ -119,6 +120,7 @@ export function StaffRequestForm({
   onCreatedToastLeave,
   onDismiss,
   dismissRequestRef,
+  prefill,
 }: Readonly<{
   idempotencyKey: string;
   permalink: string;
@@ -132,6 +134,8 @@ export function StaffRequestForm({
   onDismiss?: () => void;
   /** Lets the host route Escape through this form's draft protection. */
   dismissRequestRef?: Ref<StaffRequestFormHandle>;
+  /** The name or number a search typed: the form opens with it, the caret after it. */
+  prefill?: StaffRequestPrefill;
 }>) {
   const hosted = onCreated !== undefined && onDismiss !== undefined;
   const [initialIdempotencyKey] = useState(idempotencyKey);
@@ -140,20 +144,21 @@ export function StaffRequestForm({
     hosted ? onCreated : null,
     onCreatedToastLeave,
   );
+  const [opened] = useState<StaffRequestDraft>(() => ({ ...EMPTY_DRAFT, ...prefill }));
   const [draft, setDraft] = useState<StaffRequestDraft>(() =>
-    state.status === "error" ? state.values : EMPTY_DRAFT,
+    state.status === "error" ? state.values : opened,
   );
   const { formRef, alertRef } = useRefusalFocus(state, pending);
   const retryKey = attemptKey(state, initialIdempotencyKey);
   const { unavailable, conflicted, draftLocked, readOnly, failure } = formStatus(state, pending);
   const checks = useFieldChecks(state, readOnly);
   const guard = useLeaveGuard({
-    dirty: isStaffRequestDraftDirty(draft),
+    dirty: isStaffRequestDraftDirty(draft, opened),
     pending,
     dismiss: hosted ? onDismiss : null,
     returnHref,
     onDiscard: () => {
-      setDraft(EMPTY_DRAFT);
+      setDraft(opened);
     },
     handleRef: dismissRequestRef,
   });

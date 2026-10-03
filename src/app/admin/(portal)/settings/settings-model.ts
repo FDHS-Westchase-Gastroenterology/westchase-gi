@@ -142,9 +142,9 @@ export function providerSubline(
   locations: readonly SettingsLocation[],
 ): string {
   if (hours.length === 0) return "No weekly hours";
-  const places = locations
-    .filter((location) => hours.some((row) => row.locationId === location.id))
-    .map((location) => placeName(location));
+  const places = locations.flatMap((location) =>
+    hours.some((row) => row.locationId === location.id) ? [placeName(location)] : [],
+  );
   return `${places.join(", ")} · ${dayRuns(hours.map((row) => row.weekday))}`;
 }
 

@@ -45,17 +45,20 @@ export function useCardMonth(
     /** Staff's pick, or null to let the server choose. */
     typeId: string | null;
     location: RequestLocation;
+    /** The card is booking: read the month. */
+    active: boolean;
+    /** The patient being booked, or null for a requester not registered yet. */
     patientId: string | null;
   }>,
 ): CardMonth {
-  const { month, typeId, location, patientId } = input;
+  const { month, typeId, location, active, patientId } = input;
   const [landed, setLanded] = useState<Landed | null>(null);
   const [read, setRead] = useState<Read | null>(null);
   const [attempt, setAttempt] = useState(0);
   const key = `${month}|${typeId ?? ""}|${String(attempt)}`;
 
   useEffect(() => {
-    if (patientId === null) return undefined;
+    if (!active) return undefined;
     let live = true;
     startTransition(async () => {
       try {
@@ -76,7 +79,7 @@ export function useCardMonth(
     return () => {
       live = false;
     };
-  }, [key, month, typeId, location, patientId]);
+  }, [key, month, typeId, location, active, patientId]);
 
   const shownType = typeId ?? read?.availability.appointmentType.id ?? null;
   const availability =

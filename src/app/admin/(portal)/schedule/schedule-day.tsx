@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { startTransition, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { FullRecordSheet } from "@/app/admin/(portal)/(home)/full-record-sheet";
-import type { HomeLine } from "@/app/admin/(portal)/(home)/home-line";
 import { ChevronLeft, ChevronRight } from "@/components/icons";
 import { Popover } from "@/components/ui/popover";
 import { createPopoverHandle } from "@/components/ui/popover-behavior";
@@ -16,6 +14,7 @@ import { DayEmpty } from "./day-empty";
 import { DayFoot } from "./day-foot";
 import { DayGrid } from "./day-grid";
 import type { DayAppointmentCell, ScheduleDay } from "./schedule-day-model";
+import { useSchedulePeople } from "./schedule-people";
 import { ShortcutsList, useScheduleShortcuts } from "./schedule-shortcuts";
 import type { ShortcutTargets } from "./schedule-shortcuts";
 import { ScheduleArrow, ScheduleTools } from "./schedule-toolbar";
@@ -42,12 +41,6 @@ import "./schedule-day.css";
      (schedule-shortcuts.tsx) move between days and views, and ? or "All
      shortcuts" lists them. */
 
-interface RecordOpen {
-  readonly line: HomeLine;
-  readonly appointmentId: string;
-  readonly instant: boolean;
-}
-
 export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; admin: boolean }>) {
   const router = useRouter();
   const baseId = useId();
@@ -55,8 +48,7 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
   const [card] = useState(() => createPopoverHandle<WeekCardPayload>());
   /* Opened from the keyboard: the card appears and leaves at once. */
   const [keyed, setKeyed] = useState(false);
-  const [record, setRecord] = useState<RecordOpen | null>(null);
-  const lastRecord = useRef<string | null>(null);
+  const { openRecord } = useSchedulePeople();
   const [checking, setChecking] = useState<string | null>(null);
   const [hints, setHints] = useState(false);
   const [shortcuts, setShortcuts] = useState(false);
@@ -182,30 +174,14 @@ export function ScheduleDayView({ view, admin }: Readonly<{ view: ScheduleDay; a
                 card.close();
                 landed(change);
               }}
-              onOpenRecord={(line, appointmentId) => {
-                lastRecord.current = appointmentId;
+              onOpenRecord={(patient, appointmentId) => {
                 card.close();
-                setRecord({ line, appointmentId, instant: keyed });
+                openRecord(patient, appointmentId, keyed);
               }}
             />
           )
         }
       </Popover>
-      <FullRecordSheet
-        line={record?.line ?? null}
-        instant={record?.instant ?? false}
-        onOpenChange={(open) => {
-          if (!open) setRecord(null);
-        }}
-        onClosed={() => {
-          router.refresh();
-        }}
-        returnFocus={() =>
-          lastRecord.current === null
-            ? null
-            : document.querySelector<HTMLElement>(`[data-appointment="${lastRecord.current}"]`)
-        }
-      />
     </section>
   );
 }

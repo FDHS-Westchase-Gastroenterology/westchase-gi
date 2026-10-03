@@ -131,6 +131,11 @@ export function timeRange(startsAt: string, endsAt: string): string {
     : `${from} – ${until}`;
 }
 
+/** "Thu, Sep 17", the practice's day of an instant. */
+export function cardDay(instant: string): string {
+  return CARD_DAY.format(new Date(instant));
+}
+
 /** "Wed, Sep 16 · 1:00 – 1:30 PM". */
 export function appointmentWhen(startsAt: string, endsAt: string): string {
   return `${CARD_DAY.format(new Date(startsAt))} · ${timeRange(startsAt, endsAt)}`;

@@ -2,8 +2,15 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-import { patientReadInputSchema, patientSearchInputSchema } from "./contracts";
+import {
+  findPeopleInputSchema,
+  findPeopleOutcomeSchema,
+  patientReadInputSchema,
+  patientSearchInputSchema,
+} from "./contracts";
 import type {
+  FindPeopleInput,
+  FindPeopleOutcome,
   PatientReadInput,
   PatientReadOutcome,
   PatientSearchInput,
@@ -51,5 +58,26 @@ export async function readPatient(
     .abortSignal(AbortSignal.timeout(10_000));
   if (result.error !== null) return { ok: false, code: "unavailable" };
   const outcome = patientReadDatabaseSchema.safeParse(result.data);
+  return outcome.success ? outcome.data : { ok: false, code: "unavailable" };
+}
+
+/** The schedule's search: people whose name has a word starting with each word typed, or whose
+    phone holds the digits typed. The function returns camel-cased JSON already. */
+export async function findPeople(
+  db: SupabaseClient,
+  actorId: string,
+  input: Readonly<FindPeopleInput>,
+): Promise<FindPeopleOutcome> {
+  const parsed = findPeopleInputSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "invalid_command" };
+  const result = await db
+    .rpc("portal_find_people", {
+      p_actor_id: actorId,
+      p_query: parsed.data.query,
+      p_limit: parsed.data.limit,
+    })
+    .abortSignal(AbortSignal.timeout(10_000));
+  if (result.error !== null) return { ok: false, code: "unavailable" };
+  const outcome = findPeopleOutcomeSchema.safeParse(result.data);
   return outcome.success ? outcome.data : { ok: false, code: "unavailable" };
 }

@@ -6,6 +6,7 @@ import { storedRequestStateSchema } from "@/lib/portal/workflow/contracts";
 
 import {
   patientFailureSchema,
+  patientVisitSchema,
   patientReadOutcomeSchema,
   patientRevisionCommandSchema,
   patientSearchOutcomeSchema,
@@ -104,6 +105,10 @@ export const patientReadDatabaseSchema = z
         items: z.array(linkedRequestRowSchema),
         total: z.number().int().nonnegative(),
         nextRequestId: z.uuid().nullable(),
+      }),
+      appointments: z.object({
+        items: z.array(patientVisitSchema),
+        total: z.number().int().nonnegative(),
       }),
     }),
     patientFailureSchema,

@@ -17,6 +17,7 @@ import type {
   DayOpenCell,
   ScheduleDay,
 } from "./schedule-day-model";
+import { useOpenRecordVisits } from "./schedule-people";
 import { practiceTime } from "./week-calendar";
 import type { WeekCardPayload } from "./week-cards";
 import { nowOffset } from "./week-hours";
@@ -227,6 +228,7 @@ function DayCellView({
   active,
   onFocus,
 }: CellViewProps) {
+  const recordOpen = useOpenRecordVisits();
   const shared = {
     id: cellDomId(baseId, cell),
     handle: card,
@@ -256,7 +258,12 @@ function DayCellView({
 
   const offer = canCheckIn(cell, now);
   return (
-    <div className="wgi-dayview-block" data-tone={cell.tone} style={position}>
+    <div
+      className="wgi-dayview-block"
+      data-tone={cell.tone}
+      data-record-open={recordOpen.has(cell.id) || undefined}
+      style={position}
+    >
       <PopoverTrigger
         {...shared}
         payload={{ kind: "appointment", cell }}

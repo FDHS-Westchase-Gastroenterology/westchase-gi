@@ -82,7 +82,7 @@ export function TypeEditorDialog({
   const [providerIds, setProviderIds] = useState<readonly string[]>(
     () =>
       type?.providerIds ??
-      providers.filter((provider) => provider.bookable).map((provider) => provider.id),
+      providers.flatMap((provider) => (provider.bookable ? [provider.id] : [])),
   );
   const [pending, setPending] = useState(false);
   const lengths = LENGTHS.some((minutes) => minutes === length)

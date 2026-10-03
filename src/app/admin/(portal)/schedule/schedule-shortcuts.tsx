@@ -12,7 +12,8 @@ import type { PopoverChangeDetails, PopoverHandle } from "@/components/ui/popove
    #351; Figma S5 shortcuts frame). Day, Week and Month all answer them:
 
    - T goes to today; J and K to the next or previous day, week or month;
-     D, W and M switch the view; ? opens the list.
+     D, W and M switch the view; / goes to the patient search (issue
+     #356); ? opens the list.
    - A key never fires while someone is typing (a field, a text area, an
      editable region or a combobox), with Command, Control or Option held,
      or inside an open card or menu, which own their keys.
@@ -49,6 +50,13 @@ export function useScheduleShortcuts(targets: Readonly<ShortcutTargets>, onHelp:
     if (event.key === "?") {
       event.preventDefault();
       onHelp();
+      return;
+    }
+    if (event.key === "/") {
+      const search = document.querySelector<HTMLInputElement>("[data-schedule-search] input");
+      if (search === null) return;
+      event.preventDefault();
+      search.focus();
       return;
     }
     if (event.shiftKey) return;
@@ -101,6 +109,7 @@ const GROUPS: readonly { readonly title: string; readonly shortcuts: readonly Sh
   {
     title: "Anywhere",
     shortcuts: [
+      { keys: ["/"], does: "Search patients" },
       { keys: ["Tab"], does: "Next area: toolbar, day, sidebar" },
       { keys: ["?"], does: "This list" },
     ],
@@ -113,6 +122,7 @@ const SPOKEN: ReadonlyMap<string, string> = new Map([
   ["↓", "Down arrow"],
   ["←", "Left arrow"],
   ["→", "Right arrow"],
+  ["/", "Slash"],
   ["?", "Question mark"],
 ]);
 

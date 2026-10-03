@@ -9,6 +9,7 @@ import { PopoverTrigger } from "@/components/ui/popover";
 import type { PopoverHandle } from "@/components/ui/popover-behavior";
 
 import { useMinuteClock } from "./minute-clock";
+import { useOpenRecordVisits } from "./schedule-people";
 import type {
   ScheduleWeek,
   WeekAppointmentCell,
@@ -242,6 +243,7 @@ function LaneLabel({ grid, lane }: Readonly<{ grid: Grid; lane: WeekLane }>) {
 /* Every cell opens the one card through the shared handle. */
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- Base UI handles carry store member types that cannot be made readonly
 function WeekCellTrigger({ grid, cell }: Readonly<{ grid: Grid; cell: WeekCell }>) {
+  const recordOpen = useOpenRecordVisits();
   const shared = {
     id: cellDomId(grid.baseId, cell),
     handle: grid.card,
@@ -270,6 +272,7 @@ function WeekCellTrigger({ grid, cell }: Readonly<{ grid: Grid; cell: WeekCell }
     "data-state": cell.state,
     "data-short": cell.short || undefined,
     "data-appointment": cell.id,
+    "data-record-open": recordOpen.has(cell.id) || undefined,
   };
   if (!grid.view.compare)
     return (

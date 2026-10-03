@@ -9,17 +9,28 @@ of its options.
 
 Bold marks the default; a required prop has none.
 
+- [`avatar.tsx`](../src/components/ui/avatar.tsx) · `"use client"` · built on `@base-ui/react/avatar`
+  - `Avatar`: `size` **`default`** · `sm` · `lg`
+  - Also exports: `AvatarFallback`
 - [`badge.tsx`](../src/components/ui/badge.tsx) · built on `@base-ui/react/merge-props`, `@base-ui/react/use-render`
   - `Badge`: `motion` **`none`** · `shadcn`; `variant` (required) `attention` · `current` · `settled` · `quiet`
 - [`button-variants.ts`](../src/components/ui/button-variants.ts)
   - Recipes: `buttonVariants`
 - [`button.tsx`](../src/components/ui/button.tsx) · built on `@base-ui/react/button`
   - `Button`: `motion` **`wgi`** · `commit` · `shadcn` · `none`; `variant` **`default`** · `amber` · `outline` · `ghost-light` · `secondary` · `ghost` · `destructive` · `link`; `size` **`default`** · `sm` · `lg` · `icon`
+- [`calendar.tsx`](../src/components/ui/calendar.tsx) · `"use client"` · built on `react-day-picker`
+  - Components: `Calendar`, `CalendarDay`, `CalendarDayButton`, `CalendarRange`, `CalendarSpan`
 - [`card.tsx`](../src/components/ui/card.tsx)
   - `Card`: `size` **`default`** · `sm`
   - Also exports: `CardHeader`, `CardFooter`, `CardTitle`, `CardAction`, `CardDescription`, `CardContent`
 - [`checkbox.tsx`](../src/components/ui/checkbox.tsx) · `"use client"` · built on `@base-ui/react/checkbox`
   - `Checkbox`: `motion` **`wgi`** · `shadcn` · `none`
+- [`combobox.tsx`](../src/components/ui/combobox.tsx) · `"use client"` · built on `@base-ui/react/combobox`
+  - Components: `Combobox`, `ComboboxContent`, `ComboboxInput`, `ComboboxInputGroup`, `ComboboxItem`, `ComboboxList`, `ComboboxStatus`
+  - Helpers and types: `ComboboxAutoHighlight`
+- [`empty.tsx`](../src/components/ui/empty.tsx)
+  - `EmptyMedia`: `variant` **`default`** · `icon`
+  - Also exports: `Empty`, `EmptyContent`, `EmptyDescription`, `EmptyHeader`, `EmptyTitle`
 - [`field.tsx`](../src/components/ui/field.tsx) · `"use client"`
   - `Field`: `orientation` **`vertical`** · `horizontal` · `responsive`
   - `FieldDescription`: `size` **`default`** · `note`
@@ -28,6 +39,7 @@ Bold marks the default; a required prop has none.
   - Also exports: `FieldLabel`, `FieldGroup`, `FieldSeparator`, `FieldSet`, `FieldContent`, `FieldTitle`
 - [`input.tsx`](../src/components/ui/input.tsx) · built on `@base-ui/react/input`
   - `Input`: `motion` **`wgi`** · `shadcn` · `none`
+  - Helpers and types: `InputMotion`
 - [`item.tsx`](../src/components/ui/item.tsx) · built on `@base-ui/react/merge-props`, `@base-ui/react/use-render`
   - `Item`: `variant` **`default`** · `outline` · `muted`; `size` **`default`** · `sm` · `xs`
   - `ItemMedia`: `variant` **`default`** · `icon` · `image`
@@ -42,9 +54,12 @@ Bold marks the default; a required prop has none.
   - Also exports: `Menu`, `MenuCheckboxItem`, `MenuGroup`, `MenuLabel`, `MenuRadioGroup`, `MenuRadioItem`, `MenuSeparator`, `MenuTrigger`
 - [`native-select.tsx`](../src/components/ui/native-select.tsx)
   - `NativeSelect`: `motion` **`wgi`** · `shadcn` · `none`
+- [`popover-behavior.ts`](../src/components/ui/popover-behavior.ts) · `"use client"` · built on `@base-ui/react/popover`
+  - Components: `PopoverContainer`
+  - Helpers and types: `createPopoverHandle`, `POPOVER_SHIFT_ONLY`, `usePopoverHoverIntent`, `PopoverChangeDetails`, `PopoverAnchor`, `PopoverHandle`, `PopoverIntent`
 - [`popover.tsx`](../src/components/ui/popover.tsx) · `"use client"` · built on `@base-ui/react/popover`
-  - `PopoverContent`: `motion` **`wgi`** · `none`
-  - Also exports: `Popover`, `PopoverClose`, `PopoverTitle`, `PopoverTrigger`
+  - `PopoverContent`: `paint` **`paper`** · `card`; `motion` **`wgi`** · `none`
+  - Also exports: `Popover`, `PopoverArrow`, `PopoverClose`, `PopoverTitle`, `PopoverTrigger`
 - [`scroll-area.tsx`](../src/components/ui/scroll-area.tsx) · `"use client"` · built on `@base-ui/react/scroll-area`
   - `ScrollBar`: `orientation` **`vertical`**
   - Also exports: `ScrollArea`, `ScrollAreaThumb`, `ScrollAreaViewport`
@@ -53,8 +68,20 @@ Bold marks the default; a required prop has none.
   - Helpers and types: `SegmentedControlOption`
 - [`separator.tsx`](../src/components/ui/separator.tsx) · `"use client"` · built on `@base-ui/react/separator`
   - `Separator`: `orientation` **`horizontal`**
+- [`sidebar.tsx`](../src/components/ui/sidebar.tsx) · `"use client"` · built on `@base-ui/react/merge-props`, `@base-ui/react/use-render`
+  - `Sidebar`: `collapsible` **`icon`**
+  - Also exports: `SidebarGroup`, `SidebarGroupLabel`, `SidebarMenu`, `SidebarMenuButton`, `SidebarMenuItem`, `SidebarProvider`, `SidebarRail`, `SidebarSeparator`, `SidebarTrigger`
+  - Helpers and types: `useSidebar`
+- [`slider.tsx`](../src/components/ui/slider.tsx) · `"use client"` · built on `@base-ui/react/slider`
+  - `Slider`: `tone` **`default`** · `hours`
+- [`switch.tsx`](../src/components/ui/switch.tsx) · `"use client"` · built on `@base-ui/react/switch`
+  - `Switch`: `motion` **`wgi`** · `none`
+- [`table-roving.tsx`](../src/components/ui/table-roving.tsx) · `"use client"` · built on `@base-ui/react/merge-props`, `@base-ui/react/use-render`
+  - Components: `TableRovingBody`, `TableRovingControl`, `TableRovingRow`
 - [`table.tsx`](../src/components/ui/table.tsx)
   - Components: `Table`, `TableHeader`, `TableBody`, `TableFooter`, `TableHead`, `TableRow`, `TableCell`, `TableCaption`
+- [`tabs.tsx`](../src/components/ui/tabs.tsx) · `"use client"` · built on `@base-ui/react/tabs`
+  - Components: `Tabs`, `TabsContent`, `TabsList`, `TabsTrigger`
 - [`textarea.tsx`](../src/components/ui/textarea.tsx)
   - `Textarea`: `motion` **`wgi`** · `shadcn` · `none`
 - [`time-picker-physics.ts`](../src/components/ui/time-picker-physics.ts)
@@ -67,6 +94,9 @@ Bold marks the default; a required prop has none.
   - Helpers and types: `TimePickerOption`
 - [`toaster.tsx`](../src/components/ui/toaster.tsx) · `"use client"` · built on `sonner`
   - Components: `Toaster`
+- [`toggle-group.tsx`](../src/components/ui/toggle-group.tsx) · `"use client"` · built on `@base-ui/react/toggle`, `@base-ui/react/toggle-group`
+  - `ToggleGroup`: `variant` **`default`** · `outline` · `time`; `size` **`default`** · `sm` · `lg`
+  - Also exports: `ToggleGroupItem`
 - [`tooltip.tsx`](../src/components/ui/tooltip.tsx) · `"use client"` · built on `@base-ui/react/tooltip`
   - `TooltipContent`: `motion` **`wgi`** · `none`
   - Also exports: `Tooltip`, `TooltipProvider`, `TooltipTrigger`

@@ -20,11 +20,11 @@ contracts are not yet on `main`.
 | Staff work | Backend available | Frontend work to complete | Contract |
 | --- | --- | --- | --- |
 | Finish a contact without another call | One contact-and-close save, combined history, and Undo | Connected: both Home No call choices use completion; regression coverage includes history, replay, stale input, reload, and Undo | [Contact completion](#contact-completion) |
-| Manage patients | Registration, search, demographics, reviewed request links, archive/restore, and history | Patient search, registration, detail, identity review, and administrator controls | [Patients](#patients) |
+| Manage patients | Registration, search, demographics, reviewed request links, archive/restore, and history | Connected on the Schedule: one search over patients and unlinked open requests (`findSchedulePeople`), the patient's record with visits and read-only clinical lists, and registration when a request is booked. Remaining: demographic edits, identity review, and administrator archive/restore | [Patients](#patients), [Schedule search and records](#schedule-search-and-records) |
 | Set up scheduling | Providers, locations, appointment types, hours, time off, closed days, and preparation buffers | Connected: the Settings window's Schedule group (`/admin/settings/providers`, `/appointment-types`, `/locations`) applies each change as it is made, warns before time off or a closed day covers bookings and lists them to rebook after, and offers Undo. Staff read every pane with no edit controls | [Settings window](#settings-window) |
 | See month availability | One summary per practice date: open count, booked share, seen visits, closed days, and per-provider openings | Connected: `/admin/schedule` month view with the day preview, the week view (`week_schedule`), and the Day view (`day_schedule`): one column per working provider, open time that books, and the no-providers empty state | [Scheduling](#scheduling) |
 | Book and manage appointments | Availability, conflict checks, booking, rescheduling, cancellation, arrival/outcomes, and Undo | Connected on the week and Day views: the appointment card checks in, reschedules, cancels and marks no-show or complete, and the open-time card books a found patient. The Day view's booking and Check in offer Undo for 15 minutes (`undoAppointmentChange`). Remaining: appointment history, and Undo on the week view | [Scheduling](#scheduling) |
-| Schedule from an intake request | One operation updates both the reservation and its reviewed request | Connected for a linked request: the Home record card books from its month (`month_availability`, then one `book` with `sourceRequestId`). Remaining: patient selection/linking, paired rescheduling/cancellation/Undo | [Requests and appointments](#requests-and-appointments) |
+| Schedule from an intake request | One operation updates both the reservation and its reviewed request | Connected: the Home record card and the Schedule's request record book from the card's month (`month_availability`, then one `book` with `sourceRequestId`). An unlinked requester is registered and linked as the booking lands. Remaining: paired rescheduling/cancellation/Undo | [Requests and appointments](#requests-and-appointments) |
 | Read the request queue | Complete filtered results, counts, attention order, and Previous/Next | Existing screens already use the complete reads; preserve them when changing filters or paging | [Worklists](#worklists) |
 | Record billing, when used | Patient-owned charges, payments recorded elsewhere, refunds, adjustments, and corrections | Optional ledger screens, role-aware actions, and reconciliation | [Billing](#billing) |
 | Keep clinical records, when used | Notes, external document references, drafts, signing, amendments, and corrections | Optional clinical screens, signer administration, and protected record history | [Clinical records](#clinical-records) |
@@ -218,6 +218,40 @@ page; history reads return 50. Follow cursors instead of treating the first page
 Handle `provider_conflict`, `patient_conflict`, `time_unavailable`, `schedule_in_use`, resource
 unavailability, and `type_changed` distinctly. Preserve the chosen values and refresh the relevant
 availability or configuration. A failed read must not display an apparently empty calendar.
+
+### Schedule search and records
+
+The Schedule's toolbar search, the record sheets it opens, and the Add request it starts live in
+`src/app/admin/(portal)/schedule/` (`schedule-search.tsx`, `schedule-people.tsx`,
+`patient-record-sheet.tsx`, `request-record-sheet.tsx`). Every action below requires a staff
+session; the database functions refuse an anonymous caller.
+
+| Server Function (`week-actions.ts`) | Input, result, and failures |
+| --- | --- |
+| `findSchedulePeople(query)` | Up to 254 characters. The field searches from two characters (`SEARCH_MIN`). Matches a prefix of any word of the name, or the digits of the phone in any format, across registry patients and the open requests no patient is linked to (`portal_find_people`). Returns `anyone` (false on the portal's first day), `total`, and up to 20 `people`, patients first, each with `kind`, `id`, `name`, `phone`, and `status`: today's or the next appointment, the request's state, or none with the last visit. `{ ok: false }` is a failed search: say so and keep the typed text. |
+| `readSchedulePatient(patientId)` | The patient, their visits latest first without cancelled ones (`portal_read_patient`'s `appointments`), the latest linked request as Home's line, and the clinical notes and documents, read-only. `not_found` for an unknown or malformed ID; `unavailable` for a failed read, offered as Try again. A clinical list carries `forbidden` when the role cannot read it. |
+| `readWeekRecordLine(requestId)` | The request as Home's line, or null when it is gone, malformed, or unreadable. A line with a `patientId` opens that patient's record instead. |
+
+The search is a POST; the typed name or number never reaches the address, telemetry, or storage.
+`/` focuses the field, the arrows move through the results, Enter opens the highlighted one, and
+Escape clears the field and then leaves it. Enter waits while the rows on screen still answer an
+earlier term. The open record is in the address: `?patient=<id>` for a patient and
+`?request=<id>` for a person known only by a request. Opening pushes a history entry and closing
+replaces it, so reload, Back, and a pasted link reopen it. An address naming a record that cannot
+be read shows the toast "That record couldn't be opened." and clears the parameter. Home's
+full-record sheet uses the same `?request=` parameter.
+
+The patient record's Book another books through `bookFromCard` with the patient and no source
+request; Book appointment on a request record sends the request's `sourceRequestId` and
+`requestVersion`, and the server registers the requester from the request row and links them
+before the `book` (`patientForRequest`). After that booking the record becomes the patient's and
+the address switches to `?patient=`. A search with no match offers Add request with the typed name
+or phone filled in; Add request without a prefill is unchanged.
+
+Acceptance (`e2e/portal/schedule-people.spec.ts`, `e2e/boundaries/find-people.spec.ts`): find by
+a name prefix and by a phone in several formats, ordering, each status summary, a request with no
+patient, open from the keyboard, reload into the record, book a request-only person into a
+patient, Book another, start a prefilled request, and a signed-out visit refused.
 
 ### Settings window
 
@@ -432,7 +466,7 @@ a separate integration.
 
 The automated examples live in [e2e/portal](e2e/portal) and [e2e/boundaries](e2e/boundaries):
 `patients.spec.ts`, `scheduling.spec.ts`, `appointment-handoff.spec.ts`, `billing.spec.ts`,
-`clinical.spec.ts`, and `worklists.spec.ts`. Read them with the matching contracts. A real
+`clinical.spec.ts`, `worklists.spec.ts`, `find-people.spec.ts`, and `schedule-people.spec.ts`. Read them with the matching contracts. A real
 staff-session API test establishes server behavior; a completed frontend still needs its authored
 screen path tested. Do not treat opening a dialog or receiving an API success as full UI acceptance.
 

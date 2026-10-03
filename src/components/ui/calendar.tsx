@@ -292,6 +292,14 @@ function CalendarRange({
   );
 }
 
+/** The enabled day button under a pointer, as YYYY-MM-DD. */
+function dayAt(target: EventTarget | null): string | null {
+  if (!(target instanceof Element)) return null;
+  const button = target.closest<HTMLButtonElement>("button[data-day]");
+  if (button === null || button.disabled) return null;
+  return button.dataset.day ?? null;
+}
+
 /* CalendarSpan, for a run of whole days taken off (issue #352, Figma St2:
    a provider's time off). One month in range mode, in the same day strings,
    with the behavior that frame asks for, which CalendarRange's editor does
@@ -335,13 +343,6 @@ function CalendarSpan({
   const swallow = useRef(false);
   const selected: DateRange | undefined =
     from === "" ? undefined : { from: dayToDate(from), to: dayToDate(to) };
-
-  function dayAt(target: EventTarget | null): string | null {
-    if (!(target instanceof Element)) return null;
-    const button = target.closest<HTMLButtonElement>("button[data-day]");
-    if (button === null || button.disabled) return null;
-    return button.dataset.day ?? null;
-  }
 
   return (
     <div

@@ -57,16 +57,18 @@ below.
 | `PortalFeedbackProvider` `PortalFeedbackMessage` | A result with no promise to follow, or one that has to outlive a toast; the settings managers report inline instead ([forms.md](forms.md#reporting-a-result)) | `home-workbench.tsx`, `requests-output-actions.tsx`, `print-controls.tsx` |
 
 The staff home keeps its converted registry parts in `(home)/parts/`, repainted in `home.css`
-under `.wgi-*`. They are route-owned: nothing outside the staff home imports them.
+under `.wgi-*`. They are route-owned: outside the staff home, only the Schedule's person records
+import them (`patient-record-sheet.tsx`, `patient-booking-card.tsx`), because they are Home's
+full-record sheet and record card opened from the Schedule.
 
 | Component | When | Real uses |
 | --- | --- | --- |
 | `HomePopover` `HomePopoverTrigger` `HomePopoverContent` | The filter bar's editors and each row's record card ([overlays.md](overlays.md#popovers)) | `filter-bar.tsx`, `line-row.tsx` |
-| `HomeSheet` `HomeSheetContent` `HomeSheetTitle` `HomeSheetClose` | The non-modal full-record sheet ([overlays.md](overlays.md#the-full-record-sheet)) | `full-record-sheet.tsx` |
+| `HomeSheet` `HomeSheetContent` `HomeSheetTitle` `HomeSheetClose` | The non-modal full-record sheet ([overlays.md](overlays.md#the-full-record-sheet)) | `record-sheet-frame.tsx` |
 | `LineStatusBadge` | A request's status on a Home row and in the sheet ([surfaces.md](surfaces.md#badges)) | `line-row.tsx`, `full-record-sheet.tsx` |
 | `HomeCollapsible` `HomeCollapsibleTrigger` `HomeCollapsiblePanel` | The full record's request details ([overlays.md](overlays.md#the-full-record-sheet)) | `full-record-sheet-body.tsx` |
 | `HomeRangeCalendar` `HomeDayCalendar` | A custom received range; a callback or appointment day | `filter-bar.tsx`, `record-card.tsx` |
-| `PhoneGlyph` `ChevronGlyph` `CloseGlyph` | Home's stroke glyphs at the design's weights | `line-row.tsx`, `record-card.tsx`, `full-record-sheet.tsx`, `full-record-sheet-body.tsx` |
+| `PhoneGlyph` `ChevronGlyph` `CloseGlyph` | Home's stroke glyphs at the design's weights | `line-row.tsx`, `record-card.tsx`, `record-sheet-frame.tsx`, `full-record-sheet-body.tsx`, `patient-booking-card.tsx` |
 | `TimePicker` in `parts/time-picker.tsx` | The record card's start time, wrapping `ui/time-picker.tsx` ([dates-and-times.md](dates-and-times.md#time)) | `record-card.tsx` |
 
 ## Patterns

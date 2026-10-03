@@ -1,7 +1,10 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
+import { recordHref } from "@/app/admin/(portal)/record-address";
 import { useActiveFilters } from "@/lib/portal/filters/use-filter-param";
 
 import { FilterBar } from "./filter-bar";
@@ -35,9 +38,13 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
   });
 
   const [openRowId, setOpenRowId] = useState<string | null>(null);
-  /* The full-record sheet: which line, and whether the keyboard opened it
-     (a keyboard-initiated open shows the sheet without motion). */
-  const [sheet, setSheet] = useState<{ id: string; instant: boolean } | null>(null);
+  /* The full-record sheet's line is in the address, `?request=<id>`
+     (record-address.ts), so a reload, Back, or a pasted link reopens it.
+     The dashboard keeps whether the keyboard opened it (a keyboard-initiated
+     open shows the sheet without motion); a sheet the address opened on
+     arrival is already there, so it shows at once too. */
+  const sheetId = useSearchParams().get("request");
+  const [sheetInstant, setSheetInstant] = useState(true);
   /* A toggle-close from the card's footer carries no Base UI change
      details for the sheet to read, so the dashboard remembers whether the
      key — not the pointer — asked for it; the exit is then instant. */
@@ -46,7 +53,7 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
      record is open — held through the sheet's closing transition,
      independent of hover, keyboard focus, and of whether the card closed
      before the sheet did. */
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState(sheetId);
   const [settledId, setSettledId] = useState<string | null>(null);
   const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -72,7 +79,16 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
 
   const filtered = useMemo(() => applyFilters(lines, active), [lines, active]);
 
-  const sheetLine = sheet === null ? null : (lines.find((line) => line.id === sheet.id) ?? null);
+  const sheetLine = sheetId === null ? null : (lines.find((line) => line.id === sheetId) ?? null);
+  const missing = sheetId !== null && sheetLine === null;
+
+  /* An address naming a request that is not on Home, from an old link or a
+     request since removed, opens nothing and says so. */
+  useEffect(() => {
+    if (!missing) return;
+    toast("That record couldn't be opened.", { id: "record-missing" });
+    window.history.replaceState(null, "", recordHref("request", null));
+  }, [missing]);
 
   return (
     <>
@@ -89,7 +105,7 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
         lines={filtered}
         resetKey={active.map((entry) => `${entry.key}=${entry.raw}`).join("&")}
         openRowId={openRowId}
-        sheetId={sheet?.id ?? null}
+        sheetId={sheetId}
         selectedId={selectedId}
         settledId={settledId}
         onOpenRow={(id) => {
@@ -99,10 +115,10 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
             /* The sheet follows the most recently opened card: another
                row's card retargets an open sheet to that record without
                re-entering (plans/full-record-sheet-decisions.md, Phase 0). */
-            setSheet((current) =>
-              current === null || current.id === id ? current : { id, instant: current.instant },
-            );
-          } else if (sheet === null) {
+            if (sheetId !== null && sheetId !== id) {
+              window.history.replaceState(null, "", recordHref("request", id));
+            }
+          } else if (sheetId === null) {
             setSelectedId(null);
           }
         }}
@@ -111,11 +127,13 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
              then "Hide full record" — and the card stays open beside the
              sheet: staff work the phone with both in view. The row stays
              selected until the last of the two has closed. */
-          if (sheet?.id === id) {
-            setSheet(null);
+          if (sheetId === id) {
+            window.history.replaceState(null, "", recordHref("request", null));
             setClosedByKey(instant);
           } else {
-            setSheet({ id, instant });
+            if (sheetId === null) window.history.pushState(null, "", recordHref("request", id));
+            else window.history.replaceState(null, "", recordHref("request", id));
+            setSheetInstant(instant);
             setClosedByKey(false);
           }
           setSelectedId(id);
@@ -138,9 +156,9 @@ export function HomeDashboard({ lines, nowMs, closedCapped }: HomeDashboardProps
 
       <FullRecordSheet
         line={sheetLine}
-        instant={sheet?.instant ?? closedByKey}
+        instant={sheetId === null ? closedByKey : sheetInstant}
         onOpenChange={(open) => {
-          if (!open) setSheet(null);
+          if (!open) window.history.replaceState(null, "", recordHref("request", null));
         }}
         onClosed={() => {
           /* The card, if still open, keeps its row. */

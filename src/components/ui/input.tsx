@@ -71,4 +71,8 @@ function Input({
   );
 }
 
+/** The input's motion axis: the authored field physics, the registry's, or none. */
+type InputMotion = NonNullable<VariantProps<typeof inputVariants>["motion"]>;
+
 export { Input };
+export type { InputMotion };
