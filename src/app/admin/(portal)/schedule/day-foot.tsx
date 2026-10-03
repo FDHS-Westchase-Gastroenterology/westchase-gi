@@ -55,7 +55,11 @@ export function DayFoot({ hints, offLine, shortcutsRef, shortcutsHandle }: DayFo
           </PopoverTrigger>
         </p>
       ) : null}
-      {offLine === null ? null : <p className="wgi-dayview-off">{offLine}</p>}
+      {offLine === null ? null : (
+        <p className="wgi-dayview-off" title={offLine}>
+          {offLine}
+        </p>
+      )}
     </div>
   );
 }

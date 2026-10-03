@@ -533,9 +533,11 @@
   line-height: 16px;
 }
 
+/* The keys keep their room; a long "not scheduled" line gives way to them
+   and ends in an ellipsis rather than wrapping over "All shortcuts". */
 .wgi-dayview-hints {
   display: flex;
-  min-width: 0;
+  flex: none;
   align-items: center;
   gap: 16px;
   margin: 0;
@@ -575,8 +577,11 @@
 
 .wgi-dayview-off {
   min-width: 0;
+  overflow: hidden;
   margin: 0 0 0 auto;
   text-align: end;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---------- Keycaps and the shortcuts list ---------- */

@@ -93,7 +93,7 @@ test("Home Book recovers a start taken before it lands and books the nearest one
       await dayButton.hover();
       await expect(popover).toBeVisible({ timeout: 2_000 });
     }).toPass({ timeout: 20_000 });
-    const starts = popover.getByRole("list", {
+    const starts = popover.getByRole("group", {
       name: `TEST ${prefix} First, TEST ${prefix} First`,
     });
     const tile = starts.getByRole("button").first();

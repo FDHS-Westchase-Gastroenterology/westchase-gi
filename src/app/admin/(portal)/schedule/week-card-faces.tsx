@@ -2,12 +2,15 @@
 
 import { startTransition, useEffect, useId, useState } from "react";
 
+import { dayHorizon } from "@/app/admin/(portal)/(home)/record-card-model";
 import { Button } from "@/components/ui/button";
+import { CalendarDay } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 import { readRescheduleTimes } from "./week-actions";
-import { practiceDate, practiceTime } from "./week-calendar";
+import { addDays, practiceDate, practiceTime } from "./week-calendar";
 import { nextCallAgainDay } from "./week-card-model";
 import type { WeekAppointmentDetail, WeekRescheduleTimes } from "./week-card-model";
 import { CardError } from "./week-card-parts";
@@ -61,18 +64,19 @@ export function RescheduleFace({
 
   return (
     <div className="wgi-week-card-face">
-      <label htmlFor={dateId} className="wgi-week-card-label">
+      <p id={dateId} className="wgi-week-card-label">
         Move to
-      </label>
-      <Input
-        id={dateId}
-        type="date"
-        value={date}
-        min={today}
-        onChange={(event) => {
-          if (event.currentTarget.value !== "") setDate(event.currentTarget.value);
-        }}
-      />
+      </p>
+      <div className="wgi-week-card-cal" role="group" aria-labelledby={dateId}>
+        <CalendarDay
+          className="wgi-editor-cal"
+          day={date}
+          min={today}
+          max={addDays(today, dayHorizon("booked"))}
+          disabled={pending}
+          onChange={setDate}
+        />
+      </div>
       {shown === null ? (
         <p className="wgi-week-card-quiet" aria-live="polite">
           Finding open times…
@@ -82,22 +86,23 @@ export function RescheduleFace({
       ) : slots.length === 0 ? (
         <p className="wgi-week-card-quiet">No open times that day.</p>
       ) : (
-        <ul className="wgi-week-card-times" aria-label="Open times">
+        <ToggleGroup
+          variant="time"
+          className="wgi-week-card-times"
+          aria-label="Open times"
+          value={[]}
+          disabled={pending}
+          onValueChange={(picked) => {
+            const time = picked.at(0);
+            if (time !== undefined) onPick({ date, time });
+          }}
+        >
           {slots.map((slot) => (
-            <li key={slot.startsAt}>
-              <button
-                type="button"
-                className="wgi-week-card-time"
-                disabled={pending}
-                onClick={() => {
-                  onPick({ date, time: slot.time });
-                }}
-              >
-                {practiceTime(slot.startsAt)}
-              </button>
-            </li>
+            <ToggleGroupItem key={slot.startsAt} value={slot.time} className="wgi-week-card-time">
+              {practiceTime(slot.startsAt)}
+            </ToggleGroupItem>
           ))}
-        </ul>
+        </ToggleGroup>
       )}
       {error === null ? null : <CardError>{error}</CardError>}
       <div className="wgi-week-card-actions">

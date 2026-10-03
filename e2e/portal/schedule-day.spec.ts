@@ -198,12 +198,35 @@ test("Schedule day lays out the providers, moves by arrows and shortcuts, and re
     if ((await card.count()) > 0) await page.keyboard.press("Escape");
     await expect(card).toHaveCount(0);
 
-    /* The shortcuts list, asked for from the open time the card returned focus to. */
+    /* The shortcuts list, asked for from the open time the card returned
+       focus to; Escape gives focus back to that time. */
+    const asker = await page.evaluate(() => document.activeElement?.id ?? "");
+    expect(asker).not.toBe("");
     await page.keyboard.press("?");
     const list = page.getByRole("dialog", { name: "Keyboard shortcuts" });
     await expect(list).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(list).toHaveCount(0);
+    await expect(page.locator(`[id="${asker}"]`)).toBeFocused();
+
+    /* "All shortcuts" is the list's trigger: it says whether the list is
+       open, and takes focus back when the list closes. */
+    const allShortcuts = page.getByRole("button", { name: "All shortcuts" });
+    await expect(allShortcuts).toHaveAttribute("aria-expanded", "false");
+    await allShortcuts.focus();
+    await page.keyboard.press("Enter");
+    await expect(list).toBeVisible();
+    await expect(allShortcuts).toHaveAttribute("aria-expanded", "true");
+    await page.keyboard.press("Escape");
+    await expect(list).toHaveCount(0);
+    await expect(allShortcuts).toBeFocused();
+    await expect(allShortcuts).toHaveAttribute("aria-expanded", "false");
+    await allShortcuts.click();
+    await expect(list).toBeVisible();
+    await list.getByRole("button", { name: "Close" }).click();
+    await expect(list).toHaveCount(0);
+    await expect(allShortcuts).toBeFocused();
+    await page.locator(`[id="${asker}"]`).focus();
 
     /* J and K step a day; W, D and M switch the view; T goes to today. */
     await page.keyboard.press("j");

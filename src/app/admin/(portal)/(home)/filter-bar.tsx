@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 
+import { CalendarRange } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { POPOVER_SHIFT_ONLY } from "@/components/ui/popover-behavior";
 import {
@@ -30,7 +31,6 @@ import type {
 import { AnyRow, ChevronRightGlyph, MultiSelectRows, TickGlyph } from "./filter-options";
 import { suggestionId } from "./home-line";
 import type { FilterSuggestion } from "./home-line";
-import { HomeRangeCalendar } from "./parts/calendar";
 import { SuggestionPill } from "./suggestion-pill";
 
 /* The filter bar (brief §2.2): Add Filter, then active pills in URL order,
@@ -436,7 +436,8 @@ function DateEditor({
           </span>
         </div>
         <div className="wgi-editor-range">
-          <HomeRangeCalendar
+          <CalendarRange
+            className="wgi-editor-cal"
             from={fromDraft}
             to={toDraft}
             fallbackMonth={msToNyDay(nowMs)}

@@ -70,6 +70,16 @@ test("Page Up and Page Down move the month and keep the day", async ({ page }) =
   await expect
     .poll(async () => focusedDay(page))
     .not.toBe(dateIn(month, Number(landed.slice(8, 10))));
+
+  /* The shortcuts list has no button in the month: ? opens it, and
+     Escape gives focus back to the day it was asked from. */
+  const asked = await focusedDay(page);
+  await page.keyboard.press("?");
+  const list = page.getByRole("dialog", { name: "Keyboard shortcuts" });
+  await expect(list).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(list).toHaveCount(0);
+  await expect.poll(async () => focusedDay(page)).toBe(asked);
 });
 
 test("focus on a future day previews it, and a press opens its day", async ({ page }) => {

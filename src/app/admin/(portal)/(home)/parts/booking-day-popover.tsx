@@ -16,6 +16,7 @@ import { clockLabel } from "@/app/admin/(portal)/(home)/record-card-time";
 import type { CardMonthStatus } from "@/app/admin/(portal)/(home)/use-card-month";
 import { PopoverArrow, PopoverContent, PopoverTitle } from "@/components/ui/popover";
 import { createPopoverHandle, usePopoverHoverIntent } from "@/components/ui/popover-behavior";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type {
   MonthAvailability,
   MonthAvailabilityDay,
@@ -103,8 +104,9 @@ export interface DayPopupActions {
   readonly onSqueeze: (day: string) => void;
 }
 
-/* One provider's open starts at one office, three to a row; a start lost
-   to someone else stays struck in place with the nearest one offered. */
+/* One provider's open starts at one office, three to a row and one tab
+   stop, the arrow keys moving between them; a start lost to someone else
+   stays struck in place, passed over, with the nearest one offered. */
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- the popover handle and the actions carry Base UI and callback members that cannot be made readonly
 function DayBlock({
   date,
@@ -128,32 +130,36 @@ function DayBlock({
         <b>{block.providerName}</b>
         <span>{block.locationName}</span>
       </p>
-      <ul className="wgi-day-times" aria-label={`${block.providerName}, ${block.locationName}`}>
+      <ToggleGroup
+        variant="time"
+        className="wgi-day-times"
+        aria-label={`${block.providerName}, ${block.locationName}`}
+        value={[]}
+        onValueChange={(picked) => {
+          const time = picked.at(0);
+          if (time === undefined) return;
+          actions.onPickOpen({
+            day: date,
+            providerId: block.providerId,
+            locationId: block.locationId,
+            time,
+          });
+          popover.close();
+        }}
+      >
         {block.times.map((start) => (
-          <li key={start.time}>
-            <button
-              type="button"
-              className="wgi-day-time"
-              data-taken={start.taken || undefined}
-              disabled={start.taken}
-              aria-label={
-                start.taken ? `${clockLabel(start.time)}, booked a moment ago` : undefined
-              }
-              onClick={() => {
-                actions.onPickOpen({
-                  day: date,
-                  providerId: block.providerId,
-                  locationId: block.locationId,
-                  time: start.time,
-                });
-                popover.close();
-              }}
-            >
-              {clockLabel(start.time)}
-            </button>
-          </li>
+          <ToggleGroupItem
+            key={start.time}
+            value={start.time}
+            className="wgi-day-time"
+            data-taken={start.taken || undefined}
+            disabled={start.taken}
+            aria-label={start.taken ? `${clockLabel(start.time)}, booked a moment ago` : undefined}
+          >
+            {clockLabel(start.time)}
+          </ToggleGroupItem>
         ))}
-      </ul>
+      </ToggleGroup>
       {lost ? (
         <div className="wgi-day-lost">
           <p className="wgi-day-taken">Booked a moment ago.</p>

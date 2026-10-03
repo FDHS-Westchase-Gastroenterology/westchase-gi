@@ -932,6 +932,14 @@
   font-weight: 600;
 }
 
+/* The reschedule day: the record card's calendar (home.css
+   .wgi-editor-cal) at the card's width, its grid flush with the face. */
+.wgi-week-card-cal .wgi-editor-cal {
+  --cell-size: 2.375rem;
+
+  padding: 0;
+}
+
 .wgi-week-card-quiet {
   margin: 0;
   color: var(--wgi-muted-ink);
