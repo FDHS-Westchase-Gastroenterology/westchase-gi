@@ -14,13 +14,8 @@ import {
 import type { OpenBlock, TakenTime } from "@/app/admin/(portal)/(home)/card-booking-days";
 import { clockLabel } from "@/app/admin/(portal)/(home)/record-card-time";
 import type { CardMonthStatus } from "@/app/admin/(portal)/(home)/use-card-month";
-import {
-  createPopoverHandle,
-  PopoverArrow,
-  PopoverContent,
-  PopoverTitle,
-  usePopoverHoverIntent,
-} from "@/components/ui/popover";
+import { PopoverArrow, PopoverContent, PopoverTitle } from "@/components/ui/popover";
+import { createPopoverHandle, usePopoverHoverIntent } from "@/components/ui/popover-behavior";
 import type {
   MonthAvailability,
   MonthAvailabilityDay,

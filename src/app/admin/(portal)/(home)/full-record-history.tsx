@@ -20,14 +20,13 @@ import {
   Voicemail,
 } from "@/components/icons";
 import {
-  createPopoverHandle,
   Popover,
   PopoverArrow,
   PopoverContent,
   PopoverTitle,
   PopoverTrigger,
-  usePopoverHoverIntent,
 } from "@/components/ui/popover";
+import { createPopoverHandle, usePopoverHoverIntent } from "@/components/ui/popover-behavior";
 import {
   ScrollArea,
   ScrollAreaThumb,

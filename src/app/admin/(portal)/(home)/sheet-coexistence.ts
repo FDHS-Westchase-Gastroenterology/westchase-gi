@@ -1,4 +1,4 @@
-import type { PopoverChangeDetails } from "@/components/ui/popover";
+import type { PopoverChangeDetails } from "@/components/ui/popover-behavior";
 
 import type { HomeSheetChangeDetails } from "./parts/sheet";
 

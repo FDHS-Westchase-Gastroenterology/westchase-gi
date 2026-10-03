@@ -6,12 +6,8 @@ import { useId, useRef, useState } from "react";
 import type { CSSProperties, FocusEvent, KeyboardEvent, MouseEvent } from "react";
 
 import { ChevronLeft, ChevronRight } from "@/components/icons";
-import {
-  createPopoverHandle,
-  Popover,
-  PopoverTrigger,
-  usePopoverHoverIntent,
-} from "@/components/ui/popover";
+import { Popover, PopoverTrigger } from "@/components/ui/popover";
+import { createPopoverHandle, usePopoverHoverIntent } from "@/components/ui/popover-behavior";
 
 import { CellBody, DayPreviewPopup, Legend } from "./month-day-preview";
 import type { DayPreview, ScheduleCell, ScheduleMonth } from "./schedule-model";

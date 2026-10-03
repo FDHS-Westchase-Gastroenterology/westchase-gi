@@ -3,12 +3,8 @@
 import { useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 
-import {
-  Popover,
-  POPOVER_SHIFT_ONLY,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { POPOVER_SHIFT_ONLY } from "@/components/ui/popover-behavior";
 import { TableCell, TableRow } from "@/components/ui/table";
 
 import type { HomeLine } from "./home-line";

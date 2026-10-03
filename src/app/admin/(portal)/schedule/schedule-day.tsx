@@ -8,7 +8,8 @@ import { toast } from "sonner";
 import { FullRecordSheet } from "@/app/admin/(portal)/(home)/full-record-sheet";
 import type { HomeLine } from "@/app/admin/(portal)/(home)/home-line";
 import { ChevronLeft, ChevronRight } from "@/components/icons";
-import { createPopoverHandle, Popover } from "@/components/ui/popover";
+import { Popover } from "@/components/ui/popover";
+import { createPopoverHandle } from "@/components/ui/popover-behavior";
 import { showUndoToast } from "@/components/ui/undo-toast";
 
 import { DayEmpty } from "./day-empty";

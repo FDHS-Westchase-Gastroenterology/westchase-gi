@@ -5,7 +5,7 @@ import { useId, useRef, useState } from "react";
 
 import { Printer } from "@/components/icons";
 import { buttonVariants } from "@/components/ui/button-variants";
-import { PopoverContainer } from "@/components/ui/popover";
+import { PopoverContainer } from "@/components/ui/popover-behavior";
 
 import type { HomeLine } from "./home-line";
 import { PrintSheetBody } from "./print-sheet-body";

@@ -3,12 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 
-import {
-  Popover,
-  POPOVER_SHIFT_ONLY,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { POPOVER_SHIFT_ONLY } from "@/components/ui/popover-behavior";
 import {
   datePresets,
   dayLabel,

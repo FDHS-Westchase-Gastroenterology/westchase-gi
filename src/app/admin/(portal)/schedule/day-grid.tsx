@@ -5,7 +5,7 @@ import type { CSSProperties, KeyboardEvent, ReactNode } from "react";
 
 import { Check } from "@/components/icons";
 import { PopoverTrigger } from "@/components/ui/popover";
-import type { PopoverHandle } from "@/components/ui/popover";
+import type { PopoverHandle } from "@/components/ui/popover-behavior";
 
 import { moveFor, nextCell } from "./day-keyboard";
 import { useMinuteClock } from "./minute-clock";

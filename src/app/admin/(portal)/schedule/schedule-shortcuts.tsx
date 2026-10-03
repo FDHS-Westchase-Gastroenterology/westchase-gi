@@ -6,7 +6,7 @@ import type { RefObject } from "react";
 
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Popover, PopoverClose, PopoverContent, PopoverTitle } from "@/components/ui/popover";
-import type { PopoverChangeDetails, PopoverHandle } from "@/components/ui/popover";
+import type { PopoverChangeDetails, PopoverHandle } from "@/components/ui/popover-behavior";
 
 /* The Schedule's single-key shortcuts and the list that names them (issue
    #351; Figma S5 shortcuts frame). Day, Week and Month all answer them:

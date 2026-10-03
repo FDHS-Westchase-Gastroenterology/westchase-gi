@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ComponentProps, PointerEvent as ReactPointerEvent, RefObject } from "react";
 
-import type { PopoverAnchor } from "@/components/ui/popover";
+import type { PopoverAnchor } from "@/components/ui/popover-behavior";
 
 import { companionGap, laneFor, panelBase, SIDEBAR_LAYOUT } from "./panel-lane";
 import type { Offset } from "./panel-lane";

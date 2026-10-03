@@ -4,7 +4,7 @@ import type { RefObject } from "react";
 
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { PopoverTrigger } from "@/components/ui/popover";
-import type { PopoverHandle } from "@/components/ui/popover";
+import type { PopoverHandle } from "@/components/ui/popover-behavior";
 
 /* The row under the day's grid (issue #351; Figma S5 and its keyboard
    frame): who is not working, on the right, and, once someone has pressed

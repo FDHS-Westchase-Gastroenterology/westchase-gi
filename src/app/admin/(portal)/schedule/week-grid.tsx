@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { CSSProperties, KeyboardEvent } from "react";
 
 import { PopoverTrigger } from "@/components/ui/popover";
-import type { PopoverHandle } from "@/components/ui/popover";
+import type { PopoverHandle } from "@/components/ui/popover-behavior";
 
 import { useMinuteClock } from "./minute-clock";
 import type {
