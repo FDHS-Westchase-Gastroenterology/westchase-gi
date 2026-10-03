@@ -167,8 +167,10 @@ test.describe("website custody", () => {
 
     const details = page.getByTestId("maintainer-details");
     const summary = details.locator("summary");
+    // Until React swaps the streamed page in, the disclosure sits in a hidden chunk and cannot take focus.
+    await expect(details).toBeVisible();
     await expect(details).toHaveJSProperty("open", false);
-    await expect(summary).toContainText("Manage");
+    await expect(summary).toContainText("Manage", { useInnerText: true });
     const closedChrome = await screenDisclosureChrome(summary);
     expect(closedChrome.screen).toBe(true);
     expect(closedChrome.print).toBe(false);
@@ -178,8 +180,8 @@ test.describe("website custody", () => {
     await expect(details).toHaveJSProperty("open", true);
     await expect(summary).toBeFocused();
     await expect(summary).toContainText("Maintainer access");
-    await expect(summary).toContainText("Hide");
-    await expect(summary).not.toContainText("Manage");
+    await expect(summary).toContainText("Hide", { useInnerText: true });
+    await expect(summary).not.toContainText("Manage", { useInnerText: true });
     const openChrome = await screenDisclosureChrome(summary);
     expect(openChrome.screen).toBe(true);
     expect(openChrome.print).toBe(false);
@@ -223,7 +225,7 @@ test.describe("website custody", () => {
     await page.keyboard.press("Space");
     await expect(details).toHaveJSProperty("open", false);
     await expect(summary).toBeFocused();
-    await expect(summary).toContainText("Manage");
+    await expect(summary).toContainText("Manage", { useInnerText: true });
     const restoredChrome = await screenDisclosureChrome(summary);
     expect(restoredChrome.screen).toBe(true);
     expect(restoredChrome.print).toBe(false);
