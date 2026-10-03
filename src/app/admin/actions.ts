@@ -5,6 +5,7 @@ import { timingSafeEqual } from "node:crypto";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 
+import { recordAudit } from "@/lib/portal/audit";
 import {
   clearPasswordAuthFlow,
   establishPasswordAuthFlow,
@@ -14,7 +15,8 @@ import {
   requireRole,
   resolveStaffAuthState,
 } from "@/lib/portal/auth";
-import type { PortalStaffAuthState } from "@/lib/portal/auth";
+import type { PortalSessionUser, PortalStaffAuthState } from "@/lib/portal/auth";
+import { AUDIT_ACTIONS } from "@/lib/portal/contracts";
 import type { PasswordAuthFlow } from "@/lib/portal/contracts";
 import { portalUrl, serverClient, serviceClient } from "@/lib/portal/server";
 
@@ -227,6 +229,21 @@ async function completePasswordChange(
  * Public by necessity: this is the sole action that establishes a portal
  * session. Every action available after sign-in must call requireRole().
  */
+/** The Activity log's sign-in row. Written only after a sign-in succeeds; a failed write is
+    logged without the address and never fails the sign-in. */
+async function recordSignIn(user: Readonly<PortalSessionUser>): Promise<void> {
+  try {
+    await recordAudit(serviceClient(), {
+      actorEmail: user.email,
+      action: AUDIT_ACTIONS.AUTH_SIGN_IN,
+      entity: "staff",
+      entityId: user.id,
+    });
+  } catch {
+    console.error("[portal-auth] sign-in audit write failed");
+  }
+}
+
 export async function loginAction(
   _state: Readonly<LoginActionState>,
   formData: FormData,
@@ -254,6 +271,7 @@ export async function loginAction(
       await supabase.auth.signOut({ scope: "local" });
       return loginError();
     }
+    await recordSignIn(sessionUser);
   } catch {
     return loginError();
   }

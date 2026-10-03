@@ -148,6 +148,7 @@ export function zodFieldErrors(error: z.ZodError) {
 
 /** Every staff-visible mutation writes one of these audit_log actions. */
 export const AUDIT_ACTIONS = {
+  AUTH_SIGN_IN: "auth.sign_in",
   RECIPIENTS_ADD: "recipients.add",
   RECIPIENTS_REMOVE: "recipients.remove",
   RECIPIENTS_TOGGLE: "recipients.toggle",

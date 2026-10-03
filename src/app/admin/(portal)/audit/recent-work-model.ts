@@ -145,12 +145,13 @@ function staffStateWord(raw: string): string | null {
   return state === null ? null : stateLabel(state);
 }
 
-interface ActionDescription {
+export interface ActionDescription {
   sentence: string;
   technical: boolean;
 }
 
-function describeAction(
+/** One audit row as a plain sentence; the Activity log (activity-model.ts) reads it too. */
+export function describeAction(
   entry: Readonly<AuditEntry>,
   detail: JsonObject,
   ctx: Readonly<RecentWorkContext>,
