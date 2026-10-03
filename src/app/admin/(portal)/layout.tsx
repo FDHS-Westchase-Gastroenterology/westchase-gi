@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { logoutAction } from "@/app/admin/actions";
 import { ExternalLink, LogOut, Users } from "@/components/icons";
+import { SidebarMenuButton } from "@/components/ui/sidebar";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getSessionUser } from "@/lib/portal/auth";
@@ -16,7 +17,7 @@ import { serviceClient } from "@/lib/portal/server";
 
 import { PortalAccountLinks, PortalNav } from "./portal-nav";
 import { PortalReleaseProvider, PortalReleaseUtility } from "./portal-release-briefing";
-import { PortalSidebar, RailTip, SidebarToggle } from "./portal-sidebar";
+import { PortalSidebar, SidebarToggle } from "./portal-sidebar";
 
 import "./wgi-paints.css";
 
@@ -104,19 +105,15 @@ export default async function PortalLayout({
               </p>
               <div className="portal-sidebar-account-actions">
                 <PortalAccountLinks />
-                <RailTip label="View website">
-                  <Link href="/">
-                    <ExternalLink className="h-4 w-4" />
-                    <span className="portal-rail-label">View website</span>
-                  </Link>
-                </RailTip>
+                <SidebarMenuButton tooltip="View website" render={<Link href="/" />}>
+                  <ExternalLink className="h-4 w-4" />
+                  <span className="portal-rail-label">View website</span>
+                </SidebarMenuButton>
                 <form action={logoutAction}>
-                  <RailTip label="Sign out">
-                    <button type="submit">
-                      <LogOut className="h-4 w-4" />
-                      <span className="portal-rail-label">Sign out</span>
-                    </button>
-                  </RailTip>
+                  <SidebarMenuButton tooltip="Sign out" type="submit">
+                    <LogOut className="h-4 w-4" />
+                    <span className="portal-rail-label">Sign out</span>
+                  </SidebarMenuButton>
                 </form>
               </div>
             </div>

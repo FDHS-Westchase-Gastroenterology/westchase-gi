@@ -319,6 +319,60 @@ test("VAL-ADMIN-016: the waiting count rides on the Requests nav item", async ({
   }
 });
 
+test("the compact rail opens over the canvas with focus inside and returns it to the toggle", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await signIn(page);
+  await page.goto("/admin/schedule");
+
+  const sidebar = page.locator("#portal-sidebar");
+  const show = page.getByRole("button", { name: "Show sidebar" });
+  const current = sidebar.locator(
+    'nav[data-layout="sidebar"] a[aria-current="page"][data-sidebar="menu-button"]',
+  );
+  await expect(sidebar).toHaveAttribute("data-collapsible", "icon");
+  expect((await sidebar.boundingBox())?.width).toBe(72);
+
+  // Folded, each destination is named by a tooltip beside it.
+  await sidebar.getByRole("link", { name: "Requests" }).first().hover();
+  await expect(page.locator('[data-slot="tooltip-content"]')).toHaveText("Requests");
+
+  // Return opens it at once and moves focus to the current destination;
+  // Escape puts it away and gives focus back to the toggle.
+  await show.focus();
+  await page.keyboard.press("Enter");
+  await expect(sidebar).toHaveAttribute("data-expanded");
+  await expect(sidebar).toHaveAttribute("data-instant");
+  await expect(page.getByRole("button", { name: "Hide sidebar" })).toHaveAttribute(
+    "aria-expanded",
+    "true",
+  );
+  await expect(current).toBeFocused();
+  await expect(current).toHaveAccessibleName("Schedule");
+  await page.keyboard.press("Escape");
+  await expect(sidebar).not.toHaveAttribute("data-expanded");
+  await expect(show).toBeFocused();
+  await expect(show).toHaveAttribute("aria-expanded", "false");
+
+  // A press outside on nothing focusable puts it away and returns focus.
+  await show.click();
+  await expect(sidebar).toHaveAttribute("data-expanded");
+  await expect(sidebar).not.toHaveAttribute("data-instant");
+  await expect(current).toBeFocused();
+  await page.mouse.click(1272, 400);
+  await expect(sidebar).not.toHaveAttribute("data-expanded");
+  await expect(show).toBeFocused();
+
+  // Moving to another page puts it away and returns focus.
+  await page.keyboard.press("Enter");
+  await expect(current).toBeFocused();
+  await sidebar.getByRole("link", { name: "Requests" }).first().click();
+  await expect(page).toHaveURL(/\/admin\/requests\/?$/);
+  await expect(sidebar).not.toHaveAttribute("data-expanded");
+  await expect(show).toBeFocused();
+});
+
 test("staff can view the locale-negotiated website and return with their session", async ({
   page,
 }) => {
