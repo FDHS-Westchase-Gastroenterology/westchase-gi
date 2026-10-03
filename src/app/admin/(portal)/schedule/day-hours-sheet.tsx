@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { startTransition, useRef, useState } from "react";
-import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
+import type {
+  CSSProperties,
+  KeyboardEvent as ReactKeyboardEvent,
+  ReactNode,
+  RefObject,
+} from "react";
 import { toast } from "sonner";
 
 import type { MinuteSpan } from "@/app/admin/(portal)/settings/providers/providers-model";
@@ -98,17 +103,25 @@ interface LiveDrag {
   readonly windows: readonly HoursWindow[];
 }
 
-const SCOPE_OPTIONS = (weekday: string): readonly SegmentedControlOption<DayHoursScope>[] => [
-  { value: "date", label: "This day only", icon: <Calendar aria-hidden="true" /> },
-  { value: "weekday_from", label: `Every ${weekday}`, icon: <Repeat aria-hidden="true" /> },
-];
+function scopeOptions(weekday: string): readonly SegmentedControlOption<DayHoursScope>[] {
+  return [
+    { value: "date", label: "This day only", icon: <Calendar aria-hidden="true" /> },
+    { value: "weekday_from", label: `Every ${weekday}`, icon: <Repeat aria-hidden="true" /> },
+  ];
+}
 
 const READ_FAILED = "The hours couldn't be read. Try again.";
 const SEND_FAILED = "The hours couldn't be saved. Check the schedule and try again.";
+const DRAG_HINT = "Drag the ends of a bar to change a provider’s hours.";
 // A read started on hover is used by the press that follows it, if it is this fresh.
 const PREFETCH_MS = 30_000;
 // How long a row waits after its last change before it asks the database.
 const CHECK_PAUSE = 250;
+const LONG_DATE = new Intl.DateTimeFormat("en-US", {
+  month: "long",
+  day: "numeric",
+  timeZone: "UTC",
+});
 
 /* ---- The Hours pill ---- */
 
@@ -186,7 +199,120 @@ export function HoursButton({
   );
 }
 
-/* ---- The sheet ---- */
+/* ---- Talking to the server ---- */
+
+type Saved = SavedChange & { readonly changeId: string; readonly version: number };
+
+interface SaveResult {
+  readonly saved: readonly Saved[];
+  readonly failure: string | null;
+  readonly conflict: {
+    readonly providerId: string;
+    readonly conflicts: readonly DayHoursConflict[];
+  } | null;
+}
+
+/** What the server says a row's change would do, without writing it. */
+async function askDryRun(
+  hours: Readonly<DayHours>,
+  provider: Readonly<DayHoursProvider>,
+  scope: DayHoursScope,
+  windows: readonly HoursWindow[],
+): Promise<RowCheck> {
+  try {
+    const outcome = await setDayHours({
+      idempotencyKey: crypto.randomUUID(),
+      command: {
+        providerId: provider.id,
+        date: hours.date,
+        scope,
+        windows,
+        expectedVersion: provider.version,
+        dryRun: true,
+      },
+    });
+    if (outcome.ok) return { state: "ok", openCount: outcome.openCount };
+    if ("conflicts" in outcome) return { state: "conflict", conflicts: outcome.conflicts };
+    return { state: "refused", message: hoursFailureMessage(outcome.code) };
+  } catch {
+    return { state: "refused", message: SEND_FAILED };
+  }
+}
+
+/** Each provider's change is its own command; they run in turn so a refusal stops the rest. */
+async function saveInTurn(
+  hours: Readonly<DayHours>,
+  scope: DayHoursScope,
+  sending: readonly {
+    readonly provider: DayHoursProvider;
+    readonly windows: readonly HoursWindow[];
+  }[],
+): Promise<SaveResult> {
+  const saved: Saved[] = [];
+  try {
+    for (const { provider, windows } of sending) {
+      const outcome = await setDayHours({
+        idempotencyKey: crypto.randomUUID(),
+        command: {
+          providerId: provider.id,
+          date: hours.date,
+          scope,
+          windows,
+          expectedVersion: provider.version,
+          dryRun: false,
+        },
+      });
+      if (!outcome.ok)
+        return {
+          saved,
+          failure: hoursFailureMessage(outcome.code),
+          conflict:
+            "conflicts" in outcome
+              ? { providerId: provider.id, conflicts: outcome.conflicts }
+              : null,
+        };
+      if (outcome.changeId !== undefined)
+        saved.push({
+          provider,
+          windows,
+          openCount: outcome.openCount,
+          changeId: outcome.changeId,
+          version: outcome.version,
+        });
+    }
+  } catch {
+    return { saved, failure: SEND_FAILED, conflict: null };
+  }
+  return { saved, failure: null, conflict: null };
+}
+
+/** The toast after a save; Undo sends each change's undo in reverse, version-checked. */
+function raiseUndo(
+  hours: Readonly<DayHours>,
+  saved: readonly Saved[],
+  scope: DayHoursScope,
+  refresh: () => void,
+) {
+  const keys = saved.map(() => crypto.randomUUID());
+  showUndoToast({
+    headline: savedHeadline(scope, hours),
+    detail: savedDetail(saved, scope, hours),
+    undo: async (): Promise<UndoResult> => {
+      for (const [at, change] of saved.toReversed().entries()) {
+        const outcome = await undoDayHours({
+          idempotencyKey: keys[at] ?? crypto.randomUUID(),
+          changeId: change.changeId,
+          expectedVersion: change.version,
+        });
+        if (!outcome.ok) return { ok: false, message: undoFailureMessage(outcome.code) };
+      }
+      return { ok: true, message: "The hours are back as they were" };
+    },
+    onSettled: refresh,
+  });
+}
+
+/* ---- The sheet's state ---- */
 
 /** Tab and Shift+Tab stay inside the sheet. */
 function keepFocusInSheet(event: ReactKeyboardEvent<HTMLDialogElement>) {
@@ -229,15 +355,48 @@ function emptyScopes<T>(value: T): ByScope<T> {
   return { date: value, weekday_from: value };
 }
 
-function HoursSheet({
-  hours,
-  instant,
-  onClosed,
-}: Readonly<{
-  hours: DayHours;
-  instant: boolean;
-  onClosed: (rescheduleId: string | null) => void;
-}>) {
+/** `all` with one provider's value set in one scope. */
+function withRow<T>(
+  all: ByScope<Readonly<Record<string, T>>>,
+  scope: DayHoursScope,
+  providerId: string,
+  value: T,
+): ByScope<Readonly<Record<string, T>>> {
+  return { ...all, [scope]: { ...all[scope], [providerId]: value } };
+}
+
+function withoutRow<T>(
+  all: ByScope<Readonly<Record<string, T>>>,
+  scope: DayHoursScope,
+  providerId: string,
+): ByScope<Readonly<Record<string, T>>> {
+  const { [providerId]: _gone, ...rest } = all[scope];
+  return { ...all, [scope]: rest };
+}
+
+interface HoursEditor {
+  readonly dialog: RefObject<HTMLDialogElement | null>;
+  readonly scope: DayHoursScope;
+  readonly lock: number | null;
+  readonly live: LiveDrag | null;
+  readonly saving: boolean;
+  readonly error: string | null;
+  readonly ready: boolean;
+  readonly changed: readonly DayHoursProvider[];
+  readonly draftOf: (provider: Readonly<DayHoursProvider>) => readonly HoursWindow[];
+  readonly settledOf: (provider: Readonly<DayHoursProvider>) => readonly HoursWindow[];
+  readonly checkOf: (providerId: string) => RowCheck | undefined;
+  readonly chooseScope: (next: DayHoursScope) => void;
+  readonly drag: (providerId: string, index: number, windows: readonly HoursWindow[]) => void;
+  readonly commit: (provider: Readonly<DayHoursProvider>, next: readonly HoursWindow[]) => void;
+  readonly save: () => void;
+  readonly close: (rescheduleId: string | null, keyed: boolean) => void;
+}
+
+function useHoursEditor(
+  hours: Readonly<DayHours>,
+  onClosed: (rescheduleId: string | null) => void,
+): HoursEditor {
   const router = useRouter();
   const dialog = useRef<HTMLDialogElement>(null);
   const sent = useRef(new Map<string, number>());
@@ -249,21 +408,10 @@ function HoursSheet({
   const [live, setLive] = useState<LiveDrag | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const titleId = `${hours.date}-hours-title`;
   const lock = lockMinute(hours);
-  const now = nowMinute(hours);
-  const span = sheetSpan(hours.locations);
-  const onDay = scope === "date";
-  const weekday = shortDate(hours.date).split(",")[0] ?? "";
-  const longWeekday = longDay(hours.weekday);
 
   const draftOf = (provider: Readonly<DayHoursProvider>) =>
     drafts[scope][provider.id] ?? baselineOf(provider, scope);
-  const settledOf = (provider: Readonly<DayHoursProvider>) =>
-    settled[scope][provider.id] ?? baselineOf(provider, scope);
-  const shownOf = (provider: Readonly<DayHoursProvider>) =>
-    live?.providerId === provider.id ? live.windows : draftOf(provider);
   const changed = hours.providers.filter(
     (provider) => !sameWindows(draftOf(provider), baselineOf(provider, scope)),
   );
@@ -271,11 +419,6 @@ function HoursSheet({
     changed.length > 0 &&
     changed.every((provider) => checks[scope][provider.id]?.state === "ok") &&
     !saving;
-  const added = changed.filter(
-    (provider) => baselineOf(provider, scope).length === 0 && worksAhead(draftOf(provider), lock),
-  );
-  const addedOne = added.at(0);
-  const addedCheck = addedOne === undefined ? undefined : checks[scope][addedOne.id];
 
   /** Close with the sheet's exit, then unmount; a reschedule opens its card after. */
   function close(rescheduleId: string | null, keyed: boolean) {
@@ -304,40 +447,18 @@ function HoursSheet({
     sent.current.set(line, ask);
     window.clearTimeout(waiting.current.get(line));
     if (sameWindows(windows, baselineOf(provider, atScope))) {
-      setChecks((all) => {
-        const { [provider.id]: _gone, ...rest } = all[atScope];
-        return { ...all, [atScope]: rest };
-      });
+      setChecks((all) => withoutRow(all, atScope, provider.id));
       return;
     }
     const answer = (next: RowCheck) => {
       if (ask !== sent.current.get(line)) return;
-      setChecks((all) => ({ ...all, [atScope]: { ...all[atScope], [provider.id]: next } }));
-      if (next.state === "ok")
-        setSettled((all) => ({ ...all, [atScope]: { ...all[atScope], [provider.id]: windows } }));
+      setChecks((all) => withRow(all, atScope, provider.id, next));
+      if (next.state === "ok") setSettled((all) => withRow(all, atScope, provider.id, windows));
     };
     answer({ state: "checking" });
     const send = () => {
       startTransition(async () => {
-        try {
-          const outcome = await setDayHours({
-            idempotencyKey: crypto.randomUUID(),
-            command: {
-              providerId: provider.id,
-              date: hours.date,
-              scope: atScope,
-              windows,
-              expectedVersion: provider.version,
-              dryRun: true,
-            },
-          });
-          if (outcome.ok) answer({ state: "ok", openCount: outcome.openCount });
-          else if ("conflicts" in outcome)
-            answer({ state: "conflict", conflicts: outcome.conflicts });
-          else answer({ state: "refused", message: hoursFailureMessage(outcome.code) });
-        } catch {
-          answer({ state: "refused", message: SEND_FAILED });
-        }
+        answer(await askDryRun(hours, provider, atScope, windows));
       });
     };
     waiting.current.set(line, window.setTimeout(send, CHECK_PAUSE));
@@ -347,7 +468,7 @@ function HoursSheet({
     const windows = keepPast(next, provider.windows, lock);
     setLive(null);
     setError(null);
-    setDrafts((all) => ({ ...all, [scope]: { ...all[scope], [provider.id]: windows } }));
+    setDrafts((all) => withRow(all, scope, provider.id, windows));
     check(provider, windows);
   }
 
@@ -358,83 +479,90 @@ function HoursSheet({
     setSaving(true);
     setError(null);
     startTransition(async () => {
-      const saved: (SavedChange & { readonly changeId: string; readonly version: number })[] = [];
-      let failure: string | null = null;
-      try {
-        for (const { provider, windows } of sending) {
-          // Each provider's change is its own command; they run in turn so a refusal stops the rest.
-          const outcome = await setDayHours({
-            idempotencyKey: crypto.randomUUID(),
-            command: {
-              providerId: provider.id,
-              date: hours.date,
-              scope: atScope,
-              windows,
-              expectedVersion: provider.version,
-              dryRun: false,
-            },
-          });
-          if (!outcome.ok) {
-            failure = hoursFailureMessage(outcome.code);
-            if ("conflicts" in outcome)
-              setChecks((all) => ({
-                ...all,
-                [atScope]: {
-                  ...all[atScope],
-                  [provider.id]: { state: "conflict", conflicts: outcome.conflicts },
-                },
-              }));
-            break;
-          }
-          if (outcome.changeId !== undefined)
-            saved.push({
-              provider,
-              windows,
-              openCount: outcome.openCount,
-              changeId: outcome.changeId,
-              version: outcome.version,
-            });
-        }
-      } catch {
-        failure = SEND_FAILED;
-      }
+      const { saved, failure, conflict } = await saveInTurn(hours, atScope, sending);
       setSaving(false);
-      if (saved.length > 0) {
-        router.refresh();
-        raiseUndo(saved, atScope);
-        if (failure !== null) toast.error(failure);
-        close(null, false);
+      if (conflict !== null)
+        setChecks((all) =>
+          withRow(all, atScope, conflict.providerId, {
+            state: "conflict",
+            conflicts: conflict.conflicts,
+          }),
+        );
+      if (saved.length === 0) {
+        setError(failure ?? SEND_FAILED);
         return;
       }
-      setError(failure ?? SEND_FAILED);
-    });
-  }
-
-  function raiseUndo(
-    saved: readonly (SavedChange & { readonly changeId: string; readonly version: number })[],
-    atScope: DayHoursScope,
-  ) {
-    const keys = saved.map(() => crypto.randomUUID());
-    showUndoToast({
-      headline: savedHeadline(atScope, hours),
-      detail: savedDetail(saved, atScope, hours),
-      undo: async (): Promise<UndoResult> => {
-        for (const [at, change] of saved.toReversed().entries()) {
-          const outcome = await undoDayHours({
-            idempotencyKey: keys[at] ?? crypto.randomUUID(),
-            changeId: change.changeId,
-            expectedVersion: change.version,
-          });
-          if (!outcome.ok) return { ok: false, message: undoFailureMessage(outcome.code) };
-        }
-        return { ok: true, message: "The hours are back as they were" };
-      },
-      onSettled: () => {
+      router.refresh();
+      raiseUndo(hours, saved, atScope, () => {
         router.refresh();
-      },
+      });
+      if (failure !== null) toast.error(failure);
+      close(null, false);
     });
   }
 
+  return {
+    dialog,
+    scope,
+    lock,
+    live,
+    saving,
+    error,
+    ready,
+    changed,
+    draftOf,
+    settledOf: (provider) => settled[scope][provider.id] ?? baselineOf(provider, scope),
+    checkOf: (providerId) => checks[scope][providerId],
+    chooseScope: (next) => {
+      setLive(null);
+      setError(null);
+      setScope(next);
+    },
+    drag: (providerId, index, windows) => {
+      setLive({ providerId, index, windows });
+    },
+    commit,
+    save,
+    close,
+  };
+}
+
+/* ---- The sheet ---- */
+
+/** The subtitle: who was just added and what their day holds, why nothing can change, or how to
+    change it. */
+function subtitleOf(
+  editor: Readonly<HoursEditor>,
+  hours: Readonly<DayHours>,
+  added: readonly DayHoursProvider[],
+): string {
+  const one = added.length === 1 ? added.at(0) : undefined;
+  const answer = one === undefined ? undefined : editor.checkOf(one.id);
+  if (one !== undefined && answer?.state === "ok")
+    return addedLine(one.name, editor.scope, hours, answer.openCount);
+  return closedLine(hours, editor.lock) ?? DRAG_HINT;
+}
+
+function HoursSheet({
+  hours,
+  instant,
+  onClosed,
+}: Readonly<{
+  hours: DayHours;
+  instant: boolean;
+  onClosed: (rescheduleId: string | null) => void;
+}>) {
+  const editor = useHoursEditor(hours, onClosed);
+  const { scope, lock, live } = editor;
+  const titleId = `${hours.date}-hours-title`;
+  const span = sheetSpan(hours.locations);
+  // Past shading, the now-mark and the booking ticks belong to one day, not to every weekday.
+  const now = scope === "date" ? nowMinute(hours) : null;
+  const added = editor.changed.filter(
+    (provider) =>
+      baselineOf(provider, scope).length === 0 && worksAhead(editor.draftOf(provider), lock),
+  );
+  const addedIds = new Set(added.map((provider) => provider.id));
   const groups = hours.locations
     .map((place) => ({
       place,
@@ -443,13 +571,11 @@ function HoursSheet({
       ),
     }))
     .filter((group) => group.providers.length > 0);
-  const settingsFor = changed.at(0) ?? hours.providers.at(0);
-  const line = scopeLine(scope, hours);
 
   return (
     <dialog
       ref={(node) => {
-        dialog.current = node;
+        editor.dialog.current = node;
         if (node !== null && !node.open) {
           node.toggleAttribute("data-instant", instant);
           node.showModal();
@@ -464,57 +590,26 @@ function HoursSheet({
       }}
       onCancel={(event) => {
         event.preventDefault();
-        close(null, true);
+        editor.close(null, true);
       }}
     >
       <header className="wgi-hours-head">
         <h2 id={titleId} className="portal-confirm-dialog-title">
-          Hours for {weekday}, {longDate(hours)}
+          Hours for {shortDate(hours.date).split(",").at(0)},{" "}
+          {LONG_DATE.format(new Date(`${hours.date}T12:00:00Z`))}
         </h2>
         <p className="wgi-hours-subtitle" aria-live="polite">
-          {addedOne !== undefined && added.length === 1 && addedCheck?.state === "ok"
-            ? addedLine(addedOne.name, scope, hours, addedCheck.openCount)
-            : (closedLine(hours, lock) ?? "Drag the ends of a bar to change a provider’s hours.")}
+          {subtitleOf(editor, hours, added)}
         </p>
       </header>
-      <div className="wgi-hours-scope">
-        <SegmentedControl<DayHoursScope>
-          aria-label="Which days"
-          options={SCOPE_OPTIONS(longWeekday)}
-          value={scope}
-          className="wgi-hours-scope-switch"
-          onValueChange={(next) => {
-            setLive(null);
-            setError(null);
-            setScope(next);
-          }}
-        />
-        <p className="wgi-hours-scope-line">
-          {line.lead === "" ? null : <strong>{line.lead}</strong>}
-          {line.rest}
-        </p>
-      </div>
+      <ScopeBand hours={hours} scope={scope} onChange={editor.chooseScope} />
       <div className="wgi-hours-rows">
-        <div aria-hidden="true" className="wgi-hours-ruler">
-          <span className="wgi-hours-ruler-marks">
-            {rulerLabels(span.open + 60, span.close).map(({ minute, label }) => (
-              <span key={minute} style={{ left: `${String(rulerAt(span, minute))}%` }}>
-                {label}
-              </span>
-            ))}
-            {onDay && now !== null && now > span.open && now < span.close ? (
-              <span
-                className="wgi-hours-now-tick"
-                style={{ left: `${String(rulerAt(span, now))}%` }}
-              />
-            ) : null}
-          </span>
-        </div>
+        <HoursRuler span={span} now={now} />
         {groups.map(({ place, providers }) => (
           <section key={place.id} className="wgi-hours-group" aria-label={placeName(place)}>
             <h3 className="wgi-hours-group-head">
               <span className="wgi-hours-group-name">{placeName(place)}</span>
-              {`${String(providers.filter((provider) => draftOf(provider).length > 0).length)} of ${String(providers.length)} working`}
+              {`${String(providers.filter((provider) => editor.draftOf(provider).length > 0).length)} of ${String(providers.length)} working`}
             </h3>
             {providers.map((provider) => (
               <HoursRow
@@ -524,252 +619,168 @@ function HoursSheet({
                 scope={scope}
                 span={span}
                 lock={lock}
-                now={onDay ? now : null}
-                draft={draftOf(provider)}
-                settledWindows={settledOf(provider)}
-                shown={shownOf(provider)}
+                now={now}
+                draft={editor.draftOf(provider)}
+                settledWindows={editor.settledOf(provider)}
                 live={live?.providerId === provider.id ? live : null}
-                rowCheck={checks[scope][provider.id]}
-                isAdded={added.includes(provider)}
+                rowCheck={editor.checkOf(provider.id)}
+                isAdded={addedIds.has(provider.id)}
                 onDrag={(index, windows) => {
-                  setLive({ providerId: provider.id, index, windows });
+                  editor.drag(provider.id, index, windows);
                 }}
                 onCommit={(windows) => {
-                  commit(provider, windows);
+                  editor.commit(provider, windows);
                 }}
                 onReschedule={(id) => {
-                  close(id, false);
+                  editor.close(id, false);
                 }}
               />
             ))}
           </section>
         ))}
       </div>
-      <footer className="wgi-hours-foot">
-        {/* #358's help button takes this corner. */}
-        <span className="wgi-hours-help-slot" />
-        {settingsFor === undefined ? null : (
-          <Link
-            href={`/admin/settings/providers?provider=${settingsFor.id}`}
-            className="wgi-hours-settings-link"
-          >
-            Weekly hours and time off are in Settings ›
-          </Link>
-        )}
-        {error === null ? null : (
-          <p className="wgi-hours-error" role="alert">
-            {error}
-          </p>
-        )}
-        <div className="wgi-hours-actions">
-          <Button
-            variant="outline"
-            onClick={(event) => {
-              close(null, event.detail === 0);
-            }}
-          >
-            Cancel
-          </Button>
-          <Button disabled={!ready} aria-busy={saving || undefined} onClick={save}>
-            {saving ? "Saving…" : saveLabel(scope, hours)}
-          </Button>
-        </div>
-      </footer>
+      <HoursFoot
+        hours={hours}
+        editor={editor}
+        settingsFor={editor.changed.at(0) ?? hours.providers.at(0)}
+      />
     </dialog>
   );
 }
 
-/** "September 16". */
-function longDate(hours: Readonly<DayHours>): string {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${hours.date}T12:00:00Z`));
+function ScopeBand({
+  hours,
+  scope,
+  onChange,
+}: Readonly<{ hours: DayHours; scope: DayHoursScope; onChange: (next: DayHoursScope) => void }>) {
+  const line = scopeLine(scope, hours);
+  return (
+    <div className="wgi-hours-scope">
+      <SegmentedControl<DayHoursScope>
+        aria-label="Which days"
+        options={scopeOptions(longDay(hours.weekday))}
+        value={scope}
+        className="wgi-hours-scope-switch"
+        onValueChange={onChange}
+      />
+      <p className="wgi-hours-scope-line">
+        {line.lead === "" ? null : <strong>{line.lead}</strong>}
+        {line.rest}
+      </p>
+    </div>
+  );
+}
+
+function HoursRuler({ span, now }: Readonly<{ span: MinuteSpan; now: number | null }>) {
+  return (
+    <div aria-hidden="true" className="wgi-hours-ruler">
+      <span className="wgi-hours-ruler-marks">
+        {rulerLabels(span.open + 60, span.close).map(({ minute, label }) => (
+          <span key={minute} style={{ left: `${String(rulerAt(span, minute))}%` }}>
+            {label}
+          </span>
+        ))}
+        {now !== null && now > span.open && now < span.close ? (
+          <span className="wgi-hours-now-tick" style={{ left: `${String(rulerAt(span, now))}%` }} />
+        ) : null}
+      </span>
+    </div>
+  );
+}
+
+function HoursFoot({
+  hours,
+  editor,
+  settingsFor,
+}: Readonly<{
+  hours: DayHours;
+  editor: HoursEditor;
+  settingsFor: DayHoursProvider | undefined;
+}>) {
+  return (
+    <footer className="wgi-hours-foot">
+      {/* #358's help button takes this corner. */}
+      <span className="wgi-hours-help-slot" />
+      {settingsFor === undefined ? null : (
+        <Link
+          href={`/admin/settings/providers?provider=${settingsFor.id}`}
+          className="wgi-hours-settings-link"
+        >
+          Weekly hours and time off are in Settings ›
+        </Link>
+      )}
+      {editor.error === null ? null : (
+        <p className="wgi-hours-error" role="alert">
+          {editor.error}
+        </p>
+      )}
+      <div className="wgi-hours-actions">
+        <Button
+          variant="outline"
+          onClick={(event) => {
+            editor.close(null, event.detail === 0);
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          disabled={!editor.ready}
+          aria-busy={editor.saving || undefined}
+          onClick={editor.save}
+        >
+          {editor.saving ? "Saving…" : saveLabel(editor.scope, hours)}
+        </Button>
+      </div>
+    </footer>
+  );
 }
 
 /* ---- A provider's row ---- */
 
-function HoursRow({
-  provider,
-  hours,
-  scope,
-  span,
-  lock,
-  now,
-  draft,
-  settledWindows,
-  shown,
-  live,
-  rowCheck,
-  isAdded,
-  onDrag,
-  onCommit,
-  onReschedule,
-}: Readonly<{
-  provider: DayHoursProvider;
-  hours: DayHours;
-  scope: DayHoursScope;
-  span: MinuteSpan;
-  lock: number | null;
-  now: number | null;
-  draft: readonly HoursWindow[];
-  settledWindows: readonly HoursWindow[];
-  shown: readonly HoursWindow[];
-  live: LiveDrag | null;
-  rowCheck: RowCheck | undefined;
-  isAdded: boolean;
-  onDrag: (index: number, windows: readonly HoursWindow[]) => void;
-  onCommit: (windows: readonly HoursWindow[]) => void;
-  onReschedule: (appointmentId: string) => void;
-}>) {
+interface RowProps {
+  readonly provider: DayHoursProvider;
+  readonly hours: DayHours;
+  readonly scope: DayHoursScope;
+  readonly span: MinuteSpan;
+  readonly lock: number | null;
+  readonly now: number | null;
+  readonly draft: readonly HoursWindow[];
+  readonly settledWindows: readonly HoursWindow[];
+  readonly live: LiveDrag | null;
+  readonly rowCheck: RowCheck | undefined;
+  readonly isAdded: boolean;
+  readonly onDrag: (index: number, windows: readonly HoursWindow[]) => void;
+  readonly onCommit: (windows: readonly HoursWindow[]) => void;
+  readonly onReschedule: (appointmentId: string) => void;
+}
+
+function HoursRow(props: RowProps) {
+  const { provider, hours, scope, lock, draft, settledWindows, live, rowCheck, onCommit } = props;
+  const shown = live === null ? draft : live.windows;
   const working = worksAhead(draft, lock) || draft.length > 0;
   const canWork = switchedOn(provider, hours.locations, lock).some(
     (window) => lock === null || window.closeMinute > lock,
   );
-  const stranded = strandedIds(provider, shown);
   const conflict = rowCheck?.state === "conflict" ? rowCheck : null;
-  const place = hours.locations.find((location) => location.id === draft[0]?.locationId);
   const nameId = `${provider.id}-hours-name`;
   const track = useRef<HTMLDivElement>(null);
-
-  function windowsWith(index: number, open: number, close: number): HoursWindow[] {
-    return draft.map((window, at) =>
-      at === index ? { ...window, openMinute: open, closeMinute: close } : window,
-    );
-  }
-
-  /** A started window keeps its start; its end can come back no earlier than now. */
-  function clamp(index: number, value: readonly number[]): [number, number] {
-    const window = draft.at(index);
-    const [open = 0, close = 0] = value;
-    if (window === undefined) return [open, close];
-    if (lock !== null && window.openMinute < lock)
-      return [window.openMinute, Math.max(close, lock, window.openMinute + QUARTER_HOUR)];
-    return [open, close];
-  }
 
   return (
     <>
       <div
         className="wgi-hours-row"
         data-off={working ? undefined : ""}
-        data-added={isAdded ? "" : undefined}
+        data-added={props.isAdded ? "" : undefined}
         data-conflict={conflict === null ? undefined : ""}
       >
-        <div className="wgi-hours-who">
-          <span id={nameId} className="wgi-hours-name">
-            {provider.name}
-          </span>
-          {isAdded ? (
-            <Menu>
-              <MenuTrigger
-                className="wgi-hours-place"
-                aria-label={`${provider.name}'s office: ${place === undefined ? "none" : placeName(place)}`}
-              >
-                <MapPin aria-hidden="true" className="size-3.5 shrink-0" />
-                <span className="truncate">
-                  {place === undefined ? "Office" : placeName(place)}
-                </span>
-                <ChevronDown aria-hidden="true" className="size-3 shrink-0" />
-              </MenuTrigger>
-              <MenuContent className="min-w-48">
-                <MenuRadioGroup
-                  value={place?.id ?? ""}
-                  onValueChange={(id: string) => {
-                    onCommit(movedTo(draft, id, provider, hours.locations, lock));
-                  }}
-                >
-                  {hours.locations.map((location) => (
-                    <MenuRadioItem
-                      key={location.id}
-                      value={location.id}
-                      closeOnClick
-                      disabled={officeHours(location) === null}
-                    >
-                      <span className="truncate">{placeName(location)}</span>
-                    </MenuRadioItem>
-                  ))}
-                </MenuRadioGroup>
-              </MenuContent>
-            </Menu>
-          ) : (
-            <span className="wgi-hours-sub">
-              {working ? hoursWords(shown) : usualLine(provider)}
-            </span>
-          )}
-        </div>
-        <div ref={track} className="wgi-hours-track" style={hourLines(span)}>
-          {now !== null && now > span.open ? (
-            <span className="wgi-hours-past" style={barStyle(span, span.open, now)} />
-          ) : null}
-          {working ? null : <span className="wgi-hours-off">{offText(scope, hours.weekday)}</span>}
-          {live !== null || conflict !== null
-            ? settledWindows.map((window) => (
-                <span
-                  key={`was-${String(window.openMinute)}`}
-                  aria-hidden="true"
-                  className="wgi-hours-was"
-                  style={barStyle(span, window.openMinute, window.closeMinute)}
-                />
-              ))
-            : null}
-          {draft.map((window, index) => {
-            const label = `${provider.name}${draft.length > 1 ? `, window ${String(index + 1)}` : ""}`;
-            const current = shown[index] ?? window;
-            if (lock !== null && window.closeMinute <= lock)
-              return (
-                <span
-                  // react-doctor-disable-next-line react-doctor/no-array-index-as-key -- a day's windows are positional, as the sliders beside them are
-                  key={index}
-                  className="wgi-hours-bar"
-                  style={barStyle(span, window.openMinute, window.closeMinute)}
-                  role="img"
-                  aria-label={`${label}: ${clockOf(window.openMinute)} to ${clockOf(window.closeMinute)}, passed`}
-                />
-              );
-            const range = windowRange(draft, index, hours.locations, lock);
-            const min = Math.max(span.open, Math.min(range.open, window.openMinute));
-            const max = Math.min(span.close, Math.max(range.close, window.closeMinute));
-            return (
-              <Slider
-                // react-doctor-disable-next-line react-doctor/no-array-index-as-key -- a day's windows are positional: the first stays the first while its ends are dragged, and keying by its minutes would remount the slider under the pointer
-                key={index}
-                tone="hours"
-                className="wgi-hours-slider"
-                style={barStyle(span, min, max)}
-                min={min}
-                max={max}
-                step={QUARTER_HOUR}
-                largeStep={60}
-                minStepsBetweenValues={1}
-                value={[current.openMinute, current.closeMinute]}
-                thumbLabel={(thumb) => `${label} ${thumb === 0 ? "start" : "end"}`}
-                thumbValueText={(minute) => clockOf(minute)}
-                onValueChange={(value: readonly number[]) => {
-                  const [open, close] = clamp(index, value);
-                  onDrag(index, windowsWith(index, open, close));
-                }}
-                onValueCommitted={(value: readonly number[]) => {
-                  const [open, close] = clamp(index, value);
-                  onCommit(windowsWith(index, open, close));
-                }}
-              />
-            );
-          })}
-          {live === null ? null : <DragPill span={span} live={live} draft={draft} />}
-          {scope === "date"
-            ? provider.bookings.map((booking) => (
-                <span
-                  key={booking.id}
-                  aria-hidden="true"
-                  className="wgi-hours-tick"
-                  data-stranded={stranded.has(booking.id) ? "" : undefined}
-                  style={barStyle(span, bookingStart(booking), endMinute(booking.endsAt))}
-                />
-              ))
-            : null}
-        </div>
+        <RowWho {...props} nameId={nameId} working={working} shown={shown} />
+        <RowTrack
+          {...props}
+          trackRef={track}
+          working={working}
+          shown={shown}
+          showWas={live !== null || conflict !== null}
+        />
         <Switch
           checked={worksAhead(draft, lock)}
           disabled={!canWork && !worksAhead(draft, lock)}
@@ -799,7 +810,7 @@ function HoursRow({
               (ends === undefined ? undefined : [...ends].at(-1))?.focus();
             });
           }}
-          onReschedule={onReschedule}
+          onReschedule={props.onReschedule}
         />
       )}
       {rowCheck?.state === "refused" ? (
@@ -808,6 +819,217 @@ function HoursRow({
         </p>
       ) : null}
     </>
+  );
+}
+
+/** The provider's name, and under it their hours, or the office menu for someone just added. */
+function RowWho({
+  provider,
+  hours,
+  lock,
+  draft,
+  isAdded,
+  onCommit,
+  nameId,
+  working,
+  shown,
+}: Readonly<RowProps & { nameId: string; working: boolean; shown: readonly HoursWindow[] }>) {
+  const place = hours.locations.find((location) => location.id === draft.at(0)?.locationId);
+  return (
+    <div className="wgi-hours-who">
+      <span id={nameId} className="wgi-hours-name">
+        {provider.name}
+      </span>
+      {isAdded ? (
+        <Menu>
+          <MenuTrigger
+            className="wgi-hours-place"
+            aria-label={`${provider.name}'s office: ${place === undefined ? "none" : placeName(place)}`}
+          >
+            <MapPin aria-hidden="true" className="size-3.5 shrink-0" />
+            <span className="truncate">{place === undefined ? "Office" : placeName(place)}</span>
+            <ChevronDown aria-hidden="true" className="size-3 shrink-0" />
+          </MenuTrigger>
+          <MenuContent className="min-w-48">
+            <MenuRadioGroup
+              value={place?.id ?? ""}
+              onValueChange={(id: string) => {
+                onCommit(movedTo(draft, id, provider, hours.locations, lock));
+              }}
+            >
+              {hours.locations.map((location) => (
+                <MenuRadioItem
+                  key={location.id}
+                  value={location.id}
+                  closeOnClick
+                  disabled={officeHours(location) === null}
+                >
+                  <span className="truncate">{placeName(location)}</span>
+                </MenuRadioItem>
+              ))}
+            </MenuRadioGroup>
+          </MenuContent>
+        </Menu>
+      ) : (
+        <span className="wgi-hours-sub">{working ? hoursWords(shown) : usualLine(provider)}</span>
+      )}
+    </div>
+  );
+}
+
+/** The track: past shading, the last good hours dashed while a change is open, each window's
+    bar, the drag pill and the booking ticks. */
+function RowTrack({
+  provider,
+  hours,
+  scope,
+  span,
+  lock,
+  now,
+  draft,
+  settledWindows,
+  live,
+  onDrag,
+  onCommit,
+  trackRef,
+  working,
+  shown,
+  showWas,
+}: Readonly<
+  RowProps & {
+    trackRef: RefObject<HTMLDivElement | null>;
+    working: boolean;
+    shown: readonly HoursWindow[];
+    showWas: boolean;
+  }
+>) {
+  const stranded = strandedIds(provider, shown);
+  return (
+    <div ref={trackRef} className="wgi-hours-track" style={hourLines(span)}>
+      {now !== null && now > span.open ? (
+        <span className="wgi-hours-past" style={barStyle(span, span.open, now)} />
+      ) : null}
+      {working ? null : <span className="wgi-hours-off">{offText(scope, hours.weekday)}</span>}
+      {showWas
+        ? settledWindows.map((window) => (
+            <span
+              key={`was-${String(window.openMinute)}`}
+              aria-hidden="true"
+              className="wgi-hours-was"
+              style={barStyle(span, window.openMinute, window.closeMinute)}
+            />
+          ))
+        : null}
+      {draft.map((window, index) => (
+        <WindowBar
+          // react-doctor-disable-next-line react-doctor/no-array-index-as-key -- a day's windows are positional: the first stays the first while its ends are dragged, and keying by its minutes would remount the slider under the pointer
+          key={index}
+          label={`${provider.name}${draft.length > 1 ? `, window ${String(index + 1)}` : ""}`}
+          index={index}
+          window={window}
+          current={shown.at(index) ?? window}
+          draft={draft}
+          hours={hours}
+          span={span}
+          lock={lock}
+          onDrag={onDrag}
+          onCommit={onCommit}
+        />
+      ))}
+      {live === null ? null : <DragPill span={span} live={live} draft={draft} />}
+      {scope === "date"
+        ? provider.bookings.map((booking) => (
+            <span
+              key={booking.id}
+              aria-hidden="true"
+              className="wgi-hours-tick"
+              data-stranded={stranded.has(booking.id) ? "" : undefined}
+              style={barStyle(span, bookingStart(booking), endMinute(booking.endsAt))}
+            />
+          ))
+        : null}
+    </div>
+  );
+}
+
+function windowsWith(
+  draft: readonly HoursWindow[],
+  index: number,
+  [open, close]: readonly [number, number],
+): HoursWindow[] {
+  return draft.map((window, at) =>
+    at === index ? { ...window, openMinute: open, closeMinute: close } : window,
+  );
+}
+
+/** A started window keeps its start; its end can come back no earlier than now. */
+function clampEnds(
+  window: Readonly<HoursWindow>,
+  value: readonly number[],
+  lock: number | null,
+): [number, number] {
+  const [open = 0, close = 0] = value;
+  if (lock !== null && window.openMinute < lock)
+    return [window.openMinute, Math.max(close, lock, window.openMinute + QUARTER_HOUR)];
+  return [open, close];
+}
+
+/** One window: a two-ended slider, or a still bar once it has passed. */
+function WindowBar({
+  label,
+  index,
+  window,
+  current,
+  draft,
+  hours,
+  span,
+  lock,
+  onDrag,
+  onCommit,
+}: Readonly<{
+  label: string;
+  index: number;
+  window: HoursWindow;
+  current: HoursWindow;
+  draft: readonly HoursWindow[];
+  hours: DayHours;
+  span: MinuteSpan;
+  lock: number | null;
+  onDrag: (index: number, windows: readonly HoursWindow[]) => void;
+  onCommit: (windows: readonly HoursWindow[]) => void;
+}>) {
+  if (lock !== null && window.closeMinute <= lock)
+    return (
+      <span
+        className="wgi-hours-bar"
+        style={barStyle(span, window.openMinute, window.closeMinute)}
+        role="img"
+        aria-label={`${label}: ${clockOf(window.openMinute)} to ${clockOf(window.closeMinute)}, passed`}
+      />
+    );
+  const range = windowRange(draft, index, hours.locations, lock);
+  const min = Math.max(span.open, Math.min(range.open, window.openMinute));
+  const max = Math.min(span.close, Math.max(range.close, window.closeMinute));
+  return (
+    <Slider
+      tone="hours"
+      className="wgi-hours-slider"
+      style={barStyle(span, min, max)}
+      min={min}
+      max={max}
+      step={QUARTER_HOUR}
+      largeStep={60}
+      minStepsBetweenValues={1}
+      value={[current.openMinute, current.closeMinute]}
+      thumbLabel={(thumb) => `${label} ${thumb === 0 ? "start" : "end"}`}
+      thumbValueText={(minute) => clockOf(minute)}
+      onValueChange={(value: readonly number[]) => {
+        onDrag(index, windowsWith(draft, index, clampEnds(window, value, lock)));
+      }}
+      onValueCommitted={(value: readonly number[]) => {
+        onCommit(windowsWith(draft, index, clampEnds(window, value, lock)));
+      }}
+    />
   );
 }
 
