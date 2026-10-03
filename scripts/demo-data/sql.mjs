@@ -353,8 +353,8 @@ end if;\n`;
   sql += `delete from public.staff_profiles where user_id <> ${operator} and (role <> 'admin' or email like '%@example.test');\n`;
 
   for (const [table, defs] of TABLES) {
-    // Inserting providers and types pairs every provider with every type; the dataset's own
-    // pairs replace those defaults.
+    /* Inserting providers and types pairs every provider with every type; the dataset's own
+       pairs replace those defaults. */
     if (table === "appointment_type_providers") sql += `delete from public.${table};\n`;
     sql += insert(table, defs, rows[table]);
   }
