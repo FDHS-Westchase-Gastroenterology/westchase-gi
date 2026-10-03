@@ -90,7 +90,7 @@ test.describe("website custody", () => {
     await signIn(page);
     await page.goto("/admin/settings/software");
 
-    await expect(page.getByRole("link", { name: "Website", exact: true })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Software", exact: true })).toHaveAttribute(
       "aria-current",
       "page",
     );
@@ -275,7 +275,7 @@ test.describe("website custody", () => {
 
     await page.goto("/admin/registry");
     await expect(page).toHaveURL(/\/admin\/settings\/software\/?$/);
-    await expect(page.getByRole("link", { name: "Website", exact: true })).toHaveAttribute(
+    await expect(page.getByRole("link", { name: "Software", exact: true })).toHaveAttribute(
       "aria-current",
       "page",
     );

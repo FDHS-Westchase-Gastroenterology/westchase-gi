@@ -217,7 +217,7 @@ test.describe("portal home", () => {
     for (const row of rows) {
       await expect(list.locator("tr", { hasText: row.name })).toHaveCount(1);
     }
-    await expect(page.getByTestId("home-add-patient-request")).toHaveText("Add request");
+    await expect(page.getByTestId("home-add-patient-request")).toHaveText("Add request…");
   });
 
   test("a Contacted request with no call-again day is on the day sheet under Call again", async ({

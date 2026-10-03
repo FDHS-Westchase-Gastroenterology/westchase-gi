@@ -498,7 +498,7 @@ test.describe("portal requests operation", () => {
     );
     await panel.getByText("Pick a day…", { exact: true }).click();
     const customDay = page.getByTestId("call-again-day");
-    const dayLabel = page.getByText("Call again on", { exact: false });
+    const dayLabel = page.locator("label", { hasText: "Call again on" });
     await expect(dayLabel).toBeVisible();
     await expect(dayLabel).toHaveAttribute("for", "call-again-day");
     await expect(customDay).toHaveAccessibleName(/Call again on/);
