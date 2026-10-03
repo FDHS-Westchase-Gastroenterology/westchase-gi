@@ -137,24 +137,28 @@ export function cameToUs(record: FullRecord): string {
   return parts.join(" · ");
 }
 
+const PRACTICE_DATE = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "America/New_York",
+});
+
+const CALENDAR_DATE = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
 /** "Sep 3, 2026": when the patient joined the portal. */
 export function sinceLabel(iso: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "America/New_York",
-  }).format(new Date(iso));
+  return PRACTICE_DATE.format(new Date(iso));
 }
 
 /** "May 4, 1961" from a stored calendar date (a date, not an instant). */
 export function dateLabel(date: string): string {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(`${date}T12:00:00Z`));
+  return CALENDAR_DATE.format(new Date(`${date}T12:00:00Z`));
 }
 
 /** A stored date of birth, or that there is none. */

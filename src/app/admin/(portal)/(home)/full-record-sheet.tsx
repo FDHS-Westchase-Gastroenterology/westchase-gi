@@ -11,7 +11,8 @@ import { SheetBody } from "./full-record-sheet-body";
 import { prefersText } from "./home-line";
 import type { HomeLine } from "./home-line";
 import { LineStatusBadge } from "./parts/badge";
-import { phoneParts, RecordSheetFrame, SheetContactRow, SheetTitleRow } from "./record-sheet-frame";
+import { phoneParts } from "./record-contact";
+import { RecordSheetFrame, SheetContactRow, SheetTitleRow } from "./record-sheet-frame";
 import { CARD_BUTTON } from "./sheet-coexistence";
 import { useRecordRead } from "./use-record-read";
 

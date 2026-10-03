@@ -10,8 +10,8 @@ import {
 } from "@/app/admin/(portal)/(home)/full-record-sheet-body";
 import type { HomeLine } from "@/app/admin/(portal)/(home)/home-line";
 import { LineStatusBadge } from "@/app/admin/(portal)/(home)/parts/badge";
+import { phoneParts } from "@/app/admin/(portal)/(home)/record-contact";
 import {
-  phoneParts,
   RecordSheetFrame,
   SheetContactRow,
   SheetTitleRow,
@@ -83,7 +83,10 @@ interface PatientReadState {
   readonly reads: number;
 }
 
-function usePatientRead(shownId: string | null): PatientReadState {
+function usePatientRead(
+  shownId: string | null,
+  onVisits: (ids: ReadonlySet<string>) => void,
+): PatientReadState {
   const [read, setRead] = useState<PatientRead | null>(null);
   const [attempt, setAttempt] = useState(0);
   const [reads, setReads] = useState(0);
@@ -98,14 +101,18 @@ function usePatientRead(shownId: string | null): PatientReadState {
         if (!live) return;
         setRead({ id: shownId, outcome });
         setReads((count) => count + 1);
+        /* The grid outlines the appointments of the record on screen. */
+        onVisits(new Set(outcome.ok ? outcome.record.visits.map((visit) => visit.id) : []));
       } catch {
-        if (live) setRead({ id: shownId, outcome: { ok: false, code: "unavailable" } });
+        if (!live) return;
+        setRead({ id: shownId, outcome: { ok: false, code: "unavailable" } });
+        onVisits(new Set());
       }
     });
     return () => {
       live = false;
     };
-  }, [shownId, attempt]);
+  }, [shownId, attempt, onVisits]);
 
   return {
     outcome: read?.id === shownId ? read.outcome : null,
@@ -147,12 +154,7 @@ export function PatientRecordSheet({
      showed. */
   const [shownId, setShownId] = useState(patientId);
   if (patientId !== null && patientId !== shownId) setShownId(patientId);
-  const { outcome, retry, refresh, reads } = usePatientRead(shownId);
-
-  const visitIds = outcome?.ok === true ? outcome.record.visits : null;
-  useEffect(() => {
-    onVisits(new Set(visitIds?.map((visit) => visit.id) ?? []));
-  }, [visitIds, onVisits]);
+  const { outcome, retry, refresh, reads } = usePatientRead(shownId, onVisits);
 
   const named = hint?.id === shownId ? hint : null;
 

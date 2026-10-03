@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
-import { formatPhoneForDisplay, telHref } from "@/app/admin/(portal)/requests/format";
 import { isMailbox } from "@/lib/portal/contracts";
 
 import { useSheetResize } from "./full-record-sheet-geometry";
@@ -182,15 +181,4 @@ export function SheetContactRow({
       )}
     </div>
   );
-}
-
-interface PhoneParts {
-  readonly tel: string | null;
-  readonly phoneDisplay: string;
-}
-
-/** A stored phone as the contact row reads it: its tel: link and how it is shown. */
-export function phoneParts(phone: string | null): PhoneParts {
-  if (phone === null || phone.trim() === "") return { tel: null, phoneDisplay: "" };
-  return { tel: telHref(phone), phoneDisplay: formatPhoneForDisplay(phone) };
 }

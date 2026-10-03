@@ -49,20 +49,17 @@ export function RecordNoteComposer({
         loading: "Saving note…",
         success: (result) => result.message,
       });
-      return attempt;
+      const result = await attempt;
+      if (result.status === "success") {
+        setOpen(false);
+        setDraft("");
+        onAdded();
+      }
+      return result;
     },
     IDLE,
   );
-  const [handled, setHandled] = useState(feedback);
-  if (feedback !== handled) {
-    setHandled(feedback);
-    if (feedback.status === "success") {
-      setOpen(false);
-      setDraft("");
-      onAdded();
-    }
-  }
-  const showError = feedback.status === "error" && !pending && handled === feedback;
+  const showError = feedback.status === "error" && !pending;
 
   return (
     <Popover
