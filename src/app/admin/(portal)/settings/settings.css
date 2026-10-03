@@ -1,0 +1,430 @@
+/* Settings › Providers, Appointment types and Locations (issue #352, Figma
+   St1–St5). The surfaces compose the ui/ recipes and restyle them here,
+   scoped and unlayered, in the --wgi-* paints from wgi-paints.css. Hover is
+   gated to fine pointers; every timing reads the motion registry. */
+
+/* ---- Header command ("Add provider", "Add type") ---- */
+
+/* The header sits outside .wgi-settings, so the command carries its own
+   glass recipe: a vertical fill from white to slate-50 with an inset stroke
+   (issue #332, section 2). */
+.wgi-settings-command {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  padding-inline: 1rem;
+  background: linear-gradient(#ffffff, var(--color-slate-50));
+  box-shadow: inset 0 0 0 1px var(--color-slate-300);
+  color: var(--color-navy-800);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  transition:
+    background-color var(--motion-fast-duration) var(--motion-standard),
+    box-shadow var(--motion-fast-duration) var(--motion-standard),
+    transform var(--motion-fast-duration) var(--motion-standard);
+}
+
+.wgi-settings-command:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: 2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wgi-settings-command:hover {
+    background: linear-gradient(var(--color-slate-50), var(--color-slate-100));
+    box-shadow: inset 0 0 0 1px var(--color-slate-400);
+  }
+}
+
+.wgi-settings-command:active {
+  background: linear-gradient(var(--color-slate-100), var(--color-slate-200));
+  transform: scale(0.98);
+}
+
+/* ---- List and detail ---- */
+
+.settings-split {
+  display: grid;
+  grid-template-columns: 17rem minmax(0, 1fr);
+  overflow: clip;
+  border-radius: 16px;
+  background: var(--wgi-surface);
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-right: 1px solid var(--wgi-rule);
+  padding: 0.75rem;
+}
+
+.settings-list-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: var(--wgi-row-radius);
+  padding: 0.625rem;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.settings-list-row:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: -2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .settings-list-row:hover {
+    background: var(--wgi-band);
+  }
+}
+
+.settings-list-row[aria-current="page"] {
+  background: var(--color-navy-50);
+  box-shadow: inset 0 0 0 1px var(--color-navy-100);
+}
+
+.settings-avatar {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: linear-gradient(var(--color-navy-100), var(--color-navy-200));
+  color: var(--color-navy-800);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.settings-avatar-large {
+  width: 3.25rem;
+  height: 3.25rem;
+  background: linear-gradient(var(--color-navy-700), var(--color-navy-900));
+  color: #ffffff;
+  font-size: 1.1875rem;
+}
+
+.settings-detail {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1.375rem;
+  padding: 1.75rem 2rem;
+}
+
+.settings-section-title {
+  color: var(--wgi-name-ink);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  line-height: 1.25rem;
+}
+
+/* ---- Weekly hours ---- */
+
+/* Day, office chip, then the hour track. Each row is a subgrid so the
+   ruler and every track share one column. */
+.settings-hours {
+  display: grid;
+  column-gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.settings-hours-ruler {
+  position: relative;
+  grid-column: 3;
+  height: 1.125rem;
+  color: var(--wgi-label-ink);
+  font-size: 0.6875rem;
+  line-height: 1rem;
+}
+
+.settings-hours-ruler > span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.settings-hours-row {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  min-height: 2.625rem;
+  align-items: center;
+}
+
+.settings-hours-day {
+  color: var(--wgi-name-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.settings-hours-row.is-rest .settings-hours-day {
+  grid-column: 1 / 3;
+  color: var(--wgi-muted-ink);
+  font-weight: 400;
+}
+
+.settings-hours-chip {
+  display: inline-flex;
+  min-width: 0;
+  height: 1.875rem;
+  align-items: center;
+  gap: 0.375rem;
+  border: 1px solid var(--wgi-chip-stroke);
+  border-radius: 8px;
+  background: #ffffff;
+  padding-inline: 0.5rem;
+  color: var(--wgi-name-ink);
+  font-size: 0.75rem;
+  text-align: left;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.settings-hours-chip > svg {
+  color: var(--wgi-icon-ink);
+}
+
+button.settings-hours-chip:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: 1px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button.settings-hours-chip:hover {
+    background: var(--wgi-band);
+  }
+}
+
+button.settings-hours-chip:active {
+  background: var(--color-slate-100);
+}
+
+/* Quarter-hour precision on an hour grid: a faint line at every hour. */
+.settings-hours-track {
+  position: relative;
+  height: 1.875rem;
+  background-image: linear-gradient(to right, var(--wgi-rule) 1px, transparent 1px);
+  box-shadow: inset -1px 0 0 var(--wgi-rule);
+}
+
+.settings-hours-slider,
+.settings-hours-bar {
+  position: absolute;
+  top: 4px;
+}
+
+.settings-hours-bar {
+  height: 22px;
+  border: 1px solid var(--color-mint-500);
+  border-radius: 7px;
+  background: linear-gradient(var(--color-mint-100), var(--color-mint-200));
+}
+
+.settings-hours-rest {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-inline-start: 0.375rem;
+  color: var(--wgi-muted-ink);
+  font-size: 0.75rem;
+}
+
+/* ---- Time off ---- */
+
+.settings-text-command {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 8px;
+  padding-inline: 0.375rem;
+  color: var(--color-teal-700);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.settings-text-command:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: 1px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .settings-text-command:hover {
+    background: var(--wgi-hover);
+  }
+}
+
+.settings-time-off-row {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: 10px;
+  background: var(--color-slate-50);
+  padding: 0.375rem 0.375rem 0.375rem 0.875rem;
+}
+
+.settings-row-more {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  color: var(--wgi-muted-ink);
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.settings-row-more:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: -2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .settings-row-more:hover {
+    background: var(--color-slate-100);
+  }
+}
+
+.settings-notice {
+  border-radius: 10px;
+  background: var(--wgi-attention-fill);
+  padding: 0.625rem 0.75rem;
+  color: var(--wgi-attention-ink);
+  font-size: 0.8125rem;
+  line-height: 1.125rem;
+}
+
+.settings-notice-close {
+  display: inline-flex;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.settings-notice-close:focus-visible,
+.settings-notice-link:focus-visible {
+  outline: 2px solid var(--wgi-attention-ink);
+  outline-offset: 1px;
+}
+
+.settings-notice-link {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  border-radius: 4px;
+  color: var(--wgi-attention-ink);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  text-underline-offset: 2px;
+}
+
+.settings-time-off-popover {
+  width: 21.25rem;
+  padding: 0;
+}
+
+.settings-time-off-popover .is-off button {
+  background: var(--color-slate-100);
+  color: var(--wgi-muted-ink);
+  text-decoration: line-through;
+}
+
+.settings-time-select {
+  min-height: 2.25rem;
+  font-size: 0.8125rem;
+}
+
+.settings-reason {
+  display: flex;
+  min-height: 2.5rem;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--wgi-chip-stroke);
+  border-radius: 10px;
+  background: #ffffff;
+  padding-inline: 0.75rem;
+  color: var(--wgi-name-ink);
+  font-size: 0.8125rem;
+  transition: background-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.settings-reason:focus-visible {
+  outline: 2px solid var(--color-teal-700);
+  outline-offset: 1px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .settings-reason:hover {
+    background: var(--wgi-band);
+  }
+}
+
+.settings-popover-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  border-top: 1px solid var(--wgi-rule);
+  padding: 0.75rem 1.125rem;
+}
+
+/* ---- Appointment-type pills ---- */
+
+.settings-type-pill {
+  display: inline-flex;
+  height: 2rem;
+  align-items: center;
+  gap: 0.375rem;
+  border: 1px solid var(--wgi-chip-stroke);
+  border-radius: 9999px;
+  background: #ffffff;
+  padding-inline: 0.75rem;
+  color: var(--wgi-name-ink);
+  font-size: 0.8125rem;
+  transition:
+    background-color var(--motion-micro-duration) var(--motion-exit),
+    border-color var(--motion-micro-duration) var(--motion-exit);
+}
+
+.settings-type-pill .settings-type-pill-check {
+  display: none;
+  color: var(--color-navy-700);
+}
+
+.settings-type-pill[data-pressed] {
+  border-color: var(--color-navy-200);
+  background: var(--color-navy-50);
+  font-weight: 600;
+}
+
+.settings-type-pill[data-pressed] .settings-type-pill-check {
+  display: block;
+}
+
+.settings-type-pill.is-retired {
+  border-style: dashed;
+  color: var(--wgi-muted-ink);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .settings-type-pill:not([data-disabled]):hover {
+    background: var(--wgi-band);
+  }
+
+  .settings-type-pill[data-pressed]:not([data-disabled]):hover {
+    background: var(--color-navy-100);
+  }
+}
