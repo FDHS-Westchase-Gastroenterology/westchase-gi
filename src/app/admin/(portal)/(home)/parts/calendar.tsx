@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { getDefaultClassNames } from "react-day-picker";
 import type { DateRange } from "react-day-picker";
 
-import { Calendar } from "@/components/stock/calendar";
+import { Calendar } from "@/components/ui/calendar";
 
-/* Fresh conversion of the stock registry Calendar for the Received editor's
+/* The registry Calendar (ui/calendar) for the Received editor's
    custom range: one month in range mode, speaking the editor's own day
    strings (YYYY-MM-DD, practice-local) in and out so the editor never holds
    a browser-zone Date. Paint is the stock calendar's, repainted through the
@@ -16,10 +16,9 @@ import { Calendar } from "@/components/stock/calendar";
    The grid is the whole popover while it shows (filter-bar: the Vercel
    model), so it takes the editor's width and, on mount, the keyboard — the
    picked start or today is the focused day. DayPicker's `autoFocus` marks
-   that day and gives it tabindex=0, but the stock DayButton never attaches
-   the ref its focus effect uses, so the frame-later focus below does the
-   actual focusing (the editor parks focus on the popup before the swap so
-   the popover's focus manager has nothing to re-home in between). */
+   that day and the recipe's day button takes focus (the editor parks focus
+   on the popup before the swap so the popover's focus manager has nothing
+   to re-home in between). */
 
 function parseDay(day: string): Date {
   const year = Number(day.slice(0, 4));
@@ -52,19 +51,9 @@ export function HomeRangeCalendar({
 }>) {
   const selected: DateRange | undefined =
     from === "" ? undefined : { from: dayToDate(from), to: dayToDate(to) };
-  const shell = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => {
-      shell.current?.querySelector<HTMLElement>('button[tabindex="0"]')?.focus();
-    });
-    return () => {
-      cancelAnimationFrame(frame);
-    };
-  }, []);
 
   return (
-    <div ref={shell}>
+    <div>
       <Calendar
         // react-doctor-disable-next-line react-doctor/no-autofocus -- the calendar replaces the list the user just clicked in; focus moves to the picked day (or today) inside the open popover, not on page load
         autoFocus
@@ -84,7 +73,7 @@ export function HomeRangeCalendar({
   );
 }
 
-/* The same registry Calendar in single-day mode for the record card: the
+/* The same Calendar in single-day mode for the record card: the
    day a decision comes back on. No autoFocus — focus stays on the answer
    the staff member just picked — and `required`, because a return day is
    never optional. `fixedWeeks` keeps every month six rows tall, so the

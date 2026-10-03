@@ -9,7 +9,7 @@ import { dayAccessibleName, dayIsOpen, dayOf } from "@/app/admin/(portal)/(home)
 import type { TakenTime } from "@/app/admin/(portal)/(home)/card-booking-days";
 import { DAY_POPOVER } from "@/app/admin/(portal)/(home)/sheet-coexistence";
 import type { CardMonthStatus } from "@/app/admin/(portal)/(home)/use-card-month";
-import { Calendar } from "@/components/stock/calendar";
+import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import type { MonthAvailability } from "@/lib/portal/scheduling/read-contracts";
 
