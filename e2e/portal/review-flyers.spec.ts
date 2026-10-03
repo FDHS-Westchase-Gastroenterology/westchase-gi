@@ -84,6 +84,13 @@ test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== "chromium", "Authenticated portal UI");
 });
 
+const FILE_ROWS = [
+  { kind: "pdf", name: "PDF: For printing at a print shop" },
+  { kind: "svg", name: "SVG: For a designer; scales to any size" },
+  { kind: "png", name: "PNG: For email, a slide, or social posts" },
+  { kind: "zip", name: "All three, as one .zip" },
+] as const;
+
 test("review flyers stay closed to visitors and open to every staff member", async ({
   browser,
   page,
@@ -104,6 +111,10 @@ test("review flyers stay closed to visitors and open to every staff member", asy
     { maxRedirects: 0 },
   );
   expect(signedOutAsset.status()).toBe(401);
+  const signedOutArchive = await request.get("/admin/review-flyers/zip/practice", {
+    maxRedirects: 0,
+  });
+  expect(signedOutArchive.status()).toBe(401);
 
   const staff = await createStaffFixture(serviceDb(), {
     prefix: "review-flyers",
@@ -119,11 +130,14 @@ test("review flyers stay closed to visitors and open to every staff member", asy
     // Every active staff member (product decision 2026-07-26), while
     // Anonymous access stays closed.
     await expect(
-      staffPage.getByLabel("Portal workspace").getByRole("link", { name: "Review flyers" }),
+      staffPage
+        .getByLabel("Portal workspace")
+        .getByRole("list", { name: "Patient materials" })
+        .getByRole("link", { name: "Review flyers" }),
     ).toBeVisible();
 
     await staffPage.goto("/admin/review-flyers");
-    await expect(staffPage.getByRole("heading", { name: "Print review flyers" })).toBeVisible();
+    await expect(staffPage.getByRole("heading", { name: "Review flyers", level: 1 })).toBeVisible();
     await expect(staffPage.locator("[data-review-target]")).toHaveCount(6);
 
     for (const asset of ASSETS) {
@@ -132,6 +146,8 @@ test("review flyers stay closed to visitors and open to every staff member", asy
       );
       expect(response.status(), `staff asset access: ${asset.filename}`).toBe(200);
     }
+    const staffArchive = await staffContext.request.get("/admin/review-flyers/zip/awad");
+    expect(staffArchive.status()).toBe(200);
   } finally {
     await staffContext?.close().catch(() => undefined);
     await staff.dispose();
@@ -139,7 +155,10 @@ test("review flyers stay closed to visitors and open to every staff member", asy
 
   await signIn(page);
   await expect(
-    page.getByLabel("Portal workspace").getByRole("link", { name: "Review flyers" }),
+    page
+      .getByLabel("Portal workspace")
+      .getByRole("list", { name: "Patient materials" })
+      .getByRole("link", { name: "Review flyers" }),
   ).toBeVisible();
   await page.goto("/admin/review-flyers");
 
@@ -151,24 +170,53 @@ test("review flyers stay closed to visitors and open to every staff member", asy
       if (!(node instanceof HTMLElement)) {
         throw new Error("expected HTMLElement");
       }
-      const credential = [...node.querySelectorAll("p")].find((paragraph) =>
-        paragraph.classList.contains("font-bold"),
-      );
       return {
         key: node.dataset.reviewTarget,
         title: node.querySelector("h2")?.textContent.trim() ?? null,
-        credentials: credential?.textContent.trim() ?? null,
+        credentials: node.querySelector(".wgi-flyer-credentials")?.textContent.trim() ?? null,
+        code: node.querySelector(".wgi-flyer-preview img")?.getAttribute("src") ?? null,
       };
     });
     expect(copy).toEqual({
       key: target.key,
       title: target.title,
       credentials: target.credentials,
+      code: `/admin/review-flyers/assets/${encodeURIComponent(target.files.svg)}`,
     });
-    await expect(card.getByRole("button", { name: "Print flyer" })).toBeVisible();
-    for (const name of ["Flyer PDF", "SVG", "PNG"]) {
-      await expect(card.getByRole("link", { name })).toBeVisible();
+    // The preview is the real code, loaded through the staff-only route.
+    await expect
+      .poll(async () =>
+        card
+          .locator(".wgi-flyer-preview img")
+          .evaluate((image) => image instanceof HTMLImageElement && image.naturalWidth > 0),
+      )
+      .toBe(true);
+
+    // Focus reveals Print and Download; Download lists each file by its use.
+    await card.getByRole("button", { name: `Print ${target.title}` }).focus();
+    await expect(card.getByRole("group", { name: `${target.title}: print or download` })).toHaveCSS(
+      "opacity",
+      "1",
+    );
+    await card.getByRole("button", { name: `Download ${target.title}` }).click();
+    const menu = page.getByRole("menu");
+    await expect(menu).toBeVisible();
+    for (const row of FILE_ROWS) {
+      const item = menu.getByRole("menuitem", { name: row.name });
+      await expect(item).toBeVisible();
+      await expect(item).toHaveAttribute("data-review-download", row.kind);
+      if (row.kind === "zip") {
+        await expect(item).toHaveAttribute("href", `/admin/review-flyers/zip/${target.key}`);
+      } else {
+        await expect(item).toHaveAttribute(
+          "href",
+          `/admin/review-flyers/assets/${encodeURIComponent(target.files[row.kind])}?download=1`,
+        );
+        await expect(item).toHaveAttribute("download", target.files[row.kind]);
+      }
     }
+    await page.keyboard.press("Escape");
+    await expect(menu).toHaveCount(0);
   }
 
   for (const asset of ASSETS) {
@@ -192,38 +240,83 @@ test("review flyers stay closed to visitors and open to every staff member", asy
     }
   }
 
-  const masterPdf = cards
-    .filter({ has: page.getByRole("heading", { name: "Master code — review hub" }) })
-    .getByRole("link", { name: "Flyer PDF" });
+  for (const target of TARGETS) {
+    const response = await page.request.get(`/admin/review-flyers/zip/${target.key}`);
+    expect(response.status(), `archive response: ${target.key}`).toBe(200);
+    expect(response.headers()["content-type"]).toBe("application/zip");
+    const cacheControl = response.headers()["cache-control"];
+    expect(cacheControl).toContain("private");
+    expect(cacheControl).toContain("no-store");
+    expect(response.headers()["x-content-type-options"]).toBe("nosniff");
+    expect(response.headers()["content-disposition"]).toBe(
+      `attachment; filename="${target.files.pdf.replace(/-Flyer\.pdf$/u, "")}.zip"`,
+    );
+  }
+  const unknownArchive = await page.request.get("/admin/review-flyers/zip/not-a-flyer");
+  expect(unknownArchive.status()).toBe(404);
+
+  // A double click on a download row starts one download and says so.
+  const masterCard = cards.filter({
+    has: page.getByRole("heading", { name: "Master code — review hub" }),
+  });
   let masterPdfDownloads = 0;
   page.on("download", (download) => {
     const url = new URL(download.url());
     if (url.pathname.endsWith("/WGI-Master-Review-Hub-Flyer.pdf")) masterPdfDownloads += 1;
   });
   const masterDownload = page.waitForEvent("download");
-  await masterPdf.focus();
-  await masterPdf.evaluate((link) => {
-    if (!(link instanceof HTMLAnchorElement)) throw new Error("expected flyer download link");
-    link.click();
-    link.click();
-  });
+  await masterCard.getByRole("button", { name: "Download Master code — review hub" }).click();
+  await page
+    .getByRole("menuitem", { name: "PDF: For printing at a print shop" })
+    .evaluate((link) => {
+      if (!(link instanceof HTMLAnchorElement)) throw new Error("expected flyer download link");
+      link.click();
+      link.click();
+    });
   const downloadedMasterPdf = await masterDownload;
   await expect(page.getByTestId("review-flyer-output-feedback")).toHaveText(
     "Flyer PDF download started for Master code — review hub.",
   );
-  await expect(masterPdf).toBeFocused();
-  await expect(masterPdf).toHaveAttribute("aria-disabled", "true");
   await expect.poll(() => masterPdfDownloads).toBe(1);
-  await expect(masterPdf).not.toHaveAttribute("aria-disabled", "true", { timeout: 3_000 });
   await downloadedMasterPdf.delete();
 
   const unknown = await page.request.get("/admin/review-flyers/assets/not-in-the-manifest.pdf");
   expect(unknown.status()).toBe(404);
 
   for (const traversal of ["%2e%2e%2fpackage.json", "..%2F..%2Fpackage.json"]) {
-    const response = await page.request.get(`/admin/review-flyers/assets/${traversal}`);
-    expect(response.status(), `path traversal must miss the allowlist: ${traversal}`).not.toBe(200);
+    for (const prefix of ["assets", "zip"]) {
+      const response = await page.request.get(`/admin/review-flyers/${prefix}/${traversal}`);
+      expect(
+        response.status(),
+        `path traversal must miss the allowlist: ${prefix}/${traversal}`,
+      ).not.toBe(200);
+    }
   }
+});
+
+test("a flyer's actions stay over its card while its Download menu is open", async ({ page }) => {
+  await signIn(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/admin/review-flyers");
+
+  const card = page.locator('[data-review-target="chang"]');
+  const actions = card.getByRole("group", { name: "Dr. John Chang: print or download" });
+  await page.mouse.move(0, 0);
+  await expect(actions).toHaveCSS("opacity", "0");
+
+  // Opened from the keyboard, focus moves into the portaled menu and leaves
+  // The card, so only the open menu keeps the actions in view.
+  await page.getByTestId("review-flyer-download-chang").focus();
+  // Keyboard focus shows the actions at once, without the pointer's fade.
+  await expect(actions).toHaveCSS("transition-duration", "0s");
+  await expect(actions).toHaveCSS("opacity", "1");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("menu")).toBeVisible();
+  await expect(card.locator(":focus")).toHaveCount(0);
+  await expect(actions).toHaveCSS("opacity", "1");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(page.getByTestId("review-flyer-download-chang")).toBeFocused();
 });
 
 test("review flyer printing is letter-sized, responsive, and self-contained", async ({ page }) => {
@@ -253,7 +346,7 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
   ]) {
     await page.setViewportSize(viewport);
     await page.goto("/admin/review-flyers");
-    await expect(page.getByRole("heading", { name: "Print review flyers" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Review flyers", level: 1 })).toBeVisible();
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
@@ -265,23 +358,20 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
         actions.map((action) => {
           const box = action.getBoundingClientRect();
           return {
-            label: action.textContent.trim(),
+            label: action.getAttribute("aria-label") ?? action.textContent.trim(),
             width: box.width,
             height: box.height,
           };
         }),
       );
-    // 24 flyer actions + the "Print all six flyers" button + the Home
-    // Breadcrumb link (44px touch target like every other action).
-    expect(actionSizes).toHaveLength(26);
+    // Print several, then each of the six flyers' Print and Download.
+    expect(actionSizes).toHaveLength(13);
     for (const action of actionSizes) {
       viewportActionSizes.push({ viewport: viewport.width, ...action });
     }
   }
 
-  const individualPrintButton = page
-    .locator('[data-review-target="awad"]')
-    .getByRole("button", { name: "Print flyer" });
+  const individualPrintButton = page.getByTestId("review-flyer-print-awad");
   await individualPrintButton.focus();
   await individualPrintButton.evaluate((button) => {
     if (!(button instanceof HTMLButtonElement)) throw new Error("expected flyer print button");
@@ -296,22 +386,30 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
   await expect(individualPrintButton).toBeFocused();
   await expect(individualPrintButton).toHaveAttribute("aria-disabled", "true");
 
+  const printedFlyers = async () =>
+    page.locator("[data-review-flyer]").evaluateAll((flyers) =>
+      flyers.flatMap((flyer) => {
+        if (!(flyer instanceof HTMLElement)) {
+          throw new Error("expected HTMLElement");
+        }
+        const style = getComputedStyle(flyer);
+        if (style.display === "none") return [];
+        return [
+          {
+            key: flyer.dataset.reviewFlyer,
+            display: style.display,
+            height: flyer.getBoundingClientRect().height,
+            breakBefore: style.breakBefore,
+            breakAfter: style.breakAfter,
+          },
+        ];
+      }),
+    );
+
   await page.emulateMedia({ media: "print" });
-  const individualPrint = await page.locator("[data-review-flyer]").evaluateAll((flyers) =>
-    flyers.map((flyer) => {
-      if (!(flyer instanceof HTMLElement)) {
-        throw new Error("expected HTMLElement");
-      }
-      return {
-        key: flyer.dataset.reviewFlyer,
-        display: getComputedStyle(flyer).display,
-        height: flyer.getBoundingClientRect().height,
-      };
-    }),
-  );
-  expect(individualPrint.filter((flyer) => flyer.display !== "none")).toEqual([
-    { key: "awad", display: "flex", height: 960 },
-  ]);
+  expect(
+    (await printedFlyers()).map(({ key, display, height }) => ({ key, display, height })),
+  ).toEqual([{ key: "awad", display: "flex", height: 960 }]);
   const individualPdf = await PDFDocument.load(
     await page.pdf({ preferCSSPageSize: true, printBackground: true }),
   );
@@ -336,29 +434,36 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
   expect(pageRule).toMatch(/margin:\s*0\.45in/i);
 
   await page.emulateMedia({ media: "screen" });
-  const printAll = page.getByRole("button", { name: "Print all six flyers" });
-  await printAll.focus();
-  await printAll.evaluate((button) => {
-    if (!(button instanceof HTMLButtonElement)) throw new Error("expected print-all button");
-    button.click();
-    button.click();
+  await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
+  await expect(page.locator("body")).not.toHaveAttribute("data-review-flyer-print");
+  await expect(individualPrintButton).not.toHaveAttribute("aria-disabled", "true");
+
+  // Print several starts with every flyer checked: one click prints all six.
+  const several = page.getByTestId("review-flyer-print-several");
+  await several.click();
+  const chooser = page.getByRole("menu");
+  await expect(chooser.getByRole("menuitemcheckbox")).toHaveCount(6);
+  for (const target of TARGETS) {
+    await expect(chooser.getByRole("menuitemcheckbox", { name: target.title })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+  }
+  const printChosen = page.getByTestId("review-flyer-print-chosen");
+  await expect(printChosen).toHaveText("Print all six");
+  await printChosen.evaluate((item) => {
+    if (!(item instanceof HTMLElement)) throw new Error("expected print item");
+    item.click();
+    item.click();
   });
   await expect(page.locator("body")).toHaveAttribute("data-review-flyer-print", "all");
   await expect(page.locator("html")).toHaveAttribute("data-test-print-calls", "2");
   await expect(page.getByTestId("review-flyer-output-feedback")).toHaveText(
     "Print dialog is opening for all six flyers.",
   );
-  await expect(printAll).toBeFocused();
-  await expect(printAll).toHaveAttribute("aria-disabled", "true");
 
   await page.emulateMedia({ media: "print" });
-  const allPrint = await page.locator("[data-review-flyer]").evaluateAll((flyers) =>
-    flyers.map((flyer) => ({
-      display: getComputedStyle(flyer).display,
-      height: flyer.getBoundingClientRect().height,
-      breakAfter: getComputedStyle(flyer).breakAfter,
-    })),
-  );
+  const allPrint = await printedFlyers();
   expect(allPrint).toHaveLength(6);
   for (const [index, flyer] of allPrint.entries()) {
     expect(flyer.display).toBe("flex");
@@ -373,7 +478,51 @@ test("review flyer printing is letter-sized, responsive, and self-contained", as
   await page.emulateMedia({ media: "screen" });
   await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
   await expect(page.locator("body")).not.toHaveAttribute("data-review-flyer-print");
-  await expect(printAll).not.toHaveAttribute("aria-disabled", "true");
+
+  // Unchecking keeps the menu open; the two left print together, one a page.
+  await several.click();
+  for (const title of [
+    "Master code — review hub",
+    "Whole practice — straight to Google",
+    "Dr. Alfredo Mendoza",
+    "Taylor Emmerman",
+  ]) {
+    await chooser.getByRole("menuitemcheckbox", { name: title }).click();
+    await expect(chooser).toBeVisible();
+  }
+  await expect(printChosen).toHaveText("Print 2 flyers");
+  await printChosen.click();
+  await expect(page.locator("body")).toHaveAttribute("data-review-flyer-print", "several");
+  await expect(page.locator("html")).toHaveAttribute("data-test-print-calls", "3");
+  await expect(page.getByTestId("review-flyer-output-feedback")).toHaveText(
+    "Print dialog is opening for two flyers.",
+  );
+  await page.emulateMedia({ media: "print" });
+  const severalPrint = await printedFlyers();
+  expect(severalPrint.map(({ key, height }) => ({ key, height }))).toEqual([
+    { key: "awad", height: 960 },
+    { key: "chang", height: 960 },
+  ]);
+  expect(severalPrint[1]?.breakBefore).toBe("page");
+  const severalPdf = await PDFDocument.load(
+    await page.pdf({ preferCSSPageSize: true, printBackground: true }),
+  );
+  expect(severalPdf.getPageCount()).toBe(2);
+
+  await page.emulateMedia({ media: "screen" });
+  await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));
+  await expect(page.locator("body")).not.toHaveAttribute("data-review-flyer-print");
+  await expect(page.locator("[data-review-flyer-chosen]")).toHaveCount(0);
+
+  // Unchecking every flyer leaves nothing to print.
+  await several.click();
+  for (const title of ["Dr. Amir Awad", "Dr. John Chang"]) {
+    await chooser.getByRole("menuitemcheckbox", { name: title }).click();
+  }
+  await expect(printChosen).toHaveText("Choose a flyer to print");
+  await expect(printChosen).toHaveAttribute("aria-disabled", "true");
+  await page.keyboard.press("Escape");
+
   await page.evaluate(() => window.dispatchEvent(new Event("beforeprint")));
   await expect(page.locator("body")).toHaveAttribute("data-review-flyer-print", "practice");
   await page.evaluate(() => window.dispatchEvent(new Event("afterprint")));

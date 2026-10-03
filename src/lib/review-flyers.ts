@@ -7,10 +7,10 @@ export type ReviewTargetKey = (typeof REVIEW_TARGET_KEYS)[number];
 export type ReviewAssetKind = "png" | "svg" | "pdf";
 
 export interface ReviewFlyerAsset {
-  filename: string;
-  sha256: string;
-  kind: ReviewAssetKind;
-  contentType: string;
+  readonly filename: string;
+  readonly sha256: string;
+  readonly kind: ReviewAssetKind;
+  readonly contentType: string;
 }
 
 export interface ReviewFlyer {
@@ -30,9 +30,9 @@ export interface ReviewFlyer {
 }
 
 export interface ReviewFlyerAssets {
-  png: ReviewFlyerAsset;
-  svg: ReviewFlyerAsset;
-  pdf: ReviewFlyerAsset;
+  readonly png: ReviewFlyerAsset;
+  readonly svg: ReviewFlyerAsset;
+  readonly pdf: ReviewFlyerAsset;
 }
 
 const CONTENT_TYPES = {
@@ -154,3 +154,8 @@ export const reviewFlyerAssetByFilename = new Map(
     return assets.map((asset) => [asset.filename, asset] as const);
   }),
 );
+
+/** The .zip that carries one flyer's three files: "Dr-Awad-Review.zip". */
+export function reviewFlyerArchiveName(flyer: Readonly<Pick<ReviewFlyer, "assets">>): string {
+  return `${flyer.assets.pdf.filename.replace(/-Flyer\.pdf$/u, "").replace(/\.pdf$/u, "")}.zip`;
+}

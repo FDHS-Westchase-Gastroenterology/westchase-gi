@@ -1591,17 +1591,6 @@
     background: var(--color-mint);
   }
 
-  .portal-flyer-list {
-    overflow: clip;
-    border: 1px solid var(--color-line-2);
-    border-radius: 0.75rem;
-    background: var(--portal-surface);
-  }
-
-  .portal-flyer-row + .portal-flyer-row {
-    border-top: 1px solid var(--color-line);
-  }
-
   /* First-login tour: the dialog arrives with a short, calm rise (180ms,
      strong ease-out) — the rare-tier motion budget, state-conveying only. */
   .tour-dialog[open] {
@@ -2355,7 +2344,8 @@
   body[data-review-flyer-print="chang"] [data-review-flyer="chang"],
   body[data-review-flyer-print="mendoza"] [data-review-flyer="mendoza"],
   body[data-review-flyer-print="taylor"] [data-review-flyer="taylor"],
-  body[data-review-flyer-print="all"] .review-flyer {
+  body[data-review-flyer-print="all"] .review-flyer,
+  body[data-review-flyer-print="several"] [data-review-flyer-chosen] {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -2370,6 +2360,11 @@
 
   body[data-review-flyer-print="all"] .review-flyer:not(:last-child) {
     break-after: page;
+  }
+
+  /* Print several: each chosen flyer after the first starts a new page. */
+  body[data-review-flyer-print="several"] [data-review-flyer-chosen] ~ [data-review-flyer-chosen] {
+    break-before: page;
   }
 
   .review-flyer-band {

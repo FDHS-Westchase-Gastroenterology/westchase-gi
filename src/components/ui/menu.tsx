@@ -23,6 +23,11 @@ import { Check } from "@/components/icons";
  * command that confirms a choice made in the menu, such as Compare in the
  * week's compare picker: `primary` sets it in bold teal ink.
  *
+ * MenuLinkItem is a row that is a link (Base UI Menu.LinkItem, an `<a>`),
+ * for a command that goes somewhere or fetches a file, such as a review
+ * flyer's downloads (issue #357). It wears the item's row, and like every
+ * other item it closes the menu when chosen.
+ *
  * Motion is its own axis (design-system/components.md "Component API
  * rules"). `wgi` (default): the popover temperament — grows from the
  * trigger at scale(0.95) with opacity on the staff home's base beat and
@@ -157,6 +162,18 @@ function MenuItem({
 }
 
 // oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
+function MenuLinkItem({ className, closeOnClick = true, ...props }: MenuPrimitive.LinkItem.Props) {
+  return (
+    <MenuPrimitive.LinkItem
+      data-slot="menu-link-item"
+      closeOnClick={closeOnClick}
+      className={cn(itemClasses, className)}
+      {...props}
+    />
+  );
+}
+
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- React props carry framework member types that cannot be made readonly
 function MenuCheckboxItem({ className, children, ...props }: MenuPrimitive.CheckboxItem.Props) {
   return (
     <MenuPrimitive.CheckboxItem
@@ -217,6 +234,7 @@ export {
   MenuGroup,
   MenuItem,
   MenuLabel,
+  MenuLinkItem,
   MenuRadioGroup,
   MenuRadioItem,
   MenuSeparator,

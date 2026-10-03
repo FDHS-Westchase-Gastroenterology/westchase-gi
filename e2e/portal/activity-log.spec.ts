@@ -1,4 +1,7 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { crc32 } from "node:zlib";
 
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
@@ -180,6 +183,99 @@ test("a log that cannot be read says so and reads again on Try again", async ({ 
     await error.getByRole("button", { name: "Try again" }).click();
     await expect(error).toHaveCount(0);
     await expect(page.getByTestId("activity-feed")).not.toHaveAttribute("aria-busy", "true");
+  } finally {
+    const audits = await db.from("audit_log").delete().eq("actor_email", desk.email);
+    expect(audits.error).toBeNull();
+    await desk.dispose();
+  }
+});
+
+interface ZipEntry {
+  readonly name: string;
+  readonly crc: number;
+  readonly size: number;
+  readonly data: Buffer;
+}
+
+/** The entries of a stored (method 0) zip, read through its central directory. */
+// oxlint-disable-next-line typescript/prefer-readonly-parameter-types -- a Buffer's type cannot be made readonly
+function readStoredZip(archive: Buffer): ZipEntry[] {
+  const end = archive.length - 22;
+  expect(archive.readUInt32LE(end)).toBe(0x06_05_4b_50);
+  const count = archive.readUInt16LE(end + 10);
+  let at = archive.readUInt32LE(end + 16);
+  const entries: ZipEntry[] = [];
+  for (let index = 0; index < count; index += 1) {
+    expect(archive.readUInt32LE(at)).toBe(0x02_01_4b_50);
+    const method = archive.readUInt16LE(at + 10);
+    const crc = archive.readUInt32LE(at + 16);
+    const size = archive.readUInt32LE(at + 20);
+    expect(archive.readUInt32LE(at + 24)).toBe(size);
+    const nameLength = archive.readUInt16LE(at + 28);
+    const local = archive.readUInt32LE(at + 42);
+    const name = archive.toString("ascii", at + 46, at + 46 + nameLength);
+    expect(method, `${name} is stored`).toBe(0);
+    expect(archive.readUInt32LE(local), `${name} local header`).toBe(0x04_03_4b_50);
+    expect(archive.readUInt32LE(local + 14), `${name} local CRC`).toBe(crc);
+    const start = local + 30 + archive.readUInt16LE(local + 26) + archive.readUInt16LE(local + 28);
+    entries.push({ name, crc, size, data: archive.subarray(start, start + size) });
+    at += 46 + nameLength;
+  }
+  return entries;
+}
+
+function flyerFile(name: string) {
+  return readFileSync(join(process.cwd(), "private", "review-flyers", name));
+}
+
+test("a flyer downloads as its PDF and as one .zip of all three files", async ({ page }) => {
+  test.setTimeout(120_000);
+  const db = serviceDb();
+  const desk = await createStaffFixture(db, {
+    prefix: `log-flyer-${runId}`,
+    displayName: "TEST Front Desk",
+  });
+  try {
+    await signIn(page, desk);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("/admin/review-flyers");
+    const trigger = page.getByTestId("review-flyer-download-awad");
+
+    await trigger.click();
+    const pdfDownload = page.waitForEvent("download");
+    await page.getByRole("menuitem", { name: "PDF: For printing at a print shop" }).click();
+    const pdf = await pdfDownload;
+    expect(pdf.suggestedFilename()).toBe("Dr-Awad-Review-Flyer.pdf");
+    const pdfPath = await pdf.path();
+    expect(readFileSync(pdfPath).equals(flyerFile("Dr-Awad-Review-Flyer.pdf"))).toBe(true);
+    await expect(page.getByTestId("review-flyer-output-feedback")).toHaveText(
+      "Flyer PDF download started for Dr. Amir Awad.",
+    );
+
+    await trigger.click();
+    const zipDownload = page.waitForEvent("download");
+    await page.getByRole("menuitem", { name: "All three, as one .zip" }).click();
+    const zip = await zipDownload;
+    expect(zip.suggestedFilename()).toBe("Dr-Awad-Review.zip");
+    // A second file chosen right after the first still downloads.
+    await expect(page.getByTestId("review-flyer-output-feedback")).toHaveText(
+      "The .zip of all three files started downloading for Dr. Amir Awad.",
+    );
+    const entries = readStoredZip(readFileSync(await zip.path()));
+    expect(entries.map((entry) => entry.name)).toEqual([
+      "Dr-Awad-Review-Flyer.pdf",
+      "Dr-Awad-Review-QR.svg",
+      "Dr-Awad-Review-QR.png",
+    ]);
+    for (const entry of entries) {
+      const file = flyerFile(entry.name);
+      expect(entry.size, `${entry.name} size`).toBe(file.byteLength);
+      expect(entry.crc, `${entry.name} CRC`).toBe(crc32(file));
+      expect(crc32(entry.data), `${entry.name} data CRC`).toBe(entry.crc);
+      expect(entry.data.equals(file), `${entry.name} bytes`).toBe(true);
+    }
+    await pdf.delete();
+    await zip.delete();
   } finally {
     const audits = await db.from("audit_log").delete().eq("actor_email", desk.email);
     expect(audits.error).toBeNull();
