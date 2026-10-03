@@ -7,12 +7,15 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { schedulingCommandOutcomeSchema, schedulingInputSchema } from "./contracts";
 import type { SchedulingInput, SchedulingOutcome } from "./contracts";
 import {
-  appointmentAvailabilityOutcomeSchema,
-  monthAvailabilityOutcomeSchema,
-  monthSummaryOutcomeSchema,
+  dayScheduleOutcomeSchema,
   rememberWeekProviderOutcomeSchema,
   weekProviderOutcomeSchema,
   weekScheduleOutcomeSchema,
+} from "./grid-contracts";
+import {
+  appointmentAvailabilityOutcomeSchema,
+  monthAvailabilityOutcomeSchema,
+  monthSummaryOutcomeSchema,
 } from "./read-contracts";
 import {
   appointmentListDatabaseSchema,
@@ -197,6 +200,18 @@ export async function executeSchedulingOperation(
         .abortSignal(AbortSignal.timeout(10_000));
       if (result.error !== null) return { ok: false, code: "unavailable" };
       const outcome = weekScheduleOutcomeSchema.safeParse(result.data);
+      return outcome.success ? outcome.data : { ok: false, code: "unavailable" };
+    }
+    case "day_schedule": {
+      const result = await db
+        .rpc("portal_schedule_day", {
+          p_actor_id: actorId,
+          p_date: operation.date,
+          p_appointment_type_id: operation.appointmentTypeId,
+        })
+        .abortSignal(AbortSignal.timeout(10_000));
+      if (result.error !== null) return { ok: false, code: "unavailable" };
+      const outcome = dayScheduleOutcomeSchema.safeParse(result.data);
       return outcome.success ? outcome.data : { ok: false, code: "unavailable" };
     }
     case "week_provider": {

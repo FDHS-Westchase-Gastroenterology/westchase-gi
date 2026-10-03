@@ -1,4 +1,4 @@
-import type { WeekDay, WeekSchedule } from "@/lib/portal/scheduling/read-contracts";
+import type { WeekDay, WeekSchedule } from "@/lib/portal/scheduling/grid-contracts";
 
 import {
   addDays,
@@ -165,7 +165,7 @@ export function providerChoice(provider: Readonly<{ id: string; name: string }>)
   } satisfies WeekProviderChoice;
 }
 
-function listJoin(names: readonly string[]): string {
+export function listJoin(names: readonly string[]): string {
   if (names.length <= 1) return names.join("");
   return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 }
@@ -198,7 +198,10 @@ function statusSentence(status: AppointmentStatus, state: WeekCellState): string
   return state === "past" ? ", past" : "";
 }
 
-function countFor(days: readonly WeekDay[]): WeekCount | null {
+/** A count line for one or more days: seen once the day is past, else open or Full. */
+export function countFor(
+  days: readonly Readonly<Pick<WeekDay, "seen" | "openCount">>[],
+): WeekCount | null {
   const seen = days.filter((day) => day.seen !== null);
   if (seen.length > 0) {
     const total = seen.reduce((sum, day) => sum + (day.seen ?? 0), 0);

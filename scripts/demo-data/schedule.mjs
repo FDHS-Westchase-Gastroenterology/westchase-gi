@@ -2,7 +2,7 @@
    of planned next steps (consult → pre-procedure → results), new patients and returning ones.
    Every appointment's history is settled up to the reference time. */
 import { CANCEL_REASONS, CONDITIONS } from "./content.mjs";
-import { DAY, HOUR, MIN, addDays, daysBetween, ny, weekday } from "./context.mjs";
+import { DAY, HOUR, MIN, addDays, daysBetween, ny, nyMinute, weekday } from "./context.mjs";
 import { LUNCH, isClosedDay } from "./roster.mjs";
 
 export function createSchedule(g, people) {
@@ -30,13 +30,15 @@ export function createSchedule(g, people) {
     return free.length ? pick(free) : null;
   }
 
-  function place({ patient, provider, date, type, createdAt, createdBy }) {
+  function place({ patient, provider, date, type, createdAt, createdBy, at }) {
     const h = worksOn(provider, date);
-    const start = findSlot(provider, date, type);
+    const start = at ?? findSlot(provider, date, type);
     if (start == null || !h || patient.days.has(date)) return null;
     const slotKey = `${provider}|${date}`;
+    const until = start + type.dur + type.after;
+    if (occupied.get(slotKey)?.some(([a, b]) => start < b && until > a)) return null;
     if (!occupied.has(slotKey)) occupied.set(slotKey, []);
-    occupied.get(slotKey).push([start, start + type.dur + type.after]);
+    occupied.get(slotKey).push([start, until]);
     patient.days.add(date);
     const startsAt = ny(date, start);
     const endsAt = startsAt + type.dur * MIN;
@@ -76,7 +78,7 @@ export function createSchedule(g, people) {
     });
     const infusion = a.type === TYPES.INF;
     if (a.endsAt <= NOW) {
-      const r = rnd();
+      const r = a.outcome === "completed" ? 0 : rnd();
       const cancel = r > (infusion ? 0.97 : 0.91);
       const noShow = !cancel && r > (infusion ? 0.95 : 0.85);
       if (cancel) {
@@ -112,7 +114,7 @@ export function createSchedule(g, people) {
           reason: null,
         });
       }
-    } else if (a.startsAt <= NOW + 10 * MIN) {
+    } else if (a.startsAt <= NOW + 10 * MIN || a.outcome === "checked_in") {
       a.steps.push({
         command: "check_in",
         status: "checked_in",
@@ -225,11 +227,66 @@ export function createSchedule(g, people) {
 
   const followUpConditions = people.conditionWeights.filter(([k]) => CONDITIONS[k].fu);
   const establishedPool = [];
+
+  function returning(prov, date) {
+    const isNP = NPS.includes(prov);
+    const p = people.makePatient({ cond: weighted(followUpConditions), established: true });
+    p.physician = isNP ? pick(PHYS) : prov;
+    p.lastSeen = date;
+    establishedPool.push(p);
+    return p;
+  }
+
+  /** While the clinic is open, the day view opens on a checked-in visit and one finished
+      earlier, with a provider whose hours hold the clock, preferring one with room for both.
+      Over lunch the checked-in patient is the one waiting for 1:00 PM. Nobody has finished in
+      the first 45 minutes of the day. */
+  function todayPlan(prov) {
+    const h = worksOn(prov, TODAY);
+    if (!h) return [];
+    const [, open, close] = h;
+    const now = nyMinute(NOW);
+    const quarter = now - (now % 15);
+    const at = quarter >= LUNCH[0] && quarter < LUNCH[1] ? LUNCH[1] : quarter;
+    const overLunch = (m, dur) => m < LUNCH[1] && m + dur > LUNCH[0];
+    const current = [TYPES.FU, TYPES.RES].find((t) => at + t.dur <= close && !overLunch(at, t.dur));
+    if (quarter < open || !current) return [];
+    let earlier = quarter - 45;
+    while (earlier >= open && overLunch(earlier, TYPES.FU.dur)) earlier -= 15;
+    const plan = [[current, at, "checked_in"]];
+    if (earlier >= open) plan.unshift([TYPES.FU, earlier, "completed"]);
+    return plan;
+  }
+  const todayAnchor = [...PHYS, ...NPS]
+    .map((prov) => ({ prov, plan: todayPlan(prov) }))
+    .reduce((best, next) => (next.plan.length > best.plan.length ? next : best), { plan: [] });
+
+  function anchorToday(prov) {
+    if (prov !== todayAnchor.prov) return 0;
+    let placed = 0;
+    for (const [type, start, outcome] of todayAnchor.plan) {
+      const a = place({
+        patient: returning(prov, TODAY),
+        provider: prov,
+        date: TODAY,
+        type,
+        at: start,
+        createdAt: ny(TODAY, 480) - ri(10, 80) * DAY,
+      });
+      if (!a) continue;
+      a.outcome = outcome;
+      settle(a);
+      enqueueNext(a);
+      placed++;
+    }
+    return placed;
+  }
+
   for (let date = START; date <= END; date = addDays(date, 1)) {
     for (const prov of [...PHYS, ...NPS]) {
       if (!worksOn(prov, date)) continue;
       const want = target(date);
-      let count = 0;
+      let count = date === TODAY ? anchorToday(prov) : 0;
       const due = queue
         .filter((q) => q.providers.includes(prov) && q.earliest <= date && !q.done)
         .sort((x, y) => (x.latest < y.latest ? -1 : 1));

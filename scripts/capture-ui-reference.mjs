@@ -180,6 +180,12 @@ const portalCaptures = [
     ready: ".wgi-week-grid",
   },
   {
+    name: "desktop-portal-schedule-day",
+    path: "/admin/schedule?view=day",
+    viewport: { width: 1440, height: 900 },
+    ready: ".wgi-dayview-grid",
+  },
+  {
     name: "desktop-portal-requests",
     path: "/admin/requests?q=Sample+patient",
     viewport: { width: 1440, height: 900 },

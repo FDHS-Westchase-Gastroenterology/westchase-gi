@@ -10,6 +10,7 @@ const DAY_MS = 86_400_000;
 const WEEK_PARAM = z.iso
   .date()
   .refine((date) => /^2[01]/u.test(date) && new Date(`${date}T12:00:00Z`).getUTCDay() === 0);
+const DAY_PARAM = z.iso.date().refine((date) => /^2[01]/u.test(date));
 const PROVIDER_ID = z.uuid();
 const PROVIDERS_PARAM = z.string().catch("");
 
@@ -19,6 +20,12 @@ const CARD_DAY = new Intl.DateTimeFormat("en-US", {
   month: "short",
   day: "numeric",
   timeZone: PRACTICE_TZ,
+});
+const DAY_TITLE = new Intl.DateTimeFormat("en-US", {
+  weekday: "short",
+  month: "long",
+  day: "numeric",
+  timeZone: "UTC",
 });
 const NY_DAY = new Intl.DateTimeFormat("en-CA", { dateStyle: "short", timeZone: PRACTICE_TZ });
 const NY_CLOCK = new Intl.DateTimeFormat("en-US", {
@@ -56,6 +63,27 @@ export function practiceWeekStart(now: Readonly<Date>): string {
 export function parseWeekStart(value: string | readonly string[] | undefined): string | null {
   const parsed = WEEK_PARAM.safeParse(value);
   return parsed.success ? parsed.data : null;
+}
+
+/** A `?date=` value when it names a day the schedule reads, else null. */
+export function parseDay(value: string | readonly string[] | undefined): string | null {
+  const parsed = DAY_PARAM.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
+/** The Sunday that starts the week holding `date`. */
+export function weekStartOf(date: string): string {
+  return addDays(date, -noon(date).getUTCDay());
+}
+
+/** "Wed, September 16". */
+export function dayTitle(date: string): string {
+  return DAY_TITLE.format(noon(date));
+}
+
+/** The day view of `date`, or of the practice's today when null. */
+export function dayHref(date: string | null): string {
+  return date === null ? "/admin/schedule?view=day" : `/admin/schedule?view=day&date=${date}`;
 }
 
 export function shiftWeek(weekStart: string, by: number): string | null {
@@ -106,6 +134,11 @@ export function timeRange(startsAt: string, endsAt: string): string {
 /** "Wed, Sep 16 · 1:00 – 1:30 PM". */
 export function appointmentWhen(startsAt: string, endsAt: string): string {
   return `${CARD_DAY.format(new Date(startsAt))} · ${timeRange(startsAt, endsAt)}`;
+}
+
+/** "Wed, Sep 16 at 2:00 PM". */
+export function appointmentAt(startsAt: string): string {
+  return `${CARD_DAY.format(new Date(startsAt))} at ${practiceTime(startsAt)}`;
 }
 
 /** "Chang" from "Dr. John Chang"; "Ricardo" from "Yanessa Ricardo, APRN". */

@@ -4,11 +4,19 @@ import { requireRole } from "@/lib/portal/auth";
 import { executeSchedulingOperation } from "@/lib/portal/scheduling/service";
 import { serviceClient } from "@/lib/portal/server";
 
+import { ScheduleDayView } from "./schedule-day";
+import { scheduleDayFor } from "./schedule-day-model";
 import { parseMonth, practiceMonth, scheduleMonthFor } from "./schedule-model";
 import { ScheduleMonthView } from "./schedule-month";
 import { ScheduleWeekView } from "./schedule-week";
 import { providerChoice, scheduleWeekFor } from "./schedule-week-model";
-import { parseWeekStart, practiceWeekStart, weekProviderIds } from "./week-calendar";
+import {
+  parseDay,
+  parseWeekStart,
+  practiceDate,
+  practiceWeekStart,
+  weekProviderIds,
+} from "./week-calendar";
 
 import "./schedule.css";
 
@@ -22,7 +30,8 @@ type SearchParams = Record<string, string | string[] | undefined>;
    practice day still has open, for every provider and location. `?month=`
    picks the month; anything the schedule cannot read falls back to the
    practice's current month. `?view=week` is one provider's week, or up to
-   three side by side (issue #345). A failed read throws to the portal's
+   three side by side (issue #345). `?view=day&date=` is every provider
+   working one date (issue #351). A failed read throws to the portal's
    error surface, never an empty grid. */
 export default async function SchedulePage({
   searchParams,
@@ -30,6 +39,16 @@ export default async function SchedulePage({
   const session = await requireRole("staff");
   const params = await searchParams;
   if (params.view === "week") return <WeekPage actor={session.id} params={params} />;
+  if (params.view === "day") {
+    const day = await executeSchedulingOperation(serviceClient(), session.id, {
+      action: "day_schedule",
+      date: parseDay(params.date) ?? practiceDate(new Date()),
+      appointmentTypeId: null,
+    });
+    if (!day.ok || !("date" in day) || !("off" in day))
+      throw new Error("The schedule could not be read.");
+    return <ScheduleDayView view={scheduleDayFor(day)} admin={session.role === "admin"} />;
+  }
   const month = parseMonth(params.month) ?? practiceMonth(new Date());
   const summary = await executeSchedulingOperation(serviceClient(), session.id, {
     action: "month_summary",
@@ -92,7 +111,6 @@ async function WeekPage({
     locationId: null,
     appointmentTypeId: null,
   });
-  if (!week.ok || !("activeProviderCount" in week))
-    throw new Error("The schedule could not be read.");
+  if (!week.ok || !("weekStart" in week)) throw new Error("The schedule could not be read.");
   return <ScheduleWeekView view={scheduleWeekFor(week)} catalog={active} />;
 }

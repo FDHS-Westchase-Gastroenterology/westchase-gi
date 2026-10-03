@@ -3,11 +3,11 @@ import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 
 import {
-  monthSummaryOutcomeSchema,
   rememberWeekProviderOutcomeSchema,
   weekProviderOutcomeSchema,
   weekScheduleOutcomeSchema,
-} from "../../src/lib/portal/scheduling/read-contracts";
+} from "../../src/lib/portal/scheduling/grid-contracts";
+import { monthSummaryOutcomeSchema } from "../../src/lib/portal/scheduling/read-contracts";
 import { resolveAppointmentStart } from "../../src/lib/portal/scheduling/time";
 import { publishableDb, serviceDb } from "../harness/env";
 import { createSchedulingFixture, schedulingFixtureDate } from "../harness/scheduling";

@@ -144,6 +144,7 @@ const RPC_SIGNATURES = {
     "p_first date, p_last date, p_provider_ids uuid[], p_location_id uuid, p_type_id uuid",
   portal_schedule_week:
     "p_actor_id uuid, p_week_start date, p_provider_ids uuid[], p_location_id uuid, p_appointment_type_id uuid",
+  portal_schedule_day: "p_actor_id uuid, p_date date, p_appointment_type_id uuid",
   portal_schedule_week_provider: "p_actor_id uuid",
   portal_remember_week_provider: "p_actor_id uuid, p_provider_id uuid",
   portal_log_call_outcome:
@@ -237,6 +238,7 @@ const RPC_RESULTS = {
   portal_schedule_greedy_opens:
     "TABLE(provider_id uuid, location_id uuid, day date, starts_at timestamp with time zone, ends_at timestamp with time zone)",
   portal_schedule_week: "jsonb",
+  portal_schedule_day: "jsonb",
   portal_schedule_week_provider: "jsonb",
   portal_remember_week_provider: "jsonb",
   portal_log_call_outcome: "uuid",

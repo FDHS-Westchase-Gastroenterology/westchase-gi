@@ -5,19 +5,17 @@ import { Tooltip } from "@base-ui/react/tooltip";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState } from "react";
-import type { ReactNode } from "react";
 import { toast } from "sonner";
 
 import { FullRecordSheet } from "@/app/admin/(portal)/(home)/full-record-sheet";
 import type { HomeLine } from "@/app/admin/(portal)/(home)/home-line";
-import { ChevronDown, ChevronLeft, ChevronRight, Search } from "@/components/icons";
-import { SegmentedControl } from "@/components/ui/segmented-control";
-import type { SegmentedControlOption } from "@/components/ui/segmented-control";
+import { ChevronDown, ChevronLeft, ChevronRight } from "@/components/icons";
 import { TooltipContent } from "@/components/ui/tooltip";
 
+import { ScheduleArrow, ScheduleToolsWithShortcuts } from "./schedule-toolbar";
 import type { ScheduleWeek, WeekProviderChoice } from "./schedule-week-model";
 import { rememberWeekProvider } from "./week-actions";
-import { weekHref } from "./week-calendar";
+import { dayHref, weekHref } from "./week-calendar";
 import { WeekCardPopup } from "./week-cards";
 import type { WeekCardPayload } from "./week-cards";
 import { WeekGrid } from "./week-grid";
@@ -47,33 +45,7 @@ import "./schedule-week.css";
    The page is the week read the server rendered; the now line is the
    only part that follows the browser's clock. */
 
-type View = "day" | "week" | "month";
-
-const VIEW_OPTIONS: readonly SegmentedControlOption<View>[] = [
-  { value: "day", label: "Day", disabledReason: "Coming soon" },
-  { value: "week", label: "Week" },
-  { value: "month", label: "Month" },
-];
-
 /* ---- The page ---- */
-
-function WeekArrow({
-  href,
-  label,
-  children,
-}: Readonly<{ href: string | null; label: string; children: ReactNode }>) {
-  if (href === null)
-    return (
-      <button type="button" className="wgi-schedule-arrow" disabled aria-label={label}>
-        {children}
-      </button>
-    );
-  return (
-    <Link href={href} className="wgi-schedule-arrow" aria-label={label}>
-      {children}
-    </Link>
-  );
-}
 
 function renderTip({ payload }: Readonly<{ payload: TipPayload | undefined }>) {
   return payload === undefined ? null : (
@@ -196,39 +168,34 @@ function WeekHeader({
         <div className="wgi-week-controls">
           <p className="wgi-week-range">{view.range}</p>
           <div className="wgi-schedule-arrows">
-            <WeekArrow href={view.previous} label="Previous week">
+            <ScheduleArrow href={view.previous} label="Previous week">
               <ChevronLeft width={20} height={20} />
-            </WeekArrow>
-            <WeekArrow href={view.next} label="Next week">
+            </ScheduleArrow>
+            <ScheduleArrow href={view.next} label="Next week">
               <ChevronRight width={20} height={20} />
-            </WeekArrow>
+            </ScheduleArrow>
           </div>
           <Link href={view.todayHref} className="wgi-schedule-today">
             Today
           </Link>
         </div>
       </div>
-      <div className="wgi-schedule-tools">
-        <label className="wgi-schedule-search">
-          <Search width={18} height={18} />
-          <input
-            type="search"
-            placeholder="Search patients"
-            aria-label="Search patients"
-            disabled
-          />
-        </label>
-        <SegmentedControl<View>
-          aria-label="View"
-          paper="glass"
-          options={VIEW_OPTIONS}
-          value="week"
-          className="w-auto"
-          onValueChange={(next) => {
-            if (next === "month") router.push(view.monthHref);
-          }}
-        />
-      </div>
+      <ScheduleToolsWithShortcuts
+        value="week"
+        targets={{
+          today: view.todayHref,
+          next: view.next,
+          previous: view.previous,
+          /* Today when this week holds it, else the week's first day with hours. */
+          day: dayHref(
+            view.columns.some((column) => column.today)
+              ? null
+              : (view.columns.find((column) => column.kind === "day")?.date ?? view.weekStart),
+          ),
+          week: null,
+          month: view.monthHref,
+        }}
+      />
     </header>
   );
 }

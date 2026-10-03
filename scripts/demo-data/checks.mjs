@@ -1,4 +1,4 @@
-import { nyDate } from "./context.mjs";
+import { nyDate, nyMinute, weekday } from "./context.mjs";
 import { MOCK_EMAIL_DOMAIN } from "./people.mjs";
 /* The demo-data bar, as checks over a generated dataset. `checkDemoData(data)` returns a list
    of problems; an empty list means the dataset may go on a shared Preview branch.
@@ -174,6 +174,56 @@ function quality({ rows, staff }, problem) {
     if (text && GENDERED.test(text)) problem(`${kind} assumes a gender: "${text.slice(0, 80)}"`);
 }
 
+/** The Schedule's Day view on the reference day, read back from the rows. While the clinic is
+    open and its first 45 minutes have passed, today shows at least three providers working,
+    someone off, a checked-in visit, a finished one and, while one still fits, an open time. After the last provider
+    closes, the finished day still shows who was seen. */
+function dayView({ rows, meta }, problem) {
+  const now = Date.parse(meta.now);
+  const date = meta.today;
+  const clock = nyMinute(now);
+  const minute = (v) => nyMinute(Date.parse(v));
+  const away = new Set(
+    rows.provider_time_exceptions
+      .filter((e) => e.kind === "unavailable" && nyDate(Date.parse(e.starts_at)) <= date)
+      .filter((e) => date < nyDate(Date.parse(e.ends_at)))
+      .map((e) => e.provider_id),
+  );
+  const hours = rows.provider_hours.filter(
+    (h) => h.weekday === weekday(date) && !away.has(h.provider_id),
+  );
+  if (hours.length === 0) return;
+  const opens = Math.min(...hours.map((h) => h.open_minute));
+  const closes = Math.max(...hours.map((h) => h.close_minute));
+  const visits = rows.appointments.filter(
+    (a) => a.status !== "cancelled" && nyDate(Date.parse(a.starts_at)) === date,
+  );
+  const statuses = new Set(visits.map((a) => a.status));
+  if (clock >= closes) {
+    if (!statuses.has("completed")) problem(`day view ${date}: nobody was seen today`);
+    return;
+  }
+  if (clock < opens + 45) return;
+  const working = new Set(hours.map((h) => h.provider_id));
+  if (working.size < 3) problem(`day view ${date}: ${working.size} providers working`);
+  if (rows.scheduling_providers.length === working.size) problem(`day view ${date}: nobody off`);
+  for (const status of ["checked_in", "completed"])
+    if (!statuses.has(status)) problem(`day view ${date}: no ${status} visit`);
+  /* An open time starts on a quarter hour after the clock and fits the hours and the visits,
+     while the day still has room for one. */
+  const shortest = Math.min(...rows.appointment_types.map((t) => t.duration_minutes));
+  if (clock - (clock % 15) + 15 + shortest > closes) return;
+  const hasOpen = hours.some((h) => {
+    const taken = visits
+      .filter((a) => a.provider_id === h.provider_id)
+      .map((a) => [minute(a.reserved_from), minute(a.reserved_until)]);
+    for (let m = h.open_minute; m + shortest <= h.close_minute; m += 15)
+      if (m > clock && !taken.some(([a, b]) => m < b && m + shortest > a)) return true;
+    return false;
+  });
+  if (!hasOpen) problem(`day view ${date}: no open time after ${meta.now}`);
+}
+
 /** The content bar alone; `audit` runs it over the live branch. */
 export function checkQuality(data) {
   const problems = [];
@@ -186,5 +236,6 @@ export function checkDemoData(data) {
   const problem = (message) => problems.push(message);
   integrity(data, problem);
   quality(data, problem);
+  dayView(data, problem);
   return problems;
 }

@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import type { MonthSummary, MonthSummaryDay } from "@/lib/portal/scheduling/read-contracts";
 
+import { dayHref } from "./week-calendar";
+
 /* The Schedule's month view (Figma Ypf9ohpRcGWF5C9T9bSvWW, section 08,
    S1), built on the server from one month summary so SSR and hydration
    read the same strings. Dates are practice-local YYYY-MM-DD; a weekday
@@ -49,6 +51,8 @@ export interface PreviewProvider {
 
 export interface DayPreview {
   readonly heading: string;
+  /** The day view of this date. */
+  readonly href: string;
   readonly summary: string;
   readonly providers: readonly PreviewProvider[];
 }
@@ -126,6 +130,7 @@ function previewFor(
   const lead = day.status === "full" ? "Full" : `${day.open} open`;
   return {
     heading,
+    href: dayHref(day.date),
     summary: `${lead} · ${day.booked} of ${day.capacity} booked`,
     providers: day.providers.map((provider) => ({
       id: provider.id,

@@ -91,7 +91,11 @@ export async function readWeekAppointment(id: string): Promise<WeekAppointmentOu
   };
 }
 
-export type WeekCommandOutcome = { readonly ok: true } | Failure;
+/** A command that lands names the appointment and its new version, which
+   is what Undo sends back. */
+export type WeekCommandOutcome =
+  | { readonly ok: true; readonly id: string; readonly version: number }
+  | Failure;
 
 export async function weekAppointmentCommand(
   input: Readonly<{ idempotencyKey: string; command: WeekAppointmentCommand }>,
@@ -103,8 +107,9 @@ export async function weekAppointmentCommand(
     command: input.command,
   });
   if (!outcome.ok) return { ok: false, code: outcome.code };
+  if (!("version" in outcome)) return { ok: false, code: "unavailable" };
   changed();
-  return { ok: true };
+  return { ok: true, id: outcome.id, version: outcome.version };
 }
 
 export type WeekRescheduleOutcome =
@@ -171,8 +176,27 @@ export async function bookOpenTime(
     command: { kind: "book", ...input.command, sourceRequestId: null, requestVersion: null },
   });
   if (!outcome.ok) return { ok: false, code: outcome.code };
+  if (!("version" in outcome)) return { ok: false, code: "unavailable" };
   changed();
-  return { ok: true };
+  return { ok: true, id: outcome.id, version: outcome.version };
+}
+
+/** Undo the appointment's latest change: the server reverts it only while
+   it is still the latest and under 15 minutes old, and otherwise refuses
+   with undo_unavailable. */
+export async function undoAppointmentChange(
+  input: Readonly<{ idempotencyKey: string; id: string; expectedVersion: number }>,
+): Promise<WeekCommandOutcome> {
+  const session = await requireRole("staff", { unauthenticated: "throw" });
+  const outcome = await executeSchedulingOperation(serviceClient(), session.id, {
+    action: "command",
+    idempotencyKey: input.idempotencyKey,
+    command: { kind: "undo", id: input.id, expectedVersion: input.expectedVersion },
+  });
+  if (!outcome.ok) return { ok: false, code: outcome.code };
+  if (!("version" in outcome)) return { ok: false, code: "unavailable" };
+  changed();
+  return { ok: true, id: outcome.id, version: outcome.version };
 }
 
 /** The line the full-record sheet opens with for an appointment's request,

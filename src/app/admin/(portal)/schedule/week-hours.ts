@@ -1,4 +1,4 @@
-import type { WeekDay } from "@/lib/portal/scheduling/read-contracts";
+import type { WeekDay } from "@/lib/portal/scheduling/grid-contracts";
 
 import { endMinute, practiceDate, practiceMinute } from "./week-calendar";
 
@@ -11,6 +11,10 @@ export interface WeekSpan {
   readonly height: number;
 }
 
+/** What the hours read from a day: its working ranges and its visits. The
+    week's days and the day view's providers both carry them. */
+type Hours = Pick<WeekDay, "working" | "appointments">;
+
 interface HourBounds {
   readonly start: number;
   readonly end: number;
@@ -21,7 +25,7 @@ const DEFAULT_HOURS: HourBounds = { start: 8 * 60, end: 17 * 60 };
 /* The grid's hours: from the earliest working start to the latest working
    end in the week, in whole hours, widened to hold any appointment booked
    outside them. */
-export function hourBounds(days: readonly WeekDay[]): HourBounds {
+export function hourBounds(days: readonly Hours[]): HourBounds {
   let start = Infinity;
   let end = -Infinity;
   for (const day of days) {
@@ -44,7 +48,11 @@ export function hourLabel(minute: number): string {
   return `${hour % 12 === 0 ? 12 : hour % 12} ${suffix}`;
 }
 
-export function shadesFor(day: Readonly<WeekDay>, start: number, end: number): WeekSpan[] {
+export function shadesFor(
+  day: Readonly<Pick<Hours, "working">>,
+  start: number,
+  end: number,
+): WeekSpan[] {
   const working = day.working
     .map((range) => ({ from: practiceMinute(range.from), until: endMinute(range.until) }))
     .toSorted((a, b) => a.from - b.from);

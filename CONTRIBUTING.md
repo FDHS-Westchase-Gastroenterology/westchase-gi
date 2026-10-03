@@ -431,7 +431,7 @@ shared database by closing/reopening a child PR, or hand-patch it into an unrepr
 Open [`ui-reference/README.md`](ui-reference/README.md) before frontend work. Refresh the
 affected images against the matching local or Preview origin; use the default live-origin
 capture after deployment for public pages. The portal atlas covers only the eight top-level
-staff routes, the Schedule's week view and the empty add-request form with the Preview Branch
+staff routes, the Schedule's week and Day views and the empty add-request form with the Preview Branch
 seed identity, redacts
 in-browser, and never runs against Production.
 
